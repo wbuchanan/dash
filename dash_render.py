@@ -6587,7 +6587,8 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     for tok in _dash_by_tokens(tail.strip()):
         if "(" not in tok:
             nm = _textbox_canon(tok)
-            if nm in ("span", "box", "nobox", "bexpand", "prefix", "suffix"):
+            if nm in ("span", "nospan", "box", "nobox", "bexpand",
+                      "nobexpand", "prefix", "suffix"):
                 opts[nm] = nm
     return text, opts
 
@@ -10900,6 +10901,13 @@ class SchemeParser:
                                  "clock position")
             for k, d in (("title", 12), ("subtitle", 12), ("note", 7),
                          ("caption", 7))}
+        # The four boxes' rings (WP-31 D3): `gridringstyle <box>_ring',
+        # twoway's order of the boxes on one side (a larger ring further
+        # out); absent from a scheme file, s2color's.
+        self.text_ring: dict = {
+            k: self._bounded_int(f"gridringstyle {k}_ring", d, 0, 9, "ring")
+            for k, d in (("title", 7), ("subtitle", 6), ("caption", 5),
+                         ("note", 4))}
         # The edge titles' text boxes (WP-31 D2): `textboxstyle t1title'
         # .. `r2title' (s2color: subheading for the 1 titles, body for the
         # 2 titles).  b2title reads `textboxstyle b1title', as twoway's
@@ -11780,6 +11788,10 @@ class SchemeParser:
         # lcolor() (WP-30 P1.18a; S30's one context, P1.13.5).  Python-only.
         fig._dash_scheme_colours = OptionTranslator.scheme_colour_context(
             self)
+        # The scheme itself, for the textbox helpers that run after this
+        # with no scheme argument (_dash_figure_title, WP-31 D3).
+        # Python-only.
+        fig._dash_scheme = self
         fig.background_fill_color = self.plotregion_color
         fig.border_fill_color = self.background_color
         # The plot region's border is the scheme's own line, not the axis
@@ -43717,9 +43729,26 @@ def _dash_legend_unsupported(legend_opt):
 _DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
                                     "axis"})
 
+#: The further sub-options title(), subtitle(), note() and caption() draw
+#: (WP-31 D3; :func:`_dash_textbox_position`, :func:`_dash_textbox_style`).
+#: span and bexpand are drawn as they are (a side-panel Title spans the
+#: figure already), and box colours without box draw nothing, as in
+#: twoway.  orientation(), width(), height(), angle(), lstyle() and the
+#: bl* family stay named: a Bokeh Title has no angle and no fixed box.
+_DASH_TEXTBOX_BOX_HONOURED = frozenset({
+    "position", "ring", "span", "nospan", "justification", "alignment",
+    "margin", "linegap", "box", "nobox", "bcolor", "bfcolor", "fcolor",
+    "lcolor", "lwidth", "lpattern", "bmargin", "bexpand", "nobexpand",
+    "tstyle", "placement"})
 
-def _dash_textbox(raw, option, seen=None, key=""):
+
+def _dash_textbox(raw, option, seen=None, key="", placed=True):
     """``(text, sub-options)`` of a textbox option, the rest named.
+
+    On title(), subtitle(), note() and caption() the placement, box and
+    style sub-options (``_DASH_TEXTBOX_BOX_HONOURED``) are drawn (WP-31
+    D3) unless *placed* is false: a by() panel's label row, which keeps
+    the scheme's place, names them.
 
     Only a comma followed by a sub-option name Stata's textbox grammar
     knows starts the sub-options (``_textbox_split_point``), so
@@ -43750,12 +43779,16 @@ def _dash_textbox(raw, option, seen=None, key=""):
                     continue
             elif nm in _DASH_TEXTBOX_HONOURED:
                 continue
+            elif placed and nm in _DASH_TEXTBOX_BOX_HONOURED and option in (
+                    "title", "subtitle", "note", "caption"):
+                continue
             bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
     return text, opts
 
 
-def _dash_textbox_or_default(raw, option, default, seen=None, key=""):
+def _dash_textbox_or_default(raw, option, default, seen=None, key="",
+                             placed=True):
     """``(text, sub-options)`` of a title option that has a DEFAULT text.
 
     twoway keeps the default title when the option gives no text and only
@@ -43769,7 +43802,7 @@ def _dash_textbox_or_default(raw, option, default, seen=None, key=""):
     The text is canvas text or a DOM text node exactly as before; the
     default is the label already drawn.  No new sink.
     """
-    text, opts = _dash_textbox(raw, option, seen, key)
+    text, opts = _dash_textbox(raw, option, seen, key, placed)
     if "suffix" in opts:
         return "\n".join(p for p in (default, text) if p), opts
     if "prefix" in opts:
@@ -43777,33 +43810,45 @@ def _dash_textbox_or_default(raw, option, default, seen=None, key=""):
     return (text if _textbox_has_text(raw) else default), opts
 
 
-def _dash_figure_title(fig, graph_opts, seen=None, key=""):
-    """title() sub-options on the Title model: size() and color(), the
-    rest named.  The text itself went in when the figure was made.  The
-    served app applied none of them; measured, title("T", size(large)
-    color(red)) was 15px red saved and 13px grey served."""
+def _dash_figure_title(fig, graph_opts, seen=None, key="", scheme=None):
+    """title() sub-options on the Title model, the rest named.  The text
+    itself went in when the figure was made.  The served app applied none
+    of them; measured, title("T", size(large) color(red)) was 15px red
+    saved and 13px grey served.
+
+    WP-31 D3: the textbox sub-options too (:func:`_dash_textbox_style`).
+    With position() or ring() the title leaves Bokeh's own title slot --
+    which BokehJS always draws outermost, above or below -- for a
+    ``dash_textbox`` Title placed by the clock and inserted by ring, or a
+    Label on the plot region at ring(0)/position(0)
+    (:func:`_dash_textbox_draw`), and ``fig.title`` becomes None.
+    *scheme* defaults to the one ``SchemeParser.apply_to_figure`` applied.
+    """
     raw = (graph_opts or {}).get("title", "")
     if not raw or fig.title is None:
         return
     _t_text, _t_opts = _dash_textbox(raw, "title", seen, key)
     if not _t_text or not _t_opts:
         return
-    # None from either helper means "not given, or refused (and named)": the
-    # scheme's heading, set before this runs, stays.  These fell back on
-    # 16px and #000000, so title(T, size(bogus)) drew 16px where title(T)
-    # draws the scheme's 14pt, and title(T, color(bogus)) drew black text
-    # on s1rcolor's black -- while the note said the value was ignored.
-    _t_px = _textbox_size(_t_opts, fig.title.text_font_size,
-                          OptionTranslator.size_ref_of(fig), "title(size)")
-    if _t_px is not None:
-        fig.title.text_font_size = _t_px
-    _t_col, _t_a = _textbox_color(
-        _t_opts, None, base=fig.title.text_color,
-        colours=getattr(fig, "_dash_scheme_colours", None), with_alpha=True)
-    if _t_col is not None:
-        fig.title.text_color = _t_col
-    if _t_a is not None:
-        fig.title.text_alpha = _t_a
+    if scheme is None:
+        scheme = getattr(fig, "_dash_scheme", None)
+    t = fig.title
+    if "position" in _t_opts or "ring" in _t_opts:
+        place = _dash_textbox_position(
+            _t_opts, scheme.text_clock["title"] if scheme is not None else 12,
+            scheme.text_ring["title"] if scheme is not None else 7,
+            scheme.text_just["heading"] if scheme is not None else "center",
+            "title")
+        _dash_textbox_draw(fig, "title", t.text, _t_opts, scheme, place,
+                           base_size=t.text_font_size,
+                           base_color=t.text_color,
+                           fill=t.background_fill_color)
+        fig.title = None
+        return
+    # None from either size/colour helper means "not given, or refused
+    # (and named)": the scheme's heading, set before this runs, stays.
+    _dash_textbox_style(t, _t_opts, fig, scheme, "title",
+                        base_size=t.text_font_size, base_color=t.text_color)
 
 
 def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
@@ -43880,6 +43925,248 @@ def _dash_textbox_place(clock, just) -> "tuple[str, str]":
         7: ("below", "left"), 8: ("below", "left"), 9: ("below", "left"),
     }
     return table[clock]
+
+
+def _dash_textbox_position(opts, default_clock, default_ring, just,
+                           option="title", note=True) -> dict:
+    """Where a textbox goes (WP-31 D3): ``{"mode", "side", "align", "sx",
+    "sy", "anchor", "ring", "clock"}``.
+
+    ``position(#)`` is the clock when it is 0-12 as typed (twoway draws
+    the default for 13, 06 or 3.0), else *default_clock*; ``ring(#)`` a
+    non-negative integer, ``inside`` 0 or ``outside`` 1, else
+    *default_ring*.  At clock 0 or ring 0 twoway draws the box on the
+    plot region (``_fr_title_parse_and_log.ado``: ``pos on``): *mode*
+    ``"inside"``, *side* ``"center"`` and the compass point's frame
+    symbols and Label anchor; span there prints twoway's "option span
+    ignored for position(0)" once (*note*).  Otherwise *mode* ``"side"``
+    and ``(side, align)`` from :func:`_dash_textbox_place`: a user clock
+    centres a 12 or 6 o'clock box, as twoway sets the box's horizontal
+    from the clock; the scheme's clock keeps *just*, the scheme's own
+    horizontal.
+    """
+    o = opts or {}
+    pos = str(o.get("position", "") or "").strip()
+    user = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
+    clock = int(pos) if user else default_clock
+    rr = str(o.get("ring", "") or "").strip()
+    if rr == "inside":
+        ring = 0
+    elif rr == "outside":
+        ring = 1
+    elif re.fullmatch(r"[0-9]{1,2}", rr):
+        ring = int(rr)
+    else:
+        ring = default_ring
+    if clock == 0 or ring == 0:
+        if note and "span" in o:
+            _dash_warn_once(("textbox_span0", option),
+                            "dash: option span ignored for position(0)")
+        sx, sy, anchor = {
+            12: ("center", "top", "top_center"),
+            1: ("right", "top", "top_right"), 2: ("right", "top", "top_right"),
+            3: ("right", "center", "center_right"),
+            4: ("right", "bottom", "bottom_right"),
+            5: ("right", "bottom", "bottom_right"),
+            6: ("center", "bottom", "bottom_center"),
+            7: ("left", "bottom", "bottom_left"),
+            8: ("left", "bottom", "bottom_left"),
+            9: ("left", "center", "center_left"),
+            10: ("left", "top", "top_left"), 11: ("left", "top", "top_left"),
+        }.get(clock, ("center", "center", "center"))
+        return {"mode": "inside", "side": "center", "align": sx, "sx": sx,
+                "sy": sy, "anchor": anchor, "ring": ring, "clock": clock}
+    side, align = _dash_textbox_place(clock, "center" if user else just)
+    return {"mode": "side", "side": side, "align": align, "sx": None,
+            "sy": None, "anchor": None, "ring": ring, "clock": clock}
+
+
+def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
+                        base_color=None):
+    """Draw a textbox's sub-options on its ``Title`` or ``Label`` (WP-31
+    D3); returns *model*.
+
+    In order: ``tstyle()`` replaces *base_size*/*base_color* with the
+    scheme's text box style (an unknown name draws the body box with
+    twoway's note "named style <x> not found in class textboxstyle,
+    default attributes used"); ``size()``/``color()`` as before, so they
+    still win; ``justification()`` the text's alignment inside its box
+    (the box stays at its clock: twoway moved the text, not the box);
+    ``alignment()`` a Title's ``vertical_align`` or the vertical part of a
+    Label's anchor, after ``placement()`` (a Label's anchor, as on
+    text()); ``box`` the frame -- ``fcolor()``/``bfcolor()``/``bcolor()``
+    the fill, ``lcolor()``/``bcolor()`` the line, ``lwidth()``,
+    ``lpattern()`` -- and ``nobox`` none (twoway draws the colours only
+    with box); ``margin()`` the padding (the margin ladder);
+    ``linegap()`` the line step, measured as the font size plus the gap
+    (textbox_truth.json linegap_3); ``bmargin()`` a Title's standoff.
+    """
+    T = OptionTranslator
+    o = opts or {}
+    ref = T.size_ref_of(fig)
+    colours = getattr(fig, "_dash_scheme_colours", None)
+    name = o.get("tstyle")
+    if name:
+        st = (scheme.textbox_style(str(name)) if scheme is not None
+              else None)
+        if st is None:
+            _dash_warn_once(
+                ("textboxstyle", str(name)),
+                "dash: named style %s not found in class textboxstyle, "
+                "default attributes used" % _dash_display(str(name)))
+            st = scheme.textbox_style("body") if scheme is not None else None
+        if st is not None:
+            base_size, base_color = st
+    px = _textbox_size(o, base_size, ref, f"{option}(size)")
+    colour, alpha = _textbox_color(o, None, base=base_color,
+                                   colours=colours, with_alpha=True)
+    model.text_font_size = px if px is not None else base_size
+    model.text_color = colour if colour is not None else base_color
+    if alpha is not None:
+        model.text_alpha = alpha
+    if o.get("justification") in ("left", "center", "right"):
+        model.text_align = o["justification"]
+    is_label = type(model).__name__ == "Label"
+    if is_label and o.get("placement") in _DASH_ADDED_TEXT_PLACE:
+        model.anchor = _DASH_ADDED_TEXT_PLACE[o["placement"]]
+    v = {"top": "top", "middle": "middle", "baseline": "bottom",
+         "bottom": "bottom"}.get(str(o.get("alignment", "")))
+    if v is not None:
+        if is_label:
+            a = str(model.anchor)
+            h = "center" if a == "center" else a.split("_", 1)[1]
+            v = "center" if v == "middle" else v
+            model.anchor = "center" if (v, h) == ("center", "center") \
+                else f"{v}_{h}"
+        else:
+            model.vertical_align = v
+    if "nobox" in o:
+        model.background_fill_color = None
+        model.border_line_color = None
+    elif "box" in o:
+        def col(*names):
+            for n in names:
+                if o.get(n):
+                    return _textbox_color({"color": o[n]}, None,
+                                          colours=colours)
+            return None
+        fill = col("fcolor", "bfcolor", "bcolor")
+        line = col("lcolor", "bcolor")
+        model.background_fill_color = fill or model.background_fill_color \
+            or (scheme.text_option_fill_color if scheme is not None
+                else None)
+        model.border_line_color = line or (
+            scheme.text_option_line_color if scheme is not None
+            else "#000000")
+        lw = scheme.text_option_line_width if scheme is not None else 1.0
+        if o.get("lwidth"):
+            try:
+                lw = T.translate_lwidth(o["lwidth"], None, ref)
+            except ValueError:
+                _dash_style_note(f"{option}(lwidth)", o["lwidth"],
+                                 "line width")
+        model.border_line_width = lw
+        if o.get("lpattern"):
+            try:
+                model.border_line_dash = T.translate_lpattern(o["lpattern"])
+            except ValueError:
+                _dash_style_note(f"{option}(lpattern)", o["lpattern"],
+                                 "line pattern")
+
+    def sides_px(sub):
+        sides = SchemeParser.margin_sides(
+            scheme if scheme is not None else SchemeParser, o[sub])
+        if sides is None:
+            _dash_style_note(f"{option}({sub})", o[sub], "margin")
+            return None
+        return [int(round(float(s[1]) * T.PX_PER_PT if isinstance(s, tuple)
+                          else float(s) * T.PT_PER_RS * T.PX_PER_PT))
+                for s in sides]
+    if o.get("margin"):
+        p = sides_px("margin")
+        if p is not None:
+            model.padding = {"left": p[0], "right": p[1], "bottom": p[2],
+                             "top": p[3]}
+    if o.get("bmargin") and not is_label:
+        p = sides_px("bmargin")
+        if p is not None:
+            model.standoff = max(p[2], p[3])
+    if o.get("linegap"):
+        try:
+            gap = T.resolve_size(str(o["linegap"]), "line", 0.0, ref)
+        except (ValueError, TypeError):
+            gap = None
+            _dash_style_note(f"{option}(linegap)", o["linegap"], "size")
+        size_pt = T.css_to_pt(model.text_font_size)
+        if gap is not None and size_pt:
+            model.text_line_height = 1.0 + max(0.0, gap) / size_pt
+    return model
+
+
+def _dash_textbox_insert(fig, side, model, ring):
+    """Insert a side-panel *model* at ring *ring* (WP-31 D3).
+
+    The model is tagged ``ring=<ring>``.  BokehJS lays a panel out from
+    the frame outward in list order, so a larger ring goes further out:
+    the model goes after the panel's axes and after every model whose
+    ring is not larger -- an edge title its digit (1, 2), a Legend 3, a
+    textbox its tag, anything else 0 -- as twoway orders its rings
+    (title 7, subtitle 6, caption 5, note 4, legend 3; textbox_truth.json
+    order, user_ring).
+    """
+    from bokeh.models import Axis, Legend
+    tags = list(getattr(model, "tags", None) or [])
+    if not any(str(t).startswith("ring=") for t in tags):
+        model.tags = tags + ["ring=%d" % ring]
+
+    def ring_of(m):
+        tg = [str(t) for t in (getattr(m, "tags", None) or [])]
+        for t in tg:
+            if t.startswith("ring=") and t[5:].isdigit():
+                return int(t[5:])
+        if "dash_edge_title" in tg:
+            k = next((t for t in tg if re.fullmatch(r"[tblr][12]title", t)),
+                     "x1")
+            return int(k[1])
+        return 3 if isinstance(m, Legend) else 0
+    panel = list(getattr(fig, side))
+    at = 0
+    for i, m in enumerate(panel):
+        if isinstance(m, Axis) or ring_of(m) <= ring:
+            at = i + 1
+    panel.insert(at, model)
+    setattr(fig, side, panel)
+
+
+def _dash_textbox_draw(fig, key, text, opts, scheme, place, *,
+                       base_size=None, base_color=None, fill=None):
+    """Build, style and place one textbox (WP-31 D3); returns the model.
+
+    *place* is :func:`_dash_textbox_position`'s answer.  Inside the plot
+    region the box is a ``Label`` pinned by ``Node`` coordinates to the
+    frame's compass point and put first in ``fig.center`` (the reference
+    lines' Spans are added before the text boxes when saved and after them
+    when served); otherwise a ``Title`` inserted by ring
+    (:func:`_dash_textbox_insert`).  Tagged ``["dash_textbox", key,
+    "ring=<n>"]``.  The text is raw: the canvas-text pass finishes it.
+    """
+    from bokeh.models import Label, Node, Title
+    tags = ["dash_textbox", key, "ring=%d" % place["ring"]]
+    if place["mode"] == "inside":
+        m = Label(x=Node(target="frame", symbol=place["sx"]),
+                  y=Node(target="frame", symbol=place["sy"]),
+                  anchor=place["anchor"], text=text,
+                  background_fill_color=fill, tags=tags)
+        _dash_textbox_style(m, opts, fig, scheme, key, base_size=base_size,
+                            base_color=base_color)
+        fig.center = [m] + list(fig.center)
+    else:
+        m = Title(text=text, align=place["align"], text_font_style="normal",
+                  background_fill_color=fill, tags=tags)
+        _dash_textbox_style(m, opts, fig, scheme, key, base_size=base_size,
+                            base_color=base_color)
+        _dash_textbox_insert(fig, place["side"], m, place["ring"])
+    return m
 
 
 #: Defaults for a caller with no scheme: s2color's clocks (subtitle 12, note
@@ -43966,7 +44253,10 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
     option gives none (``_dash_textbox_or_default``) -- the chrome cells'
     ``Graphs by`` note (:func:`_dash_by_chrome`).
     """
-    from bokeh.models import Label, Node, Title
+    from bokeh.models import Label, Node
+    # twoway's rings (scheme-s2color.scheme:1947-1950), for a caller with
+    # no scheme.
+    _rings = {"note": 4, "caption": 5, "subtitle": 6}
     _by = str((graph_opts or {}).get("by") or "").strip()
     _by_panels = bool(_by) and bool(_dash_parse_by(_by, warn=False)[0])
     for ann_key in ("note", "caption", "subtitle"):
@@ -43991,7 +44281,14 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
         else:
             size_default, color_default = f"{d['size']:g}px", d["color"]
             clock, just = d["clock"], d["just"]
-        side, align = _dash_textbox_place(clock, just)
+        ring_default = (scheme.text_ring.get(ann_key, _rings[ann_key])
+                        if scheme is not None else _rings[ann_key])
+        # Placement first, from the raw sub-options, so a box on the other
+        # side of a chrome cell (*sides*) is neither drawn nor named here.
+        place = _dash_textbox_position(_parse_textbox_opt(raw)[1] if raw
+                                       else {}, clock, ring_default, just,
+                                       ann_key, note=False)
+        side, align = place["side"], place["align"]
         if sides is not None and side not in sides:
             continue
         if has_default:
@@ -44001,44 +44298,34 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
             text, opts = _dash_textbox(raw, ann_key, seen, key)
         if not text:
             continue
+        place = _dash_textbox_position(opts, clock, ring_default, just,
+                                       ann_key)
         # note()'s box is filled where the scheme's `textboxstyle note'
         # draws one (economist's reverse_big: emidblue).
         fill = (scheme.note_box_fill_color
                 if scheme is not None and ann_key == "note" else None)
-        # None from either helper means "not given, or refused (and
-        # named)": the default applies either way.
-        px = _textbox_size(opts, size_default,
-                           OptionTranslator.size_ref_of(fig),
-                           f"{ann_key}(size)")
-        colour, alpha = _textbox_color(
-            opts, None, base=color_default,
-            colours=getattr(fig, "_dash_scheme_colours", None),
-            with_alpha=True)
-        size = px if px is not None else size_default
-        color = colour if colour is not None else color_default
         title = getattr(fig, "title", None)
-        in_band = (side == "above" and clock in (1, 11)
+        in_band = (side == "above" and place["clock"] in (1, 11)
                    and title is not None
                    and str(getattr(title, "text", "") or "").strip()
                    and getattr(fig, "title_location", "above") == "above"
                    and getattr(title, "align", None)
-                   == ("left" if clock == 1 else "right"))
+                   == ("left" if place["clock"] == 1 else "right"))
         if in_band:
-            fig.center = [Label(
-                x=Node(target=title, symbol=align),
-                y=Node(target=title, symbol="top"),
-                anchor="top_" + align, text=text,
-                text_font_size=size, text_color=color,
-                background_fill_color=fill,
-                **({"text_alpha": alpha} if alpha is not None else {}),
-            )] + list(fig.center)
+            band = Label(x=Node(target=title, symbol=align),
+                         y=Node(target=title, symbol="top"),
+                         anchor="top_" + align, text=text,
+                         background_fill_color=fill,
+                         tags=["dash_textbox", ann_key,
+                               "ring=%d" % place["ring"]])
+            _dash_textbox_style(band, opts, fig, scheme, ann_key,
+                                base_size=size_default,
+                                base_color=color_default)
+            fig.center = [band] + list(fig.center)
         else:
-            fig.add_layout(Title(
-                text=text, align=align, text_font_style="normal",
-                text_font_size=size, text_color=color,
-                background_fill_color=fill,
-                **({"text_alpha": alpha} if alpha is not None else {}),
-            ), side)
+            _dash_textbox_draw(fig, ann_key, text, opts, scheme, place,
+                               base_size=size_default,
+                               base_color=color_default, fill=fill)
 
 
 #: The eight edge titles in twoway's order on each side: (option, side,
@@ -44328,7 +44615,8 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     """
     from bokeh.models import Title
     text, opts = _dash_textbox_or_default(
-        (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key)
+        (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key,
+        placed=False)
     if not text:
         return None
     if scheme is not None:
@@ -53775,7 +54063,7 @@ class ServerAppBuilder:
                       # The sub-option tables and the filter parser's own.
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
-                      "_DASH_TEXTBOX_HONOURED",
+                      "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
@@ -54373,6 +54661,8 @@ class ServerAppBuilder:
                          "_dash_legend_unsupported", "_dash_textbox",
                          "_dash_textbox_or_default",
                          "_dash_textbox_place",
+                         "_dash_textbox_position", "_dash_textbox_style",
+                         "_dash_textbox_insert", "_dash_textbox_draw",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_edge_titles",

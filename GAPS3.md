@@ -474,7 +474,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1c Tracked:** Open (WP-31 section 33).
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Open (WP-31 section 30).
-- **D3 Tracked:** Open (WP-31 section 30).
+- **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit pending.
 - **D4 Tracked:** Open (WP-31 section 31).
 - **D5 Tracked:** Open (WP-31 section 32).
 - **D6 Tracked:** Open (WP-31 section 33).

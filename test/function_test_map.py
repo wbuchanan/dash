@@ -937,6 +937,13 @@ FUNCTIONS = {
  'SchemeParser.axis_flags': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axisstyle_names_map_to_line_and_tick_flags',
  'SchemeParser.axis_side': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axis_side_reads_the_alt_keys',
  '_dash_textbox_place': 'test/test_scheme_chrome.py::TestTextboxPlace::test_every_clock',
+ '_dash_textbox_position': 'test/test_textbox_placement.py::TestPlacement::test_clock_table',
+ '_dash_textbox_style': 'test/test_textbox_placement.py::TestBox::test_box_props',
+ '_dash_textbox_insert': 'test/test_textbox_placement.py::TestRingOrder::test_rings_on_one_side',
+ '_dash_textbox_insert.<locals>.ring_of': 'test/test_textbox_placement.py::TestRingOrder::test_user_ring_moves_inside',
+ '_dash_textbox_style.<locals>.col': 'test/test_textbox_placement.py::TestBox::test_box_props',
+ '_dash_textbox_style.<locals>.sides_px': 'test/test_textbox_placement.py::TestBox::test_box_props',
+ '_dash_textbox_draw': 'test/test_textbox_placement.py::TestInside::test_ring0_anchor',
  # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
  'GlyphMapper._fintensity_value': 'test/test_intensity_blend.py::TestTheFintensityParser::test_numbers_names_and_missing',
  # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)

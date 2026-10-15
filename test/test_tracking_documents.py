@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "D3": "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only",
     "D13": "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label",
     "D4": "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged",
     "C13": "A histogram-only graph draws a legend where twoway draws none",

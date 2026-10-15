@@ -1176,4 +1176,6 @@ class TestInternalLinksResolve:
         # flag list link Resource limits.
         # 95 -> 97 links, 34 -> 35 targets: P1.10's Added text paragraph
         # links Resource limits and, for the first time, Graph text.
-        assert len(refs) == 97 and len(set(refs)) == 35
+        # 97 -> 98 links, 35 -> 36 targets: WP-31 D3 links the textbox
+        # sentence to the new Textbox options paragraph.
+        assert len(refs) == 98 and len(set(refs)) == 36

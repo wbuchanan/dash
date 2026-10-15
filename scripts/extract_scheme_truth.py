@@ -1962,6 +1962,12 @@ def extract(stata_base: str, scheme: str) -> dict:
         **{f"margin_ladder_{k}": scalar(
             f"margin_ladder_{k}", "gsize", [k], lambda t: t.strip(),
             class_default=False, required=False) for k in MARGIN_LADDER},
+        # WP-31 D3: the four title rings (`gridringstyle <box>_ring'), the
+        # order of the boxes on one side of the plot region.
+        **{f"{k}_ring": scalar(
+            f"{k}_ring", "gridringstyle", [f"{k}_ring"],
+            lambda t: _as_number(t.strip()), class_default=False)
+           for k in ("title", "subtitle", "caption", "note")},
 
         "legend_position": scalar("legend_position", "clockdir",
                                   ["legend_position"],
@@ -2289,6 +2295,13 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("symbolsize", "p", "symbolsize", use_name=True),
         scalar("clockdir", "legend_position", "legend_position"),
         scalar("numstyle", "legend_cols", "legend_cols"),
+    ])
+    group(["Textbox rings (WP-31 D3): the order of title, subtitle, caption and",
+           "note on one side of the plot region; a larger ring is further out."], [
+        scalar("gridringstyle", "title_ring", "title_ring"),
+        scalar("gridringstyle", "subtitle_ring", "subtitle_ring"),
+        scalar("gridringstyle", "caption_ring", "caption_ring"),
+        scalar("gridringstyle", "note_ring", "note_ring"),
     ])
     # style/markerstyle-p#.style: `set size scheme p#', falling back to the
     # `symbolsize p' above.  Only the `symbolsize p#' keys the chain

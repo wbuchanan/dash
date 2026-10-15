@@ -6590,6 +6590,223 @@ if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
 }
 * ==== end S29 ====
 
+// S30 helpers (WP-31 D3).  _u30_check reads twoway's SVG and dash's saved
+// and served figures of one case and writes one comparable line each:
+// globals u30_tw, u30_s and u30_v.  Cases: "clock" (each box's side, a
+// side twoway draws beside the plot read as dash's nearer horizontal side,
+// _dash_textbox_place), "inside" (the third of the plot region a ring(0)
+// box is in), "box" (fill and line colour), "size" (the note's size in
+// points), "order" (the boxes above the plot from the plot out), "by" (how
+// many N the graph draws).
+python:
+def _u30_svg(path):
+    import re
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    texts = []
+    for attrs, body in re.findall(r"<text\b([^>]*)>([^<]*)</text>", src):
+        body = body.strip()
+        if not body or re.fullmatch(r"[-0-9.,]+", body):
+            continue
+        a = dict(re.findall(r'([a-z-]+)="([^"]*)"', attrs))
+        fs = re.search(r"font-size:([0-9.]+)px", a.get("style", ""))
+        texts.append((body, float(a["x"]), float(a["y"]),
+                      float(fs.group(1)) if fs else 0.0))
+    rects = []
+    for attrs in re.findall(r"<rect\b([^>]*)/?>", src):
+        a = dict(re.findall(r'([a-z-]+)="([^"]*)"', attrs))
+        rects.append((float(a.get("x", 0)), float(a.get("y", 0)),
+                      float(a.get("width", 0)), float(a.get("height", 0)),
+                      a.get("style", "")))
+    plot = next(r for r in rects if r[4].startswith("fill:#FFFFFF"))
+    return texts, rects, plot
+
+
+def _u30_third(v, lo, hi):
+    f = (v - lo) / (hi - lo)
+    return 0 if f < 1 / 3 else (1 if f < 2 / 3 else 2)
+
+
+def _u30_tw(path, case):
+    import dash_render as dr
+    texts, rects, (px, py, pw, ph, _s) = _u30_svg(path)
+    if case == "clock":
+        t = [e for e in texts if e[0] == "T"][0]
+        clock = int(path.rsplit("_", 1)[1].split(".")[0])
+        if t[2] < py:
+            side = "above"
+        elif t[2] > py + ph:
+            side = "below"
+        else:
+            side = dr._dash_textbox_place(clock, "center")[0]
+        return "%d:%s" % (clock, side)
+    if case == "inside":
+        t = [e for e in texts if e[0] == "N"][0]
+        h = ("left", "center", "right")[_u30_third(t[1], px, px + pw)]
+        v = ("top", "center", "bottom")[_u30_third(t[2], py, py + ph)]
+        return "%s %s" % (h, v)
+    if case == "box":
+        fill = [r for r in rects if r[4].startswith("fill:#E0E0E0")]
+        line = [r for r in rects if "stroke:#FF0000" in r[4]]
+        return "fill %s line %s" % ("#e0e0e0" if fill else "-",
+                                    "#ff0000" if line else "-")
+    if case == "size":
+        t = [e for e in texts if e[0] == "N"][0]
+        return "%gpt" % round(t[3] / 10.0)
+    if case == "order":
+        above = sorted([e for e in texts if e[2] < py
+                        and e[0] in ("T", "S", "N", "T1", "T2")],
+                       key=lambda e: -e[2])
+        return " ".join(e[0] for e in above)
+    if case == "by":
+        return "N:%d" % sum(1 for e in texts if e[0] == "N")
+    return "?"
+
+
+def _u30_dash(figs, case):
+    from bokeh.models import Label, Title
+    f = figs[0]
+
+    def boxes(fig):
+        out = []
+        for side in ("center", "above", "below"):
+            for m in getattr(fig, side):
+                if "dash_textbox" in list(getattr(m, "tags", None) or []):
+                    out.append((side, m))
+        return out
+    if case == "clock":
+        side, m = [b for b in boxes(f) if b[1].text == "T"][0]
+        return side
+    if case == "inside":
+        side, m = [b for b in boxes(f) if b[1].text == "N"][0]
+        if not isinstance(m, Label):
+            return "not a Label"
+        return "%s %s" % (m.x.symbol, m.y.symbol)
+    if case == "box":
+        side, m = [b for b in boxes(f) if b[1].text == "C"][0]
+        return "fill %s line %s" % (str(m.background_fill_color).lower(),
+                                    str(m.border_line_color).lower())
+    if case == "size":
+        side, m = [b for b in boxes(f) if b[1].text == "N"][0]
+        return str(m.text_font_size)
+    if case == "order":
+        out = []
+        for m in f.above:
+            if isinstance(m, Title) and m.text in ("T", "S", "N", "T1", "T2"):
+                out.append(m.text)
+        if f.title is not None and f.title.text == "T":
+            out.append("T")
+        return " ".join(out)
+    if case == "by":
+        return "N:%d" % sum(1 for g in figs for side, m in boxes(g)
+                            if m.text == "N")
+    return "?"
+
+
+def _u30_check(sp, dp, app, svg, case, clock=""):
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    tw = _u30_tw(svg, case)
+    if case == "clock":
+        Macro.setGlobal("u30_tw", tw)
+        for figs, sfx in ((a, "s"), (b, "v")):
+            Macro.setGlobal("u30_" + sfx, tw.split(":")[0] + ":"
+                            + _u30_dash(figs, case))
+        return
+    Macro.setGlobal("u30_tw", tw)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        Macro.setGlobal("u30_" + sfx, _u30_dash(figs, case))
+end
+
+capture program drop _u30_reg
+program define _u30_reg
+    // _u30_reg <dir> <k> <case> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    quietly twoway `0' name(u30t, replace)
+    quietly graph export "`dir'/t_`k'.svg", replace
+    graph drop u30t
+    dash clear
+    capture quietly dash `0' name(zu30`k')
+    if _rc {
+        global u30_s "rc `=_rc'"
+        global u30_v "rc `=_rc'"
+        global u30_tw "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u30_m; _u30_m._u30_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t_`k'.svg", "`case'")
+end
+
+* ==== S30 D3: Textbox placement ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
+    display as text "S30 start " c(current_date) " " c(current_time)
+    local u30d "`w31_work'/s30"
+    capture mkdir "`u30d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U30-1: title(, position(k)) on twoway's side; beside the plot is
+    // dash's nearer horizontal side (the documented difference).
+    foreach k in 3 6 9 12 {
+        _u30_reg "`u30d'" `k' clock scatter mpg weight, title("T", position(`k'))
+        foreach m in s v {
+            _w31_expect U30-1 `"("${u30_`m'}" == "${u30_tw}")"' "`m' clock `k': dash ${u30_`m'}; twoway ${u30_tw}"
+        }
+    }
+    _w31_done U30-1 "position(3 6 9 12) on twoway's sides, saved and served"
+
+    // U30-2: ring(0) position(k): inside the plot region at the clock's
+    // compass point.
+    foreach k in 1 3 6 9 12 {
+        _u30_reg "`u30d'" 2`k' inside scatter mpg weight, note("N", ring(0) position(`k'))
+        foreach m in s v {
+            _w31_expect U30-2 `"("${u30_`m'}" == "${u30_tw}")"' "`m' ring(0) position(`k'): dash ${u30_`m'}; twoway ${u30_tw}"
+        }
+    }
+    _w31_done U30-2 "ring(0) boxes at their compass points, saved and served"
+
+    // U30-3: box bcolor() lcolor(): the frame's fill and line.
+    _u30_reg "`u30d'" 3 box scatter mpg weight, caption("C", box bcolor(gs14) lcolor(red) lwidth(thick) margin(medium))
+    foreach m in s v {
+        _w31_expect U30-3 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-3 "the box ${u30_tw}, saved and served"
+
+    // U30-4: tstyle(heading): the heading's size.
+    _u30_reg "`u30d'" 4 size scatter mpg weight, note("N", tstyle(heading))
+    foreach m in s v {
+        _w31_expect U30-4 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-4 "tstyle(heading) draws ${u30_tw}, saved and served"
+
+    // U30-5: rings above the plot, from the plot out: the edge titles,
+    // a ring(2) subtitle, the note at 12 (ring 4), the title (ring 7).
+    _u30_reg "`u30d'" 5 order scatter mpg weight, title("T") subtitle("S", ring(2)) t1title("T1") note("N", position(12))
+    foreach m in s v {
+        _w31_expect U30-5 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-5 "ring order ${u30_tw}, saved and served"
+
+    // U30-6: by(): a ring(0) note on every panel, once each.
+    _u30_reg "`u30d'" 6 by scatter mpg weight, by(foreign) note("N", ring(0) position(1))
+    foreach m in s v {
+        _w31_expect U30-6 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-6 "by(): ${u30_tw}, saved and served"
+
+    macro drop u30_tw u30_s u30_v
+    capture graph drop _all
+    dash clear
+    display as text "S30 end " c(current_date) " " c(current_time)
+}
+* ==== end S30 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

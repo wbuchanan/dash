@@ -420,7 +420,7 @@ and now matches Stata.
 
 - fpfit and fpfitci on a saved page after a filter move: the build's fit (marked) -> fracpoly's degree-2 fit on the kept rows and its stdp band (WP-31, F1g)
 
-<!-- WP-31 D3 -->
+- `dash scatter mpg weight, title("T", position(6))`: title above, note printed -> title below the plot region; `ring(0)`/`position(0)` inside the plot region, rings ordering the boxes, `box`, its colours, `margin()`, `linegap()`, `justification()`, `alignment()` and `tstyle()` drawn on `title()`, `subtitle()`, `note()` and `caption()` as twoway draws them (WP-31, D3)
 
 <!-- WP-31 D13 -->
 

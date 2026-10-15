@@ -84,8 +84,11 @@ SUBOPTIONS = [
      ["axis(3)"], ["lpattern"]),
     # WP-28 B3: abbreviations are canonicalised before the honoured check,
     # so a bare "c" is not named beside a "bc" it does not abbreviate.
-    ("title c and bc", {"title": "T, c(red) bc(red)"}, None, "title",
-     ["bc(red)"], ["c"]),
+    # Flipped (WP-31 D3): this row named bc(red); that was wrong because
+    # bcolor() is drawn now (with box, as twoway draws it), so the row
+    # names orient(), which a Title still cannot draw.
+    ("title c and bc", {"title": "T, c(red) bc(red) orient(vertical)"},
+     None, "title", ["orient(vertical)"], ["c", "bc"]),
     ("xtitle orient", {"xtitle": "Weight, orient(vertical)"}, None,
      "xtitle", ["orient(vertical)"], []),
     ("ytitle axis 3", {"ytitle": "M, axis(3)"}, None, "ytitle",

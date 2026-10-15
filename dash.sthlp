@@ -977,7 +977,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:size(large)}, {cmd:a()} is {cmd:alignment()}, {cmd:lst()} is
     {cmd:lstyle()}, {cmd:b} is {cmd:box} and {cmd:nob} is {cmd:nobox}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
     {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)}
-    (minimum {cmd:ax()}, in lower case) are applied; every other
+    (minimum {cmd:ax()}, in lower case) are applied; on {cmd:title()},
+    {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} the placement,
+    box and style sub-options are drawn too (see
+    {help dash##textbox_options:Textbox options}); every other
     sub-option is named, never drawn as text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
     An axis title given with empty text -- {cmd:xtitle("")},
@@ -4514,6 +4517,51 @@ titles, except {cmd:b2title()}, which {cmd:twoway} draws in
 {cmd:position()}, {cmd:ring()}, {cmd:span}, {cmd:orientation()} and the
 other text-box sub-options are named in the note.  On a {cmd:by()} graph
 each panel carries them, as {cmd:twoway} draws them.
+
+{marker textbox_options}{...}
+{pstd}
+{ul:Textbox options.}  On {cmd:title()}, {cmd:subtitle()}, {cmd:note()}
+and {cmd:caption()}, besides {cmd:size()}, {cmd:color()}, {cmd:prefix}
+and {cmd:suffix}, these sub-options are drawn where {cmd:twoway} draws
+them, in both render modes, and nothing is printed for them:
+{cmd:position()}, {cmd:ring()}, {cmd:span}, {cmd:justification()},
+{cmd:alignment()}, {cmd:margin()}, {cmd:linegap()}, {cmd:box},
+{cmd:nobox}, {cmd:bcolor()}, {cmd:fcolor()}, {cmd:bfcolor()},
+{cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()}, {cmd:bmargin()},
+{cmd:bexpand}, {cmd:tstyle()} and {cmd:placement()}.
+{cmd:position(}{it:#}{cmd:)} is the clock: 11, 12 and 1 above the plot
+region, 5, 6 and 7 below it, at the left, centre or right.
+{cmd:twoway} draws a box at 2, 3 or 4 o'clock to the right of the plot
+and one at 8, 9 or 10 o'clock to its left; {cmd:dash} draws it on the
+nearer horizontal side, at the right or left -- {cmd:title("T",}
+{cmd:position(3))} is below the plot at the right -- because a title in
+a side panel is turned on its side.  {cmd:ring()} orders the boxes on
+one side, a larger ring further out: the title is ring 7, the subtitle
+6, the caption 5, the note 4 (the scheme's {cmd:gridringstyle}
+{it:box}{cmd:_ring}), the legend 3 and the edge titles 1 and 2.
+{cmd:ring(0)} or {cmd:position(0)} draws the box inside the plot region
+at the clock's compass point ({cmd:position(0)} its centre), and
+{cmd:span} there prints {cmd:twoway}'s note "option span ignored for
+position(0)".  {cmd:box} frames the text: {cmd:bcolor()} colours the
+fill and the line, {cmd:fcolor()} and {cmd:bfcolor()} the fill,
+{cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()} the line; as in
+{cmd:twoway} they draw nothing without {cmd:box}, and {cmd:nobox}
+removes a scheme's box.  {cmd:margin()} pads the text, {cmd:linegap()}
+adds to the line step (the font size), {cmd:justification()} aligns the
+text inside its box (the box stays at its clock, as in {cmd:twoway}),
+{cmd:alignment()} sets its vertical place, {cmd:bmargin()} the gap to
+the plot and {cmd:placement()} the anchor of a box inside the plot
+region.  {cmd:tstyle()} is the base style -- {cmd:tstyle(heading)}
+draws the heading's size and colour -- and {cmd:size()} and
+{cmd:color()} still win; an unknown name draws the default with
+{cmd:twoway}'s note "named style ... not found in class textboxstyle,
+default attributes used".  {cmd:span} and {cmd:bexpand} need no drawing:
+a box above or below the plot already spans the graph, so an unspanned
+box is wider than {cmd:twoway}'s.  {cmd:orientation()}, {cmd:width()},
+{cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
+sub-options are named in the note: a title box has no angle and no fixed
+size.  On a {cmd:by()} graph a panel's label row keeps its place and
+names them.
 
 
 {marker colorvar}

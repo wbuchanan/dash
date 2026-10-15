@@ -772,6 +772,22 @@ textboxstyle r1title  subheading
 textboxstyle r2title  body
 
 * ---------------------------------------------------------------------------
+* Added 15oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> economist); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Textbox rings (WP-31 D3): the order of title, subtitle, caption and
+* note on one side of the plot region; a larger ring is further out.
+gridringstyle title_ring     6
+gridringstyle subtitle_ring  5
+gridringstyle caption_ring   4
+gridringstyle note_ring      6
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -862,6 +878,10 @@ textboxstyle r2title  body
 * provenance: symbolsize p -- transcribed from scheme-economist.scheme:95 `symbolsize p large'
 * provenance: clockdir legend_position -- transcribed from scheme-economist.scheme:315 `clockdir legend_position 12'
 * provenance: numstyle legend_cols -- transcribed from scheme-economist.scheme:20 `numstyle legend_cols 3'
+* provenance: gridringstyle title_ring -- transcribed from scheme-economist.scheme:319 `gridringstyle title_ring 6'
+* provenance: gridringstyle subtitle_ring -- transcribed from scheme-economist.scheme:320 `gridringstyle subtitle_ring 5'
+* provenance: gridringstyle caption_ring -- transcribed from scheme-economist.scheme:321 `gridringstyle caption_ring 4'
+* provenance: gridringstyle note_ring -- transcribed from scheme-economist.scheme:322 `gridringstyle note_ring 6'
 * provenance: gsize plabel -- transcribed from scheme-s2color.scheme:191 `gsize plabel small'
 * provenance: yesno draw_major_hgrid -- transcribed from scheme-economist.scheme:342 `yesno draw_major_hgrid no'
 * provenance: yesno draw_major_vgrid -- transcribed from scheme-economist.scheme:366 `yesno draw_major_nlt_vgrid yes' via axisstyle vertical_default = vertical_nolinetick, style/axisstyle-vertical_nolinetick.style

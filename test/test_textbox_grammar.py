@@ -269,6 +269,14 @@ class TestEverySpellingOnEveryOption:
             assert text == "T", (opt, spelling)
             hits = {str(w.message) for w in rec
                    if f"{opt}() sub-option" in str(w.message)}
+            # Flipped (WP-31 D3): every sub-option was named on every
+            # option; that was wrong for the placement, box and style
+            # sub-options title(), subtitle(), note() and caption() draw
+            # now (_DASH_TEXTBOX_BOX_HONOURED): those are silent there.
+            if opt in ("title", "subtitle", "note", "caption") and \
+                    full in dr._DASH_TEXTBOX_BOX_HONOURED:
+                assert not hits, (opt, spelling, hits)
+                continue
             assert len(hits) == 1, (opt, spelling, hits)
             assert f"{spelling}(x)" in next(iter(hits))
 

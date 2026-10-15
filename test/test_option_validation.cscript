@@ -360,6 +360,13 @@
 *!          comma: twoway's rc and line
 *!   U27-9  title("A") title("B"): rc 0 in both, and dash keeps the last
 *!          copy, B, as twoway draws it (merged_title)
+*! Textbox placement (WP-31 D3; test/fixtures/textbox_truth.json):
+*!   U30-7  title("T", position(0) span): rc 0 in both and twoway's note
+*!          "option span ignored for position(0)", printed by dash when it
+*!          draws (span_pos0)
+*!   U30-8  note("N", tstyle(nosuch)): rc 0 in both and twoway's note
+*!          "named style nosuch not found in class textboxstyle, default
+*!          attributes used", printed by dash when it draws (tstyle_bad)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2016,6 +2023,43 @@ if `"`bad'"' != "" {
     global ov_faillist "${ov_faillist} U27-9"
 }
 else display as text "U27-9 PASS: title(A) title(B) taken, the last copy kept"
+
+// U30-7 .. U30-8 (WP-31 D3): twoway takes span at position(0) and an
+// unknown tstyle(), rc 0, and notes each; dash takes both and prints
+// twoway's words when it draws the graph.
+foreach u in 7 8 {
+    local bad ""
+    if `u' == 7 {
+        local cmd `"scatter mpg weight, title("T", position(0) span)"'
+        local u30msg "option span ignored for position(0)"
+    }
+    else {
+        local cmd `"scatter mpg weight, note("N", tstyle(nosuch))"'
+        local u30msg "named style nosuch not found in class textboxstyle, default attributes used"
+    }
+    _u05_rc `"`macval(cmd)'"' `"`u30msg'"'
+    if r(trc) != 0 | r(drc) != 0 | r(tn) < 1 {
+        local bad `"`bad' [registration: twoway `r(trc)' (`r(tn)'), dash `r(drc)']"'
+    }
+    local u30log "`c(tmpdir)'dash_ov.log"
+    local u30html "`c(tmpdir)'dash_u30_`u'.html"
+    capture erase "`u30html'"
+    capture log close _ovlog
+    capture erase "`u30log'"
+    sysuse auto, clear
+    log using "`u30log'", name(_ovlog) text replace
+    capture noisily dash `cmd' saving("`u30html'", replace)
+    local u30rc = _rc
+    log close _ovlog
+    _ov_count "`u30log'" `"`u30msg'"'
+    if `u30rc' != 0 | r(n) != 1 {
+        local bad `"`bad' [drawn: dash rc `u30rc', note lines `r(n)']"'
+    }
+    capture erase "`u30log'"
+    capture erase "`u30html'"
+    capture dash clear
+    _u05_judge U30-`u' `"`bad'"' `"`u30msg': rc 0 and twoway's note, once, when drawn"'
+}
 
 // ----------------------------------------------------------------
 // Summary

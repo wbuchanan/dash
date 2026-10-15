@@ -1749,11 +1749,14 @@ CORPUS = [
     _case("a styled reference line", [_sc()], None,
           {"xline": "3000, lcolor(red) lpattern(solid) lwidth(thick)"}),
     _case("note and caption", [_sc()], None, {"note": "N", "caption": "C"}),
+    # Flipped (WP-31 D3): these two entries named span and box; that was
+    # wrong because span and box are drawn now, so they carry the
+    # sub-options a Title still cannot draw, orientation() and width().
     _case("note, caption and subtitle with sub-options", [_sc()], None,
           {"note": "N, size(large)", "caption": "C, color(red)",
-           "subtitle": "S, size(small) span"}),
+           "subtitle": "S, size(small) span orientation(vertical)"}),
     _case("graph title with sub-options", [_sc()], None,
-          {"title": "T, size(large) color(red) box"}),
+          {"title": "T, size(large) color(red) box width(20)"}),
     _case("legend with an unimplemented sub-option",
           [_sc(), plot_for("lfit")], None,
           {"legend": "position(6) span holes(1)"}),
@@ -2537,6 +2540,14 @@ CORPUS = [
           [_sc(), _sc(yvar="price")],
           go={"t2title": '"T2"', "b2title": '"B2"', "legend": "pos(6)",
               "caption": '"C"'}),
+    # WP-31 D3/D13 (section 30): textbox placement
+    _case("title position(6) subtitle ring(0) pos(1) caption box (WP-31 D3)",
+          [_sc()],
+          go={"title": '"T", position(6)',
+              "subtitle": '"S", ring(0) pos(1)',
+              "caption": '"C", box bcolor(gs14) lcolor(red)'}),
+    _case("note tstyle(heading) margin(medium) (WP-31 D3)", [_sc()],
+          go={"note": '"N", tstyle(heading) margin(medium)'}),
 ]
 
 
@@ -2652,9 +2663,10 @@ _MUST_WARN = {
     "scatteri with labels, clock positions and a missing point":
         "dash: scatteri clock position(s) 3.5 are not a whole number",
     "note, caption and subtitle with sub-options":
-        "dash: subtitle() sub-option(s) not implemented and ignored: span",
+        "dash: subtitle() sub-option(s) not implemented and ignored: "
+        "orientation(vertical)",
     "graph title with sub-options":
-        "dash: title() sub-option(s) not implemented and ignored: box",
+        "dash: title() sub-option(s) not implemented and ignored: width(20)",
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
         "span holes(1)",
@@ -3546,6 +3558,10 @@ MOVE_CORPUS = [
                [plot_for("contour", {"ccuts": "4000 6000 8000"})]),
     _move_case("contourline, dropdown to Foreign", _MOVES[0],
                [plot_for("contourline", {"ccuts": "4000 6000 8000"})]),
+
+    # WP-31 D3 (section 30): textbox placement
+    _move_case("ring(0) note after a dropdown move (WP-31 D3)", _MOVES[0],
+               [plot_for("scatter")], go={"note": '"N", ring(0) position(1)'}),
 ]
 
 

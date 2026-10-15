@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-15T09:00:10Z",
+    "generated_utc": "2026-10-15T12:17:52Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11371,6 +11371,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -12317,6 +12321,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -14849,6 +14857,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -17533,6 +17569,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -18479,6 +18519,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -21011,6 +21055,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -23695,6 +23767,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -24641,6 +24717,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -27173,6 +27253,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -29935,6 +30043,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -30895,6 +31007,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -33411,6 +33527,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -36273,6 +36417,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -37249,6 +37397,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -39781,6 +39933,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -42752,6 +42932,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -43725,6 +43909,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -46257,6 +46445,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -49149,6 +49365,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -50092,6 +50312,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -52624,6 +52848,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -55384,6 +55636,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -56357,6 +56613,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -58889,6 +59149,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -61782,6 +62070,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -62725,6 +63017,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -65257,6 +65553,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -67940,6 +68264,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -68883,6 +69211,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -71415,6 +71747,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -74179,6 +74539,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -75136,6 +75500,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -77652,6 +78020,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -80437,6 +80833,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -81380,6 +81780,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -83912,6 +84316,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -86606,6 +87038,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 6,
+    "subtitle_ring": 5,
+    "caption_ring": 4,
+    "note_ring": 6,
     "legend_position": 12,
     "legend_cols": 3,
     "legend_rows": 0,
@@ -87562,6 +87998,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -90125,6 +90565,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "6",
+        "file": "scheme-economist.scheme",
+        "line": 319
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "5",
+        "file": "scheme-economist.scheme",
+        "line": 320
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "4",
+        "file": "scheme-economist.scheme",
+        "line": 321
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "6",
+        "file": "scheme-economist.scheme",
+        "line": 322
       },
       "legend_position": {
         "kind": "transcribed",
@@ -93014,6 +93482,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -93987,6 +94459,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -96519,6 +96995,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -99490,6 +99994,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -100463,6 +100971,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -102995,6 +103507,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -105967,6 +106507,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -106933,6 +107477,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -109449,6 +109997,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -112297,6 +112873,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -113284,6 +113864,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -115800,6 +116384,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -118791,6 +119403,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -119734,6 +120350,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -122266,6 +122886,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -124949,6 +125597,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -125895,6 +126547,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -128427,6 +129083,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -131112,6 +131796,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -132058,6 +132746,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -134590,6 +135282,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -137273,6 +137993,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 4,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -138216,6 +138940,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -140748,6 +141476,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -143432,6 +144188,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -144378,6 +145138,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -146910,6 +147674,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -149595,6 +150387,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -150541,6 +151337,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -153073,6 +153873,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -155757,6 +156585,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -156703,6 +157535,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -159235,6 +160071,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -161920,6 +162784,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -162866,6 +163734,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -165398,6 +166270,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
@@ -168084,6 +168984,10 @@
     "margin_ladder_tinymargin": "relative0p3",
     "margin_ladder_emargin": "relative1p5",
     "margin_ladder_esubmargin": "relative4",
+    "title_ring": 7,
+    "subtitle_ring": 6,
+    "caption_ring": 5,
+    "note_ring": 4,
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -169030,6 +169934,10 @@
       "margin_ladder_tinymargin": "gsize tinymargin",
       "margin_ladder_emargin": "gsize emargin",
       "margin_ladder_esubmargin": "gsize esubmargin",
+      "title_ring": "gridringstyle title_ring",
+      "subtitle_ring": "gridringstyle subtitle_ring",
+      "caption_ring": "gridringstyle caption_ring",
+      "note_ring": "gridringstyle note_ring",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -171562,6 +172470,34 @@
         "value": "relative4",
         "file": "scheme-s2color.scheme",
         "line": 205
+      },
+      "title_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle title_ring",
+        "value": "7",
+        "file": "scheme-s2color.scheme",
+        "line": 1947
+      },
+      "subtitle_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle subtitle_ring",
+        "value": "6",
+        "file": "scheme-s2color.scheme",
+        "line": 1948
+      },
+      "caption_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle caption_ring",
+        "value": "5",
+        "file": "scheme-s2color.scheme",
+        "line": 1949
+      },
+      "note_ring": {
+        "kind": "transcribed",
+        "directive": "gridringstyle note_ring",
+        "value": "4",
+        "file": "scheme-s2color.scheme",
+        "line": 1950
       },
       "legend_position": {
         "kind": "transcribed",
