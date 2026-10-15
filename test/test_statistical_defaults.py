@@ -895,8 +895,9 @@ class TestKdensityRange:
         # dstyle() dlstyle() drawn, dlalign() named.
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn.
         # 33 -> 23: D2 the eight edge titles drawn, title2() and
-        # subtitle2() refused.
-        assert len(pending) == 23, (len(pending), pending)
+        # subtitle2() refused.  23 -> 25: B4b heatmap() and outlines()
+        # named on contour.
+        assert len(pending) == 25, (len(pending), pending)
         for really_pending in ("sort", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (
