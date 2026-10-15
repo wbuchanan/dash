@@ -391,3 +391,16 @@ TR-39.9's entries.
 - **For S48 (batch 16, `_dash_layout_cell`).** The per-tab layout passes through `_dash_tab_grid`, not `_dash_layout_cell`; S48's data table joins a cell, not a tab.
 - **Decided (DECISIONS D5).** D-39.a: `tabs()` with an unknown graph name is refused r(198), as `layout()` is; the maintainer confirmed it; the Changed-behaviour CHANGELOG line of "CHANGELOG lines" records it. Not for ratification.
 - **Decisions for maintainer ratification.** D-39.b (the per-tab `, layout()` grammar and the comma rule), D-39.c (same-cell collision refused), D-39.d (sub-option check before the keyword scan).
+
+## Addendum (15oct2026, DECISIONS D23): row D16b added to this section
+
+### D16b: A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced
+
+**Gap.** twoway's option parser refuses a bare quoted string among the options (`, "abc"` or `, "$G" name(x)`) with "quotes unbalanced", r(198), on every plot type (S26 measured scatter, contour, contourline). dash's catch-all keeps the string and names it in the note; test_json_escaping.cscript JSE-69 pins that and checks the macro text is never expanded.
+
+**Requirement.** Measure twoway across placements (plot options, graph options after `||`, inside `( )`), refuse each bare string as twoway does in its words and code, and flip JSE-69 to the refusal while keeping its check that the text is never expanded; a Changed-behaviour line names the refused form. S26's `_dash_opt_tokens` (Mata) splits option text by value and may be reused.
+
+**Fits S39** because S39 matches twoway's refusal order and messages for option forms (D16) in batch 13.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D16b)`; close the BUGS.md entry "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced" (Resolution ending `Closes GAPS3 D16 (WP-31, D16b).`), delete its `"D16b":` WP31_OPEN line, rewrite GAPS3.md's `- **D16b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D16b -->` under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, D16b)`. dash replaces twoway (D13).
+

@@ -100,7 +100,7 @@
 | 36 | by-remainder | D10 | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
-| 39 | tabs-layout-legend-edges | D14, D16 | 13 | 31 | -- | green | S | 3 |
+| 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 | 14 | 01 | -- | yellow | M | 3 |
@@ -150,6 +150,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D1c | A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule (D20) | S24 | S33 (11) | RC |
 | D2b | Edge titles name position(), ring(), span and orientation() where twoway draws them (D21) | S27 | S30 (10) | RC |
 | B4d | After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed (D22) | S26 | S29 (10) | RC |
+| D16b | A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced (D23) | S26 | S39 (13) | CB |
 
 ## Batch execution order
 

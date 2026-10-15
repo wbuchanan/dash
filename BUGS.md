@@ -3963,3 +3963,9 @@
   - Description: GAPS3.md B4, found by WP-31 section 26 (B4b): in the served app a filter move recomputes the contour bands, but the ContourColorBar keeps the cuts and ticks from the build; it shows when the cuts move (levels() or the default zlabel(#5) rule).
   - Suggested fix: WP-31 section 29 (js contour): recompute the colour bar's cuts and ticks with the bands after a move, in the served app and in the saved page's refit.
   - Resolution: Not fixed because WP-31 section 29 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced
+  - File Names and Line Numbers: dash.ado the option catch-all (_dash_parse_plot_opts, _dash_parse_graph_opts); dash_parse.mata _dash_opt_tokens; test_json_escaping.cscript JSE-69
+  - Description: GAPS3.md D16, found by WP-31 section 26 (B4b, measured 15oct2026): `twoway scatter mpg weight, "abc"` (and the same on contour and contourline) is refused "quotes unbalanced", r(198); dash keeps the string and names it in its ignoring note (test_json_escaping.cscript JSE-69 pins that today).
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): refuse a bare quoted string among the options with twoway's words and code on every plot type and in the graph options, and flip JSE-69 to the refusal while keeping its no-expansion check.
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
