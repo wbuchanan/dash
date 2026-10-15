@@ -1021,7 +1021,7 @@ Changed behaviour.
 
 - contour and contourline are drawn in both modes with twoway's surface, cuts, colours and key; dash refused both by name, r(198). ccuts() with levels(), a second contour, a weight and contour options on other types are refused in twoway's words, r(198) or r(101); above 1,000 distinct points a 100 x 100 grid is drawn and noted. (WP-31, B4b)
 
-<!-- WP-31 B4c -->
+- A saved page recomputes contour and contourline after a filter move, as the served app does, up to 1,000 distinct points; above that the layer is marked (grid unfiltered). It kept them as built and marked them after every move. (WP-31, B4c)
 
 <!-- WP-31 D14 -->
 

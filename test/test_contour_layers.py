@@ -21,7 +21,8 @@ a second contourline) refused.
 
 dash draws both with Bokeh's contour renderer over S23's surface
 (GlyphMapper.map_contour / map_contourline), in both modes; the saved page
-keeps the layer frozen and marked (grid unfiltered) until section 29.
+refits the layer after a move within the cap (section 29,
+test_contour_js.py).
 """
 import json
 import os
@@ -363,18 +364,18 @@ class TestMoves:
         assert _levels_drawn(after) == _levels_drawn(kept)
 
     def test_saved_is_marked(self, tmp_path):
+        """Flipped (WP-31 B4c): the saved page kept the layer frozen and
+        tagged "grid" -- the saved page refits contour within the cap
+        since, so the layer is handed to the page's refit and not tagged;
+        above the cap it is (test_contour_js.py::TestStale)."""
         sp, dp = bg._write(tmp_path, _move_spec(), tp._DF)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp, os.path.join(str(tmp_path), "o.html"))
             render_models(r)
-        reg = r.frozen_layer_registry
-        [(tag, rends)] = [e for g in reg.values() for e in g]
-        assert tag["kind"] == "grid" and tag["type"] == "contour"
-        assert tag["vars"] == ["price", "mpg", "weight"]
-        assert any(type(x).__name__ == "GlyphRenderer"
-                   and type(x.glyph).__name__ == "MultiPolygons"
-                   for x in rends)
+        assert not r.frozen_layer_registry
+        [(src, cfg)] = [e for g in r.agg_source_registry.values() for e in g]
+        assert cfg["type"] == "contour" and cfg["part"] == "fill"
         assert dr._DASH_STALE_SUFFIX["grid"] == " (grid unfiltered)"
 
 
@@ -522,7 +523,9 @@ class TestTheReaders:
         keys = dr._dash_legend_keys([(p, ["r"]), (_plot("scatter"), ["s"])])
         assert keys == [(2, keys[0][1], ["s"])]
         assert "zvar" in dr._DASH_PLOT_VAR_KEYS
-        assert dr._dash_stale_kind("contour", {}) == "grid"
+        # Flipped (WP-31 B4c): "grid" -- refitted within the cap since;
+        # _make_figure_body tags a capped layer "grid" itself.
+        assert dr._dash_stale_kind("contour", {}) is None
         # Drawn from the layer's rows, which the page embeds: no
         # computed-only type (the embedded-cells count and hover read it).
         assert not dr._DASH_CONTOUR_TYPES & dr._DASH_COMPUTED_ONLY_TYPES

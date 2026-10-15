@@ -5846,15 +5846,16 @@ if inlist("`only'", "", "S26") & `: list posof "S26" in w31_run' {
     _w31_done U26-7 "horizontal turns the surface: weight across"
 
     // ------------------------------------------------------------
-    // U26-8: the saved page keeps the layer frozen with the grid cue
-    // until its twin lands (section 29); the served app refits it (its
+    // U26-8: within the cap the saved page refits the layer (section
+    // 29), so it is not frozen; the served app refits it too (its
     // redraw pairs the fill and line sources, test_contour_layers.py
-    // TestMoves).
+    // TestMoves).  Flipped (WP-31 B4c): the saved layer was frozen with
+    // the grid cue until the page's twin landed.
     // ------------------------------------------------------------
     _u26_reg `u26dir' `k' contour mpg weight length, name(u268)
-    _w31_expect U26-8 `"("${u26_kinds}" == "grid")"' "saved: frozen kind ${u26_kinds}"
+    _w31_expect U26-8 `"("${u26_kinds}" == "")"' "saved: frozen kind ${u26_kinds}"
     local ++k
-    _w31_done U26-8 "the saved page marks the contour (grid unfiltered)"
+    _w31_done U26-8 "the saved page refits the contour: not frozen"
 
     // ------------------------------------------------------------
     // U26-10: above 1,000 distinct points: approximate, noted once a
@@ -6307,6 +6308,182 @@ if inlist("`only'", "", "S28") & `: list posof "S28" in w31_run' {
     display as text "S28 end " c(current_date) " " c(current_time)
 }
 * ==== end S28 ====
+
+// S29 helpers (WP-31 B4c).  _u29_move: the saved page of spec sp/dp
+// after one filter move (its own callback run under node,
+// test/js_runner.py) beside the page of the qualified spec sq/dq, which
+// the Python side draws (contourpy's cut): globals u29_agree (the share of
+// a 300 x 300 raster over the kept rows' plane in the same band, or 1 and
+// 0 for lines whose counts per level agree or not), u29_area (the largest
+// relative band-area difference), u29_cue (1 when a layer is dimmed or a
+// stale caption or status shows), u29_same (1 when the source is
+// unchanged by the move) and u29_xr (the fill polygons' x range).
+python:
+def _u29_move(sp, dp, kind, value, sq, dq):
+    import os
+    import sys
+    import warnings
+    import numpy as np
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    import test_contour_js as tc
+    from sfi import Macro
+
+    def page(s, d):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(s, d)
+            r.render()
+        [cr] = [x for f in r.figures.values() for x in f.renderers
+                if type(x).__name__ == "ContourRenderer"]
+        return r, cr
+
+    r, cr = page(sp, dp)
+    lsrc = cr.line_renderer.data_source
+    part = "line" if len(lsrc.data.get("xs", [])) else "fill"
+    src = lsrc if part == "line" else cr.fill_renderer.data_source
+    before = repr(dict(src.data))
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    a = dict(src.data)
+    _q, qr = page(sq, dq)
+    qrend = qr.line_renderer if part == "line" else qr.fill_renderer
+    b = dict(qrend.data_source.data)
+    agree, area, xr = 1.0, 0.0, ""
+    if part == "fill":
+        xs = [v for band in b["xs"] for poly in band for ring in poly
+              for v in ring]
+        ys = [v for band in b["ys"] for poly in band for ring in poly
+              for v in ring]
+        if len(a["xs"]) != len(b["xs"]):
+            agree, area = 0.0, 1.0
+        elif xs:
+            X, Y = tc._grid(xs, ys)
+            agree = float((tc._raster(a["xs"], a["ys"], X, Y)
+                           == tc._raster(b["xs"], b["ys"], X, Y)).mean())
+            aa = tc._band_areas(a["xs"], a["ys"])
+            ab = tc._band_areas(b["xs"], b["ys"])
+            area = float(np.max(np.abs(aa - ab)
+                                / np.maximum(np.abs(ab), 1e-12 * np.abs(ab).sum())))
+        ax = [v for band in a["xs"] for poly in band for ring in poly
+              for v in ring]
+        if ax:
+            xr = "%.10g %.10g" % (min(ax), max(ax))
+    else:
+        ok = list(a["levels"]) == list(b["levels"])
+        for k in range(len(b["xs"])):
+            na = np.isfinite(tc._nan(a["xs"][k])).sum()
+            nb = np.isfinite(np.asarray(b["xs"][k], float)).sum()
+            ok = ok and na == nb
+        agree = 1.0 if ok else 0.0
+    lay = [x for f in r.figures.values() for x in f.renderers
+           if "muted" in x.properties()]
+    lay += [cr.fill_renderer, cr.line_renderer]
+    cue = [t for f in r.figures.values() for t in f.above
+           if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+    st = r.filter_callbacks[0].args.get("stale_status")
+    Macro.setGlobal("u29_agree", "%.6f" % agree)
+    Macro.setGlobal("u29_area", "%.6g" % area)
+    Macro.setGlobal("u29_cue", str(int(any(x.muted for x in lay)
+                                       or any(bool(t.visible) for t in cue)
+                                       or bool(st is not None and st.visible))))
+    Macro.setGlobal("u29_same", str(int(repr(dict(src.data)) == before)))
+    Macro.setGlobal("u29_xr", xr)
+end
+
+capture program drop _u29_pair
+program define _u29_pair
+    // _u29_pair <dir> <k> <filter> <if> <plot command>: the spec of the
+    // plot under filter() (s<k>/d<k>) and of the plot `if <if>' (q<k>/e<k>).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken filt 0 : 0
+    gettoken cond 0 : 0
+    gettoken cmd opts : 0, parse(",")
+    dash clear
+    quietly dash `cmd' if `cond' `opts' name(zq`k')
+    _dash_serve_spec, specpath("`dir'/q`k'.json") datapath("`dir'/e`k'.json")
+    dash clear
+    quietly dash `cmd' `opts' name(zs`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json") filter(`filt')
+    dash clear
+end
+
+* ==== S29 B4c: contour and contourline refit on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
+    display as text "S29 start " c(current_date) " " c(current_time)
+    local u29d "`w31_work'/s29"
+    capture mkdir "`u29d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U29-1..3, 5: after the dropdown to Foreign the saved page cut at
+    // ccuts() draws what the page of `if foreign == 1' draws (the Python side, contourpy's
+    // cut of S23's surface, itself pinned to twoway by U26-2): the bands
+    // on 99% of a raster and their areas within 1%, or the lines with
+    // the same vertex count per level; and no stale mark.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U29-1|contour mpg weight length, ccuts(20 30)" "U29-2|contourline mpg weight length, ccuts(20.5 30.5)" "U29-3|contour mpg weight length, interp(shepard) ccuts(18.5 24.5 30.5)" "U29-3|contour mpg weight length, interp(none) ccuts(18.5 24.5 30.5)" "U29-5|contour mpg weight length, horizontal ccuts(20 30)" {
+        local ++k
+        mata: u29_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u29_t[1]); st_local("cmd", u29_t[2])
+        sysuse auto, clear
+        _u29_pair `u29d' `k' "foreign, type(dropdown)" "foreign == 1" `cmd'
+        python: _u29_move("`u29d'/s`k'.json", "`u29d'/d`k'.json", "Select", "Foreign", "`u29d'/q`k'.json", "`u29d'/e`k'.json")
+        _w31_expect `id' "(${u29_agree} >= .99)" "`cmd' moved to Foreign: ${u29_agree} of the raster (or the lines) agree"
+        _w31_expect `id' "(${u29_area} <= .01)" "`cmd' moved to Foreign: band areas differ by ${u29_area}"
+        _w31_expect `id' "(${u29_cue} == 0)" "`cmd' moved to Foreign: the layer is marked"
+        if "`id'" == "U29-5" {
+            quietly summarize weight if foreign == 1
+            local wr = strtrim(string(r(min), "%18.10g")) + " " + strtrim(string(r(max), "%18.10g"))
+            _w31_expect `id' `"("${u29_xr}" == "`wr'")"' "horizontal: the refit's x range ${u29_xr}; weight's `wr'"
+        }
+        _w31_done `id' "`cmd' refits on the saved page after the move (agree ${u29_agree}, area ${u29_area})"
+    }
+
+    // ------------------------------------------------------------
+    // U29-4: 1,001 distinct points: the saved page keeps the build after
+    // the move and marks it (decision D4).
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 1001
+    set seed 29
+    quietly generate double x = runiform()
+    quietly generate double y = runiform()
+    quietly generate double z = rnormal()
+    quietly generate byte g = runiform() < .5
+    label define u29g 0 "Off" 1 "On"
+    label values g u29g
+    local ++k
+    _u29_pair `u29d' `k' "g, type(dropdown)" "g == 1" contour z y x,
+    python: _u29_move("`u29d'/s`k'.json", "`u29d'/d`k'.json", "Select", "On", "`u29d'/q`k'.json", "`u29d'/e`k'.json")
+    _w31_expect U29-4 "(${u29_same} == 1)" "1,001 points: the move rewrote the source"
+    _w31_expect U29-4 "(${u29_cue} == 1)" "1,001 points: the layer is not marked after the move"
+    _w31_done U29-4 "above the cap the saved page keeps the contour as built and marks it"
+
+    forvalues i = 1/`k' {
+        foreach p in s d q e {
+            capture erase "`u29d'/`p'`i'.json"
+        }
+    }
+    capture rmdir "`u29d'"
+    capture label drop u29g
+    macro drop u29_agree u29_area u29_cue u29_same u29_xr
+    capture mata: mata drop u29_t
+    dash clear
+    clear
+    display as text "S29 end " c(current_date) " " c(current_time)
+}
+* ==== end S29 ====
 
 * ==== append new blocks above this line ====
 

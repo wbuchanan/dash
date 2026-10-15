@@ -325,12 +325,15 @@ class TestTheHelpSaysWhatWasMeasured:
         # Flipped (WP-31 F1d): and lpoly.
         # Flipped (WP-31 F1e, F1f): and lpolyci, mband and mspline.
         # Flipped (WP-31 F1g): and fpfit and fpfitci.
+        # Flipped (WP-31 B4c): and contour and contourline within the cap.
         assert ("A saved dashboard recomputes those cards, its kernel density "
                 "curves, its histogram bar heights, its {cmd:lfit}, "
                 "{cmd:qfit}, {cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, "
-                "{cmd:mband} and {cmd:mspline} lines and its {cmd:lfitci}, "
+                "{cmd:mband} and {cmd:mspline} lines, its {cmd:lfitci}, "
                 "{cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines and "
-                "bands in the browser") in " ".join(s.split())
+                "bands and, up to 1,000 distinct points, its {cmd:contour} "
+                "and {cmd:contourline} layers in the browser") \
+            in " ".join(s.split())
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""

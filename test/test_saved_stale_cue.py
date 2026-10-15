@@ -66,6 +66,11 @@ from test_server_layer_defects import plot_for  # noqa: E402
 # Flipped (WP-31 F1g): held fpfit and fpfitci, frozen until the page
 # refitted them.
 _FROZEN = ["histogram", "kdensity"]
+# DECISIONS A20 (WP-31 B4c): contour and contourline are no computed-only
+# type (their rows are embedded) and are refitted within the cap; a capped
+# one is marked (TestTheCueAppearsOnAMove::test_a_capped_contour_is_marked).
+assert (dr._DASH_COMPUTED_ONLY_TYPES - dr._DASH_JS_REFIT_TYPES
+        - dr._DASH_CONTOUR_TYPES) == {"histogram", "kdensity"}
 #: The frozen fit layer the cue's own mechanics are measured on.  It was
 #: lfit until the saved page refitted lfit (WP-31 F1a), then fpfit until
 #: F1g refitted fpfit; now an fpfit drawn with recast(line), which
@@ -326,6 +331,35 @@ class TestTheCueAppearsOnAMove:
         assert not any(x.muted for x in layer)
         _back(r, action[0])
         assert not any(x.muted for x in layer)
+
+    def test_a_capped_contour_is_marked(self):
+        """WP-31 B4c: a contour over _DASH_CONTOUR_EXACT_MAX distinct
+        points is not refitted (decision D4): a move that takes rows from
+        it dims the layer's two children and shows the caption and the
+        status line; it has no legend key to suffix (twoway keys a
+        contour by its colour bar)."""
+        n = dr._DASH_CONTOUR_EXACT_MAX + 1
+        rng = np.random.default_rng(29)
+        df = pd.DataFrame({"mpg": rng.uniform(12, 41, n),
+                           "weight": rng.uniform(1760, 4840, n),
+                           "price": rng.uniform(3000, 16000, n),
+                           "foreign": (rng.uniform(size=n) < .5) * 1.0,
+                           "rep": np.ones(n), "when": 15340.0 + np.arange(n)})
+        r = _render(_spec([{"type": "contour", "zvar": "price",
+                            "yvar": "mpg", "xvar": "weight", "options": {}}],
+                          {"filter": "foreign, type(dropdown)"}), df)
+        f = r.figures["g1"]
+        [cr] = [x for x in f.renderers if hasattr(x, "_dash_frozen")
+                and hasattr(x, "fill_renderer")]
+        assert cr._dash_frozen["kind"] == "grid"
+        before = dict(cr.fill_renderer.data_source.data)
+        assert _one_cue(r).visible is False
+        _act(r, ("Select", "Foreign"))
+        assert cr.fill_renderer.muted and cr.line_renderer.muted
+        assert _one_cue(r).visible is True
+        assert _status(r) == (True, dr._DASH_STALE_STATUS_HTML)
+        after = cr.fill_renderer.data_source.data
+        assert list(after["lower_levels"]) == list(before["lower_levels"])
 
 
 #: WP-31 C11b: widths that keep lpoly and lpolyci off the rule of thumb.

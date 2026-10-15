@@ -522,8 +522,12 @@ distinct points; above that a seeded subsample of 1,000 is fitted and
 drawn on a 100 x 100 grid over the data's range, and a note says so.  The
 polygons are cut by a different algorithm from {cmd:twoway}'s, so their
 vertices differ while the level sets agree.  The served app recomputes the
-layer after a filter move; the saved page keeps it as built and marks it
-(grid unfiltered).  {opt heatmap} and {opt outlines} are named in a note
+layer after a filter move, and a saved page recomputes the layer after a
+filter move up to 1,000 distinct points; above that it is marked (grid
+unfiltered), as is any layer the page cannot recompute.  The saved page
+cuts the polygons with dash's own routine, so their vertices differ from
+{cmd:twoway}'s while the level sets agree, and a node exactly on a cut may
+join rings differently from the served app's.  {opt heatmap} and {opt outlines} are named in a note
 and not drawn, and so are {cmd:contourline}'s legend keys, which
 {opt clabels()} and {opt format()} label.  {opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
@@ -1268,10 +1272,11 @@ from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
 curves, its histogram bar heights, its {cmd:lfit}, {cmd:qfit},
-{cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines
-and its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
-and bands in the browser, and keeps its other computed layers, and its histogram bins, as
-they were built; see
+{cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines,
+its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
+and bands and, up to 1,000 distinct points, its {cmd:contour} and
+{cmd:contourline} layers in the browser, and keeps its other computed
+layers, and its histogram bins, as they were built; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see
 {help dash##server_mode:Server Mode}.
@@ -2092,8 +2097,9 @@ layer: it is dimmed, its legend key reads
 "Marked layers were computed before the filter", and a note under the
 filters says the same in text a screen reader reads.  A density drawn over
 {cmd:range()} keeps the grid you gave and is not marked.  A
-{cmd:contour} or {cmd:contourline} is kept as built and marked "(grid
-unfiltered)"; the served app recomputes its surface.  The marks go when
+{cmd:contour} or {cmd:contourline} is recomputed up to 1,000 distinct
+points; above that it is kept as built and marked "(grid unfiltered)",
+and the served app recomputes its surface.  The marks go when
 the filters again keep every observation the layer was computed from; a move
 that removes only observations the layer never used (a missing y, x or
 weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})

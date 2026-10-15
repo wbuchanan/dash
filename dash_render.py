@@ -2080,17 +2080,18 @@ _DASH_DOTS_MAX = 2_000_000
 def _dash_stale_kind(ptype, options):
     """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
     ``"bins"`` (histogram), ``"grid"`` (kdensity), or None for a layer a
-    saved page redraws or never computes -- for a kdensity drawn over
+    saved page redraws or never computes -- for contour and contourline
+    (refitted within the cap, WP-31 B4c), for a kdensity drawn over
     ``range()``, whose grid is the user's and twoway's, and for a fit the
     saved page refits (``_DASH_JS_REFIT_TYPES``, WP-31 F1) unless it is
     recast, or is a ci layer whose band or line ciplot()/fitplot() draws
     as another type (``GlyphMapper._fitci_redrawn``, WP-31 F1b)."""
     t = str(ptype or "").lower()
     if t in _DASH_CONTOUR_TYPES:
-        # WP-31 B4b: the surface is computed at build from the layer's
-        # rows, which the page embeds (so no computed-only type); the
-        # saved page's twin is section 29's (B4c).
-        return "grid"
+        # WP-31 B4c: the saved page refits the surface from the kept rows
+        # within the cap; a layer above it is tagged "grid" by
+        # _make_figure_body, which sees the row count.
+        return None
     if t not in _DASH_COMPUTED_ONLY_TYPES:
         return None
     if t == "histogram":
@@ -21262,9 +21263,8 @@ class GlyphMapper:
                              fill_color=list(colours))
         cr._dash_contour_sources = [cr.fill_renderer.data_source,
                                     cr.line_renderer.data_source]
-        # For the saved page's twin (WP-31 B4c, section 29): what it needs
-        # to cut the surface again.  Not an agg source yet: the saved page
-        # keeps this layer frozen until then.
+        # For the saved page's twin (WP-31 B4c): what it needs to cut the
+        # surface again.
         cr._dash_contour_config = {
             "type": ptype, "xvar": xvar, "yvar": yvar, "zvar": zvar,
             "cuts": [float(c) for c in cuts], "interp": surf["interp"],
@@ -21273,6 +21273,23 @@ class GlyphMapper:
             "fill_color": [] if lines_only else list(colours),
             "lo": lo, "hi": hi}
         cr._dash_contour_capped = bool(surf["capped"])
+        if drawable and not surf["capped"]:
+            # WP-31 B4c: the saved page refits the layer's one drawn
+            # source (contour's bands, contourline's lines) from the kept
+            # rows; its other columns are written back as built.  Above
+            # the cap the layer is not handed over: it keeps its build
+            # and the stale cue (decision D4).
+            psrc = (cr.line_renderer if lines_only
+                    else cr.fill_renderer).data_source
+            geo = ("xs", "ys", "levels", "lower_levels", "upper_levels")
+            cr._dash_agg_source = psrc
+            cr._dash_agg_config = dict(
+                cr._dash_contour_config,
+                part="line" if lines_only else "fill",
+                extra={k: [v.item() if hasattr(v, "item") else v
+                           for v in col]
+                       for k, col in psrc.data.items() if k not in geo})
+            cr._dash_agg_rows = self._agg_member_ids(source, view)
         cr.tags = list(cr.tags or []) + ["dash_contour"]
         # The layer's extent, upright (the transposer turns it with the
         # layer): the data's corners, drawn invisibly.
@@ -29606,6 +29623,368 @@ function dash_insert_breaks(xs, cols, gaps) {
     }
     return {xs: ox, cols: oc};
 }
+// ---- twoway contour's surface and its cutting (WP-31 B4c) ----
+// Twins of _dash_contour_points, _dash_tps_kernel, _dash_tps_fit,
+// _dash_tps_eval, _dash_shepard, _dash_contour_grid and
+// _dash_contour_surface (S23), and a cutter whose level sets are those
+// contourpy draws for the Python side (Bokeh's contour_data); pinned by
+// test/test_contour_js.py.
+// The distinct (y, x) points, finite x, y and z, sorted by y then x; a
+// repeated pair keeps its smallest z.
+function dash_contour_points(x, y, z) {
+    const rows = [];
+    for (let i = 0; i < x.length; i++) {
+        const a = x[i], b = y[i], c = z[i];
+        if (Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(c)) rows.push([a, b, c]);
+    }
+    rows.sort((p, q) => (p[1] - q[1]) || (p[0] - q[0]) || (p[2] - q[2]));
+    const px = [], py = [], pz = [];
+    for (let i = 0; i < rows.length; i++) {
+        if (i > 0 && rows[i][0] === rows[i - 1][0] && rows[i][1] === rows[i - 1][1]) continue;
+        px.push(rows[i][0]); py.push(rows[i][1]); pz.push(rows[i][2]);
+    }
+    return {x: px, y: py, z: pz};
+}
+// Stata's thin-plate kernel r^2 log r from a squared distance.
+function dash_tps_kernel(d2) {
+    return d2 > 0 ? 0.5 * d2 * Math.log(d2) : 0;
+}
+// The eigenvalues d and eigenvectors (columns of V) of the symmetric
+// matrix A (an array of rows): Householder tridiagonalisation and the
+// implicit QL iteration (the EISPACK tred2/tql2 pair).
+function dash_symeig(A) {
+    const n = A.length;
+    const V = A.map(r => Float64Array.from(r));   // V[j] is eigenvector j (A is symmetric)
+    const d = new Float64Array(n), e = new Float64Array(n);
+    for (let j = 0; j < n; j++) d[j] = V[j][n - 1];
+    for (let i = n - 1; i > 0; i--) {
+        let scale = 0, h = 0;
+        for (let k = 0; k < i; k++) scale += Math.abs(d[k]);
+        if (scale === 0) {
+            e[i] = d[i - 1];
+            for (let j = 0; j < i; j++) { d[j] = V[j][i - 1]; V[j][i] = 0; V[i][j] = 0; }
+        } else {
+            for (let k = 0; k < i; k++) { d[k] /= scale; h += d[k] * d[k]; }
+            let f = d[i - 1], g = Math.sqrt(h);
+            if (f > 0) g = -g;
+            e[i] = scale * g; h -= f * g; d[i - 1] = f - g;
+            for (let j = 0; j < i; j++) e[j] = 0;
+            for (let j = 0; j < i; j++) {
+                f = d[j]; V[i][j] = f; g = e[j] + V[j][j] * f;
+                for (let k = j + 1; k <= i - 1; k++) { g += V[j][k] * d[k]; e[k] += V[j][k] * f; }
+                e[j] = g;
+            }
+            f = 0;
+            for (let j = 0; j < i; j++) { e[j] /= h; f += e[j] * d[j]; }
+            const hh = f / (h + h);
+            for (let j = 0; j < i; j++) e[j] -= hh * d[j];
+            for (let j = 0; j < i; j++) {
+                f = d[j]; g = e[j];
+                for (let k = j; k <= i - 1; k++) V[j][k] -= (f * e[k] + g * d[k]);
+                d[j] = V[j][i - 1]; V[j][i] = 0;
+            }
+        }
+        d[i] = h;
+    }
+    for (let i = 0; i < n - 1; i++) {
+        V[i][n - 1] = V[i][i]; V[i][i] = 1;
+        const h = d[i + 1];
+        if (h !== 0) {
+            for (let k = 0; k <= i; k++) d[k] = V[i + 1][k] / h;
+            for (let j = 0; j <= i; j++) {
+                let g = 0;
+                for (let k = 0; k <= i; k++) g += V[i + 1][k] * V[j][k];
+                for (let k = 0; k <= i; k++) V[j][k] -= g * d[k];
+            }
+        }
+        for (let k = 0; k <= i; k++) V[i + 1][k] = 0;
+    }
+    for (let j = 0; j < n; j++) { d[j] = V[j][n - 1]; V[j][n - 1] = 0; }
+    V[n - 1][n - 1] = 1;
+    e[0] = 0;
+    for (let i = 1; i < n; i++) e[i - 1] = e[i];
+    e[n - 1] = 0;
+    let f = 0, tst1 = 0;
+    const eps = Math.pow(2, -52);
+    for (let l = 0; l < n; l++) {
+        tst1 = Math.max(tst1, Math.abs(d[l]) + Math.abs(e[l]));
+        let m = l;
+        while (m < n) { if (Math.abs(e[m]) <= eps * tst1) break; m++; }
+        if (m > l) {
+            let iter = 0;
+            do {
+                if (++iter > 60) return null;
+                let g = d[l];
+                let p = (d[l + 1] - g) / (2 * e[l]);
+                let r = Math.hypot(p, 1);
+                if (p < 0) r = -r;
+                d[l] = e[l] / (p + r); d[l + 1] = e[l] * (p + r);
+                const dl1 = d[l + 1];
+                let h = g - d[l];
+                for (let i = l + 2; i < n; i++) d[i] -= h;
+                f += h;
+                p = d[m];
+                let c = 1, c2 = c, c3 = c, el1 = e[l + 1], s = 0, s2 = 0;
+                for (let i = m - 1; i >= l; i--) {
+                    c3 = c2; c2 = c; s2 = s;
+                    g = c * e[i]; h = c * p;
+                    r = Math.hypot(p, e[i]);
+                    e[i + 1] = s * r; s = e[i] / r; c = p / r;
+                    p = c * d[i] - s * g;
+                    d[i + 1] = h + s * (c * g + s * d[i]);
+                    for (let k = 0; k < n; k++) {
+                        h = V[i + 1][k];
+                        V[i + 1][k] = s * V[i][k] + c * h;
+                        V[i][k] = c * V[i][k] - s * h;
+                    }
+                }
+                p = -s * s2 * c3 * el1 * e[l] / dl1;
+                e[l] = s * p; d[l] = c * p;
+            } while (Math.abs(e[l]) > eps * tst1);
+        }
+        d[l] = d[l] + f; e[l] = 0;
+    }
+    return {d: d, V: V};
+}
+// Weights of Stata's thin-plate spline through (x, y, z): the
+// (n+3)-square system [[K, P], [P', 0]] [w; a] = [z; 0], K the kernel and
+// P the trend 1, x, y, solved as _dash_tps_fit solves it -- the minimum-norm
+// least-squares solution, a direction whose singular value is at most
+// 1e-13 of the largest left out.  The system is symmetric, so its singular
+// values are its eigenvalues' magnitudes.  {w, note}: note "singular" when
+// a direction was left out; null when the solve fails.
+function dash_tps_fit(x, y, z) {
+    const n = x.length, k = n + 3, A = [];
+    for (let i = 0; i < k; i++) A.push(new Float64Array(k));
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            const dx = x[i] - x[j], dy = y[i] - y[j];
+            A[i][j] = dash_tps_kernel(dx * dx + dy * dy);
+        }
+        A[i][n] = 1; A[i][n + 1] = x[i]; A[i][n + 2] = y[i];
+        A[n][i] = 1; A[n + 1][i] = x[i]; A[n + 2][i] = y[i];
+    }
+    const E = dash_symeig(A);
+    if (E === null) return null;
+    const b = new Float64Array(k);
+    for (let i = 0; i < n; i++) b[i] = z[i];
+    let smax = 0;
+    for (let j = 0; j < k; j++) smax = Math.max(smax, Math.abs(E.d[j]));
+    const w = new Float64Array(k);
+    let dropped = false;
+    for (let j = 0; j < k; j++) {
+        if (!(Math.abs(E.d[j]) > 1e-13 * smax)) { dropped = true; continue; }
+        let s = 0;
+        const v = E.V[j];
+        for (let i = 0; i < k; i++) s += v[i] * b[i];
+        s /= E.d[j];
+        for (let i = 0; i < k; i++) w[i] += s * v[i];
+    }
+    for (let i = 0; i < k; i++) if (!Number.isFinite(w[i])) return null;
+    return {w: Array.from(w), note: dropped ? "singular" : ""};
+}
+// The spline of weights w on the points (x, y), at one node (gx, gy).
+function dash_tps_eval(w, x, y, gx, gy) {
+    const n = x.length;
+    let s = w[n] + w[n + 1] * gx + w[n + 2] * gy;
+    for (let i = 0; i < n; i++) {
+        const dx = gx - x[i], dy = gy - y[i];
+        s += w[i] * dash_tps_kernel(dx * dx + dy * dy);
+    }
+    return s;
+}
+// Stata's Shepard interpolation at one node: the 1/d^2-weighted mean, a
+// node on a data point taking that point's z.
+function dash_shepard(x, y, z, gx, gy) {
+    let num = 0, den = 0;
+    for (let i = 0; i < x.length; i++) {
+        const dx = gx - x[i], dy = gy - y[i], d2 = dx * dx + dy * dy;
+        if (d2 === 0) return z[i];
+        num += z[i] / d2; den += 1 / d2;
+    }
+    return num / den;
+}
+// twoway's grid on one axis: the sorted distinct values.
+function dash_contour_grid(v) {
+    return Array.from(new Set(v)).sort((a, b) => a - b);
+}
+// The surface twoway contour draws from (x, y, z) with interp() read as
+// _dash_contour_interp reads it (ac.interp is already the full word):
+// {gx, gy, gz (row-major, gz[iy*nx + ix], NaN where nothing is drawn),
+// nx, ny, n, note}; note "degenerate" below three distinct points.  null
+// above cap distinct points: the page keeps the build (decision D4).
+function dash_contour_surface(x, y, z, interp, cap) {
+    const p = dash_contour_points(x, y, z);
+    const n = p.x.length;
+    if (n > cap) return null;
+    const gx = dash_contour_grid(p.x), gy = dash_contour_grid(p.y);
+    const nx = gx.length, ny = gy.length;
+    const gz = new Float64Array(nx * ny).fill(NaN);
+    const S = {gx: gx, gy: gy, gz: gz, nx: nx, ny: ny, n: n, note: ""};
+    if (n < 3) { S.note = "degenerate"; return S; }
+    if (interp === "shepard") {
+        for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
+            gz[iy * nx + ix] = dash_shepard(p.x, p.y, p.z, gx[ix], gy[iy]);
+        }
+    } else if (interp !== "none") {
+        const fit = dash_tps_fit(p.x, p.y, p.z);
+        if (fit === null) return null;
+        S.note = fit.note;
+        // dash_tps_eval at every node, inlined over typed arrays (the
+        // same sums in the same order): up to 10^9 kernel terms.
+        const w = Float64Array.from(fit.w), X = Float64Array.from(p.x), Y = Float64Array.from(p.y);
+        for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
+            const u = gx[ix], v = gy[iy];
+            let s = w[n] + w[n + 1] * u + w[n + 2] * v;
+            for (let i = 0; i < n; i++) {
+                const dx = u - X[i], dy = v - Y[i], d2 = dx * dx + dy * dy;
+                if (d2 > 0) s += w[i] * (0.5 * d2 * Math.log(d2));
+            }
+            gz[iy * nx + ix] = s;
+        }
+    }
+    const xi = new Map(gx.map((v, i) => [v, i])), yi = new Map(gy.map((v, i) => [v, i]));
+    for (let i = 0; i < n; i++) gz[yi.get(p.y[i]) * nx + xi.get(p.x[i])] = p.z[i];
+    return S;
+}
+// The segments of the region z >= c, each [x0, y0, x1, y1] with the
+// region on its left.  A cell with four finite corners is a quad; one
+// with three is the triangle of those three, as contourpy's corner mask
+// draws it; any other is void.  Walking a cell's corners anticlockwise,
+// each crossing leaves the region (an exit) or enters it; the contour
+// runs from an exit to an entry -- at a saddle the next entry when the
+// cell's mean is in the region, else the previous one.  with_boundary
+// adds the region's share of the domain's boundary (an edge no other
+// valid cell shares, or a triangle's diagonal), run anticlockwise.  A
+// crossing is computed from its edge's two nodes in index order, so the
+// two cells sharing an edge get the same vertex bit for bit.
+function dash_contour_segments(S, c, with_boundary) {
+    const gx = S.gx, gy = S.gy, gz = S.gz, nx = S.nx, ny = S.ny;
+    const cellOk = (ix, iy) => {
+        if (ix < 0 || iy < 0 || ix >= nx - 1 || iy >= ny - 1) return false;
+        let k = 0;
+        if (Number.isFinite(gz[iy * nx + ix])) k++;
+        if (Number.isFinite(gz[iy * nx + ix + 1])) k++;
+        if (Number.isFinite(gz[(iy + 1) * nx + ix + 1])) k++;
+        if (Number.isFinite(gz[(iy + 1) * nx + ix])) k++;
+        return k >= 3;
+    };
+    const pt = (q) => [gx[q % nx], gy[Math.floor(q / nx)]];
+    const cross = (a, b) => {
+        if (a > b) { const t = a; a = b; b = t; }
+        const za = gz[a], zb = gz[b], t = (c - za) / (zb - za);
+        const A = pt(a), B = pt(b);
+        if (t === 0) return A;
+        if (t === 1) return B;
+        return [A[0] + t * (B[0] - A[0]), A[1] + t * (B[1] - A[1])];
+    };
+    const segs = [];
+    const put = (P, Q) => segs.push([P[0], P[1], Q[0], Q[1]]);
+    for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
+        if (!cellOk(ix, iy)) continue;
+        const q00 = iy * nx + ix, q10 = q00 + 1, q11 = q00 + nx + 1, q01 = q00 + nx;
+        const vs = [q00, q10, q11, q01].filter(q => Number.isFinite(gz[q]));
+        const m = vs.length;
+        const ev = [];                         // [kind, point]: 1 exit, 0 entry
+        let mean = 0;
+        for (let i = 0; i < m; i++) {
+            const a = vs[i], b = vs[(i + 1) % m];
+            mean += gz[a];
+            const ha = gz[a] >= c, hb = gz[b] >= c;
+            const X = (ha !== hb) ? cross(a, b) : null;
+            if (X !== null) ev.push([ha ? 1 : 0, X]);
+            if (!with_boundary) continue;
+            // a grid edge is shared when the cell across it is valid
+            const da = a % nx !== b % nx, db = Math.floor(a / nx) !== Math.floor(b / nx);
+            let shared = false;
+            if (da && !db) shared = cellOk(ix, Math.floor(a / nx) === iy ? iy - 1 : iy + 1);
+            else if (db && !da) shared = cellOk(a % nx === ix ? ix - 1 : ix + 1, iy);
+            if (shared) continue;
+            if (ha && hb) put(pt(a), pt(b));
+            else if (ha) put(pt(a), X);
+            else if (hb) put(X, pt(b));
+        }
+        if (ev.length === 2) {
+            if (ev[0][0] === 1) put(ev[0][1], ev[1][1]); else put(ev[1][1], ev[0][1]);
+        } else if (ev.length === 4) {
+            const joined = mean / m >= c;
+            for (let i = 0; i < 4; i++) {
+                if (ev[i][0] !== 1) continue;
+                put(ev[i][1], ev[(i + (joined ? 1 : 3)) % 4][1]);
+            }
+        }
+    }
+    return segs;
+}
+// Link segments into paths, each {xs, ys, closed}: an open path from a
+// vertex no segment ends at, then the closed ones.  A closed path repeats
+// its first vertex last.
+function dash_contour_link(segs) {
+    const key = (x, y) => x + "," + y;
+    const out = new Map(), ins = new Set();
+    segs.forEach((s, i) => {
+        const k = key(s[0], s[1]);
+        if (!out.has(k)) out.set(k, []);
+        out.get(k).push(i);
+        ins.add(key(s[2], s[3]));
+    });
+    const used = new Uint8Array(segs.length), paths = [];
+    const walk = (i0) => {
+        const xs = [segs[i0][0]], ys = [segs[i0][1]];
+        const k0 = key(segs[i0][0], segs[i0][1]);
+        let cur = i0;
+        for (;;) {
+            used[cur] = 1;
+            const s = segs[cur];
+            xs.push(s[2]); ys.push(s[3]);
+            const k = key(s[2], s[3]);
+            if (k === k0) break;
+            const nxt = (out.get(k) || []).find(j => !used[j]);
+            if (nxt === undefined) break;
+            cur = nxt;
+        }
+        paths.push({xs: xs, ys: ys,
+                    closed: xs[0] === xs[xs.length - 1] && ys[0] === ys[ys.length - 1]});
+    };
+    for (let i = 0; i < segs.length; i++) {
+        if (!used[i] && !ins.has(key(segs[i][0], segs[i][1]))) walk(i);
+    }
+    for (let i = 0; i < segs.length; i++) if (!used[i]) walk(i);
+    return paths;
+}
+// The closed rings of the region z >= c (the domain's for c = -Infinity).
+function dash_contour_rings(S, c) {
+    return dash_contour_link(dash_contour_segments(S, c, true)).filter(p => p.closed);
+}
+// MultiLine data as Bokeh's contour_data writes it: one entry per level,
+// its lines joined with a NaN between them.
+function dash_contour_lines(S, levels) {
+    const xs = [], ys = [];
+    for (const c of levels) {
+        const lx = [], ly = [];
+        for (const p of dash_contour_link(dash_contour_segments(S, c, false))) {
+            if (lx.length) { lx.push(NaN); ly.push(NaN); }
+            for (let i = 0; i < p.xs.length; i++) { lx.push(p.xs[i]); ly.push(p.ys[i]); }
+        }
+        xs.push(lx); ys.push(ly);
+    }
+    return {xs: xs, ys: ys, levels: levels.slice()};
+}
+// MultiPolygons data for the bands between consecutive levels (the first
+// below every node, the last above): band i is one polygon holding the
+// rings of z >= levels[i] and those of z >= levels[i+1] reversed, drawn
+// even-odd as Bokeh draws a polygon; an empty band has no polygon.
+function dash_contour_bands(S, levels) {
+    const R = levels.map(c => dash_contour_rings(S, c));
+    const xs = [], ys = [];
+    for (let i = 0; i < levels.length - 1; i++) {
+        const rx = [], ry = [];
+        for (const r of R[i]) { rx.push(r.xs.slice()); ry.push(r.ys.slice()); }
+        for (const r of R[i + 1]) { rx.push(r.xs.slice().reverse()); ry.push(r.ys.slice().reverse()); }
+        xs.push(rx.length ? [rx] : []); ys.push(ry.length ? [ry] : []);
+    }
+    return {xs: xs, ys: ys, lower_levels: levels.slice(0, -1), upper_levels: levels.slice(1)};
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -30136,6 +30515,42 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         } else {
             dash_fit_write(src, ac, B.xs, B.cols[0], isci ? B.cols.slice(1) : null);
         }
+    } else if (ac.type === 'contour' || ac.type === 'contourline') {
+        // WP-31 B4c: twoway's surface of the kept rows' (x, y, z), cut at
+        // the build's cuts into the layer's one source: contour's bands
+        // (ac.part "fill") or contourline's lines ("line"), the other
+        // columns (colours, widths) as built.  A layer above the cap is
+        // never registered: it keeps its build and the stale cue (D4).
+        const _cx = _pick(_ac_data[ac.xvar]), _cy = _pick(_ac_data[ac.yvar]), _cz = _pick(_ac_data[ac.zvar]);
+        if (!_cx || !_cy || !_cz) continue;
+        let S = dash_contour_surface(_cx, _cy, _cz, ac.interp, ac.cap);
+        if (S === null) continue;
+        if (ac.horizontal) {
+            // drawn turned, as map_contour turns it: x and y swap
+            const tz = new Float64Array(S.nx * S.ny);
+            for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) tz[ix * S.ny + iy] = S.gz[iy * S.nx + ix];
+            S = {gx: S.gy, gy: S.gx, gz: tz, nx: S.ny, ny: S.nx, n: S.n, note: S.note};
+        }
+        const _cd = Object.assign({}, ac.extra || {});
+        if (ac.part === 'line') {
+            const L = dash_contour_lines(S, ac.cuts);
+            _cd.xs = L.xs; _cd.ys = L.ys; _cd.levels = L.levels;
+        } else {
+            // The outer bands hold every node: their levels reach past
+            // the surface's least and greatest node (map_contour's rule).
+            const lv = [ac.lo].concat(ac.cuts, [ac.hi]);
+            let zlo = Infinity, zhi = -Infinity;
+            for (const v of S.gz) if (Number.isFinite(v)) { if (v < zlo) zlo = v; if (v > zhi) zhi = v; }
+            if (zlo <= zhi) {
+                lv[0] = Math.min(lv[0], zlo - 1e-9 * (ac.hi - ac.lo));
+                lv[lv.length - 1] = Math.max(lv[lv.length - 1], zhi + 1e-9 * (ac.hi - ac.lo));
+            }
+            const B = dash_contour_bands(S, lv);
+            _cd.xs = B.xs; _cd.ys = B.ys;
+            _cd.lower_levels = B.lower_levels; _cd.upper_levels = B.upper_levels;
+        }
+        src.data = _cd;
+        src.change.emit();
     // DASH_FIT_BRANCHES_END
     }
 }
@@ -50493,6 +50908,13 @@ class DashRenderer:
                                                False)
                                        for _fr in _layer_renderers)
                           else None)
+                if ptype.lower() in _DASH_CONTOUR_TYPES:
+                    # WP-31 B4c: the saved page refits a contour within
+                    # the cap; one drawn above it keeps its build and is
+                    # marked (decision D4).
+                    _fkind = ("grid" if any(
+                        getattr(_fr, "_dash_contour_capped", False)
+                        for _fr in _layer_renderers) else None)
                 _ftag = self._frozen_layer_tag(ptype.lower(), popts,
                                                source_for_plot, _plot_view,
                                                _frozen_vars, kind=_fkind)

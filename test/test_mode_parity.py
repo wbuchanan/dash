@@ -3058,7 +3058,8 @@ _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
 # WP-31 B1: rpcap and rpspike, the range and its marker, after a move.
 _MOVED_LAYERS += ["rpcap", "rpspike"]
 # WP-31 B4b: contour and contourline refit by the served app after a move
-# (their fill and line sources); the saved page keeps them frozen.
+# (their fill and line sources); the saved page refits them within the cap
+# (WP-31 B4c, test_contour_js.py).
 
 #: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
 _EMPTYING_MOVES = [
@@ -3539,6 +3540,12 @@ MOVE_CORPUS = [
     _move_case("t1title after a dropdown move (WP-31 D2)", _MOVES[0],
                [plot_for("scatter")],
                go={"t1title": '"T1"', "b2title": '"B2"'}),
+    # WP-31 B4c: the served contour and contourline after a move are the
+    # qualified build's (the saved page's refit is test_contour_js.py's).
+    _move_case("contour, dropdown to Foreign", _MOVES[0],
+               [plot_for("contour", {"ccuts": "4000 6000 8000"})]),
+    _move_case("contourline, dropdown to Foreign", _MOVES[0],
+               [plot_for("contourline", {"ccuts": "4000 6000 8000"})]),
 ]
 
 
