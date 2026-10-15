@@ -2568,6 +2568,16 @@ CORPUS = [
           [_sc(), _sc()], go={"legend": "on", "pcycle": "1"}),
     _case("histogram only, no legend (WP-31 C13)",
           [plot_for("histogram"), plot_for("histogram", var="price")]),
+
+    # WP-31 D5/E11 (section 32): sizing
+    _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
+          go={"scale": "1.5"}),
+    _case("aspectratio(1, placement(e)) xsize(8) ysize(4) (WP-31 D5)",
+          [plot_for("scatter")],
+          go={"aspectratio": "1", "aspectplacement": "e", "xsize": "8",
+              "ysize": "4"}),
+    _case("fysize(50) (WP-31 D5)", [plot_for("scatter")],
+          go={"fysize": "50"}),
 ]
 
 
@@ -3587,6 +3597,10 @@ MOVE_CORPUS = [
     _move_case("legend(ring(0) holes(2)) after a dropdown move (WP-31 D4)",
                _MOVES[0], [plot_for("scatter"), plot_for("line")],
                go={"legend": "ring(0) holes(2)"}),
+
+    # WP-31 D5/E11 (section 32): sizing
+    _move_case("scale(1.5) after a dropdown move (WP-31 D5)", _MOVES[0],
+               [plot_for("scatter")], go={"scale": "1.5"}),
 ]
 
 
