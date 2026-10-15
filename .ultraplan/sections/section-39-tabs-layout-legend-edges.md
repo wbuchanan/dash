@@ -404,3 +404,15 @@ TR-39.9's entries.
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D16b)`; close the BUGS.md entry "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced" (Resolution ending `Closes GAPS3 D16 (WP-31, D16b).`), delete its `"D16b":` WP31_OPEN line, rewrite GAPS3.md's `- **D16b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D16b -->` under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, D16b)`. dash replaces twoway (D13).
 
+## Addendum (15oct2026, DECISIONS D25): row D4b added to this section
+
+### D4b: Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn
+
+**Gap.** S31's `_dash_apply_legend` draws the legend's geometry, clock/ring, holes, rows/cols, label(#) blanking and the key merge; `stacked`, `symplacement()`, `colgap()` and legend(subtitle() note() caption()) remain named.
+
+**Requirement.** Measure twoway for each (fixture via an extract script), then draw: colgap() as the legend's column spacing, symplacement() as the glyph's alignment in the key box, stacked as text below the symbol, and the legend's own subtitle/note/caption as text above/below the legend box (Bokeh Legend has a title only: use Labels or a wrapping layout); both modes. Where Bokeh cannot express one, document it with a measured example (M17) and keep it named. textfirst stays out of scope (PRD section 7).
+
+**Fits S39** because S39 handles the legend label edges (D16) in batch 13.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D4b)`; close the BUGS.md entry "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn" (Resolution ending `Closes GAPS3 D4 (WP-31, D4b).`), delete its `"D4b":` WP31_OPEN line, rewrite GAPS3.md's `- **D4b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D4b -->` under `### Results that change` with a line ending `(WP-31, D4b)`. dash replaces twoway (D13).
+

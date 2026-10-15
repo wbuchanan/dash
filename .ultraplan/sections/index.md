@@ -100,7 +100,7 @@
 | 36 | by-remainder | D10 + D3b (D24) | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
-| 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) | 13 | 31 | -- | green | S | 3 |
+| 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) + D4b (D25) | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
@@ -153,6 +153,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D16b | A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced (D23) | S26 | S39 (13) | CB |
 | D13b | Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them (D24) | S30 | S42 (14) | RC |
 | D3b | subtitle() position() and ring() on a by() panel's label row are named, not drawn (D24) | S30 | S36 (12) | RC |
+| D4b | Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn (D25) | S31 | S39 (13) | RC |
 
 ## Batch execution order
 

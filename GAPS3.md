@@ -477,6 +477,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit pending.
 - **D3b Tracked:** Open (WP-31 section 36).
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit pending.
+- **D4b Tracked:** Open (WP-31 section 39).
 - **D5 Tracked:** Open (WP-31 section 32).
 - **D6 Tracked:** Open (WP-31 section 33).
 - **D7 Tracked:** Open (WP-31 section 33).

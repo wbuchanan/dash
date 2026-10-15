@@ -3981,3 +3981,9 @@
   - Description: GAPS3.md D3, found by WP-31 section 30 (D3): title()/subtitle()/note()/caption() position() and ring() are drawn through _dash_textbox_place, but on a by() graph the panel label row's subtitle(, position() ring()) is still named in the note.
   - Suggested fix: WP-31 section 36 (by remainder): place the by() panel label subtitle by its position() and ring() as twoway does, both modes.
   - Resolution: Not fixed because WP-31 section 36 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn
+  - File Names and Line Numbers: dash_render.py _dash_apply_legend, _dash_legend_box; the legend sub-option honoured set
+  - Description: GAPS3.md D4, found by WP-31 section 31 (D4 residual): the legend's geometry, clocks, holes and label(#) are drawn, but stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() stay named in the note (textfirst is out of scope, PRD section 7).
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): draw each with Bokeh legend properties or companion annotations, measured against twoway, or document a measured limit (M17).
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

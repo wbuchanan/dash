@@ -2053,6 +2053,7 @@ WP31_OPEN = {
     "D16b": "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced",
     "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",
     "D3b": "subtitle() position() and ring() on a by() panel's label row are named, not drawn",
+    "D4b": "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2190,6 +2191,7 @@ WP31_LISTS = {
     "D16b": ("Changed behaviour",),
     "D13b": ("Results that change",),
     "D3b": ("Results that change",),
+    "D4b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2326,6 +2328,7 @@ WP31_SECTION = {
     "D16b": 39,
     "D13b": 42,
     "D3b": 36,
+    "D4b": 39,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2538,7 +2541,8 @@ class TestWp31Tracking:
         # 127 -> 128: D22 adds B4d.
         # 128 -> 129: D23 adds D16b.
         # 129 -> 131: D24 adds D13b, D3b.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 131
+        # 131 -> 132: D25 adds D4b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 132
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
