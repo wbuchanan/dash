@@ -693,7 +693,7 @@ default with {cmd:twoway}'s note); the scheme's {cmd:text_option} box
 otherwise.  Every other textbox sub-option {cmd:twoway} takes
 ({opt width()}, {opt height()}, {opt linegap()}, {opt angle()},
 {opt alignment()} ...) is named once in a note and not drawn.  A
-{cmd:$}{it:name} or {cmd:$}{cmd:{c -(}}{it:name}{cmd:{c )-}} that reaches
+{cmd:$}{it:name}, with or without braces around {it:name}, that reaches
 {cmd:dash} in a line -- written {cmd:\$name} in a do-file, or passed
 through {cmd:macval()} -- is replaced by the global's value when the graph
 is registered, as {cmd:twoway} expands it ({cmd:$$f$$} is read inside out,

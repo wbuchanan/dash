@@ -277,6 +277,9 @@
 *!       quotes and tokenised in one pass by _dash_at_lex) read as twoway
 *!       reads it: points through _dash_at_isnum, lines unquoted by
 *!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
+*!       Its internal helper _dash_at_globals(s) replaces each $name and
+*!       ${name} in a line by the global's value, by text, never
+*!       evaluated (WP-31 D13).
 *!
 *!   _dash_at_dates(u1, u2)
 *!       ttext()'s date literals converted in their x axis's unit by
@@ -292,10 +295,6 @@
 *!   _dash_edge_span(pre)
 *!       twoway's refusal of span or nospan on an edge title, in the
 *!       caller's local _es_msg (WP-31 D2b).
-*!
-*!   _dash_at_globals(s)
-*!       s with each $name and ${name} replaced by the global's value, by
-*!       text, never evaluated (WP-31 D13).
 *!
 *!   _dash_at_canon()
 *!       One copy's drawn sub-options from the caller's syntax locals, in
