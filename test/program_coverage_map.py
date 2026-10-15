@@ -481,6 +481,9 @@ COVERAGE = {
         # WP-31 D6: the axis label forms twoway refuses.
         "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),
         "_dash_axlabel_rule": ("test_option_validation.cscript:U33-07",),
+        # WP-31 D7: two scale copies' alt toggles.
+        "_dash_rep_alt": ("test_wp31_truth.cscript:U33-06",),
+        "_dash_rep_has_alt": ("test_wp31_truth.cscript:U33-06",),
         # P1A-76: every prefix of every name, direct, and no prefix that
         # reaches two rows; e2e through _dash_expand_plottype.
         "_expand_plottype_str": ("test_parser.cscript:P1A-76",

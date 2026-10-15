@@ -1645,6 +1645,10 @@ def extract(stata_base: str, scheme: str) -> dict:
                 lambda t: resolve_sized(r, "gsize", t)),
             "tickgap": chrome_one("tickgap", "gsize", "tickgap",
                                   lambda t: resolve_sized(r, "gsize", t)),
+            # WP-31 D7: the gap between an axis's labels and its title.
+            "axis_title_gap": chrome_one(
+                "axis_title_gap", "gsize", "axis_title_gap",
+                lambda t: resolve_sized(r, "gsize", t)),
             "tick_position": chrome_one("tick_position", "tickposition",
                                         "axis_tick", tok_name, "outside"),
         }
@@ -2493,6 +2497,8 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
             ("gsize", "minortick", nm("minortick_length"),
              ("minortick_length", None)),
             ("gsize", "tickgap", nm("tickgap"), ("tickgap", None)),
+            ("gsize", "axis_title_gap", nm("axis_title_gap"),
+             ("axis_title_gap", None)),
             ("tickposition", "axis_tick", e.get("tick_position"),
              ("tick_position", None)),
         ]

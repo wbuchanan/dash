@@ -291,8 +291,9 @@ class TestAxisScale:
     def test_unsupported_scale_suboptions_are_reported(self):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            _fig_with_gopts(_SCATTER, {"yscale": "noextend"})
-        assert any("noextend" in str(w.message) for w in caught)
+            # Flipped (WP-31 D7): noextend is drawn; logit is not.
+            _fig_with_gopts(_SCATTER, {"yscale": "logit"})
+        assert any("logit" in str(w.message) for w in caught)
 
 
 # ======================================================================

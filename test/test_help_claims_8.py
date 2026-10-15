@@ -1091,9 +1091,11 @@ class TestTheShippedFiles:
         # Flipped (WP-31 D4): 300..370 -> 310..380: the ten legend
         # geometry keys twoway's legend_g reads (316 to 376, rounded
         # outward to ten).
-        assert 310 <= n <= 380, (name, n)
+        # Flipped (WP-31 D7): 310..380 -> 310..390: gsize axis_title_gap
+        # (317 to 381, rounded outward to ten).
+        assert 310 <= n <= 390, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"310\s+to\s+380\s+directives", help_text)
+        assert re.search(r"310\s+to\s+390\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:

@@ -1764,7 +1764,8 @@ CORPUS = [
           {"legend": "position(6) stacked colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
-                          "yscale": "reverse outergap(1)"}),
+                          # Flipped (WP-31 D7): outergap() is drawn.
+                          "yscale": "reverse logit"}),
     # Flipped (WP-30 P1.21a): lstyle(foreground) was the unimplemented
     # sub-option; that was wrong because twoway draws lstyle()
     # (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was
@@ -2703,7 +2704,7 @@ _MUST_WARN = {
         "stacked colgap(1)",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
-        "outergap(1)",
+        "logit",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
         "labstyle(x)",

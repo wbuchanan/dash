@@ -785,6 +785,23 @@ yesno legend_col_first  no
 yesno legend_span       no
 
 * ---------------------------------------------------------------------------
+* Added 15oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s2mono -> stmono2); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the
+* tick's colour, width, length and side, each axis role's style,
+* the alt-axis switches, the text boxes' justification and clock
+* positions, and system naturally_white.  Effective values, read
+* through style/ticksetstyle-*, gridstyle-*, tickstyle-major,
+* axisstyle-* and textboxstyle-* as the plot-region group's are.
+gsize axis_title_gap  tiny
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -1000,6 +1017,7 @@ yesno legend_span       no
 * provenance: gsize tick -- transcribed from scheme-s2color.scheme:153 `gsize tick tiny'
 * provenance: gsize minortick -- transcribed from scheme-s2color.scheme:154 `gsize minortick half_tiny'
 * provenance: gsize tickgap -- transcribed from scheme-s2color.scheme:156 `gsize tickgap half_tiny'
+* provenance: gsize axis_title_gap -- transcribed from scheme-stmono2.scheme:54 `gsize axis_title_gap tiny'
 * provenance: tickposition axis_tick -- transcribed from scheme-s2color.scheme:1892 `tickposition axis_tick outside'
 * provenance: axisstyle horizontal_default -- transcribed from scheme-s2color.scheme:1821 `axisstyle horizontal_default horizontal_default'
 * provenance: axisstyle vertical_default -- transcribed from scheme-s2color.scheme:1822 `axisstyle vertical_default vertical_default'

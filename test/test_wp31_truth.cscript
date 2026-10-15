@@ -7523,6 +7523,23 @@ def _u33_tw(case, svg, svg0, tlog):
     if case == "minmax":
         return " ".join(t["text"] for t in d["texts"]
                         if t.get("rotate") and t["text"].isdigit())
+    if case == "scale":
+        d0 = _u33_svg(svg0)
+        a = [v for v in d["vlines"] if v["stroke"] == "#000000"
+             and abs(v["y2"] - v["y1"]) > 500][0]
+        ticks = sorted(h["y1"] for h in d["hlines"]
+                       if h["stroke"] == "#000000"
+                       and abs(h["x2"] - h["x1"]) < 100)
+        ends = (abs(min(a["y1"], a["y2"]) - ticks[0]) < 0.5
+                and abs(max(a["y1"], a["y2"]) - ticks[-1]) < 0.5)
+        moved = d["plotregion"]["left"] - d0["plotregion"]["left"]
+        return "%s %d" % ("ticks" if ends else "frame",
+                          round(moved / 10 * 4 / 3))
+    if case == "side":
+        d0 = _u33_svg(svg0)
+        x = [t["x"] for t in d["texts"] if t.get("rotate")
+             and t["text"].isdigit()][0]
+        return "right" if x > d["plotregion"]["right"] else "left"
     if case == "dh":
         n = len([t for t in d["texts"] if t.get("rotate")
                  and t["text"].isdigit()])
@@ -7533,7 +7550,8 @@ def _u33_tw(case, svg, svg0, tlog):
 
 def _u33_dash(figs, case, log):
     f = figs[0]
-    yax = [a for a in f.left if "dash_alt_axis" not in (a.tags or [])][0]
+    yax = [a for a in list(f.left) + list(f.right)
+           if "dash_alt_axis" not in (a.tags or [])][0]
     if case == "look":
         g = [g for g in f.ygrid][0]
         return "%d %.2f %.2f %s" % (
@@ -7549,6 +7567,16 @@ def _u33_dash(figs, case, log):
         return "2 rows, first %s" % ("near" if ok else "far")
     if case == "minmax":
         return " ".join("%g" % v for v in yax.ticker.ticks)
+    if case == "scale":
+        import dash_render as dr
+        ticks = dr._dash_axis_major_ticks(yax) or []
+        ends = bool(ticks) and tuple(yax.bounds) == (min(ticks), max(ticks))
+        return "%s %d" % ("ticks" if ends else "frame",
+                          (f.min_border_left if f.min_border_left is not None
+                           else f.min_border) - (f.min_border or 0))
+    if case == "side":
+        return "right" if any("dash_alt_axis" not in (a.tags or [])
+                              for a in f.right) else "left"
     if case == "dh":
         t = yax.ticker
         n = len(getattr(t, "ticks", None) or [])
@@ -7667,6 +7695,41 @@ if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
         _w31_expect U33-04 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
     }
     _w31_done U33-04 "ylabel(##5) noted and drawn as twoway draws it, saved and served"
+
+    macro drop u33_tw u33_s u33_v u33_noted
+    capture graph drop _all
+    dash clear
+    display as text "S33 end " c(current_date) " " c(current_time)
+}
+* ==== end S33 ====
+
+* ==== S33 D7: Axis-scale look ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
+    display as text "S33 start " c(current_date) " " c(current_time)
+    local u33d "`w31_work'/s33b"
+    capture mkdir "`u33d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(u33t, replace)
+    quietly graph export "`u33d'/t0.svg", replace
+    graph drop u33t
+
+    // U33-05: noextend ends the line at the first and last tick and
+    // outergap(5) widens the border by twoway's gap.
+    _u33_reg "`u33d'" 5 scale scatter mpg weight, yscale(noextend outergap(5))
+    foreach m in s v {
+        _w31_expect U33-05 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-05 "yscale(noextend outergap(5)) as twoway draws it, saved and served"
+
+    // U33-06: two yscale(alt) copies leave the axis where twoway does.
+    _u33_reg "`u33d'" 6 side scatter mpg weight, yscale(alt) yscale(alt)
+    foreach m in s v {
+        _w31_expect U33-06 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-06 "yscale(alt) yscale(alt) toggles back, saved and served"
 
     macro drop u33_tw u33_s u33_v u33_noted
     capture graph drop _all

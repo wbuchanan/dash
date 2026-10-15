@@ -23,9 +23,10 @@
 *!   SR-03  ylabel(, labgap(2) labstyle(x)) names labstyle(x) (flipped,
 *!          WP-30 P1.18a: labcolor() is drawn; WP-31 D6: labgap() is
 *!          drawn, a style name is named).
-*!   SR-04  yscale(reverse noline titlegap(2) outergap(1)) names
-*!          outergap(1), not the drawn reverse, noline and titlegap()
-*!          (flipped, WP-30 P1.18a).
+*!   SR-04  yscale(reverse noline titlegap(2) outergap(1) logit) names
+*!          logit, not the drawn reverse, noline, titlegap() and
+*!          outergap() (flipped, WP-30 P1.18a; WP-31 D7: outergap()
+*!          is drawn).
 *!   SR-05  xtitle("Weight", orientation(vertical)) names orientation() and
 *!          titles the axis "Weight" -- not "Weight, orientation(vertical)".
 *!   SR-06  xline(3000, lcolor(red) lstyle(foreground) noextend) names
@@ -250,15 +251,15 @@ if r(bad) {
 }
 else display as text "SR-03 PASS: ylabel(, labstyle(x)) is named, the drawn labgap() is not"
 
-_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
+_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1) logit)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-04 "`lg'" yscale "outergap(1)" "reverse noline titlegap"
+_sr_check SR-04 "`lg'" yscale "logit" "reverse noline titlegap outergap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-04"
 }
-else display as text "SR-04 PASS: yscale(outergap(1)) is named, reverse noline titlegap are not"
+else display as text "SR-04 PASS: yscale(logit) is named, reverse noline titlegap outergap are not"
 
 _sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical))"'
 local lg `"`r(logfile)'"'

@@ -4000,8 +4000,8 @@ spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
 {cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata
 style files {cmd:dash} does not read.  {cmd:alternate} draws on the first
 axis; on {cmd:axis(2)} it is named.  {cmd:##}{it:#} on a label or tick
-option is for minor ticks only: {cmd:twoway} notes {cmd:##5 ignored, only
-allowed for minor ticks}, and so does {cmd:dash}; alone it draws what
+option is for minor ticks only: {cmd:twoway} notes
+{cmd:##5 ignored, only allowed for minor ticks}, and so does {cmd:dash}; alone it draws what
 {cmd:none} draws on a label option and nothing on a tick option.
 {cmd:minmax} labels the least and greatest value of every layer on the
 axis.  The label forms {cmd:twoway} refuses -- a label with no value
@@ -4037,7 +4037,19 @@ line, ticks, labels and title go; the grid stays), {cmd:noline} and
 {cmd:line}, the axis line's {cmd:lcolor()} (which draws the line beside
 {cmd:noline}, as in {cmd:twoway}), {cmd:lwidth()} and {cmd:lpattern()},
 {cmd:alt} (the axis on the other side) and {cmd:titlegap(}{it:size}{cmd:)};
-an {cmd:lwidth()} outside 0 to 10000 is refused, {cmd:r(198)}, with
+{cmd:outergap(}{it:size}{cmd:)} widens the border on the axis's side by the
+size less {cmd:twoway}'s default 2 points; {cmd:noextend} runs the axis
+line from the first tick to the last; {cmd:lstyle(}{it:linestyle}{cmd:)}
+takes a line style's colour, width and pattern ({cmd:lcolor()},
+{cmd:lwidth()} and {cmd:lpattern()} win); {cmd:extend}, {cmd:fextend} and
+{cmd:fill} draw the plain axis, as in {cmd:twoway}; a second
+{cmd:yscale(alt)} toggles the axis back, as in {cmd:twoway}.  The default
+gap between an axis's labels and its title is the scheme's
+{cmd:gsize axis_title_gap} ({cmd:minuscule}, 1 point, under {cmd:s2color});
+{cmd:titlegap(*}{it:#}{cmd:)} multiplies it.  {cmd:zlabel()} and
+{cmd:zscale()} on a graph with no colour key change nothing and print
+nothing, as in {cmd:twoway}.
+An {cmd:lwidth()} outside 0 to 10000 is refused, {cmd:r(198)}, with
 {cmd:twoway}'s {cmd:gm_linewidth} message, and a word {cmd:twoway} refuses
 ({cmd:xscale(bogus)}, {cmd:yscale(OFF)}, {cmd:yscale(alt alt)}) is refused
 as it refuses it.  Under {cmd:by()}, {cmd:off}, {cmd:nolabels},
@@ -5521,7 +5533,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 310 to 380 directives (more for the monochrome schemes, whose
+scheme: 310 to 390 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}

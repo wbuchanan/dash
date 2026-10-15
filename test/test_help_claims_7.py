@@ -1141,8 +1141,9 @@ class TestTheSecondAxisIsItsOwn:
     @pytest.mark.parametrize("mode", _MODES)
     def test_an_unhonoured_yscale2_suboption_is_named(self, mode):
         # Flipped (WP-30 P1.18a): noline is drawn; outergap() is not.
-        _, caught = _render(mode, _Y2, {"yscale2": "outergap(1)"})
-        assert any("yscale2() sub-option" in w and "outergap(1)" in w
+        # Flipped (WP-31 D7): outergap() is drawn; logit is not.
+        _, caught = _render(mode, _Y2, {"yscale2": "logit"})
+        assert any("yscale2() sub-option" in w and "logit" in w
                    for w in caught), caught
 
 

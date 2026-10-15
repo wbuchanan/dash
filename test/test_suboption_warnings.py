@@ -70,11 +70,13 @@ SUBOPTIONS = [
     ("ylabel labgap tlength", {"ylabel": "10(10)30, tstyle(x) tlength(3)"},
      None, "ylabel", ["tstyle(x)"], ["tlength", "labgap"]),
     ("yscale reverse noline titlegap",
-     {"yscale": "reverse noline titlegap(2) outergap(1)"}, None, "yscale",
-     ["outergap(1)"], ["reverse", "noline", "titlegap"]),
+     # Flipped (WP-31 D7): outergap() and extend are drawn; logit and
+     # log1m are not.
+     {"yscale": "reverse noline titlegap(2) outergap(1) logit"}, None,
+     "yscale", ["logit"], ["reverse", "noline", "titlegap", "outergap"]),
     ("xscale log range and off",
-     {"xscale": "log range(1000 5000) off extend"},
-     None, "xscale", ["extend"], ["log", "range", "off"]),
+     {"xscale": "log range(1000 5000) off extend log1m"},
+     None, "xscale", ["log1m"], ["log", "range", "off", "extend"]),
     ("xtitle orientation", {"xtitle": "Weight, orientation(vertical)"}, None,
      "xtitle", ["orientation(vertical)"], []),
     ("ytitle size and justification",

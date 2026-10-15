@@ -300,7 +300,9 @@ class TestScaleLook:
     def test_titlegap(self, mode):
         bad = []
         for v, want, n in (("titlegap(5)", 19, 0), ("titlegap(-2)", -8, 0),
-                           ("titlegap(*2)", 10, 0),
+                           # Flipped (WP-31 D7): *2 of the scheme's
+                           # axis_title_gap (1 pt), not of Bokeh's 5 px.
+                           ("titlegap(*2)", 3, 0),
                            ("titlegap(bogus)", 15, 1)):
             _, ax, caught = _y(mode, {"yscale": v})
             got = (ax.axis_label_standoff, len(_notes(caught, "titlegap")))
@@ -509,7 +511,9 @@ class TestTheUnitFunctions:
         look = dr._dash_scale_spec("noli lc(red) alt off on titleg(5)")["look"]
         assert look == {"off": True, "line_off": False, "line_on": False,
                         "lcolor": "red", "lwidth": None, "lpattern": None,
-                        "titlegap": "5", "alternate": True}
+                        "titlegap": "5", "alternate": True,
+                        # WP-31 D7: the outer gap, line style and extent.
+                        "outergap": None, "lstyle": None, "noextend": None}
         assert dr._dash_scale_name("OFF") == "OFF"
         assert dr._dash_scale_name("alt") == "alternate"
         assert dr._dash_scale_name("re") == "re"

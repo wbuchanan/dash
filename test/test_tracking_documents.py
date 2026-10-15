@@ -1974,7 +1974,6 @@ class TestWp30Tracking:
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
     "E11": "Sizes are relative to a 4-inch reference and scale() is pending",
-    "D7": "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back",
     "E6": "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn",
     "D8": "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help",
     "C17": "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on",

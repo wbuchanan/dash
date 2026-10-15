@@ -10897,6 +10897,9 @@ class SchemeParser:
             "gsize minortick", 2.0, "half_tiny")
         self.tickgap_px: float = self._tick_length_px(
             "gsize tickgap", 2.0, "half_tiny")
+        # WP-31 D7: the gap between an axis's labels and its title.
+        self.axis_title_gap_px: float = self._tick_length_px(
+            "gsize axis_title_gap", 1.0, "minuscule")
         self.minortick_line_width: float = self._bounded_lwidth(
             "linewidth minortick", self.tick_line_width)
         self.minortick_label_font_size: str = self._gsize(
@@ -37154,6 +37157,11 @@ def _dash_grid_look(axis_obj, grid_obj, spec, option="axis", ref_in=4.0,
                     minor_code="return [];")
 
 
+#: WP-31 D7: twoway's default outer gap of an axis, 2 pt (outergap(5),
+#: 14.4 pt, moves the plot region 12.4 pt; sc_outergap_5).
+_DASH_OUTERGAP_PT = 2.0
+
+
 def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
                            by_graph=False, ref_in=4.0, colours=None):
     """Draw an xscale()/yscale() (or second-axis) look on one axis (WP-30
@@ -37169,6 +37177,23 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
         return
     if look.get("off") and not by_graph:
         axis_obj.visible = False
+    v = look.get("lstyle")
+    if v is not None:
+        # WP-31 D7: a line style's colour, width and pattern (measured:
+        # yscale(lstyle(grid)) is the grid's line, sc_lstyle_grid); the
+        # lcolor(), lwidth() and lpattern() below win.
+        sch = getattr(fig, "_dash_scheme", None) or SchemeParser.fallback()
+        b = sch.style_bundle("line", str(v)) or {}
+        if b.get("line") is not None:
+            axis_obj.axis_line_color = b["line"]
+        if b.get("line_width") is not None:
+            axis_obj.axis_line_width = b["line_width"]
+        if b.get("line_dash") is not None:
+            axis_obj.axis_line_dash = list(b["line_dash"])
+    if look.get("noextend") is not None:
+        # WP-31 D7: the line from the first tick to the last, set by the
+        # finish (_dash_axis_bounds) once the ticks are final.
+        axis_obj._dash_noextend = bool(look["noextend"])
     v = look.get("lcolor")
     if v is not None:
         # A bare *#/%# takes the line's own colour (WP-30 P1.13b).
@@ -37211,8 +37236,12 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
     v = look.get("titlegap")
     if v is not None:
         try:
-            px = T.resolve_size(str(v), "gap",
-                                float(axis_obj.axis_label_standoff) * 0.75,
+            # WP-31 D7: *# multiplies the scheme's axis_title_gap.
+            _g = getattr(getattr(fig, "_dash_scheme", None) or
+                         SchemeParser.fallback(), "axis_title_gap_px", None)
+            _base = (float(_g) if isinstance(_g, (int, float))
+                     else float(axis_obj.axis_label_standoff))
+            px = T.resolve_size(str(v), "gap", _base * 0.75,
                                 ref_in) * T.PX_PER_PT
         except (ValueError, TypeError):
             _dash_style_note(f"{option}(titlegap)", v, "size", "medium")
@@ -37222,6 +37251,28 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
                 max(-100.0, min(100.0, px))))
     if look.get("alternate"):
         _dash_axis_alternate(fig, axis_obj, number)
+    v = look.get("outergap")
+    if v is not None and not by_graph:
+        # WP-31 D7: the border on the axis's side grows by the size less
+        # twoway's default gap (2 pt; measured: outergap(5) moves the plot
+        # region 124 units, sc_outergap_5).  Added to, never assigned, so
+        # a border set elsewhere survives.  Under by() twoway draws it as
+        # if absent, as titlegap().
+        try:
+            pt = T.resolve_size(str(v), "gap", _DASH_OUTERGAP_PT, ref_in)
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(outergap)", v, "size", "the default")
+            pt = _DASH_OUTERGAP_PT
+        side = next((sd for sd in ("left", "right", "below", "above")
+                     if any(a is axis_obj for a in getattr(fig, sd))), None)
+        prop = {"left": "min_border_left", "right": "min_border_right",
+                "below": "min_border_bottom",
+                "above": "min_border_top"}.get(side)
+        if prop is not None:
+            cur = getattr(fig, prop)
+            cur = (fig.min_border or 0) if cur is None else cur
+            setattr(fig, prop, max(0, int(round(
+                cur + (pt - _DASH_OUTERGAP_PT) * T.PX_PER_PT))))
 
 
 def _dash_axis_alternate(fig, axis_obj, number=1):
@@ -38690,6 +38741,16 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
     by_graph = bool(str(graph_opts.get("by", "") or "").strip())
     colours = getattr(fig, "_dash_scheme_colours", None)
     ref_in = OptionTranslator.size_ref_of(fig)
+    # WP-31 D7: the gap between an axis's labels and its title is the
+    # scheme's gsize axis_title_gap (s2color minuscule, 1 pt), before any
+    # titlegap() reads it.
+    _gap = getattr(getattr(fig, "_dash_scheme", None) or
+                   SchemeParser.fallback(), "axis_title_gap_px", None)
+    if isinstance(_gap, (int, float)) and math.isfinite(_gap):
+        for _axes, _ra in ((fig.xaxis, "x_range_name"),
+                           (fig.yaxis, "y_range_name")):
+            for _a in _dash_primary_axes(_axes, _ra):
+                _a.axis_label_standoff = int(round(_gap))
     for ax_key, tick_key, axes, grids, var, rattr in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar, "x_range_name"),
             ("ylabel", "ytick", fig.yaxis, fig.ygrid, yvar, "y_range_name")):
@@ -39259,7 +39320,11 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
 #: The xscale()/yscale() look sub-options dash draws (WP-30 P1.18a).
 _DASH_SCALE_LOOK_SUBOPTS = frozenset({
     "off", "on", "noline", "line", "lcolor", "lwidth", "lpattern",
-    "alternate", "titlegap"})
+    "alternate", "titlegap",
+    # WP-31 D7: drawn (outergap, noextend, lstyle) or, as measured, the
+    # plain graph in twoway too (extend, fextend, fill).
+    "outergap", "noextend", "extend", "nofextend", "fextend", "lstyle",
+    "fillspace", "nofillspace"})
 #: yscale2()/xscale2() sub-options _dash_finish_secondary_axes honours.
 _DASH_SCALE2_SUBOPTS = (frozenset({"log", "reverse", "range"})
                         | _DASH_SCALE_LOOK_SUBOPTS)
@@ -46878,10 +46943,17 @@ def _dash_scale_look(raw):
            "line_off": "noline" in names and "lcolor" not in names,
            "line_on": "line" in names,
            "lcolor": None, "lwidth": None, "lpattern": None,
-           "titlegap": None, "alternate": "alternate" in names}
+           "titlegap": None, "alternate": "alternate" in names,
+           # WP-31 D7: outergap(), lstyle() and the last extend word.
+           "outergap": None, "lstyle": None, "noextend": None}
     for t, n in zip(toks, names):
-        if n in ("lcolor", "lwidth", "lpattern", "titlegap") and "(" in t:
+        if n in ("lcolor", "lwidth", "lpattern", "titlegap", "outergap",
+                 "lstyle") and "(" in t:
             out[n] = _dash_subopt_arg(t)
+        elif n == "noextend":
+            out["noextend"] = True
+        elif n in ("extend", "fextend"):
+            out["noextend"] = False
     return out
 
 
@@ -55434,6 +55506,7 @@ class ServerAppBuilder:
                       # WP-31 D6: alternate's and nogmin/nogmax's code.
                       "_DASH_ALT_LABEL_JS", "_DASH_GRID_NOEND_JS",
                       "_DASH_TICKGAP_PT", "_DASH_LABJUST", "_DASH_LABALIGN",
+                      "_DASH_OUTERGAP_PT",
                       "_DASH_ALT_TITLE_PROPS", "_DASH_ALT_LABEL_PROPS",
                       "_DASH_AXIS_VAR_KEYS",
                       # WP-30 P1.3a: default axes, twoway's margin and

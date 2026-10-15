@@ -9571,7 +9571,10 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     if (cat == "A") return(v1 + char(30) + v2)
     if (cat == "H") return(strtrim(v1) + " " + strtrim(v2))
     if (cat == "X") return(v1 + ", " + v2)
-    if (cat == "I" | cat == "S") {
+    if (cat == "S") {
+        return(_dash_rep_alt(v1, v2, _dash_rep_subs(v1, v2, cat, J(1, 0, ""), key)))
+    }
+    if (cat == "I") {
         return(_dash_rep_subs(v1, v2, cat, J(1, 0, ""), key))
     }
     c1 = _dash_rep_split(v1, b1, s1)
@@ -9594,6 +9597,44 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
         if (keep) sub = sub + (sub != "" ? " " : "") + "add"
     }
     return(body + (sub != "" ? ", " + sub : ""))
+}
+
+// _dash_rep_alt(v1, v2, merged) -- merged with alt as twoway reads two
+// scale copies (WP-31 D7; measured, test/fixtures/axis_look_truth.json
+// sc_alt2): each copy's alt toggles the side, so the merged value keeps
+// alt only when one of v1 and v2 holds it.  Linear in the words.
+string scalar _dash_rep_alt(string scalar v1, string scalar v2,
+                            string scalar merged)
+{
+    string rowvector w
+    string scalar    out, nm
+    real scalar      a1, a2, i
+
+    a1 = _dash_rep_has_alt(v1)
+    a2 = _dash_rep_has_alt(v2)
+    if (!a1 & !a2) return(merged)
+    w = _dash_rep_toks(merged, 0)
+    out = ""
+    for (i = 1; i <= cols(w); i++) {
+        nm = strlower(w[i])
+        if (!strpos(nm, "(") & _dash_so_canon(nm, "axscale") == "alternate") continue
+        out = out + (out == "" ? "" : " ") + w[i]
+    }
+    if (a1 != a2) out = out + (out == "" ? "" : " ") + "alt"
+    return(out)
+}
+
+// _dash_rep_has_alt(v) -- 1 when the scale value v holds alt.
+real scalar _dash_rep_has_alt(string scalar v)
+{
+    string rowvector w
+    real scalar      i
+    w = _dash_rep_toks(v, 1)
+    for (i = 1; i <= cols(w); i++) {
+        if (!strpos(w[i], "(") &
+            _dash_so_canon(strlower(w[i]), "axscale") == "alternate") return(1)
+    }
+    return(0)
 }
 
 // _dash_rep_merge_locals(key, m1, m2, out) -- _dash_rep_merge on the

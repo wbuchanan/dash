@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-15T13:47:12Z",
+    "generated_utc": "2026-10-15T20:52:43Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11498,6 +11498,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -12398,6 +12404,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -15342,6 +15349,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -17786,6 +17800,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -18686,6 +18706,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -21630,6 +21651,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -24074,6 +24102,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -24974,6 +25008,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -27918,6 +27953,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -30440,6 +30482,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -31354,6 +31402,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -34285,6 +34334,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stmono1.scheme",
+        "line": 53
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -36904,6 +36960,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -37834,6 +37896,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -40778,6 +40841,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stmono2.scheme",
+        "line": 54
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -43506,6 +43576,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -44436,6 +44512,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -47380,6 +47457,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -50029,6 +50113,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -50929,6 +51019,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -53873,6 +53964,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -56390,6 +56488,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -57320,6 +57424,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -60264,6 +60369,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -62914,6 +63026,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -63814,6 +63932,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -66758,6 +66877,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -69198,6 +69324,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -70098,6 +70230,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -73045,6 +73178,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -75563,6 +75703,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -76477,6 +76623,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -79408,6 +79555,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -81947,6 +82101,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -82847,6 +83007,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -85794,6 +85955,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -88238,6 +88406,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "inside",
     "axis_styles": {
       "x": {
@@ -89155,6 +89329,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -92139,6 +92314,13 @@
         "file": "scheme-economist.scheme",
         "line": 40
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-economist.scheme",
+        "line": 37
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -94776,6 +94958,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -95706,6 +95894,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -98650,6 +98839,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -101378,6 +101574,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -102308,6 +102510,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -105252,6 +105455,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -107981,6 +108191,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -108904,6 +109120,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -111835,6 +112052,13 @@
         "file": "scheme-s1manual.scheme",
         "line": 36
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-s1manual.scheme",
+        "line": 33
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -114437,6 +114661,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -115381,6 +115611,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -118309,6 +118540,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -121057,6 +121295,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -121957,6 +122201,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -124901,6 +125146,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -127344,6 +127596,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -128244,6 +128502,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -131188,6 +131447,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -133633,6 +133899,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -134533,6 +134805,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -137477,6 +137750,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -139917,6 +140197,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "minuscule",
+      "value": 0.3472,
+      "sztype": "relative",
+      "pt_at_4in": 1.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -140817,6 +141103,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -143761,6 +144048,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "minuscule",
+        "file": "scheme-s2color.scheme",
+        "line": 152
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -146205,6 +146499,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -147105,6 +147405,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -150049,6 +150350,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -152494,6 +152802,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -153394,6 +153708,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -156338,6 +156653,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -158782,6 +159104,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -159682,6 +160010,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -162626,6 +162955,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -165071,6 +165407,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -165971,6 +166313,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -168915,6 +169258,13 @@
         "file": "scheme-s2color.scheme",
         "line": 156
       },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
+      },
       "tick_position": {
         "kind": "transcribed",
         "directive": "tickposition axis_tick",
@@ -171361,6 +171711,12 @@
       "sztype": "relative",
       "pt_at_4in": 2.0
     },
+    "axis_title_gap": {
+      "name": "tiny",
+      "value": 1.3888,
+      "sztype": "relative",
+      "pt_at_4in": 4.0
+    },
     "tick_position": "outside",
     "axis_styles": {
       "x": {
@@ -172261,6 +172617,7 @@
       "tick_length": "gsize tick",
       "minortick_length": "gsize minortick",
       "tickgap": "gsize tickgap",
+      "axis_title_gap": "gsize axis_title_gap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -175204,6 +175561,13 @@
         "value": "half_tiny",
         "file": "scheme-s2color.scheme",
         "line": 156
+      },
+      "axis_title_gap": {
+        "kind": "transcribed",
+        "directive": "gsize axis_title_gap",
+        "value": "tiny",
+        "file": "scheme-stcolor.scheme",
+        "line": 114
       },
       "tick_position": {
         "kind": "transcribed",

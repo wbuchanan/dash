@@ -434,7 +434,7 @@ and now matches Stata.
 
 - Axis label, tick and grid sub-options are drawn. dash scatter mpg weight, ylabel(, labgap(large) tlwidth(thick) glwidth(thick) grid) drew the default gap and widths and printed a sub-option note, now twoway's gap (16 px further out) and widths and no note; xlabel(1500(500)5000, alternate) staggers the labels on two rows; ylabel(minmax) on two layers labelled the first layer's extremes, now every layer's (5 and 41 over mpg and trunk); ylabel(##5) drew the default labels, now twoway's note and no labels, as ylabel(none). (WP-31, D6)
 
-<!-- WP-31 D7 -->
+- The axis-scale look is drawn. dash scatter mpg weight, yscale(alt) yscale(alt) moved the y axis to the right, now leaves it on the left as twoway does; yscale(noextend) drew the axis line across the whole frame, now from the first to the last tick (10 to 40); yscale(outergap(5)) was named in a note, now widens the border by twoway's 12.4 pt; yscale(lstyle(grid)) draws the grid's line; the default gap between an axis's labels and its title is the scheme's gsize axis_title_gap (1 pt under s2color; Bokeh's 5 px before). (WP-31, D7)
 
 <!-- WP-31 E6 -->
 
