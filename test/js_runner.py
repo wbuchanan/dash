@@ -196,6 +196,15 @@ def stand_in(m, models, objs):
     if isinstance(m, FixedTicker):
         return {"__type__": "FixedTicker",
                 "ticks": [plain(v) for v in (m.ticks or [])]}
+    # WP-31 B4d: a contour's colour key, whose levels, ticker and labels
+    # the refit writes.
+    if type(m).__name__ == "ContourColorBar":
+        return {"__type__": "ContourColorBar",
+                "levels": [plain(v) for v in (m.levels or [])],
+                "ticker": encode(m.ticker, models, objs),
+                "major_label_overrides": {
+                    str(k): v for k, v in
+                    dict(m.major_label_overrides or {}).items()}}
     props = m.properties()
     return {"__type__": type(m).__name__,
             **{p: encode(getattr(m, p), models, objs)
@@ -242,6 +251,9 @@ for (const o of Object.values(REG)) {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   } else if (o.__type__ === "FixedTicker") {
     o.change = {emit() {}};
+  } else if (o.__type__ === "ContourColorBar") {
+    // its ticker is a model of its own, written in place (WP-31 B4d)
+    o.ticker = resolve(o.ticker);
   } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow") {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   }
@@ -259,6 +271,12 @@ for (const [id, o] of Object.entries(REG)) {
     out[id] = {range: {start: o.start, end: o.end, reset_start: o.reset_start,
                        reset_end: o.reset_end}};
   else if (o.__type__ === "FixedTicker") out[id] = {ticks: Array.from(o.ticks)};
+  else if (o.__type__ === "ContourColorBar") {
+    const ov = o.major_label_overrides instanceof Map
+      ? Array.from(o.major_label_overrides.entries())
+      : Object.entries(o.major_label_overrides || {}).map(([k, v]) => [Number(k), v]);
+    out[id] = {colorbar: {levels: Array.from(o.levels), overrides: ov}};
+  }
   else if (o.__type__ === "BoxAnnotation")
     out[id] = {box: {left: o.left, right: o.right, bottom: o.bottom, top: o.top}};
   else if (o.__type__ === "Arrow")
@@ -378,6 +396,10 @@ class JsSession:
                             setattr(m, k, float(v))
                 elif "ticks" in state:
                     m.ticks = [float(v) for v in state["ticks"]]
+                elif "colorbar" in state:
+                    m.levels = [float(v) for v in state["colorbar"]["levels"]]
+                    m.major_label_overrides = {
+                        float(k): v for k, v in state["colorbar"]["overrides"]}
                 else:
                     # Each key commits on its own (WP-29 S12): a Div
                     # carries text AND visible, a renderer muted AND
@@ -567,6 +589,10 @@ def fit_helpers_js():
             + js[js.index("function dash_own_col"):js.index("const ROW_ID = ")]
             + js[js.index("function dash_pctl"):
                  js.index("// agg_sources is a Bokeh model list")]
+            # WP-31 B4d: the axis finish's natscale, which the contour
+            # branch's cut rule calls.
+            + js[js.index("function dash_natscale"):
+                 js.index("function dash_axis_ticks")]
             + "\nconst ROW_ID = " + json.dumps(dr._ROW_ID_COLUMN) + ";\n")
 
 

@@ -6485,6 +6485,92 @@ if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
 }
 * ==== end S29 ====
 
+// S29 B4d helper.  _u29_key: the saved page of spec sp/dp after one
+// filter move (its own callback run under node): globals u29_kcut (the
+// colour key's inner levels, "%.10g" each), u29_ktick (its ticks), u29_kn
+// (its level count) and u29_kband (the drawn band count).
+python:
+def _u29_key(sp, dp, kind, value):
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    w.value = [v for v, lab in w.options if lab == value][0]
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    f = list(r.figures.values())[0]
+    [bar] = [m for side in ("right", "left", "above", "below", "center")
+             for m in getattr(f, side) if type(m).__name__ == "ContourColorBar"]
+    Macro.setGlobal("u29_kcut", " ".join(format(float(v), ".10g")
+                                         for v in bar.levels[1:-1]))
+    Macro.setGlobal("u29_ktick", " ".join(format(float(v), ".10g")
+                                          for v in bar.ticker.ticks))
+    Macro.setGlobal("u29_kn", str(len(bar.levels)))
+    Macro.setGlobal("u29_kband",
+                    str(len(bar.fill_renderer.data_source.data["xs"])))
+end
+
+* ==== S29 B4d: the contour's cuts and colour key after a filter move ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
+    display as text "S29 start " c(current_date) " " c(current_time)
+    local u29d "`w31_work'/s29k"
+    capture mkdir "`u29d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U29-6, U29-7: after the dropdown to Foreign the saved page's colour
+    // key holds twoway's cuts for `if foreign == 1' (measured live: the
+    // drawn contour view's ccuts) -- zlabel(#5)'s by default, levels(4)'s
+    // -- as many levels as bands plus one, and twoway's z-axis ticks
+    // inside the span it was built with.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U29-6|contour price mpg weight," "U29-7|contour price mpg weight, levels(4)" {
+        local ++k
+        mata: u29_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u29_t[1]); st_local("cmd", u29_t[2])
+        sysuse auto, clear
+        local u29v = subinstr("`cmd'", ",", " if foreign == 1,", 1)
+        _u26_tw `u29v'
+        dash clear
+        quietly dash `cmd' name(zk`k')
+        _dash_serve_spec, specpath("`u29d'/s`k'.json") datapath("`u29d'/d`k'.json") filter(foreign, type(dropdown))
+        dash clear
+        python: _u29_key("`u29d'/s`k'.json", "`u29d'/d`k'.json", "Select", "Foreign")
+        _w31_expect `id' `"("${u29_kcut}" == "${u26_twcut}")"' "`cmd' moved to Foreign: key cuts ${u29_kcut}; twoway `u29v' cuts ${u26_twcut}"
+        _w31_expect `id' "(${u29_kn} == ${u29_kband} + 1)" "`cmd' moved to Foreign: ${u29_kn} key levels for ${u29_kband} bands"
+        local bad 0
+        local twt ${u26_twtick}
+        foreach t of global u29_ktick {
+            if !`: list t in twt' local bad 1
+        }
+        _w31_expect `id' `"(`bad' == 0 & "${u29_ktick}" != "")"' "`cmd' moved to Foreign: key ticks ${u29_ktick}; twoway's ${u26_twtick}"
+        _w31_done `id' "`cmd' moved to Foreign keys twoway's cuts ${u26_twcut} (ticks ${u29_ktick})"
+    }
+
+    forvalues i = 1/`k' {
+        foreach p in s d {
+            capture erase "`u29d'/`p'`i'.json"
+        }
+    }
+    capture rmdir "`u29d'"
+    macro drop u29_kcut u29_ktick u29_kn u29_kband u26_twcut u26_twrgb u26_twtick
+    capture mata: mata drop u29_t
+    dash clear
+    clear
+    display as text "S29 end " c(current_date) " " c(current_time)
+}
+* ==== end S29 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

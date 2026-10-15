@@ -21288,7 +21288,8 @@ class GlyphMapper:
                 part="line" if lines_only else "fill",
                 extra={k: [v.item() if hasattr(v, "item") else v
                            for v in col]
-                       for k, col in psrc.data.items() if k not in geo})
+                       for k, col in psrc.data.items() if k not in geo},
+                **self._contour_refit_rule(options, lines_only, len(cuts)))
             cr._dash_agg_rows = self._agg_member_ids(source, view)
         cr.tags = list(cr.tags or []) + ["dash_contour"]
         # The layer's extent, upright (the transposer turns it with the
@@ -21301,11 +21302,42 @@ class GlyphMapper:
             self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
         return [cr, hull]
 
+    def _contour_refit_rule(self, options, lines_only, n_cuts) -> dict:
+        """What the saved page needs to cut a contour again after a filter
+        move as twoway would cut the kept rows (WP-31 B4d): the cut rule
+        (:func:`_dash_contour_cut_rule`), the bands' colours (contour) or
+        the lines' colours and widths (contourline) for every cut count a
+        move can give, keyed by that count, and the colour key's number
+        format."""
+        rule = _dash_contour_cut_rule(options, self.z_options)
+        most = max(int(n_cuts), 1)
+        if rule["kind"] == "levels":
+            most = max(most, rule["n"] + 1)
+        elif rule["kind"] == "count":
+            most = max(most, 2 * rule["n"] + 2)
+        parse = (lambda t: self.tr.parse_color_alpha(t, "ccolors")[0])
+        T = OptionTranslator
+        styles = {}
+        for k in range(1, most + 1):
+            cols = _dash_contour_colours(options, k + 1, self.scheme,
+                                         parse=parse)
+            if lines_only:
+                lcol, lwid = _dash_contour_line_style(options, cols, k)
+                styles[str(k)] = {"line_color": list(lcol),
+                                  "line_width": [float(T.translate_lwidth(w))
+                                                 for w in lwid]}
+            else:
+                styles[str(k)] = {"fill_color": list(cols)}
+        return {"rule": rule, "styles": styles,
+                "kfmt": _dash_key_format(self.z_options)[0]}
+
     def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax) -> None:
         """contour's colour key (WP-31 B4b): see :meth:`map_contour`."""
         from bokeh.models import FixedTicker
         cb = cr.construct_color_bar(
             title=_dash_var_label(self.variable_labels, zvar, zvar))
+        # The saved page's refit moves the key with the bands (WP-31 B4d).
+        cr._dash_contour_bar = cb
         # The key spans twoway's z axis, not the bands' outer bounds.
         cb.levels = [float(lo)] + [float(v) for v in cr.levels[1:-1]] \
             + [float(hi)]
@@ -25474,6 +25506,70 @@ def _dash_contour_cuts(options, zmin, zmax, zopts=None):
     if not cuts:
         cuts = [zmax]
     return cuts, ticks
+
+
+def _dash_contour_cut_rule(options, zopts=None):
+    """The rule :func:`_dash_contour_cuts` cuts by, as JSON data for the
+    saved page's twin ``dash_contour_cuts``, which applies it to the kept
+    rows' z range after a filter move (WP-31 B4d).
+
+    ``{"kind": "cuts", "cuts"}`` for ccuts() (sorted); ``{"kind":
+    "levels", "n", "minmax"}`` for levels(#) with # of at least 2;
+    ``{"kind": "ticks", "ticks", "rule"}`` for a zlabel() list (*rule*
+    true when a ``(`` step makes it a rule); ``{"kind": "count", "n"}``
+    for zlabel(#n) and twoway's default #5; ``{"kind": "minmax"}`` for
+    zlabel(minmax).
+    """
+    opts = options or {}
+    raw = str(opts.get("ccuts", "") or "").strip()
+    if raw:
+        return {"kind": "cuts", "cuts": sorted(float(t) for t in raw.split())}
+    try:
+        n = int(float(str(opts.get("levels", "") or "").strip()))
+    except ValueError:
+        n = 0
+    if n >= 2:
+        return {"kind": "levels", "n": n,
+                "minmax": bool(str(opts.get("minmax", "") or "").strip())}
+    raw = str((zopts or {}).get("zlabel", "") or "").strip()
+    if raw:
+        spec = _dash_parse_axis_spec(raw)
+        mode = spec.get("mode")
+        if mode == "count" and spec.get("count"):
+            return {"kind": "count", "n": int(spec["count"])}
+        if mode == "minmax":
+            return {"kind": "minmax"}
+        if mode == "explicit" and spec.get("ticks"):
+            head = raw.split(",", 1)[0]
+            return {"kind": "ticks",
+                    "ticks": sorted(float(t) for t in spec["ticks"]),
+                    "rule": bool(re.search(r"\(", head))}
+    return {"kind": "count", "n": 5}
+
+
+def _dash_contour_bar_follow(bar, levels, ticks, overrides):
+    """Give a drawn contour colour bar the cuts and ticks a filter move's
+    redraw computed (WP-31 B4d): *levels* the redrawn renderer's
+    ``[lo, cuts..., hi]``, *ticks* and *overrides* its bar's.
+
+    The bar keeps its own two ends: BokehJS sizes a contour colour bar's
+    range once, from the levels it is first drawn with, so the cuts are
+    held inside them, and only the ticks between them are kept.  The
+    level count always becomes the bands' count plus one, which BokehJS
+    requires to paint the bar.
+    """
+    from bokeh.models import FixedTicker
+    e0, e1 = float(bar.levels[0]), float(bar.levels[-1])
+    inner = [min(max(float(v), e0), e1) for v in list(levels)[1:-1]]
+    bar.levels = [e0] + inner + [e1]
+    keep = [float(t) for t in (ticks or []) if e0 <= float(t) <= e1]
+    if isinstance(bar.ticker, FixedTicker):
+        bar.ticker.ticks = keep
+    else:
+        bar.ticker = FixedTicker(ticks=keep)
+    bar.major_label_overrides = {
+        float(k): v for k, v in dict(overrides or {}).items()
+        if float(k) in keep}
 
 
 def _dash_contour_colours(options, n_levels, scheme, parse=None):
@@ -29985,6 +30081,37 @@ function dash_contour_bands(S, levels) {
     }
     return {xs: xs, ys: ys, lower_levels: levels.slice(0, -1), upper_levels: levels.slice(1)};
 }
+// twoway's cuts over the kept rows' z range (WP-31 B4d): the twin of
+// _dash_contour_cuts on the rule _dash_contour_cut_rule reads from the
+// options -- {cuts, ticks}.  dash_natscale is the axis finish's.
+function dash_contour_cuts(rule, zmin, zmax) {
+    if (rule.kind === "cuts") return {cuts: rule.cuts.slice(), ticks: rule.cuts.slice()};
+    if (rule.kind === "levels" && Number.isFinite(zmin) && Number.isFinite(zmax)) {
+        const d = (zmax - zmin) / rule.n;
+        let cuts = [];
+        for (let i = 1; i < rule.n; i++) cuts.push(zmin + i * d);
+        if (rule.minmax) cuts = [zmin].concat(cuts, [zmax]);
+        return {cuts: cuts, ticks: cuts.slice()};
+    }
+    let ticks, isrule = true;
+    if (rule.kind === "ticks") { ticks = rule.ticks.slice(); isrule = rule.rule; }
+    else if (rule.kind === "minmax") ticks = [zmin, zmax];
+    else ticks = dash_natscale(zmin, zmax, rule.n === undefined ? 5 : rule.n) || [];
+    let cuts = isrule ? (ticks.length > 2 ? ticks.slice(1, -1) : []) : ticks.slice();
+    if (!cuts.length) cuts = [zmax];
+    return {cuts: cuts, ticks: ticks};
+}
+// [lo, cuts..., hi]: the twin of _dash_contour_fill_levels.
+function dash_contour_fill_levels(cuts, ticks, zmin, zmax) {
+    let lo = zmin, hi = zmax;
+    if (ticks.length && Number.isFinite(ticks[0])) lo = Math.min(lo, ticks[0]);
+    if (ticks.length && Number.isFinite(ticks[ticks.length - 1])) hi = Math.max(hi, ticks[ticks.length - 1]);
+    const span = Math.max(Math.abs(hi - lo), Math.abs(cuts[cuts.length - 1] - cuts[0]), 1);
+    const eps = 1e-9 * span;
+    if (lo >= Math.min(cuts[0], zmin)) lo = Math.min(cuts[0], zmin) - eps;
+    if (hi <= Math.max(cuts[cuts.length - 1], zmax)) hi = Math.max(cuts[cuts.length - 1], zmax) + eps;
+    return [lo].concat(cuts, [hi]);
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -30516,11 +30643,14 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             dash_fit_write(src, ac, B.xs, B.cols[0], isci ? B.cols.slice(1) : null);
         }
     } else if (ac.type === 'contour' || ac.type === 'contourline') {
-        // WP-31 B4c: twoway's surface of the kept rows' (x, y, z), cut at
-        // the build's cuts into the layer's one source: contour's bands
-        // (ac.part "fill") or contourline's lines ("line"), the other
-        // columns (colours, widths) as built.  A layer above the cap is
-        // never registered: it keeps its build and the stale cue (D4).
+        // WP-31 B4c: twoway's surface of the kept rows' (x, y, z), cut
+        // into the layer's one source: contour's bands (ac.part "fill")
+        // or contourline's lines ("line").  WP-31 B4d: cut where twoway's
+        // rule (ac.rule) cuts the kept rows' z range, the bands or lines
+        // styled for their count (ac.styles) and the colour key
+        // (contour_keys[ac.key]) given the new cuts and ticks.  A layer
+        // above the cap is never registered: it keeps its build and the
+        // stale cue (D4).
         const _cx = _pick(_ac_data[ac.xvar]), _cy = _pick(_ac_data[ac.yvar]), _cz = _pick(_ac_data[ac.zvar]);
         if (!_cx || !_cy || !_cz) continue;
         let S = dash_contour_surface(_cx, _cy, _cz, ac.interp, ac.cap);
@@ -30531,23 +30661,56 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) tz[ix * S.ny + iy] = S.gz[iy * S.nx + ix];
             S = {gx: S.gy, gy: S.gx, gz: tz, nx: S.ny, ny: S.nx, n: S.n, note: S.note};
         }
-        const _cd = Object.assign({}, ac.extra || {});
+        // The kept rows' z range, over the rows with x, y and z.
+        let _zmin = Infinity, _zmax = -Infinity;
+        for (let i = 0; i < _cz.length; i++) {
+            const a = _cx[i], b = _cy[i], c = _cz[i];
+            if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c)) continue;
+            if (c < _zmin) _zmin = c;
+            if (c > _zmax) _zmax = c;
+        }
+        let _cuts = ac.cuts, _ticks = null, _lo = ac.lo, _hi = ac.hi;
+        if (ac.rule && _zmin <= _zmax) {
+            const _ct = dash_contour_cuts(ac.rule, _zmin, _zmax);
+            _cuts = _ct.cuts; _ticks = _ct.ticks;
+            if (ac.part !== 'line') {
+                const _fl = dash_contour_fill_levels(_cuts, _ticks, _zmin, _zmax);
+                _lo = _fl[0]; _hi = _fl[_fl.length - 1];
+            }
+        }
+        const _st = (ac.styles || {})[String(_cuts.length)];
+        const _cd = Object.assign({}, ac.extra || {}, _st || {});
         if (ac.part === 'line') {
-            const L = dash_contour_lines(S, ac.cuts);
+            const L = dash_contour_lines(S, _cuts);
             _cd.xs = L.xs; _cd.ys = L.ys; _cd.levels = L.levels;
         } else {
             // The outer bands hold every node: their levels reach past
             // the surface's least and greatest node (map_contour's rule).
-            const lv = [ac.lo].concat(ac.cuts, [ac.hi]);
+            const lv = [_lo].concat(_cuts, [_hi]);
             let zlo = Infinity, zhi = -Infinity;
             for (const v of S.gz) if (Number.isFinite(v)) { if (v < zlo) zlo = v; if (v > zhi) zhi = v; }
             if (zlo <= zhi) {
-                lv[0] = Math.min(lv[0], zlo - 1e-9 * (ac.hi - ac.lo));
-                lv[lv.length - 1] = Math.max(lv[lv.length - 1], zhi + 1e-9 * (ac.hi - ac.lo));
+                lv[0] = Math.min(lv[0], zlo - 1e-9 * (_hi - _lo));
+                lv[lv.length - 1] = Math.max(lv[lv.length - 1], zhi + 1e-9 * (_hi - _lo));
             }
             const B = dash_contour_bands(S, lv);
             _cd.xs = B.xs; _cd.ys = B.ys;
             _cd.lower_levels = B.lower_levels; _cd.upper_levels = B.upper_levels;
+            // The colour key: the new cuts inside the span BokehJS sized
+            // it with (it sizes a contour colour bar once), as many
+            // levels as bands plus one, and the new ticks in the key's
+            // format (_dash_contour_bar_follow on the served side).
+            const _kb = (typeof contour_keys !== "undefined" && contour_keys && ac.key !== undefined)
+                ? contour_keys[ac.key] : null;
+            if (_kb && _kb.levels && _kb.levels.length >= 2) {
+                const e0 = _kb.levels[0], e1 = _kb.levels[_kb.levels.length - 1];
+                _kb.levels = [e0].concat(_cuts.map(c => Math.min(Math.max(c, e0), e1)), [e1]);
+                if (_ticks !== null && ac.rule.kind !== 'cuts' && ac.rule.kind !== 'ticks') {
+                    const _kt = _ticks.filter(t => t >= e0 && t <= e1 && t >= _lo && t <= _hi);
+                    if (_kb.ticker) _kb.ticker.ticks = _kt;
+                    _kb.major_label_overrides = new Map(_kt.map(t => [t, dash_fmt_text(t, ac.kfmt)]));
+                }
+            }
         }
         src.data = _cd;
         src.change.emit();
@@ -52615,6 +52778,10 @@ class DashRenderer:
         # derived copy).
         _agg_srcs_all: list = []
         _agg_cfgs_all: list = []
+        # WP-31 B4d: the contour colour keys the refit moves, each config
+        # naming its own by position (``key``).
+        _contour_keys_all: list = []
+        _bars = getattr(self, "_contour_bars", {})
         for _gname, _agg_list in self.agg_source_registry.items():
             _use_i = _use_for(_gname)
             if not _use_i:
@@ -52625,6 +52792,9 @@ class DashRenderer:
                 # initial draw, and "use" is only meaningful to the filter
                 # script.
                 _agg_cfgs_all.append(dict(_agg_cfg, use=_use_i))
+                if id(_agg_cds) in _bars:
+                    _agg_cfgs_all[-1]["key"] = len(_contour_keys_all)
+                    _contour_keys_all.append(_bars[id(_agg_cds)])
 
         # The copies of rows a mapper built, each with its own snapshot,
         # and its own "use".
@@ -52695,6 +52865,8 @@ class DashRenderer:
             _cb.args["all_graph_sources_orig"] = _graph_srcs_orig_all
             _cb.args["agg_sources"]       = _agg_srcs_all
             _cb.args["agg_configs_json"]  = json.dumps(_agg_cfgs_all)
+            if _contour_keys_all:
+                _cb.args["contour_keys"] = _contour_keys_all
             _cb.args["derived_sources"]   = _der_srcs_all
             _cb.args["derived_sources_orig"] = _der_srcs_orig_all
             _cb.args["derived_use_json"]  = _der_use_json_all
@@ -53136,6 +53308,7 @@ class DashRenderer:
         # a plot with its own if/in -- carries the rows it counts, so the
         # recount keeps to them; one drawn from every row carries nothing.
         _n_rows = int(self._embed["rows"].sum())
+        self._contour_bars = {}
         for _gname, _fig in self.figures.items():
             _agg_list = []
             for _r in _fig.renderers:
@@ -53151,6 +53324,11 @@ class DashRenderer:
                 if _rows is not None and len(_rows) < _n_rows:
                     _cfg["member_ids"] = _rows
                 _agg_list.append((_r._dash_agg_source, _cfg))
+                # WP-31 B4d: a contour's colour key, which the page's
+                # refit moves with the bands.
+                _bar = getattr(_r, "_dash_contour_bar", None)
+                if _bar is not None:
+                    self._contour_bars[id(_r._dash_agg_source)] = _bar
             if _agg_list:
                 self.agg_source_registry[_gname] = _agg_list
 
@@ -54477,6 +54655,7 @@ class ServerAppBuilder:
                     # WP-31 B4b: the cuts, colours, lines and key ends
                     # map_contour draws with, in both renderers.
                     _dash_contour_zticks, _dash_contour_cuts,
+                    _dash_contour_cut_rule, _dash_contour_bar_follow,
                     _dash_contour_colours, _dash_contour_line_style,
                     _dash_contour_fill_levels, _dash_is_horizontal_opts,
                     # qfit's and qfitci's shared design (the WP-18 review).
@@ -56344,7 +56523,19 @@ class ServerAppBuilder:
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
-            "            return [_s for _s in _srcs if _s is not _ly]",
+            "            _out = [_s for _s in _srcs if _s is not _ly]",
+            "            # WP-31 B4d: a contour's redrawn levels and its key's",
+            "            # ticks ride on the first source, for the live key.",
+            "            for _rr in _tfig.renderers:",
+            "                if _out and hasattr(_rr, '_dash_contour_sources'):",
+            "                    _kb = getattr(_rr, '_dash_contour_bar', None)",
+            "                    _out[0]._dash_ckey = (",
+            "                        list(_rr.levels),",
+            "                        list(getattr(_kb.ticker, 'ticks', None) or [])",
+            "                        if _kb is not None else [],",
+            "                        dict(_kb.major_label_overrides or {})",
+            "                        if _kb is not None else {})",
+            "            return _out",
             "        return lambda frame: _dash_under_graph_scheme(g, _redraw, frame)",
             "",
             "    def _dash_figure_for(g, gname, g_df, _fac_label=None,",
@@ -56634,6 +56825,13 @@ class ServerAppBuilder:
             "                }",
             "                for _rs in agg_sources[(gname, pi)]['sources']:",
             "                    _redrawn_ids.add(id(_rs))",
+            "                # WP-31 B4d: the contour's colour key, moved with it.",
+            "                for _side in ('right', 'left', 'above', 'below', 'center'):",
+            "                    for _km in getattr(fig, _side, None) or []:",
+            "                        if (type(_km).__name__ == 'ContourColorBar'",
+            "                                and any(_km.fill_renderer.data_source is _rs",
+            "                                        for _rs in _r_srcs)):",
+            "                            agg_sources[(gname, pi)]['ckey'] = _km",
             # Marker labels are the MAPPER's business, in both modes.
             # This is where a second implementation of mlabel() used to
             # live: a hand-written block that ran after the dispatch and
@@ -57383,6 +57581,9 @@ class ServerAppBuilder:
             "                    # Its rows are new too: a selection on them (a",
             "                    # jittered scatter's) is cleared, as in step 2.",
             "                    _live.selected.indices = []",
+            "                _ck = getattr(_fresh[0], '_dash_ckey', None) if _fresh else None",
+            "                if _ck is not None and agg.get('ckey') is not None:",
+            "                    _dash_contour_bar_follow(agg['ckey'], *_ck)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",

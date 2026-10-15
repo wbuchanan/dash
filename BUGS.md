@@ -3958,11 +3958,11 @@
   - Suggested fix: WP-31 section 30 (textbox placement added text): place and orient edge titles through _dash_textbox_place with these sub-options, both modes, measured against twoway.
   - Resolution: Not fixed because WP-31 section 30 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed
+- [x] Title: After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed
   - File Names and Line Numbers: dash_render.py the served _dash_draw_layer contour branch, ContourColorBar
   - Description: GAPS3.md B4, found by WP-31 section 26 (B4b): in the served app a filter move recomputes the contour bands, but the ContourColorBar keeps the cuts and ticks from the build; it shows when the cuts move (levels() or the default zlabel(#5) rule).
   - Suggested fix: WP-31 section 29 (js contour): recompute the colour bar's cuts and ticks with the bands after a move, in the served app and in the saved page's refit.
-  - Resolution: Not fixed because WP-31 section 29 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 15oct2026 (WP-31, B4d). Both modes cut a contour after a filter move where twoway cuts the kept rows and move its colour key with the bands. Served: the redraw hands its contour levels and key ticks to the live ContourColorBar through _dash_contour_bar_follow. Saved: _dash_contour_cut_rule hands twoway's rule to the page's dash_contour_cuts and dash_contour_fill_levels (twins of _dash_contour_cuts and _dash_contour_fill_levels), GlyphMapper._contour_refit_rule the band colours or line styles for every cut count, and the refit writes the key (contour_keys) its levels, ticks and labels. The key keeps the span it was first drawn with, since BokehJS sizes a contour colour bar's range once; twoway draws it over the kept rows' z range (documented in the help). Pinned by test/test_contour_key_moves.py::TestServed::test_the_bar_follows_the_move, test/test_contour_key_moves.py::TestSaved::test_bands_and_bar_follow_the_move, test/test_wp31_truth.cscript U29-6. Closes GAPS3 B4 (WP-31, B4d).
 
 - [ ] Title: A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced
   - File Names and Line Numbers: dash.ado the option catch-all (_dash_parse_plot_opts, _dash_parse_graph_opts); dash_parse.mata _dash_opt_tokens; test_json_escaping.cscript JSE-69

@@ -524,7 +524,12 @@ polygons are cut by a different algorithm from {cmd:twoway}'s, so their
 vertices differ while the level sets agree.  The served app recomputes the
 layer after a filter move, and a saved page recomputes the layer after a
 filter move up to 1,000 distinct points; above that it is marked (grid
-unfiltered), as is any layer the page cannot recompute.  The saved page
+unfiltered), as is any layer the page cannot recompute.  After a move the
+cuts are {cmd:twoway}'s for the rows kept (the z axis's ticks or
+{opt levels()} over their z range), the bands are coloured for their new
+count, and the colour key takes the new cuts and ticks within the span it
+was first drawn with, where {cmd:twoway} would draw the key over the kept
+rows' z range.  The saved page
 cuts the polygons with dash's own routine, so their vertices differ from
 {cmd:twoway}'s while the level sets agree, and a node exactly on a cut may
 join rings differently from the served app's.  {opt heatmap} and {opt outlines} are named in a note
