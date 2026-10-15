@@ -488,11 +488,14 @@ class TestTheSavedPageIsUnchanged:
         # branch change only that code string (likewise measured); and at
         # WP-31 F1g, whose fpfit and fpfitci helpers and branch change only
         # that code string (likewise measured).
+        # Re-derived after WP-31 batch 10: B4c's contour branch changes only
+        # the filter callback's code; D4 gives the legend the scheme's
+        # geometry (glyph size, standoff, margin, padding, spacing, rows).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "e2ee2c5616532494798fa84b11ed69e9cd4504289083987a2f99d551e7f9668e")
+    "4180cf7a313ff51e368b9072cac4c0ee9d5429c7fdb770df368b732f56fe9d66")
 
 
 # ===========================================================================
