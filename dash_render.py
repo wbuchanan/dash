@@ -44209,7 +44209,7 @@ _DASH_ADDED_TEXT_ORIENT = {
 #: (a hand-written spec) is named once and not drawn.
 _DASH_ADDED_TEXT_HONOURED = frozenset({
     "size", "color", "justification", "orientation", "box", "nobox",
-    "fcolor", "lcolor", "lwidth", "margin", "placement",
+    "fcolor", "lcolor", "lwidth", "margin", "placement", "tstyle",
 })
 
 
@@ -44432,6 +44432,22 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
     bad = [k if v == k else f"{k}({v})" for k, v in o.items()
            if k not in _DASH_ADDED_TEXT_HONOURED]
     _dash_report_suboptions("text", bad, seen, key)
+    # tstyle() (WP-31 D13): the base size and colour, before size() and
+    # color(), as on the four main boxes (_dash_textbox_style); twoway
+    # draws text(30 2000 "P", tstyle(heading)) at heading's 14pt.
+    styled = None
+    if o.get("tstyle"):
+        sch = scheme if scheme is not None else \
+            SchemeParser.resolve_or_fallback("s2color", "text()")
+        styled = sch.textbox_style(str(o["tstyle"]))
+        if styled is None:
+            _dash_warn_once(
+                ("textboxstyle", str(o["tstyle"])),
+                "dash: named style %s not found in class textboxstyle, "
+                "default attributes used" % _dash_display(str(o["tstyle"])))
+            styled = sch.textbox_style("body")
+        if styled is not None:
+            base_pt, base_color = styled
     if o.get("placement"):
         out["anchor"] = _DASH_ADDED_TEXT_PLACE.get(
             o["placement"], _DASH_ADDED_TEXT_PLACE["e"])
@@ -44441,6 +44457,9 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
         out["align"] = o["justification"]
     out["px"] = _textbox_size(o, base_pt, ref_in, "text(size)")
     out["color"] = _textbox_color(o, None, base=base_color)
+    if styled is not None:
+        out["px"] = out["px"] or base_pt
+        out["color"] = out["color"] or base_color
     if "box" in o:
         out["box"] = True
     elif "nobox" in o:

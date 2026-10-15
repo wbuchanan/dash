@@ -1,0 +1,65 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "83ed6b7514770396885c95c4b1051452b8b7c2e9",
+  "extracted": "15 Oct 2026 08:57:57",
+  "globals": {
+   "u30e": "`=1+1'!",
+   "u30f": "F",
+   "u30p": "`c(pwd)'",
+   "u30x": "hello"
+  },
+  "source": "scripts/extract_added_text_globals.do",
+  "stata_version": "19.5"
+ },
+ "eval_expr": {
+  "at_lines": [
+   "`=1+1'!"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"$u30e\")",
+  "rc": 0
+ },
+ "eval_pwd": {
+  "at_lines": [
+   "`c(pwd)'"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"$u30p\")",
+  "rc": 0
+ },
+ "global_braces": {
+  "at_lines": [
+   "hello!"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"${u30x}!\")",
+  "rc": 0
+ },
+ "global_dollars": {
+  "at_lines": [
+   "$$"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"$$u30f$$\")",
+  "rc": 0
+ },
+ "global_plain": {
+  "at_lines": [
+   "hello"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"$u30x\")",
+  "rc": 0
+ },
+ "two_lines": {
+  "at_lines": [
+   "hello",
+   "xF"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"$u30x\" \"x$u30f\")",
+  "rc": 0
+ },
+ "unset": {
+  "at_lines": [
+   "a b"
+  ],
+  "command": "scatter mpg weight, text(30 2000 \"a$u30nosuch b\")",
+  "rc": 0
+ }
+}

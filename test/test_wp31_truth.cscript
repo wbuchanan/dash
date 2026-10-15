@@ -6660,6 +6660,10 @@ def _u30_tw(path, case):
         return " ".join(e[0] for e in above)
     if case == "by":
         return "N:%d" % sum(1 for e in texts if e[0] == "N")
+    if case == "at":
+        t = [e for e in texts if e[0] not in ("Mileage (mpg)",
+                                              "Weight (lbs.)")]
+        return "%s %gpt" % (t[0][0], round(t[0][3] / 10.0)) if t else "-"
     return "?"
 
 
@@ -6700,6 +6704,13 @@ def _u30_dash(figs, case):
     if case == "by":
         return "N:%d" % sum(1 for g in figs for side, m in boxes(g)
                             if m.text == "N")
+    if case == "at":
+        labs = [m for m in f.center if isinstance(m, Label)
+                and "dash_added_text" in list(m.tags or [])]
+        # The canvas-text pass keeps "$$" from reading as TeX with a
+        # word joiner (U+2060) between the two; the text drawn is "$$".
+        return ("%s %s" % (labs[0].text.replace("\u2060", ""),
+                           labs[0].text_font_size) if labs else "-")
     return "?"
 
 
@@ -6726,11 +6737,11 @@ program define _u30_reg
     gettoken dir 0 : 0
     gettoken k 0 : 0
     gettoken case 0 : 0
-    quietly twoway `0' name(u30t, replace)
+    quietly twoway `macval(0)' name(u30t, replace)
     quietly graph export "`dir'/t_`k'.svg", replace
     graph drop u30t
     dash clear
-    capture quietly dash `0' name(zu30`k')
+    capture quietly dash `macval(0)' name(zu30`k')
     if _rc {
         global u30_s "rc `=_rc'"
         global u30_v "rc `=_rc'"
@@ -6801,6 +6812,54 @@ if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
     _w31_done U30-6 "by(): ${u30_tw}, saved and served"
 
     macro drop u30_tw u30_s u30_v
+    capture graph drop _all
+    dash clear
+    display as text "S30 end " c(current_date) " " c(current_time)
+}
+* ==== end S30 ====
+
+* ==== S30 D13: Added text style and globals ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
+    display as text "S30 start " c(current_date) " " c(current_time)
+    local u30d "`w31_work'/s30b"
+    capture mkdir "`u30d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U30-9: text(, tstyle(heading)) in the heading's size.
+    _u30_reg "`u30d'" 9 at scatter mpg weight, text(30 2000 "P", tstyle(heading))
+    foreach m in s v {
+        _w31_expect U30-9 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-9 "tstyle(heading) on text(): ${u30_tw}, saved and served"
+
+    // U30-10, U30-11: a line naming a global, the $ kept for the command
+    // (macval), drawn as twoway draws it: $u30x, then $$u30f$$ and
+    // ${u30x}!.  Each command is built by value.
+    global u30x "hello"
+    global u30f "F"
+    local u30q = char(34)
+    local u30s = char(36)
+    foreach c in 10 11a 11b {
+        if "`c'" == "10" local u30l "`u30s'u30x"
+        if "`c'" == "11a" local u30l "`u30s'`u30s'u30f`u30s'`u30s'"
+        if "`c'" == "11b" local u30l "`u30s'{u30x}!"
+        mata: st_local("u30c", "scatter mpg weight, text(30 2000 " + st_local("u30q") + st_local("u30l") + st_local("u30q") + ")")
+        _u30_reg "`u30d'" `c' at `macval(u30c)'
+        local u30id = cond("`c'" == "10", "U30-10", "U30-11")
+        foreach m in s v {
+            _w31_expect `u30id' `"(`"${u30_`m'}"' == `"${u30_tw}"')"' "`m' `c': dash ${u30_`m'}; twoway ${u30_tw}"
+        }
+        if "`c'" == "10" {
+            _w31_done U30-10 "a global in a text() line drawn as twoway draws it, saved and served"
+        }
+        if "`c'" == "11b" {
+            _w31_done U30-11 "nested globals and braces in a text() line drawn as twoway draws them, saved and served"
+        }
+    }
+    macro drop u30x u30f u30_tw u30_s u30_v
     capture graph drop _all
     dash clear
     display as text "S30 end " c(current_date) " " c(current_time)

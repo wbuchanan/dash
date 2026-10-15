@@ -198,7 +198,8 @@ class TestTheTextIsDrawn:
 
 #: Each drawn auto probe of the fixture, as the records dash.ado writes for
 #: it, and the graph options its command sets.  `noted' is left out: its
-#: tstyle(heading) is named, not drawn (register P1.10.2).
+#: width() and linegap() are named, not drawn (register P1.10.2); its
+#: tstyle(heading) is drawn since WP-31 D13 (test_added_text_style.py).
 _PROBE_RECORDS = {
     "aaa": [_at(30, 3000, ["AAA"])],
     "two": [_at(30, 3000, ["AAA"], "size(large) color(red)"),

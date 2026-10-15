@@ -8940,7 +8940,7 @@ program define _dash_at_opts
     }
     local _nt ""
     foreach _n in width height astextbox noastextbox bexpand nobexpand ///
-        drawview ascircle tstyle angle alignment linegap bmargin lpattern ///
+        drawview ascircle angle alignment linegap bmargin lpattern ///
         lstyle lalign blpattern blstyle blalign {
         if `: length local `_n'' local _nt `_nt' `_n'
     }
@@ -8978,6 +8978,10 @@ program define _dash_added_text
     local _u1 `_dash_a4'
     local _u2 `_dash_a5'
     mata: st_local("_at_rc", strofreal(_dash_at_parse(st_local("_dash_txt"), st_local("_kind") == "ttext")))
+    if `_at_rc' {
+        mata: _dash_say("err", st_local("_kind"), "(): expanded text is too long", "")
+        exit 198
+    }
     local _noted ""
     forvalues k = 1/`_at_k' {
         mata: _dash_at_copy(`k')

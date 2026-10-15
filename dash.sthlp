@@ -686,11 +686,21 @@ size.  Drawn: {opt placement()} (every compass name and clock position
 ({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}),
 {opt size()}, {opt color()}, {opt box} and {opt nobox}, {opt fcolor()}
 and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
-{opt lwidth()} and {opt blwidth()} and {opt margin()}; the scheme's
-{cmd:text_option} box otherwise.  Every other textbox sub-option
-{cmd:twoway} takes ({opt width()}, {opt height()}, {opt linegap()},
-{opt tstyle()}, {opt angle()}, {opt alignment()} ...) is named once in a
-note and not drawn.  Refused with {cmd:r(198)} in {cmd:twoway}'s words:
+{opt lwidth()} and {opt blwidth()}, {opt margin()} and {opt tstyle()}
+(the base size and colour, {cmd:tstyle(heading)} the heading's, which
+{opt size()} and {opt color()} still override; an unknown name draws the
+default with {cmd:twoway}'s note); the scheme's {cmd:text_option} box
+otherwise.  Every other textbox sub-option {cmd:twoway} takes
+({opt width()}, {opt height()}, {opt linegap()}, {opt angle()},
+{opt alignment()} ...) is named once in a note and not drawn.  A
+{cmd:$}{it:name} or {cmd:$}{cmd:{c -(}}{it:name}{cmd:{c )-}} that reaches
+{cmd:dash} in a line -- written {cmd:\$name} in a do-file, or passed
+through {cmd:macval()} -- is replaced by the global's value when the graph
+is registered, as {cmd:twoway} expands it ({cmd:$$f$$} is read inside out,
+as Stata reads it), by text only: a global holding {cmd:`=1+1'} is drawn
+as written, where {cmd:twoway} evaluates it.  A line whose globals expand
+past 4,000 characters is refused, {cmd:text(): expanded text is too long},
+{cmd:r(198)}.  Refused with {cmd:r(198)} in {cmd:twoway}'s words:
 a point that is not two numbers ({cmd:invalid point, BAD 30}), an axis
 pair no plot draws ({cmd:text() option invalid, specified axis pair (2 1)}
 {cmd:not in graph}) and a sub-option {cmd:twoway} does not take

@@ -3896,7 +3896,9 @@ _jg_stored jg69a "graph_options by"
 local jg_ok "`jg_ok'`r(ok)'"
 * Flipped (WP-30 P1.10): text()'s line is stored as typed in its
 * added_text record; it was the option's raw value.
-mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+* flipped WP-31 D13: a $name in a text() line is replaced by the global's
+* value, by text, as twoway expands it (_dash_at_globals); nothing runs.
+mata: st_global("JG_WANT", "t" + st_global("J6_G"))
 _jg_stored jg69b "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "label(1 " + char(36) + "J6_T)")
@@ -4120,8 +4122,9 @@ capture dash clear
 // AT-13, AT-14, AT-16 -- text() read by value (WP-30 P1.10)
 // ----------------------------------------------------------------
 // A copy's lines, point and sub-options are read by Mata as data
-// (_dash_at_parse, _dash_at_opts): a $global or an =exp in them is never
-// expanded or run, and a char(30) inside a quoted line is the line's own,
+// (_dash_at_parse, _dash_at_opts): an =exp in them is never run, a
+// $global in a line is replaced by its value as text (WP-31 D13) and kept
+// as typed elsewhere, and a char(30) inside a quoted line is the line's own,
 // not the separator _dash_rep_merge puts between copies.
 global J6_G "Audi 5000"
 global J6_P "30"
@@ -4130,9 +4133,12 @@ local at_sent "`c(tmpdir)'j13"
 capture erase "`at_sent'"
 capture dash clear
 // AT-13: the line as typed, a $global and an =exp in it.
+* flipped WP-31 D13: the $global is replaced by its value, by text, as
+* twoway expands it (_dash_at_globals); the =exp is still stored as typed
+* and nothing runs.
 capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G" "\`=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))'") name(at13)
 local at_r13 = _rc
-mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+mata: st_global("JG_WANT", "t" + st_global("J6_G"))
 _jg_stored at13 "graph_options added_text 0 at_lines 0"
 local at_ok13 "`r(ok)'"
 mata: st_global("JG_WANT", char(96) + "=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))" + char(39))
@@ -4143,7 +4149,7 @@ local at_ran = (_rc == 0)
 if `at_r13' | "`at_ok13'" != "11" | `at_ran' {
     display as error "AT-13 FAIL: rc `at_r13', stored `at_ok13', filewrite ran `at_ran'"
 }
-else display "AT-13 PASS: a global and an =exp in a line are stored as typed and nothing runs"
+else display "AT-13 PASS: a global in a line is its value, an =exp is stored as typed, and nothing runs"
 // AT-14: a $global as a point is no number (refused, shown as typed); in a
 // sub-option it is kept as typed.
 local at_l14 "`c(tmpdir)'dash_at14.log"

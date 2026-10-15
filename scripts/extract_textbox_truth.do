@@ -13,9 +13,11 @@
 *!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_textbox_truth.do
 *!
 *! The git commit is read from a file `shell' wrote, never with shell=True.
-*! The three global probes escape their dollar signs, so the do-file's own
-*! macro expansion leaves `$u30x' for twoway to read; each row records the
-*! command twoway ran.
+*! The global probes escape their dollar signs and every command runs
+*! through macval(), so the do-file's own macro expansion leaves `$u30x'
+*! for twoway to read; each row records the command twoway ran.  twoway
+*! expands the global itself, and a global holding `=1+1' is evaluated
+*! (global_eval).
 
 clear all
 set more off
@@ -72,7 +74,7 @@ program define _tb_run
     capture graph drop u30k
     capture log close tbr
     quietly log using "${TB_WORK}/r_`key'.log", text replace name(tbr)
-    capture noisily `cmd'
+    capture noisily `macval(cmd)'
     local rc = _rc
     quietly log close tbr
     global TB_R_`key' "`rc'"
@@ -106,6 +108,9 @@ global u30f "F"
 _tb_run global_plain `"twoway scatter mpg weight, text(30 2000 "\$u30x") name(u30k, replace)"'
 _tb_run global_dollars `"twoway scatter mpg weight, text(30 2000 "\$\$u30f\$\$") name(u30k, replace)"'
 _tb_run global_braces `"twoway scatter mpg weight, text(30 2000 "\${u30x}!") name(u30k, replace)"'
+mata: st_global("u30e", char(96) + "=1+1" + char(39) + "!")
+_tb_run global_eval `"twoway scatter mpg weight, text(30 2000 "\$u30e") name(u30k, replace)"'
+global TB_C_global_eval `"twoway scatter mpg weight, text(30 2000 "\$u30e")"'
 global TB_C_global_plain `"twoway scatter mpg weight, text(30 2000 "\$u30x")"'
 global TB_C_global_dollars `"twoway scatter mpg weight, text(30 2000 "\$\$u30f\$\$")"'
 global TB_C_global_braces `"twoway scatter mpg weight, text(30 2000 "\${u30x}!")"'
@@ -196,11 +201,11 @@ keys = ["pos_%d" % k for k in range(13)] + \
     ["plain", "span_pos0", "box", "note_plain", "tstyle_heading",
      "tstyle_size", "tstyle_bad", "just_left", "order", "user_ring",
      "linegap_0", "linegap_3", "at_plain", "at_tstyle", "global_plain",
-     "global_dollars", "global_braces", "e_t1_plain", "e_t1_pos3",
+     "global_dollars", "global_braces", "global_eval", "e_t1_plain", "e_t1_pos3",
      "e_t1_pos6", "e_l1_pos12", "e_t1_ring0", "e_t1_ring8", "e_t1_span",
      "e_l1_horiz", "e_t1_vert"]
 out = {k: row(k) for k in keys}
-for k in ("global_plain", "global_dollars", "global_braces"):
+for k in ("global_plain", "global_dollars", "global_braces", "global_eval"):
     out[k]["command"] = G("TB_C_" + k)
     out[k]["text"] = next((t["text"] for t in out[k]["texts"]
                            if t["text"] not in ("Mileage (mpg)",
@@ -215,7 +220,8 @@ except OSError:
 out["_meta"] = {"stata_version": G("TB_VERSION"), "born_date": G("TB_BORN"),
                 "dash_commit": commit, "extracted": G("TB_WHEN"),
                 "members": members, "scheme": "s2color",
-                "globals": {"u30x": "hello", "u30f": "F"},
+                "globals": {"u30x": "hello", "u30f": "F",
+                            "u30e": G("u30e")},
                 "source": "scripts/extract_textbox_truth.do"}
 with open(G("TB_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)

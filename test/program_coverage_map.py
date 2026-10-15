@@ -818,6 +818,7 @@ COVERAGE = {
         "_dash_at_copy": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-03"),
         "_dash_at_place": ("test_wp30_truth.cscript:AT-21", "test_twoway_option_parity.cscript:AT-05"),
         "_dash_at_orient": ("test_twoway_option_parity.cscript:AT-05",),
+        "_dash_at_globals": ("test_wp31_truth.cscript:U30-10",),
         "_dash_at_json": ("test_twoway_option_parity.cscript:AT-04", "test_wp30_truth.cscript:AT-20"),
         "_dash_at_records": ("test_twoway_option_parity.cscript:AT-04",),
         "_dash_at_canon": ("test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-05"),

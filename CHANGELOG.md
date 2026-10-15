@@ -422,7 +422,7 @@ and now matches Stata.
 
 - `dash scatter mpg weight, title("T", position(6))`: title above, note printed -> title below the plot region; `ring(0)`/`position(0)` inside the plot region, rings ordering the boxes, `box`, its colours, `margin()`, `linegap()`, `justification()`, `alignment()` and `tstyle()` drawn on `title()`, `subtitle()`, `note()` and `caption()` as twoway draws them (WP-31, D3)
 
-<!-- WP-31 D13 -->
+- `dash scatter mpg weight, text(30 2000 "$x")` with the `$` kept for dash (`\$x` in a do-file, or `macval()`): drew $x -> draws the global's value, as twoway draws it, by text only; `text(..., tstyle(heading))`: named -> drawn in the heading's size and colour (WP-31, D13)
 
 <!-- WP-31 D4 -->
 

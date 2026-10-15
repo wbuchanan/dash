@@ -289,6 +289,10 @@
 *!   _dash_at_orient(o)
 *!       twoway's orientation for orientation(o), "" for a name it notes.
 *!
+*!   _dash_at_globals(s)
+*!       s with each $name and ${name} replaced by the global's value, by
+*!       text, never evaluated (WP-31 D13).
+*!
 *!   _dash_at_canon()
 *!       One copy's drawn sub-options from the caller's syntax locals, in
 *!       full names, JSON-escaped.
@@ -9633,7 +9637,7 @@ real scalar _dash_at_isnum(string scalar tok)
 // ("invalid point, <x> <y>"); _dash_at_R, one row per point with a line
 // that is not empty: y, x, the lines (a JSON array of escaped strings),
 // its copy, and "1" when x is a date literal to convert.  Sets the
-// caller's locals _at_k (copies) and _at_n (records).  Returns 0.  Reads
+// caller's locals _at_k (copies) and _at_n (records).  Returns 0, or 198 when a line its globals expand (_dash_at_globals) passes 4,000 bytes.  Reads
 // and writes by value only; 100,000 one-point copies take well under a
 // second (AT-04b).
 real scalar _dash_at_parse(string scalar raw, real scalar datesok)
@@ -9641,7 +9645,7 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
     external string matrix _dash_at_R, _dash_at_C
     real colvector st, ln, kd, cp, os, ol
     real rowvector bb
-    string scalar  y, x, line, js, bare, ks
+    string scalar  y, x, line, js, bare, ks, g
     real scalar    nk, k, j, nt, n, state, pts, any, isd, q
 
     nk = _dash_at_lex(raw, st, ln, kd, cp, os, ol, nt)
@@ -9691,6 +9695,17 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
                 }
                 line = _dash_at_unq(substr(raw, st[j], ln[j]), q)
                 j++
+                // A global the line names, as twoway expands it (WP-31
+                // D13), by text: an expansion past 4,000 bytes is refused.
+                if (strpos(line, "$")) {
+                    g = _dash_at_globals(line)
+                    if (g != line & strlen(g) > 4000) {
+                        st_local("_at_k", "0")
+                        st_local("_at_n", "0")
+                        return(198)
+                    }
+                    line = g
+                }
                 // _json_escape() only where a byte needs it.
                 bb = ascii(line)
                 if (cols(bb)) {
@@ -9809,6 +9824,42 @@ string scalar _dash_at_orient(string scalar o)
     return("")
 }
 
+// _dash_at_globals(s) -- s with each $name and ${name} (name
+// [A-Za-z_][A-Za-z0-9_]*, at most 32 characters) replaced by st_global()'s
+// value, as twoway expands a text() line (WP-31 D13; textbox_truth.json
+// global_plain hello, global_braces hello!, global_dollars: "$$u30f$$" is
+// "$$", the inner $u30f naming F and $F empty).  Read right to left, so a
+// $ just before a replaced value takes its name from that value, as
+// Stata's nested $$ does; each $ of s is read once, so it ends.  A $
+// followed by anything else is kept.  The value is text: a global holding
+// `=1+1' is drawn as written, where twoway evaluates it (global_eval) --
+// user text is never evaluated.  Stops once the text passes 4,000 bytes;
+// the caller refuses that.
+string scalar _dash_at_globals(string scalar s)
+{
+    string scalar rest, nm
+    real scalar   i, L
+
+    for (i = strlen(s); i >= 1; i--) {
+        if (substr(s, i, 1) != "$") continue
+        rest = substr(s, i + 1, .)
+        nm = ""
+        L = 0
+        if (ustrregexm(rest, "^[{]([A-Za-z_][A-Za-z0-9_]*)[}]")) {
+            nm = ustrregexs(1)
+            L = strlen(nm) + 2
+        }
+        else if (ustrregexm(rest, "^([A-Za-z_][A-Za-z0-9_]*)")) {
+            nm = ustrregexs(1)
+            L = strlen(nm)
+        }
+        if (nm == "" | strlen(nm) > 32) continue
+        s = substr(s, 1, i - 1) + st_global(nm) + substr(rest, L + 1, .)
+        if (strlen(s) > 4000) return(s)
+    }
+    return(s)
+}
+
 // _dash_at_json(kind, y, x, ya, xa, lines, opts) -- one added_text record:
 // {"at_kind":..,"at_y":..,"at_x":..,"at_yaxis":..,"at_xaxis":..,
 // "at_lines":[..],"at_opts":".."}.  Numbers in %21.0g; lines already a
@@ -9858,7 +9909,7 @@ void _dash_at_records(string scalar kind)
 
 // _dash_at_canon() -- the drawn sub-options of one copy, read from the
 // caller's (_dash_at_opts's) syntax locals by value, in full names:
-// size() color() justification() orientation() box or nobox fcolor()
+// size() color() tstyle() justification() orientation() box or nobox fcolor()
 // lcolor() lwidth() margin() placement(), bfcolor() blcolor() blwidth()
 // standing in for the plain ones when those are absent and bcolor() for
 // both colours when neither is given; _json_escape()d.  orientation()
@@ -9873,6 +9924,8 @@ string scalar _dash_at_canon()
     if (v != "") out = out + " size(" + v + ")"
     v = st_local("color")
     if (v != "") out = out + " color(" + v + ")"
+    v = st_local("tstyle")
+    if (v != "") out = out + " tstyle(" + v + ")"
     v = st_local("justification")
     if (v != "") out = out + " justification(" + v + ")"
     o = _dash_at_orient(st_local("orientation"))

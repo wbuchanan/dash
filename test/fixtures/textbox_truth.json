@@ -1,9 +1,10 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "364f9e026e204aad9bb4168f457e05e2c72fa821",
-  "extracted": "15 Oct 2026 08:15:56",
+  "dash_commit": "83ed6b7514770396885c95c4b1051452b8b7c2e9",
+  "extracted": "15 Oct 2026 08:56:15",
   "globals": {
+   "u30e": "`=1+1'!",
    "u30f": "F",
    "u30x": "hello"
   },
@@ -1016,6 +1017,82 @@
     "rotate": 0.0,
     "size": 99.99,
     "text": "$$",
+    "x": 701.66,
+    "y": 1001.67
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ]
+ },
+ "global_eval": {
+  "command": "twoway scatter mpg weight, text(30 2000 \"$u30e\")",
+  "note": "",
+  "plot": {
+   "h": 2388.33,
+   "style": "fill:#FFFFFF",
+   "w": 3468.22,
+   "x": 390.8,
+   "y": 100.86
+  },
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2388.33,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 100.86
+   },
+   {
+    "h": 2382.57,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   }
+  ],
+  "text": "2!",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "text": "2!",
     "x": 701.66,
     "y": 1001.67
    },

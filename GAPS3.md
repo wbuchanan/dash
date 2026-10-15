@@ -484,7 +484,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D10 Tracked:** Open (WP-31 section 36).
 - **D11 Tracked:** Open (WP-31 section 37).
 - **D12 Tracked:** Open (WP-31 section 38).
-- **D13 Tracked:** Open (WP-31 section 30).
+- **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit pending.
 - **D14 Tracked:** Open (WP-31 section 39).
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Open (WP-31 section 39).
