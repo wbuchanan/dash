@@ -788,6 +788,27 @@ gridringstyle caption_ring   4
 gridringstyle note_ring      6
 
 * ---------------------------------------------------------------------------
+* Added 15oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> economist); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Marker size and legend placement.
+gridringstyle legend_ring       3
+gsize legend_key_xsize  6
+gsize legend_key_ysize  medium
+gsize legend_key_gap    vsmall
+gsize legend_row_gap    tiny
+gsize legend_col_gap    large
+margin legend            small
+margin legend_boxmargin  small
+yesno legend_col_first  no
+yesno legend_span       yes
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -878,6 +899,16 @@ gridringstyle note_ring      6
 * provenance: symbolsize p -- transcribed from scheme-economist.scheme:95 `symbolsize p large'
 * provenance: clockdir legend_position -- transcribed from scheme-economist.scheme:315 `clockdir legend_position 12'
 * provenance: numstyle legend_cols -- transcribed from scheme-economist.scheme:20 `numstyle legend_cols 3'
+* provenance: gridringstyle legend_ring -- transcribed from scheme-economist.scheme:323 `gridringstyle legend_ring 3'
+* provenance: gsize legend_key_xsize -- transcribed from scheme-economist.scheme:59 `gsize legend_key_xsize 6'
+* provenance: gsize legend_key_ysize -- transcribed from scheme-economist.scheme:60 `gsize legend_key_ysize medium'
+* provenance: gsize legend_key_gap -- transcribed from scheme-economist.scheme:58 `gsize legend_key_gap vsmall'
+* provenance: gsize legend_row_gap -- transcribed from scheme-economist.scheme:56 `gsize legend_row_gap tiny'
+* provenance: gsize legend_col_gap -- transcribed from scheme-economist.scheme:57 `gsize legend_col_gap large'
+* provenance: margin legend -- transcribed from scheme-s2color.scheme:750 `margin legend small'
+* provenance: margin legend_boxmargin -- transcribed from scheme-s2color.scheme:752 `margin legend_boxmargin small'
+* provenance: yesno legend_col_first -- transcribed from scheme-economist.scheme:435 `yesno legend_col_first no'
+* provenance: yesno legend_span -- transcribed from scheme-economist.scheme:446 `yesno legend_span yes'
 * provenance: gridringstyle title_ring -- transcribed from scheme-economist.scheme:319 `gridringstyle title_ring 6'
 * provenance: gridringstyle subtitle_ring -- transcribed from scheme-economist.scheme:320 `gridringstyle subtitle_ring 5'
 * provenance: gridringstyle caption_ring -- transcribed from scheme-economist.scheme:321 `gridringstyle caption_ring 4'
