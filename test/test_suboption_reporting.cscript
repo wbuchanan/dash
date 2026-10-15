@@ -20,8 +20,9 @@
 *!          holes(1) (flipped, WP-31 D4: span is taken in silence and
 *!          holes() drawn, as twoway's legend_g lays them out).
 *!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
-*!   SR-03  ylabel(, labgap(2)) names labgap(2) (flipped, WP-30 P1.18a:
-*!          labcolor() is drawn).
+*!   SR-03  ylabel(, labgap(2) labstyle(x)) names labstyle(x) (flipped,
+*!          WP-30 P1.18a: labcolor() is drawn; WP-31 D6: labgap() is
+*!          drawn, a style name is named).
 *!   SR-04  yscale(reverse noline titlegap(2) outergap(1)) names
 *!          outergap(1), not the drawn reverse, noline and titlegap()
 *!          (flipped, WP-30 P1.18a).
@@ -239,15 +240,15 @@ if r(bad) {
 }
 else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 
-_sr_render `"dash scatter mpg weight, ylabel(, labgap(2))"'
+_sr_render `"dash scatter mpg weight, ylabel(, labgap(2) labstyle(x))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-03 "`lg'" ylabel "labgap(2)" ""
+_sr_check SR-03 "`lg'" ylabel "labstyle(x)" "labgap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-03"
 }
-else display as text "SR-03 PASS: ylabel(, labgap(2)) is named"
+else display as text "SR-03 PASS: ylabel(, labstyle(x)) is named, the drawn labgap() is not"
 
 _sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
 local lg `"`r(logfile)'"'

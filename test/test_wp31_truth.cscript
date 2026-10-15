@@ -7487,6 +7487,194 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
 }
 * ==== end S32 ====
 
+// S33 (WP-31 D6) helpers: draw one command in twoway (SVG export and
+// log) and in dash (both modes, log), and describe one axis fact for one
+// case into globals u33_tw (twoway), u33_s (saved) and u33_v (served).
+// twoway's SVG is 10 units a point; dash's widths are px (4/3 a point).
+python:
+def _u33_svg(path):
+    import os, sys
+    sys.path.insert(0, os.path.join(os.getcwd(), "..", "scripts"))
+    import svg_truth
+    return svg_truth.svg_document(path)
+
+
+def _u33_tw(case, svg, svg0, tlog):
+    d = _u33_svg(svg)
+    with open(tlog, encoding="utf-8") as fh:
+        log = fh.read()
+    if case == "look":
+        d0 = _u33_svg(svg0)
+        moved = d["plotregion"]["left"] - d0["plotregion"]["left"]
+        tick = [h for h in d["hlines"] if h["stroke"] == "#000000"
+                and abs(h["x2"] - h["x1"]) < 100][0]["width"]
+        grid = [h for h in d["hlines"] if h["stroke"] == "#eaf2f3"]
+        return "%d %.2f %.2f %s" % (
+            5 + round(moved / 10 * 4 / 3), tick / 10 * 4 / 3,
+            grid[0]["width"] / 10 * 4 / 3,
+            "dashed" if len(grid) > 4 else "solid")
+    if case == "alt":
+        xs = sorted((t["x"], t["y"]) for t in d["texts"]
+                    if t["text"].replace(",", "").isdigit()
+                    and not t.get("rotate"))
+        rows = sorted({round(y, 1) for _x, y in xs})
+        return "%d rows, first %s" % (
+            len(rows), "near" if round(xs[0][1], 1) == rows[0] else "far")
+    if case == "minmax":
+        return " ".join(t["text"] for t in d["texts"]
+                        if t.get("rotate") and t["text"].isdigit())
+    if case == "dh":
+        n = len([t for t in d["texts"] if t.get("rotate")
+                 and t["text"].isdigit()])
+        return "%s labels %d" % (
+            "noted" if "##5 ignored, only allowed for minor ticks" in log
+            else "silent", n)
+
+
+def _u33_dash(figs, case, log):
+    f = figs[0]
+    yax = [a for a in f.left if "dash_alt_axis" not in (a.tags or [])][0]
+    if case == "look":
+        g = [g for g in f.ygrid][0]
+        return "%d %.2f %.2f %s" % (
+            yax.major_label_standoff, yax.major_tick_line_width,
+            g.grid_line_width, "dashed" if g.grid_line_dash else "solid")
+    if case == "alt":
+        tw = [a for a in f.below if "dash_alt_axis" in (a.tags or [])]
+        ax = [a for a in f.below if "dash_alt_axis" not in (a.tags or [])]
+        if len(tw) != 1:
+            return "%d rows" % (1 + len(tw))
+        ok = (dict(ax[0].formatter.args)["parity"] == 0
+              and dict(tw[0].formatter.args)["parity"] == 1)
+        return "2 rows, first %s" % ("near" if ok else "far")
+    if case == "minmax":
+        return " ".join("%g" % v for v in yax.ticker.ticks)
+    if case == "dh":
+        t = yax.ticker
+        n = len(getattr(t, "ticks", None) or [])
+        return "%s labels %d" % (
+            "noted" if "##5 ignored, only allowed for minor ticks" in log
+            else "silent", n)
+
+
+def _u33_docs(sp, dp, app):
+    """_u03_docs with each mode's notes: (saved figures, served figures,
+    saved notes, served notes)."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w1:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u33_app")
+    with warnings.catch_warnings(record=True) as w2:
+        warnings.simplefilter("always")
+        exec(compile(src.replace(attach, "pass"), "dash_u33_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return (list(r.figures.values()), sv,
+            "\n".join(str(x.message) for x in w1),
+            "\n".join(str(x.message) for x in w2))
+
+
+def _u33_check(sp, dp, app, svg, svg0, tlog, dlog, case):
+    from sfi import Macro
+    a, b, na, nb = _u33_docs(sp, dp, app)
+    Macro.setGlobal("u33_tw", _u33_tw(case, svg, svg0, tlog))
+    for figs, notes, sfx in ((a, na, "s"), (b, nb, "v")):
+        Macro.setGlobal("u33_" + sfx, _u33_dash(figs, case, notes))
+    Macro.setGlobal("u33_noted", "1" if "not implemented" in na + nb
+                    else "0")
+end
+
+capture program drop _u33_reg
+program define _u33_reg
+    // _u33_reg <dir> <k> <case> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    capture graph drop u33t
+    capture log close u33l
+    quietly log using "`dir'/t`k'.log", text replace name(u33l)
+    capture noisily twoway `0' name(u33t, replace)
+    quietly log close u33l
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u33t
+    dash clear
+    quietly log using "`dir'/d`k'.log", text replace name(u33l)
+    capture noisily dash `0' name(zu33`k')
+    local drc = _rc
+    quietly log close u33l
+    if `drc' {
+        global u33_s "rc `drc'"
+        global u33_v "rc `drc'"
+        global u33_tw "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u33_m; _u33_m._u33_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`dir'/t0.svg", "`dir'/t`k'.log", "`dir'/d`k'.log", "`case'")
+end
+
+* ==== S33 D6: Axis label, tick and grid sub-options ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
+    display as text "S33 start " c(current_date) " " c(current_time)
+    local u33d "`w31_work'/s33"
+    capture mkdir "`u33d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(u33t, replace)
+    quietly graph export "`u33d'/t0.svg", replace
+    graph drop u33t
+
+    // U33-01: labgap(), tlwidth(), glwidth() and glpattern() drawn as
+    // twoway draws them, with no note.
+    _u33_reg "`u33d'" 1 look scatter mpg weight, ylabel(, labgap(large) tlwidth(thick) glwidth(thick) glpattern(dash) grid)
+    foreach m in s v {
+        _w31_expect U33-01 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_expect U33-01 `"(${u33_noted} == 0)"' "dash named a drawn sub-option"
+    _w31_done U33-01 "labgap(), tlwidth(), glwidth() and glpattern() as twoway's, saved and served, no note"
+
+    // U33-02: alternate staggers the labels on two rows, the first near.
+    _u33_reg "`u33d'" 2 alt scatter mpg weight, xlabel(1500(500)5000, alternate)
+    foreach m in s v {
+        _w31_expect U33-02 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-02 "xlabel(, alternate) on two rows as twoway, saved and served"
+
+    // U33-03: minmax over every layer.
+    _u33_reg "`u33d'" 3 minmax (scatter mpg weight) (scatter trunk weight), ylabel(minmax)
+    foreach m in s v {
+        _w31_expect U33-03 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-03 "ylabel(minmax) labels every layer's extremes, saved and served"
+
+    // U33-04: ##5 on ylabel() is noted and draws what none draws.
+    _u33_reg "`u33d'" 4 dh scatter mpg weight, ylabel(##5)
+    foreach m in s v {
+        _w31_expect U33-04 `"("${u33_`m'}" == "${u33_tw}")"' "`m': dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-04 "ylabel(##5) noted and drawn as twoway draws it, saved and served"
+
+    macro drop u33_tw u33_s u33_v u33_noted
+    capture graph drop _all
+    dash clear
+    display as text "S33 end " c(current_date) " " c(current_time)
+}
+* ==== end S33 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

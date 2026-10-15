@@ -120,6 +120,9 @@
 *!   _dash_layout_refusal(layout, registry)
 *!       "" when dash build can draw layout() as written, else the refusal.
 *!
+*!   _dash_axlabel_refusal(text)
+*!       The part of an axis label value twoway refuses, or "" (WP-31 D6).
+*!
 *!   _dash_expand_plottype(abbrev, out_macro)
 *!       The plot type abbrev names, abbreviated as twoway allows, into
 *!       out_macro; "" when it names no type dash draws.
@@ -1859,6 +1862,94 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
         }
     }
     return("")
+}
+
+// _dash_axlabel_refusal(text) -- the part of an xlabel()/ylabel()/xtick()/
+// ytick() value twoway refuses with r(198) "invalid label specifier, :
+// <part>:", or "" when twoway draws it (WP-31 D6; measured,
+// test/fixtures/axis_look_truth.json ref_*).  After an optional leading
+// rule (#N, ##N, minmax, none or a lone a(b)c) twoway reads the rest of
+// the head as values each followed by at most one label: a quoted label
+// with no value before it ("a"; 1 "a" "b"), a second rule (#3 #4) or an
+// unfinished a(b)c (1(1)) is refused, and the part named is the head
+// after the leading rule.  Linear in the length of text.
+string scalar _dash_axlabel_refusal(string scalar text)
+{
+    string rowvector w
+    string scalar    head, rest, t, c
+    real scalar      n, i, k, in_dq, in_cq, nxt, cut, p1, p2, prev, bad
+
+    n = strlen(text)
+    head = text
+    in_dq = 0
+    in_cq = 0
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(text, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        if (substr(text, i, 1) == ",") {
+            k = i + 1
+            while (k <= n & (substr(text, k, 1) == " " | substr(text, k, 1) == char(9))) k++
+            c = (k <= n ? substr(text, k, 1) : "")
+            if (c == "" | _dash_ascii_in(c, 65, 90) | _dash_ascii_in(c, 97, 122) | c == "_") {
+                head = substr(text, 1, i - 1)
+                break
+            }
+        }
+        i++
+    }
+    head = strtrim(head)
+    w = _dash_rep_toks(subinstr(head, ",", " "), 0)
+    if (!cols(w)) return("")
+    rest = head
+    cut = 0
+    t = w[1]
+    if (substr(t, 1, 1) == "#" | t == "minmax" | t == "none") cut = 1
+    else if (cols(w) == 1 & _dash_axlabel_rule(t)) cut = 1
+    if (cut) {
+        rest = strtrim(substr(head, strpos(head, t) + strlen(t), .))
+    }
+    prev = 0
+    bad = 0
+    for (i = cut + 1; i <= cols(w); i++) {
+        t = w[i]
+        c = substr(t, 1, 1)
+        if (c == char(34) | c == char(96)) {
+            // A label needs a value before it.
+            if (prev != 1) bad = 1
+            prev = 2
+        }
+        else if (c == "#") bad = 1
+        else {
+            p1 = strpos(t, "(")
+            p2 = strpos(t, "[")
+            // Only a number-led word is a rule: td(1jan2000) is a date.
+            if ((p1 | p2) & (strtoreal(substr(t, 1, 1)) < . |
+                c == "-" | c == "+" | c == ".") & !_dash_axlabel_rule(t)) bad = 1
+            prev = 1
+        }
+        if (bad) return(rest)
+    }
+    return("")
+}
+
+// _dash_axlabel_rule(t) -- 1 when the word t is a whole a(b)c or a[b]c.
+real scalar _dash_axlabel_rule(string scalar t)
+{
+    real scalar p1, p2
+    p1 = strpos(t, "(")
+    p2 = strpos(t, ")")
+    if (!p1) {
+        p1 = strpos(t, "[")
+        p2 = strpos(t, "]")
+    }
+    if (!(p1 > 1 & p2 > p1 + 1 & p2 < strlen(t))) return(0)
+    return(strtoreal(substr(t, 1, p1 - 1)) < . &
+           strtoreal(substr(t, p1 + 1, p2 - p1 - 1)) < . &
+           strtoreal(substr(t, p2 + 1, .)) < .)
 }
 
 

@@ -442,6 +442,7 @@ program define _dash_require_mata
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
+        _dash_axlabel_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
@@ -8084,6 +8085,16 @@ program define _dash_plot
         if `"`macval(`_lx')'"' != "" _dash_line_expand `_lx' `"`macval(`_lx')'"'
     }
     _dash_subopt_check zlabel
+    // The label forms twoway refuses, in its words (WP-31 D6; measured,
+    // test/fixtures/axis_look_truth.json ref_*): r(198) "invalid label
+    // specifier, :  <the part>:" (two blanks, as twoway writes it).
+    foreach _alo in xlabel ylabel xtick ytick xlabel2 ylabel2 xtick2 ytick2 {
+        mata: st_local("_alr", _dash_axlabel_refusal(st_local("g_`_alo'")))
+        if `"`macval(_alr)'"' != "" {
+            mata: _dash_say("err", "invalid label specifier, :  ", st_local("_alr"), ":")
+            exit 198
+        }
+    }
     _dash_subopt_check title
 
     // ---- The t-options onto the x axis (WP-30 P1.6) ----

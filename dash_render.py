@@ -36433,7 +36433,14 @@ def _dash_parse_axis_spec(raw, minor=False):
            "show_labels": None, "show_ticks": None, "labcolor": None,
            "tlength": None, "tposition": None, "angle_bad": None,
            # WP-31 D1: ##N (minor options) or the ignored token.
-           "between": None, "between_ignored": None}
+           "between": None, "between_ignored": None,
+           # WP-31 D6: the label, tick and grid look (None: not given);
+           # rule is True when the head is an a(b)c rule as typed.
+           "labgap": None, "labjust": None, "labalign": None,
+           "alternate": False, "altgap": None, "tlwidth": None,
+           "tlcolor": None, "tlpattern": None, "glwidth": None,
+           "glcolor": None, "glpattern": None, "gmin": None, "gmax": None,
+           "gextend": None, "rule": False}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
@@ -36480,6 +36487,21 @@ def _dash_parse_axis_spec(raw, minor=False):
                 out["add"] = True
             elif _nm in ("labcolor", "tlength", "tposition"):
                 out[_nm] = _arg
+            elif _nm in ("labgap", "altgap", "tlwidth", "tlcolor",
+                         "tlpattern", "glwidth", "glcolor", "glpattern"):
+                out[_nm] = _arg
+            elif _nm == "labjustification":
+                out["labjust"] = _arg
+            elif _nm == "labalignment":
+                out["labalign"] = _arg
+            elif _nm == "alternate":
+                out["alternate"] = True
+        # WP-31 D6: the positive word wins within one copy, as for grid.
+        for _w in ("gmin", "gmax", "gextend"):
+            if _w in _seen:
+                out[_w] = True
+            elif "no" + _w in _seen:
+                out[_w] = False
         if "grid" in _seen:
             out["grid"] = True
         elif "nogrid" in _seen:
@@ -36514,6 +36536,12 @@ def _dash_parse_axis_spec(raw, minor=False):
         else:
             out["between_ignored"] = "##" + _mb.group(1)
         head = head[_mb.end():].strip()
+        if not minor and not head:
+            # WP-31 D6: a lone ##N on a label or tick option draws what
+            # none draws (measured: test/fixtures/axis_look_truth.json
+            # dh_ylabel has no labels, ticks or grid; dh_ytick adds none).
+            out["mode"] = "none"
+            return out
 
     if re.fullmatch(r"none", head, re.I):
         out["mode"] = "none"
@@ -36541,6 +36569,10 @@ def _dash_parse_axis_spec(raw, minor=False):
     if out["norescale"] and _DASH_AXIS_INCR_RE.match(
             re.sub(r"\s+", "", head_rest)):
         out["norescale"] = False
+    # WP-31 D1c/D6: an a(b)c rule as typed (dash.ado keeps a lone rule
+    # unexpanded), which twoway reads as a rule and a typed list not.
+    if _DASH_AXIS_INCR_RE.match(re.sub(r"\s+", "", head_rest)):
+        out["rule"] = True
 
     if not head_rest.strip():
         return out
@@ -36766,6 +36798,9 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
         if _alpha is not None:
             axis_obj.major_label_text_alpha = _alpha
     _dash_tick_look(axis_obj, spec, False, by_graph, option, ref_in)
+    # WP-31 D6: the gap, justification and alignment; the tick lines.
+    _dash_axis_label_look(axis_obj, spec, option, ref_in)
+    _dash_tick_line_look(axis_obj, spec, False, option, ref_in, colours)
     if spec.get("angle_bad") is not None:
         _dash_style_note(f"{option}(angle)", spec["angle_bad"], "angle",
                          "0 degrees")
@@ -36778,6 +36813,7 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                     g.grid_line_color = grid_color or "#e5e5e5"
             else:
                 g.grid_line_color = None
+    _dash_grid_look(axis_obj, grid_obj, spec, option, ref_in, colours)
 
 
 def _dash_axis_add(axis_obj, spec, numticks=None, overrides=None):
@@ -36841,7 +36877,10 @@ def _dash_primary_axes(axes, range_attr):
     sets an attribute on every member, which the appliers rely on.
     """
     return type(axes)(a for a in axes
-                      if getattr(a, range_attr, "default") == "default")
+                      if getattr(a, range_attr, "default") == "default"
+                      # WP-31 D6: alternate's second label row is no axis.
+                      and "dash_alt_axis" not in (getattr(a, "tags", None)
+                                                  or ()))
 
 
 def _dash_tick_geometry(position, length_px):
@@ -36959,6 +36998,160 @@ def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
         setattr(ax, pre + "_tick_out", t_out)
         if show is True and getattr(ax, pre + "_tick_line_color") is None:
             setattr(ax, pre + "_tick_line_color", base_col or "#000000")
+
+
+#: WP-31 D6: twoway's default gap between a tick and its label, gsize
+#: tickgap half_tiny (2 pt), which Bokeh's default label standoff (5 px)
+#: stands for: labgap() moves the labels by its size less this.
+_DASH_TICKGAP_PT = 2.0
+_DASH_LABJUST = {"left": "left", "center": "center", "right": "right"}
+_DASH_LABALIGN = {"top": "top", "middle": "middle", "bottom": "bottom",
+                  "baseline": "alphabetic"}
+
+
+def _dash_axis_label_look(axis_obj, spec, option="axis", ref_in=4.0):
+    """``labgap()``, ``labjustification()`` and ``labalignment()`` of a
+    label option on *axis_obj* (one axis or Bokeh's splattable list; WP-31
+    D6).  labgap(): the standoff moves by the size less twoway's default
+    half_tiny (measured: test/fixtures/axis_look_truth.json ``labgap_*``),
+    held to -100..100 px.  The two words map to the label's text align and
+    baseline (``baseline`` is ``alphabetic``); an unknown size or word is
+    noted once and drawn as the default."""
+    T = OptionTranslator
+    members = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
+    v = spec.get("labgap")
+    if v is not None:
+        try:
+            pt = T.resolve_size(str(v), "gap", _DASH_TICKGAP_PT, ref_in)
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(labgap)", v, "size", "half_tiny")
+            pt = _DASH_TICKGAP_PT
+        for ax in members:
+            ax.major_label_standoff = int(round(max(-100.0, min(
+                100.0, 5.0 + (pt - _DASH_TICKGAP_PT) * T.PX_PER_PT))))
+    for key, table, prop, what in (
+            ("labjust", _DASH_LABJUST, "major_label_text_align",
+             "justification"),
+            ("labalign", _DASH_LABALIGN, "major_label_text_baseline",
+             "alignment")):
+        v = spec.get(key)
+        if v is None:
+            continue
+        word = table.get(str(v).strip())
+        if word is None:
+            _dash_style_note(f"{option}({'labjustification' if key == 'labjust' else 'labalignment'})",
+                             v, what, "the default")
+            continue
+        for ax in members:
+            setattr(ax, prop, word)
+
+
+def _dash_tick_line_look(axis_obj, spec, minor=False, option="axis",
+                         ref_in=4.0, colours=None):
+    """``tlwidth()`` and ``tlcolor()`` on the major ticks (with *minor*, the
+    minor ticks that draw xtick()/ytick() positions; WP-31 D6).  The width
+    is read with ``*#`` of the tick's own; ``tlpattern()`` is accepted and
+    drawn solid, as twoway draws it (measured: ``tl_pattern_dash`` is the
+    plain graph).  A bad value is noted once and the tick keeps its look."""
+    T = OptionTranslator
+    pre = "minor" if minor else "major"
+    members = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
+    for ax in members:
+        v = spec.get("tlwidth")
+        if v is not None:
+            try:
+                setattr(ax, pre + "_tick_line_width", T.translate_lwidth(
+                    str(v), getattr(ax, pre + "_tick_line_width"), ref_in))
+            except (ValueError, TypeError):
+                _dash_style_note(f"{option}(tlwidth)", v, "line width",
+                                 "the scheme's width")
+        v = spec.get("tlcolor")
+        if v is not None:
+            _cur = getattr(ax, pre + "_tick_line_color")
+            _hex, _alpha = T.parse_color_alpha(
+                str(v), f"{option}(tlcolor)",
+                base=_cur if isinstance(_cur, str) else None,
+                **(colours or {}))
+            if _hex or _alpha is not None:
+                setattr(ax, pre + "_tick_line_color", _hex or _cur)
+            if _alpha is not None:
+                setattr(ax, pre + "_tick_line_alpha", _alpha)
+
+
+#: WP-31 D6: a Grid's major ticks less its end lines (nogmin/nogmax).
+#: Constant text: the flags and the base ticker travel in ``args``.
+_DASH_GRID_NOEND_JS = (
+    "const r = base.get_ticks(cb_data.start, cb_data.end, cb_data.range, "
+    "cb_data.cross_loc).major;\n"
+    "if (drop_all) return [];\n"
+    "if (!r.length) return r;\n"
+    "const lo = Math.min(...r), hi = Math.max(...r);\n"
+    "return r.filter((v) => !(drop_start && v === lo) "
+    "&& !(drop_end && v === hi));")
+
+
+def _dash_grid_look(axis_obj, grid_obj, spec, option="axis", ref_in=4.0,
+                    colours=None):
+    """``glwidth()``, ``glcolor()``, ``glpattern()`` and ``nogmin``/
+    ``nogmax`` on a label option's grid (WP-31 D6), as twoway draws them
+    (test/fixtures/axis_look_truth.json): glcolor() styles a grid that is
+    drawn and does not turn one on (``gl_color_nogrid``); nogmin drops the
+    line at the lowest major tick and nogmax the one at the highest --
+    every line when the labels are a typed list, whose maximum twoway
+    leaves unset (``ge_list_nogmax``).  gmin, gmax, gextend and custom are
+    twoway's default look.  nogextend (twoway stops the lines at the
+    scale's ends, ``gx_nogextend``) is not drawn: a Bokeh grid line always
+    spans the frame, so it stays named."""
+    from bokeh.models.tickers import CustomJSTicker
+    T = OptionTranslator
+    axes = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
+    for g in grid_obj:
+        v = spec.get("glwidth")
+        if v is not None:
+            try:
+                g.grid_line_width = T.translate_lwidth(
+                    str(v), g.grid_line_width, ref_in)
+            except (ValueError, TypeError):
+                _dash_style_note(f"{option}(glwidth)", v, "line width",
+                                 "the scheme's width")
+        v = spec.get("glcolor")
+        if v is not None and g.grid_line_color is not None:
+            _cur = g.grid_line_color
+            _hex, _alpha = T.parse_color_alpha(
+                str(v), f"{option}(glcolor)",
+                base=_cur if isinstance(_cur, str) else None,
+                **(colours or {}))
+            g.grid_line_color = _hex or _cur
+            if _alpha is not None:
+                g.grid_line_alpha = _alpha
+        v = spec.get("glpattern")
+        if v is not None:
+            dash = None
+            if str(v) == str(v).lower():
+                try:
+                    dash = T.translate_lpattern(str(v))
+                except ValueError:
+                    dash = None
+            if dash is None:
+                _dash_style_note(f"{option}(glpattern)", v, "line pattern",
+                                 "solid")
+                dash = []
+            g.grid_line_dash = dash
+        drop_lo = spec.get("gmin") is False
+        drop_hi = spec.get("gmax") is False
+        if drop_lo or drop_hi:
+            base = g.ticker
+            if base is None and axes:
+                base = axes[0].ticker
+            if base is not None:
+                g.ticker = CustomJSTicker(
+                    args={"base": base, "drop_start": drop_lo,
+                          "drop_end": drop_hi,
+                          "drop_all": bool(drop_hi and spec.get("mode")
+                                           == "explicit"
+                                           and not spec.get("rule"))},
+                    major_code=_DASH_GRID_NOEND_JS,
+                    minor_code="return [];")
 
 
 def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
@@ -37562,6 +37755,23 @@ function dash_minor_place(a, models, lo, hi) {
     src.data = {pos: pos, text: text};
     if (src.change) src.change.emit();
 }
+// WP-31 D7: the twin of _dash_axis_bounds -- a noextend axis ends at its
+// first and last tick within the scale.
+function dash_axis_bounds(a, models, lo, hi) {
+    if (lo === null || hi === null || !isFinite(lo) || !isFinite(hi)) return;
+    const set = (m, v) => {
+        if (!m) return;
+        if (typeof m.setv === "function") m.setv({bounds: v});
+        else m.bounds = v;
+    };
+    if (typeof a.noext === "number" && a.noext >= 0) {
+        const tk = (typeof a.noext_ticks === "number") ? models[a.noext_ticks] : null;
+        const a0 = Math.min(lo, hi), b0 = Math.max(lo, hi), tol = 1e-9 * (b0 - a0);
+        const t = (tk && tk.ticks ? Array.from(tk.ticks) : [])
+            .filter((v) => v >= a0 - tol && v <= b0 + tol);
+        set(models[a.noext], t.length ? [Math.min(...t), Math.max(...t)] : "auto");
+    }
+}
 function dash_axis_same(a, b) {
     if (!a || !b || a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -37605,6 +37815,8 @@ function dash_axis_finish(plan, models) {
     for (const f of tg.fills) dash_fill_auto_bases(f[0], models, f[1], f[2]);
     // WP-31 D1: the ##N minor ticks and labels, over each finished scale.
     for (const f of tg.fills) dash_minor_place(f[0], models, f[1], f[2]);
+    // WP-31 D7: noextend axes end at their first and last tick.
+    for (const f of tg.fills) dash_axis_bounds(f[0], models, f[1], f[2]);
     // WP-30 P1.20b: each panel's inner box follows its axes' hulls.
     for (const b of tg.boxes) {
         const box = models[b[0]];
@@ -37836,7 +38048,10 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     # A tick draws no label: its format/labsize/angle and its label look
     # (labcolor, labels, nolabels; WP-30 P1.18a) are named as typed.
     for _sub in ("format", "labsize", "angle", "labcolor", "labels",
-                 "nolabels"):
+                 "nolabels",
+                 # WP-31 D6: the label look of a label option.
+                 "labgap", "labjustification", "labalignment", "alternate",
+                 "altgap"):
         if _sub in spec.get("typed", {}):
             bad.append(spec["typed"][_sub])
     _dash_report_suboptions(option, bad, seen, key)
@@ -37888,6 +38103,7 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         ax.minor_tick_line_alpha = ax.major_tick_line_alpha
         ax.minor_tick_line_dash = ax.major_tick_line_dash
         _dash_tick_look(ax, spec, True, by_graph, option, ref_in)
+        _dash_tick_line_look(ax, spec, True, option, ref_in)
     if spec.get("grid"):
         for g in grids:
             g.minor_grid_line_color = grid_color or "#e5e5e5"
@@ -38485,6 +38701,21 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         if not kind and col is not None and _vk in _STATA_DATE_KINDS:
             # A date on a mixed axis is drawn in its Stata units.
             col = pd.Series(_dash_date_units(col, _vk))
+        if plots is not None and re.match(
+                r"\s*minmax\b", str(graph_opts.get(ax_key, "") or "")
+                + " " + str(graph_opts.get(tick_key, "") or ""), re.I) \
+                or plots is not None and re.match(
+                    r"\s*minmax\b", str(graph_opts.get(tick_key, "")
+                                         or ""), re.I):
+            # WP-31 D6: minmax over every layer on the axis (measured:
+            # test/fixtures/axis_look_truth.json minmax_two).
+            _lv = _dash_axis_layer_values(
+                frame, [p for p in plots
+                        if str((p.get("options") or {}).get(
+                            ax_key[0] + "axis", "1")).strip() in ("", "1")],
+                ax_key[0], None if kind else date_vars)
+            if _lv is not None and len(_lv):
+                col = _lv
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         raw = graph_opts.get(ax_key, "")
         if fmts is None:
@@ -38568,6 +38799,131 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         for _a in list(_dash_primary_axes(axes, rattr)):
             _dash_apply_scale_look(fig, _a, look, opt, 1, by_graph, ref_in,
                                    colours)
+    # WP-31 D6: alternate's second label row, once the axis is final.
+    for ax_key, axes, rattr in (("xlabel", fig.xaxis, "x_range_name"),
+                                ("ylabel", fig.yaxis, "y_range_name")):
+        raw = str(graph_opts.get(ax_key, "") or "")
+        if raw.strip() and "alt" in raw:
+            _dash_alt_axes(fig, list(_dash_primary_axes(axes, rattr)),
+                           _dash_parse_axis_spec(raw), ref_in, ax_key)
+
+
+#: WP-31 D6: alternate's label formatter.  Constant text: the parity and
+#: the axis's own formatter travel in ``args``; formatting the whole tick
+#: list keeps the base formatter's precision choice.
+_DASH_ALT_LABEL_JS = (
+    "if ((index % 2) !== parity) return \"\";\n"
+    "const out = base.doFormat(ticks, {loc: 0});\n"
+    "return (out && out.length > index) ? out[index] : \"\";")
+
+#: The axis-title properties alternate moves to the outer label row.
+_DASH_ALT_TITLE_PROPS = (
+    "axis_label", "axis_label_standoff", "axis_label_text_font_size",
+    "axis_label_text_color", "axis_label_text_alpha",
+    "axis_label_text_font", "axis_label_text_font_style",
+    "axis_label_orientation")
+_DASH_ALT_LABEL_PROPS = (
+    "major_label_text_font_size", "major_label_text_color",
+    "major_label_text_alpha", "major_label_text_font",
+    "major_label_text_font_style", "major_label_orientation",
+    "major_label_text_align", "major_label_text_baseline",
+    "major_label_overrides")
+
+
+def _dash_alt_axes(fig, axis_obj, spec, ref_in=4.0, option="label"):
+    """``alternate`` (and ``altgap()``) of a label option as twoway draws
+    it (WP-31 D6, D-33.a): the labels alternate between two rows, the
+    first label on the row nearest the axis (measured:
+    test/fixtures/axis_look_truth.json ``alt_default``).  Bokeh draws one
+    label row per axis, so each axis of *axis_obj* keeps its ticker and
+    shows the even-indexed labels, and a twin axis tagged
+    ``dash_alt_axis``, laid out outside it on the same side with no line
+    and no ticks, shows the odd ones; the axis title moves to the twin, so
+    it stays outside both rows.  The second row sits one label height
+    further out plus ``altgap()`` (twoway: 100 units for a 10 pt font,
+    plus 140 for altgap(large)): the twin's panel begins where the first
+    axis's labels end, so its standoff is the altgap() in px.  Returns
+    the twins made."""
+    if not spec or not spec.get("alternate"):
+        return []
+    from bokeh.models import CustomJSTickFormatter, LinearAxis
+    T = OptionTranslator
+    gap = 0.0
+    if spec.get("altgap") is not None:
+        try:
+            gap = T.resolve_size(str(spec["altgap"]), "gap", 0.0,
+                                 ref_in) * T.PX_PER_PT
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(altgap)", spec["altgap"], "size",
+                             "zero")
+            gap = 0.0
+    made = []
+    for ax in list(axis_obj if isinstance(axis_obj, list) else [axis_obj]):
+        if "dash_alt_axis" in (getattr(ax, "tags", None) or ()):
+            continue
+        side = next((sd for sd in ("below", "above", "left", "right")
+                     if any(a is ax for a in getattr(fig, sd))), None)
+        if side is None:
+            continue
+        base = ax.formatter
+        ax.formatter = CustomJSTickFormatter(
+            args={"parity": 0, "base": base}, code=_DASH_ALT_LABEL_JS)
+        twin = LinearAxis(
+            ticker=ax.ticker, axis_line_color=None,
+            major_tick_in=0, major_tick_out=0, minor_tick_in=0,
+            minor_tick_out=0,
+            major_label_standoff=int(round(max(-100.0, min(100.0, gap)))),
+            formatter=CustomJSTickFormatter(
+                args={"parity": 1, "base": base}, code=_DASH_ALT_LABEL_JS),
+            tags=["dash_alt_axis"])
+        for prop in _DASH_ALT_LABEL_PROPS + _DASH_ALT_TITLE_PROPS:
+            setattr(twin, prop, getattr(ax, prop))
+        for attr in ("x_range_name", "y_range_name"):
+            setattr(twin, attr, getattr(ax, attr))
+        ax.axis_label = None
+        ax.axis_label_standoff = 0
+        # The twin goes directly outside its axis (a second axis on the
+        # side stays outermost).
+        cur = list(getattr(fig, side))
+        at = next(i for i, a in enumerate(cur) if a is ax)
+        setattr(fig, side, cur[:at + 1] + [twin] + cur[at + 1:])
+        made.append(twin)
+    return made
+
+
+def _dash_axis_layer_values(frame, plots, letter, date_vars=None):
+    """Every value the graph's layers draw on axis *letter* -- each layer's
+    coordinate columns, the range types' two bounds and a multi-y layer's
+    y list -- as one float Series, a date in its Stata units (WP-31 D6,
+    D-33.d): ``minmax`` labels the extremes over every layer, as twoway
+    does (measured: test/fixtures/axis_look_truth.json ``minmax_two``).
+    None when no layer names a column of *frame*."""
+    cols = getattr(frame, "columns", [])
+    out = []
+    for p in plots or ():
+        if not isinstance(p, dict):
+            continue
+        names = []
+        for k in _DASH_AXIS_VAR_KEYS.get(letter, ()):
+            v = p.get(k)
+            if isinstance(v, (list, tuple)):
+                names += [str(x) for x in v]
+            elif v:
+                names.append(str(v))
+        if letter == "y" and p.get("type") in ("histogram", "kdensity"):
+            names = [n for n in names if n != p.get("var")]
+        for v in names:
+            if v not in cols:
+                continue
+            k = (date_vars or {}).get(v)
+            if k in _STATA_DATE_KINDS:
+                col = _dash_date_units(frame[v], k)
+            else:
+                col = _dash_float_values(frame[v], coerce=True)
+            out.append(pd.Series(col, dtype="float64"))
+    if not out:
+        return None
+    return pd.concat(out, ignore_index=True).dropna()
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
@@ -39548,6 +39904,28 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                    margins[letter]) is not None else None),
                     "range": ri, "ticker": ti,
                     "layers": layers, "bars": bars, "autobase": autobase}
+                # WP-31 D7: a noextend axis the page bounds after each
+                # finish (dash_axis_bounds).
+                if getattr(ax, "_dash_noextend", False):
+                    ai_ = index.get(id(ax))
+                    if ai_ is None:
+                        ai_ = index[id(ax)] = len(models)
+                        models.append(ax)
+                    ent["noext"] = ai_
+                    _bt = None
+                    _t = ax.ticker
+                    for _k in range(8):
+                        if isinstance(_t, FixedTicker):
+                            _bt = _t
+                            break
+                        _t = (dict(_t.args or {}).get("base")
+                              if isinstance(_t, CustomJSTicker) else None)
+                    if _bt is not None:
+                        bi_ = index.get(id(_bt))
+                        if bi_ is None:
+                            bi_ = index[id(_bt)] = len(models)
+                            models.append(_bt)
+                        ent["noext_ticks"] = bi_
                 # WP-31 D1: the ##N minor ticks and labels the page places
                 # again (dash_minor_place): numbers and model indexes only.
                 mn = getattr(ax, "_dash_minor", None)
@@ -39791,7 +40169,12 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             rng.start, rng.end = rng.end, rng.start
 
         if spec is not None:
-            _dash_report_suboptions(_on("label"), spec.get("unsupported", []),
+            # WP-31 D6: alternate's second row is axis 1's; on axes 2-9 it
+            # stays named (section 35 owns those axes).
+            _alt2 = [spec["typed"][_s] for _s in ("alternate", "altgap")
+                     if _s in (spec.get("typed") or {})]
+            _dash_report_suboptions(_on("label"),
+                                    spec.get("unsupported", []) + _alt2,
                                     seen, key)
             grids = []
             if spec.get("grid"):
@@ -39961,7 +40344,8 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
              "x_range", "x")):
         for side in sides:
             for pos, ax in enumerate(list(getattr(fig, side))):
-                if not isinstance(ax, ContinuousAxis):
+                if not isinstance(ax, ContinuousAxis) or "dash_alt_axis" in (
+                        getattr(ax, "tags", None) or ()):
                     continue
                 t = ax.ticker
                 base = every = None
@@ -40166,9 +40550,10 @@ def _dash_range_hull(rng, kind=None, margin=None):
     (or the range's own ``_dash_margin_f``) the ends less f of the whole
     span a side (WP-30 P1.3a); else less 5% of the hull's span, the old
     rule; in log10 space when *kind* is ``"log"``.  The inverse the tests
-    and the certification block compare with twoway's inner hull; never
-    called at run time (a page read back from JSON has no
-    ``_dash_margin_f``, so a test passes *margin*)."""
+    and the certification block compare with twoway's inner hull, and the
+    scale :func:`_dash_axis_bounds` keeps a noextend axis's ticks within
+    (WP-31 D7; a page read back from JSON has no ``_dash_margin_f``, so a
+    caller passes *margin*)."""
     f = _dash_margin_pair(margin if margin is not None else getattr(
         rng, "_dash_margin_f", None))
     s, e = float(rng.start), float(rng.end)
@@ -40498,6 +40883,54 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     _dash_finish_auto_bases(fig)
     # WP-31 D1: ##N from the majors just placed, over the scale just made.
     _dash_finish_minor_ticks(fig)
+    # WP-31 D7: a noextend axis ends at its first and last tick.
+    _dash_axis_bounds(fig, entries)
+
+
+def _dash_axis_major_ticks(ax):
+    """The finished major ticks of *ax*: its FixedTicker's, or the base
+    FixedTicker under the CustomJSTickers xtick() and xmtick() install;
+    None for any other ticker (WP-31 D7)."""
+    from bokeh.models.tickers import CustomJSTicker, FixedTicker
+    t = getattr(ax, "ticker", None)
+    for _ in range(8):
+        if isinstance(t, FixedTicker):
+            return [float(v) for v in (t.ticks or ())]
+        if isinstance(t, CustomJSTicker):
+            t = dict(t.args or {}).get("base")
+            continue
+        return None
+    return None
+
+
+def _dash_axis_bounds(fig, entries=None):
+    """Bound an axis tagged ``noextend`` to its first and last tick within
+    its scale (measured: test/fixtures/axis_look_truth.json
+    ``sc_noextend``), in the axis's data units (WP-31 D7).  Run after
+    every finish in both modes; the saved page's twin is
+    ``dash_axis_bounds`` in ``_DASH_AXIS_FINISH_JS``."""
+    margins = getattr(fig, "_dash_margin", None) or {}
+    for e in (entries if entries is not None
+              else getattr(fig, "_dash_hull_axes", None) or ()):
+        ax = e.get("ax")
+        if not getattr(ax, "_dash_noextend", False):
+            continue
+        letter, name = e.get("letter"), e.get("name", "default")
+        rng = (getattr(fig, letter + "_range", None) if name == "default"
+               else getattr(fig, "extra_%s_ranges" % letter, {}).get(name))
+        try:
+            lo, hi = _dash_range_hull(
+                rng, "log" if e.get("kind") == "log" else None,
+                margin=margins.get(letter))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if not (math.isfinite(lo) and math.isfinite(hi)):
+            continue
+        ticks = _dash_axis_major_ticks(ax)
+        a, b = min(lo, hi), max(lo, hi)
+        ticks = [t for t in (ticks or ()) if a - 1e-9 * (b - a) <= t
+                 <= b + 1e-9 * (b - a)]
+        ax.bounds = ((min(ticks), max(ticks)) if ticks else "auto")
 
 
 def _dash_common_count_ticks(figs, letters=("x", "y")):
@@ -40593,6 +41026,7 @@ def _dash_common_count_ticks(figs, letters=("x", "y")):
     for f in figs or ():
         _dash_finish_auto_bases(f)
         _dash_finish_minor_ticks(f)
+        _dash_axis_bounds(f)
 
 
 def _dash_share_repoint(figs, letter, name, rng):
@@ -43616,6 +44050,13 @@ _DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "mlabvposition", "wexp")
 #: lists, the served app and the embed plan (WP-29 P0.11).  The served
 #: placeholder listed five of them, so a paired-coordinate layer's columns
 #: were missing from it.
+#: WP-31 D6: the plot keys that name a column drawn on each axis, for
+#: minmax over every layer (:func:`_dash_axis_layer_values`): the scatter
+#: and line keys, rarea/rbar/rcap's yvar1/yvar2, the pc types' y1var..x2var
+#: and a multi-y layer's yvars.
+_DASH_AXIS_VAR_KEYS = {
+    "x": ("xvar", "x1var", "x2var"),
+    "y": ("yvar", "yvars", "yvar1", "yvar2", "y1var", "y2var")}
 _DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
                        "x1var", "y2var", "x2var",
                        # WP-31 B4b: a contour layer's z.
@@ -44331,7 +44772,11 @@ _DASH_AXLABEL_HONOURED = frozenset({
     "add",
     # WP-30 P1.18a: the label and tick look.
     "labels", "nolabels", "ticks", "noticks", "labcolor", "tlength",
-    "tposition"})
+    "tposition",
+    # WP-31 D6: the stylable sub-options.
+    "labgap", "labjustification", "labalignment", "alternate", "altgap",
+    "tlwidth", "tlcolor", "tlpattern", "glwidth", "glcolor", "glpattern",
+    "gmin", "nogmin", "gmax", "nogmax", "gextend", "custom"})
 
 #: twoway's real and integer literals, fullmatched on the stripped argument
 #: (float() would take 1_0, inf and nan).
@@ -54986,6 +55431,11 @@ class ServerAppBuilder:
                       # xtick()/ytick()'s constant CustomJSTicker code.
                       "_DASH_TICK_MAJOR_JS", "_DASH_TICK_EXTRA_JS",
                       "_DASH_TICK_EVERY_JS",
+                      # WP-31 D6: alternate's and nogmin/nogmax's code.
+                      "_DASH_ALT_LABEL_JS", "_DASH_GRID_NOEND_JS",
+                      "_DASH_TICKGAP_PT", "_DASH_LABJUST", "_DASH_LABALIGN",
+                      "_DASH_ALT_TITLE_PROPS", "_DASH_ALT_LABEL_PROPS",
+                      "_DASH_AXIS_VAR_KEYS",
                       # WP-30 P1.3a: default axes, twoway's margin and
                       # the zoom code's finisher twin.
                       "_DASH_DEFAULT_TAG", "_DASH_MARGIN_RS",
@@ -55380,6 +55830,10 @@ class ServerAppBuilder:
                          "_dash_tick_geometry", "_dash_tick_position",
                          "_dash_tick_look", "_dash_scale_look",
                          "_dash_apply_scale_look", "_dash_axis_alternate",
+                         # WP-31 D6
+                         "_dash_alt_axes", "_dash_axis_layer_values",
+                         "_dash_axis_label_look", "_dash_tick_line_look",
+                         "_dash_grid_look", "_dash_axis_bounds", "_dash_axis_major_ticks",
                          "_dash_add_secondary_axes",
                          "_dash_secondary_values",
                          "_dash_finish_secondary_axes",

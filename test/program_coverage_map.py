@@ -478,6 +478,9 @@ COVERAGE = {
                               "test_suboption_reporting.cscript:AD-09"),
         "_dash_axis_run_tag": ("test_gaps2_truth.cscript:AL-02",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
+        # WP-31 D6: the axis label forms twoway refuses.
+        "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),
+        "_dash_axlabel_rule": ("test_option_validation.cscript:U33-07",),
         # P1A-76: every prefix of every name, direct, and no prefix that
         # reaches two rows; e2e through _dash_expand_plottype.
         "_expand_plottype_str": ("test_parser.cscript:P1A-76",

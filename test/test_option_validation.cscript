@@ -2228,6 +2228,35 @@ capture dash clear
 sysuse auto, clear
 _u05_judge U32-11 `"`bad'"' "pcycle() fractions drawn and refused where twoway draws and refuses them"
 
+// U33-07 (WP-31 D6): the label forms twoway refuses -- a label with no
+// value before it, a second rule, an unfinished a(b)c -- are refused
+// r(198) in twoway's words, "invalid label specifier, :  <the part>:";
+// the forms twoway draws run rc 0 under dash.
+local bad ""
+_u05_rc `"scatter mpg weight, ylabel("a")"' `"invalid label specifier, :  "a":"'
+if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [ylabel("a"): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+_u05_rc `"scatter mpg weight, ylabel(1 "a" "b")"' `"invalid label specifier, :  1 "a" "b":"'
+if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [ylabel(1 "a" "b"): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+foreach f in "#3 #4|#4" "1(1)|1(1)" {
+    gettoken val part : f, parse("|")
+    local part = substr("`part'", 2, .)
+    _u05_rc "scatter mpg weight, xlabel(`val')" "invalid label specifier, :  `part':"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [xlabel(`val'): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach val in "none 1 2" "minmax 1" "#3 20" "," "10(10)40" {
+    _u05_rc "scatter mpg weight, ylabel(`val')" ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [ylabel(`val'): twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_judge U33-07 `"`bad'"' "axis label forms twoway refuses are refused in its words; the forms it draws run"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

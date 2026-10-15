@@ -64,10 +64,11 @@ SUBOPTIONS = [
     # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()
     # and off are drawn as twoway draws them, so each row names a word
     # dash still does not draw (labgap, outergap, extend).
-    ("ylabel labcolor", {"ylabel": ", labcolor(red) labgap(2)"}, None,
-     "ylabel", ["labgap(2)"], ["labcolor"]),
-    ("ylabel labgap tlength", {"ylabel": "10(10)30, labgap(2) tlength(3)"},
-     None, "ylabel", ["labgap(2)"], ["tlength"]),
+    # Flipped (WP-31 D6): labgap() is drawn; a style name is named.
+    ("ylabel labcolor", {"ylabel": ", labcolor(red) labstyle(x)"}, None,
+     "ylabel", ["labstyle(x)"], ["labcolor"]),
+    ("ylabel labgap tlength", {"ylabel": "10(10)30, tstyle(x) tlength(3)"},
+     None, "ylabel", ["tstyle(x)"], ["tlength", "labgap"]),
     ("yscale reverse noline titlegap",
      {"yscale": "reverse noline titlegap(2) outergap(1)"}, None, "yscale",
      ["outergap(1)"], ["reverse", "noline", "titlegap"]),

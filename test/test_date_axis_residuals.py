@@ -613,16 +613,19 @@ def _digest(model):
 # (hidden) legend takes the scheme's key geometry, its grid and its
 # panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
+    # 932c85bd... -> b8c27bfa...: WP-31 D6/D7 the axis finisher's
+    # dash_axis_bounds (noextend) joins the page's finish code.
     ("saved", "plain"):
-        "932c85bd00ba9dd820c47092a80d6d706c08c271198302db77100f4ede9348e3",
+        "b8c27bfadf85971658a61c52693d5f393875f55a2bcbd3a716ece5adbd3e654c",
     ("saved", "yaxis2"):
-        "932c85bd00ba9dd820c47092a80d6d706c08c271198302db77100f4ede9348e3",
+        "b8c27bfadf85971658a61c52693d5f393875f55a2bcbd3a716ece5adbd3e654c",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
+    # 23c6fcc8... -> f8ce3f00...: WP-31 D6/D7, as the saved page's.
     ("served", "plain"):
-        "23c6fcc8aadbbd45f5be90392a6495514c8fc1c34466a16d33fde8d7118659ed",
+        "f8ce3f0042cbed7b4535203d4bdde9389975c7b632e8b947763dc56fcfc60c5a",
     ("served", "yaxis2"):
-        "23c6fcc8aadbbd45f5be90392a6495514c8fc1c34466a16d33fde8d7118659ed",
+        "f8ce3f0042cbed7b4535203d4bdde9389975c7b632e8b947763dc56fcfc60c5a",
 }
 
 
@@ -1615,10 +1618,13 @@ class TestADateBesideANumber:
     def test_minmax_reads_stata_units(self, tmp_path, mode):
         bad = []
         for opt in ("xlabel", "xtick"):
-            for plots, want in ((self._MIX, [14977.0, 15307.0]),
+            # Flipped (WP-31 D6): minmax spans every layer on the axis, as
+            # twoway's does (test/fixtures/axis_look_truth.json
+            # minmax_two), the date's in its Stata units beside obs's.
+            for plots, want in ((self._MIX, [1.0, 15307.0]),
                                 ([_L("lfit", "close", "date"),
-                                  self._MIX[1]], [14977.0, 15307.0]),
-                                (self._MIX[::-1], [1.0, 12.0])):
+                                  self._MIX[1]], [1.0, 15307.0]),
+                                (self._MIX[::-1], [1.0, 15307.0])):
                 fig, _w, _o = _da_fig(tmp_path, mode, plots,
                                       go={opt: "minmax"})
                 ax = _da_axis(fig, "below")

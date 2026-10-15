@@ -1772,8 +1772,9 @@ CORPUS = [
     # (refline_extent_truth.json E02).
     _case("xline with lcolor and noextend", [_sc()], None,
           {"xline": "3000, lcolor(red) noextend"}),
+    # Flipped (WP-31 D6): labgap() is drawn; a style name is named.
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
-          {"xlabel": "#5, labgap(2)", "ytitle": "Miles, orientation(vertical)"}),
+          {"xlabel": "#5, labstyle(x)", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
     _case("graph title and subtitle with an ampersand", [_sc()], None,
           {"title": "R&D", "subtitle": "a & b"}),
@@ -2705,7 +2706,7 @@ _MUST_WARN = {
         "outergap(1)",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
-        "labgap(2)",
+        "labstyle(x)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
         "subtitleformat(%9s) shrink",

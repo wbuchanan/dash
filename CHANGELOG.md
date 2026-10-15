@@ -432,7 +432,7 @@ and now matches Stata.
 
 <!-- WP-31 E11 -->
 
-<!-- WP-31 D6 -->
+- Axis label, tick and grid sub-options are drawn. dash scatter mpg weight, ylabel(, labgap(large) tlwidth(thick) glwidth(thick) grid) drew the default gap and widths and printed a sub-option note, now twoway's gap (16 px further out) and widths and no note; xlabel(1500(500)5000, alternate) staggers the labels on two rows; ylabel(minmax) on two layers labelled the first layer's extremes, now every layer's (5 and 41 over mpg and trunk); ylabel(##5) drew the default labels, now twoway's note and no labels, as ylabel(none). (WP-31, D6)
 
 <!-- WP-31 D7 -->
 
@@ -899,7 +899,7 @@ and now matches Stata.
 
 - title2() and subtitle2() are refused, "option title2() not allowed" and "option subtitle2() not allowed", r(198), as twoway refuses them, after the comma, inside a plot's parentheses and after a || segment's comma; dash named them as unsupported and drew the graph. (WP-31, D2)
 
-<!-- WP-31 D6 -->
+- The axis label forms twoway refuses -- ylabel("a"), ylabel(1 "a" "b"), ylabel(#3 #4) and ylabel(1(1)) -- are refused, r(198), with twoway's "invalid label specifier, : <the part>:"; dash drew them. (WP-31, D6)
 
 <!-- WP-31 C14 -->
 

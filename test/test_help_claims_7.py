@@ -390,8 +390,10 @@ class TestSecondaryAxisLabelGrammar:
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_suboption_it_does_not_honour_is_named(self, mode):
         # Flipped (WP-30 P1.18a): labcolor() is drawn; labgap() is not.
-        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labgap(2)"})
-        assert any("ylabel2() sub-option" in w and "labgap(2)" in w
+        # Flipped (WP-31 D6): labgap() is drawn on every axis; a style
+        # name, labstyle(), is still named.
+        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labstyle(x)"})
+        assert any("ylabel2() sub-option" in w and "labstyle(x)" in w
                    for w in caught), caught
 
     @pytest.mark.parametrize("mode", _MODES)

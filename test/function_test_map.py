@@ -1067,6 +1067,13 @@ FUNCTIONS = {
  '_dash_scale_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_scale_look',
  '_dash_tick_geometry': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_geometry',
  '_dash_tick_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_look',
+ '_dash_alt_axes': 'test/test_axis_look_options.py::TestAlternate::test_twin',
+ '_dash_axis_bounds': 'test/test_axis_look_options.py::TestTheBoundsFinisher::test_a_tagged_axis_ends_at_its_ticks',
+ '_dash_axis_label_look': 'test/test_axis_look_options.py::TestLabelLook::test_labgap',
+ '_dash_axis_layer_values': 'test/test_axis_look_options.py::TestMinmax::test_helper_columns',
+ '_dash_axis_major_ticks': 'test/test_axis_look_options.py::TestTheBoundsFinisher::test_the_major_ticks_under_a_wrapper',
+ '_dash_grid_look': 'test/test_axis_look_options.py::TestGridLook::test_each',
+ '_dash_tick_line_look': 'test/test_axis_look_options.py::TestTickLook::test_major',
  '_dash_tick_position': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_position',
  # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
  'GlyphMapper._style_options': 'test/test_named_styles.py::TestPlanUnits::test_shadowed_options_are_dropped',
@@ -1329,11 +1336,6 @@ TEST_ONLY = {
         "WP-28 S04 keeps it under WP-26's seam rule: the oracle of the twin-agreement test -- the "
         "shortest float32 text, which Python and node must agree on; the "
         "page writes a float's widened double, never this."),
-    "_dash_range_hull": (
-        "WP-28 B2 keeps it under WP-26's seam rule: the inverse of "
-        "_dash_padded_range -- the hull a padded Range1d was drawn from -- "
-        "that test_axis_extents.py and test_gaps2_truth.cscript's S18 block "
-        "compare with twoway's inner hull; no page needs it."),
     "DashRenderer._build_figures": (
         "WP-26 keeps it: a test seam (its docstring).  render() never calls "
         "it; twelve test files build the figures through it without "

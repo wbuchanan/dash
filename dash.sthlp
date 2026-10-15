@@ -3980,6 +3980,34 @@ refused, {cmd:r(198)}, with {cmd:twoway}'s
 {cmd:xtick()} and {cmd:ytick()} take their own {cmd:noticks},
 {cmd:tlength()} and {cmd:tposition()}; the label option's tick look never
 reaches their positions.
+{cmd:labgap()}, {cmd:labjustification()}, {cmd:labalignment()},
+{cmd:alternate}, {cmd:altgap()}, {cmd:tlwidth()}, {cmd:tlcolor()},
+{cmd:glwidth()}, {cmd:glcolor()}, {cmd:glpattern()}, {cmd:nogmin} and
+{cmd:nogmax} are drawn as {cmd:twoway} draws them ({cmd:xtick()} and
+{cmd:ytick()} take {cmd:tlwidth()} and {cmd:tlcolor()} for their own
+ticks); {cmd:labgap()} moves the labels by its size less the default
+{cmd:half_tiny}; {cmd:alternate} staggers the labels on two rows, the
+first label on the row nearest the axis and the second row one label
+height further out plus {cmd:altgap()}, the axis title outside both;
+{cmd:glcolor()} styles a grid that is drawn and does not turn one on;
+{cmd:nogmin} drops the gridline at the lowest major tick and {cmd:nogmax}
+the one at the highest, every gridline when the labels are a typed list,
+as in {cmd:twoway}.  {cmd:tlpattern()}, {cmd:gmin}, {cmd:gmax},
+{cmd:gextend} and {cmd:custom} are accepted and change nothing, as in
+{cmd:twoway}.  {it:Difference from twoway:} {cmd:nogextend}, which stops
+the gridlines at the scale's ends, is named in a note (a Bokeh gridline
+spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
+{cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata
+style files {cmd:dash} does not read.  {cmd:alternate} draws on the first
+axis; on {cmd:axis(2)} it is named.  {cmd:##}{it:#} on a label or tick
+option is for minor ticks only: {cmd:twoway} notes {cmd:##5 ignored, only
+allowed for minor ticks}, and so does {cmd:dash}; alone it draws what
+{cmd:none} draws on a label option and nothing on a tick option.
+{cmd:minmax} labels the least and greatest value of every layer on the
+axis.  The label forms {cmd:twoway} refuses -- a label with no value
+before it ({cmd:ylabel("a")}, {cmd:ylabel(1 "a" "b")}), a second rule
+({cmd:ylabel(#3 #4)}) and an unfinished rule ({cmd:ylabel(1(1))}) -- are
+refused, {cmd:r(198)}, in its words ({cmd:invalid label specifier, : #4:}).
 {cmd:add} adds the listed values to the axis's default ticks, dates
 included ({cmd:ylabel(25, add)} draws 10 20 25 30 40 on {cmd:mpg}), in
 both modes and after every filter move; after a rule

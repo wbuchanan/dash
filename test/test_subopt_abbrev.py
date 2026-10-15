@@ -422,8 +422,10 @@ class TestAxisAbbreviations:
 
     def test_undrawn_spellings_are_named_as_typed(self, mode, tmp_path):
         msgs = []
-        _figure(mode, tmp_path, {"ylabel": ", glc(red)"}, record=msgs)
-        assert any("glc(red)" in m for m in _subopt_notes(msgs, "ylabel"))
+        # Flipped (WP-31 D6): glcolor() is drawn; a style name is named.
+        _figure(mode, tmp_path, {"ylabel": ", gls(major_grid)"}, record=msgs)
+        assert any("gls(major_grid)" in m
+                   for m in _subopt_notes(msgs, "ylabel"))
         msgs = []
         _figure(mode, tmp_path, {"ytick": ", labs(large)"}, record=msgs)
         assert any("labs(large)" in m for m in _subopt_notes(msgs, "ytick"))

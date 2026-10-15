@@ -490,8 +490,10 @@ class TestMajorBetweenIsIgnored:
         msgs = [str(w.message) for w in caught]
         assert any(_T["m_refusal"]["note"] in m for m in msgs), msgs
         f = rr.figures["g1"]
-        f0 = _figs("saved", {})[0]
-        assert tda._ticks(f, "x") == tda._ticks(f0, "x")
+        # Flipped (WP-31 D6): a lone ##5 draws what xlabel(none) draws,
+        # no labels or ticks (test/fixtures/axis_look_truth.json
+        # dh_xlabel), not the default ticks.
+        assert list(tda._ticks(f, "x")) == []
 
 
 class TestLabelTextIsACanvasSink:
