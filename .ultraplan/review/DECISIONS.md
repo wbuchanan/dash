@@ -26,6 +26,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D18 | **Batch 6 additions** (14oct2026): S17's residuals and its unfiled gap go to the sections whose code they touch: pcycle() fractions (C8d) to S32, batch 11's rules-table editor; colorkeysreverse on a colour bar (C8e) to S26, which builds the contour colour key on the same code; a user scheme's colorvar default rule (C8c) to S44, which reads style files and scheme directives. | S44, S32, S26 |
 | D19 | **Batch 6 addition** (14oct2026): S18's saved-page residual -- dot rows keep the build's axis after a filter move (pinned xfail strict) -- is row B5c, added to S35, which recomputes the extra ranges and the axis finish in the saved page's move callback. | S35 |
 | D20 | **Batch 8 additions** (14oct2026): S24's minor-tick residuals go to the axis sections: the axis-2 and axes 3-9 cases (D1b) to S35, which owns those axes after a move; the label-grammar cases (D1c) to S33, which owns axis label sub-options and formats. S23's measured duplicate-z non-determinism in twoway is documented by S26 (no row: twoway itself varies with sortseed). | S35, S33 |
+| D21 | **Batch 9 addition** (15oct2026): S27's edge titles name position(), ring(), span and orientation() where twoway's parser takes them; row D2b goes to S30, which wires textbox position() and ring() through _dash_textbox_place for the titles. | S30 |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

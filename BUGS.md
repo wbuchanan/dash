@@ -3951,3 +3951,9 @@
   - Description: GAPS3.md D1, found by WP-31 section 24 (D1): format() on xmlabel(##N) is not followed by the saved page's after-move text (it uses the axis formatter); _dash_axbound_list has no mlabel2/mtick2 rows for axis-2 angle() bounds; an evenly spaced list typed as a list is drawn as its rule where twoway draws only the tick at 0 (dash.ado expands a(b)c into a list before the renderer can tell them apart).
   - Suggested fix: WP-31 section 33 (axis suboptions look): keep the minor-label format() through the after-move text, add the axis-2 bounds rows, and carry whether an axis list was typed as a rule or a list to the renderer, cscripted against twoway.
   - Resolution: Not fixed because WP-31 section 33 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Edge titles name position(), ring(), span and orientation() where twoway draws them
+  - File Names and Line Numbers: dash_render.py _dash_edge_titles, _DASH_EDGE_TITLES; _dash_textbox_place
+  - Description: GAPS3.md D2, found by WP-31 section 27 (D2, its D-27.c): t1title() to r2title() are drawn on each side, but their textbox sub-options position(), ring(), span and orientation() are named in the note where twoway's parser takes and draws them.
+  - Suggested fix: WP-31 section 30 (textbox placement added text): place and orient edge titles through _dash_textbox_place with these sub-options, both modes, measured against twoway.
+  - Resolution: Not fixed because WP-31 section 30 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

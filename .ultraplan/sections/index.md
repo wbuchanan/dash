@@ -91,7 +91,7 @@
 | 27 | edge-titles | D2 + A3b (D14) | 9 | 01 | -- | yellow | M | 3 |
 | 28 | js-fpfit-fpfitci | F1g | 9 | 13 | -- | red | M | 3 |
 | 29 | js-contour | B4c (marching squares, isobands, refit within the cap) | 10 | 26, 10 | -- | red | L | 4 |
-| 30 | textbox-placement-added-text | D3, D13 | 10 | 01 | -- | yellow | M | 4 |
+| 30 | textbox-placement-added-text | D3, D13 + D2b (D21) | 10 | 01 | -- | yellow | M | 4 |
 | 31 | legend-geometry | D4, C13 | 10 | 01 | -- | yellow | M | 4 |
 | 32 | sizing-scale-aspect | D5, E11 + A3c (D14) + C8d (D18) | 11 | 01 | -- | yellow | M | 4 |
 | 33 | axis-suboptions-look | D6, D7, E6 + D1c (D20) | 11 | 24 | -- | yellow | M | 4 |
@@ -148,6 +148,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | B5c | dot rows on the saved page keep the build's axis span after a filter move (D19) | S18 | S35 (12) | RC |
 | D1b | Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn (D20) | S24 | S35 (12) | RC |
 | D1c | A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule (D20) | S24 | S33 (11) | RC |
+| D2b | Edge titles name position(), ring(), span and orientation() where twoway draws them (D21) | S27 | S30 (10) | RC |
 
 ## Batch execution order
 

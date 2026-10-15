@@ -250,3 +250,16 @@ Acceptance: AC-30.1 every red stub green in both modes; AC-30.2 U30-1..U30-11 PA
 - **python_exec hazard** as in every section.
 - **For S31 (same batch):** `_dash_textbox_insert` writes `ring=<n>` tags; S31's TR-31.2 makes `_dash_move_legend`'s insertion index skip, besides axes and `dash_edge_title` models (S27 D-27.b), every model whose tags hold `ring=<n>` with n <= 3 (R3c-F8, DECISIONS A31), so a user `ring(2)` box sits inside the legend in both modes once both land; S30 asserts only the textbox/edge-title order.
 - **Decisions for maintainer ratification:** D-30.c (`span`/`bexpand` honoured as no-ops; the unspanned narrower box is the documented difference) and D-30.e (the `$$` form follows the fixture's `global_dollars` row) are this file's rulings within M17; ratify before batch 10.
+
+## Addendum (15oct2026, DECISIONS D21): row D2b added to this section
+
+### D2b: Edge titles name position(), ring(), span and orientation() where twoway draws them
+
+**Gap.** S27 draws the eight edge titles (`_dash_edge_titles`, `_DASH_EDGE_TITLES`, `SchemeParser.edge_title_styles`) at their default places and names `position()`, `ring()`, `span` and `orientation()` given inside them.
+
+**Requirement.** Measure twoway's placement of each edge title under those sub-options (SVG positions, rotation), and route them through `_dash_textbox_place` exactly as this section does for title()/subtitle()/note()/caption(), both modes; nothing named once drawn.
+
+**Fits S30** because S30 wires user position() and ring() through `_dash_textbox_place` for titles and owns the textbox placement code in batch 10.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D2b)`; close the BUGS.md entry "Edge titles name position(), ring(), span and orientation() where twoway draws them" (Resolution ending `Closes GAPS3 D2 (WP-31, D2b).`), delete its `"D2b":` WP31_OPEN line, rewrite GAPS3.md's `- **D2b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D2b -->` under `### Results that change` with a line ending `(WP-31, D2b)`. dash replaces twoway (D13).
+

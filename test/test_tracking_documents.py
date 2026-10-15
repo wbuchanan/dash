@@ -2060,6 +2060,7 @@ WP31_OPEN = {
     "B5c": "dot rows on the saved page keep the build's axis span after a filter move",
     "D1b": "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn",
     "D1c": "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule",
+    "D2b": "Edge titles name position(), ring(), span and orientation() where twoway draws them",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2192,6 +2193,7 @@ WP31_LISTS = {
     "B5c": ("Results that change",),
     "D1b": ("Results that change",),
     "D1c": ("Results that change",),
+    "D2b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2323,6 +2325,7 @@ WP31_SECTION = {
     "B5c": 35,
     "D1b": 35,
     "D1c": 33,
+    "D2b": 30,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2531,7 +2534,8 @@ class TestWp31Tracking:
         # 120 -> 123: D18 adds C8c, C8d, C8e.
         # 123 -> 124: D19 adds B5c.
         # 124 -> 126: D20 adds D1b, D1c.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 126
+        # 126 -> 127: D21 adds D2b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 127
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
