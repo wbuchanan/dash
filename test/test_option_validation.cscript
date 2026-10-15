@@ -2296,6 +2296,16 @@ if `_u348' != 1 local bad `"`bad' [the registry lacks the second record's yvarla
 capture dash clear
 _u05_judge U34-8 `"`bad'"' "yvarlabel() and xvarlabel() taken silently as twoway takes them and written to the registry"
 
+// U34-9 (WP-31 C17): lalign(bogus) is taken by twoway, rc 0, with a
+// note in class alignstroke (varlabel_mlabel_truth.json align.bogus);
+// dash takes it and names it in the same words.
+local bad ""
+_u05_rc "line mpg weight, lalign(bogus)" "named style bogus not found in class alignstroke"
+if r(trc) != 0 | r(drc) != r(trc) | r(tn) < 1 {
+    local bad `"`bad' [twoway `r(trc)' (`r(tn)'), dash `r(drc)']"'
+}
+_u05_judge U34-9 `"`bad'"' "lalign(bogus) taken as twoway takes it, rc 0"
+
 // U34-10 (WP-31 C17, a guard): headlabel is taken on every paired-
 // coordinate type, as twoway takes it (yxyxview_parse:52,67).
 local bad ""

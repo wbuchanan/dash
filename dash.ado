@@ -1611,6 +1611,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mlabtextstyle    : copy local mlabtextstyle
     sreturn local xvarformat       : copy local xvarformat
     sreturn local yvarlabel        : copy local yvarlabel
+    sreturn local mlabprefix       : copy local mlabprefix
+    sreturn local mlabsuffix       : copy local mlabsuffix
+    sreturn local lalign           : copy local lalign
     sreturn local xvarlabel        : copy local xvarlabel
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -2406,7 +2409,9 @@ end
 //
 // WP-31 S34.  The plot parser's syntax holds as many options as -syntax-
 // takes (_dash_contour_split), so twoway's yvarlabel() and xvarlabel()
-// (advanced_options.sthlp, every yxview type: FactorPlot) are read here,
+// (advanced_options.sthlp, every yxview type: FactorPlot), mlabprefix(),
+// mlabsuffix() and lalign() (WP-31 C17; the seriesstyle options every
+// yxview type factors) are read here,
 // out of the option text _dash_zyx_text holds (by value), as
 // _dash_contour_split reads contour's: each top-level option tried alone
 // against these declarations, the ones read parsed together, every other
@@ -2419,11 +2424,11 @@ end
 // ================================================================
 program define _dash_label_split
     version 19
-    local lo "yvarlabel xvarlabel"
+    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign"
     foreach o of local lo {
         c_local `o' ""
     }
-    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl)")))
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|la\(|lal)")))
     if !`_lb_any' exit
     mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
     mata: _dash_lb_in = ""
@@ -2431,12 +2436,19 @@ program define _dash_label_split
     mata: st_local("_ln", strofreal(cols(_dash_lb_tok)))
     forvalues _li = 1/`_ln' {
         mata: st_local("0", ", " + _dash_lb_tok[`_li'])
-        capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ]
-        if _rc mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
+        // lal() .. lalpha() stay dash's lalpha() (the plot parser's
+        // LALpha); la(), lali() .. lalign() are lalign().
+        mata: st_local("_lb_lal", strofreal(regexm(_dash_lb_tok[`_li'], "^lal(p|ph|pha)?\(")))
+        capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
+            MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ]
+        if `_lb_lal' local _rc_lb 198
+        else local _rc_lb = _rc
+        if `_rc_lb' mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
         else  mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
     }
     mata: st_local("0", ", " + _dash_lb_in)
-    syntax [, YVARLabel(string asis) XVARLabel(string asis) ]
+    syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
+        MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ]
     foreach o of local lo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -5176,6 +5188,7 @@ program define _dash_plot_opts_to_json, rclass
                    mlabvposition mlabtextstyle ///
                    mangle barbsize headlabel ///
                    xvarformat yvarformat yvarlabel xvarlabel ///
+                   mlabprefix mlabsuffix lalign ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    atobs estopts predopts estcmd fitplot ciplot nofit ///

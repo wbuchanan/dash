@@ -7888,6 +7888,22 @@ def _u34_titles(sp, dp, app, svg, yt, xt):
     Macro.setGlobal("u34_v", _u34_dash(b))
 end
 
+python:
+def _u34_labels(sp, dp, app):
+    """Every LabelSet's texts, saved and served, into u34_s and u34_v."""
+    import __main__ as m
+    from sfi import Macro
+    from bokeh.models import LabelSet
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        out = []
+        for f in figs:
+            for ls in f.select({"type": LabelSet}):
+                col = ls.text if isinstance(ls.text, str) else ls.text.field
+                out.extend(str(v) for v in ls.source.data[col])
+        Macro.setGlobal("u34_" + sfx, " ~ ".join(out))
+end
+
 capture program drop _u34_reg
 program define _u34_reg
     // _u34_reg <dir> <k> <command with options...>
@@ -7954,6 +7970,66 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
     if r(found) local bad `"`bad' the generic note named the option;"'
     _w31_expect U34-1 `"(`"`bad'"' == "")"' `"`bad'"'
     _w31_done U34-1 "yvarlabel() and xvarlabel() title the axes and key the legend as twoway does, saved and served, silently"
+
+    macro drop u34_tw u34_s u34_v
+    capture graph drop _all
+    dash clear
+    display as text "S34 end " c(current_date) " " c(current_time)
+}
+* ==== end S34 ====
+
+* ==== S34 C17: mlabprefix(), mlabsuffix(), lalign() ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
+    display as text "S34 start " c(current_date) " " c(current_time)
+    local u34d "`w31_work'/s34b"
+    capture mkdir "`u34d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U34-2: the labels' texts with mlabprefix() and mlabsuffix(), saved
+    // and served, as twoway's SVG writes them.
+    local bad ""
+    capture graph drop u34t
+    quietly twoway scatter mpg weight in 1/3, mlabel(make) mlabprefix("[") mlabsuffix("]") name(u34t, replace)
+    quietly graph export "`u34d'/t2.svg", replace
+    graph drop u34t
+    python: import __main__ as _u34_m; from sfi import Macro as _u34_M; from svg_truth import svg_document as _u34_sd; _u34_M.setGlobal("u34_tw", " ~ ".join(t["text"] for t in _u34_sd("`u34d'/t2.svg")["texts"] if t["text"].startswith("[")))
+    dash clear
+    capture quietly dash scatter mpg weight in 1/3, mlabel(make) mlabprefix("[") mlabsuffix("]") name(u342)
+    if _rc local bad `"`bad' dash rc `=_rc';"'
+    else {
+        _dash_serve_spec, specpath("`u34d'/s2.json") datapath("`u34d'/d2.json")
+        python: import __main__ as _u34_m; _u34_m._u34_labels("`u34d'/s2.json", "`u34d'/d2.json", "`u34d'/a2.py")
+        foreach m in s v {
+            if `"${u34_`m'}"' != `"${u34_tw}"' local bad `"`bad' `m': dash ${u34_`m'} twoway ${u34_tw};"'
+        }
+    }
+    _w31_expect U34-2 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-2 "mlabprefix() and mlabsuffix() wrap the labels as twoway does, saved and served"
+
+    // U34-3: lalign() taken as twoway takes it: center, inside and
+    // outside silent; a bogus word in twoway's words; rc 0 throughout.
+    local bad ""
+    foreach a in center inside outside bogus {
+        local lg "`u34d'/u343`a'.log"
+        capture log close _u34log
+        quietly log using "`lg'", name(_u34log) text replace
+        capture noisily twoway line mpg weight, lalign(`a') nodraw
+        local trc = _rc
+        dash clear
+        capture noisily dash line mpg weight, lalign(`a') saving("`u34d'/l`a'.html", replace)
+        local drc = _rc
+        quietly log close _u34log
+        if `trc' != `drc' local bad `"`bad' `a': twoway rc `trc', dash `drc';"'
+        cert_file_has "`lg'", needle("dash: named style `a' not found in class alignstroke")
+        if ("`a'" == "bogus") != r(found) local bad `"`bad' `a': dash's note found `r(found)';"'
+        cert_file_has "`lg'", needle("ignoring unsupported option")
+        if r(found) local bad `"`bad' `a': the generic note named it;"'
+    }
+    _w31_expect U34-3 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-3 "lalign() taken as twoway takes it: center, inside, outside silent, another word in twoway's words"
 
     macro drop u34_tw u34_s u34_v
     capture graph drop _all

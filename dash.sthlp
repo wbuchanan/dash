@@ -2975,6 +2975,10 @@ the per-plot specification (not to {cmd:dash build} options).
     nothing on a string or value-labelled variable, as in {cmd:twoway}.  A
     date or string format, one on a date variable, or text that is no
     format is named in a note and the labels drawn without it{p_end}
+{synopt:{opt mlabprefix(string)} {opt mlabsuffix(string)}}text
+    written before and after every label, as {cmd:twoway} writes
+    {cmd:mlabprefix("[") mlabsuffix("]")} as {cmd:[AMC Concord]}; the
+    tooltip keeps the bare text{p_end}
 {synoptline}
 
 {pstd}
@@ -4164,6 +4168,12 @@ holds one quoted string per y variable, in order -- a range plot's two
 boundaries take the first two, a ci fit's band and line the first, as
 {cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- and {cmd:xvarlabel("")}
 draws no x title.
+
+{phang}{opt lalign(alignmentstyle)}, inside a plot, is taken as
+{cmd:twoway} takes it: {cmd:twoway} draws a line the same with
+{cmd:center}, {cmd:inside} or {cmd:outside}, and so does {cmd:dash},
+silently; another word is named in {cmd:twoway}'s words, {cmd:named style}
+... {cmd:not found in class alignstroke}, and the line drawn without it.
 
 {pstd}
 On a date axis a number is a date in the variable's own units, as

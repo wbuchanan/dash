@@ -71,8 +71,15 @@ def figs(mode, tmp_path, plots, df=DF, vl=VL, bo=None, go=None):
     dp = os.path.join(str(tmp_path), "data_%d.json" % _N[0])
     with open(sp, "w", encoding="utf-8") as fh:
         json.dump(spec, fh)
+    data = make_data_json(df, variable_labels=vl)
+    # Real jsonio marks a string variable (the served app coerces an
+    # unmarked column to NaN).
+    for c in df.columns:
+        if pd.api.types.is_string_dtype(df[c]) or df[c].dtype == object:
+            data["StataJSON"]["variableIsString"][c] = True
+            data["StataJSON"]["variableTypeIsString"][c] = True
     with open(dp, "w", encoding="utf-8") as fh:
-        json.dump(make_data_json(df, variable_labels=vl), fh)
+        json.dump(data, fh)
     if mode == "saved":
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")

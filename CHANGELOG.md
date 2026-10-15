@@ -440,7 +440,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, yvarlabel("Miles") xvarlabel("Pounds"): axis titles "Mileage (mpg)" and "Weight (lbs.)" with a note naming both -> "Miles" and "Pounds", silently, as twoway; the strings also key the legend (WP-31, D8)
 
-<!-- WP-31 C17 -->
+- dash scatter mpg weight, mlabel(make) mlabprefix("[") mlabsuffix("]"): "AMC Concord" with a note naming both -> "[AMC Concord]", as twoway; lalign(center), lalign(inside) and lalign(outside) are taken silently and lalign(bogus) is named in twoway's words (WP-31, C17)
 
 <!-- WP-31 E3 -->
 

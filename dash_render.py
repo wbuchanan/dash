@@ -13742,6 +13742,16 @@ class GlyphMapper:
                     glyph.line_alpha = la / 100.0
             except (ValueError, AttributeError):
                 pass
+        # lalign() (WP-31 C17): twoway draws a line the same with center,
+        # inside or outside (varlabel_mlabel_truth.json align.*: one
+        # picture), so they are silent; another word is noted in twoway's
+        # words (class alignstroke) and drawn as without it.
+        _lal = str(options.get("lalign", "") or "").strip()
+        if _lal and _lal not in ("center", "inside", "outside"):
+            _dash_warn_once(
+                ("lalign", _dash_display(_lal)),
+                f"dash: named style {_dash_display(_lal)} not found in class "
+                "alignstroke, default attributes used")
 
     def _apply_marker_opts(
         self,
@@ -15030,6 +15040,24 @@ class GlyphMapper:
             text_col = self._mlabformat_column(source, mlabel_var, _mfmt,
                                                text_col, values_col)
 
+        # mlabprefix()/mlabsuffix() (WP-31 C17): text around every label,
+        # as twoway writes "[AMC Concord]" (varlabel_mlabel_truth.json
+        # prefix.both), in a column of the LabelSet's own so a column the
+        # hover text reads keeps the bare text.  The name carries the two
+        # strings, so layers that share a source keep their own.
+        _pre = self._mlabel_affix(options.get("mlabprefix"))
+        _suf = self._mlabel_affix(options.get("mlabsuffix"))
+        if _pre or _suf:
+            import hashlib as _hl
+            _tag = _hl.sha1((_pre + "\0" + _suf).encode("utf-8")
+                            ).hexdigest()[:10]
+            _wrap = f"{_DASH_MLABEL_PREFIX}affix{_tag}_{text_col}"
+            if _wrap not in source.data:
+                source.data[_wrap] = [
+                    _pre + ("" if t is None else str(t)) + _suf
+                    for t in source.data[text_col]]
+            text_col = _wrap
+
         _lc, _la, _ls = self.scheme.default_mlabel_style(color_idx)
         kwargs: dict[str, Any] = dict(
             x=xvar,
@@ -15163,6 +15191,20 @@ class GlyphMapper:
 
         ls = LabelSet(**kwargs)
         fig.add_layout(ls)
+
+    @staticmethod
+    def _mlabel_affix(raw: Any) -> str:
+        """mlabprefix()'s or mlabsuffix()'s text: the value as typed, one
+        pair of surrounding double or compound quotes taken off (WP-31
+        C17); "" when absent."""
+        if not isinstance(raw, str):
+            return ""
+        s = raw.strip()
+        if len(s) >= 4 and s.startswith('`"') and s.endswith('"\''):
+            return s[2:-2]
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            return s[1:-1]
+        return s
 
     @staticmethod
     def _mlabel_gap_px(raw: Any, default_pt: float = 2.0,

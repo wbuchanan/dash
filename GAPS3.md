@@ -466,7 +466,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C14 Tracked:** Open (WP-31 section 34).
 - **C15 Tracked:** Open (WP-31 section 34).
 - **C16 Tracked:** Open (WP-31 section 46).
-- **C17 Tracked:** Open (WP-31 section 34).
+- **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit pending.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
