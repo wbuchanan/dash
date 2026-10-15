@@ -921,7 +921,7 @@ and now matches Stata.
 
 - name() is declared with twoway's minimum, the full name: nam(), na() and a bare nam are refused, r(198), "option nam() not allowed", as twoway refuses them; dash took nam() as name(). dash kpi keeps nam(). b(), t(), l() and r() stay the 1 titles, as twoway reads them. (WP-31, A3b)
 
-<!-- WP-31 A3c -->
+- aspectratio() is declared with twoway's minimum, aspect: asp(), aspe(), aspec() and a bare asp are refused, r(198), "option asp() not allowed", as twoway refuses them; dash took asp() as aspectratio(). (WP-31, A3c)
 
 - `dash scatter mpg weight, jit(5)` (and j(), ji(), jitt(), jitte()): refused, r(198), "option jit() not allowed", as twoway refuses it; write jitter() in full (was: taken as jitter()) (WP-31, A3d)
 

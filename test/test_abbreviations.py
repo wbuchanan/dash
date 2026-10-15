@@ -289,8 +289,9 @@ def test_fixture_says_its_dash_fields_are_the_pre_fix_record(truth):
 #: a new shorter minimum fails, and an entry that is no longer shorter
 #: fails.  Written from the regenerated fixture (WP-31 A3).
 _SHORTER_THAN_TWOWAY = {
-    # aspectratio(): dash takes asp() and aspe(); twoway refuses both.
-    "aspectratio": ("asp", "aspect"),
+    # Flipped (WP-31 A3c): "aspectratio": ("asp", "aspect") -- dash taking
+    # asp() and aspe(), which twoway refuses, was wrong; its minimum is
+    # twoway's aspect (sizing_truth.json abbrev_*, U32-10).
     # b2title(), l2title(), r2title(), t2title(): a digit ends the run of
     # capitals, so B2title's minimum is b; b() binds b1title() first, as
     # in twoway, and only a second b() reaches b2title (_SHARED_SPELLINGS).

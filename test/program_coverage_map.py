@@ -130,6 +130,8 @@ COVERAGE = {
         "_dash_contour_split": ("test_parser.cscript:U26-9",),
         # WP-31 S32 (D5): aspectratio(#, placement()) split as twoway reads it.
         "_dash_aspect_split": ("test_wp31_truth.cscript:U32-5",),
+        # WP-31 S32 (A3c): asp() .. aspec() refused as twoway refuses them.
+        "_dash_refuse_asp": ("test_abbreviations.cscript:U32-10",),
         "_dash_le_typed": ("test_parser.cscript:U26-9",),
         # e2e: sort() refused, named or silent as twoway, on every type
         # (WP-29 P0.1).

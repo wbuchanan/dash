@@ -906,8 +906,8 @@ program define _dash_parse_graph_opts, sclass
     // the graph-level loops in _dash_process_segment and _dash_plot.
     // Capitalised letters are the minimum abbreviation: as a rule twoway's
     // own where twoway has the option (measured, abbrev_truth.json) --
-    // ASPectratio is shorter, kept from dash's old table (NAMe was too,
-    // until WP-31 A3b declared twoway's minimum, the full name),
+    // ASPECTratio and NAME are twoway's minimums since WP-31 A3c and A3b
+    // (asp() and nam() were shorter, kept from dash's old table),
     // and MEan and BWIDth longer -- and dash's own choice where it has not.
     // -syntax- ends the run of capitals at a digit, so T1title's minimum is
     // t, and YTITLE2's is ytitle -- which YTitle, declared first, takes.
@@ -930,7 +930,7 @@ program define _dash_parse_graph_opts, sclass
         XTitle(string asis)       YTitle(string asis)       XLabel(string asis) ///
         YLabel(string asis)       XLIne(string asis)        YLIne(string asis) ///
         LEGend(string asis)       BY(string asis)           XSCale(string asis) ///
-        YSCale(string asis)       ASPectratio(string)       SCHeme(string) ///
+        YSCale(string asis)       ASPECTratio(string)       SCHeme(string) ///
         PLOTRegion(string asis)   GRAPHRegion(string asis)  BGColor(string) ///
         PLOTBGCOLOR(string)       LINK(string)              FILTer(string asis) ///
         YTITLE2(string asis)      XTITLE2(string asis)      YLABEL2(string asis) ///
@@ -1247,7 +1247,7 @@ program define _dash_parse_plot_opts, sclass
         SAVing(string)            XTitle(string asis)       YTitle(string asis) ///
         XLabel(string asis)       YLabel(string asis)       XLIne(string asis) ///
         YLIne(string asis)        LEGend(string asis)       BY(string asis) ///
-        XSCale(string asis)       YSCale(string asis)       ASPectratio(string) ///
+        XSCale(string asis)       YSCale(string asis)       ASPECTratio(string) ///
         SCHeme(string)            PLOTRegion(string asis)   GRAPHRegion(string asis) ///
         BGColor(string)           PLOTBGCOLOR(string)       LINK(string) ///
         FILTer(string asis)       YTITLE2(string asis)      XTITLE2(string asis) ///
@@ -6279,6 +6279,8 @@ program define _dash_process_segment, rclass
         _dash_refuse_jit
         // name() spelled shorter than twoway's minimum (WP-31 A3b).
         _dash_refuse_nam
+        // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
+        _dash_refuse_asp
         // A second name() in this option list: -syntax- binds the first to
         // NAME() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
@@ -7773,6 +7775,8 @@ program define _dash_plot
         // name() spelled shorter than twoway's minimum (WP-31 A3b), before
         // the second-name() check would read nam() as a second name().
         _dash_refuse_nam
+        // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
+        _dash_refuse_asp
         // A second name() in the options after the comma, and whether they
         // gave one at all: a group's name() is then a second one too.
         mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
@@ -9811,6 +9815,28 @@ program define _dash_refuse_jit
         }
     }
     mata: _dash_say("err", "option ", st_local("_rj_w"), " not allowed")
+    exit 198
+end
+
+// ================================================================
+// _dash_refuse_asp  -- aspectratio() spelled shorter than twoway's minimum
+// ================================================================
+// WP-31 A3c.  twoway's minimum for aspectratio() is aspect: asp(1),
+// aspe(1) and aspec(1) are "option asp() not allowed" and the like, and a
+// bare asp "option asp not allowed", r(198) (measured 15oct2026,
+// test/fixtures/sizing_truth.json abbrev_*, test_abbreviations.cscript
+// U32-10).  dash declared ASPectratio and took them; it declares
+// ASPECTratio now, so -syntax- leaves them to the catch-all.  Called
+// right after _dash_refuse_nam in a plot's options and after the
+// paren-mode comma, with the parser's s() in place: the first such word
+// of s(_unknown), read by value, is refused in twoway's words.  It
+// touches nothing in s().
+// ================================================================
+program define _dash_refuse_asp
+    version 19
+    mata: st_local("_ra_w", ustrregexm(" " + st_global("s(_unknown)") + " ", "[ ,](asp|aspe|aspec)(\(|[ ,])") ? ustrregexs(1) + (ustrregexs(2) == "(" ? "()" : "") : "")
+    if "`_ra_w'" == "" exit
+    mata: _dash_say("err", "option ", st_local("_ra_w"), " not allowed")
     exit 198
 end
 

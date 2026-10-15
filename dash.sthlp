@@ -3831,7 +3831,7 @@ the plot specification).
 {synopt:{cmdab:yli:ne(}{it:linearg}{cmd:)}}horizontal reference lines{p_end}
 {synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
-{synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}HEIGHT divided by WIDTH, as in
+{synopt:{cmdab:aspect:ratio(}{it:#}{cmd:)}}HEIGHT divided by WIDTH, as in
     Stata (e.g. {cmd:aspectratio(1)} for a square plot, {cmd:aspectratio(0.5)}
     for one half as tall as it is wide){p_end}
 {synopt:{cmdab:leg:end(off)}}hide the legend{p_end}
