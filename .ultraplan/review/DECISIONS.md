@@ -33,6 +33,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D25 | **Batch 10 addition** (15oct2026): S31's legend residuals -- stacked, symplacement(), colgap() and the legend's own subtitle()/note()/caption(), named in the note -- are row D4b for S39, which handles legend label edges; textfirst stays out of scope (PRD section 7). | S39 |
 | D26 | **Contour keeps the 1,000-point exact cap** (15oct2026): a saved-page move at the cap takes about 13 s (S29 measured); the cap is not lowered. | S29 (landed) |
 | D27 | **The contour colour bar keeps its build length after a move** (15oct2026): its cuts, ticks and labels follow the move (B4d) but BokehJS sizes the bar once; documented in the help. | S29 (landed) |
+| D28 | **The saved page's fpfit power search screens by exact rss** (15oct2026): every power pair is ranked by its exact weighted rss and only pairs within 1e-9 of TSS of the best are fitted (0.35 s at 1e5 rows, against 1.7 s for the full fit of all 36); it chooses the same powers as fitting all 36. D-28.a's full search is superseded. | S28 (landed) |
 
 ## Architect rulings (process and feasibility; from the reviews)
 
