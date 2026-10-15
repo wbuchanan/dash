@@ -14531,11 +14531,10 @@ class GlyphMapper:
             self._colorvar_paint(renderer.glyph, source, color_spec,
                                  fill_only=_fill_only, opacity=_copac)
 
-            if _keys_rev and add_key:
-                # twoway reverses the key and not the mapping; a ColorBar
-                # cannot be reversed without reversing its mapper.
-                _dash_style_note("colorkeysreverse", "", "continuous key",
-                                 "drawn unreversed")
+            # colorkeysreverse on a key that is not discrete: twoway draws
+            # the same key with it as without it (measured, WP-31 C8e:
+            # colorvar_options_truth.json D14r, D14br, D14kr), and so does
+            # dash, in silence.
             if _cbar is not None and add_key:
                 self._colorvar_key_place(fig, _cbar, _cleg, "clegend")
 

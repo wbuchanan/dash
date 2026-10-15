@@ -4584,10 +4584,12 @@ colours (measured to 1/255 a channel): with no {cmd:colorrule()},
 to red under {cmd:s2color} and {cmd:stcolor}, intensity of black under the
 mono schemes; {it:k} levels of {cmd:colordiscrete} take the first {it:k}
 of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
-{cmd:colpalette()}, then the rule.  {cmd:colorkeysreverse} on a colour bar
-is named, because the bar cannot be reversed without reversing the
-mapping; under {cmd:coloruseplegend} it is taken in silence, as
-{cmd:twoway}'s plot legend keeps its order.  How the colours are drawn
+{cmd:colpalette()}, then the rule.  {cmd:colorkeysreverse} reverses a
+{cmd:colordiscrete} key; on any other key -- a colour bar, binned by
+{cmd:colorlevels()} or with {cmd:colorkeysrange} -- {cmd:twoway} draws the
+same key with it as without it, and so does {cmd:dash}, in silence; under
+{cmd:coloruseplegend} it is taken in silence too, as {cmd:twoway}'s plot
+legend keeps its order.  How the colours are drawn
 is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
 through the rule's colours in 256 steps and a colour bar is drawn beside
 the figure, where

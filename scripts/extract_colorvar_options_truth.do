@@ -17,7 +17,8 @@
 *!   D*      `twoway scatter mpg weight, colorvar(...) <options>': rc, the
 *!           key's swatch fills (and fill opacities), its swatch kind
 *!           (marker or bar), its texts, and the outline colours of the
-*!           plotted markers.
+*!           plotted markers.  D14*: colorkeysreverse on a key that is
+*!           not discrete (WP-31 C8e, section 26).
 *!   S_<s>   every scheme dash ships: the default rule's colours for
 *!           colorlevels(2) (the rule's two ends) and for colordiscrete
 *!           on rep78 (five levels), and the scheme file's own
@@ -129,6 +130,12 @@ _zo_run D09c `sc', colorvar(rep78) colordiscrete colorrule(linear %30) colorstar
 _zo_run D10  `sc', colorvar(rep78) colordiscrete colorfillonly `nm'
 _zo_run D11  `sc', colorvar(rep78) colorlevels(4) colorkeysrange `nm'
 _zo_run D11b `sc', colorvar(rep78) colorlevels(4) `nm'
+* WP-31 C8e (section 26): colorkeysreverse on a colour key that is not
+* discrete -- unbinned, binned by colorlevels(), and with colorkeysrange.
+_zo_run D14  `sc', colorvar(price) `nm'
+_zo_run D14r `sc', colorvar(price) colorkeysreverse `nm'
+_zo_run D14br `sc', colorvar(rep78) colorlevels(4) colorkeysreverse `nm'
+_zo_run D14kr `sc', colorvar(rep78) colorlevels(4) colorkeysrange colorkeysreverse `nm'
 _zo_run D12  `sc', colorvar(rep78) colordiscrete colorkeysreverse `nm'
 _zo_run D13  `sc', colorvar(i.rep78) `nm'
 _zo_run D13b `sc', colorvar(rep78) colordiscrete coloruseplegend `nm'

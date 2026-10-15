@@ -5879,6 +5879,85 @@ if inlist("`only'", "", "S26") & `: list posof "S26" in w31_run' {
 }
 * ==== end S26 ====
 
+// S26 (WP-31 C8e) helpers: _u26_svgsame compares twoway's two exported
+// SVGs with their generated ids taken out; _u26_bar reads dash's colour bar
+// (palette ends, range, ticks) in both modes of a registered graph and the
+// notes naming colorkeysreverse.
+python:
+def _u26_svgsame(a, b):
+    import re
+    from sfi import Macro
+    def norm(p):
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            t = fh.read()
+        return re.sub(r'(id|href|clip-path)="[^"]*"', "", t)
+    Macro.setGlobal("u26_same", "1" if norm(a) == norm(b) else "0")
+
+
+def _u26_bar(sp, dp, app, sfx):
+    import __main__ as m
+    from sfi import Macro
+    from bokeh.models import ColorBar
+    a, b, notes = m._u26_docs(sp, dp, app)
+    for figs, mode in ((a, "s"), (b, "v")):
+        f = figs[0]
+        bars = [k for side in (f.right, f.left, f.above, f.below)
+                for k in side if isinstance(k, ColorBar)]
+        view = ""
+        if len(bars) == 1:
+            cm = bars[0].color_mapper
+            view = "%s %s %s %s %s" % (cm.palette[0], cm.palette[-1],
+                                       format(float(cm.low), ".10g"),
+                                       format(float(cm.high), ".10g"),
+                                       " ".join(format(float(t), ".10g")
+                                                for t in bars[0].ticker.ticks))
+        Macro.setGlobal("u26_bar%s%s" % (sfx, mode), view)
+    Macro.setGlobal("u26_rn" + sfx, str(sum("colorkeysreverse" in n
+                                            for n in notes)))
+end
+
+* ==== S26 C8e: colorkeysreverse on a colour bar ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S26") & `: list posof "S26" in w31_run' {
+    display as text "S26 start " c(current_date) " " c(current_time)
+    local u26dir "`w31_work'/u26e"
+    capture mkdir "`u26dir'"
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U26-11: twoway draws the unbinned colour key the same with
+    // colorkeysreverse as without it, measured live; dash draws the same
+    // bar for both, in both modes, and names nothing.
+    // ------------------------------------------------------------
+    capture graph drop u2611
+    twoway scatter mpg weight, colorvar(price) name(u2611, replace)
+    quietly graph export "`u26dir'/plain.svg", replace
+    twoway scatter mpg weight, colorvar(price) colorkeysreverse name(u2611, replace)
+    quietly graph export "`u26dir'/rev.svg", replace
+    graph drop u2611
+    python: import __main__ as _u26_m; _u26_m._u26_svgsame("`u26dir'/plain.svg", "`u26dir'/rev.svg")
+    _w31_expect U26-11 `"("${u26_same}" == "1")"' "twoway's key with and without colorkeysreverse the same: ${u26_same}"
+    foreach v in p r {
+        local o = cond("`v'" == "r", "colorkeysreverse", "")
+        dash clear
+        quietly dash scatter mpg weight, colorvar(price) `o' name(u2611)
+        _dash_serve_spec, specpath("`u26dir'/s`v'.json") datapath("`u26dir'/d`v'.json")
+        python: import __main__ as _u26_m; _u26_m._u26_bar("`u26dir'/s`v'.json", "`u26dir'/d`v'.json", "`u26dir'/a`v'.py", "`v'")
+    }
+    foreach m in s v {
+        _w31_expect U26-11 `"("${u26_barr`m'}" == "${u26_barp`m'}" & "${u26_barp`m'}" != "")"' "`m': bar ${u26_barr`m'}; without ${u26_barp`m'}"
+    }
+    _w31_expect U26-11 `"("${u26_rnr}" == "0")"' "notes naming colorkeysreverse: ${u26_rnr}"
+    _w31_done U26-11 "colorkeysreverse leaves the colour bar as twoway leaves its key, in silence"
+
+    dash clear
+    clear
+    macro drop u26_*
+    capture graph drop _all
+    display as text "S26 end " c(current_date) " " c(current_time)
+}
+* ==== end S26 ====
+
 // S28 helpers (WP-31 F1g).  _u28_move: the saved page's fpfit or fpfitci
 // after one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- the line's columns (x_fp,

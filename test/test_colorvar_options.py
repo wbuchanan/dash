@@ -348,9 +348,14 @@ class TestKeys:
         assert _ascending("D12") == list(reversed(_ascending("D01")))
 
     def test_reverse_on_colorbar_named(self, tmp):
+        # Flipped (WP-31 C8e): "named on a colour bar" was wrong because
+        # twoway draws a key that is not discrete the same with
+        # colorkeysreverse as without it (D14r == D14), and so does dash,
+        # in silence (test_colorkeysreverse_bar.py).
         (_f, w) = _figs(tmp, "saved", [plot_for("scatter", {
             "colorvar": "price", "colorkeysreverse": "colorkeysreverse"})])
-        assert any("colorkeysreverse" in x for x in w), w
+        assert not any("colorkeysreverse" in x for x in w), w
+        assert PROBES["D14r"]["key"] == PROBES["D14"]["key"]
 
 
 class TestOtherlabel:

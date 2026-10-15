@@ -3928,11 +3928,11 @@
   - Suggested fix: WP-31 section 32 (sizing scale aspect): measure twoway's pcycle() on fractions across series counts and match its acceptance and drawing.
   - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: colorkeysreverse on a colorvar() colour bar is named, not drawn
+- [x] Title: colorkeysreverse on a colorvar() colour bar is named, not drawn
   - File Names and Line Numbers: dash_render.py _apply_colorvar colour bar (ColorBar)
   - Description: GAPS3.md C8, found by WP-31 section 17 (C8b residual): colorkeysreverse reverses twoway's colour key; on dash's continuous colour bar it is named in the note.
   - Suggested fix: WP-31 section 26 (contour drawing): draw the reversed colour bar as twoway draws it, both modes.
-  - Resolution: Not fixed because WP-31 section 26 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 15oct2026 (WP-31, C8e). Measured first (scripts/extract_colorvar_options_truth.do probes D14, D14r, D14br, D14kr): twoway draws a colour key that is not discrete -- unbinned, binned by colorlevels() or with colorkeysrange -- the same with colorkeysreverse as without it; only the colordiscrete key is reversed, which dash already drew.  So the bar was right and the note was wrong: GlyphMapper._apply_colorvar no longer names colorkeysreverse on its colour bar, in both renderers (the served app copies GlyphMapper whole). Pinned by test/test_colorkeysreverse_bar.py::TestDashDrawsItSilently::test_the_bar_is_unchanged_and_nothing_is_named, test/test_wp31_truth.cscript U26-11; fixture test/fixtures/colorvar_options_truth.json. Closes GAPS3 C8 (WP-31, C8e).
 
 - [ ] Title: dot rows on the saved page keep the build's axis span after a filter move
   - File Names and Line Numbers: dash_render.py GlyphMapper._dot_fill, _dash_finish_auto_bases; _DASH_AXIS_FINISH_JS; section 18's saved-move xfail (TestAfterASavedMove)

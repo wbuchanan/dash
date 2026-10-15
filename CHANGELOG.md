@@ -501,7 +501,7 @@ and now matches Stata.
 
 <!-- WP-31 C8d -->
 
-<!-- WP-31 C8e -->
+- `dash scatter mpg weight, colorvar(price) colorkeysreverse` drew its colour bar and named colorkeysreverse in the note ("drawn unreversed"); it now draws the same bar in silence, as twoway draws a key that is not discrete the same with colorkeysreverse as without it. (WP-31, C8e)
 
 <!-- WP-31 B5c -->
 
