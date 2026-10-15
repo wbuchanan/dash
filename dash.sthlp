@@ -4216,11 +4216,10 @@ ticks after a filter move and a zoom; the other positions stay where they
 are, and they widen the axis, as {cmd:xtick()}'s do, unless
 {cmd:norescale}.  On major ticks that are no rule {cmd:##}{it:N} draws
 what {cmd:twoway} draws: nothing on a date axis, whose labels are calendar
-dates, and a single tick at 0 on an uneven list such as
-{cmd:xlabel(1000 2000 4000)}.  {it:Difference from twoway:} an evenly
-spaced list ({cmd:xlabel(1000 2000 3000)}) is read as the rule it spells,
-as {cmd:xlabel(1000(1000)3000)} is, where {cmd:twoway} draws the single
-tick at 0.  {cmd:##}{it:N} in {cmd:xlabel()} or {cmd:xtick()} is ignored
+dates, and a single tick at 0 on a list of values such as
+{cmd:xlabel(1000 2000 4000)}, evenly spaced or not
+({cmd:xlabel(1000 2000 3000)}; {cmd:xlabel(1000(1000)3000)} is a rule).
+{cmd:##}{it:N} in {cmd:xlabel()} or {cmd:xtick()} is ignored
 with {cmd:twoway}'s note, {cmd:##5 ignored, only allowed for minor ticks}.
 A minor tick is the scheme's {cmd:gsize minortick} long ({cmd:half_tiny},
 half a major tick) in {cmd:color minortick} at {cmd:linewidth minortick};
@@ -4228,7 +4227,9 @@ a minor label is written in {cmd:gsize minortick_label} ({cmd:vsmall}) in
 {cmd:color tick_label}, at the scheme's tick-label angle, a
 {cmd:gsize tickgap} from its tick, in the axis's format (or the option's
 {cmd:format()}, its quoted text, or with {cmd:valuelabel} its value
-label).  {cmd:grid} draws the minor grid in the scheme's
+label; the option's {cmd:format()} also after a filter move).  An
+{cmd:angle()} outside -360 to 360 on {cmd:axis(2)}'s minor labels and
+ticks is refused, {cmd:r(198)}, as on the first axis.  {cmd:grid} draws the minor grid in the scheme's
 {cmd:minor_grid} style.  Bokeh draws one set of minor ticks per axis, so
 an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
 the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long

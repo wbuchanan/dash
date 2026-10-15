@@ -471,7 +471,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Open (WP-31 section 35).
-- **D1c Tracked:** Open (WP-31 section 33).
+- **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit pending.
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.

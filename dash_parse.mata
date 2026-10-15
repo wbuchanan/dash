@@ -10600,7 +10600,8 @@ real scalar _dash_angle_out(string scalar s)
 // _axb_o<j> the option's name and _axb_v<j> the argument as typed.  The
 // order is twoway's, measured in StataNow 19.5: axis by axis y1, x1, y2,
 // x2, and on one axis the scale first, then the label, tick, mlabel and
-// mtick families (axis 2: label2, tick2).  It reads the caller's merged
+// mtick families (axis 2: label2, tick2, then mlabel2 and mtick2, WP-31
+// D1c; measured, test/fixtures/axis_look_truth.json m2_angle_*).  It reads the caller's merged
 // locals g_<option>; each value is parsed under twoway's axis-1 spelling
 // (_dash_axfam knows no label2 row) and resolved with _dash_so_resolve.  A
 // scale's last lwidth() is always listed (the caller bounds it 0..10000
@@ -10622,8 +10623,10 @@ void _dash_axbound_list()
             "x", "mtick", "mtick" \
             "y", "scale2", "scale" \ "y", "label2", "label" \
             "y", "tick2", "tick" \
+            "y", "mlabel2", "mlabel" \ "y", "mtick2", "mtick" \
             "x", "scale2", "scale" \ "x", "label2", "label" \
-            "x", "tick2", "tick")
+            "x", "tick2", "tick" \
+            "x", "mlabel2", "mlabel" \ "x", "mtick2", "mtick")
     k = 0
     for (i = 1; i <= rows(plan); i++) {
         sd  = plan[i, 1]

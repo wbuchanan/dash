@@ -507,7 +507,7 @@ and now matches Stata.
 
 <!-- WP-31 D1b -->
 
-<!-- WP-31 D1c -->
+- Minor-label edges follow twoway: dash scatter mpg weight, xlabel(1000 2000 3000) xmtick(##5) drew the 20 ticks of the rule the list spells, now twoway's lone tick at 0 (xlabel(1000(1000)3000) is still a rule); ymlabel(##2, axis(2) angle(400)) was drawn, now refused r(198) "textangle must be between -360.000 and 360.000"; xmlabel(##2, format(%9.2f)) keeps its format after a filter move on the saved page. (WP-31, D1c)
 
 - `dash scatter mpg weight, t1title("E", position(6))`: E above the plot, position() named -> E below the plot, as twoway draws it; `ring()` orders an edge title on its side (`ring(8)` outside the title); `span` and `nospan` inside an edge title are refused, "option(s) t1title_span(yes) not allowed", r(198), as twoway refuses them (WP-31, D2b)
 

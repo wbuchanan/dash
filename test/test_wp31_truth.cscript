@@ -7540,6 +7540,11 @@ def _u33_tw(case, svg, svg0, tlog):
         x = [t["x"] for t in d["texts"] if t.get("rotate")
              and t["text"].isdigit()][0]
         return "right" if x > d["plotregion"]["right"] else "left"
+    if case == "minor":
+        # twoway's minor ticks on x: half the major length, below the axis.
+        short = [v for v in d["vlines"] if v["stroke"] == "#000000"
+                 and 5 < abs(v["y2"] - v["y1"]) < 30]
+        return "lone" if len(short) == 1 else "rule %d" % len(short)
     if case == "xline":
         w = [v["width"] for v in d["vlines"]
              if v["stroke"] not in ("#000000", "#eaf2f3")
@@ -7582,6 +7587,17 @@ def _u33_dash(figs, case, log):
     if case == "side":
         return "right" if any("dash_alt_axis" not in (a.tags or [])
                               for a in f.right) else "left"
+    if case == "minor":
+        xax = [a for a in f.below if "dash_alt_axis" not in (a.tags or [])][0]
+        a = dict(getattr(xax.ticker, "args", None) or {})
+        pos = list(a.get("mextra") or [])
+        if a.get("mfixed") is not None:
+            pos += list(a["mfixed"].ticks or [])
+        lo, hi = sorted((f.x_range.start, f.x_range.end))
+        pos = sorted({float(v) for v in pos if lo <= v <= hi})
+        maj = {float(v) for v in getattr(a.get("base"), "ticks", None) or []}
+        pos = [v for v in pos if v not in maj]
+        return "lone" if pos == [0.0] else "rule %d" % len(pos)
     if case == "xline":
         ws = [m.line_width for m in list(f.center) + list(f.renderers)
               if type(m).__name__ in ("Span", "Arrow")]
@@ -7798,6 +7814,39 @@ if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
     capture graph drop _all
     dash clear
     set scheme s2color
+    display as text "S33 end " c(current_date) " " c(current_time)
+}
+* ==== end S33 ====
+
+* ==== S33 D1c: Minor-label edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
+    display as text "S33 start " c(current_date) " " c(current_time)
+    local u33d "`w31_work'/s33d"
+    capture mkdir "`u33d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(u33t, replace)
+    quietly graph export "`u33d'/t0.svg", replace
+    graph drop u33t
+
+    // U33-10: an evenly spaced list typed as a list is no rule for ##5
+    // (a lone tick at 0); the same list typed as a(b)c is a rule.
+    _u33_reg "`u33d'" 10 minor scatter mpg weight, xlabel(1000 2000 3000) xmtick(##5)
+    foreach m in s v {
+        _w31_expect U33-10 `"("${u33_`m'}" == "${u33_tw}")"' "`m' list: dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _u33_reg "`u33d'" 11 minor scatter mpg weight, xlabel(1000(1000)3000) xmtick(##5)
+    _w31_expect U33-10 `"("${u33_tw}" != "lone")"' "twoway drew the rule as a list: ${u33_tw}"
+    foreach m in s v {
+        _w31_expect U33-10 `"("${u33_`m'}" != "lone")"' "`m' rule: dash ${u33_`m'}"
+    }
+    _w31_done U33-10 "##5 over a typed list and over its rule as twoway, saved and served"
+
+    macro drop u33_tw u33_s u33_v u33_noted
+    capture graph drop _all
+    dash clear
     display as text "S33 end " c(current_date) " " c(current_time)
 }
 * ==== end S33 ====

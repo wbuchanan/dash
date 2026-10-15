@@ -4447,7 +4447,11 @@ program define _dash_axis_expand, rclass
             local tail : copy local txt
             continue
         }
-        if "`tag'" == "B" {
+        // WP-31 D1c: a lone a(b)c rule stays as typed (_ap_rule 2), so
+        // the renderer can tell it from an evenly spaced list, which
+        // twoway reads as no rule for ##N (minor_tick_truth.json
+        // m_between_even_list); the renderer expands the rule itself.
+        if "`tag'" == "B" & "`_ap_rule'" != "2" {
             capture numlist `"`macval(txt)'"', max(2000)
             if !_rc local txt `"`r(numlist)'"'
         }

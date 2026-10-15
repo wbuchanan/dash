@@ -250,14 +250,11 @@ class TestBetweenRule:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_an_even_list_is_read_as_its_rule(self, mode):
-        # Recorded deviation (WP-31 D1): dash.ado hands the renderer an
-        # a(b)c label as its expanded list, so an evenly spaced list typed
-        # as one (twoway: m_between_even_list, a lone tick at 0) is drawn
-        # as the rule it spells, as xlabel(1000(1000)3000) is in twoway.
+        # Flipped (WP-31 D1c): an evenly spaced list typed as one is no
+        # rule (twoway: m_between_even_list, a lone tick at 0); dash.ado
+        # keeps a lone a(b)c as typed, which stays a rule.
         f = _figs(mode, {"xlabel": "1000 2000 3000", "xmtick": "##5"})[0]
-        got = _minor(f, "x")
-        assert got[0] == pytest.approx(1000.0) and got[-1] == pytest.approx(
-            4800.0) and len(got) == 20, got
+        assert _minor(f, "x") == _T["m_between_even_list"]["positions"]
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_date_axis_with_uneven_majors_draws_none(self, mode, tmp_path):

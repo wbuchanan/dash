@@ -1045,7 +1045,9 @@ if `rc' | !`ok' {
 }
 else display as text "AD-06 PASS: the after-comma copy merges with the segment's"
 local b = 0
-_ad_case AD-07 `"ylabel(15(10)35, add)"' `"15 25 35"'
+// Flipped (WP-31 D1c): a lone a(b)c stays as typed for the renderer,
+// which expands it, so a typed list can be told from a rule.
+_ad_case AD-07 `"ylabel(15(10)35, add)"' `"15(10)35"'
 if `ad_bad' local b = 1
 _ad_case AD-07 `"ylabel(15(10)35 50, add)"' `"15 25 35 50"'
 if `ad_bad' local b = 1
@@ -1059,7 +1061,8 @@ if `b' {
 }
 else display as text "AD-07 PASS: a leading rule spends add; a value list keeps it"
 local b = 0
-_ad_case AD-08 `"ylabel(0(10)100, norescale)"' `"0 10 20 30 40 50 60 70 80 90 100"'
+// Flipped (WP-31 D1c): the lone rule as typed, norescale spent.
+_ad_case AD-08 `"ylabel(0(10)100, norescale)"' `"0(10)100"'
 if `ad_bad' local b = 1
 _ad_case AD-08 `"ylabel(0 10 20, norescale)"' `"0 10 20, norescale"'
 if `ad_bad' local b = 1

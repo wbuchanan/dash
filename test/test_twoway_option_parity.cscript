@@ -4536,7 +4536,9 @@ _zta_data
 local bad ""
 _zta_cmp `"tsline y, tlabel(2000m1(12)2004m1) ttitle("Month") tline(2002m1) tscale(range(1999m1 2006m1)) ttick(2000m7(12)2004m7)"'
 if `_zta_trc' | `_zta_drc' | `_zta_note' local bad " rc `_zta_trc'/`_zta_drc' note `_zta_note'"
-foreach kv in "xlabel|480 492 504 516 528" "xtick|486 498 510 522 534" "xline|504" "xscale|range(468 552)" {
+// Flipped (WP-31 D1c): a lone a(b)c reaches the renderer as typed (it
+// expands it), so the rules are 480(12)528 and 486(12)534.
+foreach kv in "xlabel|480(12)528" "xtick|486(12)534" "xline|504" "xscale|range(468 552)" {
     gettoken k v : kv, parse("|")
     local v = substr(`"`v'"', 2, .)
     mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("k"), st_local("v"))))
@@ -4710,7 +4712,8 @@ else display as text "TA-06 PASS: over 42 first plots, tline() and tlabel() lite
 
 // TA-07: on any twoway graph, not only tsline (sysuse auto).
 local bad ""
-_zta_val `"line y t, tlabel(2000m1(12)2004m1)"' xlabel "480 492 504 516 528"
+// Flipped (WP-31 D1c): the rule as typed, which the renderer expands.
+_zta_val `"line y t, tlabel(2000m1(12)2004m1)"' xlabel "480(12)528"
 local bad `"`bad'`_zta_bad'"'
 quietly sysuse auto, clear
 foreach c in "tlabel(2000 3000 4000)|xlabel|2000 3000 4000" "tline(3000)|xline|3000" ///
@@ -4801,7 +4804,8 @@ local bad ""
 foreach c in "tmlabel|xmlabel" "tmtick|xmtick" {
     gettoken o k : c, parse("|")
     local k = substr("`k'", 2, .)
-    _zta_val `"tsline y, `o'(2000m7(12)2004m7)"' `k' "486 498 510 522 534"
+    // Flipped (WP-31 D1c): the rule as typed.
+    _zta_val `"tsline y, `o'(2000m7(12)2004m7)"' `k' "486(12)534"
     local bad `"`bad'`_zta_bad'"'
     _ztp_logged "$zta_log" "`o'()"
     if r(found) local bad `"`bad' [`o' named]"'

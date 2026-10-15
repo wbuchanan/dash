@@ -210,7 +210,8 @@ COVERAGE = {
         # is refused with Stata's error, nothing is left in the data.
         # WP-28 S14 (B1), direct: numlist's expansion of every bare run reaches r(norm).
         "_dash_axis_expand": ("test_gaps2_truth.cscript:AL-01",
-                              "test_gaps2_truth.cscript:AL-03"),
+                              "test_gaps2_truth.cscript:AL-03",
+                              "test_wp31_truth.cscript:U33-10"),
         "_dash_qual_gen": ("test_qualifier_in_stata.cscript:QS-05",
                            "test_qualifier_in_stata.cscript:QS-06",
                            "test_qualifier_in_stata.cscript:QS-08",
@@ -784,7 +785,8 @@ COVERAGE = {
         "_dash_graph_names": ("test_export.cscript:GE-14",),
         # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
         "_dash_angle_out": ("test_suboption_reporting.cscript:AXL-01",),
-        "_dash_axbound_list": ("test_suboption_reporting.cscript:AXL-05",),
+        "_dash_axbound_list": ("test_suboption_reporting.cscript:AXL-05",
+                               "test_option_validation.cscript:U33-09"),
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
         "_dash_scheme_dirs_json": ("test_wp30_truth.cscript:SP-18", "test_custom_scheme.cscript:SP-04"),
         # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)

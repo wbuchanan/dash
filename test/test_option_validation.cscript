@@ -2257,6 +2257,28 @@ foreach val in "none 1 2" "minmax 1" "#3 20" "," "10(10)40" {
 }
 _u05_judge U33-07 `"`bad'"' "axis label forms twoway refuses are refused in its words; the forms it draws run"
 
+// U33-09 (WP-31 D1c): an angle() outside -360..360 on an axis-2 minor
+// label or tick option is refused as twoway refuses it, r(198)
+// "textangle must be between -360.000 and 360.000".  twoway checks it
+// when it draws (nodraw passes it), so its graph is drawn here; dash
+// always draws the page and checks it under nodraw too.
+local bad ""
+foreach c in "yaxis(1 2) ymlabel(##2, axis(2) angle(400))" "xaxis(1 2) xmlabel(##2, axis(2) angle(400))" "yaxis(1 2) ymtick(##2, axis(2) angle(400))" {
+    sysuse auto, clear
+    capture twoway scatter mpg weight, `c' name(u339, replace)
+    local trc = _rc
+    capture graph drop u339
+    _u05_rc "scatter mpg weight, `c'" "textangle must be between -360.000 and 360.000"
+    if `trc' != 198 | r(drc) != 198 | r(dn) < 1 {
+        local bad `"`bad' [`c': twoway `trc', dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_rc "scatter mpg weight, yaxis(1 2) ymlabel(##2, axis(2) angle(45))" ""
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [angle(45): twoway `r(trc)', dash `r(drc)']"'
+}
+_u05_judge U33-09 `"`bad'"' "axis-2 minor angle() bounded as twoway bounds it"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

@@ -37822,7 +37822,8 @@ function dash_minor_place(a, models, lo, hi) {
     // _dash_minor_dated): ##N draws nothing there.
     const dated = typeof a.kind === "string" && a.kind !== "log"
         && a.kind.indexOf("su:") !== 0;
-    const rule = dated ? null : dash_minor_rule(maj, a.extra || []);
+    // WP-31 D1c: majors typed as a list are no rule (mn.list).
+    const rule = (dated || mn.list) ? null : dash_minor_rule(maj, a.extra || []);
     const kind = a.kind === "log" ? "log" : null;
     const pt = mn.tb ? dash_minor_between(rule, mn.tb, lo, hi, false, kind) : [];
     const pl = mn.lb ? dash_minor_between(rule, mn.lb, lo, hi, true, kind) : [];
@@ -38501,10 +38502,20 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
                 rows += [(p, labs.get(p)) for p in pos]
     # twoway's lone tick at 0 for ##N over majors that are an uneven list
     # (m_between_uneven: the scale widened to 0), on a numeric axis.
+    # WP-31 D1c: an evenly spaced list typed as a list is no rule either
+    # (m_between_even_list: twoway's lone tick at 0); a lone a(b)c reaches
+    # here as typed (dash.ado keeps it) and is one.
+    typed_list = bool(major_spec is not None
+                      and major_spec.get("mode") == "explicit"
+                      and not major_spec.get("add")
+                      and not major_spec.get("rule"))
+    for _a in axes:
+        _a._dash_typed_list = typed_list
     if (tb or lb) and date_kind is None and major_spec is not None \
             and major_spec.get("mode") == "explicit" \
             and not major_spec.get("add") \
-            and _dash_minor_rule(major_spec.get("ticks") or ()) is None:
+            and (typed_list or _dash_minor_rule(
+                major_spec.get("ticks") or ()) is None):
         mextra.append(0.0)
         if lb and lspec is not None:
             rows.append((0.0, None))
@@ -38593,6 +38604,14 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
             mn.update({"src": src, "labels": models,
                        "rows": list(zip([p for p, _t in rows], texts)),
                        "look": (look, size, color, angle, side)})
+            if lspec.get("format"):
+                # WP-31 D1c: the saved page writes the after-move labels in
+                # the label's own format(), as _dash_minor_text does here.
+                _fa = dict(getattr(getattr(ax, "formatter", None), "args",
+                                   None) or {})
+                mn["fmt_model"] = _dash_fmt_tick_formatter(
+                    str(lspec["format"]), str(_fa.get("kind") or ""),
+                    str(_fa.get("storage") or ""), None)
         else:
             mn["lb"] = 0
         ax._dash_minor = mn
@@ -38665,7 +38684,8 @@ def _dash_finish_minor_ticks(fig):
                                     getattr(ax, "_dash_extra_ticks", None)
                                     or ())
             kind = "log" if e.get("kind") == "log" else None
-            if _dash_minor_dated(e.get("kind")):
+            if _dash_minor_dated(e.get("kind")) \
+                    or getattr(ax, "_dash_typed_list", False):
                 rule = None
             pt = (_dash_minor_between(rule, mn["tb"], lo, hi, False, kind)
                   if mn["tb"] else [])
@@ -40045,7 +40065,11 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     idx = {}
                     for nm_, mdl in (("fx", mn.get("fixed")),
                                      ("src", mn.get("src")),
-                                     ("fm", getattr(ax, "formatter", None)
+                                     # WP-31 D1c: the label's own
+                                     # format(), else the axis writer.
+                                     ("fm", (mn.get("fmt_model")
+                                             or getattr(ax, "formatter",
+                                                        None))
                                       if mn.get("src") is not None
                                       else None)):
                         if mdl is None:
@@ -40061,6 +40085,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         "lb": int(mn.get("lb") or 0),
                         "fx": idx["fx"], "src": idx["src"], "fm": idx["fm"],
                         "nfix": len(mn.get("rows") or []),
+                        "list": int(bool(getattr(ax, "_dash_typed_list",
+                                                 False))),
                         "maj": (None if mode == "count" else
                                 [float(v) for v in _dash_axis_majors(ax)
                                  if ok(v)])}

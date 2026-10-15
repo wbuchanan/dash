@@ -617,18 +617,20 @@ _PLAIN_DIGESTS = {
     # dash_axis_bounds (noextend) joins the page's finish code.
     # b8c27bfa... -> def54a8f...: WP-31 D7 the axis title gap is the
     # scheme's axis_title_gap (1 px, was Bokeh's 5).
+    # def54a8f... -> 2e3fd291...: WP-31 D1c the finish code reads a
+    # typed list as no ##N rule (finish JS text only).
     ("saved", "plain"):
-        "def54a8fa7184a5980443893312a78d0b53c2aaad804333db897f64edd4e30a6",
+        "2e3fd291ec123e849333ca04551f204ed717691b48cde32b2bb5f67bf565ebee",
     ("saved", "yaxis2"):
-        "def54a8fa7184a5980443893312a78d0b53c2aaad804333db897f64edd4e30a6",
+        "2e3fd291ec123e849333ca04551f204ed717691b48cde32b2bb5f67bf565ebee",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
-    # 23c6fcc8... -> f8ce3f00... -> 59d68f1d...: WP-31 D6/D7, as the
-    # saved page's.
+    # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
+    # D6/D7/D1c, as the saved page's.
     ("served", "plain"):
-        "59d68f1d476ac3303fd812dc4e1eee14d04b6bd20bbf449c8a76fbd3170bdce8",
+        "0440b3d941f6124c3637b48bfe6f792cfd00b6e65325c96781447155a16f365e",
     ("served", "yaxis2"):
-        "59d68f1d476ac3303fd812dc4e1eee14d04b6bd20bbf449c8a76fbd3170bdce8",
+        "0440b3d941f6124c3637b48bfe6f792cfd00b6e65325c96781447155a16f365e",
 }
 
 
