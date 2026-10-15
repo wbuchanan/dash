@@ -98,6 +98,10 @@
 *!       blanks outside parentheses, "quotes" and compound quotes (WP-31
 *!       B4b, read by dash.ado's _dash_contour_split).
 *!
+*!   _dash_pcycle_bad(plots, p)
+*!       1 when pcycle(p) leaves a series of the plots JSON no whole p#,
+*!       as twoway refuses it "option seriesid() not allowed" (WP-31 C8d).
+*!
 *!   _dash_colorrule_check(t)
 *!       colorrule()'s text as twoway reads it: the caller's local _crc
 *!       "" (drawn), "spec" (an invalid % or * part) or "rule" (a rule twoway
@@ -1388,6 +1392,45 @@ void _dash_note(string scalar before, string scalar value,
     if (substr(t, 1, 12) == "dash: note: ") t = "dash: " + substr(t, 13, .)
     if (ustrlen(t) > 4000) t = usubstr(t, 1, 3997) + "..."
     errprintf("{txt}(note:  %s)\n", _dash_smcl_text(t))
+}
+
+// ============================================================
+// _dash_pcycle_bad(plots, p)
+//
+// twoway numbers series serid = 1, 2, ... (a ci fit two: its band and its
+// line) and draws each in p(mod(serid - 1, p) + 1); a number that is not
+// whole -- pcycle(1.5) on three series, mod(2, 1.5) + 1 = 1.5 -- or a p
+// of 0 or less is "option seriesid() not allowed", r(198) (WP-31 C8d,
+// test/fixtures/pcycle_fraction_truth.json: 1.5 draws on one or two
+// series, 2.2 on three, 0.5 on any number).  plots is the graph's plots
+// JSON as dash.ado writes it, each plot an object opening {"type":"<t>";
+// the series are counted from those openings (an option object that
+// opens with a "type" key follows "options": and is skipped).  Returns
+// 1 when twoway refuses.
+// ============================================================
+real scalar _dash_pcycle_bad(string scalar plots, real scalar p)
+{
+    real scalar   n, pos, at, k, v
+    string scalar t, rest
+
+    if (p >= . | p <= 0) return(1)
+    n = 0
+    rest = plots
+    at = 0
+    while ((pos = strpos(rest, `"{"type":""')) > 0) {
+        if (!(at + pos > 10 & substr(plots, at + pos - 10, 10) == `""options":"')) {
+            t = substr(rest, pos + 9, .)
+            t = substr(t, 1, strpos(t, `"""') - 1)
+            n = n + (anyof(("lfitci", "qfitci", "lpolyci", "fpfitci"), t) ? 2 : 1)
+        }
+        at = at + pos
+        rest = substr(rest, pos + 1, .)
+    }
+    for (k = 0; k < n; k++) {
+        v = mod(k, p) + 1
+        if (v != floor(v)) return(1)
+    }
+    return(0)
 }
 
 // ============================================================

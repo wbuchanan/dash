@@ -1,0 +1,909 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "cdb7e9e75420e8cc707e65438dd6fe5dfb7e2a8c",
+  "extracted": "15 Oct 2026 16:55:09",
+  "source": "scripts/extract_pcycle_fraction_truth.do",
+  "stata_version": "19.5"
+ },
+ "n16_0": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_0p5": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n16_1": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n16_15p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#6e8e84",
+   "#c10534",
+   "#938dd2",
+   "#cac27e",
+   "#a0522d",
+   "#7b92a8",
+   "#2d6d66",
+   "#9c8847",
+   "#bfa19c",
+   "#ffd200",
+   "#d9e6eb",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [
+   "(note:  pstyle p16 not found in scheme, default attributes used)"
+  ],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n16_16p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#6e8e84",
+   "#c10534",
+   "#938dd2",
+   "#cac27e",
+   "#a0522d",
+   "#7b92a8",
+   "#2d6d66",
+   "#9c8847",
+   "#bfa19c",
+   "#ffd200",
+   "#d9e6eb",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [
+   "(note:  pstyle p16 not found in scheme, default attributes used)"
+  ],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n16_1p2": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_1p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n16_2p2": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_2p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_3p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_m1": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n16_none": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#6e8e84",
+   "#c10534",
+   "#938dd2",
+   "#cac27e",
+   "#a0522d",
+   "#7b92a8",
+   "#2d6d66",
+   "#9c8847",
+   "#bfa19c",
+   "#ffd200",
+   "#d9e6eb",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n1_0": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n1_0p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_1": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_15p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_16p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_1p2": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_1p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_2": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_2p2": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_2p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_3p5": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n1_m1": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n1_none": {
+  "fills": [
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1
+  ],
+  "rc": 0
+ },
+ "n2_0": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n2_0p5": {
+  "fills": [
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_1": {
+  "fills": [
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_15p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_16p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_1p2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_1p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_2p2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_2p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_3p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n2_m1": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n2_none": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_0": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n3_0p5": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_1": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_15p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_16p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_1p2": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n3_1p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n3_2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_2p2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_2p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_3p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n3_m1": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n3_none": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_0": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_0p5": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_1": {
+  "fills": [
+   "#1a476f",
+   "#1a476f",
+   "#1a476f",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   1,
+   1,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_15p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_16p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_1p2": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_1p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_2": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#1a476f",
+   "#90353b",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   1,
+   2,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_2p2": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_2p5": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_3p5": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   1
+  ],
+  "rc": 0
+ },
+ "n4_m1": {
+  "lines": [
+   "option seriesid() not allowed"
+  ],
+  "rc": 198
+ },
+ "n4_none": {
+  "fills": [
+   "#1a476f",
+   "#90353b",
+   "#55752f",
+   "#e37e00",
+   "#1a476f"
+  ],
+  "lines": [],
+  "pstyle": [
+   1,
+   2,
+   3,
+   4,
+   1
+  ],
+  "rc": 0
+ }
+}

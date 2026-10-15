@@ -3922,11 +3922,11 @@
   - Suggested fix: WP-31 section 44 (style file resolver): read zyx2rule, contour_begin and contour_end from the scheme in use (its file and its class directives) and drive the default rule from them, cscripted against twoway on a user scheme.
   - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: pcycle() refuses a fraction where twoway draws it on a graph of few series
+- [x] Title: pcycle() refuses a fraction where twoway draws it on a graph of few series
   - File Names and Line Numbers: dash.ado _dash_option_rules (pcycle token); dash_render.py pcycle reader
   - Description: GAPS3.md C8, found by WP-31 section 17 (C8b residual): dash takes pcycle() as a positive integer only; twoway draws pcycle(1.5) on a graph of two or fewer series (fixture colorvar_options_truth.json P02f).
   - Suggested fix: WP-31 section 32 (sizing scale aspect): measure twoway's pcycle() on fractions across series counts and match its acceptance and drawing.
-  - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 15oct2026 (WP-31, C8d). pcycle(#) with a fraction is drawn where every series' number mod(serid - 1, #) + 1 is whole and refused "option seriesid() not allowed", r(198), where one is not, as twoway does: dash.ado counts the graph's series (a ci fit two) with the new Mata _dash_pcycle_bad; _dash_pcycle returns the fraction and _dash_plot_style_indices numbers the series by it in both renderers, a p# past the scheme's 15 drawn as p1, as twoway draws its "pstyle p16 not found". Pinned by test/test_pcycle_fraction.py::TestTheStyles::test_every_drawn_probe, test/test_pcycle_fraction.py::TestTheStyles::test_drawn, test/test_option_validation.cscript U32-11; fixture test/fixtures/pcycle_fraction_truth.json. Closes GAPS3 C8 (WP-31, C8d).
 
 - [x] Title: colorkeysreverse on a colorvar() colour bar is named, not drawn
   - File Names and Line Numbers: dash_render.py _apply_colorvar colour bar (ColorBar)

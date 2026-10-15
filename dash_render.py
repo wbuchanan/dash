@@ -43943,14 +43943,22 @@ def _dash_clegend_opts(text):
 def _dash_pcycle(graph_opts):
     """pcycle(#) of *graph_opts* as the number of p styles before p1
     recurs (twowaygraph_g.class:474, ``mod(serid - 1, pcycle) + 1``), at
-    most the scheme's 15; None when not given (WP-31 C8b).  dash.ado has
-    refused a value that is not a positive integer."""
-    raw = str((graph_opts or {}).get("pcycle", "") or "").strip()
+    most the scheme's 15; None when not given (WP-31 C8b).  A fraction is
+    returned as it is (WP-31 C8d): twoway draws one when every series'
+    number mod(serid - 1, #) + 1 is whole, which dash.ado has checked
+    (_dash_pcycle_bad), pcycle(0.5) drawing every series in p1
+    (pcycle_fraction_truth.json)."""
+    raw = str((graph_opts or {}).get("pcycle", "") or "").strip()[:64]
     try:
-        v = int(float(raw))
+        f = float(raw)
     except ValueError:
         return None
-    return min(v, 15) if v >= 1 else None
+    if not math.isfinite(f) or f <= 0:
+        return None
+    if f == int(f):
+        v = int(f)
+        return min(v, 15) if v >= 1 else None
+    return f
 
 
 def _dash_value_labels_for(var, value_labels, value_label_names):
@@ -47440,6 +47448,17 @@ def _dash_plot_style_indices(plots, pcycle=None):
     colorvar_options_truth.json P01).
     """
     cyc = pcycle if isinstance(pcycle, int) and 1 <= pcycle <= 15 else 15
+    if isinstance(pcycle, float) and math.isfinite(pcycle) and pcycle > 0 \
+            and pcycle != int(pcycle):
+        # WP-31 C8d: a fraction -- p(mod(serid - 1, #) + 1), whole for
+        # every series once dash.ado has let it through; a p# past the
+        # scheme's 15 is drawn as p1, as twoway draws its "pstyle p16 not
+        # found" (pcycle_fraction_truth.json n16_15p5).
+        cyc = pcycle
+
+    def _p(k):
+        i = int(round(k % cyc))
+        return i if i < 15 else 0
     out = []
     n = 0                                   # plots drawn before this layer
     for plot in (plots or ()):
@@ -47447,11 +47466,11 @@ def _dash_plot_style_indices(plots, pcycle=None):
         is_ci = (isinstance(ptype, str)
                  and ptype.strip().lower() in _DASH_CI_TYPES)
         if is_ci:
-            line_series = (n + 1) % cyc + 1  # the line is plot n + 2
+            line_series = _p(n + 1) + 1     # the line is plot n + 2
             out.append(max(line_series - 1, 1) - 1)
             n += 2
         else:
-            out.append(n % cyc)
+            out.append(_p(n))
             n += 1
         _o = plot.get("options") if isinstance(plot, dict) else None
         if isinstance(_o, dict):

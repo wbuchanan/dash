@@ -4704,10 +4704,13 @@ other sub-options are named in the note.  {cmd:plegend()} does the same for
 the keys {cmd:coloruseplegend} puts in the plot legend, where
 {cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}
 is the number of plot styles before {cmd:p1} recurs:
-{cmd:scatter mpg trunk turn weight, pcycle(2)} draws its third series in {cmd:p1}.  It takes a
-positive integer, refused otherwise with {cmd:twoway}'s words ("option
-seriesid() not allowed"); {cmd:twoway} draws a fraction on a graph with too
-few series to reach a fractional style.
+{cmd:scatter mpg trunk turn weight, pcycle(2)} draws its third series in {cmd:p1}.  Series
+{it:k} (a confidence-interval fit counting two) draws in
+{cmd:p}{it:m}, {it:m} = mod({it:k}-1, {it:#})+1, as in {cmd:twoway}, so a
+fraction is drawn while every {it:m} is whole -- {cmd:pcycle(1.5)} on one or
+two series, {cmd:pcycle(0.5)} on any number, all in {cmd:p1} -- and
+refused, as {cmd:twoway} refuses it ("option seriesid() not allowed"),
+where one is not, or when {it:#} is 0 or less.
 {cmd:colorvar(i.}{it:varname}{cmd:)} is
 {cmd:colorvar(}{it:varname}{cmd:) colordiscrete coloruseplegend}, as in {cmd:twoway}.
 

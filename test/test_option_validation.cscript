@@ -383,6 +383,9 @@
 *!          scale(x), fxsize(150) and fysize(0) drawn, as twoway draws them
 *!   U32-7  aspectratio(1, foo) refused "option foo not allowed";
 *!          aspectratio(1, placement(xx)) drawn with twoway's note
+*!   U32-11 (WP-31 C8d) pcycle() with a fraction on 1, 2, 3, 4 and 16
+*!          series, and a ci fit counted as two: dash's rc is twoway's
+*!          (pcycle_fraction_truth.json)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2186,6 +2189,44 @@ foreach p in e w c ne {
     }
 }
 _u05_judge U32-7 `"`bad'"' "aspectratio(#, placement()) taken, a bad sub-option refused and a bad compass noted, as twoway"
+
+// U32-11 (WP-31 C8d): pcycle() with a fraction is drawn where every
+// series' number mod(serid - 1, #) + 1 is whole, and refused "option
+// seriesid() not allowed" where one is not, as twoway does.
+local bad ""
+sysuse auto, clear
+forvalues k = 1/16 {
+    quietly generate double u32y`k' = mpg + 10 * `k'
+}
+foreach n in 1 2 3 4 16 {
+    local ys ""
+    forvalues k = 1/`n' {
+        local ys "`ys' u32y`k'"
+    }
+    foreach p in 0 -1 0.5 1.2 1.5 2.2 2.5 15.5 {
+        capture quietly twoway scatter `ys' weight, pcycle(`p') name(u32p, replace)
+        local trc = _rc
+        capture graph drop u32p
+        capture dash clear
+        capture quietly dash scatter `ys' weight, pcycle(`p') name(u32p)
+        local drc = _rc
+        if `trc' != `drc' local bad `"`bad' [`n' series pcycle(`p'): twoway `trc', dash `drc']"'
+    }
+}
+// lfitci is two series: with a scatter, three -- pcycle(1.5) refused,
+// pcycle(2.2) drawn.
+foreach p in 1.5 2.2 {
+    capture quietly twoway scatter mpg weight || lfitci mpg weight, pcycle(`p') name(u32p, replace)
+    local trc = _rc
+    capture graph drop u32p
+    capture dash clear
+    capture quietly dash scatter mpg weight || lfitci mpg weight, pcycle(`p') name(u32p)
+    local drc = _rc
+    if `trc' != `drc' local bad `"`bad' [scatter || lfitci pcycle(`p'): twoway `trc', dash `drc']"'
+}
+capture dash clear
+sysuse auto, clear
+_u05_judge U32-11 `"`bad'"' "pcycle() fractions drawn and refused where twoway draws and refuses them"
 
 // ----------------------------------------------------------------
 // Summary

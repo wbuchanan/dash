@@ -447,7 +447,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -8442,16 +8442,18 @@ program define _dash_plot
     // and draws that p#.  A value that is not a number is "option pcycle()
     // not allowed"; one that leaves a series no whole p# -- 0, -1, 1.5 on
     // three series -- "option seriesid() not allowed", r(198) for each
-    // (colorvar_options_truth.json P02).  dash refuses every value that is
-    // not a positive integer, where twoway draws 1.5 on a graph of one or
-    // two series (P02f), whose numbers it leaves whole.  Read by value.
+    // (colorvar_options_truth.json P02).  A fraction is drawn where every
+    // series' number is whole (WP-31 C8d, pcycle_fraction_truth.json:
+    // 1.5 on one or two series, 2.2 on three, 0.5 on any number), as
+    // _dash_pcycle_bad counts the series of plots_json.  Read by value.
     if `: length local g_pcycle' {
         mata: st_local("_pcv", strofreal(strtoreal(strtrim(st_local("g_pcycle")))))
         if missing(`_pcv') {
             display as error "option pcycle() not allowed"
             exit 198
         }
-        if `_pcv' < 1 | `_pcv' != floor(`_pcv') {
+        mata: st_local("_pcbad", strofreal(_dash_pcycle_bad(st_local("plots_json"), `_pcv')))
+        if `_pcbad' {
             display as error "option seriesid() not allowed"
             exit 198
         }

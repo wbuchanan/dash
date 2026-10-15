@@ -499,7 +499,7 @@ and now matches Stata.
 
 <!-- WP-31 C8c -->
 
-<!-- WP-31 C8d -->
+- dash scatter mpg price weight, pcycle(1.5): refused "option seriesid() not allowed" -> drawn in p1 and p2, as twoway draws it; pcycle(0.5): refused -> every series in p1 (WP-31, C8d)
 
 - `dash scatter mpg weight, colorvar(price) colorkeysreverse` drew its colour bar and named colorkeysreverse in the note ("drawn unreversed"); it now draws the same bar in silence, as twoway draws a key that is not discrete the same with colorkeysreverse as without it. (WP-31, C8e)
 

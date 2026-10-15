@@ -730,6 +730,8 @@ COVERAGE = {
         "_dash_note": ("test_render_log_clean.cscript:NC-06", "test_render_log_clean.cscript:NC-05"),
         # WP-31 C8b: colorrule() read as twoway reads it.
         "_dash_colorrule_check": ("test_wp31_truth.cscript:U17-04",),
+        # WP-31 S32 (C8d): pcycle() fractions refused where twoway refuses them.
+        "_dash_pcycle_bad": ("test_option_validation.cscript:U32-11",),
         # WP-31 B4b: the top-level options of an option text, as typed.
         "_dash_opt_tokens": ("test_parser.cscript:U26-12",),
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
