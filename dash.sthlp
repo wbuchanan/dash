@@ -2927,7 +2927,8 @@ the per-plot specification (not to {cmd:dash build} options).
     that size{p_end}
 {synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position of the label
     around the point, a whole number from 0 to 12, placed as {cmd:twoway}
-    places it: 3 = right (the default), 12 = above, 6 = below, 9 = left,
+    places it: 3 = right (the default; on {cmd:bar} 12, as {cmd:twoway}'s
+    labelstyle {cmd:p#bar} puts it), 12 = above, 6 = below, 9 = left,
     the hours between at the corners, and 0 centred on the point.  Anything
     else -- {cmd:13}, {cmd:2.5}, {cmd:03} or a name -- is reported and the
     label drawn at 12, where {cmd:twoway}, noting it, draws it{p_end}

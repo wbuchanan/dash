@@ -16404,8 +16404,14 @@ class GlyphMapper:
         # colorvar() (WP-31 C8a): each bar's fill and outline.
         self._colorvar_layer(fig, [(r, clean_source)], options)
         # The labels of the bars drawn -- the layer's own rows -- from the
-        # source the bars are drawn from.
-        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar,
+        # source the bars are drawn from.  They sit above their bars by
+        # default: labelstyle p#bar, clockdir pbar 12 (WP-31 C15,
+        # varlabel_mlabel_truth.json bardefault.bar); every other type
+        # keeps 3, and mlabposition() or mlabstyle() still decide.
+        _mlopts = dict(options)
+        if "mlabstyle" not in _mlopts:
+            _mlopts.setdefault("mlabposition", "12")
+        self._apply_mlabel_opts(fig, clean_source, _mlopts, xvar, yvar,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return r
 

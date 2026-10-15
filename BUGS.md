@@ -3514,11 +3514,11 @@
   - Suggested fix: WP-31 section 34 (varlabel marker label options): count mlabel variables toward the range check.
   - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: Bar marker labels default to 3 o'clock where twoway's bar default is 12
+- [x] Title: Bar marker labels default to 3 o'clock where twoway's bar default is 12
   - File Names and Line Numbers: dash_render.py:14360
   - Description: GAPS3.md C15, re-verified at 6370ca4: Bar marker labels default to 3 o'clock; twoway's bar default is 12.
   - Suggested fix: WP-31 section 34 (varlabel marker label options): give each type its default clock.
-  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 15oct2026 (WP-31, C15). Measured first (scripts/extract_varlabel_mlabel_truth.do): twoway's first-plot label clock is 12 on bar and rbar (labelstyle p#bar, clockdir pbar 12) and 3 on scatter; rbar draws no labels at all, as dash draws none.  GlyphMapper.map_bar (both renderers) hands _apply_mlabel_opts mlabposition 12 unless mlabposition() or mlabstyle() is given; every other type keeps 3.  Pinned by test/test_mlabel_bar_default.py::TestBarDefault::test_bar_and_rbar_are_12, test/test_wp31_truth.cscript U34-6; fixture test/fixtures/varlabel_mlabel_truth.json. Closes GAPS3 C15 (WP-31, C15).
 
 - [ ] Title: The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis
   - File Names and Line Numbers: dash_render.py:31764, :31723-33579; no y2 in `_DASH_AXIS_FINISH_JS`/`_FILTER_JS`

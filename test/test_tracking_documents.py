@@ -1975,7 +1975,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "E11": "Sizes are relative to a 4-inch reference and scale() is pending",
     "C14": "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)",
-    "C15": "Bar marker labels default to 3 o'clock where twoway's bar default is 12",
     "D9": "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis",
     "D10": "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn",
     "D11": "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white",

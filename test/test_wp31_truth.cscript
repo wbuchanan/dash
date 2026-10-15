@@ -8129,6 +8129,47 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
 }
 * ==== end S34 ====
 
+* ==== S34 C15: bar label default ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
+    display as text "S34 start " c(current_date) " " c(current_time)
+    local u34d "`w31_work'/s34d"
+    capture mkdir "`u34d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U34-6: twoway's default label clock (the first plot's style) is 12
+    // on bar and 3 on scatter; dash's LabelSet anchors are that clock's,
+    // saved and served.
+    local bad ""
+    foreach t in bar scatter {
+        capture graph drop u34t
+        quietly twoway `t' mpg weight in 1/3, mlabel(make) name(u34t, replace)
+        local clk "`.u34t.plotregion1.plot1.style.label.position.setting'"
+        graph drop u34t
+        local want = cond("`clk'" == "12", "center bottom", cond("`clk'" == "3", "left middle", "clock `clk'"))
+        dash clear
+        capture quietly dash `t' mpg weight in 1/3, mlabel(make) name(u346)
+        if _rc local bad `"`bad' `t': dash rc `=_rc';"'
+        else {
+            _dash_serve_spec, specpath("`u34d'/s6.json") datapath("`u34d'/d6.json")
+            python: import __main__ as _u34_m; _u34_m._u34_style("`u34d'/s6.json", "`u34d'/d6.json", "`u34d'/a6.py")
+            foreach m in s v {
+                if !strpos(`"${u34_`m'}"', "`want'") local bad `"`bad' `t' `m': dash ${u34_`m'} twoway clock `clk';"'
+            }
+        }
+    }
+    _w31_expect U34-6 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-6 "bar labels default to 12 o'clock and scatter's to 3, saved and served, as twoway"
+
+    macro drop u34_s u34_v
+    capture graph drop _all
+    dash clear
+    display as text "S34 end " c(current_date) " " c(current_time)
+}
+* ==== end S34 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

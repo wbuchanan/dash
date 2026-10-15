@@ -444,7 +444,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, msymbol(T) msangle(forty_five): markers drawn unrotated with a note -> rotated 45 degrees, as msangle(45); mlabstyle(p2) draws the labels in p2's label colour (it was named in the note) and mlalign(center) or mlalign(inside) is no longer named (WP-31, E3)
 
-<!-- WP-31 C15 -->
+- dash bar mpg weight, mlabel(make): labels at 3 o'clock -> 12, above the bars, as twoway (WP-31, C15)
 
 <!-- WP-31 D9 -->
 

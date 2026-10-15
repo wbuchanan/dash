@@ -418,10 +418,10 @@ _SCATTER_PROBES = {
     "BY": ({"mlabvposition": "pos"}, {"by": "g"}, None),
 }
 
-#: T_bar's missing rows: twoway's bar labels default to 12 o'clock, dash's
-#: to 3 (all bar labels, not this option's; recorded, never a failing test).
-_NOT_YET = {("T_bar", "R14"): "bar's default mlabposition()",
-            ("T_bar", "R18"): "bar's default mlabposition()"}
+#: Flipped (WP-31 C15): T_bar's missing rows were recorded as not yet
+#: drawn where twoway draws them (dash's bar labels defaulted to 3), which
+#: was wrong once bar's labels default to 12 as twoway's; none is left.
+_NOT_YET = {}
 
 
 @pytest.mark.parametrize("mode", ["saved", "served"])
