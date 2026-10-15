@@ -527,7 +527,9 @@ layer after a filter move; the saved page keeps it as built and marks it
 and not drawn, and so are {cmd:contourline}'s legend keys, which
 {opt clabels()} and {opt format()} label.  {opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
-{opt le()} is refused, as {cmd:twoway} refuses it;
+{opt le()} is refused, as {cmd:twoway} refuses it, and {opt levels()} above
+1,000 is refused by {cmd:dash} (a bound of its own; {cmd:twoway} takes any
+integer);
 {opt interp()}, {opt clwidths()}, {opt clpatterns()} and {opt colorlines}
 are typed in full, as {cmd:dash} reads their shorter spellings as other
 options.

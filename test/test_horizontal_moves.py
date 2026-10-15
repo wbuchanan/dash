@@ -381,7 +381,8 @@ class TestAfterASavedMove:
         bad = []
         for label, filt, action, oracle in sf._MOVES:
             spec = _all_turned(filt, _STALE)
-            before = _turned_classes(_figs(spec, "saved"))
+            built = _figs(spec, "saved")
+            before = _turned_classes(built)
             after = _moved(spec, action, "saved")
             kept = _kept(spec, oracle, "saved")
             for i, t in enumerate(_TURNED):
@@ -396,6 +397,24 @@ class TestAfterASavedMove:
                             if not (m[2] == "glyphs" and all(
                                 str(d[0]).startswith("[0]/")
                                 for d in m[3]))]
+                    continue
+                if t in dr._DASH_CONTOUR_TYPES:
+                    # WP-31 B4b: the saved page keeps a contour as built and
+                    # marks it (grid unfiltered) until its twin (B4c,
+                    # section 29); the served app refits it
+                    # (TestAfterAServedMove).  Its glyphs, and the axes and
+                    # ticks its extent sets, are held to the build -- the
+                    # glyphs muted by the cue -- and the rest to the kept
+                    # rows.
+                    _frz = ("glyphs", "axes", "ticks")
+                    bad += [m for m in _mismatches([after[i]], [built[i]],
+                                                   (label, t))
+                            if m[2] in _frz and not all(
+                                str(d[0]).endswith("/muted")
+                                for d in m[3])]
+                    bad += [m for m in _mismatches([after[i]], [kept[i]],
+                                                   (label, t))
+                            if m[2] not in _frz]
                     continue
                 if t not in _STALE:
                     bad += _mismatches([after[i]], [kept[i]], (label, t))

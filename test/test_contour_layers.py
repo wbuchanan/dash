@@ -404,7 +404,12 @@ class TestBrushedCopies:
         f = figure()
         f.contour(x=[0, 1], y=[0, 1], z=[[0, 1], [1, 2]], levels=[0.5],
                   line_color="black")
+        [cr] = f.renderers
         dr.GlyphMapper._sync_brushed_copies(f, ())
+        # Nothing added or touched: the renderer has no glyph of its own
+        # and its children keep Bokeh's copies.
+        assert f.renderers == [cr] and not hasattr(cr, "glyph")
+        assert cr.line_renderer.glyph.line_color == "black"
 
 
 def _even_odd(px, py, X, Y):

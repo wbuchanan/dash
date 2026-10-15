@@ -1500,8 +1500,8 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidths         : copy local clwidths
     sreturn local clpatterns       : copy local clpatterns
     sreturn local reversekey       : copy local reversekey
-    sreturn local heatmap          : copy local heatmap
-    sreturn local outlines         : copy local outlines
+    sreturn local _heatmap         : copy local heatmap
+    sreturn local _outlines        : copy local outlines
     sreturn local colorlines       : copy local colorlines
     sreturn local _le_typed        : copy local _dash_le_typed
     sreturn local gap              : copy local gap
@@ -2311,13 +2311,27 @@ program define _dash_contour_split
     // 15oct2026, contour_truth.json abbrev.le, abbrev.lev .. level).
     _dash_le_typed
     c_local _dash_le_typed `"`_le_typed'"'
+    // The text goes through -syntax- only when it may hold one of these
+    // options: its catch-all takes the quotes off a bare "string" after
+    // the comma, which the plot parser then misreads (test_json_escaping
+    // .cscript JSE-69's "$J6_G" name()).  Otherwise it is left as typed.
+    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines"
+    mata: st_local("_zyx_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(cc|lev|minmax|crule|sc|ec|clab|format|interp|clwidths|clpatterns|rev|heatmap|out|colorlines)")))
+    if !`_zyx_any' {
+        foreach o of local zo {
+            c_local `o' ""
+        }
+        // The text without its comma, as -syntax- hands the rest back.
+        mata: _dash_zyx_text = regexr(_dash_zyx_text, "^[ ]*,", "")
+        exit
+    }
     mata: st_local("0", _dash_zyx_text)
     syntax [, CCUTs(string asis) LEVELS(string) MINMAX CRULE(string asis) ///
         SColor(string asis) EColor(string asis) CColors(string asis) ///
         CLABels(string asis) FORMAT(string asis) INTERP(string asis) ///
         CLWIDTHS(string asis) CLPATTERNS(string asis) REVersekey ///
         HEATMAP OUTlines COLORLINES * ]
-    foreach o in ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines {
+    foreach o of local zo {
         c_local `o' `"`macval(`o')'"'
     }
     mata: _dash_zyx_text = st_local("options")
@@ -2334,6 +2348,10 @@ end
 // ================================================================
 program define _dash_le_typed
     version 19
+    c_local _le_typed ""
+    // Only where le( may be typed (see _dash_contour_split on quotes).
+    mata: st_local("_le_any", strofreal(regexm(_dash_zyx_text, "(^|[ ,])le\(")))
+    if !`_le_any' exit
     mata: st_local("0", _dash_zyx_text)
     syntax [, LE(string asis) * ]
     if `"`macval(le)'"' != "" c_local _le_typed 1
@@ -2366,7 +2384,8 @@ program define _dash_contour_check, sclass
     local zo_flags "minmax reversekey heatmap outlines colorlines"
     if !inlist("`own'", "contour", "contourline") {
         foreach o of local zo {
-            mata: st_local("_zv", strofreal(st_global("s(`o')") != ""))
+            local _zs = cond(inlist("`o'", "heatmap", "outlines"), "_`o'", "`o'")
+            mata: st_local("_zv", strofreal(st_global("s(`_zs')") != ""))
             if `_zv' {
                 local _zp = cond(`: list o in zo_flags', "", "()")
                 display as error "option `o'`_zp' not allowed"
@@ -2413,6 +2432,12 @@ program define _dash_contour_check, sclass
         }
         if `_zl' < 0 {
             display as error "invalid syntax"
+            exit 198
+        }
+        // dash's own bound, not twoway's (which takes any integer): at
+        // most 1,000 levels, as many cuts as the renderer can cut and key.
+        if `_zl' > 1000 {
+            mata: _dash_say("err", "dash: levels() must be an integer between 0 and 1000 (got: ", st_local("_zl"), ")")
             exit 198
         }
     }
@@ -3354,7 +3379,6 @@ program define _dash_option_rules
         n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
-        levels=int,0,1000@contour|contourline ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var ///
