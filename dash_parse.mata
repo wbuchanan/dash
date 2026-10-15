@@ -5278,9 +5278,10 @@ void _dash_option_names(string scalar in_macro, string scalar out_macro)
 // Stata's -syntax- binds the first name() of an option list to NAMe() and
 // leaves any later one in the list's catch-all, so a name() found in the
 // catch-all is always a second one -- which twoway refuses, "option name()
-// not allowed", r(198).  Options are case-sensitive and NAMe() admits the
-// spellings nam and name only, so only those count: NAME() is an option
-// dash does not know, and "name(x)" written inside another option's
+// not allowed", r(198).  Options are case-sensitive and NAME() admits the
+// spelling name only (WP-31 A3b: nam() and na() are refused by
+// _dash_refuse_nam before this is asked), so only it counts: an option
+// written NAME() is one dash does not know, and "name(x)" written inside another option's
 // argument -- a title(), a note() -- is stepped over, since the scan reads
 // top-level option names alone, quotes and parentheses honoured.  Linear in
 // the length of s.
@@ -5293,7 +5294,7 @@ real scalar _dash_has_name_opt(string scalar s)
     names = tokens(_dash_option_names_scan(s, 1, unbalanced))
     if (unbalanced) names = tokens(_dash_option_names_scan(s, 0, unbalanced))
     if (cols(names) == 0) return(0)
-    return(anyof(names, "name") | anyof(names, "nam"))
+    return(anyof(names, "name"))
 }
 
 // _dash_seg_by(seg) -- the value of the last by() a plot segment gives, or
