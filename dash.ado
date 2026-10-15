@@ -447,7 +447,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -2311,10 +2311,11 @@ program define _dash_contour_split
     // 15oct2026, contour_truth.json abbrev.le, abbrev.lev .. level).
     _dash_le_typed
     c_local _dash_le_typed `"`_le_typed'"'
-    // The text goes through -syntax- only when it may hold one of these
-    // options: its catch-all takes the quotes off a bare "string" after
-    // the comma, which the plot parser then misreads (test_json_escaping
-    // .cscript JSE-69's "$J6_G" name()).  Otherwise it is left as typed.
+    // The text is read only when it may hold one of these options, and
+    // then token by token: -syntax-'s catch-all takes the quotes off a
+    // bare "string" after the comma, which the plot parser then misreads
+    // (test_json_escaping.cscript JSE-69, test_parser.cscript U26-12).
+    // Otherwise it is left as typed.
     local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines"
     mata: st_local("_zyx_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(cc|lev|minmax|crule|sc|ec|clab|format|interp|clwidths|clpatterns|rev|heatmap|out|colorlines)")))
     if !`_zyx_any' {
@@ -2325,16 +2326,34 @@ program define _dash_contour_split
         mata: _dash_zyx_text = regexr(_dash_zyx_text, "^[ ]*,", "")
         exit
     }
-    mata: st_local("0", _dash_zyx_text)
+    // Each top-level option (_dash_opt_tokens, by value) is tried alone
+    // against contour's declarations; the ones it reads are parsed
+    // together, every other token is handed back exactly as typed -- a
+    // bare "string" keeps its quotes.
+    mata: _dash_zyx_tok = _dash_opt_tokens(regexr(_dash_zyx_text, "^[ ]*,", ""))
+    mata: _dash_zyx_in = ""
+    mata: _dash_zyx_out = ""
+    mata: st_local("_zn", strofreal(cols(_dash_zyx_tok)))
+    forvalues _zi = 1/`_zn' {
+        mata: st_local("0", ", " + _dash_zyx_tok[`_zi'])
+        capture syntax [, CCUTs(string asis) LEVELS(string) MINMAX ///
+            CRULE(string asis) SColor(string asis) EColor(string asis) ///
+            CColors(string asis) CLABels(string asis) FORMAT(string asis) ///
+            INTERP(string asis) CLWIDTHS(string asis) ///
+            CLPATTERNS(string asis) REVersekey HEATMAP OUTlines COLORLINES ]
+        if _rc mata: _dash_zyx_out = _dash_zyx_out + " " + _dash_zyx_tok[`_zi']
+        else  mata: _dash_zyx_in = _dash_zyx_in + " " + _dash_zyx_tok[`_zi']
+    }
+    mata: st_local("0", ", " + _dash_zyx_in)
     syntax [, CCUTs(string asis) LEVELS(string) MINMAX CRULE(string asis) ///
         SColor(string asis) EColor(string asis) CColors(string asis) ///
         CLABels(string asis) FORMAT(string asis) INTERP(string asis) ///
         CLWIDTHS(string asis) CLPATTERNS(string asis) REVersekey ///
-        HEATMAP OUTlines COLORLINES * ]
+        HEATMAP OUTlines COLORLINES ]
     foreach o of local zo {
         c_local `o' `"`macval(`o')'"'
     }
-    mata: _dash_zyx_text = st_local("options")
+    mata: _dash_zyx_text = strtrim(_dash_zyx_out)
 end
 
 // ================================================================

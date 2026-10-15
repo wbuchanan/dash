@@ -93,6 +93,11 @@
 *!       Print before + value + after as one note, (note:  ...), in text
 *!       colour on Stata's error channel, as twoway prints its notes.
 *!
+*!   _dash_opt_tokens(s)
+*!       The top-level options of an option text, as typed: split at
+*!       blanks outside parentheses, "quotes" and compound quotes (WP-31
+*!       B4b, read by dash.ado's _dash_contour_split).
+*!
 *!   _dash_colorrule_check(t)
 *!       colorrule()'s text as twoway reads it: the caller's local _crc
 *!       "" (drawn), "spec" (an invalid % or * part) or "rule" (a rule twoway
@@ -1392,6 +1397,55 @@ void _dash_note(string scalar before, string scalar value,
 // caller's locals _crc ("", "spec" or "rule") and _crn (the rule).  The
 // renderer's twin is dash_render.py's _dash_colorrule_parse.
 // ============================================================
+// _dash_opt_tokens(s)
+//
+// The top-level options of the option text s, each as typed: s is split at
+// blanks that are outside parentheses, plain "quotes" and compound quotes
+// (which nest), so levels(5), "a b" and `"x' y"' are one token each (WP-31
+// B4b).  Read by value: _dash_contour_split hands each token to -syntax-
+// alone and keeps every other one exactly as typed.
+// ============================================================
+string rowvector _dash_opt_tokens(string scalar s)
+{
+    string rowvector out
+    string scalar    tok, c, c2
+    real scalar      i, n, depth, plain, comp
+
+    out = J(1, 0, "")
+    tok = ""
+    depth = 0
+    plain = 0
+    comp = 0
+    n = strlen(s)
+    for (i = 1; i <= n; i++) {
+        c = substr(s, i, 1)
+        c2 = substr(s, i, 2)
+        if (!plain & c2 == char(96) + char(34)) {
+            comp++
+            tok = tok + c2
+            i++
+            continue
+        }
+        if (comp & c2 == char(34) + char(39)) {
+            comp--
+            tok = tok + c2
+            i++
+            continue
+        }
+        if (!comp & c == char(34)) plain = !plain
+        else if (!comp & !plain & c == "(") depth++
+        else if (!comp & !plain & c == ")" & depth) depth--
+        if (c == " " & !depth & !plain & !comp) {
+            if (tok != "") out = out, tok
+            tok = ""
+            continue
+        }
+        tok = tok + c
+    }
+    if (tok != "") out = out, tok
+    return(out)
+}
+
 void _dash_colorrule_check(string scalar t)
 {
     string scalar rule, num, other, a, b, inten, opac
