@@ -2602,6 +2602,17 @@ CORPUS = [
     _case("yscale noextend outergap", [_sc()],
           go={"yscale": "noextend outergap(5)"}),
     _case("xline lwidth(*2)", [_sc()], go={"xline": "3000, lwidth(*2)"}),
+
+    # WP-31 S34: varlabels, label prefix and suffix, bar label default,
+    # anglestyle names.
+    _case("yvarlabel and xvarlabel (WP-31 D8)",
+          [_sc(yvarlabel='"Miles"', xvarlabel='"Pounds"')]),
+    _case("mlabel with prefix and suffix (WP-31 C17)",
+          [_sc(mlabel="rep", mlabprefix='"["', mlabsuffix='"]"')]),
+    _case("bar with mlabel, default 12 (WP-31 C15)",
+          [plot_for("bar", {"mlabel": "rep"})]),
+    _case("msangle(forty_five) (WP-31 E3)",
+          [_sc(msymbol="T", msangle="forty_five")]),
 ]
 
 
@@ -3629,6 +3640,10 @@ MOVE_CORPUS = [
     # WP-31 D6 (section 33): the twin label axis survives a move.
     _move_case("ylabel alternate, dropdown (WP-31 D6)", _MOVES[0],
                [plot_for("scatter")], go={"ylabel": ", alternate"}),
+
+    # WP-31 C15 (section 34): bar labels at 12 after a move
+    _move_case("bar with mlabel, dropdown (WP-31 C15)", _MOVES[0],
+               [plot_for("bar", {"mlabel": "rep"})]),
 ]
 
 

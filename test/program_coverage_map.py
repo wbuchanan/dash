@@ -136,6 +136,8 @@ COVERAGE = {
         # e2e: yvarlabel() and xvarlabel() read beside the plot parser
         # (WP-31 D8).
         "_dash_label_split": ("test_option_validation.cscript:U34-8",),
+        # e2e: a range plot labelled by a plotted variable (WP-31 C14).
+        "_dash_fold_mlabr": ("test_wp31_truth.cscript:U34-7",),
         # e2e: sort() refused, named or silent as twoway, on every type
         # (WP-29 P0.1).
         "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",

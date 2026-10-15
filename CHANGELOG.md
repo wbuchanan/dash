@@ -901,7 +901,7 @@ and now matches Stata.
 
 - The axis label forms twoway refuses -- ylabel("a"), ylabel(1 "a" "b"), ylabel(#3 #4) and ylabel(1(1)) -- are refused, r(198), with twoway's "invalid label specifier, : <the part>:"; dash drew them. (WP-31, D6)
 
-<!-- WP-31 C14 -->
+- dash rscatter lo hi weight, mlabel(lo) (any range type labelled by one of its own variables) is refused as twoway refuses it, "rscatter requires 3 variables: lo hi weight", r(102); rpcap and rpspike "you must specify four variables with twoway rpcap", r(102) (WP-31, C14)
 
 <!-- WP-31 D14 -->
 

@@ -2987,7 +2987,9 @@ the per-plot specification (not to {cmd:dash build} options).
 {cmd:dot} and {cmd:dropline} label each point.  {cmd:rcapsym},
 {cmd:rconnected} and {cmd:rscatter} label both ends of each range, as
 {cmd:twoway} does, and an end that is missing is left unlabelled on its
-own.  {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow} and {cmd:pcbarrow}
+own.  A range plot labelled by one of its own variables, {cmd:rscatter lo
+hi weight, mlabel(lo)}, is refused as {cmd:twoway} refuses it,
+{cmd:rscatter requires 3 variables: lo hi weight}, r(102).  {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow} and {cmd:pcbarrow}
 label the first point, ({it:y1var}, {it:x1var}) -- the tail of an arrow.
 {cmd:headlabel} moves those labels to the second point, the head, on
 {cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi}, as {cmd:twoway} does; on

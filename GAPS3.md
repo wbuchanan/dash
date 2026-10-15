@@ -463,7 +463,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
-- **C14 Tracked:** Open (WP-31 section 34).
+- **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit pending.
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit pending.
 - **C16 Tracked:** Open (WP-31 section 46).
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit pending.

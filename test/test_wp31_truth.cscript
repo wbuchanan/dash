@@ -8170,6 +8170,54 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
 }
 * ==== end S34 ====
 
+* ==== S34 C14: range plots labelled by a plotted variable ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
+    display as text "S34 start " c(current_date) " " c(current_time)
+    local u34d "`w31_work'/s34e"
+    capture mkdir "`u34d'"
+    capture graph drop _all
+    sysuse auto, clear
+    capture drop lo hi
+    generate lo = mpg - 2
+    generate hi = mpg + 2
+
+    // U34-7: twoway's rc and line, and dash's, for a range plot labelled
+    // by one of its own variables, by another, and by both.
+    local bad ""
+    foreach c in "rscatter lo hi weight, mlabel(lo)" "rscatter lo hi weight, mlabel(hi)" ///
+        "rscatter lo hi weight, mlabel(weight)" "rscatter lo hi weight, mlabel(make)" ///
+        "rscatter lo hi weight, mlabel(lo make)" "rcapsym lo hi weight, mlabel(lo)" ///
+        "rconnected lo hi weight, mlabel(lo)" "rbar lo hi weight, mlabel(lo)" ///
+        "rarea lo hi weight, mlabel(hi)" "rpcap lo hi mpg weight, mlabel(lo)" ///
+        "rscatter lo hi weight, mlabel(lo) mlabvposition(rep78)" {
+        foreach w in twoway dash {
+            local lg "`u34d'/`w'.log"
+            capture log close _u34log
+            quietly log using "`lg'", name(_u34log) text replace
+            if "`w'" == "twoway" capture noisily twoway `c' nodraw
+            else {
+                dash clear
+                capture noisily dash `c' name(u347)
+            }
+            local rc_`w' = _rc
+            quietly log close _u34log
+            python: from sfi import Macro as _u34_M; _u34_M.setGlobal("u34_`w'", next((l.rstrip() for l in open(r"`lg'", encoding="utf-8", errors="replace") if "requires 3 variables" in l or "must specify four" in l), ""))
+        }
+        if `rc_twoway' != `rc_dash' | `"${u34_twoway}"' != `"${u34_dash}"' {
+            local bad `"`bad' [`c': twoway `rc_twoway' "${u34_twoway}", dash `rc_dash' "${u34_dash}"]"'
+        }
+    }
+    _w31_expect U34-7 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-7 "a range plot labelled by a plotted variable is answered with twoway's rc and line"
+
+    macro drop u34_twoway u34_dash
+    capture graph drop _all
+    dash clear
+    display as text "S34 end " c(current_date) " " c(current_time)
+}
+* ==== end S34 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

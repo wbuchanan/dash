@@ -2293,6 +2293,49 @@ program define _dash_fold_mlabv, sclass
 end
 
 // ================================================================
+// _dash_fold_mlabr  -- a range plot labelled by its own variables
+//
+// WP-31 C14.  twoway_y2xview_parse.class:35-45 (and y3xview's) puts the
+// label variables in the layer's list, each once, and takes them off
+// before counting, so mlabel() naming a plotted variable leaves too few:
+// "<type> requires 3 variables: <list>" on every range type and "you must
+// specify four variables with twoway <type>" on rpcap and rpspike, both
+// r(102), the list the plotted, label and mlabvposition() variables once
+// each (measured, test/fixtures/varlabel_mlabel_truth.json c14.y, c14.y2,
+// c14.x, c14.y_other "rscatter requires 3 variables: lo hi weight make",
+// c14.rbar_y .. c14.rpspike_y).  mlabvposition(p9) beside mlabel(lo)
+// brings the count back and twoway draws it (test_twoway_option_parity
+// MV-11).  Called by _dash_process_segment after _dash_fold_mlabv, which
+// leaves the mlabvposition() name in s(); reads s() by value only.
+// ================================================================
+program define _dash_fold_mlabr
+    version 19
+    args ptype pvars
+    local r3 "rarea rbar rcap rcapsym rconnected rline rscatter rspike"
+    local r4 "rpcap rpspike"
+    local rall : list r3 | r4
+    if !`: list ptype in rall' exit
+    mata: st_local("ml", invtokens(select(tokens(st_global("s(mlabel)")), tokens(st_global("s(mlabel)")) :!= ".")))
+    if !`: length local ml' exit
+    capture unab labs : `macval(ml)'
+    if _rc exit
+    local pvars : list retokenize pvars
+    local dup : list labs & pvars
+    if "`dup'" == "" exit
+    mata: st_local("mv", st_global("s(mlabvposition)"))
+    local all : list pvars | labs
+    local all : list all | mv
+    local counted : list all - labs
+    local limit = cond(`: list ptype in r4', 4, 3)
+    if `: word count `counted'' >= `limit' exit
+    if `: list ptype in r4' {
+        mata: _dash_say("err", "you must specify four variables with twoway " + st_local("ptype"), "", "")
+    }
+    else mata: _dash_say("err", st_local("ptype") + " requires 3 variables: ", st_local("all"), "")
+    exit 102
+end
+
+// ================================================================
 // _dash_fold_range ptype qual  -- range(varname) as twoway reads it
 //
 // WP-31 C10a (D-05.a).  _dash_validate_value's range kind hands back
@@ -6438,6 +6481,7 @@ program define _dash_process_segment, rclass
         // mlabvposition() (WP-30 P1.24): checked and counted as twoway
         // counts it, before mlabel()'s own rule (_dash_fold_mlab).
         _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
+        _dash_fold_mlabr "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
         _dash_fold_bw "`_rc_own'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
