@@ -420,7 +420,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit 4b1be95.
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
-- **A3b Tracked:** Closed in WP-31, BUGS.md "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)", commit pending.
+- **A3b Tracked:** Closed in WP-31, BUGS.md "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)", commit d840eda.
 - **A3c Tracked:** Open (WP-31 section 32).
 - **A3d Tracked:** Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit 9665bca.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
@@ -433,7 +433,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit eae52c8.
 - **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit ff82353.
 - **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit 8e78c4d.
-- **B4b Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)", commit pending.
+- **B4b Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)", commit b89f2a4.
 - **B4c Tracked:** Open (WP-31 section 29).
 - **B4d Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
@@ -452,7 +452,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
 - **C8c Tracked:** Open (WP-31 section 44).
 - **C8d Tracked:** Open (WP-31 section 32).
-- **C8e Tracked:** Closed in WP-31, BUGS.md "colorkeysreverse on a colorvar() colour bar is named, not drawn", commit pending.
+- **C8e Tracked:** Closed in WP-31, BUGS.md "colorkeysreverse on a colorvar() colour bar is named, not drawn", commit 59fcd19.
 - **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit 5895120.
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
@@ -472,7 +472,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Open (WP-31 section 35).
 - **D1c Tracked:** Open (WP-31 section 33).
-- **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit pending.
+- **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Open (WP-31 section 30).
 - **D3 Tracked:** Open (WP-31 section 30).
 - **D4 Tracked:** Open (WP-31 section 31).
@@ -507,7 +507,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1d Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpoly after a filter move (the lpoly twin)", commit bbc640a.
 - **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit 2b9ce0a.
 - **F1f Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)", commit 54554e2.
-- **F1g Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)", commit pending.
+- **F1g Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)", commit b9488d3.
 F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: the lpoly/lpolyci exact-fit bandwidth, where the saved page keeps the build and marks the layer (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", C11b)
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
