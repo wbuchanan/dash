@@ -123,6 +123,7 @@ COVERAGE = {
         # e2e: contour's options read as twoway reads them (WP-31 B4b).
         "_dash_contour_check": ("test_parser.cscript:U26-9",),
         "_dash_contour_split": ("test_parser.cscript:U26-9",),
+        "_dash_le_typed": ("test_parser.cscript:U26-9",),
         # e2e: sort() refused, named or silent as twoway, on every type
         # (WP-29 P0.1).
         "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",

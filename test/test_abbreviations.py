@@ -741,7 +741,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # hands twoway's fit generators.
     # 19 -> 20: B4b WP-31's _dash_contour_split declares contour's
     # options, which the plot parser's syntax has no room left for.
-    assert len(with_syntax) == 20, with_syntax
+    # 20 -> 21: B4b _dash_le_typed declares LE() alone, to tell le()
+    # typed from level() on the contour types.
+    assert len(with_syntax) == 21, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax

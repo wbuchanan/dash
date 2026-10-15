@@ -1522,6 +1522,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local heatmap          : copy local heatmap
     sreturn local outlines         : copy local outlines
     sreturn local colorlines       : copy local colorlines
+    sreturn local _le_typed        : copy local _dash_le_typed
     sreturn local gap              : copy local gap
     sreturn local baroffset        : copy local baroffset
     sreturn local area             : copy local area
@@ -2324,6 +2325,11 @@ end
 // ================================================================
 program define _dash_contour_split
     version 19
+    // le() typed as such: level() on every type, which twoway's contour
+    // refuses where it reads lev() .. level() as levels() (measured
+    // 15oct2026, contour_truth.json abbrev.le, abbrev.lev .. level).
+    _dash_le_typed
+    c_local _dash_le_typed `"`_le_typed'"'
     mata: st_local("0", _dash_zyx_text)
     syntax [, CCUTs(string asis) LEVELS(string) MINMAX CRULE(string asis) ///
         SColor(string asis) EColor(string asis) CColors(string asis) ///
@@ -2334,6 +2340,23 @@ program define _dash_contour_split
         c_local `o' `"`macval(`o')'"'
     }
     mata: _dash_zyx_text = st_local("options")
+end
+
+// ================================================================
+// _dash_le_typed  -- whether le() itself is typed among the plot options
+//
+// WP-31 B4b.  Reads the option text _dash_zyx_text holds (by value) with
+// a syntax that declares LE() alone, so only le( matches -- lev() and
+// longer, and a le( inside another option's parentheses or quotes, do
+// not -- and sets the caller's local _le_typed to 1 or "".  The text is
+// left as it was.
+// ================================================================
+program define _dash_le_typed
+    version 19
+    mata: st_local("0", _dash_zyx_text)
+    syntax [, LE(string asis) * ]
+    if `"`macval(le)'"' != "" c_local _le_typed 1
+    else c_local _le_typed ""
 end
 
 // ================================================================
@@ -2374,6 +2397,12 @@ program define _dash_contour_check, sclass
     // twoway's minimum for levels() is lev, so lev(), leve() and level()
     // are levels() on these two types (applicability_truth.json
     // level@contour rc 0); this parser reads them as level() first.
+    // le() itself is no levels() to twoway: "option le() not allowed".
+    mata: st_local("_zv", strofreal(st_global("s(_le_typed)") != ""))
+    if `_zv' {
+        display as error "option le() not allowed"
+        exit 198
+    }
     mata: st_local("_zv", strofreal(st_global("s(level)") != "" & st_global("s(levels)") == ""))
     if `_zv' {
         mata: st_local("_zl", st_global("s(level)"))

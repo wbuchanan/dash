@@ -727,7 +727,7 @@ end
 // (twoway_zyx2view_parse.class, twowaygraph_g.class:349-394).
 // ================================================================
 sysuse auto, clear
-local u269 `" "contour mpg weight length, ccuts(15 20) levels(5)" "(contour mpg weight length) (contour price weight length)" "(contourline mpg weight length) (contourline price weight length)" "(contour mpg weight length) (contourline price weight length)" "contour make weight length" "contour mpg" "contour mpg weight" "contour mpg weight length turn" "contour mpg weight length [aw=price]" "scatter mpg weight, ccuts(1 2)" "scatter mpg weight, levels(5)" "scatter mpg weight, crule(hue)" "scatter mpg weight, interp(none)" "scatter mpg weight, minmax" "contour mpg weight length, levels(a)" "contour mpg weight length, levels(-1)" "contour mpg weight length, ccuts(a b)" "contour mpg weight length, crule(bogus)" "(contour mpg weight length) (scatter mpg weight, colorvar(price))" "'
+local u269 `" "contour mpg weight length, ccuts(15 20) levels(5)" "(contour mpg weight length) (contour price weight length)" "(contourline mpg weight length) (contourline price weight length)" "(contour mpg weight length) (contourline price weight length)" "contour make weight length" "contour mpg" "contour mpg weight" "contour mpg weight length turn" "contour mpg weight length [aw=price]" "scatter mpg weight, ccuts(1 2)" "scatter mpg weight, levels(5)" "scatter mpg weight, crule(hue)" "scatter mpg weight, interp(none)" "scatter mpg weight, minmax" "contour mpg weight length, levels(a)" "contour mpg weight length, levels(-1)" "contour mpg weight length, ccuts(a b)" "contour mpg weight length, crule(bogus)" "(contour mpg weight length) (scatter mpg weight, colorvar(price))" "contour mpg weight length, le(5)" "contourline mpg weight length, le(5)" "contour mpg weight length, lev(5)" "contour mpg weight length, level(5)" "'
 local n269 0
 foreach c of local u269 {
     local ++n269
@@ -751,11 +751,11 @@ foreach c of local u269 {
         assert r(found) == 1
     }
 }
-assert `n269' == 19
+assert `n269' == 23
 capture erase "`c(tmpdir)'u269t.log"
 capture graph drop u269g
 dash clear
-display "U26-9 PASS: contour's 19 refusals and acceptances match twoway's rc and first line"
+display "U26-9 PASS: contour's 23 refusals and acceptances match twoway's rc and first line"
 
 // ================================================================
 // P1A-60..67 -- scatteri and pci read their immediate values as twoway

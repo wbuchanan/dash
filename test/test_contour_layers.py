@@ -155,6 +155,23 @@ class TestTheFixture:
                                           "mpg weight"]
         assert r["weight"]["lines"] == ["weights not allowed"]
 
+    def test_le_is_refused_and_lev_is_levels(self):
+        """twoway reads lev() .. level() as levels() on contour and
+        contourline, and refuses le() (abbrev.*); so does dash.ado
+        (_dash_contour_check, _dash_le_typed; test_parser.cscript U26-9)."""
+        a = _T["abbrev"]
+        for k in ("le", "le_line"):
+            assert (a[k]["rc"], a[k]["lines"]) == (
+                198, ["option le() not allowed"]), k
+        for k in ("lev", "leve", "level"):
+            assert a[k]["rc"] == 0 and a[k]["cuts"] == \
+                _T["draw"]["levels5"]["cuts"], k
+        with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
+            ado = fh.read()
+        body = ado[ado.index("program define _dash_contour_check"):]
+        body = body[:body.index("\nend\n")]
+        assert 'display as error "option le() not allowed"' in body
+
 
 class TestContourDraws:
 
