@@ -442,7 +442,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, mlabel(make) mlabprefix("[") mlabsuffix("]"): "AMC Concord" with a note naming both -> "[AMC Concord]", as twoway; lalign(center), lalign(inside) and lalign(outside) are taken silently and lalign(bogus) is named in twoway's words (WP-31, C17)
 
-<!-- WP-31 E3 -->
+- dash scatter mpg weight, msymbol(T) msangle(forty_five): markers drawn unrotated with a note -> rotated 45 degrees, as msangle(45); mlabstyle(p2) draws the labels in p2's label colour (it was named in the note) and mlalign(center) or mlalign(inside) is no longer named (WP-31, E3)
 
 <!-- WP-31 C15 -->
 

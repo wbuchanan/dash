@@ -4169,6 +4169,19 @@ boundaries take the first two, a ci fit's band and line the first, as
 {cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- and {cmd:xvarlabel("")}
 draws no x title.
 
+{phang}{opt mlalign(alignmentstyle)} is taken as {cmd:twoway} takes it:
+a marker's outline is drawn centred on its edge, which is {cmd:twoway}'s
+{cmd:center}; {cmd:inside}, {cmd:twoway}'s default, is silent too,
+{cmd:outside} is named in a note, and another word is named in
+{cmd:twoway}'s words.  {opt mlabstyle(labelstyle)} styles the marker
+labels as the scheme's labelstyle does: {cmd:mlabstyle(p2)} draws them in
+p2's label colour at 3 o'clock, {cmd:p2bar} at 12; {cmd:mlabcolor()},
+{cmd:mlabsize()} and {cmd:mlabposition()} still win.  A name that is no
+labelstyle is named as {cmd:twoway} names it and the labels drawn black
+at 12 o'clock, as {cmd:twoway} draws them.  {cmd:msangle()} takes an
+anglestyle name as well as a number: {cmd:msangle(forty_five)} rotates
+the markers 45 degrees.
+
 {phang}{opt lalign(alignmentstyle)}, inside a plot, is taken as
 {cmd:twoway} takes it: {cmd:twoway} draws a line the same with
 {cmd:center}, {cmd:inside} or {cmd:outside}, and so does {cmd:dash},
@@ -5662,13 +5675,12 @@ disagree in either direction.
     lines.  A name {cmd:twoway} does not know is noted as {cmd:twoway}
     notes it.
 
-{phang2}{ul:A marker's outline pattern and alignment, and a label width.}
+{phang2}{ul:A marker's outline pattern, a dot's alignment, and a label width.}
     {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,
     which {cmd:twoway} accepts and {cmd:dash} draws solid.
-    {opt mlalign(linealignmentstyle)} -- whether a marker's outline is
-    drawn inside, outside or centred on its edge; {cmd:dash} draws it
-    centred.  {opt dlalign(linealignmentstyle)} -- the same for the dots
-    of a {cmd:dot} plot, drawn centred too.
+    {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
+    of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
+    {cmd:dash} draws it centred.
     {opt mlabwidth(size)} is not a {cmd:twoway} option: {cmd:twoway}
     refuses it, r(198), and {cmd:dash} names it.
 

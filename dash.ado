@@ -1397,8 +1397,8 @@ program define _dash_parse_plot_opts, sclass
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     // WP-31 A4: mlalign(), twoway's mlal() .. mlalign() (mla() is mlabel(),
-    // as in twoway), is named until WP-31 S34 draws it.
-    if `: length local mlalign' local _dash_pending `"`_dash_pending' mlalign"'
+    // as in twoway).  WP-31 E3: read by the renderer, which names only
+    // what it cannot draw (outside, or a word that is no alignment).
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
     // WP-30 P1.14b: bmlinestyle() styles a marker's back line (P2.8);
     // dash does not draw it, so it is kept in the spec and named here.
@@ -1614,6 +1614,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mlabprefix       : copy local mlabprefix
     sreturn local mlabsuffix       : copy local mlabsuffix
     sreturn local lalign           : copy local lalign
+    sreturn local mlabstyle        : copy local mlabstyle
     sreturn local xvarlabel        : copy local xvarlabel
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -2424,11 +2425,11 @@ end
 // ================================================================
 program define _dash_label_split
     version 19
-    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign"
+    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle"
     foreach o of local lo {
         c_local `o' ""
     }
-    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|la\(|lal)")))
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal)")))
     if !`_lb_any' exit
     mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
     mata: _dash_lb_in = ""
@@ -2440,7 +2441,8 @@ program define _dash_label_split
         // LALpha); la(), lali() .. lalign() are lalign().
         mata: st_local("_lb_lal", strofreal(regexm(_dash_lb_tok[`_li'], "^lal(p|ph|pha)?\(")))
         capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
-            MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ]
+            MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
+            MLABSTyle(string asis) ]
         if `_lb_lal' local _rc_lb 198
         else local _rc_lb = _rc
         if `_rc_lb' mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
@@ -2448,7 +2450,8 @@ program define _dash_label_split
     }
     mata: st_local("0", ", " + _dash_lb_in)
     syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
-        MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ]
+        MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
+        MLABSTyle(string asis) ]
     foreach o of local lo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -5188,7 +5191,7 @@ program define _dash_plot_opts_to_json, rclass
                    mlabvposition mlabtextstyle ///
                    mangle barbsize headlabel ///
                    xvarformat yvarformat yvarlabel xvarlabel ///
-                   mlabprefix mlabsuffix lalign ///
+                   mlabprefix mlabsuffix lalign mlabstyle ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    atobs estopts predopts estcmd fitplot ciplot nofit ///

@@ -596,8 +596,9 @@ class TestTheParsersFoundSomething:
         # "Alternative titles" goes.
         # 211 -> 213: D8 the yvarlabel() xvarlabel() entry.
         # 213 -> 216: C17 the mlabprefix() mlabsuffix() and lalign() entries.
-        assert len(found) == 216, (
-            f"{len(found)} options parsed out of dash.sthlp, 216 measured "
+        # 216 -> 217: E3 the mlalign() mlabstyle() entry adds mlabstyle().
+        assert len(found) == 217, (
+            f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -684,7 +685,8 @@ class TestTheParsersFoundSomething:
         # 253 -> 269: B4b contour's sixteen options (_dash_contour_split)
         # 269 -> 271: D8 yvarlabel xvarlabel declared (_dash_label_split)
         # 271 -> 274: C17 mlabprefix mlabsuffix lalign declared there
-        assert len(_ado_declarations()) == 274
+        # 274 -> 275: E3 mlabstyle declared there
+        assert len(_ado_declarations()) == 275
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -709,8 +711,9 @@ class TestTheParsersFoundSomething:
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
         # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25: D2
         # the eight edge titles drawn, title2() and subtitle2() refused
-        # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn
-        assert len(_ignored_options()) == 20
+        # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn;
+        # 20 -> 19: E3 mlalign() read by the renderer
+        assert len(_ignored_options()) == 19
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -737,8 +740,9 @@ class TestTheParsersFoundSomething:
         # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines;
         # 35 -> 25: D2 the "Alternative titles" entry goes
         # 25 -> 20: D5 the "Sizing for graph combine" and "Room for long
-        # end labels" entries go
-        assert len(_unsupported_section()) == 20
+        # end labels" entries go; 20 -> 19: E3 mlalign() leaves the
+        # Unsupported entry.
+        assert len(_unsupported_section()) == 19
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -816,8 +820,9 @@ class TestTheParsersFoundSomething:
         # entries "Sizing for graph combine" and "Room for long end labels";
         # 439 -> 440: D8 the yvarlabel() xvarlabel() entry.
         # 440 -> 442: C17 the mlabprefix() mlabsuffix() and lalign() entries.
-        assert len(defs) == 442, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 442 "
+        # 442 -> 443: E3 the mlalign() mlabstyle() entry.
+        assert len(defs) == 443, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 443 "
             f"measured 15oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

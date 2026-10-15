@@ -991,6 +991,9 @@ FUNCTIONS = {
  '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
+ # WP-31 S34 (E3): mlabstyle()'s labelstyle.
+ 'SchemeParser.label_style': 'test/test_msangle_mlabstyle.py::TestLabelStyle::test_p2',
+ 'SchemeParser.label_style.<locals>.clock': 'test/test_msangle_mlabstyle.py::TestLabelStyle::test_p2',
  # WP-31 S34 (C17): mlabprefix()/mlabsuffix() text.
  'GlyphMapper._mlabel_affix': 'test/test_mlabel_prefix_suffix.py::TestPrefixSuffix::test_text',
  # WP-31 S34 (D8): yvarlabel() and xvarlabel() read by the series rule.

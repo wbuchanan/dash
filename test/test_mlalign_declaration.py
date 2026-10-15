@@ -46,8 +46,11 @@ class TestMlalign:
         body = ab._program_body(src, "_dash_parse_plot_opts")
         assert re.search(r"^\s*MLabel\(string asis\)\s+MLALign\(string\)\s",
                          body, re.M), "MLALign is not declared after MLabel"
+        # Flipped (WP-31 E3): mlalign() was pending (named whatever its
+        # value), which was wrong once the renderer reads it; it names only
+        # outside and an unknown word (test_msangle_mlabstyle.py).
         assert ("if `: length local mlalign' local _dash_pending "
-                "`\"`_dash_pending' mlalign\"'") in body
+                "`\"`_dash_pending' mlalign\"'") not in body
         assert re.search(r"sreturn local mlalign\s+: copy local mlalign",
                          body)
         keys = re.search(r"foreach key in (mcolor .*?)\{", src, re.S).group(1)
@@ -73,6 +76,6 @@ class TestMlalign:
     def test_counted_and_classified(self):
         with open(REPORT, encoding="utf-8") as fh:
             src = fh.read()
-        assert re.search(r'"mlalign": \("inside", "outside", "scatter"\)',
-                         src)
+        # Flipped (WP-31 E3): classified in NOT_IN_FILE, not PLOT_VALUES.
+        assert re.search(r'"mlalign": "the marker outline', src)
         assert "A4 mlalign declared" in src

@@ -109,8 +109,6 @@ PLOT_VALUES = {
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
     "mlabwidth": ("thick", "vthin", "scatter"),
-    # WP-31 A4: declared, named until WP-31 S34 draws it.
-    "mlalign": ("inside", "outside", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
     # WP-30 P1.14b: kept and named, not drawn (P2.8 marker back lines);
@@ -296,8 +294,8 @@ class TestTheListIsCoveredAndHonest:
         # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25 and
         # 18 -> 8: D2 edge titles drawn, title2/subtitle2 refused
         # 25 -> 20 and 8 -> 3: D5 fxsize fysize scale xoverhangs
-        # yoverhangs drawn
-        assert len(_plot_pending()) == 20, sorted(_plot_pending())
+        # yoverhangs drawn; 20 -> 19: E3 mlalign() read by the renderer
+        assert len(_plot_pending()) == 19, sorted(_plot_pending())
         assert len(_graph_pending()) == 3, sorted(_graph_pending())
 
 
@@ -488,6 +486,13 @@ NOT_IN_FILE = {
                           "colorvar() layer, as twoway does (WP-31 C8b); the "
                           "renderer draws each layer's key either way, so it "
                           "is certified by test_wp31_truth.cscript U17-04",
+    # Flipped (WP-31 E3): mlalign() was named whatever its value
+    # (PLOT_VALUES), which was wrong because twoway's center is how Bokeh
+    # strokes an outline and its inside is the picture without the option.
+    "mlalign": "the marker outline's alignment: center and inside draw "
+               "the page without it, as twoway draws inside; outside and "
+               "an unknown word are noted by the renderer "
+               "(test_msangle_mlabstyle.py::TestMlalign::test_notes)",
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",

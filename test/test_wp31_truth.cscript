@@ -7904,6 +7904,30 @@ def _u34_labels(sp, dp, app):
         Macro.setGlobal("u34_" + sfx, " ~ ".join(out))
 end
 
+python:
+def _u34_style(sp, dp, app):
+    """The first LabelSet's colour and anchors and the first marker angle,
+    saved and served, into u34_s and u34_v."""
+    import __main__ as m
+    from sfi import Macro
+    from bokeh.models import LabelSet
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        out = []
+        for f in figs:
+            for ls in f.select({"type": LabelSet}):
+                out.append("%s %s %s" % (str(ls.text_color).lower(),
+                                         ls.text_align, ls.text_baseline))
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if type(g).__name__ == "Scatter" and not out:
+                    ang = g.angle
+                    ang = ang if isinstance(ang, (int, float)) else getattr(
+                        ang, "value", ang)
+                    out.append("angle %.6f" % float(ang))
+        Macro.setGlobal("u34_" + sfx, " ~ ".join(out[:1]))
+end
+
 capture program drop _u34_reg
 program define _u34_reg
     // _u34_reg <dir> <k> <command with options...>
@@ -8030,6 +8054,73 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
     }
     _w31_expect U34-3 `"(`"`bad'"' == "")"' `"`bad'"'
     _w31_done U34-3 "lalign() taken as twoway takes it: center, inside, outside silent, another word in twoway's words"
+
+    macro drop u34_tw u34_s u34_v
+    capture graph drop _all
+    dash clear
+    display as text "S34 end " c(current_date) " " c(current_time)
+}
+* ==== end S34 ====
+
+* ==== S34 E3: msangle names, mlalign(), mwidth, mlabstyle() ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
+    display as text "S34 start " c(current_date) " " c(current_time)
+    local u34d "`w31_work'/s34c"
+    capture mkdir "`u34d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U34-4: mlabstyle(p2) colours the labels as twoway's SVG does, at 3
+    // o'clock; mlabstyle(bogus) is twoway's rc and drawn black at 12.
+    local bad ""
+    local j 0
+    foreach c in "p2|left middle" "bogus|center bottom" {
+        local ++j
+        gettoken st anchor : c, parse("|")
+        local anchor = substr("`anchor'", 2, .)
+        capture graph drop u34t
+        capture noisily twoway scatter mpg weight in 1/3, mlabel(make) mlabstyle(`st') name(u34t, replace)
+        local trc = _rc
+        quietly graph export "`u34d'/t4`j'.svg", replace
+        graph drop u34t
+        python: from sfi import Macro as _u34_M; from svg_truth import svg_document as _u34_sd; _u34_M.setGlobal("u34_tw", [t["fill"] for t in _u34_sd("`u34d'/t4`j'.svg")["texts"] if t["text"] == "AMC Concord"][0])
+        local want "${u34_tw} `anchor'"
+        dash clear
+        capture quietly dash scatter mpg weight in 1/3, mlabel(make) mlabstyle(`st') name(u344)
+        if _rc != `trc' local bad `"`bad' `st': twoway rc `trc', dash `=_rc';"'
+        else {
+            _dash_serve_spec, specpath("`u34d'/s4`j'.json") datapath("`u34d'/d4`j'.json")
+            python: import __main__ as _u34_m; _u34_m._u34_style("`u34d'/s4`j'.json", "`u34d'/d4`j'.json", "`u34d'/a4`j'.py")
+            foreach m in s v {
+                if `"${u34_`m'}"' != `"`want'"' local bad `"`bad' `st' `m': dash ${u34_`m'} want `want';"'
+            }
+        }
+    }
+    _w31_expect U34-4 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-4 "mlabstyle() styles the labels from the scheme's labelstyle as twoway does, saved and served"
+
+    // U34-5: msangle(forty_five) rotates the markers 45 degrees, as
+    // msangle(45); msangle(bogus) is twoway's rc 0, drawn unrotated.
+    local bad ""
+    foreach a in forty_five 45 bogus {
+        capture noisily twoway scatter mpg weight, msymbol(T) msangle(`a') nodraw
+        local trc = _rc
+        dash clear
+        capture quietly dash scatter mpg weight, msymbol(T) msangle(`a') name(u345)
+        if _rc != `trc' local bad `"`bad' `a': twoway rc `trc', dash `=_rc';"'
+        else {
+            _dash_serve_spec, specpath("`u34d'/s5.json") datapath("`u34d'/d5.json")
+            python: import __main__ as _u34_m; _u34_m._u34_style("`u34d'/s5.json", "`u34d'/d5.json", "`u34d'/a5.py")
+            local want = cond("`a'" == "bogus", "angle 0.000000", "angle 0.785398")
+            foreach m in s v {
+                if `"${u34_`m'}"' != `"`want'"' local bad `"`bad' `a' `m': dash ${u34_`m'} want `want';"'
+            }
+        }
+    }
+    _w31_expect U34-5 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-5 "msangle() rotates by anglestyle names as twoway does, saved and served"
 
     macro drop u34_tw u34_s u34_v
     capture graph drop _all

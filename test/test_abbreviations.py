@@ -821,8 +821,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # NAMe, now NAME, is one line longer.
     # 72 -> 73: D5 the overhangs' pending note goes (one) and the
     # aspectratio() split's note comes (two); 159 -> 161: D8 the note on
-    # _dash_label_split's call (two).
-    assert comments == {"_dash_parse_plot_opts": 161,
+    # _dash_label_split's call (two); 161 -> 162: E3 mlalign()'s pending
+    # note becomes three lines.
+    assert comments == {"_dash_parse_plot_opts": 162,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

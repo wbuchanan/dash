@@ -1974,7 +1974,6 @@ class TestWp30Tracking:
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
     "E11": "Sizes are relative to a 4-inch reference and scale() is pending",
-    "E3": "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared",
     "C14": "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)",
     "C15": "Bar marker labels default to 3 o'clock where twoway's bar default is 12",
     "D9": "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis",

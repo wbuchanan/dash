@@ -10375,6 +10375,55 @@ class SchemeParser:
         "tick_label": ("tick_label", "tick_label"),
     }
 
+    #: labelstyle names Stata ships beside p# / p#bar / p#box
+    #: (style/labelstyle-*.style): (text box style, clockdir key).
+    _LABEL_STYLES: "dict[str, tuple[str, str | None]]" = {
+        "default": ("small_label", ""), "editor": ("small_label", None),
+        "ilabel": ("small_label", "ilabel"),
+        "matrix": ("matrix_marklbl", "matrix_marklbl"),
+    }
+
+    def label_style(self, name) -> "dict[str, Any] | None":
+        """``{"color", "alpha", "size", "position"}`` of the labelstyle
+        *name* (``mlabstyle()``, WP-31 E3), or None when Stata ships no
+        such style.
+
+        ``p<n>`` is plot n's marker-label style (colour, opacity and size
+        as :meth:`default_mlabel_style`) at ``clockdir p<n>`` -> ``p`` (3);
+        ``p<n>bar`` / ``p<n>box`` read their text box styles at ``clockdir
+        p<n>bar`` -> ``pbar`` (12) / ``p<n>box`` -> ``pbox`` (3); default,
+        editor, ilabel and matrix their text box styles at their clocks
+        (editor 6).  Measured under s2color: mlabstyle(p2) is p2's label
+        colour at 3 (varlabel_mlabel_truth.json mlabstyle.p2).
+        """
+        if not isinstance(name, str) or not 0 < len(name) <= 32:
+            return None
+
+        def clock(keys, default):
+            for k in keys:
+                raw = self._props.get(("clockdir " + k).strip(), "").strip()
+                if raw.isdigit() and 0 <= int(raw) <= 12:
+                    return str(int(raw))
+            return default
+
+        m = re.fullmatch(r"p([1-9]|1[0-5])(bar|box)?", name)
+        if m is not None:
+            i, stub = int(m.group(1)) - 1, m.group(2) or ""
+            color, alpha, size = self.default_mlabel_style(i)
+            if stub:
+                size, color = self.textbox_style(f"p{i + 1}{stub}label")
+            return {"color": color, "alpha": alpha, "size": size,
+                    "position": clock((f"p{i + 1}{stub}", f"p{stub}"),
+                                      "12" if stub == "bar" else "3")}
+        if name in self._LABEL_STYLES:
+            tb, ck = self._LABEL_STYLES[name]
+            size, color = self.textbox_style(tb)
+            pos = "6" if ck is None else clock((ck,), "12" if ck == ""
+                                               else "3")
+            return {"color": color, "alpha": None, "size": size,
+                    "position": pos}
+        return None
+
     def textbox_style(self, name) -> "tuple[str, str] | None":
         """``(size, colour)`` of the text box style *name* in this scheme,
         or None when Stata ships no such style (WP-30 P1.24).
@@ -13976,17 +14025,32 @@ class GlyphMapper:
         # msangle: rotate all markers by a fixed angle (degrees → radians).
         # Bokeh scatter glyphs support a scalar angle property.
         if "msangle" in options:
-            try:
-                angle_deg = float(str(options["msangle"]).strip())
-                if not math.isfinite(angle_deg):
-                    raise ValueError(angle_deg)
-            except (TypeError, ValueError):
+            # An anglestyle name or a number (WP-31 E3): forty_five rotates
+            # 45 degrees, as twoway draws msangle(45) (varlabel_mlabel_
+            # truth.json msangle.*) and as mlabangle() already reads it; a
+            # name that is none is noted and drawn unrotated, as twoway.
+            angle_deg = _dash_anglestyle_degrees(options["msangle"])
+            if angle_deg is None:
                 _dash_style_note("msangle", options["msangle"], "angle")
-            else:
-                if hasattr(glyph, "angle"):
-                    glyph.angle = math.radians(angle_deg)
-                    if hasattr(glyph, "angle_units"):
-                        glyph.angle_units = "rad"
+            elif hasattr(glyph, "angle"):
+                glyph.angle = math.radians(angle_deg)
+                if hasattr(glyph, "angle_units"):
+                    glyph.angle_units = "rad"
+        # mlalign() (WP-31 E3): Bokeh strokes a marker's outline on its
+        # path, as twoway's center draws it; twoway's inside is the
+        # picture without the option (malign.inside), so both are silent.
+        # outside is named; another word in twoway's words (alignstroke).
+        _mla = str(options.get("mlalign", "") or "").strip()
+        if _mla == "outside":
+            _dash_warn_once(
+                ("mlalign", "outside"),
+                "dash: mlalign(outside) is drawn centred: the page cannot "
+                "align a stroke to a side.")
+        elif _mla and _mla not in ("center", "inside"):
+            _dash_warn_once(
+                ("mlalign", _dash_display(_mla)),
+                f"dash: named style {_dash_display(_mla)} not found in class "
+                "alignstroke, default attributes used")
         # Hollow and invisible symbols, applied after malpha() so an
         # explicit alpha cannot refill them (twoway keeps `msymbol(Oh)
         # malpha(50)' hollow, WP-30 P1.4a).
@@ -15059,6 +15123,24 @@ class GlyphMapper:
             text_col = _wrap
 
         _lc, _la, _ls = self.scheme.default_mlabel_style(color_idx)
+        # mlabstyle() (WP-31 E3): a labelstyle's colour, size and clock
+        # stand in for the plot's own; mlabtextstyle(), mlabcolor(),
+        # mlabsize() and mlabposition() below still win.  A name Stata
+        # ships no labelstyle for is noted in twoway's words and drawn as
+        # twoway draws it, black at 12 (mlabstyle.bogus).
+        _mls = options.get("mlabstyle", "")
+        _mls = _mls.strip() if isinstance(_mls, str) else ""
+        _mls_pos = None
+        if _mls:
+            _st = self.scheme.label_style(_mls)
+            if _st is None:
+                _dash_warn_once(
+                    ("mlabstyle", _dash_display(_mls)),
+                    f"dash: named style {_dash_display(_mls)} not found in "
+                    "class labelstyle, default attributes used")
+                _st = self.scheme.label_style("default")
+            _lc, _la, _ls = _st["color"], _st["alpha"], _st["size"]
+            _mls_pos = _st["position"]
         kwargs: dict[str, Any] = dict(
             x=xvar,
             y=yvar,
@@ -15140,7 +15222,8 @@ class GlyphMapper:
         # point, as twoway puts it (_MLABEL_CLOCK).  A position twoway does
         # not recognise is named and drawn at 12 o'clock, where twoway draws
         # it; dash drew it at 3, and 03 at 3 without a word.
-        pos = str(options.get("mlabposition", "3") or "3").strip()
+        pos = str(options.get("mlabposition", _mls_pos or "3")
+                  or _mls_pos or "3").strip()
         if pos in GlyphMapper._MLABEL_CLOCK_NAMES:
             p = int(pos)
         else:

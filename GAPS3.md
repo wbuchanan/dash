@@ -494,7 +494,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D16b Tracked:** Open (WP-31 section 39).
 - **E1 Tracked:** Open (WP-31 section 40).
 - **E2 Tracked:** Open (WP-31 section 40).
-- **E3 Tracked:** Open (WP-31 section 34).
+- **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit pending.
 - **E4 Tracked:** Open (WP-31 section 41).
 - **E5 Tracked:** Open (WP-31 section 41).
 - **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit pending.
