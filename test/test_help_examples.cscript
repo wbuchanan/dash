@@ -576,7 +576,10 @@ _hx_pin shown described `"dash build, saving(app.py) server"'
 //   fragment  not a command: a subcommand with an option, the start of a
 //             template, a kpi without its required title() and name()
 _hx_pin shown fragment `"dash build, server"'
-_hx_pin shown fragment `"dash scatter"'
+// Flipped (WP-31 B4b): `"dash scatter"' -- the inline fragment of the
+// contour refusal sentence ("dash scatter y x, colorvar(z)") -- is gone,
+// because contour and contourline are drawn and the help no longer shows
+// it.
 _hx_pin shown fragment `"dash kpi p25(price)"'
 _hx_pin shown fragment `"dash kpi p97.5(price)"'
 //   (WP-29 P0.8) two illustrations of the date-unit rule in a sentence,

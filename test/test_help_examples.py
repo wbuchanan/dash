@@ -512,7 +512,9 @@ class TestTheShownCommands:
         # 8 -> 9: WP-30 batch 4 added one inline example.
         # 9 -> 10: WP-30 P1.26b's Notes paragraph shows dash build, server.
         # 10 -> 12: WP-30 P1.17b's base() and P1.32's guard sentences.
-        assert forms.count(("dash.sthlp", "inline")) == 12
+        # 12 -> 11: WP-31 B4b drew contour and contourline, and the
+        # refusal sentence's inline dash scatter y x, colorvar(z) went.
+        assert forms.count(("dash.sthlp", "inline")) == 11
         assert forms.count(("dash_setup.sthlp", "line")) == 7
         # dash_setup.sthlp once also named `python set exec` inline, in the
         # prose; WP-23 rewrote that paragraph, and the command is shown
@@ -523,7 +525,8 @@ class TestTheShownCommands:
         # commands, and the venv() and ensurepip lines were added; WP-29
         # P0.8 added two date-unit illustrations (13 + 2).
         # WP-30 P1.17b and P1.32: two more sentence illustrations (15 + 2).
-        assert len({s.text for s in shown}) == 17
+        # 17 -> 16: WP-31 B4b, the contour refusal's dash scatter is gone.
+        assert len({s.text for s in shown}) == 16
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
@@ -627,11 +630,13 @@ class TestThePinnedLists:
         # WP-30 P1.17b and P1.32 two more sentence illustrations (24 + 2).
         # 26 -> 25: WP-31 A5 -- the [aw=price+1] example is drawn, no
         # longer an expected refusal.
-        assert len(lines) == len(pins) == 25
+        # 25 -> 24: WP-31 B4b -- the dash scatter fragment pin goes with
+        # the contour refusal sentence that showed it.
+        assert len(lines) == len(pins) == 24
         kinds = [k for k, _v, _t in pins]
-        # expect 4 -> 3: WP-31 A5, as above.
+        # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 17)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 16)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]
