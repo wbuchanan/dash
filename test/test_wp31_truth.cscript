@@ -9832,6 +9832,159 @@ if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
 }
 * ==== end S39 ====
 
+python:
+def _u40_glyph(sp, dp, app, key):
+    """The first marker glyph's marker, angle, size, fill and outline
+    width, saved and served, into __main__._u40_seen[key]; and the
+    saved render's msymbol notes."""
+    import __main__ as m
+    import warnings
+    import dash_render as dr
+    a, b = m._u03_docs(sp, dp, app)
+    out = []
+    for figs in (a, b):
+        gs = [r.glyph for r in figs[0].renderers
+              if type(getattr(r, "glyph", None)).__name__ == "Scatter"
+              and not dr._dash_is_swatch(r)]
+        g = gs[0]
+        out.append((g.marker, round(float(g.angle or 0.0), 4),
+                    round(float(g.size), 3), float(g.fill_alpha),
+                    float(g.line_width)))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    notes = [str(x.message) for x in w if "marker symbol" in str(x.message)]
+    seen = getattr(m, "_u40_seen", {})
+    seen[key] = (out, notes)
+    m._u40_seen = seen
+end
+
+python:
+def _u40_verdict(case, fixture):
+    """What differs from twoway's table (test/fixtures/
+    symbol_pattern_truth.json) for the glyphs _u40_glyph saw, into u40_bad."""
+    import __main__ as m
+    import json, math
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        t = json.load(fh)
+    shape = {"O": ("circle", "O"), "o": ("circle", "O"),
+             "oh": ("circle", "O"), "d": ("diamond", "D"),
+             "dh": ("diamond", "D"), "s": ("square", "S"),
+             "sh": ("square", "S"), "t": ("triangle", "T"),
+             "th": ("triangle", "T"), "x": ("x", "X"), "smx": ("x", "X"),
+             "lgx": ("x", "X"), "V": ("inverted_triangle", "V"),
+             "v": ("inverted_triangle", "V"),
+             "smv": ("inverted_triangle", "V"),
+             "arrow": ("triangle", "T"), "a": ("triangle", "T"),
+             "arrowf": ("triangle", "T"), "A": ("triangle", "T"),
+             "pipe": ("dash", "O"), "|": ("dash", "O")}
+    seen = m._u40_seen
+    o_size = seen["O"][0][0][2]
+    bad = []
+    for key, (out, notes) in sorted(seen.items()):
+        if out[0] != out[1]:
+            bad.append("%s saved %s served %s" % (key, out[0], out[1]))
+        mk, ang, size, fa, lw = out[0]
+        if case == "U40-02":
+            if key in ("point", "p"):
+                want = ("circle", 0.0, 1.0, None, 0.0)
+            elif key in shape:
+                sh, ref = shape[key]
+                f = t["sym." + key]["factor"] / t["sym." + ref]["factor"]
+                want = (sh, round(math.pi / 2, 4) if sh == "dash" else 0.0,
+                        round(o_size * f, 3), None, None)
+            else:
+                continue
+            if mk != want[0] or abs(ang - want[1]) > 1e-3 or \
+                    abs(size - want[2]) > 0.02 * max(1.0, want[2]) or \
+                    (want[4] is not None and lw != want[4]):
+                bad.append("%s drew %s want %s" % (key, out[0], want))
+            if mk not in ("dash", "x") and key not in ("point", "p") and \
+                    (fa == 0.0) is t["sym." + key]["filled"]:
+                bad.append("%s fill %s, twoway filled %s" % (
+                    key, fa, t["sym." + key]["filled"]))
+            if notes:
+                bad.append("%s noted %s" % (key, notes))
+        elif case in ("U40-05", "U40-07") and key != "O":
+            if t["sym." + key]["note"] != \
+                    "named style %s not found in class symbol" % key:
+                bad.append("%s twoway note %r" % (key, t["sym." + key]["note"]))
+            if out[0][:3] != seen["O"][0][0][:3] or len(notes) != 1 or \
+                    "msymbol(%s)" % key not in notes[0]:
+                bad.append("%s drew %s notes %s" % (key, out[0], notes))
+    Macro.setGlobal("u40_bad", "; ".join(bad)[:2000])
+end
+
+capture program drop _u40_sym
+program define _u40_sym
+    // _u40_sym <dir> <k> <symbol>: dash's saved and served marker for
+    // msymbol(<symbol>) (the s2color scheme) into _u40_seen.
+    version 19
+    args dir k sym
+    dash clear
+    quietly dash scatter mpg weight, msymbol(`sym') scheme(s2color) name(zu40`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u40_m; _u40_m._u40_glyph("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`sym'")
+end
+
+* ==== S40 E1: Marker symbols ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
+    display as text "S40 start " c(current_date) " " c(current_time)
+    local u40d "`w31_work'/s40"
+    capture mkdir "`u40d'"
+    local u40fx "`c(pwd)'/fixtures/symbol_pattern_truth.json"
+    sysuse auto, clear
+
+    // U40-01: the fixture is stamped and holds every probe.
+    local bad ""
+    python: import json; from sfi import Macro; _d = json.load(open(r"`u40fx'", encoding="utf-8")); _miss = [k for k in ("sym.arrow", "sym.arrowf", "sym.A", "sym.a", "sym.pipe", "sym.|", "sym.point", "sym.p", "sym.V", "sym.v", "sym.star", "sym.dot", "sym.CIRCLE", "pat.dash", "pat.dash_w.thick", "pat.formula.f1", "mlp.dash") if k not in _d] + [k for k in ("stata_version", "born_date", "dash_commit", "extracted", "source") if not _d["_meta"].get(k)]; Macro.setLocal("bad", " ".join(_miss))
+    _w31_expect U40-01 `"(`"`bad'"' == "")"' `"missing: `bad'"'
+    _w31_done U40-01 "symbol_pattern_truth.json is stamped and holds every probe"
+
+    // U40-02: every symbol and synonym draws twoway's shape, fill and
+    // size, saved and served alike, silently.
+    python: import __main__ as _u40_m; _u40_m._u40_seen = {}
+    local k 0
+    foreach sym in O arrow arrowf A a pipe | point p V v o d s t oh dh sh th x smx smv lgx {
+        local ++k
+        _u40_sym "`u40d'" `k' `sym'
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_verdict("U40-02", r"`u40fx'")
+    _w31_expect U40-02 `"(`"${u40_bad}"' == "")"' `"${u40_bad}"'
+    _w31_done U40-02 "every Stata symbol and synonym draws twoway's shape, fill and size, saved and served"
+
+    // U40-05: a name twoway does not know is noted by both and the
+    // scheme's symbol drawn.
+    python: import __main__ as _u40_m; _u40_m._u40_seen = {}
+    local k 40
+    local twbad ""
+    foreach sym in O star asterisk hexagon hexagon_hollow dot {
+        local ++k
+        capture twoway scatter mpg weight, msymbol(`sym') name(u40t, replace)
+        if _rc local twbad "`twbad' `sym' twoway rc `=_rc'"
+        capture graph drop u40t
+        _u40_sym "`u40d'" `k' `sym'
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_verdict("U40-05", r"`u40fx'")
+    _w31_expect U40-05 `"(`"${u40_bad}`twbad'"' == "")"' `"${u40_bad}`twbad'"'
+    _w31_done U40-05 "star, asterisk, hexagon, hexagon_hollow and dot are noted and the scheme's symbol drawn, as twoway"
+
+    // U40-07: symbol names are case-sensitive, as twoway's.
+    python: import __main__ as _u40_m; _u40_m._u40_seen = {}
+    local k 60
+    foreach sym in O CIRCLE Circle {
+        local ++k
+        _u40_sym "`u40d'" `k' `sym'
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_verdict("U40-07", r"`u40fx'")
+    _w31_expect U40-07 `"(`"${u40_bad}"' == "")"' `"${u40_bad}"'
+    _w31_done U40-07 "CIRCLE and Circle are noted and the scheme's symbol drawn, as twoway"
+    display as text "S40 end " c(current_date) " " c(current_time)
+}
+* ==== end S40 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

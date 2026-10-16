@@ -2654,6 +2654,12 @@ CORPUS = [
     # WP-31 D4b
     _case("legend colgap subtitle", [_sc(), plot_for("line")],
           go={"legend": 'colgap(0) title("T") subtitle("S")'}),
+
+    # WP-31 E1: Stata's symbols, alike in both modes.
+    _case("msymbol(arrow) (WP-31 E1)", [_sc(msymbol="arrow")]),
+    _case("msymbol(pipe) msangle(30) (WP-31 E1)",
+          [_sc(msymbol="pipe", msangle="30")]),
+    _case("msymbol(p) (WP-31 E1)", [_sc(msymbol="p")]),
 ]
 
 
@@ -3704,6 +3710,11 @@ MOVE_CORPUS = [
     # on the line's range in both documents after the move).
     _move_case("yline noextend, range move then zoom (WP-31 D12)",
                _MOVES[1], [_sc()], go={"yline": "25, noextend"}),
+
+    # WP-31 E1: the vertical bar and the dot keep their turn and size
+    # after a move.
+    _move_case("msymbol(pipe) msangle(30), dropdown (WP-31 E1)", _MOVES[0],
+               [_sc(msymbol="pipe", msangle="30"), _sc(msymbol="p")]),
 ]
 
 

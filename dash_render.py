@@ -7305,11 +7305,17 @@ class OptionTranslator:
     # ------------------------------------------------------------------
     # Stata marker names that mean "draw the outline only".  The symbol
     # itself is the solid shape; the fill is switched off when applied.
+    # Stata's synonyms (symbolstyle.sthlp) are their own keys: Oh, Sh,
+    # Dh and Th are the full hollow symbols, oh .. th the small ones.  v,
+    # V and smv are an open chevron and arrow/a an open head on a shaft
+    # (twoway's SVG writes them stroked, fill none; WP-31 E1,
+    # test/fixtures/symbol_pattern_truth.json).
     _HOLLOW_SYMBOLS: frozenset = frozenset({
-        "oh", "sh", "dh", "th", "circle_hollow", "square_hollow",
-        "diamond_hollow", "triangle_hollow", "hexagon_hollow",
+        "Oh", "Sh", "Dh", "Th", "oh", "sh", "dh", "th",
+        "circle_hollow", "square_hollow",
+        "diamond_hollow", "triangle_hollow",
         "smcircle_hollow", "smsquare_hollow", "smdiamond_hollow",
-        "smtriangle_hollow",
+        "smtriangle_hollow", "v", "V", "smv", "arrow", "a",
     })
     # Stata marker names that mean "draw nothing".  msymbol(i) silently drew
     # a visible marker.
@@ -7318,23 +7324,48 @@ class OptionTranslator:
     # symbol, at the default size and under msize(large) alike (WP-30
     # P1.4a; the stroked extent measured from `graph export' SVGs, 03oct
     # 2026): smcircle, smdiamond, smsquare, smplus and their hollow forms
-    # 0.707 (1/sqrt 2), smtriangle 0.751, smx and smv drawn as x and v.
-    # Keyed by full name only, so the one- and two-letter shorthands keep
-    # their size (P2.11).
+    # 0.707 (1/sqrt 2), smtriangle 0.751.
+    # The one- and two-letter shorthands are the sm* symbols
+    # (symbolstyle.sthlp), so they take the same factors (WP-31 E1).  x is
+    # smx and v is smv: 0.707 of X and 0.75 of V, and lgx 1.414 of X
+    # (test/fixtures/symbol_pattern_truth.json; P1.4a compared smx with
+    # x and smv with v, which are the same symbols).
     _SMALL_SYMBOL_FACTOR: dict = {
         "smcircle": math.sqrt(0.5), "smcircle_hollow": math.sqrt(0.5),
         "smdiamond": math.sqrt(0.5), "smdiamond_hollow": math.sqrt(0.5),
         "smsquare": math.sqrt(0.5), "smsquare_hollow": math.sqrt(0.5),
         "smplus": math.sqrt(0.5),
         "smtriangle": 0.75, "smtriangle_hollow": 0.75,
-        "smx": 1.0, "smv": 1.0,
+        "o": math.sqrt(0.5), "oh": math.sqrt(0.5),
+        "d": math.sqrt(0.5), "dh": math.sqrt(0.5),
+        "s": math.sqrt(0.5), "sh": math.sqrt(0.5),
+        "t": 0.75, "th": 0.75,
+        "smx": math.sqrt(0.5), "lgx": math.sqrt(2.0), "smv": 0.75,
     }
+    # In an option, x and v are symbolstyle.sthlp's synonyms of smx and smv
+    # (msymbol(x) draws 0.707 of X); a scheme's or style file's x and v are
+    # symbol-x.style and symbol-v.style, the full symbols (s1mono's p5 x
+    # draws X's size; scheme_layer_truth.json s1mono_extent, WP-31 E1).
+    _OPTION_SYMBOL_SYNONYMS: dict = {"x": "smx", "v": "smv"}
+    # pipe and | are a vertical bar: Bokeh's dash marker a quarter turn,
+    # and msangle() turns it further, as twoway turns it (WP-31 E1).
+    _SYMBOL_BASE_ANGLE: dict = {"pipe": math.pi / 2, "|": math.pi / 2}
+    # point and p are a dot of fixed size with no outline, whatever
+    # msize() says (twoway writes r = 1 SVG unit at medium and large);
+    # dash draws the smallest dot a page shows, one pixel (WP-31 E1).
+    _SYMBOL_FIXED_PX: dict = {"point": 1.0, "p": 1.0}
 
+    # Every symbol-*.style file of Stata 19.5 and every synonym of
+    # symbolstyle.sthlp, case as Stata spells it (names are case-sensitive:
+    # twoway notes CIRCLE; WP-31 E1/E12).  star, asterisk, hexagon,
+    # hexagon_hollow and dot are not Stata symbols: twoway notes them and
+    # draws the scheme's symbol, so they are not here.
     _MARKER_MAP: dict[str, str] = {
         "i":               "circle",
         "none":            "circle",
         "invisible":       "circle",
         "circle":          "circle",
+        "O":               "circle",
         "o":               "circle",
         # A HOLLOW Stata marker is the solid shape with no fill, not a
         # different glyph.  These mapped to Bokeh's *_dot markers, which draw
@@ -7342,18 +7373,25 @@ class OptionTranslator:
         # FILLED.  The shape is the solid one and _HOLLOW_SYMBOLS makes the
         # fill transparent.
         "circle_hollow":   "circle",
+        "Oh":              "circle",
         "oh":              "circle",
         "square":          "square",
+        "S":               "square",
         "s":               "square",
         "square_hollow":   "square",
+        "Sh":              "square",
         "sh":              "square",
         "diamond":         "diamond",
+        "D":               "diamond",
         "d":               "diamond",
         "diamond_hollow":  "diamond",
+        "Dh":              "diamond",
         "dh":              "diamond",
         "triangle":        "triangle",
+        "T":               "triangle",
         "t":               "triangle",
         "triangle_hollow": "triangle",
+        "Th":              "triangle",
         "th":              "triangle",
         "plus":            "plus",
         "+":               "plus",
@@ -7364,14 +7402,16 @@ class OptionTranslator:
         "smx":             "x",
         "smsquare":        "square",
         "p":               "circle",
-        "pipe":            "dash",
-        "T":               "triangle",
-        "star":            "star",
-        "asterisk":        "asterisk",
-        "hexagon":         "hex",
-        "hexagon_hollow":  "hex",
         "point":           "circle",
-        "dot":             "dot",
+        "pipe":            "dash",
+        "|":               "dash",
+        # arrow/a: an open head on a shaft; arrowf/A: a filled head on a
+        # shaft, as tall as O (measured).  Bokeh has no arrow marker: the
+        # head is drawn as a triangle of that height, without the shaft.
+        "arrow":           "triangle",
+        "a":               "triangle",
+        "arrowf":          "triangle",
+        "A":               "triangle",
         # Remaining symbol-<name>.style entries from Stata's style library.
         # The mono schemes (s1mono, s2mono, sj, stmono1/2, stsj) cycle through
         # smdiamond and smtriangle, which previously raised out of SchemeParser
@@ -7383,6 +7423,7 @@ class OptionTranslator:
         "smsquare_hollow":    "square",
         "smplus":             "plus",
         "v":                  "inverted_triangle",
+        "V":                  "inverted_triangle",
         "smv":                "inverted_triangle",
         "lgx":                "x",
     }
@@ -7947,11 +7988,10 @@ class OptionTranslator:
             ValueError: If the symbol is not recognised.
         """
         v = value.strip()
-        # Try exact match first, then lower-case
-        result = (
-            OptionTranslator._MARKER_MAP.get(v)
-            or OptionTranslator._MARKER_MAP.get(v.lower())
-        )
+        # Case-sensitive, as Stata's style names are: twoway notes
+        # msymbol(CIRCLE) and draws the scheme's symbol (WP-31 E12,
+        # test/fixtures/symbol_pattern_truth.json sym.CIRCLE).
+        result = OptionTranslator._MARKER_MAP.get(v)
         if result is None:
             raise ValueError(
                 f"Unrecognised Stata marker symbol: '{value}'. "
@@ -7960,19 +8000,26 @@ class OptionTranslator:
         return result
 
     @staticmethod
-    def symbol_traits(value: str) -> "tuple[str, bool, float]":
+    def symbol_traits(value: str, option: bool = False
+                      ) -> "tuple[str, bool, float]":
         """``(marker, hollow, small-symbol factor)`` of a Stata symbol name.
 
         The marker is ``translate_msymbol``'s (which raises ``ValueError``
         for a name it does not know); hollow is ``_HOLLOW_SYMBOLS``; the
-        factor is ``_SMALL_SYMBOL_FACTOR``'s, 1.0 for any other name.
+        factor is ``_SMALL_SYMBOL_FACTOR``'s, 1.0 for any other name.  The
+        name is read as typed (Stata's names are case-sensitive, WP-31
+        E12); twoway's drawing of each is in
+        test/fixtures/symbol_pattern_truth.json.  *option* reads it as an
+        msymbol() value, where x and v are smx and smv
+        (``_OPTION_SYMBOL_SYNONYMS``); else as a scheme's or style file's.
         """
         marker = OptionTranslator.translate_msymbol(value)
         key = value.strip()
-        low = key.lower()
-        hollow = low in OptionTranslator._HOLLOW_SYMBOLS
-        fac = OptionTranslator._SMALL_SYMBOL_FACTOR
-        return marker, hollow, fac.get(key, fac.get(low, 1.0))
+        if option:
+            key = OptionTranslator._OPTION_SYMBOL_SYNONYMS.get(key, key)
+        hollow = key in OptionTranslator._HOLLOW_SYMBOLS
+        return (marker, hollow,
+                OptionTranslator._SMALL_SYMBOL_FACTOR.get(key, 1.0))
 
     @staticmethod
     def translate_msize(value: str, default_px: "float | None" = None,
@@ -9360,7 +9407,8 @@ class SchemeParser:
         "inten90":  0.90, "inten100": 1.0,  "full":     1.0,
         # Stata's other two intensity styles (/Applications/StataNow/ado/
         # base/style/intensity-inten200.style and intensity-max.style,
-        # `set val 200' and `set val 999999'): exactly 14 names.
+        # `set val 200' and `set val 999999'): exactly 14 names.  max is
+        # 999999 percent, 9999.99 as a fraction (WP-31 E12).
         "inten200": 2.0,  "max":      9999.99,
     }
 
@@ -11932,7 +11980,7 @@ class SchemeParser:
             raw = (vals.get("symbol") or "circle").strip()
             ln = vals.get("linestyle") or self._style_none("line")
             fc, fa = self._style_raw_colour(vals.get("fillcolor"))
-            invisible = raw.lower() in OptionTranslator._INVISIBLE_SYMBOLS
+            invisible = raw in OptionTranslator._INVISIBLE_SYMBOLS
             try:
                 sym, hollow, factor = OptionTranslator.symbol_traits(raw)
             except ValueError:
@@ -14145,11 +14193,20 @@ class GlyphMapper:
         if "msymbol" in options:
             try:
                 glyph.marker = self.tr.translate_msymbol(options["msymbol"])
+                # pipe/| is the dash marker a quarter turn (WP-31 E1).
+                _ba = OptionTranslator._SYMBOL_BASE_ANGLE.get(
+                    str(options["msymbol"]).strip())
+                if _ba is not None and hasattr(glyph, "angle"):
+                    glyph.angle = _ba
             except ValueError:
                 _dash_style_note("msymbol", options["msymbol"],
                                  "marker symbol")
             except AttributeError:
                 pass
+        elif traits is not None and getattr(glyph, "marker", None) == "dash" \
+                and hasattr(glyph, "angle"):
+            # The scheme's symbol: only pipe draws as Bokeh's dash marker.
+            glyph.angle = math.pi / 2
         if "msize" in options:
             # Stata's units on dash's one unit (WP-30 P1.12a, TR-08.8): *#
             # multiplies the size the glyph was built with, a negative or
@@ -14269,7 +14326,11 @@ class GlyphMapper:
             if angle_deg is None:
                 _dash_style_note("msangle", options["msangle"], "angle")
             elif hasattr(glyph, "angle"):
-                glyph.angle = math.radians(angle_deg)
+                # Added to the symbol's own turn (pipe's quarter turn,
+                # WP-31 E1), as twoway turns its vertical bar.
+                _a0 = glyph.angle if isinstance(glyph.angle, (int, float)) \
+                    and not isinstance(glyph.angle, bool) else 0.0
+                glyph.angle = float(_a0) + math.radians(angle_deg)
                 if hasattr(glyph, "angle_units"):
                     glyph.angle_units = "rad"
         # mlalign() (WP-31 E3): Bokeh strokes a marker's outline on its
@@ -14295,13 +14356,14 @@ class GlyphMapper:
         _hollow, _factor = traits if traits is not None else (False, 1.0)
         if _sym_raw:
             try:
-                _, _hollow, _factor = OptionTranslator.symbol_traits(_sym_raw)
+                _, _hollow, _factor = OptionTranslator.symbol_traits(
+                    _sym_raw, option=True)
             except ValueError:
                 pass
         if _hollow:
             if hasattr(glyph, "fill_alpha"):
                 glyph.fill_alpha = 0.0
-        elif _sym_raw.lower() in OptionTranslator._INVISIBLE_SYMBOLS:
+        elif _sym_raw in OptionTranslator._INVISIBLE_SYMBOLS:
             if hasattr(glyph, "fill_alpha"):
                 glyph.fill_alpha = 0.0
             if hasattr(glyph, "line_alpha"):
@@ -14312,6 +14374,17 @@ class GlyphMapper:
         if (_factor != 1.0 and isinstance(_sz, (int, float))
                 and not isinstance(_sz, bool) and math.isfinite(_sz)):
             glyph.size = _sz * _factor
+        # point/p: a fixed dot with no outline, whatever msize() says
+        # (WP-31 E1).
+        _fixed = OptionTranslator._SYMBOL_FIXED_PX.get(_sym_raw)
+        if _fixed is not None and hasattr(glyph, "size"):
+            try:
+                OptionTranslator.translate_msymbol(_sym_raw)
+                glyph.size = _fixed
+                if hasattr(glyph, "line_width"):
+                    glyph.line_width = 0.0
+            except (ValueError, AttributeError):
+                pass
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str],
                          base: Any = None, intensity: float = 1.0) -> None:
@@ -15961,7 +16034,7 @@ class GlyphMapper:
                   or "").strip()
         if raw:
             try:
-                return OptionTranslator.symbol_traits(raw)
+                return OptionTranslator.symbol_traits(raw, option=True)
             except ValueError:
                 pass
         return self.scheme.default_symbol_traits(color_idx)

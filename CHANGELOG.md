@@ -454,7 +454,7 @@ and now matches Stata.
 
 - Reference lines through a zoom. dash scatter mpg weight, xline(3000, noextend): after a wheel zoom or a pan the line's ends stayed where the last finish put them, now at the margin of the new range, also on an axis with fixed ticks (ylabel(10(5)40)); an out-of-range xline() still does not widen the axis, as twoway; twoway draws such a line only in the graph-region margin strip, which dash clips to the plot region (documented) (WP-31, D12)
 
-<!-- WP-31 E1 -->
+- dash scatter mpg weight, msymbol(pipe) drew a horizontal dash; it is twoway's vertical bar, and msangle() turns it further. msymbol(point) drew an 8 px circle; it is a one-pixel dot at any msize(). msymbol(o d s t x v) and their hollow forms drew full-size symbols; they are the small symbols (0.71, or 0.75 for t and v), and smx and smv are 0.71 of X and 0.75 of V where they drew 1.0; msymbol(V) drew a filled triangle; it is an open chevron; msymbol(arrow), arrowf, A, a and | were noted and the scheme's symbol drawn; they draw (WP-31, E1)
 
 <!-- WP-31 E2 -->
 
@@ -919,7 +919,7 @@ and now matches Stata.
 
 - legend(po(9) top) named top; it is now refused with twoway's first line, "option po() not allowed", r(198); the words inside legend(region()) and legend(title()) are checked as twoway checks them (legend(region(xx)) and legend(title("T", xx)): "option xx not allowed", r(198)). (WP-31, D16)
 
-<!-- WP-31 E1 -->
+- msymbol(star), asterisk, hexagon, hexagon_hollow and dot are not Stata symbols: they drew Bokeh's star, asterisk, hexagon and dot, and now get twoway's note ("named style star not found in class symbol") and the scheme's symbol; msymbol(CIRCLE) and other wrong-case names drew the lower-case symbol and are now noted as twoway notes them (WP-31, E1)
 
 <!-- WP-31 E12 -->
 

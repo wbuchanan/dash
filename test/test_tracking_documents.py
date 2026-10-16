@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "E1": "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted",
     "E2": "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending",
     "E12": "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive",
     "E4": "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element",

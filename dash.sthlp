@@ -1169,7 +1169,9 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    Colours (but for a comma), {cmd:msymbol()}, {cmd:lpattern()} and
     the sub-options of the structured options are not checked in Stata.  An unknown style
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
-    in {cmd:twoway} and in {cmd:dash} alike.  An unknown sub-option word
+    in {cmd:twoway} and in {cmd:dash} alike; so does a symbol or pattern
+    name {cmd:twoway} does not know ({cmd:msymbol(star)},
+    {cmd:msymbol(CIRCLE)}: names are case-sensitive).  An unknown sub-option word
     of {cmd:legend()} is refused as {cmd:twoway} refuses it
     ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198)),
     and so is one of {cmd:xscale()} or {cmd:yscale()}
@@ -5425,9 +5427,16 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     with its own traits: a hollow symbol ({cmd:circle_hollow} and the
     rest) as an outline, whatever a fill colour or {cmd:malpha()} say,
     and a small one ({cmd:smcircle}, {cmd:smdiamond}, {cmd:smsquare},
-    {cmd:smplus} and their hollow forms) at 0.71 of the full symbol's
-    size, {cmd:smtriangle} at 0.75, after {cmd:msize()}, as Stata 19.5
-    draws them; {cmd:smx} and {cmd:smv} are drawn as {cmd:x} and {cmd:v}.
+    {cmd:smplus}, {cmd:smx} and their hollow forms, and the shorthands
+    {cmd:o}, {cmd:d}, {cmd:s}, {cmd:x} and {cmd:oh}, {cmd:dh}, {cmd:sh})
+    at 0.71 of the full symbol's size, {cmd:smtriangle}, {cmd:t},
+    {cmd:th}, {cmd:smv} and {cmd:v} at 0.75, and {cmd:lgx} at 1.41,
+    after {cmd:msize()}, as Stata 19.5 draws them.  {cmd:pipe} and
+    {cmd:|} are a vertical bar, turned further by {cmd:msangle()};
+    {cmd:point} and {cmd:p} a one-pixel dot whatever {cmd:msize()} says;
+    {cmd:V} and {cmd:v} an open chevron; {cmd:arrow} and {cmd:a} draw an
+    open triangle and {cmd:arrowf} and {cmd:A} a filled one, as tall as
+    the circle (twoway draws an arrowhead on a shaft).
     The cycle reaches every marker: {cmd:scatter}, {cmd:connected},
     {cmd:dot}, {cmd:rconnected}, {cmd:scatteri}, {cmd:rscatter},
     {cmd:pcscatter}, {cmd:pccapsym} and the markers of {cmd:dropline} and

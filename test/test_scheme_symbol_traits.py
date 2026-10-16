@@ -59,12 +59,15 @@ class TestSymbolTraits:
                  "smsquare": ("square", False, H),
                  "smplus": ("plus", False, H),
                  "smtriangle": ("triangle", False, 0.75),
-                 "smx": ("x", False, 1.0), "o": ("circle", False, 1.0)}
+                 "smx": ("x", False, H), "o": ("circle", False, H)}
         bad = [(n, T.symbol_traits(n)) for n, want in cases.items()
                if T.symbol_traits(n)[:2] != want[:2]
                or abs(T.symbol_traits(n)[2] - want[2]) > 1e-9]
         assert not bad, bad
-        assert T.symbol_traits("smv")[2] == 1.0
+        # Flipped (WP-31 E1): smx and smv were 1.0 and o full size; smx is
+        # 0.707 of X, smv 0.75 of V and o is smcircle
+        # (test/fixtures/symbol_pattern_truth.json).
+        assert T.symbol_traits("smv")[2] == 0.75
         with pytest.raises(ValueError):
             T.symbol_traits("bogus")
 
@@ -73,8 +76,10 @@ class TestTheSchemeCycle:
     def test_s1mono_traits(self):
         sp = dr.SchemeParser("s1mono")
         assert sp.p_symbol_hollow == [False] * 6 + [True] * 4 + [False] * 5
+        # Flipped (WP-31 E1): p15 smx was 1.0; it is 0.707 of X, as
+        # twoway's s1mono_extent (22.05 against p5's 31.15) says.
         assert sp.p_symbol_factor == pytest.approx(
-            [1.0] * 10 + [H, H, H, 0.75, 1.0], abs=1e-4)
+            [1.0] * 10 + [H, H, H, 0.75, H], abs=1e-4)
         assert sp.default_symbol_traits(16) == ("diamond", False, 1.0)
 
     def test_colour_schemes_are_plain(self):
@@ -176,6 +181,17 @@ class TestTwowaysSymbols:
                       "sy_p7_red", bad)
         for n, r in TRUTH["derived"]["sm_factor"].items():
             f = T._SMALL_SYMBOL_FACTOR[n]
+            if n in ("smx", "smv"):
+                # Flipped (WP-31 E1): this probe set smx beside msymbol(x)
+                # and smv beside msymbol(v), which are smx and smv, so its
+                # 1.0 is no factor; X and V are the full symbols
+                # (symbol_pattern_truth.json).
+                sp_t = json.load(open(os.path.join(
+                    os.path.dirname(__file__), "fixtures",
+                    "symbol_pattern_truth.json"), encoding="utf-8"))
+                full = {"smx": "X", "smv": "V"}[n]
+                r = {"default": sp_t["sym." + n]["factor"]
+                     / sp_t["sym." + full]["factor"]}
             for size, v in r.items():
                 if abs(v - f) > 0.01 * v:
                     bad.append(f"sm_factor {n} {size}: twoway {v}, dash {f}")
