@@ -135,18 +135,19 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // Flipped (WP-30 P1.15b): rows(), compact and holes() were the examples;
 // they are drawn now (by_grid_truth.json grid and sizes), so the still
 // unimplemented subtitleformat() and shrink are.
-_bys_render "foreign, subtitleformat(%9s)"
+// Flipped (WP-31 D10): subtitleformat() is drawn now (a numeric format,
+// measured), so overallshrink and shrink are the examples.
+_bys_render "foreign, overallshrink"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
 assert `_bys_n' == 1
-assert strpos(`"`macval(_bys_line)'"', "subtitleformat(%9s)") > 0
-display "BYS-02 PASS: by(foreign, subtitleformat(%9s)) names it"
+assert strpos(`"`macval(_bys_line)'"', "overallshrink") > 0
+display "BYS-02 PASS: by(foreign, overallshrink) names it"
 
-_bys_render "foreign, subtitleformat(%9s) shrink"
+_bys_render "foreign, overallshrink shrink"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "subtitleformat(%9s)") > 0
-assert strpos(`"`_bys_line'"', "shrink") > 0
+assert strpos(`"`_bys_line'"', "overallshrink shrink") > 0
 display "BYS-03 PASS: two unimplemented sub-options are named in one line"
 
 
@@ -183,10 +184,10 @@ display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 // warning it was written to read.
 qui do "../dash_setup.ado"
 capture noisily _dash_setup_check_files
-_bys_render "foreign, subtitleformat(%9s)"
+_bys_render "foreign, overallshrink"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "subtitleformat(%9s)") > 0
+assert strpos(`"`_bys_line'"', "overallshrink") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 
 // ================================================================

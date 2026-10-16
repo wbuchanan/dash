@@ -532,8 +532,10 @@
 *!       that _dash_route_axis2 took out of the option text (WP-31 C10c).
 *!
 *!   _dash_axisn_json()
-*!   _dash_axisn_tf_out(), _dash_axisn_tf_in()  (WP-31 C10e: axes 3-9's x
-*!       and t rows to and from _dash_taxis_fold's globals)
+*!   _dash_axisn_tf_out()
+*!   _dash_axisn_tf_in()
+*!       (WP-31 C10e) axes 3-9's x and t rows to and from
+*!       _dash_taxis_fold's globals.
 *!       The graph's "axisn" object, {"y3":{"label":"...",...},...}: one
 *!       entry per letter and axis, one key per family (title label tick
 *!       line scale), copies merged as the axis-2 key merges them; "" when

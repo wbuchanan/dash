@@ -494,11 +494,13 @@ class TestTheSavedPageIsUnchanged:
         # Re-derived after WP-31 batch 11: D7 sets the axis title's
         # standoff to the scheme's axis_title_gap (minuscule, 1 px) where
         # Bokeh's default drew 5; every other model property is the same.
+        # Re-derived after WP-31 batch 12: B5c adds an empty "dots" list to
+        # each axis of the saved page's axis plan; the rest is code strings.
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "db7f3494b545b72a04f6cb4031d5c77e21c4460f3b44c7c6bb3432ae6cbb537e")
+    "b4c74a66aab3f2640b363cae431146455f148d8a9bb92af4a84c3ed05c8a2cb4")
 
 
 # ===========================================================================

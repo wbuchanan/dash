@@ -8796,6 +8796,123 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
 }
 * ==== end S35 ====
 
+// S35 (WP-31 C10e) helpers.  _u35_date: one fact of a registered graph on
+// sp500 in each mode (u35_s, u35_v), in Stata days: "kind" the class of
+// axis <name>'s axis and whether its range holds twoway's scale; "ticks"
+// its major ticks; "range" its range's ends rounded to the day; "title"
+// its title; "line" the reference lines on it; "minor" its visible minor
+// labels.  The expected value is the caller's (from
+// fixtures/axisn_date_truth.json, written into the block).
+python:
+def _u35_days(ms):
+    return round(float(ms) / 86400000.0 + 3653.0, 3)
+
+
+def _u35_date_fact(fig, name, fact, lo, hi):
+    from bokeh.models import Label, LabelSet
+    from bokeh.models.axes import ContinuousAxis
+    import dash_render as dr
+    letter = name[0]
+    kw = letter + "_range_name"
+    sides = ("left", "right") if letter == "y" else ("below", "above")
+    ax = [a for sd in sides for a in getattr(fig, sd)
+          if isinstance(a, ContinuousAxis) and getattr(a, kw) == name
+          and "dash_alt_axis" not in (a.tags or [])][0]
+    rng = getattr(fig, "extra_%s_ranges" % letter)[name]
+    a, b = sorted((_u35_days(rng.start), _u35_days(rng.end)))
+    if fact == "kind":
+        return "%s %s" % (type(ax).__name__,
+                          "holds" if a <= lo and b >= hi else "short")
+    if fact == "ticks":
+        return " ".join("%g" % _u35_days(t)
+                        for t in sorted(dr._dash_axis_majors(ax)))
+    if fact == "range":
+        return "holds" if a <= lo and b >= hi else "%g %g" % (a, b)
+    if fact == "title":
+        return str(ax.axis_label or "")
+    if fact == "line":
+        out = []
+        for m in fig.references():
+            if type(m).__name__ in ("Arrow", "Span") \
+                    and getattr(m, kw, None) == name:
+                v = getattr(m, "x_start" if letter == "x" else "y_start",
+                            None)
+                if v is None:
+                    v = getattr(m, "location", None)
+                if isinstance(v, (int, float)):
+                    out.append(_u35_days(v))
+        return " ".join("%g" % v for v in sorted(set(out)))
+    if fact == "minor":
+        pos = []
+        for m in fig.references():
+            if getattr(m, "name", None) != "dash_minor_labels" \
+                    or list(m.tags or []) != [letter, name[1:]]:
+                continue
+            if isinstance(m, LabelSet):
+                pos += [_u35_days(v) for v in m.source.data["pos"]]
+            elif isinstance(m, Label) and m.visible:
+                pos.append(_u35_days(m.x if letter == "x" else m.y))
+        return " ".join("%g" % v for v in sorted(pos))
+
+
+def _u35_date(sp, dp, app, name, fact, lo, hi):
+    from sfi import Macro
+    _r, _d, a, b = _u35_docs(sp, dp, app)
+    Macro.setGlobal("u35_s", _u35_date_fact(a[0], name, fact, lo, hi))
+    Macro.setGlobal("u35_v", _u35_date_fact(b[0], name, fact, lo, hi))
+end
+
+capture program drop _u35_c10e
+program define _u35_c10e
+    // _u35_c10e <dir> <k> "<dash command>" <axis name> <fact> <lo> <hi>
+    //     "<expected>": one U35-9 case on sp500.
+    version 19
+    args dir k cmd name fact lo hi want
+    dash clear
+    capture noisily dash `cmd' name(zu359`k')
+    _w31_expect U35-9 `"(_rc == 0)"' "case `k' rc `=_rc'"
+    if _rc exit
+    _u35_serve "`dir'" 9`k'
+    python: import __main__ as _u35_m; _u35_m._u35_date("`dir'/s9`k'.json", "`dir'/d9`k'.json", "`dir'/a9`k'.py", "`name'", "`fact'", `lo', `hi')
+    foreach m in s v {
+        _w31_expect U35-9 `"("${u35_`m'}" == "`want'")"' "case `k' `m': dash ${u35_`m'}; twoway `want'"
+    }
+end
+
+* ==== S35 C10e: date axes 3 to 9 and their t options ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
+    display as text "S35 start " c(current_date) " " c(current_time)
+    local u35d "`w31_work'/s35e"
+    capture mkdir "`u35d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse sp500, clear
+    local x3 (scatter close open) (scatter close volume, xaxis(2)) (scatter close date, xaxis(3))
+
+    // U35-9: a date on axis 3 is a date axis over twoway's scale; the t
+    // options with axis(3) land on it in its unit; tmlabel() with axis(2)
+    // reads its dates; twoway's refusal of an unused axis 3 (measured:
+    // fixtures/axisn_date_truth.json y3.date, x3.*).
+    _u35_c10e "`u35d'" 1 "(scatter close open) (scatter volume open, yaxis(2)) (scatter date open, yaxis(3))," y3 kind 14976 15341 "DatetimeAxis holds"
+    _u35_c10e "`u35d'" 2 "`x3'," x3 kind 14976 15341 "DatetimeAxis holds"
+    _u35_c10e "`u35d'" 3 "`x3', tlabel(01feb2001 01jun2001 01oct2001, axis(3))" x3 ticks 0 0 "15007 15127 15249"
+    _u35_c10e "`u35d'" 4 "`x3', tscale(range(01jan2000 31dec2002) axis(3))" x3 range 14610 15705 "holds"
+    _u35_c10e "`u35d'" 5 "`x3', ttitle(TT3, axis(3))" x3 title 0 0 "TT3"
+    _u35_c10e "`u35d'" 6 "`x3', tline(01mar2001, axis(3))" x3 line 0 0 "15035"
+    _u35_c10e "`u35d'" 7 "(scatter close open) (scatter close date, xaxis(2)), tmlabel(01apr2001 01oct2001, axis(2))" x2 minor 0 0 "15066 15249"
+    dash clear
+    capture dash (scatter close open) (scatter close volume, xaxis(2)), tlabel(01feb2001, axis(3)) name(zu3598)
+    local rc = _rc
+    _w31_expect U35-9 `"(`rc' == 198)"' "case 8 rc `rc', twoway r(198)"
+    _w31_done U35-9 "dates on axes 3 to 9 and the t options there as twoway draws them, both modes"
+
+    macro drop u35_s u35_v
+    dash clear
+    display as text "S35 end " c(current_date) " " c(current_time)
+}
+* ==== end S35 ====
+
 // S36 (WP-31 D10) helpers: one dash graph drawn in both modes, and one
 // by() fact of it checked into global u36_bad ("" when it holds).
 python:
@@ -9345,123 +9462,6 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w31_run' {
     display as text "S37 end " c(current_date) " " c(current_time)
 }
 * ==== end S37 ====
-
-// S35 (WP-31 C10e) helpers.  _u35_date: one fact of a registered graph on
-// sp500 in each mode (u35_s, u35_v), in Stata days: "kind" the class of
-// axis <name>'s axis and whether its range holds twoway's scale; "ticks"
-// its major ticks; "range" its range's ends rounded to the day; "title"
-// its title; "line" the reference lines on it; "minor" its visible minor
-// labels.  The expected value is the caller's (from
-// fixtures/axisn_date_truth.json, written into the block).
-python:
-def _u35_days(ms):
-    return round(float(ms) / 86400000.0 + 3653.0, 3)
-
-
-def _u35_date_fact(fig, name, fact, lo, hi):
-    from bokeh.models import Label, LabelSet
-    from bokeh.models.axes import ContinuousAxis
-    import dash_render as dr
-    letter = name[0]
-    kw = letter + "_range_name"
-    sides = ("left", "right") if letter == "y" else ("below", "above")
-    ax = [a for sd in sides for a in getattr(fig, sd)
-          if isinstance(a, ContinuousAxis) and getattr(a, kw) == name
-          and "dash_alt_axis" not in (a.tags or [])][0]
-    rng = getattr(fig, "extra_%s_ranges" % letter)[name]
-    a, b = sorted((_u35_days(rng.start), _u35_days(rng.end)))
-    if fact == "kind":
-        return "%s %s" % (type(ax).__name__,
-                          "holds" if a <= lo and b >= hi else "short")
-    if fact == "ticks":
-        return " ".join("%g" % _u35_days(t)
-                        for t in sorted(dr._dash_axis_majors(ax)))
-    if fact == "range":
-        return "holds" if a <= lo and b >= hi else "%g %g" % (a, b)
-    if fact == "title":
-        return str(ax.axis_label or "")
-    if fact == "line":
-        out = []
-        for m in fig.references():
-            if type(m).__name__ in ("Arrow", "Span") \
-                    and getattr(m, kw, None) == name:
-                v = getattr(m, "x_start" if letter == "x" else "y_start",
-                            None)
-                if v is None:
-                    v = getattr(m, "location", None)
-                if isinstance(v, (int, float)):
-                    out.append(_u35_days(v))
-        return " ".join("%g" % v for v in sorted(set(out)))
-    if fact == "minor":
-        pos = []
-        for m in fig.references():
-            if getattr(m, "name", None) != "dash_minor_labels" \
-                    or list(m.tags or []) != [letter, name[1:]]:
-                continue
-            if isinstance(m, LabelSet):
-                pos += [_u35_days(v) for v in m.source.data["pos"]]
-            elif isinstance(m, Label) and m.visible:
-                pos.append(_u35_days(m.x if letter == "x" else m.y))
-        return " ".join("%g" % v for v in sorted(pos))
-
-
-def _u35_date(sp, dp, app, name, fact, lo, hi):
-    from sfi import Macro
-    _r, _d, a, b = _u35_docs(sp, dp, app)
-    Macro.setGlobal("u35_s", _u35_date_fact(a[0], name, fact, lo, hi))
-    Macro.setGlobal("u35_v", _u35_date_fact(b[0], name, fact, lo, hi))
-end
-
-capture program drop _u35_c10e
-program define _u35_c10e
-    // _u35_c10e <dir> <k> "<dash command>" <axis name> <fact> <lo> <hi>
-    //     "<expected>": one U35-9 case on sp500.
-    version 19
-    args dir k cmd name fact lo hi want
-    dash clear
-    capture noisily dash `cmd' name(zu359`k')
-    _w31_expect U35-9 `"(_rc == 0)"' "case `k' rc `=_rc'"
-    if _rc exit
-    _u35_serve "`dir'" 9`k'
-    python: import __main__ as _u35_m; _u35_m._u35_date("`dir'/s9`k'.json", "`dir'/d9`k'.json", "`dir'/a9`k'.py", "`name'", "`fact'", `lo', `hi')
-    foreach m in s v {
-        _w31_expect U35-9 `"("${u35_`m'}" == "`want'")"' "case `k' `m': dash ${u35_`m'}; twoway `want'"
-    }
-end
-
-* ==== S35 C10e: date axes 3 to 9 and their t options ====
-local only : env WP31_ONLY
-if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
-    display as text "S35 start " c(current_date) " " c(current_time)
-    local u35d "`w31_work'/s35e"
-    capture mkdir "`u35d'"
-    capture graph drop _all
-    set scheme s2color
-    sysuse sp500, clear
-    local x3 (scatter close open) (scatter close volume, xaxis(2)) (scatter close date, xaxis(3))
-
-    // U35-9: a date on axis 3 is a date axis over twoway's scale; the t
-    // options with axis(3) land on it in its unit; tmlabel() with axis(2)
-    // reads its dates; twoway's refusal of an unused axis 3 (measured:
-    // fixtures/axisn_date_truth.json y3.date, x3.*).
-    _u35_c10e "`u35d'" 1 "(scatter close open) (scatter volume open, yaxis(2)) (scatter date open, yaxis(3))," y3 kind 14976 15341 "DatetimeAxis holds"
-    _u35_c10e "`u35d'" 2 "`x3'," x3 kind 14976 15341 "DatetimeAxis holds"
-    _u35_c10e "`u35d'" 3 "`x3', tlabel(01feb2001 01jun2001 01oct2001, axis(3))" x3 ticks 0 0 "15007 15127 15249"
-    _u35_c10e "`u35d'" 4 "`x3', tscale(range(01jan2000 31dec2002) axis(3))" x3 range 14610 15705 "holds"
-    _u35_c10e "`u35d'" 5 "`x3', ttitle(TT3, axis(3))" x3 title 0 0 "TT3"
-    _u35_c10e "`u35d'" 6 "`x3', tline(01mar2001, axis(3))" x3 line 0 0 "15035"
-    _u35_c10e "`u35d'" 7 "(scatter close open) (scatter close date, xaxis(2)), tmlabel(01apr2001 01oct2001, axis(2))" x2 minor 0 0 "15066 15249"
-    dash clear
-    capture dash (scatter close open) (scatter close volume, xaxis(2)), tlabel(01feb2001, axis(3)) name(zu3598)
-    local rc = _rc
-    _w31_expect U35-9 `"(`rc' == 198)"' "case 8 rc `rc', twoway r(198)"
-    _w31_done U35-9 "dates on axes 3 to 9 and the t options there as twoway draws them, both modes"
-
-    macro drop u35_s u35_v
-    dash clear
-    display as text "S35 end " c(current_date) " " c(current_time)
-}
-* ==== end S35 ====
 
 * ==== append new blocks above this line ====
 

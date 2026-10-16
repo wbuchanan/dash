@@ -72,11 +72,12 @@ class _Rec:
 
 def _spec(tmp_path):
     """A spec with two stable build-time notes (mcolor() and by()'s
-    graphregion(), which stays named and not drawn through WP-30, IR-9),
+    shrink, which stays named and not drawn; Flipped: WP-31 D10 draws
+    by()'s graphregion(), which was the example),
     and its data; returns the two paths."""
     sp = make_spec([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                      "options": {"mcolor": "notacolor"}}])
-    sp["graphs"][0]["graph_options"]["by"] = "foreign, graphregion(color(red))"
+    sp["graphs"][0]["graph_options"]["by"] = "foreign, shrink"
     df = pd.DataFrame({"mpg": [20.0, 22.0, 30.0, 18.0],
                        "weight": [3000.0, 2500.0, 2000.0, 3500.0],
                        "foreign": [0.0, 0.0, 1.0, 1.0]})
@@ -314,7 +315,7 @@ class TestTheRendererEntryPoint:
         _, err2, _ = _run(tmp_path / "b", mode, "ignore", monkeypatch, capsys)
         assert _notes(err2) == control
         if mode == "server":
-            assert any("graphregion(color(red))" in n for n in control)
+            assert any("shrink" in n for n in control)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_an_error_filter_raises_no_note(self, mode, tmp_path,
@@ -364,6 +365,6 @@ class TestTheRendererEntryPoint:
         notes as warnings."""
         sp, dp = _spec(tmp_path)
         out = str(tmp_path / "o.html")
-        with pytest.warns(UserWarning, match="graphregion"):
+        with pytest.warns(UserWarning, match="shrink"):
             dr.main(sp, dp, out)
         assert os.path.exists(out)
