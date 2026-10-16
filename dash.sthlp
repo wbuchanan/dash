@@ -4007,8 +4007,9 @@ as in {cmd:twoway}.  {cmd:tlpattern()}, {cmd:gmin}, {cmd:gmax},
 the gridlines at the scale's ends, is named in a note (a Bokeh gridline
 spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
 {cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata
-style files {cmd:dash} does not read.  {cmd:alternate} draws on the first
-axis; on {cmd:axis(2)} it is named.  {cmd:##}{it:#} on a label or tick
+style files {cmd:dash} does not read.  {cmd:alternate} draws on every
+axis, {cmd:axis(2)} to {cmd:axis(9)} included, the lowest label on the row
+nearest the plot, as {cmd:twoway} draws it.  {cmd:##}{it:#} on a label or tick
 option is for minor ticks only: {cmd:twoway} notes
 {cmd:##5 ignored, only allowed for minor ticks}, and so does {cmd:dash}; alone it draws what
 {cmd:none} draws on a label option and nothing on a tick option.

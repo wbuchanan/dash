@@ -40751,13 +40751,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             rng.start, rng.end = rng.end, rng.start
 
         if spec is not None:
-            # WP-31 D6: alternate's second row is axis 1's; on axes 2-9 it
-            # stays named (section 35 owns those axes).
-            _alt2 = [spec["typed"][_s] for _s in ("alternate", "altgap")
-                     if _s in (spec.get("typed") or {})]
+            # WP-31 D6b: alternate and altgap() are drawn on axes 2-9 as
+            # on axis 1 (the twin below, after the labels are formatted).
             _dash_report_suboptions(_on("label"),
-                                    spec.get("unsupported", []) + _alt2,
-                                    seen, key)
+                                    spec.get("unsupported", []), seen, key)
             grids = []
             if spec.get("grid"):
                 g = Grid(dimension=dim, axis=ax, grid_line_color=None,
@@ -40802,6 +40799,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                   option=_on("label"), by_graph=by_graph,
                                   colours=colours,
                                   numticks=_nt2.get(name, _nt2.get(n, 5)))
+            # WP-31 D6b: alternate's second row, as axis 1's (measured:
+            # test/fixtures/axisn_alt_truth.json -- on axes 2 and 3 the
+            # lowest label is on the row nearest the plot, as on axis 1).
+            _dash_alt_axes(fig, [ax], spec, ref_in, option=_on("label"))
         elif fmts2 is not None and ax is not None:
             fb2, _by2 = fmts2.get(name, ("", False))
             if kind and not _by2:

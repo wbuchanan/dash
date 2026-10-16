@@ -3988,11 +3988,11 @@
   - Suggested fix: WP-31 section 39 (tabs layout legend edges): draw each with Bokeh legend properties or companion annotations, measured against twoway, or document a measured limit (M17).
   - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: alternate on an axis(2) to axis(9) label option is named, not drawn
+- [x] Title: alternate on an axis(2) to axis(9) label option is named, not drawn
   - File Names and Line Numbers: dash_render.py _dash_alt_axes, _dash_finish_secondary_axes
   - Description: GAPS3.md D6, found by WP-31 section 33 (D6 residual): alternate is drawn on the first y and x axes as a twin axis (_dash_alt_axes), but on axes 2-9 it stays named in the note.
   - Suggested fix: WP-31 section 35 (second axis moves): draw alternate on every axis twoway draws it on, measured against twoway, in both renderers.
-  - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, D6b). Measured first (scripts/extract_axisn_alt_truth.do): twoway staggers alternate's labels on axis 2 (right), axis 3 (outermost left) and a top x axis as on axis 1, the lowest label on the row nearest the plot (0 and 10,000 near, 5,000 and 15,000 out on yaxis(2)), and altgap(large) widens the gap between the rows as on axis 1. _dash_finish_secondary_axes (both renderers) now draws it through _dash_alt_axes, axis 1's twin-axis rule, after the axis's labels are formatted, and no longer names alternate or altgap(); the twin shares the axis's ticker, so it follows every filter move. Pinned by test/test_axisn_alternate.py::TestTheSecondAxesAlternate::test_y2, ::test_y3, ::test_x2, ::test_altgap_as_axis_one, test/test_wp31_truth.cscript U35-7; fixture test/fixtures/axisn_alt_truth.json. Closes GAPS3 D6 (WP-31, D6b).
 
 - [ ] Title: lal() is read as dash's lalpha() where twoway reads it as lalign()
   - File Names and Line Numbers: dash.ado _dash_label_split, the plot parser's lalpha() declaration

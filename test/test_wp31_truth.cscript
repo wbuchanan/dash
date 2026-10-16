@@ -8589,6 +8589,116 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
 }
 * ==== end S35 ====
 
+// S35 (WP-31 D6b) helpers.  _u35_alt: the label rows of one axis (a side
+// and a range name), twoway's from its SVG (u35_tw) and each mode's
+// (u35_s, u35_v), as "<rows> rows, first near|far" -- the lowest label on
+// the row nearest the plot is "near" -- and whether a note named
+// alternate (u35_noted).
+python:
+def _u35_alt_tw(svg, side):
+    import os, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.join(os.getcwd(), "..", "scripts"))
+    import svg_truth
+    d = svg_truth.svg_document(svg)
+    pr = d["plotregion"]
+    cols = {}
+    for t in d["texts"]:
+        v = svg_truth.label_value(t["text"])
+        if v is None:
+            continue
+        if side in ("left", "right"):
+            if not (pr["top"] - 2 <= t["y"] <= pr["bottom"] + 2):
+                continue
+            if (side == "left") != (t["x"] < pr["left"]):
+                continue
+            at = t["x"]
+        else:
+            if not (pr["left"] - 40 <= t["x"] <= pr["right"] + 40):
+                continue
+            if not (t["y"] > pr["bottom"] if side == "below"
+                    else t["y"] < pr["top"]):
+                continue
+            at = t["y"]
+        cols.setdefault(round(at), []).append(v)
+    edge = {"left": pr["left"], "right": pr["right"], "below": pr["bottom"],
+            "above": pr["top"]}[side]
+    order = sorted(cols, key=lambda c: abs(c - edge))
+    # The two columns of the axis asked for: the outermost pair on the
+    # side (axis 3 is outside axes 1 and 2 on the left).
+    pair = order[-2:] if len(order) >= 2 else order
+    near = pair[0]
+    lo = min(v for c in pair for v in cols[c])
+    Macro.setGlobal("u35_tw", "%d rows, first %s" % (
+        len(pair), "near" if lo in cols[near] else "far"))
+
+
+def _u35_alt_dash(sp, dp, app, side, name):
+    import warnings
+    from sfi import Macro
+    from bokeh.models.axes import ContinuousAxis
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _r, _d, a, b = _u35_docs(sp, dp, app)
+    kw = "y_range_name" if side in ("left", "right") else "x_range_name"
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        on = [x for x in getattr(f, side) if isinstance(x, ContinuousAxis)
+              and getattr(x, kw) == name]
+        ax = [x for x in on if "dash_alt_axis" not in (x.tags or [])]
+        tw = [x for x in on if "dash_alt_axis" in (x.tags or [])]
+        ok = (len(ax) == 1 and len(tw) == 1
+              and dict(ax[0].formatter.args).get("parity") == 0
+              and dict(tw[0].formatter.args).get("parity") == 1)
+        Macro.setGlobal("u35_" + sfx, "%d rows, first %s" % (
+            1 + len(tw), "near" if ok else "far"))
+    Macro.setGlobal("u35_noted", "1" if any(
+        "alternate" in str(w.message) for w in caught) else "0")
+end
+
+* ==== S35 D6b: alternate on axes 2 to 9 ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
+    display as text "S35 start " c(current_date) " " c(current_time)
+    local u35d "`w31_work'/s35c"
+    capture mkdir "`u35d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    python: import __main__ as _u35_m
+
+    // U35-7: alternate on axis 2 (right), on axis 3 (outermost left) and
+    // on a top x axis, as twoway staggers them, with no note.
+    local k 0
+    foreach c in "(scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) alternate) legend(off)|right|y2" "(scatter mpg weight) (scatter price weight, yaxis(2)) (scatter length weight, yaxis(3)), ylabel(, axis(3) alternate) legend(off)|left|y3" "(scatter mpg weight) (scatter mpg price, xaxis(2)), xlabel(, axis(2) alternate) legend(off)|above|x2" {
+        local ++k
+        gettoken cmd rest : c, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken side rest : rest, parse("|")
+        gettoken bar name : rest, parse("|")
+        quietly twoway `cmd' name(u35t, replace)
+        quietly graph export "`u35d'/t7`k'.svg", replace
+        graph drop u35t
+        python: _u35_m._u35_alt_tw("`u35d'/t7`k'.svg", "`side'")
+        dash clear
+        capture noisily dash `cmd' name(zu357`k')
+        _w31_expect U35-7 `"(_rc == 0)"' "case `k' rc `=_rc'"
+        _u35_serve "`u35d'" 7`k'
+        python: _u35_m._u35_alt_dash("`u35d'/s7`k'.json", "`u35d'/d7`k'.json", "`u35d'/a7`k'.py", "`side'", "`name'")
+        foreach m in s v {
+            _w31_expect U35-7 `"("${u35_`m'}" == "${u35_tw}")"' "case `k' `m': dash ${u35_`m'}; twoway ${u35_tw}"
+        }
+        _w31_expect U35-7 `"(${u35_noted} == 0)"' "case `k': dash named alternate"
+    }
+    _w31_done U35-7 "alternate on axes 2 and 3 staggers the labels as twoway does, saved and served"
+
+    macro drop u35_tw u35_s u35_v u35_noted
+    capture graph drop _all
+    dash clear
+    display as text "S35 end " c(current_date) " " c(current_time)
+}
+* ==== end S35 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

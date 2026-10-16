@@ -2602,6 +2602,14 @@ CORPUS = [
     _case("yscale noextend outergap", [_sc()],
           go={"yscale": "noextend outergap(5)"}),
     _case("xline lwidth(*2)", [_sc()], go={"xline": "3000, lwidth(*2)"}),
+    # WP-31 D6b (section 35): alternate on the second and third axes.
+    _case("ylabel2 alternate altgap (WP-31 D6b)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"ylabel2": ", alternate altgap(large)"}),
+    _case("ylabel axis(3) alternate (WP-31 D6b)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price"),
+           plot_for("line", {"yaxis": "3"}, yvar="foreign")],
+          go={"axisn": {"y3": {"label": ", alternate"}}}),
 
     # WP-31 S34: varlabels, label prefix and suffix, bar label default,
     # anglestyle names.
@@ -3638,6 +3646,9 @@ MOVE_CORPUS = [
                [plot_for("scatter")], go={"scale": "1.5"}),
 
     # WP-31 D6 (section 33): the twin label axis survives a move.
+    _move_case("ylabel2 alternate, dropdown (WP-31 D6b)", _MOVES[0],
+               [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+               go={"ylabel2": ", alternate"}),
     _move_case("ylabel alternate, dropdown (WP-31 D6)", _MOVES[0],
                [plot_for("scatter")], go={"ylabel": ", alternate"}),
 

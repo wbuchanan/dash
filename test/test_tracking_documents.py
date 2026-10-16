@@ -2039,7 +2039,6 @@ WP31_OPEN = {
     "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",
     "D3b": "subtitle() position() and ring() on a by() panel's label row are named, not drawn",
     "D4b": "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn",
-    "D6b": "alternate on an axis(2) to axis(9) label option is named, not drawn",
     "C17b": "lal() is read as dash's lalpha() where twoway reads it as lalign()",
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
 }

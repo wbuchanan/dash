@@ -519,7 +519,7 @@ and now matches Stata.
 
 <!-- WP-31 D4b -->
 
-<!-- WP-31 D6b -->
+- dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) alternate): one row of labels and a note naming alternate -> two rows, 0 and 10,000 nearest the plot and 5,000 and 15,000 outside them, as twoway; axes 3 to 9 and altgap() alike (WP-31, D6b)
 
 <!-- WP-31 E11b -->
 
