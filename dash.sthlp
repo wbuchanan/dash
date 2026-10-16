@@ -4335,6 +4335,9 @@ the markers 45 degrees.
 {cmd:center}, {cmd:inside} or {cmd:outside}, and so does {cmd:dash},
 silently; another word is named in {cmd:twoway}'s words, {cmd:named style}
 ... {cmd:not found in class alignstroke}, and the line drawn without it.
+As in {cmd:twoway}, {cmd:lalign} may be shortened to as little as
+{cmd:la}, so {cmd:lal} is {cmd:lalign} and not {cmd:dash}'s own
+{cmd:lalpha}, which is shortened to no less than {cmd:lalp}.
 
 {pstd}
 On a date axis a number is a date in the variable's own units, as
@@ -5246,7 +5249,7 @@ name them there.
     lines and fills alike, as in {cmd:twoway}; {cmd:mcolor()},
     {cmd:lcolor()} and {cmd:fcolor()} win where given{p_end}
 {synopt:{cmdab:mal:pha(}{it:#}{cmd:)}}opacity of the markers, 0-100{p_end}
-{synopt:{cmdab:lal:pha(}{it:#}{cmd:)}}opacity of the lines, 0-100{p_end}
+{synopt:{cmdab:lalp:ha(}{it:#}{cmd:)}}opacity of the lines, 0-100{p_end}
 {synopt:{cmdab:fa:lpha(}{it:#}{cmd:)}}opacity of the fill, 0-100{p_end}
 {synoptline}
 

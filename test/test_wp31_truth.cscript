@@ -10747,6 +10747,44 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+* ==== S41 C17b: lalign()'s abbreviations ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    sysuse auto, clear
+
+    // U41-15: la() .. lalign() are lalign() in both (live twoway rc and
+    // its align setting beside dash's rc and spec); lalp() is twoway's
+    // r(198) and dash's own lalpha().
+    local bad ""
+    local k 150
+    foreach ab in la lal lali lalig lalign {
+        local ++k
+        capture graph drop Graph
+        capture twoway line mpg weight, sort `ab'(outside)
+        local trc = _rc
+        local tset ""
+        if !`trc' local tset "`.Graph.plotregion1.plot1.style.line.align.setting'"
+        capture graph drop Graph
+        dash clear
+        capture dash line mpg weight, sort `ab'(outside) name(zu41`k')
+        local drc = _rc
+        mata: st_local("dhas", strofreal(strpos(st_global("dash_json_zu41`k'"), char(34) + "lalign" + char(34) + ":" + char(34) + "outside" + char(34)) > 0))
+        if `trc' | "`tset'" != "outside" | `drc' | !`dhas' local bad `"`bad' [`ab': twoway `trc' `tset', dash `drc' `dhas']"'
+    }
+    capture twoway line mpg weight, sort lalp(50)
+    local trc = _rc
+    dash clear
+    capture dash line mpg weight, sort lalp(50) name(zu41159)
+    local drc = _rc
+    mata: st_local("dhas", strofreal(strpos(st_global("dash_json_zu41159"), char(34) + "lalpha" + char(34) + ":" + char(34) + "50" + char(34)) > 0))
+    if `trc' != 198 | `drc' | !`dhas' local bad `"`bad' [lalp: twoway `trc', dash `drc' `dhas']"'
+    _w31_expect U41-15 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U41-15 "la() lal() lali() lalig() lalign() are lalign(), as twoway reads them; lalp() is dash's lalpha()"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

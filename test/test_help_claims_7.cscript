@@ -557,7 +557,7 @@ foreach cmd in ///
     "scatter mpg weight, jitter(5) jitterseed(1) msangle(45) malpha(50)" ///
     "scatter mpg weight, jitter(5) jseed(1) msa(30) mal(40)" ///
     "connected mpg weight, msangle(45) lalpha(50)" ///
-    "line mpg weight, lal(40)" ///
+    "line mpg weight, lalp(40)" ///
     "area mpg weight, falpha(50)" "bar mpg weight, fa(50)" ///
     "rscatter lo hi weight, msangle(45) malpha(20)" ///
     "pccapsym mpg weight turn length, msangle(45)" {

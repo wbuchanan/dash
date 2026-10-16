@@ -290,7 +290,9 @@ MATA_OPT_ALIAS = {
     "mfc": "mfcolor", "mal": "malpha", "m": "marker",
     "fc": "fcolor", "fi": "fintensity", "fa": "falpha",
     "blc": "blcolor", "bfc": "bfcolor", "bw": "barwidth",
-    "lc": "lcolor", "lw": "lwidth", "lp": "lpattern", "lal": "lalpha",
+    "lc": "lcolor", "lw": "lwidth", "lp": "lpattern", "lalp": "lalpha",
+    # Flipped (WP-31 C17b): "lal": "lalpha" -- lal() is lalign(), as
+    # twoway reads it; lalpha() starts at lalp.
     "fal": "falpha",
     "ti": "title", "sub": "subtitle", "xti": "xtitle", "yti": "ytitle",
     "xla": "xlabel", "yla": "ylabel", "note": "note", "cap": "caption",

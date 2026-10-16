@@ -1203,7 +1203,7 @@ program define _dash_parse_plot_opts, sclass
         MLABSize(string asis) ///
         MLABPosition(string asis) MLABGap(string asis)      MLABWidth(string) ///
         MALpha(string)            MARKER(string)            LColor(string asis) ///
-        LWidth(string asis)       LPattern(string asis)     LALpha(string) ///
+        LWidth(string asis)       LPattern(string asis)     LALPha(string) ///
         FColor(string asis)       FIntensity(string asis)   FAlpha(string) ///
         AColor(string asis)       ALColor(string asis)      ALWidth(string asis) ///
         ALPattern(string asis) ///
@@ -2480,14 +2480,15 @@ program define _dash_label_split
     mata: st_local("_ln", strofreal(cols(_dash_lb_tok)))
     forvalues _li = 1/`_ln' {
         mata: st_local("0", ", " + _dash_lb_tok[`_li'])
-        // lal() .. lalpha() stay dash's lalpha() (the plot parser's
-        // LALpha); la(), lali() .. lalign() are lalign().
-        mata: st_local("_lb_lal", strofreal(regexm(_dash_lb_tok[`_li'], "^lal(p|ph|pha)?\(")))
+        // la(), lal() .. lalign() are lalign(), as twoway reads them
+        // (WP-31 C17b, measured: lal(outside) sets the align outside,
+        // test/fixtures/colour_width_edges_truth.json lal.*; l() is
+        // l1title()); lalp() .. lalpha() are dash's own lalpha(), the plot
+        // parser's LALPha.
         capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
             MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
             MLABSTyle(string asis) ]
-        if `_lb_lal' local _rc_lb 198
-        else local _rc_lb = _rc
+        local _rc_lb = _rc
         if `_rc_lb' mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
         else  mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
     }

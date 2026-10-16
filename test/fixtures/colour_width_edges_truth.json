@@ -1,7 +1,7 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "e19162658c671738d778423b370e8cd9f91c0332",
+  "dash_commit": "5c50614606b08ba0f3f9fdd8d833aeacd499dd0e",
   "extracted": "16 Oct 2026",
   "source": "scripts/extract_colour_width_edges_truth.do",
   "stata_version": "19.5",
@@ -3524,7 +3524,7 @@
   "text": ""
  },
  "lal.l": {
-  "cmd": "twoway line mpg weight, sort l(inside)",
+  "cmd": "twoway line mpg weight, sort l(outside)",
   "elements": [
    [
     "rect",
@@ -3631,7 +3631,7 @@
   "text": ""
  },
  "lal.la": {
-  "cmd": "twoway line mpg weight, sort la(inside)",
+  "cmd": "twoway line mpg weight, sort la(outside)",
   "elements": [
    [
     "rect",
@@ -3734,11 +3734,11 @@
    ]
   ],
   "rc": 0,
-  "setting": "inside",
+  "setting": "outside",
   "text": ""
  },
  "lal.lal": {
-  "cmd": "twoway line mpg weight, sort lal(inside)",
+  "cmd": "twoway line mpg weight, sort lal(outside)",
   "elements": [
    [
     "rect",
@@ -3841,11 +3841,11 @@
    ]
   ],
   "rc": 0,
-  "setting": "inside",
+  "setting": "outside",
   "text": ""
  },
  "lal.lali": {
-  "cmd": "twoway line mpg weight, sort lali(inside)",
+  "cmd": "twoway line mpg weight, sort lali(outside)",
   "elements": [
    [
     "rect",
@@ -3948,11 +3948,11 @@
    ]
   ],
   "rc": 0,
-  "setting": "inside",
+  "setting": "outside",
   "text": ""
  },
  "lal.lalig": {
-  "cmd": "twoway line mpg weight, sort lalig(inside)",
+  "cmd": "twoway line mpg weight, sort lalig(outside)",
   "elements": [
    [
     "rect",
@@ -4055,11 +4055,11 @@
    ]
   ],
   "rc": 0,
-  "setting": "inside",
+  "setting": "outside",
   "text": ""
  },
  "lal.lalign": {
-  "cmd": "twoway line mpg weight, sort lalign(inside)",
+  "cmd": "twoway line mpg weight, sort lalign(outside)",
   "elements": [
    [
     "rect",
@@ -4162,23 +4162,23 @@
    ]
   ],
   "rc": 0,
-  "setting": "inside",
+  "setting": "outside",
   "text": ""
  },
  "lal.lalp": {
-  "cmd": "twoway line mpg weight, sort lalp(inside)",
+  "cmd": "twoway line mpg weight, sort lalp(outside)",
   "rc": 198,
   "setting": "",
   "text": "option lalp() not allowed"
  },
  "lal.lalpha": {
-  "cmd": "twoway line mpg weight, sort lalpha(inside)",
+  "cmd": "twoway line mpg weight, sort lalpha(outside)",
   "rc": 198,
   "setting": "",
   "text": "option lalpha() not allowed"
  },
  "lal.rarea_la": {
-  "cmd": "twoway rarea mpg trunk weight, sort la(inside)",
+  "cmd": "twoway rarea mpg trunk weight, sort la(outside)",
   "elements": [
    [
     "rect",
@@ -4295,7 +4295,7 @@
   "text": ""
  },
  "lal.rarea_lal": {
-  "cmd": "twoway rarea mpg trunk weight, sort lal(inside)",
+  "cmd": "twoway rarea mpg trunk weight, sort lal(outside)",
   "elements": [
    [
     "rect",
@@ -4412,7 +4412,7 @@
   "text": ""
  },
  "lal.rarea_lali": {
-  "cmd": "twoway rarea mpg trunk weight, sort lali(inside)",
+  "cmd": "twoway rarea mpg trunk weight, sort lali(outside)",
   "elements": [
    [
     "rect",

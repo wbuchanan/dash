@@ -941,7 +941,7 @@ and now matches Stata.
 
 - A quoted string standing alone among the options -- dash scatter mpg weight, "abc" -- is refused as twoway refuses it, r(198), "quotes unbalanced" (or "invalid syntax" or "parentheses do not balance", as twoway answers where the string stands); dash kept it and named it in the note. (WP-31, D16b)
 
-<!-- WP-31 C17b -->
+- lal() was dash's lalpha(), so lal(outside) was refused ("must be a number"); it is lalign(), as twoway reads it, and lalpha() is shortened to no less than lalp(): a do-file writing lal(50) for the line opacity writes lalp(50) (WP-31, C17b)
 
 ### Removed
 

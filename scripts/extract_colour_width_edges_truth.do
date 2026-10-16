@@ -197,13 +197,14 @@ foreach s in s2color stcolor {
     _cw_probe c4b.`s'.ciplot_rarea twoway lfitci mpg weight, ciplot(rarea) scheme(`s')
 }
 
-* lal.*: which abbreviations of lalign() twoway reads (C17b)
+* lal.*: which abbreviations of lalign() twoway reads (C17b); outside,
+* because inside is a line's default
 foreach ab in l la lal lali lalig lalign lalp lalpha {
-    _cw_probe lal.`ab' twoway line mpg weight, sort `ab'(inside)
+    _cw_probe lal.`ab' twoway line mpg weight, sort `ab'(outside)
     file write ${CW_REG} "setting" _tab "lal.`ab'" _tab "`.Graph.plotregion1.plot1.style.line.align.setting'" _n
 }
 foreach ab in la lal lali {
-    _cw_probe lal.rarea_`ab' twoway rarea mpg trunk weight, sort `ab'(inside)
+    _cw_probe lal.rarea_`ab' twoway rarea mpg trunk weight, sort `ab'(outside)
 }
 
 file close ${CW_REG}
