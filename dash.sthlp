@@ -197,8 +197,9 @@ dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
 tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
 reserved for every column dash makes -- the qualifier columns
 {cmd:__dashq}{it:#}, the join-order columns {cmd:__dashs}{it:#}, the row
-identity {cmd:__dash_row__}, and its
-marker-label and jitter columns -- and data holding such a variable are
+identity {cmd:__dash_row__}, its marker-label and jitter columns, and the
+missing-code columns {cmd:__dashm_}{it:var} and display-text columns
+{cmd:__dasht_}{it:var} that carry {cmd:.a} to {cmd:.z} -- and data holding such a variable are
 refused with {cmd:r(110)} before anything is exported; every other Stata
 name, however dash-like it looks, is read as your data.
 
@@ -3140,8 +3141,9 @@ a labelled value's label and any other value's number.  Any other numeric
 variable is labelled with its values in its display format, as Stata's
 {cmd:display} writes them (a {cmd:float} 0.1 is {cmd:.1}).  A missing value is drawn as {cmd:.};
 {cmd:twoway} draws an extended missing value, {cmd:.a} to {cmd:.z}, as its
-value label or its name, which {cmd:dash} cannot do, because the data it is
-handed carry every missing value alike.
+value label or its name; so does {cmd:dash}: a {cmd:by(, missing)} panel is
+titled by it, a marker label and a tooltip show it, and a dropdown filter
+offers each code.
 
 {pstd}
 {it:Example:}

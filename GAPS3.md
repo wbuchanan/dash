@@ -525,7 +525,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F3 Tracked:** Open (WP-31 section 47).
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
 - **F5 Tracked:** Open (WP-31 section 46).
-- **G1 Tracked:** Open (WP-31 section 43).
+- **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit pending.
 - **G2 Tracked:** Open (WP-31 section 43).
 - **G3 Tracked:** Open (WP-31 section 43).
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit pending.

@@ -7462,7 +7462,7 @@ program define _dash_qual_gen
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__, its marker-label and jitter columns, its user-variable aliases __dashu_*, its missing-code columns __dashm_* and its display-text columns __dasht_*)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -7604,7 +7604,7 @@ program define _dash_sort_gen, sortpreserve
     capture unab _ds_clash : __dashs*
     if _rc == 0 {
         local _ds_first : word 1 of `_ds_clash'
-        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__, its marker-label and jitter columns, its user-variable aliases __dashu_*, its missing-code columns __dashm_* and its display-text columns __dasht_*)."
         display as error "      Rename it first, for example: rename `_ds_first' newname"
         exit 110
     }
@@ -7666,7 +7666,7 @@ program define _dash_tsop_gen
     capture unab _dt_clash : __dasht*
     if _rc == 0 {
         local _dt_first : word 1 of `_dt_clash'
-        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__, its marker-label and jitter columns, its user-variable aliases __dashu_*, its missing-code columns __dashm_* and its display-text columns __dasht_*)."
         display as error "      Rename it first, for example: rename `_dt_first' newname"
         exit 110
     }
@@ -7751,7 +7751,7 @@ program define _dash_wexp_gen
     capture unab _dw_clash : __dashw*
     if _rc == 0 {
         local _dw_first : word 1 of `_dw_clash'
-        display as error "`cmdname': variable `_dw_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dw_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__, its marker-label and jitter columns, its user-variable aliases __dashu_*, its missing-code columns __dashm_* and its display-text columns __dasht_*)."
         display as error "      Rename it first, for example: rename `_dw_first' newname"
         exit 110
     }

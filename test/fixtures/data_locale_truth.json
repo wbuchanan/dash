@@ -1,0 +1,388 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "45bc4d3732af220c9898fe5019d2b2d0e0b4b125",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_data_locale_truth.do",
+  "stata_version": "19.5"
+ },
+ "dp.axis": {
+  "rc": 0,
+  "ticks": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2.000",
+   "3.000",
+   "4.000",
+   "5.000"
+  ]
+ },
+ "dp.axis_dec": {
+  "rc": 0,
+  "ticks": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2,00",
+   "2,50",
+   "3,00",
+   "3,50",
+   "4,00"
+  ]
+ },
+ "dp.f": "     3,14",
+ "dp.fc": "1.234.567,89",
+ "dp.g": "       ,5",
+ "dp.td": "04oct2014",
+ "em.by_missing": {
+  "panels": 7,
+  "rc": 0,
+  "titles": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   ".a",
+   ".b"
+  ]
+ },
+ "em.by_missing_labelled": {
+  "rc": 0,
+  "titles": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "Not asked",
+   ".b"
+  ]
+ },
+ "em.mlabel": {
+  "labels": {
+   ".a": 2,
+   ".b": 3
+  },
+  "rc": 0
+ },
+ "fonts.home": {
+  "global_holds_face": false,
+  "graph_set_prints_face": true,
+  "log": "\n. graph set svg fontface Courier\n\n. graph set svg\n\n   svg              current\n   setting          default           choices\n   ------------------------------------------------------------------------\n   baselineshift    off               on or off\n   ignorefont       off               on or off\n   bgfill           on                on or off\n   nbsp             on                on or off\n   pre              off               on or off\n   clipstroke       on                on or off\n   scalestrokewidth off               on or off\n   verbose          off               on or off\n   version          on                on or off\n   fontface         Courier           font name\n   fontfacesans     Helvetica         font name\n   fontfaceserif    Times             font name\n   fontfacemono     Courier           font name\n   fontfacesymbol   Symbol            font name\n   ------------------------------------------------------------------------\n   To change setting, type \"graph set svg setting choice\"\n\n. graph query, schemes\n\nAvailable schemes are\n\n    s2color        see help scheme_s2color\n    sdpcapstone\n    sdpdemo\n    s2mono         see help scheme_s2mono\n    s2manual       see help scheme_s2manual\n    s2gmanual      see help scheme_s2gmanual\n    s2gcolor       see help scheme_s2gcolor\n    sttrans\n    stcolor        see help scheme_stcolor\n    stcolor_alt    see help scheme_stcolor_alt\n    stcolor_mv\n    stgcolor       see help scheme_stgcolor\n    stcoloralias\n    stgcolor_alt   see help scheme_stgcolor_alt\n    stgcolor_mv\n    stcolor_meta\n    stgcolor_meta\n    contourtest\n    contourtest2\n    d3colors\n    d3colors_achromatopsia\n    d3colors_deuteranopia\n    d3colors_protanopia\n    d3colors_tritanopia\n    d3style\n    d3style_achromatopsia\n    d3style_deuteranopia\n    d3style_protanopia\n    d3style_tritanopia\n    d3test\n    d3test_achromatopsia\n    d3test_deuteranopia\n    d3test_protanopia\n    d3test_tritanopia\n    edatest\n    fcpsrcdata\n    fcpsrcdata_achromatopsia\n    fcpsrcdata_deuteranopia\n    fcpsrcdata_protanopia\n    fcpsrcdata_tritanopia\n    fcpstestlevs\n    fcpstestlevs_achromatopsia\n    fcpstestlevs_deuteranopia\n    fcpstestlevs_protanopia\n    fcpstestlevs_tritanopia\n    ggd3\n    ggd3_achromatopsia\n    ggd3_deuteranopia\n    ggd3_protanopia\n    ggd3_tritanopia\n    ggplot2ex1\n    ggplot2ex1_achromatopsia\n    ggplot2ex1_deuteranopia\n    ggplot2ex1_protanopia\n    ggplot2ex1_tritanopia\n    ggplot2ex1b\n    ggplot2ex1b_achromatopsia\n    ggplot2ex1b_deuteranopia\n    ggplot2ex1b_protanopia\n    ggplot2ex1b_tritanopia\n    ggplot2ex2\n    ggplot2ex2_achromatopsia\n    ggplot2ex2_deuteranopia\n    ggplot2ex2_protanopia\n    ggplot2ex2_tritanopia\n    kelly22ex\n    kelly22ex_achromatopsia\n    kelly22ex_deuteranopia\n    kelly22ex_protanopia\n    kelly22ex_tritanopia\n    manycolorex1\n    manycolorex1_achromatopsia\n    manycolorex1_deuteranopia\n    manycolorex1_protanopia\n    manycolorex1_tritanopia\n    matthiasg\n    matthiasg_achromatopsia\n    matthiasg_deuteranopia\n    matthiasg_protanopia\n    matthiasg_tritanopia\n    mixed1\n    mixed1_achromatopsia\n    mixed1_deuteranopia\n    mixed1_protanopia\n    mixed1_tritanopia\n    mixed2\n    mixed2_achromatopsia\n    mixed2_deuteranopia\n    mixed2_protanopia\n    mixed2_tritanopia\n    myriadColorPalettes\n    myriadColorPalettes_achromatopsia\n    myriadColorPalettes_deuteranopia\n    myriadColorPalettes_protanopia\n    myriadColorPalettes_tritanopia\n    onecolorex1\n    onecolorex1_achromatopsia\n    onecolorex1_deuteranopia\n    onecolorex1_protanopia\n    onecolorex1_tritanopia\n    onecolorex2\n    onecolorex2_achromatopsia\n    onecolorex2_deuteranopia\n    onecolorex2_protanopia\n    onecolorex2_tritanopia\n    s2test\n    s2test_achromatopsia\n    s2test_deuteranopia\n    s2test_protanopia\n    s2test_tritanopia\n    sdp2016a\n    sdp2016a2\n    sdp2016a2_achromatopsia\n    sdp2016a2_deuteranopia\n    sdp2016a2_protanopia\n    sdp2016a2_tritanopia\n    sdp2016a_achromatopsia\n    sdp2016a_deuteranopia\n    sdp2016a_protanopia\n    sdp2016a_tritanopia\n    sdp2016b\n    sdp2016b2\n    sdp2016b2_achromatopsia\n    sdp2016b2_deuteranopia\n    sdp2016b2_protanopia\n    sdp2016b2_tritanopia\n    sdp2016b_achromatopsia\n    sdp2016b_deuteranopia\n    sdp2016b_protanopia\n    sdp2016b_tritanopia\n    set1\n    set1_achromatopsia\n    set1_deuteranopia\n    set1_protanopia\n    set1_tritanopia\n    somecolorex1\n    somecolorex1_achromatopsia\n    somecolorex1_deuteranopia\n    somecolorex1_protanopia\n    somecolorex1_tritanopia\n    somepairs\n    stmono2        see help scheme_stmono2\n    stmono1        see help scheme_stmono1\n    s1color        see help scheme_s1color\n    s1mono         see help scheme_s1mono\n    s1rcolor       see help scheme_s1rcolor\n    s1manual       see help scheme_s1manual\n    sj             see help scheme_sj\n    stsj           see help scheme_stsj\n    economist      see help scheme_economist\n    s2color8       see help scheme_s2color8\n    meta\n    s1network\n    s2network\n    s3network\n\n. macro list\nT_gm_fix_span:  0\nDL_PDIR:        /private/tmp/claude-501/-Users-billy-Desktop-Programs-StataPrograms-d-dash/e362c073-3cea-4b6b-ba0f-a966ef937fcd/scratchpad/s43/ext/tmp/dash_data_locale_probe\nDL_REPO:        /Users/billy/Desktop/Programs/StataPrograms/d/dash-wt/wp31-s43\ndash_nobrowser: 1\nS_ADO:          `\"/Users/billy/Desktop/Programs/StataPrograms/d/dash-wt/wp31-s43/\"';BASE;SITE;.;PERSONAL;PLUS;OLDPLACE\nbandwidthex:    you\nsevenwords:     motherfucker tits shit piss fuck cunt cocksucker\nF1:             help advice;\nF2:             describe;\nF7:             save\nF8:             use\nS_StataMP:      MP\nS_StataSE:      SE\nS_CONSOLE:      console\nS_OS:           Unix\nS_MACH:         Mac (Apple Silicon)\nS_level:        95\nS_MODE:         batch\n_Ca:            1798848027500\n_Ci:            1798848026500\n_T:             1798848000000\n_C:             797279882947\n_hi:            2082844827000\n_lo:            378691200000\n_after:         27000\n_before:        26000\n_t:             1798848000000\n_f:             04oct2014\n_seen:          5\n_reg:           __000001\n_dash_commit:   45bc4d3732af220c9898fe5019d2b2d0e0b4b125\n_dlline:        45bc4d3732af220c9898fe5019d2b2d0e0b4b125\n_dlgh:          __000000\n_dlgit:         /private/tmp/claude-501/-Users-billy-Desktop-Programs-StataPrograms-d-dash/e362c073-3cea-4b6b-ba0f-a966ef937fcd/scratchpad/s43/ext/tmp//St61704.000001\n_extracted:     16 Oct 2026\n_born_date:     12 Aug 2026\n_stata_version: 19.5\n_work:          /private/tmp/claude-501/-Users-billy-Desktop-Programs-StataPrograms-d-dash/e362c073-3cea-4b6b-ba0f-a966ef937fcd/scratchpad/s43/ext/tmp/dash_data_locale_probe\n__zr_rc:        0\n__zr_bad:       0\n_repo:          /Users/billy/Desktop/Programs/StataPrograms/d/dash-wt/wp31-s43\nS_FN:           /Applications/StataNow/ado/base/a/auto.dta\nS_FNDATE:       13 Apr 2024 17:45\n\n. char list\n  _dta[note1]:                From Consumer Reports with permission\n  _dta[note0]:                1\n  _dta[_lang_list]:           default\n  _dta[_lang_c]:              default\n\n. display \"c(fontface)=[`c(fontface)']\"\nc(fontface)=[]\n\n. quietly log close dlf1\n"
+ },
+ "fonts.svg": {
+  "default": "'Helvetica'",
+  "fontface_courier": "'Helvetica'",
+  "fontfacesans_courier": "'Courier'"
+ },
+ "leap.after_midnight": [
+  [
+   410313602500,
+   410313600500
+  ],
+  [
+   1230768022500,
+   1230768000500
+  ],
+  [
+   1798848027500,
+   1798848000500
+  ]
+ ],
+ "leap.candidates": [
+  {
+   "after": 1000,
+   "before": 0,
+   "date": "30jun1972",
+   "tc": 394416000000
+  },
+  {
+   "after": 2000,
+   "before": 1000,
+   "date": "31dec1972",
+   "tc": 410313600000
+  },
+  {
+   "after": 3000,
+   "before": 2000,
+   "date": "31dec1973",
+   "tc": 441849600000
+  },
+  {
+   "after": 4000,
+   "before": 3000,
+   "date": "31dec1974",
+   "tc": 473385600000
+  },
+  {
+   "after": 5000,
+   "before": 4000,
+   "date": "31dec1975",
+   "tc": 504921600000
+  },
+  {
+   "after": 6000,
+   "before": 5000,
+   "date": "31dec1976",
+   "tc": 536544000000
+  },
+  {
+   "after": 7000,
+   "before": 6000,
+   "date": "31dec1977",
+   "tc": 568080000000
+  },
+  {
+   "after": 8000,
+   "before": 7000,
+   "date": "31dec1978",
+   "tc": 599616000000
+  },
+  {
+   "after": 9000,
+   "before": 8000,
+   "date": "31dec1979",
+   "tc": 631152000000
+  },
+  {
+   "after": 10000,
+   "before": 9000,
+   "date": "30jun1981",
+   "tc": 678412800000
+  },
+  {
+   "after": 11000,
+   "before": 10000,
+   "date": "30jun1982",
+   "tc": 709948800000
+  },
+  {
+   "after": 12000,
+   "before": 11000,
+   "date": "30jun1983",
+   "tc": 741484800000
+  },
+  {
+   "after": 13000,
+   "before": 12000,
+   "date": "30jun1985",
+   "tc": 804643200000
+  },
+  {
+   "after": 14000,
+   "before": 13000,
+   "date": "31dec1987",
+   "tc": 883612800000
+  },
+  {
+   "after": 15000,
+   "before": 14000,
+   "date": "31dec1989",
+   "tc": 946771200000
+  },
+  {
+   "after": 16000,
+   "before": 15000,
+   "date": "31dec1990",
+   "tc": 978307200000
+  },
+  {
+   "after": 17000,
+   "before": 16000,
+   "date": "30jun1992",
+   "tc": 1025568000000
+  },
+  {
+   "after": 18000,
+   "before": 17000,
+   "date": "30jun1993",
+   "tc": 1057104000000
+  },
+  {
+   "after": 19000,
+   "before": 18000,
+   "date": "30jun1994",
+   "tc": 1088640000000
+  },
+  {
+   "after": 20000,
+   "before": 19000,
+   "date": "31dec1995",
+   "tc": 1136073600000
+  },
+  {
+   "after": 21000,
+   "before": 20000,
+   "date": "30jun1997",
+   "tc": 1183334400000
+  },
+  {
+   "after": 22000,
+   "before": 21000,
+   "date": "31dec1998",
+   "tc": 1230768000000
+  },
+  {
+   "after": 23000,
+   "before": 22000,
+   "date": "31dec2005",
+   "tc": 1451692800000
+  },
+  {
+   "after": 24000,
+   "before": 23000,
+   "date": "31dec2008",
+   "tc": 1546387200000
+  },
+  {
+   "after": 25000,
+   "before": 24000,
+   "date": "30jun2012",
+   "tc": 1656720000000
+  },
+  {
+   "after": 26000,
+   "before": 25000,
+   "date": "30jun2015",
+   "tc": 1751328000000
+  },
+  {
+   "after": 27000,
+   "before": 26000,
+   "date": "31dec2016",
+   "tc": 1798848000000
+  }
+ ],
+ "leap.inside": [
+  [
+   410313601500,
+   410313600500
+  ],
+  [
+   1230768021500,
+   1230768000500
+  ],
+  [
+   1798848026500,
+   1798848000500
+  ]
+ ],
+ "leap.roundtrip": [
+  [
+   863401313018,
+   863401300018
+  ],
+  [
+   1974246584145,
+   1974246557145
+  ],
+  [
+   476167814029,
+   476167810029
+  ],
+  [
+   1810390900173,
+   1810390873173
+  ],
+  [
+   1225024431233,
+   1225024410233
+  ],
+  [
+   763951824164,
+   763951812164
+  ],
+  [
+   802074563590,
+   802074551590
+  ],
+  [
+   846018047707,
+   846018034707
+  ],
+  [
+   769437799923,
+   769437787923
+  ],
+  [
+   870253599064,
+   870253586064
+  ],
+  [
+   1866963319453,
+   1866963292453
+  ],
+  [
+   742872824977,
+   742872812977
+  ],
+  [
+   2039695838282,
+   2039695811282
+  ],
+  [
+   837823277487,
+   837823264487
+  ],
+  [
+   1236454485907,
+   1236454463907
+  ],
+  [
+   1484422399440,
+   1484422376440
+  ],
+  [
+   1748186697652,
+   1748186672652
+  ],
+  [
+   975532873130,
+   975532858130
+  ],
+  [
+   1712160777431,
+   1712160752431
+  ],
+  [
+   797279882947,
+   797279870947
+  ]
+ ],
+ "leap.table": [
+  394416000000,
+  410313600000,
+  441849600000,
+  473385600000,
+  504921600000,
+  536544000000,
+  568080000000,
+  599616000000,
+  631152000000,
+  678412800000,
+  709948800000,
+  741484800000,
+  804643200000,
+  883612800000,
+  946771200000,
+  978307200000,
+  1025568000000,
+  1057104000000,
+  1088640000000,
+  1136073600000,
+  1183334400000,
+  1230768000000,
+  1451692800000,
+  1546387200000,
+  1656720000000,
+  1751328000000,
+  1798848000000
+ ],
+ "shadow.hover": {
+  "rc": 0
+ }
+}

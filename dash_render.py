@@ -1080,8 +1080,93 @@ def _dash_read_data_json(text):
                 return v
         return _double(s)
 
-    return json.loads(text, parse_int=_integer, parse_float=_double,
-                      parse_constant=lambda _name: None)
+    return _dash_attach_missing_codes(
+        json.loads(text, parse_int=_integer, parse_float=_double,
+                   parse_constant=lambda _name: None))
+
+
+#: The text column an extended missing value's letter travels in beside its
+#: variable (WP-31 G1): ``__dashm_<var>``, "" or "a" to "z" in each row.
+_DASH_CODE_PREFIX = "__dashm_"
+
+#: The display-text column of a coded variable's tooltip (WP-31 G1).
+_DASH_CODE_TEXT_PREFIX = "__dasht_"
+
+_DASH_CODE_LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
+
+
+def _dash_attach_missing_codes(doc):
+    """Move the data file's ``extendedMissing`` key into the rows (WP-31 G1).
+
+    The writer keeps jsonio's layout -- an extended missing value ``.a`` is
+    the text ``"null"`` like ``.`` -- and records each letter in
+    ``extendedMissing``: ``{var: {row index: letter}}``.  Each such
+    variable gains a text column ``__dashm_<var>`` holding ``""`` or the
+    letter, listed as a string variable, so both loaders read it as they
+    read any other column.  A letter that is not ``a``-``z``, a row index
+    out of range, a string variable and a variable not in the file are
+    ignored.  Returns *doc*, changed in place.
+    """
+    sj = doc.get("StataJSON", doc) if isinstance(doc, dict) else None
+    if not isinstance(sj, dict):
+        return doc
+    ext = sj.pop("extendedMissing", None)
+    if not isinstance(ext, dict) or not ext:
+        return doc
+    names = sj.get("variableNames")
+    values = sj.get("values")
+    if not isinstance(names, list) or not isinstance(values, list):
+        return doc
+    flags = [sj[k] for k in ("variableIsString", "variableTypeIsString")
+             if isinstance(sj.get(k), dict)]
+    if not flags:
+        sj["variableIsString"] = {}
+        flags = [sj["variableIsString"]]
+    n = len(values)
+    for var, codes in ext.items():
+        col = _DASH_CODE_PREFIX + str(var)
+        if (var not in names or col in names or not isinstance(codes, dict)
+                or any(f.get(var) for f in flags)):
+            continue
+        good = {}
+        for k, c in codes.items():
+            try:
+                i = int(k)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= i < n and isinstance(c, str) and c in _DASH_CODE_LETTERS:
+                good[i] = c
+        if not good:
+            continue
+        for i, row in enumerate(values):
+            if isinstance(row, dict):
+                row[col] = good.get(i, "")
+            elif isinstance(row, list):
+                row.append(good.get(i, ""))
+        names.append(col)
+        for f in flags:
+            f[col] = True
+    return doc
+
+
+def _dash_with_codes(cols, columns):
+    """*cols* followed by the code column of each that has one in
+    *columns* (WP-31 G1): a variable's extended missing letters travel in
+    every source that carries the variable."""
+    cols = list(cols)
+    have = set(map(str, columns))
+    return cols + [_DASH_CODE_PREFIX + str(c) for c in cols
+                   if _DASH_CODE_PREFIX + str(c) in have
+                   and _DASH_CODE_PREFIX + str(c) not in cols]
+
+
+def _dash_code_text(code, vlabels=None):
+    """What twoway writes for the extended missing value *code* (``"a"``):
+    its value label when the variable's label set has one, else ``.a``."""
+    k = _dash_label_key("." + str(code))
+    if vlabels and k is not None and k in vlabels:
+        return str(vlabels[k])
+    return "." + str(code)
 
 
 def _dash_empty_frame(names, string_vars=()):
@@ -1199,6 +1284,20 @@ def _dash_load_columns(df, formats, string_vars, display_names=None):
                 )
         df[col] = pd.Series(converted).to_numpy()
         date_vars[col] = kind
+    # Each coded variable's letters, for its dropdown's options (WP-31
+    # G1): on the frame's attrs, which a column or a row selection of the
+    # frame keeps, so the widget builder of either mode reads them from the
+    # column it is handed (_dash_filter_widget).
+    _codes = {}
+    for col in df.columns:
+        c = str(col)
+        base = c[len(_DASH_CODE_PREFIX):]
+        if c.startswith(_DASH_CODE_PREFIX) and base in df.columns:
+            _codes[base] = sorted({x for x in df[col].tolist()
+                                   if isinstance(x, str)
+                                   and x in _DASH_CODE_LETTERS})
+    if _codes:
+        df.attrs["_dash_codes"] = _codes
     return date_vars, numeric_formats
 
 
@@ -2693,7 +2792,12 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         got = data.get(var=v, **kw) if nobs else []
         return got if isinstance(got, list) else [got]
 
-    is_str, cols, storage_types = {}, {}, {}
+    # An extended missing value's letter (WP-31 G1) is read from its
+    # display text: sfi's numeric reads give a byte or int .a as ".", as
+    # 8.988e307 (measured 16oct2026), so only the text keeps it.  None
+    # when the interface cannot write a value (a test's stand-in).
+    _codes = callable(getattr(data, "getFormattedValue", None))
+    is_str, cols, storage_types, extended = {}, {}, {}, {}
     for v in names:
         is_str[v] = bool(data.isVarTypeString(v))
         # byte int long float double str# strL: the display-format writer
@@ -2701,8 +2805,22 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         storage_types[v] = str(data.getVarType(v))
         if not is_str[v]:
             # Every missing value, . and .a to .z, as None: jsonio's "null".
-            cols[v] = ["null" if x is None else float(x)
-                       for x in _column(v, missingval=None)]
+            _vals = _column(v, missingval=None)
+            cols[v] = ["null" if x is None else float(x) for x in _vals]
+            # An extended missing value keeps its letter in a parallel
+            # key, extendedMissing (WP-31 G1): each missing row's text read
+            # once, so the cost is the missing rows'.
+            if _codes:
+                _j = int(data.getVarIndex(v))
+                _ext = {}
+                for i, x in enumerate(_vals):
+                    if x is None:
+                        t = str(data.getFormattedValue(_j, i, False)).strip()
+                        if (len(t) == 2 and t[0] == "."
+                                and t[1] in _DASH_CODE_LETTERS):
+                            _ext[str(i)] = t[1]
+                if _ext:
+                    extended[v] = _ext
             continue
         try:
             vals = _column(v)
@@ -2783,6 +2901,8 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         "numberOfRecords": nobs,
         "numberOfVariables": len(names),
     }
+    if extended:
+        doc["extendedMissing"] = extended
     # allow_nan=False: Stata holds no NaN or infinity, and a number that is
     # not JSON must never reach the file.  ensure_ascii=False: UTF-8 as is.
     # dumps, then one write: json.dump streams the same text in small
@@ -4702,6 +4822,23 @@ def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
     first and stops after the first *limit* in sort order.
     """
     key = by_vars[0] if len(by_vars) == 1 else list(by_vars)
+    # by(, missing) draws one panel per extended missing value, .a and .b
+    # apart and after ".", as twoway does (WP-31 G1): a by() variable with
+    # a code column is grouped on (value, code), and a coded group's key
+    # is its code's text, ".a".
+    coded = [v for v in by_vars if by_missing
+             and _DASH_CODE_PREFIX + str(v) in work_df.columns]
+    if coded:
+        work_df = work_df.copy()
+        keys = []
+        for v in by_vars:
+            keys.append(v)
+            if v in coded:
+                cc = _DASH_CODE_PREFIX + "_by_" + str(v)
+                work_df[cc] = work_df[_DASH_CODE_PREFIX + str(v)].where(
+                    work_df[v].isna(), "").fillna("")
+                keys.append(cc)
+        key = keys
     gb = work_df.groupby(key, sort=True, dropna=False)
     n_groups = int(gb.ngroups)
     if n_groups > limit:
@@ -4715,6 +4852,18 @@ def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
             stacklevel=3)
     out = []
     for gkey, gdf in gb:
+        if coded:
+            parts, it = [], iter(gkey)
+            for v in by_vars:
+                val = next(it)
+                if v in coded:
+                    code = next(it)
+                    if code:
+                        val = "." + str(code)
+                parts.append(val)
+            gkey = parts[0] if len(by_vars) == 1 else tuple(parts)
+            gdf = gdf.drop(columns=[c for c in gdf.columns if str(c)
+                                    .startswith(_DASH_CODE_PREFIX + "_by_")])
         vals = (gkey,) if len(by_vars) == 1 else gkey
         if not by_missing and any(_dash_by_value_missing(v) for v in vals):
             continue
@@ -15572,6 +15721,13 @@ class GlyphMapper:
                     rendered = ["." if m else
                                 _dash_fmt_text(v, _numfmt or "%9.0g", _st)
                                 for v, m in zip(raw, _miss)]
+                # An extended missing value is labelled .a, or its value
+                # label, as twoway labels it (WP-31 G1).
+                _cc = source.data.get(_DASH_CODE_PREFIX + str(mlabel_var))
+                if _cc is not None and len(_cc) == len(rendered):
+                    rendered = [_dash_code_text(c, _vlabels)
+                                if isinstance(c, str) and c else r
+                                for r, c in zip(rendered, _cc)]
                 if _gt is not None:
                     rendered, _sty = self._mlabel_markup_rows(rendered)
                     if style_col:
@@ -27702,7 +27858,8 @@ def _dash_frame_filter_mask(df, widgets):
             _w_sentinel = getattr(w, "_dash_sentinel", "__all__")
             if w.value != _w_sentinel:
                 mask &= _dash_dropdown_mask(
-                    df[wvar], w.value, getattr(w, "_dash_groups", None))
+                    df[wvar], w.value, getattr(w, "_dash_groups", None),
+                    df.get(_DASH_CODE_PREFIX + str(wvar)))
         elif kind == "range":
             try:
                 lo, hi = w.value
@@ -28909,7 +29066,16 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
             // the literal '__all__' value — sentinel is then '__all__' + extra '_').
             const sentinel = spec.sentinel || '__all__';
             if (val === sentinel) continue;
-            if (spec.numeric) {
+            // An extended missing value's option (WP-31 G1): the rows
+            // whose code column holds its letter.
+            const cpre = '__dashm_' + fvar + '=';
+            if (typeof val === 'string' && val.startsWith(cpre)) {
+                const letter = val.slice(cpre.length);
+                const cc = orig['__dashm_' + fvar] || [];
+                for (let i = 0; i < n_rows; i++) {
+                    if (active[i] && cc[i] !== letter) active[i] = false;
+                }
+            } else if (spec.numeric) {
                 const want = Number(val);
                 let members = [want];
                 if (spec.groups) {
@@ -33499,6 +33665,13 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
             parts.append("(missing)")
             continue
         if isinstance(val, str):
+            if (len(val) == 2 and val[0] == "."
+                    and val[1] in _DASH_CODE_LETTERS):
+                # An extended missing value's panel (WP-31 G1,
+                # _dash_by_groups): its value label, else .a.
+                parts.append(_dash_code_text(val[1], _dash_value_labels_for(
+                    var, value_labels, value_label_names)))
+                continue
             parts.append(val)
             continue
         _kind = date_vars.get(var)
@@ -44000,6 +44173,18 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         # test_label_sinks.py.
         options = [(sentinel, "All")] + [
             (members[0], text) for text, members in _by_label.items()]
+        # An extended missing value .a-.z is its own option, after the
+        # values, titled as twoway titles it (WP-31 G1): its value label,
+        # else .a.  The option's value names the code column and letter,
+        # "__dashm_<var>=a", which both masks compare.
+        if _dash_filter_numeric(series):
+            _letters = ((getattr(column, "attrs", None) or {})
+                        .get("_dash_codes", {}).get(str(varname), ()))
+            for _c in _letters:
+                if _c in _DASH_CODE_LETTERS:
+                    options.append((
+                        f"{_DASH_CODE_PREFIX}{varname}={_c}",
+                        _dash_graph_text_plain(_dash_code_text(_c, vlabels))))
         w = Select(title=title, value=sentinel, options=options)
         w._dash_sentinel = sentinel
         w._dash_ftype = "dropdown"
@@ -44081,7 +44266,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
     return w, None
 
 
-def _dash_dropdown_mask(column, value, groups=None):
+def _dash_dropdown_mask(column, value, groups=None, codes=None):
     """The rows a dropdown set to *value* keeps: the Python twin of
     ``_DASH_FILTER_MASK_JS``'s dropdown branch (GAPS2 X1).
 
@@ -44095,7 +44280,16 @@ def _dash_dropdown_mask(column, value, groups=None):
     too; a missing number never matches.  Any other column compares its
     EXACT text: 'nan', 'None', 'NaT', '01' and '1' are different values,
     exactly as they are listed.
+
+    An extended missing value's option, ``"__dashm_<var>=a"`` (WP-31 G1),
+    keeps the rows whose code column *codes* holds that letter.
     """
+    if (isinstance(value, str) and value.startswith(_DASH_CODE_PREFIX)
+            and "=" in value):
+        letter = value.rsplit("=", 1)[1]
+        if codes is None:
+            return np.zeros(len(column), dtype=bool)
+        return np.asarray(list(codes), dtype=object) == letter
     if _dash_filter_numeric(pd.Series(column)):
         try:
             want = float(value)
@@ -45223,6 +45417,15 @@ def _dash_keep_jitter(new_data, snapshot):
         new_data[col] = [
             orig[pos[lab]] if lab in pos and pos[lab] < len(orig) else v
             for lab, v in zip(labels, fresh)]
+    # A coded variable's tooltip text (WP-31 G1, _dash_add_code_text) is
+    # derived, so a redraw from the frame lacks it: each kept row takes
+    # the text the snapshot held for it.
+    for col, orig in snapshot.items():
+        if not str(col).startswith(_DASH_CODE_TEXT_PREFIX) or col in new_data:
+            continue
+        new_data[col] = [
+            orig[pos[lab]] if lab in pos and pos[lab] < len(orig) else ""
+            for lab in labels]
     return new_data
 
 
@@ -50027,7 +50230,7 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     """
     cols = [c for c in [xvar, yvar, label_var] + list(extra_cols)
             if c and c in g_df.columns]
-    cols = list(dict.fromkeys(cols))
+    cols = _dash_with_codes(dict.fromkeys(cols), g_df.columns)
     # The NaN drop names only the plotted variables.  An extra column
     # carried for the tooltip must not decide which ROWS are drawn:
     # hover(rep78) would otherwise silently delete the five cars whose
@@ -50107,7 +50310,7 @@ def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=(),
         return shared_source, view, True
     cols = [c for c in [y1var, y2var, xvar, label_var] + list(extra_cols)
             if c and c in g_df.columns]
-    cols = list(dict.fromkeys(cols))
+    cols = _dash_with_codes(dict.fromkeys(cols), g_df.columns)
     return ColumnDataSource(g_df[cols]), None, True
 
 
@@ -50136,9 +50339,9 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
     if not all(v in g_df.columns for v in names):
         return None, False
     cols = list(dict.fromkeys(names))
-    keep = list(dict.fromkeys(
+    keep = _dash_with_codes(dict.fromkeys(
         cols + [c for c in [label_var] + list(extra_cols)
-                if c and c in g_df.columns]))
+                if c and c in g_df.columns]), g_df.columns)
     return ColumnDataSource(g_df[keep].dropna(subset=cols)), True
 
 
@@ -50738,7 +50941,42 @@ def _dash_add_hover_text(source, var, vlabels):
         n = len(vals)
     except TypeError:
         return None
-    data[col] = [GlyphMapper._mlabel_value_text(v, vlabels) for v in vals]
+    out = [GlyphMapper._mlabel_value_text(v, vlabels) for v in vals]
+    # An extended missing value shows its value label, else .a (WP-31 G1).
+    codes = data.get(_DASH_CODE_PREFIX + str(var))
+    if codes is not None and len(codes) == len(out):
+        out = [_dash_code_text(c, vlabels) if isinstance(c, str) and c
+               else t for t, c in zip(out, codes)]
+    data[col] = out
+    return col
+
+
+def _dash_add_code_text(source, var, fmt="", storage="", vlabels=None):
+    """Write the tooltip text of a variable holding extended missing values
+    into ``__dasht_<var>`` on *source* (WP-31 G1): each row's value in the
+    variable's display format (``%9.0g`` when it has none a page writes),
+    ``.`` for ``.``, and a coded row's value label or ``.a``.  The tooltip
+    reads the column with no formatter, so the formatter models stay one
+    per display format.  Returns the column's name, or None when *source*
+    carries no *var* or no code column; an existing column is kept.
+    """
+    data = getattr(source, "data", None)
+    codes_col = _DASH_CODE_PREFIX + str(var)
+    if data is None or var not in data or codes_col not in data:
+        return None
+    col = _DASH_CODE_TEXT_PREFIX + str(var)
+    if col in data:
+        return col
+    fmt = fmt if _dash_fmt_kind(fmt) in ("f", "g", "e") else "%9.0g"
+    out = []
+    for v, c in zip(data[var], data[codes_col]):
+        if isinstance(c, str) and c:
+            out.append(_dash_code_text(c, vlabels))
+        elif GlyphMapper._mlabel_missing(v):
+            out.append(".")
+        else:
+            out.append(_dash_fmt_text(v, fmt, storage or None))
+    data[col] = out
     return col
 
 
@@ -50908,14 +51146,19 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
         if not _name or (date_vars or {}).get(_name):
             continue
         _vl = _dash_value_labels_for(_name, value_labels, value_label_names)
-        if not _vl:
+        # WP-31 G1: a variable holding .a-.z reads a text column too.
+        _coded = (not _vl and any(_DASH_CODE_PREFIX + str(_name)
+                                  in _cols_of(_r) for _r in _rends))
+        if not _vl and not _coded:
             continue
         _col = None
         for _r in _rends:
             _src = getattr(_r, "data_source", None)
             if _src is None:
                 continue
-            _got = _dash_add_hover_text(_src, _name, _vl)
+            _got = (_dash_add_hover_text(_src, _name, _vl) if _vl else
+                    _dash_add_code_text(_src, _name, formats.get(_name, ""),
+                                        storage_types.get(_name, "")))
             _col = _col or _got
         if _col:
             _text_cols[_name] = _col
@@ -51560,8 +51803,15 @@ def _dash_take_qual_columns(df, spec, keep=()):
     """
     names = _dash_qual_cols_named(spec)
     cols = [str(c) for c in df.columns]
+    # An extended missing value's code column (WP-31 G1,
+    # _dash_attach_missing_codes) is data beside its variable: kept when
+    # its variable is in the data and it holds only "" and a-z.
+    codes = tuple(c for c in cols if c.startswith(_DASH_CODE_PREFIX)
+                  and c[len(_DASH_CODE_PREFIX):] in cols
+                  and df[c].map(lambda x: x == "" or x in _DASH_CODE_LETTERS)
+                  .all())
     reserved = [c for c in cols if c.startswith(_DASH_RESERVED_PREFIX)
-                and c not in keep]
+                and c not in keep and c not in codes]
     for c in reserved:
         if c not in names:
             raise ValueError(
@@ -52425,6 +52675,12 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
     rows = pd.Series(False, index=idx)
     for v in need.values():
         rows = rows | v
+    # A code column (WP-31 G1) on every row the page holds: its letters
+    # stand exactly where its variable is blanked as missing.
+    for c in frame.columns:
+        if (str(c).startswith(_DASH_CODE_PREFIX)
+                and str(c)[len(_DASH_CODE_PREFIX):] in need):
+            need[str(c)] = rows
     return {"rows": rows, "need": need, "graph_rows": graph_rows,
             "link_rows": link_rows, "filter_rows": filter_rows}
 
@@ -53996,6 +54252,8 @@ class DashRenderer:
             A new ``ColumnDataSource`` populated with the requested columns.
         """
         frame = df if df is not None else self.df
+        # A variable's extended missing codes travel beside it (WP-31 G1).
+        varnames = _dash_with_codes(varnames, frame.columns)
         plan = getattr(self, "_embed", None)
         if plan is not None:
             keep = plan["rows"] if rows is None else (rows & plan["rows"])
@@ -57905,6 +58163,9 @@ class ServerAppBuilder:
                       # reserved prefix and whole name; and the wider
                       # prefix reserved for every column dash makes (G1).
                       "_DASH_RESERVED_PREFIX",
+                      # Extended missing values' columns (WP-31 G1).
+                      "_DASH_CODE_PREFIX", "_DASH_CODE_TEXT_PREFIX",
+                      "_DASH_CODE_LETTERS", "_DASH_MISSING_LABEL_KEY",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # The time-series columns (WP-30 P1.7).
                       "_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
@@ -58463,6 +58724,10 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # extended missing values .a-.z (WP-31 G1).
+                         "_dash_attach_missing_codes", "_dash_code_text",
+                         "_dash_add_code_text", "_dash_label_key",
+                         "_dash_with_codes",
                          # dot's rows in the axis plan (WP-31 B5c).
                          "_dash_dots_plan",
                          # minor labels on an outer axis (WP-31 D1b).
@@ -60373,7 +60638,7 @@ class ServerAppBuilder:
             "    # 'index' carries the frame's own row labels.  Without it a",
             "    # selection on this source cannot be mapped back to rows, and",
             "    # a linked graph's brush would compute over the wrong ones.",
-            "    linked_vars = list(all_vars)",
+            "    linked_vars = _dash_with_codes(list(all_vars), df.columns)",
             "    # The link group's rows only, each column blanked where the",
             "    # page does not read it (WP-29 P0.11).",
             "    _ldf = df[_EMBED_LINK]",

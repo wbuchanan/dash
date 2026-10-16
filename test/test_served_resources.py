@@ -499,11 +499,14 @@ class TestTheSavedPageIsUnchanged:
         # Re-derived after WP-31 E2: line patterns are Stata's numbers in
         # relative units (the minor grid's dot [1, 3] px; [2, 4] before);
         # with WP-31 D12's zoom statement (code only), merged in batch 13.
+        # Re-derived after WP-31 G1: the filter mask's code gains the
+        # extended-missing option branch (code only).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "39f7b2dcf17a36a439db511c2b49277e1fe91e4783d469f3cc069cbc0a871f38")
+    # old -> new: G1 the filter mask code
+    "8c7b23d4d3e0fcda4d768a48d1efe39c715ac6c4278dbded086caeb1b7873f75")
 
 
 # ===========================================================================

@@ -11573,13 +11573,14 @@ end
 capture program drop _u43_spec
 program define _u43_spec
     // _u43_spec <dir> <k> <dash command>: the saved and served files of
-    // the command, into <dir>/s<k>.json, d<k>.json and a<k>.py.
+    // the command, into <dir>/s<k>.json, d<k>.json and a<k>.py; the
+    // global u43_serve holds _dash_serve_spec's own options (filter()).
     version 19
     gettoken dir 0 : 0
     gettoken k 0 : 0
     dash clear
     quietly dash `0' scheme(s2color) name(zu43`k')
-    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json") ${u43_serve}
 end
 
 * ==== S43 G4: Carried columns as arrays ====
@@ -11596,6 +11597,139 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
     python: import __main__ as _u43_m; _u43_m._u43_carried("`u43d'/s1.json", "`u43d'/d1.json", "`u43d'/a1.py", "price")
     _w31_expect U43-01 `"("${u43_bad}" == "")"' `"${u43_bad}"'
     _w31_done U43-01 "line ..., hover(price) carries price as a float array, saved and served"
+    display as text "S43 end " c(current_date) " " c(current_time)
+}
+* ==== end S43 ====
+
+python:
+def _u43_models(sp, dp, app):
+    """Every model of the saved render and of the served document."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    saved = list(r._last_layout_root.references())
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u43_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u43_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    served = [m for root in doc.roots for m in root.references()]
+    return saved, served
+
+
+def _u43_titles(models):
+    """The by() panel titles of the grid holding the most panels."""
+    best = []
+    for m in models:
+        if type(m).__name__ != "GridPlot":
+            continue
+        got = []
+        for c in m.children:
+            f = c[0]
+            for t in list(getattr(f, "above", []) or []) + \
+                    list(getattr(f, "below", []) or []):
+                if type(t).__name__ == "Title" and \
+                        getattr(t, "name", None) == "dash_by_label" and t.text:
+                    got.append(str(t.text))
+        if len(got) > len(best):
+            best = got
+    return best
+
+
+def _u43_by(sp, dp, app, fixture, key):
+    """u43_bad: where dash's by(rep78, missing) panel titles differ from
+    twoway's (data_locale_truth.json *key*), saved and served."""
+    import __main__ as m
+    import json
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        want = json.load(fh)[key]["titles"]
+    bad = []
+    for mode, models in zip(("saved", "served"), m._u43_models(sp, dp, app)):
+        got = m._u43_titles(models)
+        if got != want:
+            bad.append("%s %s, twoway %s" % (mode, got, want))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+
+
+def _u43_drop(sp, dp, app):
+    """u43_bad: the data file lacks rep78's codes, or a dropdown on rep78
+    lacks .a and .b, saved or served."""
+    import __main__ as m
+    import json
+    from sfi import Macro
+    with open(dp, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    doc = doc.get("StataJSON", doc)
+    ext = doc.get("extendedMissing", {}).get("rep78", {})
+    bad = []
+    if sorted(ext.values()) != ["a", "a", "b", "b", "b"]:
+        bad.append("extendedMissing rep78 %s" % ext)
+    for mode, models in zip(("saved", "served"), m._u43_models(sp, dp, app)):
+        sel = [x for x in models if type(x).__name__ == "Select"]
+        opts = [tuple(o) for s in sel for o in s.options
+                if isinstance(o, (list, tuple))]
+        for c in "ab":
+            if ("__dashm_rep78=" + c, "." + c) not in opts:
+                bad.append("%s: no .%s option in %s" % (mode, c, opts[:9]))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+end
+
+capture program drop _u43_code
+program define _u43_code
+    // rep78's five missing values coded as the extractor codes them:
+    // the first two .a, the other three .b.
+    version 19
+    sysuse auto, clear
+    local seen 0
+    forvalues i = 1/`=_N' {
+        if missing(rep78[`i']) {
+            local ++seen
+            quietly replace rep78 = cond(`seen' <= 2, .a, .b) in `i'
+        }
+    }
+end
+
+* ==== S43 G1: Extended missing values ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
+    display as text "S43 start " c(current_date) " " c(current_time)
+    local u43d "`w31_work'/s43g1"
+    capture mkdir "`u43d'"
+    local u43fx "`c(pwd)'/fixtures/data_locale_truth.json"
+
+    // U43-02: by(rep78, missing) draws twoway's panels, .a and .b apart,
+    // and a labelled code by its label, saved and served.
+    _u43_code
+    _u43_spec "`u43d'" 2 scatter mpg weight, by(rep78, missing)
+    python: import __main__ as _u43_m; _u43_m._u43_by("`u43d'/s2.json", "`u43d'/d2.json", "`u43d'/a2.py", r"`u43fx'", "em.by_missing")
+    _w31_expect U43-02 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    label define u43rl .a "Not asked"
+    label values rep78 u43rl
+    _u43_spec "`u43d'" 3 scatter mpg weight, by(rep78, missing)
+    python: import __main__ as _u43_m; _u43_m._u43_by("`u43d'/s3.json", "`u43d'/d3.json", "`u43d'/a3.py", r"`u43fx'", "em.by_missing_labelled")
+    _w31_expect U43-02 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-02 "by(rep78, missing) titles .a and .b (or the label) as twoway, saved and served"
+
+    // U43-08: the data file holds rep78's letters and a dropdown on rep78
+    // offers .a and .b, saved and served.
+    _u43_code
+    global u43_serve "filter(rep78, type(dropdown))"
+    _u43_spec "`u43d'" 4 scatter mpg weight,
+    global u43_serve ""
+    python: import __main__ as _u43_m; _u43_m._u43_drop("`u43d'/s4.json", "`u43d'/d4.json", "`u43d'/a4.py")
+    _w31_expect U43-08 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-08 "the data file carries .a/.b and the dropdown offers them, saved and served"
     display as text "S43 end " c(current_date) " " c(current_time)
 }
 * ==== end S43 ====
