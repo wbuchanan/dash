@@ -438,7 +438,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4d Tracked:** Closed in WP-31, BUGS.md "After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed", commit 62890cf.
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
 - **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit 5e0a387.
-- **B5c Tracked:** Closed in WP-31, BUGS.md "dot rows on the saved page keep the build's axis span after a filter move", commit pending.
+- **B5c Tracked:** Closed in WP-31, BUGS.md "dot rows on the saved page keep the build's axis span after a filter move", commit c9e3a97.
 - **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
@@ -458,7 +458,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
 - **C10d Tracked:** Open (WP-31 section 46).
-- **C10e Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit pending.
+- **C10e Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit 78df376.
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
@@ -471,25 +471,25 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
-- **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit pending.
+- **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit 0862bf7.
 - **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.
 - **D1d Tracked:** Open (WP-31 section 45).
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
-- **D3b Tracked:** Closed in WP-31, BUGS.md "subtitle() position() and ring() on a by() panel's label row are named, not drawn", commit pending.
+- **D3b Tracked:** Closed in WP-31, BUGS.md "subtitle() position() and ring() on a by() panel's label row are named, not drawn", commit ceccb04.
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
 - **D4b Tracked:** Open (WP-31 section 39).
 - **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit 831e4f0.
 - **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit 2c2ad89.
-- **D6b Tracked:** Closed in WP-31, BUGS.md "alternate on an axis(2) to axis(9) label option is named, not drawn", commit pending.
+- **D6b Tracked:** Closed in WP-31, BUGS.md "alternate on an axis(2) to axis(9) label option is named, not drawn", commit c6efd39.
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit 8768cac.
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
-- **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit pending.
+- **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit c8a5e9a.
 - **D9b Tracked:** Open (WP-31 section 45).
-- **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit pending.
+- **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit af3273a.
 - **D10b Tracked:** Open (WP-31 section 39).
-- **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit pending.
+- **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit a8ae5a6.
 - **D11b Tracked:** Open (WP-31 section 39).
 - **D12 Tracked:** Open (WP-31 section 38).
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
