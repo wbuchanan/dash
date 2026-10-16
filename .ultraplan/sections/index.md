@@ -102,7 +102,7 @@
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
 | 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) + D4b (D25) | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
-| 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
+| 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) + C17b (D30) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
 | 44 | style-file-resolver | E10 + C8c (D18) | 15 | 40 | -- | red | L | 4 |
@@ -154,6 +154,8 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D13b | Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them (D24) | S30 | S42 (14) | RC |
 | D3b | subtitle() position() and ring() on a by() panel's label row are named, not drawn (D24) | S30 | S36 (12) | RC |
 | D4b | Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn (D25) | S31 | S39 (13) | RC |
+| D6b | alternate on an axis(2) to axis(9) label option is named, not drawn (D30) | S33 | S35 (12) | RC |
+| C17b | lal() is read as dash's lalpha() where twoway reads it as lalign() (D30) | S34 | S41 (14) | CB |
 
 ## Batch execution order
 

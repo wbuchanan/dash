@@ -519,6 +519,8 @@ and now matches Stata.
 
 <!-- WP-31 D4b -->
 
+<!-- WP-31 D6b -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -926,6 +928,8 @@ and now matches Stata.
 - `dash scatter mpg weight, jit(5)` (and j(), ji(), jitt(), jitte()): refused, r(198), "option jit() not allowed", as twoway refuses it; write jitter() in full (was: taken as jitter()) (WP-31, A3d)
 
 <!-- WP-31 D16b -->
+
+<!-- WP-31 C17b -->
 
 ### Removed
 

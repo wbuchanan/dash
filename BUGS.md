@@ -3987,3 +3987,15 @@
   - Description: GAPS3.md D4, found by WP-31 section 31 (D4 residual): the legend's geometry, clocks, holes and label(#) are drawn, but stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() stay named in the note (textfirst is out of scope, PRD section 7).
   - Suggested fix: WP-31 section 39 (tabs layout legend edges): draw each with Bokeh legend properties or companion annotations, measured against twoway, or document a measured limit (M17).
   - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: alternate on an axis(2) to axis(9) label option is named, not drawn
+  - File Names and Line Numbers: dash_render.py _dash_alt_axes, _dash_finish_secondary_axes
+  - Description: GAPS3.md D6, found by WP-31 section 33 (D6 residual): alternate is drawn on the first y and x axes as a twin axis (_dash_alt_axes), but on axes 2-9 it stays named in the note.
+  - Suggested fix: WP-31 section 35 (second axis moves): draw alternate on every axis twoway draws it on, measured against twoway, in both renderers.
+  - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: lal() is read as dash's lalpha() where twoway reads it as lalign()
+  - File Names and Line Numbers: dash.ado _dash_label_split, the plot parser's lalpha() declaration
+  - Description: GAPS3.md C17, found by WP-31 section 34 (unfiled): twoway takes `lal(center)` as lalign() with rc 0; dash maps lal() .. lalpha() to its own lalpha() (an option twoway does not have), so `lal(center)` is refused or misread.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): give twoway's abbreviation to lalign() and lengthen lalpha()'s minimum so no twoway abbreviation reaches it, measured; document the change.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

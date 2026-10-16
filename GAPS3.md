@@ -467,6 +467,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit pending.
 - **C16 Tracked:** Open (WP-31 section 46).
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit pending.
+- **C17b Tracked:** Open (WP-31 section 41).
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
@@ -480,6 +481,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D4b Tracked:** Open (WP-31 section 39).
 - **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit pending.
 - **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit pending.
+- **D6b Tracked:** Open (WP-31 section 35).
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit pending.
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit pending.
 - **D9 Tracked:** Open (WP-31 section 35).

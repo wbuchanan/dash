@@ -355,3 +355,15 @@ TR-35.6's three MOVE_CORPUS entries and the extended `_own` move comparison.
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D1b)`; close the BUGS.md entry "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn" (Resolution ending `Closes GAPS3 D1 (WP-31, D1b).`), delete its `"D1b":` WP31_OPEN line, rewrite GAPS3.md's `- **D1b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D1b -->` under `### Results that change` with a line ending `(WP-31, D1b)`. dash replaces twoway (D13).
 
+## Addendum (16oct2026, DECISIONS D30): row D6b added to this section
+
+### D6b: alternate on an axis(2) to axis(9) label option is named, not drawn
+
+**Gap.** S33's `_dash_alt_axes` draws `alternate` (rows split by one font height plus altgap()) on axis 1 only; `ylabel(..., axis(2) alternate)` and axes 3-9 stay named.
+
+**Requirement.** Measure twoway's alternate on axis(2) and a third axis (fixture via an extract script), then draw it through the secondary-axis finish (`_dash_finish_secondary_axes`) with the same twin-axis rule, kept after a move (R11 finishers), in both modes; remove the name from the note.
+
+**Fits S35** because S35 owns the secondary axes and `_dash_refinish_axes` in batch 12.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D6b)`; close the BUGS.md entry "alternate on an axis(2) to axis(9) label option is named, not drawn" (Resolution ending `Closes GAPS3 D6 (WP-31, D6b).`), delete its `"D6b":` WP31_OPEN line, rewrite GAPS3.md's `- **D6b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D6b -->` under `### Results that change` with a line ending `(WP-31, D6b)`. dash replaces twoway (D13).
+

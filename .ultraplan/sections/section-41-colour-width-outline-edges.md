@@ -333,3 +333,16 @@ AC-41.1..AC-41.6 one per BR.
 **Tests.** pytest on the renderer colours (both modes) and a `* ==== S41 C4b: ... ====` truth block reading twoway's SVG with cert_svg.do. Fits S41 because S41 reads colours and outlines from the scheme's band styles in batch 14.
 
 **Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/41-C4b-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 C4b)`. The closing task flips the BUGS.md entry "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 C4 (WP-31, C4b).`, deletes the `"C4b":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **C4b Tracked:**` line to `Closed in WP-31, BUGS.md "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured", commit pending.`, and replaces `<!-- WP-31 C4b -->` in place under `### Results that change` with a line ending `(WP-31, C4b)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U41` prefix; drawing comparisons go to a `* ==== S41 C4b: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.
+
+## Addendum (16oct2026, DECISIONS D30): row C17b added to this section
+
+### C17b: lal() is read as dash's lalpha() where twoway reads it as lalign()
+
+**Gap.** dash.ado's plot parser declares `LALpha()`; S34's `_dash_label_split` reads lalign() from `la()`/`lali()` and leaves `lal()` .. `lalpha()` to lalpha. twoway reads `lal()` as lalign() (S34 measured, rc 0).
+
+**Requirement.** Measure which abbreviations of lalign() twoway accepts; make each of them lalign() in dash; raise lalpha()'s minimum abbreviation past them (a dash-only option must not take a twoway abbreviation); test_abbreviations.cscript and the help's synopt underline follow.
+
+**Fits S41** because S41 owns the line colour and opacity translators in batch 14.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C17b)`; close the BUGS.md entry "lal() is read as dash's lalpha() where twoway reads it as lalign()" (Resolution ending `Closes GAPS3 C17 (WP-31, C17b).`), delete its `"C17b":` WP31_OPEN line, rewrite GAPS3.md's `- **C17b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C17b -->` under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, C17b)`. dash replaces twoway (D13).
+
