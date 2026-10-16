@@ -355,9 +355,11 @@ end
 // Flipped (WP-31 C10c): dash draws yaxis(3), so the help's example is
 // degree(8), dash's own bound; yaxis(3), (9) and (10) are answered as
 // twoway answers them.
-_hc2_dash "HC2-01a" 198 `"dash (lpoly mpg weight, degree(8))"'
-_hc2_line_is "HC2-01b" "dash: degree() must be an integer between 0 and 7 (got: 8). dash fits local polynomials up to degree 7."
-_hc2_said "degree()"
+// Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it; the help's
+// example is bin(2000), dash's own bound.
+_hc2_dash "HC2-01a" 198 `"dash (histogram mpg, bin(2000))"'
+_hc2_line_is "HC2-01b" "dash: bin() must be an integer between 1 and 1000 (got: 2000). dash draws up to 1000 bins."
+_hc2_said "bin()"
 _hc2_ok "HC2-01c" `=r(n) == 1' "the refusal is one line"
 _hc2_expect "HC2-01d" 0   `"twoway scatter mpg weight, yaxis(3)"'
 _hc2_expect "HC2-01e" 0   `"twoway scatter mpg weight, yaxis(9)"'
@@ -370,7 +372,8 @@ tempfile hc2f
 local hc2out "`hc2f'_02.html"
 capture erase "`hc2out'"
 // Flipped (WP-31 C10c): yaxis(3) is drawn; degree(8) is refused.
-_hc2_dash "HC2-02a" 198 `"dash lpoly mpg weight, degree(8) saving("`hc2out'")"'
+// Flipped (WP-31 D35): degree(8) is drawn; bin(2000) is refused.
+_hc2_dash "HC2-02a" 198 `"dash histogram mpg, bin(2000) saving("`hc2out'")"'
 capture confirm file "`hc2out'"
 _hc2_ok "HC2-02b" `=_rc != 0' "the refused one-line form wrote no file"
 
@@ -497,8 +500,9 @@ _hc2_dash "HC2-11c" 198 `"dash (scatter mpg weight, ysize(101)) (line mpg weight
 // HC2-12 -- dash's own bounds that say so; twoway takes every value.
 // Flipped (WP-31 C10b): degree 4-7 are drawn; 8, which twoway draws
 // (parsed_values_truth.json degree.8), is dash's bound.
-_hc2_dash "HC2-12a" 198 `"dash lpoly mpg weight, degree(8) name(hc)"'
-_hc2_tail "HC2-12b" degree ". dash fits local polynomials up to degree 7."
+// Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it, with no
+// refusal.
+_hc2_dash "HC2-12a" 0 `"dash lpoly mpg weight, degree(8) name(hc)"'
 _hc2_dash "HC2-12c" 198 `"dash histogram mpg, bin(5000) name(hc)"'
 _hc2_tail "HC2-12d" bin ". dash draws up to 1000 bins."
 _hc2_dash "HC2-12e" 198 `"dash kdensity mpg, n(20000) name(hc)"'

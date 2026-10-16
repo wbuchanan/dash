@@ -141,9 +141,12 @@ class TestBothModes:
 
 class TestTheRule:
     def test_degree_token_is_0_7(self):
+        # Flipped (WP-31 D35): the token was degree=int,0,7 with dash's
+        # "up to degree 7" sentence, wrong because twoway draws every
+        # nonnegative degree (measured: degree(8) to degree(1000)); dash
+        # draws it with a note (test_lpoly_edges.py::TestLpolyHighDegree).
         toks = _plot_tokens()
-        assert "degree=int,0,7" in toks
-        assert not [t for t in toks if t.startswith("degree=int,0,3")]
+        assert "degree=int,0" in toks
+        assert not [t for t in toks if t.startswith("degree=int,0,")]
         src = _validate_value_src()
-        assert "dash fits local polynomials up to degree 7." in src
-        assert "up to degree 3" not in src
+        assert "dash fits local polynomials up to degree" not in src

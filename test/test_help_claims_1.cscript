@@ -70,7 +70,7 @@
 *!   HC1-15  twoway refuses legend(garbage) and xscale(bogus), r(198); dash
 *!           refuses legend(garbage) as twoway does (WP-30 P1.19) and
 *!           xscale(bogus) too (flipped, WP-30 P1.18a).
-*!   HC1-16  Values twoway accepts and dash cannot draw -- degree(8),
+*!   HC1-16  Values twoway accepts and dash cannot draw -- bin(2000) (degree(8) is drawn since WP-31 D35),
 *!           degree(4), bin(2000) -- are refused.  MEASURED FALSE: the help
 *!           said a command copied from a do-file "runs whenever dash draws
 *!           its plot type".
@@ -924,7 +924,8 @@ dash clear
 local bad16 ""
 // Flipped (WP-31 C10b): degree(4) is drawn; degree(8) is dash's bound.
 // Flipped (WP-31 C10c): yaxis(3) is drawn.
-foreach c in "lpoly mpg weight, degree(8)" "histogram mpg, bin(2000)" {
+// Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it.
+foreach c in "histogram mpg, bin(2000)" {
     graph drop _all
     capture twoway `c' nodraw
     local twrc = _rc
@@ -940,7 +941,7 @@ if `"`bad16'"' != "" {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-16"'
 }
-else display as text "HC1-16 PASS: degree(8) and bin(2000) run in twoway and are refused by dash, r(198)"
+else display as text "HC1-16 PASS: bin(2000) runs in twoway and is refused by dash, r(198)"
 dash clear
 
 // ================================================================

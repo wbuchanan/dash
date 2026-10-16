@@ -978,8 +978,9 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w31_run' {
     dash clear
     capture noisily dash lpoly mpg weight, degree(8) name(zu68)
     local drc = _rc
-    _w31_expect U06-01 "(`trc' == 0 & `drc' == 198)" "degree(8): twoway rc `trc', dash rc `drc'"
-    _w31_done U06-01 "lpoly degree(4)-(7) draw with Stata's rule-of-thumb bandwidth, saved and served; degree(8) is dash's bound"
+    // Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it.
+    _w31_expect U06-01 "(`trc' == 0 & `drc' == 0)" "degree(8): twoway rc `trc', dash rc `drc'"
+    _w31_done U06-01 "lpoly degree(4)-(7) draw with Stata's rule-of-thumb bandwidth, saved and served; degree(8) is taken"
 
     // ------------------------------------------------------------
     // U06-02: scatter mpg price weight, mlabel(t*) -- the element is
@@ -12715,6 +12716,58 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 * ==== end S46 ====
 
 python:
+def _u46_said_render(sp, dp, text):
+    """global u46_said 1 when rendering the spec says *text*."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    Macro.setGlobal("u46_said", "1" if any(str(m.message) == text
+                                           for m in w) else "0")
+def _u46_tb_ticks(svg, sp, dp, fmt):
+    """global u46_bad empty when the saved page's %tb tick formatter writes
+    twoway's SVG tick labels at twoway's ticks (0(5)20), and the spec
+    carries the calendar dofb() gives."""
+    import json
+    import os
+    import re
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    t = open(svg, encoding="utf-8").read()
+    labs = [m for m in re.findall(r">([0-9]{2}[a-z]{3}[0-9]{4})<", t)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    bad = []
+    spec = json.load(open(sp, encoding="utf-8"))
+    tab = (spec.get("build_options", {}).get("bcal") or {}).get("u46")
+    if not tab or tab.get("min") != 0 or len(tab.get("td", [])) != 22:
+        bad.append("spec calendar %r" % (tab,))
+    fm = [m for m in r._last_layout_root.references()
+          if type(m).__name__ == "CustomJSTickFormatter"
+          and m.args.get("fmt") == fmt]
+    if not fm:
+        bad.append("no %s tick formatter" % fmt)
+    else:
+        got = js_runner.run_js(
+            dr._DASH_FMT_JS + "\nvar bcal = " + json.dumps(fm[0].args.get("bcal"))
+            + ";\nprocess.stdout.write(JSON.stringify([0, 5, 10, 15, 20].map("
+              "function (v) { return dash_fmt_text(v, %s, '', 'period', bcal); })));"
+            % json.dumps(fmt))
+        if got != labs:
+            bad.append("dash ticks %s, twoway %s" % (got, labs))
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+
+
 def _u46_lpoly_cmp(kernel, bw, n, tol):
     """dash's lpoly smooth on the data in memory (mpg on weight) at
     twoway's grid xg against twoway's yg: global u46_bad empty when the
@@ -12786,6 +12839,37 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
         _w31_expect U46-08 "(`trc' == `drc')" "`c': twoway r(`trc'), dash r(`drc')"
     }
     _w31_done U46-08 "lpoly's sample count, option refusals and pwidth(+800) return twoway's codes"
+
+    // U46-14 (DECISIONS D35): degree(8), (12) and (1000) are drawn as
+    // twoway draws them, rc 0, with one note that the result can differ
+    // from Stata's, and the build stays bounded; degree(abc) and
+    // degree(1.5) are twoway's "option degree() not allowed", r(198).
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+    sysuse auto, clear
+    foreach d in 8 12 1000 {
+        capture twoway lpoly mpg weight, degree(`d') nodraw
+        local trc = _rc
+        dash clear
+        capture dash lpoly mpg weight, degree(`d') name(zu46d)
+        local drc = _rc
+        _w31_expect U46-14 "(`trc' == 0) & (`drc' == 0)" "degree(`d'): twoway r(`trc'), dash r(`drc')"
+        _dash_serve_spec, specpath("`u46d'/deg.json") datapath("`u46d'/degd.json")
+        local t0 = clock(c(current_time), "hms")
+        python: __import__("__main__")._u46_said_render("`u46d'/deg.json", "`u46d'/degd.json", "dash: lpoly degree(`d') is drawn`=cond(`d' > 30, " at degree 30", "")'; above degree 7 the result can differ from Stata's.")
+        _w31_expect U46-14 "(${u46_said} == 1)" "degree(`d'): the note was not given"
+        local el = clock(c(current_time), "hms") - `t0'
+        _w31_expect U46-14 "(`el' < 60000)" "degree(`d'): the build took `el' ms"
+    }
+    foreach d in abc 1.5 {
+        capture twoway lpoly mpg weight, degree(`d') nodraw
+        local trc = _rc
+        dash clear
+        capture dash lpoly mpg weight, degree(`d') name(zu46d)
+        local drc = _rc
+        _w31_expect U46-14 "(`trc' == 198) & (`drc' == 198)" "degree(`d'): twoway r(`trc'), dash r(`drc')"
+    }
+    _w31_done U46-14 "lpoly degree(8) and above are drawn with a note, as twoway takes them"
     display as text "S46 end " c(current_date) " " c(current_time)
 }
 * ==== end S46 ====
@@ -13006,61 +13090,6 @@ def _u46_fmt_cmp(fmt, value, want):
     got = dr._dash_fmt(float(value), fmt)
     Macro.setGlobal("u46_bad", "" if got == want.strip() else
                     "%s of %s: dash %r, Stata %r" % (fmt, value, got, want))
-end
-
-python:
-def _u46_said_render(sp, dp, text):
-    """global u46_said 1 when rendering the spec says *text*."""
-    import warnings
-    import dash_render as dr
-    from sfi import Macro
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        r = dr.DashRenderer(sp, dp)
-        r.render()
-    Macro.setGlobal("u46_said", "1" if any(str(m.message) == text
-                                           for m in w) else "0")
-def _u46_tb_ticks(svg, sp, dp, fmt):
-    """global u46_bad empty when the saved page's %tb tick formatter writes
-    twoway's SVG tick labels at twoway's ticks (0(5)20), and the spec
-    carries the calendar dofb() gives."""
-    import json
-    import os
-    import re
-    import sys
-    import warnings
-    if os.getcwd() not in sys.path:
-        sys.path.insert(0, os.getcwd())
-    import dash_render as dr
-    import js_runner
-    from sfi import Macro
-    t = open(svg, encoding="utf-8").read()
-    labs = [m for m in re.findall(r">([0-9]{2}[a-z]{3}[0-9]{4})<", t)]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        r = dr.DashRenderer(sp, dp)
-        r.render()
-    bad = []
-    spec = json.load(open(sp, encoding="utf-8"))
-    tab = (spec.get("build_options", {}).get("bcal") or {}).get("u46")
-    if not tab or tab.get("min") != 0 or len(tab.get("td", [])) != 22:
-        bad.append("spec calendar %r" % (tab,))
-    fm = [m for m in r._last_layout_root.references()
-          if type(m).__name__ == "CustomJSTickFormatter"
-          and m.args.get("fmt") == fmt]
-    if not fm:
-        bad.append("no %s tick formatter" % fmt)
-    else:
-        got = js_runner.run_js(
-            dr._DASH_FMT_JS + "\nvar bcal = " + json.dumps(fm[0].args.get("bcal"))
-            + ";\nprocess.stdout.write(JSON.stringify([0, 5, 10, 15, 20].map("
-              "function (v) { return dash_fmt_text(v, %s, '', 'period', bcal); })));"
-            % json.dumps(fmt))
-        if got != labs:
-            bad.append("dash ticks %s, twoway %s" % (got, labs))
-    Macro.setGlobal("u46_bad", "; ".join(bad))
-
-
 end
 
 * ==== S46 G7: %d, %tb and xvarformat ====

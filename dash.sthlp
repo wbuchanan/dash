@@ -1069,8 +1069,8 @@ there, is an invalid point.  The literal is read as data and never run.
     exist:
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
-{phang3}{cmd:. dash (lpoly mpg weight, degree(8))}{p_end}
-{phang3}{cmd:dash: degree() must be an integer between 0 and 7 (got: 8). dash fits local polynomials up to degree 7.}{p_end}
+{phang3}{cmd:. dash (histogram mpg, bin(2000))}{p_end}
+{phang3}{cmd:dash: bin() must be an integer between 1 and 1000 (got: 2000). dash draws up to 1000 bins.}{p_end}
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
     {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
@@ -1087,7 +1087,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway} draws it.  Integers:
     {cmd:yaxis()} and {cmd:xaxis()} 1, 2 or both ({cmd:yaxis(1 2)} draws
     the layer on both axes, a list read as {cmd:twoway} reads it);
-    {cmd:degree()} 0 to 7;
+    {cmd:degree()} 0 or more, as {cmd:twoway} takes it (above 7 it is
+    drawn with a note that the result can differ from Stata's, fitted at
+    most at degree 30 and never above the distinct x values less one, and
+    on the saved page kept as built and marked after a filter move);
     {cmd:n()} 1 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
     {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
@@ -1144,8 +1147,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
     the value, and {cmd:dash} refuses it because it could not draw it.
-    Three say so in a second sentence of the message: {cmd:degree()} 0 to 7 (Stata's rule-of-thumb constants stop
-    there), {cmd:bin()} up to 1000, and {cmd:n()} up
+    Two say so in a second sentence of the message: {cmd:bin()} up to
+    1000, and {cmd:n()} up
     to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound).
     The others carry no second sentence: {cmd:jitter()} 0 to 100,
     {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or more, and

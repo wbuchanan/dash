@@ -37,9 +37,14 @@ def _comment():
 
 
 def _degree_bound():
+    # Flipped (WP-31 D35): the rule was degree=int,0,7; it is degree=int,0,
+    # every nonnegative degree as twoway takes it, so the upper end is the
+    # bounded fit's (_LPOLY_DEGREE_FIT_MAX) -- the table now holds pe up
+    # to 31.
     with open(_ADO, encoding="utf-8") as fh:
-        m = re.search(r"\bdegree=int,(\d+),(\d+)\b", fh.read())
-    return int(m.group(1)), int(m.group(2))
+        m = re.search(r"\bdegree=int,(\d+)(?:,(\d+))?\s", fh.read())
+    hi = int(m.group(2)) if m.group(2) else dr._LPOLY_DEGREE_FIT_MAX
+    return int(m.group(1)), hi
 
 
 class _Reads(dict):

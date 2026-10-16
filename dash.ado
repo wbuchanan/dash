@@ -3584,7 +3584,7 @@ program define _dash_option_rules
         yaxis=axes,1,9  xaxis=axes,1,9 ///
         malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
         base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
-        degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
+        degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
@@ -3769,12 +3769,10 @@ program define _dash_validate_value, rclass
     // Where the bound is dash's own and not twoway's, the message says so.
     local extra ""
     // yaxis()/xaxis() take twoway's 1 to 9 (WP-31 C10c): no sentence.
-    if "`opt'" == "degree" {
-        // twoway takes any degree (degree(8) measured, WP-31 C10b); Stata's
-        // rule-of-thumb constants, _LPOLY_ROT_CONSTANTS, stop at 7.
-        local extra ". dash fits local polynomials up to degree 7."
-    }
-    else if "`opt'" == "bin" {
+    // degree() takes every nonnegative integer, as twoway does (WP-31
+    // D35; measured: degree(8) to degree(1000) draw); above 7 the renderer
+    // notes that the result can differ from Stata's.
+    if "`opt'" == "bin" {
         local extra ". dash draws up to 1000 bins."
     }
     else if "`opt'" == "n" & "`ptype'" != "mspline" & `R' > 10000 & `R' < . {
@@ -4380,6 +4378,12 @@ program define _dash_validate_value, rclass
         }
         if "`opt'" == "degree" & `isnum' & `R' < 0 {
             display as error "degree() must be a nonnegative number"
+            exit 198
+        }
+        // degree(abc) and degree(1.5): twoway's integer syntax refuses the
+        // option itself (measured, WP-31 D35).
+        if "`opt'" == "degree" {
+            display as error "option degree() not allowed"
             exit 198
         }
         if "`opt'" == "kernel" {

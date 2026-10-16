@@ -513,8 +513,9 @@ _SAVED_DIGEST = (
     # (77a8a775...); C16 the recast writer in the filter code
     # (b02f3e94...); C11 lpoly's 1e-14 weight threshold in the filter code
     # (8fb420d4...); G7 the Stata writer reads %d as %td (965dbdfe...)
-    # and %tb through its calendar
-    "43f70b014965d02155cbcd234e1afcb7374648b7dc2fd2dee1982fc80bedfb03")
+    # and %tb through its calendar (43f70b01...); D35 the rule-of-thumb
+    # constants to pe 31 in the filter code
+    "87cf8ea2168ada0212c5067f6d7586f478b00886ef9f7168b0b5ea3226afc408")
 
 
 # ===========================================================================

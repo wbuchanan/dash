@@ -487,6 +487,14 @@ _FIT_GRID = 100
 #: biweight bwidth 1 for every power; this is the largest).
 _LPOLY_WEIGHT_EPS = 1e-14
 
+#: lpoly's fitted degree is at most this (WP-31 D35): twoway takes every
+#: nonnegative degree (measured: degree(1000) draws), and dash's exact
+#: rule-of-thumb and invsym arithmetic grow with it -- on auto (74 rows,
+#: 50 points) degree 20's fit takes 0.7 s, 30's 1.9 s, 40's 3.4 s -- so a
+#: larger degree is fitted at 30, and never above the data's distinct x
+#: values less one, past which no further power is kept.
+_LPOLY_DEGREE_FIT_MAX = 30
+
 # lpoly's rule-of-thumb bandwidth (WP-29 P0.7, _lpoly_rot_detail).  Stata
 # computes the kernel constant C_{0,p}(K) of Fan and Gijbels by TRAPEZOID
 # quadrature on a fixed grid per kernel: (half-width, points).
@@ -2252,6 +2260,20 @@ _DASH_STYLE_FILE_MEMO: dict = {}
 _DASH_DOTS_MAX = 2_000_000
 
 
+def _dash_lpoly_degree_frozen(options):
+    """An lpoly or lpolyci layer above degree 7 is not refitted by the
+    saved page (WP-31 D35): its JavaScript twins work in floating point,
+    and from degree 8 the rule of thumb's degree-11-and-up pilot and the
+    local fits drift from the build's exact ones (measured on auto:
+    degree 8's bandwidth 487.21 against 400.94, degree 12's local fit 136
+    mpg apart at bwidth 800), so the layer keeps the build with the stale
+    cue."""
+    try:
+        return int(float(str((options or {}).get("degree", 0) or 0))) > 7
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 def _dash_stale_kind(ptype, options):
     """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
     ``"bins"`` (histogram), ``"grid"`` (kdensity), or None for a layer a
@@ -2279,7 +2301,9 @@ def _dash_stale_kind(ptype, options):
         return None if rng is not None else "grid"
     if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast") \
             and not (t in ("lfitci", "qfitci", "lpolyci", "fpfitci")
-                     and GlyphMapper._fitci_redrawn(options)):
+                     and GlyphMapper._fitci_redrawn(options)) \
+            and not (t in ("lpoly", "lpolyci")
+                     and _dash_lpoly_degree_frozen(options)):
         # A recast fit is drawn by _dash_draw_xy_as, which the page does
         # not refit (GAPS3 C16): it keeps the cue.  So does a ci layer's
         # band or line drawn as another type (WP-31 F1b).
@@ -18411,6 +18435,9 @@ class GlyphMapper:
     def _tag_fit(self, r, source, view, cfg):
         """Hand renderer *r* to the saved page's refit (WP-31 F1a): its own
         source, the config and the rows it is fitted from."""
+        if isinstance(cfg, dict) and cfg.get("frozen_degree"):
+            # WP-31 D35: kept with the stale cue (_dash_lpoly_degree_frozen).
+            return r
         r._dash_agg_source = r.data_source
         r._dash_agg_config = cfg
         r._dash_agg_rows = self._agg_member_ids(source, view)
@@ -19743,6 +19770,23 @@ class GlyphMapper:
         return _lpoly_rot_detail(x, y, w, degree, kernel)["h"]
 
     @staticmethod
+    def _lpoly_degree_note(degree, x, layer, yvar, xvar):
+        """lpoly's and lpolyci's *degree* as fitted (WP-31 D35): above 7
+        the layer is drawn at ``_lpoly_fit_degree`` with one note that the
+        result can differ from Stata's (Stata's rule-of-thumb pilot and
+        local fits there are decided by its own round-off; measured,
+        degree 8's default bandwidth is 484.23 in Stata and 400.94 here).
+        """
+        d = _lpoly_fit_degree(degree, x)
+        if int(degree) > 7:
+            at = "" if d == int(degree) else " at degree %d" % d
+            _dash_warn_once(
+                ("lpoly-degree", layer, str(yvar), str(xvar), int(degree)),
+                "dash: %s degree(%d) is drawn%s; above degree 7 the result "
+                "can differ from Stata's." % (layer, int(degree), at))
+        return d
+
+    @staticmethod
     def _compute_lpoly_fit(
         x: "np.ndarray",
         y: "np.ndarray",
@@ -19939,11 +19983,10 @@ class GlyphMapper:
             )
             bwidth = None
 
-        # degree() 0-7, as dash.ado's rule (WP-31 C10b): the rule of
-        # thumb's constants stop at pe = 7.  The mapper read 0-3 and drew
-        # degree 0 for 4-7 (WP-31 F1d).
+        # degree(): every nonnegative integer, as twoway takes it (WP-31
+        # C10b, D35); bounded for the fit below (_lpoly_fit_degree).
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
-                                        lo=0.0, hi=7.0) or 0.0)
+                                        lo=0.0) or 0.0)
 
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
@@ -19958,6 +20001,7 @@ class GlyphMapper:
         # 200 points and read n() for nothing.
         n_grid, _n_all, _n_user = self._lpoly_grid_plan(options, "lpoly",
                                                         len(x))
+        degree = self._lpoly_degree_note(degree, x, "lpoly", yvar, xvar)
         _keepmiss = _dash_join_spec(options)[1] == "n"
         # The saved page's refit (WP-31 F1d): S10's fit config with lpoly's
         # own options -- bwidth (None: the rule of thumb on the kept rows),
@@ -19971,6 +20015,8 @@ class GlyphMapper:
                     n_dataset=int(_n_all),
                     n_user=(float(_n_user) if _n_user is not None else None),
                     keepmissing=bool(_keepmiss))
+        if _dash_lpoly_degree_frozen(options):
+            _cfg["frozen_degree"] = True
 
         # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
         # except in a by() panel, where twoway draws nothing in silence, rc
@@ -20102,9 +20148,9 @@ class GlyphMapper:
         pwidth = _positive("pwidth")
         lpvar = _positive("lpvar")
 
-        # 0-7 since WP-31 C10b, as map_lpoly reads it.
+        # Every nonnegative integer (WP-31 D35), as map_lpoly reads it.
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
-                                        lo=0.0, hi=7.0) or 0.0)
+                                        lo=0.0) or 0.0)
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
             warnings.warn(
@@ -20117,6 +20163,7 @@ class GlyphMapper:
 
         n_grid, _n_all, _n_user = self._lpoly_grid_plan(options, "lpolyci",
                                                         len(x))
+        degree = self._lpoly_degree_note(degree, x, "lpolyci", yvar, xvar)
         # The saved page's refit (WP-31 F1e, D-22.a): S19's lpoly config
         # with lpolyci's pilot width, var() and level; both renderers are
         # tagged, the line with role "line" and the band with role "band",
@@ -20125,7 +20172,8 @@ class GlyphMapper:
         # fitplot()) is drawn from a source the page does not refit, so
         # neither is tagged and the layer keeps the stale cue.
         _cfg = None
-        if not self._fitci_redrawn(options):
+        if not self._fitci_redrawn(options) and \
+                not _dash_lpoly_degree_frozen(options):
             _cfg = dict(self._fit_agg_config(
                 "lpolyci", xvar, yvar, wtype, w, fig, options,
                 ["x_lp", "y_lp", "y_lower", "y_upper"], n_grid, None),
@@ -26311,6 +26359,32 @@ def _lpoly_rot_constant(kernel: str, pe: int) -> float:
     return (num / den) ** (1.0 / (2 * pe + 3))
 
 
+def _lpoly_fit_degree(degree, x):
+    """The degree lpoly fits for a requested *degree* (WP-31 D35): itself
+    through 7; above it, at most the distinct x values less one and
+    ``_LPOLY_DEGREE_FIT_MAX``."""
+    d = max(0, int(degree))
+    if d <= 7:
+        return d
+    xv = np.asarray(x, dtype=float)
+    nd = int(np.unique(xv[np.isfinite(xv)]).size)
+    return int(max(0, min(d, nd - 1, _LPOLY_DEGREE_FIT_MAX)))
+
+
+def _lpoly_fit_degree_max_pe():
+    """The largest rule-of-thumb degree pe a bounded fit reaches."""
+    d = _LPOLY_DEGREE_FIT_MAX
+    return d if d % 2 else d + 1
+
+
+# WP-31 D35: the constants for pe 9 .. the bounded fit's, computed by the
+# same quadrature as the table's (degree 8 and above).
+for _k in _LPOLY_ROT_GRID:
+    for _pe in range(9, _lpoly_fit_degree_max_pe() + 1, 2):
+        _LPOLY_ROT_CONSTANTS[(_k, _pe)] = _lpoly_rot_constant(_k, _pe)
+del _k, _pe
+
+
 def _stata_invsym_keep(G, order=(), rel=1e-9, floor=1e-19) -> list:
     """The columns Mata's ``invsym(G)`` keeps, decided in exact arithmetic.
 
@@ -26470,7 +26544,7 @@ def _lpoly_rot_detail(x, y, w=None, degree=0, kernel="epanechnikov") -> dict:
             degree = int(degree)
             pe = degree if degree % 2 else degree + 1
             if (n < 2 or y.size != n or w.size != n or degree < 0
-                    or pe > 7):
+                    or (kernel, pe) not in _LPOLY_ROT_CONSTANTS):
                 return out
             if not (np.isfinite(x).all() and np.isfinite(y).all()
                     and np.isfinite(w).all()):
@@ -31242,7 +31316,7 @@ function dash_lpoly_rot(x, y, w, degree, kernel, out) {
     const ww = w ? w : new Array(n).fill(1);
     degree = Math.trunc(degree);
     const pe = (degree % 2) ? degree : degree + 1;
-    if (degree < 0 || pe > 7) return NaN;
+    if (degree < 0 || !((kernel + "|" + pe) in _DASH_LPOLY_ROT_C)) return NaN;
     for (let i = 0; i < n; i++) {
         if (!isFinite(x[i]) || !isFinite(y[i]) || !isFinite(ww[i])) return NaN;
     }
@@ -60726,6 +60800,8 @@ class ServerAppBuilder:
                          # D1d: the outer axes' minor-label pool.
                          "_dash_minor_pool_size",
 
+                         "_dash_lpoly_degree_frozen",
+                         "_lpoly_fit_degree", "_lpoly_fit_degree_max_pe",
                          "_dash_fn_panel_spec",
                          "_dash_rarea_one_bound",
                          # extended missing values .a-.z (WP-31 G1).
@@ -61005,6 +61081,8 @@ class ServerAppBuilder:
                 # WP-31 C11: lpoly's weight threshold, read by
                 # _compute_lpoly_fit and _lpoly_local_wls below.
                 "_LPOLY_WEIGHT_EPS = %r" % (_LPOLY_WEIGHT_EPS,), "",
+                # WP-31 D35: lpoly's fitted-degree bound.
+                "_LPOLY_DEGREE_FIT_MAX = %d" % _LPOLY_DEGREE_FIT_MAX, "",
                 "# The style notes already raised this document, keyed",
                 "# (option, value, what); _dash_reset_notes clears it at the",
                 "# top of make_document, as DashRenderer.render() does.",

@@ -214,3 +214,70 @@ class TestLpolyFiveRows:
         xg, yf = dr.GlyphMapper._compute_lpoly_fit(x, y)
         np.testing.assert_allclose(xg, rec["xg"], rtol=1e-6)
         assert _finite(yf) == _finite(rec["yg"]) == [False] * 5
+
+
+class TestLpolyHighDegree:
+    """DECISIONS D35: lpoly and lpolyci take degree() 8 and above, as
+    twoway does (measured: degree 8 to 1000 draw, rc 0; degree(abc) and
+    degree(1.5) are "option degree() not allowed", r(198); degree(-1)
+    "degree() must be a nonnegative number"), drawn with one note that the
+    result can differ from Stata's.  The fit's degree is bounded
+    (_lpoly_fit_degree) so a huge degree cannot hang the build."""
+
+    def test_the_rule_takes_every_nonnegative_degree(self):
+        ado = _read("dash.ado")
+        assert "degree=int,0  " in ado or "degree=int,0 " in ado
+        assert "degree=int,0,7" not in ado
+        assert "dash fits local polynomials up to degree 7." not in ado
+        assert 'display as error "option degree() not allowed"' in ado
+
+    def test_constants_reach_the_bound(self):
+        top = dr._lpoly_fit_degree_max_pe()
+        for k in ("epanechnikov", "gaussian", "biweight"):
+            for pe in range(9, top + 1, 2):
+                assert dr._LPOLY_ROT_CONSTANTS[(k, pe)] == \
+                    dr._lpoly_rot_constant(k, pe)
+
+    def test_the_fit_degree_is_bounded(self):
+        x = np.arange(10.0)
+        assert dr._lpoly_fit_degree(8, x) == 8
+        assert dr._lpoly_fit_degree(50, x) == 9
+        assert dr._lpoly_fit_degree(10 ** 9, np.arange(500.0)) == \
+            dr._LPOLY_DEGREE_FIT_MAX
+
+    @pytest.mark.parametrize("degree", [8, 12, 1000])
+    def test_draws_with_one_note(self, degree):
+        import time
+        import warnings
+        from bokeh.plotting import figure
+        from bokeh.models import ColumnDataSource
+        gm = dr.GlyphMapper(dr.OptionTranslator(), dr.SchemeParser("s2color"))
+        src = ColumnDataSource({"mpg": _Y, "weight": _X})
+        dr._DASH_NOTED.clear()
+        t = time.time()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            gm.map_lpoly(figure(), src, "mpg", "weight",
+                         {"degree": str(degree)})
+        assert time.time() - t < 20
+        said = [str(m.message) for m in w
+                if "can differ from Stata's" in str(m.message)]
+        assert len(said) == 1, [str(m.message) for m in w]
+
+    @pytest.mark.parametrize("ptype", ["lpoly", "lpolyci"])
+    def test_the_saved_page_keeps_it_with_the_cue(self, ptype):
+        # The JavaScript twins drift from the exact build above degree 7
+        # (measured: degree 8's rule of thumb 487.21 against 400.94), so
+        # the saved page does not refit such a layer and marks it.
+        assert dr._dash_stale_kind(ptype, {"degree": "8"}) == "fit"
+        assert dr._dash_stale_kind(ptype, {"degree": "7"}) is None
+        import test_mode_parity as tp
+        from test_server_layer_defects import plot_for
+        r, _w = tp._standalone(tp._spec(
+            [plot_for(ptype, {"degree": "8", "bwidth": "800"})],
+            {"filter": "foreign, type(dropdown)"}))
+        assert not [g for f in r.figures.values() for g in f.renderers
+                    if (getattr(g, "_dash_agg_config", None) or {})
+                    .get("type") == ptype]
+        tags = [t for v in r.frozen_layer_registry.values() for t, _ in v]
+        assert [t["type"] for t in tags] == [ptype]

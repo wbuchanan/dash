@@ -1269,7 +1269,9 @@ def _spliced(name):
 class TestLpolyTables:
     def test_rot_constants_are_spliced(self):
         t = _spliced("_DASH_LPOLY_ROT_C")
-        assert len(t) == 32
+        # 32 -> 128: WP-31 D35 the constants for pe 9 to 31 (degree 8 to
+        # the bounded fit's 30), eight kernels each.
+        assert len(t) == 128
         assert t == {"%s|%d" % k: v
                      for k, v in dr._LPOLY_ROT_CONSTANTS.items()}
         assert t["epanechnikov|1"] == 0.7688119451983404
