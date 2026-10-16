@@ -702,6 +702,9 @@ COVERAGE = {
         "_dash_axisn_add": ("test_wp31_truth.cscript:U09-3",),
         "_dash_axisn_clear": ("test_wp31_truth.cscript:U09-3",),
         "_dash_axisn_json": ("test_wp31_truth.cscript:U09-3",),
+        # WP-31 S35 (C10e): axes 3-9's t options through the fold.
+        "_dash_axisn_tf_in": ("test_wp31_truth.cscript:U35-9",),
+        "_dash_axisn_tf_out": ("test_wp31_truth.cscript:U35-9",),
         # direct and e2e: TP-15 calls each on its own, and holds dash's
         # answer to log, an upper-case option, a plot option after the
         # comma and two kernels to twoway's, asked in the run.

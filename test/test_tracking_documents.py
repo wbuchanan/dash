@@ -2028,7 +2028,6 @@ WP31_OPEN = {
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
     "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
-    "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
     "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
     "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",

@@ -1620,14 +1620,16 @@ def _dash_mark_date_axes(fig, x_kind, y_kind, x2_kind=None, y2_kind=None):
 
 def _dash_axis_date_kind(fig, axis):
     """The date kind *fig*'s ``"x"``, ``"y"``, ``"x2"`` or ``"y2"`` axis
-    was drawn with; None for any other name."""
+    was drawn with, or an axis 3-9's (``"y3"`` .. ``"x9"``, WP-31 C10e);
+    None for any other name."""
     if axis in ("x", "y"):
         kinds = getattr(fig, "_dash_date_kinds", None) or (None, None)
         return kinds[0] if axis == "x" else kinds[1]
     if axis in ("x2", "y2"):
         kinds = getattr(fig, "_dash_date_kinds2", None) or (None, None)
         return kinds[0] if axis == "x2" else kinds[1]
-    return None
+    # Axes 3-9 (WP-31 C10e): marked by _dash_add_secondary_axes.
+    return (getattr(fig, "_dash_date_kinds_n", None) or {}).get(axis)
 
 
 def _dash_axis_positions(values, kind):
@@ -39861,6 +39863,26 @@ def _dash_axis_layer_values(frame, plots, letter, date_vars=None):
     return pd.concat(out, ignore_index=True).dropna()
 
 
+def _dash_extra_date_axes(plots, date_vars, formats, start=2):
+    """``{name: (variable, format, kind)}`` for every axis *start*..9 of x
+    and y whose layers are dates of one kind (WP-31 C10e): the rule of
+    :func:`_dash_figure_date_kind` for each axis number, the variable
+    :func:`_dash_axis_vars` names for it and its display format (the
+    kind's default when it has none).  Both renderers pass it to
+    :func:`_dash_add_secondary_axes` as ``date_axes``."""
+    out = {}
+    if not date_vars:
+        return out
+    for n in range(int(start), 10):
+        xa, ya = _dash_axis_vars(plots, axis_no=n)
+        for letter, key, v in (("x", "xvar", xa), ("y", "yvar", ya)):
+            k = _dash_figure_date_kind(plots, key, v, date_vars, n)
+            if k:
+                out[f"{letter}{n}"] = (v, _dash_date_fmt(
+                    (formats or {}).get(v), k), k)
+    return out
+
+
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
                              key="", var_labels=None, scheme=None,
                              date_axes=None, fmt_cache=None):
@@ -39916,6 +39938,11 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     from bokeh.models import DatetimeAxis, LinearAxis, LogAxis, Range1d
     has = {}
     made = []
+    # WP-31 C10e: the date kind of each axis 3-9 (a third member of its
+    # date_axes record), for _dash_axis_date_kind and every reader of it.
+    fig._dash_date_kinds_n = {
+        nm: rec[2] for nm, rec in (date_axes or {}).items()
+        if isinstance(rec, tuple) and len(rec) > 2 and nm[1:] not in ("", "2")}
     for axis_key, var_key, rng_attr, n, kw, main_attr in (
             ("yaxis", "yvar", "extra_y_ranges", "y", "y_range_name",
              "y_range"),
@@ -53925,7 +53952,10 @@ class DashRenderer:
             date_axes={nm: (v, _dash_date_fmt(
                 getattr(self, "formats", {}).get(v), k))
                 for nm, v, k in (("y2", _ya2, _y2_date),
-                                 ("x2", _xa2, _x2_date)) if k},
+                                 ("x2", _xa2, _x2_date)) if k}
+            # WP-31 C10e: axes 3-9 of dates too.
+            | _dash_extra_date_axes(plots, getattr(self, "date_vars", None),
+                                    getattr(self, "formats", {}), 3),
             fmt_cache=getattr(self, "_fmt_models", None))
 
         # xscale(range())/yscale(range()) and reverse, through the helper
@@ -57567,6 +57597,8 @@ class ServerAppBuilder:
                          "_dash_dots_plan",
                          # minor labels on an outer axis (WP-31 D1b).
                          "_dash_axis_innermost",
+                         # axes 3-9 of dates (WP-31 C10e).
+                         "_dash_extra_date_axes",
                          # weighted marker sizes (WP-31 C9).
                          "_dash_weighted_sizes", "_dash_rescale_wsizes",
                          # colorvar()'s colour rule, clegend() and
@@ -59899,7 +59931,10 @@ class ServerAppBuilder:
             "                                     _FORMATS.get(_v), _k))",
             "                                     for _nm, _v, _k in (",
             "                                         ('y2', _ya2, _y2_date),",
-            "                                         ('x2', _xa2, _x2_date)) if _k},",
+            "                                         ('x2', _xa2, _x2_date)) if _k}",
+            "                                 # WP-31 C10e: axes 3-9 of dates too.",
+            "                                 | _dash_extra_date_axes(plots, _date_vars,",
+            "                                                         _FORMATS, 3),",
             "                                 fmt_cache=_fmt_cache)",
             "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
             "        # the user's size() and color() win; the rest named.",

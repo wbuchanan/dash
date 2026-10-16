@@ -1,0 +1,1481 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "e49bf64b528996a9231bcc73f08e39ce72459a7d",
+  "extracted": "16 Oct 2026 04:24:54",
+  "source": "scripts/extract_axisn_date_truth.do",
+  "stata_version": "19.5"
+ },
+ "x3": {
+  "date": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "BX3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      2334,
+      [
+       "BX3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tlabel": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01feb2001 01jun2001 01oct2001"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "BX3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01feb2001",
+       "01jun2001",
+       "01oct2001"
+      ]
+     ],
+     [
+      2334,
+      [
+       "BX3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14977.0,
+     15340.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tline": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "BX3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      2334,
+      [
+       "BX3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tmlabel2": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 1,
+     "side": "above",
+     "title": "01apr2001 01oct2001"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "above",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "above",
+     "title": "BX2"
+    }
+   ],
+   "columns": {
+    "above": [
+     [
+      333,
+      [
+       "01apr2001",
+       "01oct2001"
+      ]
+     ],
+     [
+      301,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      191,
+      [
+       "BX2"
+      ]
+     ]
+    ],
+    "below": [
+     [
+      2364,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      2474,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tmtick2": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 1,
+     "side": "above",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "above",
+     "title": "BX2"
+    }
+   ],
+   "columns": {
+    "above": [
+     [
+      301,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      191,
+      [
+       "BX2"
+      ]
+     ]
+    ],
+    "below": [
+     [
+      2364,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      2474,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tscale": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "BX3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      2334,
+      [
+       "BX3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14610.0,
+     15705.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "ttick": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "BX3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      2334,
+      [
+       "BX3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "ttitle": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [
+      "5,000",
+      "10,000",
+      "15,000",
+      "20,000",
+      "25,000"
+     ],
+     "order": 2,
+     "side": "below",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "below",
+     "title": "TT3"
+    },
+    {
+     "labels": [],
+     "order": 5,
+     "side": "below",
+     "title": "Closing price Closing price"
+    },
+    {
+     "labels": [],
+     "order": 6,
+     "side": "below",
+     "title": "Closing price"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      1644,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      1754,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      1934,
+      [
+       "5,000",
+       "10,000",
+       "15,000",
+       "20,000",
+       "25,000"
+      ]
+     ],
+     [
+      2044,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2224,
+      [
+       "01jan2001",
+       "01apr2001",
+       "01jul2001",
+       "01oct2001",
+       "01jan2002"
+      ]
+     ],
+     [
+      2334,
+      [
+       "TT3"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Closing price"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      301,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      191,
+      [
+       "Closing price"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14976.0,
+     15341.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   }
+  },
+  "tunused": {
+   "message": "tlabels(01feb2001, axis(3)) not allowed, xaxis3 does not exist",
+   "rc": 198
+  }
+ },
+ "y3": {
+  "date": {
+   "axes": [
+    {
+     "labels": [
+      "1400",
+      "1300",
+      "1200",
+      "1100",
+      "1000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Closing price"
+    },
+    {
+     "labels": [
+      "25,000",
+      "20,000",
+      "15,000",
+      "10,000",
+      "5,000"
+     ],
+     "order": 2,
+     "side": "left",
+     "title": "Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "left",
+     "title": "01jan2002 01oct2001 01jul2001 01apr2001 01jan2001"
+    },
+    {
+     "labels": [],
+     "order": 4,
+     "side": "left",
+     "title": "AX3"
+    },
+    {
+     "labels": [
+      "1000",
+      "1100",
+      "1200",
+      "1300",
+      "1400"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Opening price"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Closing price Volume (thousands)"
+    },
+    {
+     "labels": [],
+     "order": 3,
+     "side": "below",
+     "title": "Date"
+    }
+   ],
+   "columns": {
+    "above": [],
+    "below": [
+     [
+      2224,
+      [
+       "1000",
+       "1100",
+       "1200",
+       "1300",
+       "1400"
+      ]
+     ],
+     [
+      2334,
+      [
+       "Opening price"
+      ]
+     ],
+     [
+      2546,
+      [
+       "Closing price",
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      2686,
+      [
+       "Date"
+      ]
+     ]
+    ],
+    "left": [
+     [
+      881,
+      [
+       "1400",
+       "1300",
+       "1200",
+       "1100",
+       "1000"
+      ]
+     ],
+     [
+      771,
+      [
+       "Closing price"
+      ]
+     ],
+     [
+      591,
+      [
+       "25,000",
+       "20,000",
+       "15,000",
+       "10,000",
+       "5,000"
+      ]
+     ],
+     [
+      481,
+      [
+       "Volume (thousands)"
+      ]
+     ],
+     [
+      301,
+      [
+       "01jan2002",
+       "01oct2001",
+       "01jul2001",
+       "01apr2001",
+       "01jan2001"
+      ]
+     ],
+     [
+      191,
+      [
+       "AX3"
+      ]
+     ]
+    ],
+    "right": []
+   },
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     965.7999877929688,
+     1400.0
+    ],
+    "2": [
+     4103.0,
+     25000.0
+    ],
+    "3": [
+     14976.0,
+     15341.0
+    ]
+   }
+  }
+ }
+}

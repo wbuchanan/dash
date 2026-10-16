@@ -463,7 +463,7 @@ program define _dash_require_mata
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
-        _dash_axisn_clear _dash_axisn_json ///
+        _dash_axisn_clear _dash_axisn_json _dash_axisn_tf_in _dash_axisn_tf_out ///
         _dash_axreq_accept_line _dash_reflines_positions ///
         _dash_axbound_list ///
         _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
@@ -8223,7 +8223,7 @@ program define _dash_plot
     // The y label, tick and scale options go over too, for the date
     // literals twoway refuses there (WP-31 A8).
     foreach _tk in name xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
-            xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ttitle ///
+            xtick2 xmlabel2 xmtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ttitle ///
             tline tlabel2 ttick2 tline2 tscale2 ttitle2 ///
             ylabel ytick ymlabel ymtick ylabel2 ytick2 yscale yscale2 {
         mata: st_global("dash__tf_`_tk'", st_local("g_`_tk'"))
@@ -8233,7 +8233,7 @@ program define _dash_plot
     local _tf_rc = _rc
     if !`_tf_rc' {
         foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
-                xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ///
+                xtick2 xmlabel2 xmtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ///
                 ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 ///
                 ylabel ytick ymlabel ymtick ylabel2 ytick2 yscale yscale2 {
             mata: st_local("g_`_tk'", st_global("dash__tf_`_tk'"))
@@ -8848,8 +8848,22 @@ program define _dash_taxis_fold
     // base and takes tlabel2() .. ttitle2(), axis(2)'s routed forms.
     local _tf_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
     local _tf_unit ""
-    forvalues a = 1/2 {
-        local s2 = cond(`a' == 2, "2", "")
+    // WP-31 C10e: axes 3-9 (and axis 2's tmlabel()/tmtick(), which no
+    // dash key holds) come from the graph's axisn record as globals
+    // dash__tf_<x|t><family>_<n>, are folded as axes 1 and 2 are, and go
+    // back as its x rows (_dash_axisn_tf_out, _dash_axisn_tf_in).
+    mata: _dash_axisn_tf_out()
+    forvalues a = 1/9 {
+        local s2 = cond(`a' == 1, "", cond(`a' == 2, "2", "_`a'"))
+        if `a' >= 3 {
+            // An axis no layer and no option names is skipped.
+            local _tf_any 0
+            foreach s of local _tf_segs {
+                tokenize "`s'", parse(":")
+                if "`5'" == "`a'" local _tf_any 1
+            }
+            if !`_tf_any' continue
+        }
         local _tf_fmt ""
         local _tf_var ""
         local _tf_seen 0
@@ -8865,13 +8879,11 @@ program define _dash_taxis_fold
         }
         foreach ts in label mlabel tick mtick {
             local _tf_f_`ts' : copy local _tf_fmt
-            if `a' == 2 & inlist("`ts'", "mlabel", "mtick") continue
             mata: st_local("_tf_x", _dash_taxis_fmt(st_global("dash__tf_x`ts'`s2'")))
             if `: length local _tf_x' local _tf_f_`ts' : copy local _tf_x
         }
         local _tf_used 0
         local _tf_fams "scale label mlabel tick mtick title line"
-        if `a' == 2 local _tf_fams "scale label tick title line"
         foreach fam of local _tf_fams {
             mata: st_local("_td_in", st_global("dash__tf_t`fam'`s2'"))
             if !`: length local _td_in' continue
@@ -8934,6 +8946,7 @@ program define _dash_taxis_fold
             local _tf_unit `_tf_unit' `a':`_tf_var':`_tf_u1'
         }
     }
+    mata: _dash_axisn_tf_in()
     if "`_tf_unit'" != "" global dash__tunit "`: list retokenize _tf_unit'"
 end
 

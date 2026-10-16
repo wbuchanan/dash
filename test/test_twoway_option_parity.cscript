@@ -2944,9 +2944,13 @@ local out`n' `"ymtick2(1 2)"'
 // for byte" was wrong once twoway was measured drawing them
 // (axisn_minor_truth.json m3.tmlabel, m3.mtick): the t option's mlabel on
 // axis 2 is the x one's, xmlabel2(), and an axis-3 mtick joins "axisn".
+// Flipped (WP-31 C10e): xmlabel2(1) was wrong once its dates are read: a
+// t option's mlabel on axis 2 is a "t" row, which _dash_taxis_fold reads
+// in the axis's unit and joins to xmlabel2() (axisn_date_truth.json
+// x3.tmlabel2); the route leaves no text and the axisn object no t row.
 local ++n
 local in`n'  `"tmlabel(1, axis(2))"'
-local out`n' `"xmlabel2(1)"'
+local out`n' `""'
 local ++n
 local in`n'  `"ymtick(1, axis(3))"'
 local out`n' `""'

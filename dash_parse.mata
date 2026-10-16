@@ -532,6 +532,8 @@
 *!       that _dash_route_axis2 took out of the option text (WP-31 C10c).
 *!
 *!   _dash_axisn_json()
+*!   _dash_axisn_tf_out(), _dash_axisn_tf_in()  (WP-31 C10e: axes 3-9's x
+*!       and t rows to and from _dash_taxis_fold's globals)
 *!       The graph's "axisn" object, {"y3":{"label":"...",...},...}: one
 *!       entry per letter and axis, one key per family (title label tick
 *!       line scale), copies merged as the axis-2 key merges them; "" when
@@ -7716,13 +7718,16 @@ string scalar _dash_route_axis2(string scalar opts)
         // A t option's mlabel or mtick on axis 2 is the x one's (WP-31
         // D1b, measured: tmlabel(##2, axis(2)) draws as xmlabel(##2,
         // axis(2)), axisn_minor_truth.json m3.tmlabel); dash has no t key
-        // for them, so a date literal in it is named, not read.
-        else if (n == 2 & fam[r, 6] != "") {
-            dn = (d == "t" & anyof(("mlabel", "mtick"), fam[r, 1]) ? "x" : d) +
-                 fam[r, 6]
+        // for them, so it is recorded as a "t" row, whose dates
+        // _dash_taxis_fold reads (WP-31 C10e) before it joins xmlabel2().
+        else if (n == 2 & fam[r, 6] != "" & !(d == "t" &
+                 anyof(("mlabel", "mtick"), fam[r, 1]))) {
+            dn = d + fam[r, 6]
         }
-        // Axes 3-9 (WP-31 C10c), their mlabel and mtick too (WP-31 D1b).
-        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t") {
+        // Axes 3-9 (WP-31 C10c), their mlabel and mtick too (WP-31 D1b),
+        // and the t options there (WP-31 C10e: "t" rows, folded onto the
+        // x axis by _dash_taxis_fold).
+        else if ((n >= 3 & n <= 9 & fam[r, 6] != "") | (n == 2 & d == "t")) {
             // Axes three to nine (WP-31 C10c): the option leaves the text
             // and is recorded for the graph's "axisn" object
             // (_dash_axisn_json), its value formed as an axis-2 copy's.
@@ -7943,6 +7948,55 @@ void _dash_axisn_add(string scalar d, real scalar n, string scalar family,
     _dash_axisn = _dash_axisn \ (d, strofreal(n), family, value)
 }
 
+// _dash_axisn_tf_out() and _dash_axisn_tf_in() (WP-31 C10e): the x and t
+// rows of axes 3-9, and the t mlabel/mtick rows of axis 2, as the globals
+// _dash_taxis_fold reads and writes -- dash__tf_<x|t><family>_<n> (axis 2:
+// dash__tf_t<family>2) -- copies merged in the order typed.  _tf_out moves
+// them out of the matrix (every "t" row and the x rows of axes 3-9);
+// _tf_in puts the folded x values back as one row per axis and family.
+// Values are the user's text, moved by value; nothing here is run.
+void _dash_axisn_tf_out()
+{
+    external string matrix _dash_axisn
+    string matrix keep
+    string scalar g
+    real scalar   i, n
+
+    if (rows(_dash_axisn) == 0 | cols(_dash_axisn) != 4) return
+    keep = J(0, 4, "")
+    for (i = 1; i <= rows(_dash_axisn); i++) {
+        n = strtoreal(_dash_axisn[i, 2])
+        if (_dash_axisn[i, 1] == "t" | (_dash_axisn[i, 1] == "x" & n >= 3)) {
+            g = "dash__tf_" + _dash_axisn[i, 1] + _dash_axisn[i, 3] +
+                (n == 2 ? "2" : "_" + _dash_axisn[i, 2])
+            st_global(g, _dash_rep_merge("x" + _dash_axisn[i, 3] + "2",
+                                         st_global(g), _dash_axisn[i, 4]))
+        }
+        else keep = keep \ _dash_axisn[i, .]
+    }
+    _dash_axisn = keep
+}
+
+void _dash_axisn_tf_in()
+{
+    external string matrix _dash_axisn
+    string rowvector families
+    string scalar    g, v
+    real scalar      j, n
+
+    if (rows(_dash_axisn) == 0 | cols(_dash_axisn) != 4) _dash_axisn = J(0, 4, "")
+    families = ("title", "label", "tick", "line", "scale", "mlabel", "mtick")
+    for (n = 3; n <= 9; n++) {
+        for (j = 1; j <= cols(families); j++) {
+            g = "dash__tf_x" + families[j] + "_" + strofreal(n)
+            v = st_global(g)
+            if (v != "") _dash_axisn = _dash_axisn \ ("x", strofreal(n), families[j], v)
+            st_global(g, "")
+            st_global("dash__tf_t" + families[j] + "_" + strofreal(n), "")
+        }
+    }
+}
+
 string scalar _dash_axisn_json()
 {
     external string matrix _dash_axisn
@@ -7954,6 +8008,8 @@ string scalar _dash_axisn_json()
     families = ("title", "label", "tick", "line", "scale", "mlabel", "mtick")
     names = J(1, 0, "")
     for (i = 1; i <= rows(_dash_axisn); i++) {
+        // A "t" row not folded (WP-31 C10e) is no axis of the graph's.
+        if (!anyof(("x", "y"), _dash_axisn[i, 1])) continue
         name = _dash_axisn[i, 1] + _dash_axisn[i, 2]
         if (!anyof(names, name)) names = names, name
     }

@@ -489,7 +489,7 @@ and now matches Stata.
 
 <!-- WP-31 C10d -->
 
-<!-- WP-31 C10e -->
+- dash (scatter close open) (scatter close volume, xaxis(2)) (scatter close date, xaxis(3)) on sysuse sp500: axis 3 labelled 14,976 to 15,341 -> 01jan2001 to 01jan2002, as twoway; tlabel(01feb2001 01jun2001 01oct2001, axis(3)), ttitle(), ttick(), tscale() and tline() with axis(3) refused (r(198), r(121)) -> drawn on axis 3, and tmlabel(01apr2001 01oct2001, axis(2)) named -> drawn at those dates (WP-31, C10e)
 
 <!-- WP-31 C4b -->
 

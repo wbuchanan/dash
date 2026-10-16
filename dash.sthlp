@@ -4325,9 +4325,8 @@ axis ({cmd:dash}'s own spellings are {opt xmtick2()}, {opt ymtick2()},
 {cmd:axis(9)} on that axis, each label beside its own axis; labels placed
 by {cmd:##}{it:N} follow every filter move on every axis, in the saved
 page and the served app.  {opt tmtick()} and {opt tmlabel()} are drawn as
-{cmd:xmtick()} and {cmd:xmlabel()}, on axis 2 too ({it:Difference from}
-{it:twoway:} a date literal in {cmd:tmlabel(..., axis(2))} is named, not
-read).  An axis outside another on its side draws at most twice the
+{cmd:xmtick()} and {cmd:xmlabel()}, on axis 2 too, their dates read in
+the axis's unit.  An axis outside another on its side draws at most twice the
 {cmd:##}{it:N} labels it was built with, plus a few, after a move.
 
 {pstd}
@@ -4365,16 +4364,17 @@ app, and a sideways ({cmd:horizontal}) layer on {cmd:yaxis(2)} titles its
 axes as {cmd:twoway} titles them.
 A layer naming several axes ({cmd:yaxis(2 3)}) ties them into one scale
 with every layer on any of them, as {cmd:twoway} does, and every layer on
-one axis 3 to 9 alone is drawn on one left (bottom) axis.  {it:Difference}
-{it:from twoway:} an axis 3 to 9 of a date variable is labelled with its
-numbers.
+one axis 3 to 9 alone is drawn on one left (bottom) axis.  An axis 3 to
+9 whose layers are dates of one kind is a date axis, labelled in its
+variable's date format, as axes 1 and 2 are.
 
 {pstd}
 As in {cmd:twoway}, the sub-option {cmd:axis(2)} puts {cmd:ytitle()},
 {cmd:ylabel()}, {cmd:ytick()}, {cmd:yline()} and {cmd:yscale()} -- and the
 x forms -- on the second axis, and {cmd:axis(1)}, or no {cmd:axis()}, on the
-first, and {cmd:axis(3)} to {cmd:axis(9)} on that axis (the {it:t}
-forms, {cmd:tlabel()} and the rest, reach axes 1 and 2 only):
+first, and {cmd:axis(3)} to {cmd:axis(9)} on that axis, the {it:t}
+forms ({cmd:tlabel()} and the rest) included, their dates read in that
+axis's unit:
 {cmd:ylabel(5000 10000, axis(2))} labels the right-hand axis,
 {cmd:yscale(log axis(2))} makes it a log axis, {cmd:yline(5000, axis(2))}
 is drawn on its scale and {cmd:ytick(7500, axis(2))} ticks it, in the saved

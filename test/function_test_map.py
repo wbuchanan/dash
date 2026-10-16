@@ -496,6 +496,8 @@ FUNCTIONS = {
  '_dash_dots_plan': 'test/test_saved_dot_rows.py::TestThePlan::test_dots_plan_refuses_another_axis',
  # WP-31 S35 (D1b)
  '_dash_axis_innermost': 'test/test_axisn_minor.py::TestTheInnermostAxis::test_sides',
+ # WP-31 S35 (C10e)
+ '_dash_extra_date_axes': 'test/test_axisn_dates.py::TestTheHelper::test_extra_date_axes',
  '_dash_natscale_ticks': 'test/test_natscale.py::TestTheRuleAgainstStata::test_the_reported_case',
  '_dash_count_ticker': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',
  '_dash_count_of': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',
