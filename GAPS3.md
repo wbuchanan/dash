@@ -443,7 +443,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
 - **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit 660be06.
-- **C4b Tracked:** Closed in WP-31, BUGS.md "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured", commit pending.
+- **C4b Tracked:** Closed in WP-31, BUGS.md "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured", commit 368e38a.
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Closed in WP-31, BUGS.md "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn", commit b2af9fc.
 - **C6b Tracked:** Closed in WP-31, BUGS.md "mband and mspline over data with missing y draw fewer vertices than twoway", commit 6dd0c80.
@@ -467,7 +467,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit d5556ea.
 - **C16 Tracked:** Open (WP-31 section 46).
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
-- **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit pending.
+- **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit 90ca733.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
@@ -494,7 +494,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit 880accb.
 - **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit 397d1a3.
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
-- **D13b Tracked:** Closed in WP-31, BUGS.md "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them", commit pending.
+- **D13b Tracked:** Closed in WP-31, BUGS.md "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them", commit 47e2f82.
 - **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit bb9f4a9.
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit 398149e.
@@ -502,17 +502,17 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit ab33ff3.
 - **E2 Tracked:** Closed in WP-31, BUGS.md "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending", commit 947c9ca.
 - **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.
-- **E4 Tracked:** Closed in WP-31, BUGS.md "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element", commit pending.
-- **E5 Tracked:** Closed in WP-31, BUGS.md "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)", commit pending.
+- **E4 Tracked:** Closed in WP-31, BUGS.md "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element", commit 0e81c30.
+- **E5 Tracked:** Closed in WP-31, BUGS.md "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)", commit 3576ec2.
 - **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit db38355.
-- **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit pending.
-- **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit pending.
-- **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit pending.
+- **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit 5bc828a.
+- **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit 1a2c566.
+- **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
 - **E10 Tracked:** Open (WP-31 section 44).
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Open (WP-31 section 44).
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
-- **E13 Tracked:** Closed in WP-31, BUGS.md "_SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified", commit pending.
+- **E13 Tracked:** Closed in WP-31, BUGS.md "_SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified", commit e1e0207.
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)", commit 55ee2e5.
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
@@ -525,11 +525,11 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F3 Tracked:** Open (WP-31 section 47).
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
 - **F5 Tracked:** Open (WP-31 section 46).
-- **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit pending.
-- **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit pending.
-- **G3 Tracked:** Partly closed in WP-31 (section 43, commit pending): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
-- **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit pending.
-- **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit pending.
+- **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
+- **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
+- **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
+- **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.
+- **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
 - **G6 Tracked:** Open (WP-31 section 46).
 - **G7 Tracked:** Open (WP-31 section 46).
 - **H1 Tracked:** Open (WP-31 section 52).
