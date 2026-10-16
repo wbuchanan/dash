@@ -758,36 +758,37 @@ dash clear
 display "U26-9 PASS: contour's 23 refusals and acceptances match twoway's rc and first line"
 
 // ================================================================
-// U26-12 -- WP-31 B4b: a bare "string" beside a contour option is kept as
-// typed and named, as it is on every other plot type, and the options
-// after it are read.  twoway refuses a bare string after the comma
-// ("quotes unbalanced", r(198), measured 15oct2026 on contour, contourline
-// and scatter alike); dash names it in its note instead (JSE-69).  The
-// contour options' own -syntax- took the quotes off it, so `"abc" name()'
-// was named whole and name() dropped (b1810e4 .. 9786da4).
+// U26-12 -- WP-31 B4b: a bare "string" beside a contour option is refused
+// as twoway refuses it ("quotes unbalanced", r(198), measured 15oct2026 on
+// contour, contourline and scatter alike), and nothing is registered.
+// Flipped (WP-31 D16b): dash's catch-all named it in its note and read the
+// options after it; the contour options' own -syntax- took the quotes off
+// it, so `"abc" name()' was named whole and name() dropped (b1810e4 ..
+// 9786da4).
 // ================================================================
 sysuse auto, clear
 local bad12 ""
 foreach c in `"contour mpg weight length, levels(5) "abc" name(u2612a)"' `"contourline mpg weight length, "x y" levels(3) name(u2612b)"' {
     dash clear
+    capture twoway `c'
+    local trc12 = _rc
     _p1a_logrun `"dash `c'"'
     local rc12 = r(rc)
     local lg12 "`r(log)'"
     local g12 = cond(strpos(`"`c'"', "u2612a"), "u2612a", "u2612b")
-    local w12 = cond("`g12'" == "u2612a", "abc()", "x y()")
-    cert_file_has "`lg12'", needle("ignoring unsupported option(s): `w12'")
+    cert_file_has "`lg12'", needle("quotes unbalanced")
     local f12 = r(found)
-    cert_file_has "`lg12'", needle("name()")
-    if `rc12' | !`f12' | r(found) | !strpos(" ${dash_graph_registry} ", " `g12' ") {
-        local bad12 `"`bad12' [`g12': rc `rc12', named `f12', name() named `r(found)', registry ${dash_graph_registry}]"'
+    if `rc12' != 198 | `trc12' != 198 | !`f12' | strpos(" ${dash_graph_registry} ", " `g12' ") {
+        local bad12 `"`bad12' [`g12': rc `rc12', twoway `trc12', named `f12', registry ${dash_graph_registry}]"'
     }
 }
+capture graph drop _all
 dash clear
 if `"`bad12'"' != "" {
     display as error `"U26-12 FAIL:`bad12'"'
     exit 9
 }
-display "U26-12 PASS: a bare string beside a contour option is named as typed and the options after it are read"
+display "U26-12 PASS: a bare string beside a contour option is refused as twoway refuses it"
 
 // ================================================================
 // P1A-60..67 -- scatteri and pci read their immediate values as twoway

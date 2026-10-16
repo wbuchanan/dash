@@ -3852,8 +3852,10 @@ capture noisily dash scatteri 20 3000 "s\$J6_G", name(jg69g)
 local jg_v7 = _rc
 capture noisily dash scatter mpg weight, mcolor("\$J6_G") name(jg69h)
 local jg_v8 = _rc
-// A bare string after the comma is kept by dash's catch-all and named in
-// the note, as typed, never as the value J6_G holds.
+// Flipped (WP-31 D16b): a bare string after the comma is refused as
+// twoway refuses it, in its words, r(198), where dash's catch-all
+// kept it and named it in the note; the text is never expanded (the
+// global's value is not shown) and nothing is stored.
 capture noisily dash scatter mpg weight, "\$J6_G" name(jg69i)
 local jg_v9 = _rc
 // A weight expression is refused as one dash cannot evaluate, and shown as
@@ -3865,7 +3867,7 @@ local jg_v10 = _rc
 capture noisily dash histogram mpg, mlabel("\`jgnone'") name(jg69k)
 local jg_v11 = _rc
 _jg_log_off
-cert_log_has "`jg_l69'", needle("J6_G()")
+cert_log_has "`jg_l69'", needle("quotes unbalanced")
 local jg_w6 = r(count)
 cert_log_has "`jg_l69'", needle("Audi 5000")
 local jg_w7 = r(count)
@@ -3915,12 +3917,12 @@ capture confirm file "`jg_sent'"
 local jg_ran = (_rc == 0)
 display as text "  values -- rc: `jg_v1' `jg_v2' `jg_v3' `jg_v4' `jg_v5' `jg_v6' `jg_v7' `jg_v8' `jg_v9' `jg_v10' `jg_v11'  in dash's words: `jg_w1' `jg_w2' `jg_w4' `jg_w5'  shown as typed: `jg_w3' `jg_w6' `jg_w8'  the global's value shown: `jg_w7'  stored as typed: `jg_ok'  registry: [`jg_reg']  filewrite ran: `jg_ran'"
 assert `jg_v1' == 0 & `jg_v2' == 0 & `jg_v3' == 198 & `jg_v4' == 111
-assert `jg_v5' == 0 & `jg_v6' == 198 & `jg_v7' == 0 & `jg_v8' == 0 & `jg_v9' == 0
+assert `jg_v5' == 0 & `jg_v6' == 198 & `jg_v7' == 0 & `jg_v8' == 0 & `jg_v9' == 198
 assert `jg_v10' == 198 & `jg_v11' == 0
 assert `jg_w1' == 1 & `jg_w2' == 1 & `jg_w4' == 1 & `jg_w5' == 1 & `jg_w3' == 2
 assert `jg_w6' == 1 & `jg_w7' == 0 & `jg_w8' == 1
 assert "`jg_ok'" == "11111"
-assert "`jg_reg'" == "jg69a jg69b jg69e jg69g jg69h jg69i jg69k"
+assert "`jg_reg'" == "jg69a jg69b jg69e jg69g jg69h jg69k"
 assert `jg_ran' == 0
 display "JSE-69 PASS: a macro in a value dash checks or keeps is judged and kept as typed, and nothing runs"
 capture dash clear

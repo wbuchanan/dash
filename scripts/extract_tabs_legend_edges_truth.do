@@ -132,6 +132,22 @@ _zt_run bare_compound    twoway scatter mpg weight, `"abc"'
 _zt_run bare_two         twoway scatter mpg weight, "a" "b"
 _zt_run bare_empty       twoway scatter mpg weight, ""
 _zt_run bare_in_title    twoway scatter mpg weight, title("T") note("N")
+_zt_run bare_first_then_opt twoway scatter mpg weight, "abc" msize(small)
+_zt_run bare_paren_two   twoway (scatter mpg weight, "a" "b")
+_zt_run bare_second_paren twoway (scatter mpg weight) (line mpg weight, "abc")
+_zt_run bare_paren_graph_two twoway (scatter mpg weight), "a" "b"
+_zt_run bare_paren_then_graph twoway (scatter mpg weight, "abc"), title(T)
+_zt_run bare_after_title twoway scatter mpg weight, title("T") "abc"
+_zt_run bare_before_title twoway scatter mpg weight, "abc" title("T")
+_zt_run bare_bars_two    twoway scatter mpg weight || line mpg weight, "a" "b"
+_zt_run bare_bars_ctrl   twoway scatter mpg weight, title(T) || line mpg weight
+_zt_run bare_by          twoway scatter mpg weight, by(foreign) "abc"
+_zt_run bare_paren_graph_opt twoway (scatter mpg weight), title(T) "abc"
+_zt_run bare_paren_graph_first twoway (scatter mpg weight), "abc" title(T)
+_zt_run bare_three       twoway scatter mpg weight, "a" "b" "c"
+_zt_run bare_sep         twoway scatter mpg weight, "a" msize(small) "b"
+_zt_run bare_no_comma    twoway scatter mpg weight "abc"
+_zt_run bare_bars_first  twoway scatter mpg weight, "abc" || line mpg weight, title(T)
 capture graph drop _all
 
 python:

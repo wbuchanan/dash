@@ -497,7 +497,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit pending.
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit pending.
-- **D16b Tracked:** Open (WP-31 section 39).
+- **D16b Tracked:** Closed in WP-31, BUGS.md "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced", commit pending.
 - **E1 Tracked:** Open (WP-31 section 40).
 - **E2 Tracked:** Open (WP-31 section 40).
 - **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.

@@ -120,6 +120,10 @@
 *!   _dash_layout_refusal(layout, registry)
 *!       "" when dash build can draw layout() as written, else the refusal.
 *!
+*!   _dash_bare_string_refusal(cmd)
+*!       twoway's refusal of a quoted string standing alone among the
+*!       options, or "" (WP-31 D16b).
+*!
 *!   _dash_legend_first_refusal(text)
 *!       twoway's refusal of a legend() word before top/bottom/left/right,
 *!       or "" (WP-31 D16).
@@ -9468,6 +9472,99 @@ real scalar _dash_subreq_check(string scalar kind)
         return(0)
     }
     return(0)
+}
+
+// _dash_bare_string_refusal(cmd) -- twoway's refusal of a quoted string
+// standing alone among a command's options, or "" (WP-31 D16b).  A string
+// is bare when it opens at an option list's own level: after a plot's or
+// the graph's comma, not inside an option's parentheses and not before
+// the comma (scatteri's labels).  twoway refuses every one, r(198), in
+// words that follow how its parser pairs the quotes and parentheses it
+// then sees (tabs_legend_edges_truth.json bare.*, 28 probes): an even
+// number of bare strings, or one among the graph's options after
+// parenthesised plots, is "invalid syntax"; otherwise one written beside
+// ||, in a plot group followed by another group or by the graph's
+// options, or beside an option holding a quoted value is "parentheses do
+// not balance"; otherwise "quotes unbalanced".  dash's catch-all kept the
+// string and named it in the note.
+string scalar _dash_bare_string_refusal(string scalar cmd)
+{
+    real scalar   n, i, nxt, in_dq, in_cq, depth, inopt0, inopt1, ngroups,
+                  bars, nbare, ing, inp, gopts, qparen, optbase, c, opening
+    string scalar prev
+
+    n = strlen(cmd)
+    prev = ""
+    in_dq = 0
+    in_cq = 0
+    depth = 0
+    inopt0 = 0
+    inopt1 = 0
+    ngroups = 0
+    bars = 0
+    nbare = 0
+    ing = 0
+    inp = 0
+    gopts = 0
+    qparen = 0
+    i = 1
+    while (i <= n) {
+        c = ascii(substr(cmd, i, 1))
+        opening = (c == 34 | (c == 96 & i < n & ascii(substr(cmd, i + 1, 1)) == 34))
+        if (opening) {
+            // Where the string opens: an option list's own level is depth
+            // 0 after a top-level comma, or depth 1 inside a plot group
+            // after the group's comma.
+            optbase = (depth == 0 & inopt0) | (depth == 1 & ngroups & inopt1 & !inopt0)
+            if (optbase) {
+                nbare++
+                if (depth == 0 & ngroups) ing = 1
+                if (depth == 1) inp = 1
+            }
+            else if (depth > (inopt0 ? 0 : (ngroups ? 1 : 0))) qparen = 1
+            while (i <= n) {
+                nxt = _dash_quote_step(cmd, n, i, in_dq, in_cq)
+                if (!nxt) nxt = i + 1
+                i = nxt
+                if (!in_dq & !in_cq) break
+            }
+            prev = char(34)
+            continue
+        }
+        if (c == 40) {
+            // A plot group opens at depth 0 before the graph's comma, at
+            // the start or after a group or ||; inlist( in a qualifier is
+            // a function's parentheses.
+            if (depth == 0 & !inopt0 & (prev == "" | prev == ")" | prev == "|")) {
+                ngroups++
+                inopt1 = 0
+            }
+            depth++
+        }
+        else if (c == 41) {
+            if (depth > 0) depth--
+        }
+        else if (c == 44) {
+            if (depth == 0) {
+                inopt0 = 1
+                if (ngroups) gopts = 1
+            }
+            else if (depth == 1 & ngroups & !inopt0) inopt1 = 1
+        }
+        else if (c == 124 & depth == 0 & i < n & ascii(substr(cmd, i + 1, 1)) == 124) {
+            bars = 1
+            inopt0 = 0
+            prev = "|"
+            i = i + 2
+            continue
+        }
+        if (c != 32 & c != 9) prev = char(c)
+        i++
+    }
+    if (nbare == 0) return("")
+    if (mod(nbare, 2) == 0 | ing) return("invalid syntax")
+    if (bars | (inp & (ngroups > 1 | gopts)) | qparen) return("parentheses do not balance")
+    return("quotes unbalanced")
 }
 
 // _dash_subreq_nested(toks, names) -- twoway's refusal of a word inside a

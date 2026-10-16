@@ -442,7 +442,7 @@ program define _dash_require_mata
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
-        _dash_legend_first_refusal ///
+        _dash_legend_first_refusal _dash_bare_string_refusal ///
         _dash_axlabel_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
@@ -7808,6 +7808,15 @@ program define _dash_plot
     // with a Mata syntax error before anything was stored (measured
     // 24sep2026: r(3000) "'90s' found where almost anything else expected").
     mata: _dash_check_utf8(strtrim(st_local("0")))
+
+    // A quoted string standing alone among the options is refused as
+    // twoway refuses it, r(198), in its words (WP-31 D16b); the catch-all
+    // kept it and named it in the note.  The text is never echoed.
+    mata: st_local("_bsr", _dash_bare_string_refusal(st_local("0")))
+    if `: length local _bsr' {
+        display as error "`_bsr'"
+        exit 198
+    }
 
     // ---- Split on || / () into segments + graph opts ----
     // dash replaces twoway: with no plot it draws twoway's empty graph

@@ -937,7 +937,7 @@ and now matches Stata.
 
 - `dash scatter mpg weight, jit(5)` (and j(), ji(), jitt(), jitte()): refused, r(198), "option jit() not allowed", as twoway refuses it; write jitter() in full (was: taken as jitter()) (WP-31, A3d)
 
-<!-- WP-31 D16b -->
+- A quoted string standing alone among the options -- dash scatter mpg weight, "abc" -- is refused as twoway refuses it, r(198), "quotes unbalanced" (or "invalid syntax" or "parentheses do not balance", as twoway answers where the string stands); dash kept it and named it in the note. (WP-31, D16b)
 
 <!-- WP-31 C17b -->
 

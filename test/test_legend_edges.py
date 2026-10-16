@@ -138,3 +138,26 @@ class TestLegendTitleStyle:
         assert "bogus" in _TRUTH["nested"][key]["lines"][0]
         _, msgs = T._root("saved", _two_layer({"legend": probe}))
         assert any("bogus" in m and word in m for m in msgs), msgs
+
+
+class TestBareString:
+    """A quoted string standing alone among the options (WP-31 D16b):
+    twoway refuses it, r(198), in words that follow where it stands
+    (fixture bare.*); dash's catch-all kept it and named it in the note.
+    The refusal is Mata's _dash_bare_string_refusal, checked against every
+    fixture row by test_option_validation.cscript U39-07."""
+
+    def test_records(self):
+        bare = _TRUTH["bare"]
+        assert {r["lines"][0] for k, r in bare.items() if r["rc"]} >= {
+            "quotes unbalanced", "invalid syntax",
+            "parentheses do not balance"}
+        assert bare["in_title"]["rc"] == 0 and bare["bars_ctrl"]["rc"] == 0
+
+    def test_the_check_exists(self):
+        src = open(os.path.join(_HERE, "..", "dash_parse.mata"),
+                   encoding="utf-8").read()
+        assert "string scalar _dash_bare_string_refusal(" in src
+        ado = open(os.path.join(_HERE, "..", "dash.ado"),
+                   encoding="utf-8").read()
+        assert "_dash_bare_string_refusal(" in ado

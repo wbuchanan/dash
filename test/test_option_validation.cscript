@@ -2443,6 +2443,68 @@ foreach c in "legend(region(lcolor(bogus)))" "legend(region(fcolor(red)))" `"leg
 }
 _u05_judge U39-05 `"`bad'"' "words inside legend(region()) and legend(title()) refused or taken as twoway does"
 
+// U39-07 (WP-31 D16b): a quoted string standing alone among the options
+// is refused as twoway refuses it, r(198), in its words, which follow
+// where the string stands and how many there are
+// (tabs_legend_edges_truth.json bare.*): the catch-all kept it and named
+// it in the note.  Two controls draw.
+local bad ""
+local _u397 "`c(tmpdir)'dash_u397.log"
+foreach p in ///
+    `"scatter mpg weight, msize(small) "abc"~198~quotes unbalanced"' ///
+    `"scatter mpg weight, title("T") "abc"~198~parentheses do not balance"' ///
+    `"scatter mpg weight || scatter price weight, title(T) "abc"~198~parentheses do not balance"' ///
+    `"scatter mpg weight, title(T) || line mpg weight~0~"' ///
+    `"scatter mpg weight, "abc" || line mpg weight, title(T)~198~parentheses do not balance"' ///
+    `"scatter mpg weight || scatter price weight, "abc"~198~parentheses do not balance"' ///
+    `"scatter mpg weight, "abc" || scatter price weight~198~parentheses do not balance"' ///
+    `"scatter mpg weight || line mpg weight, "a" "b"~198~invalid syntax"' ///
+    `"scatter mpg weight, "abc" title("T")~198~parentheses do not balance"' ///
+    `"scatter mpg weight, by(foreign) "abc"~198~quotes unbalanced"' ///
+    `"scatter mpg weight, `"abc"'~198~quotes unbalanced"' ///
+    `"scatter mpg weight, ""~198~quotes unbalanced"' ///
+    `"scatter mpg weight, "abc" msize(small)~198~quotes unbalanced"' ///
+    `"scatter mpg weight, title("T") note("N")~0~"' ///
+    `"line mpg weight, "abc"~198~quotes unbalanced"' ///
+    `"(scatter mpg weight, "abc")~198~quotes unbalanced"' ///
+    `"(scatter mpg weight), "abc"~198~invalid syntax"' ///
+    `"(scatter mpg weight), "abc" title(T)~198~invalid syntax"' ///
+    `"(scatter mpg weight), title(T) "abc"~198~invalid syntax"' ///
+    `"(scatter mpg weight), "a" "b"~198~invalid syntax"' ///
+    `"(scatter mpg weight, "abc"), title(T)~198~parentheses do not balance"' ///
+    `"(scatter mpg weight, "a" "b")~198~invalid syntax"' ///
+    `"scatter mpg weight, "abc"~198~quotes unbalanced"' ///
+    `"scatter mpg weight, "abc" name(zt1, replace)~198~quotes unbalanced"' ///
+    `"(scatter mpg weight) (line mpg weight, "abc")~198~parentheses do not balance"' ///
+    `"scatter mpg weight, "a" msize(small) "b"~198~invalid syntax"' ///
+    `"scatter mpg weight, "a" "b" "c"~198~quotes unbalanced"' ///
+    `"scatter mpg weight, "a" "b"~198~invalid syntax"' {
+    mata: st_local("c", substr(st_local("p"), 1, strpos(st_local("p"), "~") - 1))
+    mata: st_local("rest", substr(st_local("p"), strpos(st_local("p"), "~") + 1, .))
+    mata: st_local("rc", substr(st_local("rest"), 1, strpos(st_local("rest"), "~") - 1))
+    mata: st_local("e", substr(st_local("rest"), strpos(st_local("rest"), "~") + 1, .))
+    foreach w in twoway dash {
+        capture graph drop _all
+        capture dash clear
+        capture log close _ovlog
+        capture erase "`_u397'"
+        log using "`_u397'", name(_ovlog) text replace
+        capture noisily `w' `c'
+        local wrc = _rc
+        log close _ovlog
+        local wn 1
+        if `"`e'"' != "" {
+            _ov_count "`_u397'" `"`e'"'
+            local wn = r(n)
+        }
+        if `wrc' != `rc' | `wn' < 1 local bad `"`bad' [`w' `c': rc `wrc', line `wn']"'
+    }
+}
+capture erase "`_u397'"
+capture graph drop _all
+capture dash clear
+_u05_judge U39-07 `"`bad'"' "a bare quoted string among the options refused in twoway's words and code"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
