@@ -7185,6 +7185,7 @@ program define _dash_stata_ticks_gen
     version 19
     local reqs `"`0'"'
     local acc ""
+    _dash_require_python
     python: import sys
     python: from sfi import Macro as _dash_M
     python: _dash_xm = sys.modules["_dash_render_export"]
