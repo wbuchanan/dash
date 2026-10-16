@@ -503,7 +503,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E2 Tracked:** Closed in WP-31, BUGS.md "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending", commit 947c9ca.
 - **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.
 - **E4 Tracked:** Closed in WP-31, BUGS.md "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element", commit pending.
-- **E5 Tracked:** Open (WP-31 section 41).
+- **E5 Tracked:** Closed in WP-31, BUGS.md "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)", commit pending.
 - **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit db38355.
 - **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit pending.
 - **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit pending.

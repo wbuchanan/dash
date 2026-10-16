@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "E5": "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)",
     "E9": "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed",
     "G1": "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips",
     "G2": "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read",

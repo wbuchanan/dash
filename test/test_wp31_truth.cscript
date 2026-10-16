@@ -10620,6 +10620,87 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u41_width(sp, dp, app, svg):
+    """U41-07: dash's line width, saved and served, against twoway's
+    stroke-width (SVG units of 0.1 pt)."""
+    import re
+    import dash_render as dr
+    from sfi import Macro
+    with open(svg, encoding="utf-8") as fh:
+        m = re.search(r'<path [^>]*style="fill:none;stroke:#1A476F;stroke-width:([0-9.]+)"', fh.read())
+    want = float(m.group(1)) * 0.1 * dr.OptionTranslator.PX_PER_PT
+    (a, b), _ = _u41_glyphs(sp, dp, app, "Line")
+    bad = ["%s %s px, twoway %s" % (n, [g.line_width for g in gs[:1]], want)
+           for n, gs in (("saved", a), ("served", b))
+           if not gs or abs(float(gs[0].line_width) - want) > 1e-6]
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
+* ==== S41 E5: Comma colours and the width floor ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41c"
+    capture mkdir "`u41d'"
+    sysuse auto, clear
+
+    // U41-05: each structured option with a comma colour: dash's rc is
+    // twoway's (live).
+    local bad ""
+    foreach c in `"title("T", color("1,2,3"))"' `"subtitle("T", color("1,2,3"))"' `"note("T", color("1,2,3"))"' ///
+            `"caption("T", color("1,2,3"))"' `"xline(3000, lcolor("1,2,3"))"' `"yline(20, lcolor("1,2,3"))"' ///
+            `"xlabel(, labcolor("1,2,3"))"' `"ylabel(, labcolor("1,2,3"))"' `"plotregion(color("1,2,3"))"' ///
+            `"plotregion(lcolor("1,2,3"))"' `"graphregion(color("1,2,3"))"' `"graphregion(lcolor("1,2,3"))"' ///
+            `"legend(color("1,2,3"))"' {
+        capture twoway scatter mpg weight turn, `c'
+        local trc = _rc
+        capture graph drop _all
+        dash clear
+        capture dash scatter mpg weight turn, `c'
+        local drc = _rc
+        if `trc' != `drc' local bad `"`bad' [`c': twoway `trc', dash `drc']"'
+    }
+    _w31_expect U41-05 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U41-05 "a comma colour in each of the thirteen structured sub-options: dash's rc is twoway's"
+
+    // U41-07: lwidth(*10) under a scheme whose line is vvthin draws the
+    // 0.3 pt floor, saved and served, as twoway (live).
+    tempname u41f
+    file open `u41f' using "`u41d'/scheme-u41w.scheme", write text replace
+    file write `u41f' "#include s2color" _n "linewidth p vvthin" _n
+    file close `u41f'
+    adopath ++ "`u41d'"
+    global u41_bad ""
+    capture graph drop u41t
+    quietly twoway line mpg weight, sort lwidth(*10) scheme(u41w) name(u41t, replace)
+    quietly graph export "`u41d'/t71.svg", replace
+    graph drop u41t
+    _u41_spec "`u41d'" 71 line mpg weight, sort lwidth(*10) scheme(u41w)
+    python: import __main__ as _u41_m; _u41_m._u41_width("`u41d'/s71.json", "`u41d'/d71.json", "`u41d'/a71.py", "`u41d'/t71.svg")
+    adopath - "`u41d'"
+    _w31_expect U41-07 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-07 "lwidth(*10) on a vvthin line draws the floor, saved and served, as twoway"
+
+    // U41-10: the reader compares text: a comma inside a quoted title is
+    // no colour; a nested colour sub-option is still found.
+    capture twoway scatter mpg weight, title("a,b", color(red))
+    local t1 = _rc
+    dash clear
+    capture dash scatter mpg weight, title("a,b", color(red))
+    local d1 = _rc
+    capture twoway scatter mpg weight, title(, size(medium) color("1,2,3"))
+    local t2 = _rc
+    dash clear
+    capture dash scatter mpg weight, title(, size(medium) color("1,2,3"))
+    local d2 = _rc
+    _w31_expect U41-10 `"(`t1' == 0 & `d1' == 0 & `t2' == 198 & `d2' == 198)"' `"twoway `t1' `t2', dash `d1' `d2'"'
+    _w31_done U41-10 `"title("a,b", color(red)) passes and title(, size(medium) color("1,2,3")) is refused, in both"'
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

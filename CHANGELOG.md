@@ -458,7 +458,7 @@ and now matches Stata.
 
 - dash line mpg weight, lpattern(dot) drew [2, 4] px at every width; it is Stata's .1 .7 relative units ([1, 3] px), and every named pattern is its style file's numbers (dash [8, 4], shortdash [3, 3], vshortdash [2, 3], longdash [15, 4], tight_dot [1, 2]); twoway's dashes follow the graph's size, not the line's width. Formulas such as lpattern("-.") were noted and drawn solid; they are drawn as twoway decodes them, and lpattern("-_-") is dash, long dash, dash, no longer dash_dot. mlpattern() was named as not supported; it is taken as twoway takes it, the outline solid (WP-31, E2)
 
-<!-- WP-31 E5 -->
+- line mpg weight, lwidth(*10) under a scheme whose line is vvthin drew 4 px, ten times the 0.3 pt floor; it multiplies the unfloored width and draws the floor (0.4 px), as twoway does. mcolor("red",blue) drew black with a note; it draws red, as twoway does (WP-31, E5)
 
 - lfitci ..., pstyle(p1) under a scheme declaring intensity p1shade inten200 drew the band at s2color's inten80 and one declaring intensity p1bar inten200 drew it at full; the band reads color and intensity p#shade as twoway does, an intensity above full blended as twoway blends it (#0d2438), and p1bar's is not read (WP-31, E7)
 
@@ -927,7 +927,7 @@ and now matches Stata.
 
 - mcolor((red)) and mcolor("(red)") reached the renderer as an unknown colour and drew black; they are refused, as twoway refuses them: "option(s) ( red ) not allowed" r(198); mcolor(=blue) is refused, r(198), as twoway refuses it; mcolor(red=blue) and mcolor(red=) draw the default for that y, silently, as twoway draws them, where they drew black with a note (WP-31, E4)
 
-<!-- WP-31 E5 -->
+- A colour written with commas inside a structured option, title("T", color("1,2,3")) and the same in subtitle(), note(), caption(), xline(), yline(), xlabel(), ylabel(), plotregion(), graphregion() and legend(), was drawn black with a note; it is refused, as twoway refuses it: "invalid '2'" r(198) (WP-31, E5)
 
 <!-- WP-31 G7 -->
 

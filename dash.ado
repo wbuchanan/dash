@@ -456,7 +456,7 @@ program define _dash_require_mata
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
@@ -2864,6 +2864,24 @@ program define _dash_hz_check, sclass
     }
 end
 
+// _dash_subopt_colour_check -- a colour written with commas inside a
+// structured option's colour sub-option is refused as twoway refuses it,
+// "invalid '2'" for title("T", color("1,2,3")), r(198), on the eleven
+// options measured (WP-31 E5, test/fixtures/colour_width_edges_truth.json
+// sc.*).  Reads s(g_<host>) by value through Mata
+// _dash_subopt_colour_comma, which compares the text and never runs it;
+// the words are echoed through _dash_say.  Called by _dash_validate_opts.
+program define _dash_subopt_colour_check
+    version 19
+    foreach _h in title subtitle note caption xline yline xlabel ylabel plotregion graphregion legend {
+        mata: st_local("_sc", _dash_subopt_colour_comma(st_global("s(g_" + st_local("_h") + ")")))
+        if `"`macval(_sc)'"' != "" {
+            mata: _dash_say("err", "", st_local("_sc"), "")
+            exit 198
+        }
+    }
+end
+
 // _dash_stylelist_check ptype nser -- a stylelist held to twoway's rules
 // before any options object is written (WP-30 P1.1a).  First a .. or ...
 // that is not the last element is refused in twoway's words,
@@ -4785,6 +4803,10 @@ program define _dash_validate_opts, sclass
             sreturn local g_`o' `"`macval(_dash_vnorm)'"'
         }
     }
+
+    // A colour written with commas inside a structured option's colour
+    // sub-option (WP-31 E5).
+    _dash_subopt_colour_check
 
     // WP-29 P0.9: lpolyci's var() <= 0, after the kernel, bwidth and
     // degree rules above, as twoway orders it (measured: var(0) bwidth(0)

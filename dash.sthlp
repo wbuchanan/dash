@@ -1200,9 +1200,17 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:mcolor(255,0,0)}, is refused as {cmd:twoway} refuses it,
     {cmd:invalid '0'}, r(198); a triplet is written with blanks and quoted,
     {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
-    {help dash##stylelists:Style lists}).  Inside a structured option's
-    sub-option ({cmd:title(T, color("255,0,0"))}) such a colour is drawn
-    black with a note, where {cmd:twoway} refuses it.
+    {help dash##stylelists:Style lists}).  Inside a colour sub-option of
+    {cmd:title()}, {cmd:subtitle()}, {cmd:note()}, {cmd:caption()},
+    {cmd:xline()}, {cmd:yline()}, {cmd:xlabel()}, {cmd:ylabel()},
+    {cmd:plotregion()}, {cmd:graphregion()} and {cmd:legend()}
+    ({cmd:title(T, color("1,2,3"))}) such a colour is refused as
+    {cmd:twoway} refuses it, {cmd:invalid '2'}, r(198).  A quoted colour
+    with a comma glued after it, {cmd:mcolor("red",blue)}, is drawn as
+    the quoted colour, as {cmd:twoway} draws it.  An intensity past the
+    darkest a colour can go is drawn by a rule {cmd:twoway} does not
+    always follow: {cmd:mcolor(navy*52)} is #010304 in {cmd:twoway} and
+    #010102 in {cmd:dash}.
 
 {phang2}    {marker stylelists}{ul:Style lists.}  A style option given a
     list styles the y variables of an expanded varlist in turn, as

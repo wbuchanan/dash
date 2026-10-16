@@ -7601,7 +7601,21 @@ class OptionTranslator:
             raise ValueError("a line width is a finite number >= 0")
         if p == 0:
             return 0.0
-        return max(p, T._LWIDTH_FLOOR_PT) * T.PX_PER_PT
+        if p < T._LWIDTH_FLOOR_PT:
+            # A floored width remembers its own points, so lwidth(*#) over
+            # it multiplies the unfloored width and floors after, as
+            # twoway does (WP-31 E5, D-41d: under a scheme whose line is
+            # vvthin, lwidth(*10) draws the 0.3 pt floor, test/fixtures/
+            # colour_width_edges_truth.json lw.vvthin_x10).
+            out = T._FlooredPx(T._LWIDTH_FLOOR_PT * T.PX_PER_PT)
+            out.dash_pt = p
+            return out
+        return p * T.PX_PER_PT
+
+    class _FlooredPx(float):
+        """A pixel width floored at 0.3 pt; ``dash_pt`` holds the points
+        it was asked for (``line_px``).  Its value is the floored width
+        everywhere; only ``translate_lwidth``'s ``*#`` reads ``dash_pt``."""
 
     @staticmethod
     def size_medium_pt(kind: str) -> float:
@@ -8061,6 +8075,11 @@ class OptionTranslator:
             dp = float(default_pt)
             if not (math.isfinite(dp) and dp >= 0):
                 dp = None
+        if dp is None and d is not None:
+            # A default the floor raised multiplies its own points (D-41d).
+            _fp = getattr(default_px, "dash_pt", None)
+            if isinstance(_fp, float) and math.isfinite(_fp) and _fp >= 0:
+                dp = _fp
         default_pt = (dp if dp is not None else d * 0.75 if d is not None
                       else T._LWIDTH_RS["medium"] * T.PT_PER_RS)
         pt = T.resolve_size(value, "line", default_pt, ref_in)

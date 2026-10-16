@@ -2581,6 +2581,19 @@ global u41_bad ""
 _u41_pair "`_u41l'" "scatter mpg weight turn, mcolor(=blue)" 198 "invalid name" "is no style"
 _u05_judge U41-12 `"${u41_bad}"' "a stylelist element led by a glued = is refused, r(198), as twoway refuses it"
 
+// U41-13 (WP-31 E5): a colour written with commas in a structured
+// option's colour sub-option is refused by both, "invalid '2'", r(198).
+global u41_bad ""
+sysuse auto, clear
+foreach c in `"title("T", color("1,2,3"))"' `"subtitle("T", color("1,2,3"))"' `"note("T", color("1,2,3"))"' ///
+        `"caption("T", color("1,2,3"))"' `"xline(3000, lcolor("1,2,3"))"' `"yline(20, lcolor("1,2,3"))"' ///
+        `"xlabel(, labcolor("1,2,3"))"' `"ylabel(, labcolor("1,2,3"))"' `"plotregion(color("1,2,3"))"' ///
+        `"plotregion(lcolor("1,2,3"))"' `"graphregion(color("1,2,3"))"' `"graphregion(lcolor("1,2,3"))"' ///
+        `"legend(color("1,2,3"))"' `"title(, size(medium) color("1,2,3"))"' {
+    _u41_pair "`_u41l'" `"scatter mpg weight turn, `c'"' 198 "invalid '2'" "invalid '2'"
+}
+_u05_judge U41-13 `"${u41_bad}"' "a comma colour inside a structured option's colour sub-option is refused in twoway's words, r(198)"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

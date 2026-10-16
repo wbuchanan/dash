@@ -241,6 +241,10 @@
 *!   _dash_stylelist_eqlead(raw)
 *!       The first bare element led by a glued "=" (=blue), or "".
 *!
+*!   _dash_subopt_colour_comma(value)
+*!       twoway's "invalid '<w>'" for a comma colour inside a structured
+*!       option's value, or "".
+*!
 *!   _dash_stylelist_blank(raw, n)
 *!       The first quoted blank element among the n used ones, or 0.
 *!
@@ -6077,6 +6081,19 @@ string matrix _dash_stylelist_elems(string scalar raw)
                 }
                 q = 1
             }
+            // A quoted string with a comma glued after it ("red",blue) is
+            // that string: twoway draws mcolor("red",blue) red, silently
+            // (WP-31 E5, test/fixtures/colour_width_edges_truth.json
+            // sl.quoted_comma).
+            else if (!in_dq & !in_cq & p <= len & substr(stem, p, 1) == ",") {
+                if (substr(stem, 1, 1) == char(34)) {
+                    stem = substr(stem, 2, p - 3)
+                }
+                else {
+                    stem = substr(stem, 3, p - 5)
+                }
+                q = 1
+            }
         }
         k++
         out[1, k] = stem
@@ -6209,6 +6226,46 @@ string scalar _dash_stylelist_eqlead(string scalar raw)
     E = _dash_stylelist_elems(raw)
     for (j = 1; j <= cols(E); j++) {
         if (E[2, j] == "0" & strlen(E[1, j]) > 1 & substr(E[1, j], 1, 1) == "=") return(E[1, j])
+    }
+    return("")
+}
+
+// _dash_subopt_colour_comma(value) -- twoway's refusal of the first
+// colour sub-option written with commas inside one structured option's
+// value (title(), xline(), xlabel(), plotregion(), legend() ...): its
+// top-level sub-options, split at blanks and commas outside quotes and
+// parentheses, whose name is color, lcolor, labcolor or fcolor (as
+// twoway abbreviates them: col, lc, labc, fc) and whose value, one pair
+// of enclosing quotes removed, holds a comma: "invalid '<second part>'",
+// as twoway words it (title("T", color("1,2,3")) is "invalid '2'",
+// r(198); WP-31 E5, test/fixtures/colour_width_edges_truth.json sc.*).
+// "" when none does.  Text is compared, never run.
+string scalar _dash_subopt_colour_comma(string scalar value)
+{
+    string rowvector toks, parts
+    string scalar    nm, v
+    real scalar      j, p, ok
+
+    toks = _dash_rep_toks(value, 1)
+    for (j = 1; j <= cols(toks); j++) {
+        nm = strlower(_dash_rep_optname(toks[j]))
+        p  = strpos(toks[j], "(")
+        if (nm == "" | !p | substr(toks[j], -1, 1) != ")") continue
+        ok = (strlen(nm) >= 3 & substr("color", 1, strlen(nm)) == nm)
+        ok = ok | (strlen(nm) >= 2 & substr("lcolor", 1, strlen(nm)) == nm)
+        ok = ok | (strlen(nm) >= 4 & substr("labcolor", 1, strlen(nm)) == nm)
+        ok = ok | (strlen(nm) >= 2 & substr("fcolor", 1, strlen(nm)) == nm)
+        if (!ok) continue
+        v = strtrim(substr(toks[j], p + 1, strlen(toks[j]) - p - 1))
+        if (strlen(v) >= 2 & substr(v, 1, 1) == char(34) & substr(v, -1, 1) == char(34)) {
+            v = substr(v, 2, strlen(v) - 2)
+        }
+        if (!strpos(v, ",") | strpos(v, char(34))) continue
+        parts = tokens(v, ",")
+        // tokens() keeps the commas as words: the part after the first.
+        p = 1
+        while (p <= cols(parts) & parts[p] != ",") p++
+        return("invalid '" + (p < cols(parts) ? strtrim(parts[p + 1]) : "") + "'")
     }
     return("")
 }

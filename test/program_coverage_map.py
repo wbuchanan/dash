@@ -343,6 +343,7 @@ COVERAGE = {
                            "test_env_guards.cscript:ENV-26"),
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
         "_dash_subopt_check": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subopt_colour_check": ("test_option_validation.cscript:U41-13",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         "_dash_stylelist_check": ("test_varlist_expansion.cscript:SL-18",
                                   "test_varlist_expansion.cscript:SL-19",
@@ -780,6 +781,7 @@ COVERAGE = {
         "_dash_stylelist_blank": ("test_varlist_expansion.cscript:SL-25",),
         "_dash_stylelist_paren": ("test_option_validation.cscript:U41-11",),
         "_dash_stylelist_eqlead": ("test_option_validation.cscript:U41-12",),
+        "_dash_subopt_colour_comma": ("test_option_validation.cscript:U41-13", "test_wp31_truth.cscript:U41-10"),
         "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
         "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
         "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),
