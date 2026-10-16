@@ -136,3 +136,46 @@ class TestUnclearStaysDocumented:
                   encoding="utf-8") as fh:
             hlp = fh.read()
         assert "{cmd:mcolor(navy*52)}" in hlp and "#010304" in hlp
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestWidthsUnderTheSchemesReference:
+    """twoway draws stcolor's lines 9.72 SVG units wide where s2color's are
+    8.64 (and stcolor's rbar outline 6.48 against 5.76): the same 0.3 rs
+    (0.2 rs) on a graph whose smaller side is 4.5 inches, not 4 (fixture
+    ol.line_medium, c4b.stcolor.ciplot_rline, ol.rbar, ol.rbar_stcolor).
+    dash draws a relative width at 2.88 pt per unit on a figure the
+    browser sizes, whatever the scheme, and converts an absolute width at
+    the scheme's reference, min(graphsize) -- 4.5 for stcolor, checked in
+    a real dash run (WP-31 E11, DECISIONS D29) -- so its stcolor lines are
+    8.64-unit wide by design, the same share of the graph as twoway's."""
+
+    def test_the_ratio_is_the_reference(self, mode):
+        def w(key, tag, colour):
+            return float([e for e in TRUTH[key]["elements"]
+                          if e[0] == tag and e[2] == colour][0][3])
+        st = dr.SchemeParser("stcolor")
+        s2 = dr.SchemeParser("s2color")
+        assert (st.size_ref_in, s2.size_ref_in) == (4.5, 4.0)
+        ratio = st.size_ref_in / s2.size_ref_in
+        assert w("c4b.stcolor.ciplot_rline", "path", "#1a85ff") == \
+            pytest.approx(w("ol.line_medium", "path", "#1a476f") * ratio)
+        assert w("ol.rbar_stcolor", "rect", "#1a85ff") == \
+            pytest.approx(w("ol.rbar", "rect", "#1a476f") * ratio)
+
+    def test_relative_widths_are_scheme_independent(self, mode):
+        out = {}
+        for sch in ("s2color", "stcolor"):
+            for lw in ("", "1pt"):
+                o = {"lwidth": lw} if lw else {}
+                d = _draw(tp._spec([plot_for("line", o)], {"scheme": sch}),
+                          mode)
+                out[sch, lw] = [r.glyph.line_width
+                                for r in d.figures[0].renderers
+                                if isinstance(r, GlyphRenderer)
+                                and not dr._dash_is_swatch(r)][0]
+        medium = T._LWIDTH_RS["medium"] * T.PT_PER_RS * T.PX_PER_PT
+        assert out["s2color", ""] == pytest.approx(medium)
+        assert out["stcolor", ""] == pytest.approx(medium)
+        assert out["s2color", "1pt"] == pytest.approx(T.PX_PER_PT)
+        assert out["stcolor", "1pt"] == pytest.approx(T.PX_PER_PT * 4 / 4.5)

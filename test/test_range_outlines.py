@@ -73,10 +73,11 @@ class TestRareaOutline:
                                                         "Line"]
         colour, width = _stroke(key, "use")
         # As wide as the scheme's medium line, as twoway's visible half is
-        # (ol.line_medium); under stcolor twoway's whole graph is drawn at
-        # its 4.5-inch size reference (9.72 units) where dash draws every
-        # line at 8.64 -- a size-reference difference outside E8, so there
-        # the outline is held to dash's own line.
+        # (ol.line_medium).  Under stcolor twoway's units follow its
+        # 4.5-inch graph (9.72) while dash draws relative widths at 2.88 pt
+        # per unit on a browser-sized figure (D29), so there the outline is
+        # held to dash's own line (test_subopt_colours.py::
+        # TestWidthsUnderTheSchemesReference).
         line_w = _renderers(mode, [plot_for("line")], scheme)[0].glyph.line_width
         for r in rs[1:]:
             assert "dash_rarea_outline" in r.tags
@@ -115,9 +116,10 @@ class TestRbarOutline:
         assert g.line_color == colour
         assert g.line_alpha == 1.0
         if scheme == "s2color":
-            # stcolor's rbar outline is 6.48 units where dash draws
-            # linewidth p#bar's 5.76: a width-chain difference outside E8,
-            # recorded in the section's hand-back.
+            # stcolor's rbar outline is 6.48 units, the same share of its
+            # 4.5-inch graph as 5.76 of a 4-inch one; dash draws relative
+            # widths in 4-inch units (test_subopt_colours.py::
+            # TestWidthsUnderTheSchemesReference).
             assert g.line_width == pytest.approx(width * PX_PER_UNIT)
 
     def test_blcolor_wins(self, mode):
