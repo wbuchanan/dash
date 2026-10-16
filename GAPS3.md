@@ -479,7 +479,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
 - **D3b Tracked:** Closed in WP-31, BUGS.md "subtitle() position() and ring() on a by() panel's label row are named, not drawn", commit ceccb04.
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
-- **D4b Tracked:** Closed in WP-31, BUGS.md "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn", commit pending.
+- **D4b Tracked:** Closed in WP-31, BUGS.md "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn", commit c7df7e1.
 - **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit 831e4f0.
 - **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit 2c2ad89.
 - **D6b Tracked:** Closed in WP-31, BUGS.md "alternate on an axis(2) to axis(9) label option is named, not drawn", commit c6efd39.
@@ -488,19 +488,19 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit c8a5e9a.
 - **D9b Tracked:** Open (WP-31 section 45).
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit af3273a.
-- **D10b Tracked:** Partly closed in WP-31 (section 39, commit pending): shrink and overallshrink, the region margin() inset, the plotregion() outline once around the array and style(altleg) are drawn; open: the econ, stata7, combine and rescale bystyles beyond their scales (BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales").
+- **D10b Tracked:** Partly closed in WP-31 (section 39, commit 99d1d94): shrink and overallshrink, the region margin() inset, the plotregion() outline once around the array and style(altleg) are drawn; open: the econ, stata7, combine and rescale bystyles beyond their scales (BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales").
 - **D10c Tracked:** Open (WP-31 section 44).
 - **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit a8ae5a6.
-- **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit pending.
-- **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit pending.
+- **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit 880accb.
+- **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit 397d1a3.
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Open (WP-31 section 42).
-- **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit pending.
+- **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit bb9f4a9.
 - **D15 Tracked:** Open (WP-31 section 45).
-- **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit pending.
-- **D16b Tracked:** Closed in WP-31, BUGS.md "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced", commit pending.
-- **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit pending.
-- **E2 Tracked:** Closed in WP-31, BUGS.md "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending", commit pending.
+- **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit 398149e.
+- **D16b Tracked:** Closed in WP-31, BUGS.md "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced", commit 78f2ba0.
+- **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit ab33ff3.
+- **E2 Tracked:** Closed in WP-31, BUGS.md "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending", commit 947c9ca.
 - **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.
 - **E4 Tracked:** Open (WP-31 section 41).
 - **E5 Tracked:** Open (WP-31 section 41).
@@ -511,7 +511,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E10 Tracked:** Open (WP-31 section 44).
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Open (WP-31 section 44).
-- **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit pending.
+- **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
 - **E13 Tracked:** Open (WP-31 section 41).
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)", commit 55ee2e5.
