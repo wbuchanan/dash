@@ -12998,6 +12998,60 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u46_fmt_cmp(fmt, value, want):
+    """global u46_bad empty when dash's writer gives Stata's text."""
+    import dash_render as dr
+    from sfi import Macro
+    got = dr._dash_fmt(float(value), fmt)
+    Macro.setGlobal("u46_bad", "" if got == want.strip() else
+                    "%s of %s: dash %r, Stata %r" % (fmt, value, got, want))
+end
+
+python:
+def _u46_said_render(sp, dp, text):
+    """global u46_said 1 when rendering the spec says *text*."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    Macro.setGlobal("u46_said", "1" if any(str(m.message) == text
+                                           for m in w) else "0")
+end
+
+* ==== S46 G7: %d, %tb and xvarformat ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+
+    // U46-07: %d is %td (dash's writer gives Stata's display text, and a
+    // %d variable is a date at registration); xvarformat(bogus) draws, rc 0,
+    // with twoway's line "bogus not found".
+    foreach f in "%d" "%dCCYY-NN-DD" "%-dDD/NN/CCYY" {
+        local want : display `f' 20000
+        python: __import__("__main__")._u46_fmt_cmp("`f'", 20000, "`want'")
+        _w31_expect U46-07 `"("${u46_bad}" == "")"' `"${u46_bad}"'
+    }
+    sysuse auto, clear
+    capture twoway scatter mpg weight, xvarformat(bogus) nodraw
+    local trc = _rc
+    dash clear
+    capture noisily dash scatter mpg weight, xvarformat(bogus) name(zu46x)
+    local drc = _rc
+    _w31_expect U46-07 "(`trc' == 0) & (`drc' == 0)" "xvarformat(bogus): twoway r(`trc'), dash r(`drc')"
+    _dash_serve_spec, specpath("`u46d'/g7.json") datapath("`u46d'/g7d.json")
+    python: __import__("__main__")._u46_said_render("`u46d'/g7.json", "`u46d'/g7d.json", "bogus not found")
+    _w31_expect U46-07 "(${u46_said} == 1)" "dash did not say twoway's bogus not found"
+    _w31_done U46-07 "%d is written as %td and xvarformat(bogus) is twoway's note"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

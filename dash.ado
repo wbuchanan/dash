@@ -7158,7 +7158,8 @@ program define _dash_formats_json
         mata: st_local("_fjv", _json_escape(_dash_dp_format(st_varformat(st_local("v")))))
         // %t and %-t followed by one of the eight kind letters, case
         // sensitively: %tc and %tC are different formats.
-        mata: st_local("_fdate", strofreal(regexm(st_varformat(st_local("v")), "^%-?t[cCdhmqwy]")))
+        // %d is %td's old name (WP-31 G7).
+        mata: st_local("_fdate", strofreal(regexm(st_varformat(st_local("v")), "^%-?(t[cCdhmqwy]|d)")))
 
         if `nparts' > 0 local parts `"`parts',"'
         local parts `"`parts'"`v'":"`_fjv'""'

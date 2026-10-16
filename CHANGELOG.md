@@ -480,7 +480,7 @@ and now matches Stata.
 
 - A fractional %tm, %tw, %tq, %th or %ty value (%tm 745.5) was drawn on its period's start; it is drawn at its fraction toward the next period, as twoway draws it. rarea with one bound missing on a row left the row out of the band; the row keeps its other bound, the band's edge straight across the gap, as twoway's polygon runs (WP-31, G6)
 
-<!-- WP-31 G7 -->
+- A %d (or %dCCYY-NN-DD) date variable or xvarformat() was drawn %9.0g with a note; it is written as the %td date it is, as twoway writes it (WP-31, G7)
 
 <!-- WP-31 F2 -->
 
@@ -929,7 +929,7 @@ and now matches Stata.
 
 - A colour written with commas inside a structured option, title("T", color("1,2,3")) and the same in subtitle(), note(), caption(), xline(), yline(), xlabel(), ylabel(), plotregion(), graphregion() and legend(), was drawn black with a note; it is refused, as twoway refuses it: "invalid '2'" r(198) (WP-31, E5)
 
-<!-- WP-31 G7 -->
+- xvarformat(bogus) was noted in dash's words; the note is twoway's line, "bogus not found", and the graph draws as twoway's does, rc 0 (WP-31, G7)
 
 <!-- WP-31 H4 -->
 

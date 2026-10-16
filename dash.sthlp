@@ -4370,7 +4370,13 @@ differ.
 {phang}{opt xvarformat(fmt)} and {opt yvarformat(fmt)}, inside a plot,
 replace that layer's x or y variable's display format for the axis it
 labels, as {cmd:twoway} reads them; written after the plot groups' comma
-they are refused, {cmd:option xvarformat() not allowed}, r(198).
+they are refused, {cmd:option xvarformat() not allowed}, r(198).  A name
+that is no format, {cmd:xvarformat(bogus)}, draws the axis in
+{cmd:%9.0g} with {cmd:twoway}'s line, {cmd:bogus not found}, rc 0.
+{cmd:%d}, {cmd:%td}'s old name, is read as {cmd:%td}, with its picture
+({cmd:%dCCYY-NN-DD}), in a variable's format and in these options.  A
+business-calendar format, {cmd:%tb}{it:cal}, is not yet written: such an
+axis is drawn in {cmd:%9.0g} with a note.
 
 {phang}{opt yvarlabel(strings)} and {opt xvarlabel(string)}, inside a plot,
 stand in for the labels of that layer's variables, as {cmd:twoway} reads

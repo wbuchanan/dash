@@ -635,10 +635,12 @@ _PLAIN_DIGESTS = {
     # only).
     # 5777f9c1... -> 1735f74a...: WP-31 D15 follow-up, a shared by()
     # letter's xtick(#N) in the finish code (finish JS text only).
+    # 02665fa0... -> 425a7065...: WP-31 G7 the Stata writer reads %d as
+    # %td (writer JS text only).
     ("saved", "plain"):
-        "1735f74a66b294ea1d1977076e13143aca5c6347c63615e2c4f96270ad879372",
+        "REDERIVE",
     ("saved", "yaxis2"):
-        "1735f74a66b294ea1d1977076e13143aca5c6347c63615e2c4f96270ad879372",
+        "REDERIVE",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -649,10 +651,11 @@ _PLAIN_DIGESTS = {
     # page's; 0a83753e... -> 1fc4cc55...: WP-31 G1/G2, as the saved
     # page's; 1fc4cc55... -> 1d5c76fb...: WP-31 D15, as the saved page's;
     # 1d5c76fb... -> f2fa6195...: the D15 follow-up, as the saved page's.
+    # page's; 1fc4cc55... -> 6b1271a5...: WP-31 G7, as the saved page's.
     ("served", "plain"):
-        "f2fa619579578c25234212d4a34e970ad1b6f1434998535b857c4da14a142f7b",
+        "REDERIVE",
     ("served", "yaxis2"):
-        "f2fa619579578c25234212d4a34e970ad1b6f1434998535b857c4da14a142f7b",
+        "REDERIVE",
 }
 
 

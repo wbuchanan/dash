@@ -606,7 +606,9 @@ def _stata_date_kind(fmt: "str | None") -> "str | None":
     """
     if not fmt or not isinstance(fmt, str):
         return None
-    m = _DATE_FMT_RE.match(fmt.strip())
+    # %d is %td's old name (WP-31 G7).
+    m = _DATE_FMT_RE.match(re.sub(r"^%(-?)d", r"%\1td", fmt.strip(),
+                                  count=1))
     if not m:
         return None
     return "t" + m.group(1)
@@ -28733,7 +28735,8 @@ function dash_fmt_parse(fmt) {
                 zero: !!m[2], group: !!m[7], comma_dec: m[4] === ",",
                 tkind: null, picture: null};
     }
-    m = _DASH_FMT_DATE_RE.exec(fmt);
+    // %d is %td's old name (WP-31 G7).
+    m = _DASH_FMT_DATE_RE.exec(fmt.replace(/^%(-?)d/, "%$1td"));
     if (m) {
         return {kind: "t", width: null, dec: null, left: !!m[1],
                 zero: false, group: false, comma_dec: false,
@@ -34849,7 +34852,10 @@ def _dash_fmt_parse(fmt):
                 "left": bool(m.group(1)), "zero": bool(m.group(2)),
                 "group": bool(m.group(7)), "comma_dec": m.group(4) == ",",
                 "tkind": None, "picture": None}
-    m = _DASH_FMT_DATE_RE.fullmatch(fmt)
+    # %d is %td's old name (help datetime; WP-31 G7, measured: display %d
+    # 20000 is 04oct2014, %dCCYY-NN-DD 2014-10-04).
+    m = _DASH_FMT_DATE_RE.fullmatch(re.sub(r"^%(-?)d", r"%\1td", fmt,
+                                           count=1))
     if m:
         return {"kind": "t", "width": None, "dec": None,
                 "left": bool(m.group(1)), "zero": False, "group": False,
@@ -41732,6 +41738,13 @@ def _dash_varformat_writable(fmt, by_option, dim):
     if _fk in ("f", "g", "e", "t"):
         return fmt
     shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
+    if not fmt.startswith("%"):
+        # twoway's words for a name that is no format, and it draws
+        # (WP-31 G7, measured: xvarformat(bogus) prints "bogus not found",
+        # rc 0).
+        _dash_warn_once(("axis-format", f"{dim}varformat", fmt[:80]),
+                        f"{shown} not found")
+        return "%9.0g"
     _dash_warn_once(
         ("axis-format", f"{dim}varformat", fmt[:80]),
         f"dash: {dim}varformat({shown}) is written in %9.0g on the "
