@@ -90,17 +90,20 @@ class TestTheSpec:
     def test_what_is_named(self):
         """Flipped (WP-30 P1.20b): plotregion's ilcolor() and margin() were
         named as not drawn; that was wrong because twoway draws them and
-        dash now does (margin_truth.json).  graphregion's stay named."""
+        dash now does (margin_truth.json).  graphregion's stay named.
+
+        Flipped (WP-31 D11): shadestyle(), intensity(), marginonly and
+        graphregion's margin() were named; that was wrong because twoway
+        draws them and dash now does (region_remainder_truth.json): only
+        lalign() and the graph region's inner outline stay named."""
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) shadestyle(x) "
             "intensity(50) marginonly", "plotregion", _BASE, _S2, 4.0)
-        assert named == ["lalign(inside)", "shadestyle(x)", "intensity(50)",
-                         "marginonly"]
+        assert named == ["lalign(inside)"]
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) marginonly",
             "graphregion", _BASE, _S2, 4.0)
-        assert named == ["lalign(inside)", "ilcolor(red)", "margin(zero)",
-                         "marginonly"]
+        assert named == ["lalign(inside)", "ilcolor(red)"]
         _, named = dr._dash_region_spec(" ".join(["lalign(1)"] * 25),
                                         "plotregion", _BASE, _S2, 4.0)
         assert named == ["lalign(1)"] * 10 + ["(+15 more)"]
@@ -135,9 +138,9 @@ class TestBothModes:
         notes = [c for c in caught if "region() sub-option" in c]
         # Flipped (WP-30 P1.20b): ifcolor(red) was named; that was wrong
         # because twoway draws the plot region's inner box, and dash does.
+        # Flipped (WP-31 D11): graphregion(margin(zero)) was named; that was
+        # wrong because twoway draws it, and dash does (_dash_graph_margin).
         assert sorted(notes) == [
-            "dash: graphregion() sub-option(s) not implemented and ignored: "
-            "margin(zero)",
             "dash: plotregion() sub-option(s) not implemented and ignored: "
             "lalign(inside)"], notes
 

@@ -2319,6 +2319,23 @@ foreach c in "pcspike mpg weight price length" "pcscatter mpg weight price lengt
 }
 _u05_judge U34-10 `"`bad'"' "headlabel taken on every paired-coordinate type, as twoway takes it"
 
+// U37-04 (WP-31 D11): a margin style name twoway fails on is refused as
+// twoway refuses it, in plotregion() and graphregion(), rc and line
+// (test/fixtures/region_remainder_truth.json refusals.allsides-ms, r(7));
+// a name twoway draws runs (a guard).
+local bad ""
+foreach r in plotregion graphregion {
+    _u05_rc "scatter mpg weight, `r'(margin(allsides-ms))" "'ms' found where number expected"
+    if r(trc) != 7 | r(drc) != r(trc) | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`r' allsides-ms: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+    _u05_rc "scatter mpg weight, `r'(margin(medium))" ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [`r' medium: twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_judge U37-04 `"`bad'"' "margin(allsides-ms) refused as twoway refuses it; margin(medium) runs"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

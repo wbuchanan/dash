@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-15T20:52:43Z",
+    "generated_utc": "2026-10-16T06:52:03Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11340,6 +11340,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -12320,6 +12322,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -14765,6 +14769,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -17642,6 +17660,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -18622,6 +18642,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -21067,6 +21089,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -23944,6 +23980,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -24924,6 +24962,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -27369,6 +27409,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -30324,6 +30378,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "none",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -31318,6 +31374,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -33747,6 +33805,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "none",
+        "file": "scheme-s1color.scheme",
+        "line": 131
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -36802,6 +36874,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -37812,6 +37886,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -40257,6 +40333,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -43421,6 +43511,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -44428,6 +44520,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -46873,6 +46967,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -49958,6 +50066,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -50935,6 +51045,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -53380,6 +53492,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -56333,6 +56459,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -57340,6 +57468,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -59785,6 +59915,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -62871,6 +63015,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -63848,6 +63994,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -66293,6 +66441,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -69169,6 +69331,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "none",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -70146,6 +70310,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -72591,6 +72757,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "none",
+        "file": "scheme-s1color.scheme",
+        "line": 131
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -75548,6 +75728,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "none",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -76539,6 +76721,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -78968,6 +79152,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "none",
+        "file": "scheme-s1color.scheme",
+        "line": 131
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -81946,6 +82144,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "none",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -82923,6 +83123,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -85368,6 +85570,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "none",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 147
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -88255,6 +88471,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "vsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "large",
       "value": 2.4306,
@@ -89245,6 +89463,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -91721,6 +91941,20 @@
         "value": "vsmall",
         "file": "scheme-economist.scheme",
         "line": 235
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -94803,6 +95037,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -95810,6 +96046,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -98255,6 +98493,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -101419,6 +101671,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -102426,6 +102680,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -104871,6 +105127,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -108036,6 +108306,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "none",
     "symbolsize": {
       "name": "2.2",
       "value": 2.2,
@@ -109036,6 +109308,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -111465,6 +111739,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "none",
+        "file": "scheme-s1color.scheme",
+        "line": 131
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -114506,6 +114794,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -115527,6 +115817,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -117956,6 +118248,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -121140,6 +121446,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -122117,6 +122425,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -124562,6 +124872,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -127438,6 +127762,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -128418,6 +128744,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -130863,6 +131191,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -133741,6 +134083,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -134721,6 +135065,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -137166,6 +137512,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -140042,6 +140402,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "medium",
       "value": 1.52778,
@@ -141019,6 +141381,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -143464,6 +143828,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -146341,6 +146719,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -147321,6 +147701,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -149766,6 +150148,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -152644,6 +153040,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -153624,6 +154022,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -156069,6 +156469,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -158946,6 +159360,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -159926,6 +160342,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -162371,6 +162789,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -165249,6 +165681,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -166229,6 +166663,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -168674,6 +169110,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",
@@ -171553,6 +172003,8 @@
     "numticks_horizontal_minor": 0,
     "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
+    "margin_graph": "medium",
+    "plotregion_shade": "plotregion",
     "symbolsize": {
       "name": "small",
       "value": 1.04166,
@@ -172533,6 +172985,8 @@
       "numticks_horizontal_minor": "numticks_g horizontal_minor",
       "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
+      "margin_graph": "margin graph",
+      "plotregion_shade": "shadestyle plotregion",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
       "dotmarkline_color": "color dotmarkline",
@@ -174978,6 +175432,20 @@
         "value": "medsmall",
         "file": "scheme-s2color.scheme",
         "line": 719
+      },
+      "margin_graph": {
+        "kind": "transcribed",
+        "directive": "margin graph",
+        "value": "medium",
+        "file": "scheme-s2color.scheme",
+        "line": 718
+      },
+      "plotregion_shade": {
+        "kind": "transcribed",
+        "directive": "shadestyle plotregion",
+        "value": "plotregion",
+        "file": "scheme-s2color.scheme",
+        "line": 801
       },
       "symbolsize": {
         "kind": "transcribed",

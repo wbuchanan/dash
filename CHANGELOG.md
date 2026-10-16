@@ -450,7 +450,7 @@ and now matches Stata.
 
 - by() draws its remainder. dash scatter mpg weight, by(foreign, legend(ring(0))) drew the legend beside the array with a note, now outside the panels at its compass, between them and the x title, silently, as twoway; graphregion(fcolor(green)) by(foreign) coloured every panel green, now nothing, as twoway; the overall legend was not clickable, now a click hides the series in every panel; by(foreign, graphregion(fcolor(red))) was named and ignored, now drawn; a panel's plot-region margin used the panel count only, now twoway's f(k) x iscale() (by(g4, iscale(.5)): .85 -> .50 of the scheme's margin); subtitleformat(), the four shrink words that change nothing and the graph's subtitle(, fcolor() lcolor() nobox) on the label boxes are drawn; a one-panel by() with an empty value label drew no Graphs-by note on the saved page, now does; a panel a filter empties is hidden in both modes (WP-31, D10)
 
-<!-- WP-31 D11 -->
+- dash scatter mpg weight, scheme(s1color) graphregion(fcolor(red)): plot region filled white -> unfilled, the graph region's red showing through, as twoway's shadestyle plotregion none draws it (s1color, s1mono, s1rcolor, s1manual, stmono1); graphregion(margin(large)): no change with a note -> each border 4.5% of the figure's smaller side wider (27 px at 600), as twoway's gaps; plotregion(fcolor(navy) intensity(inten50)) and shadestyle(none): named and ignored, navy -> #8da3b7 and unfilled; graphregion(ifcolor(red)) fills the border; marginonly keeps the copy's colours off; margin(L+10): zeros -> L as medium on the left, 10 more on the right; margin(allsides-ms): drawn from its style file -> refused with twoway's r(7) and words (WP-31, D11)
 
 <!-- WP-31 D12 -->
 

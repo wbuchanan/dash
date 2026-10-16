@@ -1223,7 +1223,10 @@ class TestTheShippedFiles:
             # Flipped (WP-31 D4): `margin legend' and `margin
             # legend_boxmargin' are the legend box's inner and outer
             # margins, drawn as its padding and margin.
-            r"margin(?! twoway| by_indiv| subheading| text_option| legend)|"
+            # Flipped (WP-31 D11): `margin graph' is the graph region's
+            # margin, drawn as the figure's borders (_dash_graph_margin).
+            r"margin(?! twoway| by_indiv| subheading| text_option| legend"
+            r"| graph)|"
             r"barlabel|"
             r"barstyle|bar_",
             k))

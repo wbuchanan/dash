@@ -73,9 +73,11 @@ _PROBES = {
 for _n in getattr(dr.SchemeParser, "_MARGINSTYLES", {}):
     _PROBES["NM_" + _n.replace("-", "_")] = ("s2color",
                                              {_P: "margin(%s)" % _n}, _SC)
-#: twoway's own drawing of these is not reproduced (residual): L+10 is
-#: noted and drawn as zero; allsides-ms is r(7) in twoway.
-_RESIDUAL = {"CAPL", "NM_allsides_ms"}
+#: twoway's own drawing of these is not reproduced: allsides-ms is r(7)
+#: in twoway and refused by dash (WP-31 D11).  Flipped (WP-31 D11): CAPL,
+#: L+10, was a residual drawn as zeros; twoway draws L as medium on the
+#: left and +10 on the right, and so does dash.
+_RESIDUAL = {"NM_allsides_ms"}
 
 
 def _truth():
@@ -134,7 +136,10 @@ class TestTheMarginGrammar:
             ("t+5 b=1", [2.2, 2.2, 1, 7.2], None),
             ("", st, None),
             ("bogus", [0] * 4, "bogus"), ("l5", [0] * 4, "l5"),
-            ("L+10", [0] * 4, "L+10"), ("1;x:y", [0] * 4, "1;x:y"),
+            # Flipped (WP-31 D11): L+10 was zeros with a note; twoway
+            # reads L as an unknown gsize (medium) and adds 10 on the right.
+            ("L+10", [11 / 2.88, 12.2, 2.2, 2.2], None),
+            ("1;x:y", [0] * 4, "1;x:y"),
             ("1e400 1 1 1", [0] * 4, "1e400 1 1 1"),
             ("x" * 3000, [0] * 4, "x" * 80),
         ]

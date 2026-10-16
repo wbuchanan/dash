@@ -4378,14 +4378,17 @@ if `trc' != 198 | `drc' != 198 | !r(found) {
     display as error "RM-03 FAIL: rc `trc'/`drc'"
 }
 else display as text "RM-03 PASS: margin() twice in one plotregion() is r(198) in both"
-// RM-04: graphregion's margin and inner options are named, not drawn.
+// RM-04: graphregion's inner outline is named, not drawn.  Flipped
+// (WP-31 D11): margin(l+10) and ifcolor(red) were named; that was wrong
+// because twoway draws them, and dash now does (_dash_graph_margin, the
+// border fill), so only ilc(blue) is named.
 local bad ""
 _ztp_run `"twoway scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue))"' "`logfile'"
 local trc = r(rc)
 quietly graph drop _all
 _ztp_run `"dash scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue)) saving("`rmpg'", replace)"' "`logfile'"
 local drc = r(rc)
-_ztp_logged "`logfile'" "graphregion() sub-option(s) not implemented and ignored: margin(l+10) ifcolor(red) ilc(blue)"
+_ztp_logged "`logfile'" "graphregion() sub-option(s) not implemented and ignored: ilc(blue)"
 local f1 = r(found)
 _ztp_logged "`logfile'" "plotregion() sub-option"
 if `trc' | `drc' | !`f1' | r(found) local bad " rc `trc'/`drc', named `f1'"
@@ -4394,7 +4397,7 @@ if "`bad'" != "" {
     local faillist "`faillist' RM-04"
     display as error "RM-04 FAIL:`bad'"
 }
-else display as text "RM-04 PASS: graphregion(margin() ifcolor() ilc()) is rc 0 and named as typed, no plotregion note"
+else display as text "RM-04 PASS: graphregion(margin() ifcolor() ilc()) is rc 0 and names ilc() only, no plotregion note"
 // RM-05: plotregion's ilalign() is still named; ifcolor() is drawn.
 _ztp_run `"twoway scatter mpg weight, plotregion(ifcolor(red) ilalign(inside))"' "`logfile'"
 local trc = r(rc)

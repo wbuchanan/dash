@@ -3802,11 +3802,29 @@ you can see and {cmd:bgcolor(red) graphregion(color(none))} shows red.
 than its minimum, one given twice in a copy, and a word after a comma
 inside the region; {cmd:graphregion()} is checked before
 {cmd:plotregion()}, and both before {cmd:legend()} and the axis options.
-{cmd:lalign()}, {cmd:ilalign()}, {cmd:ishadestyle()},
-{cmd:iintensity()}, {cmd:shadestyle()}, {cmd:intensity()} and
-{cmd:marginonly} are accepted and named in a note, once per region, and
-so are {cmd:graphregion()}'s {cmd:margin()} and inner-box options, which
-are not drawn.
+{cmd:intensity()}, {cmd:shadestyle()}, {cmd:graphregion(margin())},
+{cmd:ifcolor()}, {cmd:icolor()}, {cmd:iintensity()} and
+{cmd:ishadestyle()} are drawn as {cmd:twoway} draws them
+({cmd:shadestyle(none)} leaves the region unfilled, and
+{cmd:intensity(inten50)} mixes the fill halfway to white, as
+{cmd:fintensity()} does a bar's); {cmd:marginonly} keeps the copy's
+colours and lines off and draws only its {cmd:margin()}, as
+{cmd:twoway} does.  {cmd:graphregion(margin())} takes the same
+{it:marginstyle} forms as {cmd:plotregion(margin())} below, over the
+scheme's {cmd:margin graph} ({cmd:medium}), and widens the figure's
+border by the change, a percentage of the figure's smaller side fixed
+when the page is built.  {cmd:istyle()}, {cmd:ilstyle()},
+{cmd:ilcolor()}, {cmd:ilwidth()}, {cmd:ilpattern()}, {cmd:ilalign()}
+and {cmd:lalign()} on {cmd:graphregion()}, and {cmd:lalign()},
+{cmd:ilalign()}, {cmd:iintensity()} and {cmd:ishadestyle()} on
+{cmd:plotregion()}, are accepted and named in a note, once per region:
+{it:difference from twoway}, whose graph region has an inner box between
+its margin and the plot region that Bokeh does not draw --
+{cmd:graphregion(ilcolor(red))} outlines that box in {cmd:twoway} and
+changes nothing in {cmd:dash}, and {cmd:graphregion(ifcolor(red))} fills
+the box in {cmd:twoway} and the whole border in {cmd:dash}.  A margin
+style name {cmd:twoway} fails on ({cmd:allsides-ms}) fails here with its
+return code and words, r(7).
 
 {pstd}
 {ul:Plot-region margin.}  {cmd:plotregion(margin())} takes {cmd:twoway}'s
@@ -3818,8 +3836,10 @@ in order over the scheme's margin and over earlier copies, so
 {cmd:margin(zero)} then {cmd:margin(l+10)} leaves 10% on the left and
 none elsewhere.  {cmd:margin(zero)} puts the data and ticks on the plot
 region's edge.  Under {cmd:by()} the margin shrinks with the panels, as
-the default does.  An unknown margin, such as {cmd:L+10} or {cmd:l5}, is
-named in {cmd:twoway}'s note and drawn as zero.  A side is held within
+the default does.  An unknown single name, such as {cmd:l5}, is named in
+{cmd:twoway}'s note and drawn as zero; a text with a sign is read word by
+word as {cmd:twoway} reads it, so {cmd:L+10} is the unknown size {cmd:L}
+(medium, with {cmd:twoway}'s note) on the left and 10 more on the right.  A side is held within
 45% of the plot region.  {it:Difference from twoway:} the margin is a
 share of the graph's whole width or height, fixed when the page is
 built, so a wide margin is a little narrower on the page than in
@@ -5265,6 +5285,11 @@ dashboard's scheme ({cmd:dash build}'s {cmd:scheme()}, then
 With no {cmd:scheme()} and no {cmd:theme()}, {cmd:dash} follows the session's
 own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.
+
+{pstd}
+A scheme whose {cmd:shadestyle plotregion} is {cmd:none} (s1color,
+s1mono, s1rcolor, s1manual, stmono1) draws an unfilled plot region, as
+{cmd:twoway} does; {cmd:plotregion(fcolor())} fills it.
 
 {pstd}
 {cmd:dash} ships faithful translations of twenty-six StataCorp schemes:

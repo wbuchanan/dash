@@ -1945,6 +1945,15 @@ def extract(stata_base: str, scheme: str) -> dict:
         "margin_twoway": scalar("margin_twoway", "margin", ["twoway"],
                                 lambda t: t.strip().strip('"'),
                                 class_default=False),
+        # WP-31 D11: the graph region's margin and the plot region's
+        # shade (s1color's `shadestyle plotregion none' leaves it unfilled).
+        "margin_graph": scalar("margin_graph", "margin", ["graph"],
+                               lambda t: t.strip().strip('"'),
+                               class_default=False),
+        "plotregion_shade": scalar("plotregion_shade", "shadestyle",
+                                   ["plotregion"],
+                                   lambda t: t.strip().strip('"'),
+                                   class_default=False),
         "symbolsize": scalar("symbolsize", "symbolsize", ["p"],
                              lambda t: resolve_sized(r, "symbolsize", t)),
         # WP-31 B5b: twoway dot's rows of dots, markerstyle dots
@@ -2303,6 +2312,11 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("numticks_g", "horizontal_minor", "numticks_horizontal_minor"),
         scalar("numticks_g", "vertical_minor", "numticks_vertical_minor"),
         scalar("margin", "twoway", "margin_twoway"),
+    ])
+    group(["The graph region's margin and the plot region's shade (WP-31 D11):",
+           "shadestyle plotregion none leaves the plot region unfilled."], [
+        scalar("margin", "graph", "margin_graph"),
+        scalar("shadestyle", "plotregion", "plotregion_shade"),
     ])
     group(["Stata's margin ladder, the sizes plotregion(margin()) names",
            "(WP-30 P1.20b)."],

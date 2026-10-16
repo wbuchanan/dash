@@ -1576,9 +1576,13 @@ def test_the_style_name_hops_are_identity():
     bad = []
     for name in sorted(SchemeParser._BUILTIN_NAMES):
         sp = SchemeParser(name)
+        # Flipped (WP-31 D11): `shadestyle plotregion' is carried -- it is
+        # no identity hop (s1color says none, an unfilled plot region,
+        # which no chain step gives) and SchemeParser.plotregion_shade
+        # reads it as a word; the generator writes it from Stata's files.
         if [k for k in sp._props if k.split(" ", 1)[0] in (
                 "markerstyle", "linestyle", "areastyle", "shadestyle",
-                "seriesstyle")]:
+                "seriesstyle") and k != "shadestyle plotregion"]:
             bad.append((name, "carries a hop key"))
         for k, v in TRUTH["_meta"]["style_hops"][name].items():
             cls, key = k.split(" ", 1)

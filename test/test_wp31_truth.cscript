@@ -9126,6 +9126,177 @@ if inlist("`only'", "", "S36") & `: list posof "S36" in w31_run' {
 }
 * ==== end S36 ====
 
+python:
+def _u37_tw(svg):
+    """twoway's graph and plot fills from an SVG: the canvas shows where
+    the graph region is unfilled, the graph region where the plot region
+    is; and the plot box's four gaps to the canvas edge."""
+    import svg_truth
+    rs = svg_truth.svg_rects(svg)
+    canvas = rs[0]["fill"]
+    full = [r for r in rs[1:] if (r["x"] or 0) < 1
+            and r["fill"] not in (None, "none")]
+    graph = full[0]["fill"] if full else canvas
+    plot = [r for r in rs[1:] if (r["x"] or 0) >= 200
+            and r["fill"] not in (None, "none")]
+    b = rs[-1]
+    gaps = (b["x"] - rs[0]["x"], rs[0]["x"] + rs[0]["w"] - b["x"] - b["w"],
+            rs[0]["y"] + rs[0]["h"] - b["y"] - b["h"], b["y"] - rs[0]["y"])
+    return graph, (plot[0]["fill"] if plot else graph), gaps
+
+
+def _u37_regions(sp, dp, app, svg, svg0):
+    """dash's border fill, plot fill and four min_border_* (saved into
+    u37_s, served into u37_v) and twoway's (u37_tw): the fills, and each
+    border as dash's default 5 px plus the gap change from svg0, in % of
+    min(W, H) at the figure's min(width, height)."""
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    g, p, gaps = _u37_tw(svg)
+    g0 = _u37_tw(svg0)[2] if svg0 else gaps
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        short = min(f.width, f.height)
+        bord = []
+        want = []
+        for i, attr in enumerate(("min_border_left", "min_border_right",
+                                  "min_border_bottom", "min_border_top")):
+            d = (gaps[i] - g0[i]) / 28.8
+            v = getattr(f, attr)
+            bord.append("." if v is None else str(int(v)))
+            want.append("." if abs(d) < 0.05 else
+                        str(int(round(max(0.0, f.min_border + d / 100.0 * short)))))
+        Macro.setGlobal("u37_" + sfx, "%s %s %s" % (
+            str(f.border_fill_color).lower(),
+            str(f.background_fill_color).lower(), " ".join(bord)))
+        Macro.setGlobal("u37_w" + sfx, "%s %s %s" % (g, p, " ".join(want)))
+end
+
+python:
+def _u37_notes(sp, dp):
+    """The region notes a saved render of the spec raises, into u37_n."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    Macro.setGlobal("u37_n", " ~ ".join(str(x.message) for x in w
+                                        if "region" in str(x.message)))
+end
+
+capture program drop _u37_reg
+program define _u37_reg
+    // _u37_reg <dir> <k> <command with options...>: twoway's SVG, then
+    // dash's saved and served figures, compared in u37_s/u37_v against
+    // u37_ws/u37_wv; the default graph's SVG is <dir>/t0.svg.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    capture graph drop u37t
+    quietly twoway `0' name(u37t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u37t
+    dash clear
+    capture quietly dash `0' name(zu37`k')
+    if _rc {
+        global u37_s "rc `=_rc'"
+        global u37_v "rc `=_rc'"
+        global u37_ws "(twoway drawn)"
+        global u37_wv "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u37_m; _u37_m._u37_regions("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`dir'/t0.svg")
+end
+
+* ==== S37 D11: The region remainder ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S37") & `: list posof "S37" in w31_run' {
+    display as text "S37 start " c(current_date) " " c(current_time)
+    local u37d "`w31_work'/s37"
+    capture mkdir "`u37d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    capture graph drop u37t
+    quietly twoway scatter mpg weight, name(u37t, replace)
+    quietly graph export "`u37d'/t0.svg", replace
+    graph drop u37t
+
+    // U37-01: graphregion(margin(large)) grows each border by twoway's
+    // gap change, saved and served; no "not implemented" note.
+    local bad ""
+    _u37_reg "`u37d'" 1 scatter mpg weight, graphregion(margin(large))
+    foreach m in s v {
+        if `"${u37_`m'}"' != `"${u37_w`m'}"' local bad `"`bad' `m': dash ${u37_`m'} twoway ${u37_w`m'};"'
+    }
+    python: import __main__ as _u37_m; _u37_m._u37_notes("`u37d'/s1.json", "`u37d'/d1.json")
+    if `"${u37_n}"' != "" local bad `"`bad' notes: ${u37_n};"'
+    _w31_expect U37-01 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U37-01 "graphregion(margin(large)) moves the borders by twoway's gaps, saved and served, silently"
+
+    // U37-02: intensity() on both regions mixes their fills as twoway.
+    local bad ""
+    _u37_reg "`u37d'" 2 scatter mpg weight, plotregion(intensity(inten50)) graphregion(intensity(inten80))
+    foreach m in s v {
+        if `"${u37_`m'}"' != `"${u37_w`m'}"' local bad `"`bad' `m': dash ${u37_`m'} twoway ${u37_w`m'};"'
+    }
+    _u37_reg "`u37d'" 3 scatter mpg weight, plotregion(fcolor(navy) intensity(inten50)) graphregion(fcolor(navy) intensity(*.5))
+    foreach m in s v {
+        if `"${u37_`m'}"' != `"${u37_w`m'}"' local bad `"`bad' navy `m': dash ${u37_`m'} twoway ${u37_w`m'};"'
+    }
+    _w31_expect U37-02 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U37-02 "intensity() mixes the plot and graph region fills as twoway does, saved and served"
+
+    // U37-03: shadestyle(none) and the s1 family leave the plot region
+    // unfilled; plotregion(fcolor()) fills it; s2color keeps its colour.
+    local bad ""
+    local j 3
+    foreach c in `"scatter mpg weight, plotregion(shadestyle(none))"' ///
+        `"scatter mpg weight, scheme(s1color)"' ///
+        `"scatter mpg weight, scheme(s1color) plotregion(fcolor(yellow))"' ///
+        `"scatter mpg weight, scheme(s1color) graphregion(fcolor(red))"' ///
+        `"scatter mpg weight, scheme(s1mono)"' ///
+        `"scatter mpg weight, scheme(s2color)"' {
+        local ++j
+        _u37_reg "`u37d'" `j' `c'
+        foreach m in s v {
+            local _dg "${u37_`m'}"
+            local _wg "${u37_w`m'}"
+            gettoken d1 rest : _dg
+            gettoken d2 rest : rest
+            gettoken w1 rest : _wg
+            gettoken w2 rest : rest
+            if "`d1' `d2'" != "`w1' `w2'" local bad `"`bad' case `j' `m': dash `d1' `d2' twoway `w1' `w2';"'
+        }
+    }
+    _w31_expect U37-03 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U37-03 "shadestyle(none) and the s1 family's shadestyle plotregion none leave the plot region unfilled, saved and served"
+
+    // U37-05: ifcolor() fills the border; ilcolor() is named once, alone.
+    local bad ""
+    _u37_reg "`u37d'" 20 scatter mpg weight, graphregion(ifcolor(red) ilcolor(blue))
+    foreach m in s v {
+        local _dg "${u37_`m'}"
+        gettoken d1 rest : _dg
+        if "`d1'" != "#ff0000" local bad `"`bad' `m' border `d1';"'
+    }
+    python: import __main__ as _u37_m; _u37_m._u37_notes("`u37d'/s20.json", "`u37d'/d20.json")
+    if `"${u37_n}"' != "dash: graphregion() sub-option(s) not implemented and ignored: ilcolor(blue)" {
+        local bad `"`bad' notes: ${u37_n};"'
+    }
+    _w31_expect U37-05 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U37-05 "graphregion(ifcolor()) fills the border; ilcolor() alone is named"
+
+    macro drop u37_s u37_v u37_ws u37_wv u37_n
+    capture graph drop _all
+    dash clear
+    display as text "S37 end " c(current_date) " " c(current_time)
+}
+* ==== end S37 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

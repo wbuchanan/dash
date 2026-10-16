@@ -486,7 +486,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
 - **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit pending.
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit pending.
-- **D11 Tracked:** Open (WP-31 section 37).
+- **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit pending.
 - **D12 Tracked:** Open (WP-31 section 38).
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Open (WP-31 section 42).

@@ -1,0 +1,6309 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "fdd8f4553055c6b3b1e0d37a39a6448eae8c4040",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_region_remainder_truth.do",
+  "stata_version": "19.5",
+  "units": "SVG 720 units per inch; 3960 x 2880 at 5.5 x 4"
+ },
+ "probes": {
+  "gmargin.10-pt": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(10-pt))",
+   "err": "",
+   "gaps": {
+    "bottom": 392.83,
+    "left": 392.82,
+    "right": 102.99,
+    "top": 102.87
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2384.3,
+    "w": 3464.19,
+    "x": 392.82,
+    "y": 102.87
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2390.06,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3469.95,
+     "x": 389.94,
+     "y": 99.99
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2384.3,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3464.19,
+     "x": 392.82,
+     "y": 102.87
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.1_2_3": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(1 2 3))",
+   "err": "",
+   "gaps": {
+    "bottom": 379.21,
+    "left": 321.66,
+    "right": 60.55,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2397.05,
+    "w": 3577.79,
+    "x": 321.66,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2402.81,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3583.55,
+     "x": 318.78,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2397.05,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3577.79,
+     "x": 321.66,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.1_2_3_4_5": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(1 2 3 4 5))",
+   "err": "",
+   "gaps": {
+    "bottom": 379.22,
+    "left": 436.87,
+    "right": 60.55,
+    "top": 118.09
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.69,
+    "w": 3462.58,
+    "x": 436.87,
+    "y": 118.09
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.45,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.34,
+     "x": 433.99,
+     "y": 115.21
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.69,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.58,
+     "x": 436.87,
+     "y": 118.09
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.L+10": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(L+10))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 402.84,
+    "right": 391.83,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style L not found in class gsize, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3165.33,
+    "x": 402.84,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3171.09,
+     "x": 399.96,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3165.33,
+     "x": 402.84,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.l+5": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 537.6,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3318.54,
+    "x": 537.6,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3324.3,
+     "x": 534.72,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3318.54,
+     "x": 537.6,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.l+5_r+5": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5 r+5))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 537.6,
+    "right": 247.78,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3174.62,
+    "x": 537.6,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3180.38,
+     "x": 534.72,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3174.62,
+     "x": 537.6,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.large": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(large))",
+   "err": "",
+   "gaps": {
+    "bottom": 523.26,
+    "left": 523.25,
+    "right": 233.42,
+    "top": 233.31
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2123.43,
+    "w": 3203.33,
+    "x": 523.25,
+    "y": 233.31
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2129.19,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3209.09,
+     "x": 520.37,
+     "y": 230.43
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2123.43,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3203.33,
+     "x": 523.25,
+     "y": 233.31
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.large_xsize": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 5760.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(large)) xsize(8) ysize(4)",
+   "err": "",
+   "gaps": {
+    "bottom": 523.26,
+    "left": 523.26,
+    "right": 233.28,
+    "top": 233.28
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2123.46,
+    "w": 5003.46,
+    "x": 523.26,
+    "y": 233.28
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 5760.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 5760.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 5754.24,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2129.22,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 5009.22,
+     "x": 520.38,
+     "y": 230.4
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2123.46,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 5003.46,
+     "x": 523.26,
+     "y": 233.28
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.left": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(left))",
+   "err": "",
+   "gaps": {
+    "bottom": 292.84,
+    "left": 379.2,
+    "right": 3.01,
+    "top": 2.88
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2584.28,
+    "w": 3577.79,
+    "x": 379.2,
+    "y": 2.88
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2590.04,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3583.55,
+     "x": 376.32,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2584.28,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3577.79,
+     "x": 379.2,
+     "y": 2.88
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.medium": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(medium))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.sides": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(sides))",
+   "err": "",
+   "gaps": {
+    "bottom": 292.84,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 2.88
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2584.28,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 2.88
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2590.04,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2584.28,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 2.88
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.small": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(small))",
+   "err": "",
+   "gaps": {
+    "bottom": 327.48,
+    "left": 327.48,
+    "right": 37.53,
+    "top": 37.41
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2515.11,
+    "w": 3594.99,
+    "x": 327.48,
+    "y": 37.41
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2520.87,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3600.75,
+     "x": 324.6,
+     "y": 34.53
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2515.11,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3594.99,
+     "x": 327.48,
+     "y": 37.41
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.stub": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color",
+   "stub_margin_graph": "medium"
+  },
+  "gmargin.t=0": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(t=0))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 2.88
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2483.43,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 2.88
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2489.19,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2483.43,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 2.88
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.tiny": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(tiny))",
+   "err": "",
+   "gaps": {
+    "bottom": 301.5,
+    "left": 301.49,
+    "right": 11.66,
+    "top": 11.54
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2566.96,
+    "w": 3646.85,
+    "x": 301.49,
+    "y": 11.54
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2572.72,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3652.61,
+     "x": 298.61,
+     "y": 8.66
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2566.96,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3646.85,
+     "x": 301.49,
+     "y": 11.54
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.top_bottom": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(top_bottom))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 292.83,
+    "right": 3.0,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3664.17,
+    "x": 292.83,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3669.93,
+     "x": 289.95,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3664.17,
+     "x": 292.83,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.twice": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5)) graphregion(margin(l+5))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 681.65,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3174.49,
+    "x": 681.65,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3180.25,
+     "x": 678.77,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3174.49,
+     "x": 681.65,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.vlarge": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(vlarge))",
+   "err": "",
+   "gaps": {
+    "bottom": 638.48,
+    "left": 638.46,
+    "right": 348.64,
+    "top": 348.52
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 1893.0,
+    "w": 2972.9,
+    "x": 638.46,
+    "y": 348.52
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 1898.76,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 2978.66,
+     "x": 635.58,
+     "y": 345.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 1893.0,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 2972.9,
+     "x": 638.46,
+     "y": 348.52
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "gmargin.zero": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(margin(zero))",
+   "err": "",
+   "gaps": {
+    "bottom": 292.84,
+    "left": 292.83,
+    "right": 3.0,
+    "top": 2.88
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2584.28,
+    "w": 3664.17,
+    "x": 292.83,
+    "y": 2.88
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2590.04,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3669.93,
+     "x": 289.95,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2584.28,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3664.17,
+     "x": 292.83,
+     "y": 2.88
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "grefusals.10-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(10-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.2-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.3-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(3-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.4-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(4-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.allsides-ms": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(allsides-ms))",
+   "err": "'ms' found where number expected",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style sides not found in class gsize, default attributes used)"
+   ],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "grefusals.bargraph": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(bargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.bottom": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(bottom))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.ebargraph": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(ebargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.esubhead": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(esubhead))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.horiz_bargraph": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(horiz_bargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.large": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(large))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.left": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(left))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.medium": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(medium))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.medlarge": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(medlarge))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.medsmall": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(medsmall))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.right": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(right))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.side-2-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(side-2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.side-3-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(side-3-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.side-4-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(side-4-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.sides": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(sides))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.small": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(small))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.tiny": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(tiny))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.top": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(top))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.top_bottom": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(top_bottom))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.vlarge": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(vlarge))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.vside-2-pt": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(vside-2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.vsmall": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(vsmall))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "grefusals.zero": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "inner.icolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(icolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2678.28,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3758.16,
+     "x": 100.86,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#ff0000",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.ifcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2678.28,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3758.16,
+     "x": 100.86,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.ifcolor_ilcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red) ilcolor(blue))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2678.28,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3758.16,
+     "x": 100.86,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#0000ff",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.iintensity": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red) iintensity(inten50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff8080",
+     "fill_opacity": null,
+     "h": 2678.28,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3758.16,
+     "x": 100.86,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.ilcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ilcolor(blue))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#0000ff",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.ilwidth": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ilwidth(thick))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.ishade_none": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red) ishadestyle(none))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2678.28,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3758.16,
+     "x": 100.86,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2672.52,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3752.4,
+     "x": 103.74,
+     "y": 103.74
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.istyle_none": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(istyle(none))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.lalign": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lalign(inside) lwidth(vthick) lcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2839.68,
+     "stroke": "#ff0000",
+     "stroke_width": 40.32,
+     "w": 3919.56,
+     "x": 20.16,
+     "y": 20.16
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.marginonly": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.marginonly_m": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red) margin(large) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 523.26,
+    "left": 523.25,
+    "right": 233.42,
+    "top": 233.31
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2123.43,
+    "w": 3203.33,
+    "x": 523.25,
+    "y": 233.31
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2129.19,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3209.09,
+     "x": 520.37,
+     "y": 230.43
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2123.43,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3203.33,
+     "x": 523.25,
+     "y": 233.31
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.p_marginonly": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.50.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.50.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.bogus.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(bogus))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style bogus not found in class intensity, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.bogus.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(bogus))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style bogus not found in class intensity, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.both": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(inten50)) graphregion(intensity(inten80))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eef5f5",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.full.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(full))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.full.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(full))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten0.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(inten0))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten0.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(inten0))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten50.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(inten50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten50.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(inten50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten50.plot_scheme": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(inten50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten80.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(inten80))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten80.graph_scheme": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(intensity(inten80))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eef5f5",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.inten80.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(inten80))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.star5.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(navy) intensity(*.5))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "intensity.star5.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(navy) intensity(*.5))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#8da3b7",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "refusals.10-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(10-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.2-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.3-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(3-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.4-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(4-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.allsides-ms": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(allsides-ms))",
+   "err": "'ms' found where number expected",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style sides not found in class gsize, default attributes used)"
+   ],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "refusals.bargraph": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.bottom": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bottom))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.ebargraph": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(ebargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.esubhead": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(esubhead))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.horiz_bargraph": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(horiz_bargraph))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.large": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(large))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.left": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(left))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.medium": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medium))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.medlarge": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medlarge))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.medsmall": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medsmall))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.right": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(right))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.side-2-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.side-3-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-3-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.side-4-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-4-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.sides": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(sides))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.small": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(small))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.tiny": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(tiny))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.top": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(top))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.top_bottom": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(top_bottom))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.vlarge": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vlarge))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.vside-2-pt": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vside-2-pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.vsmall": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vsmall))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "refusals.zero": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s1.override": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(yellow))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffff00",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1color",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.red_graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1color",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.red_graph_s1mono": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1mono",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.red_graph_s2color": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color",
+   "stub_shadestyle_plotregion": "plotregion"
+  },
+  "s1.s1color": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1color",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.s1manual": {
+   "canvas": {
+    "h": 1722.0,
+    "w": 2246.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 257.71,
+    "left": 257.7,
+    "right": 62.01,
+    "top": 62.02
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 1402.27,
+    "w": 1926.29,
+    "x": 257.7,
+    "y": 62.02
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 1722.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 2246.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 1722.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 2246.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 1718.56,
+     "stroke": "#ffffff",
+     "stroke_width": 3.44,
+     "w": 2242.56,
+     "x": 1.72,
+     "y": 1.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 1402.27,
+     "stroke": "#000000",
+     "stroke_width": 3.44,
+     "w": 1926.29,
+     "x": 257.7,
+     "y": 62.02
+    }
+   ],
+   "scheme": "s1manual",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.s1mono": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1mono",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.s1rcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1rcolor",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "s1.s2color": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color",
+   "stub_shadestyle_plotregion": "plotregion"
+  },
+  "s1.stmono1": {
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "gaps": {
+    "bottom": 476.58,
+    "left": 526.03,
+    "right": 116.64,
+    "top": 116.64
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2646.78,
+    "w": 4757.33,
+    "x": 526.03,
+    "y": 116.64
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "w": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2646.78,
+     "stroke": "#000000",
+     "stroke_width": 6.48,
+     "w": 4757.33,
+     "x": 526.03,
+     "y": 116.64
+    }
+   ],
+   "scheme": "stmono1",
+   "stub_shadestyle_plotregion": "none"
+  },
+  "shade.background.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(background))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.background.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(background))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.background.s1color": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(background))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1color"
+  },
+  "shade.bogus.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(bogus))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style bogus not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.bogus.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(bogus))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style bogus not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.ci.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(ci))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.ci.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(ci))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.fg_inten50.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(foreground) intensity(inten50))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.foreground.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(foreground))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.foreground.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(foreground))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.none.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(none))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.none.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(none))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.none_fcolor.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(none) fcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.pattern10.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(pattern10))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style pattern10 not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.pattern10.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(pattern10))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style pattern10 not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.plotregion.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(plotregion))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.plotregion.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(plotregion))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.plotregion.s1color": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(plotregion))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#000000",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s1color"
+  },
+  "shade.solid.graph": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(shadestyle(solid))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style solid not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "shade.solid.plot": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(solid))",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [
+    "(note:  named style solid not found in class shadestyle, default attributes used)"
+   ],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#000000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  }
+ }
+}

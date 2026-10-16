@@ -2631,6 +2631,15 @@ CORPUS = [
           {"by": "rep, legend(ring(0) pos(5))"}),
     _case("by subtitleformat nobox", [_sc()], None,
           {"by": "rep, subtitleformat(%9.2f)", "subtitle": ", nobox"}),
+
+    # WP-31 D11: the region remainder.
+    _case("graphregion margin l+5 (WP-31 D11)", [_sc()],
+          go={"graphregion": "margin(l+5)"}),
+    _case("plotregion intensity inten50 shadestyle none (WP-31 D11)",
+          [_sc()], go={"plotregion": "fcolor(navy) intensity(inten50)",
+                       "graphregion": "shadestyle(none)"}),
+    _case("s1color plot region (WP-31 D11)", [_sc()],
+          go={"scheme": "s1color", "graphregion": "fcolor(red)"}),
 ]
 
 

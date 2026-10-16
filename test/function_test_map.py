@@ -1016,6 +1016,10 @@ FUNCTIONS = {
  '_dash_default_ticker': 'test/test_default_axes.py::TestTheHelpers::test_the_default_ticker_is_a_tagged_fixed_ticker',
  '_dash_layer_extent': 'test/test_default_axes.py::TestTheHelpers::test_layer_extent_equals_the_python_reader',
  '_dash_plot_margin': 'test/test_default_axes.py::TestTheHelpers::test_the_plot_margin',
+ '_dash_graph_margin': 'test/test_region_remainder.py::TestGraphMargin::test_adds_not_assigns',
+ 'SchemeParser.plotregion_shade': 'test/test_region_remainder.py::TestShade::test_stub_read',
+ 'SchemeParser.graph_margin_sides': 'test/test_region_remainder.py::TestShade::test_graph_margin_stub_read',
+ 'SchemeParser.region_shade': 'test/test_region_remainder.py::TestShade::test_words',
  '_dash_refinish_axes': 'test/test_default_axes.py::TestTheHelpers::test_refinish_axes_is_idempotent',
  '_dash_tag_hull_roles': 'test/test_default_axes.py::TestTheHelpers::test_hull_roles',
  # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
@@ -1161,6 +1165,8 @@ FUNCTIONS = {
  '_dash_region_spec': 'test/test_region_options.py::TestTheSpec::test_abbreviations_read_as_full_names',
  '_dash_region_spec.<locals>._bundle': 'test/test_region_truth.py::TestAgainstTwoway::test_probe',
  '_dash_region_spec.<locals>._read': 'test/test_region_options.py::TestTheSpec::test_a_wrong_case_none_is_black_with_a_note',
+ '_dash_region_spec.<locals>._shade': 'test/test_region_remainder.py::TestShade::test_words',
+ '_dash_region_spec.<locals>._intensity': 'test/test_region_remainder.py::TestIntensity::test_each',
  '_dash_region_table': 'test/test_region_truth.py::TestTheTable::test_it_is_twoways_parser',
  # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
  '_dash_refline_copies': 'test/test_reference_lines.py::TestPositions::test_a_copy_starts_at_any_position_run',
@@ -1224,6 +1230,8 @@ FUNCTIONS = {
  '_dash_inner_box': 'test/test_region_margins.py::TestTheInnerBox::test_probe',
  '_dash_margin_pair': 'test/test_region_margins.py::TestTheHelpers::test_bounds',
  '_dash_margin_sides': 'test/test_region_margins.py::TestTheMarginGrammar::test_form',
+ '_dash_margin_sides.<locals>._split': 'test/test_region_margins.py::TestTheMarginGrammar::test_form',
+ '_dash_margin_sides.<locals>._units_of': 'test/test_region_remainder.py::TestGraphMargin::test_form',
  # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
  'SchemeParser.by_indiv_margin': 'test/test_by_grid.py::TestTheIndivTable::test_every_shipped_scheme',
  '_dash_by_grid_options': 'test/test_by_grid.py::TestPositions::test_every_probe',

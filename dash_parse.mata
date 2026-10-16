@@ -572,7 +572,9 @@
 *!   _dash_subreq_check(kind)
 *!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
 *!       title or region sub-option twoway refuses (kind legend, zlabel,
-*!       title or region; the region's helper is _dash_subreq_region);
+*!       title or region; the region's helpers are _dash_subreq_region
+*!       and, for the margin style names twoway fails on with their own
+*!       rc, _dash_subreq_margin over _dash_margin_refused_table);
 *!       -1 hands a cols()/rows()/holes() value to dash.ado's
 *!       _dash_subopt_check through its locals _so_name, _so_value and
 *!       _so_kind; prints twoway's legend notes (WP-30 P1.19).  Its helpers
@@ -9207,6 +9209,21 @@ real scalar _dash_subreq_check(string scalar kind)
                 }
             }
         }
+        // WP-31 D11: a margin style name twoway fails on, when the
+        // region's log is run, after every copy has parsed.
+        for (k = 1; k <= 2; k++) {
+            f = (k == 1 ? "region:graphregion" : "region:plotregion")
+            for (q = 1; q <= rows(o); q++) {
+                if (_dash_subreq[o[q], 1] != f) continue
+                i = _dash_subreq_margin(_dash_subreq[o[q], 4])
+                if (i) {
+                    w = _dash_margin_refused_table()[i, .]
+                    _dash_say("err", "", w[3], "")
+                    _dash_subreq_clear()
+                    return(strtoreal(w[2]))
+                }
+            }
+        }
         _dash_subreq_drop("region:graphregion")
         _dash_subreq_drop("region:plotregion")
         return(0)
@@ -9297,6 +9314,46 @@ string scalar _dash_subreq_region(string scalar v)
         }
     }
     return("")
+}
+
+// _dash_margin_refused_table() -- the margin style names twoway fails on
+// (WP-31 D11, D-37.e): name, rc, first error line; equal to
+// test/fixtures/region_remainder_truth.json refusals.* with rc != 0
+// (margin.class reads allsides-ms as gsizes a and sides, then "ms" after
+// the minus, which is not a number).
+string matrix _dash_margin_refused_table()
+{
+    return(("allsides-ms", "7", "'ms' found where number expected"))
+}
+
+// _dash_subreq_margin(v) -- the row of _dash_margin_refused_table() one
+// region copy's last margin() names, or 0 (WP-31 D11).
+real scalar _dash_subreq_margin(string scalar v)
+{
+    string rowvector w, names
+    string matrix    tab
+    string scalar    body, sub, msg, arg
+    real scalar      at, i, j, hit
+
+    body = v
+    (void) _dash_rep_split(v, body, sub)
+    w = _dash_rep_toks(body, 0)
+    if (cols(w) == 0) return(0)
+    if (_dash_so_resolve(w, J(1, cols(w), 1), "region", names, msg, at)) {
+        return(0)
+    }
+    tab = _dash_margin_refused_table()
+    hit = 0
+    for (i = 1; i <= cols(w); i++) {
+        if (names[i] != "margin") continue
+        arg = strtrim(_dash_rep_value(w[i]))
+        hit = 0
+        for (j = 1; j <= rows(tab); j++) {
+            if (arg == tab[j, 1]) hit = j
+        }
+        if (hit) return(hit)
+    }
+    return(0)
 }
 
 // _dash_subreq_drop(kind) -- the record less its rows of kind, once that

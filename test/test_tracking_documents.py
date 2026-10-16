@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "D11": "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white",
     "D12": "An out-of-range xline() or yline() is clipped to the frame where twoway draws it outside",
     "D14": "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()",
     "D16": "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked",

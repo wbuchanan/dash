@@ -6808,13 +6808,26 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
     ``%NN`` is the alpha; an unknown colour is black with S30's note; a
     malformed one, or a bare ``*#``/``%#``, keeps the role's colour (S43
     passes the base colour at the one ``parse_color_alpha`` call below).
+    WP-31 D11: the fill is edited as ``_fr_area_parse_and_log.ado``
+    builds its shadestyle: ``style()``'s (colour and intensity), then
+    ``shadestyle()`` (:meth:`SchemeParser.region_shade`; ``none`` is no
+    fill), then ``color()``/``fcolor()``, then ``intensity()`` (a name of
+    ``SchemeParser._INTENSITY``, a number over 100, ``*#`` of the current
+    one; anything else full with twoway's note), and drawn as
+    ``GlyphMapper._blend_intensity`` draws ``fintensity()``.  For
+    ``graphregion`` the inner fill words ``ishadestyle() icolor()
+    ifcolor() iintensity()`` are read the same way into ``ifill`` /
+    ``ifill_alpha`` (None when none is given or the fill is none).
+    ``marginonly`` keeps every box edit of the text off (measured: the
+    region is drawn as without them; its margin() is read elsewhere).
     *named* lists, as typed through ``_dash_display``, the sub-options
-    twoway accepts and dash does not draw (``lalign()``, ``ilalign()``,
-    ``ishadestyle()``, ``iintensity()``, ``shadestyle()``,
-    ``intensity()``, ``marginonly``; for ``graphregion`` also ``margin()``
-    and the inner-box options, which plotregion draws elsewhere since
-    WP-30 P1.20b) and any word with no region name: ten, then
-    ``(+n more)``.  Text after
+    twoway accepts and dash does not draw (``lalign()``, ``ilalign()``;
+    for ``graphregion`` also ``istyle() ilstyle() ilcolor() ilwidth()
+    ilpattern()``, whose inner box Bokeh does not draw; for
+    ``plotregion`` also ``iintensity()`` and ``ishadestyle()``, the inner
+    box being drawn elsewhere since WP-30 P1.20b) and any word with no
+    region name: ten, then ``(+n more)``.  ``margin()`` is drawn
+    elsewhere (``_dash_plot_margin``, ``_dash_graph_margin``).  Text after
     a top-level comma is not read here (dash.ado refuses it).  Only
     ``#rrggbb``, None, numbers and dash lists reach *settings*.
     """
@@ -6823,16 +6836,22 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
     ctx = T.scheme_colour_context(scheme)
     table = _dash_region_table()
     drawn = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color",
-             "fcolor"}
+             "fcolor", "shadestyle", "intensity"}
     # WP-30 P1.20b: the plot region's margin and inner box are drawn
-    # elsewhere (_dash_plot_margin, _dash_inner_box), so not named here;
-    # the graph region's stay named.
-    elsewhere = ({"margin", "istyle", "icolor", "ifcolor", "ilstyle",
-                  "ilcolor", "ilwidth", "ilpattern"}
-                 if option == "plotregion" else set())
+    # elsewhere (_dash_plot_margin, _dash_inner_box), so not named here.
+    # WP-31 D11: the graph region's margin is _dash_graph_margin's and its
+    # inner fill words fill the border (D-37.b); its inner outline stays
+    # named.
+    if option == "plotregion":
+        elsewhere = {"margin", "istyle", "icolor", "ifcolor", "ilstyle",
+                     "ilcolor", "ilwidth", "ilpattern"}
+    else:
+        elsewhere = {"margin"}
+        drawn |= {"ishadestyle", "icolor", "ifcolor", "iintensity"}
     s = {k: base.get(k) for k in ("fill", "fill_alpha", "line",
                                   "line_alpha", "line_width", "line_dash")}
-    vals, named = {}, []
+    s["ifill"], s["ifill_alpha"] = None, None
+    vals, named, marginonly = {}, [], False
     text = _dash_by_tokens_commas(str(raw or ""))[0]
     for tok in _dash_by_tokens(text):
         if not tok.strip():
@@ -6843,10 +6862,16 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
             vals[full] = _dash_unquoted(_dash_subopt_arg(tok))
         elif full in elsewhere and paren:
             continue
+        elif full == "marginonly" and not paren:
+            marginonly = True
         else:
             named.append(_dash_display(tok))
     if len(named) > 10:
         named = named[:10] + ["(+%d more)" % (len(named) - 10)]
+    if marginonly:
+        # _fr_area_parse_and_log.ado posts no box edit under marginonly.
+        return s, named
+    inten = {"fill": 1.0, "ifill": 1.0}
 
     def _bundle(cls, keys, arg):
         b = sch.style_bundle(cls, arg)
@@ -6859,6 +6884,10 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
             if k == "line_dash":
                 v = list(v) if isinstance(v, (list, tuple)) else []
             s[k] = v
+        if cls == "area":
+            # The area style's shadestyle intensity (WP-31 D11).
+            iv = b.get("intensity")
+            inten["fill"] = 1.0 if iv is None else float(iv)
 
     def _read(arg, role, full):
         # The role's colour at this point of the edit order; S43 (P1.13b)
@@ -6874,6 +6903,29 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
             return
         s[role] = hx
         s[role + "_alpha"] = 1.0 if al is None else al
+
+    def _shade(arg, role):
+        sh = sch.region_shade(arg) if hasattr(sch, "region_shade") else {}
+        s[role] = sh.get("fill")
+        s[role + "_alpha"] = sh.get("fill_alpha")
+        inten[role] = sh.get("intensity", 1.0)
+
+    def _intensity(arg, role, full):
+        v = str(arg).strip()
+        names = SchemeParser._INTENSITY
+        if v in names:
+            inten[role] = names[v]
+            return
+        n = T.stata_number(v[1:]) if v.startswith("*") else T.stata_number(v)
+        if n is not None and math.isfinite(n):
+            inten[role] = max(0.0, inten[role] * n if v.startswith("*")
+                              else n / 100.0)
+            return
+        shown = _dash_display(v)
+        _dash_warn_once(("region-intensity", option, full, shown),
+                        f"dash: named style {shown} not found in class "
+                        "intensity, default attributes used")
+        inten[role] = 1.0
 
     if "style" in vals:
         _bundle("area", ("fill", "fill_alpha", "line", "line_alpha",
@@ -6897,11 +6949,30 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
         except (ValueError, TypeError):
             _dash_style_note(f"{option}(lpattern)", vals["lpattern"],
                              "line pattern", "the default")
+    if "shadestyle" in vals:
+        _shade(vals["shadestyle"], "fill")
     if "color" in vals:
         _read(vals["color"], "line", "color")
         _read(vals["color"], "fill", "color")
     if "fcolor" in vals:
         _read(vals["fcolor"], "fill", "fcolor")
+    if "intensity" in vals:
+        _intensity(vals["intensity"], "fill", "intensity")
+    # The inner box's fill (graphregion): ishadestyle(), icolor(),
+    # ifcolor(), iintensity(), from no fill (measured: ilcolor() alone
+    # fills nothing).
+    if "ishadestyle" in vals:
+        _shade(vals["ishadestyle"], "ifill")
+    if "icolor" in vals:
+        _read(vals["icolor"], "ifill", "icolor")
+    if "ifcolor" in vals:
+        _read(vals["ifcolor"], "ifill", "ifcolor")
+    if "iintensity" in vals:
+        _intensity(vals["iintensity"], "ifill", "iintensity")
+    nw = getattr(sch, "naturally_white", True)
+    for role in ("fill", "ifill"):
+        if isinstance(s.get(role), str) and inten[role] != 1.0:
+            s[role] = GlyphMapper._blend_intensity(s[role], inten[role], nw)
     return s, named
 
 
@@ -6944,7 +7015,13 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
     (dash's own) is the plot fill before plotregion().  Fills are
     composited to opaque colours (``_dash_region_blend``).  The
     sub-options dash does not draw are named once per region per graph.
-    A graph with none of the four options is left untouched.
+    WP-31 D11: intensity(), shadestyle() and the graph region's inner
+    fill words are drawn (``_dash_region_spec``), ``graphregion(margin())``
+    is added to the borders (``_dash_graph_margin``), and a scheme's
+    ``shadestyle plotregion none`` leaves the plot region unfilled (the
+    graph region's colour), unless plotregion() or plotbgcolor() fill it.
+    A graph with none of the four options is left untouched (the scheme's
+    look, ``SchemeParser.apply_to_figure``).
     """
     go = graph_opts or {}
     if not any(str(go.get(k) or "").strip() for k in
@@ -6968,8 +7045,13 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
         "line_dash": []}, scheme, ref_in)
     gfill = (canvas if g["fill"] is None
              else _dash_region_blend(g["fill"], g["fill_alpha"], canvas))
+    if g.get("ifill") is not None:
+        # The inner box's fill (WP-31 D11, D-37.b): Bokeh paints the
+        # margin and the inner box as one border, so both take it.
+        gfill = _dash_region_blend(g["ifill"], g.get("ifill_alpha"), gfill)
     fig.border_fill_color = gfill
     fig.border_fill_alpha = 1.0
+    _dash_graph_margin(fig, sch, go)
     table = _dash_region_table()
     outline = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color"}
     if any(_dash_subopt_canon(t.split("(", 1)[0].strip(), table) in outline
@@ -6978,7 +7060,11 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
         fig.border_line_alpha = g["line_alpha"] if g["line_alpha"] is not None else 1.0
         fig.border_line_width = g["line_width"]
         fig.border_line_dash = g["line_dash"]
-    pbase = {"fill": sch.plotregion_color, "fill_alpha": 1.0,
+    # WP-31 D11: a scheme whose `shadestyle plotregion' is none (s1color
+    # and its family) leaves the plot region unfilled: the graph region
+    # shows through, as under plotregion(fcolor(none)).
+    pbase = {"fill": (None if getattr(sch, "plotregion_shade", "") == "none"
+                      else sch.plotregion_color), "fill_alpha": 1.0,
              "line": sch.plotregion_line_color, "line_alpha": 1.0,
              "line_width": sch.plotregion_line_width, "line_dash": []}
     raw_pb = _dash_unquoted(str(go.get("plotbgcolor") or ""))
@@ -8084,6 +8170,9 @@ class SchemeParser:
     _FALLBACK_PROPS: "dict[str, str]" = {
         "color background": "ltbluishgray",
         "color plotregion": "white",
+        # WP-31 D11: s2color's graph margin and plot-region shade.
+        "margin graph": "medium",
+        "shadestyle plotregion": "plotregion",
         "color legend":     "white",
         "color legend_line": "black",
         "color major_grid": "ltbluishgray",
@@ -11958,6 +12047,63 @@ class SchemeParser:
             out["line_dash"] = list(out["line_dash"] or [])
         return out
 
+    @property
+    def plotregion_shade(self) -> str:
+        """``shadestyle plotregion`` as a word (WP-31 D11): ``none`` in
+        s1color and the schemes that include it (an unfilled plot region),
+        ``plotregion`` in s2color; "" when the scheme has no such line."""
+        props = getattr(self, "_props", None) or {}
+        return str(props.get("shadestyle plotregion", "") or "") \
+            .strip().strip('"').lower()
+
+    @property
+    def graph_margin_sides(self) -> list:
+        """``margin graph`` as ``[left, right, bottom, top]`` in relative
+        units (WP-31 D11; ``medium``, 3.5 each, in every shipped scheme),
+        through :meth:`margin_sides`; ``#-pt`` sides over a 4-inch
+        reference.  Zeros when the scheme has no such line or names no
+        margin style."""
+        props = getattr(self, "_props", None) or {}
+        name = str(props.get("margin graph", "") or "").strip().strip('"')
+        sides = self.margin_sides(name) if name else None
+        if not sides:
+            return [0.0] * 4
+        return [float(v[1]) / (4.0 * 72.0) * 100.0 if isinstance(v, tuple)
+                else float(v) for v in sides]
+
+    def region_shade(self, name: Any) -> dict:
+        """``shadestyle(<name>)`` on a region (WP-31 D11, measured in
+        test/fixtures/region_remainder_truth.json shade.*): ``{"fill",
+        "fill_alpha", "intensity"}``.  ``none`` is no fill; ``plotregion``
+        the scheme's ``color plotregion``; a name of the style table
+        (``background``, ``foreground``, ``ci``, ``p#``...) its colour and
+        intensity through :meth:`_style_resolve`; any other name --
+        ``pattern10``, ``solid``, ``bogus`` -- twoway's default
+        attributes, black at full intensity, with twoway's note (D-36c's
+        for a Stata style dash does not table).  Never raises."""
+        s = str(name if name is not None else "").strip()
+        if s == "none":
+            return {"fill": None, "fill_alpha": None, "intensity": 1.0}
+        if s == "plotregion":
+            return {"fill": self.plotregion_color, "fill_alpha": 1.0,
+                    "intensity": 1.0}
+        kind = self._style_kind("shadestyle", s)
+        if kind in ("table", "p"):
+            try:
+                if kind == "p":
+                    b = self._style_sub("shadestyle", s, 0)
+                else:
+                    b = self._style_resolve("shadestyle", s, "")
+            except (KeyError, ValueError, TypeError):
+                b = None
+            if b:
+                return {"fill": b.get("fill"),
+                        "fill_alpha": b.get("fill_alpha"),
+                        "intensity": b.get("intensity", 1.0)}
+        if kind != "blank":
+            self._style_note("shadestyle", s, kind)
+        return {"fill": "#000000", "fill_alpha": 1.0, "intensity": 1.0}
+
     def by_indiv_margin(self) -> tuple:
         """The scheme's by() panel margin ``(left, right, bottom, top)`` in
         Stata units (WP-30 P1.15b, D-48e): ``margin by_indiv`` from the
@@ -11999,7 +12145,12 @@ class SchemeParser:
         # with no scheme argument (_dash_figure_title, WP-31 D3).
         # Python-only.
         fig._dash_scheme = self
-        fig.background_fill_color = self.plotregion_color
+        # WP-31 D11: `shadestyle plotregion none' (s1color and the schemes
+        # that include it) leaves the plot region unfilled, so the graph
+        # region's colour shows there, as twoway draws it.
+        fig.background_fill_color = (
+            self.background_color if self.plotregion_shade == "none"
+            else self.plotregion_color)
         fig.border_fill_color = self.background_color
         # The plot region's border is the scheme's own line, not the axis
         # line's colour: it was `color axisline' (black) under every
@@ -35603,18 +35754,20 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
     *start* is the current ``[left, right, bottom, top]`` in relative units
     (% of min(W, H)); returns ``(sides, noted)``.  The forms read: a style
     name (the 28 of ``SchemeParser._MARGINSTYLES``, through *scheme*'s
-    ladder; ``#-pt`` sides are points over *short_in* inches); numbers,
-    assigned to left, right, bottom, top in turn (measured: ``1 2 3``
-    keeps the top, a fifth number is the left again); or terms
-    ``{l|r|b|t}[ ]{+|-|=}[ ]#`` applied in order, so repeats add
-    (measured: ``l+5 l+5`` is ``l+10``; ``l5`` with no sign is an
-    unknown name to twoway).  Anything else -- ``L+10``, ``l5``, a
-    non-finite number, a text over 2,000 characters -- gives zeros and
+    ladder; ``#-pt`` sides are points over *short_in* inches); any other
+    single word with no ``+ - =`` (``bogus``, ``l5``) gives zeros and
     *noted*, the text as typed (twoway's note; it draws such a text as
-    zero, measured ``margin(bogus)``).  Linear in the text; only floats
-    come out."""
+    zero, measured ``margin(bogus)``), a bare number the left side; and
+    every other text is read token by token as margin.class reads it
+    (WP-31 D11, below): numbers set left, right, bottom, top in turn
+    (``1 2 3`` keeps the top, a fifth number is the left again), terms
+    ``{l|r|b|t}{+|-|=}#`` edit a side in order (``l+5 l+5`` is
+    ``l+10``), and ``L+10`` is ``L`` -- an unknown gsize, medium, with
+    twoway's gsize note -- on the left and +10 on the right (measured).
+    A term whose number is not one, a non-finite number or a text over
+    2,000 characters gives zeros and *noted*.  Linear in the text; only
+    floats come out."""
     num = r"[0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]{1,4})?"
-    term = re.compile(r"\s*([lrbt])\s*([+=-])\s*(" + num + ")")
     cur = [float(v) for v in start]
     raw = str(text if text is not None else "")
     t = raw.strip()
@@ -35632,27 +35785,73 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
         return [v[1] / ref_pt * 100.0 if isinstance(v, tuple) else v
                 for v in named], None
     words = t.split()
-    if all(re.fullmatch("[+-]?" + num, w) for w in words):
-        vals = [float(w) for w in words]
-        if all(math.isfinite(v) for v in vals):
-            for i, v in enumerate(vals):
-                cur[i % 4] = v
+    if len(words) == 1 and not any(c in t for c in "+-="):
+        # One word with no + - = is a style name to margin.class's
+        # setstyle; a bare number stays dash's reading, the left side.
+        if re.fullmatch(num, t) and math.isfinite(float(t)):
+            cur[0] = float(t)
             return cur, None
         return [0.0] * 4, t[:80]
-    pos, side = 0, {"l": 0, "r": 1, "b": 2, "t": 3}
-    while pos < len(t):
-        m = term.match(t, pos)
-        if m is None or m.end() == pos:
+    # WP-31 D11: anything else as margin.class's setstyle reads it
+    # (StataNow 19.5): the units rs pt in cm are hidden from the parse
+    # characters; the text is split at blanks and at each of l r t b + -;
+    # a side letter picks the side, + or - an operation, = clears it; a
+    # value is set on the side (the side's value op # under an
+    # operation) and the side moves on through left right bottom top,
+    # then stays left.  A value without an operation is a gsize: a
+    # number, a gsize name, or -- a name gsize does not know -- medium,
+    # with twoway's note (measured: L+10 is left 3.8194, right +10).
+    units = (("rs", "w"), ("pt", "x"), ("in", "y"), ("cm", "z"))
+    s = t
+    for u, ch in units:
+        s = s.replace(u, ch)
+    toks = [x for x in re.split(r"([ lrtb+\-])", s) if x and x != " "]
+    letters = {"l": 0, "r": 1, "b": 2, "t": 3}
+    side, ct, op = 0, 1, None
+
+    def _split(tok):
+        m = re.fullmatch("(" + num + ")([wxyz]?)", tok)
+        return None if m is None else (float(m.group(1)), m.group(2))
+
+    def _units_of(v, unit):
+        # margin.class writes `=side op #'<unit>, the sum in the unit.
+        per_in = {"x": 1.0 / 72.0, "y": 1.0, "z": 1.0 / 2.54}.get(unit)
+        return v if per_in is None else v * per_in * 72.0 / ref_pt * 100.0
+
+    for tok in toks:
+        if tok in letters:
+            side = letters[tok]
+            continue
+        if tok in ("+", "-", "="):
+            op = None if tok == "=" else tok
+            continue
+        word = tok[1:] if (op is None and tok.startswith("=")) else tok
+        sp = _split(word)
+        if sp is not None and not math.isfinite(sp[0]):
             return [0.0] * 4, t[:80]
-        v = float(m.group(3))
-        if not math.isfinite(v):
-            return [0.0] * 4, t[:80]
-        i = side[m.group(1)]
-        cur[i] = (v if m.group(2) == "=" else
-                  cur[i] + v if m.group(2) == "+" else cur[i] - v)
-        pos = m.end()
-        while pos < len(t) and t[pos].isspace():
-            pos += 1
+        if op is not None:
+            if sp is None:
+                return [0.0] * 4, t[:80]
+            n = cur[side] + sp[0] if op == "+" else cur[side] - sp[0]
+            cur[side] = _units_of(n, sp[1])
+        else:
+            v = None if sp is None else _units_of(*sp)
+            if v is None:
+                for u, ch in units:
+                    word = word.replace(ch, u)
+                pt = SchemeParser._GSIZE_PT.get(word)
+                if pt is None:
+                    shown = _dash_display(word)
+                    _dash_warn_once(
+                        ("margin-gsize", shown),
+                        f"dash: named style {shown} not found in class "
+                        "gsize, default attributes used")
+                    pt = SchemeParser._GSIZE_PT["medium"]
+                v = float(pt[:-2]) / OptionTranslator.PT_PER_RS
+            cur[side] = v
+        op = None
+        ct += 1
+        side = ct - 1 if ct <= 4 else 0
     return cur, None
 
 
@@ -35751,6 +35950,60 @@ def _dash_plot_margin(scheme, graph_opts, panels=1, mult=None):
         out[letter] = (vs[0], vs[1])
     return out
 
+
+def _dash_graph_margin(fig, scheme, graph_opts):
+    """graphregion(margin()) as additions to *fig*'s ``min_border_*``
+    (WP-31 D11, D-37.a): every copy's margin() read over the scheme's
+    ``margin graph`` sides (:attr:`SchemeParser.graph_margin_sides`,
+    medium) through :func:`_dash_margin_sides`, in relative units of
+    min(W, H); each side's change from the scheme's is added in px of
+    min(``fig.width``, ``fig.height``) at build (measured: twoway's plot
+    box moves by the change times min(W, H), whatever xsize()/ysize()).
+    Bokeh has no outer margin but ``min_border``, and the axis labels sit
+    inside it, as inside twoway's graph region margin.  Adds, never
+    assigns (S32's sizing and S33's outergap() share the borders); a side
+    never goes below 0.  A graph without margin(), and every side it
+    leaves, keeps ``min_border_* is None`` -- Bokeh's inherit-from-
+    ``min_border`` state (DECISIONS A18).  A by() graph is left alone:
+    its graph region holds the array, not one panel.  An unknown text is
+    noted once and drawn as zero, as twoway draws it."""
+    go = graph_opts or {}
+    raw = str(go.get("graphregion") or "")
+    if "m" not in raw.lower() or str(go.get("by") or "").strip():
+        return
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    start = [float(v) for v in sch.graph_margin_sides]
+    sides = list(start)
+    table = _dash_region_table()
+    short_in = OptionTranslator.size_ref_of(fig)
+    for tok in _dash_by_tokens(_dash_by_tokens_commas(raw)[0]):
+        if "(" not in tok or _dash_subopt_canon(
+                tok.split("(", 1)[0].strip(), table) != "margin":
+            continue
+        arg = _dash_unquoted(_dash_subopt_arg(tok))
+        sides, noted = _dash_margin_sides(arg, sides, sch, short_in)
+        if noted is not None:
+            shown = _dash_display(noted)
+            _dash_warn_once(
+                ("graph-margin", shown),
+                f"dash: named style {shown} not found in class margin, "
+                "default attributes used")
+    if sides == start:
+        return  # no margin() change: every min_border_* stays (A18)
+    w = getattr(fig, "width", None) or 0
+    h = getattr(fig, "height", None) or 0
+    short = float(min(w, h)) if w and h else 0.0
+    if short <= 0:
+        return
+    for name, i in (("min_border_left", 0), ("min_border_right", 1),
+                    ("min_border_bottom", 2), ("min_border_top", 3)):
+        add = (sides[i] - start[i]) / 100.0 * short
+        if not math.isfinite(add) or abs(add) < 1e-9:
+            continue  # an untouched side keeps None (inherits min_border)
+        cur = getattr(fig, name)
+        if cur is None:
+            cur = fig.min_border or 0  # None until set (Bokeh 3.8)
+        setattr(fig, name, max(0, int(round(cur + add))))
 
 def _dash_inner_box(fig):
     """The plot region's inner box on *fig* (WP-30 P1.20b), as twoway
@@ -57105,6 +57358,7 @@ class ServerAppBuilder:
                          "_dash_count_of", "_dash_finish_count_ticks",
                          # WP-30 P1.3a: default axes and the re-finish.
                          "_dash_default_ticker", "_dash_plot_margin",
+                         "_dash_graph_margin",
                          "_dash_by_numticks",
                          "_dash_axis_plan", "_dash_layer_extent",
                          "_dash_tag_hull_roles", "_dash_refinish_axes",
