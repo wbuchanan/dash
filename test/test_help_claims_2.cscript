@@ -576,10 +576,12 @@ _hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid ker
 _hc2_dash   "HC2-16b" 0   `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"'
 _hc2_reg    "HC2-16c" hc `""kernel":"gaussian""'
 _hc2_expect "HC2-16d" 198 `"twoway line mpg weight, lwidth(())"' "option(s) ( ) not allowed"
-_hc2_dash   "HC2-16e" 0   `"dash line mpg weight, lwidth(()) name(hc)"'
-_hc2_reg    "HC2-16f" hc `""lwidth":"()""'
+// Flipped (WP-31 E4): an empty pair in a style list is refused in
+// twoway's words, as twoway refuses it (lwidth and msize are style lists).
+_hc2_dash   "HC2-16e" 198 `"dash line mpg weight, lwidth(()) name(hc)"' "option(s) ( ) not allowed"
+_hc2_line_is "HC2-16f" "option(s) ( ) not allowed"
 _hc2_expect "HC2-16g" 198 `"twoway scatter mpg weight, msize(())"' "option(s) ( ) not allowed"
-_hc2_dash   "HC2-16h" 0   `"dash scatter mpg weight, msize(()) name(hc)"'
+_hc2_dash   "HC2-16h" 198 `"dash scatter mpg weight, msize(()) name(hc)"' "option(s) ( ) not allowed"
 _hc2_expect "HC2-16i" 198 `"twoway scatter mpg weight, xsize(())"' "option(s) ( ) not allowed"
 _hc2_dash   "HC2-16j" 0   `"dash scatter mpg weight, xsize(()) name(hc)"'
 _hc2_reg    "HC2-16k" hc `""xsize":"()""'

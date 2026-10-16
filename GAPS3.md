@@ -502,7 +502,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit ab33ff3.
 - **E2 Tracked:** Closed in WP-31, BUGS.md "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending", commit 947c9ca.
 - **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.
-- **E4 Tracked:** Open (WP-31 section 41).
+- **E4 Tracked:** Closed in WP-31, BUGS.md "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element", commit pending.
 - **E5 Tracked:** Open (WP-31 section 41).
 - **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit db38355.
 - **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit pending.

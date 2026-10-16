@@ -778,6 +778,8 @@ COVERAGE = {
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         "_dash_stylelist_bad": ("test_varlist_expansion.cscript:SL-08",),
         "_dash_stylelist_blank": ("test_varlist_expansion.cscript:SL-25",),
+        "_dash_stylelist_paren": ("test_option_validation.cscript:U41-11",),
+        "_dash_stylelist_eqlead": ("test_option_validation.cscript:U41-12",),
         "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
         "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
         "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),

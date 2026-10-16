@@ -925,7 +925,7 @@ and now matches Stata.
 
 - lpattern(Dash), msymbol(CIRCLE) and other wrong-case style names were lower-cased and drawn; twoway notes them ("named style Dash not found in class linepattern") and draws the default, and so does dash now (WP-31, E12)
 
-<!-- WP-31 E4 -->
+- mcolor((red)) and mcolor("(red)") reached the renderer as an unknown colour and drew black; they are refused, as twoway refuses them: "option(s) ( red ) not allowed" r(198); mcolor(=blue) is refused, r(198), as twoway refuses it; mcolor(red=blue) and mcolor(red=) draw the default for that y, silently, as twoway draws them, where they drew black with a note (WP-31, E4)
 
 <!-- WP-31 E5 -->
 

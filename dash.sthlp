@@ -1155,10 +1155,12 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    Some values {cmd:twoway} refuses, {cmd:dash} accepts:
     {cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}; a style
-    option given an empty pair of parentheses, such as {cmd:lwidth(())},
-    {cmd:msize(())} or {cmd:xsize(())} ({cmd:twoway}:
+    option given an empty pair of parentheses outside a style list, such
+    as {cmd:xsize(())} ({cmd:twoway}:
     {cmd:option(s) ( ) not allowed}), passes as a name that the renderer
-    then reports; and
+    then reports (inside a style list, {cmd:lwidth(())} or
+    {cmd:msize(())}, it is refused in {cmd:twoway}'s words; see
+    {help dash##stylelists:Style lists}); and
     {cmd:colorvar()} takes a string variable, drawn a colour for each
     value, where {cmd:twoway} wants a numeric one.  An unknown
     {cmd:scheme()} is refused where {cmd:twoway} draws {cmd:s2color} with
@@ -1221,7 +1223,13 @@ there, is an invalid point.  The literal is read as data and never run.
     refuses it, {cmd:mcolor(red .. blue):  invalid syntax}, r(198), and an
     element that a y uses is held to the option's bounds as a single value
     is.  An empty quoted element, {cmd:""}, is a {cmd:.}, as in
-    {cmd:twoway}.  A quoted element of blanks, {cmd:" "}, is refused when a
+    {cmd:twoway}.  An element with an {cmd:=} glued inside or after it,
+    {cmd:mcolor(red=blue)} or {cmd:mcolor(red=)}, leaves its y at the
+    default, silently, as {cmd:twoway} draws it; one led by a glued
+    {cmd:=}, {cmd:mcolor(=blue)}, is refused, r(198), as {cmd:twoway}
+    refuses it; and one opening with a parenthesis, {cmd:mcolor((red))}
+    or {cmd:mcolor("(red)")}, is refused in {cmd:twoway}'s words,
+    {cmd:option(s) ( red ) not allowed}, r(198).  A quoted element of blanks, {cmd:" "}, is refused when a
     y uses it: {cmd:scatter mpg turn weight, mcolor(" " blue)} stops with
     {cmd:dash: mcolor() element 1 is blank; use . for the default (got: " " blue)},
     r(198); write {cmd:.} for the default.  {cmd:twoway} also refuses a used

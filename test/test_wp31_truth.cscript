@@ -10536,6 +10536,90 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u41_svg_fills(svg):
+    """The marker fills twoway's SVG draws, in order of first use."""
+    import re
+    with open(svg, encoding="utf-8") as fh:
+        txt = fh.read()
+    out = []
+    for c in re.findall(r'<circle [^>]*style="fill:(#[0-9A-Fa-f]{6})"', txt):
+        if c.lower() not in out:
+            out.append(c.lower())
+    return out
+
+
+def _u41_marks(sp, dp, app, svg):
+    """U41-02/U41-04: dash's series fills and symbols, saved and served,
+    and its notes, against twoway's fills."""
+    from sfi import Macro
+    want = _u41_svg_fills(svg)
+    (a, b), notes = _u41_glyphs(sp, dp, app, "Scatter")
+    bad = []
+    for name, gs in (("saved", a), ("served", b)):
+        got = [str(g.fill_color).lower() for g in gs]
+        if got != want:
+            bad.append("%s fills %s, twoway %s" % (name, got, want))
+    Macro.setGlobal("u41_sym", " ".join(str(g.marker) for g in a + b))
+    Macro.setGlobal("u41_notes", " | ".join(notes)[:500])
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
+capture program drop _u41_markcase
+program define _u41_markcase
+    // _u41_markcase <dir> <k> <command>: twoway's and dash's markers.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    capture graph drop u41t
+    quietly twoway `0' scheme(s2color) name(u41t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u41t
+    _u41_spec "`dir'" `k' `0' scheme(s2color)
+    python: import __main__ as _u41_m; _u41_m._u41_marks("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg")
+end
+
+* ==== S41 E4: Stylelist edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41s"
+    capture mkdir "`u41d'"
+    sysuse auto, clear
+
+    // U41-02: an element with a glued = draws the default, silently,
+    // saved and served, as twoway draws it (live).
+    global u41_bad ""
+    local k 20
+    foreach v in "red=blue" "red=" "red=blue green" {
+        local ++k
+        _u41_markcase "`u41d'" `k' scatter mpg weight turn, mcolor(`v')
+        if `"${u41_notes}"' != "" global u41_bad `"${u41_bad} [`v' noted: ${u41_notes}]"'
+    }
+    _w31_expect U41-02 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-02 "red=blue, red= and red=blue green draw the default for the glued element, silently, saved and served, as twoway"
+
+    // U41-03: mcolor((red)) is refused by both, r(198).
+    capture twoway scatter mpg weight turn, mcolor((red))
+    local trc = _rc
+    dash clear
+    capture dash scatter mpg weight turn, mcolor((red))
+    local drc = _rc
+    _w31_expect U41-03 `"(`trc' == 198 & `drc' == 198)"' `"twoway rc `trc', dash rc `drc'"'
+    _w31_done U41-03 "mcolor((red)) is refused, r(198), as twoway refuses it"
+
+    // U41-04: an unknown msymbol() element is noted and the scheme's
+    // circle drawn, as twoway draws it.
+    global u41_bad ""
+    _u41_markcase "`u41d'" 31 scatter mpg weight turn, msymbol(bogus circle)
+    local ok = strpos(`"${u41_notes}"', "bogus") > 0 & `"${u41_sym}"' == "circle circle circle circle"
+    _w31_expect U41-04 `"(`"${u41_bad}"' == "" & `ok')"' `"${u41_bad} notes: ${u41_notes} symbols: ${u41_sym}"'
+    _w31_done U41-04 "msymbol(bogus circle) is noted and draws circles, saved and served, as twoway"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

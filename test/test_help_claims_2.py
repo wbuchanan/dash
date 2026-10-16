@@ -285,7 +285,9 @@ class TestTheHelpSaysWhatWasMeasured:
         v = self._values()
         assert "Two values {cmd:twoway} refuses" not in v
         for s in ("{cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}",
-                  "{cmd:msize(())} or {cmd:xsize(())}",
+                  # Flipped (WP-31 E4): lwidth(()) and msize(()) are
+                  # style lists, refused as twoway refuses them.
+                  "as {cmd:xsize(())} ({cmd:twoway}:",
                   "{cmd:colorvar()} takes a string variable",
                   "{cmd:mcolor(255,0,0)}"):
             assert s in v, s

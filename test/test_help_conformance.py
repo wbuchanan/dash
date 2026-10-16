@@ -1203,4 +1203,5 @@ class TestInternalLinksResolve:
         # 97 -> 98 links, 35 -> 36 targets: WP-31 D3 links the textbox
         # sentence to the new Textbox options paragraph.
         # 98 -> 99 links: WP-31 D2b links the Edge titles paragraph to it.
-        assert len(refs) == 99 and len(set(refs)) == 36
+        # 99 -> 100: E4 the empty-parentheses sentence links Style lists.
+        assert len(refs) == 100 and len(set(refs)) == 36

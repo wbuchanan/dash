@@ -456,7 +456,7 @@ program define _dash_require_mata
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
@@ -2901,6 +2901,21 @@ program define _dash_stylelist_check
         mata: st_local("_sl_bad", strofreal(_dash_stylelist_bad(st_global("s(" + st_local("key") + ")"))))
         if `_sl_bad' {
             mata: _dash_say("err", st_local("key") + "(", st_global("s(" + st_local("key") + ")"), "):  invalid syntax")
+            exit 198
+        }
+    }
+    // An element opening with "(" is read by twoway as an option and
+    // refused, "option(s) ( red ) not allowed"; one led by a glued "="
+    // is refused with a class path (WP-31 E4, measured 16oct2026).
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_p", _dash_stylelist_paren(st_global("s(" + st_local("key") + ")")))
+        if `"`macval(_sl_p)'"' != "" {
+            mata: _dash_say("err", "option(s) ", st_local("_sl_p"), " not allowed")
+            exit 198
+        }
+        mata: st_local("_sl_e", _dash_stylelist_eqlead(st_global("s(" + st_local("key") + ")")))
+        if `"`macval(_sl_e)'"' != "" {
+            mata: _dash_say("err", "dash: " + st_local("key") + "() element ", st_local("_sl_e"), " is no style; twoway refuses it too (invalid name)")
             exit 198
         }
     }

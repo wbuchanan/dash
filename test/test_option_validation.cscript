@@ -2538,6 +2538,49 @@ capture graph drop _all
 capture dash clear
 _u05_judge U39-10 `"`bad'"' "a quoted string where a variable goes refused in twoway's words, r(198)"
 
+// _u41_pair <dir> <cmd> <rc> <twoway's words> <dash's words>: twoway and
+// dash both answer <cmd> with return code <rc>, each log holding its
+// words; the case's verdict goes to the global u41_bad.
+capture program drop _u41_pair
+program define _u41_pair
+    version 19
+    args lg c want tw dw
+    foreach w in twoway dash {
+        capture graph drop _all
+        capture dash clear
+        capture log close _ovlog
+        capture erase "`lg'"
+        quietly log using "`lg'", name(_ovlog) text replace
+        capture noisily `w' `c'
+        local wrc = _rc
+        quietly log close _ovlog
+        local needle = cond("`w'" == "twoway", `"`tw'"', `"`dw'"')
+        _ov_count "`lg'" `"`needle'"'
+        if `wrc' != `want' | r(n) < 1 global u41_bad `"${u41_bad} [`w' `c': rc `wrc', line `r(n)']"'
+    }
+    capture erase "`lg'"
+    capture graph drop _all
+    capture dash clear
+end
+
+// U41-11 (WP-31 E4): a stylelist element opening with "(" is read by
+// twoway as an option and refused, "option(s) ( red ) not allowed",
+// r(198); dash refuses it in the same words, bare or quoted.
+global u41_bad ""
+local _u41l "`c(tmpdir)'dash_u41.log"
+sysuse auto, clear
+_u41_pair "`_u41l'" "scatter mpg weight turn, mcolor((red))" 198 "option(s) ( red ) not allowed" "option(s) ( red ) not allowed"
+_u41_pair "`_u41l'" `"scatter mpg weight turn, mcolor("(red)")"' 198 "option(s) ( red ) not allowed" "option(s) ( red ) not allowed"
+_u41_pair "`_u41l'" "line mpg turn weight, sort lwidth((thick))" 198 "option(s) ( thick ) not allowed" "option(s) ( thick ) not allowed"
+_u41_pair "`_u41l'" "scatter mpg weight turn, mcolor(red (blue))" 198 "option(s) ( blue ) not allowed" "option(s) ( blue ) not allowed"
+_u05_judge U41-11 `"${u41_bad}"' "a parenthesised stylelist element is refused in twoway's words, r(198)"
+
+// U41-12 (WP-31 E4): an element led by a glued "=" is refused, r(198)
+// (twoway names a class path; dash says it in its own words).
+global u41_bad ""
+_u41_pair "`_u41l'" "scatter mpg weight turn, mcolor(=blue)" 198 "invalid name" "is no style"
+_u05_judge U41-12 `"${u41_bad}"' "a stylelist element led by a glued = is refused, r(198), as twoway refuses it"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

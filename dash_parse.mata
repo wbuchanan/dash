@@ -235,6 +235,12 @@
 *!   _dash_stylelist_bad(raw)
 *!       1 when a .. or ... of a stylelist is not its last element.
 *!
+*!   _dash_stylelist_paren(raw)
+*!       twoway's "( red )" for the first element opening with "(", or "".
+*!
+*!   _dash_stylelist_eqlead(raw)
+*!       The first bare element led by a glued "=" (=blue), or "".
+*!
 *!   _dash_stylelist_blank(raw, n)
 *!       The first quoted blank element among the n used ones, or 0.
 *!
@@ -6138,6 +6144,11 @@ string scalar _dash_stylelist_pick(string scalar raw, real scalar i)
         if (bare & (t == ".." | t == "...")) return(prev)
         if (bare & t == "=")      v = prev
         else if (bare & t == ".") v = ""
+        // A bare element with an = glued inside or after it (red=blue,
+        // red=, T=O) is the default, silently, as twoway draws it (WP-31
+        // E4, test/fixtures/colour_width_edges_truth.json sl.eq_glued,
+        // sl.eq_trail); one led by = is refused (_dash_stylelist_eqlead).
+        else if (bare & strpos(t, "=") > 1) v = ""
         else                      v = t
         if (j == i) return(v)
         prev = v
@@ -6158,6 +6169,48 @@ real scalar _dash_stylelist_bad(string scalar raw)
         if (E[2, j] == "0" & (E[1, j] == ".." | E[1, j] == "...")) return(1)
     }
     return(0)
+}
+
+// _dash_stylelist_paren(raw) -- twoway's words for the first element
+// that opens with "(" -- bare or quoted, mcolor((red)) and
+// mcolor("(red)") alike -- as "( red )", one enclosing pair removed and
+// the rest trimmed; "" when no element does.  twoway reads such an
+// element as an option and refuses it, "option(s) ( red ) not allowed",
+// r(198) (WP-31 E4, measured 16oct2026 on mcolor, lcolor, lwidth and
+// msymbol; fixture sl.paren).
+string scalar _dash_stylelist_paren(string scalar raw)
+{
+    string matrix E
+    string scalar t
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j <= cols(E); j++) {
+        t = strtrim(E[1, j])
+        if (substr(t, 1, 1) != "(") continue
+        t = substr(t, 2, .)
+        if (substr(t, -1, 1) == ")") t = substr(t, 1, strlen(t) - 1)
+        t = strtrim(t)
+        return(t == "" ? "( )" : "( " + t + " )")
+    }
+    return("")
+}
+
+// _dash_stylelist_eqlead(raw) -- the first bare element led by a glued
+// "=" (=blue), "" when none is.  twoway refuses it with an internal class
+// path, "color.editstyle invalid name", r(198) (WP-31 E4, measured
+// 16oct2026); dash refuses it in its own words, as Q-11.1 refuses a
+// blank element.
+string scalar _dash_stylelist_eqlead(string scalar raw)
+{
+    string matrix E
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j <= cols(E); j++) {
+        if (E[2, j] == "0" & strlen(E[1, j]) > 1 & substr(E[1, j], 1, 1) == "=") return(E[1, j])
+    }
+    return("")
 }
 
 // _dash_stylelist_blank(raw, n) -- the first of the elements the n y

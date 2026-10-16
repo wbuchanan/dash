@@ -1118,9 +1118,11 @@ if !`_o' local ok 0
 _sl_run dash scatter mpg turn weight, acolor("") name(sl21b), log(`sl_log')
 mata: st_local("_o", strofreal(_sl_log_has(st_local("sl_log"), "acolor")))
 if $sl_rc | `_o' local ok 0
-capture noisily dash line mpg weight, lwidth(()) name(sl21c)
-mata: st_local("_o", strofreal(strpos(st_global("dash_json_sl21c"), char(34) + "lwidth" + char(34) + ":" + char(34) + "()" + char(34)) > 0))
-if !`_o' local ok 0
+// Flipped (WP-31 E4): lwidth(()) was written as the value "()"; twoway
+// refuses it, "option(s) ( ) not allowed", r(198), and so does dash.
+_sl_run dash line mpg weight, lwidth(()) name(sl21c), log(`sl_log')
+mata: st_local("_o", strofreal(_sl_log_has(st_local("sl_log"), "option(s) ( ) not allowed") & st_global("dash_json_sl21c") == ""))
+if $sl_rc != 198 | !`_o' local ok 0
 // WP-30 P1.13a: a comma-written colour is refused in twoway's words,
 // r(198) invalid '0', and nothing is registered (it was read as RGB).
 _sl_run dash scatter mpg weight, mcolor(255,0,0) name(sl21d), log(`sl_log')
