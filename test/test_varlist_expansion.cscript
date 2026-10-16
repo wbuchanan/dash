@@ -875,7 +875,8 @@ end
 
 // Flipped (WP-30 P1.14a): pstyle mstyle lstyle mlstyle left the list.
 // Flipped (WP-30 P1.8a): connect cmissing left the list.
-local _notyet malpha lalpha falpha jseed mlabwidth mlpattern marker
+// Flipped (WP-31 E2): mlpattern left _notyet; a style option now.
+local _notyet malpha lalpha falpha jseed mlabwidth marker
 
 // SL-01 the key list
 mata: st_local("_slk", _dash_stylelist_keys())
@@ -885,10 +886,11 @@ mata: st_local("_slk", _dash_stylelist_keys())
 // (WP-30 P1.14b): 41 -> 44, dstyle dlstyle bmlinestyle follow those.
 // Flipped (WP-30 P1.24): 44 -> 45, mlabtextstyle follows them.
 // Flipped (WP-30 P1.8a): 45 -> 47, connect cmissing follow it.
-local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing
+// 47 -> 48: WP-31 E2 mlpattern is a style option, after mlwidth.
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlpattern mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing
 local _inter : list _slk & _notyet
-local ok = (`: word count `_slk'' == 47 & "`_slk'" == "`_want'" & "`_inter'" == "")
-_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists, the 12 named styles, mlabtextstyle, connect and cmissing"
+local ok = (`: word count `_slk'' == 48 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 29 style options, the 4 value lists, the 12 named styles, mlabtextstyle, connect and cmissing"
 
 // SL-02 elements
 mata: q = char(34)

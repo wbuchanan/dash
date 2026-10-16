@@ -6002,7 +6002,7 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // _dash_plot_opts_to_json call them.
 
 // _dash_stylelist_keys() -- the options read as stylelists, the one list
-// of them: the style options (P1.1a), then the value lists mlabel jitter
+// of them: the style options (P1.1a; mlpattern WP-31 E2), then the value lists mlabel jitter
 // base barwidth (P1.1b), then the named styles pstyle lstyle clstyle mstyle
 // mlstyle astyle alstyle bstyle blstyle (P1.14a; p() is one name and is
 // not split), dstyle dlstyle bmlinestyle (P1.14b, kept and named) and
@@ -6010,7 +6010,7 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // _dash_connect_opt canonicalises before the per-y writer splits them.
 string scalar _dash_stylelist_keys()
 {
-    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
+    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlpattern " +
            "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +

@@ -202,9 +202,12 @@ class TestTranslateLwidth:
 class TestTranslateLpattern:
     """Tests for OptionTranslator.translate_lpattern."""
 
+    # Flipped (WP-31 E2): shortdot left the list -- it has no
+    # linepattern-*.style file and twoway notes it ("named style shortdot
+    # not found in class linepattern", symbol_pattern_truth.json).
     LPATTERN_KEYWORDS = [
         "solid", "dash", "dot", "dash_dot",
-        "shortdash", "shortdot", "shortdash_dot",
+        "shortdash", "shortdash_dot",
         "longdash", "longdash_dot",
     ]
 

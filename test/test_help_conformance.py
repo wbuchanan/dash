@@ -597,7 +597,8 @@ class TestTheParsersFoundSomething:
         # 211 -> 213: D8 the yvarlabel() xvarlabel() entry.
         # 213 -> 216: C17 the mlabprefix() mlabsuffix() and lalign() entries.
         # 216 -> 217: E3 the mlalign() mlabstyle() entry adds mlabstyle().
-        assert len(found) == 217, (
+        # 217 -> 216: E2 mlpattern() leaves the Unsupported list.
+        assert len(found) == 216, (
             f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -713,7 +714,8 @@ class TestTheParsersFoundSomething:
         # the eight edge titles drawn, title2() and subtitle2() refused
         # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn;
         # 20 -> 19: E3 mlalign() read by the renderer
-        assert len(_ignored_options()) == 19
+        # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
+        assert len(_ignored_options()) == 18
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -741,8 +743,8 @@ class TestTheParsersFoundSomething:
         # 35 -> 25: D2 the "Alternative titles" entry goes
         # 25 -> 20: D5 the "Sizing for graph combine" and "Room for long
         # end labels" entries go; 20 -> 19: E3 mlalign() leaves the
-        # Unsupported entry.
-        assert len(_unsupported_section()) == 19
+        # Unsupported entry.  19 -> 18: E2 mlpattern() leaves it.
+        assert len(_unsupported_section()) == 18
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(

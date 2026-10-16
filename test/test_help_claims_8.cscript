@@ -11,8 +11,8 @@
 *! DRAWS is read from `graph export' SVG.
 *!
 *!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           mlpattern(dash) play(x)' is, word for word, "dash:
-*!           ignoring unsupported option(s): mlpattern() play()".
+*!           mlabwidth(2) play(x)' is, word for word, "dash:
+*!           ignoring unsupported option(s): mlabwidth() play()".
 *!           (Flipped, WP-30 P1.14a: pstyle() is drawn now; flipped,
 *!           WP-31 D2: t1title() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
@@ -392,11 +392,14 @@ generate pos = mod(_n, 12) + 1
 // t1title() is drawn, as twoway draws it (edge_title_truth.json).
 // Flipped (WP-31 D5): scale() -> play(), which is still named; scale() is
 // drawn, as twoway draws it (sizing_truth.json scale_15).
-_hc_run "" `"dash scatter mpg weight, mlpattern(dash) play(x)"'
+// Flipped (WP-31 E2): mlpattern() -> mlabwidth(), which is still named;
+// twoway draws a marker's outline solid whatever mlpattern() says
+// (symbol_pattern_truth.json mlp.*), so dash takes it silently.
+_hc_run "" `"dash scatter mpg weight, mlabwidth(2) play(x)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() play())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() play())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -439,7 +442,9 @@ local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b
 // yoverhangs named in the note was wrong, because dash draws them as
 // twoway does (sizing_truth.json); given here and not named (24 -> 19 and
 // 8 -> 3).
-local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts filter fitopts link lineopts mlabwidth mlpattern play"
+// Flipped (WP-31 E2): mlpattern() named in the note was wrong, because
+// twoway draws the outline solid whatever it says; given and not named.
+local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts filter fitopts link lineopts mlabwidth play"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -447,7 +452,7 @@ local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts fil
 // Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
 // was wrong, because a scatter given connect() is drawn as twoway's
 // connected plot, its line joined in x order under sort.
-local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs"
+local p_honoured "mlpattern mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -603,11 +608,13 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
 // HC8-07 -- names, never values
 // ================================================================
 // Flipped (WP-30 P1.14a): pstyle() is drawn now, so mlpattern() carries
-// the value.
-_hc_run "" "dash scatter mpg weight, mlpattern(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
+// the value.  Flipped (WP-31 E2): mlpattern() is taken as twoway takes it
+// (an unknown pattern gets twoway's note, value and all), so mlabwidth()
+// carries it.
+_hc_run "" "dash scatter mpg weight, mlabwidth(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() nosuchopt())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() nosuchopt())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

@@ -1171,7 +1171,12 @@ there, is an invalid point.  The literal is read as data and never run.
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
     in {cmd:twoway} and in {cmd:dash} alike; so does a symbol or pattern
     name {cmd:twoway} does not know ({cmd:msymbol(star)},
-    {cmd:msymbol(CIRCLE)}: names are case-sensitive).  An unknown sub-option word
+    {cmd:msymbol(CIRCLE)}, {cmd:lpattern(Dash)}: names are
+    case-sensitive).  A line pattern is a name or a formula in double
+    quotes ({cmd:lpattern("-.")}), drawn at {cmd:twoway}'s lengths, which
+    follow the graph's size and not the line's width (to the whole
+    pixel); a formula in a scheme is drawn solid, and {cmd:mlpattern()}
+    leaves the marker's outline solid, as {cmd:twoway} draws them.  An unknown sub-option word
     of {cmd:legend()} is refused as {cmd:twoway} refuses it
     ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198)),
     and so is one of {cmd:xscale()} or {cmd:yscale()}
@@ -5789,8 +5794,8 @@ command copy-pasted from a do-file always runs -- and every one that is
 supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) play(x)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() play())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, mlabwidth(2) play(x)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlabwidth() play())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is
@@ -5811,9 +5816,7 @@ disagree in either direction.
     lines.  A name {cmd:twoway} does not know is noted as {cmd:twoway}
     notes it.
 
-{phang2}{ul:A marker's outline pattern, a dot's alignment, and a label width.}
-    {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,
-    which {cmd:twoway} accepts and {cmd:dash} draws solid.
+{phang2}{ul:A dot's alignment, and a label width.}
     {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
     of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
     {cmd:dash} draws it centred.

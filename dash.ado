@@ -1234,7 +1234,7 @@ program define _dash_parse_plot_opts, sclass
         LEvel(string)             BAnds(string)             AT(string asis) ///
         CIOPTS(string asis)       LINEOPTS(string asis)     FITOPTS(string asis) ///
         COLor(string asis)        MLWidth(string asis)      MSTyle(string asis) ///
-        LStyle(string asis)       MLStyle(string asis)      MLPattern(string) ///
+        LStyle(string asis)       MLStyle(string asis)      MLPattern(string asis) ///
         ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
         DSTyle(string asis)       DLstyle(string asis)      BMLinestyle(string asis) ///
         DOTEXtend(string) NDOTs(string) Dsymbol(string asis) DColor(string asis) ///
@@ -1400,7 +1400,6 @@ program define _dash_parse_plot_opts, sclass
     // WP-31 A4: mlalign(), twoway's mlal() .. mlalign() (mla() is mlabel(),
     // as in twoway).  WP-31 E3: read by the renderer, which names only
     // what it cannot draw (outside, or a word that is no alignment).
-    if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
     // WP-30 P1.14b: bmlinestyle() styles a marker's back line (P2.8);
     // dash does not draw it, so it is kept in the spec and named here.
     // WP-31 B5b: dstyle(), dlstyle() and the other d-options are drawn on

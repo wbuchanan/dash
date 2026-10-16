@@ -41,7 +41,7 @@ _MATA = os.path.join(_HERE, "..", "dash_parse.mata")
 _HLP = os.path.join(_HERE, "..", "dash.sthlp")
 
 _STYLE_KEYS = (
-    "mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor "
+    "mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlpattern mlabcolor "
     "mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth "
     "lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor "
     "blcolor acolor alcolor alwidth alpattern").split()
@@ -56,7 +56,8 @@ _NAMED_KEYS = ("pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle "
 # Flipped (WP-30 P1.8a): connect cmissing left _NOT_YET; style lists now,
 # after the named styles in _dash_stylelist_keys().
 _JOIN_KEYS = ["connect", "cmissing"]
-_NOT_YET = ("malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
+# Flipped (WP-31 E2): mlpattern left _NOT_YET; a style list, after mlwidth.
+_NOT_YET = ("malpha", "lalpha", "falpha", "jseed", "mlabwidth",
             "marker")
 
 _FIX = os.path.join(_HERE, "fixtures", "stylelist_truth.json")

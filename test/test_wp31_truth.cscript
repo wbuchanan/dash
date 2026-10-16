@@ -9985,6 +9985,182 @@ if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
 }
 * ==== end S40 ====
 
+python:
+def _u40_line(sp, dp, app, key):
+    """The first Line glyph's dash list and the first marker's, saved and
+    served, into __main__._u40_lines[key], with the saved render's
+    pattern notes."""
+    import __main__ as m
+    import warnings
+    import dash_render as dr
+    a, b = m._u03_docs(sp, dp, app)
+    out = []
+    for figs in (a, b):
+        rs = [r for r in figs[0].renderers
+              if type(getattr(r, "glyph", None)).__name__ in ("Line", "Scatter")
+              and not dr._dash_is_swatch(r)]
+        out.append(tuple(list(r.glyph.line_dash) for r in rs[:1]))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    notes = [str(x.message) for x in w if "pattern" in str(x.message)]
+    seen = getattr(m, "_u40_lines", {})
+    seen[key] = (out, notes)
+    m._u40_lines = seen
+end
+
+python:
+def _u40_pverdict(fixture):
+    """What differs from twoway's runs (symbol_pattern_truth.json) for
+    the dash lists _u40_line saw, into u40_bad: each fixture key's runs,
+    to the whole pixel (Bokeh's dash lists are integers), saved and
+    served alike; a noted key draws solid with one note."""
+    import __main__ as m
+    import json
+    import dash_render as dr
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        t = json.load(fh)
+    unit = dr.OptionTranslator.PT_PER_RS * dr.OptionTranslator.PX_PER_PT
+    bad = []
+    for key, (out, notes) in sorted(m._u40_lines.items()):
+        if out[0] != out[1]:
+            bad.append("%s saved %s served %s" % (key, out[0], out[1]))
+        px = out[0][0] if out[0] else []
+        rec = t[key]
+        if rec.get("note"):
+            if px != [] or len(notes) != 1:
+                bad.append("%s drew %s notes %s" % (key, px, notes))
+            continue
+        if notes:
+            bad.append("%s noted %s" % (key, notes))
+        runs = rec.get("runs_rs", [])
+        if key.startswith("mlp."):
+            if px != []:
+                bad.append("%s outline %s, twoway solid" % (key, px))
+            continue
+        if not runs:
+            if px and px[0] != 0:
+                bad.append("%s drew %s, twoway solid or blank" % (key, px))
+            continue
+        for i, r in enumerate(runs):
+            got = px[i % len(px)] if px else None
+            want = r * unit
+            if got is None or not (abs(got - want) <= 0.6
+                                   or (want < 1 and got == 1)):
+                bad.append("%s run %d: %s px, twoway %.3f" % (key, i, got, want))
+                break
+    Macro.setGlobal("u40_bad", "; ".join(bad)[:2000])
+end
+
+capture program drop _u40_lin
+program define _u40_lin
+    // _u40_lin <dir> <k> <fixture key> <dash command>: dash's dash lists
+    // for the command, saved and served, into _u40_lines[<key>].
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken key 0 : 0
+    dash clear
+    quietly dash `0' scheme(s2color) name(zu40`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u40_m; _u40_m._u40_line("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`key'")
+end
+
+* ==== S40 E2: Line patterns and mlpattern ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
+    display as text "S40 start " c(current_date) " " c(current_time)
+    local u40d "`w31_work'/s40p"
+    capture mkdir "`u40d'"
+    local u40fx "`c(pwd)'/fixtures/symbol_pattern_truth.json"
+    sysuse auto, clear
+
+    // U40-03: every named pattern at the default width is twoway's.
+    python: import __main__ as _u40_m; _u40_m._u40_lines = {}
+    local k 100
+    foreach p in blank dash dash_3dot dash_dot dash_dot_dot dot longdash longdash_3dot longdash_dot ///
+            longdash_dot_dot longdash_shortdash shortdash shortdash_dot shortdash_dot_dot solid ///
+            tight_dot vshortdash {
+        local ++k
+        _u40_lin "`u40d'" `k' pat.`p' line mpg weight, sort lpattern(`p')
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_pverdict(r"`u40fx'")
+    _w31_expect U40-03 `"(`"${u40_bad}"' == "")"' `"${u40_bad}"'
+    _w31_done U40-03 "every named pattern draws twoway's lengths, saved and served"
+
+    // U40-04: the pen width is not the unit.
+    python: import __main__ as _u40_m; _u40_m._u40_lines = {}
+    local k 130
+    foreach w in vvthin medium thick vthick {
+        local ++k
+        _u40_lin "`u40d'" `k' pat.dash_w.`w' line mpg weight, sort lpattern(dash) lwidth(`w')
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_pverdict(r"`u40fx'")
+    _w31_expect U40-04 `"(`"${u40_bad}"' == "")"' `"${u40_bad}"'
+    _w31_done U40-04 "lpattern(dash) draws the same dashes at every width, as twoway"
+
+    // U40-06: the formulas decode as twoway's; "-x" is noted and solid
+    // in both (live twoway rc beside dash's).
+    python: import __main__ as _u40_m; _u40_m._u40_lines = {}
+    local k 140
+    local i 0
+    local twbad ""
+    foreach f in "-." "--.." "_" "#" "-_-" "_--_#" "l" "ll" "-x" {
+        local ++k
+        local ++i
+        capture twoway line mpg weight, sort lpattern("`f'") name(u40t, replace)
+        if _rc local twbad "`twbad' `f' twoway rc `=_rc'"
+        capture graph drop u40t
+        _u40_lin "`u40d'" `k' pat.formula.f`i' line mpg weight, sort lpattern("`f'")
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_pverdict(r"`u40fx'")
+    _w31_expect U40-06 `"(`"${u40_bad}`twbad'"' == "")"' `"${u40_bad}`twbad'"'
+    _w31_done U40-06 "line-pattern formulas draw as twoway decodes them; a malformed one is noted and solid"
+
+    // U40-08: mlpattern() leaves the outline solid, silently, as twoway.
+    python: import __main__ as _u40_m; _u40_m._u40_lines = {}
+    local k 160
+    foreach p in dash dot {
+        local ++k
+        _u40_lin "`u40d'" `k' mlp.`p' scatter mpg weight, msymbol(Oh) mlpattern(`p')
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_pverdict(r"`u40fx'")
+    _w31_expect U40-08 `"(`"${u40_bad}"' == "")"' `"${u40_bad}"'
+    _w31_done U40-08 "mlpattern() leaves the marker outline solid, silently, saved and served, as twoway"
+    display as text "S40 end " c(current_date) " " c(current_time)
+}
+* ==== end S40 ====
+
+* ==== S40 E12: Case folding ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
+    display as text "S40 start " c(current_date) " " c(current_time)
+    local u40d "`w31_work'/s40c"
+    capture mkdir "`u40d'"
+    local u40fx "`c(pwd)'/fixtures/symbol_pattern_truth.json"
+    sysuse auto, clear
+
+    // U40-09: pattern names are case-sensitive: Dash and DASH are noted
+    // and drawn solid in both (live twoway rc beside dash's).
+    python: import __main__ as _u40_m; _u40_m._u40_lines = {}
+    local k 170
+    local twbad ""
+    foreach f in Dash DASH {
+        local ++k
+        local i = cond("`f'" == "Dash", 10, 11)
+        capture twoway line mpg weight, sort lpattern(`f') name(u40t, replace)
+        if _rc local twbad "`twbad' `f' twoway rc `=_rc'"
+        capture graph drop u40t
+        _u40_lin "`u40d'" `k' pat.formula.f`i' line mpg weight, sort lpattern(`f')
+    }
+    python: import __main__ as _u40_m; _u40_m._u40_pverdict(r"`u40fx'")
+    _w31_expect U40-09 `"(`"${u40_bad}`twbad'"' == "")"' `"${u40_bad}`twbad'"'
+    _w31_done U40-09 "lpattern(Dash) and lpattern(DASH) are noted and drawn solid, as twoway"
+    display as text "S40 end " c(current_date) " " c(current_time)
+}
+* ==== end S40 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

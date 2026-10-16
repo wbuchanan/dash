@@ -110,7 +110,9 @@ PLOT_VALUES = {
     # unknown, now declared -- named by their full names -- and not drawn.
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
-    "mlpattern": ("dash", "dot", "scatter"),
+    # Flipped (WP-31 E2): mlpattern ("dash", "dot", "scatter") -- named
+    # and inert -- left this table: twoway draws a marker's outline solid
+    # whatever mlpattern() says, so dash takes it silently (NOT_IN_FILE).
     # WP-30 P1.14b: kept and named, not drawn (P2.8 marker back lines);
     # twoway accepts it on scatter (plan E9.7).
     # Flipped (WP-31 B5b): dstyle ("p3", "p5", "scatter") and dlstyle
@@ -295,7 +297,8 @@ class TestTheListIsCoveredAndHonest:
         # 18 -> 8: D2 edge titles drawn, title2/subtitle2 refused
         # 25 -> 20 and 8 -> 3: D5 fxsize fysize scale xoverhangs
         # yoverhangs drawn; 20 -> 19: E3 mlalign() read by the renderer
-        assert len(_plot_pending()) == 19, sorted(_plot_pending())
+        # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
+        assert len(_plot_pending()) == 18, sorted(_plot_pending())
         assert len(_graph_pending()) == 3, sorted(_graph_pending())
 
 
@@ -493,6 +496,12 @@ NOT_IN_FILE = {
                "the page without it, as twoway draws inside; outside and "
                "an unknown word are noted by the renderer "
                "(test_msangle_mlabstyle.py::TestMlalign::test_notes)",
+    # WP-31 E2: twoway sets the outline's pattern and draws it solid
+    # (symbol_pattern_truth.json mlp.*), so the page is the one without it.
+    "mlpattern": "the marker outline's pattern: twoway draws the outline "
+                 "solid whatever it says, so the page is the one without "
+                 "it; a name twoway does not know is noted by the renderer "
+                 "(test_line_patterns.py::TestMlpattern)",
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",

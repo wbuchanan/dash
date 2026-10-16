@@ -456,7 +456,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, msymbol(pipe) drew a horizontal dash; it is twoway's vertical bar, and msangle() turns it further. msymbol(point) drew an 8 px circle; it is a one-pixel dot at any msize(). msymbol(o d s t x v) and their hollow forms drew full-size symbols; they are the small symbols (0.71, or 0.75 for t and v), and smx and smv are 0.71 of X and 0.75 of V where they drew 1.0; msymbol(V) drew a filled triangle; it is an open chevron; msymbol(arrow), arrowf, A, a and | were noted and the scheme's symbol drawn; they draw (WP-31, E1)
 
-<!-- WP-31 E2 -->
+- dash line mpg weight, lpattern(dot) drew [2, 4] px at every width; it is Stata's .1 .7 relative units ([1, 3] px), and every named pattern is its style file's numbers (dash [8, 4], shortdash [3, 3], vshortdash [2, 3], longdash [15, 4], tight_dot [1, 2]); twoway's dashes follow the graph's size, not the line's width. Formulas such as lpattern("-.") were noted and drawn solid; they are drawn as twoway decodes them, and lpattern("-_-") is dash, long dash, dash, no longer dash_dot. mlpattern() was named as not supported; it is taken as twoway takes it, the outline solid (WP-31, E2)
 
 <!-- WP-31 E5 -->
 
@@ -921,7 +921,7 @@ and now matches Stata.
 
 - msymbol(star), asterisk, hexagon, hexagon_hollow and dot are not Stata symbols: they drew Bokeh's star, asterisk, hexagon and dot, and now get twoway's note ("named style star not found in class symbol") and the scheme's symbol; msymbol(CIRCLE) and other wrong-case names drew the lower-case symbol and are now noted as twoway notes them (WP-31, E1)
 
-<!-- WP-31 E12 -->
+- lpattern(Dash), msymbol(CIRCLE) and other wrong-case style names were lower-cased and drawn; twoway notes them ("named style Dash not found in class linepattern") and draws the default, and so does dash now (WP-31, E12)
 
 <!-- WP-31 E4 -->
 

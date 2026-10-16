@@ -133,7 +133,9 @@ class TestTheShapeOfTheExamples:
             # Unsupported example names mlpattern() instead.
             # WP-31 D2: t1title("hi") -> scale(1.2), t1title() is drawn.
             # WP-31 D5: scale(1.2) -> play(x), scale() is drawn.
-            'dash scatter mpg weight, mlpattern(dash) play(x)': 1,
+            # Flipped (WP-31 E2): mlpattern() -> mlabwidth(2), which is
+            # still named; mlpattern() is taken as twoway takes it.
+            'dash scatter mpg weight, mlabwidth(2) play(x)': 1,
         }
 
 

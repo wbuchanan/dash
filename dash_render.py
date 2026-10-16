@@ -7689,38 +7689,37 @@ class OptionTranslator:
     _LWIDTH_FLOOR_PT: float = 0.3
 
     # ------------------------------------------------------------------
-    # Stata line pattern → Bokeh dash specification
-    # Bokeh accepts a list of pixel on/off lengths, or the string "solid".
+    # Stata line pattern → Bokeh dash specification (WP-31 E2)
+    # The 17 linepattern-*.style files' numbers, in Stata relative units:
+    # twoway draws a pattern number as 1 rs (min(width, height)/100 of the
+    # graph), whatever the pen width (vvthin to vthick) and whatever the
+    # graph's size (test/fixtures/symbol_pattern_truth.json pat.dash_w.*,
+    # pat.dash_size.*, measured 16oct2026), so dash draws it as 1 rs,
+    # 3.84 px, as every other relative size.  Names are case-sensitive
+    # (twoway notes Dash, E12); "l" is solid and "b" blank.
     # ------------------------------------------------------------------
     _LPATTERN_MAP: dict[str, Any] = {
-        "solid":      [],
-        "l":          [],
-        "dash":       [8, 4],
-        "-":          [8, 4],
-        "dot":        [2, 4],
-        ".":          [2, 4],
-        "dash_dot":   [8, 4, 2, 4],
-        "-_-":        [8, 4, 2, 4],
-        "shortdash":      [4, 4],
-        "shortdot":       [2, 2],
-        "shortdash_dot":  [4, 2, 2, 2],
-        "longdash":       [16, 4],
-        "longdash_dot":   [16, 4, 2, 4],
-        "blank":      [0, 100],
-        "b":          [0, 100],
-        # The remainder of Stata's line-pattern set.  Every name here has a
-        # corresponding linepattern-<name>.style in Stata's style library, and
-        # real schemes use them — s1rcolor and the st* family declare
-        # vshortdash, which previously raised straight out of SchemeParser.
-        "vshortdash":          [3, 3],
-        "tight_dot":           [1, 2],
-        "dash_3dot":           [8, 4, 2, 4, 2, 4, 2, 4],
-        "dash_dot_dot":        [8, 4, 2, 4, 2, 4],
-        "longdash_3dot":       [16, 4, 2, 4, 2, 4, 2, 4],
-        "longdash_dot_dot":    [16, 4, 2, 4, 2, 4],
-        "longdash_shortdash":  [16, 4, 4, 4],
-        "shortdash_dot_dot":   [4, 2, 2, 2, 2, 2],
+        "solid":              [],
+        "l":                  [],
+        "blank":              [0.0, 10.0],
+        "b":                  [0.0, 10.0],
+        "dash":               [2.0, 1.0],
+        "dash_3dot":          [2.0, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9],
+        "dash_dot":           [2.0, 0.9, 0.1, 0.9],
+        "dash_dot_dot":       [2.0, 0.9, 0.1, 0.9, 0.1, 0.9],
+        "dot":                [0.1, 0.7],
+        "longdash":           [4.0, 1.0],
+        "longdash_3dot":      [4.0, 1.0, 0.1, 1.0, 0.1, 1.0, 0.1, 1.0],
+        "longdash_dot":       [4.0, 1.0, 0.1, 1.0],
+        "longdash_dot_dot":   [4.0, 1.0, 0.1, 1.0, 0.1, 1.0],
+        "longdash_shortdash": [4.0, 1.0, 0.8, 1.0, 0.8, 1.0, 0.8],
+        "shortdash":          [0.8, 0.7],
+        "shortdash_dot":      [0.8, 0.8, 0.1, 0.8],
+        "shortdash_dot_dot":  [0.8, 0.8, 0.1, 0.8, 0.1, 0.8],
+        "tight_dot":          [0.1, 0.4],
+        "vshortdash":         [0.5, 0.7],
     }
+    _LPATTERN_FORMULA_RE = re.compile(r"[l_\-.# ]{1,200}")
 
     @staticmethod
     def parse_color_alpha(
@@ -8089,25 +8088,100 @@ class OptionTranslator:
         return T.line_px(pt)
 
     @staticmethod
-    def translate_lpattern(value: str) -> Any:
-        """Return a Bokeh dash specification for a Stata lpattern() value.
+    def lpattern_formula(text: str) -> "list[float] | None":
+        """Stata's line-pattern formula decoded as linepattern.class
+        _DecodePat decodes it (WP-31 E2): the numbers in Stata relative
+        units, [] for solid (a text of l's, or of #'s alone), None for a
+        character outside ``l _ - . #`` and space, or past 200 characters.
 
-        Args:
-            value: A Stata line-pattern name (e.g. "dash", "dot").
+        ``l`` is a 4.6 line joined to a line before it; ``_`` a .45 space,
+        a 3.70 dash and a .45 space; ``-`` .3, 1.4, .3; ``.`` .3, .1, .3;
+        ``#`` a .45 space.  Adjacent spaces merge and a leading space is
+        carried to the end of the period."""
+        s = str(text).strip()
+        if not s or OptionTranslator._LPATTERN_FORMULA_RE.fullmatch(s) is None:
+            return None
+        if s.replace("l", "").replace(" ", "") == "":
+            return []
+        arr: list = []
+        tail = 0.0
+        was_space = True
+        for ch in s:
+            if ch == " ":
+                continue
+            if ch == "l":
+                if arr and not was_space:
+                    arr[-1] += 4.6
+                else:
+                    arr.append(4.6)
+                was_space = False
+                continue
+            if ch == "#":
+                parts = ((0.45, True),)
+            else:
+                sp, ln = {"_": (0.45, 3.70), "-": (0.3, 1.4),
+                          ".": (0.3, 0.1)}[ch]
+                parts = ((sp, True), (ln, False), (sp, True))
+            for v, is_space in parts:
+                if is_space:
+                    if not arr:
+                        tail += v
+                    elif was_space:
+                        arr[-1] += v
+                    else:
+                        arr.append(v)
+                    was_space = bool(arr) or was_space
+                else:
+                    arr.append(v)
+                    was_space = False
+        if arr and tail:
+            if was_space:
+                arr[-1] += tail
+            else:
+                arr.append(tail)
+        return [round(v, 6) for v in arr]
+
+    @staticmethod
+    def translate_lpattern(value: str) -> Any:
+        """Return a Bokeh dash list (pixels) for a Stata lpattern() value.
+
+        A name of ``_LPATTERN_MAP`` (as typed: Stata's names are
+        case-sensitive) or a formula (``lpattern_formula``) in Stata
+        relative units, each drawn as 1 rs = 3.84 px (rounded to whole
+        pixels, as Bokeh takes them) whatever the line's width, as twoway
+        draws it (WP-31 E2,
+        test/fixtures/symbol_pattern_truth.json).  An odd-length pattern
+        gets a zero gap so its period ends as twoway's does
+        (longdash_shortdash).  One level of double quotes is the text's.
 
         Returns:
-            The string "solid" or a list of on/off pixel lengths.
+            [] for solid, else on/off pixel lengths.
 
         Raises:
-            ValueError: If the pattern is not recognised.
+            ValueError: a name twoway does not know or a malformed formula
+                (twoway notes it and draws solid).
         """
-        v = value.strip().lower()
-        if v in OptionTranslator._LPATTERN_MAP:
-            return OptionTranslator._LPATTERN_MAP[v]
-        raise ValueError(
-            f"Unrecognised Stata line pattern: '{value}'. "
-            "Examples: solid, dash, dot, dash_dot, shortdash, longdash."
-        )
+        T = OptionTranslator
+        v = str(value).strip()
+        if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+            v = v[1:-1].strip()
+        nums = T._LPATTERN_MAP.get(v)
+        if nums is None:
+            nums = T.lpattern_formula(v)
+        if nums is None:
+            raise ValueError(
+                f"Unrecognised Stata line pattern: '{value}'. "
+                "Examples: solid, dash, dot, dash_dot, shortdash, longdash, "
+                'or a formula such as "-.".'
+            )
+        # Bokeh's dash pattern takes whole pixels: each length is rounded,
+        # and a dot or dash shorter than a pixel keeps one, so dot (.1 rs,
+        # 0.38 px) still draws.
+        unit = T.PT_PER_RS * T.PX_PER_PT
+        out = [max(1, int(round(n * unit))) if n > 0 else 0 for n in nums]
+        if len(out) % 2:
+            out.append(0)
+        return out
 
 
 # ===========================================================================
@@ -10253,17 +10327,23 @@ class SchemeParser:
         whole render — but it must not vanish silently either, which is the
         failure mode that let an unresolvable colour turn every series black.
         """
-        raw = self._props.get(key, "solid").strip().lower()
-        try:
-            return OptionTranslator.translate_lpattern(raw)
-        except ValueError:
-            warnings.warn(
-                f"dash scheme: line pattern '{raw}' (from '{key}') is not "
-                "recognised; falling back to solid.",
-                UserWarning,
-                stacklevel=3,
-            )
+        raw = self._props.get(key, "solid").strip()
+        text = raw[1:-1].strip() if (len(raw) >= 2 and raw[0] == '"'
+                                     and raw[-1] == '"') else raw
+        # A scheme value is a style name, read as typed (WP-31 E12): twoway
+        # draws a formula there solid and silently, and notes a name it
+        # does not know (symbol_pattern_truth.json pat.scheme.*, E2).
+        if text in OptionTranslator._LPATTERN_MAP:
+            return OptionTranslator.translate_lpattern(text)
+        if OptionTranslator.lpattern_formula(text) is not None:
             return []
+        warnings.warn(
+            f"dash scheme: line pattern '{raw}' (from '{key}') is not "
+            "a Stata pattern name; falling back to solid.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return []
 
     def _lpattern_chain(self, keys: "tuple[str, ...]") -> list:
         """Resolve a line pattern through Stata's own fallback chain.
@@ -14295,6 +14375,16 @@ class GlyphMapper:
                 _dash_style_note("mlwidth", options["mlwidth"], "line width")
             except AttributeError:
                 pass
+        # mlpattern(): twoway sets the outline's pattern and draws it solid
+        # (neither its SVG nor its PNG dashes a marker; symbol_pattern_truth
+        # .json mlp.*, WP-31 E2), so the outline stays solid; a pattern
+        # twoway does not know is noted as twoway notes it.
+        if "mlpattern" in options and str(options["mlpattern"]).strip():
+            try:
+                self.tr.translate_lpattern(options["mlpattern"])
+            except ValueError:
+                _dash_style_note("mlpattern", options["mlpattern"],
+                                 "line pattern")
         # fcolor(none)/mfcolor(none) mean TRANSPARENT.  "none" resolved to
         # #ffffff, which paints an opaque white blob over whatever is behind.
         for _fk in ("mfcolor", "fcolor"):
