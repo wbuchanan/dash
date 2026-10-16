@@ -264,11 +264,16 @@ class TestSymbol:
 
     def test_a_known_symbol_is_translated(self, sp):
         _set(sp, **{"symbol p1": "diamond"})
-        assert sp._symbol_traits("symbol p1") == ("diamond", False, 1.0)
+        # Flipped (WP-31 E1): the factor was 1.0; twoway draws a diamond
+        # sqrt(2) of the circle's height (symbol_pattern_truth.json sym.D).
+        assert sp._symbol_traits("symbol p1") == \
+            ("diamond", False, pytest.approx(2 ** 0.5))
 
     def test_a_stata_abbreviation_is_translated(self, sp):
         _set(sp, **{"symbol p1": "Dh"})
-        assert sp._symbol_traits("symbol p1") == ("diamond", True, 1.0)
+        # Flipped (WP-31 E1): 1.0 -> sqrt(2), as above (sym.Dh).
+        assert sp._symbol_traits("symbol p1") == \
+            ("diamond", True, pytest.approx(2 ** 0.5))
 
     def test_an_unknown_symbol_returns_the_default(self, sp):
         _set(sp, **{"symbol p1": "octagon"})

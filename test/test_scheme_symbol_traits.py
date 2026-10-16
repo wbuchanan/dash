@@ -35,6 +35,7 @@ with open(_FIXTURE, encoding="utf-8") as _fh:
     TRUTH = json.load(_fh)
 
 H = math.sqrt(0.5)
+TRI = 2 / math.sqrt(3)   # a Bokeh triangle is sqrt(3)/2 of its size tall
 T = dr.OptionTranslator
 
 
@@ -55,10 +56,13 @@ class TestSymbolTraits:
                  "Oh": ("circle", True, 1.0),
                  "smcircle": ("circle", False, H),
                  "smcircle_hollow": ("circle", True, H),
-                 "smdiamond": ("diamond", False, H),
+                 # Flipped (WP-31 E1): factors are against the circle's
+                 # height now: smdiamond 1.0 (0.707 of D's sqrt(2)),
+                 # smtriangle 0.75 of T's 2/sqrt(3).
+                 "smdiamond": ("diamond", False, 1.0),
                  "smsquare": ("square", False, H),
                  "smplus": ("plus", False, H),
-                 "smtriangle": ("triangle", False, 0.75),
+                 "smtriangle": ("triangle", False, 0.75 * TRI),
                  "smx": ("x", False, H), "o": ("circle", False, H)}
         bad = [(n, T.symbol_traits(n)) for n, want in cases.items()
                if T.symbol_traits(n)[:2] != want[:2]
@@ -67,7 +71,7 @@ class TestSymbolTraits:
         # Flipped (WP-31 E1): smx and smv were 1.0 and o full size; smx is
         # 0.707 of X, smv 0.75 of V and o is smcircle
         # (test/fixtures/symbol_pattern_truth.json).
-        assert T.symbol_traits("smv")[2] == 0.75
+        assert T.symbol_traits("smv")[2] == pytest.approx(0.75 * TRI)
         with pytest.raises(ValueError):
             T.symbol_traits("bogus")
 
@@ -78,9 +82,16 @@ class TestTheSchemeCycle:
         assert sp.p_symbol_hollow == [False] * 6 + [True] * 4 + [False] * 5
         # Flipped (WP-31 E1): p15 smx was 1.0; it is 0.707 of X, as
         # twoway's s1mono_extent (22.05 against p5's 31.15) says.
+        # Flipped (WP-31 E1): the full symbols were 1.0; each is drawn as
+        # tall against the circle as twoway draws it -- diamonds sqrt(2),
+        # triangles 2/sqrt(3) of Bokeh's -- and the small ones keep their
+        # ratio to them (symbol_pattern_truth.json).
+        R2 = 2 ** 0.5
         assert sp.p_symbol_factor == pytest.approx(
-            [1.0] * 10 + [H, H, H, 0.75, H], abs=1e-4)
-        assert sp.default_symbol_traits(16) == ("diamond", False, 1.0)
+            [1.0, R2, 1.0, TRI, 1.0, 1.0, 1.0, R2, 1.0, TRI,
+             H, 1.0, H, 0.75 * TRI, H], abs=1e-4)
+        assert sp.default_symbol_traits(16) == \
+            ("diamond", False, pytest.approx(R2))
 
     def test_colour_schemes_are_plain(self):
         bad = []
@@ -180,7 +191,12 @@ class TestTwowaysSymbols:
         _check_layers(P["sy_p7_red"]["layers"], [ms[0], ms[6]],
                       "sy_p7_red", bad)
         for n, r in TRUTH["derived"]["sm_factor"].items():
-            f = T._SMALL_SYMBOL_FACTOR[n]
+            # Flipped (WP-31 E1): the table holds factors against the
+            # circle's height now, so the small symbol's ratio to its full
+            # one is the quotient.
+            _full = {"smx": "X", "smv": "V"}.get(n, n[2:])
+            f = (T._SMALL_SYMBOL_FACTOR[n]
+                 / T._SMALL_SYMBOL_FACTOR.get(_full, 1.0))
             if n in ("smx", "smv"):
                 # Flipped (WP-31 E1): this probe set smx beside msymbol(x)
                 # and smv beside msymbol(v), which are smx and smv, so its

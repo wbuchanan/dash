@@ -5436,9 +5436,12 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:o}, {cmd:d}, {cmd:s}, {cmd:x} and {cmd:oh}, {cmd:dh}, {cmd:sh})
     at 0.71 of the full symbol's size, {cmd:smtriangle}, {cmd:t},
     {cmd:th}, {cmd:smv} and {cmd:v} at 0.75, and {cmd:lgx} at 1.41,
-    after {cmd:msize()}, as Stata 19.5 draws them.  {cmd:pipe} and
+    after {cmd:msize()}, as Stata 19.5 draws them; every symbol is as
+    tall against the circle as {cmd:twoway} draws it (a diamond 1.41 of
+    the circle, a triangle, {cmd:V} and an arrow as tall as it).  {cmd:pipe} and
     {cmd:|} are a vertical bar, turned further by {cmd:msangle()};
-    {cmd:point} and {cmd:p} a one-pixel dot whatever {cmd:msize()} says;
+    {cmd:point} and {cmd:p} a one-pixel dot whatever {cmd:msize()} says,
+    in {cmd:msymbol()} and in a scheme's symbol cycle alike;
     {cmd:V} and {cmd:v} an open chevron; {cmd:arrow} and {cmd:a} draw an
     open triangle and {cmd:arrowf} and {cmd:A} a filled one, as tall as
     the circle (twoway draws an arrowhead on a shaft).

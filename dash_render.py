@@ -7320,32 +7320,31 @@ class OptionTranslator:
     # Stata marker names that mean "draw nothing".  msymbol(i) silently drew
     # a visible marker.
     _INVISIBLE_SYMBOLS: frozenset = frozenset({"i", "none", "invisible"})
-    # The size Stata 19.5 draws a small symbol at, as a fraction of its full
-    # symbol, at the default size and under msize(large) alike (WP-30
-    # P1.4a; the stroked extent measured from `graph export' SVGs, 03oct
-    # 2026): smcircle, smdiamond, smsquare, smplus and their hollow forms
-    # 0.707 (1/sqrt 2), smtriangle 0.751.
-    # The one- and two-letter shorthands are the sm* symbols
-    # (symbolstyle.sthlp), so they take the same factors (WP-31 E1).  x is
-    # smx and v is smv: 0.707 of X and 0.75 of V, and lgx 1.414 of X
-    # (test/fixtures/symbol_pattern_truth.json; P1.4a compared smx with
-    # x and smv with v, which are the same symbols).
+    # The size factor of every Stata symbol (WP-31 E1, measured from
+    # twoway's SVG, test/fixtures/symbol_pattern_truth.json): its height
+    # over O's, over its Bokeh shape's height at size 1 (BokehJS draws a
+    # triangle sqrt(3)/2 of its size tall and an x's arms at 45 degrees,
+    # sqrt(1/2)), so each draws as tall against O as twoway draws it:
+    # the diamonds are sqrt(2) of O (a square on its point), the triangles,
+    # V and the arrows as tall as O, the small symbols 0.707 of their full
+    # one (0.75 for the triangles and v), lgx 1.414 of X.  A name not here
+    # is 1.0.  (WP-30 P1.4a measured the small symbols against their full
+    # ones; those ratios hold.)  In msymbol() x and v are smx and smv
+    # (_OPTION_SYMBOL_SYNONYMS); a scheme's x and v are the full symbols.
     _SMALL_SYMBOL_FACTOR: dict = {
-        "smcircle": math.sqrt(0.5), "smcircle_hollow": math.sqrt(0.5),
-        "smdiamond": math.sqrt(0.5), "smdiamond_hollow": math.sqrt(0.5),
-        "smsquare": math.sqrt(0.5), "smsquare_hollow": math.sqrt(0.5),
-        "smplus": math.sqrt(0.5),
-        "smtriangle": 0.75, "smtriangle_hollow": 0.75,
-        "o": math.sqrt(0.5), "oh": math.sqrt(0.5),
-        "d": math.sqrt(0.5), "dh": math.sqrt(0.5),
-        "s": math.sqrt(0.5), "sh": math.sqrt(0.5),
-        "t": 0.75, "th": 0.75,
-        "smx": math.sqrt(0.5), "lgx": math.sqrt(2.0), "smv": 0.75,
+        **dict.fromkeys((
+            "smcircle", "smcircle_hollow", "o", "oh",
+            "smsquare", "smsquare_hollow", "s", "sh", "smplus", "smx"),
+            math.sqrt(0.5)),
+        **dict.fromkeys(("diamond", "diamond_hollow", "D", "Dh"),
+                        math.sqrt(2.0)),
+        **dict.fromkeys(("smdiamond", "smdiamond_hollow", "d", "dh"), 1.0),
+        **dict.fromkeys(("triangle", "triangle_hollow", "T", "Th", "V", "v",
+                         "arrow", "a", "arrowf", "A"), 2.0 / math.sqrt(3.0)),
+        **dict.fromkeys(("smtriangle", "smtriangle_hollow", "t", "th",
+                         "smv"), 1.5 / math.sqrt(3.0)),
+        "lgx": math.sqrt(2.0),
     }
-    # In an option, x and v are symbolstyle.sthlp's synonyms of smx and smv
-    # (msymbol(x) draws 0.707 of X); a scheme's or style file's x and v are
-    # symbol-x.style and symbol-v.style, the full symbols (s1mono's p5 x
-    # draws X's size; scheme_layer_truth.json s1mono_extent, WP-31 E1).
     _OPTION_SYMBOL_SYNONYMS: dict = {"x": "smx", "v": "smv"}
     # pipe and | are a vertical bar: Bokeh's dash marker a quarter turn,
     # and msangle() turns it further, as twoway turns it (WP-31 E1).
@@ -10918,6 +10917,17 @@ class SchemeParser:
                 (f"symbol p{i}", "symbol p")) or f"symbol p{i}")
             for i in range(1, 16)
         ]
+        # The names as the scheme spells them, for the traits a marker
+        # shape cannot carry (pipe's turn, point's fixed dot; WP-31 E1).
+        self.p_symbol_names: "list[str]" = []
+        for i in range(1, 16):
+            _k = self._first_present((f"symbol p{i}", "symbol p"))
+            _raw = self._props.get(_k, "").strip() if _k else ""
+            try:
+                OptionTranslator.translate_msymbol(_raw)
+            except ValueError:
+                _raw = ""
+            self.p_symbol_names.append(_raw)
         self.p_symbols: list[str] = [m for m, _, _ in _st]
         self.p_symbol_hollow: "list[bool]" = [h for _, h, _ in _st]
         self.p_symbol_factor: "list[float]" = [f for _, _, f in _st]
@@ -11644,6 +11654,12 @@ class SchemeParser:
         i = index % 15
         return (self.default_symbol(i), self.p_symbol_hollow[i],
                 self.p_symbol_factor[i])
+
+    def default_symbol_name(self, index: int) -> str:
+        """The Stata name of p# symbol *index* as the scheme spells it,
+        "" when it declares none dash knows."""
+        names = getattr(self, "p_symbol_names", None) or [""] * 15
+        return names[index % 15]
 
     def default_markline(self, index: int) -> "tuple[str, float | None]":
         """``(hex, declared opacity or None)`` of p# *index*'s marker
@@ -14283,10 +14299,11 @@ class GlyphMapper:
                                  "marker symbol")
             except AttributeError:
                 pass
-        elif traits is not None and getattr(glyph, "marker", None) == "dash" \
-                and hasattr(glyph, "angle"):
-            # The scheme's symbol: only pipe draws as Bokeh's dash marker.
-            glyph.angle = math.pi / 2
+        elif traits is not None and len(traits) > 2 and hasattr(glyph, "angle"):
+            # The scheme's symbol, by its name (WP-31 E1): a pipe turns.
+            _ba = OptionTranslator._SYMBOL_BASE_ANGLE.get(str(traits[2]))
+            if _ba is not None:
+                glyph.angle = _ba
         if "msize" in options:
             # Stata's units on dash's one unit (WP-30 P1.12a, TR-08.8): *#
             # multiplies the size the glyph was built with, a negative or
@@ -14443,7 +14460,10 @@ class GlyphMapper:
         # malpha(50)' hollow, WP-30 P1.4a).
         _sym_raw = str(options.get("msymbol", options.get("marker", ""))
                        ).strip()
-        _hollow, _factor = traits if traits is not None else (False, 1.0)
+        _hollow, _factor = (tuple(traits[:2]) if traits is not None
+                            else (False, 1.0))
+        _sym_name = str(traits[2]) if traits is not None and len(traits) > 2 \
+            else ""
         if _sym_raw:
             try:
                 _, _hollow, _factor = OptionTranslator.symbol_traits(
@@ -14466,10 +14486,15 @@ class GlyphMapper:
             glyph.size = _sz * _factor
         # point/p: a fixed dot with no outline, whatever msize() says
         # (WP-31 E1).
-        _fixed = OptionTranslator._SYMBOL_FIXED_PX.get(_sym_raw)
+        _eff = _sym_raw
+        try:
+            OptionTranslator.translate_msymbol(_eff)
+        except ValueError:
+            _eff = _sym_name
+        _fixed = OptionTranslator._SYMBOL_FIXED_PX.get(_eff)
         if _fixed is not None and hasattr(glyph, "size"):
             try:
-                OptionTranslator.translate_msymbol(_sym_raw)
+                OptionTranslator.translate_msymbol(_eff)
                 glyph.size = _fixed
                 if hasattr(glyph, "line_width"):
                     glyph.line_width = 0.0
@@ -16129,6 +16154,21 @@ class GlyphMapper:
                 pass
         return self.scheme.default_symbol_traits(color_idx)
 
+    def _marker_symbol_name(self, color_idx: int, options: dict) -> str:
+        """The Stata name of the symbol a marker layer is built with: a
+        valid ``msymbol()``/``marker``'s, else the scheme's p# symbol, so
+        ``_apply_marker_opts`` turns a scheme's pipe and draws its point
+        as the one-pixel dot, as for msymbol() (WP-31 E1)."""
+        raw = str(options.get("msymbol", options.get("marker", ""))
+                  or "").strip()
+        if raw:
+            try:
+                OptionTranslator.translate_msymbol(raw)
+                return raw
+            except ValueError:
+                pass
+        return self.scheme.default_symbol_name(color_idx)
+
     def _marker_alpha_kw(self, color_idx: int) -> dict:
         """A marker's declared fill and outline opacities (``color
         p#markfill`` and ``color p#markline``), each only when declared."""
@@ -16244,7 +16284,8 @@ class GlyphMapper:
         if _ml_alpha is not None and _ml_alpha != _scatter_kwargs["alpha"]:
             _scatter_kwargs["line_alpha"] = _ml_alpha
         r = fig.scatter(**_scatter_kwargs)
-        self._apply_marker_opts(r, options, traits=(_hollow, _factor))
+        self._apply_marker_opts(r, options, traits=(_hollow, _factor,
+                                     self._marker_symbol_name(color_idx, options)))
         # WP-31 C9: each marker at its weight's size.  connected,
         # rconnected and dot draw their markers here.
         self._weight_markers(r, options, "scatter")
@@ -21597,7 +21638,8 @@ class GlyphMapper:
         # msymbol(), msize(), msangle() and malpha() are read here and
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
-        self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
+        self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f,
+                                     self._marker_symbol_name(color_idx, options)))
         self._weight_markers(dot, options, "dropline")  # WP-31 C9
         # colorvar() (WP-31 C8a): the dot (which carries the series key)
         # and its drop, one key.
@@ -21733,7 +21775,8 @@ class GlyphMapper:
                 dot.glyph.line_color = mark_line
         self._apply_line_opts(spine, options, role="aline")
         for dot in (bot_dot, top_dot):
-            self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f))
+            self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f,
+                                     self._marker_symbol_name(color_idx, options)))
             self._weight_markers(dot, options, "rcapsym")  # WP-31 C9
         # colorvar() (WP-31 C8a): the spine and both markers, one key.
         self._colorvar_layer(fig, [(spine, cap_source), (bot_dot, cap_source),
@@ -22072,6 +22115,9 @@ class GlyphMapper:
         Returns:
             List with the single scatter GlyphRenderer.
         """
+        # The layer is drawn here, not through _dash_add_glyph, so its
+        # brushed copies are synced here, after the size factor (WP-31 E1).
+        _si_before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
         if not values:
             empty = ColumnDataSource({"x": [], "y": []})
             return [fig.scatter(x="x", y="y", source=empty)]
@@ -22178,7 +22224,9 @@ class GlyphMapper:
         # mcolor(), msize() and msymbol() are resolved above; msangle() and
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
-        self._apply_marker_opts(r, options, traits=(_hollow, _factor))
+        self._apply_marker_opts(r, options, traits=(_hollow, _factor,
+                                     self._marker_symbol_name(color_idx, options)))
+        GlyphMapper._sync_brushed_copies(fig, _si_before)
         # The labels, each at its own (jittered) point.
         if any(_labels):
             self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
@@ -22454,7 +22502,8 @@ class GlyphMapper:
                                    **self._marker_alpha_kw(color_idx))
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter(*_pc_xy, **_pcsc_kwargs)
-        self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
+        self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f,
+                                     self._marker_symbol_name(color_idx, options)))
         self._weight_markers(r, options, "pcscatter")  # WP-31 C9
         # colorvar() (WP-31 C8a): both markers of each observation.
         self._colorvar_layer(fig, [(r, pc_source)], options)
@@ -23064,7 +23113,8 @@ class GlyphMapper:
         # reads the outline from mlcolor()/mlwidth() alone, on every type
         # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
         # the only one that did).
-        self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f))
+        self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f,
+                                     self._marker_symbol_name(color_idx, options)))
         self._weight_markers(dots, options, "pccapsym")  # WP-31 C9
         # colorvar() (WP-31 C8a): the spike and both markers, one key.
         self._colorvar_layer(fig, [(seg, seg_src), (dots, dot_src)], options)
@@ -23440,7 +23490,8 @@ class GlyphMapper:
                                  **self._marker_alpha_kw(color_idx))
         # No view here: rs_source already holds only the selected rows.
         r = fig.scatter(*_rs_xy, **_rs_kwargs)
-        self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f))
+        self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f,
+                                     self._marker_symbol_name(color_idx, options)))
         self._weight_markers(r, options, "rscatter")  # WP-31 C9
         # colorvar() (WP-31 C8a): both ends of each observation.
         self._colorvar_layer(fig, [(r, rs_source)], options)

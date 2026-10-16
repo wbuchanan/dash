@@ -133,7 +133,11 @@ class TestMapPccapsym:
                                          "msize": "large"})
         assert dots.glyph.marker == gm.tr.translate_msymbol("D")
         assert dots.glyph.fill_color == gm.tr.translate_mcolor("red")
-        assert dots.glyph.size == gm.tr.translate_msize("large")
+        # Flipped (WP-31 E1): the size was msize(large) alone; a diamond is
+        # sqrt(2) of the circle's height, as twoway draws D
+        # (symbol_pattern_truth.json), so it is msize(large) times that.
+        assert dots.glyph.size == pytest.approx(
+            gm.tr.translate_msize("large") * 2 ** 0.5)
         assert seg.glyph.line_color == gm.scheme.default_color(0, "pccapsym")
 
     def test_mlcolor_and_mlwidth_are_the_marker_outline(self):

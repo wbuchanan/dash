@@ -80,8 +80,19 @@ def _rec(name):
     return TRUTH["sym." + name]
 
 
+#: The height of each Bokeh marker drawn at size 1 (BokehJS: a circle's
+#: diameter, a square's and a diamond's height, a triangle's sqrt(3)/2, an
+#: x's arms at 45 degrees sqrt(1/2), a dash's length).
+BOKEH_H = {"circle": 1.0, "square": 1.0, "diamond": 1.0, "plus": 1.0,
+           "triangle": math.sqrt(3) / 2, "inverted_triangle": math.sqrt(3) / 2,
+           "x": math.sqrt(0.5), "dash": 1.0}
+
+
 def _factor(name):
-    return _rec(name)["factor"] / _rec(SHAPE[name][1])["factor"]
+    """The size factor that draws *name* at twoway's height: its measured
+    height over O's, over its Bokeh shape's height at size 1 (WP-31 E1)."""
+    return (_rec(name)["bbox_h"] / _rec("O")["bbox_h"]
+            / BOKEH_H[SHAPE[name][0]])
 
 
 def _sc(**o):
@@ -180,8 +191,9 @@ class TestSymbols:
         full = SHAPE[name][1]
         (g,), _ = _drawn(mode, [_sc(msymbol=name)])
         (f,), _ = _drawn(mode, [_sc(msymbol=full)])
-        assert g.size / f.size == pytest.approx(_factor(name), abs=0.01)
-        assert _factor(name) < 0.8
+        assert g.size / f.size == pytest.approx(
+            _factor(name) / _factor(full), abs=0.01)
+        assert _factor(name) / _factor(full) < 0.8
 
     @pytest.mark.parametrize("mode", MODES)
     def test_V_is_the_open_chevron(self, mode):
@@ -214,6 +226,36 @@ class TestSymbols:
         assert T.symbol_traits("x")[2] == 1.0
         assert T.symbol_traits("x", option=True)[2] == pytest.approx(
             _factor("x"), abs=0.01)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_every_symbol_is_twoways_height(self, mode):
+        """Each symbol is drawn as tall, against O, as twoway draws it:
+        the diamond 1.42 of O, the triangles and arrows as tall as O (a
+        Bokeh triangle is sqrt(3)/2 of its size), lgx 1.41 of X."""
+        (o,), _ = _drawn(mode, [_sc(msymbol="O")])
+        bad = []
+        for name in sorted(SHAPE):
+            (g,), _ = _drawn(mode, [_sc(msymbol=name)])
+            if abs(g.size / o.size - _factor(name)) > 0.01:
+                bad.append((name, round(g.size / o.size, 4),
+                            round(_factor(name), 4)))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_schemes_point_and_pipe(self, mode, tmp_path, monkeypatch):
+        """A scheme's symbol p1 point draws the one-pixel dot and p2 pipe
+        the vertical bar, as msymbol() does."""
+        from test_scheme_review_fixes import _user_scheme
+        name = _user_scheme(tmp_path, monkeypatch, "u40pt.scheme",
+                            ["#include s2color", "symbol p1 point",
+                             "symbol p2 pipe", "symbol p3 D"])
+        ms, _ = _drawn(mode, [_sc(), _sc(), _sc()], scheme=name[:-7])
+        (o,), _ = _drawn(mode, [_sc(msymbol="O")])
+        assert (ms[0].marker, ms[0].size, ms[0].line_width) == \
+            ("circle", 1.0, 0.0)
+        assert ms[1].marker == "dash"
+        assert ms[1].angle == pytest.approx(math.pi / 2)
+        assert ms[2].size / o.size == pytest.approx(_factor("D"), abs=0.01)
 
     def test_no_shipped_scheme_names_a_deleted_symbol(self):
         root = os.path.join(os.path.dirname(__file__), "..")

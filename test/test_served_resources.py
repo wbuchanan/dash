@@ -496,11 +496,13 @@ class TestTheSavedPageIsUnchanged:
         # Bokeh's default drew 5; every other model property is the same.
         # Re-derived after WP-31 batch 12: B5c adds an empty "dots" list to
         # each axis of the saved page's axis plan; the rest is code strings.
+        # Re-derived after WP-31 E2: line patterns are Stata's numbers in
+        # relative units (the minor grid's dot [1, 3] px; [2, 4] before).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "b4c74a66aab3f2640b363cae431146455f148d8a9bb92af4a84c3ed05c8a2cb4")
+    "875024b9a29f72c09afc37d64a27c2c55f9209977c18410bc3ee3cc2d678a66e")
 
 
 # ===========================================================================

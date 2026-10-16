@@ -290,6 +290,8 @@ FUNCTIONS = {
  'OptionTranslator.parse_color_alpha': 'test/test_html_verification.py::TestAlphaTransparency::test_parse_color_alpha_bare_pct',
  'OptionTranslator.translate_lcolor': 'test/test_options.py::TestColorEdgeCases::test_lcolor_delegates_to_mcolor_map',
  'OptionTranslator.translate_lpattern': 'test/test_options.py::TestTranslateLpattern::test_all_list_elements_are_numeric',
+ 'GlyphMapper._marker_symbol_name': 'test/test_symbol_pattern.py::TestSymbols::test_a_schemes_point_and_pipe',
+ 'SchemeParser.default_symbol_name': 'test/test_symbol_pattern.py::TestSymbols::test_a_schemes_point_and_pipe',
  'OptionTranslator.lpattern_formula': 'test/test_line_patterns.py::TestFormulas::test_decodepat_table',
  'OptionTranslator.translate_lwidth': 'test/test_options.py::TestTranslateLwidth::test_all_lwidth_keywords_positive',
  'OptionTranslator.translate_mcolor': 'test/test_color_fidelity.py::TestEveryStataColourIsTheColourStataDraws::test_the_translator_returns_it_too',

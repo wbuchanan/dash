@@ -9891,7 +9891,12 @@ def _u40_verdict(case, fixture):
                 want = ("circle", 0.0, 1.0, None, 0.0)
             elif key in shape:
                 sh, ref = shape[key]
-                f = t["sym." + key]["factor"] / t["sym." + ref]["factor"]
+                # Its height over O's, over the Bokeh shape's at size 1
+                # (WP-31 E1): a triangle is sqrt(3)/2 tall, an x sqrt(1/2).
+                bh = {"triangle": math.sqrt(3) / 2,
+                      "inverted_triangle": math.sqrt(3) / 2,
+                      "x": math.sqrt(0.5)}.get(sh, 1.0)
+                f = t["sym." + key]["bbox_h"] / t["sym.O"]["bbox_h"] / bh
                 want = (sh, round(math.pi / 2, 4) if sh == "dash" else 0.0,
                         round(o_size * f, 3), None, None)
             else:
