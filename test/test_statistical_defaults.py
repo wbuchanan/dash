@@ -898,8 +898,9 @@ class TestKdensityRange:
         # subtitle2() refused.  23 -> 25: B4b heatmap() and outlines()
         # named on contour.  25 -> 20: D5 fxsize fysize scale xoverhangs
         # yoverhangs drawn (scale was the second control; play is now).
-        # 20 -> 19: E3 mlalign() read by the renderer.
-        assert len(pending) == 19, (len(pending), pending)
+        # 20 -> 19: E3 mlalign() read by the renderer.  19 -> 18: E2
+        # mlpattern() taken as twoway takes it.
+        assert len(pending) == 18, (len(pending), pending)
         for really_pending in ("sort", "play"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

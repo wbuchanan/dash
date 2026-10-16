@@ -7161,8 +7161,10 @@ if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
 
     // U31-1: the scheme's key geometry -- key_xsize, key_ysize, key_gap
     // and row_gap -- as dash's glyph_width, glyph_height, label_standoff
-    // and spacing.
-    _u31_reg "`u31d'" 1 geom (line mpg weight) (line price weight),
+    // and spacing.  Flipped (WP-31 D4b): one column, since a one-row
+    // legend's keys are spaced by colgap(), not the row gap (measured,
+    // legend_remainder_truth.json colgap_*).
+    _u31_reg "`u31d'" 1 geom (line mpg weight) (line price weight), legend(cols(1))
     foreach m in s v {
         _w31_expect U31-1 `"("${u31_`m'}" == "${u31_tw}")"' "`m': dash ${u31_`m'}; twoway ${u31_tw}"
     }
@@ -7219,7 +7221,7 @@ if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
     foreach m in s v {
         _w31_expect U31-7 `"("${u31_`m'}" == "${u31_tw}")"' "`m' region: dash ${u31_`m'}; twoway ${u31_tw}"
     }
-    _u31_reg "`u31d'" 7s sizes (line mpg weight) (line price weight), legend(symxsize(5) keygap(1) rowgap(3))
+    _u31_reg "`u31d'" 7s sizes (line mpg weight) (line price weight), legend(cols(1) symxsize(5) keygap(1) rowgap(3))
     foreach m in s v {
         _w31_expect U31-7 `"("${u31_`m'}" == "${u31_tw}")"' "`m' sizes: dash ${u31_`m'}; twoway ${u31_tw}"
     }

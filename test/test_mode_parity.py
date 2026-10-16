@@ -2789,9 +2789,10 @@ _MUST_WARN = {
         "orientation(vertical)",
     "graph title with sub-options":
         "dash: title() sub-option(s) not implemented and ignored: width(20)",
+    # Flipped: WP-31 D4b draws colgap(); stacked is still named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
-        "stacked colgap(1)",
+        "stacked",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "logit",
