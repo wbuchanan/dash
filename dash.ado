@@ -4361,7 +4361,8 @@ program define _dash_validate_value, rclass
     // "option n() not allowed"; an unknown kernel "invalid kernel
     // function", r(198).  degree() above 7 keeps dash's sentence (twoway
     // draws it).
-    if `"`bad'"' != "" & inlist("`ptype'", "lpoly", "lpolyci") {
+    local _lpf "lpoly lpolyci"
+    if `"`bad'"' != "" & `: list ptype in _lpf' {
         if "`opt'" == "bwidth" & regexm(scalar(`T'), "^[A-Za-z_][A-Za-z0-9_]*$") {
             mata: _dash_say("err", "variable ", st_strscalar(st_local("T")), " not found")
             exit 111
@@ -6451,7 +6452,8 @@ program define _dash_process_segment, rclass
     // r(2001) (estimator_edges_truth.json lp.D6, lp.D6_bw) -- so one row
     // is refused here, before the parser; the count below repeats it for
     // the other types.  Under by() twoway answers panel by panel, later.
-    if inlist("`ptype'", "lpoly", "lpolyci") & !`: length global dash__g_by' {
+    local _d6_fam "lpoly lpolyci"
+    if `: list ptype in _d6_fam' & !`: length global dash__g_by' {
         mata: st_local("_d6_by", strofreal(ustrregexm(st_local("opts_raw"), "(^|[ ,])by[(]")))
         if !`_d6_by' {
             local _d6_c "!missing(`yvar', `xvar')"
