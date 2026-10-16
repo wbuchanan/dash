@@ -34,6 +34,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D26 | **Contour keeps the 1,000-point exact cap** (15oct2026): a saved-page move at the cap takes about 13 s (S29 measured); the cap is not lowered. | S29 (landed) |
 | D27 | **The contour colour bar keeps its build length after a move** (15oct2026): its cuts, ticks and labels follow the move (B4d) but BokehJS sizes the bar once; documented in the help. | S29 (landed) |
 | D28 | **The saved page's fpfit power search screens by exact rss** (15oct2026): every power pair is ranked by its exact weighted rss and only pairs within 1e-9 of TSS of the best are fitted (0.35 s at 1e5 rows, against 1.7 s for the full fit of all 36); it chooses the same powers as fitting all 36. D-28.a's full search is superseded. | S28 (landed) |
+| D29 | **The size reference follows xsize()/ysize()** (16oct2026): text, marker and line sizes scale by min(xsize, ysize) per figure as twoway does (title(size(5)) is 144 units at 5.5x4, 8x4, 4x8 and 288 at 8x8; S32 fixture `ref_*`), not by the scheme's fixed graph size; S32's E11 widens to the `size_ref_in` sites in both renderers, done after the batch-11 merge. | S32 (E11) |
 
 ## Architect rulings (process and feasibility; from the reviews)
 
