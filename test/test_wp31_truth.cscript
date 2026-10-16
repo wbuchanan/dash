@@ -9938,6 +9938,41 @@ if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
 }
 * ==== end S39 ====
 
+* ==== S39 D11b: a margin term past double precision ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
+    display as text "S39 start " c(current_date) " " c(current_time)
+    local u39d "`w31_work'/s39d"
+    capture mkdir "`u39d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    capture graph drop u37t
+    quietly twoway scatter mpg weight, name(u37t, replace)
+    quietly graph export "`u39d'/t0.svg", replace
+    graph drop u37t
+    // U39-09: graphregion(margin(l+1e400)) and (r+1e400) draw that side
+    // at gsize medium with twoway's note, the others kept; l=1e400 draws
+    // it zero; l+3pt is the side's sum in points -- each border as
+    // twoway's, saved and served (_u37_reg, S37's comparer).
+    local bad ""
+    local j 0
+    foreach m in "l+1e400" "r+1e400" "l=1e400" "l+3pt" {
+        local ++j
+        _u37_reg "`u39d'" `j' scatter mpg weight, graphregion(margin(`m'))
+        foreach s in s v {
+            if `"${u37_`s'}"' != `"${u37_w`s'}"' local bad `"`bad' `m' `s': dash ${u37_`s'} twoway ${u37_w`s'};"'
+        }
+    }
+    _w31_expect U39-09 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U39-09 "a margin term past double precision and a unit after the operator drawn as twoway draws them, saved and served"
+    macro drop u37_s u37_v u37_ws u37_wv
+    capture graph drop _all
+    dash clear
+    display as text "S39 end " c(current_date) " " c(current_time)
+}
+* ==== end S39 ====
+
 python:
 def _u40_glyph(sp, dp, app, key):
     """The first marker glyph's marker, angle, size, fill and outline

@@ -2663,6 +2663,9 @@ CORPUS = [
           [_sc(msymbol="pipe", msangle="30")]),
     _case("msymbol(p) (WP-31 E1)", [_sc(msymbol="p")]),
 
+    # WP-31 D11b
+    _case("graphregion margin l+1e400 (WP-31 D11b)", [_sc()],
+          go={"graphregion": "margin(l+1e400)"}),
     # WP-31 D10b
     _case("by shrink margin outline", [_sc()], None,
           {"by": "foreign, shrink graphregion(margin(large)) "

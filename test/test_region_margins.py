@@ -140,7 +140,10 @@ class TestTheMarginGrammar:
             # reads L as an unknown gsize (medium) and adds 10 on the right.
             ("L+10", [11 / 2.88, 12.2, 2.2, 2.2], None),
             ("1;x:y", [0] * 4, "1;x:y"),
-            ("1e400 1 1 1", [0] * 4, "1e400 1 1 1"),
+            # Flipped (WP-31 D11b): a number past double precision set
+            # alone is zero, silently, the other sides read (measured:
+            # region_remainder_truth.json gmargin.1e400_1_1_1).
+            ("1e400 1 1 1", [0, 1, 1, 1], None),
             ("x" * 3000, [0] * 4, "x" * 80),
         ]
         bad = []

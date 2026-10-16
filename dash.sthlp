@@ -3880,7 +3880,12 @@ region's edge.  Under {cmd:by()} the margin shrinks with the panels, as
 the default does.  An unknown single name, such as {cmd:l5}, is named in
 {cmd:twoway}'s note and drawn as zero; a text with a sign is read word by
 word as {cmd:twoway} reads it, so {cmd:L+10} is the unknown size {cmd:L}
-(medium, with {cmd:twoway}'s note) on the left and 10 more on the right.  A side is held within
+(medium, with {cmd:twoway}'s note) on the left and 10 more on the right.
+A number too large for Stata, as in {cmd:l+1e400}, makes that side
+medium with {cmd:twoway}'s note, the others kept; set alone, as in
+{cmd:l=1e400}, it makes the side zero; and a unit after the sign makes
+the side's sum points, so {cmd:l+3pt} over the medium margin is 6.5
+points, as {cmd:twoway} draws them.  A side is held within
 45% of the plot region.  {it:Difference from twoway:} the margin is a
 share of the graph's whole width or height, fixed when the page is
 built, so a wide margin is a little narrower on the page than in

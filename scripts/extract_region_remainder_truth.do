@@ -126,6 +126,22 @@ _rr_probe gmargin.1_2_3_4_5 1 s2color : graphregion(margin(1 2 3 4 5))
 _rr_probe gmargin.L+10 1 s2color : graphregion(margin(L+10))
 _rr_probe gmargin.large_xsize 1 s2color : graphregion(margin(large)) xsize(8) ysize(4)
 _rr_probe gmargin.twice 1 s2color : graphregion(margin(l+5)) graphregion(margin(l+5))
+* WP-31 D11b (section 39): a term past double precision and a unit after
+* the operator, drawn.
+_rr_probe gmargin.l+1e400 1 s2color : graphregion(margin(l+1e400))
+_rr_probe gmargin.r+1e400 1 s2color : graphregion(margin(r+1e400))
+_rr_probe gmargin.l+3pt 1 s2color : graphregion(margin(l+3pt))
+_rr_probe gmargin.l+5pt 1 s2color : graphregion(margin(l+5pt))
+_rr_probe gmargin.l+3 1 s2color : graphregion(margin(l+3))
+_rr_probe gmargin.zero_l+1e400 1 s2color : graphregion(margin(zero)) graphregion(margin(l+1e400))
+_rr_probe gmargin.l=1e400 1 s2color : graphregion(margin(l=1e400))
+_rr_probe gmargin.1e400_1_1_1 1 s2color : graphregion(margin(1e400 1 1 1))
+_rr_probe gmargin.1_1_1_1 1 s2color : graphregion(margin(1 1 1 1))
+_rr_probe pmargin.stub 1 s2color : plotregion(lcolor(black))
+_rr_probe pmargin.l+1e400 1 s2color : plotregion(lcolor(black) margin(l+1e400))
+_rr_probe pmargin.l+3pt 1 s2color : plotregion(lcolor(black) margin(l+3pt))
+_rr_probe pmargin.l+3 1 s2color : plotregion(lcolor(black) margin(l+3))
+_rr_probe pmargin.medium 1 s2color : plotregion(lcolor(black) margin(medium))
 
 * ---- refusals: plotregion(margin(<name>)) ----------------------------------
 local _sty : dir "`c(sysdir_base)'style" files "margin-*.style"

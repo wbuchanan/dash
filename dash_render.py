@@ -36168,7 +36168,24 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
         word = tok[1:] if (op is None and tok.startswith("=")) else tok
         sp = _split(word)
         if sp is not None and not math.isfinite(sp[0]):
-            return [0.0] * 4, t[:80]
+            # WP-31 D11b: a number past double precision is Stata's
+            # missing.  After + or - the side's sum is ".", a gsize twoway
+            # does not know: medium, with its note; set alone it is zero,
+            # silently (measured: region_remainder_truth.json
+            # gmargin.l+1e400, gmargin.zero_l+1e400, gmargin.l=1e400).
+            if op is not None:
+                _dash_warn_once(
+                    ("margin-gsize", "."),
+                    "dash: named style . not found in class gsize, "
+                    "default attributes used")
+                cur[side] = (float(SchemeParser._GSIZE_PT["medium"][:-2])
+                             / OptionTranslator.PT_PER_RS)
+            else:
+                cur[side] = 0.0
+            op = None
+            ct += 1
+            side = ct - 1 if ct <= 4 else 0
+            continue
         if op is not None:
             if sp is None:
                 return [0.0] * 4, t[:80]
