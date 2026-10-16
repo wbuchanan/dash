@@ -459,7 +459,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
 - **C10d Tracked:** Open (WP-31 section 46).
 - **C10e Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit 78df376.
-- **C11 Tracked:** Open (WP-31 section 46).
+- **C11 Tracked:** Closed in WP-31, BUGS.md "lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if", commit pending.
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.

@@ -7745,8 +7745,14 @@ void _dash_lpolyci_opts(string scalar unk, string scalar ptype)
             return
         }
     }
-    // 4. pwidth() a positive number
+    // 4. pwidth() a positive number; a leading + is "expression
+    // invalid", r(3000) (WP-31 C11, estimator_edges_truth.json lp.D8)
     if (hasp) {
+        if (substr(strtrim(pw), 1, 1) == "+") {
+            st_local("_lpo_rc", "3000")
+            st_local("_lpo_msg", "expression invalid")
+            return
+        }
         if (!_dash_lpo_onenum(pw, x, msg) | !(x > 0)) {
             st_local("_lpo_rc", "198")
             st_local("_lpo_msg", "pwidth() must be a positive number")

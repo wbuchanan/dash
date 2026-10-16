@@ -4353,6 +4353,36 @@ program define _dash_validate_value, rclass
         }
         exit 198
     }
+    // lpoly's and lpolyci's own refusals, in twoway's words and codes
+    // (WP-31 C11; test/fixtures/estimator_edges_truth.json lp.D7.*):
+    // bwidth(abc) is read as an expression, "variable abc not found",
+    // r(111); a bwidth() or n() at or below zero, or a degree() below it,
+    // is "<opt>() must be a positive (nonnegative) number"; n(abc) is
+    // "option n() not allowed"; an unknown kernel "invalid kernel
+    // function", r(198).  degree() above 7 keeps dash's sentence (twoway
+    // draws it).
+    if `"`bad'"' != "" & inlist("`ptype'", "lpoly", "lpolyci") {
+        if "`opt'" == "bwidth" & regexm(scalar(`T'), "^[A-Za-z_][A-Za-z0-9_]*$") {
+            mata: _dash_say("err", "variable ", st_strscalar(st_local("T")), " not found")
+            exit 111
+        }
+        if "`opt'" == "bwidth" | ("`opt'" == "n" & `isnum' & `R' <= 0) {
+            display as error "`opt'() must be a positive number"
+            exit 198
+        }
+        if "`opt'" == "n" & !`numlike' {
+            display as error "option n() not allowed"
+            exit 198
+        }
+        if "`opt'" == "degree" & `isnum' & `R' < 0 {
+            display as error "degree() must be a nonnegative number"
+            exit 198
+        }
+        if "`opt'" == "kernel" {
+            display as error "invalid kernel function"
+            exit 198
+        }
+    }
     // Every refusal above and here echoes the value through _dash_say: the
     // value is read from Mata, never expanded into the display line, and
     // shown as written -- `jitter({bf:X})' printed a bold X (P20-02..06).
@@ -6415,6 +6445,31 @@ program define _dash_process_segment, rclass
         }
     }
 
+    // WP-31 C11 (D6): twoway counts lpoly's and lpolyci's sample before it
+    // reads their options -- `twoway lpolyci mpg weight if _n == 1,
+    // pwidth(0)' and `bwidth(abc)' there are "insufficient observations",
+    // r(2001) (estimator_edges_truth.json lp.D6, lp.D6_bw) -- so one row
+    // is refused here, before the parser; the count below repeats it for
+    // the other types.  Under by() twoway answers panel by panel, later.
+    if inlist("`ptype'", "lpoly", "lpolyci") & !`: length global dash__g_by' {
+        mata: st_local("_d6_by", strofreal(ustrregexm(st_local("opts_raw"), "(^|[ ,])by[(]")))
+        if !`_d6_by' {
+            local _d6_c "!missing(`yvar', `xvar')"
+            if `"`_seg_weight'"' != "" {
+                local _d6_c "`_d6_c' & !missing((`_seg_wexp')) & (`_seg_wexp') > 0"
+            }
+            if `: length local _ps_if' {
+                local _d6_c `"`_d6_c' & `macval(_ps_if)'"'
+            }
+            local _d6_in ""
+            if `: length local _ps_in' local _d6_in `"in `macval(_ps_in)'"'
+            quietly count if `macval(_d6_c)' `macval(_d6_in)'
+            if r(N) == 1 {
+                display as error "insufficient observations"
+                exit 2001
+            }
+        }
+    }
     sreturn clear
     local _rp_gund_out ""
     local _ptype_typed "`ptype'"

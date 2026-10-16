@@ -474,7 +474,7 @@ and now matches Stata.
 
 - default date axes and auto's price #4 and trunk #2/#3 axes took a fitted model's ticks (58-98% agreement); at build they take Stata's own natscale and tsnatscale ticks, and xtick(#N) and xlabel(minmax) follow a filter move as #N does (WP-31, D15)
 
-<!-- WP-31 C11 -->
+- lpoly mpg weight, kernel(gaussian) bwidth(1) drew 23 points; it draws twoway's 3 (a kernel weight of 1e-14 or less no longer counts). lpoly and lpolyci on one observation with pwidth(0) or bwidth(abc) were refused as option errors, r(198); they are "insufficient observations", r(2001), as twoway counts first. lpoly's bwidth(abc), bwidth(-1), degree(-1), n(0), n(abc) and kernel(x) are refused in twoway's words ("variable abc not found", r(111); "bwidth() must be a positive number"; "degree() must be a nonnegative number"; "n() must be a positive number"; "option n() not allowed"; "invalid kernel function"), and lpolyci's pwidth(+800), accepted before, is "expression invalid", r(3000) (WP-31, C11)
 
 <!-- WP-31 C12 -->
 

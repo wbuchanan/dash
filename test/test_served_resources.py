@@ -502,14 +502,16 @@ class TestTheSavedPageIsUnchanged:
         # Re-derived after WP-31 G1: the filter mask's code gains the
         # extended-missing option branch (code only); and after WP-31 G2:
         # each Stata writer's args and code carry the page's dp; and after
-        # WP-31 C16: the filter code's recast writer (code only).
+        # WP-31 C16: the filter code's recast writer (code only); and
+        # after WP-31 C11: lpoly's weight threshold in its JS twin.
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
     # old -> new: G1 the filter mask code (8c7b23d4...); G2 dp
     # (77a8a775...); C16 the recast writer in the filter code
-    "b02f3e94f266dec0fdcb273ef5d41ffc31393b2f495ea12c365f038d4e624836")
+    # (b02f3e94...); C11 lpoly's 1e-14 weight threshold in the filter code
+    "8fb420d4c10cffd0ec31d1165abde9120518d2210dcfe4f8ada8ffe5039a2d12")
 
 
 # ===========================================================================

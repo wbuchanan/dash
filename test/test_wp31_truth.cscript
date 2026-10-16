@@ -12714,6 +12714,82 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u46_lpoly_cmp(kernel, bw, n, tol):
+    """dash's lpoly smooth on the data in memory (mpg on weight) at
+    twoway's grid xg against twoway's yg: global u46_bad empty when the
+    finite sets agree and the values within tol."""
+    import numpy as np
+    import dash_render as dr
+    from sfi import Data, Macro
+    def col(v):
+        return np.asarray([np.nan if a is None or a >= 8.98e307 else a
+                           for a in Data.get(var=v)], dtype=float)
+    x, y = col("weight"), col("mpg")
+    keep = np.isfinite(x) & np.isfinite(y)
+    xg, yg = col("xg")[:int(n)], col("yg")[:int(n)]
+    _, yf = dr.GlyphMapper._compute_lpoly_fit(
+        x[keep], y[keep], bwidth=(float(bw) if bw else None), degree=0,
+        kernel=kernel, x_grid=xg)
+    bad = []
+    if list(np.isfinite(yf)) != list(np.isfinite(yg)):
+        bad.append("%s bw %s: finite %d, twoway %d" % (
+            kernel, bw, int(np.isfinite(yf).sum()), int(np.isfinite(yg).sum())))
+    else:
+        ok = np.isfinite(yg)
+        if ok.any() and not np.allclose(yf[ok], yg[ok], rtol=float(tol)):
+            bad.append("%s bw %s: values differ" % (kernel, bw))
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+end
+
+* ==== S46 C11: lpoly edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+
+    // U46-01: the fixture is stamped.
+    capture confirm file "fixtures/estimator_edges_truth.json"
+    _w31_expect U46-01 "(_rc == 0)" "fixtures/estimator_edges_truth.json missing"
+    _w31_done U46-01 "estimator_edges_truth.json is present"
+
+    // U46-02: dash's lpoly finite grid points are twoway's, live, on the
+    // four threshold probes and bwidth(50).
+    foreach c in "gaussian 1" "gaussian 0.5" "gaussian 2" "gaussian 50" "biweight 1" {
+        sysuse auto, clear
+        local kn : word 1 of `c'
+        local bw : word 2 of `c'
+        quietly lpoly mpg weight, kernel(`kn') bwidth(`bw') n(50) generate(xg yg) nograph
+        python: __import__("__main__")._u46_lpoly_cmp("`kn'", "`bw'", 50, 1e-6)
+        _w31_expect U46-02 `"("${u46_bad}" == "")"' `"${u46_bad}"'
+    }
+    _w31_done U46-02 "lpoly's finite grid points and values are twoway's at the 1e-14 weight threshold"
+
+    // U46-03: the parity frame's five domestic rows: twoway's grid is
+    // all missing, and so is dash's.
+    clear
+    quietly set obs 5
+    quietly generate mpg = real(word("22 25 21 14 16", _n))
+    quietly generate weight = real(word("2930 2200 3000 4080 3600", _n))
+    quietly lpoly mpg weight, generate(xg yg) nograph
+    python: __import__("__main__")._u46_lpoly_cmp("epanechnikov", "", 5, 1e-6)
+    _w31_expect U46-03 `"("${u46_bad}" == "")"' `"${u46_bad}"'
+    _w31_done U46-03 "lpoly on five rows draws what twoway draws (nothing)"
+
+    // U46-08: D6-D8, twoway's return codes beside dash's, same session.
+    sysuse auto, clear
+    foreach c in "lpolyci mpg weight if _n == 1, pwidth(0)" "lpoly mpg weight if _n == 1, bwidth(abc)" "lpoly mpg weight if _n <= 2" "lpoly mpg weight, bwidth(abc)" "lpoly mpg weight, bwidth(-1)" "lpoly mpg weight, degree(-1)" "lpoly mpg weight, n(0)" "lpoly mpg weight, n(abc)" "lpoly mpg weight, kernel(x)" "lpolyci mpg weight, pwidth(+800)" "lpolyci mpg weight, pwidth(0)" "lpoly mpg weight, bwidth(+800)" {
+        capture twoway (`c'), nodraw
+        local trc = _rc
+        dash clear
+        capture dash (`c'), name(zu46l)
+        local drc = _rc
+        _w31_expect U46-08 "(`trc' == `drc')" "`c': twoway r(`trc'), dash r(`drc')"
+    }
+    _w31_done U46-08 "lpoly's sample count, option refusals and pwidth(+800) return twoway's codes"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

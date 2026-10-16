@@ -478,6 +478,15 @@ _MIN_FIGURE_HEIGHT = 160
 # line extended past the data where Stata's stops at it.
 _FIT_GRID = 100
 
+#: A kernel weight at or below this counts as zero for lpoly's
+#: two-observation rule and its local fits: twoway draws `lpoly mpg weight,
+#: kernel(gaussian) bwidth(1) n(50)' at 3 grid points where counting every
+#: positive weight gives 23 (WP-31 C11, test/fixtures/
+#: estimator_edges_truth.json lp.gauss_*; bwidth 0.5, 1 and 2 and the
+#: lpolyci probe lp.gauss_bw1_ci agree for 1e-14, 1e-15 and 1e-16, and
+#: biweight bwidth 1 for every power; this is the largest).
+_LPOLY_WEIGHT_EPS = 1e-14
+
 # lpoly's rule-of-thumb bandwidth (WP-29 P0.7, _lpoly_rot_detail).  Stata
 # computes the kernel constant C_{0,p}(K) of Fan and Gijbels by TRAPEZOID
 # quadrature on a fixed grid per kernel: (half-width, points).
@@ -19770,7 +19779,7 @@ class GlyphMapper:
             kw = _lpoly_kernel_weights(x, x0, h, kernel)
             if ow is not None:
                 kw = kw * ow
-            pos = kw > 0
+            pos = kw > _LPOLY_WEIGHT_EPS
             if int(pos.sum()) < 2:
                 y_fit[i] = np.nan
                 continue
@@ -26911,7 +26920,7 @@ def _lpoly_local_wls(x, y, kw, x0, h, degree):
     """
     try:
         with np.errstate(all="ignore"):
-            pos = kw > 0
+            pos = kw > _LPOLY_WEIGHT_EPS
             if int(pos.sum()) < 1:
                 return None
             xp = x[pos]
@@ -30999,7 +31008,7 @@ function dash_lpoly_kept(G) {
 // finite.
 function dash_lpoly_local(x, y, kw, x0, h, degree) {
     const pos = [];
-    for (let i = 0; i < kw.length; i++) if (kw[i] > 0) pos.push(i);
+    for (let i = 0; i < kw.length; i++) if (kw[i] > @@DASH_LPOLY_EPS@@) pos.push(i);
     if (pos.length < 1) return null;
     const p = degree + 1;
     const G = [];
@@ -31066,7 +31075,7 @@ function dash_lpoly_fit(x, y, h, degree, kernel, w, xg) {
         if (w) for (let i = 0; i < kw.length; i++) kw[i] *= w[i];
         let cnt = 0, sw = 0, sy = 0;
         for (let i = 0; i < kw.length; i++) {
-            if (kw[i] > 0) cnt++;
+            if (kw[i] > @@DASH_LPOLY_EPS@@) cnt++;
             sw += kw[i];
             sy += kw[i] * y[i];
         }
@@ -40907,6 +40916,8 @@ for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
                    ("@@DASH_EPOCH@@", _STATA_EPOCH_UNIX_MS)):
     _DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(_tok, repr(_val))
 del _tok, _val
+# WP-31 C11: lpoly's weight threshold, one Python constant for both twins.
+_FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 # WP-30 P1.3a (TR-21.11): the saved page's filter callback ends by
 # re-finishing every planned axis over the rows the move kept.  Appended
 # here, not in _FILTER_JS's literal: that is defined before the constants
@@ -60772,6 +60783,9 @@ class ServerAppBuilder:
         out += ["", ""]
 
         out += ["_FIT_GRID = %d" % _FIT_GRID, "",
+                # WP-31 C11: lpoly's weight threshold, read by
+                # _compute_lpoly_fit and _lpoly_local_wls below.
+                "_LPOLY_WEIGHT_EPS = %r" % (_LPOLY_WEIGHT_EPS,), "",
                 "# The style notes already raised this document, keyed",
                 "# (option, value, what); _dash_reset_notes clears it at the",
                 "# top of make_document, as DashRenderer.render() does.",

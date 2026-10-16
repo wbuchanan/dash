@@ -86,7 +86,7 @@
 *!   OV-55  lowess bwidth(0)          rc 0   (drawn at .8, as twoway; WP-31 C10a)
 *!   OV-56  lpoly bwidth(400)         rc 0
 *!   OV-57  lpoly bwidth(5)           rc 0   (only lowess is bounded above)
-*!   OV-58  lpoly bwidth(0)           rc 198 naming bwidth()
+*!   OV-58  lpoly bwidth(0)           rc 198 in twoway's words (WP-31 C11)
 *!   OV-59  kdensity bwidth(2)        rc 0
 *!   OV-60  kdensity bwidth(abc)      rc 198 naming bwidth()
 *!   OV-61  lowess bw(0.3)            rc 0   (the fold lands on bwidth first)
@@ -617,6 +617,24 @@ end
 
 // One hand-rolled assertion outside _ov_case (OV-125 keeps a registry
 // across several commands, which _ov_probe would clear).
+// _u46_rc id expected cmdtext (WP-31 C11): the command's return code
+// alone, into the log _ov_said reads -- a refusal in twoway's words names
+// no option the way dash's "dash: <opt>() ..." does.
+capture program drop _u46_rc
+program define _u46_rc
+    version 16.0
+    args id expected cmdtext
+    local logfile "`c(tmpdir)'dash_ov.log"
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    _ov_assert `id' "(`rc' == `expected')" `"rc `rc' (expected `expected') -- `macval(cmdtext)'"'
+end
+
 capture program drop _ov_assert
 program define _ov_assert
     version 16.0
@@ -761,7 +779,11 @@ _ov_case OV-54 `"dash lowess mpg weight, bwidth(5) name(ov54)"' 0 ""
 _ov_case OV-55 `"dash lowess mpg weight, bwidth(0) name(ov55)"' 0 ""
 _ov_case OV-56 `"dash lpoly mpg weight, bwidth(400) name(ov56)"' 0 ""
 _ov_case OV-57 `"dash lpoly mpg weight, bwidth(5) name(ov57)"' 0 ""
-_ov_case OV-58 `"dash lpoly mpg weight, bwidth(0) name(ov58)"' 198 bwidth
+// Flipped (WP-31 C11): named bwidth() in dash's words; the refusal is
+// twoway's, "bwidth() must be a positive number" (estimator_edges_truth.json
+// lp.D7.bwidth_neg; bwidth(0) measured the same, r(198)).
+_u46_rc OV-58 198 `"dash lpoly mpg weight, bwidth(0) name(ov58)"'
+_ov_said OV-58 "bwidth() must be a positive number"
 _ov_case OV-59 `"dash kdensity mpg, bwidth(2) name(ov59)"' 0 ""
 _ov_case OV-60 `"dash kdensity mpg, bwidth(abc) name(ov60)"' 198 bwidth
 _ov_case OV-61 `"dash lowess mpg weight, bw(0.3) name(ov61)"' 0 ""
@@ -2595,6 +2617,17 @@ foreach c in `"title("T", color("1,2,3"))"' `"subtitle("T", color("1,2,3"))"' `"
 _u05_judge U41-13 `"${u41_bad}"' "a comma colour inside a structured option's colour sub-option is refused in twoway's words, r(198)"
 
 // ----------------------------------------------------------------
+// U46-09..U46-12 (WP-31 C11): lpoly's and lpolyci's refusals in twoway's
+// words and codes (test/fixtures/estimator_edges_truth.json lp.D6-lp.D8).
+_u46_rc U46-09 198 `"dash lpoly mpg weight, kernel(x) name(ou4609)"'
+_ov_said U46-09 "invalid kernel function"
+_u46_rc U46-10 111 `"dash lpoly mpg weight, bwidth(abc) name(ou4610)"'
+_ov_said U46-10 "variable abc not found"
+_u46_rc U46-11 2001 `"dash lpolyci mpg weight if _n == 1, pwidth(0) name(ou4611)"'
+_ov_said U46-11 "insufficient observations"
+_u46_rc U46-12 3000 `"dash lpolyci mpg weight, pwidth(+800) name(ou4612)"'
+_ov_said U46-12 "expression invalid"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

@@ -3512,7 +3512,19 @@ positive kernel weight is left missing, as Stata leaves it, and the line
 joins the points on either side of it, as {cmd:twoway lpoly} draws it; a
 {cmd:bwidth()} too narrow for any window to hold two observations draws
 nothing.  The grid is {cmd:n()} points over the observed range, sized as
-{cmd:twoway} sizes it (see {cmd:n()} above).
+{cmd:twoway} sizes it (see {cmd:n()} above).  A kernel weight of 1e-14 or
+less does not count toward lpoly's two-observation rule, as in Stata, so
+{cmd:lpoly mpg weight, kernel(gaussian) bwidth(1)} on the auto data draws
+Stata's 3 points.  Where Stata's result is decided by its own round-off
+({cmd:lpoly ylin weight, degree(0)} with ylin = 2*weight+1, y = weight at
+degree 0 and 1, a variable near 1e-150 at {cmd:degree(2)}, drawn as
+Stata's line at y = 0), dash's exact arithmetic differs by at most 1e-14
+relative.  As {cmd:twoway} does, {cmd:dash} counts the sample before it
+reads the options -- one observation is "insufficient observations",
+r(2001), whatever {cmd:pwidth()} says -- and refuses {cmd:bwidth()},
+{cmd:degree()}, {cmd:n()}, {cmd:kernel()} and {cmd:pwidth()} in
+{cmd:twoway}'s words ({cmd:pwidth(+800)} is "expression invalid",
+r(3000)).
 
 {pstd}
 {bf:Note on {cmd:bwidth()} for {cmd:lowess}.}  Stata gives the same option
