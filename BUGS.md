@@ -3999,3 +3999,9 @@
   - Description: GAPS3.md C17, found by WP-31 section 34 (unfiled): twoway takes `lal(center)` as lalign() with rc 0; dash maps lal() .. lalpha() to its own lalpha() (an option twoway does not have), so `lal(center)` is refused or misread.
   - Suggested fix: WP-31 section 41 (colour width outline edges): give twoway's abbreviation to lalign() and lengthen lalpha()'s minimum so no twoway abbreviation reaches it, measured; document the change.
   - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches
+  - File Names and Line Numbers: dash_render.py SchemeParser._init_properties (the font-size reads before the size_ref_in block), SchemeParser._gsize
+  - Description: GAPS3.md E11, found by WP-31 section 32 (E11): _init_properties reads every gsize (heading, axis_title, tick_label, note, ...) through _gsize, which converts a #pt value at 4 / size_ref_in, before it sets size_ref_in to min(graphsize x, graphsize y); the first read finds no size_ref_in and uses 4.0. A user scheme with `graphsize x 3.12  graphsize y 2.392` and `gsize heading 12pt` draws the heading as if at 4 in. E11's per-figure copies (_dash_scheme_at_ref) set the reference first and are right.
+  - Suggested fix: WP-31 section 44 (style file resolver): set size_ref_in from the scheme's graphsize before the first _gsize read (read graphsize first), measured against twoway with such a user scheme.
+  - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

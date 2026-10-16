@@ -105,7 +105,7 @@
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) + C17b (D30) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
-| 44 | style-file-resolver | E10 + C8c (D18) | 15 | 40 | -- | red | L | 4 |
+| 44 | style-file-resolver | E10 + C8c (D18) + E11b (D31) | 15 | 40 | -- | red | L | 4 |
 | 45 | date-ticks-natscale | D15 | 15 | 01 | -- | red | L | 3 |
 | 46 | estimator-edges | C11, C12, C16, G6, G7, F5 + C10d (D14) | 15 | 01 | -- | yellow | M | 4 |
 | 47 | function-fallback-fixtures | F2, F3 + C18b (D14) | 16 | 01 | -- | yellow | M | 3 |
@@ -156,6 +156,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D4b | Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn (D25) | S31 | S39 (13) | RC |
 | D6b | alternate on an axis(2) to axis(9) label option is named, not drawn (D30) | S33 | S35 (12) | RC |
 | C17b | lal() is read as dash's lalpha() where twoway reads it as lalign() (D30) | S34 | S41 (14) | CB |
+| E11b | A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches (D31) | S32 | S44 (15) | RC |
 
 ## Batch execution order
 

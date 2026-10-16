@@ -349,3 +349,15 @@ AC-44.1 every fixture name drawn; AC-44.2 guards hold (including the swapped-fil
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C8c)`; close the BUGS.md entry "A user-supplied scheme's colorvar() default colour rule falls back to s2color's" (Resolution ending `Closes GAPS3 C8 (WP-31, C8c).`), delete its `"C8c":` WP31_OPEN line, rewrite GAPS3.md's `- **C8c Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C8c -->` under `### Results that change` with a line ending `(WP-31, C8c)`. dash replaces twoway (D13).
 
+## Addendum (16oct2026, DECISIONS D31): row E11b added to this section
+
+### E11b: A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches
+
+**Gap.** `SchemeParser._init_properties` sets `size_ref_in` (from `graphsize x/y`, :~10880) after the font-size block (:~10706) that reads `_gsize`, whose #pt branch divides by `size_ref_in` (default 4.0 when unset). Only a scheme whose smaller side is not 4 in and that writes a #-pt gsize is affected; none of the 26 shipped schemes does.
+
+**Requirement.** Measure twoway with a user scheme (`graphsize x 3.12`, `graphsize y 2.392`, `gsize heading 12pt`): the title's size. Read graphsize and set `size_ref_in` before the first `_gsize`; a test builds that scheme and checks heading_font_size at its own reference; both renderers share SchemeParser.
+
+**Fits S44** because S44 owns reading scheme and style files in batch 15.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 E11b)`; close the BUGS.md entry "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches" (Resolution ending `Closes GAPS3 E11 (WP-31, E11b).`), delete its `"E11b":` WP31_OPEN line, rewrite GAPS3.md's `- **E11b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 E11b -->` under `### Results that change` with a line ending `(WP-31, E11b)`. dash replaces twoway (D13).
+

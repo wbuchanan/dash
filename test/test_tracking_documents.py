@@ -2043,6 +2043,7 @@ WP31_OPEN = {
     "D4b": "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn",
     "D6b": "alternate on an axis(2) to axis(9) label option is named, not drawn",
     "C17b": "lal() is read as dash's lalpha() where twoway reads it as lalign()",
+    "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2183,6 +2184,7 @@ WP31_LISTS = {
     "D4b": ("Results that change",),
     "D6b": ("Results that change",),
     "C17b": ("Changed behaviour",),
+    "E11b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2322,6 +2324,7 @@ WP31_SECTION = {
     "D4b": 39,
     "D6b": 35,
     "C17b": 41,
+    "E11b": 44,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2536,7 +2539,8 @@ class TestWp31Tracking:
         # 129 -> 131: D24 adds D13b, D3b.
         # 131 -> 132: D25 adds D4b.
         # 132 -> 134: D30 adds D6b, C17b.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 134
+        # 134 -> 135: D31 adds E11b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 135
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
