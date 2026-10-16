@@ -2940,8 +2940,18 @@ local out`n' `"ymlabel2(1)"'
 local ++n
 local in`n'  `"ymtick(1 2, axis(2))"'
 local out`n' `"ymtick2(1 2)"'
+// Flipped (WP-31 D1b): tmlabel(1, axis(2)) and ymtick(1, axis(3)) "byte
+// for byte" was wrong once twoway was measured drawing them
+// (axisn_minor_truth.json m3.tmlabel, m3.mtick): the t option's mlabel on
+// axis 2 is the x one's, xmlabel2(), and an axis-3 mtick joins "axisn".
+local ++n
+local in`n'  `"tmlabel(1, axis(2))"'
+local out`n' `"xmlabel2(1)"'
+local ++n
+local in`n'  `"ymtick(1, axis(3))"'
+local out`n' `""'
 // byte for byte
-foreach w in `"tmlabel(1, axis(2))"' `"ymtick(1, axis(3))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' {
+foreach w in `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' {
     local ++n
     local in`n'  `"`w'"'
     local out`n' `"`w'"'
@@ -2961,7 +2971,7 @@ forvalues i = 1/`n' {
     }
 }
 mata: st_local("axn", _dash_axisn_json())
-mata: st_local("eq", strofreal(st_local("axn") == char(123) + char(34) + "y3" + char(34) + ":" + char(123) + char(34) + "label" + char(34) + ":" + char(34) + "1" + char(34) + char(125) + char(125)))
+mata: st_local("eq", strofreal(st_local("axn") == char(123) + char(34) + "y3" + char(34) + ":" + char(123) + char(34) + "label" + char(34) + ":" + char(34) + "1" + char(34) + "," + char(34) + "mtick" + char(34) + ":" + char(34) + "1" + char(34) + char(125) + char(125)))
 if !`eq' {
     mata: _dash_say("err", "AX-01 FAIL axisn ", st_local("axn"), "")
     local bad01 = 1

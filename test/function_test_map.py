@@ -494,6 +494,8 @@ FUNCTIONS = {
  '_dash_axis_option_slot': 'test/test_second_axis_moves.py::TestTheRenumbering::test_the_slots',
  # WP-31 S35 (B5c)
  '_dash_dots_plan': 'test/test_saved_dot_rows.py::TestThePlan::test_dots_plan_refuses_another_axis',
+ # WP-31 S35 (D1b)
+ '_dash_axis_innermost': 'test/test_axisn_minor.py::TestTheInnermostAxis::test_sides',
  '_dash_natscale_ticks': 'test/test_natscale.py::TestTheRuleAgainstStata::test_the_reported_case',
  '_dash_count_ticker': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',
  '_dash_count_of': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',

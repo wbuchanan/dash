@@ -7665,10 +7665,12 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
 //       other words kept, each body byte for byte;
 //   axis(3) to axis(9) (WP-31 C10c): taken out of the list and recorded
 //       by _dash_axisn_add, value formed as for axis 2, for the graph's
-//       "axisn" object (a t option on those axes is left as typed);
+//       "axisn" object, mlabel and mtick included (WP-31 D1b; a t option
+//       on those axes is left as typed);
 //   axis(2) of an mlabel or mtick (WP-31 D1): xmlabel2(), ymlabel2(),
-//       xmtick2(), ymtick2() alike (a t option's is left as typed);
-//   any other axis (an mlabel or mtick on axes 3-9 among them), a second
+//       xmtick2(), ymtick2() alike, a t option's as the x one's (WP-31
+//       D1b);
+//   any other axis, a second
 //       axis word, an axis word in capitals and a second comma: left as
 //       typed, for _dash_axreq_check to refuse in twoway's words.
 // Every other word, and every body, is returned byte for byte, so text
@@ -7708,15 +7710,16 @@ string scalar _dash_route_axis2(string scalar opts)
                 continue
             }
         }
-        // A t option's mlabel or mtick on axis 2 has no dash key (WP-31
-        // D1): left as typed, as before.
-        else if (n == 2 & fam[r, 6] != "" &
-                 !(d == "t" & anyof(("mlabel", "mtick"), fam[r, 1]))) {
-            dn = d + fam[r, 6]
+        // A t option's mlabel or mtick on axis 2 is the x one's (WP-31
+        // D1b, measured: tmlabel(##2, axis(2)) draws as xmlabel(##2,
+        // axis(2)), axisn_minor_truth.json m3.tmlabel); dash has no t key
+        // for them, so a date literal in it is named, not read.
+        else if (n == 2 & fam[r, 6] != "") {
+            dn = (d == "t" & anyof(("mlabel", "mtick"), fam[r, 1]) ? "x" : d) +
+                 fam[r, 6]
         }
-        // Axes 3-9 (WP-31 C10c) take no mlabel or mtick (WP-31 D1).
-        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t" &
-                 !anyof(("mlabel", "mtick"), fam[r, 1])) {
+        // Axes 3-9 (WP-31 C10c), their mlabel and mtick too (WP-31 D1b).
+        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t") {
             // Axes three to nine (WP-31 C10c): the option leaves the text
             // and is recorded for the graph's "axisn" object
             // (_dash_axisn_json), its value formed as an axis-2 copy's.
@@ -7945,7 +7948,7 @@ string scalar _dash_axisn_json()
     real scalar      i, j, k, seen
 
     if (rows(_dash_axisn) == 0 | cols(_dash_axisn) != 4) return("")
-    families = ("title", "label", "tick", "line", "scale")
+    families = ("title", "label", "tick", "line", "scale", "mlabel", "mtick")
     names = J(1, 0, "")
     for (i = 1; i <= rows(_dash_axisn); i++) {
         name = _dash_axisn[i, 1] + _dash_axisn[i, 2]
@@ -7966,7 +7969,10 @@ string scalar _dash_axisn_json()
                 seen = 1
             }
             if (!seen) continue
-            fams = fams + (fams == "" ? "" : ",") + char(34) + families[j] +
+            // mlabel is written "mlab" (WP-31 D1b): a key "mlabel" is a
+            // marker-label variable to _dash_extract_vars.
+            fams = fams + (fams == "" ? "" : ",") + char(34) +
+                   (families[j] == "mlabel" ? "mlab" : families[j]) +
                    char(34) + ":" + char(34) + _json_escape(v) + char(34)
         }
         out = out + (i > 1 ? "," : "") + char(34) + names[i] + char(34) +

@@ -8699,6 +8699,103 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
 }
 * ==== end S35 ====
 
+// S35 (WP-31 D1b) helpers.  _u35_minor: the visible minor-label positions
+// of axis <letter><num> in each mode (u35_s, u35_v), after a dropdown move
+// to <want> when <kind> is given, and twoway's from
+// fixtures/axisn_minor_truth.json (u35_tw: group, key, side and first
+// label name the column), each as sorted numbers joined by spaces.
+python:
+def _u35_minor_pos(fig, letter, num):
+    from bokeh.models import Label, LabelSet
+    pos = []
+    for m in list(fig.center) + list(fig.left) + list(fig.right) \
+            + list(fig.above) + list(fig.below):
+        if getattr(m, "name", None) != "dash_minor_labels" \
+                or list(m.tags or []) != [letter, str(num)]:
+            continue
+        if isinstance(m, LabelSet):
+            pos += [float(v) for v in m.source.data["pos"]]
+        elif isinstance(m, Label) and m.visible:
+            pos.append(float(m.x if letter == "x" else m.y))
+    return " ".join("%g" % v for v in sorted(pos))
+
+
+def _u35_minor(sp, dp, app, letter, num, kind, want, group, key, side,
+               first):
+    import json, os, warnings
+    from sfi import Macro
+    from js_runner import JsSession
+    r, doc, a, b = _u35_docs(sp, dp, app)
+    if kind:
+        w = [x for x in r.filter_widgets if type(x).__name__ == kind][0]
+        w.value = _u35_value(w, want)
+        cb = r.filter_callbacks[r.filter_widgets.index(w)]
+        JsSession([]).run_code(cb.code, cb.args)
+        ws = [m for m in doc.models if type(m).__name__ == kind
+              and hasattr(m, "_dash_var")]
+        v = _u35_value(ws[0], want)
+        ws[0].value = v
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for k in ("value", "value_throttled"):
+                for c in list(ws[0]._callbacks.get(k, [])):
+                    c("value", None, v)
+    Macro.setGlobal("u35_s", _u35_minor_pos(a[0], letter, num))
+    Macro.setGlobal("u35_v", _u35_minor_pos(b[0], letter, num))
+    with open(os.path.join("fixtures", "axisn_minor_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)[group][key]["columns"][side]
+    col = [c[1] for c in t if c[1] and c[1][0] == first][0]
+    Macro.setGlobal("u35_tw", " ".join("%g" % v for v in sorted(
+        float(x.replace(",", "")) for x in col)))
+end
+
+capture program drop _u35_d1b
+program define _u35_d1b
+    // _u35_d1b <dir> <k> "<dash command>" <letter> <num> <move kind or "">
+    //     <fixture group> <key> <side> <first label>: one U35-8 case.
+    version 19
+    args dir k cmd letter num kind group key side first
+    dash clear
+    capture noisily dash `cmd' name(zu358`k')
+    _w31_expect U35-8 `"(_rc == 0)"' "case `k' rc `=_rc'"
+    if "`kind'" != "" _u35_serve "`dir'" 8`k' foreign, type(dropdown)
+    else _u35_serve "`dir'" 8`k'
+    python: import __main__ as _u35_m; _u35_m._u35_minor("`dir'/s8`k'.json", "`dir'/d8`k'.json", "`dir'/a8`k'.py", "`letter'", `num', "`kind'", "Foreign", "`group'", "`key'", "`side'", "`first'")
+    foreach m in s v {
+        _w31_expect U35-8 `"("${u35_`m'}" == "${u35_tw}")"' "case `k' `m': dash ${u35_`m'}; twoway ${u35_tw}"
+    }
+end
+
+* ==== S35 D1b: minor labels on axes 2 to 9 ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
+    display as text "S35 start " c(current_date) " " c(current_time)
+    local u35d "`w31_work'/s35d"
+    capture mkdir "`u35d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    python: import __main__ as _u35_m
+    local three (scatter mpg weight) (scatter price weight, yaxis(2)) (scatter length weight, yaxis(3))
+
+    // U35-8: the far-side axis 2's ##N labels after the dropdown at
+    // Foreign (twoway under if foreign == 1), and axis 3's, x axis 3's
+    // and tmlabel()'s axis 2, as twoway labels them, both modes.
+    _u35_d1b "`u35d'" 1 "(scatter mpg weight) (scatter price weight, yaxis(2)), ymlabel(##2, axis(2)) legend(off)" y 2 Select m2 foreign right "13,000"
+    _u35_d1b "`u35d'" 2 "`three', ymlabel(##2, axis(3)) legend(off)" y 3 "" m3 mlabel left 230
+    _u35_d1b "`u35d'" 3 "`three', ymlabel(165 215, axis(3)) legend(off)" y 3 "" m3 mlist left 215
+    _u35_d1b "`u35d'" 4 "(scatter mpg weight) (scatter mpg price, xaxis(2)) (scatter mpg length, xaxis(3)), xmlabel(##2, axis(3)) legend(off)" x 3 "" m3 x3 below 150
+    _u35_d1b "`u35d'" 5 "(scatter mpg weight) (scatter mpg price, xaxis(2)), tmlabel(##2, axis(2)) legend(off)" x 2 "" m3 tmlabel above "2,500"
+    _w31_done U35-8 "minor labels on axes 2 and 3 as twoway draws them, after a move too, both modes"
+
+    macro drop u35_s u35_v u35_tw
+    capture graph drop _all
+    dash clear
+    display as text "S35 end " c(current_date) " " c(current_time)
+}
+* ==== end S35 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

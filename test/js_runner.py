@@ -193,6 +193,16 @@ def stand_in(m, models, objs):
         return {"__type__": "Arrow",
                 **{p: plain(getattr(m, p))
                    for p in ("x_start", "x_end", "y_start", "y_end")}}
+    # WP-31 D1b: a far-side or outer axis's minor label, which the
+    # re-finish moves along its axis (a Node coordinate is no number and
+    # is sent as null, never written back).
+    if type(m).__name__ == "Label":
+        return {"__type__": "Label",
+                **{p: (plain(getattr(m, p))
+                       if isinstance(getattr(m, p), (int, float, str))
+                       else None)
+                   for p in ("x", "y", "text")},
+                "visible": bool(m.visible)}
     if isinstance(m, FixedTicker):
         return {"__type__": "FixedTicker",
                 "ticks": [plain(v) for v in (m.ticks or [])]}
@@ -254,7 +264,8 @@ for (const o of Object.values(REG)) {
   } else if (o.__type__ === "ContourColorBar") {
     // its ticker is a model of its own, written in place (WP-31 B4d)
     o.ticker = resolve(o.ticker);
-  } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow") {
+  } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow"
+             || o.__type__ === "Label") {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   }
 }
@@ -279,6 +290,8 @@ for (const [id, o] of Object.entries(REG)) {
   }
   else if (o.__type__ === "BoxAnnotation")
     out[id] = {box: {left: o.left, right: o.right, bottom: o.bottom, top: o.top}};
+  else if (o.__type__ === "Label")
+    out[id] = {labelpos: {x: o.x, y: o.y, text: o.text, visible: o.visible}};
   else if (o.__type__ === "Arrow")
     out[id] = {arrow: {x_start: o.x_start, x_end: o.x_end, y_start: o.y_start,
                        y_end: o.y_end}};
@@ -394,6 +407,17 @@ class JsSession:
                         if isinstance(v, (int, float)) \
                                 and not isinstance(v, bool):
                             setattr(m, k, float(v))
+                elif "labelpos" in state:
+                    lp = state["labelpos"]
+                    for k in ("x", "y"):
+                        v = lp.get(k)
+                        if isinstance(v, (int, float)) \
+                                and not isinstance(v, bool):
+                            setattr(m, k, float(v))
+                    if isinstance(lp.get("text"), str):
+                        m.text = lp["text"]
+                    if isinstance(lp.get("visible"), bool):
+                        m.visible = lp["visible"]
                 elif "ticks" in state:
                     m.ticks = [float(v) for v in state["ticks"]]
                 elif "colorbar" in state:

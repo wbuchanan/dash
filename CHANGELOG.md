@@ -505,7 +505,7 @@ and now matches Stata.
 
 - dash dot mpg weight on a saved page, the dropdown at Foreign: 1,650 dots from 10 to 40.58, the build's axis -> 1,672 from 14 to 41, the rows twoway draws for the kept cars, as the served app draws them (WP-31, B5c)
 
-<!-- WP-31 D1b -->
+- dash (scatter mpg weight) (scatter price weight, yaxis(2)), ymlabel(##2, axis(2)) with the dropdown at Foreign: the right-hand minor labels stayed at 2,500 7,500 12,500 -> 5,000 to 13,000 by 2,000, as twoway draws the kept cars; ymlabel()/ymtick() with axis(3) to axis(9), named -> drawn beside their axis (150 to 230 by 20 for ymlabel(##2, axis(3)) on length), and tmlabel(##2, axis(2)) drawn on the top axis (WP-31, D1b)
 
 - Minor-label edges follow twoway: dash scatter mpg weight, xlabel(1000 2000 3000) xmtick(##5) drew the 20 ticks of the rule the list spells, now twoway's lone tick at 0 (xlabel(1000(1000)3000) is still a rule); ymlabel(##2, axis(2) angle(400)) was drawn, now refused r(198) "textangle must be between -360.000 and 360.000"; xmlabel(##2, format(%9.2f)) keeps its format after a filter move on the saved page. (WP-31, D1c)
 

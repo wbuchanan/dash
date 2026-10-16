@@ -4272,11 +4272,14 @@ an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
 the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long
 as 10 and 20.  With {cmd:axis(2)} the ticks and labels are on the second
 axis ({cmd:dash}'s own spellings are {opt xmtick2()}, {opt ymtick2()},
-{opt xmlabel2()} and {opt ymlabel2()}); there, labels placed by
-{cmd:##}{it:N} are placed when the page is built and do not move after a
-filter move.  On axes 3 to 9 minor ticks are not drawn; the option is
-named.  {opt tmtick()} and {opt tmlabel()} are drawn as {cmd:xmtick()}
-and {cmd:xmlabel()}.
+{opt xmlabel2()} and {opt ymlabel2()}), and with {cmd:axis(3)} to
+{cmd:axis(9)} on that axis, each label beside its own axis; labels placed
+by {cmd:##}{it:N} follow every filter move on every axis, in the saved
+page and the served app.  {opt tmtick()} and {opt tmlabel()} are drawn as
+{cmd:xmtick()} and {cmd:xmlabel()}, on axis 2 too ({it:Difference from}
+{it:twoway:} a date literal in {cmd:tmlabel(..., axis(2))} is named, not
+read).  An axis outside another on its side draws at most twice the
+{cmd:##}{it:N} labels it was built with, plus a few, after a move.
 
 {pstd}
 {it:Examples:}
@@ -4338,8 +4341,8 @@ minimum, {cmd:ax(2)} -- written in lower case.  The axis number is read as
 is drawn on, an {cmd:axis()} given twice, {cmd:AXIS()} in capitals and a
 second comma ({cmd:ylabel(5000, angle(0), axis(2))}) are refused, r(198),
 with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
-{cmd:ymlabel()} and {cmd:ymtick()} are checked the same way but are drawn
-on neither axis (named in a warning).  {cmd:add} on a label routed to the
+{cmd:ymlabel()} and {cmd:ymtick()} are checked the same way and drawn on
+the axis they name.  {cmd:add} on a label routed to the
 second axis ({cmd:ylabel(5000, axis(2) add)}) adds to that axis's default
 ticks.  The
 second axes also take the options below, which are {cmd:dash}'s own

@@ -622,19 +622,22 @@ _PLAIN_DIGESTS = {
     # 2e3fd291... -> 83ddae14...: WP-31 B5c the axis plan carries each
     # axis's dot rows (an empty "dots" list here) and the finish code
     # dash_fill_dots.
+    # 83ddae14... -> dee5b397...: WP-31 D1b the finish code re-places a
+    # far-side or outer axis's minor-label pool (finish JS text only).
     ("saved", "plain"):
-        "83ddae14d85391c005a6e7cc4f6f73c2965d1ccc6e0b80bddd0d0fb8ca0a2550",
+        "dee5b3976415bb26e4be2a549f44859390e79d63137c169a6dd7d27c3e30255b",
     ("saved", "yaxis2"):
-        "83ddae14d85391c005a6e7cc4f6f73c2965d1ccc6e0b80bddd0d0fb8ca0a2550",
+        "dee5b3976415bb26e4be2a549f44859390e79d63137c169a6dd7d27c3e30255b",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
     # D6/D7/D1c, as the saved page's; 0440b3d9... -> 5a0efbf6...: WP-31
-    # B5c, as the saved page's.
+    # B5c, as the saved page's; 5a0efbf6... -> 8af4b99f...: WP-31 D1b,
+    # as the saved page's.
     ("served", "plain"):
-        "5a0efbf6a592b72256e1df1a953f8f6b770c90bff09471f551c3fe81bfa9a110",
+        "8af4b99fdae2c62b2f7e0a8c7eba9ddde984a5976fc39b9e232cb7941791df30",
     ("served", "yaxis2"):
-        "5a0efbf6a592b72256e1df1a953f8f6b770c90bff09471f551c3fe81bfa9a110",
+        "8af4b99fdae2c62b2f7e0a8c7eba9ddde984a5976fc39b9e232cb7941791df30",
 }
 
 

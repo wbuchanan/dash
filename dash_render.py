@@ -1332,7 +1332,8 @@ def _dash_axisn_value(graph_opts, letter, n, family):
     """The text of ``<letter><family>(..., axis(n))`` for axis *n* of
     *letter* (*family* title, label, tick, line or scale): dash's
     ``ylabel2``-style key for n == 2, the graph's ``axisn`` object for 3-9
-    (WP-31 C10c; dash.ado writes ``{"y3": {"label": ...}, ...}``); ``""``
+    (WP-31 C10c; dash.ado writes ``{"y3": {"label": ...}, ...}``, an
+    mlabel as ``mlab``, WP-31 D1b); ``""``
     when absent or of the wrong shape."""
     go = graph_opts if isinstance(graph_opts, dict) else {}
     if n == 2:
@@ -4213,7 +4214,8 @@ def _dash_axis_option_slot(go, axisn, side, n, first):
     entry = axisn.get(f"{side}{n}")
     entry = dict(entry) if isinstance(entry, dict) else {}
     axisn[f"{side}{n}"] = entry
-    return entry, first[1:]
+    # dash.ado writes an axis 3-9 mlabel as "mlab" (WP-31 D1b).
+    return entry, ("mlab" if first[1:] == "mlabel" else first[1:])
 
 
 def _dash_renumber_axis_options(go, axisn, side, mapping):
@@ -38204,9 +38206,32 @@ function dash_minor_place(a, models, lo, hi) {
             if (fx.change) fx.change.emit();
         }
     }
+    const f = mn.fm >= 0 ? models[mn.fm] : null;
+    // WP-31 D1b: a far-side or outer axis's pool of Labels, re-placed
+    // as _dash_finish_minor_ticks re-places it.
+    if (Array.isArray(mn.far) && mn.far.length
+            && (mn.which === "x" || mn.which === "y")) {
+        for (let i = 0; i < mn.far.length; i++) {
+            const lab = models[mn.far[i]];
+            if (!lab) continue;
+            const attrs = {};
+            if (i < pl.length) {
+                let s = String(pl[i]);
+                try {
+                    if (f && typeof f.doFormat === "function") s = String(f.doFormat([pl[i]], {loc: 0})[0]);
+                } catch (err) { s = String(pl[i]); }
+                if (lab[mn.which] !== pl[i]) attrs[mn.which] = pl[i];
+                if (lab.text !== s) attrs.text = s;
+                if (lab.visible !== true) attrs.visible = true;
+            } else if (lab.visible !== false) attrs.visible = false;
+            if (!Object.keys(attrs).length) continue;
+            if (typeof lab.setv === "function") lab.setv(attrs);
+            else Object.assign(lab, attrs);
+        }
+        return;
+    }
     const src = mn.src >= 0 ? models[mn.src] : null;
     if (!src || !src.data) return;
-    const f = mn.fm >= 0 ? models[mn.fm] : null;
     const pos = Array.from(src.data.pos || []).slice(0, mn.nfix);
     const text = Array.from(src.data.text || []).slice(0, mn.nfix);
     for (const v of pl) {
@@ -38729,14 +38754,30 @@ def _dash_axis_side_of(fig, ax):
     return None
 
 
+def _dash_axis_innermost(fig, ax, side=None):
+    """Is *ax* the first continuous axis of its side of *fig* -- the one
+    whose labels sit on the frame's edge (WP-31 D1b)?  A side's list runs
+    from the plot region outward; an axis on no side is innermost."""
+    from bokeh.models.axes import ContinuousAxis
+    side = side or _dash_axis_side_of(fig, ax)
+    if side is None:
+        return True
+    on = [a for a in getattr(fig, side) if isinstance(a, ContinuousAxis)]
+    return not on or on[0] is ax
+
+
 def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
-                            size, color, angle, side):
+                            size, color, angle, side, anchor=None):
     """The label model(s) of one axis's minor labels (WP-31 D1, D-24.b):
     a ``LabelSet`` along the frame edge in screen units on the first side
     (below, left), one ``Label`` per position at the frame's far edge
-    (``Node``) on the other (above, right).  Every model is named
-    ``dash_minor_labels`` and tagged ``[which, axis_no]``; the text is a
-    canvas text, never HTML."""
+    (``Node``) on the other (above, right).  With *anchor* (an axis that is
+    not the innermost on its side: axes 3-9, an axis 2 beside axis 1; WP-31
+    D1b) one ``Label`` per position on that axis's own inner edge
+    (``Node(target=anchor)``; measured in Chrome: it resolves to the axis's
+    line, where the frame's edge is the innermost axis's).  Every model is
+    named ``dash_minor_labels`` and tagged ``[which, axis_no]``; the text
+    is a canvas text, never HTML."""
     from bokeh.models import ColumnDataSource, Label, LabelSet, Node
     out_len = max(int(getattr(ax, "minor_tick_out", 0) or 0), 0)
     off = float(out_len) + float(look.get("tickgap", 0.0) or 0.0)
@@ -38756,6 +38797,25 @@ def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
     rname = {"x_range_name": getattr(ax, "x_range_name", "default")} \
         if which == "x" else {"y_range_name": getattr(ax, "y_range_name",
                                                       "default")}
+    if anchor is not None:
+        edge = {"left": "right", "right": "left", "below": "top",
+                "above": "bottom"}.get(side or "below", "top")
+        sign = -1.0 if side in ("left", "below", None) else 1.0
+        models = []
+        for p, t in zip(pos, texts):
+            if which == "x":
+                m = Label(x=float(p), x_units="data",
+                          y=Node(target=anchor, symbol=edge),
+                          y_offset=sign * off, text=str(t), **rname,
+                          **common)
+            else:
+                m = Label(y=float(p), y_units="data",
+                          x=Node(target=anchor, symbol=edge),
+                          x_offset=sign * off, text=str(t), **rname,
+                          **common)
+            fig.add_layout(m)
+            models.append(m)
+        return models, None
     if side in ("below", "left", None):
         src = ColumnDataSource({"pos": [float(p) for p in pos],
                                 "text": [str(t) for t in texts]})
@@ -38969,12 +39029,16 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
             texts = [t if t is not None else _dash_minor_text(
                 ax, p, lspec, value_labels) for p, t in rows]
             side = _dash_axis_side_of(fig, ax)
+            # WP-31 D1b: an axis outside another on its side labels on its
+            # own edge, not the frame's.
+            anchor = None if _dash_axis_innermost(fig, ax, side) else ax
             models, src = _dash_minor_label_model(
                 fig, ax, which, axis_no, [p for p, _t in rows], texts, look,
-                size, color, angle, side)
+                size, color, angle, side, anchor=anchor)
             mn.update({"src": src, "labels": models,
                        "rows": list(zip([p for p, _t in rows], texts)),
-                       "look": (look, size, color, angle, side)})
+                       "look": (look, size, color, angle, side),
+                       "anchor": anchor})
             if lspec.get("format"):
                 # WP-31 D1c: the saved page writes the after-move labels in
                 # the label's own format(), as _dash_minor_text does here.
@@ -39076,22 +39140,39 @@ def _dash_finish_minor_ticks(fig):
             if [float(v) for v in cur.get("pos", [])] != data["pos"] \
                     or list(cur.get("text", [])) != data["text"]:
                 src.data = data
-        elif mn.get("look") is not None and not mn.get("placed") \
-                and not e.get("refinish"):
-            # The far side: one Label per position, placed once.
-            look, size, color, angle, side = mn["look"]
-            have = {float(m.x if mn["which"] == "x" else m.y)
-                    for m in mn.get("labels") or ()}
-            extra = [(p, t) for p, t in rows if float(p) not in have]
-            extra += [(p, _dash_minor_text(ax, p, mn["lspec"], mn["vlabels"]))
-                      for p in pl]
-            if extra:
-                models, _src = _dash_minor_label_model(
-                    fig, ax, mn["which"], mn["axis_no"],
-                    [p for p, _t in extra], [t for _p, t in extra], look,
-                    size, color, angle, side)
-                mn["labels"] = list(mn.get("labels") or []) + models
-            mn["placed"] = True
+        elif mn.get("look") is not None and mn["lb"]:
+            # A far-side or outer axis (WP-31 D1b): its ##N labels are a
+            # pool of Labels made at the first finish and re-placed at
+            # every finish, a served move's included (the saved page's
+            # twin is dash_minor_place); the explicit rows are fixed.
+            pool = mn.get("pool")
+            if pool is None:
+                if e.get("refinish"):
+                    continue
+                look, size, color, angle, side = mn["look"]
+                k = 2 * len(pl) + 2 * max(int(mn["lb"]) - 1, 1) + 4
+                pool, _src = _dash_minor_label_model(
+                    fig, ax, mn["which"], mn["axis_no"], [0.0] * k,
+                    [""] * k, look, size, color, angle, side,
+                    anchor=mn.get("anchor") or (
+                        None if side in ("above", "right") else ax))
+                for m in pool:
+                    m.visible = False
+                mn["pool"] = pool
+                mn["labels"] = list(mn.get("labels") or []) + pool
+            attr = "x" if mn["which"] == "x" else "y"
+            for i, m in enumerate(pool):
+                if i < len(pl):
+                    txt = _dash_minor_text(ax, pl[i], mn["lspec"],
+                                           mn["vlabels"])
+                    if getattr(m, attr) != float(pl[i]):
+                        setattr(m, attr, float(pl[i]))
+                    if m.text != txt:
+                        m.text = txt
+                    if not m.visible:
+                        m.visible = True
+                elif m.visible:
+                    m.visible = False
 
 
 def _dash_date_axis_spec(spec, kind, option):
@@ -40515,7 +40596,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                              or getattr(ax, "formatter",
                                                         None))
                                       if mn.get("src") is not None
-                                      else None)):
+                                      or mn.get("pool") else None)):
                         if mdl is None:
                             idx[nm_] = -1
                             continue
@@ -40524,7 +40605,16 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                             j = index[id(mdl)] = len(models)
                             models.append(mdl)
                         idx[nm_] = j
+                    # WP-31 D1b: a far-side or outer axis's label pool.
+                    far = []
+                    for mdl in mn.get("pool") or ():
+                        j = index.get(id(mdl))
+                        if j is None:
+                            j = index[id(mdl)] = len(models)
+                            models.append(mdl)
+                        far.append(j)
                     ent["minor"] = {
+                        "far": far, "which": str(mn.get("which") or ""),
                         "tb": int(mn.get("tb") or 0),
                         "lb": int(mn.get("lb") or 0),
                         "fx": idx["fx"], "src": idx["src"], "fm": idx["fm"],
@@ -40836,11 +40926,11 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                     date_kind=kind, by_graph=by_graph,
                                     ref_in=ref_in)
         # WP-31 D1: ymtick2()/ymlabel2() (axis(2) copies) on this axis;
-        # axes 3-9 take none (their text keeps its axis(#), named).
+        # WP-31 D1b: axes 3-9 take theirs from the axisn object.
         mt2 = (str(graph_opts.get(f"{n}mtick2", "") or "") if num == 2
-               else "")
+               else _dash_axisn_value(graph_opts, n, num, "mtick"))
         ml2 = (str(graph_opts.get(f"{n}mlabel2", "") or "") if num == 2
-               else "")
+               else _dash_axisn_value(graph_opts, n, num, "mlab"))
         if ax is not None and (mt2.strip() or ml2.strip()):
             mgrids = []
             if any(_dash_parse_axis_spec(r, minor=True).get("grid")
@@ -40850,10 +40940,11 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                 fig.add_layout(g, "center")
                 mgrids.append(g)
             _dash_apply_minor_ticks(
-                fig, [ax], mgrids, n, 2, mt2, ml2, col_vals or None, seen,
+                fig, [ax], mgrids, n, num, mt2, ml2, col_vals or None, seen,
                 key, date_kind=kind, by_graph=by_graph, ref_in=ref_in,
-                names=(f"{n}mtick2", f"{n}mlabel2"), colours=colours,
-                major_spec=spec)
+                names=((f"{n}mtick2", f"{n}mlabel2") if num == 2 else
+                       (f"{n}mtick(axis({num}))", f"{n}mlabel(axis({num}))")),
+                colours=colours, major_spec=spec)
         if ax is not None and scale_raw:
             # WP-30 P1.18a: the second axis's own look.
             _dash_apply_scale_look(fig, ax, _dash_scale_look(scale_raw),
@@ -56700,6 +56791,8 @@ class ServerAppBuilder:
                          "_dash_reference_lines",
                          # dot's rows in the axis plan (WP-31 B5c).
                          "_dash_dots_plan",
+                         # minor labels on an outer axis (WP-31 D1b).
+                         "_dash_axis_innermost",
                          # weighted marker sizes (WP-31 C9).
                          "_dash_weighted_sizes", "_dash_rescale_wsizes",
                          # colorvar()'s colour rule, clegend() and
