@@ -2602,6 +2602,26 @@ def _dash_label_key(value):
     return str(int(f))
 
 
+def _dash_label_ccl(text, sfi):
+    """*text*, a variable or value label, with each ``{ccl name}`` read as
+    c(name), as twoway draws it (WP-31 E9, smcl_more_truth.json
+    varlabel.ytitle, varlabel.legend, valuelabel.xlabel).  The label goes
+    through Mata's ``_dash_gt_ccl`` -- the rule dash.ado applies to the
+    graph's options -- in a global made for the read and dropped at once;
+    a label without ``ccl`` is returned untouched and nothing runs.  The
+    label is never part of a command."""
+    if "ccl" not in text or "{" not in text:
+        return text
+    g = "_dashccl" + secrets.token_hex(6)
+    sfi.Macro.setGlobal(g, text)
+    try:
+        sfi.SFIToolkit.stata(
+            f'quietly mata: st_global("{g}", _dash_gt_ccl(st_global("{g}")))')
+        return str(sfi.Macro.getGlobal(g))
+    finally:
+        sfi.SFIToolkit.stata(f"capture macro drop {g}")
+
+
 def _dash_write_stata_data(path, varnames, sfi=None):
     """Write the data file both renderers read, from the data in memory.
 
@@ -2719,6 +2739,7 @@ def _dash_write_stata_data(path, varnames, sfi=None):
             finally:
                 tk.stata(f"capture macro drop {g}")
             _note(f"the variable label of {v}")
+        var_labels[v] = _dash_label_ccl(var_labels[v], sfi)
         lab = "" if is_str[v] else str(vlab.getVarValueLabel(v) or "")
         if not lab or not _dash_is_stata_name(lab):
             continue
@@ -2743,7 +2764,7 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         for key, text in (pairs or {}).items():
             k = _dash_label_key(key)
             if k is not None:
-                out[k] = str(text)
+                out[k] = _dash_label_ccl(str(text), sfi)
         value_labels[v] = out
 
     ordered = [cols[v] for v in names]
@@ -43086,7 +43107,9 @@ _DASH_GT_TAGS = {
 #: largest count twoway reads; a larger count is drawn as typed).
 _DASH_GT_SMCL = {
     "hline": ("hline", 255), "space": ("space", 255), "dup": ("dup", 999),
-    "center": ("center", 255), "cmd": ("pass", None), "hi": ("pass", None),
+    "center": ("center", 255), "rcenter": ("rcenter", 255),
+    "right": ("right", None), "col": ("col", 255),
+    "cmd": ("pass", None), "hi": ("pass", None),
     "browse": ("link", None), "help": ("link", None),
     "stata": ("link", None),
 }
@@ -43212,14 +43235,19 @@ def _dash_gt_smcl_head(h, term):
     * ``{hline #}``: ``("grow", "-" * #)``; ``{hline}`` ``("fill", "-")``
       (hyphens to column 254); ``{space #}`` ``("grow", " " * #)``.
     * ``{dup #:`` ``("dup", #)``; ``{center:`` / ``{center #:``
-      ``("center", None | #)``.
+      ``("center", None | #, "c")``, ``{rcenter:`` / ``{rcenter #:``
+      the same with ``"r"`` (the odd blank on the left), ``{right:``
+      ``("center", None, "right")`` (the text ends at column 254;
+      ``{right #:`` is drawn as typed); ``{col #}`` ``("col", #)``, blanks
+      to column # (never back).
     * ``{cmd:`` ``{hi:`` and a link's ``{browse u:`` ``{help x:``
       ``{stata c:`` ``("pass",)``: the text in the enclosing style;
       ``{cmd}`` ``{hi}`` ``("drop",)``: nothing.
     * ``{browse u}`` ``{help x}`` ``{stata c}``: ``("emit", argument)``,
       one pair of enclosing double quotes removed.
 
-    A count past the directive's bound (255, ``{dup}`` 999), a count on a
+    A count past the directive's bound (255, ``{dup}`` 999; ``{col}``'s 255
+    is assumed from the others: ``{col 255}`` was measured), a count on a
     directive that takes none, a missing one (``{space}``, ``{dup:``) or
     the wrong terminator is drawn as typed: ``("unit",)`` or
     ``("frame",)``.  Digits are capped at 6 so int parsing stays linear.
@@ -43243,6 +43271,8 @@ def _dash_gt_smcl_head(h, term):
             arg = arg[1:-1]
         return ("emit", arg)
     count = None
+    if kind == "right" and arg:
+        return typed
     if arg:
         if not re.fullmatch(r"[0-9]{1,6}", arg):
             return typed
@@ -43261,9 +43291,13 @@ def _dash_gt_smcl_head(h, term):
         if term != ":" or count is None:
             return typed
         return ("dup", count)
+    if kind == "col":
+        if term != "}" or count is None:
+            return typed
+        return ("col", count)
     if term != ":":
         return typed
-    return ("center", count)
+    return ("center", count, {"center": "c", "rcenter": "r"}.get(kind, kind))
 
 
 def _dash_gt_column(total):
@@ -43297,7 +43331,8 @@ def _dash_graph_text_runs(line, flags=None, wrap=True):
     draws ``a``, bold ``c``, ``d``).  The SMCL directives of
     ``_DASH_GT_SMCL`` are expanded as twoway draws them (WP-31 E9,
     ``_dash_gt_smcl_head``): ``{dup #:t}`` repeats t's runs, ``{center:t}``
-    pads t to the middle of what is left of the 254-column line, a link's
+    and ``{rcenter:t}`` pad t to the middle of what is left of the
+    254-column line, ``{right:t}`` to its end, ``{col #}`` to column #, a link's
     quoted argument may hold ``:``.  The expansions of one line add at most
     ``_DASH_GT_TEXT_BUDGET`` characters; past it the rest is dropped and
     ``"cut"`` is added to *flags* (a set, when given).  With *wrap*, a line
@@ -43393,10 +43428,16 @@ def _dash_graph_text_runs(line, flags=None, wrap=True):
             act, q, step = acts[p]
             nxt = q + 1
             kind = act[0]
-            if kind in ("grow", "fill"):
-                # An expansion ({hline #}, {hline}, {space #}): counted.
-                want = (max(0, _DASH_GT_LINE_WIDTH - _dash_gt_column(tot))
-                        if kind == "fill" else len(act[1]))
+            if kind in ("grow", "fill", "col"):
+                # An expansion ({hline #}, {hline}, {space #}, {col #}):
+                # counted.
+                if kind == "fill":
+                    want = max(0, _DASH_GT_LINE_WIDTH - _dash_gt_column(tot))
+                elif kind == "col":
+                    want = max(0, act[1] - 1 - _dash_gt_column(tot))
+                    act = (kind, " ")
+                else:
+                    want = len(act[1])
                 room = max(0, budget - grown)
                 if want > room:
                     want = room
@@ -43408,7 +43449,7 @@ def _dash_graph_text_runs(line, flags=None, wrap=True):
                 if kind == "dup" and p in closed:
                     extra = ("dup", len(out), tot, act[1])
                 elif kind == "center" and p in closed:
-                    extra = ("center", len(out), tot, act[1])
+                    extra = ("center", len(out), tot, act[1], act[2])
                     out.append((state, ""))
                 if p in closed and kind in ("open", "pass", "dup",
                                             "center"):
@@ -43457,14 +43498,19 @@ def _dash_graph_text_runs(line, flags=None, wrap=True):
                     tot += size * copies
                     grown += size * copies
             elif extra is not None:
-                _, i0, t0, width = extra
+                _, i0, t0, width, how = extra
                 size = tot - t0
-                if width is None:
-                    left = max(0, (_DASH_GT_LINE_WIDTH
-                                   - _dash_gt_column(t0) - size) // 2)
+                odd = 1 if how == "r" else 0
+                if how == "right":
+                    left = max(0, _DASH_GT_LINE_WIDTH
+                               - _dash_gt_column(t0) - size)
+                    right = 0
+                elif width is None:
+                    left = max(0, (_DASH_GT_LINE_WIDTH - _dash_gt_column(t0)
+                                   - size + odd) // 2)
                     right = 0
                 else:
-                    left = max(0, (width - size) // 2)
+                    left = max(0, (width - size + odd) // 2)
                     right = max(0, width - size - left)
                 room = max(0, budget - grown)
                 if left + right > room:

@@ -4751,11 +4751,17 @@ times, its markup read; {cmd:{c -(}cmd:}{it:text}{cmd:{c )-}} and
 {cmd:{c -(}hi:}{it:text}{cmd:{c )-}} are the text in the style around
 them; {cmd:{c -(}center:}{it:text}{cmd:{c )-}} centres the text on what
 is left of the line and {cmd:{c -(}center }{it:#}{cmd::}{it:text}{cmd:{c )-}}
-in {it:#} columns; the links {cmd:{c -(}browse{c )-}},
+in {it:#} columns, {cmd:{c -(}rcenter:} likewise with an odd blank on
+the left, {cmd:{c -(}right:}{it:text}{cmd:{c )-}} ends the text at column
+254 and {cmd:{c -(}col }{it:#}{cmd:{c )-}} moves to column {it:#} (never
+back); the links {cmd:{c -(}browse{c )-}},
 {cmd:{c -(}help{c )-}} and {cmd:{c -(}stata{c )-}} are their text after
-the colon, or their argument when they have none; and, in a graph
-option's text or a {cmd:text()} line, {cmd:{c -(}ccl }{it:name}{cmd:{c )-}}
-is {cmd:c(}{it:name}{cmd:)} when the graph is registered.  A
+the colon, or their argument when they have none; and
+{cmd:{c -(}ccl }{it:name}{cmd:{c )-}} is {cmd:c(}{it:name}{cmd:)} -- in
+a graph option's text or a {cmd:text()} line when the graph is
+registered, in a variable or value label when the page is built -- and
+{cmd:{c -(}ccl version{c )-}} is 9, the version {cmd:twoway} draws
+under.  A
 {cmd:$}{it:name} or {cmd:${c -(}}{it:name}{cmd:{c )-}} that reaches
 {cmd:dash} in a title, subtitle, note, caption, axis or edge title,
 legend or tick label -- written {cmd:\$name} in a do-file -- is the

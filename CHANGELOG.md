@@ -464,7 +464,7 @@ and now matches Stata.
 
 - rarea and rbar drew no outline; they are outlined in the scheme's area line style, as twoway outlines them: rarea along both bounds in its plot colour at the medium width, rbar each bar in its plot colour (WP-31, E8)
 
-- Other SMCL in graph text. dash scatter mpg weight, title("a {hline 5} b") drew the directive as typed; it is drawn as twoway draws it, a ----- b, as are {space #}, {dup #:text}, {cmd:} and {hi:}, {center:}, {ccl name} (c(name) when the graph is registered) and the {browse}, {help} and {stata} links; a text line longer than 254 characters, which dash drew whole, is drawn as twoway draws it, its last piece after "> " (WP-31, E9)
+- Other SMCL in graph text. dash scatter mpg weight, title("a {hline 5} b") drew the directive as typed; it is drawn as twoway draws it, a ----- b, as are {space #}, {dup #:text}, {cmd:} and {hi:}, {center:}, {ccl name} (c(name) when the graph is registered) and the {browse}, {help} and {stata} links; {rcenter:}, {right:} and {col #}, and {ccl} in variable labels, value labels and the options of axes 3-9; a text line longer than 254 characters, which dash drew whole, is drawn as twoway draws it, its last piece after "> " (WP-31, E9)
 
 <!-- WP-31 G1 -->
 

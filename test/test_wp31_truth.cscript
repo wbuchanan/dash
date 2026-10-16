@@ -10919,6 +10919,105 @@ program define _u42_draw
     python: import __main__ as _u42_m; _u42_m._u42_titles("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
 end
 
+python:
+def _u42_texts(sp, dp, app):
+    """Every text both modes draw (titles, labels, axis titles, tick
+    labels, legend keys), as two lists on the module (_u42_drawn)."""
+    import json as _json
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        g = dict(__name__="dash_u42g_app")
+        exec(compile(src.replace(attach, "pass"), "dash_u42g_app.py", "exec"), g)
+        doc = Document()
+        g["make_document"](doc)
+    out = []
+    for models in ([m for f in r.figures.values() for m in f.references()],
+                   list(doc.models)):
+        texts = []
+        for m in models:
+            for a in ("text", "axis_label", "title"):
+                v = getattr(m, a, None)
+                if isinstance(v, str):
+                    texts.append(v)
+            lab = getattr(m, "label", None)
+            if isinstance(lab, dict) and isinstance(lab.get("value"), str):
+                texts.append(lab["value"])
+            elif isinstance(getattr(lab, "value", None), str):
+                texts.append(lab.value)
+            ov = getattr(m, "major_label_overrides", None)
+            if isinstance(ov, dict):
+                texts.extend(v for v in ov.values() if isinstance(v, str))
+            args = getattr(m, "args", None)
+            if isinstance(args, dict) and isinstance(args.get("labels"), str):
+                try:
+                    texts.extend(_json.loads(args["labels"]).values())
+                except ValueError:
+                    pass
+        out.append(texts)
+    import __main__
+    __main__._u42_drawn = out
+
+
+def _u42_gcheck(fx, kind):
+    """u42_gbad: the options whose drawn text (its first line) differs
+    from twoway's for this kind of global.  Z<i>: marks the i-th option of
+    the fixture's order; an =exp global is drawn as written; an option
+    twoway refuses with the kind (rc 198) was left out of the command."""
+    import json
+    import __main__
+    from sfi import Macro
+    d = json.load(open(fx, encoding="utf-8"))
+    bad = []
+    for i, c in enumerate([c for c in d["cases"] if c["kind"] == kind]):
+        if c["rc"]:
+            continue
+        want = c["drawn"][0]
+        if kind == "eval":
+            want = "a " + d["globals"]["eval"] + " b"
+        pre = "Z%d:" % (i + 1)
+        for mode, texts in zip(("s", "v"), __main__._u42_drawn):
+            got = sorted({t[len(pre):].split("\n")[0] for t in texts
+                          if t.startswith(pre)})
+            if got != [want]:
+                bad.append("%s/%s:%r" % (c["option"], mode, got[:2]))
+    Macro.setGlobal("u42_gbad", " ".join(bad)[:600])
+
+
+def _u42_mcheck(fx, keys):
+    """u42_mbad: each text twoway drew for the keys (smcl_more_truth.json)
+    that one of the modes does not draw."""
+    import json
+    import __main__
+    from sfi import Macro
+    d = json.load(open(fx, encoding="utf-8"))
+    bad = []
+    for key in keys.split():
+        for want in d[key]["texts"]:
+            for mode, texts in zip(("s", "v"), __main__._u42_drawn):
+                if want not in texts:
+                    bad.append("%s/%s:%r" % (key, mode, want))
+    Macro.setGlobal("u42_mbad", " ".join(bad)[:600])
+end
+
+capture program drop _u42_gread
+program define _u42_gread
+    // _u42_gread <dir> <k> <graph>: the texts both modes draw for the
+    // registered graph (the module's _u42_drawn).
+    version 19
+    args dir k
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u42_m; _u42_m._u42_texts("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
 * ==== S42 E9: SMCL inline runs ====
 local only : env WP31_ONLY
 if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
@@ -10995,92 +11094,56 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
     _w31_expect U42-04 `"(`r1' == 0) & ("`n1'" == "11") & (`h1' == 1) & (`h2' == 1)"' "rc `r1' notes `n1' help bf `h1' sup `h2'"
     _w31_done U42-04 "a style tag on part of a title is noted once and the help documents twoway's picture"
     dash clear
+
+    // U42-07: {ccl} in a variable label (y title, legend key), a value
+    // label (tick label) and an axis 3 title and label is c(name), and
+    // {ccl version} is 9, as twoway draws them (smcl_more_truth.json).
+    local u42mx "`c(pwd)'/fixtures/smcl_more_truth.json"
+    local bad ""
+    local k 0
+    foreach case in m1 m2 m3 m4 {
+        local ++k
+        sysuse auto, clear
+        label variable mpg "Qa {ccl pi} b"
+        label define zmo 0 "Qd {ccl N}" 1 "Qf {hline 2}"
+        label values foreign zmo
+        dash clear
+        if "`case'" == "m1" {
+            capture noisily dash scatter mpg weight, legend(on) title("Q{ccl version}") name(u42m1)
+            local keys "varlabel.ytitle varlabel.legend ccl.version"
+        }
+        if "`case'" == "m2" {
+            capture noisily dash scatter mpg foreign, xlabel(0 1, valuelabel) name(u42m2)
+            local keys "valuelabel.xlabel"
+        }
+        if "`case'" == "m3" {
+            label variable mpg "Mileage (mpg)"
+            capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(3)), ytitle("Qa {ccl pi} b", axis(3)) name(u42m3)
+            local keys "axis3.ytitle"
+        }
+        if "`case'" == "m4" {
+            label variable mpg "Mileage (mpg)"
+            capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(3)), ylabel(5000 "Qe {ccl N}", axis(3)) name(u42m4)
+            local keys "axis3.ylabel"
+        }
+        if _rc {
+            local bad "`bad' `case'(rc `=_rc')"
+            continue
+        }
+        _u42_gread "`u42d'" 7`k'
+        python: import __main__ as _u42_m; _u42_m._u42_mcheck(r"`u42mx'", "`keys'")
+        if `"${u42_mbad}"' != "" {
+            local bad "`bad' `case'"
+            mata: printf("  %s: %s\n", st_local("case"), st_global("u42_mbad"))
+        }
+    }
+    _w31_expect U42-07 `"("`bad'" == "")"' "texts differ from twoway's:`bad'"
+    _w31_done U42-07 "ccl in variable labels, value labels and axis 3 options, and ccl version, are drawn as twoway draws them"
+    sysuse auto, clear
+    dash clear
     display as text "S42 end " c(current_date) " " c(current_time)
 }
 * ==== end S42 ====
-
-python:
-def _u42_texts(sp, dp, app):
-    """Every text both modes draw (titles, labels, axis titles, tick
-    labels, legend keys), as two lists on the module (_u42_drawn)."""
-    import json as _json
-    import warnings
-    import dash_render as dr
-    from bokeh.document import Document
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        r = dr.DashRenderer(sp, dp)
-        r.render()
-        dr.ServerAppBuilder(sp, dp).build(app)
-        with open(app, encoding="utf-8") as fh:
-            src = fh.read()
-        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
-        g = dict(__name__="dash_u42g_app")
-        exec(compile(src.replace(attach, "pass"), "dash_u42g_app.py", "exec"), g)
-        doc = Document()
-        g["make_document"](doc)
-    out = []
-    for models in ([m for f in r.figures.values() for m in f.references()],
-                   list(doc.models)):
-        texts = []
-        for m in models:
-            for a in ("text", "axis_label", "title"):
-                v = getattr(m, a, None)
-                if isinstance(v, str):
-                    texts.append(v)
-            lab = getattr(m, "label", None)
-            if isinstance(lab, dict) and isinstance(lab.get("value"), str):
-                texts.append(lab["value"])
-            elif isinstance(getattr(lab, "value", None), str):
-                texts.append(lab.value)
-            ov = getattr(m, "major_label_overrides", None)
-            if isinstance(ov, dict):
-                texts.extend(v for v in ov.values() if isinstance(v, str))
-            args = getattr(m, "args", None)
-            if isinstance(args, dict) and isinstance(args.get("labels"), str):
-                try:
-                    texts.extend(_json.loads(args["labels"]).values())
-                except ValueError:
-                    pass
-        out.append(texts)
-    import __main__
-    __main__._u42_drawn = out
-
-
-def _u42_gcheck(fx, kind):
-    """u42_gbad: the options whose drawn text (its first line) differs
-    from twoway's for this kind of global.  Z<i>: marks the i-th option of
-    the fixture's order; an =exp global is drawn as written; an option
-    twoway refuses with the kind (rc 198) was left out of the command."""
-    import json
-    import __main__
-    from sfi import Macro
-    d = json.load(open(fx, encoding="utf-8"))
-    bad = []
-    for i, c in enumerate([c for c in d["cases"] if c["kind"] == kind]):
-        if c["rc"]:
-            continue
-        want = c["drawn"][0]
-        if kind == "eval":
-            want = "a " + d["globals"]["eval"] + " b"
-        pre = "Z%d:" % (i + 1)
-        for mode, texts in zip(("s", "v"), __main__._u42_drawn):
-            got = sorted({t[len(pre):].split("\n")[0] for t in texts
-                          if t.startswith(pre)})
-            if got != [want]:
-                bad.append("%s/%s:%r" % (c["option"], mode, got[:2]))
-    Macro.setGlobal("u42_gbad", " ".join(bad)[:600])
-end
-
-capture program drop _u42_gread
-program define _u42_gread
-    // _u42_gread <dir> <k> <graph>: the texts both modes draw for the
-    // registered graph (the module's _u42_drawn).
-    version 19
-    args dir k
-    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
-    python: import __main__ as _u42_m; _u42_m._u42_texts("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
-end
 
 * ==== S42 D13b: Global macros in graph text options ====
 local only : env WP31_ONLY

@@ -1,0 +1,158 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "ccf1cb6b10c51b2ca28a0578e211d04ec66b0feb",
+    "extracted": "16 Oct 2026",
+    "source": "scripts/extract_smcl_more_truth.do",
+    "stata_version": "19.5"
+  },
+  "axis3.ylabel": {
+    "rc": 0,
+    "texts": [
+      "Qe 74"
+    ]
+  },
+  "axis3.ytitle": {
+    "rc": 0,
+    "texts": [
+      "Qa 3.141592653589793 b"
+    ]
+  },
+  "ccl.stata_version": {
+    "rc": 0,
+    "texts": [
+      "Q19.5"
+    ]
+  },
+  "ccl.version": {
+    "rc": 0,
+    "texts": [
+      "Q9"
+    ]
+  },
+  "ccl.version16": {
+    "rc": 0,
+    "texts": [
+      "Q9"
+    ]
+  },
+  "ccl.version19prog": {
+    "rc": 0,
+    "texts": [
+      "Q9"
+    ]
+  },
+  "col.after": {
+    "rc": 0,
+    "texts": [
+      "Qabcx"
+    ]
+  },
+  "col.big": {
+    "rc": 0,
+    "texts": [
+      "Q                                                                                                                                                                                                                                                            x"
+    ]
+  },
+  "col.colon": {
+    "rc": 0,
+    "texts": [
+      "Qxxx"
+    ]
+  },
+  "col.main": {
+    "rc": 0,
+    "texts": [
+      "Q        xy"
+    ]
+  },
+  "col.one": {
+    "rc": 0,
+    "texts": [
+      "Qx"
+    ]
+  },
+  "col.over": {
+    "rc": 0,
+    "texts": []
+  },
+  "col.zero": {
+    "rc": 0,
+    "texts": [
+      "Qx"
+    ]
+  },
+  "rcenter.after": {
+    "rc": 0,
+    "texts": [
+      "Qab                                                                                                                             x"
+    ]
+  },
+  "rcenter.even": {
+    "rc": 0,
+    "texts": [
+      "Q                                                                                                                              xy"
+    ]
+  },
+  "rcenter.odd": {
+    "rc": 0,
+    "texts": [
+      "Q                                                                                                                             xyz"
+    ]
+  },
+  "rcenter.text": {
+    "rc": 0,
+    "texts": [
+      "Q                                                                                                                              xycd"
+    ]
+  },
+  "rcenter.width": {
+    "rc": 0,
+    "texts": [
+      "Q    xy   "
+    ]
+  },
+  "right.after": {
+    "rc": 0,
+    "texts": [
+      "Qab                                                                                                                                                                                                                                                          x"
+    ]
+  },
+  "right.main": {
+    "rc": 0,
+    "texts": [
+      "Q                                                                                                                                                                                                                                                           xy"
+    ]
+  },
+  "right.text": {
+    "rc": 0,
+    "texts": []
+  },
+  "right.width": {
+    "rc": 0,
+    "texts": [
+      "Q{right 9:xy}"
+    ]
+  },
+  "valuelabel.xlabel": {
+    "rc": 0,
+    "texts": [
+      "Qa 3.141592653589793 b",
+      "Qd 74",
+      "Qf --"
+    ]
+  },
+  "varlabel.legend": {
+    "rc": 0,
+    "texts": [
+      "Qa 3.141592653589793 b",
+      "Qa 3.141592653589793 b"
+    ]
+  },
+  "varlabel.ytitle": {
+    "rc": 0,
+    "texts": [
+      "Qa 3.141592653589793 b"
+    ]
+  }
+}

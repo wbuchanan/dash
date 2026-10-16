@@ -1419,3 +1419,111 @@ class TestTagNameFont:
         res = [dr._dash_graph_text("{stSerif:x}")]
         dr._dash_graph_text_style(t, "text", res, fig)
         assert t.text_font == dr._DASH_GT_FONTS["stSerif"]
+
+
+# ---------------------------------------------------------------------------
+# WP-31 E9 follow-up: {rcenter:}, {right:} and {col #}
+# ---------------------------------------------------------------------------
+#
+# test/fixtures/smcl_more_truth.json (scripts/extract_smcl_more_truth.do):
+# each title is "Q" + the typed text, so the directive starts at column 1.
+# {rcenter:t} centres t rounding the extra blank to the left,
+# {rcenter #:t} in # columns; {right:t} ends t at column 254 ({right #:}
+# is drawn as typed); {col #} pads to column # and never moves back.  A
+# key with no text holding Q drew only a wrapped piece without it.
+
+_MORE_FIXTURE = os.path.join(_HERE, "fixtures", "smcl_more_truth.json")
+_MORE_TYPED = {
+    "rcenter.even": "{rcenter:xy}", "rcenter.odd": "{rcenter:xyz}",
+    "rcenter.after": "ab{rcenter:x}", "rcenter.width": "{rcenter 9:xy}",
+    "rcenter.text": "{rcenter:xy}cd", "right.main": "{right:xy}",
+    "right.after": "ab{right:x}", "right.text": "{right:x}cd",
+    "right.width": "{right 9:xy}", "col.main": "{col 10}xy",
+    "col.after": "abc{col 2}x", "col.one": "{col 1}x",
+    "col.zero": "{col 0}x", "col.big": "{col 254}x",
+    "col.over": "{col 255}x",
+}
+
+
+def _more_truth():
+    if not os.path.exists(_MORE_FIXTURE):
+        pytest.fail(f"{_MORE_FIXTURE} is missing; run "
+                    "scripts/extract_smcl_more_truth.do")
+    with open(_MORE_FIXTURE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+class TestMoreSmclDirectives:
+
+    def test_meta(self):
+        d = _more_truth()
+        assert sorted(d["_meta"]) == ["born_date", "dash_commit",
+                                      "extracted", "source",
+                                      "stata_version"]
+        assert set(_MORE_TYPED) <= set(d)
+
+    @pytest.mark.parametrize("key", sorted(_MORE_TYPED))
+    def test_each_case(self, key):
+        rec = _more_truth()[key]
+        assert rec["rc"] == 0
+        got = dr._dash_graph_text("Q" + _MORE_TYPED[key])[0]
+        if rec["texts"]:
+            assert got == rec["texts"][0]
+        else:
+            assert "Q" not in got and got.startswith("> ")
+
+    def test_heads(self):
+        h = dr._dash_gt_head
+        assert h("rcenter", ":")[0] == "center"
+        assert h("right", ":")[0] == "center"
+        assert h("right 9", ":") == ("frame",)
+        assert h("col 10", "}") == ("col", 10)
+        assert h("col", "}") == ("unit",)
+        assert h("col 256", "}") == ("unit",)
+
+
+class TestLabelCcl:
+    """{ccl name} in a variable or value label is c(name), as twoway draws
+    it (smcl_more_truth.json varlabel.*, valuelabel.xlabel): the data
+    writer runs inside Stata and asks Mata's _dash_gt_ccl, the rule
+    dash.ado applies to the graph's options."""
+
+    def _fake(self):
+        calls = []
+        store = {}
+
+        class _Macro:
+            @staticmethod
+            def setGlobal(name, value):
+                store[name] = value
+
+            @staticmethod
+            def getGlobal(name):
+                return store.get(name, "")
+
+        class _Tk:
+            @staticmethod
+            def stata(cmd):
+                calls.append(cmd)
+                m = re.search(r'st_global\("(\w+)", _dash_gt_ccl', cmd)
+                if m:
+                    g = m.group(1)
+                    store[g] = store[g].replace("{ccl pi}", "3.14")
+                elif cmd.startswith("capture macro drop "):
+                    store.pop(cmd.split()[-1], None)
+
+        import types
+        return types.SimpleNamespace(Macro=_Macro, SFIToolkit=_Tk), calls, store
+
+    def test_a_label_holding_ccl_is_read_through_mata(self):
+        fake, calls, store = self._fake()
+        assert dr._dash_label_ccl("a {ccl pi} b", fake) == "a 3.14 b"
+        assert len(calls) == 2 and not store
+        assert dr._dash_label_ccl("a {cmd:x} b", fake) == "a {cmd:x} b"
+        assert dr._dash_label_ccl("plain", fake) == "plain"
+        assert len(calls) == 2
+
+    def test_the_writer_reads_its_labels_through_it(self):
+        import inspect
+        src = inspect.getsource(dr._dash_write_stata_data)
+        assert src.count("_dash_label_ccl(") >= 2

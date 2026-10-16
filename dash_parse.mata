@@ -8256,7 +8256,9 @@ string scalar _dash_axisn_json()
             if (!seen) continue
             // A global in an axis title or label is its value, as twoway
             // reads a graph text option again (WP-31 D13b), by text.
-            if (anyof(("title", "label", "mlabel"), families[j])) v = _dash_at_globals(v)
+            // Then {ccl name} is c(name) (WP-31 E9, smcl_more_truth.json
+            // axis3.ytitle, axis3.ylabel).
+            if (anyof(("title", "label", "mlabel"), families[j])) v = _dash_gt_ccl(_dash_at_globals(v))
             // mlabel is written "mlab" (WP-31 D1b): a key "mlabel" is a
             // marker-label variable to _dash_extract_vars.
             fams = fams + (fams == "" ? "" : ",") + char(34) +
@@ -10710,7 +10712,8 @@ string scalar _dash_at_globals(string scalar s)
 // _dash_gt_ccl(s) -- s with each {ccl name} replaced by c(name) as
 // twoway's graph text draws it (WP-31 E9, smcl_text_truth.json smcl.ccl):
 // a string as it is, a number in Mata's %18.0g (c(pi) 3.141592653589793,
-// c(maxdouble) 8.9884656743e+307), an unknown name as nothing.  Blanks
+// c(maxdouble) 8.9884656743e+307), an unknown name as nothing, and
+// c(version) as 9, the version twoway draws under.  Blanks
 // around the head and between ccl and the name are read (within 80
 // bytes of the brace); the name is [A-Za-z_][A-Za-z0-9_]*, at most 32
 // characters; {ccl name:...} and any other form are kept.  Each { is
@@ -10739,7 +10742,11 @@ string scalar _dash_gt_ccl(string scalar s)
         whole = ustrregexs(0)
         if (strlen(nm) > 32) continue
         v = c(nm)
-        if (eltype(v) == "string") val = v
+        // twoway draws its graph text under version 9: {ccl version} is 9
+        // whatever version the caller runs (smcl_more_truth.json
+        // ccl.version, ccl.version16, ccl.version19prog).
+        if (nm == "version") val = "9"
+        else if (eltype(v) == "string") val = v
         else val = strtrim(strofreal(v, "%18.0g"))
         pc[++m] = substr(s, last, i - last)
         pc[++m] = val
