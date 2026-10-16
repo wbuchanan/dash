@@ -626,25 +626,24 @@ _PLAIN_DIGESTS = {
     # far-side or outer axis's minor-label pool (finish JS text only).
     # dee5b397... -> 2e569732...: WP-31 D12 the zoom code ends with the
     # reference lines' dash_refline_extent statement (zoom JS text only).
-    # dee5b397... -> 4067c1a9...: WP-31 E2 the minor grid's dot is Stata's
-    # .1 .7 rs ([1, 3] px; [2, 4] before).
+    # 2e569732... -> 0d452f74...: WP-31 E2 the minor grid's dot is Stata's
+    # .1 .7 rs ([1, 3] px; [2, 4] before), merged on D12.
     ("saved", "plain"):
-        "REDERIVE", ->         "4067c1a904eda4be953c7491e638af496b754f87616739e9ad5fcb46b0ab9139", (merged)
+        "0d452f74e9e6f5c78261f0d653ade84e97c067e763eb8a6b73f93c6ec5a6b8ad",
     ("saved", "yaxis2"):
-        "REDERIVE", ->         "4067c1a904eda4be953c7491e638af496b754f87616739e9ad5fcb46b0ab9139", (merged)
+        "0d452f74e9e6f5c78261f0d653ade84e97c067e763eb8a6b73f93c6ec5a6b8ad",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
     # D6/D7/D1c, as the saved page's; 0440b3d9... -> 5a0efbf6...: WP-31
     # B5c, as the saved page's; 5a0efbf6... -> 8af4b99f...: WP-31 D1b,
     # as the saved page's; 8af4b99f... -> c6afee47...: WP-31 D12, as the
-    # saved page's.
-    # as the saved page's; 8af4b99f... -> b841754d...: WP-31 E2, as the
-    # saved page's.
+    # saved page's; c6afee47... -> 0a83753e...: WP-31 E2, as the saved
+    # page's.
     ("served", "plain"):
-        "REDERIVE", ->         "b841754d3389a5afdd4e14855ba2a320d367a74ffcdbb9932276bfb1444e412f", (merged)
+        "0a83753e31f4cec248d6175c4082b4f80b93e0788fff987cd8d5e64f28171fb6",
     ("served", "yaxis2"):
-        "REDERIVE", ->         "b841754d3389a5afdd4e14855ba2a320d367a74ffcdbb9932276bfb1444e412f", (merged)
+        "0a83753e31f4cec248d6175c4082b4f80b93e0788fff987cd8d5e64f28171fb6",
 }
 
 
