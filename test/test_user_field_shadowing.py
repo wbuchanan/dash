@@ -123,13 +123,22 @@ class TestCellCap:
         assert dr._dash_by_panel_count(None, "g", 100) is None
 
     def test_counts_planned_rows(self):
-        df = self._frame()
+        # Flipped (batch-14 gate): the panel count only ever lowers the
+        # estimate, so a frame whose own rows hold more cells than the
+        # panels' bounds is counted by its panels, and a small one (many
+        # tiny panels, test_layer_reports' hostile by(, total)) in full.
+        df = self._frame(200_000)
         rows, extra = dr._dash_embedded_cells(
             self._spec("g"), len(df), list(df.columns), {}, frame=df)
         assert rows == [] and extra == 2 * dr._DASH_COMPUTED_PLOT_CELLS
         rows, extra = dr._dash_embedded_cells(
             self._spec("g, total"), len(df), list(df.columns), {}, frame=df)
         assert rows == [] and extra == 3 * dr._DASH_COMPUTED_PLOT_CELLS
+        small = self._frame()
+        rows, extra = dr._dash_embedded_cells(
+            self._spec("g"), len(small), list(small.columns), {},
+            frame=small)
+        assert sorted(rows) == ["g", "y"] and extra == 0
 
     def test_lowess_counts_each_row_once(self):
         df = self._frame()
