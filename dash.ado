@@ -461,7 +461,7 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
-        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
+        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in _dash_json_has_value ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_axisn_clear _dash_axisn_json _dash_axisn_tf_in _dash_axisn_tf_out ///
@@ -11993,6 +11993,13 @@ program define _dash_prepare_spec, rclass
             mata: st_local("_gt_`k'", strofreal(_dash_graph_touched( ///
                 "`gname'", st_local("_qg_`k'"), st_local("filter"), ///
                 st_local("link"), st_local("csv"))))
+            // WP-31 G3: the panel count only ever lowers by()'s estimate;
+            // where its per-panel bounds pass the graph's own rows (many
+            // tiny panels), the graph is counted in full, as before.
+            mata: st_local("_gby_`k'", strofreal(_dash_json_has_value(st_local("_qg_`k'"), "by")))
+            if `_gby_`k'' & `_gc_`k'' > _N * max(1, `: word count `gvars'') {
+                local _gc_`k' = -1
+            }
             if `_gc_`k'' >= 0 & !`_gt_`k'' {
                 local comp_cells = `comp_cells' + `_gc_`k''
             }

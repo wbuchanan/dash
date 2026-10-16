@@ -317,14 +317,28 @@
 *!       quotes and tokenised in one pass by _dash_at_lex) read as twoway
 *!       reads it: points through _dash_at_isnum, lines unquoted by
 *!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
-*!       Its internal helper _dash_at_globals(s) replaces each $name and
-*!       ${name} in a line by the global's value, by text, never
-*!       evaluated (WP-31 D13).
 *!
-*!   _dash_gt_qleft(s), _dash_gt_qadded(s), _dash_gt_qtexts(raw)
-*!       The option text before its options; its globals expanded when
-*!       they add a double quote, which dash.ado refuses as twoway does in
-*!       text(), ttext() and tick labels (WP-31 D13b).
+*!   _dash_at_globals(s)
+*!       s with each $name, ${name} and $$name replaced by the global's
+*!       value, by text, never evaluated (WP-31 D13); dash.ado applies it
+*!       to the graph's text options (D13b) and _dash_at_parse to each
+*!       text() line.
+*!
+*!   _dash_at_isnum(tok)
+*!       1 when tok is a number as twoway's numlist reads it (WP-30
+*!       P1.10); dash.ado's text() quote check reads points through it.
+*!
+*!   _dash_gt_qadded(s)
+*!   _dash_gt_qtexts(raw)
+*!       The option text before its options (helper _dash_gt_qleft); its
+*!       globals expanded when they add a double quote, which dash.ado
+*!       refuses as twoway does in text(), ttext() and tick labels
+*!       (WP-31 D13b).
+*!
+*!   _dash_json_has_value(s, key)
+*!       1 when the JSON text s holds key with a non-empty value; dash.ado
+*!       reads a graph's by() through it for the embedded-cell count
+*!       (WP-31 G3).
 *!
 *!   _dash_gt_ccl(s)
 *!       s with each {ccl name} replaced by c(name) as twoway's graph text

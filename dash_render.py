@@ -2591,6 +2591,16 @@ def _dash_embedded_cells(spec, rows, columns, limits, frame=None):
             g, rows, by_groups_limit,
             _dash_by_panel_count(frame, _by, by_groups_limit)
             if _by else None)
+        if gc >= 0 and _by:
+            # WP-31 G3: the panel count only ever lowers by()'s estimate;
+            # where its per-panel bounds pass the graph's own rows (many
+            # tiny panels), the graph is counted in full, as before.
+            _gv = {p.get(k) for p in (g.get("plots") or [])
+                   if isinstance(p, dict) for k in DashRenderer._VAR_KEYS}
+            _gv |= set(_dash_parse_by(_by, warn=False)[0].split())
+            _gv = {v for v in _gv if v and v in colset}
+            if gc > rows * max(1, len(_gv)):
+                gc = -1
         if gc >= 0 and not touched:
             extra += gc
             continue
