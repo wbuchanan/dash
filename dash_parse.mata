@@ -10507,7 +10507,10 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
                 // A global the line names, as twoway expands it (WP-31
                 // D13), by text: an expansion past 4,000 bytes is refused.
                 if (strpos(line, "$")) {
-                    g = _dash_at_globals(line)
+                    // A copy: _dash_at_globals rewrites its argument in
+                    // place, so passing line itself made the two equal and
+                    // the bound never held (WP-31 D13b).
+                    g = _dash_at_globals(line + "")
                     if (g != line & strlen(g) > 4000) {
                         st_local("_at_k", "0")
                         st_local("_at_n", "0")

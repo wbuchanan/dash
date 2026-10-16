@@ -11516,6 +11516,27 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
     if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' l3(twoway `rc1'/`n1' dash `rc2'/`n2')"
     _w31_expect U42-08 `"("`bad'" == "")"' "refusals differ from twoway's:`bad'"
     _w31_done U42-08 "a global holding a double quote in text(), ttext() or a tick label is refused as twoway refuses it"
+
+    // U42-09: a text() or ttext() line whose globals expand past 4,000
+    // characters is refused, "text(): expanded text is too long", r(198)
+    // (S30's documented bound; the check compared the line with itself).
+    global ZTG_long = 300 * "abcdefghijklmn"
+    dash clear
+    quietly log using "`u42d'/q9.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$ZTG_long") name(u42t)
+    local r1 = _rc
+    capture noisily dash scatter mpg weight, ttext(30 3000 "\$ZTG_long") name(u42t2)
+    local r2 = _rc
+    quietly log close u42q
+    cert_log_has "`u42d'/q9.log", needle("text(): expanded text is too long")
+    local n1 = r(count)
+    global ZTG_long = 20 * "abcdefghijklmn"
+    dash clear
+    capture noisily dash scatter mpg weight, text(30 3000 "\$ZTG_long") name(u42t)
+    local r3 = _rc
+    _w31_expect U42-09 "(`r1' == 198) & (`r2' == 198) & (`n1' == 2) & (`r3' == 0)" "rc `r1' `r2' notes `n1' short rc `r3'"
+    _w31_done U42-09 "a text() or ttext() line whose globals expand past 4,000 characters is refused, a shorter one drawn"
+    dash clear
     dash clear
     macro drop ZTG_* ZC
     display as text "S42 end " c(current_date) " " c(current_time)
