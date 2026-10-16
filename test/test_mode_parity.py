@@ -1899,7 +1899,9 @@ CORPUS = [
     # (WP-31 D10): subtitleformat() is drawn (an invalid format is ignored
     # in silence, as twoway ignores it), so overallshrink is the example.
     _case("by() with an unimplemented sub-option", [_sc()], None,
-          {"by": "foreign, overallshrink shrink"}),
+          # Flipped (WP-31 D10b): shrink is drawn; style(econ) and
+          # bgcolor(red) are not.
+          {"by": "foreign, style(econ) bgcolor(red)"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -2660,6 +2662,11 @@ CORPUS = [
     _case("msymbol(pipe) msangle(30) (WP-31 E1)",
           [_sc(msymbol="pipe", msangle="30")]),
     _case("msymbol(p) (WP-31 E1)", [_sc(msymbol="p")]),
+
+    # WP-31 D10b
+    _case("by shrink margin outline", [_sc()], None,
+          {"by": "foreign, shrink graphregion(margin(large)) "
+                 "plotregion(lcolor(red))"}),
 ]
 
 
@@ -2790,7 +2797,7 @@ _MUST_WARN = {
         "labstyle(x)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
-        "overallshrink shrink",
+        "style(econ) bgcolor(red)",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

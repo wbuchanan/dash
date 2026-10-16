@@ -202,6 +202,31 @@ foreach g in g2 g10 {
     }
     br shrink_title_`g' s2color `"`one', by(`g', title("T"))"'
 }
+// WP-31 D10b (section 39): the shrink words without a title, in pairs and
+// beside iscale(); by()'s region margin() and plotregion() outline.
+foreach g in g2 g4 {
+    br shrink_bare_`g' s2color `"`one', by(`g', shrink)"'
+    br shrink_overall_bare_`g' s2color `"`one', by(`g', overallshrink)"'
+}
+br shrink_then_no s2color `"`one', by(g2, shrink noshrink)"'
+br shrink_no_then s2color `"`one', by(g2, noshrink shrink)"'
+br shrink_overall_then_no s2color `"`one', by(g2, overallshrink nooverallshrink)"'
+br shrink_iscale s2color `"`one', by(g4, shrink iscale(.5))"'
+br shrink_titles s2color `"`one', by(g2, shrink title("T") subtitle("S") note("N"))"'
+br shrink_outer_title s2color `"`one', by(g2, shrink) title("T")"'
+br shrink_sub s2color `"`one', by(g2, shrink subtitle("S"))"'
+br shrink_cap s2color `"`one', by(g2, shrink caption("C"))"'
+br shrink_nonote s2color `"`one', by(g2, shrink note(""))"'
+br shrink_title_nonote s2color `"`one', by(g2, shrink title("T") note(""))"'
+br shrink_title_sub s2color `"`one', by(g2, shrink title("T") subtitle("S"))"'
+br shrink_bare_g10 s2color `"`one', by(g10, shrink)"'
+br shrink_two_titles s2color `"`one', by(g2, shrink title("T" "U"))"'
+br regions_margin_small s2color `"`one', by(foreign, graphregion(margin(small)))"'
+br regions_margin_l5 s2color `"`one', by(foreign, graphregion(margin(l+5)))"'
+br regions_plot_margin_small s2color `"`one', by(foreign, plotregion(margin(small)))"'
+br regions_plot_margin_zero s2color `"`one', by(foreign, plotregion(margin(zero)))"'
+br regions_plot_outline s2color `"`one', by(foreign, plotregion(lcolor(red) lwidth(thick)))"'
+br regions_plot_outline4 s2color `"`one', by(g4, plotregion(lcolor(red)))"'
 // a one-panel by() with an empty value label
 br one_panel_empty s2color `"`one', by(onee)"'
 br one_panel_plain s2color `"`one', by(one)"'

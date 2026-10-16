@@ -32766,14 +32766,20 @@ def _dash_parse_by(by_raw, warn=True):
         elif (_row in ("graphregion", "plotregion", "subtitleformat")
               and "(" in tok) or (
                 _row in ("noshrink", "noishrink", "nooverallshrink",
-                         "ishrink") and "(" not in tok):
+                         "ishrink", "shrink", "overallshrink")
+                and "(" not in tok):
             # WP-31 D10: by()'s regions are drawn on the array
             # (_dash_by_apply_regions, which names their margin()),
             # subtitleformat() formats the panel labels
             # (_dash_by_subtitle_format), and these four shrink words
             # change nothing twoway draws under any shipped scheme
             # (measured: by_remainder_truth.json shrink_*); shrink and
-            # overallshrink stay named.
+            # overallshrink draw the contents smaller (WP-31 D10b,
+            # _dash_by_shrink_factor).
+            pass
+        elif name == "style" and arg.strip() == "altleg":
+            # style(altleg) draws as style(default) (WP-31 D10b, measured:
+            # bystyle_altleg).
             pass
         elif name == "style" and arg.strip() in ("rescale", "combine"):
             # style(rescale|combine): its separate scales are drawn
@@ -33001,7 +33007,59 @@ def _dash_by_size_mult(by_raw, full_n):
             v = None
         if v is not None and math.isfinite(v):
             f = f * v if m.group(1) else v
+    # WP-31 D10b: shrink and overallshrink draw the contents smaller.
+    f *= _dash_by_shrink_factor(by_raw)
     return max(0.0, min(10000.0, f))
+
+
+#: The share of a by() graph's height each of by()'s own texts takes from
+#: the panels under shrink/overallshrink (WP-31 D10b), measured under
+#: s2color (by_remainder_truth.json shrink_*): the panels keep 0.894 of it
+#: with no text; the note takes 0.0393, a title 0.0600, a subtitle 0.0475,
+#: a caption 0.0466 and each further line of any of them 0.047.
+_DASH_BY_SHRINK_SHARES = {"base": 0.894, "note": 0.0393, "title": 0.0600,
+                          "subtitle": 0.0475, "caption": 0.0466,
+                          "line": 0.047}
+
+
+def _dash_by_shrink_factor(by_raw):
+    """The factor twoway draws a by() graph's panel contents at under
+    ``shrink`` or ``overallshrink`` (WP-31 D10b), 1.0 without either: the
+    panels' share of the graph once by()'s own title(), subtitle(),
+    note() and caption() lines are set aside (``_DASH_BY_SHRINK_SHARES``;
+    the note counts unless ``note("")``).  A no-word does not undo a
+    yes-word (measured: shrink noshrink shrinks).  Never raises."""
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001
+        return 1.0
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return 1.0
+    shrink, lines = False, {}
+    for tok in _dash_by_tokens(subs.strip()):
+        row = _dash_by_word(tok)[0]
+        if row in ("shrink", "overallshrink") and "(" not in tok:
+            shrink = True
+        key = _dash_by_text_key(tok)
+        if key in ("title", "subtitle", "note", "caption"):
+            arg = tok[tok.index("(") + 1:]
+            arg = arg[:-1] if arg.endswith(")") else arg
+            body, _sub = _parse_textbox_opt(arg)
+            lines[key] = sum(len([x for x in ln.split("\n") if x])
+                             for ln in _textbox_lines(body) if ln)
+            if key == "note" and not str(body).strip() and _sub:
+                lines[key] = 1     # note(, size()) restyles the default
+    if not shrink:
+        return 1.0
+    lines.setdefault("note", 1)
+    sh = _DASH_BY_SHRINK_SHARES
+    f = sh["base"]
+    for k in ("title", "subtitle", "note", "caption"):
+        n = lines.get(k, 0)
+        if n:
+            f -= sh[k] + (n - 1) * sh["line"]
+    return max(0.05, f)
 
 
 def _dash_by_spacing(fig0, opts):
@@ -48417,7 +48475,7 @@ def _dash_by_region_options(by_raw):
     margin() is taken out here and named, as the array has no one inset
     of its own (*margin* lists the tokens, as typed)."""
     out = {"graphregion": "", "plotregion": "", "given": False,
-           "margin": []}
+           "margin": [], "outline": ""}
     try:
         text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
     except Exception:  # noqa: BLE001
@@ -48434,8 +48492,14 @@ def _dash_by_region_options(by_raw):
         kept = []
         for sub in _dash_by_tokens(_dash_by_tokens_commas(arg)[0]):
             name = sub.split("(", 1)[0].strip()
-            if _dash_subopt_canon(name, table) == "margin":
+            canon = _dash_subopt_canon(name, table)
+            if canon == "margin":
                 out["margin"].append("%s(%s)" % (row, sub))
+            elif row == "plotregion" and canon in ("lcolor", "lwidth",
+                                                   "lpattern", "lstyle"):
+                # WP-31 D10b: by()'s plotregion() outline is drawn once
+                # around the array (_dash_by_array_styles).
+                out["outline"] = (out["outline"] + " " + sub).strip()
             else:
                 kept.append(sub)
         if kept:
@@ -48458,15 +48522,6 @@ def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
     neither region."""
     go = graph_opts or {}
     reg = _dash_by_region_options(go.get("by", ""))
-    if reg["margin"]:
-        mark = ("by_region_margin", str(key))
-        if seen is None or mark not in seen:
-            if seen is not None:
-                seen.add(mark)
-            _dash_warn_once(mark, "dash: graph %r: by() sub-option(s) not "
-                            "implemented and ignored: %s" % (
-                                str(key), _dash_display(
-                                    " ".join(reg["margin"]))))
     outer = str(go.get("graphregion") or "").strip()
     if not reg["given"] and not outer:
         return
@@ -48492,6 +48547,74 @@ def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
         _dash_apply_regions(cell, {"graphregion": graph}, scheme, seen, key)
         cell.background_fill_color = cell.border_fill_color
         cell.outline_line_color = None
+
+
+def _dash_by_array_styles(by_raw, scheme=None):
+    """The CSS by()'s regions put on the panel array (WP-31 D10b): its
+    margin() as padding and its plotregion() outline as a border, once
+    around the array, as twoway draws them (by_remainder_truth.json
+    regions_margin*, regions_plot_margin*, regions_plot_outline*).
+
+    graphregion(margin()) insets by the margin less the scheme's graph
+    margin (medium): large is 4.5 units, l+5 is 5 on the left; a smaller
+    margin, which twoway draws as a larger array, is no inset (a
+    dashboard cell has no room to give).  plotregion(margin()) insets by
+    the margin itself (large 8, small 1.2).  Units are dash's relative
+    units (``_dash_by_spacing``'s).  ``{}`` when by() gives neither."""
+    reg = _dash_by_region_options(by_raw)
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    out = {}
+    if reg["margin"]:
+        try:
+            gstart = [float(v) for v in sch.graph_margin_sides()]
+        except Exception:  # noqa: BLE001 -- the shipped default
+            gstart = [3.5] * 4
+        g, p = list(gstart), [0.0] * 4
+        for tok in reg["margin"]:
+            row, _, rest = tok.partition("(")
+            inner = rest[:-1] if rest.endswith(")") else rest
+            _n, _c, val = inner.partition("(")
+            val = val[:-1] if val.endswith(")") else val
+            if row == "graphregion":
+                g, _noted = _dash_margin_sides(val, g, sch)
+            else:
+                p, _noted = _dash_margin_sides(val, p, sch)
+
+        def _num(v):
+            if isinstance(v, tuple):
+                v = float(v[1]) / OptionTranslator.PT_PER_RS
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                return 0.0
+            return v if math.isfinite(v) else 0.0
+        unit = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
+        side = [max(0.0, _num(g[i]) - _num(gstart[i])) + max(0.0, _num(p[i]))
+                for i in range(4)]
+        px = [int(round(min(1e4, v) * unit)) for v in side]
+        if any(px):
+            # CSS order: top right bottom left; sides are l r b t.
+            out["padding"] = "%dpx %dpx %dpx %dpx" % (px[3], px[1], px[2],
+                                                      px[0])
+    if reg["outline"]:
+        base = {"fill": None, "fill_alpha": None, "line": None,
+                "line_alpha": None,
+                "line_width": getattr(sch, "plotregion_line_width", 1),
+                "line_dash": []}
+        try:
+            spec, _named = _dash_region_spec(reg["outline"], "plotregion",
+                                             base, sch)
+        except Exception:  # noqa: BLE001 -- nothing drawn
+            spec = {}
+        col = spec.get("line")
+        if col:
+            try:
+                w = max(1, int(round(float(spec.get("line_width") or 1))))
+            except (TypeError, ValueError):
+                w = 1
+            style = "dashed" if spec.get("line_dash") else "solid"
+            out["border"] = "%dpx %s %s" % (w, style, str(col).lower())
+    return out
 
 
 def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
@@ -48533,7 +48656,8 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     titles = _dash_by_outer_axes(figs, positions, opts)
     fl = opts["flags"]
     side = {"legend_at": keys["legend_at"], "clegend_at": keys["clegend_at"],
-            "cells": [], "hook": None, "ring0": bool(keys.get("ring0"))}
+            "cells": [], "hook": None, "ring0": bool(keys.get("ring0")),
+            "styles": _dash_by_array_styles(go.get("by", ""), scheme)}
     tcells = []
     for d, name, where, flag in (("y", "dash_by_ytitle", "left",
                                   "outer_ytitles"),
@@ -48576,6 +48700,10 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     above or below everything, spanning it, or, placed with ``at()``, in
     its hole's cell (``side["at_cells"]``).  Every side child is a 5-tuple; panel children keep
     their form."""
+    if side and side.get("styles"):
+        # WP-31 D10b: by()'s region margin() and outline, once around
+        # the array.
+        grid.styles = {**dict(grid.styles or {}), **side["styles"]}
     if not side or not side.get("cells"):
         return ncols
     kids = [tuple(c) for c in (grid.children or [])]
@@ -57377,7 +57505,8 @@ class ServerAppBuilder:
                       # WP-30 P1.3a: default axes, twoway's margin and
                       # the zoom code's finisher twin.
                       "_DASH_DEFAULT_TAG", "_DASH_MARGIN_RS",
-                      "_DASH_BY_GMETRIC", "_DASH_AXIS_FINISH_JS",
+                      "_DASH_BY_GMETRIC", "_DASH_BY_SHRINK_SHARES",
+                      "_DASH_AXIS_FINISH_JS",
                       "_DASH_AXIS_ZOOM_JS",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
                       "_DASH_FILTER_SUBOPTS",
@@ -57900,6 +58029,8 @@ class ServerAppBuilder:
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
                          "_dash_parse_tabs", "_dash_tab_panels",
+                         # by()'s shrink and its array's CSS (WP-31 D10b).
+                         "_dash_by_shrink_factor", "_dash_by_array_styles",
                          # A tab's own layout() (WP-31 D14).
                          "_dash_tab_layout", "_dash_tab_grid",
                          "_dash_header_fragments", "_dash_header_models",

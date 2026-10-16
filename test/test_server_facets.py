@@ -532,21 +532,21 @@ class TestAnUnimplementedBySuboptionIsNamed:
     # Flipped (WP-31 D10): subtitleformat() is drawn and ishrink/noishrink
     # change nothing twoway draws (by_remainder_truth.json), so shrink,
     # overallshrink and the bystyle stata7 are the words still named.
+    # Flipped (WP-31 D10b): shrink and overallshrink are drawn
+    # (_dash_by_shrink_factor), so the bystyles econ and stata7 are.
     @pytest.mark.parametrize("by_raw,names", [
-        ("foreign, overallshrink", ["overallshrink"]),
-        ("foreign, shrink", ["shrink"]),
-        ("foreign, overallshrink shrink",
-         ["overallshrink", "shrink"]),
-        ("foreign, style(stata7) shrink", ["style(stata7)", "shrink"]),
+        ("foreign, style(econ)", ["style(econ)"]),
+        ("foreign, style(stata7)", ["style(stata7)"]),
+        ("foreign, style(econ) bgcolor(red)", ["style(econ)", "bgcolor(red)"]),
+        ("foreign, style(stata7) shrink", ["style(stata7)"]),
         # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
-        # draws it; shrink (twoway's SHRink) is still named.
-        ("foreign, title(\"By origin\") shrink", ["shrink"]),
+        # draws it.
+        ("foreign, title(\"By origin\") style(econ)", ["style(econ)"]),
         # Flipped (WP-29 P0.2): norescale is twoway's default and is
         # honoured, so only noixlabel is named.  Flipped (WP-30 P1.15c):
-        # noixlabel is drawn too now (by_chrome_truth.json), so shrink is
-        # the word still named.
-        ("foreign, norescale noixlabel shrink", ["shrink"]),
-        ("foreign, cols(2) total shrink", ["shrink"]),
+        # noixlabel is drawn too now (by_chrome_truth.json).
+        ("foreign, norescale noixlabel style(econ)", ["style(econ)"]),
+        ("foreign, cols(2) total style(econ)", ["style(econ)"]),
     ])
     def test_each_unimplemented_sub_option_is_named(self, by_raw, names):
         got = self._warnings_for(by_raw)
@@ -562,9 +562,10 @@ class TestAnUnimplementedBySuboptionIsNamed:
         assert self._warnings_for(by_raw) == []
 
     def test_the_warning_does_not_name_the_supported_ones_beside_them(self):
-        # Flipped (WP-30 P1.15b): rows(3) is drawn now; shrink is not.
-        got = self._warnings_for("foreign, cols(2) shrink")
-        assert len(got) == 1 and "shrink" in got[0] and "cols" not in got[0]
+        # Flipped (WP-30 P1.15b): rows(3) is drawn now.  Flipped (WP-31
+        # D10b): shrink is drawn; style(econ) is not.
+        got = self._warnings_for("foreign, cols(2) style(econ)")
+        assert len(got) == 1 and "econ" in got[0] and "cols" not in got[0]
 
     def test_the_parsed_values_are_unchanged(self):
         assert dr._dash_parse_by("foreign, cols(2) rows(3) total")[:4] \
@@ -577,17 +578,18 @@ class TestAnUnimplementedBySuboptionIsNamed:
         sees -- test_help_claims_5.cscript HC5-08)."""
         # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.  Flipped
         # (WP-31 D10): subtitleformat() is drawn; overallshrink is not.
-        spec = by_spec("scatter", by="foreign, overallshrink shrink")
+        # Flipped (WP-31 D10b): shrink is drawn; the bystyles are not.
+        spec = by_spec("scatter", by="foreign, style(econ) bgcolor(red)")
         tag, sp, dp = _write(tmp_path, spec, _DF)
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
         hits = [str(w.message) for w in built if "by()" in str(w.message)
-                and "overallshrink" in str(w.message)
-                and "shrink" in str(w.message)]
+                and "style(econ)" in str(w.message)
+                and "bgcolor(red)" in str(w.message)]
         assert len(hits) == 1, [str(w.message) for w in built]
         _, _, warns = served(tmp_path, spec)
-        assert not [w for w in warns if "by()" in w and "shrink" in w], warns
+        assert not [w for w in warns if "by()" in w and "econ" in w], warns
 
     def test_an_unsafe_by_string_still_facets_nothing(self, tmp_path):
         spec = by_spec("scatter", by='__import__("os")')

@@ -523,7 +523,7 @@ and now matches Stata.
 
 <!-- WP-31 E11b -->
 
-<!-- WP-31 D10b -->
+- by(foreign, shrink) drew the panels at full size and named shrink; they are drawn at 0.855 of it, as twoway draws them (overallshrink too, less with by()'s title and subtitle); by(, graphregion(margin(large))) and plotregion(margin()) inset the array once (4.5 and 8 units), where margin() was named; by(, plotregion(lcolor(red))) outlines the array once, where each panel was outlined; style(altleg) is no longer named. (WP-31, D10b)
 
 <!-- WP-31 D11b -->
 

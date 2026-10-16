@@ -137,29 +137,33 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // unimplemented subtitleformat() and shrink are.
 // Flipped (WP-31 D10): subtitleformat() is drawn now (a numeric format,
 // measured), so overallshrink and shrink are the examples.
-_bys_render "foreign, overallshrink"
+// Flipped (WP-31 D10b): shrink and overallshrink are drawn now
+// (by_remainder_truth.json shrink_*), so style(econ) and bgcolor(red) are (twoway
+// refuses a second style()).
+_bys_render "foreign, style(econ)"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
 assert `_bys_n' == 1
-assert strpos(`"`macval(_bys_line)'"', "overallshrink") > 0
-display "BYS-02 PASS: by(foreign, overallshrink) names it"
+assert strpos(`"`macval(_bys_line)'"', "style(econ)") > 0
+display "BYS-02 PASS: by(foreign, style(econ)) names it"
 
-_bys_render "foreign, overallshrink shrink"
+_bys_render "foreign, style(econ) bgcolor(red)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "overallshrink shrink") > 0
+assert strpos(`"`_bys_line'"', "style(econ) bgcolor(red)") > 0
 display "BYS-03 PASS: two unimplemented sub-options are named in one line"
 
 
 // ================================================================
 // BYS-04 — the supported ones beside them are not named
 // ================================================================
-_bys_render "foreign, cols(2) shrink"
+_bys_render "foreign, cols(2) shrink style(econ)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "shrink") > 0
+assert strpos(`"`_bys_line'"', "style(econ)") > 0
 assert strpos(`"`_bys_line'"', "cols") == 0
-display "BYS-04 PASS: cols(2) is not reported alongside shrink"
+assert strpos(`"`_bys_line'"', "shrink") == 0
+display "BYS-04 PASS: cols(2) and shrink are not reported alongside style(econ)"
 
 
 // ================================================================
@@ -184,10 +188,11 @@ display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 // warning it was written to read.
 qui do "../dash_setup.ado"
 capture noisily _dash_setup_check_files
-_bys_render "foreign, overallshrink"
+// Flipped (WP-31 D10b): overallshrink is drawn; style(econ) is named.
+_bys_render "foreign, style(econ)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "overallshrink") > 0
+assert strpos(`"`_bys_line'"', "style(econ)") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 
 // ================================================================

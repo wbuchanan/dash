@@ -9833,6 +9833,112 @@ if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
 * ==== end S39 ====
 
 python:
+def _u39_array(sp, dp, app, svg0, svg1, svg2):
+    """twoway's marker ratio (svg2, by(foreign, shrink), against svg0,
+    by(foreign)), array inset and outline (svg1, by(foreign,
+    graphregion(margin(large)) plotregion(lcolor(red)))) and dash's,
+    saved and served, into u39_bad."""
+    import warnings
+    import dash_render as dr
+    import svg_truth
+    from bokeh.document import Document
+    from bokeh.models import GridPlot, Scatter
+    from sfi import Macro
+    def tw(path):
+        d = svg_truth.svg_document(path)
+        r = [c["r"] for c in d["circles"] if c.get("r")]
+        x = min(rc["x"] for rc in svg_truth.svg_rects(path)
+                if rc["fill"] == "#ffffff")
+        red = [rc for rc in svg_truth.svg_rects(path)
+               if rc.get("stroke") == "#ff0000"]
+        return r[0], x, len(red)
+    r0, x0, _ = tw(svg0)
+    _r1, x1, nred = tw(svg1)
+    r2, _x2, _n2 = tw(svg2)
+    want_ratio = r2 / r0
+    want_inset = (x1 - x0) / 28.8
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u39a_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u39a_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    unit = dr.OptionTranslator.PT_PER_RS * dr.OptionTranslator.PX_PER_PT
+    bad = []
+    for mode, roots in (("saved", [r._last_layout_root]),
+                        ("served", list(doc.roots))):
+        grids = {}
+        for root in roots:
+            for g in root.select({"type": GridPlot}):
+                for c in g.children:
+                    t = getattr(getattr(c[0], "title", None), "text", "")
+                    if t in ("u39p", "u39s"):
+                        grids.setdefault(t, g)
+        sizes = {}
+        for k, g in grids.items():
+            for gl in g.select({"type": Scatter}):
+                if isinstance(gl.size, (int, float)):
+                    sizes[k] = float(gl.size)
+                    break
+        if set(sizes) != {"u39p", "u39s"}:
+            bad.append("%s: panels %s" % (mode, sorted(grids)))
+            continue
+        ratio = sizes["u39s"] / sizes["u39p"]
+        if abs(ratio - want_ratio) > 0.01:
+            bad.append("%s ratio %.4f twoway %.4f" % (mode, ratio, want_ratio))
+        st = dict(grids["u39s"].styles or {})
+        px = int(round(want_inset * unit))
+        if st.get("padding") != "%dpx %dpx %dpx %dpx" % (px, px, px, px):
+            bad.append("%s padding %s twoway %.2f units" % (
+                mode, st.get("padding"), want_inset))
+        if nred != 1 or "#ff0000" not in str(st.get("border", "")):
+            bad.append("%s border %s, twoway outlines %d" % (
+                mode, st.get("border"), nred))
+    Macro.setGlobal("u39_bad", "; ".join(bad))
+end
+* ==== S39 D10b: by()'s shrink, region margin() and outline ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
+    display as text "S39 start " c(current_date) " " c(current_time)
+    local u39d "`w31_work'/s39c"
+    capture mkdir "`u39d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    // U39-08: by(foreign, shrink graphregion(margin(large))
+    // plotregion(lcolor(red))) draws the panel contents at twoway's
+    // shrink factor, insets the array by twoway's inset and outlines it
+    // once, saved and served; nothing is named.
+    quietly twoway scatter mpg weight, by(foreign) name(u39t0, replace)
+    quietly graph export "`u39d'/t0.svg", name(u39t0) replace
+    quietly twoway scatter mpg weight, by(foreign, graphregion(margin(large)) plotregion(lcolor(red))) name(u39t1, replace)
+    quietly graph export "`u39d'/t1.svg", name(u39t1) replace
+    quietly twoway scatter mpg weight, by(foreign, shrink) name(u39t2, replace)
+    quietly graph export "`u39d'/t2.svg", name(u39t2) replace
+    capture graph drop u39t0 u39t1 u39t2
+    dash clear
+    quietly dash scatter mpg weight, by(foreign) title(u39p) name(u39p)
+    quietly dash scatter mpg weight, by(foreign, shrink graphregion(margin(large)) plotregion(lcolor(red))) title(u39s) name(u39s)
+    _dash_serve_spec, specpath("`u39d'/s1.json") datapath("`u39d'/d1.json")
+    python: import __main__ as _u39_m; _u39_m._u39_array("`u39d'/s1.json", "`u39d'/d1.json", "`u39d'/a1.py", "`u39d'/t0.svg", "`u39d'/t1.svg", "`u39d'/t2.svg")
+    _w31_expect U39-08 `"(`"${u39_bad}"' == "")"' `"${u39_bad}"'
+    _w31_done U39-08 "by()'s shrink, region margin() and plotregion() outline drawn as twoway draws them, saved and served"
+    macro drop u39_bad
+    dash clear
+    display as text "S39 end " c(current_date) " " c(current_time)
+}
+* ==== end S39 ====
+
+python:
 def _u40_glyph(sp, dp, app, key):
     """The first marker glyph's marker, angle, size, fill and outline
     width, saved and served, into __main__._u40_seen[key]; and the

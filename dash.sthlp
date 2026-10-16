@@ -2916,14 +2916,28 @@ a note names the limit and the global that raises it (see
 {cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
 {cmd:legend()}, {cmd:clegend()}, {cmd:graphregion()}, {cmd:plotregion()},
-{cmd:subtitleformat()} and {cmd:noshrink}, {cmd:noishrink},
-{cmd:nooverallshrink} and {cmd:ishrink} are the {cmd:by()} sub-options
-{cmd:dash} implements.  {cmd:by(, graphregion())} colours the whole graph
+{cmd:subtitleformat()}, {cmd:shrink}, {cmd:overallshrink},
+{cmd:noshrink}, {cmd:noishrink}, {cmd:nooverallshrink}, {cmd:ishrink} and
+{cmd:style(altleg)} (drawn as {cmd:style(default)}, as {cmd:twoway} draws
+it) are the {cmd:by()} sub-options {cmd:dash} implements.
+{cmd:shrink} and {cmd:overallshrink} draw the panels' markers, lines and
+text smaller, by the share of the graph the panels keep once {cmd:by()}'s
+own texts are set aside, as measured in {cmd:twoway} under {cmd:s2color}:
+0.894 with none, less 0.039 for the note, 0.060 for a title, 0.048 for a
+subtitle, 0.047 for a caption and 0.047 for each further line (so
+{cmd:by(foreign, shrink)} draws them at 0.855 of their size); a {cmd:no}
+form after them does not undo them, as in {cmd:twoway}.  {cmd:by(, graphregion())} colours the whole graph
 region, replacing a {cmd:graphregion()} outside {cmd:by()}, which on a
 {cmd:by()} graph colours nothing (as in {cmd:twoway}), and
-{cmd:by(, plotregion())} the region around the panels, drawn on each
-panel's border; their {cmd:margin()}, which {cmd:twoway} applies once around
-the panels, is named and ignored.  {cmd:subtitleformat()} writes an
+{cmd:by(, plotregion())} the region around the panels, its fill on each
+panel's border and its outline ({cmd:lcolor()}, {cmd:lwidth()},
+{cmd:lpattern()}, {cmd:lstyle()}) once around the array, as in
+{cmd:twoway}.  Their {cmd:margin()} insets the array once, as
+{cmd:twoway} does: {cmd:plotregion(margin())} by the margin
+({cmd:large}, 8 units), {cmd:graphregion(margin())} by the margin less the
+scheme's graph margin ({cmd:large} 4.5 units, {cmd:l+5} 5 on the left); a
+graph margin smaller than the scheme's, which {cmd:twoway} draws as a
+larger array, insets nothing, a dashboard cell having no room to give.  {cmd:subtitleformat()} writes an
 unlabelled panel value in its numeric format ({cmd:var}: the variable's
 own), and is ignored, as in {cmd:twoway}, when it is not a numeric format.
 The graph's own {cmd:subtitle(, fcolor() lcolor() nobox)} restyle every
@@ -2936,9 +2950,10 @@ bottom; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
 Each panel's plot-region margin is {cmd:twoway}'s, times the panels' size
 multiplier and {cmd:iscale()}.  A one-panel {cmd:by()} whose value label is
 empty draws no label box, as {cmd:twoway}, and the Graphs-by note.  Any
-other sub-option of Stata's {cmd:by()} -- for example {cmd:shrink},
-{cmd:overallshrink} or a {cmd:style()} other than {cmd:compact} and
-{cmd:default} -- is accepted, named in a warning, and ignored.
+other sub-option of Stata's {cmd:by()} -- for example {cmd:style(econ)}
+or {cmd:style(stata7)} -- is accepted, named in a warning, and ignored;
+{cmd:style(rescale)} and {cmd:style(combine)} draw their separate scales
+and name the rest of the style.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other

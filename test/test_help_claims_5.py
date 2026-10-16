@@ -845,10 +845,12 @@ class TestTheSubOptionsDashDoesNotImplement:
     (by_remainder_truth.json stf_*), so overallshrink is the example."""
 
     def test_named_and_ignored(self):
-        r, doc, saved, served = _by("foreign, overallshrink shrink "
+        # Flipped (WP-31 D10b): shrink and overallshrink are drawn; the
+        # bystyles econ and stata7 are the example.
+        r, doc, saved, served = _by("foreign, style(econ) bgcolor(red) "
                                     "cols(2) total missing")
         want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "overallshrink shrink"]
+                "style(econ) bgcolor(red)"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -863,7 +865,7 @@ class TestTheSubOptionsDashDoesNotImplement:
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, overallshrink shrink"})])
+                       {"by": "foreign, style(econ) bgcolor(red)"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -876,7 +878,7 @@ class TestTheSubOptionsDashDoesNotImplement:
             warnings.simplefilter("always")
             ns["make_document"](Document())
         want = ("dash: by() sub-option(s) not implemented and ignored: "
-                "overallshrink shrink")
+                "style(econ) bgcolor(red)")
         assert [str(w.message) for w in built].count(want) == 1, \
             [str(w.message) for w in built]
         assert want not in [str(w.message) for w in session]

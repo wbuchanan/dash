@@ -251,13 +251,14 @@ class TestRegions:
     @pytest.mark.parametrize("mode", _MODES)
     def test_margin_named(self, mode):
         """twoway insets the whole array by by()'s margin() once
-        (regions_margin: panel 1 moves right, panel 2 does not); dash names
-        it."""
+        (regions_margin: panel 1 moves right, panel 2 does not).  Flipped
+        (WP-31 D10b): dash insets the array too (test_by_array.py), so it
+        is no longer named."""
         p = _probe("regions_margin")["rects"]
         base = _probe("by_foreign")["rects"]
         assert p[3]["x"] > base[3]["x"] and p[5]["x"] == base[5]["x"]
-        assert any("graphregion(margin(large))" in n and "rg_margin" in n
-                   for n in _notes(mode))
+        assert not any("graphregion(margin(large))" in n
+                       for n in _notes(mode))
 
 
 class TestLegend:
@@ -587,7 +588,9 @@ def test_region_options_unit():
     o = dr._dash_by_region_options(
         "foreign, graphregion(fcolor(red) margin(large)) plotregion(lcolor(black))")
     assert o["graphregion"] == "fcolor(red)"
-    assert o["plotregion"] == "lcolor(black)"
+    # Flipped (WP-31 D10b): the outline is read apart, drawn once around
+    # the array.
+    assert o["plotregion"] == "" and o["outline"] == "lcolor(black)"
     assert o["given"] and o["margin"] == ["graphregion(margin(large))"]
     assert dr._dash_by_region_options("foreign")["given"] is False
 

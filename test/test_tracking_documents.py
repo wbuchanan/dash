@@ -2028,7 +2028,6 @@ WP31_OPEN = {
     "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",
     "C17b": "lal() is read as dash's lalpha() where twoway reads it as lalign()",
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
-    "D10b": "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn",
     "D11b": "margin(l+1e400) draws zeros with a note where twoway draws a medium margin",
     "D9b": "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis",
     "D1d": "An outer axis's ##N minor labels after a move are capped at its build's label pool",
