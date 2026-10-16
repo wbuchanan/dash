@@ -80,13 +80,15 @@ class TestTheShapeOfTheExamples:
     Time-series operators example (sp500, tsset, dash line D.close date)
     makes 34, 103 and 107."""
 
-    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 6, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
+    # 6 -> 7 (the Tabs group): WP-31 D14 the per-tab layout() build.
+    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
                    5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
         assert len(groups) == 34
-        assert len(_commands(groups)) == 103
-        assert sum(len(c.lines) for c in _commands(groups)) == 107
+        # 103 -> 104, 107 -> 108: WP-31 D14 the per-tab layout() build.
+        assert len(_commands(groups)) == 104
+        assert sum(len(c.lines) for c in _commands(groups)) == 108
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES

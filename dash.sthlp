@@ -1698,14 +1698,14 @@ For example:
 {phang2}{cmd:. dash scatter mpg length, name(s2)}{p_end}
 {phang2}{cmd:. dash histogram mpg, name(s3)}{p_end}
 {phang2}{cmd:. dash build, saving(d.html) tabs(Overview: k1 s1 / Detail: s2 s3) replace}{p_end}
+{phang2}{cmd:. dash build, saving(d.html) tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) replace}{p_end}
 
 {pstd}
-A tab may end with {cmd:, layout()} in the grid form ({cmd:layout(1 2)})
-or the placement form ({cmd:layout(g1:1,1 g2:1,2)}) over that tab's names,
-each name and each cell used once; a tab without one is drawn in its
-automatic grid.  The first comma after a tab's colon ends its names:
-
-{phang2}{cmd:. dash build, saving(d.html) tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) replace}{p_end}
+A tab may end with {cmd:, layout()} in the grid form ({cmd:layout(1 2)},
+as in the second build above) or the placement form
+({cmd:layout(g1:1,1 g2:1,2)}) over that tab's names, each name and each
+cell used once; a tab without one is drawn in its automatic grid.  The
+first comma after a tab's colon ends its names.
 
 {pstd}
 Tab titles are used exactly as written, less the blanks around them; the
