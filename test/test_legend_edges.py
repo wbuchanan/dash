@@ -161,3 +161,50 @@ class TestBareString:
         ado = open(os.path.join(_HERE, "..", "dash.ado"),
                    encoding="utf-8").read()
         assert "_dash_bare_string_refusal(" in ado
+
+
+class TestNestedNote:
+    """A style name dash does not know, two levels down, is named as typed
+    (WP-31 D16 follow-up): the note read legend(region(lcolor)(bogus))."""
+
+    @pytest.mark.parametrize("opt,head", [
+        ("region(lcolor(bogus))", "legend(region(lcolor(bogus)))"),
+        ('title("T", color(bogus))', "legend(title(color(bogus)))"),
+    ])
+    def test_named_as_typed(self, opt, head):
+        _, msgs = T._root("saved", _two_layer({"legend": opt}))
+        assert any(m.startswith("dash: %s is not a recognised colour"
+                                % head) for m in msgs), msgs
+
+    def test_one_level_unchanged(self):
+        dr._dash_reset_notes()
+        import warnings as _w
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            dr._dash_style_note("plotregion(lcolor)", "x", "colour", "black")
+        assert [str(c.message) for c in caught] == [
+            "dash: plotregion(lcolor(x)) is not a recognised colour; "
+            "using black."]
+
+
+class TestQuoteApostrophe:
+    """A plain quote opened by an apostrophe, title("'90s"): twoway's own
+    parse reads the "' as the close of a compound quote never opened and
+    fails on what follows, in words that depend on it (quote.*: ")
+    required", r(100), for title("'90s"), xlabel(), text() and by()'s
+    title(); "type mismatch", r(109), for JSE-47's title; legend.jse47
+    r(100)).  dash reads the "' as text inside the quote, as CLAUDE.md
+    rule 18 requires, so it draws them; dash.sthlp says so."""
+
+    def test_twoway_varies(self):
+        q = _TRUTH["quote"]
+        assert {q[k]["rc"] for k in ("title", "xlabel", "text",
+                                     "bytitle")} == {100}
+        assert q["title_jse47a"]["rc"] == 109
+        assert q["note"]["rc"] == 0
+        assert _TRUTH["legend"]["jse47"]["rc"] == 100
+
+    def test_the_help_says_so(self):
+        text = open(os.path.join(_HERE, "..", "dash.sthlp"),
+                    encoding="utf-8").read()
+        assert "close of a compound quote never opened" in text

@@ -981,7 +981,14 @@ there, is an invalid point.  The literal is read as data and never run.
     and the legend title's {cmd:color()} and {cmd:size()} are drawn.
     {cmd:title("T", prefix suffix)} prints {cmd:twoway}'s line,
     {cmd:option prefix ignored, may not be combined with suffix}, and draws
-    the title.  {cmd:rows()} wins over
+    the title.  A quoted text that opens with an apostrophe,
+    {cmd:title("'90s")}, is drawn; {cmd:twoway} reads its {cmd:"'} as the
+    close of a compound quote never opened and stops on what follows, in
+    words that depend on it ({cmd:) required}, r(100), for
+    {cmd:title("'90s")}, {cmd:xlabel(3000 "'90s")} and
+    {cmd:legend(label(1 "'90s"))}; {cmd:type mismatch}, r(109), for others),
+    while {cmd:dash} keeps a quote's text whole, so that no text can end a
+    quote early and become command words.  {cmd:rows()} wins over
     {cmd:cols()}, and in one copy a word wins over its {cmd:no} form
     ({cmd:on} over {cmd:off}, {cmd:grid} over {cmd:nogrid}).  Repeated
     copies merge sub-option by sub-option under the full name, the last

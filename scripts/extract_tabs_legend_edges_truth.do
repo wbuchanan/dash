@@ -95,6 +95,50 @@ quietly log close zt
 global ZT_C_legend_jse47 "twoway scatter mpg weight, legend(label(1 [quote]'90s[quote]) top)"
 global ZT_KEYS "${ZT_KEYS} legend_jse47"
 display as text "ZT legend_jse47: rc ${ZT_R_legend_jse47}"
+* WP-31 D16 follow-up: a plain quote opened by an apostrophe in other
+* options, each in place for the same reason.
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_title.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, title("'90s")
+global ZT_R_quote_title "`=_rc'"
+quietly log close zt
+global ZT_C_quote_title "twoway scatter mpg weight, title([quote]'90s[quote])"
+global ZT_KEYS "${ZT_KEYS} quote_title"
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_xlabel.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, xlabel(3000 "'90s")
+global ZT_R_quote_xlabel "`=_rc'"
+quietly log close zt
+global ZT_C_quote_xlabel "twoway scatter mpg weight, xlabel(3000 [quote]'90s[quote])"
+global ZT_KEYS "${ZT_KEYS} quote_xlabel"
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_text.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, text(30 3000 "'90s")
+global ZT_R_quote_text "`=_rc'"
+quietly log close zt
+global ZT_C_quote_text "twoway scatter mpg weight, text(30 3000 [quote]'90s[quote])"
+global ZT_KEYS "${ZT_KEYS} quote_text"
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_bytitle.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, by(foreign, title("'90s"))
+global ZT_R_quote_bytitle "`=_rc'"
+quietly log close zt
+global ZT_C_quote_bytitle "twoway scatter mpg weight, by(foreign, title([quote]'90s[quote]))"
+global ZT_KEYS "${ZT_KEYS} quote_bytitle"
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_title_jse47a.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, title("' name(jgpwn) saving(x.html) '")
+global ZT_R_quote_title_jse47a "`=_rc'"
+quietly log close zt
+global ZT_C_quote_title_jse47a "twoway scatter mpg weight, title([quote]' name(jgpwn) saving(x.html) '[quote])"
+global ZT_KEYS "${ZT_KEYS} quote_title_jse47a"
+capture graph drop _all
+quietly log using "${ZT_WORK}/quote_note.log", replace text name(zt)
+capture noisily twoway scatter mpg weight, note("a'b")
+global ZT_R_quote_note "`=_rc'"
+quietly log close zt
+global ZT_C_quote_note "twoway scatter mpg weight, note([quote]a'b[quote])"
+global ZT_KEYS "${ZT_KEYS} quote_note"
 _zt_run legend_pos9       twoway scatter mpg weight, legend(pos(9))
 
 * title(, prefix suffix)

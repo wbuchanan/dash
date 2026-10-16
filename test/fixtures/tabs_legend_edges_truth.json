@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "201c463da9018c1080a120a1ac09769469e878d5",
-  "extracted": "16 Oct 2026 08:40:35",
+  "dash_commit": "61fd8ba49520dcae3f5024f80ce3685ca17f9bc0",
+  "extracted": "16 Oct 2026 09:27:10",
   "source": "scripts/extract_tabs_legend_edges_truth.do",
   "stata_version": "19.5"
  },
@@ -522,6 +522,60 @@
     "5,000",
     "Weight (lbs.)"
    ]
+  }
+ },
+ "quote": {
+  "bytitle": {
+   "cmd": "twoway scatter mpg weight, by(foreign, title([quote]'90s[quote]))",
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100,
+   "svg_texts": null
+  },
+  "note": {
+   "cmd": "twoway scatter mpg weight, note([quote]a'b[quote])",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": null
+  },
+  "text": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 [quote]'90s[quote])",
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100,
+   "svg_texts": null
+  },
+  "title": {
+   "cmd": "twoway scatter mpg weight, title([quote]'90s[quote])",
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100,
+   "svg_texts": null
+  },
+  "title_jse47a": {
+   "cmd": "twoway scatter mpg weight, title([quote]' name(jgpwn) saving(x.html) '[quote])",
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109,
+   "svg_texts": null
+  },
+  "xlabel": {
+   "cmd": "twoway scatter mpg weight, xlabel(3000 [quote]'90s[quote])",
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100,
+   "svg_texts": null
   }
  },
  "title": {

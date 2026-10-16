@@ -2505,6 +2505,39 @@ capture graph drop _all
 capture dash clear
 _u05_judge U39-07 `"`bad'"' "a bare quoted string among the options refused in twoway's words and code"
 
+// U39-10 (WP-31 D16, a guard): a quoted string before the comma, where a
+// variable name goes, is refused as twoway refuses it, r(198),
+// '"abc invalid name' (tabs_legend_edges_truth.json bare.no_comma),
+// alone, before options, in a plot group, between the variables and in
+// compound quotes.
+local bad ""
+local _u3910 "`c(tmpdir)'dash_u3910.log"
+forvalues k = 1/6 {
+    if `k' == 1 local c `"scatter mpg weight "abc""'
+    if `k' == 2 local c `"scatter mpg weight "abc", title(T)"'
+    if `k' == 3 local c `"(scatter mpg weight "abc")"'
+    if `k' == 4 local c `"scatter mpg "abc" weight"'
+    if `k' == 5 local c `"line mpg weight "a b""'
+    if `k' == 6 local c `"scatter mpg weight `"abc"'"'
+    local e = cond(`k' == 5, `""a b invalid name"', `""abc invalid name"')
+    foreach w in twoway dash {
+        capture graph drop _all
+        capture dash clear
+        capture log close _ovlog
+        capture erase "`_u3910'"
+        log using "`_u3910'", name(_ovlog) text replace
+        capture noisily `w' `c'
+        local wrc = _rc
+        log close _ovlog
+        _ov_count "`_u3910'" `"`e'"'
+        if `wrc' != 198 | r(n) < 1 local bad `"`bad' [`w' case `k': rc `wrc', line `r(n)']"'
+    }
+}
+capture erase "`_u3910'"
+capture graph drop _all
+capture dash clear
+_u05_judge U39-10 `"`bad'"' "a quoted string where a variable goes refused in twoway's words, r(198)"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

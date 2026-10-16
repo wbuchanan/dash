@@ -1045,7 +1045,7 @@ Changed behaviour.
 
 - A tab takes its own layout(): tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) draws the first tab as one row of two, saved and served. layout(s1:1,1 s2:1,1) in a spec that did not come through dash build drew s2 in the cell and lost s1 in both modes; s1 keeps the cell, s2 takes the next free one and a note says so. (WP-31, D14)
 
-- title("T", prefix suffix) prints twoway's line, "option prefix ignored, may not be combined with suffix", and draws T; legend(title("T", color(red) size(large))) draws the legend title red and large, where both were dropped; legend(label(1)) blanks key 1 in both modes (since D4). (WP-31, D16)
+- title("T", prefix suffix) prints twoway's line, "option prefix ignored, may not be combined with suffix", and draws T; legend(title("T", color(red) size(large))) draws the legend title red and large, where both were dropped; legend(label(1)) blanks key 1 in both modes (since D4); the note for legend(region(lcolor(bogus))) names it as typed, where it read legend(region(lcolor)(bogus)). (WP-31, D16)
 
 <!-- WP-31 E13 -->
 

@@ -24743,8 +24743,11 @@ def _dash_style_note(option, value, what, using="the scheme's default",
         prefix: ``dash``, or ``dash kpi`` for a KPI's colour.
     """
     shown = _dash_display(value)
-    head = (f"{option[:-1]}({shown}))" if option.endswith(")")
-            else f"{option}({shown})")
+    # The value goes inside the innermost option, however deep:
+    # legend(region(lcolor)) and bogus read legend(region(lcolor)(bogus))
+    # (WP-31 D16 follow-up).
+    base = option.rstrip(")")
+    head = f"{base}({shown})" + ")" * (len(option) - len(base))
     _dash_warn_once(
         (prefix, option, str(value), what),
         f"{prefix}: {head} is not a recognised {what}; using {using}.",
