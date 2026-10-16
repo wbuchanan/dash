@@ -4974,6 +4974,21 @@ figure's border on each side is raised to half the widest end label, never
 lowered.{p_end}
 
 {pstd}
+{it:The size reference.}  As in {helpb twoway}, a relative size -- a number,
+or a name such as {cmd:medium} -- is a share of the smaller side of the
+graph: one unit is 2.88 points at four inches, and {cmd:dash}, whose
+figures the browser sizes, draws it at 2.88 points whatever the graph's
+size.  An absolute size -- {it:#}{cmd:pt}, {it:#}{cmd:in}, {it:#}{cmd:cm},
+and a scheme's own point sizes -- keeps its length on a graph of any size,
+so it is converted at the figure's reference: the smaller of
+{cmd:xsize()} and {cmd:ysize()}, the scheme's {cmd:graphsize} standing in
+for one not given, and the smaller scheme side with neither.  So
+{cmd:title("T", size(14pt)) xsize(8) ysize(8)} draws the title at half the
+share of the figure it takes at four inches, as {helpb twoway} does, and
+{cmd:size(5)} the same share of both.  {cmd:scale()} multiplies afterwards
+and never moves the reference.
+
+{pstd}
 The ratio is honoured within a height band.  Outside it the ratio yields, so
 that a single square panel cannot fill an entire screen and a very wide panel
 does not collapse to an unreadable sliver on a phone.

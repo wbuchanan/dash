@@ -10515,6 +10515,10 @@ class SchemeParser:
 
     def _init_properties(self) -> None:
         """Extract all Bokeh-relevant properties into named attributes."""
+        # WP-31 E11: a copy drawn at a figure's own reference reads it
+        # from the start, so the scheme's #-pt sizes convert at it too.
+        if getattr(self, "_ref_override", None):
+            self.size_ref_in = float(self._ref_override)
         # Parsed for S16 (P1.2b): whether the scheme's background is white.
         # First, with the foreground and background, because every colour
         # below reads colour*#, bg and fg through them (WP-30 P1.13a).
@@ -10876,9 +10880,13 @@ class SchemeParser:
         # (WP-30 P1.12a, Evidence E2/E4): the smaller graphsize side, as a
         # Stata relative size is min(width, height)/100 of the graph.
         _gx, _gy = self.graphsize_x, self.graphsize_y
-        if (_gx is not None and _gy is not None and math.isfinite(_gx)
+        if getattr(self, "_ref_override", None):
+            # WP-31 E11: a figure's own min(xsize, ysize)
+            # (_dash_scheme_at_ref).
+            self.size_ref_in: float = float(self._ref_override)
+        elif (_gx is not None and _gy is not None and math.isfinite(_gx)
                 and math.isfinite(_gy) and _gx > 0 and _gy > 0):
-            self.size_ref_in: float = float(min(_gx, _gy))
+            self.size_ref_in = float(min(_gx, _gy))
         else:
             self.size_ref_in = 4.0
         # The scheme's bare `symbolsize' (no class), twoway's size for an
@@ -24320,6 +24328,69 @@ def _dash_graph_color(option, raw):
     # malformed one is "" (the default), silently.
     hx, _alpha = OptionTranslator.parse_color_alpha(str(raw), option)
     return hx or ""
+
+
+def _dash_ref_in(graph_opts, scheme_x=None, scheme_y=None):
+    """The figure's size reference in inches when xsize() or ysize() is
+    given, else None (WP-31 E11, DECISIONS D29): twoway's relative sizes
+    are relative to the smaller side of the graph as drawn
+    (sizing_truth.json ref_*: title(size(5)) is 5 percent of
+    min(xsize, ysize) on 5.5 x 4, 8 x 4, 4 x 8 and 8 x 8 graphs), so an
+    absolute size converts at min(xsize, ysize), the scheme's side
+    standing in for one not given or not a positive number."""
+    go = graph_opts or {}
+    sides = []
+    for raw, dflt in ((go.get("xsize"), scheme_x), (go.get("ysize"), scheme_y)):
+        v = None
+        try:
+            v = float(str(raw).strip()[:64]) if raw not in (None, "") else None
+        except (TypeError, ValueError):
+            v = None
+        sides.append(v if v is not None and math.isfinite(v) and v > 0
+                     else None)
+    if sides[0] is None and sides[1] is None:
+        return None
+    w = sides[0] if sides[0] is not None else scheme_x
+    h = sides[1] if sides[1] is not None else scheme_y
+    try:
+        w, h = float(w), float(h)
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(w) and math.isfinite(h) and w > 0 and h > 0):
+        return None
+    return min(w, h)
+
+
+def _dash_scheme_at_ref(scheme, ref, cache):
+    """*scheme*, or its copy drawn at the size reference *ref* inches
+    (WP-31 E11): a SchemeParser rebuilt from the same properties with
+    ``size_ref_in`` *ref*, so every absolute size -- the user's #pt, #in
+    and #cm and the scheme's own #-pt sizes -- converts at it.  One copy
+    per (scheme, reference) in *cache*; the scheme itself is never
+    changed, so a figure, a redraw or another session drawing at another
+    reference never sees this one's."""
+    if scheme is None or ref is None:
+        return scheme
+    try:
+        ref = float(ref)
+    except (TypeError, ValueError):
+        return scheme
+    if not (math.isfinite(ref) and 0 < ref <= 100):
+        return scheme
+    if ref == getattr(scheme, "size_ref_in", 4.0) or \
+            not isinstance(getattr(scheme, "_props", None), dict):
+        return scheme
+    key = (id(scheme), ref)
+    got = cache.get(key)
+    if got is not None and got[0] is scheme:
+        return got[1]
+    s = SchemeParser.__new__(SchemeParser)
+    s.__dict__.update(scheme.__dict__)
+    s._props = dict(scheme._props)
+    s._ref_override = ref
+    s._init_properties()
+    cache[key] = (scheme, s)
+    return s
 
 
 def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
@@ -52601,12 +52672,22 @@ class DashRenderer:
         # this figure -- both here and on the mapper, which is what colours
         # the glyphs.
         _gscheme = str(graph_opts.get("scheme", "") or "").strip()
+        _want = self.scheme
         if _gscheme:
-            _saved_scheme, _saved_mapper = self.scheme, self.mapper.scheme
-            self.scheme = self._scheme_for(
+            _want = self._scheme_for(
                 _dash_scheme_choice(_gscheme, "graph",
                                     getattr(self, "_scheme_dirs", ())),
                 f"graph {graph_opts.get('name', '') or '(unnamed)'}")
+        # WP-31 E11 (D29): the figure's own size reference, min(xsize,
+        # ysize), through a copy of the scheme drawn at it.
+        _want = _dash_scheme_at_ref(
+            _want, _dash_ref_in(graph_opts,
+                                getattr(_want, "graphsize_x", None),
+                                getattr(_want, "graphsize_y", None)),
+            self.__dict__.setdefault("_ref_schemes", {}))
+        if _want is not self.scheme:
+            _saved_scheme, _saved_mapper = self.scheme, self.mapper.scheme
+            self.scheme = _want
             self.mapper.scheme = self.scheme
             try:
                 return self._make_figure_body(graph_spec, source, facet_view,
@@ -56518,6 +56599,8 @@ class ServerAppBuilder:
                     getattr(self, "graph_schemes", {}).items())},),
             "",
             "_DASH_GRAPH_SCHEMES = {}",
+            "# Each (scheme, size reference) a figure draws at (WP-31 E11).",
+            "_DASH_REF_SCHEMES = {}",
             "",
             "",
             "def _dash_graph_scheme(raw):",
@@ -56544,11 +56627,20 @@ class ServerAppBuilder:
             "    if not isinstance(_go, dict):",
             "        _go = {}",
             "    _s = _dash_graph_scheme(str(_go.get('scheme', '') or '').strip())",
-            "    if _s is None:",
-            "        return fn(*args, **kwargs)",
             "    # On the recompute worker (WP-30 P1.31b): the plan's own mapper and",
             "    # scheme, never the module's, which a build on the loop may swap.",
             "    _cm = getattr(_DASH_CTX, 'mapper', None)",
+            "    # WP-31 E11 (D29): the figure's own size reference, min(xsize,",
+            "    # ysize), through a copy of the scheme drawn at it.",
+            "    _b = _s if _s is not None else (",
+            "        _DASH_CTX.scheme if _cm is not None else _DASH_SCHEME)",
+            "    _r = _dash_scheme_at_ref(_b, _dash_ref_in(_go,",
+            "        getattr(_b, 'graphsize_x', None), getattr(_b, 'graphsize_y', None)),",
+            "        _DASH_REF_SCHEMES)",
+            "    if _r is not _b:",
+            "        _s = _r",
+            "    if _s is None:",
+            "        return fn(*args, **kwargs)",
             "    if _cm is not None:",
             "        _csaved = (_DASH_CTX.scheme, _cm.scheme)",
             "        _DASH_CTX.scheme = _cm.scheme = _s",
@@ -56632,7 +56724,8 @@ class ServerAppBuilder:
                     # once-per-render set's helpers, and the graph-level
                     # colour and proportion readers the figure block calls.
                     _dash_style_note, _dash_warn_once, _dash_reset_notes,
-                    _dash_graph_color, _dash_figure_aspect, _dash_scale_factor,
+                    _dash_graph_color, _dash_ref_in, _dash_scheme_at_ref,
+                    _dash_figure_aspect, _dash_scale_factor,
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
                     _dash_frame_borders, _dash_frame_sizes,
                     _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,

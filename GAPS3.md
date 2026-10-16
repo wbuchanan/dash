@@ -504,7 +504,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E8 Tracked:** Open (WP-31 section 41).
 - **E9 Tracked:** Open (WP-31 section 42).
 - **E10 Tracked:** Open (WP-31 section 44).
-- **E11 Tracked:** Open (WP-31 section 32).
+- **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit pending.
 - **E12 Tracked:** Open (WP-31 section 40).
 - **E13 Tracked:** Open (WP-31 section 41).
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.

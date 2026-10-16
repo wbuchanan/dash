@@ -7344,6 +7344,9 @@ def _u32_check(dr_dir, k, case):
         elif case == "place":
             v = "%s %s %s %s" % (f.frame_width, f.frame_height,
                                  f.min_border_left, f.min_border_right)
+        elif case == "ref":
+            v = "%.4f %.4f" % (dr.OptionTranslator.size_ref_of(f),
+                               dr.OptionTranslator.css_to_pt(f.title.text_font_size))
         elif case == "border":
             v = "%s %s" % (f.min_border_left, f.min_border_right)
         Macro.setGlobal("u32_" + sfx, v)
@@ -7358,9 +7361,10 @@ def _u32_plot(svg):
     r = svg_chrome.svg_region(svg, "#010203")
     import svg_truth
     t = [d for d in svg_truth.svg_document(svg)["texts"] if d["text"] == "T"]
-    Macro.setGlobal("u32_tw", "%.3f %.3f %.3f %.3f %s" % (
+    c = svg_truth.svg_document(svg)["canvas"]
+    Macro.setGlobal("u32_tw", "%.3f %.3f %.3f %.3f %s %.3f" % (
         r["left"], r["top"], r["right"], r["bottom"],
-        t[0]["size"] if t else "."))
+        t[0]["size"] if t else ".", min(c["w"], c["h"])))
 end
 
 * ==== S32 D5: Sizing ====
@@ -8217,6 +8221,47 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
     display as text "S34 end " c(current_date) " " c(current_time)
 }
 * ==== end S34 ====
+
+* ==== S32 E11: Size reference ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
+    display as text "S32 start " c(current_date) " " c(current_time)
+    local u32d "`w31_work'/s32e"
+    capture mkdir "`u32d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    global u32_repo "`c(pwd)'/.."
+
+    // U32-8: an absolute title size is half the share of an 8 x 8 graph
+    // it is of a 4 x 4 one, in twoway and in dash (whose reference is
+    // min(xsize, ysize)); a relative size the same share of both.
+    foreach z in 4 8 {
+        foreach t in 14pt 5 {
+            _u32_tw "`u32d'/t8_`z'_`t'.svg" scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
+            python: _u32_plot("`u32d'/t8_`z'_`t'.svg")
+            local tw`z'_`t' = real(word("${u32_tw}", 5)) / real(word("${u32_tw}", 6))
+            _u32_dash "`u32d'" 8_`z'_`t' scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
+            python: _u32_check("`u32d'", "8_`z'_`t'", "ref")
+            foreach m in s v {
+                local r`m'`z'_`t' : word 1 of ${u32_`m'}
+                local p`m'`z'_`t' : word 2 of ${u32_`m'}
+            }
+        }
+    }
+    local twa = `tw8_14pt' / `tw4_14pt'
+    local twr = `tw8_5' / `tw4_5'
+    _w31_expect U32-8 "abs(`twa' - .5) < .02 & abs(`twr' - 1) < .02" "twoway's share 8x8/4x4: 14pt `twa', size(5) `twr'"
+    foreach m in s v {
+        _w31_expect U32-8 "`r`m'4_14pt' == 4 & `r`m'8_14pt' == 8" "`m': reference `r`m'4_14pt' and `r`m'8_14pt'"
+        _w31_expect U32-8 "abs(`p`m'8_14pt' / `p`m'4_14pt' - `twa') < .02" "`m': 14pt drawn `p`m'4_14pt' -> `p`m'8_14pt'"
+        _w31_expect U32-8 "abs(`p`m'8_5' / `p`m'4_5' - `twr') < .02" "`m': size(5) drawn `p`m'4_5' -> `p`m'8_5'"
+    }
+    _w31_done U32-8 "the size reference is min(xsize, ysize), as twoway's, saved and served"
+    dash clear
+    display as text "S32 end " c(current_date) " " c(current_time)
+}
+* ==== end S32 ====
 
 * ==== append new blocks above this line ====
 

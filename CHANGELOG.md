@@ -430,7 +430,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, scale(1.5): unchanged -> every text, marker and line 1.5 x; aspectratio(1, placement(e)) xsize(8) ysize(4): refused "not a positive number" -> a square plot region at the right edge; fysize(50), fxsize(50): unchanged -> half the height, half the width (WP-31, D5)
 
-<!-- WP-31 E11 -->
+- dash scatter mpg weight, title("T", size(14pt)) xsize(8) ysize(8): a 14-point title at the 4-inch reference -> 7 points, the reference following min(xsize, ysize) as twoway's does; relative sizes unchanged (WP-31, E11)
 
 - Axis label, tick and grid sub-options are drawn. dash scatter mpg weight, ylabel(, labgap(large) tlwidth(thick) glwidth(thick) grid) drew the default gap and widths and printed a sub-option note, now twoway's gap (16 px further out) and widths and no note; xlabel(1500(500)5000, alternate) staggers the labels on two rows; ylabel(minmax) on two layers labelled the first layer's extremes, now every layer's (5 and 41 over mpg and trunk); ylabel(##5) drew the default labels, now twoway's note and no labels, as ylabel(none). (WP-31, D6)
 

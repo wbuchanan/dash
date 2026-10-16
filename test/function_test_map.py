@@ -538,6 +538,8 @@ FUNCTIONS = {
  '_dash_colorrule_default': 'test/test_colorvar_options.py::TestColorrulePalette::test_each_schemes_default',
  '_dash_clegend_opts': 'test/test_colorvar_options.py::TestClegendOpts::test_forms',
  '_dash_pcycle': 'test/test_colorvar_options.py::TestPcycle::test_helper',
+ '_dash_ref_in': 'test/test_size_reference.py::TestReference::test_the_reference',
+ '_dash_scheme_at_ref': 'test/test_size_reference.py::TestReference::test_the_scheme_is_never_changed',
  '_dash_plot_style_indices.<locals>._p': 'test/test_pcycle_fraction.py::TestTheStyles::test_every_drawn_probe',
  '_dash_scale_factor': 'test/test_sizing.py::TestScale::test_the_factor',
  '_dash_scale_columns': 'test/test_sizing.py::TestScaleHoldsAcrossAMove::test_weighted_size_columns',
