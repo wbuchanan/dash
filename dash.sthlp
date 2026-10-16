@@ -4542,7 +4542,15 @@ as {cmd:twoway} accepts it, with no visible change.  What
 short, capitalised or repeated sub-option; and
 {cmd:invalid line argument}, {cmd:r(198)}, for positions {cmd:numlist}
 refuses.  The lines are drawn above the grid and below the data, and
-never widen an axis.  See {cmd:$dash_max_reflines} under
+never widen an axis, as in {cmd:twoway}.  A position outside the axis's
+range is drawn by {cmd:twoway} only where it falls on the graph's canvas
+-- beside the plot region, in the graph region's margin
+({cmd:xline(5100)} on {cmd:scatter mpg weight}) -- and a farther one off
+the canvas or at a wrapped coordinate (its {cmd:xline(10000)} appears
+near 2,136).  dash draws every line within
+the plot region: Bokeh clips the lines it draws in a plot to its frame,
+and only a data layer drawn over the markers would paint outside it, so
+a line in that margin strip is not seen.  See {cmd:$dash_max_reflines} under
 {it:Resource limits}.
 
 {pstd}
@@ -4554,7 +4562,9 @@ every shipped scheme) set where a line ends, then {cmd:style()}, then
 {cmd:noextend}, then {cmd:extend}, whatever order they are typed in.  An
 end that is not extended stops at the axis's scale, inset from the frame
 by the plot-region margin (none under {cmd:plotregion(margin(zero))}),
-and follows the axis after every filter move; another {cmd:style()} name
+and follows the axis after every filter move; a line the scheme or
+{cmd:noextend} stops at the plot-region margin keeps its ends at the
+margin through a zoom or a pan, on any axis; another {cmd:style()} name
 is drawn as the default with {cmd:twoway}'s note.
 
 {pstd}

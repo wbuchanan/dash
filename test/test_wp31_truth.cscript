@@ -9463,6 +9463,237 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w31_run' {
 }
 * ==== end S37 ====
 
+python:
+def _u38_tw(svg):
+    """twoway's added xline in *svg* against its plot region and canvas:
+    "beyond" (outside the plot region, on the canvas), "inside" or
+    "off", into u38_tw."""
+    import svg_truth
+    from sfi import Macro
+    doc = svg_truth.svg_document(svg)
+    pr = doc["plotregion"]
+    w = doc["canvas"]["w"]
+    xs = [d["x1"] for d in doc["vlines"]
+          if d["stroke"] == "#c10534" and abs(d["x1"] - d["x2"]) < 0.01]
+    out = []
+    for x in xs:
+        if pr["left"] - 0.5 <= x <= pr["right"] + 0.5:
+            out.append("inside")
+        elif 0 <= x <= w:
+            out.append("beyond")
+        else:
+            out.append("off")
+    Macro.setGlobal("u38_tw", " ".join(out) or "none")
+
+
+def _u38_lines(sp, dp, app, pos, base):
+    """dash's reference lines of an xline(<pos>) build, saved and served:
+    "" when each figure holds one Span per position at that location, no
+    Arrow, and an x range equal to the no-line build *base*'s (sp/dp/app
+    of the k=0 case); else what differs, into u38_n."""
+    import __main__ as m
+    from bokeh.models import Arrow, Span
+    from sfi import Macro
+    want = [float(v) for v in pos.split()]
+    a, b = m._u03_docs(sp, dp, app)
+    a0, b0 = m._u03_docs(*base)
+    out = []
+    for figs, figs0, sfx in ((a, a0, "saved"), (b, b0, "served")):
+        f, f0 = figs[0], figs0[0]
+        sp_ = sorted(float(s.location) for s in f.center
+                     if isinstance(s, Span) and s.dimension == "height"
+                     and s.visible)
+        ar = [x for x in f.center if isinstance(x, Arrow)
+              and x.start is None and x.end is None]
+        if sp_ != sorted(want):
+            out.append("%s spans %s" % (sfx, sp_))
+        if ar:
+            out.append("%s %d arrows" % (sfx, len(ar)))
+        if (f.x_range.start, f.x_range.end) != (f0.x_range.start,
+                                                f0.x_range.end):
+            out.append("%s x range %s %s, without the line %s %s" % (
+                sfx, f.x_range.start, f.x_range.end, f0.x_range.start,
+                f0.x_range.end))
+    Macro.setGlobal("u38_n", "; ".join(out))
+
+
+def _u38_zoom(sp, dp, app, node):
+    """The y range of an xline(3000, noextend) build carries one zoom
+    CustomJS on change:start and change:end holding the reference-line
+    statement after the finishing guard, saved and served; with *node*,
+    the saved page's callback run under node with the range widened by 10
+    on each side writes the arrow's ends _dash_refline_extents writes
+    (1e-9).  "" or what differs, into u38_n."""
+    import json
+    import __main__ as m
+    import dash_render as dr
+    import js_runner
+    from bokeh.models import Arrow, CustomJS, FixedTicker, Range1d
+    from sfi import Macro
+    stmt = ("for (const grp of plan) for (const p of grp.panels) "
+            "if (p.lines && p.lines.some(l => l.range === ri)) "
+            "dash_refline_extent(p, models);")
+    a, b = m._u03_docs(sp, dp, app)
+    out = []
+    for figs, sfx in ((a, "saved"), (b, "served")):
+        f = figs[0]
+        cbs = f.y_range.js_property_callbacks or {}
+        got = [[c for c in cbs.get("change:" + k, ())
+                if isinstance(c, CustomJS) and stmt in (c.code or "")]
+               for k in ("start", "end")]
+        if [len(g) for g in got] != [1, 1] or got[0][0] is not got[1][0]:
+            out.append("%s callbacks %s" % (sfx, [len(g) for g in got]))
+            continue
+        code = got[0][0].code
+        if code.index("cb_obj._dash_finishing") > code.index(stmt):
+            out.append("%s statement before the guard" % sfx)
+        if not node or sfx != "saved":
+            continue
+        cb = got[0][0]
+        models = cb.args["models"]
+        stubs = []
+        for md in models:
+            if isinstance(md, Range1d):
+                stubs.append({"start": md.start, "end": md.end})
+            elif isinstance(md, Arrow):
+                stubs.append({k: getattr(md, k) for k in
+                              ("x_start", "x_end", "y_start", "y_end")})
+            elif isinstance(md, FixedTicker):
+                stubs.append({"ticks": list(md.ticks)})
+            else:
+                stubs.append({})
+        ri = models.index(f.y_range)
+        arrow = f._dash_refline_arrows[0][0]
+        ai = models.index(arrow)
+        js = ("const plan_json = " + json.dumps(cb.args["plan_json"]) + ";\n"
+              + "const models = " + json.dumps(stubs) + ";\n"
+              + "const cb_obj = models[%d];\n" % ri
+              + "cb_obj.start -= 10; cb_obj.end += 10;\n" + code + "\n"
+              + "process.stdout.write(JSON.stringify([models[%d].y_start, "
+                "models[%d].y_end]));\n" % (ai, ai))
+        js_ends = js_runner.run_js(js)
+        s0, e0 = f.y_range.start, f.y_range.end
+        f.y_range.start, f.y_range.end = s0 - 10, e0 + 10
+        dr._dash_refline_extents(f)
+        py = [arrow.y_start, arrow.y_end]
+        f.y_range.start, f.y_range.end = s0, e0
+        dr._dash_refline_extents(f)
+        if any(abs(x - y) > 1e-9 * max(1.0, abs(y))
+               for x, y in zip(js_ends, py)) or py == [arrow.y_start,
+                                                       arrow.y_end]:
+            out.append("node %s, python %s" % (js_ends, py))
+    Macro.setGlobal("u38_n", "; ".join(out))
+end
+
+capture program drop _u38_build
+program define _u38_build
+    // _u38_build <dir> <k> <command with options...>: dash's saved and
+    // served specs of the command in <dir>/s<k>.json, d<k>.json, a<k>.py;
+    // u38_rc its rc and u38_note any dash: line the command printed (log)
+    // other than the registration line.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    capture log close u38log
+    quietly log using "`dir'/l`k'.log", text replace name(u38log)
+    capture noisily dash `0' name(zu38`k')
+    global u38_rc = _rc
+    quietly log close u38log
+    global u38_note ""
+    tempname fh
+    file open `fh' using "`dir'/l`k'.log", read text
+    file read `fh' line
+    while r(eof) == 0 {
+        if strpos(`"`macval(line)'"', "dash:") & !strpos(`"`macval(line)'"', "registered.") global u38_note `"`macval(line)'"'
+        file read `fh' line
+    }
+    file close `fh'
+    if !${u38_rc} {
+        _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    }
+end
+
+* ==== S38 D12: Reference lines beyond the frame and through a zoom ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S38") & `: list posof "S38" in w31_run' {
+    display as text "S38 start " c(current_date) " " c(current_time)
+    local u38d "`w31_work'/s38"
+    capture mkdir "`u38d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    _u38_build "`u38d'" 0 scatter mpg weight,
+
+    // U38-01: twoway draws xline(5100) beyond the plot region, on the
+    // canvas (the graph-region strip); dash keeps its one Span at 5100
+    // (Bokeh clips every centre annotation to the frame, documented), the
+    // x range unchanged, nothing printed.
+    local bad ""
+    capture graph drop u38t
+    quietly twoway scatter mpg weight, xline(5100) name(u38t, replace)
+    quietly graph export "`u38d'/t1.svg", replace
+    graph drop u38t
+    python: import __main__ as _u38_m; _u38_m._u38_tw("`u38d'/t1.svg")
+    if "${u38_tw}" != "beyond" local bad `"`bad' twoway ${u38_tw};"'
+    _u38_build "`u38d'" 1 scatter mpg weight, xline(5100)
+    if ${u38_rc} local bad `"`bad' rc ${u38_rc};"'
+    else {
+        python: import __main__ as _u38_m; _u38_m._u38_lines("`u38d'/s1.json", "`u38d'/d1.json", "`u38d'/a1.py", "5100", ("`u38d'/s0.json", "`u38d'/d0.json", "`u38d'/a0.py"))
+        if `"${u38_n}"' != "" local bad `"`bad' ${u38_n};"'
+    }
+    if `"${u38_note}"' != "" local bad `"`bad' note: ${u38_note};"'
+    _w31_expect U38-01 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U38-01 "xline(5100): twoway draws it beyond the plot region; dash keeps one Span, the axis unchanged, silently"
+
+    // U38-02: twoway writes xline(10000) at a wrapped coordinate inside
+    // the plot region (its axis puts it off the canvas); dash keeps a
+    // Span at 10000 and 3000 and does not widen the axis.
+    local bad ""
+    capture graph drop u38t
+    quietly twoway scatter mpg weight, xline(10000) name(u38t, replace)
+    quietly graph export "`u38d'/t2.svg", replace
+    graph drop u38t
+    python: import __main__ as _u38_m; _u38_m._u38_tw("`u38d'/t2.svg")
+    if "${u38_tw}" != "inside" local bad `"`bad' twoway ${u38_tw};"'
+    _u38_build "`u38d'" 2 scatter mpg weight, xline(3000 10000)
+    if ${u38_rc} local bad `"`bad' rc ${u38_rc};"'
+    else {
+        python: import __main__ as _u38_m; _u38_m._u38_lines("`u38d'/s2.json", "`u38d'/d2.json", "`u38d'/a2.py", "3000 10000", ("`u38d'/s0.json", "`u38d'/d0.json", "`u38d'/a0.py"))
+        if `"${u38_n}"' != "" local bad `"`bad' ${u38_n};"'
+    }
+    _w31_expect U38-02 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U38-02 "xline(3000 10000): two Spans, the axis unchanged; twoway's far line is a wrapped coordinate"
+
+    // U38-03: the y range an unextended xline spans carries one zoom
+    // callback with the reference-line statement after the finishing
+    // guard, saved and served -- also on a fixed-tick axis.
+    local bad ""
+    local j 2
+    foreach o in `"xline(3000, noextend)"' `"xline(3000, noextend) ylabel(10(5)40)"' {
+        local ++j
+        _u38_build "`u38d'" `j' scatter mpg weight, `o'
+        if ${u38_rc} local bad `"`bad' `j' rc ${u38_rc};"'
+        else {
+            python: import __main__ as _u38_m; _u38_m._u38_zoom("`u38d'/s`j'.json", "`u38d'/d`j'.json", "`u38d'/a`j'.py", False)
+            if `"${u38_n}"' != "" local bad `"`bad' `j': ${u38_n};"'
+        }
+    }
+    _w31_expect U38-03 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U38-03 "one zoom callback on every range an unextended reference line spans, counted axis or not, saved and served"
+
+    // U38-04: the saved page's callback under node, the y range widened
+    // by 10 each side: the arrow's ends are _dash_refline_extents' (1e-9).
+    local bad ""
+    python: import __main__ as _u38_m; _u38_m._u38_zoom("`u38d'/s4.json", "`u38d'/d4.json", "`u38d'/a4.py", True)
+    if `"${u38_n}"' != "" local bad `"`bad' ${u38_n};"'
+    _w31_expect U38-04 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U38-04 "a zoom moves an unextended reference line's ends to the new margin, as the Python finisher writes them"
+    dash clear
+    display as text "S38 end " c(current_date) " " c(current_time)
+}
+* ==== end S38 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

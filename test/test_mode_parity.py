@@ -2640,6 +2640,10 @@ CORPUS = [
                        "graphregion": "shadestyle(none)"}),
     _case("s1color plot region (WP-31 D11)", [_sc()],
           go={"scheme": "s1color", "graphregion": "fcolor(red)"}),
+
+    # WP-31 D12: reference lines beyond the frame
+    _case("xline beyond the range (WP-31 D12)", [_sc()],
+          go={"xline": "3000 10000"}),
 ]
 
 
@@ -3685,6 +3689,11 @@ MOVE_CORPUS = [
     _move_case("yaxis(2) and yaxis(3), dropdown (WP-31 D9)", _MOVES[0],
                [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price"),
                 plot_for("line", {"yaxis": "3"}, yvar="foreign")]),
+
+    # WP-31 D12: reference lines beyond the frame (the zoom callback is
+    # on the line's range in both documents after the move).
+    _move_case("yline noextend, range move then zoom (WP-31 D12)",
+               _MOVES[1], [_sc()], go={"yline": "25, noextend"}),
 ]
 
 

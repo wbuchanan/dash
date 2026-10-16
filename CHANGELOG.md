@@ -452,7 +452,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, scheme(s1color) graphregion(fcolor(red)): plot region filled white -> unfilled, the graph region's red showing through, as twoway's shadestyle plotregion none draws it (s1color, s1mono, s1rcolor, s1manual, stmono1); graphregion(margin(large)): no change with a note -> each border 4.5% of the figure's smaller side wider (27 px at 600), as twoway's gaps; plotregion(fcolor(navy) intensity(inten50)) and shadestyle(none): named and ignored, navy -> #8da3b7 and unfilled; graphregion(ifcolor(red)) fills the border; marginonly keeps the copy's colours off; margin(L+10): zeros -> L as medium on the left, 10 more on the right; margin(allsides-ms) and margin(l+abc): drawn from the style file and as zeros -> refused with twoway's r(7) and words (WP-31, D11)
 
-<!-- WP-31 D12 -->
+- Reference lines through a zoom. dash scatter mpg weight, xline(3000, noextend): after a wheel zoom or a pan the line's ends stayed where the last finish put them, now at the margin of the new range, also on an axis with fixed ticks (ylabel(10(5)40)); an out-of-range xline() still does not widen the axis, as twoway; twoway draws such a line only in the graph-region margin strip, which dash clips to the plot region (documented) (WP-31, D12)
 
 <!-- WP-31 E1 -->
 

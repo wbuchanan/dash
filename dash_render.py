@@ -38764,6 +38764,10 @@ _DASH_AXIS_ZOOM_JS = r"""
             dash_minor_place(a, models, lo, hi);
         }
     }
+    // WP-31 D12 (D-38.b): the reference lines of every panel this range
+    // belongs to follow the zoom or pan; an extended side stays at the
+    // range's end, an unextended side at the margin.
+    for (const grp of plan) for (const p of grp.panels) if (p.lines && p.lines.some(l => l.range === ri)) dash_refline_extent(p, models);
 })();
 """
 
@@ -40748,7 +40752,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
     letters, kinds and column names: no user text, never code.  With
     *zoom*, ONE CustomJS (``_DASH_AXIS_FINISH_JS + _DASH_AXIS_ZOOM_JS``)
     is attached to ``start`` and ``end`` of every planned Range1d of a
-    counted axis, so a zoom or pan re-ticks it by natscale."""
+    counted axis, so a zoom or pan re-ticks it by natscale, and of every
+    range a reference line spans, so its ends follow (WP-31 D12)."""
     from bokeh.models import (BooleanFilter, CustomJS, CustomJSTicker,
                               FixedTicker, IndexFilter, Range1d)
     from bokeh.models.axes import ContinuousAxis
@@ -41067,6 +41072,12 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
             panel = {"axes": axes, "box": bi}
             if lines:
                 panel["lines"] = lines
+            # WP-31 D12 (D-38.b): the zoom callback also runs for every range
+            # a reference line names, whatever the axis's tick mode.
+            for _ln in lines:
+                _r = models[_ln["range"]]
+                if zoom and _r not in zoom_ranges:
+                    zoom_ranges.append(_r)
             pg["panels"].append(panel)
         plan.append(pg)
     plan_json = json.dumps(plan, allow_nan=False, separators=(",", ":"))

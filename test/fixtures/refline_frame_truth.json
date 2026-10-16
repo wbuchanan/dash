@@ -1,0 +1,692 @@
+{
+ "_meta": {
+  "arrow_unclipped": false,
+  "born_date": "12 Aug 2026",
+  "dash_commit": "25e755ada4bb20ab885455cb4ed00e9100b8901d",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_refline_frame_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "inside.control": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    1732.99
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 1733.0,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(3000)",
+   "positions": [
+    3000.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.mixed": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    1732.99,
+    8952.33
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 842.4,
+     "stroke": "#c10534",
+     "width": 8.64
+    },
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 1733.0,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(3000 10000)",
+   "positions": [
+    3000.0,
+    10000.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.noextend": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    8952.33
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 842.4,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(10000, noextend)",
+   "positions": [
+    10000.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.x_10000": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    8952.33
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 842.4,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(10000)",
+   "positions": [
+    10000.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.x_5100": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    3898.79
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": true,
+     "outside": true,
+     "px": 3898.9,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(5100)",
+   "positions": [
+    5100.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.x_5200": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    4001.93
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": false,
+     "outside": true,
+     "px": 4001.9,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(5200)",
+   "positions": [
+    5200.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.x_neg": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    -1876.67
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "on_canvas": false,
+     "outside": true,
+     "px": -1876.7,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(-500)",
+   "positions": [
+    -500.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "outside.y_60": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    -1222.03
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "h",
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "on_canvas": false,
+     "outside": true,
+     "px": -1222.1,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "yline(60)",
+   "positions": [
+    60.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  },
+  "zoom.asym": {
+   "axes_as_baseline": true,
+   "axis_px": [
+    1732.99
+   ],
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "lines": [
+    {
+     "dim": "v",
+     "ends": [
+      100.86,
+      2425.82
+     ],
+     "on_canvas": true,
+     "outside": false,
+     "px": 1733.0,
+     "stroke": "#c10534",
+     "width": 8.64
+    }
+   ],
+   "opt": "xline(3000)",
+   "positions": [
+    3000.0
+   ],
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "dashxlow",
+   "x_axis": {
+    "first": 2000.0,
+    "fit": {
+     "high": 5061.435035552682,
+     "low": 1698.584356819651,
+     "residual": 0.006464124111289493,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": 0.9696186166774402
+    },
+    "labels": [
+     "2,000",
+     "3,000",
+     "4,000",
+     "5,000"
+    ],
+    "last": 5000.0
+   },
+   "y_axis": {
+    "first": 10.0,
+    "fit": {
+     "high": 41.86753841303781,
+     "low": 9.131406170758119,
+     "residual": 0.0005482681579564996,
+     "reversed": false,
+     "space": "linear",
+     "units_per_px": -0.013706703948901408
+    },
+    "labels": [
+     "40",
+     "30",
+     "20",
+     "10"
+    ],
+    "last": 40.0
+   }
+  }
+ }
+}
