@@ -950,7 +950,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:note()}, {cmd:caption()}, {cmd:xline()}/{cmd:yline()} or
     {cmd:filter()} that {cmd:dash} does not implement is named in a
     note, as {cmd:by()}'s are:
-    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: stack colgap(2))}.
+    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: stack)}.
     A sub-option of {cmd:legend()}, of the axis labels and ticks
     ({cmd:xlabel()}, {cmd:ylabel()}, {cmd:xtick()}, {cmd:ytick()},
     {cmd:xmlabel()}, {cmd:ymlabel()}, {cmd:xmtick()}, {cmd:ymtick()},
@@ -4000,13 +4000,22 @@ key is ignored.
 {cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box, {cmd:nobox} removes it, {cmd:bmargin()} is the
 space around it, {cmd:bplacement()} its place along its side,
 {cmd:color()} the key text's colour, {cmd:textwidth()} its least width
-and {cmd:title()} a line above the keys; {cmd:span}, {cmd:bexpand} and
-their {cmd:no} forms are taken: a legend beside the plot already spans
-its side.  {cmd:textfirst}, {cmd:stacked}, {cmd:symplacement()},
-{cmd:colgap()} and the legend's own {cmd:subtitle()}, {cmd:note()} and
+and {cmd:title()} a line above the keys, with the legend's own
+{cmd:subtitle()} a line under it; {cmd:colgap()} is the gap between keys
+in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
+rows (a legend of several rows and columns has one gap, the row gap);
+{cmd:span}, {cmd:bexpand} and their {cmd:no} forms are taken: a legend
+beside the plot already spans its side.  {cmd:textfirst}, {cmd:stacked},
+{cmd:symplacement()} and the legend's own {cmd:note()} and
 {cmd:caption()} are named in the note: a {cmd:dash} legend draws each key
-and then its text in one row, so {cmd:legend(textfirst)}, which
-{cmd:twoway} draws text then key, is drawn key then text.
+and then its text in one row, centred in the key's height, with nothing
+under the keys, so {cmd:legend(textfirst)}, which {cmd:twoway} draws text
+then key, is drawn key then text; {cmd:legend(stacked)}, which
+{cmd:twoway} draws with the text under its symbol, and
+{cmd:legend(symplacement(n))}, which raises the symbol 28 of the graph's
+1,440 SVG units in its key, are drawn as the default; and the legend's
+{cmd:note()} and {cmd:caption()}, which {cmd:twoway} writes under the
+keys inside the box, are not drawn.
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own

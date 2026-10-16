@@ -34570,6 +34570,7 @@ def _dash_scheme_chrome(scheme):
         "legend_key_ysize": getattr(scheme, "legend_key_ysize", 3.4722),
         "legend_key_gap": getattr(scheme, "legend_key_gap", 2.0833),
         "legend_row_gap": getattr(scheme, "legend_row_gap", 1.3888),
+        "legend_col_gap": getattr(scheme, "legend_col_gap", 4.8611),
         "legend_margin": getattr(scheme, "legend_margin", 5),
         "legend_boxmargin": getattr(scheme, "legend_boxmargin", 5),
         "legend_ring": getattr(scheme, "legend_ring", 3),
@@ -34721,6 +34722,24 @@ def _dash_legend_box(legend, calls, words):
                     legend.title_text_font_size = f"{round(_pt, 3):g}pt"
                 except (ValueError, TypeError):
                     _note("title(size)", _sub["size"], "size")
+    # The legend's own subtitle(): twoway draws it centred above the keys,
+    # under the title (WP-31 D4b, legend_remainder_truth.json lsubtitle,
+    # lall); a line of the title, in its style.
+    for name, arg, typed in calls:
+        if name != "subtitle":
+            continue
+        text, _sub = _parse_textbox_opt(str(arg or ""))
+        lines = _textbox_lines(text)
+        if not any(lines):
+            continue
+        head = str(legend.title or "")
+        legend.title = ((head + "\n") if head else "") + "\n".join(lines)
+        legend.title = legend.title[:2000]
+        if not head:
+            legend.title_location = "above"
+            legend.title_text_font_style = "normal"
+            legend.title_text_font_size = legend.label_text_font_size
+            legend.title_text_color = legend.label_text_color
     if "nobox" in words and "box" not in words:
         legend.border_line_color = None
         legend.background_fill_color = None
@@ -34972,7 +34991,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     for _gname, _ckey, _dflt in (("symxsize", "legend_key_xsize", 13.0),
                                  ("symysize", "legend_key_ysize", 3.4722),
                                  ("keygap", "legend_key_gap", 2.0833),
-                                 ("rowgap", "legend_row_gap", 1.3888)):
+                                 ("rowgap", "legend_row_gap", 1.3888),
+                                 ("colgap", "legend_col_gap", 4.8611)):
         _units = chrome.get(_ckey, _dflt)
         _given = _dash_legend_arg(_calls, (_gname,))
         if _given:
@@ -35130,6 +35150,12 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # one-column grid is the same either way.
         legend.orientation = ("vertical" if colfirst or _gc == 1
                               else "horizontal")
+        # colgap() is the gap between columns (WP-31 D4b,
+        # legend_remainder_truth.json colgap_zero): the keys of one row are
+        # spaced by it.  A grid of rows and columns has one Bokeh spacing,
+        # the row gap.
+        if legend.nrows == 1 and _gc > 1 and _n > 1:
+            legend.spacing = _geom["colgap"]
     elif legend is not None and colfirst:
         legend.orientation = "vertical"
     for lg in cv_legends:
@@ -46162,7 +46188,7 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "holes", "colfirst", "nocolfirst", "title", "region", "bplacement",
     "span", "nospan", "symxsize", "symysize", "keygap", "rowgap",
     "textwidth", "forcesize", "noforcesize", "nobox", "box", "color",
-    "bmargin", "bexpand", "nobexpand"})
+    "bmargin", "bexpand", "nobexpand", "colgap", "subtitle"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read

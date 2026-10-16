@@ -479,7 +479,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
 - **D3b Tracked:** Closed in WP-31, BUGS.md "subtitle() position() and ring() on a by() panel's label row are named, not drawn", commit ceccb04.
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
-- **D4b Tracked:** Open (WP-31 section 39).
+- **D4b Tracked:** Closed in WP-31, BUGS.md "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn", commit pending.
 - **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit 831e4f0.
 - **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit 2c2ad89.
 - **D6b Tracked:** Closed in WP-31, BUGS.md "alternate on an axis(2) to axis(9) label option is named, not drawn", commit c6efd39.

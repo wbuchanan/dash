@@ -517,7 +517,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, by(foreign) subtitle(, position(6)) named position() and drew every panel label above its panel; now the labels sit where twoway puts them: below at 6, 7 and 5, above at 12, 11 and 1 (left or right as the clock says), at the bottom corners at 9 and 3, and with ring(0) in the plot region, which takes the label box's fill (WP-31, D3b)
 
-<!-- WP-31 D4b -->
+- Two legend keys in one row were the scheme's row gap apart (5 px under s2color); they are colgap() apart, as twoway draws them (19 px, legend_col_gap large), and legend(colgap()) sets it; legend(subtitle("S")) is drawn as a line under the legend's title, where both were named in the note. stacked, symplacement() and the legend's note() and caption() stay named. (WP-31, D4b)
 
 - dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) alternate): one row of labels and a note naming alternate -> two rows, 0 and 10,000 nearest the plot and 5,000 and 15,000 outside them, as twoway; axes 3 to 9 and altgap() alike (WP-31, D6b)
 

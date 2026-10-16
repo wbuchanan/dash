@@ -13,10 +13,10 @@
 *! The warning has the shape by() already uses, one line per option per
 *! render, naming the sub-options as the user wrote them:
 *!
-*!     dash: legend() sub-option(s) not implemented and ignored: stack colgap(2)
+*!     dash: legend() sub-option(s) not implemented and ignored: stack
 *!
-*!   SR-01  legend(span stack holes(1) colgap(2)) names stack and
-*!          colgap(2), once, and not the honoured position(6), span and
+*!   SR-01  legend(span stack holes(1) colgap(2)) names stack, once,
+*!          and not the honoured position(6), colgap(2), span and
 *!          holes(1) (flipped, WP-31 D4: span is taken in silence and
 *!          holes() drawn, as twoway's legend_g lays them out).
 *!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
@@ -224,12 +224,13 @@ end
 _sr_render `"dash (scatter mpg weight) (lfit mpg weight), legend(span stack holes(1) colgap(2) position(6))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-01 "`lg'" legend "stack colgap(2)" "position span holes"
+// Flipped (WP-31 D4b): colgap() is drawn, so only stack is named.
+_sr_check SR-01 "`lg'" legend "stack" "position span holes colgap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-01"
 }
-else display as text "SR-01 PASS: legend(stack colgap(2)) is named once; position(), span and holes() are not"
+else display as text "SR-01 PASS: legend(stack) is named once; position(), span, holes() and colgap() are not"
 
 _sr_render `"dash scatter mpg weight, xlabel(, valuelabel)"'
 local lg `"`r(logfile)'"'

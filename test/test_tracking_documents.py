@@ -2029,7 +2029,6 @@ WP31_OPEN = {
     "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
     "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",
     "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",
-    "D4b": "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn",
     "C17b": "lal() is read as dash's lalpha() where twoway reads it as lalign()",
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
     "D10b": "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn",

@@ -57,8 +57,9 @@ SUBOPTIONS = [
      {"legend": "keygap(2) symxsize(3) textwidth(20) bmargin(small) cols(2)"
                 " colgap(2) symplacement(e)"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
-     ["colgap(2)", "symplacement(e)"],
-     ["cols", "keygap", "symxsize", "textwidth", "bmargin"]),
+     # Flipped (WP-31 D4b): colgap() is drawn, so it is honoured.
+     ["symplacement(e)"],
+     ["cols", "keygap", "symxsize", "textwidth", "bmargin", "colgap"]),
     ("legend colfirst", {"legend": "colfirst textfirst on"}, None, "legend",
      ["textfirst"], ["on", "colfirst"]),
     # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()

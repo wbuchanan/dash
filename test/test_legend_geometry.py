@@ -183,7 +183,11 @@ class TestDefaultGeometry:
         assert lg.glyph_width == _px(sp.legend_key_xsize)
         assert lg.glyph_height == _px(sp.legend_key_ysize)
         assert lg.label_standoff == _px(sp.legend_key_gap)
-        assert lg.spacing == _px(sp.legend_row_gap)
+        # Flipped (WP-31 D4b): keys in one row are colgap() apart, as
+        # twoway draws them (legend_remainder_truth.json colgap_zero).
+        one_row = lg.nrows == 1 and lg.ncols != 1
+        assert lg.spacing == _px(sp.legend_col_gap if one_row
+                                 else sp.legend_row_gap)
         assert lg.padding == sp.legend_margin == 5
         assert lg.margin == sp.legend_boxmargin == 5
 
@@ -198,8 +202,11 @@ class TestDefaultGeometry:
                      - max(ln["x1"], ln["x2"])) / _SVG_PER_UNIT
         assert lg.glyph_width == _px(key_units) == 50
         assert lg.label_standoff == _px(gap_units) == 8
+        # Flipped (WP-31 D4b): the two keys of one row are the scheme's
+        # legend_col_gap (large, 4.8611 units = 19 px) apart, not its row
+        # gap (legend_remainder_truth.json colgap_zero).
         assert (lg.glyph_width, lg.glyph_height, lg.label_standoff,
-                lg.spacing) == (50, 13, 8, 5)
+                lg.spacing) == (50, 13, 8, 19)
 
     def test_a_marker_key_is_drawn_at_the_markers_size(self, mode):
         """twoway draws a scatter's key at the marker's own size
@@ -224,7 +231,10 @@ class TestSizeOptions:
         ("symxsize(5)", "glyph_width", 19),
         ("symysize(2)", "glyph_height", 8),
         ("keygap(1)", "label_standoff", 4),
-        ("rowgap(3)", "spacing", 12),
+        # Flipped (WP-31 D4b): rowgap() spaces rows, so it is read on one
+        # column; two keys in one row are colgap() apart.
+        ("cols(1) rowgap(3)", "spacing", 12),
+        ("colgap(3)", "spacing", 12),
     ])
     def test_each(self, mode, opt, prop, want):
         _fig, lg, caught = _fig_legend(mode, LINES, opt)
@@ -413,9 +423,11 @@ class TestNamedAndSilent:
         _fig, _lg, caught = _fig_legend(mode, TWO, word)
         assert not [w for w in caught if "not implemented" in w], caught
 
+    # Flipped (WP-31 D4b): colgap() and subtitle() are drawn
+    # (test_legend_remainder.py); the rest stay named (M17).
     @pytest.mark.parametrize("word", ["textfirst", "stacked",
-                                      "symplacement(e)", "colgap(2)",
-                                      'subtitle("s")'])
+                                      "symplacement(e)", 'note("n")',
+                                      'caption("c")'])
     def test_named(self, mode, word):
         _fig, _lg, caught = _fig_legend(mode, TWO, word)
         msgs = [w for w in caught if "not implemented" in w]
@@ -454,8 +466,10 @@ class TestByCellLegend:
                               for m in root.references()
                               if isinstance(m, Legend)})
         for lg in cells:
+            # Flipped (WP-31 D4b): its two keys in one row are colgap()
+            # apart (19 px), not the row gap (5).
             assert (lg.glyph_width, lg.label_standoff, lg.spacing,
-                    lg.padding, lg.margin) == (19, 4, 5, 5, 5)
+                    lg.padding, lg.margin) == (19, 4, 19, 5, 5)
 
 
 @pytest.mark.parametrize("mode", MODES)

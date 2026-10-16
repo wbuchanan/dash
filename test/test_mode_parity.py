@@ -2651,6 +2651,9 @@ CORPUS = [
                   ("g3", [_sc()])]),
     _case("legend label(1) blank", [_sc(), plot_for("line")],
           go={"legend": 'label(1) title("T", color(red) size(large))'}),
+    # WP-31 D4b
+    _case("legend colgap subtitle", [_sc(), plot_for("line")],
+          go={"legend": 'colgap(0) title("T") subtitle("S")'}),
 ]
 
 
