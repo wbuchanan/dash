@@ -421,7 +421,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
 - **A3b Tracked:** Closed in WP-31, BUGS.md "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)", commit d840eda.
-- **A3c Tracked:** Closed in WP-31, BUGS.md "aspectratio() takes asp, shorter than twoway's minimum", commit pending.
+- **A3c Tracked:** Closed in WP-31, BUGS.md "aspectratio() takes asp, shorter than twoway's minimum", commit 2c66ba1.
 - **A3d Tracked:** Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit 9665bca.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
@@ -451,7 +451,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
 - **C8c Tracked:** Open (WP-31 section 44).
-- **C8d Tracked:** Closed in WP-31, BUGS.md "pcycle() refuses a fraction where twoway draws it on a graph of few series", commit pending.
+- **C8d Tracked:** Closed in WP-31, BUGS.md "pcycle() refuses a fraction where twoway draws it on a graph of few series", commit 4f9c3e4.
 - **C8e Tracked:** Closed in WP-31, BUGS.md "colorkeysreverse on a colorvar() colour bar is named, not drawn", commit 59fcd19.
 - **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit 5895120.
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
@@ -463,27 +463,27 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
-- **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit pending.
-- **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit pending.
+- **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit 52b3d18.
+- **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit d5556ea.
 - **C16 Tracked:** Open (WP-31 section 46).
-- **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit pending.
+- **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
 - **C17b Tracked:** Open (WP-31 section 41).
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Open (WP-31 section 35).
-- **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit pending.
+- **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
 - **D3b Tracked:** Open (WP-31 section 36).
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
 - **D4b Tracked:** Open (WP-31 section 39).
-- **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit pending.
-- **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit pending.
+- **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit 831e4f0.
+- **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit 2c2ad89.
 - **D6b Tracked:** Open (WP-31 section 35).
-- **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit pending.
-- **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit pending.
+- **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit 8768cac.
+- **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
 - **D9 Tracked:** Open (WP-31 section 35).
 - **D10 Tracked:** Open (WP-31 section 36).
 - **D11 Tracked:** Open (WP-31 section 37).
@@ -496,15 +496,15 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D16b Tracked:** Open (WP-31 section 39).
 - **E1 Tracked:** Open (WP-31 section 40).
 - **E2 Tracked:** Open (WP-31 section 40).
-- **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit pending.
+- **E3 Tracked:** Closed in WP-31, BUGS.md "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared", commit 8adad05.
 - **E4 Tracked:** Open (WP-31 section 41).
 - **E5 Tracked:** Open (WP-31 section 41).
-- **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit pending.
+- **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit db38355.
 - **E7 Tracked:** Open (WP-31 section 41).
 - **E8 Tracked:** Open (WP-31 section 41).
 - **E9 Tracked:** Open (WP-31 section 42).
 - **E10 Tracked:** Open (WP-31 section 44).
-- **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit pending.
+- **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Open (WP-31 section 44).
 - **E12 Tracked:** Open (WP-31 section 40).
 - **E13 Tracked:** Open (WP-31 section 41).
