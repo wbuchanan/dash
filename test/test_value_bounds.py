@@ -241,6 +241,35 @@ class TestRangeVar:
         assert np.array_equal(bx, gx) and np.array_equal(by, gy)
 
 
+class TestRangeVarEmpty:
+    """WP-31 C10d: kdensity's range() naming a string or all-missing
+    variable is drawn by twoway as an empty curve, rc 0, silently
+    (estimator_edges_truth.json kd.range_string, kd.range_missing: every
+    serset x and density missing); dash.ado hands the name with no
+    numbers, and both renderers draw the curve empty."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_empty_curve(self, mode):
+        got, w = _render(mode, [plot_for("kdensity", {"range_var": "make"})])
+        assert [list(x) for x, _y in _lines(got)] == [[]]
+        assert not [m for m in w if "range" in m]
+
+    def test_fixture_is_empty(self):
+        with open(os.path.join(os.path.dirname(__file__), "fixtures",
+                               "estimator_edges_truth.json")) as fh:
+            t = json.load(fh)
+        for k in ("kd.range_string", "kd.range_missing"):
+            assert t[k]["rc"] == 0 and t[k]["text"] == []
+            cols = [c for n, c in t[k]["serset"].items() if n != "mpg"]
+            assert len(cols) == 2 and all(v is None for c in cols for v in c)
+
+    def test_no_note(self):
+        with open(os.path.join(os.path.dirname(__file__), "..",
+                               "dash.ado")) as fh:
+            ado = fh.read()
+        assert "no observations, the data's own range used" not in ado
+
+
 class TestLevel:
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_any_level_draws_as_twoway(self, mode):

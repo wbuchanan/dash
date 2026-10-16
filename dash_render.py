@@ -21330,6 +21330,13 @@ class GlyphMapper:
         # Stata's kernels are implemented directly (see _KERNELS): scipy's
         # gaussian_kde can only ever be Gaussian, so it could not express
         # kernel() at all, and Stata's default kernel is epanechnikov.
+        if (str(options.get("range_var", "") or "").strip()
+                and not str(options.get("range", "") or "").strip()):
+            # range() named a string or an all-missing variable: twoway
+            # draws an empty curve, rc 0, in silence (WP-31 C10d,
+            # estimator_edges_truth.json kd.range_*).
+            return self._mark_silent(self._empty_fit_line(
+                fig, "x", "y", options, color_idx, yvar))
         if len(arr) < 2 or np.std(arr) == 0.0:
             r = self._empty_fit_line(fig, "x", "y", options, color_idx, yvar)
             # None or one: dash.ado refuses one as twoway does, r(2001);

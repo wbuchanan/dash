@@ -2002,7 +2002,6 @@ WP31_OPEN = {
     "H6": "The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS",
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
-    "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
 }
 

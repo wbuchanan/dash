@@ -13052,6 +13052,72 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u46_kd_empty(sp, dp):
+    """global u46_bad empty when the saved page draws the kdensity curve
+    with no point and says nothing about range()."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    bad = []
+    lines = [g for f in r.figures.values() for g in f.renderers
+             if type(g.glyph).__name__ == "Line"]
+    n = sum(len(g.data_source.data.get(g.glyph.x, [])) for g in lines)
+    if n:
+        bad.append("dash drew %d points" % n)
+    said = [str(m.message) for m in w if "range" in str(m.message)]
+    if said:
+        bad.append("dash said %s" % said[0][:80])
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+end
+
+* ==== S46 C10d: kdensity range() over no observation ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+
+    // U46-13: kdensity mpg, range(make) and range(<all missing>): twoway
+    // draws an empty curve, rc 0, silently (its serset's x and density all
+    // missing); dash registers silently and draws the curve empty.
+    sysuse auto, clear
+    quietly generate u46m = .
+    foreach v in make u46m {
+        capture graph drop _all
+        capture serset drop _all
+        capture twoway kdensity mpg, range(`v') nodraw
+        local trc = _rc
+        quietly serset set 0
+        preserve
+        quietly serset use, clear
+        quietly ds
+        local _s1 : word 1 of `r(varlist)'
+        quietly count if !missing(`_s1')
+        local tn = r(N)
+        restore
+        dash clear
+        capture log close _u46k
+        quietly log using "`u46d'/c10d.log", text replace name(_u46k)
+        capture noisily dash kdensity mpg, range(`v') name(zu46k)
+        local drc = _rc
+        quietly log close _u46k
+        python: from sfi import Macro as _u46M; _u46M.setGlobal("u46_said", "1" if "range(" in open(r"`u46d'/c10d.log", encoding="utf-8", errors="replace").read().replace("range(`v') name", "") else "0")
+        _w31_expect U46-13 "(`trc' == 0) & (`drc' == 0) & (`tn' == 0)" "range(`v'): twoway r(`trc') with `tn' points, dash r(`drc')"
+        _w31_expect U46-13 "(${u46_said} == 0)" "range(`v'): dash named range() at registration"
+        _dash_serve_spec, specpath("`u46d'/c10d.json") datapath("`u46d'/c10dd.json")
+        python: __import__("__main__")._u46_kd_empty("`u46d'/c10d.json", "`u46d'/c10dd.json")
+        _w31_expect U46-13 `"("${u46_bad}" == "")"' `"range(`v'): ${u46_bad}"'
+    }
+    _w31_done U46-13 "kdensity range() over no observation draws twoway's empty curve, silently"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

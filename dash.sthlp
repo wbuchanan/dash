@@ -1125,8 +1125,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:range()}: two numbers, a {cmd:.} for the data's own end on
     {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and {cmd:qfitci}, or on
     {cmd:kdensity} and {cmd:function} a variable, whose minimum and maximum
-    over the plot's sample are used; anything else is refused with
-    {cmd:twoway}'s code and words.
+    over the plot's sample are used (a string or all-missing one draws
+    {cmd:kdensity}'s curve empty, in silence, as {cmd:twoway} does, and
+    {cmd:function} "no observations", r(2000)); anything else is refused
+    with {cmd:twoway}'s code and words.
     Variables: {cmd:colorvar()} names one, {cmd:mlabel()} one per y (see
     {help dash##stylelists:Style lists}), {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is

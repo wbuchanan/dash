@@ -487,7 +487,7 @@ and now matches Stata.
 - `dash lfit mpg weight [aw=price-price]` (or any weight zero on every row): twoway's "(note:  regress could not fit model)" alone, and on kdensity and histogram nothing (was: also "74 observation(s) with a zero or negative weight are excluded", naming the internal column __dashw1) (WP-31, A5b)
 - `dash scatter mpg weight [aw=price-price]`: r(101) "- not allowed", and `[aw=(price)]` r(198) "( invalid name", as twoway reads a weight on scatter, line, the other glyph types, mspline and mband (was: evaluated); `dash mspline mpg weight [aw=w]`: no note (was: "accepts the weight and does not use it"); a note naming a weight expression names it as typed (was: __dashw1) (WP-31, A5b)
 
-<!-- WP-31 C10d -->
+- kdensity range() naming a string or an all-missing variable was drawn over the data's own span with a note; it draws an empty curve, silently, as twoway does (WP-31, C10d)
 
 - dash (scatter close open) (scatter close volume, xaxis(2)) (scatter close date, xaxis(3)) on sysuse sp500: axis 3 labelled 14,976 to 15,341 -> 01jan2001 to 01jan2002, as twoway; tlabel(01feb2001 01jun2001 01oct2001, axis(3)), ttitle(), ttick(), tscale() and tline() with axis(3) refused (r(198), r(121)) -> drawn on axis 3, and tmlabel(01apr2001 01oct2001, axis(2)) named -> drawn at those dates (WP-31, C10e)
 

@@ -2348,8 +2348,8 @@ end
 // and the saved page read numbers as for range(# #).  A move of a filter
 // does not move them: twoway draws once.  With no observation (a string
 // variable, or one all missing over the sample) function is r(2000) "no
-// observations", as twoway's is; kdensity, which twoway draws empty, is
-// drawn over its own span and named in one note.  Called by
+// observations", as twoway's is; kdensity is drawn as twoway draws it,
+// an empty curve, in silence (WP-31 C10d).  Called by
 // _dash_process_segment after _dash_validate_opts; the name passed the
 // kind's regex and confirm variable there.
 // ================================================================
@@ -2371,9 +2371,12 @@ program define _dash_fold_range, sclass
             display as error "no observations"
             exit 2000
         }
+        // kdensity: twoway draws an empty curve, rc 0, in silence
+        // (WP-31 C10d; estimator_edges_truth.json kd.range_string and
+        // kd.range_missing: every serset x and density missing).  The
+        // name goes with no numbers, which both renderers draw empty.
         sreturn local range ""
-        sreturn local range_var ""
-        mata: _dash_say("txt", "dash: range(", st_local("name"), "): no observations, the data's own range used")
+        sreturn local range_var "`name'"
         exit
     }
     local lo = strtrim(string(r(min), "%21.0g"))
