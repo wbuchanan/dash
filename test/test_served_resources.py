@@ -509,13 +509,15 @@ class TestTheSavedPageIsUnchanged:
 
 
 _SAVED_DIGEST = (
+    # Re-derived on the merged batch 15 (D15, G7 and C11 each re-pinned
+    # on its own base; code strings and formatter args).
     # old -> new: G1 the filter mask code (8c7b23d4...); G2 dp
     # (77a8a775...); C16 the recast writer in the filter code
     # (b02f3e94...); C11 lpoly's 1e-14 weight threshold in the filter code
     # (8fb420d4...); G7 the Stata writer reads %d as %td (965dbdfe...)
     # and %tb through its calendar (43f70b01...); D35 the rule-of-thumb
     # constants to pe 31 in the filter code
-    "87cf8ea2168ada0212c5067f6d7586f478b00886ef9f7168b0b5ea3226afc408")
+    "8848eb9410296fda040c17ba3112acd951fc6480f88464053f5bd75fb3261c26")
 
 
 # ===========================================================================

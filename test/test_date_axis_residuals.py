@@ -638,10 +638,12 @@ _PLAIN_DIGESTS = {
     # 02665fa0... -> 425a7065...: WP-31 G7 the Stata writer reads %d as
     # %td (writer JS text only); 425a7065... -> aea1fee4...: WP-31 G7 the
     # writer's %tb (writer JS text only).
+    # Merged batch 15 (D15, D15 follow-up, G7, C11 degree): 4f04a250...
+    # saved, 7533995b... served, re-derived on the merged tree.
     ("saved", "plain"):
-        "REDERIVE",
+        "4f04a25098b4277ab391b44239616225e586b8dd85bd74711824893a748f4c2b",
     ("saved", "yaxis2"):
-        "REDERIVE",
+        "4f04a25098b4277ab391b44239616225e586b8dd85bd74711824893a748f4c2b",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -656,9 +658,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "REDERIVE",
+        "7533995b574758063821b8505544ebaaf0356bf3567be459c84e9592ef386991",
     ("served", "yaxis2"):
-        "REDERIVE",
+        "7533995b574758063821b8505544ebaaf0356bf3567be459c84e9592ef386991",
 }
 
 

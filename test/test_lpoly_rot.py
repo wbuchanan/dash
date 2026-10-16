@@ -22,6 +22,7 @@ by the maintainer's ruling of 01oct2026: Stata's own float64 round-off on
 raw powers up to x^6, where dash's exact rule agrees with an all-Fraction
 computation from the data to 1e-14.
 """
+import math
 import importlib.util
 import itertools
 import json
@@ -329,6 +330,17 @@ class TestRotConstants:
                 c = dr._lpoly_rot_constant(k, p)
                 assert abs(tab[(k, p)] / c - 1) <= 1e-13, (k, p)
                 assert abs(tab[(k, p)] / _EVIDENCE_C[k][i] - 1) <= 1e-15, (k, p)
+            # WP-31 D35: degree 8 and above, a literal written from the same
+            # quadrature.  Its digits follow the numpy build there: measured
+            # across Stata's Python and the development one, 2e-10 relative
+            # to pe 13, 3e-7 at 17, 8% by pe 25 (the quadrature of high powers
+            # loses its precision, which is part of why dash notes a degree
+            # past 7); the literal keeps the page the same on every host.
+            for p in range(9, dr._lpoly_fit_degree_max_pe() + 1, 2):
+                c = dr._lpoly_rot_constant(k, p)
+                assert tab[(k, p)] > 0 and math.isfinite(tab[(k, p)]), (k, p)
+                if p <= 13:
+                    assert abs(tab[(k, p)] / c - 1) <= 1e-9, (k, p)
         # The implied constant r(bwidth)/term of every exact row on
         # unshifted data: the rule's term is h/C, so r(bwidth)*C/h.  The
         # offset sweep (x = weight + a*10^e) is held by test_r_bwidth.
