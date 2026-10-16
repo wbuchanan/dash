@@ -12790,6 +12790,98 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u46_fn_panels(sp, layer, out):
+    """The function layer's points in dash's spec, per panel, to a JSON
+    file of {"<i>": [y..]} (one key "flat" for the flat form)."""
+    import json
+    spec = json.load(open(sp, encoding="utf-8"))
+    tab = list((spec.get("function_points") or {}).values())[0]
+    pts = tab[str(layer)]
+    if "panels" in pts:
+        res = {k: v["y"] for k, v in pts["panels"].items()}
+    else:
+        res = {"flat": pts["y"]}
+    json.dump(res, open(out, "w", encoding="utf-8"))
+
+
+def _u46_fn_close(dash_json, tw_json):
+    """global u46_bad empty when dash's per-panel y equal twoway's
+    function sersets (float), in order."""
+    import json
+    import numpy as np
+    from sfi import Macro
+    d = json.load(open(dash_json, encoding="utf-8"))
+    t = json.load(open(tw_json, encoding="utf-8"))
+    bad = []
+    if "flat" in d:
+        bad.append("dash wrote one curve for %d panels" % len(t))
+    else:
+        for i, ty in enumerate(t):
+            dy = d.get(str(i))
+            if dy is None or len(dy) != len(ty) or not np.allclose(
+                    np.asarray(dy, float), np.asarray(ty, float), rtol=1e-6):
+                bad.append("panel %d differs" % i)
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+
+
+def _u46_take_y(out, append):
+    import json
+    import os
+    from sfi import Data
+    ys = [float(v) for v in Data.get(var=0)]
+    prev = json.load(open(out)) if append and os.path.exists(out) else []
+    prev.append(ys)
+    json.dump(prev, open(out, "w"))
+end
+
+* ==== S46 C12: function per panel ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+
+    // U46-04: function y = runiform() under by(foreign) is evaluated once
+    // per panel, in panel order, by twoway's generator: dash's points per
+    // panel equal twoway's sersets from the same seed; the malformed
+    // y-forms give twoway's return codes.
+    sysuse auto, clear
+    capture graph drop _all
+    capture serset drop _all
+    set seed 4646
+    quietly twoway function y = runiform(), n(5) by(foreign) nodraw
+    capture erase "`u46d'/fn_tw.json"
+    forvalues s = 0/1 {
+        quietly serset set `s'
+        preserve
+        quietly serset use, clear
+        python: __import__("__main__")._u46_take_y("`u46d'/fn_tw.json", 1)
+        restore
+    }
+    capture graph drop _all
+    sysuse auto, clear
+    set seed 4646
+    dash clear
+    capture noisily dash function y = runiform(), n(5) by(foreign) name(zu46f)
+    _w31_expect U46-04 "(_rc == 0)" "dash function under by() rc `=_rc'"
+    _dash_serve_spec, specpath("`u46d'/fn.json") datapath("`u46d'/fnd.json")
+    python: __import__("__main__")._u46_fn_panels("`u46d'/fn.json", 1, "`u46d'/fn_dash.json")
+    python: __import__("__main__")._u46_fn_close("`u46d'/fn_dash.json", "`u46d'/fn_tw.json")
+    _w31_expect U46-04 `"("${u46_bad}" == "")"' `"${u46_bad}"'
+    foreach t in "function 2x" "function y=" "function =x" "function y = " {
+        capture twoway `t', nodraw
+        local trc = _rc
+        dash clear
+        capture dash `t', name(zu46m)
+        local drc = _rc
+        _w31_expect U46-04 "(`trc' == `drc')" "`t': twoway r(`trc'), dash r(`drc')"
+    }
+    _w31_done U46-04 "function under by() is evaluated per panel as twoway evaluates it; malformed forms give twoway's codes"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

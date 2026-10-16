@@ -299,6 +299,10 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_fn_panel_count(byraw, touse)
+*!       The panels by() draws over the rows touse marks, for the function
+*!       layers evaluated once per panel (WP-31 C12).
+*!
 *!   _dash_lpolyci_opts(unk, ptype)
 *!       lpolyci's pwidth() and var() taken out of the catch-all by value,
 *!       and twoway's checks on them and on level(), in twoway's order:
@@ -5823,7 +5827,8 @@ real scalar _dash_fn_stray_close(string scalar s)
 // begins with {, ends with }, and every byte is one of 0-9 . + - e E n u l
 // x d y " : , { } [ ] (an ascii() lookup), or o b s h i, the letters of a
 // fit layer's keys lo, hi and nobs (WP-31 C4), or r o p s, which with d
-// spell drops (WP-31 C5).  A global the user set by hand to anything
+// spell drops (WP-31 C5), or a, which with p n e l s spells panels, a
+// by() layer's per-panel points (WP-31 C12).  A global the user set by hand to anything
 // else -- }],"graphs":[ among them -- cannot reach the spec.
 real scalar _dash_fn_points_ok(string scalar txt)
 {
@@ -5832,7 +5837,7 @@ real scalar _dash_fn_points_ok(string scalar txt)
 
     if (strlen(txt) < 2) return(0)
     if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
-    allowed = "0123456789.+-eEnulxdyobshirps" + char(34) + ":,{}[]"
+    allowed = "0123456789.+-eEnulxdyobshirpsa" + char(34) + ":,{}[]"
     ok = J(1, 256, 0)
     b  = ascii(allowed)
     ok[b :+ 1] = J(1, cols(b), 1)
@@ -11294,6 +11299,46 @@ real scalar _dash_by_panel_n(string scalar gjson, real scalar bygroups)
     key = select(key, keep)
     n = rows(key) ? rows(uniqrows(key)) : 0
     if (n > bygroups) n = bygroups
+    return(n + tot)
+}
+
+// _dash_fn_panel_count(byraw, touse) -- the panels by(byraw) draws over
+// the rows where the variable touse is 1: _dash_by_panel_n's rule (the
+// distinct value combinations, missing ones left out unless `missing',
+// plus one for `total'), for the function layers dash.ado evaluates once
+// per panel (WP-31 C12).  -1 when a by() variable is not in the data.
+real scalar _dash_fn_panel_count(string scalar byraw, string scalar touse)
+{
+    string scalar   vl, op
+    string rowvector vars
+    string matrix   key
+    real colvector  keep
+    real scalar     p, i, idx, n, miss, tot
+
+    p = strpos(byraw, ",")
+    vl = p ? substr(byraw, 1, p - 1) : byraw
+    op = p ? " " + strlower(substr(byraw, p + 1, .)) + " " : ""
+    miss = ustrregexm(op, "[ ,](mis|miss|missi|missin|missing)[ ,(]")
+    tot  = ustrregexm(op, "[ ,](tot|tota|total)[ ,(]")
+    vars = tokens(vl)
+    if (cols(vars) == 0) return(-1)
+    n = st_nobs()
+    key = J(n, cols(vars), "")
+    keep = st_data(., touse) :== 1
+    for (i = 1; i <= cols(vars); i++) {
+        idx = _st_varindex(vars[i], 1)
+        if (idx == .) return(-1)
+        if (st_isstrvar(idx)) {
+            key[., i] = st_sdata(., idx)
+            if (!miss) keep = keep :* (key[., i] :!= "")
+        }
+        else {
+            key[., i] = strofreal(st_data(., idx), "%21x")
+            if (!miss) keep = keep :* (st_data(., idx) :< .)
+        }
+    }
+    key = select(key, keep)
+    n = rows(key) ? rows(uniqrows(key)) : 0
     return(n + tot)
 }
 

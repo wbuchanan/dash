@@ -461,7 +461,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10e Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit 78df376.
 - **C11 Tracked:** Closed in WP-31, BUGS.md "lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if", commit pending.
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
-- **C12 Tracked:** Open (WP-31 section 46).
+- **C12 Tracked:** Closed in WP-31, BUGS.md "function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed", commit pending.
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
 - **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit 52b3d18.
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit d5556ea.

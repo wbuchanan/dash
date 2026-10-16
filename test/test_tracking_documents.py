@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "C12": "function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed",
     "G6": "Fractional %t values are floored on load and join-order edge cases differ",
     "G7": "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses",
     "F2": "The function points-free fallback evaluates ten math names only",

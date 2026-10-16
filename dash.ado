@@ -452,7 +452,7 @@ program define _dash_require_mata
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
-        _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
+        _dash_unbound_cands _dash_fn_panel_count _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
@@ -8547,9 +8547,47 @@ program define _dash_plot
     // checks it against c(macrolen)).
     tempname _fp_sc _fx_raw
     mata: st_strscalar(st_local("_fp_sc"), "")
-    forvalues _m = 1/`_fn_m' {
-        mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
-        _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc' "`_fn_d_`_m''"
+    // Under by(), twoway evaluates each function layer once per panel, in
+    // panel order, over the same range() (WP-31 C12, measured: function
+    // y = runiform(), by(foreign) draws different points in each panel):
+    // the layer's points become {"panels": {"<i>": points}}, i the panel's
+    // place from 0, which the renderers read per panel
+    // (_dash_fn_panel_spec).  One panel, or none, keeps the flat form.
+    local _fn_np 0
+    if `_fn_m' & `: length local g_by' {
+        // The panels by() draws over the graph's if and in.
+        tempvar _fn_tu
+        quietly generate byte `_fn_tu' = 0
+        local _fn_q ""
+        if `: length local _gq_if' local _fn_q `"if (`macval(_gq_if)')"'
+        if `: length local _gq_in' local _fn_q `"`macval(_fn_q)' in `macval(_gq_in)'"'
+        quietly replace `_fn_tu' = 1 `macval(_fn_q)'
+        mata: st_local("_fn_np", strofreal(_dash_fn_panel_count(st_local("g_by"), st_local("_fn_tu"))))
+        drop `_fn_tu'
+    }
+    if `_fn_np' > 1 {
+        forvalues _m = 1/`_fn_m' {
+            tempname _fpl_`_m'
+            mata: st_strscalar(st_local("_fpl_`_m'"), "")
+        }
+        forvalues _p = 1/`_fn_np' {
+            forvalues _m = 1/`_fn_m' {
+                mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
+                _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `=`_p'-1' `_fpl_`_m'' "`_fn_d_`_m''"
+            }
+        }
+        forvalues _m = 1/`_fn_m' {
+            mata: st_strscalar(st_local("_fp_sc"), st_strscalar(st_local("_fp_sc")) + ///
+                (st_strscalar(st_local("_fp_sc")) == "" ? "" : ",") + char(34) + ///
+                st_local("_fn_k_`_m'") + char(34) + ":{" + char(34) + "panels" + ///
+                char(34) + ":{" + st_strscalar(st_local("_fpl_`_m'")) + "}}")
+        }
+    }
+    else {
+        forvalues _m = 1/`_fn_m' {
+            mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
+            _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc' "`_fn_d_`_m''"
+        }
     }
     // The fit layers' points join the function layers' (WP-31 C4).
     mata: st_strscalar(st_local("_fp_sc"), st_strscalar(st_local("_fp_sc")) + ///
@@ -9968,6 +10006,15 @@ program define _dash_fn_points
         substr(st_local("_fx_raw"), strlen(ustrregexs(0)) + 1, .) : st_local("_fx_raw")))
     mata: st_local("_fx_echo", (ustrlen(st_local("_fx_echo")) > 200 ? ///
         usubstr(st_local("_fx_echo"), 1, 197) + "..." : st_local("_fx_echo")))
+    // WP-31 C12: a bare `=' before the expression (function =x) is
+    // refused r(198) as twoway refuses it -- its words name a temporary
+    // object ("__00000I.get_plot_count invalid name"), so dash gives the
+    // last two.
+    mata: st_local("_fx_beq", strofreal(ustrregexm(st_local("_fx_raw"), "^[ \t]*=")))
+    if `_fx_beq' {
+        display as error "invalid name"
+        exit 198
+    }
     mata: _dash_comma_pos(st_local("_fx_raw"), "_fx_cpos")
     // A "' with no `" open before it ends a compound quote that was never
     // opened: twoway's own parse of its command refuses it, r(198), before

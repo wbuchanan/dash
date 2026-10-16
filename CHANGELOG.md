@@ -476,7 +476,7 @@ and now matches Stata.
 
 - lpoly mpg weight, kernel(gaussian) bwidth(1) drew 23 points; it draws twoway's 3 (a kernel weight of 1e-14 or less no longer counts). lpoly and lpolyci on one observation with pwidth(0) or bwidth(abc) were refused as option errors, r(198); they are "insufficient observations", r(2001), as twoway counts first. lpoly's bwidth(abc), bwidth(-1), degree(-1), n(0), n(abc) and kernel(x) are refused in twoway's words ("variable abc not found", r(111); "bwidth() must be a positive number"; "degree() must be a nonnegative number"; "n() must be a positive number"; "option n() not allowed"; "invalid kernel function"), and lpolyci's pwidth(+800), accepted before, is "expression invalid", r(3000) (WP-31, C11)
 
-<!-- WP-31 C12 -->
+- function y = runiform(), by(foreign) drew the same points in every panel; each panel draws its own, evaluated in panel order as twoway evaluates them. function =x, drawn before, is refused r(198) as twoway refuses it (WP-31, C12)
 
 <!-- WP-31 G6 -->
 

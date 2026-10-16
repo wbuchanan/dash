@@ -632,7 +632,12 @@ draws it: {cmd:sqrt(x)} over {cmd:range(-1 1)} is drawn from 0 to 1, and
 an expression missing everywhere draws nothing, in silence.  With no
 expression, {cmd:function} is refused as {cmd:twoway} refuses it:
 {cmd:expression required}, {cmd:r(100)}, or after {it:y} {cmd:=},
-{cmd:nothing found where expression expected}, {cmd:r(111)}.
+{cmd:nothing found where expression expected}, {cmd:r(111)}; a bare
+{cmd:=} before it ({cmd:function =x}) is {cmd:invalid name},
+{cmd:r(198)}.  Under {cmd:by()}, the expression is evaluated once per
+panel, in panel order, over the same {cmd:range()}, as {cmd:twoway}
+evaluates it, so {cmd:function y = runiform(), by(foreign)} draws
+{cmd:twoway}'s different points in each panel.
 
 {pstd}
 The points are fixed when the graph is registered, as {cmd:twoway}'s

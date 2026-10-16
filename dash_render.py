@@ -54049,6 +54049,40 @@ def _dash_join_key(source, sort_keys, col):
                      "its join key by.")
 
 
+def _dash_fn_panel_spec(g, idx):
+    """The graph *g* as by() panel *idx* (from 0) draws its function layers.
+
+    Under by(), dash.ado writes a function layer's points once per panel,
+    as twoway evaluates it once per panel in panel order (WP-31 C12;
+    ``function y = runiform(), by(foreign)`` draws different points in
+    each): ``{"panels": {"<idx>": points}}``.  This is a copy of *g* whose
+    function plots carry panel *idx*'s points (None when the panel has
+    none, which draws the layer empty); *g* itself when no plot carries a
+    ``panels`` map.  Both render modes call it; the served app copies it
+    by source.
+    """
+    if not isinstance(g, dict):
+        return g
+    plots = g.get("plots") or []
+
+    def _has(p):
+        return (isinstance(p, dict) and isinstance(p.get("points"), dict)
+                and "panels" in p["points"])
+    if not any(_has(p) for p in plots):
+        return g
+    out = dict(g)
+    new = []
+    for p in plots:
+        if _has(p):
+            p = dict(p)
+            pan = p["points"].get("panels")
+            p["points"] = (pan.get(str(int(idx)))
+                           if isinstance(pan, dict) else None)
+        new.append(p)
+    out["plots"] = new
+    return out
+
+
 def _dash_total_spec(g):
     """The graph *g* as its by(, total) Total panel draws it.
 
@@ -58239,6 +58273,8 @@ class DashRenderer:
                         # (_dash_total_spec).
                         g_panel = (_dash_total_spec(g)
                                    if fkey in self._facet_total_keys else g)
+                        # WP-31 C12: the panel's own function points.
+                        g_panel = _dash_fn_panel_spec(g_panel, panel_idx_r)
                         fig = self._make_figure(g_panel, src,
                                                 facet_view=panel_view_r,
                                                 rescale=_brs)
@@ -60509,6 +60545,8 @@ class ServerAppBuilder:
                          "_dash_stata_or_model", "_dash_stata_num",
                          # D1d: the outer axes' minor-label pool.
                          "_dash_minor_pool_size",
+
+                         "_dash_fn_panel_spec",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
                          "_dash_add_code_text", "_dash_label_key",
@@ -63304,11 +63342,12 @@ class ServerAppBuilder:
             "                _pgdata['index'] = list(_pgdf.index)",
             "                graph_sources[_fname] = [ColumnDataSource(_pgdata)]",
             "            _owner_rows[_fname] = _gdf.index",
-            "            _g_pan = g",
+            "            # WP-31 C12: the panel's own function points.",
+            "            _g_pan = _dash_fn_panel_spec(g, _fi)",
             "            if _fi == _t_idx and _g_tot is not g:",
             "                # The Total panel: its own qualifier columns, drawn",
             "                # and reapplied after a filter move (_total_quals).",
-            "                _g_pan = _g_tot",
+            "                _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
             "                _total_quals[_fname] = {",
             "                    'if_expr': _g_if, 'in_expr': _g_in,",
             "                    'qual_col': str(_g_tot.get('qual_col') or '')}",

@@ -278,7 +278,8 @@ COVERAGE = {
         # random-number state (FX-01..FX-06); the stored points equal
         # twoway's serset (FX-20).
         "_dash_fn_points": ("test_parser.cscript:FX-01",
-                            "test_wp29_truth.cscript:FX-20"),
+                            "test_wp29_truth.cscript:FX-20",
+                            "test_wp31_truth.cscript:U46-04"),
         # e2e (WP-31 C4): the fit options on the types twoway takes them
         # on, their pairs with range() and fitplot()/ciplot() named as
         # twoway names them; a fit drawn with estopts() stores twoway's
@@ -465,6 +466,8 @@ COVERAGE = {
         # WP-31 G3: a by() graph's real panel count, through
         # _dash_computed_cells.
         "_dash_by_panel_n": ("test_wp31_truth.cscript:U43-07",),
+        # WP-31 C12: a function layer's panels under by().
+        "_dash_fn_panel_count": ("test_wp31_truth.cscript:U46-04",),
         "_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
         # e2e: _dash_json_str is this function's one caller.
