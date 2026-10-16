@@ -490,3 +490,35 @@ class TestSecondaryAxes:
             _L("scatter", "trunk", "obs", yaxis="2")], {}, [e])
         right = [a for a in figs[0].right if hasattr(a, "ticker")]
         assert right and _major_ticks(right[0]) == e[4]
+
+
+class TestTickMinmaxAndSharedTicks:
+    """D15 follow-up: xtick(minmax) follows a move as xlabel(minmax)
+    does, and a shared by() letter's xtick(#N) with no count label is
+    placed once over every panel's kept rows, in both modes."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_tick_minmax(self, tmp_path, mode):
+        p = _P["P4"]
+        obj, figs = _build(tmp_path, mode, _plots("P4"),
+                           {"ytick": "minmax"}, filt="pv")
+        lo, hi = p["data_lo"], p["data_hi"]
+        assert _efix(_axis(figs[0], "y")) == [lo, hi]
+        figs = _move(mode, obj, (lo, 10000.0))
+        khi = float(_DF.loc[_DF["pv"] <= 10000.0, "price"].max())
+        assert _efix(_axis(figs[0], "y")) == [lo, khi]
+        # The marks drawn are efix's (the page writes efix, not extra).
+        assert _axis(figs[0], "y").ticker.minor_code == dr._DASH_TICK_EFIX_JS
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_shared_by_letter(self, tmp_path, mode):
+        p = _P["P4"]
+        lo = p["data_lo"]
+        obj, figs = _build(tmp_path, mode, _plots("P4"),
+                           {"by": "g", "ylabel": "0(5000)20000",
+                            "ytick": "#4"}, filt="pv")
+        assert len(figs) == 2
+        figs = _move(mode, obj, (lo, 10000.0))
+        khi = float(_DF.loc[_DF["pv"] <= 10000.0, "price"].max())
+        want = dr._dash_axis_count_ticks(lo, khi, 4)
+        assert [_efix(_axis(f, "y")) for f in figs] == [want, want]

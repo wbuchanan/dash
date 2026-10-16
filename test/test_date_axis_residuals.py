@@ -633,10 +633,12 @@ _PLAIN_DIGESTS = {
     # 02665fa0... -> 5777f9c1...: WP-31 D15 the finish code reads Stata's
     # own ticks (dash_stata_pick) and re-places xtick(#N) (finish JS text
     # only).
+    # 5777f9c1... -> 1735f74a...: WP-31 D15 follow-up, a shared by()
+    # letter's xtick(#N) in the finish code (finish JS text only).
     ("saved", "plain"):
-        "5777f9c179f44a6fe054d29296208d0d077585d63484f51a9df162724606040f",
+        "1735f74a66b294ea1d1977076e13143aca5c6347c63615e2c4f96270ad879372",
     ("saved", "yaxis2"):
-        "5777f9c179f44a6fe054d29296208d0d077585d63484f51a9df162724606040f",
+        "1735f74a66b294ea1d1977076e13143aca5c6347c63615e2c4f96270ad879372",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -645,11 +647,12 @@ _PLAIN_DIGESTS = {
     # as the saved page's; 8af4b99f... -> c6afee47...: WP-31 D12, as the
     # saved page's; c6afee47... -> 0a83753e...: WP-31 E2, as the saved
     # page's; 0a83753e... -> 1fc4cc55...: WP-31 G1/G2, as the saved
-    # page's; 1fc4cc55... -> 1d5c76fb...: WP-31 D15, as the saved page's.
+    # page's; 1fc4cc55... -> 1d5c76fb...: WP-31 D15, as the saved page's;
+    # 1d5c76fb... -> f2fa6195...: the D15 follow-up, as the saved page's.
     ("served", "plain"):
-        "1d5c76fb2b8c5b762bb4d9c82d4c0f68814ae7a111cf056057937d9fb70c2406",
+        "f2fa619579578c25234212d4a34e970ad1b6f1434998535b857c4da14a142f7b",
     ("served", "yaxis2"):
-        "1d5c76fb2b8c5b762bb4d9c82d4c0f68814ae7a111cf056057937d9fb70c2406",
+        "f2fa619579578c25234212d4a34e970ad1b6f1434998535b857c4da14a142f7b",
 }
 
 

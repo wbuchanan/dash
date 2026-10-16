@@ -4134,7 +4134,7 @@ form keep the axis's default ticks, with a note.
 
 {pstd}
 A default axis, or one labelled {cmd:#}{it:N}, is ticked where Stata's own {cmd:_natscale} and {cmd:_tsnatscale} tick it, asked of Stata over the rows each layer draws when the data are exported; after a filter move the saved page and the served app place {cmd:twoway}'s rule with a fitted model that agrees with Stata on 58-98% of ranges (measured), and a move back to all the data restores Stata's ticks. {cmd:xtick(#}{it:N}{cmd:)} and {cmd:xlabel(minmax)} follow a move the same way.
-An axis whose drawn range is not its variables' (a {cmd:histogram}, {cmd:kdensity} or {cmd:function} layer, a fit's grid, a {cmd:range()} that widens the ticks) takes the model at once. {it:Difference from twoway:} the plot-region margin is a fraction of the frame fixed when the page is built, where {cmd:twoway}'s is an absolute size, so a page resized well beyond its built width places the data up to about 0.8% of the width from where {cmd:twoway} would.
+An axis whose drawn range is not its variables' (a {cmd:histogram}, {cmd:kdensity} or {cmd:function} layer, a fit's grid, a {cmd:range()} that widens the ticks) takes the model at once. {it:Difference from twoway:} the plot-region margin is a fraction of the frame fixed when the page is built, where {cmd:twoway}'s is an absolute size, so a page resized well beyond its built width places the data up to about 1.3% of the plot width from where {cmd:twoway} would at each end (measured below).
 
 {pstd}
 Any of those may be followed by a comma and the sub-options
@@ -4244,12 +4244,15 @@ ticks, label and tick positions and {cmd:range()} values, plus
 {cmd:twoway}'s plot-region margin: 2.2% of the graph's smaller side at each
 end (0.6% under {cmd:economist}; a {cmd:by()} panel's scaled as {cmd:twoway}
 scales it), in log units on a log axis.  The margin is fixed when the page
-is built, so it is placed within about 0.8% of the figure's width of
-{cmd:twoway}'s.  After a filter move a default or {cmd:#}{it:N} axis, a second
+is built, so a page drawn wider or narrower than it was built places it up
+to about 1.3% of the plot width from {cmd:twoway}'s at each end (measured,
+{cmd:scatter mpg weight, ysize(4)}: 1.87% of the width a side at
+{cmd:xsize(5.5)}, 2.74% at 2 to 4 inches, 0.86% at 11, 0.58% at 16).  After a filter move a default or {cmd:#}{it:N} axis, a second
 axis included, is ticked and spanned again over the rows kept, in the saved
 page and the served app alike, and an axis with explicit positions keeps them
 and spans its data again; {cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)}
-marks and {cmd:minmax} positions keep their places.  On the saved page a fit,
+marks and {cmd:minmax} positions (labels and ticks) are placed again over the
+rows kept, a {cmd:by()} graph's shared axis once over every panel.  On the saved page a fit,
 histogram or grid that
 the page does not recompute after a move, marked "(unfiltered)", stays inside
 the axis as drawn.

@@ -40333,7 +40333,8 @@ function dash_axis_compute(plan, models) {
         if (panels.length > 1) {
             const byKey = {};
             for (const row of st) for (const s of row) {
-                if (s.a.mode !== "count" || !share.includes(s.a.letter)) continue;
+                // WP-31 D15: an xtick(#N) beside no count label is shared too.
+                if ((s.a.mode !== "count" && !s.a.every) || !share.includes(s.a.letter)) continue;
                 (byKey[s.a.key] = byKey[s.a.key] || []).push(s);
             }
             for (const es of Object.values(byKey)) {
@@ -40811,7 +40812,7 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     between labels, which Stata does not draw, are not drawn on an axis
     that has an xtick().
     """
-    from bokeh.models.tickers import BasicTicker, CustomJSTicker
+    from bokeh.models.tickers import BasicTicker, CustomJSTicker, FixedTicker
     text = str(raw or "")
     spec = _dash_parse_axis_spec(text)
     _dash_note_major_between(spec)
@@ -40845,7 +40846,12 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         vals = pd.Series(_dash_float_values(values, coerce=True)).dropna()
         if not len(vals):
             return
+        # WP-31 D15: minmax is tickset's #1, so it is placed as xtick(#1)
+        # is -- over the layers drawn, again after every filter move (the
+        # FixedTicker efix); these are its marks until then.
         args["extra"] = [float(vals.min()), float(vals.max())]
+        args["every"] = FixedTicker(ticks=[], minor_ticks=[], tags=[
+            _DASH_COUNT_TAG + "1", _DASH_MINMAX_TAG])
         minor = _DASH_TICK_EXTRA_JS
     else:
         return
@@ -43592,7 +43598,8 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
         if a.get("extra") != vals or "efix" not in dict(t.args):
             a["extra"] = vals
             t.args = a
-        if t.minor_code == _DASH_TICK_EVERY_JS:
+        if t.minor_code in (_DASH_TICK_EVERY_JS, _DASH_TICK_EXTRA_JS):
+            # xtick(minmax)'s first marks were its build-time extra.
             t.minor_code = _DASH_TICK_EFIX_JS
         t._dash_every_base = every
         ax._dash_every_extra = list(vals)
