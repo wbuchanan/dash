@@ -2030,6 +2030,7 @@ WP31_OPEN = {
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
     "D9b": "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis",
     "D1d": "An outer axis's ##N minor labels after a move are capped at its build's label pool",
+    "D10c": "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2175,6 +2176,7 @@ WP31_LISTS = {
     "D11b": ("Results that change",),
     "D9b": ("Results that change",),
     "D1d": ("Results that change",),
+    "D10c": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2319,6 +2321,7 @@ WP31_SECTION = {
     "D11b": 39,
     "D9b": 45,
     "D1d": 45,
+    "D10c": 44,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2535,7 +2538,8 @@ class TestWp31Tracking:
         # 132 -> 134: D30 adds D6b, C17b.
         # 134 -> 135: D31 adds E11b.
         # 135 -> 139: D32 adds D10b, D11b, D9b, D1d.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 139
+        # 139 -> 140: D34 adds D10c.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 140
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

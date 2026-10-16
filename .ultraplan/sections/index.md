@@ -105,7 +105,7 @@
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) + C17b (D30) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
-| 44 | style-file-resolver | E10 + C8c (D18) + E11b (D31) | 15 | 40 | -- | red | L | 4 |
+| 44 | style-file-resolver | E10 + C8c (D18) + E11b (D31) + D10c (D34) | 15 | 40 | -- | red | L | 4 |
 | 45 | date-ticks-natscale | D15 + D9b (D32) + D1d (D32) | 15 | 01 | -- | red | L | 3 |
 | 46 | estimator-edges | C11, C12, C16, G6, G7, F5 + C10d (D14) | 15 | 01 | -- | yellow | M | 4 |
 | 47 | function-fallback-fixtures | F2, F3 + C18b (D14) | 16 | 01 | -- | yellow | M | 3 |
@@ -161,6 +161,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D11b | margin(l+1e400) draws zeros with a note where twoway draws a medium margin (D32) | S37 | S39 (13) | RC |
 | D9b | With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis (D32) | S35 | S45 (15) | RC |
 | D1d | An outer axis's ##N minor labels after a move are capped at its build's label pool (D32) | S35 | S45 (15) | RC |
+| D10c | The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales (D34) | S39 | S44 (15) | RC |
 
 ## Batch execution order
 

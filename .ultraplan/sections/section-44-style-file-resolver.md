@@ -361,3 +361,15 @@ AC-44.1 every fixture name drawn; AC-44.2 guards hold (including the swapped-fil
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 E11b)`; close the BUGS.md entry "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches" (Resolution ending `Closes GAPS3 E11 (WP-31, E11b).`), delete its `"E11b":` WP31_OPEN line, rewrite GAPS3.md's `- **E11b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 E11b -->` under `### Results that change` with a line ending `(WP-31, E11b)`. dash replaces twoway (D13).
 
+## Addendum (16oct2026, DECISIONS D34): row D10c added to this section
+
+### D10c: The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales
+
+**Gap.** S36/S39 draw by()'s scales, regions, shrink, margins and outline; the bystyles econ and stata7 are named, and combine and rescale draw only their separate scales.
+
+**Requirement.** Resolve `bystyle-<name>.style` with S44's reader (embedded at registration like the other style rows), map its keys onto the by() appliers (`_dash_by_apply_regions`, `_dash_by_side_grid`, the panel axes), measure against the fixture's bystyle_* probes, both modes; drop each name from the note as it is drawn.
+
+**Fits S44** because S44 owns reading Stata's style files in batch 15.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D10c)`; close the BUGS.md entry "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales" (Resolution ending `Closes GAPS3 D10 (WP-31, D10c).`), delete its `"D10c":` WP31_OPEN line, rewrite GAPS3.md's `- **D10c Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D10c -->` under `### Results that change` with a line ending `(WP-31, D10c)`. dash replaces twoway (D13).
+

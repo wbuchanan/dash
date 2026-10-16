@@ -4031,7 +4031,7 @@
   - Resolution: Not fixed because WP-31 section 45 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
 - [ ] Title: The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales
-  - File Names and Line Numbers: dash_render.py _dash_parse_by (style(econ), style(stata7) named; style(rescale|combine) "only its separate scales are drawn")
-  - Description: GAPS3.md D10, residual of WP-31 D10b (measured 16oct2026, test/fixtures/by_remainder_truth.json bystyle_*): twoway's style(econ) fills each panel's plot region (#b2bfcb under s2color) and sets the labels lower; style(stata7) draws a y axis on every panel with smaller tick labels; style(combine) and style(rescale) draw each panel in a graph region of its own. dash names econ and stata7 and draws only combine's and rescale's separate scales.
-  - Suggested fix: Read each bystyle's style file (bystyle-*.style) and draw its attributes through the by() appliers, in both renderers, measured against twoway.
-  - Resolution: Not fixed: it stays open because each bystyle needs its own style file read and its own appliers, beyond WP-31 section 39 (D10b), which drew shrink, the margins and the outline. Graded S3 (WP-31): fidelity of four rarely used bystyles.
+  - File Names and Line Numbers: dash_render.py _dash_parse_by (style(econ), style(stata7) named; style(rescale|combine) draw only their separate scales)
+  - Description: GAPS3.md D10, found by WP-31 section 39 (D10b residual, measured 16oct2026, test/fixtures/by_remainder_truth.json bystyle_*): twoway's style(econ) fills each panel's plot region (#b2bfcb under s2color) and sets the labels lower; style(stata7) draws a y axis on every panel with smaller tick labels; style(combine) and style(rescale) draw each panel in a graph region of its own. dash names econ and stata7 and draws only combine's and rescale's separate scales.
+  - Suggested fix: WP-31 section 44 (style file resolver): read each bystyle's style file (bystyle-*.style) through the resolver and draw its attributes through the by() appliers, in both renderers, measured against twoway.
+  - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

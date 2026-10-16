@@ -489,6 +489,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D9b Tracked:** Open (WP-31 section 45).
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit af3273a.
 - **D10b Tracked:** Partly closed in WP-31 (section 39, commit pending): shrink and overallshrink, the region margin() inset, the plotregion() outline once around the array and style(altleg) are drawn; open: the econ, stata7, combine and rescale bystyles beyond their scales (BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales").
+- **D10c Tracked:** Open (WP-31 section 44).
 - **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit a8ae5a6.
 - **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit pending.
 - **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit pending.
