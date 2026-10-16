@@ -492,13 +492,44 @@ class TestTheAxisTitleRule:
             assert isinstance(x, str) and isinstance(y, str)
 
 
+def _drawn_numbers(probe):
+    """twoway's titles keyed by the number dash draws each axis as.
+
+    Flipped (WP-31 D9): twoway's ``titles`` are keyed by the typed axis
+    number, and dash renumbers a letter's axes by first use when the first
+    layer is not on axis 1 (``_dash_lone_second_axes``; twoway draws the
+    first used on the left: H01's svg_titles put Price, axis 2, on the
+    left), so each typed number is read as the axis it is drawn as."""
+    want = dict(probe["twoway"]["titles"])
+    plots = ((probe.get("dash") or {}).get("graph") or {}).get("plots") or []
+    for letter in ("y", "x"):
+        used = []
+        for p in plots:
+            nos = dr._dash_axis_nos(p.get("options"), letter)
+            if len(nos) != 1:
+                used = []
+                break
+            if nos[0] not in used:
+                used.append(nos[0])
+        if not used or used[0] == 1:
+            continue
+        mapping = {t: d + 1 for d, t in enumerate(used)}
+        old = {n: want.get(f"{letter}{n}", "") for n in (1, 2)}
+        for n in (1, 2):
+            want[f"{letter}{n}"] = ""
+        for t, d in mapping.items():
+            if t in old and d in (1, 2):
+                want[f"{letter}{d}"] = old[t]
+    return want
+
+
 @pytest.mark.parametrize("mode", ["saved", "served"])
 class TestTitlesMatchTwoway:
     def test_titles(self, mode):
         got = _probe_summaries(mode)
         bad = []
         for pid in sorted(_FIX["probes"]):
-            want = _FIX["probes"][pid]["twoway"]["titles"]
+            want = _drawn_numbers(_FIX["probes"][pid])
             have = {k: got[pid][k] for k in ("y1", "y2", "x1", "x2")}
             if have != want:
                 bad.append("%s: dash %r, twoway %r" % (pid, have, want))

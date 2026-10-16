@@ -1294,7 +1294,8 @@ curves, its histogram bar heights, its {cmd:lfit}, {cmd:qfit},
 its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
 and bands and, up to 1,000 distinct points, its {cmd:contour} and
 {cmd:contourline} layers in the browser, and keeps its other computed
-layers, and its histogram bins, as they were built; see
+layers, and its histogram bins, as they were built; both re-scale every
+axis, the second axes' ranges included, over the rows kept; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see
 {help dash##server_mode:Server Mode}.
@@ -4299,6 +4300,16 @@ drawn on the left, axis 1 nearest the plot and the others outward in number
 order; with two, the lower-numbered is on the left and the other on the
 right ({cmd:yaxis(1)} and {cmd:yaxis(3)}: axis 3 on the right); x axes
 alike, below and above -- as {cmd:twoway} places them under {cmd:s2color}.
+When the first layer is not on axis 1, the axes are drawn in the order the
+layers first use them, as {cmd:twoway} draws them: the first one used on
+the left (bottom) and the next on the right (top), each with the options
+written for it -- {cmd:(scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3))}
+has axis 2 on the left and axis 3 on the right, and
+{cmd:(scatter price weight, yaxis(2)) (scatter mpg weight)} axis 2 on the
+left and axis 1 on the right.  Every second axis re-scales over the rows a
+filter move keeps, as the first axes do, in the saved page and the served
+app, and a sideways ({cmd:horizontal}) layer on {cmd:yaxis(2)} titles its
+axes as {cmd:twoway} titles them.
 A layer naming several axes ({cmd:yaxis(2 3)}) ties them into one scale
 with every layer on any of them, as {cmd:twoway} does, and every layer on
 one axis 3 to 9 alone is drawn on one left (bottom) axis.  {it:Difference}

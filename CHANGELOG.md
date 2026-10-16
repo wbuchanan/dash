@@ -446,7 +446,7 @@ and now matches Stata.
 
 - dash bar mpg weight, mlabel(make): labels at 3 o'clock -> 12, above the bars, as twoway (WP-31, C15)
 
-<!-- WP-31 D9 -->
+- dash (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)): both axes on the left beside an empty first axis -> axis 2 on the left and axis 3 on the right, and (scatter price weight, yaxis(2)) (scatter mpg weight): axis 1 on the left -> axis 2, the first used, on the left, as twoway, each axis with the options written for it; the second axes' re-fit after a filter move (y2 3,748 to 14,000 under Foreign on auto) and a horizontal yaxis(2) layer's titles were measured equal to twoway's and are now pinned (WP-31, D9)
 
 <!-- WP-31 D10 -->
 

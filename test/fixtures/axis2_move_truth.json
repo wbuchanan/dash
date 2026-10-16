@@ -1,0 +1,888 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "fdd8f4553055c6b3b1e0d37a39a6448eae8c4040",
+  "extracted": "16 Oct 2026 02:40:05",
+  "source": "scripts/extract_axis2_move_truth.do",
+  "stata_version": "19.5"
+ },
+ "first_used": {
+  "x23": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "BX2"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "0",
+      "5,000",
+      "10,000",
+      "15,000"
+     ],
+     "order": 1,
+     "side": "above",
+     "title": "BX3"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "2": [
+     1760.0,
+     5000.0
+    ],
+    "3": [
+     0.0,
+     15906.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   }
+  },
+  "y12": {
+   "axes": [
+    {
+     "labels": [
+      "15,000",
+      "10,000",
+      "5,000",
+      "0"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "AX2"
+    },
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "AX1"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Price Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     10.0,
+     41.0
+    ],
+    "2": [
+     0.0,
+     15906.0
+    ]
+   }
+  },
+  "y23": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "AX2"
+    },
+    {
+     "labels": [
+      "15,000",
+      "10,000",
+      "5,000",
+      "0"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "AX3"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "2": [
+     10.0,
+     41.0
+    ],
+    "3": [
+     0.0,
+     15906.0
+    ]
+   }
+  },
+  "y2lone": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "AX2"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "2": [
+     10.0,
+     41.0
+    ]
+   }
+  },
+  "y2opts": {
+   "axes": [
+    {
+     "labels": [
+      "50",
+      "40",
+      "30",
+      "20",
+      "10",
+      "0"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "AX2"
+    },
+    {
+     "labels": [
+      "15,000",
+      "10,000",
+      "5,000",
+      "0"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "AX3"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "2": [
+     0.0,
+     50.0
+    ],
+    "3": [
+     0.0,
+     15906.0
+    ]
+   }
+  },
+  "y32": {
+   "axes": [
+    {
+     "labels": [
+      "15,000",
+      "10,000",
+      "5,000",
+      "0"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "AX3"
+    },
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "AX2"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Price Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "2": [
+     10.0,
+     41.0
+    ],
+    "3": [
+     0.0,
+     15906.0
+    ]
+   }
+  }
+ },
+ "horizontal": {
+  "ctrl": {
+   "axes": [
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "10",
+      "20",
+      "30",
+      "40"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     1759.5,
+     5000.0
+    ]
+   }
+  },
+  "scatter": {
+   "message": "option horizontal not allowed",
+   "rc": 198
+  },
+  "spike": {
+   "axes": [
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "10",
+      "20",
+      "30",
+      "40"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Weight (lbs.) Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ],
+    "2": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "two": {
+   "axes": [
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "10",
+      "20",
+      "30",
+      "40"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Weight (lbs.) Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ],
+    "2": [
+     1759.5,
+     5000.0
+    ]
+   }
+  },
+  "y2": {
+   "axes": [
+    {
+     "labels": [
+      "5,000",
+      "4,000",
+      "3,000",
+      "2,000"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [
+      "10",
+      "20",
+      "30",
+      "40"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Mileage (mpg)"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   },
+   "yscales": {
+    "2": [
+     1759.5,
+     5000.0
+    ]
+   }
+  }
+ },
+ "move": {
+  "foreign": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "35",
+      "30",
+      "25",
+      "20",
+      "15"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "14,000",
+      "12,000",
+      "10,000",
+      "8,000",
+      "6,000",
+      "4,000"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "Price"
+    },
+    {
+     "labels": [
+      "1,500",
+      "2,000",
+      "2,500",
+      "3,000",
+      "3,500"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1500.0,
+     3500.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     14.0,
+     41.0
+    ],
+    "2": [
+     3748.0,
+     14000.0
+    ]
+   }
+  },
+  "full": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "15,000",
+      "10,000",
+      "5,000",
+      "0"
+     ],
+     "order": 1,
+     "side": "right",
+     "title": "Price"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     10.0,
+     41.0
+    ],
+    "2": [
+     0.0,
+     15906.0
+    ]
+   }
+  },
+  "x2foreign": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "35",
+      "30",
+      "25",
+      "20",
+      "15"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "1,500",
+      "2,000",
+      "2,500",
+      "3,000",
+      "3,500"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "4,000",
+      "6,000",
+      "8,000",
+      "10,000",
+      "12,000",
+      "14,000"
+     ],
+     "order": 1,
+     "side": "above",
+     "title": "Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1500.0,
+     3500.0
+    ],
+    "2": [
+     3748.0,
+     14000.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     14.0,
+     41.0
+    ]
+   }
+  },
+  "x2full": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "30",
+      "20",
+      "10"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "2,000",
+      "3,000",
+      "4,000",
+      "5,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "0",
+      "5,000",
+      "10,000",
+      "15,000"
+     ],
+     "order": 1,
+     "side": "above",
+     "title": "Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     1760.0,
+     5000.0
+    ],
+    "2": [
+     0.0,
+     15906.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     10.0,
+     41.0
+    ]
+   }
+  },
+  "x2range": {
+   "axes": [
+    {
+     "labels": [
+      "40",
+      "35",
+      "30",
+      "25",
+      "20",
+      "15"
+     ],
+     "order": 1,
+     "side": "left",
+     "title": "Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "2,000",
+      "2,200",
+      "2,400",
+      "2,600",
+      "2,800",
+      "3,000"
+     ],
+     "order": 1,
+     "side": "below",
+     "title": "Weight (lbs.)"
+    },
+    {
+     "labels": [],
+     "order": 2,
+     "side": "below",
+     "title": "Mileage (mpg) Mileage (mpg)"
+    },
+    {
+     "labels": [
+      "2,000",
+      "4,000",
+      "6,000",
+      "8,000",
+      "10,000"
+     ],
+     "order": 1,
+     "side": "above",
+     "title": "Price"
+    }
+   ],
+   "message": "",
+   "rc": 0,
+   "xscales": {
+    "1": [
+     2000.0,
+     3000.0
+    ],
+    "2": [
+     2000.0,
+     10000.0
+    ]
+   },
+   "yscales": {
+    "1": [
+     15.0,
+     41.0
+    ]
+   }
+  }
+ }
+}

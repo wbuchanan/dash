@@ -8264,6 +8264,256 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
 }
 * ==== end S34 ====
 
+// S35 (WP-31 D9) helpers.  _u35_ranges: the extra ranges of a registered
+// graph, built (u35_b), after one widget move on the saved page (its own
+// callback run under node, test/js_runner.py; u35_s) and in the served app
+// (its change callbacks fired; u35_v), each "name start end; ..." to 9
+// significant digits.  _u35_axes: each mode's visible y and x axes as
+// "side:title" (u35_s, u35_v).  _u35_tw: twoway's axes from its SVG, as
+// "side:title" for the titled columns (u35_tw).
+python:
+def _u35_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_u35_app")
+        exec(compile(src.replace(attach, "pass"), "dash_u35_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return r, doc, list(r.figures.values()), sv
+
+
+def _u35_fmt(figs):
+    out = []
+    for f in figs:
+        for k, v in sorted(list(f.extra_y_ranges.items())
+                           + list(f.extra_x_ranges.items())):
+            out.append("%s %.9g %.9g" % (k, v.start, v.end))
+    return "; ".join(out)
+
+
+def _u35_value(w, want):
+    if type(w).__name__ == "Select":
+        return [v for v, lab in w.options if lab == want][0]
+    if type(w).__name__ == "RangeSlider":
+        return tuple(float(x) for x in want.split())
+    return float(want)
+
+
+def _u35_ranges(sp, dp, app, kind, want):
+    import warnings
+    from sfi import Macro
+    from js_runner import JsSession
+    r, doc, a, b = _u35_docs(sp, dp, app)
+    Macro.setGlobal("u35_b", _u35_fmt(a))
+    w = [x for x in r.filter_widgets if type(x).__name__ == kind][0]
+    w.value = _u35_value(w, want)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    JsSession([]).run_code(cb.code, cb.args)
+    Macro.setGlobal("u35_s", _u35_fmt(a))
+    ws = [m for m in doc.models if type(m).__name__ == kind
+          and hasattr(m, "_dash_var")]
+    v = _u35_value(ws[0], want)
+    ws[0].value = v
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for key in ("value", "value_throttled"):
+            for c in list(ws[0]._callbacks.get(key, [])):
+                c("value", None, v)
+    Macro.setGlobal("u35_v", _u35_fmt(b))
+
+
+def _u35_oracle(sp, dp, app):
+    from sfi import Macro
+    _r, _d, a, _b = _u35_docs(sp, dp, app)
+    Macro.setGlobal("u35_o", _u35_fmt(a))
+
+
+def _u35_close(x, y, tol):
+    from sfi import Macro
+    def parse(t):
+        return {p.split()[0]: [float(z) for z in p.split()[1:]]
+                for p in t.split(";") if p.strip()}
+    a, b = parse(Macro.getGlobal(x)), parse(Macro.getGlobal(y))
+    ok = sorted(a) == sorted(b) and bool(a) and all(
+        abs(u - v) <= float(tol) * max(1.0, abs(v))
+        for k in a for u, v in zip(a[k], b[k]))
+    Macro.setGlobal("u35_ok", "1" if ok else "0")
+
+
+def _u35_axes(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import LinearAxis, LogAxis
+    _r, _d, a, b = _u35_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        Macro.setGlobal("u35_" + sfx, " ".join(
+            "%s:%s" % (side, (ax.axis_label or "").replace(" ", "_"))
+            for side in ("left", "right", "below", "above")
+            for ax in getattr(f, side)
+            if isinstance(ax, (LinearAxis, LogAxis)) and ax.visible))
+
+
+def _u35_tw(svg, labels):
+    """twoway's titled axes, "side:title" for each title in *labels*
+    (space-separated, underscores for spaces), in side order."""
+    import os, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.join(os.getcwd(), "..", "scripts"))
+    import svg_truth
+    d = svg_truth.svg_document(svg)
+    pr = d["plotregion"]
+    want = [w.replace("_", " ") for w in labels.split()]
+    got = []
+    for t in d["texts"]:
+        if t["text"] not in want:
+            continue
+        if t.get("rotate") is not None:
+            side = "left" if t["x"] < pr["left"] else "right"
+        else:
+            side = "below" if t["y"] > pr["bottom"] else "above"
+        got.append((("left", "right", "below", "above").index(side),
+                    "%s:%s" % (side, t["text"].replace(" ", "_"))))
+    Macro.setGlobal("u35_tw", " ".join(g for _, g in sorted(got)))
+end
+
+capture program drop _u35_serve
+program define _u35_serve
+    // _u35_serve <dir> <k> [filter() text]: the registered graphs' spec
+    // and data files, with the dashboard's filter when one is given.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    if `"`0'"' != "" {
+        _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json") filter(`0')
+    }
+    else _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+end
+
+* ==== S35 D9: Second-axis ranges after a move, the first-used axis, horizontal titles ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
+    display as text "S35 start " c(current_date) " " c(current_time)
+    local u35d "`w31_work'/s35"
+    capture mkdir "`u35d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U35-1: the dropdown at Foreign; twoway's yaxis2 under the same if.
+    quietly twoway (scatter mpg weight) (line price weight, yaxis(2) sort) if foreign == 1, name(u35t, replace)
+    local tlo `.u35t.yaxis2.plotregion.yscale.curmin'
+    local thi `.u35t.yaxis2.plotregion.yscale.curmax'
+    graph drop u35t
+    dash clear
+    capture noisily dash (scatter mpg weight) (line price weight, yaxis(2) sort) if foreign == 1, name(zu35o)
+    _u35_serve "`u35d'" 1o
+    python: import __main__ as _u35_m; _u35_m._u35_oracle("`u35d'/s1o.json", "`u35d'/d1o.json", "`u35d'/a1o.py")
+    dash clear
+    capture noisily dash (scatter mpg weight) (line price weight, yaxis(2) sort), name(zu351)
+    _w31_expect U35-1 `"(_rc == 0)"' "yaxis(2) rc `=_rc'"
+    _u35_serve "`u35d'" 1 foreign, type(dropdown)
+    python: _u35_m._u35_ranges("`u35d'/s1.json", "`u35d'/d1.json", "`u35d'/a1.py", "Select", "Foreign")
+    python: _u35_m._u35_close("u35_s", "u35_o", "1e-9")
+    _w31_expect U35-1 `"(${u35_ok} == 1)"' "saved after the move ${u35_s}; oracle ${u35_o}"
+    python: _u35_m._u35_close("u35_v", "u35_o", "1e-6")
+    _w31_expect U35-1 `"(${u35_ok} == 1)"' "served after the move ${u35_v}; oracle ${u35_o}"
+    local dlo : word 2 of ${u35_s}
+    local dhi : word 3 of ${u35_s}
+    _w31_expect U35-1 `"("${u35_b}" != "${u35_s}")"' "the move left y2 at ${u35_b}"
+    _w31_expect U35-1 `"(`dlo' <= `tlo' & `dhi' >= `thi')"' "dash y2 `dlo'-`dhi' does not hold twoway's `tlo'-`thi'"
+    _w31_done U35-1 "the second axis re-fits over the rows a dropdown move keeps, both modes"
+
+    // U35-2: xaxis(2) and a range move to 2000-3000.
+    quietly twoway (scatter mpg weight) (scatter mpg price, xaxis(2)) if weight >= 2000 & weight <= 3000, name(u35t, replace)
+    local tlo `.u35t.xaxis2.plotregion.xscale.curmin'
+    local thi `.u35t.xaxis2.plotregion.xscale.curmax'
+    graph drop u35t
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter mpg price, xaxis(2)) if weight >= 2000 & weight <= 3000, name(zu35o)
+    _u35_serve "`u35d'" 2o
+    python: _u35_m._u35_oracle("`u35d'/s2o.json", "`u35d'/d2o.json", "`u35d'/a2o.py")
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter mpg price, xaxis(2)), name(zu352)
+    _w31_expect U35-2 `"(_rc == 0)"' "xaxis(2) rc `=_rc'"
+    _u35_serve "`u35d'" 2 weight, type(range)
+    python: _u35_m._u35_ranges("`u35d'/s2.json", "`u35d'/d2.json", "`u35d'/a2.py", "RangeSlider", "2000 3000")
+    python: _u35_m._u35_close("u35_s", "u35_o", "1e-9")
+    _w31_expect U35-2 `"(${u35_ok} == 1)"' "saved after the move ${u35_s}; oracle ${u35_o}"
+    python: _u35_m._u35_close("u35_v", "u35_o", "1e-6")
+    _w31_expect U35-2 `"(${u35_ok} == 1)"' "served after the move ${u35_v}; oracle ${u35_o}"
+    local dlo : word 2 of ${u35_s}
+    local dhi : word 3 of ${u35_s}
+    _w31_expect U35-2 `"(`dlo' <= `tlo' & `dhi' >= `thi')"' "dash x2 `dlo'-`dhi' does not hold twoway's `tlo'-`thi'"
+    _w31_done U35-2 "the second x axis re-fits over the rows a range move keeps, both modes"
+
+    // U35-3: a move that keeps every row leaves the extra range as built.
+    dash clear
+    capture noisily dash (scatter mpg weight) (line price weight, yaxis(2) sort), name(zu353)
+    _u35_serve "`u35d'" 3 price, type(range)
+    python: _u35_m._u35_ranges("`u35d'/s3.json", "`u35d'/d3.json", "`u35d'/a3.py", "RangeSlider", "3291 15906")
+    python: _u35_m._u35_close("u35_s", "u35_b", "1e-12")
+    _w31_expect U35-3 `"(${u35_ok} == 1)"' "saved ${u35_s}; built ${u35_b}"
+    python: _u35_m._u35_close("u35_v", "u35_b", "1e-9")
+    _w31_expect U35-3 `"(${u35_ok} == 1)"' "served ${u35_v}; built ${u35_b}"
+    _w31_done U35-3 "a move keeping every row leaves the second axis as built, both modes"
+
+    // U35-4: no layer on axis 1, and axis 1 used second: the first axis
+    // used is drawn on the left, its options with it.
+    local k 0
+    foreach c in "(scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)), ytitle(AX2, axis(2)) ytitle(AX3, axis(3))" "(scatter price weight, yaxis(3)) (scatter mpg weight, yaxis(2)), ytitle(AX3, axis(3)) ytitle(AX2, axis(2))" "(scatter price weight, yaxis(2)) (scatter mpg weight), ytitle(AX1) ytitle(AX2, axis(2))" {
+        local ++k
+        quietly twoway `c' xtitle(BX1) name(u35t, replace)
+        quietly graph export "`u35d'/t4`k'.svg", replace
+        graph drop u35t
+        python: _u35_m._u35_tw("`u35d'/t4`k'.svg", "AX1 AX2 AX3 BX1")
+        dash clear
+        capture noisily dash `c' xtitle(BX1) name(zu354`k')
+        _w31_expect U35-4 `"(_rc == 0)"' "case `k' rc `=_rc'"
+        _u35_serve "`u35d'" 4`k'
+        python: _u35_m._u35_axes("`u35d'/s4`k'.json", "`u35d'/d4`k'.json", "`u35d'/a4`k'.py")
+        foreach m in s v {
+            _w31_expect U35-4 `"("${u35_`m'}" == "${u35_tw}")"' "case `k' `m': dash ${u35_`m'}; twoway ${u35_tw}"
+        }
+    }
+    _w31_done U35-4 "the first axis used is drawn on the left as twoway draws it, both modes"
+
+    // U35-5: horizontal with yaxis(2), and its control.
+    local k 0
+    foreach c in "bar mpg weight, horizontal yaxis(2)" "bar mpg weight, horizontal" "(scatter weight mpg) (bar mpg weight, horizontal yaxis(2))," {
+        local ++k
+        quietly twoway `c' legend(off) name(u35t, replace)
+        quietly graph export "`u35d'/t5`k'.svg", replace
+        graph drop u35t
+        python: _u35_m._u35_tw("`u35d'/t5`k'.svg", "Weight_(lbs.) Mileage_(mpg)")
+        dash clear
+        capture noisily dash `c' legend(off) name(zu355`k')
+        _w31_expect U35-5 `"(_rc == 0)"' "case `k' rc `=_rc'"
+        _u35_serve "`u35d'" 5`k'
+        python: _u35_m._u35_axes("`u35d'/s5`k'.json", "`u35d'/d5`k'.json", "`u35d'/a5`k'.py")
+        foreach m in s v {
+            _w31_expect U35-5 `"("${u35_`m'}" == "${u35_tw}")"' "case `k' `m': dash ${u35_`m'}; twoway ${u35_tw}"
+        }
+    }
+    _w31_done U35-5 "horizontal with yaxis(2) titles its axes as twoway does, both modes"
+
+    macro drop u35_b u35_s u35_v u35_o u35_ok u35_tw
+    capture graph drop _all
+    dash clear
+    display as text "S35 end " c(current_date) " " c(current_time)
+}
+* ==== end S35 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

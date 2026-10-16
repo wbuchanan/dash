@@ -4198,6 +4198,61 @@ def _dash_unused_second_axis_notes(graph):
     return out
 
 
+def _dash_axis_option_slot(go, axisn, side, n, first):
+    """``(box, key)`` where axis *n* of *side* keeps the option whose
+    first-axis key is *first* (``ytitle``): *go* and ``ytitle`` for axis 1,
+    *go* and ``ytitle2`` for axis 2, the ``axisn`` entry (copied into
+    *axisn*) and ``title`` for 3-9; ``(None, None)`` for 3-9 with no
+    *axisn* (WP-31 D9)."""
+    if n == 1:
+        return go, first
+    if n == 2:
+        return go, first + "2"
+    if axisn is None:
+        return None, None
+    entry = axisn.get(f"{side}{n}")
+    entry = dict(entry) if isinstance(entry, dict) else {}
+    axisn[f"{side}{n}"] = entry
+    return entry, first[1:]
+
+
+def _dash_renumber_axis_options(go, axisn, side, mapping):
+    """Move the options typed for each axis of *side* to the axis it is
+    drawn as (WP-31 D9): *mapping* is ``{typed number: drawn number}``,
+    *go* the graph options (changed in place) and *axisn* its copied
+    ``axisn`` object (changed in place) or None.  Axis 1's options are the
+    plain keys (``ytitle``), axis 2's dash's ``*2`` keys (``ytitle2``) and
+    axes 3-9's the ``axisn`` entries (``{"y3": {"title": ...}}``).  An
+    option of an axis no layer uses stays where it was typed; on an axis a
+    renumbered one takes, it is kept only where that axis's own is blank
+    (the lone axis's rule: a ``ytitle()`` beside a lone ``yaxis(2)`` is
+    replaced by ``ytitle(..., axis(2))``), and its yline() copies are drawn
+    beside the moved ones."""
+
+    for first in _DASH_LONE_AXIS_OPTIONS[side]:
+        vals = {}
+        for t in mapping:
+            box, k = _dash_axis_option_slot(go, axisn, side, t, first)
+            if box is not None and k in box:
+                vals[t] = box.pop(k)
+        for t, d in mapping.items():
+            v = vals.get(t)
+            # A raw "" is deliberately moved (it is not blank):
+            # ytitle2("") on a lone graph removes the one title.
+            if not (isinstance(v, str) and v.strip()):
+                continue
+            box, k = _dash_axis_option_slot(go, axisn, side, d, first)
+            if box is None:
+                continue
+            had = box.get(k)
+            if first.endswith("line") and isinstance(had, str) \
+                    and had.strip():
+                # Each copy of yline() is a line of its own (WP-29 A8).
+                box[k] = had + ", " + v
+            else:
+                box[k] = v
+
+
 def _dash_lone_second_axes(spec):
     """The spec with a graph's lone second axis drawn as its only axis.
 
@@ -4228,19 +4283,31 @@ def _dash_lone_second_axes(spec):
                 or not all(isinstance(p, dict) for p in plots)):
             graphs.append(g)
             continue
-        # The one axis k >= 2 every layer of a side is on alone (WP-31
-        # C10c: any k, as twoway draws a lone yaxis(3) as one left axis).
-        lone = []
-        lone_no = {}
+        # Each side's axes in order of first use (WP-31 D9): when the
+        # first layer is not on axis 1, the axes are renumbered by first
+        # use -- the first used is drawn as axis 1, the next as axis 2 --
+        # and every option typed for an axis follows it (measured,
+        # test/fixtures/axis2_move_truth.json first_used: twoway draws
+        # (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3))
+        # with axis 2 on the left and 3 on the right, and axis 2 on the
+        # left of (scatter price weight, yaxis(2)) (scatter mpg weight)).
+        # A lone axis k >= 2 is the case of one axis (WP-31 C10c).  A
+        # layer naming several axes of the side ties them; such a side is
+        # left as it came.
+        remap = {}
         for side in ("y", "x"):
-            nos = {tuple(_dash_axis_nos(p.get("options"), side))
-                   for p in plots}
-            if len(nos) == 1:
-                only = next(iter(nos))
-                if len(only) == 1 and only[0] >= 2:
-                    lone.append(side)
-                    lone_no[side] = only[0]
-        if not lone:
+            used, tied = [], False
+            for p in plots:
+                nos = _dash_axis_nos(p.get("options"), side)
+                if len(nos) != 1:
+                    tied = True
+                    break
+                if nos[0] not in used:
+                    used.append(nos[0])
+            if tied or not used or used[0] == 1:
+                continue
+            remap[side] = {t: d + 1 for d, t in enumerate(used)}
+        if not remap:
             graphs.append(g)
             continue
         g = dict(g)
@@ -4249,8 +4316,14 @@ def _dash_lone_second_axes(spec):
             opts = p.get("options")
             if isinstance(opts, dict):
                 p = dict(p)
-                p["options"] = {k: v for k, v in opts.items()
-                                if k not in {s + "axis" for s in lone}}
+                opts = dict(opts)
+                for side, mapping in remap.items():
+                    drawn = mapping[_dash_axis_nos(opts, side)[0]]
+                    if drawn == 1:
+                        opts.pop(side + "axis", None)
+                    else:
+                        opts[side + "axis"] = str(drawn)
+                p["options"] = opts
             new_plots.append(p)
         g["plots"] = new_plots
         go = g.get("graph_options")
@@ -4258,30 +4331,10 @@ def _dash_lone_second_axes(spec):
             go = dict(go)
             axisn = go.get("axisn")
             axisn = dict(axisn) if isinstance(axisn, dict) else None
-            for side in lone:
-                k = lone_no[side]
-                entry = ((axisn or {}).pop(f"{side}{k}", None)
-                         if k >= 3 else None)
-                entry = entry if isinstance(entry, dict) else {}
-                for first in _DASH_LONE_AXIS_OPTIONS[side]:
-                    if k == 2:
-                        second = go.pop(first + "2", None)
-                    else:
-                        second = entry.get(first[1:])
-                    # A raw "" is deliberately moved (it is not blank):
-                    # ytitle2("") on a lone graph removes the one title.
-                    if not (isinstance(second, str) and second.strip()):
-                        continue
-                    had = go.get(first)
-                    if first.endswith("line") and isinstance(had, str) \
-                            and had.strip():
-                        # Each copy of yline() is a line of its own
-                        # (WP-29 A8): the one axis draws both.
-                        go[first] = had + ", " + second
-                    else:
-                        go[first] = second
+            for side, mapping in remap.items():
+                _dash_renumber_axis_options(go, axisn, side, mapping)
             if axisn is not None:
-                go["axisn"] = axisn
+                go["axisn"] = {k: v for k, v in axisn.items() if v}
             g["graph_options"] = go
         graphs.append(g)
         changed = True

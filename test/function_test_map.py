@@ -489,6 +489,9 @@ FUNCTIONS = {
  '_dash_join_key': 'test/test_join_order.py::TestTheJoinKey::test_saved_source_by_row_id',
  '_dash_json_value': 'test/test_export.py::TestTheHelpers::test_json_value',
  '_dash_lone_second_axes': 'test/test_dual_axis.py::TestTheLoneAxisRewrite::test_the_callers_spec_is_not_modified',
+ # WP-31 S35 (D9)
+ '_dash_renumber_axis_options': 'test/test_second_axis_moves.py::TestTheRenumbering::test_options_move_with_their_axis',
+ '_dash_axis_option_slot': 'test/test_second_axis_moves.py::TestTheRenumbering::test_the_slots',
  '_dash_natscale_ticks': 'test/test_natscale.py::TestTheRuleAgainstStata::test_the_reported_case',
  '_dash_count_ticker': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',
  '_dash_count_of': 'test/test_natscale.py::TestAdversarial::test_the_tag_round_trips',

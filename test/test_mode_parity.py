@@ -3644,6 +3644,17 @@ MOVE_CORPUS = [
     # WP-31 C15 (section 34): bar labels at 12 after a move
     _move_case("bar with mlabel, dropdown (WP-31 C15)", _MOVES[0],
                [plot_for("bar", {"mlabel": "rep"})]),
+
+    # WP-31 D9 (section 35): the extra ranges after a move (H6).
+    _move_case("yaxis(2) line, range (WP-31 D9)", _MOVES[1],
+               [_sc(), plot_for("line", {"yaxis": "2"}, yvar="price")]),
+    # A range move: the dropdown at Foreign empties a panel, S36's.
+    _move_case("by(foreign) yaxis(2), range (WP-31 D9)", _MOVES[1],
+               [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+               go={"by": "foreign"}),
+    _move_case("yaxis(2) and yaxis(3), dropdown (WP-31 D9)", _MOVES[0],
+               [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price"),
+                plot_for("line", {"yaxis": "3"}, yvar="foreign")]),
 ]
 
 
@@ -3735,6 +3746,19 @@ class TestAFilterMoveAgrees:
             f"{name}: the saved cards are {std}")
         assert std == srv, (f"{name}: KPI cards after the move\n  standalone "
                             f"{std}\n  server     {srv}")
+
+    def test_same_extra_ranges_after_the_move(self, name, spec, action,
+                                              oracle):
+        """Every extra range (y2-y9, x2-x9) after the move is the one the
+        saved renderer draws from the kept rows (WP-31 D9, GAPS3 H6)."""
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
+        assert len(std) == len(srv), f"{name}: figure counts differ"
+        for i, (a, b) in enumerate(zip(std, srv)):
+            ea = {k: a["axes"][k] for k in ("extra_x", "extra_y")}
+            eb = {k: b["axes"][k] for k in ("extra_x", "extra_y")}
+            diffs = _diff(ea, eb)
+            assert not diffs, _explain(name, f"figure {i} extra ranges "
+                                             f"after the move", diffs)
 
     def test_the_move_changed_something(self, name, spec, action, oracle):
         """Guards the guard: a move that selects every row proves nothing."""
