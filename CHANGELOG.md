@@ -497,7 +497,7 @@ and now matches Stata.
 
 - lpoly and lpolyci on a saved page after a filter move that leaves an exactly fitted rule of thumb (y an exact polynomial in x, or a few rows): the line drawn at 0 in silence -> the build's smooth and band, dimmed and keyed "(unfiltered)" (WP-31, C11b)
 
-<!-- WP-31 C8c -->
+- a colorvar() key under a scheme of your own drew s2color's blue-to-red hue; it draws the rule and colours your scheme sets or includes (green to orange at green's darkness for `color contour_begin green` and `color contour_end orange`) (WP-31, C8c)
 
 - dash scatter mpg price weight, pcycle(1.5): refused "option seriesid() not allowed" -> drawn in p1 and p2, as twoway draws it; pcycle(0.5): refused -> every series in p1 (WP-31, C8d)
 

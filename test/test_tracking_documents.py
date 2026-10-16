@@ -2011,7 +2011,6 @@ WP31_OPEN = {
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
     "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
-    "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
     "D9b": "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis",
     "D1d": "An outer axis's ##N minor labels after a move are capped at its build's label pool",

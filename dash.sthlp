@@ -5037,7 +5037,12 @@ are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 colours (measured to 1/255 a channel): with no {cmd:colorrule()},
 {cmd:colorstart()} or {cmd:colorend()}, the scheme's rule -- hue from blue
 to red under {cmd:s2color} and {cmd:stcolor}, intensity of black under the
-mono schemes; {it:k} levels of {cmd:colordiscrete} take the first {it:k}
+mono schemes; under a scheme of your own, the rule of the shipped scheme it
+includes, with its own {cmd:zyx2rule contour}, {cmd:color contour_begin},
+{cmd:color contour_end} and {cmd:shadestyle contour_begin} or
+{cmd:contour_end} lines read as Stata reads them (a hue keeps the begin
+colour's saturation and value, so green to orange is drawn at green's
+darkness); {it:k} levels of {cmd:colordiscrete} take the first {it:k}
 of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
 {cmd:colpalette()}, then the rule.  {cmd:colorkeysreverse} reverses a
 {cmd:colordiscrete} key; on any other key -- a colour bar, binned by

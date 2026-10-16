@@ -9799,6 +9799,12 @@ class SchemeParser:
             if k not in self._props:
                 self._props["@stata " + k] = v
         self._init_properties()
+        # WP-31 C8c: a scheme dash does not ship carries its own colorvar()
+        # default, worked out here where its files are read, as a key.
+        if shipped is None:
+            _zd = _dash_zyx2_derive(self)
+            if _zd:
+                self._props["@stata zyx2default"] = _zd
 
     # ------------------------------------------------------------------
     # Path resolution
@@ -10322,6 +10328,11 @@ class SchemeParser:
         """
         path, reason = self._resolve_cached(name, _notes)
         if path is not None:
+            # WP-31 C8c: the shipped schemes a user scheme includes, in
+            # order, for its colorvar() default (_dash_zyx2_derive).
+            _sb = self._shipped_base(name)
+            if _sb is not None:
+                self.__dict__.setdefault("_included_shipped", []).append(_sb)
             try:
                 return self._parse_file(path, _visited, _depth + 1, _memo,
                                         _notes)
@@ -12314,7 +12325,7 @@ class SchemeParser:
     _STYLE_STATA_KEYS: frozenset = frozenset((
         "color", "symbol", "symbolsize", "linewidth", "linepattern",
         "intensity", "linestyle", "markerstyle", "areastyle",
-        "seriesstyle", "shadestyle"))
+        "seriesstyle", "shadestyle", "zyx2rule"))
 
     def _stata_scheme_props(self, name: str, depth: int = 0,
                             seen: "set | None" = None) -> dict:
@@ -15537,7 +15548,8 @@ class GlyphMapper:
         def _rule_palette(n):
             return _dash_colorrule_palette(_crule, _c_start, _c_end, n,
                                            intensity=_cinten,
-                                           scheme_p=_scheme_p)
+                                           scheme_p=_scheme_p,
+                                           sv=_dash_colorrule_sv(self.scheme))
 
         # colorlist(): one colour a level, in order, the last repeated
         # over levels it does not reach (D03); each read as a colour.
@@ -27470,7 +27482,8 @@ def _dash_contour_colours(options, n_levels, scheme, parse=None):
         if str(opts.get("ecolor", "") or "").strip() else d_end
     return _dash_colorrule_palette(
         rule, start, end, k,
-        scheme_p=list(getattr(scheme, "p_colors", None) or []))
+        scheme_p=list(getattr(scheme, "p_colors", None) or []),
+        sv=_dash_colorrule_sv(scheme))
 
 
 def _dash_contour_line_style(options, colours, n_cuts):
@@ -47133,7 +47146,7 @@ def _dash_colour_intensity(rgb, f):
 
 
 def _dash_colorrule_palette(rule, start, end, k, intensity=None,
-                            scheme_p=()):
+                            scheme_p=(), sv=None):
     """The *k* colours twoway's colorrule() makes from *start* to *end*
     (``#rrggbb``), lowest level first (WP-31 C8b, D-17a).
 
@@ -47142,7 +47155,10 @@ def _dash_colorrule_palette(rule, start, end, k, intensity=None,
     hue is 0); ``chue`` the same always upward round the wheel (end + 360
     when end <= start); ``linear`` the RGB, ``revlinear`` the RGB from end
     to start; ``intensity`` is end at intensity ``(i + 1) / k``, start
-    ignored; ``phue`` is *scheme_p*'s i-th colour, then hue's.  *intensity*
+    ignored; ``phue`` is *scheme_p*'s i-th colour, then hue's.  A hue
+    keeps the scheme's begin shade's saturation and value, *sv* (WP-31
+    C8c; zyx2style.class: each level is the begin shade with its hue set),
+    full when None.  *intensity*
     (a colorrule() ``*#``) then applies to every colour.  Matched to
     twoway's SVG within 1/255 a channel for every rule
     (colorvar_options_truth.json D01-D09); any other rule is hue.
@@ -47174,8 +47190,9 @@ def _dash_colorrule_palette(rule, start, end, k, intensity=None,
             rgb = _dash_colour_intensity(e, (i + 1) / k)
         else:
             h = (hs + t * (he - hs)) % 360.0
+            _s, _v = sv if sv is not None else (1.0, 1.0)
             rgb = tuple(int(255 * x + 1e-9)
-                        for x in colorsys.hsv_to_rgb(h / 360.0, 1.0, 1.0))
+                        for x in colorsys.hsv_to_rgb(h / 360.0, _s, _v))
         if intensity is not None and intensity >= 0:
             rgb = _dash_colour_intensity(rgb, intensity)
         out.append("#%02x%02x%02x" % tuple(max(0, min(255, c))
@@ -47189,7 +47206,68 @@ def _dash_colorrule_default(scheme):
     measured table for the schemes dash ships, s2color's hue from blue to
     red otherwise (WP-31 C8b)."""
     name = str(getattr(scheme, "name", "") or "")
-    return _DASH_ZYX2_SCHEME_RULES.get(name, ("hue", "#0000ff", "#ff0000"))
+    if name in _DASH_ZYX2_SCHEME_RULES:
+        return _DASH_ZYX2_SCHEME_RULES[name]
+    raw = str((getattr(scheme, "_props", None) or {}).get(
+        "@stata zyx2default", "") or "").split("|")
+    if len(raw) == 3 and raw[0] in _DASH_COLORRULES and all(
+            re.fullmatch(r"#[0-9a-f]{6}", c) for c in raw[1:]):
+        return (raw[0], raw[1], raw[2])
+    return ("hue", "#0000ff", "#ff0000")
+
+
+def _dash_colorrule_sv(scheme):
+    """``(saturation, value)`` of *scheme*'s colorvar() begin colour, which
+    a hue rule keeps (WP-31 C8c, zyx2style.class ``hue``)."""
+    import colorsys
+    c = _dash_colorrule_default(scheme)[1].lstrip("#")
+    r, g, b = (int(c[j:j + 2], 16) / 255.0 for j in (0, 2, 4))
+    _h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    return (round(s, 6), round(v, 6))
+
+
+def _dash_zyx2_derive(scheme):
+    """``"rule|begin|end"`` of a scheme dash does not ship (WP-31 C8c): the
+    measured default of the last shipped scheme it includes (s2color's
+    hue from blue to red when none), each part replaced by what the scheme
+    declares -- ``zyx2rule contour``, the colour of ``shadestyle
+    contour_begin`` / ``contour_end`` (its style file's ``set color``, the
+    scheme's ``color contour_begin`` / ``contour_end``) -- with dash's
+    keys first, then Stata's own (``@stata``).  "" when nothing is
+    declared.  Never raises."""
+    try:
+        props = getattr(scheme, "_props", None) or {}
+
+        def get(k):
+            v = props.get(k, "") or props.get("@stata " + k, "")
+            return str(v or "").strip().strip('"').strip()
+
+        inc = [n for n in (scheme.__dict__.get("_included_shipped") or [])
+               if n in _DASH_ZYX2_SCHEME_RULES or n in SchemeParser._BUILTIN_NAMES]
+        base = _DASH_ZYX2_SCHEME_RULES.get(inc[-1] if inc else "",
+                                           ("hue", "#0000ff", "#ff0000"))
+        rule = get("zyx2rule contour")
+        rule = rule if rule in _DASH_COLORRULES else base[0]
+
+        def colour(which, dflt):
+            name = get(f"shadestyle contour_{which}") or f"contour_{which}"
+            tok = ""
+            rows = scheme._style_rows("shadestyle", name) \
+                if scheme._style_name_ok("shadestyle", name) else None
+            for attr, kind, val in rows or ():
+                if attr == "color":
+                    tok = get("color " + val) if kind == "scheme" else val
+                    break
+            tok = tok or get(f"color contour_{which}")
+            if not tok:
+                return dflt
+            hx, _a = scheme._style_raw_colour(tok)
+            return hx.lower() if isinstance(hx, str) else dflt
+
+        out = (rule, colour("begin", base[1]), colour("end", base[2]))
+        return "|".join(out) if out != ("hue", "#0000ff", "#ff0000") else ""
+    except Exception:   # noqa: BLE001 -- a default, never a failure
+        return ""
 
 
 #: clegend()'s sub-options dash places on the colour key (WP-31 C8b,
@@ -59558,6 +59636,8 @@ class ServerAppBuilder:
                          # pcycle() (WP-31 C8b).
                          "_dash_colorrule_parse", "_dash_colour_intensity",
                          "_dash_colorrule_palette", "_dash_colorrule_default",
+                         # WP-31 C8c: a hue keeps the begin shade.
+                         "_dash_colorrule_sv",
                          "_dash_clegend_opts", "_dash_pcycle",
                          # a filled layer's vertices under cmissing(n) and
                          # rarea's connect() (WP-31 C6).

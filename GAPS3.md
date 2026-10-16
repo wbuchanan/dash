@@ -450,7 +450,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit 44761fa.
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
-- **C8c Tracked:** Open (WP-31 section 44).
+- **C8c Tracked:** Closed in WP-31, BUGS.md "A user-supplied scheme's colorvar() default colour rule falls back to s2color's", commit pending.
 - **C8d Tracked:** Closed in WP-31, BUGS.md "pcycle() refuses a fraction where twoway draws it on a graph of few series", commit 4f9c3e4.
 - **C8e Tracked:** Closed in WP-31, BUGS.md "colorkeysreverse on a colorvar() colour bar is named, not drawn", commit 59fcd19.
 - **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit 5895120.

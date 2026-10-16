@@ -12206,6 +12206,61 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
 }
 * ==== end S44 ====
 
+python:
+def _u44_palette(sp, dp, app, fixture, scheme):
+    """u44_bad: where either mode's colorvar() palette differs from
+    twoway's colordiscrete key under *scheme* (lowest level first)."""
+    import __main__ as m
+    import json
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        want = list(reversed(json.load(fh)["schemes"][scheme]["S5"]["key"]["fills"]))
+    a, b = m._u03_docs(sp, dp, app)
+    bad = []
+    for name, figs in (("saved", a), ("served", b)):
+        pal = None
+        for f in figs:
+            for r in f.renderers:
+                t = getattr(getattr(getattr(r, "glyph", None), "fill_color", None), "transform", None)
+                if t is not None and getattr(t, "palette", None):
+                    pal = [str(c).lower() for c in t.palette]
+        ok = pal is not None and len(pal) == len(want)
+        if ok:
+            for g, w in zip(pal, want):
+                if any(abs(int(g[i:i + 2], 16) - int(w[i:i + 2], 16)) > 1 for i in (1, 3, 5)):
+                    ok = False
+        if not ok:
+            bad.append("%s %s, twoway %s" % (name, pal, want))
+    Macro.setGlobal("u44_bad", "; ".join(bad))
+end
+
+* ==== S44 C8c: A user scheme's colorvar() default ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
+    display as text "S44 start " c(current_date) " " c(current_time)
+    local u44d "`w31_work'/s44c"
+    capture mkdir "`u44d'"
+    local u44fx "`c(pwd)'/fixtures/user_scheme_rule_truth.json"
+    tempname u44f
+    file open `u44f' using "`u44d'/scheme-uc2.scheme", write text replace
+    file write `u44f' "#include s2color" _n "color contour_begin green" _n "color contour_end orange" _n
+    file close `u44f'
+    adopath ++ "`u44d'"
+    sysuse auto, clear
+
+    // U44-09: scheme(uc2)'s colordiscrete key, both modes, as twoway's
+    // (the fixture's twoway SVG).
+    _u44_spec "`u44d'" 9 scatter mpg weight, colorvar(rep78) colordiscrete scheme(uc2)
+    python: _u44_palette(r"`u44d'/s9.json", r"`u44d'/d9.json", r"`u44d'/a9.py", r"`u44fx'", "uc2")
+    _w31_expect U44-09 `"("${u44_bad}" == "")"' "${u44_bad}"
+    _w31_done U44-09 "a user scheme's contour_begin and contour_end draw twoway's colorvar() colours, both modes"
+
+    adopath - "`u44d'"
+    dash clear
+    display as text "S44 end " c(current_date) " " c(current_time)
+}
+* ==== end S44 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

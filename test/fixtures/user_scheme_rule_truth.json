@@ -1,0 +1,554 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "cd590f0d6f22d735fee3905dc88714d187c4b5d9",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_user_scheme_rule_truth.do",
+  "stata_version": "19.5"
+ },
+ "schemes": {
+  "uc1": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#ff7f00",
+      "#ffbf80"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#ff942a",
+      "#ffaa55",
+      "#ffbf80",
+      "#ffd4aa",
+      "#ffead4"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       2388.83
+      ],
+      [
+       3546.68,
+       1859.41
+      ],
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3546.68,
+       800.57
+      ],
+      [
+       3546.68,
+       271.15
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include s2color",
+    "zyx2rule contour intensity",
+    "color contour_begin green",
+    "color contour_end orange"
+   ]
+  },
+  "uc2": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#7f3f00",
+      "#007f00"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#7f6500",
+      "#727f00",
+      "#4c7f00",
+      "#267f00",
+      "#007f00"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       2388.83
+      ],
+      [
+       3546.68,
+       1859.41
+      ],
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3546.68,
+       800.57
+      ],
+      [
+       3546.68,
+       271.15
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include s2color",
+    "color contour_begin green",
+    "color contour_end orange"
+   ]
+  },
+  "uc3": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#000000",
+      "#808080"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#2a2a2a",
+      "#555555",
+      "#808080",
+      "#aaaaaa",
+      "#d4d4d4"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       2388.83
+      ],
+      [
+       3546.68,
+       1859.41
+      ],
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3546.68,
+       800.57
+      ],
+      [
+       3546.68,
+       271.15
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include s1mono"
+   ]
+  },
+  "uc4": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#ff8080",
+      "#ff8080"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#ff0000",
+      "#ff0000",
+      "#ff0000",
+      "#ff0000",
+      "#ff0000"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       2388.83
+      ],
+      [
+       3546.68,
+       1859.41
+      ],
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3546.68,
+       800.57
+      ],
+      [
+       3546.68,
+       271.15
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include s2color",
+    "shadestyle contour_begin u44s"
+   ]
+  },
+  "uc5": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#3e647d",
+      "#9fb2be"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       1345.75,
+       738.98
+      ],
+      [
+       1446.28,
+       717.8
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#5e7e93",
+      "#7e98a8",
+      "#9fb2be",
+      "#bfcbd4",
+      "#dfe5e9"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       1345.75,
+       1326.8
+      ],
+      [
+       1345.75,
+       1032.86
+      ],
+      [
+       1345.75,
+       738.98
+      ],
+      [
+       1345.75,
+       445.05
+      ],
+      [
+       1345.75,
+       151.12
+      ],
+      [
+       1446.28,
+       717.8
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include economist"
+   ]
+  },
+  "uc6": {
+   "S2": {
+    "key": {
+     "fills": [
+      "#ffd200",
+      "#1a476f"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "3",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "S5": {
+    "key": {
+     "fills": [
+      "#d1b616",
+      "#a39a2c",
+      "#767f43",
+      "#486359",
+      "#1a476f"
+     ],
+     "frame": null,
+     "opacities": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "swatch": "marker",
+     "text_pos": [
+      [
+       3546.68,
+       2388.83
+      ],
+      [
+       3546.68,
+       1859.41
+      ],
+      [
+       3546.68,
+       1329.99
+      ],
+      [
+       3546.68,
+       800.57
+      ],
+      [
+       3546.68,
+       271.15
+      ],
+      [
+       3713.87,
+       1294.96
+      ]
+     ],
+     "texts": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "Repair record 1978"
+     ]
+    },
+    "rc": 0
+   },
+   "lines": [
+    "#include s2color",
+    "zyx2rule contour linear",
+    "color contour_begin navy",
+    "color contour_end gold"
+   ]
+  }
+ }
+}
