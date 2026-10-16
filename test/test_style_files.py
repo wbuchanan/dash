@@ -592,3 +592,43 @@ class TestDefaultSeriesDirectives:
             rec["line"]["color"]
         assert [n for n in notes if "named style" in n] == [
             "dash: " + rec["notes"][0][len("(note: "):-1]]
+
+
+@needs_base
+@pytest.mark.parametrize("mode", MODES)
+class TestStatasOwnKeysTravel:
+    """The keys Stata's own scheme declares (s2color's `linestyle p1line
+    p1line', the leaf values of the style files) are embedded at
+    registration as build_options["_stata_props"], so a host without
+    Stata's BASE draws `linestyle p1 u44b' as twoway does: the connecting
+    line redrawn, a line plot's line not (TRUTH scheme u44)."""
+
+    def _drawn(self, mode, tmp_path, plot):
+        d = _default_scheme(tmp_path, "linestyle p1 u44b")
+        spec = tp._spec([plot_for(plot)],
+                        {"scheme": "u44x", "scheme_dirs": [d, BASE]})
+        out = json.loads(dr._dash_embed_style_rows(json.dumps(spec)[:-1])
+                         + "}")
+        assert "u44x" in out["build_options"]["_stata_props"]
+        out["build_options"]["scheme_dirs"] = [d]
+        drawn = tsr._draw(out, mode)
+        rs = [r for f in drawn.figures for r in f.renderers
+              if isinstance(r, GlyphRenderer)]
+        return tsn._one(rs, "Line")
+
+    def test_a_line_plot_keeps_its_line(self, mode, tmp_path):
+        assert TRUTH["scheme"]["u44|line"]["line"]["color"] == "#1a476f"
+        g = self._drawn(mode, tmp_path, "line")
+        assert tsn._hex(g.line_color) == "#1a476f"
+
+    def test_the_connecting_line_is_redrawn(self, mode, tmp_path):
+        g = self._drawn(mode, tmp_path, "connected")
+        assert _red_line(g) == RED
+
+    def test_bad_keys_are_dropped(self, mode):
+        got = dr._dash_stata_props_of({"_stata_props": {
+            "s2color": {"linestyle p1line": "p1line", "color x": "26 71 111",
+                        "bogus key": "x", "linestyle p1": "../x",
+                        "color y": "a" * 200}, "bad/name": {"color x": "red"}}})
+        assert got == {"s2color": {"linestyle p1line": "p1line",
+                                   "color x": "26 71 111"}}

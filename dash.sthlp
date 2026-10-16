@@ -5643,9 +5643,10 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     other series (not a line plot's, which Stata's schemes declare as
     {cmd:p1line}), {cmd:shadestyle p1area mine} an area's fill.  Each directory is searched before its
     {cmd:style/} subdirectory, as {cmd:findfile} searches.  The rows are
-    read when the graph is registered and travel with the dashboard, so
-    {cmd:dash serve} on a machine without Stata's files draws the same
-    page.  A style file that is a link out of its directory, or larger
+    read when the graph is registered and travel with the dashboard, with
+    what Stata's own scheme files declare that {cmd:dash}'s copies do not
+    (such as {cmd:s2color}'s {cmd:linestyle p1line}), so {cmd:dash serve}
+    on a machine without Stata's files draws the same page.  A style file that is a link out of its directory, or larger
     than 1,048,576 bytes, is not read: it is named in a note and the
     defaults are drawn.  Stata 19.5 has no {cmd:adoarchive} value in
     {cmd:creturn} ({cmd:r(133)}); were style files read from a compressed ado archive,

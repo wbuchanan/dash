@@ -12200,6 +12200,20 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
     _w31_expect U44-08 `"(`"`u8bad'"' == "")"' `"`u8bad'"'
     _w31_done U44-08 "linestyle p1line and linestyle p1 redraw a plot's own line as twoway, both modes"
 
+    // U44-12: on a host without Stata's BASE (the spec's ado-path cut to
+    // the user directory) the keys embedded at registration
+    // (build_options._stata_props: s2color's linestyle p1line) keep a line
+    // plot's line under linestyle p1 u44b, both modes, as twoway.
+    _u44_tw line.color.rgb line mpg weight, sort scheme(u44p)
+    python: from sfi import Macro; Macro.setLocal("want", _u44_hex(r"`r(v)'"))
+    _u44_spec "`u44d'" 30 line mpg weight, sort scheme(u44p)
+    python: import json; from sfi import Macro; Macro.setGlobal("u44_bad", "" if "u44p" in json.load(open(Macro.getLocal("u44d") + "/s30.json"))["build_options"].get("_stata_props", {}) else "no _stata_props for u44p")
+    local u12bad "${u44_bad}"
+    python: _u44_cmp(r"`u44d'/s30.json", r"`u44d'/d30.json", r"`u44d'/a30.py", "Line", "line_color", r"`want'", empty=r"`u44u'")
+    local u12bad "`u12bad'${u44_bad}"
+    _w31_expect U44-12 `"(`"`u12bad'"' == "")"' `"`u12bad'"'
+    _w31_done U44-12 "Stata's own scheme keys travel in the spec: a host without BASE draws linestyle p1 as twoway, both modes"
+
     adopath - "`u44u'"
     dash clear
     display as text "S44 end " c(current_date) " " c(current_time)

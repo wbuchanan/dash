@@ -1191,6 +1191,9 @@ FUNCTIONS = {
  '_dash_zyx2_derive.<locals>.get': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_bystyle_route': 'test/test_bystyles.py::TestTheExpansion::test_measured',
  '_dash_by_label_box.<locals>._rs': 'test/test_bystyles.py::TestTheNamedPartsDrawn::test_econ_label_margin',
+ 'SchemeParser.stata_props_for_spec': 'test/test_style_files.py::TestStatasOwnKeysTravel::test_a_line_plot_keeps_its_line',
+ '_dash_stata_props_of': 'test/test_style_files.py::TestStatasOwnKeysTravel::test_bad_keys_are_dropped',
+ '_dash_apply_stata_props': 'test/test_style_files.py::TestStatasOwnKeysTravel::test_the_connecting_line_is_redrawn',
  '_dash_style_rows_of': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_bad_embedded_rows_are_dropped',
  '_dash_embed_style_rows': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_the_spec_text_gains_the_rows',
  '_dash_style_archive_note': 'test/test_style_files.py::TestAdoArchive::test_measured_branch',
@@ -1412,6 +1415,10 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "SchemeParser.stata_props_for_spec": (
+        "WP-31 S44 (E10) keeps it under WP-26's seam rule: only "
+        "_dash_embed_style_rows calls it, from dash.ado's two spec writers' "
+        "python: lines, which the name-based call graph does not read."),
     "_dash_embed_style_rows": (
         "WP-31 S44 (E10) keeps it under WP-26's seam rule: dash.ado's two "
         "spec writers call it through their python: lines (A24), which the "

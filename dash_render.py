@@ -12584,6 +12584,40 @@ class SchemeParser:
                         out.setdefault(k, [list(r) for r in rows])
         return out
 
+    @classmethod
+    def stata_props_for_spec(cls, spec: Any, ado_dirs: Any = ()) -> dict:
+        """``{scheme name: {key: value}}``: the ``@stata`` keys -- what
+        Stata's own scheme files declare and dash's copies do not, the
+        p-chain's class directives (s2color's ``linestyle p1line p1line``)
+        and the leaf values the style files reach -- of every scheme the
+        spec names, read along *ado_dirs* (WP-31 E10).  Written into
+        ``build_options["_stata_props"]`` at registration so a host
+        without Stata's BASE draws as the registering machine did; at most
+        8 schemes of 4,000 keys."""
+        if not isinstance(spec, dict):
+            return {}
+        dirs = tuple(ado_dirs or ())
+        names = [_resolve_scheme_name(spec, dirs)]
+        for g in spec.get("graphs") or []:
+            go = g.get("graph_options") if isinstance(g, dict) else None
+            if isinstance(go, dict) and str(go.get("scheme") or "").strip():
+                names.append(_dash_scheme_choice(
+                    str(go.get("scheme")).strip(), "graph", dirs))
+        out: dict = {}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for sname in list(dict.fromkeys(names))[:8]:
+                try:
+                    sp = cls.resolve_or_fallback(sname, "the scheme keys",
+                                                 ado_dirs=dirs)
+                except Exception:   # noqa: BLE001 -- never fail a build
+                    continue
+                keys = {k[len("@stata "):]: v for k, v in sp._props.items()
+                        if k.startswith("@stata ")}
+                if keys:
+                    out[sname] = dict(list(sorted(keys.items()))[:4000])
+        return out
+
     _STYLE_P_RE = re.compile(r"p([1-9]|1[0-5])([a-z_]*)")
 
     def _style_kind(self, stata_class: str, name: Any) -> str:
@@ -33105,6 +33139,64 @@ def _dash_style_rows_of(build_options: dict) -> dict:
     return out
 
 
+_DASH_STATA_PROP_KEY_RE = re.compile(
+    r"(color|symbol|symbolsize|linewidth|linepattern|intensity|linestyle|"
+    r"markerstyle|areastyle|seriesstyle|shadestyle|zyx2rule)"
+    r"( [A-Za-z0-9_#]{1,64})?")
+_DASH_STATA_PROP_VAL_RE = re.compile(r"[A-Za-z0-9_#.*%+\- ]{1,64}")
+
+
+def _dash_stata_props_of(build_options: dict) -> dict:
+    """``build_options["_stata_props"]`` (WP-31 E10) as ``{scheme name:
+    {key: value}}``: at most 8 schemes named by the scheme name rule, each
+    of at most 4,000 keys of the resolver's classes with a value of at
+    most 64 plain characters; anything else is dropped; never raises."""
+    try:
+        raw = (build_options or {}).get("_stata_props")
+    except AttributeError:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict = {}
+    for name, keys in list(raw.items())[:8]:
+        if not (isinstance(name, str) and SchemeParser._scheme_name_ok(name)
+                and isinstance(keys, dict)):
+            continue
+        good = {}
+        for k, v in list(keys.items())[:4000]:
+            if isinstance(k, str) and isinstance(v, str) and \
+                    _DASH_STATA_PROP_KEY_RE.fullmatch(k) and \
+                    _DASH_STATA_PROP_VAL_RE.fullmatch(v):
+                good[k] = v
+        if good:
+            out[name] = good
+    return out
+
+
+def _dash_apply_stata_props(parser, props) -> None:
+    """Give *parser* the ``@stata`` keys embedded at registration (WP-31
+    E10) when it read none itself (a host without Stata's BASE): each key
+    its own props lack, then its colorvar() default worked out again and
+    its style memos cleared.  Never raises."""
+    try:
+        if not props or not isinstance(getattr(parser, "_props", None),
+                                       dict):
+            return
+        if any(k.startswith("@stata ") for k in parser._props):
+            return
+        for k, v in props.items():
+            if k not in parser._props:
+                parser._props["@stata " + k] = v
+        for m in ("_p_directive_memo", "_style_memo", "_style_rows_memo"):
+            parser.__dict__.pop(m, None)
+        if getattr(parser, "name", "") not in SchemeParser._BUILTIN_NAMES:
+            zd = _dash_zyx2_derive(parser)
+            if zd:
+                parser._props["@stata zyx2default"] = zd
+    except Exception:   # noqa: BLE001 -- the parser draws either way
+        return
+
+
 def _dash_embed_style_rows(text: str) -> str:
     """dash.ado's spec *text* (its last ``}`` written later by
     ``_dash_fn_spec_tail``) with ``"_style_rows"`` added to its
@@ -33119,12 +33211,18 @@ def _dash_embed_style_rows(text: str) -> str:
         bo = spec.get("build_options")
         if not isinstance(bo, dict) or "_style_rows" in bo:
             return text
-        rows = SchemeParser.style_rows_for_spec(
-            spec, _dash_scheme_dirs_of(bo))
-        if not rows:
+        dirs = _dash_scheme_dirs_of(bo)
+        rows = SchemeParser.style_rows_for_spec(spec, dirs)
+        props = SchemeParser.stata_props_for_spec(spec, dirs)
+        add = ""
+        if rows:
+            add += ',"_style_rows":' + json.dumps(rows, separators=(",", ":"))
+        if props:
+            add += ',"_stata_props":' + json.dumps(props,
+                                                   separators=(",", ":"))
+        if not add:
             return text
-        return text[:-1] + ',"_style_rows":' + json.dumps(
-            rows, separators=(",", ":")) + "}"
+        return text[:-1] + add + "}"
     except Exception:   # noqa: BLE001 -- the spec is written either way
         return text
 
@@ -54828,6 +54926,8 @@ class DashRenderer:
         # first in every parser; a compressed-archive install is named.
         self._style_rows_emb: dict = _dash_style_rows_of(_build_opts)
         _build_opts.pop("_style_rows", None)
+        self._stata_props_emb: dict = _dash_stata_props_of(_build_opts)
+        _build_opts.pop("_stata_props", None)
         _dash_style_archive_note(_build_opts)
         _scheme_name: str = _resolve_scheme_name(self.master_spec,
                                                  self._scheme_dirs)
@@ -55862,6 +55962,8 @@ class DashRenderer:
             emb = getattr(self, "_style_rows_emb", None)
             if emb:
                 sch.__dict__["_embedded_style_rows"] = emb
+            _dash_apply_stata_props(
+                sch, (getattr(self, "_stata_props_emb", None) or {}).get(key))
             cache[key] = sch
         return sch
 
@@ -58902,9 +59004,12 @@ class ServerAppBuilder:
         # those this build reads itself, travel into the app as data.
         self._style_rows_emb: dict = _dash_style_rows_of(
             _bo if isinstance(_bo, dict) else {})
+        self._stata_props_emb: dict = _dash_stata_props_of(
+            _bo if isinstance(_bo, dict) else {})
         if isinstance(_bo, dict):
             _bo.pop("scheme_dirs", None)
             _bo.pop("_style_rows", None)
+            _bo.pop("_stata_props", None)
             _dash_style_archive_note(_bo)
         # Each function layer's stored points onto its plot (WP-29 P0.6),
         # before the spec is capped and embedded: the app draws them.
@@ -58951,6 +59056,8 @@ class ServerAppBuilder:
         if self._style_rows_emb:
             self.scheme.__dict__["_embedded_style_rows"] = \
                 self._style_rows_emb
+        _dash_apply_stata_props(
+            self.scheme, self._stata_props_emb.get(self.scheme_requested))
         self._resolve_graph_schemes()
         _own = _dash_style_rows_of({"_style_rows": (
             SchemeParser.style_rows_for_spec(self.spec, self._scheme_dirs)
@@ -58986,6 +59093,8 @@ class ServerAppBuilder:
                 if self._style_rows_emb:
                     parser.__dict__["_embedded_style_rows"] = \
                         self._style_rows_emb
+                _dash_apply_stata_props(
+                    parser, getattr(self, "_stata_props_emb", {}).get(choice))
                 cache[choice] = parser
             if parser is not self.scheme:
                 self.graph_schemes[raw] = parser
