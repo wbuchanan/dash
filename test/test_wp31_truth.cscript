@@ -12382,6 +12382,128 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
 }
 * ==== end S44 ====
 
+python:
+def _u45_has(page, kind, want):
+    """u45_bad: "" when the saved page *page* holds a FixedTicker whose
+    ticks are *want* (Stata values of a *kind* axis: "" a number), else
+    the tick lists it holds."""
+    import re
+    import json
+    import pandas as pd
+    import dash_render as dr
+    from sfi import Macro
+    want = [float(v) for v in str(want).split()]
+    if kind:
+        want = [float(v) for v in dr._stata_dates_to_datetime(
+            pd.Series(want), kind).astype("int64")]
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    lists = [json.loads("[" + m + "]") for m in re.findall(
+        r'"name":"FixedTicker","id":"[^"]+","attributes":\{"tags":\[[^\]]*\],"ticks":\[([^\]]*)\]', html)]
+    ok = any([float(v) for v in t] == want for t in lists)
+    Macro.setGlobal("u45_bad", "" if ok else ("want %s, page %s" % (want, lists))[:1500])
+end
+
+capture program drop _u45_drawn
+program define _u45_drawn
+    // u45_t: the ticks twoway drew on axis <ax> (x1, y1) of <graph object>
+    args p ax
+    local d = substr("`ax'", 1, 1)
+    local k = substr("`ax'", 2, 1)
+    local a "`p'.`d'axis`k'"
+    local nt "`.`a'.major.dlg_tickpos.arrnels'"
+    if "`nt'" == "" | "`nt'" == "." local nt 0
+    local v ""
+    forvalues i = 1/`nt' {
+        local v "`v' `.`a'.major.dlg_tickpos[`i']'"
+    }
+    global u45_t "`v'"
+end
+
+* ==== S45 D15: Stata's own ticks at build ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
+    display as text "S45 start " c(current_date) " " c(current_time)
+    local u45d "`w31_work'/s45d15"
+    capture mkdir "`u45d'"
+
+    // U45-01: _natscale over summarize is the axis twoway draws (the
+    // fixture's claim, again in this session) on the model's misses.
+    sysuse auto, clear
+    local i 0
+    foreach c in "price 4" "trunk 2" "trunk 3" {
+        local ++i
+        tokenize `c'
+        quietly summarize `1', meanonly
+        quietly _natscale `=strofreal(r(min), "%21x")' `=strofreal(r(max), "%21x")' `2'
+        local t ""
+        local k 0
+        while r(min) + `k' * r(delta) <= r(max) + 1e-9 * r(delta) {
+            local t `t' `=r(min) + `k' * r(delta)'
+            local ++k
+        }
+        quietly twoway scatter `1' mpg, ylabel(#`2')
+        _u45_drawn .Graph y1
+        _w31_expect U45-01 `"("`: list retokenize t'" == "`: list retokenize global(u45_t)'")"' "`c': natscale `t', drawn ${u45_t}"
+    }
+    _w31_done U45-01 "_natscale over the data is twoway's axis on price #4 and trunk #2/#3"
+
+    // U45-02: dash draws twoway's ticks on those axes and on a %th and a
+    // %td axis under if, in the same session.
+    local i 0
+    foreach c in "price 4" "trunk 2" "trunk 3" {
+        local ++i
+        tokenize `c'
+        quietly twoway scatter `1' mpg, ylabel(#`2')
+        _u45_drawn .Graph y1
+        capture noisily dash scatter `1' mpg, ylabel(#`2') saving("`u45d'/a`i'.html", replace)
+        _w31_expect U45-02 "(_rc == 0)" "dash scatter `c' rc `=_rc'"
+        python: import __main__ as _u45_m; _u45_m._u45_has(r"`u45d'/a`i'.html", "", "${u45_t}")
+        _w31_expect U45-02 `"("${u45_bad}" == "")"' `"`c': ${u45_bad}"'
+    }
+    sysuse sp500, clear
+    quietly generate h = hofd(date)
+    format h %th
+    quietly twoway scatter close h
+    _u45_drawn .Graph x1
+    capture noisily dash scatter close h, saving("`u45d'/h.html", replace)
+    _w31_expect U45-02 "(_rc == 0)" "dash scatter close h rc `=_rc'"
+    python: import __main__ as _u45_m; _u45_m._u45_has(r"`u45d'/h.html", "th", "${u45_t}")
+    _w31_expect U45-02 `"("${u45_bad}" == "")"' `"%th: ${u45_bad}"'
+    _w31_done U45-02 "default and #N axes draw twoway's ticks (price #4, trunk #2/#3, %th)"
+
+    // U45-03: the rows a qualifier keeps (its __dashq column), a
+    // horizontal layer's y on x, and a rescaled by() panel.
+    quietly twoway line close date if close > 1200
+    _u45_drawn .Graph x1
+    capture noisily dash line close date if close > 1200, saving("`u45d'/i.html", replace)
+    _w31_expect U45-03 "(_rc == 0)" "dash line if rc `=_rc'"
+    python: import __main__ as _u45_m; _u45_m._u45_has(r"`u45d'/i.html", "td", "${u45_t}")
+    _w31_expect U45-03 `"("${u45_bad}" == "")"' `"if close > 1200: ${u45_bad}"'
+    sysuse auto, clear
+    quietly twoway rcap mpg mpg weight, horizontal
+    _u45_drawn .Graph x1
+    capture noisily dash rcap mpg mpg weight, horizontal saving("`u45d'/z.html", replace)
+    _w31_expect U45-03 "(_rc == 0)" "dash rcap horizontal rc `=_rc'"
+    python: import __main__ as _u45_m; _u45_m._u45_has(r"`u45d'/z.html", "", "${u45_t}")
+    _w31_expect U45-03 `"("${u45_bad}" == "")"' `"horizontal: ${u45_bad}"'
+    quietly twoway scatter price weight, by(foreign, xrescale)
+    forvalues k = 1/2 {
+        _u45_drawn .Graph.graphs[`k'] x1
+        local u45p`k' "${u45_t}"
+    }
+    capture noisily dash scatter price weight, by(foreign, xrescale) saving("`u45d'/b.html", replace)
+    _w31_expect U45-03 "(_rc == 0)" "dash by(, xrescale) rc `=_rc'"
+    forvalues k = 1/2 {
+        python: import __main__ as _u45_m; _u45_m._u45_has(r"`u45d'/b.html", "", "`u45p`k''")
+        _w31_expect U45-03 `"("${u45_bad}" == "")"' `"panel `k': ${u45_bad}"'
+    }
+    _w31_done U45-03 "a qualifier's rows, a horizontal layer and rescaled by() panels draw twoway's ticks"
+    macro drop u45_*
+    display as text "S45 end " c(current_date) " " c(current_time)
+}
+* ==== end S45 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

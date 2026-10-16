@@ -58,10 +58,12 @@ _BUILD = {
              "x"),
     "BY": ([_L("line", "close", "date")], {"by": "g"}, "td", "x"),
 }
-#: The probes where dash's model draws twoway's ticks (measured: the model
-#: agrees with _tsnatscale on 52-98% of ranges, A8); on the others dash
-#: draws the model's ticks and the test prints twoway's beside them.
-_AGREES = {"TD", "N5", "TW", "TM", "TQ", "TY", "Y2", "MIX", "MIXN", "BY",
+#: The probes where dash's MOVE-TIME model draws twoway's ticks; at build
+#: every probe is Stata's own (WP-31 D15).
+#: (The model agrees with _tsnatscale on 52-98% of ranges, A8; these specs
+#: carry no stata_ticks, so they draw the model: test_stata_ticks.py draws
+#: Stata's.)
+_MODEL_AGREES = {"TD", "N5", "TW", "TM", "TQ", "TY", "Y2", "MIX", "MIXN", "BY",
            "IF1", "IF3"}
 _FMT = {"date": "%td", "w": "%tw", "m": "%tm", "q": "%tq", "h": "%th",
         "y": "%ty"}
@@ -143,7 +145,7 @@ def _check(pid, figs, which, kind, lo, hi, bad):
         t = _major_ticks(ax)
         if t != want or list(ax.ticker.minor_ticks or []) != []:
             bad.append((pid, "model", t, want))
-        if pid in _AGREES and _units(t, kind) != rec["list"]:
+        if pid in _MODEL_AGREES and _units(t, kind) != rec["list"]:
             bad.append((pid, "twoway", _units(t, kind), rec["list"]))
 
 

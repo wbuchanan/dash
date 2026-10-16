@@ -496,7 +496,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Closed in WP-31, BUGS.md "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them", commit 47e2f82.
 - **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit bb9f4a9.
-- **D15 Tracked:** Open (WP-31 section 45).
+- **D15 Tracked:** Closed in WP-31, BUGS.md "Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction", commit pending.
 - **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit 398149e.
 - **D16b Tracked:** Closed in WP-31, BUGS.md "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced", commit 78f2ba0.
 - **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit ab33ff3.

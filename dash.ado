@@ -7174,6 +7174,138 @@ end
 
 
 // ================================================================
+// _dash_stata_ticks_gen <request>[;<request>...]  -- Stata's own #N ticks
+// ================================================================
+// WP-31 D15.  Runs _dash_axis_ticks_stata once per request
+// dash_render.py's _dash_stata_tick_plan wrote (names, digits, unit
+// letters, - + : only) and gathers each answer's entries through
+// _dash_stata_ticks_take, read from r() in full precision.  Leaves the
+// JSON array in the caller's local _dash_st_json ("" for none).
+program define _dash_stata_ticks_gen
+    version 19
+    local reqs `"`0'"'
+    local acc ""
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    while `: length local reqs' {
+        gettoken _rq reqs : reqs, parse(";")
+        if `"`_rq'"' == ";" continue
+        capture _dash_axis_ticks_stata `_rq'
+        if _rc continue
+        local _e ""
+        python: _dash_M.setLocal("_e", _dash_xm._dash_stata_ticks_take(_dash_M.getLocal("_rq")))
+        if `: length local _e' {
+            if `: length local acc' local acc `"`acc',`_e'"'
+            else local acc `"`_e'"'
+        }
+    }
+    if `: length local acc' c_local _dash_st_json `"[`acc']"'
+    else c_local _dash_st_json ""
+end
+
+
+// ================================================================
+// _dash_axis_ticks_stata -- the ticks Stata's own _natscale/_tsnatscale
+//                            give over an axis's data range (WP-31 D15)
+// ================================================================
+// _dash_axis_ticks_stata <n> <unit> <byvar> <layer> [<layer> ...]
+//
+// Called through dash_render.py's _dash_stata_ticks_run at export, while
+// the qualifier columns exist, once per drawn axis, unit and count its
+// _dash_stata_tick_requests names.  <unit> is - for _natscale (a number,
+// %tc or %tC) or d w m q h y for _tsnatscale; <byvar> is - or the by()
+// variable, whose groups are asked for one by one (a rescaled panel);
+// each <layer> is <var>[+<var>...]:[<mark>[+<mark>...]] -- the layer's
+// variables on the axis and the __dashq<k> columns that select its rows.
+// Every word is a Stata name dash wrote or a variable's: the qualifier
+// TEXT is never read here (DECISIONS A25); a row is the layer's when each
+// of its marker columns is 1, as both renderers select it.
+//
+// For each group g: r(lo<g>) and r(hi<g>), the least and greatest value
+// summarize finds over every layer's variables and rows, and the
+// routine's answer over them: r(min<g>) r(max<g>) r(delta<g>) r(n<g>) and
+// _tsnatscale's r(list<g>).  r(ng) counts the groups.  A group with no
+// value or a single value is returned with lo missing; the renderer then
+// uses its model.  At most 64 groups.
+program define _dash_axis_ticks_stata, rclass
+    version 19
+    gettoken n    0 : 0
+    gettoken unit 0 : 0
+    gettoken byv  0 : 0
+    local layers `0'
+    confirm integer number `n'
+    local word ""
+    if "`unit'" != "-" {
+        local word : word `=strpos("dwmqhy", "`unit'")' of daily weekly monthly quarterly halfyearly yearly
+        if "`word'" == "" | strlen("`unit'") != 1 exit 198
+    }
+    tempvar grp lu
+    if "`byv'" != "-" {
+        confirm variable `byv', exact
+        quietly egen long `grp' = group(`byv')
+    }
+    else quietly generate byte `grp' = 1
+    quietly summarize `grp', meanonly
+    local ng = min(cond(r(N), r(max), 0), 64)
+    forvalues g = 1/`ng' {
+        tempname lo`g' hi`g'
+        scalar `lo`g'' = .
+        scalar `hi`g'' = .
+    }
+    foreach L of local layers {
+        local vs = subinstr(substr("`L'", 1, strpos("`L'", ":") - 1), "+", " ", .)
+        local ms = subinstr(substr("`L'", strpos("`L'", ":") + 1, .), "+", " ", .)
+        capture drop `lu'
+        quietly generate byte `lu' = 1
+        foreach m of local ms {
+            confirm numeric variable `m', exact
+            quietly replace `lu' = 0 if `m' != 1
+        }
+        foreach v of local vs {
+            confirm numeric variable `v', exact
+            forvalues g = 1/`ng' {
+                quietly summarize `v' if `lu' & `grp' == `g', meanonly
+                if r(N) == 0 continue
+                if r(min) < `lo`g'' scalar `lo`g'' = r(min)
+                if `hi`g'' >= . | r(max) > `hi`g'' scalar `hi`g'' = r(max)
+            }
+        }
+    }
+    local out ""
+    forvalues g = 1/`ng' {
+        local a = strofreal(`lo`g'', "%21x")
+        local b = strofreal(`hi`g'', "%21x")
+        if `lo`g'' >= . | `hi`g'' >= . | `lo`g'' >= `hi`g'' {
+            local out `out' lo`g' .
+            continue
+        }
+        if "`word'" == "" capture _natscale `a' `b' `n'
+        else              capture _tsnatscale `a' `b' `n', `word'
+        if _rc {
+            local out `out' lo`g' .
+            continue
+        }
+        foreach w in min max delta n {
+            tempname `w'`g'
+            scalar ``w'`g'' = r(`w')
+        }
+        local list`g' `"`r(list)'"'
+        local out `out' lo`g' `lo`g'' hi`g' `hi`g'' min`g' `min`g'' max`g' `max`g'' delta`g' `delta`g'' n`g' `n`g''
+    }
+    while `: length local out' {
+        gettoken nm out : out
+        gettoken sc out : out
+        return scalar `nm' = `sc'
+    }
+    forvalues g = 1/`ng' {
+        return local list`g' `"`list`g''"'
+    }
+    return scalar ng = `ng'
+end
+
+
+// ================================================================
 // _dash_write_data <path> <varlist>  -- the data file both renderers read
 // ================================================================
 // Written from Python through the Stata Function Interface, by
@@ -10950,6 +11082,23 @@ program define _dash_render_immediate
             _dash_tmp_close, dir(`"`_dash_run'"')
             exit `_dt_rc'
         }
+        local _dst_names json_spec
+        local _dash_st_json ""
+        // WP-31 D15: Stata's own #N ticks over each axis's rows, asked of
+        // _natscale/_tsnatscale while the qualifier columns exist
+        // (_dash_axis_ticks_stata); carried as build_options.stata_ticks.
+        // Captured: a failure leaves every axis to the renderer's model.
+        capture _dash_xm_load
+        if _rc == 0 {
+            capture python: import sys
+            capture python: from sfi import Macro as _dash_M
+            capture python: _dash_xm = sys.modules["_dash_render_export"]
+            capture python: _dash_M.setLocal("_dst_reqs", _dash_xm._dash_stata_tick_plan(_dash_M.getLocal("_dst_names"), _dash_M.getLocal("_dash_fmt_json")))
+            if _rc == 0 & `: length local _dst_reqs' {
+                capture _dash_stata_ticks_gen `_dst_reqs'
+                if _rc local _dash_st_json ""
+            }
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -10990,7 +11139,10 @@ program define _dash_render_immediate
     _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    // WP-31 D15: Stata's own #N ticks, when the export asked for any.
+    local _dash_st_bo ""
+    if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json'`_dash_st_bo', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -12230,6 +12382,26 @@ program define _dash_prepare_spec, rclass
             capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
             exit `_dt_rc'
         }
+        local _dst_names ""
+        forvalues _dstk = 1/`ntok_reg' {
+            if `: length local _qg_`_dstk'' local _dst_names `_dst_names' _qg_`_dstk'
+        }
+        local _dash_st_json ""
+        // WP-31 D15: Stata's own #N ticks over each axis's rows, asked of
+        // _natscale/_tsnatscale while the qualifier columns exist
+        // (_dash_axis_ticks_stata); carried as build_options.stata_ticks.
+        // Captured: a failure leaves every axis to the renderer's model.
+        capture _dash_xm_load
+        if _rc == 0 {
+            capture python: import sys
+            capture python: from sfi import Macro as _dash_M
+            capture python: _dash_xm = sys.modules["_dash_render_export"]
+            capture python: _dash_M.setLocal("_dst_reqs", _dash_xm._dash_stata_tick_plan(_dash_M.getLocal("_dst_names"), _dash_M.getLocal("_dash_fmt_json")))
+            if _rc == 0 & `: length local _dst_reqs' {
+                capture _dash_stata_ticks_gen `_dst_reqs'
+                if _rc local _dash_st_json ""
+            }
+        }
         // Captured for the same reason as on the immediate route.
         capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         local _dash_jrc = _rc
@@ -12403,7 +12575,10 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    // WP-31 D15: Stata's own #N ticks, when the export asked for any.
+    local _dash_st_bo ""
+    if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:

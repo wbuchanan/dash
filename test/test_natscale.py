@@ -74,7 +74,11 @@ def _drawn_cases():
     for r in _T["drawn"]:
         key = (r["dataset"], r["var"], r["n"])
         marks = ([pytest.mark.xfail(strict=True, reason="natscale case the "
-                                    "model does not reproduce")]
+                                    "model does not reproduce; at build the "
+                                    "drawn axis is Stata's own (WP-31 D15, "
+                                    "test_stata_ticks.py::"
+                                    "TestBuildTicksAreStatas::"
+                                    "test_auto_misses)")]
                  if key in _KNOWN else [])
         out.append(pytest.param(r, id="%s-%s-%d" % key, marks=marks))
     return out
@@ -289,7 +293,11 @@ class TestBothModesDrawTwowaysTicks:
         assert type(t).__name__ == "CustomJSTicker"
         assert "every" not in t.args
         assert t.args["extra"] == [2000.0, 3000.0, 4000.0, 5000.0]
-        assert t.minor_code == dr._DASH_TICK_EXTRA_JS
+        # WP-31 D15 (D-45c): the marks sit in the FixedTicker efix, which
+        # a filter move writes again.
+        assert list(t.args["efix"].ticks) == [2000.0, 3000.0, 4000.0,
+                                              5000.0]
+        assert t.minor_code == dr._DASH_TICK_EFIX_JS
 
     def test_an_explicit_rule_is_untouched(self, mode, tmp_path):
         """Control: ylabel(15(5)30) keeps its own ticks."""

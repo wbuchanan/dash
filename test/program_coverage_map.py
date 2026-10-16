@@ -287,6 +287,13 @@ COVERAGE = {
                                  "test_wp31_truth.cscript:U11-04",
                                  "test_option_validation.cscript:U11-07"),
         "_dash_fit_points": ("test_wp31_truth.cscript:U11-03",),
+        # WP-31 D15: Stata's own #N ticks asked at export; the pages draw
+        # twoway's ticks (U45-02), a qualifier's rows through its column
+        # (U45-03).
+        "_dash_axis_ticks_stata": ("test_wp31_truth.cscript:U45-01",
+                                   "test_wp31_truth.cscript:U45-02"),
+        "_dash_stata_ticks_gen": ("test_wp31_truth.cscript:U45-02",
+                                  "test_wp31_truth.cscript:U45-03"),
         # e2e: each repeated option registered as the command twoway
         # draws the same (SVG compared in the run); a unique one refused.
         "_dash_opts_repeats": ("test_twoway_option_parity.cscript:TP-14",),

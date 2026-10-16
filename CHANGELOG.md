@@ -472,7 +472,7 @@ and now matches Stata.
 
 - 57 Stata style names (fpall, refmarker, plotregion, sunflower, ...) drew default attributes with a note; they draw their style file's attributes, and a scheme's class directives and your own *.style files are read (WP-31, E10)
 
-<!-- WP-31 D15 -->
+- default date axes and auto's price #4 and trunk #2/#3 axes took a fitted model's ticks (58-98% agreement); at build they take Stata's own natscale and tsnatscale ticks, and xtick(#N) and xlabel(minmax) follow a filter move as #N does (WP-31, D15)
 
 <!-- WP-31 C11 -->
 

@@ -35650,6 +35650,9 @@ def _dash_page_settings(mapper, cache, build_options):
     if mapper is not None:
         mapper.dp = dp
         mapper._dash_gt_fonts = _dash_gt_fonts_of(build_options)
+        # WP-31 D15: Stata's own ticks for the ranges the export summarized,
+        # stamped on each figure before its axes are finished.
+        mapper._dash_stata_ticks = _dash_stata_tick_table(build_options)
     if isinstance(cache, dict):
         cache["dp"] = dp
     return dp
@@ -38080,20 +38083,23 @@ function dash_tsnatscale(lo, hi, n, unit) {
 }
 // _dash_axis_count_ticks' date branches: a %td-%ty axis (epoch ms) or a
 // date beside a number ("su:<kind>", Stata units); undefined otherwise.
-function dash_ts_axis_ticks(lo, hi, n, kind) {
+function dash_ts_axis_ticks(lo, hi, n, kind, tab) {
     if (typeof kind !== "string") return undefined;
+    // WP-31 D15: Stata's own (tab).
+    const pick = (a, b, u) => tab ? dash_stata_pick(tab, a, b, u) : null;
     if (kind.indexOf("su:") === 0) {
         const k = kind.slice(3);
         const su = Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, k) ? DASH_TS_UNITS[k] : null;
-        if (su === null) return dash_natscale(lo, hi, n);
-        return dash_tsnatscale(lo, hi, n, su) || dash_natscale(lo, hi, n);
+        const nat = () => pick(lo, hi, "") || dash_natscale(lo, hi, n);
+        if (su === null) return nat();
+        return pick(lo, hi, su) || dash_tsnatscale(lo, hi, n, su) || nat();
     }
     if (!Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, kind)) return undefined;
     const unit = DASH_TS_UNITS[kind];
     const a = dash_ms_to_ts_unit(lo, unit), b = dash_ms_to_ts_unit(hi, unit);
     // Past Stata's dates S35's off-date ticks are kept (hold).
     if (a === null || b === null) return null;
-    const t = dash_tsnatscale(a, b, n, unit);
+    const t = pick(a, b, unit) || dash_tsnatscale(a, b, n, unit);
     if (!t) return null;
     const out = [];
     for (const v of t) {
@@ -38443,7 +38449,7 @@ def _dash_tsnatscale_ticks(lo, hi, n, unit):
     return [float("%.12g" % v) for v in out]
 
 
-def _dash_axis_count_ticks(lo, hi, n, kind=None):
+def _dash_axis_count_ticks(lo, hi, n, kind=None, table=None):
     """twoway's ticks for ``#n`` on an axis whose layers draw *lo* to *hi*,
     as positions on the Bokeh axis, or None for none.
 
@@ -38458,16 +38464,23 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
     that draws a date of kind *k* beside a number in Stata units: its
     positions are those units, ticked by _tsnatscale directly (``"su:"``
     with no date kind is linear).  Anything else is read as linear.
+
+    WP-31 D15: *table* (:func:`_dash_stata_tick_table`) holds the answers
+    Stata's own ``_natscale``/``_tsnatscale`` gave when the graph was
+    exported, keyed by range, count and unit; a range it holds takes
+    Stata's ticks (:func:`_dash_stata_pick`), any other the model.
     """
+    # WP-31 D15: Stata's own answer for this range, when the spec carries
+    # it (*table*, from _dash_stata_tick_table), else the model.
     if isinstance(kind, str) and kind.startswith("su:"):
         su = _DASH_TS_UNITS.get(kind[3:])
         if su is None:
-            return _dash_natscale_ticks(lo, hi, n)
+            return _dash_stata_or_model(table, lo, hi, n, "")
         # Past 0100-9999 the values are no dates: natscale, as linear.
-        return (_dash_tsnatscale_ticks(lo, hi, n, su)
-                or _dash_natscale_ticks(lo, hi, n))
+        return (_dash_stata_or_model(table, lo, hi, n, su)
+                or _dash_stata_or_model(table, lo, hi, n, ""))
     if kind == "log":
-        t = _dash_natscale_ticks(lo, hi, n)
+        t = _dash_stata_or_model(table, lo, hi, n, "")
         t = [v for v in (t or ()) if v > 0]
         return t or None
     if kind in ("tc", "tC"):
@@ -38476,17 +38489,17 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
             b = float(hi) - _STATA_EPOCH_UNIX_MS
         except (TypeError, ValueError, OverflowError):
             return None
-        t = _dash_natscale_ticks(a, b, n)
+        t = _dash_stata_or_model(table, a, b, n, "")
         return [v + _STATA_EPOCH_UNIX_MS for v in t] if t else None
     unit = _DASH_TS_UNITS.get(kind) if isinstance(kind, str) else None
     if unit is None:
-        return _dash_natscale_ticks(lo, hi, n)
+        return _dash_stata_or_model(table, lo, hi, n, "")
     a = _dash_unix_ms_to_unit(lo, unit)
     b = _dash_unix_ms_to_unit(hi, unit)
     if a is None or b is None:
         # An axis reaching past Stata's dates (WP-30 P1.23a, D-35k).
         return _dash_off_date_ticks(lo, hi, n, kind)
-    t = _dash_tsnatscale_ticks(a, b, n, unit)
+    t = _dash_stata_or_model(table, a, b, n, unit)
     if not t:
         return None
     with warnings.catch_warnings():
@@ -38496,6 +38509,300 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
                                           kind)
     out = [float(v) for v in stamps.dropna().astype("int64").tolist()]
     return out or None
+
+
+#: WP-31 D15: the most entries a spec's ``stata_ticks`` table may hold, the
+#: most ticks one entry may hold, and the units an entry may name ("" is
+#: _natscale; the letters are _tsnatscale's, _DASH_TS_UNITS' values).
+_DASH_STATA_TICK_MAX = 512
+_DASH_STATA_TICK_UNITS = ("", "d", "w", "m", "q", "h", "y")
+#: _tsnatscale's option word for each unit (B/_/_tsnatscale.sthlp).
+_DASH_STATA_TS_WORDS = {"d": "daily", "w": "weekly", "m": "monthly",
+                        "q": "quarterly", "h": "halfyearly", "y": "yearly"}
+
+
+def _dash_stata_or_model(table, lo, hi, n, unit):
+    """Stata's ticks for ``#n`` over *lo* to *hi* in *unit* from *table*
+    (:func:`_dash_stata_pick`), else the model's: natscale for unit "",
+    the _tsnatscale model for a date unit (WP-31 D15)."""
+    return (_dash_stata_pick(table, lo, hi, n, unit)
+            or (_dash_natscale_ticks(lo, hi, n) if unit == ""
+                else _dash_tsnatscale_ticks(lo, hi, n, unit)))
+
+
+def _dash_stata_num(v):
+    """*v* is a finite int or float, not a bool (WP-31 D15)."""
+    return (isinstance(v, (int, float)) and not isinstance(v, bool)
+            and math.isfinite(float(v)))
+
+
+def _dash_stata_unit_of(fmt):
+    """The _tsnatscale unit of a display format: d w m q h y for %td-%ty,
+    "" for a number, %tc or %tC (natscale over milliseconds), WP-31 D15."""
+    m = re.match(r"%-?t([cCdwmqhy])", str(fmt or ""))
+    if not m:
+        return ""
+    return "" if m.group(1) in "cC" else m.group(1)
+
+
+def _dash_stata_pick(table, lo, hi, n, unit):
+    """The ticks Stata's own routine gave for ``#n`` over *lo* to *hi* in
+    *unit* ("" for _natscale), from *table* (:func:`_dash_stata_tick_table`),
+    or None when the table holds no such range (WP-31 D15).  The range
+    matches within 1e-9 of its span: both ends are the same doubles when
+    the rows are the ones the export summarized."""
+    if not table:
+        return None
+    try:
+        lo, hi, n = float(lo), float(hi), int(n)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not (math.isfinite(lo) and math.isfinite(hi)):
+        return None
+    if hi < lo:
+        lo, hi = hi, lo
+    for row in table:
+        r0, r1, rn, ru, ticks = row
+        if rn != n or ru != unit:
+            continue
+        tol = 1e-9 * max(1.0, abs(r1 - r0))
+        if abs(lo - r0) <= tol and abs(hi - r1) <= tol:
+            return list(ticks)
+    return None
+
+
+def _dash_stata_tick_table(build_options):
+    """The spec's ``stata_ticks`` (WP-31 D15) as a list of ``(lo, hi, n,
+    unit, ticks)``, or None: entries dash.ado wrote at export from Stata's
+    ``_natscale``/``_tsnatscale`` over each axis's rows
+    (:func:`_dash_stata_ticks_take`).  Numbers and unit letters only; an
+    entry of any other shape is dropped, at most ``_DASH_STATA_TICK_MAX``
+    entries of at most ``_MAX_AXIS_TICKS + 1`` ticks are kept."""
+    raw = (build_options or {}).get("stata_ticks") if isinstance(
+        build_options, dict) else None
+    if not isinstance(raw, list):
+        return None
+
+    num = _dash_stata_num
+    out = []
+    for row in raw[:_DASH_STATA_TICK_MAX]:
+        if not (isinstance(row, list) and len(row) == 5):
+            continue
+        lo, hi, n, unit, ticks = row
+        if not (num(lo) and num(hi) and num(n) and float(n) == int(n)
+                and unit in _DASH_STATA_TICK_UNITS
+                and isinstance(ticks, list)
+                and 0 < len(ticks) <= _MAX_AXIS_TICKS + 1
+                and all(num(t) for t in ticks)):
+            continue
+        out.append((float(lo), float(hi), int(n), unit,
+                    tuple(float(t) for t in ticks)))
+    return out or None
+
+
+def _dash_stata_ticks_of(unit, lo, hi, mn, mx, delta, count, listed):
+    """The ticks of one _natscale/_tsnatscale answer (WP-31 D15), or None.
+
+    _natscale (*unit* ""): from r(min) in steps of r(delta) while at most
+    r(max) -- the graph's own rule (test/fixtures/natscale_truth.json
+    "quirk": r(max) can be the data's maximum) -- written as the model
+    writes its ticks (15 digits); None where natscale's 32-bit step count
+    overflows (twoway then draws the data's ends less and plus one, the
+    model's rule).  _tsnatscale: r(list) when it is given (measured
+    16oct2026: daily and weekly answers list their ticks in r(list), not
+    the r(ticks) the help names), else r(min) + k*r(delta) for k below
+    r(n), at 12 digits as the model writes them."""
+    vals = []
+    try:
+        if unit == "":
+            d = float(delta)
+            if not (math.isfinite(d) and d > 0 and math.isfinite(mn)
+                    and math.isfinite(mx)):
+                return None
+            p = 10.0 ** math.floor(math.log10(d))
+            if max(abs(lo), abs(hi)) >= _DASH_NATSCALE_INT_LIMIT * p:
+                return None
+            k = 0
+            while mn + k * d <= mx + 1e-9 * d and k <= _MAX_AXIS_TICKS:
+                vals.append(float("%.15g" % (mn + k * d)))
+                k += 1
+        else:
+            words = (listed or "").split()
+            if words:
+                vals = [float(w) for w in words]
+            else:
+                d, c = float(delta), int(count)
+                if not (math.isfinite(d) and d > 0 and 0 < c
+                        <= _MAX_AXIS_TICKS + 1 and math.isfinite(mn)):
+                    return None
+                vals = [mn + k * d for k in range(c)]
+            vals = [float("%.12g" % v) for v in vals]
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not vals or len(vals) > _MAX_AXIS_TICKS + 1 or not all(
+            math.isfinite(v) for v in vals):
+        return None
+    return vals
+
+
+_DASH_STATA_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,31}\Z")
+#: Plot types whose axis is not their variables' range: Stata's answer
+#: over the variables would never match the drawn range (WP-31 D15).
+_DASH_STATA_TICK_SKIP = frozenset((
+    "histogram", "kdensity", "function", "scatteri", "pci", "pcarrowi"))
+
+
+def _dash_stata_tick_requests(graphs, formats):
+    """The ranges whose Stata ticks the export asks for (WP-31 D15): per
+    graph and drawn axis (letter and axis numbers; ``horizontal`` swaps the
+    letters), the layers on it as ``(variables, qualifier columns)``, each
+    unit its variables' formats give ("" for a number or %tc/%tC, d-y for
+    %td-%ty) and each count the graph's options name (``#N``) besides 5.
+    A by() graph's panels are asked for each (the by() variable).  Only
+    Stata names and dash's ``__dashq<k>`` columns are returned: the
+    qualifier text is never read (DECISIONS A25)."""
+    out = []
+    fm = formats if isinstance(formats, dict) else {}
+
+    for g in graphs or ():
+        if not isinstance(g, dict):
+            continue
+        go = g.get("graph_options")
+        go = go if isinstance(go, dict) else {}
+        counts = {5}
+        for k, v in go.items():
+            if isinstance(v, str) and re.match(r"[xy]\d?(label|tick)\Z",
+                                               str(k)):
+                for m in re.finditer(r"#\s*(\d{1,3})", v):
+                    if 2 <= int(m.group(1)) <= 99:
+                        counts.add(int(m.group(1)))
+        gq = g.get("qual_col")
+        by = ""
+        bm = re.match(r"\s*([A-Za-z_][A-Za-z0-9_]{0,31})\b",
+                      str(go.get("by", "") or ""))
+        if bm:
+            by = bm.group(1)
+        groups: dict = {}
+        for p in g.get("plots") or ():
+            if not isinstance(p, dict):
+                continue
+            if str(p.get("type", "")).strip().lower() in _DASH_STATA_TICK_SKIP:
+                continue
+            o = p.get("options")
+            o = o if isinstance(o, dict) else {}
+            # The keys dash.ado writes a layer's variables under: a range
+            # layer's two y, a pc layer's two pairs.
+            ys = [v for k in ("yvar", "yvar1", "yvar2", "y1var", "y2var")
+                  for v in str(p.get(k, "") or "").split()]
+            xs = [v for k in ("xvar", "x1var", "x2var")
+                  for v in str(p.get(k, "") or "").split()]
+            if not all(_DASH_STATA_NAME_RE.match(v) for v in ys + xs):
+                continue
+            hz = _dash_is_horizontal(p)
+            marks = [q for q in (gq, p.get("qual_col"))
+                     if isinstance(q, str) and _DASH_QUAL_NAME_RE.match(q)]
+            for letter, vs in (("y", ys), ("x", xs)):
+                if not vs:
+                    continue
+                drawn = {"y": "x", "x": "y"}[letter] if hz else letter
+                axn = str(o.get(letter + "axis", "") or "1").split()[:1] \
+                    or ["1"]
+                key = (drawn, axn[0])
+                groups.setdefault(key, []).append((tuple(vs), tuple(marks)))
+        for key in sorted(groups):
+            layers = groups[key]
+            units = sorted({_dash_stata_unit_of(fm.get(v)) for vs, _m
+                            in layers for v in vs})
+            for unit in units:
+                for n in sorted(counts):
+                    out.append({"layers": layers, "unit": unit, "n": n,
+                                "by": by})
+    return out
+
+
+#: WP-31 D15: the most ranges one export asks Stata for.
+_DASH_STATA_TICK_REQ_MAX = 128
+
+
+def _dash_stata_tick_plan(names, formats_text):
+    """The requests dash.ado's ``_dash_stata_ticks_gen`` runs at export
+    (WP-31 D15), as one line: each ``<n> <unit> <byvar> <layer>...`` (the
+    arguments of ``_dash_axis_ticks_stata``), joined by ";".  *names* are
+    the caller's locals holding the graphs' JSON, read by value; only Stata
+    names, ``__dashq<k>`` columns, digits, unit letters, "-", "+" and ":"
+    are written (:func:`_dash_stata_tick_requests`).  "" when there is
+    nothing to ask or Stata's interface is absent."""
+    try:
+        import sfi
+    except ImportError:
+        return ""
+    graphs = []
+    for nm in str(names or "").split():
+        try:
+            g = json.loads(sfi.Macro.getLocal(nm))
+        except (TypeError, ValueError):
+            continue
+        graphs.extend(g if isinstance(g, list) else [g])
+    try:
+        formats = json.loads(formats_text or "{}")
+    except (TypeError, ValueError):
+        formats = {}
+    out = []
+    for rq in _dash_stata_tick_requests(graphs, formats):
+        layers = " ".join("+".join(vs) + ":" + "+".join(ms)
+                          for vs, ms in rq["layers"])
+        line = "%d %s %s %s" % (rq["n"], rq["unit"] or "-",
+                                rq["by"] or "-", layers)
+        if line not in out:
+            out.append(line)
+    return ";".join(out[:_DASH_STATA_TICK_REQ_MAX])
+
+
+def _dash_stata_ticks_take(request):
+    """The entries ``[lo, hi, n, unit, ticks]`` of the answer
+    ``_dash_axis_ticks_stata <request>`` just left in r(), comma-joined
+    (no brackets), or "" (WP-31 D15).  Read through sfi in full double
+    precision; a group with no range or no answer is skipped."""
+    try:
+        import sfi
+    except ImportError:
+        return ""
+    w = str(request or "").split()
+    if len(w) < 3:
+        return ""
+    try:
+        n = int(w[0])
+    except ValueError:
+        return ""
+    unit = "" if w[1] == "-" else w[1]
+    if unit not in _DASH_STATA_TICK_UNITS:
+        return ""
+    ng = sfi.Scalar.getValue("r(ng)")
+    if ng is None or not math.isfinite(ng):
+        return ""
+    rows = []
+    for k in range(1, min(int(ng), 64) + 1):
+        sv = [sfi.Scalar.getValue("r(%s%d)" % (nm, k))
+              for nm in ("lo", "hi", "min", "max", "delta", "n")]
+        lo, hi = sv[0], sv[1]
+        if lo is None or hi is None or not (
+                math.isfinite(lo) and math.isfinite(hi)) or lo >= hi:
+            continue
+        nan = float("nan")
+        ticks = _dash_stata_ticks_of(
+            unit, lo, hi, *[v if v is not None else nan for v in sv[2:5]],
+            sv[5] if sv[5] is not None and math.isfinite(sv[5]) else 0,
+            sfi.Macro.getGlobal("r(list%d)" % k))
+        if ticks:
+            rows.append(json.dumps([lo, hi, n, unit, ticks],
+                                   separators=(",", ":")))
+    return ",".join(rows)
+
+
+#: WP-31 D15: dash.ado's export calls these two by name on this module
+#: (_dash_render_export), as _DASH_ADO_ENTRY_POINTS' functions.
+_DASH_ADO_ENTRY_POINTS = _DASH_ADO_ENTRY_POINTS + (_dash_stata_tick_plan,
+                                                   _dash_stata_ticks_take)
 
 
 def _dash_off_date_ticks(lo, hi, n, kind):
@@ -38863,8 +39170,14 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
             # A date in milliseconds, a missing one dropped (24sep2026).
             vals = pd.Series(_dash_float_values(values, coerce=True)).dropna()
             if len(vals):
+                # WP-31 D15 (D-45c): minmax is tickset's #1 -- the
+                # minimum and the maximum -- so it is counted as #1
+                # (dash_count:1) and placed again after every filter move
+                # over the rows kept, as twoway re-places it; tagged
+                # dash_minmax.
                 axis_obj.ticker = FixedTicker(
-                    ticks=[float(vals.min()), float(vals.max())])
+                    ticks=[float(vals.min()), float(vals.max())],
+                    tags=[_DASH_COUNT_TAG + "1", _DASH_MINMAX_TAG])
         if overrides:
             axis_obj.major_label_overrides = overrides
     elif mode == "count":
@@ -39494,6 +39807,14 @@ _DASH_TICK_EXTRA_JS = ("const lo = Math.min(cb_data.start, cb_data.end); "
                        "return extra.filter((v) => v >= lo && v <= hi);")
 _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
                        "cb_data.range, cb_data.cross_loc).major;")
+#: WP-31 D15 (D-45c): a placed xtick(#N)'s marks, read from the FixedTicker
+#: ``efix`` the finishers write after every move (its tag below).
+_DASH_TICK_EFIX_JS = ("const lo = Math.min(cb_data.start, cb_data.end); "
+                      "const hi = Math.max(cb_data.start, cb_data.end); "
+                      "return Array.from(efix.ticks)"
+                      ".filter((v) => v >= lo && v <= hi);")
+_DASH_COUNT_TICK_TAG = "dash_count_tick:"
+_DASH_MINMAX_TAG = "dash_minmax"
 #: WP-31 D1: the minor code of an axis with minor ticks -- the explicit
 #: xmtick()/xmlabel() positions (``mextra``), the ``##N`` positions the
 #: finishers place in the FixedTicker ``mfixed`` (_dash_finish_minor_ticks,
@@ -39505,7 +39826,8 @@ _DASH_MTICK_JS = (
     "const hi = Math.max(cb_data.start, cb_data.end); "
     "let v = Array.from(mextra || [])"
     ".concat(Array.from((mfixed && mfixed.ticks) || [])); "
-    "if (typeof extra !== 'undefined') v = v.concat(Array.from(extra)); "
+    "if (typeof efix !== 'undefined') v = v.concat(Array.from(efix.ticks)); "
+    "else if (typeof extra !== 'undefined') v = v.concat(Array.from(extra)); "
     "if (typeof every !== 'undefined') v = v.concat(every.get_ticks("
     "cb_data.start, cb_data.end, cb_data.range, cb_data.cross_loc).major); "
     "return v.filter((x) => x >= lo && x <= hi);")
@@ -39589,20 +39911,21 @@ function dash_natscale(lo, hi, n) {
     }
     return out;
 }
-function dash_axis_ticks(lo, hi, n, kind) {
+function dash_axis_ticks(lo, hi, n, kind, tab) {
+    // WP-31 D15: Stata's own answer for a range the plan holds (tab).
+    const nat = (a, b) => dash_stata_pick(tab, a, b, "") || dash_natscale(a, b, n);
     if (kind === "log") {
-        const t = (dash_natscale(lo, hi, n) || []).filter((v) => v > 0);
+        const t = (nat(lo, hi) || []).filter((v) => v > 0);
         return t.length ? t : null;
     }
     if (kind === "tc" || kind === "tC") {
-        const t = dash_natscale(Number(lo) - (@@DASH_EPOCH@@),
-                                Number(hi) - (@@DASH_EPOCH@@), n);
+        const t = nat(Number(lo) - (@@DASH_EPOCH@@), Number(hi) - (@@DASH_EPOCH@@));
         return t ? t.map((v) => v + (@@DASH_EPOCH@@)) : null;
     }
-    const ts = dash_ts_axis_ticks(lo, hi, n, kind);
+    const ts = dash_ts_axis_ticks(lo, hi, n, kind, tab);
     if (ts !== undefined) return ts;
     if (kind) return null;
-    return dash_natscale(lo, hi, n);
+    return nat(lo, hi);
 }
 function dash_axis_rows(layer, models, n) {
     if (layer.filt < 0 || !layer.fk) return null;
@@ -39898,9 +40221,34 @@ function dash_fill_dots(a, models, lo, hi) {
         if (ds.change) ds.change.emit();
     }
 }
+// WP-31 D15: the ticks Stata's own _natscale/_tsnatscale gave over lo-hi
+// in unit u ("" natscale), from the plan's [lo, hi, unit, ticks] rows, or
+// null; the twin of _dash_stata_pick.
+function dash_stata_pick(rows, lo, hi, u) {
+    if (!Array.isArray(rows) || !isFinite(lo) || !isFinite(hi)) return null;
+    if (hi < lo) { const t = lo; lo = hi; hi = t; }
+    for (const r of rows) {
+        if (!Array.isArray(r) || r.length !== 4 || r[2] !== u) continue;
+        const tol = 1e-9 * Math.max(1.0, Math.abs(r[1] - r[0]));
+        if (Math.abs(lo - r[0]) <= tol && Math.abs(hi - r[1]) <= tol)
+            return Array.from(r[3]);
+    }
+    return null;
+}
+// WP-31 D15 (D-45c): a placed xtick(#N)'s marks over lo-hi, written to its
+// FixedTicker (tickers) and read by the hull as the held positions.
+function dash_axis_every(a, lo, hi, tickers, tick_range) {
+    const ev = a.every;
+    if (!ev || typeof ev.t !== "number" || ev.t < 0 || lo === null) return;
+    const t = dash_axis_ticks(lo, hi, ev.n, a.kind, ev.stata);
+    if (!t || !t.length) return;
+    a.held = t;
+    tickers[ev.t] = t;
+    tick_range[ev.t] = a.range;
+}
 function dash_axis_place(a, lo, hi, cur) {
     if (a.mode !== "count" || a.hold) return cur;
-    let t = dash_axis_ticks(lo, hi, a.n, a.kind);
+    let t = dash_axis_ticks(lo, hi, a.n, a.kind, a.stata);
     if (a.extra.length) {
         const b = t || [];
         t = Array.from(new Set(b.concat(a.extra))).sort((x, y) => x - y);
@@ -39938,6 +40286,7 @@ function dash_axis_compute(plan, models) {
                 s.shared = share.includes(a.letter);
                 if (lo !== null && !s.shared) {
                     s.ticks = dash_axis_place(a, lo, hi, s.ticks);
+                    dash_axis_every(a, lo, hi, tickers, tick_range);
                 }
                 row.push(s);
             }
@@ -39954,7 +40303,10 @@ function dash_axis_compute(plan, models) {
                 const his = es.map((s) => s.thi).filter((v) => v !== null);
                 if (!los.length || !his.length || es.length < 2) continue;
                 const lo = dash_axis_min(los), hi = dash_axis_max(his);
-                for (const s of es) s.ticks = dash_axis_place(s.a, lo, hi, s.ticks);
+                for (const s of es) {
+                    s.ticks = dash_axis_place(s.a, lo, hi, s.ticks);
+                    dash_axis_every(s.a, lo, hi, tickers, tick_range);
+                }
             }
         }
         for (let ri0 = 0; ri0 < st.length; ri0++) {
@@ -42546,6 +42898,29 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     "range": ri, "ticker": ti,
                     "layers": layers, "bars": bars, "autobase": autobase,
                     "dots": dots}
+                # WP-31 D15: Stata's answers for this count, as [lo, hi,
+                # unit, ticks] (numbers and unit letters); only when the
+                # spec carries any, so a page without them is unchanged.
+                _st = [[r[0], r[1], r[3], list(r[4])]
+                       for r in (e.get("stata") or ())
+                       if mode == "count" and r[2] == int(
+                           _dash_count_of(base) or 0)]
+                if _st:
+                    ent["stata"] = _st
+                # WP-31 D15 (D-45c): a placed xtick(#N)'s FixedTicker (efix),
+                # its count and Stata's answers for that count; the page
+                # places it again after every move (dash_axis_every).
+                _fx = (dict(t.args or {}).get("efix")
+                       if isinstance(t, CustomJSTicker) else None)
+                _en = _dash_count_of(getattr(t, "_dash_every_base", None))
+                if isinstance(_fx, FixedTicker) and _en:
+                    fi_ = index.get(id(_fx))
+                    if fi_ is None:
+                        fi_ = index[id(_fx)] = len(models)
+                        models.append(_fx)
+                    ent["every"] = {"t": fi_, "n": int(_en), "stata": [
+                        [r[0], r[1], r[3], list(r[4])]
+                        for r in (e.get("stata") or ()) if r[2] == int(_en)]}
                 # WP-31 D7: a noextend axis the page bounds after each
                 # finish (dash_axis_bounds).
                 if getattr(ax, "_dash_noextend", False):
@@ -43022,6 +43397,11 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                         base = a["base"]
                     if _dash_count_of(a.get("every")) is not None:
                         every = a["every"]
+                    elif _dash_count_of(getattr(t, "_dash_every_base",
+                                                None)) is not None:
+                        # WP-31 D15 (D-45c): a placed xtick(#N) is placed
+                        # again after a move, as twoway re-places it.
+                        every = t._dash_every_base
                 if base is None and every is None and not every_axis:
                     continue
                 name = getattr(ax, range_attr, "default") or "default"
@@ -43056,12 +43436,15 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                             "kind": kind, "letter": letter, "name": name,
                             "pool": pool, "default": default,
                             "refinish": bool(refinish),
-                            "hold": bool(refinish
+                            "hold": bool(refinish and base is not None
                                          and not isinstance(base,
                                                             FixedTicker)),
                             "lo": ext[0] if ext else None,
                             "hi": ext[1] if ext else None,
-                            "bases": list(bext) if bext else []})
+                            "bases": list(bext) if bext else [],
+                            # WP-31 D15: Stata's answers for the page.
+                            "stata": getattr(fig, "_dash_stata_ticks",
+                                             None)})
     return out
 
 
@@ -43083,9 +43466,14 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
     ax, t, base, every, kind = (e["ax"], e["t"], e["base"], e["every"],
                                 e["kind"])
     held = bool(e.get("hold"))
-    t_base = (_dash_axis_count_ticks(lo, hi, _dash_count_of(base), kind)
+    # WP-31 D15: Stata's own ticks where the range is one the export
+    # summarized (the figure's stata table), else the model.
+    tab = e.get("stata")
+    t_base = (_dash_axis_count_ticks(lo, hi, _dash_count_of(base), kind,
+                                     table=tab)
               if base is not None and not held else None)
-    t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind)
+    t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind,
+                                      table=tab)
                if every is not None and not held else None)
     # US-14.4 (B1, WP-28 S14): a rule may precede a labelled list --
     # "#5 50 'fifty'" -- and twoway draws both; _dash_apply_axis_spec left
@@ -43116,13 +43504,26 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
                 t.args = dict(t.args, base=fixed)
             e["base"] = fixed
     if every is not None and t_every:
+        vals = [float(v) for v in t_every]
         a = {k: v for k, v in dict(t.args).items() if k != "every"}
-        a["extra"] = [float(v) for v in t_every]
-        t.args = a
-        t.minor_code = _DASH_TICK_EXTRA_JS
-        # xtick(#N)'s marks are placed once and held (D-21e); they still
-        # widen the scale.
-        ax._dash_every_extra = list(a["extra"])
+        # WP-31 D15 (D-45c): xtick(#N)'s marks sit in a FixedTicker tagged
+        # dash_count_tick:N (efix), which a re-finish after a filter move
+        # -- and the saved page's twin -- writes in place, as twoway
+        # re-places them over the rows kept; they widen the scale.
+        fx = a.get("efix")
+        if isinstance(fx, FixedTicker):
+            if [float(v) for v in fx.ticks] != vals:
+                fx.ticks = vals
+        else:
+            a["efix"] = FixedTicker(ticks=vals, minor_ticks=[], tags=[
+                _DASH_COUNT_TICK_TAG + str(int(_dash_count_of(every)))])
+        if a.get("extra") != vals or "efix" not in dict(t.args):
+            a["extra"] = vals
+            t.args = a
+        if t.minor_code == _DASH_TICK_EVERY_JS:
+            t.minor_code = _DASH_TICK_EFIX_JS
+        t._dash_every_base = every
+        ax._dash_every_extra = list(vals)
 
 
 def _dash_padded_range(lo, hi, kind=None, reverse=False, margin=None):
@@ -56602,7 +57003,10 @@ class DashRenderer:
         # ... and, beside a yaxis(2)/xaxis(2) axis, over the layers drawn on
         # the figure's own axes only -- the helper the generated app runs.
         _dash_keep_primary_ranges(fig)
-        # #N ticks where twoway puts them, over what the layers drew.
+        # #N ticks where twoway puts them, over what the layers drew: Stata's
+        # own for a range the export summarized (WP-31 D15).
+        fig._dash_stata_ticks = getattr(self.mapper, "_dash_stata_ticks",
+                                        None)
         _dash_finish_count_ticks(fig)
 
         # ---- The figure's one HoverTool ----
@@ -59342,6 +59746,11 @@ class ServerAppBuilder:
                       "_DASH_TS_GRIDS", "_DASH_TS_YEARS", "_DASH_TS_LIMITS",
                       # WP-30 P1.3b: the date model's JavaScript port.
                       "_DASH_TSNATSCALE_JS",
+                      # WP-31 D15: the stata_ticks table's bounds.
+                      "_DASH_STATA_TICK_MAX", "_DASH_STATA_TICK_UNITS",
+                      # D-45c: a placed xtick(#N)'s FixedTicker.
+                      "_DASH_TICK_EFIX_JS", "_DASH_COUNT_TICK_TAG",
+                      "_DASH_MINMAX_TAG",
                       # The blanks _dash_grid_dims and _dash_placement_map
                       # strip (WP-20).
                       "_DASH_ASCII_BLANKS",
@@ -59878,6 +60287,9 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # Stata's own #N ticks at build (WP-31 D15).
+                         "_dash_stata_pick", "_dash_stata_tick_table",
+                         "_dash_stata_or_model", "_dash_stata_num",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
                          "_dash_add_code_text", "_dash_label_key",
@@ -62453,7 +62865,9 @@ class ServerAppBuilder:
             "        # Beside a second axis, the figure's own axes range over the",
             "        # layers drawn on them only, as the saved figure's do.",
             "        _dash_keep_primary_ranges(fig)",
-            "        # #N ticks where twoway puts them, as the saved figure's are.",
+            "        # #N ticks where twoway puts them, as the saved figure's are:",
+            "        # Stata's own for a range the export summarized (WP-31 D15).",
+            "        fig._dash_stata_ticks = getattr(_DASH_MAPPER, '_dash_stata_ticks', None)",
             "        _dash_finish_count_ticks(fig)",
             "",
             '        # ---- Build the legend ----',

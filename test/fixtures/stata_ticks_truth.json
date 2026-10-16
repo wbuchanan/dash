@@ -1,0 +1,559 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "c23572e993c4e54d029bb88f081e8e826b919a8b",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_stata_ticks_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "BY1": {
+   "axis": "x1",
+   "cmd": "twoway scatter price weight, by(foreign, xrescale)",
+   "data": "auto",
+   "data_hi": 4840.0,
+   "data_lo": 1800.0,
+   "drawn_ticks": [
+    2000.0,
+    3000.0,
+    4000.0,
+    5000.0
+   ],
+   "n": 5,
+   "panel": 1,
+   "rc": 0,
+   "routine": {
+    "delta": 1000.0,
+    "list": [],
+    "max": 5000.0,
+    "min": 2000.0,
+    "n": 4.0
+   },
+   "stata_ticks": [
+    2000.0,
+    3000.0,
+    4000.0,
+    5000.0
+   ],
+   "unit": ""
+  },
+  "BY2": {
+   "axis": "x1",
+   "cmd": "twoway scatter price weight, by(foreign, xrescale)",
+   "data": "auto",
+   "data_hi": 3420.0,
+   "data_lo": 1760.0,
+   "drawn_ticks": [
+    1500.0,
+    2000.0,
+    2500.0,
+    3000.0,
+    3500.0
+   ],
+   "n": 5,
+   "panel": 2,
+   "rc": 0,
+   "routine": {
+    "delta": 500.0,
+    "list": [],
+    "max": 3500.0,
+    "min": 1500.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    1500.0,
+    2000.0,
+    2500.0,
+    3000.0,
+    3500.0
+   ],
+   "unit": ""
+  },
+  "HZX": {
+   "axis": "x1",
+   "cmd": "twoway rcap mpg mpg weight, horizontal",
+   "data": "auto",
+   "data_hi": 41.0,
+   "data_lo": 12.0,
+   "drawn_ticks": [
+    10.0,
+    20.0,
+    30.0,
+    40.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 10.0,
+    "list": [],
+    "max": 40.0,
+    "min": 10.0,
+    "n": 4.0
+   },
+   "stata_ticks": [
+    10.0,
+    20.0,
+    30.0,
+    40.0
+   ],
+   "unit": ""
+  },
+  "HZY": {
+   "axis": "y1",
+   "cmd": "twoway rcap mpg mpg weight, horizontal",
+   "data": "auto",
+   "data_hi": 4840.0,
+   "data_lo": 1760.0,
+   "drawn_ticks": [
+    2000.0,
+    3000.0,
+    4000.0,
+    5000.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 1000.0,
+    "list": [],
+    "max": 5000.0,
+    "min": 2000.0,
+    "n": 4.0
+   },
+   "stata_ticks": [
+    2000.0,
+    3000.0,
+    4000.0,
+    5000.0
+   ],
+   "unit": ""
+  },
+  "IF2": {
+   "axis": "x1",
+   "cmd": "twoway line close date if close > 1200",
+   "data": "sp500",
+   "data_hi": 15194.0,
+   "data_lo": 14977.0,
+   "drawn_ticks": [
+    14976.0,
+    15007.0,
+    15035.0,
+    15066.0,
+    15096.0,
+    15127.0,
+    15157.0,
+    15188.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": null,
+    "list": [
+     14976.0,
+     15007.0,
+     15035.0,
+     15066.0,
+     15096.0,
+     15127.0,
+     15157.0,
+     15188.0
+    ],
+    "max": 15188.0,
+    "min": 14976.0,
+    "n": 8.0
+   },
+   "stata_ticks": [
+    14976.0,
+    15007.0,
+    15035.0,
+    15066.0,
+    15096.0,
+    15127.0,
+    15157.0,
+    15188.0
+   ],
+   "unit": "d"
+  },
+  "MF": {
+   "axis": "y1",
+   "cmd": "twoway scatter mpg weight if foreign",
+   "data": "auto",
+   "data_hi": 41.0,
+   "data_lo": 14.0,
+   "drawn_ticks": [
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 5.0,
+    "list": [],
+    "max": 40.0,
+    "min": 15.0,
+    "n": 6.0
+   },
+   "stata_ticks": [
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0
+   ],
+   "unit": ""
+  },
+  "P4": {
+   "axis": "y1",
+   "cmd": "twoway scatter price mpg, ylabel(#4)",
+   "data": "auto",
+   "data_hi": 15906.0,
+   "data_lo": 3291.0,
+   "drawn_ticks": [
+    5000.0,
+    10000.0,
+    15000.0
+   ],
+   "n": 4,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 5000.0,
+    "list": [],
+    "max": 15000.0,
+    "min": 5000.0,
+    "n": 3.0
+   },
+   "stata_ticks": [
+    5000.0,
+    10000.0,
+    15000.0
+   ],
+   "unit": ""
+  },
+  "P5": {
+   "axis": "y1",
+   "cmd": "twoway scatter price mpg",
+   "data": "auto",
+   "data_hi": 15906.0,
+   "data_lo": 3291.0,
+   "drawn_ticks": [
+    0.0,
+    5000.0,
+    10000.0,
+    15000.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 5000.0,
+    "list": [],
+    "max": 15000.0,
+    "min": 0.0,
+    "n": 4.0
+   },
+   "stata_ticks": [
+    0.0,
+    5000.0,
+    10000.0,
+    15000.0
+   ],
+   "unit": ""
+  },
+  "T2": {
+   "axis": "y1",
+   "cmd": "twoway scatter trunk mpg, ylabel(#2)",
+   "data": "auto",
+   "data_hi": 23.0,
+   "data_lo": 5.0,
+   "drawn_ticks": [
+    0.0,
+    20.0
+   ],
+   "n": 2,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 20.0,
+    "list": [],
+    "max": 23.0,
+    "min": 0.0,
+    "n": 2.0
+   },
+   "stata_ticks": [
+    0.0,
+    20.0
+   ],
+   "unit": ""
+  },
+  "T3": {
+   "axis": "y1",
+   "cmd": "twoway scatter trunk mpg, ylabel(#3)",
+   "data": "auto",
+   "data_hi": 23.0,
+   "data_lo": 5.0,
+   "drawn_ticks": [
+    0.0,
+    20.0
+   ],
+   "n": 3,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 20.0,
+    "list": [],
+    "max": 23.0,
+    "min": 0.0,
+    "n": 2.0
+   },
+   "stata_ticks": [
+    0.0,
+    20.0
+   ],
+   "unit": ""
+  },
+  "TC": {
+   "axis": "x1",
+   "cmd": "twoway line close tc",
+   "data": "sp500",
+   "data_hi": 1325386800000.0,
+   "data_lo": 1294016400000.0,
+   "drawn_ticks": [
+    1290000000000.0,
+    1300000000000.0,
+    1310000000000.0,
+    1320000000000.0,
+    1330000000000.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 10000000000.0,
+    "list": [],
+    "max": 1330000000000.0,
+    "min": 1290000000000.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    1290000000000.0,
+    1300000000000.0,
+    1310000000000.0,
+    1320000000000.0,
+    1330000000000.0
+   ],
+   "unit": ""
+  },
+  "TD": {
+   "axis": "x1",
+   "cmd": "twoway line close date",
+   "data": "sp500",
+   "data_hi": 15340.0,
+   "data_lo": 14977.0,
+   "drawn_ticks": [
+    14976.0,
+    15066.0,
+    15157.0,
+    15249.0,
+    15341.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": null,
+    "list": [
+     14976.0,
+     15066.0,
+     15157.0,
+     15249.0,
+     15341.0
+    ],
+    "max": 15341.0,
+    "min": 14976.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    14976.0,
+    15066.0,
+    15157.0,
+    15249.0,
+    15341.0
+   ],
+   "unit": "d"
+  },
+  "TH": {
+   "axis": "x1",
+   "cmd": "twoway scatter close h",
+   "data": "sp500",
+   "data_hi": 83.0,
+   "data_lo": 82.0,
+   "drawn_ticks": [
+    82.0,
+    83.0,
+    84.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 1.0,
+    "list": [],
+    "max": 84.0,
+    "min": 82.0,
+    "n": 3.0
+   },
+   "stata_ticks": [
+    82.0,
+    83.0,
+    84.0
+   ],
+   "unit": "h"
+  },
+  "TM": {
+   "axis": "x1",
+   "cmd": "twoway scatter close m",
+   "data": "sp500",
+   "data_hi": 503.0,
+   "data_lo": 492.0,
+   "drawn_ticks": [
+    492.0,
+    495.0,
+    498.0,
+    501.0,
+    504.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 3.0,
+    "list": [],
+    "max": 504.0,
+    "min": 492.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    492.0,
+    495.0,
+    498.0,
+    501.0,
+    504.0
+   ],
+   "unit": "m"
+  },
+  "TQ": {
+   "axis": "x1",
+   "cmd": "twoway scatter close q",
+   "data": "sp500",
+   "data_hi": 167.0,
+   "data_lo": 164.0,
+   "drawn_ticks": [
+    164.0,
+    165.0,
+    166.0,
+    167.0,
+    168.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 1.0,
+    "list": [],
+    "max": 168.0,
+    "min": 164.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    164.0,
+    165.0,
+    166.0,
+    167.0,
+    168.0
+   ],
+   "unit": "q"
+  },
+  "TW": {
+   "axis": "x1",
+   "cmd": "twoway scatter close w",
+   "data": "sp500",
+   "data_hi": 2183.0,
+   "data_lo": 2132.0,
+   "drawn_ticks": [
+    2132.0,
+    2144.0,
+    2157.0,
+    2171.0,
+    2184.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": null,
+    "list": [
+     2132.0,
+     2144.0,
+     2157.0,
+     2171.0,
+     2184.0
+    ],
+    "max": 2184.0,
+    "min": 2132.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    2132.0,
+    2144.0,
+    2157.0,
+    2171.0,
+    2184.0
+   ],
+   "unit": "w"
+  },
+  "TY": {
+   "axis": "x1",
+   "cmd": "twoway line val y",
+   "data": "yearly",
+   "data_hi": 2000.0,
+   "data_lo": 1961.0,
+   "drawn_ticks": [
+    1960.0,
+    1970.0,
+    1980.0,
+    1990.0,
+    2000.0
+   ],
+   "n": 5,
+   "panel": null,
+   "rc": 0,
+   "routine": {
+    "delta": 10.0,
+    "list": [],
+    "max": 2000.0,
+    "min": 1960.0,
+    "n": 5.0
+   },
+   "stata_ticks": [
+    1960.0,
+    1970.0,
+    1980.0,
+    1990.0,
+    2000.0
+   ],
+   "unit": "y"
+  }
+ },
+ "time": {
+  "reg_1e6": 0.132
+ }
+}

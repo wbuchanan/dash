@@ -4133,6 +4133,10 @@ form, rule or label is named in the note.  More than 2,000 ticks in any
 form keep the axis's default ticks, with a note.
 
 {pstd}
+A default axis, or one labelled {cmd:#}{it:N}, is ticked where Stata's own {cmd:_natscale} and {cmd:_tsnatscale} tick it, asked of Stata over the rows each layer draws when the data are exported; after a filter move the saved page and the served app place {cmd:twoway}'s rule with a fitted model that agrees with Stata on 58-98% of ranges (measured), and a move back to all the data restores Stata's ticks. {cmd:xtick(#}{it:N}{cmd:)} and {cmd:xlabel(minmax)} follow a move the same way.
+An axis whose drawn range is not its variables' (a {cmd:histogram}, {cmd:kdensity} or {cmd:function} layer, a fit's grid, a {cmd:range()} that widens the ticks) takes the model at once. {it:Difference from twoway:} the plot-region margin is a fraction of the frame fixed when the page is built, where {cmd:twoway}'s is an absolute size, so a page resized well beyond its built width places the data up to about 0.8% of the width from where {cmd:twoway} would.
+
+{pstd}
 Any of those may be followed by a comma and the sub-options
 {cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
 {cmd:angle(}{it:#}{cmd:)}, {cmd:grid} or {cmd:nogrid}, and
