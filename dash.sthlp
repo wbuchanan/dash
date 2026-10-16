@@ -1811,7 +1811,7 @@ Syntax:
 {it:varname} may be abbreviated, as anywhere in Stata, and may hold
 Unicode letters, as any Stata name may.  Without {cmd:type()} the widget
 is a dropdown.  A {cmd:by()} panel left with no rows by a filter is
-hidden, and shown again when rows return.
+hidden, its cell left blank, and shown again when rows return.
 
 {phang2}{cmd:type(dropdown)} -- select widget listing every distinct value
     of {it:varname}: a numeric or date variable's values as numbers (a
@@ -2048,8 +2048,8 @@ the application into a private temporary folder (see
 {help dash##tempfiles:Temporary files and privacy}), runs it with Python and
 waits until the server stops.  {cmd:dash build, server} writes the same
 application to the file {cmd:saving()} names and returns without starting
-it.  A {cmd:by()} panel left with no rows by a filter is hidden, and shown
-again when rows return, as on the saved page.  The saved page and the
+it.  A {cmd:by()} panel left with no rows by a filter is hidden, its cell left
+blank, and shown again when rows return, as on the saved page.  The saved page and the
 served app differ as follows:
 
 {col 5}{it:Feature}{col 38}{it:Saved page}{col 59}{it:Served app}
@@ -2820,7 +2820,10 @@ scheme puts it (s2color below, stcolor right, economist above).
 {cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
 nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
 as {cmd:twoway} draws it: outside the panels on its position's side, aligned
-at that position's corner ({cmd:pos(5)} at the right).  Clicking a key of
+at that position's corner ({cmd:pos(5)} at the right, as a corner
+{cmd:position()} is without {cmd:ring(0)} too), and below or left of the
+panels between them and the axis title, which the default legend sits
+beyond.  Clicking a key of
 the overall legend hides that series in every panel.
 Under {cmd:colorvar()} no colour key is drawn unless
 {cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
@@ -2891,7 +2894,8 @@ words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
 {cmd:subtitleformat()} and {cmd:noshrink}, {cmd:noishrink},
 {cmd:nooverallshrink} and {cmd:ishrink} are the {cmd:by()} sub-options
 {cmd:dash} implements.  {cmd:by(, graphregion())} colours the whole graph
-region, replacing a {cmd:graphregion()} outside {cmd:by()}, and
+region, replacing a {cmd:graphregion()} outside {cmd:by()}, which on a
+{cmd:by()} graph colours nothing (as in {cmd:twoway}), and
 {cmd:by(, plotregion())} the region around the panels, drawn on each
 panel's border; their {cmd:margin()}, which {cmd:twoway} applies once around
 the panels, is named and ignored.  {cmd:subtitleformat()} writes an

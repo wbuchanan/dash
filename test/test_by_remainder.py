@@ -113,6 +113,12 @@ _GRAPHS = {
     "shr_nil": (tk._ONE, {"by": "foreign, noshrink noishrink "
                                 "nooverallshrink ishrink"}),
     "one_empty": (tk._ONE, {"by": "onee"}),
+    # The D10 follow-up: an outer graphregion() under by(), and legend()
+    # at a corner without ring(0).
+    "rg_outer_only": (tk._ONE, {"by": "foreign",
+                                "graphregion": "fcolor(green)",
+                                "plotregion": "fcolor(yellow)"}),
+    "lg_pos1": (tk._TWO, {"by": "rep78, legend(pos(1))"}),
 }
 
 
@@ -591,3 +597,58 @@ def test_compass_unit():
     assert c(5, "below") == "right" and c(7, "below") == "left"
     assert c(6, "below") == "center" and c(1, "above") == "right"
     assert c(10, "right") == "top" and c(3, "right") == "center"
+
+
+def _kid(mode, name, cell_name):
+    for c in _grid_of(mode, name).children:
+        if getattr(c[0], "name", None) == cell_name:
+            return c
+    return None
+
+
+class TestTheFollowUp:
+    """Two differences found after the D10 commit, measured
+    (by_remainder_truth.json): an outer graphregion() under by() draws
+    nothing twoway shows, and legend(ring(0)) below the panels sits
+    between them and the x title, where the default legend sits below the
+    title; a corner position() is aligned with or without ring(0)."""
+
+    def test_fixture(self):
+        p = _probe("regions_outer_only")
+        assert p["rects"][1]["fill"] == "#eaf2f3"
+        assert not [r for r in p["rects"] if r["fill"] == "#008000"]
+        assert [r["fill"] for r in p["rects"]
+                if r["fill"] == "#ffff00"] == ["#ffff00", "#ffff00"]
+
+        def ys(pid):
+            t = {x["t"]: x["y"] for x in _probe(pid)["texts"]}
+            return t["Mileage (mpg)"], t["Weight (lbs.)"]
+        key, xt = ys("legend_ring0_hole")
+        assert key < xt
+        key, xt = ys("legend_beside")
+        assert key > xt
+        a = [r for r in _probe("legend_pos1")["rects"]
+             if r["fill"] == "#ffffff" and r["w"] > 1900 and r["h"] < 200]
+        b = [r for r in _probe("legend_ring0_pos1")["rects"]
+             if r["fill"] == "#ffffff" and r["w"] > 1900 and r["h"] < 200]
+        assert a == b and abs(a[0]["x"] + a[0]["w"] - (2688.84 + 1135.65)) < 1
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_outer_graphregion_draws_nothing(self, mode):
+        for f in _panels(mode, "rg_outer_only"):
+            assert str(f.border_fill_color).lower() == "#eaf2f3"
+            assert str(f.background_fill_color).lower() == "#ffff00"
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_ring0_sits_inside_the_titles(self, mode):
+        leg, xt = _kid(mode, "lg_hole", "dash_by_legend"), \
+            _kid(mode, "lg_hole", "dash_by_xtitle")
+        assert leg[1] < xt[1], (leg[1:], xt[1:])
+        leg, xt = _kid(mode, "lg_beside", "dash_by_legend"), \
+            _kid(mode, "lg_beside", "dash_by_xtitle")
+        assert leg[1] > xt[1]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_corner_aligned_without_ring0(self, mode):
+        _c, leg = _legend(mode, "lg_pos1")
+        assert leg.location == "right"

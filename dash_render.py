@@ -47438,8 +47438,10 @@ def _dash_by_keys(figs, opts, scheme):
             # twoway draws it, aligned at the compass along that side
             # (measured: pos(5) ends at the panels' right edge, pos(1)
             # sits top right; by_remainder_truth.json legend_ring0_*).
+            # A corner position() is aligned at its corner with or
+            # without ring(0) (measured: legend_pos1 = legend_ring0_pos1).
             loc = "center"
-            if out["ring0"] and not at:
+            if not at:
                 _w, calls = _dash_legend_parts(opts.get("legend", ""))
                 pos = _dash_legend_arg(calls, ("position",))
                 try:
@@ -47792,13 +47794,25 @@ def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
                             "implemented and ignored: %s" % (
                                 str(key), _dash_display(
                                     " ".join(reg["margin"]))))
-    if not reg["given"]:
+    outer = str(go.get("graphregion") or "").strip()
+    if not reg["given"] and not outer:
         return
-    graph = reg["graphregion"] or str(go.get("graphregion") or "")
+    # An outer graphregion() under by() is each panel's own graph region,
+    # which twoway draws invisible (measured: regions_outer_only keeps the
+    # scheme's region); only by()'s copy colours the array.
+    graph = reg["graphregion"]
     panel = " ".join(v for v in (graph, reg["plotregion"]) if v)
     for fig in figs or ():
+        if outer and not panel:
+            # The scheme's graph region again, over the outer copy the
+            # panel was built with: border fill and no border line.
+            from bokeh.models import Plot
+            fig.border_line_color = Plot().border_line_color
         _dash_apply_regions(fig, dict(go, graphregion=panel), scheme, seen,
                             key)
+        if not panel:
+            sch = scheme if scheme is not None else SchemeParser.fallback()
+            fig.border_fill_color = sch.background_color
     for cell in cells or ():
         if cell is None or not graph:
             continue
@@ -47846,7 +47860,7 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     titles = _dash_by_outer_axes(figs, positions, opts)
     fl = opts["flags"]
     side = {"legend_at": keys["legend_at"], "clegend_at": keys["clegend_at"],
-            "cells": [], "hook": None}
+            "cells": [], "hook": None, "ring0": bool(keys.get("ring0"))}
     tcells = []
     for d, name, where, flag in (("y", "dash_by_ytitle", "left",
                                   "outer_ytitles"),
@@ -47903,21 +47917,35 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     kids = [(c[0], int(c[1]) + top_rows, int(c[2]) + left_cols) + c[3:]
             for c in kids]
     p0r, p0c = top_rows, left_cols
+    # WP-31 D10: legend(ring(0)) is inside the array, so below or left of
+    # the panels it sits between them and the outer axis title (measured:
+    # by_remainder_truth.json legend_ring0_hole above the x title,
+    # legend_beside below it).
+    inner = bool(side.get("ring0")) and "legend" in kinds \
+        and "legend" not in at_cells \
+        and kinds["legend"][1] in ("below", "left")
     out = list(kids)
     for k in ("legend", "clegend"):
         if k in at_cells and k in kinds:
             r, c = at_cells[k]
             out.append((kinds[k][0], p0r + int(r), p0c + int(c), 1, 1))
+    inner_left = inner and kinds["legend"][1] == "left"
     if "ytitle" in kinds:
-        out.append((kinds["ytitle"][0], p0r, p0c - 1, nrows, 1))
+        out.append((kinds["ytitle"][0], p0r,
+                    p0c - 1 - int(inner_left), nrows, 1))
+    if inner_left:
+        out.append((kinds["legend"][0], p0r, p0c - 1, nrows, 1))
     row = p0r + nrows
+    if inner and not inner_left:
+        out.append((kinds["legend"][0], row, 0, 1, -1))
+        row += 1
     if "xtitle" in kinds:
         out.append((kinds["xtitle"][0], row, p0c, 1, ncols))
         row += 1
     total = p0c + ncols
     lc, tr = 0, 0
     for k in ("legend", "clegend"):
-        if k not in kinds or k in at_cells:
+        if k not in kinds or k in at_cells or (k == "legend" and inner):
             continue
         cell, where = kinds[k]
         if where == "right":

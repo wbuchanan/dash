@@ -8886,6 +8886,19 @@ def _u36_check(sp, dp, app, case, fixture):
         elif case == "nobox":
             if any(_u36_box(f) is not None for f in panels):
                 bad.append("%s a box is drawn" % tag)
+        elif case == "outer":
+            for f in panels:
+                if str(f.border_fill_color).lower() != "#eaf2f3":
+                    bad.append("%s border %s" % (tag, f.border_fill_color))
+        elif case == "ring0rows":
+            grids = [m for m in models if type(m).__name__ == "GridPlot"
+                     and any(getattr(c[0], "name", "") == "dash_by_legend"
+                             for c in m.children)]
+            rows = {getattr(c[0], "name", ""): c[1]
+                    for g in grids for c in g.children}
+            if not ("dash_by_legend" in rows and "dash_by_xtitle" in rows
+                    and rows["dash_by_legend"] < rows["dash_by_xtitle"]):
+                bad.append("%s rows %r" % (tag, rows))
         elif case == "one":
             feet = [m for m in models if getattr(m, "name", "") == "dash_by_foot"]
             texts = [str(t.text) for c in feet for t in list(c.above) + list(c.below)
@@ -8917,6 +8930,18 @@ def _u36_check(sp, dp, app, case, fixture):
     if case == "legend" and "drawn beside the panels" in notes:
         bad.append("the ring(0) note")
     Macro.setGlobal("u36_bad", "; ".join(bad))
+end
+
+python:
+def _u36_svg_order(svg):
+    """twoway's ring(0) legend key text above its x title (u36_bad)."""
+    import os, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.abspath(os.path.join("..", "scripts")))
+    import svg_truth
+    t = {x["text"]: x["y"] for x in svg_truth.svg_document(svg)["texts"]}
+    ok = t.get("Mileage (mpg)", 1e9) < t.get("Weight (lbs.)", -1)
+    Macro.setGlobal("u36_bad", "" if ok else "twoway order %r" % (t,))
 end
 
 capture program drop _u36_reg
@@ -8999,6 +9024,20 @@ if inlist("`only'", "", "S36") & `: list posof "S36" in w31_run' {
     python: import __main__ as _u36_m; _u36_m._u36_check("`u36d'/s7.json", "`u36d'/d7.json", "`u36d'/a7.py", "move", "")
     _w31_expect U36-06 `"(`"${u36_bad}"' == "")"' `"${u36_bad}"'
     _w31_done U36-06 "a panel a served move empties is hidden and shown again"
+
+    // U36-08: an outer graphregion() under by() colours no panel (twoway
+    // keeps the scheme's region), and legend(ring(0)) below the panels
+    // sits above the x title (twoway: inside the array, nearer the panels).
+    _u36_reg "`u36d'" 8 outer scatter mpg weight, graphregion(fcolor(green)) by(foreign)
+    _w31_expect U36-08 `"(`"${u36_bad}"' == "")"' `"${u36_bad}"'
+    quietly twoway (scatter mpg weight) (lfit mpg weight), by(rep78, legend(ring(0))) name(u36g, replace)
+    quietly graph export "`u36d'/g8.svg", replace
+    graph drop u36g
+    python: import __main__ as _u36_m; _u36_m._u36_svg_order(r"`u36d'/g8.svg")
+    _w31_expect U36-08 `"(`"${u36_bad}"' == "")"' `"${u36_bad}"'
+    _u36_reg "`u36d'" 9 ring0rows (scatter mpg weight) (lfit mpg weight), by(rep78, legend(ring(0)))
+    _w31_expect U36-08 `"(`"${u36_bad}"' == "")"' `"${u36_bad}"'
+    _w31_done U36-08 "an outer graphregion() colours no panel and a ring(0) legend sits above the x title, as twoway's"
 
     macro drop u36_bad
     capture graph drop _all
