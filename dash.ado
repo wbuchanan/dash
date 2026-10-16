@@ -471,7 +471,7 @@ program define _dash_require_mata
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
-        _dash_abs_path _dash_graph_names _dash_gt_ccl
+        _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -8660,11 +8660,22 @@ program define _dash_plot
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue
         local gv : copy local g_`gk'
-        // {ccl name} in a graph text option is c(name), as twoway's
-        // graph text draws it (WP-31 E9): read here, by value, because
-        // the renderer cannot read c().
+        // A $name or ${name} that reaches dash in a graph text option is
+        // the global's value, as twoway reads the option's whole text
+        // again before its quotes and sub-options (WP-31 D13b,
+        // global_text_truth.json): by text through _dash_at_globals, never
+        // evaluated, and refused past 4,000 characters as text() is.
+        // Then {ccl name} is c(name), as twoway's graph text draws it
+        // (WP-31 E9).  Both read here, by value, because the renderer
+        // cannot read globals or c().
         if `: length local gv' & `: list gk in _gt_textkeys' {
-            mata: st_local("gv", _dash_gt_ccl(st_local("gv")))
+            mata: st_local("_gtg", _dash_at_globals(st_local("gv"))); ///
+                st_local("_gtl", strofreal(st_local("_gtg") != st_local("gv") & strlen(st_local("_gtg")) > 4000))
+            if `_gtl' {
+                mata: _dash_say("err", st_local("gk"), "(): expanded text is too long", "")
+                exit 198
+            }
+            mata: st_local("gv", _dash_gt_ccl(st_local("_gtg")))
         }
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv

@@ -494,7 +494,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit 880accb.
 - **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit 397d1a3.
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
-- **D13b Tracked:** Open (WP-31 section 42).
+- **D13b Tracked:** Closed in WP-31, BUGS.md "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them", commit pending.
 - **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit bb9f4a9.
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit 398149e.

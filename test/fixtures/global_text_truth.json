@@ -1,0 +1,949 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "ccf1cb6b10c51b2ca28a0578e211d04ec66b0feb",
+    "extracted": "16 Oct 2026",
+    "source": "scripts/extract_global_text_truth.do",
+    "stata_version": "19.5"
+  },
+  "cases": [
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "title",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "title",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "subtitle",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "note",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "note",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "caption",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "xtitle",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "ytitle",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "t1title",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "b2title",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "l1title",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "r1title",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "drawn": [
+        "a say "
+      ],
+      "kind": "quote",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "legend",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "kind": "quote",
+      "option": "xlabel",
+      "rc": 198,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "xlabel",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "plain",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $ZTG_plain b"
+    },
+    {
+      "drawn": [
+        "a hellob"
+      ],
+      "kind": "braced",
+      "option": "text",
+      "rc": 0,
+      "typed": "a ${ZTG_plain}b"
+    },
+    {
+      "drawn": [
+        "a xy b"
+      ],
+      "kind": "smcl",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $ZTG_smcl b"
+    },
+    {
+      "kind": "quote",
+      "option": "text",
+      "rc": 198,
+      "typed": "a $ZTG_quote b"
+    },
+    {
+      "drawn": [
+        "a 2 b"
+      ],
+      "kind": "eval",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $ZTG_eval b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "empty",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $ZTG_empty b"
+    },
+    {
+      "drawn": [
+        "a  b"
+      ],
+      "kind": "unset",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $ZTG_nosuch b"
+    },
+    {
+      "drawn": [
+        "a hello b"
+      ],
+      "kind": "nested",
+      "option": "text",
+      "rc": 0,
+      "typed": "a $$ZTG_nest b"
+    }
+  ],
+  "globals": {
+    "empty": "",
+    "eval": "`=1+1'",
+    "nest": "ZTG_plain",
+    "plain": "hello",
+    "quote": "say \"hi\"",
+    "smcl": "{bf:x}y"
+  }
+}

@@ -4755,7 +4755,17 @@ in {it:#} columns; the links {cmd:{c -(}browse{c )-}},
 {cmd:{c -(}help{c )-}} and {cmd:{c -(}stata{c )-}} are their text after
 the colon, or their argument when they have none; and, in a graph
 option's text or a {cmd:text()} line, {cmd:{c -(}ccl }{it:name}{cmd:{c )-}}
-is {cmd:c(}{it:name}{cmd:)} when the graph is registered.  A count above
+is {cmd:c(}{it:name}{cmd:)} when the graph is registered.  A
+{cmd:$}{it:name} or {cmd:${c -(}}{it:name}{cmd:{c )-}} that reaches
+{cmd:dash} in a title, subtitle, note, caption, axis or edge title,
+legend or tick label -- written {cmd:\$name} in a do-file -- is the
+global's value, as {cmd:twoway} reads the option's whole text again
+before its quotes are read (so a global holding a double quote splits
+the string, as in {cmd:twoway}) and its sub-options too; by text only: a
+global holding {cmd:`=1+1'} is drawn as written, where {cmd:twoway}
+evaluates it, and an option whose globals expand past 4,000 characters
+is refused, {it:option}{cmd:(): expanded text is too long},
+{cmd:r(198)}.  A count above
 255 (above 999 for {cmd:{c -(}dup{c )-}}), which {cmd:twoway} does not
 read, and an unknown tag are drawn as typed, as are {cmd:$$} and
 {cmd:\(} pairs.  A line longer than 254 characters is drawn as

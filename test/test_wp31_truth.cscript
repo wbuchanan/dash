@@ -10999,6 +10999,359 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
 }
 * ==== end S42 ====
 
+python:
+def _u42_texts(sp, dp, app):
+    """Every text both modes draw (titles, labels, axis titles, tick
+    labels, legend keys), as two lists on the module (_u42_drawn)."""
+    import json as _json
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        g = dict(__name__="dash_u42g_app")
+        exec(compile(src.replace(attach, "pass"), "dash_u42g_app.py", "exec"), g)
+        doc = Document()
+        g["make_document"](doc)
+    out = []
+    for models in ([m for f in r.figures.values() for m in f.references()],
+                   list(doc.models)):
+        texts = []
+        for m in models:
+            for a in ("text", "axis_label", "title"):
+                v = getattr(m, a, None)
+                if isinstance(v, str):
+                    texts.append(v)
+            lab = getattr(m, "label", None)
+            if isinstance(lab, dict) and isinstance(lab.get("value"), str):
+                texts.append(lab["value"])
+            elif isinstance(getattr(lab, "value", None), str):
+                texts.append(lab.value)
+            ov = getattr(m, "major_label_overrides", None)
+            if isinstance(ov, dict):
+                texts.extend(v for v in ov.values() if isinstance(v, str))
+            args = getattr(m, "args", None)
+            if isinstance(args, dict) and isinstance(args.get("labels"), str):
+                try:
+                    texts.extend(_json.loads(args["labels"]).values())
+                except ValueError:
+                    pass
+        out.append(texts)
+    import __main__
+    __main__._u42_drawn = out
+
+
+def _u42_gcheck(fx, kind):
+    """u42_gbad: the options whose drawn text (its first line) differs
+    from twoway's for this kind of global.  Z<i>: marks the i-th option of
+    the fixture's order; an =exp global is drawn as written; an option
+    twoway refuses with the kind (rc 198) was left out of the command."""
+    import json
+    import __main__
+    from sfi import Macro
+    d = json.load(open(fx, encoding="utf-8"))
+    bad = []
+    for i, c in enumerate([c for c in d["cases"] if c["kind"] == kind]):
+        if c["rc"]:
+            continue
+        want = c["drawn"][0]
+        if kind == "eval":
+            want = "a " + d["globals"]["eval"] + " b"
+        pre = "Z%d:" % (i + 1)
+        for mode, texts in zip(("s", "v"), __main__._u42_drawn):
+            got = sorted({t[len(pre):].split("\n")[0] for t in texts
+                          if t.startswith(pre)})
+            if got != [want]:
+                bad.append("%s/%s:%r" % (c["option"], mode, got[:2]))
+    Macro.setGlobal("u42_gbad", " ".join(bad)[:600])
+end
+
+capture program drop _u42_gread
+program define _u42_gread
+    // _u42_gread <dir> <k> <graph>: the texts both modes draw for the
+    // registered graph (the module's _u42_drawn).
+    version 19
+    args dir k
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u42_m; _u42_m._u42_texts("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+* ==== S42 D13b: Global macros in graph text options ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
+    display as text "S42 start " c(current_date) " " c(current_time)
+    local u42d "`w31_work'/s42g"
+    capture mkdir "`u42d'"
+    local u42gx "`c(pwd)'/fixtures/global_text_truth.json"
+    sysuse auto, clear
+    global ZTG_plain "hello"
+    global ZTG_smcl "{bf:x}y"
+    global ZTG_quote `"say "hi""'
+    global ZTG_eval "\`=1+1'"
+    global ZTG_empty ""
+    global ZTG_nest "ZTG_plain"
+
+    // U42-05: a global typed literally in every graph text option is
+    // drawn as twoway draws it, saved and served (an =exp global as
+    // written, where twoway evaluates it).
+    // Each command is typed as a user types it (\$ keeps the dollar
+    // sign): a command built in a macro is expanded by Stata first.
+    local bad ""
+    local k 0
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_plain b") ///
+        subtitle("Z2:a \$ZTG_plain b") ///
+        note("Z3:a \$ZTG_plain b") ///
+        caption("Z4:a \$ZTG_plain b") ///
+        xtitle("Z5:a \$ZTG_plain b") ///
+        ytitle("Z6:a \$ZTG_plain b") ///
+        t1title("Z7:a \$ZTG_plain b") ///
+        b2title("Z8:a \$ZTG_plain b") ///
+        l1title("Z9:a \$ZTG_plain b") ///
+        r1title("Z10:a \$ZTG_plain b") ///
+        legend(label(1 "Z11:a \$ZTG_plain b")) ///
+        xlabel(3000 "Z12:a \$ZTG_plain b") ///
+        text(30 3000 "Z13:a \$ZTG_plain b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' plain(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "plain")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' plain"
+            mata: printf("  plain: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \${ZTG_plain}b") ///
+        subtitle("Z2:a \${ZTG_plain}b") ///
+        note("Z3:a \${ZTG_plain}b") ///
+        caption("Z4:a \${ZTG_plain}b") ///
+        xtitle("Z5:a \${ZTG_plain}b") ///
+        ytitle("Z6:a \${ZTG_plain}b") ///
+        t1title("Z7:a \${ZTG_plain}b") ///
+        b2title("Z8:a \${ZTG_plain}b") ///
+        l1title("Z9:a \${ZTG_plain}b") ///
+        r1title("Z10:a \${ZTG_plain}b") ///
+        legend(label(1 "Z11:a \${ZTG_plain}b")) ///
+        xlabel(3000 "Z12:a \${ZTG_plain}b") ///
+        text(30 3000 "Z13:a \${ZTG_plain}b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' braced(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "braced")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' braced"
+            mata: printf("  braced: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_smcl b") ///
+        subtitle("Z2:a \$ZTG_smcl b") ///
+        note("Z3:a \$ZTG_smcl b") ///
+        caption("Z4:a \$ZTG_smcl b") ///
+        xtitle("Z5:a \$ZTG_smcl b") ///
+        ytitle("Z6:a \$ZTG_smcl b") ///
+        t1title("Z7:a \$ZTG_smcl b") ///
+        b2title("Z8:a \$ZTG_smcl b") ///
+        l1title("Z9:a \$ZTG_smcl b") ///
+        r1title("Z10:a \$ZTG_smcl b") ///
+        legend(label(1 "Z11:a \$ZTG_smcl b")) ///
+        xlabel(3000 "Z12:a \$ZTG_smcl b") ///
+        text(30 3000 "Z13:a \$ZTG_smcl b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' smcl(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "smcl")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' smcl"
+            mata: printf("  smcl: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_quote b") ///
+        subtitle("Z2:a \$ZTG_quote b") ///
+        note("Z3:a \$ZTG_quote b") ///
+        caption("Z4:a \$ZTG_quote b") ///
+        xtitle("Z5:a \$ZTG_quote b") ///
+        ytitle("Z6:a \$ZTG_quote b") ///
+        t1title("Z7:a \$ZTG_quote b") ///
+        b2title("Z8:a \$ZTG_quote b") ///
+        l1title("Z9:a \$ZTG_quote b") ///
+        r1title("Z10:a \$ZTG_quote b") ///
+        legend(label(1 "Z11:a \$ZTG_quote b")) ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' quote(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "quote")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' quote"
+            mata: printf("  quote: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_eval b") ///
+        subtitle("Z2:a \$ZTG_eval b") ///
+        note("Z3:a \$ZTG_eval b") ///
+        caption("Z4:a \$ZTG_eval b") ///
+        xtitle("Z5:a \$ZTG_eval b") ///
+        ytitle("Z6:a \$ZTG_eval b") ///
+        t1title("Z7:a \$ZTG_eval b") ///
+        b2title("Z8:a \$ZTG_eval b") ///
+        l1title("Z9:a \$ZTG_eval b") ///
+        r1title("Z10:a \$ZTG_eval b") ///
+        legend(label(1 "Z11:a \$ZTG_eval b")) ///
+        xlabel(3000 "Z12:a \$ZTG_eval b") ///
+        text(30 3000 "Z13:a \$ZTG_eval b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' eval(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "eval")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' eval"
+            mata: printf("  eval: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_empty b") ///
+        subtitle("Z2:a \$ZTG_empty b") ///
+        note("Z3:a \$ZTG_empty b") ///
+        caption("Z4:a \$ZTG_empty b") ///
+        xtitle("Z5:a \$ZTG_empty b") ///
+        ytitle("Z6:a \$ZTG_empty b") ///
+        t1title("Z7:a \$ZTG_empty b") ///
+        b2title("Z8:a \$ZTG_empty b") ///
+        l1title("Z9:a \$ZTG_empty b") ///
+        r1title("Z10:a \$ZTG_empty b") ///
+        legend(label(1 "Z11:a \$ZTG_empty b")) ///
+        xlabel(3000 "Z12:a \$ZTG_empty b") ///
+        text(30 3000 "Z13:a \$ZTG_empty b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' empty(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "empty")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' empty"
+            mata: printf("  empty: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$ZTG_nosuch b") ///
+        subtitle("Z2:a \$ZTG_nosuch b") ///
+        note("Z3:a \$ZTG_nosuch b") ///
+        caption("Z4:a \$ZTG_nosuch b") ///
+        xtitle("Z5:a \$ZTG_nosuch b") ///
+        ytitle("Z6:a \$ZTG_nosuch b") ///
+        t1title("Z7:a \$ZTG_nosuch b") ///
+        b2title("Z8:a \$ZTG_nosuch b") ///
+        l1title("Z9:a \$ZTG_nosuch b") ///
+        r1title("Z10:a \$ZTG_nosuch b") ///
+        legend(label(1 "Z11:a \$ZTG_nosuch b")) ///
+        xlabel(3000 "Z12:a \$ZTG_nosuch b") ///
+        text(30 3000 "Z13:a \$ZTG_nosuch b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' unset(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "unset")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' unset"
+            mata: printf("  unset: %s\n", st_global("u42_gbad"))
+        }
+    }
+    local ++k
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(2)), title("Z1:a \$\$ZTG_nest b") ///
+        subtitle("Z2:a \$\$ZTG_nest b") ///
+        note("Z3:a \$\$ZTG_nest b") ///
+        caption("Z4:a \$\$ZTG_nest b") ///
+        xtitle("Z5:a \$\$ZTG_nest b") ///
+        ytitle("Z6:a \$\$ZTG_nest b") ///
+        t1title("Z7:a \$\$ZTG_nest b") ///
+        b2title("Z8:a \$\$ZTG_nest b") ///
+        l1title("Z9:a \$\$ZTG_nest b") ///
+        r1title("Z10:a \$\$ZTG_nest b") ///
+        legend(label(1 "Z11:a \$\$ZTG_nest b")) ///
+        xlabel(3000 "Z12:a \$\$ZTG_nest b") ///
+        text(30 3000 "Z13:a \$\$ZTG_nest b") ///
+        name(u42h`k')
+    if _rc {
+        local bad "`bad' nested(rc `=_rc')"
+    }
+    else {
+        _u42_gread "`u42d'" `k'
+        python: import __main__ as _u42_m; _u42_m._u42_gcheck(r"`u42gx'", "nested")
+        if `"${u42_gbad}"' != "" {
+            local bad "`bad' nested"
+            mata: printf("  nested: %s\n", st_global("u42_gbad"))
+        }
+    }
+    _w31_expect U42-05 `"("`bad'" == "")"' "texts differ from twoway's:`bad'"
+    _w31_done U42-05 "a global in every graph text option is drawn as twoway draws it, saved and served"
+
+    // U42-06: a global holding an =exp is never evaluated (its file is
+    // not written); a sub-option's global is read (color(\$ZC) red); an
+    // axis 3 title's global is its value; a title whose globals pass 4,000
+    // characters is refused, r(198).
+    local sent "`u42d'/u42_ran"
+    capture erase "`sent'"
+    global ZTG_run `"\`=filewrite("`sent'", "x")'"'
+    global ZC "red"
+    dash clear
+    capture noisily dash scatter mpg weight, title("a \$ZTG_run b", color(\$ZC)) name(u42r)
+    local r1 = _rc
+    _dash_serve_spec, specpath("`u42d'/sr.json") datapath("`u42d'/dr.json")
+    python: import json; from sfi import Macro; _g = json.load(open(r"`u42d'/sr.json"))["graphs"][0]["graph_options"]["title"]; Macro.setGlobal("u42_st", str(("red" in _g) and ("filewrite" in _g)))
+    capture confirm file "`sent'"
+    local ran = (_rc == 0)
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(3)), ytitle("g\$ZTG_plain", axis(3)) name(u42x)
+    local r3 = _rc
+    python: from sfi import Macro; Macro.setGlobal("u42_ax", str("ghello" in Macro.getGlobal("dash_json_u42x")))
+    global ZTG_long = 300 * "abcdefghijklmn"
+    dash clear
+    capture noisily dash scatter mpg weight, title("\$ZTG_long") name(u42l)
+    local r2 = _rc
+    _w31_expect U42-06 `"(`r1' == 0) & ("${u42_st}" == "True") & (`ran' == 0) & (`r2' == 198) & (`r3' == 0) & ("${u42_ax}" == "True")"' "rc `r1' stored ${u42_st} ran `ran' long rc `r2' axis 3 rc `r3' expanded ${u42_ax}"
+    _w31_done U42-06 "an =exp global is drawn as written and never run, a sub-option's global is read, an expansion past 4,000 characters is refused"
+    dash clear
+    macro drop ZTG_* ZC
+    display as text "S42 end " c(current_date) " " c(current_time)
+}
+* ==== end S42 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -513,7 +513,7 @@ and now matches Stata.
 
 - After a filter move a contour is cut where twoway cuts the rows kept, and its colour key follows: dash contour price mpg weight, filter(foreign) moved to Foreign kept the build's cuts 5000 10000 on the saved page and, in the served app, a key whose levels no longer matched the bands; both now cut at twoway's 6000 8000 10000 12000 and key them, within the key's first span. (WP-31, B4d)
 
-<!-- WP-31 D13b -->
+- Globals in graph text options. dash scatter mpg weight, title("Cost in \$cur") drew $cur as typed; it draws the global's value, as twoway reads every graph text option (title, subtitle, note, caption, axis and edge titles, legend and tick labels, sub-options included) a second time; a global holding `=exp' is drawn as written, and an expansion past 4,000 characters is refused (WP-31, D13b)
 
 - dash scatter mpg weight, by(foreign) subtitle(, position(6)) named position() and drew every panel label above its panel; now the labels sit where twoway puts them: below at 6, 7 and 5, above at 12, 11 and 1 (left or right as the clock says), at the bottom corners at 9 and 3, and with ring(0) in the plot region, which takes the label box's fill (WP-31, D3b)
 

@@ -3554,9 +3554,13 @@ capture dash clear
 // ----------------------------------------------------------------
 qui sysuse auto, clear
 global J6_G "Audi 5000"
+// Flipped (WP-31 D13b): the global is the value twoway draws (Audi
+// 5000), expanded once at registration by text in the graph's text
+// options, as twoway reads them again (global_text_truth.json); the =exp
+// and the macro reference stay as typed and nothing runs.
 local jg_sent "`c(tmpdir)'j65"
 capture erase "`jg_sent'"
-mata: st_local("jg_M", "A" + char(36) + "J6_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+mata: st_local("jg_M", "A" + "Audi 5000 B " + char(96) + "=1+1" + char(39) + " C " + ///
     char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))" + char(39) + ///
     " D " + char(96) + "jgnone" + char(39) + " E")
 capture dash clear
@@ -3566,22 +3570,22 @@ local jg_ok ""
 mata: st_global("JG_WANT", _jg_pq(st_local("jg_M")))
 _jg_stored jg65a "graph_options title"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq("s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39)))
+mata: st_global("JG_WANT", _jg_pq("s" + "Audi 5000 " + char(96) + "=1+1" + char(39)))
 _jg_stored jg65a "graph_options subtitle"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", _jg_cq("n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G"))
+mata: st_global("JG_WANT", _jg_cq("n" + char(96) + "jgnone" + char(39) + " " + "Audi 5000"))
 _jg_stored jg65a "graph_options note"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq("c" + char(36) + "J6_G"))
+mata: st_global("JG_WANT", _jg_pq("c" + "Audi 5000"))
 _jg_stored jg65a "graph_options caption"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "label(1 " + _jg_pq("l" + char(36) + "J6_G") + ")")
+mata: st_global("JG_WANT", "label(1 " + _jg_pq("l" + "Audi 5000") + ")")
 _jg_stored jg65a "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq("x" + char(36) + "J6_G " + char(96) + "=1+1" + char(39)))
+mata: st_global("JG_WANT", _jg_pq("x" + "Audi 5000 " + char(96) + "=1+1" + char(39)))
 _jg_stored jg65a "graph_options xtitle"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq("y2" + char(36) + "J6_G " + char(96) + "jgnone" + char(39)))
+mata: st_global("JG_WANT", _jg_pq("y2" + "Audi 5000 " + char(96) + "jgnone" + char(39)))
 _jg_stored jg65a "graph_options ytitle2"
 local jg_ok "`jg_ok'`r(ok)'"
 tempfile jg_p65
@@ -3592,17 +3596,17 @@ mata: st_global("JG_WANT", st_local("jg_M"))
 _jg_drawn Title
 local jg_dr "`jg_dr'`r(n)'"
 foreach jg_x in "s" "n" "c" {
-    if "`jg_x'" == "s" mata: st_global("JG_WANT", "s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
-    if "`jg_x'" == "n" mata: st_global("JG_WANT", "n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G")
-    if "`jg_x'" == "c" mata: st_global("JG_WANT", "c" + char(36) + "J6_G")
+    if "`jg_x'" == "s" mata: st_global("JG_WANT", "s" + "Audi 5000 " + char(96) + "=1+1" + char(39))
+    if "`jg_x'" == "n" mata: st_global("JG_WANT", "n" + char(96) + "jgnone" + char(39) + " " + "Audi 5000")
+    if "`jg_x'" == "c" mata: st_global("JG_WANT", "c" + "Audi 5000")
     * Flipped (WP-30 P1.2a): the subtitle, note and caption are Titles.
     _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
-mata: st_global("JG_WANT", "l" + char(36) + "J6_G")
+mata: st_global("JG_WANT", "l" + "Audi 5000")
 _jg_drawn LegendItem
 local jg_dr "`jg_dr'`r(n)'"
-mata: st_global("JG_WANT", "x" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
+mata: st_global("JG_WANT", "x" + "Audi 5000 " + char(96) + "=1+1" + char(39))
 _jg_drawn LinearAxis
 local jg_dr "`jg_dr'`r(n)'"
 capture erase "`jg_p65'.html"
@@ -3614,7 +3618,7 @@ assert "`jg_ok'" == "1111111"
 assert `jg_rb' == 0
 assert "`jg_dr'" == "111111"
 assert `jg_ran' == 0
-display "JSE-65 PASS: a global, an =exp and a macro reference in a title, text option, legend label, axis title or folded alias are stored and drawn as typed, and nothing runs"
+display "JSE-65 PASS: a global in a title, text option, legend label, axis title or folded alias is its value as twoway draws it; an =exp and a macro reference are stored and drawn as typed, and nothing runs"
 capture dash clear
 macro drop J6_*
 
@@ -3707,9 +3711,13 @@ macro drop J6_*
 // by value.
 // ----------------------------------------------------------------
 global J6_G "Audi 5000"
+// Flipped (WP-31 D13b): the global is the value twoway draws (Audi
+// 5000), expanded once at registration by text in the graph's text
+// options, as twoway reads them again (global_text_truth.json); the =exp
+// and the macro reference stay as typed and nothing runs.
 local jg_sent "`c(tmpdir)'j67"
 capture erase "`jg_sent'"
-mata: st_local("jg_M", "A" + char(36) + "J6_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+mata: st_local("jg_M", "A" + "Audi 5000 B " + char(96) + "=1+1" + char(39) + " C " + ///
     char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))" + char(39) + ///
     " D " + char(96) + "jgnone" + char(39) + " E")
 quietly count if make != "\$J6_G" & foreign == 1
@@ -3727,7 +3735,7 @@ foreach jg_g in jg67a jg67b jg67c {
     _jg_stored `jg_g' "graph_options title"
     local jg_ok "`jg_ok'`r(ok)'"
 }
-mata: st_global("JG_WANT", _jg_pq("x2" + char(36) + "J6_G " + char(96) + "jgnone" + char(39)))
+mata: st_global("JG_WANT", _jg_pq("x2" + "Audi 5000 " + char(96) + "jgnone" + char(39)))
 _jg_stored jg67b "graph_options xtitle2"
 local jg_ok "`jg_ok'`r(ok)'"
 tempfile jg_p67
@@ -3760,7 +3768,7 @@ assert "`jg_ok'" == "1111"
 assert `jg_rb' == 0 & "`jg_d'" == "3"
 assert "`jg_d1'" == "1" & "`jg_row1'" == "`jg_nl'"
 assert `jg_ran' == 0
-display "JSE-67 PASS: a macro in a title in paren and || mode and on the one-line form is stored and drawn as typed, and nothing runs"
+display "JSE-67 PASS: a macro in a title in paren and || mode and on the one-line form is stored and drawn as twoway draws it (a global its value), and nothing runs"
 capture dash clear
 macro drop J6_*
 
@@ -3824,8 +3832,9 @@ macro drop J6_*
 // weight expression, a scatteri label and mcolor()
 // ----------------------------------------------------------------
 // Each value is judged as typed: by()'s title and text() are kept, with no
-// =exp run; legend(label(1 \$J6_T)) keeps the text as typed, not the word
-// top that J6_T holds (a bare legend(\$J6_T) word is refused since WP-30
+// =exp run (flipped WP-31 D13b: their globals are the values twoway draws);
+// legend(label(1 \$J6_T)) is label(1 top), the word J6_T holds, as twoway
+// reads a text option again (flipped WP-31 D13b) (a bare legend(\$J6_T) word is refused since WP-30
 // P1.19, as twoway refuses a word it does not know); bw() and mlabel()
 // are refused showing the text, where both were expanded to nothing and
 // dropped with rc 0; colormissing() is named in the note; a weight
@@ -3902,7 +3911,9 @@ cert_log_has "`jg_l69'", needle(`"J6_G",1,2)] cannot be evaluated"')
 local jg_w8 = r(count)
 capture erase "`jg_l69'"
 local jg_ok ""
-mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("b" + char(36) + "J6_G " + char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))" + char(39)) + ")")
+// Flipped (WP-31 D13b): by()'s title and the legend's label are graph
+// text options, whose globals twoway reads again (global_text_truth.json).
+mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("b" + "Audi 5000 " + char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))" + char(39)) + ")")
 _jg_stored jg69a "graph_options by"
 local jg_ok "`jg_ok'`r(ok)'"
 * Flipped (WP-30 P1.10): text()'s line is stored as typed in its
@@ -3912,7 +3923,7 @@ local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "t" + st_global("J6_G"))
 _jg_stored jg69b "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "label(1 " + char(36) + "J6_T)")
+mata: st_global("JG_WANT", "label(1 top)")
 _jg_stored jg69b "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "s" + char(36) + "J6_G")
@@ -4063,7 +4074,9 @@ local j71_r3 = _rc
 capture noisily dash scatter mpg weight, by(foreign, subtitle("tick \`x")) name(j71d)
 local j71_r4 = _rc
 local j71_ok ""
-mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("Cost in " + char(36) + "US") + ")")
+// Flipped (WP-31 D13b): $US is the unset global's value, nothing, as
+// twoway reads a graph text option again (global_text_truth.json unset).
+mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("Cost in ") + ")")
 _jg_stored j71a "graph_options by"
 local j71_ok "`j71_ok'`r(ok)'"
 mata: st_global("JG_WANT", "foreign, note(" + _jg_pq("a" + char(92) + "b c") + ")")

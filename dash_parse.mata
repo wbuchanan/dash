@@ -8254,6 +8254,9 @@ string scalar _dash_axisn_json()
                 seen = 1
             }
             if (!seen) continue
+            // A global in an axis title or label is its value, as twoway
+            // reads a graph text option again (WP-31 D13b), by text.
+            if (anyof(("title", "label", "mlabel"), families[j])) v = _dash_at_globals(v)
             // mlabel is written "mlab" (WP-31 D1b): a key "mlabel" is a
             // marker-label variable to _dash_extract_vars.
             fams = fams + (fams == "" ? "" : ",") + char(34) +
