@@ -299,6 +299,10 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_bcal_json(cal, lo, hi)
+*!       A business calendar's days lo..hi, {"min":lo,"td":[...]}, read by
+*!       dofb() at registration (WP-31 G7).
+*!
 *!   _dash_fn_panel_count(byraw, touse)
 *!       The panels by() draws over the rows touse marks, for the function
 *!       layers evaluated once per panel (WP-31 C12).
@@ -11300,6 +11304,22 @@ real scalar _dash_by_panel_n(string scalar gjson, real scalar bygroups)
     n = rows(key) ? rows(uniqrows(key)) : 0
     if (n > bygroups) n = bygroups
     return(n + tot)
+}
+
+// _dash_bcal_json(cal, lo, hi) -- business calendar cal's days lo..hi as
+// the spec holds them (WP-31 G7): {"min":lo,"td":[dofb(lo, cal), ...]},
+// each day _dash_json_number17's (null where dofb() is missing).
+string scalar _dash_bcal_json(string scalar cal, real scalar lo,
+                              real scalar hi)
+{
+    real rowvector k
+    string colvector t
+
+    if (lo >= . | hi >= . | hi < lo) return("")
+    k = lo..hi
+    t = _dash_json_number17(dofb(k, cal)')
+    return("{" + char(34) + "min" + char(34) + ":" + strofreal(lo, "%21.0g") +
+           "," + char(34) + "td" + char(34) + ":[" + invtokens(t', ",") + "]}")
 }
 
 // _dash_fn_panel_count(byraw, touse) -- the panels by(byraw) draws over

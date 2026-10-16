@@ -636,7 +636,8 @@ _PLAIN_DIGESTS = {
     # 5777f9c1... -> 1735f74a...: WP-31 D15 follow-up, a shared by()
     # letter's xtick(#N) in the finish code (finish JS text only).
     # 02665fa0... -> 425a7065...: WP-31 G7 the Stata writer reads %d as
-    # %td (writer JS text only).
+    # %td (writer JS text only); 425a7065... -> aea1fee4...: WP-31 G7 the
+    # writer's %tb (writer JS text only).
     ("saved", "plain"):
         "REDERIVE",
     ("saved", "yaxis2"):
@@ -652,6 +653,8 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 1d5c76fb...: WP-31 D15, as the saved page's;
     # 1d5c76fb... -> f2fa6195...: the D15 follow-up, as the saved page's.
     # page's; 1fc4cc55... -> 6b1271a5...: WP-31 G7, as the saved page's.
+    # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
+    # as the saved page's.
     ("served", "plain"):
         "REDERIVE",
     ("served", "yaxis2"):

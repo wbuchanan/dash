@@ -531,7 +531,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.
 - **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
 - **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit pending.
-- **G7 Tracked:** Partly closed in WP-31 (section 46, commit pending): %d read as %td and xvarformat(bogus) noted in twoway's words; open: %tb business-calendar formats (BUGS.md "%tb business-calendar axes and tooltips are drawn %9.0g with a note").
+- **G7 Tracked:** Closed in WP-31, BUGS.md "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses", commit pending.
 - **H1 Tracked:** Open (WP-31 section 52).
 - **H2f Tracked:** Open (WP-31 section 49).
 - **H2k Tracked:** Open (WP-31 section 50).

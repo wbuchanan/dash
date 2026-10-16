@@ -480,7 +480,7 @@ and now matches Stata.
 
 - A fractional %tm, %tw, %tq, %th or %ty value (%tm 745.5) was drawn on its period's start; it is drawn at its fraction toward the next period, as twoway draws it. rarea with one bound missing on a row left the row out of the band; the row keeps its other bound, the band's edge straight across the gap, as twoway's polygon runs (WP-31, G6)
 
-- A %d (or %dCCYY-NN-DD) date variable or xvarformat() was drawn %9.0g with a note; it is written as the %td date it is, as twoway writes it (WP-31, G7)
+- A %d (or %dCCYY-NN-DD) or %tb<cal> business-calendar variable or xvarformat() was drawn %9.0g with a note; %d is written as the %td date it is, and %tb as its calendar's date (%tbu46 5 is 08jan2024; a value outside the calendar the bare number), on the axis and in tooltips, as twoway writes them (WP-31, G7)
 
 <!-- WP-31 F2 -->
 

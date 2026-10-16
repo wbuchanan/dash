@@ -2607,7 +2607,7 @@ been tested.
 
 {pstd}
 {ul:Page size.}  Each distinct display format on a page carries one tick
-formatter and one tooltip formatter of about 37 KB each, the writer that
+formatter and one tooltip formatter of about 38 KB each, the writer that
 writes numbers and dates as Stata's {cmd:display} does; the page's script
 cannot share one model between an axis and a tooltip, so a page with many
 formats grows by that much for each.
@@ -4377,8 +4377,12 @@ that is no format, {cmd:xvarformat(bogus)}, draws the axis in
 {cmd:%9.0g} with {cmd:twoway}'s line, {cmd:bogus not found}, rc 0.
 {cmd:%d}, {cmd:%td}'s old name, is read as {cmd:%td}, with its picture
 ({cmd:%dCCYY-NN-DD}), in a variable's format and in these options.  A
-business-calendar format, {cmd:%tb}{it:cal}, is not yet written: such an
-axis is drawn in {cmd:%9.0g} with a note.
+business-calendar format, {cmd:%tb}{it:cal}[{cmd::}{it:picture}], is
+written as {cmd:twoway} writes it: the calendar is read when the graph is
+registered (its days, at most 10,000, travel in the dashboard) and each
+value is shown as its business day's date ({cmd:%tbu46 5} is
+{cmd:08jan2024}), one outside the calendar as the number, on the axis and
+in tooltips.
 
 {phang}{opt yvarlabel(strings)} and {opt xvarlabel(string)}, inside a plot,
 stand in for the labels of that layer's variables, as {cmd:twoway} reads

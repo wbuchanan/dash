@@ -1307,7 +1307,9 @@ def _dash_load_columns(df, formats, string_vars, display_names=None):
         kind = _stata_date_kind(fmt)
         if kind is None:
             df[col] = _dash_finite_numeric(df[col])
-            if _dash_fmt_kind(fmt) in ("f", "g", "e"):
+            if _dash_fmt_writes_number(fmt):
+                # A %tb variable is held as its business-day numbers and
+                # written through its calendar (WP-31 G7).
                 numeric_formats[col] = fmt
             elif fmt and _dash_fmt_kind(fmt) in ("x", "H"):
                 # A hexadecimal or IEEE dump the page cannot write (WP-28
@@ -28717,6 +28719,7 @@ _DASH_FMT_JS = """
 
 var _DASH_FMT_NUM_RE = /^%(-)?(0)?(\\d{1,4})([.,])(\\d{1,4})(f|g|e)(c)?$/;
 var _DASH_FMT_DATE_RE = /^%(-)?t([cCdhmqwy])(.*)$/;
+var _DASH_FMT_TB_RE = /^%tb([A-Za-z_][A-Za-z0-9_]{0,31})(?::(.*))?$/;
 var _DASH_FMT_X_RE = /^%-?\\d*x$/;
 var _DASH_FMT_H_RE = /^%-?\\d*[HL]$/;
 
@@ -28748,6 +28751,12 @@ function dash_fmt_parse(fmt) {
         return {kind: "t", width: null, dec: null, left: !!m[1],
                 zero: false, group: false, comma_dec: false,
                 tkind: m[2], picture: m[3]};
+    }
+    m = _DASH_FMT_TB_RE.exec(fmt);
+    if (m) {
+        return {kind: "t", width: null, dec: null, left: false, zero: false,
+                group: false, comma_dec: false, tkind: "b",
+                picture: m[2] || "", bcal: m[1]};
     }
     if (_DASH_FMT_X_RE.test(fmt)) {
         return {kind: "x", width: null, dec: null, left: false,
@@ -29629,7 +29638,16 @@ function dash_stata_value_of(columnValue, dateKind) {
     return (vfloor >= range[0] && vfloor <= range[1]) ? vfloor : null;
 }
 
-function dash_fmt(value, fmt, storage, strip, dp) {
+function dash_bcal_td(v, table) {
+    // _dash_bcal_td (WP-31 G7)
+    if (!table || !Array.isArray(table.td) || !isFinite(v)) { return null; }
+    var i = Math.floor(v) - Number(table.min);
+    if (!(i >= 0 && i < table.td.length)) { return null; }
+    var t = table.td[i];
+    return (t === null || t === undefined) ? null : Number(t);
+}
+
+function dash_fmt(value, fmt, storage, strip, dp, bcal) {
     // _dash_fmt
     var v = Number(value);
     if (isNaN(v) && value !== null && value !== undefined
@@ -29641,6 +29659,11 @@ function dash_fmt(value, fmt, storage, strip, dp) {
         if (!isFinite(v)) { v = NaN; }
     }
     var parsed = dash_fmt_parse(fmt);
+    if (parsed && parsed.tkind === "b") {
+        var td = dash_bcal_td(v, bcal);
+        if (td === null) { return dash_fmt(v, "%9.0g", null, strip, dp); }
+        return dash_fmt(td, "%td" + parsed.picture, null, strip, dp);
+    }
     var kind = parsed ? parsed.kind : null;
     if (kind === null || kind === "x" || kind === "H") {
         parsed = {kind: "g", width: 9, dec: 0, left: false, zero: false,
@@ -29664,9 +29687,9 @@ function dash_fmt(value, fmt, storage, strip, dp) {
     return strip ? result.trim() : result;
 }
 
-function dash_fmt_text(value, fmt, storage, dp) {
+function dash_fmt_text(value, fmt, storage, dp, bcal) {
     // _dash_fmt_text
-    return dash_fmt(value, fmt, storage, true, dp);
+    return dash_fmt(value, fmt, storage, true, dp, bcal);
 }
 
 function dash_html_escape(s) {
@@ -34821,6 +34844,9 @@ _DASH_FMT_NUM_RE = re.compile(
     r"^%(-)?(0)?(\d{1,4})([.,])(\d{1,4})(f|g|e)(c)?$")
 _DASH_FMT_DATE_RE = re.compile(r"^%(-)?t([cCdhmqwy])(.*)$")
 _DASH_FMT_X_RE = re.compile(r"^%-?\d*x$")
+#: %tb<cal>[:picture], a business-calendar format (WP-31 G7): written as
+#: the calendar's %td date with the picture (help datetime business).
+_DASH_FMT_TB_RE = re.compile(r"^%tb([A-Za-z_][A-Za-z0-9_]{0,31})(?::(.*))?$")
 _DASH_FMT_H_RE = re.compile(r"^%-?\d*[HL]$")
 
 
@@ -34868,6 +34894,12 @@ def _dash_fmt_parse(fmt):
                 "left": bool(m.group(1)), "zero": False, "group": False,
                 "comma_dec": False, "tkind": m.group(2),
                 "picture": m.group(3)}
+    m = _DASH_FMT_TB_RE.fullmatch(fmt)
+    if m:
+        return {"kind": "t", "width": None, "dec": None, "left": False,
+                "zero": False, "group": False, "comma_dec": False,
+                "tkind": "b", "picture": m.group(2) or "",
+                "bcal": m.group(1)}
     if _DASH_FMT_X_RE.fullmatch(fmt):
         return {"kind": "x", "width": None, "dec": None, "left": False,
                 "zero": False, "group": False, "comma_dec": False,
@@ -35746,7 +35778,8 @@ def _dash_stata_value_of(column_value, date_kind):
     return float(v) if lo <= v <= hi else None
 
 
-def _dash_fmt(value, fmt, storage=None, strip=False, dp="period"):
+def _dash_fmt(value, fmt, storage=None, strip=False, dp="period",
+              bcal=None):
     """*value* (a Stata numeric value -- for a ``%t`` format, the Stata
     date/period NUMBER itself, never epoch milliseconds) written exactly
     as Stata's ``display %fmt (value)`` writes it, right-aligned to the
@@ -35767,6 +35800,13 @@ def _dash_fmt(value, fmt, storage=None, strip=False, dp="period"):
     under ``"comma"`` a numeric format's decimal point is a comma and its
     thousands separator a period, as ``display`` writes them; a date
     picture is unchanged.
+
+    A ``%tb<cal>[:picture]`` format (WP-31 G7) reads *bcal*, the
+    calendar's table ``{"min": k0, "td": [%td of k0, ...]}`` dash.ado
+    embedded at registration: a value is written as its business day's
+    ``%td`` date in the picture (``%tbu46 5.5`` is 08jan2024), and one
+    outside the calendar, or with no table, as the bare number in
+    ``%9.0g`` (``%tbu46 22`` is ``       22``), as Stata writes them.
     """
     try:
         v = float(value)
@@ -35784,6 +35824,11 @@ def _dash_fmt(value, fmt, storage=None, strip=False, dp="period"):
         if not math.isfinite(v):
             v = float("nan")
     parsed = _dash_fmt_parse(fmt)
+    if parsed and parsed.get("tkind") == "b":
+        td = _dash_bcal_td(v, bcal)
+        if td is None:
+            return _dash_fmt(v, "%9.0g", strip=strip, dp=dp)
+        return _dash_fmt(td, "%td" + parsed["picture"], strip=strip, dp=dp)
     kind = parsed["kind"] if parsed else None
     if kind in (None, "x", "H"):
         parsed = {"kind": "g", "width": 9, "dec": 0, "left": False,
@@ -35803,11 +35848,41 @@ def _dash_fmt(value, fmt, storage=None, strip=False, dp="period"):
     return result.strip() if strip else result
 
 
-def _dash_fmt_text(value, fmt, storage=None, dp="period"):
+def _dash_fmt_writes_number(fmt):
+    """True when *fmt* writes a plain number column: a numeric ``%f``,
+    ``%g`` or ``%e`` format, or a ``%tb<cal>`` business-calendar format,
+    held as its business-day numbers and written through its calendar
+    (WP-31 G7)."""
+    if not isinstance(fmt, str):
+        return False
+    return (_dash_fmt_kind(fmt) in ("f", "g", "e")
+            or bool(_DASH_FMT_TB_RE.fullmatch(fmt)))
+
+
+def _dash_bcal_td(v, table):
+    """The %td day of business day *v* in a calendar *table*
+    (``{"min": k0, "td": [...]}``, WP-31 G7), or None when *v* is missing
+    or outside it, or the table is not one; *v*'s fraction is dropped, as
+    ``dofb()`` drops it."""
+    try:
+        k0 = int(table["min"])
+        td = table["td"]
+        if not (isinstance(td, list) and math.isfinite(v)):
+            return None
+        i = int(math.floor(v)) - k0
+        if 0 <= i < len(td) and td[i] is not None:
+            return float(td[i])
+    except (TypeError, ValueError, KeyError, OverflowError):
+        pass
+    return None
+
+
+def _dash_fmt_text(value, fmt, storage=None, dp="period", bcal=None):
     """:func:`_dash_fmt` with its padding stripped -- the page-facing
     form every card, label, tooltip and axis tick uses.  ``"."`` for a
     missing value; *dp* the page's decimal mark."""
-    return _dash_fmt(value, fmt, storage=storage, strip=True, dp=dp)
+    return _dash_fmt(value, fmt, storage=storage, strip=True, dp=dp,
+                     bcal=bcal)
 
 
 #: The body of every page-side Stata formatter (WP-28 S12, GAPS2 E3/G6):
@@ -35818,17 +35893,24 @@ _DASH_FMT_MODEL_JS = """
 var _dash_v = kind ? dash_stata_value_of(%s, kind) : %s;
 if ((_dash_v === null || _dash_v === undefined) && kind) { _dash_v = dash_stata_number_of(%s, kind); }
 if (_dash_v === null || _dash_v === undefined) { return "."; }
-return dash_fmt_text(_dash_v, fmt, storage, dp);
+return dash_fmt_text(_dash_v, fmt, storage, dp, typeof bcal === "undefined" ? null : bcal);
 """
 
 
-def _dash_fmt_model_args(fmt, kind, storage, dp="period"):
+def _dash_fmt_model_args(fmt, kind, storage, dp="period", bcals=None):
     """The args of a page-side formatter: *fmt* (``%9.0g`` when empty),
     the date *kind* (``""`` for a number), the *storage* type and the
-    page's decimal mark *dp* (WP-31 G2)."""
-    return {"fmt": str(fmt or "%9.0g"), "kind": str(kind or ""),
+    page's decimal mark *dp* (WP-31 G2); for a ``%tb<cal>`` format, the
+    calendar's table from *bcals* (``build_options["bcal"]``, WP-31 G7)
+    as ``bcal``."""
+    args = {"fmt": str(fmt or "%9.0g"), "kind": str(kind or ""),
             "storage": str(storage or ""),
             "dp": "comma" if dp == "comma" else "period"}
+    m = _DASH_FMT_TB_RE.fullmatch(args["fmt"])
+    if m and isinstance(bcals, dict) and isinstance(bcals.get(m.group(1)),
+                                                     dict):
+        args["bcal"] = bcals[m.group(1)]
+    return args
 
 
 def _dash_dp_fmt(fmt, dp):
@@ -35875,6 +35957,10 @@ def _dash_page_settings(mapper, cache, build_options):
         mapper._dash_stata_ticks = _dash_stata_tick_table(build_options)
     if isinstance(cache, dict):
         cache["dp"] = dp
+        # WP-31 G7: the business calendars dash.ado embedded, for the
+        # %tb formatters' args.
+        bc = (build_options or {}).get("bcal")
+        cache["bcal"] = bc if isinstance(bc, dict) else {}
     return dp
 
 
@@ -35887,7 +35973,8 @@ def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
     *cache* (a dict per rendered document; None builds a fresh one): the
     writer is large, and a Bokeh model belongs to one document."""
     from bokeh.models import CustomJSTickFormatter
-    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache),
+                                (cache or {}).get("bcal"))
     key = ("tick", args["fmt"], args["kind"], args["storage"], args["dp"])
     if cache is not None and key in cache:
         return cache[key]
@@ -35908,7 +35995,8 @@ def _dash_fmt_label_tick_formatter(labels, fmt, kind, storage, cache):
     ``code``.  One model per ``(labels, fmt, kind, storage)`` in
     *cache*."""
     from bokeh.models import CustomJSTickFormatter
-    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache),
+                                (cache or {}).get("bcal"))
     args["labels"] = str(labels)
     key = ("label", args["labels"], args["fmt"], args["kind"],
            args["storage"], args["dp"])
@@ -35933,7 +36021,8 @@ def _dash_fmt_hover(fmt, kind, storage, cache):
     """The ``CustomJSHover`` twin of :func:`_dash_fmt_tick_formatter`, for
     a ``@{col}{custom}`` tooltip field: it writes BokehJS's ``value``."""
     from bokeh.models import CustomJSHover
-    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache),
+                                (cache or {}).get("bcal"))
     key = ("hover", args["fmt"], args["kind"], args["storage"], args["dp"])
     if cache is not None and key in cache:
         return cache[key]
@@ -45869,7 +45958,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
             "" if _period else (date_kind or "td"), storage, fmt_cache)
     else:
         _tfmt = _dash_fmt_tick_formatter(
-            fmt if _dash_fmt_kind(fmt) in ("f", "g", "e") else "%9.0g",
+            fmt if _dash_fmt_writes_number(fmt) else "%9.0g",
             "", storage, fmt_cache)
     if _period:
         w = (RangeSlider(title=title, start=vmin, end=vmax,
@@ -52756,7 +52845,7 @@ def _dash_hover_row(col, label, fmt="", kind="", storage="", cache=None,
         return (label, f"@{{{text_col}}}"), None
     if kind:
         fmt = _dash_date_fmt(fmt, kind)
-    elif _dash_fmt_kind(fmt) not in ("f", "g", "e"):
+    elif not _dash_fmt_writes_number(fmt):
         return (label, f"@{{{col}}}"), None
     return ((label, f"@{{{col}}}{{custom}}"),
             (f"@{{{col}}}", _dash_fmt_hover(fmt, kind, storage, cache)))
@@ -60113,6 +60202,7 @@ class ServerAppBuilder:
                       "_DASH_FMT_JS", "_DASH_FMT_MODEL_JS", "_DASH_FMT_MISSING_AT", "_DASH_FMT_CODES", "_DASH_FMT_WIDTHS",
                       "_DASH_FMT_MONTHS", "_DASH_FMT_DAYS",
                       "_DASH_FMT_NUM_RE", "_DASH_FMT_DATE_RE",
+                      "_DASH_FMT_TB_RE",
                       "_DASH_FMT_X_RE", "_DASH_FMT_H_RE",
                       "_DASH_FMT_RANGE",
                       "_DASH_FMT_FALLBACK_WIDTH", "_DASH_FMT_DEFAULT_PICTURE",
@@ -60361,7 +60451,8 @@ class ServerAppBuilder:
                          "_dash_fmt_calendar", "_dash_fmt_render_code",
                          "_dash_fmt_tokenize_picture", "_dash_fmt_date",
                          "_dash_fmt_picture_width", "_dash_stata_value_of",
-                         "_dash_fmt", "_dash_fmt_text",
+                         "_dash_fmt", "_dash_bcal_td", "_dash_fmt_writes_number",
+                         "_dash_fmt_text",
                          # Explicit-digit g and axis formats from the
                          # plots (WP-30 P1.5, P1.5.7).
                          "_dash_g_text_explicit",
@@ -61108,7 +61199,7 @@ class ServerAppBuilder:
                 str(_k): str(_v)
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()
-                if _dash_fmt_kind(str(_v)) in ("f", "g", "e")},),
+                if _dash_fmt_writes_number(str(_v))},),
             # The full display-format map, custom %t pictures included
             # (WP-28 S04): _NUM_FORMATS keeps only what the writer places.
             "_FORMATS = %r" % ({

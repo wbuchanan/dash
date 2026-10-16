@@ -13020,6 +13020,47 @@ def _u46_said_render(sp, dp, text):
         r.render()
     Macro.setGlobal("u46_said", "1" if any(str(m.message) == text
                                            for m in w) else "0")
+def _u46_tb_ticks(svg, sp, dp, fmt):
+    """global u46_bad empty when the saved page's %tb tick formatter writes
+    twoway's SVG tick labels at twoway's ticks (0(5)20), and the spec
+    carries the calendar dofb() gives."""
+    import json
+    import os
+    import re
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    t = open(svg, encoding="utf-8").read()
+    labs = [m for m in re.findall(r">([0-9]{2}[a-z]{3}[0-9]{4})<", t)]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    bad = []
+    spec = json.load(open(sp, encoding="utf-8"))
+    tab = (spec.get("build_options", {}).get("bcal") or {}).get("u46")
+    if not tab or tab.get("min") != 0 or len(tab.get("td", [])) != 22:
+        bad.append("spec calendar %r" % (tab,))
+    fm = [m for m in r._last_layout_root.references()
+          if type(m).__name__ == "CustomJSTickFormatter"
+          and m.args.get("fmt") == fmt]
+    if not fm:
+        bad.append("no %s tick formatter" % fmt)
+    else:
+        got = js_runner.run_js(
+            dr._DASH_FMT_JS + "\nvar bcal = " + json.dumps(fm[0].args.get("bcal"))
+            + ";\nprocess.stdout.write(JSON.stringify([0, 5, 10, 15, 20].map("
+              "function (v) { return dash_fmt_text(v, %s, '', 'period', bcal); })));"
+            % json.dumps(fmt))
+        if got != labs:
+            bad.append("dash ticks %s, twoway %s" % (got, labs))
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+
+
 end
 
 * ==== S46 G7: %d, %tb and xvarformat ====
@@ -13047,7 +13088,26 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
     _dash_serve_spec, specpath("`u46d'/g7.json") datapath("`u46d'/g7d.json")
     python: __import__("__main__")._u46_said_render("`u46d'/g7.json", "`u46d'/g7d.json", "bogus not found")
     _w31_expect U46-07 "(${u46_said} == 1)" "dash did not say twoway's bogus not found"
-    _w31_done U46-07 "%d is written as %td and xvarformat(bogus) is twoway's note"
+    // %tb: a weekday calendar from 01jan2024, read by Stata at
+    // registration and embedded; the axis is labelled as twoway labels it.
+    clear
+    quietly set obs 30
+    quietly generate date = mdy(1, 1, 2024) + _n - 1
+    quietly drop if inlist(dow(date), 0, 6)
+    quietly bcal create "`u46d'/u46", from(date) replace
+    adopath + "`u46d'"
+    quietly generate bd = bofd("u46", date)
+    format bd %tbu46
+    quietly generate y = _n
+    quietly twoway scatter y bd
+    quietly graph export "`u46d'/g7_tb.svg", replace
+    dash clear
+    quietly dash scatter y bd, name(zu46tb)
+    _dash_serve_spec, specpath("`u46d'/g7tb.json") datapath("`u46d'/g7tbd.json")
+    python: __import__("__main__")._u46_tb_ticks("`u46d'/g7_tb.svg", "`u46d'/g7tb.json", "`u46d'/g7tbd.json", "%tbu46")
+    _w31_expect U46-07 `"("${u46_bad}" == "")"' `"%tb: ${u46_bad}"'
+    adopath - "`u46d'"
+    _w31_done U46-07 "%d is written as %td, %tb through its calendar, and xvarformat(bogus) is twoway's note"
     display as text "S46 end " c(current_date) " " c(current_time)
 }
 * ==== end S46 ====

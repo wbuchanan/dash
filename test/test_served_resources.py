@@ -512,8 +512,9 @@ _SAVED_DIGEST = (
     # old -> new: G1 the filter mask code (8c7b23d4...); G2 dp
     # (77a8a775...); C16 the recast writer in the filter code
     # (b02f3e94...); C11 lpoly's 1e-14 weight threshold in the filter code
-    # (8fb420d4...); G7 the Stata writer reads %d as %td
-    "965dbdfef1b9e6814cef5c9e382e2e6225377801b59dbd145553cff4c7a97edc")
+    # (8fb420d4...); G7 the Stata writer reads %d as %td (965dbdfe...)
+    # and %tb through its calendar
+    "43f70b014965d02155cbcd234e1afcb7374648b7dc2fd2dee1982fc80bedfb03")
 
 
 # ===========================================================================

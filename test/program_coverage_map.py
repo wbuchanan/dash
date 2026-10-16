@@ -280,6 +280,8 @@ COVERAGE = {
         "_dash_fn_points": ("test_parser.cscript:FX-01",
                             "test_wp29_truth.cscript:FX-20",
                             "test_wp31_truth.cscript:U46-04"),
+        # WP-31 G7: a %tb format's business calendar, read at registration.
+        "_dash_bcal_table": ("test_wp31_truth.cscript:U46-07",),
         # e2e (WP-31 C4): the fit options on the types twoway takes them
         # on, their pairs with range() and fitplot()/ciplot() named as
         # twoway names them; a fit drawn with estopts() stores twoway's
@@ -468,6 +470,8 @@ COVERAGE = {
         "_dash_by_panel_n": ("test_wp31_truth.cscript:U43-07",),
         # WP-31 C12: a function layer's panels under by().
         "_dash_fn_panel_count": ("test_wp31_truth.cscript:U46-04",),
+        # WP-31 G7: a %tb format's business calendar, as JSON.
+        "_dash_bcal_json": ("test_wp31_truth.cscript:U46-07",),
         "_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
         # e2e: _dash_json_str is this function's one caller.

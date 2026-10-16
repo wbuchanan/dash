@@ -452,7 +452,7 @@ program define _dash_require_mata
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
-        _dash_unbound_cands _dash_fn_panel_count _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
+        _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
@@ -7124,12 +7124,16 @@ end
 // ================================================================
 program define _dash_formats_json
     version 19
-    args varlist_in out_macro datevars_macro
+    args varlist_in out_macro datevars_macro bcal_macro
 
     local parts ""
     local nparts = 0
     local datevars ""
     local seen ""
+    // WP-31 G7: the business calendars the %tb formats name, read once
+    // here (_dash_bcal_table) and embedded as build_options "bcal".
+    local bcals ""
+    local bcal_seen ""
 
     foreach v of local varlist_in {
         capture confirm variable `v'
@@ -7168,10 +7172,58 @@ program define _dash_formats_json
         local parts `"`parts'"`v'":"`_fjv'""'
         local nparts = `nparts' + 1
         if `_fdate' local datevars `"`datevars' `v'"'
+        mata: st_local("_fbc", (regexm(st_varformat(st_local("v")), "^%tb([A-Za-z_][A-Za-z0-9_]*)") ? regexs(1) : ""))
+        if "`_fbc'" != "" & !`: list _fbc in bcal_seen' {
+            local bcal_seen `bcal_seen' `_fbc'
+            _dash_bcal_table `v' `_fbc' _fbt
+            if `"`_fbt'"' != "" {
+                if `"`bcals'"' != "" local bcals `"`bcals',"'
+                local bcals `"`bcals'"`_fbc'":`_fbt'"'
+            }
+        }
     }
 
     c_local `out_macro'      `"{`parts'}"'
     c_local `datevars_macro' `"`datevars'"'
+    if "`bcal_macro'" != "" {
+        if `"`bcals'"' != "" c_local `bcal_macro' `","bcal":{`bcals'}"'
+        else c_local `bcal_macro' ""
+    }
+end
+
+// ================================================================
+// _dash_bcal_table var cal out  -- a business calendar as the spec holds
+// it (WP-31 G7)
+//
+// Stata writes a %tb<cal> value as its business day's %td date (display
+// %tbu46 5 is 08jan2024; measured 16oct2026) and one outside the calendar
+// as the bare number.  The calendar is read here, at registration, by
+// Stata itself -- bcal describe for its range, Mata's dofb() for each
+// day -- and never again at render: <out> becomes
+// {"min":k0,"td":[...]} for the calendar's whole range when it holds at
+// most 10,000 business days, else for the variable's range widened by a
+// quarter of its span each side (at most 10,000); empty when the
+// calendar cannot be read (its values are then written as numbers).
+// ================================================================
+program define _dash_bcal_table
+    version 19
+    args var cal out
+    c_local `out' ""
+    capture quietly bcal describe `cal'
+    if _rc exit
+    local lo = r(min_date_tb)
+    local hi = r(max_date_tb)
+    if missing(`lo') | missing(`hi') exit
+    if `hi' - `lo' + 1 > 10000 {
+        quietly summarize `var', meanonly
+        if r(N) == 0 exit
+        local span = r(max) - r(min)
+        local lo = max(`lo', floor(r(min) - 0.25 * `span'))
+        local hi = min(`hi', floor(r(max) + 0.25 * `span'))
+        if `hi' - `lo' + 1 > 10000 local hi = `lo' + 9999
+    }
+    mata: st_local("_bct", _dash_bcal_json(st_local("cal"), `lo', `hi'))
+    c_local `out' `"`_bct'"'
 end
 
 
@@ -11126,7 +11178,7 @@ program define _dash_render_immediate
 
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
-    _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+    _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
     // The time-series columns: their bases' formats, and the spec's map
     // from each column to its expression and twoway's text.
     local _dts_json ""
@@ -11251,7 +11303,7 @@ program define _dash_render_immediate
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json'`_dash_st_bo', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -12446,7 +12498,7 @@ program define _dash_prepare_spec, rclass
     }
 
     // Collect display formats, as on the immediate route.
-    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
     // The time-series columns' formats and the spec's map (WP-30 P1.7).
     local _dts_json ""
     if `_dts_n' + `_dwx_n' > 0 {
@@ -12687,7 +12739,7 @@ program define _dash_prepare_spec, rclass
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:
