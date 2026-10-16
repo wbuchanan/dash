@@ -1895,9 +1895,11 @@ CORPUS = [
                            options={"yaxis": "2"})], None,
           {"by": "foreign", "ytitle2": '"Price"'}),
     _case("by() on two variables", [_sc()], None, {"by": "foreign rep"}),
-    # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
+    # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.  Flipped
+    # (WP-31 D10): subtitleformat() is drawn (an invalid format is ignored
+    # in silence, as twoway ignores it), so overallshrink is the example.
     _case("by() with an unimplemented sub-option", [_sc()], None,
-          {"by": "foreign, subtitleformat(%9s) shrink"}),
+          {"by": "foreign, overallshrink shrink"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -2621,6 +2623,14 @@ CORPUS = [
           [plot_for("bar", {"mlabel": "rep"})]),
     _case("msangle(forty_five) (WP-31 E3)",
           [_sc(msymbol="T", msangle="forty_five")]),
+
+    # WP-31 D10: the by() remainder
+    _case("by graphregion plotregion", [_sc()], None,
+          {"by": "foreign, graphregion(fcolor(red)) plotregion(fcolor(blue))"}),
+    _case("by legend ring(0) hole", [_sc(), plot_for("line")], None,
+          {"by": "rep, legend(ring(0) pos(5))"}),
+    _case("by subtitleformat nobox", [_sc()], None,
+          {"by": "rep, subtitleformat(%9.2f)", "subtitle": ", nobox"}),
 ]
 
 
@@ -2751,7 +2761,7 @@ _MUST_WARN = {
         "labstyle(x)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
-        "subtitleformat(%9s) shrink",
+        "overallshrink shrink",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

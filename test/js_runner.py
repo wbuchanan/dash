@@ -68,7 +68,7 @@ from bokeh.model import Model
 from bokeh.core.properties import value as _bk_value
 from bokeh.models import (Arrow, BooleanFilter, BoxAnnotation,
                           ColumnDataSource,
-                          Div, FixedTicker, GlyphRenderer, LegendItem,
+                          Div, FixedTicker, GlyphRenderer, LegendItem, Plot,
                           Range1d, RangeSlider, Select, Slider, Title)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -172,6 +172,9 @@ def stand_in(m, models, objs):
                 "visible": bool(m.visible)}
     if isinstance(m, Title):
         return {"__type__": "Title", "visible": bool(m.visible)}
+    # WP-31 D10: a by() panel the move hides or shows again.
+    if isinstance(m, Plot):
+        return {"__type__": "Plot", "visible": bool(m.visible)}
     if isinstance(m, LegendItem):
         return {"__type__": "LegendItem",
                 "label": {"value": _label_text(m.label)}}

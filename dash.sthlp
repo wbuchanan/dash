@@ -1810,7 +1810,8 @@ Syntax:
 {pstd}
 {it:varname} may be abbreviated, as anywhere in Stata, and may hold
 Unicode letters, as any Stata name may.  Without {cmd:type()} the widget
-is a dropdown.
+is a dropdown.  A {cmd:by()} panel left with no rows by a filter is
+hidden, and shown again when rows return.
 
 {phang2}{cmd:type(dropdown)} -- select widget listing every distinct value
     of {it:varname}: a numeric or date variable's values as numbers (a
@@ -2047,7 +2048,9 @@ the application into a private temporary folder (see
 {help dash##tempfiles:Temporary files and privacy}), runs it with Python and
 waits until the server stops.  {cmd:dash build, server} writes the same
 application to the file {cmd:saving()} names and returns without starting
-it.  The saved page and the served app differ as follows:
+it.  A {cmd:by()} panel left with no rows by a filter is hidden, and shown
+again when rows return, as on the saved page.  The saved page and the
+served app differ as follows:
 
 {col 5}{it:Feature}{col 38}{it:Saved page}{col 59}{it:Served app}
 {col 5}{hline 72}
@@ -2816,7 +2819,9 @@ scheme puts it (s2color below, stcolor right, economist above).
 {cmd:ilegends} draws each panel's legend instead; {cmd:legend(on)} outside
 {cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
 nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
-beside the panels and a note says so.  The overall legend is not clickable.
+as {cmd:twoway} draws it: outside the panels on its position's side, aligned
+at that position's corner ({cmd:pos(5)} at the right).  Clicking a key of
+the overall legend hides that series in every panel.
 Under {cmd:colorvar()} no colour key is drawn unless
 {cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
 {cmd:clegend(position() at())} else the scheme's position.  On a narrow
@@ -2882,10 +2887,24 @@ a note names the limit and the global that raises it (see
 {cmd:total}, {cmd:missing}, the rescale forms above, {cmd:title()},
 {cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
-{cmd:legend()} and {cmd:clegend()} are the {cmd:by()} sub-options
-{cmd:dash} implements.  Any other sub-option of Stata's
-{cmd:by()} -- for example {cmd:subtitleformat()} or {cmd:shrink} -- is
-accepted, named in a warning, and ignored.
+{cmd:legend()}, {cmd:clegend()}, {cmd:graphregion()}, {cmd:plotregion()},
+{cmd:subtitleformat()} and {cmd:noshrink}, {cmd:noishrink},
+{cmd:nooverallshrink} and {cmd:ishrink} are the {cmd:by()} sub-options
+{cmd:dash} implements.  {cmd:by(, graphregion())} colours the whole graph
+region, replacing a {cmd:graphregion()} outside {cmd:by()}, and
+{cmd:by(, plotregion())} the region around the panels, drawn on each
+panel's border; their {cmd:margin()}, which {cmd:twoway} applies once around
+the panels, is named and ignored.  {cmd:subtitleformat()} writes an
+unlabelled panel value in its numeric format ({cmd:var}: the variable's
+own), and is ignored, as in {cmd:twoway}, when it is not a numeric format.
+The graph's own {cmd:subtitle(, fcolor() lcolor() nobox)} restyle every
+panel label's box; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
+Each panel's plot-region margin is {cmd:twoway}'s, times the panels' size
+multiplier and {cmd:iscale()}.  A one-panel {cmd:by()} whose value label is
+empty draws no label box, as {cmd:twoway}, and the Graphs-by note.  Any
+other sub-option of Stata's {cmd:by()} -- for example {cmd:shrink},
+{cmd:overallshrink} or a {cmd:style()} other than {cmd:compact} and
+{cmd:default} -- is accepted, named in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other

@@ -448,7 +448,7 @@ and now matches Stata.
 
 - dash (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)): both axes on the left beside an empty first axis -> axis 2 on the left and axis 3 on the right, and (scatter price weight, yaxis(2)) (scatter mpg weight): axis 1 on the left -> axis 2, the first used, on the left, as twoway, each axis with the options written for it; the second axes' re-fit after a filter move (y2 3,748 to 14,000 under Foreign on auto) and a horizontal yaxis(2) layer's titles were measured equal to twoway's and are now pinned (WP-31, D9)
 
-<!-- WP-31 D10 -->
+- by() draws its remainder. dash scatter mpg weight, by(foreign, legend(ring(0))) drew the legend beside the array with a note, now outside the panels at its compass, silently, as twoway; the overall legend was not clickable, now a click hides the series in every panel; by(foreign, graphregion(fcolor(red))) was named and ignored, now drawn; a panel's plot-region margin used the panel count only, now twoway's f(k) x iscale() (by(g4, iscale(.5)): .85 -> .50 of the scheme's margin); subtitleformat(), the four shrink words that change nothing and the graph's subtitle(, fcolor() lcolor() nobox) on the label boxes are drawn; a one-panel by() with an empty value label drew no Graphs-by note on the saved page, now does; a panel a filter empties is hidden in both modes (WP-31, D10)
 
 <!-- WP-31 D11 -->
 

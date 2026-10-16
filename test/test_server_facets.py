@@ -529,12 +529,15 @@ class TestAnUnimplementedBySuboptionIsNamed:
     # Flipped (WP-30 P1.15b): rows(), compact, holes(), iscale() and
     # colfirst were the examples; they are drawn now (by_grid_truth.json),
     # so the still unimplemented subtitleformat() and shrink words are.
+    # Flipped (WP-31 D10): subtitleformat() is drawn and ishrink/noishrink
+    # change nothing twoway draws (by_remainder_truth.json), so shrink,
+    # overallshrink and the bystyle stata7 are the words still named.
     @pytest.mark.parametrize("by_raw,names", [
-        ("foreign, subtitleformat(%9s)", ["subtitleformat(%9s)"]),
+        ("foreign, overallshrink", ["overallshrink"]),
         ("foreign, shrink", ["shrink"]),
-        ("foreign, subtitleformat(%9s) shrink",
-         ["subtitleformat(%9s)", "shrink"]),
-        ("foreign, ishrink noishrink", ["ishrink", "noishrink"]),
+        ("foreign, overallshrink shrink",
+         ["overallshrink", "shrink"]),
+        ("foreign, style(stata7) shrink", ["style(stata7)", "shrink"]),
         # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
         # draws it; shrink (twoway's SHRink) is still named.
         ("foreign, title(\"By origin\") shrink", ["shrink"]),
@@ -572,14 +575,15 @@ class TestAnUnimplementedBySuboptionIsNamed:
         in the Stata log, and not again when a session opens (WP-23: the
         note came only from a session, whose output the Stata user never
         sees -- test_help_claims_5.cscript HC5-08)."""
-        # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
-        spec = by_spec("scatter", by="foreign, subtitleformat(%9s) shrink")
+        # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.  Flipped
+        # (WP-31 D10): subtitleformat() is drawn; overallshrink is not.
+        spec = by_spec("scatter", by="foreign, overallshrink shrink")
         tag, sp, dp = _write(tmp_path, spec, _DF)
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
         hits = [str(w.message) for w in built if "by()" in str(w.message)
-                and "subtitleformat(%9s)" in str(w.message)
+                and "overallshrink" in str(w.message)
                 and "shrink" in str(w.message)]
         assert len(hits) == 1, [str(w.message) for w in built]
         _, _, warns = served(tmp_path, spec)

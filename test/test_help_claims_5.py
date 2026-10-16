@@ -840,13 +840,15 @@ class TestTheSubOptionsDashDoesNotImplement:
     """subtitleformat() and the shrink words are accepted, named in one
     note -- the ones dash implements never -- and ignored, in both modes.
     Flipped (WP-30 P1.15b): rows(), holes() and compact were the examples;
-    they are drawn now, as twoway draws them (by_grid_truth.json)."""
+    they are drawn now, as twoway draws them (by_grid_truth.json).
+    Flipped (WP-31 D10): subtitleformat() is drawn now
+    (by_remainder_truth.json stf_*), so overallshrink is the example."""
 
     def test_named_and_ignored(self):
-        r, doc, saved, served = _by("foreign, subtitleformat(%9s) shrink "
+        r, doc, saved, served = _by("foreign, overallshrink shrink "
                                     "cols(2) total missing")
         want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "subtitleformat(%9s) shrink"]
+                "overallshrink shrink"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -861,7 +863,7 @@ class TestTheSubOptionsDashDoesNotImplement:
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, subtitleformat(%9s) shrink"})])
+                       {"by": "foreign, overallshrink shrink"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -874,7 +876,7 @@ class TestTheSubOptionsDashDoesNotImplement:
             warnings.simplefilter("always")
             ns["make_document"](Document())
         want = ("dash: by() sub-option(s) not implemented and ignored: "
-                "subtitleformat(%9s) shrink")
+                "overallshrink shrink")
         assert [str(w.message) for w in built].count(want) == 1, \
             [str(w.message) for w in built]
         assert want not in [str(w.message) for w in session]

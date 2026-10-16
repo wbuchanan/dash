@@ -768,7 +768,8 @@ class TestTheNotes:
     def test_silent_and_named(self, mode):
         """The words drawn now name nothing; legend(off) outside by() is
         silent, as twoway ignores it; legend(ring(0)) inside by() is drawn
-        beside the panels and named once."""
+        outside the panels at its compass, as twoway draws it, and names
+        nothing (WP-31 D10)."""
         spec = _spec([
             _graph("g1", _TWO, {"by": "foreign, legend(off) iyaxes "
                                       "noedgelabel ilegends clegend(on) ixt"}),
@@ -779,7 +780,7 @@ class TestTheNotes:
         assert not [n for n in notes if "legend" in n.lower()
                     and "ring(0)" not in n], notes
         ring = [n for n in notes if "ring(0)" in n]
-        assert len(ring) == 1 and "'g3'" in ring[0], notes
+        assert ring == [], notes
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -1008,10 +1009,13 @@ class TestTheLabelBox:
         grids = _grids(roots)
         assert not grids.get("g1") or not any(
             _boxes(f) for f in _panels(grids["g1"]))
+        # WP-31 D10: the graph's own subtitle(, fcolor()) fills every
+        # panel label's box, silently, as twoway's (by_chrome_truth
+        # box_fcolor).
         for f in _panels(grids["g2"]):
             (b,) = _boxes(f)
-            assert b.color_mapper.palette[0].lower() == "#f0f0f0"
-        assert len([n for n in notes if "fcolor" in n]) == 1, notes
+            assert b.color_mapper.palette[0].lower() == "#ff0000"
+        assert len([n for n in notes if "fcolor" in n]) == 0, notes
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_after_a_filter_move(self, mode):

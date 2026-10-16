@@ -28748,6 +28748,12 @@ if (_primary_ids) {
         _dsrcs[_di].change.emit();
     }
 }
+// A by() panel a move leaves without rows is hidden, and shown again when
+// rows return (WP-31 D10); the grid keeps its cell.  The pairs are index
+// pairs into by_panel_figs and by_panel_sources, never names.
+if (typeof by_panels_json !== "undefined" && by_panels_json)
+    dash_panels_visibility(JSON.parse(by_panels_json), by_panel_sources,
+                           by_panel_figs);
 // Also update the primary `source', when it is no graph's source at all.
 // render() puts every graph's source in all_graph_sources, written above, or,
 // when an exclude() names the graph (or the by() graph a panel belongs to),
@@ -30761,6 +30767,24 @@ function dash_contour_fill_levels(cuts, ticks, zmin, zmax) {
     if (hi <= Math.max(cuts[cuts.length - 1], zmax)) hi = Math.max(cuts[cuts.length - 1], zmax) + eps;
     return [lo].concat(cuts, [hi]);
 }
+function dash_panels_visibility(pairs, sources, figs) {
+    for (const p of pairs) {
+        const f = figs[p[0]];
+        if (!f) continue;
+        let rows = 0;
+        for (const si of p[1]) {
+            const s = sources[si];
+            if (!s || !s.data) continue;
+            let n = 0;
+            for (const k of Object.keys(s.data)) {
+                n = Math.max(n, (s.data[k] || []).length);
+            }
+            rows += n;
+        }
+        const vis = rows > 0;
+        if (f.visible !== vis) f.visible = vis;
+    }
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -32276,7 +32300,9 @@ def _dash_parse_by(by_raw, warn=True):
     ``_dash_layout_cell``, WP-30 P1.15b), drawn by ``_dash_by_chrome``
     (WP-30 P1.15a), title(), subtitle(), note() and caption(), and, drawn
     by ``_dash_by_side`` (WP-30 P1.15c), the i*/noi* axis and title
-    words, edgelabel, individual, ilegends, legend() and clegend(), each
+    words, edgelabel, individual, ilegends, legend() and clegend(), and
+    (WP-31 D10) graphregion(), plotregion(), subtitleformat() and the
+    shrink words noshrink, noishrink, nooverallshrink and ishrink, each
     in twoway's lower-case spellings (``_DASH_BY_GRAMMAR``).  The
     rest used to be matched by nothing and discarded by everything --
     ``by(foreign, rows(2) compact)`` faceted as though the user had typed
@@ -32349,6 +32375,18 @@ def _dash_parse_by(by_raw, warn=True):
             # The i*/no* axis and title words, edgelabel, individual,
             # ilegends, legend() and clegend(): drawn by `_dash_by_side`
             # (WP-30 P1.15c).
+            pass
+        elif (_row in ("graphregion", "plotregion", "subtitleformat")
+              and "(" in tok) or (
+                _row in ("noshrink", "noishrink", "nooverallshrink",
+                         "ishrink") and "(" not in tok):
+            # WP-31 D10: by()'s regions are drawn on the array
+            # (_dash_by_apply_regions, which names their margin()),
+            # subtitleformat() formats the panel labels
+            # (_dash_by_subtitle_format), and these four shrink words
+            # change nothing twoway draws under any shipped scheme
+            # (measured: by_remainder_truth.json shrink_*); shrink and
+            # overallshrink stay named.
             pass
         elif name == "style" and arg.strip() in ("rescale", "combine"):
             # style(rescale|combine): its separate scales are drawn
@@ -32835,9 +32873,36 @@ def _dash_by_range_notes(graph):
     return out
 
 
+def _dash_by_subtitle_format(by_raw):
+    """by(, subtitleformat())'s format for the panel labels (WP-31 D10,
+    bygraph_g.class parse_settings :390-407): ``"var"``, a numeric format
+    as typed, or ``""`` -- not given, or text Stata's ``confirm numeric
+    format`` refuses, which twoway ignores in silence (measured:
+    ``subtitleformat(size(large) color(red))`` draws the plain labels;
+    by_remainder_truth.json ``stf_*``)."""
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001
+        return ""
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return ""
+    fmt = ""
+    for tok in _dash_by_tokens(subs.strip()):
+        row, _typed, paren, arg = _dash_by_word(tok)
+        if row == "subtitleformat" and paren:
+            fmt = arg.strip()
+    if fmt == "var":
+        return fmt
+    if not fmt or len(fmt) > 64 or _dash_fmt_parse(fmt) is None:
+        return ""
+    return fmt
+
+
 def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                       date_vars=None, numeric_formats=None,
-                      date_formatter=None, formats=None):
+                      date_formatter=None, formats=None,
+                      subtitle_format=""):
     """The title of one by() panel, the same in both render modes.
 
     twoway's rule, measured 23sep2026 from its SVG export: the value's label
@@ -32873,6 +32938,12 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                             date variable's panel is titled in its own
                             picture (``2000m1``, ``02jan2000``).
 
+        subtitle_format:    by(, subtitleformat())'s format
+                            (:func:`_dash_by_subtitle_format`, WP-31 D10):
+                            an unlabelled number is written in it, or in
+                            the variable's own format for ``"var"``; a
+                            labelled value keeps its label (measured).
+
     Returns:
         A display string like ``"Domestic"`` or ``"Domestic, 3"``.
     """
@@ -32895,6 +32966,16 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                 val, _dash_date_fmt((formats or {}).get(var), _kind)))
             continue
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
+        if subtitle_format:
+            _txt = GlyphMapper._mlabel_value_text(val, vlabels)
+            _plain = GlyphMapper._mlabel_value_text(val, {})
+            if _txt == _plain:
+                # No label: written in the format, as twoway's
+                # `: display fmt value' (RunGraph :437-446).
+                _f = ((formats or {}).get(var) or "%9.0g"
+                      if subtitle_format == "var" else subtitle_format)
+                parts.append(_dash_fmt(val, _f, strip=True))
+                continue
         # Raw: a facet label titles a panel (fig.title.text), which Bokeh
         # draws on the canvas, and it also feeds a per-facet KPI card that
         # html-escapes it again -- so escaping here showed the entities on
@@ -35575,7 +35656,7 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
     return cur, None
 
 
-def _dash_plot_margin(scheme, graph_opts, panels=1):
+def _dash_plot_margin(scheme, graph_opts, panels=1, mult=None):
     """twoway's plot-region margin as fractions of the frame, per side:
     ``{"x": (left, right), "y": (bottom, top)}`` (WP-30 P1.3a, D1 b;
     per side since P1.20b, D-47a).
@@ -35592,7 +35673,12 @@ def _dash_plot_margin(scheme, graph_opts, panels=1):
     r min(W,H)/H, each clamped to [-0.45, 0.45] with an axis's two sides
     summing to at most 0.9 (D-47b): fixed at build, so a page drawn at
     another size is off twoway's by up to about 0.8% of its width (A6).
-    Pure apart from the note: it reads no figure."""
+    Pure apart from the note: it reads no figure.
+
+    WP-31 D10 (D-36.e): *mult*, when given, is by()'s whole multiplier
+    -- f(k) x iscale(), :func:`_dash_by_size_mult` -- and replaces
+    f(*panels*) (measured: by(g4, iscale(.5)) draws 2.2% x .50;
+    by_remainder_truth.json ``margin_*``)."""
     go = graph_opts or {}
     sizes = []
     for raw in (go.get("xsize"), go.get("ysize"),
@@ -35644,6 +35730,13 @@ def _dash_plot_margin(scheme, graph_opts, panels=1):
     if n > k1:
         f -= (b2 - b1) * (n - k1) / n
     f = max(0.0, f)
+    if mult is not None:
+        try:
+            m = float(mult)
+        except (TypeError, ValueError, OverflowError):
+            m = None
+        if m is not None and math.isfinite(m) and m >= 0:
+            f = m
     out = {}
     for letter, extent, pair in (("x", w, sides[0:2]), ("y", h, sides[2:4])):
         vs = []
@@ -40300,6 +40393,53 @@ def _dash_dots_plan(dr, letter, name, index, models):
         return None
 
 
+def _dash_panel_source_rows(fig):
+    """The rows *fig*'s own data renderers hold (WP-31 D10): the longest
+    column of each renderer's source, summed; a legend swatch
+    (``_dash_is_swatch``) and a source shared through a filtered view (a
+    linked by() graph's panels, whose own rows the view decides) count
+    nothing.  None when the figure has no such renderer."""
+    srcs, seen = [], set()
+    for r in getattr(fig, "renderers", None) or ():
+        src = getattr(r, "data_source", None)
+        if src is None or _dash_is_swatch(r) or id(src) in seen:
+            continue
+        view = getattr(r, "view", None)
+        if view is not None and getattr(view, "filter", None) is not None \
+                and type(view.filter).__name__ != "AllIndices":
+            return None
+        seen.add(id(src))
+        srcs.append(src)
+    if not srcs:
+        return None
+    rows = 0
+    for s in srcs:
+        d = getattr(s, "data", None) or {}
+        rows += max((len(v) for v in d.values()), default=0)
+    return rows
+
+
+def _dash_panel_visibility(figures, facet_map):
+    """Hide a by() panel whose every own source kept no row after a served
+    move, show it when rows return (WP-31 D10, D-36.i), as the saved
+    page's ``dash_panels_visibility`` does; the grid keeps the panel's
+    cell.  Idempotent; a figure not stamped ``_dash_by_panel`` is left
+    alone."""
+    figs = dict(figures or {})
+    for _g, items in (facet_map or {}).items():
+        for item in items or ():
+            fk = item[0] if isinstance(item, (list, tuple)) else item
+            f = figs.get(fk)
+            if f is None or not getattr(f, "_dash_by_panel", False):
+                continue
+            rows = _dash_panel_source_rows(f)
+            if rows is None:
+                continue
+            vis = rows > 0
+            if bool(f.visible) != vis:
+                f.visible = vis
+
+
 def _dash_axis_plan(figures, facet_map, zoom=True):
     """``(plan_json, models)``: the data the saved page's re-finish and both
     modes' zoom code read (WP-30 P1.3a, TR-21.10).
@@ -41737,8 +41877,17 @@ def _dash_share_by_scales(figs, rescale=frozenset()):
     for f in figs:
         args = getattr(f, "_dash_margin_args", None)
         if args is not None:
-            f._dash_margin = _dash_plot_margin(args[0], args[1],
-                                               panels=len(figs))
+            # WP-31 D10: by()'s f(k) x iscale() (D-36.e), k from twoway's
+            # full_n -- the panels and the keys' at() holes.
+            go = args[1] or {}
+            try:
+                full_n = _dash_by_positions(
+                    len(figs), _dash_by_layout_options(go))[3]["full_n"]
+            except Exception:  # noqa: BLE001 -- the panel count, then
+                full_n = len(figs)
+            f._dash_margin = _dash_plot_margin(
+                args[0], go, panels=len(figs),
+                mult=_dash_by_size_mult(go.get("by"), full_n))
     _dash_common_count_ticks(figs, letters=letters)
 
 
@@ -45619,13 +45768,17 @@ _DASH_TEXTBOX_BOX_HONOURED = frozenset({
     "tstyle", "placement"})
 
 
-def _dash_textbox(raw, option, seen=None, key="", placed=True):
+def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
     """``(text, sub-options)`` of a textbox option, the rest named.
 
     On title(), subtitle(), note() and caption() the placement, box and
     style sub-options (``_DASH_TEXTBOX_BOX_HONOURED``) are drawn (WP-31
     D3) unless *placed* is false: a by() panel's label row, which keeps
     the scheme's place, names them.
+
+    Only a comma followed by a sub-option name Stata's textbox grammar
+    WP-31 D10: *extra* names (full names) the caller draws itself --
+    a by() panel label's box words -- and so are not named here.
 
     Only a comma followed by a sub-option name Stata's textbox grammar
     knows starts the sub-options (``_textbox_split_point``), so
@@ -45654,7 +45807,7 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True):
                 if (option in ("xtitle", "ytitle", "xtitle2", "ytitle2")
                         and arg in ("1", "2")):
                     continue
-            elif nm in _DASH_TEXTBOX_HONOURED:
+            elif nm in _DASH_TEXTBOX_HONOURED or nm in extra:
                 continue
             elif placed and nm in _DASH_TEXTBOX_BOX_HONOURED and option in (
                     "title", "subtitle", "note", "caption"):
@@ -45669,7 +45822,7 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True):
 
 
 def _dash_textbox_or_default(raw, option, default, seen=None, key="",
-                             placed=True):
+                             placed=True, extra=()):
     """``(text, sub-options)`` of a title option that has a DEFAULT text.
 
     twoway keeps the default title when the option gives no text and only
@@ -45683,7 +45836,7 @@ def _dash_textbox_or_default(raw, option, default, seen=None, key="",
     The text is canvas text or a DOM text node exactly as before; the
     default is the label already drawn.  No new sink.
     """
-    text, opts = _dash_textbox(raw, option, seen, key, placed)
+    text, opts = _dash_textbox(raw, option, seen, key, placed, extra)
     if "suffix" in opts:
         return "\n".join(p for p in (default, text) if p), opts
     if "prefix" in opts:
@@ -46567,7 +46720,7 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     from bokeh.models import Title
     text, opts = _dash_textbox_or_default(
         (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key,
-        placed=False)
+        placed=False, extra=_DASH_BY_LABEL_BOX_WORDS)
     if not text:
         return None
     if scheme is not None:
@@ -46588,8 +46741,19 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
                   text_font_size=px if px is not None else size_default,
                   text_color=colour if colour is not None else color_default,
                   **({"text_alpha": alpha} if alpha is not None else {}))
+    # WP-31 D10: the box words _dash_by_label_box draws (measured: the
+    # graph's own subtitle(, fcolor() lcolor() nobox) restyle every panel
+    # label's box; by_remainder_truth.json sub_*).
+    title._dash_box_opts = {k: opts[k] for k in _DASH_BY_LABEL_BOX_WORDS
+                            if k in opts}
     fig.add_layout(title, side)
     return title
+
+
+#: The textbox words a by() panel label's box draws (WP-31 D10): fill,
+#: outline and box on/off.
+_DASH_BY_LABEL_BOX_WORDS = ("fcolor", "bfcolor", "bcolor", "lcolor", "box",
+                            "nobox")
 
 
 def _dash_by_text_cell(scheme, name):
@@ -46989,9 +47153,63 @@ def _dash_by_clock_side(clock, default):
     return _DASH_CLOCK_SIDE.get(default, "below")
 
 
-def _dash_by_legend_cell(scheme, name, side, legend, items, tag):
+def _dash_by_panel_matches(renderers, panels):
+    """Each panel's renderer drawn at the same place in its list as each
+    of *renderers* in the first panel's (WP-31 D10, D-36.c): every panel
+    draws the graph's layers in the same order.  A panel without one, or
+    with a renderer of another glyph type there, adds nothing."""
+    panels = [p for p in (panels or ()) if p is not None]
+    if not panels:
+        return []
+    first = list(getattr(panels[0], "renderers", None) or ())
+    out = []
+    for r in renderers or ():
+        try:
+            j = next(i for i, x in enumerate(first) if x is r)
+        except StopIteration:
+            continue
+        for p in panels:
+            lst = list(getattr(p, "renderers", None) or ())
+            if j < len(lst) and type(getattr(lst[j], "glyph", None)) is \
+                    type(getattr(r, "glyph", None)) and \
+                    not any(lst[j] is x for x in out):
+                out.append(lst[j])
+    return out
+
+
+def _dash_by_compass_location(clock, side):
+    """A Legend ``location`` inside a by() side cell for a clock position
+    (WP-31 D10): along a top or bottom cell 1, 2, 4 and 5 o'clock are
+    ``"right"``, 7, 8, 10 and 11 ``"left"``; along a left or right cell
+    10, 11, 1 and 2 are ``"top"``, 4, 5, 7 and 8 ``"bottom"``; anything
+    else is ``"center"``."""
+    try:
+        c = int(clock)
+    except (TypeError, ValueError):
+        return "center"
+    if side in ("above", "below"):
+        if c in (1, 2, 4, 5):
+            return "right"
+        if c in (7, 8, 10, 11):
+            return "left"
+    elif side in ("left", "right"):
+        if c in (10, 11, 1, 2):
+            return "top"
+        if c in (4, 5, 7, 8):
+            return "bottom"
+    return "center"
+
+
+def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
+                         panels=None, location="center"):
     """A legend cell on *side* of the panels: clones of *items*' renderers
-    in one ``Legend`` styled as *legend*, on the cell's side facing them."""
+    in one ``Legend`` styled as *legend*, on the cell's side facing them.
+
+    WP-31 D10 (D-36.c): with *panels*, each item also holds the matching
+    renderer of every panel (:func:`_dash_by_panel_matches`) and the
+    legend's ``click_policy`` is ``"hide"``, so a click hides that series
+    in every panel; *location* places the legend inside its cell
+    (``legend(ring(0))``'s compass)."""
     from bokeh.models import Legend, LegendItem
     vertical = side in ("left", "right")
     cell = _dash_by_cell(scheme, name, (1, None) if vertical else (None, 1))
@@ -47001,7 +47219,9 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag):
         if not clones:
             continue
         cell.renderers += clones
-        new_items.append(LegendItem(label=it.label, renderers=clones))
+        new_items.append(LegendItem(
+            label=it.label,
+            renderers=clones + _dash_by_panel_matches(it.renderers, panels)))
     kw = {}
     for prop in ("orientation", "ncols", "nrows", "label_text_font_size",
                  "label_text_color", "label_text_font", "label_text_font_style",
@@ -47015,8 +47235,9 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag):
                  "title_location", "title_text_font_style"):
         if legend is not None and prop in legend.properties():
             kw[prop] = getattr(legend, prop)
-    leg = Legend(items=new_items, click_policy="none", name=name + "_key",
-                 location="center", **kw)
+    leg = Legend(items=new_items,
+                 click_policy="hide" if panels else "none",
+                 name=name + "_key", location=location or "center", **kw)
     setattr(leg, _DASH_GRAPH_TEXT_DONE, True)
     for it in new_items:
         setattr(it, _DASH_GRAPH_TEXT_DONE, True)
@@ -47111,14 +47332,28 @@ def _dash_by_keys(figs, opts, scheme):
         if words & {"on", "draw"}:
             drawn = True
         if drawn:
-            out["legend"] = _dash_by_legend_cell(
-                scheme, "dash_by_legend", side if not at else "right",
-                first[0], items, "l")
-            out["legend_side"], out["legend_at"] = side, at
             try:
                 out["ring0"] = ring is not None and float(ring) == 0
             except ValueError:
                 out["ring0"] = False
+            # legend(ring(0)): outside the panels on its clock's side, as
+            # twoway draws it, aligned at the compass along that side
+            # (measured: pos(5) ends at the panels' right edge, pos(1)
+            # sits top right; by_remainder_truth.json legend_ring0_*).
+            loc = "center"
+            if out["ring0"] and not at:
+                _w, calls = _dash_legend_parts(opts.get("legend", ""))
+                pos = _dash_legend_arg(calls, ("position",))
+                try:
+                    clock = int(str(pos if pos is not None else getattr(
+                        scheme, "by_legend_position", 6)).strip())
+                except (TypeError, ValueError):
+                    clock = 6
+                loc = _dash_by_compass_location(clock, side)
+            out["legend"] = _dash_by_legend_cell(
+                scheme, "dash_by_legend", side if not at else "right",
+                first[0], items, "l", panels=figs, location=loc)
+            out["legend_side"], out["legend_at"] = side, at
     if not ilegends and keys1:
         words, at, side, _ring = place(opts.get("clegend", ""),
                                        getattr(scheme, "zyx2_position", 3))
@@ -47177,6 +47412,10 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
                 title, where = m, side
     if title is None or not str(title.text or ""):
         return None
+    bo = getattr(title, "_dash_box_opts", None) or {}
+    if "nobox" in bo and "box" not in bo:
+        # subtitle(, nobox): the label without its box (measured).
+        return None
     try:
         mult = float(mult)
         if not math.isfinite(mult) or mult < 0:
@@ -47198,6 +47437,17 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
     line = float(getattr(scheme, "by_label_line_pt", 0.576)) * px * mult
     fill = getattr(scheme, "by_label_fill", "#d9e6eb")
     outline = getattr(scheme, "by_label_outline", "#d9e6eb")
+    colours = getattr(fig, "_dash_scheme_colours", None)
+
+    def _col(*names):
+        for n in names:
+            if bo.get(n):
+                c = _textbox_color({"color": bo[n]}, None, colours=colours)
+                if c is not None:
+                    return c
+        return None
+    fill = _col("fcolor", "bfcolor", "bcolor") or fill
+    outline = _col("lcolor", "bcolor") or outline
     fpx = "%gpx" % round(font, 2)
     box = ColorBar(
         name="dash_by_label_box", orientation="horizontal", padding=0,
@@ -47376,6 +47626,86 @@ def _dash_by_layout_options(graph_opts):
     return opts
 
 
+def _dash_by_region_options(by_raw):
+    """by()'s own graphregion()/plotregion() copies (WP-31 D10, D-36.a):
+    ``{"graphregion": str, "plotregion": str, "given": bool, "margin":
+    [token, ...]}``, each the arguments of every copy joined by a space
+    (one copy for ``_dash_region_spec``, which reads no text after a
+    top-level comma; a later word wins, as a later copy does).
+
+    Measured (by_remainder_truth.json ``regions_*``): twoway draws by()'s
+    graphregion() as the whole graph's region, replacing an outer copy,
+    and by()'s plotregion() as one region around the panel array; their
+    margin() insets the array once.  dash draws the regions on every
+    panel's border (the array) and chrome cell (:func:`_dash_by_side`);
+    margin() is taken out here and named, as the array has no one inset
+    of its own (*margin* lists the tokens, as typed)."""
+    out = {"graphregion": "", "plotregion": "", "given": False,
+           "margin": []}
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001
+        return out
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return out
+    parts = {"graphregion": [], "plotregion": []}
+    table = _dash_region_table()
+    for tok in _dash_by_tokens(subs.strip()):
+        row, _typed, paren, arg = _dash_by_word(tok)
+        if row not in parts or not paren:
+            continue
+        kept = []
+        for sub in _dash_by_tokens(_dash_by_tokens_commas(arg)[0]):
+            name = sub.split("(", 1)[0].strip()
+            if _dash_subopt_canon(name, table) == "margin":
+                out["margin"].append("%s(%s)" % (row, sub))
+            else:
+                kept.append(sub)
+        if kept:
+            parts[row].append(" ".join(kept))
+    for k, v in parts.items():
+        if v:
+            out[k] = " ".join(v)
+            out["given"] = True
+    return out
+
+
+def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
+                           key=""):
+    """by()'s own regions on the array (WP-31 D10, D-36.a): every panel's
+    border takes by()'s graphregion() then plotregion() (twoway's array
+    region sits over the graph region), each chrome cell's border and
+    background by()'s graphregion(); a panel's frame keeps the graph's
+    own plotregion().  margin() is named once
+    (:func:`_dash_by_region_options`).  Nothing is drawn when by() gives
+    neither region."""
+    go = graph_opts or {}
+    reg = _dash_by_region_options(go.get("by", ""))
+    if reg["margin"]:
+        mark = ("by_region_margin", str(key))
+        if seen is None or mark not in seen:
+            if seen is not None:
+                seen.add(mark)
+            _dash_warn_once(mark, "dash: graph %r: by() sub-option(s) not "
+                            "implemented and ignored: %s" % (
+                                str(key), _dash_display(
+                                    " ".join(reg["margin"]))))
+    if not reg["given"]:
+        return
+    graph = reg["graphregion"] or str(go.get("graphregion") or "")
+    panel = " ".join(v for v in (graph, reg["plotregion"]) if v)
+    for fig in figs or ():
+        _dash_apply_regions(fig, dict(go, graphregion=panel), scheme, seen,
+                            key)
+    for cell in cells or ():
+        if cell is None or not graph:
+            continue
+        _dash_apply_regions(cell, {"graphregion": graph}, scheme, seen, key)
+        cell.background_fill_color = cell.border_fill_color
+        cell.outline_line_color = None
+
+
 def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     """by()'s shared chrome for one graph's panels *figs* (WP-30 P1.15c);
     returns the side record ``_dash_layout_cell`` places, also stored on
@@ -47390,23 +47720,22 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     (``dash_by_ytitle``, ``dash_by_xtitle``) unless ``noytitles`` or
     ``noxtitles``, the one legend and colour key (``_dash_by_keys``),
     each panel label's box (``_dash_by_label_box``) at by()'s size
-    multiplier, and the stacked view's hook.  ``legend(ring(0))`` under
-    by() is drawn beside the panels and named once."""
+    multiplier, and the stacked view's hook.  WP-31 D10: every panel is
+    stamped ``_dash_by_panel``; ``legend(ring(0))`` is drawn outside the
+    panels at its compass, as twoway draws it (measured), and by()'s own
+    graphregion()/plotregion() go on the array
+    (:func:`_dash_by_apply_regions`)."""
     go = graph_opts or {}
     if not figs:
         return None
+    for fig in figs:
+        fig._dash_by_panel = True
     opts = _dash_by_axes_options(go.get("by"), scheme)
     opts["rescaled"] = _dash_by_rescale(str(go.get("by", "") or ""))
     own_words, _c = _dash_legend_parts(go.get("legend", ""))
     opts["own_legend_on"] = bool(own_words & {"on"}) and \
         "off" not in own_words
     keys = _dash_by_keys(figs, opts, scheme)
-    mark = ("by_legend_ring0", str(key))
-    if keys.get("ring0") and (seen is None or mark not in seen):
-        if seen is not None:
-            seen.add(mark)
-        _dash_warn_once(mark, "dash: graph %r: by(, legend(ring(0))) is "
-                        "drawn beside the panels." % str(key))
     gopts = _dash_by_layout_options(go)
     _cells, _r, _c2, extra = _dash_by_positions(
         len(figs), gopts, legend_at=keys["legend_at"],
@@ -47441,6 +47770,10 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         ruler.min_border = 0
         side["hook"] = _dash_by_stack_hook(figs, titles["hidden"],
                                            titles["restore"], tcells, ruler)
+    chrome = getattr(figs[0], "_dash_by_chrome", None) or {}
+    _dash_by_apply_regions(
+        figs, [chrome.get("head"), chrome.get("foot")]
+        + [c for _k, c, _w in side["cells"]], go, scheme, seen, key)
     figs[0]._dash_by_side = side
     return side
 
@@ -52830,8 +53163,15 @@ class DashRenderer:
                                       getattr(self, "qual_masks", None),
                                       _gname):
                 continue
-            label = self._facet_label(valid_vars, key)
-            groups.append((label, group_df.copy()))
+            label = self._facet_label(
+                valid_vars, key, _dash_by_subtitle_format(
+                    graph_opts.get("by", "")))
+            _gcopy = group_df.copy()
+            # A real group, even one whose label is "" (WP-31 D10, D-36.h:
+            # a one-panel by() with an empty value label keeps its chrome),
+            # never the no-faceting sentinel ("", df).
+            _gcopy.attrs["_dash_by_group"] = True
+            groups.append((label, _gcopy))
 
         # by(, total)'s Total panel -- the rows of every group, those whose
         # by() value is missing only under missing (bygraph_g.class runs it
@@ -52869,7 +53209,8 @@ class DashRenderer:
         # empty-row group rather than the original full dataset.
         return groups if groups else [("", work_df.copy())]
 
-    def _facet_label(self, by_vars: list[str], key) -> str:
+    def _facet_label(self, by_vars: list[str], key,
+                     subtitle_format: str = "") -> str:
         """Build a human-readable label for one facet group key.
 
         Uses Stata value labels when available.
@@ -52886,7 +53227,8 @@ class DashRenderer:
             getattr(self, "date_vars", {}),
             getattr(self, "numeric_formats", {}),
             _dash_stata_date_text,
-            formats=getattr(self, "formats", {}))
+            formats=getattr(self, "formats", {}),
+            subtitle_format=subtitle_format)
 
     # ------------------------------------------------------------------
     # Figure construction helpers
@@ -54559,7 +54901,8 @@ class DashRenderer:
                 # grouping simply did not start from it.
                 by_groups = self._expand_by_groups(
                     g, base_df=self._apply_graph_filter(g))
-                if len(by_groups) == 1 and by_groups[0][0] == "":
+                if len(by_groups) == 1 and by_groups[0][0] == "" and \
+                        not by_groups[0][1].attrs.get("_dash_by_group"):
                     # No faceting (by() vars missing from df) OR all facet
                     # values are NaN (work_df became empty after dropna).
                     # In the all-missing case by_groups[0][1] is an empty
@@ -55270,6 +55613,30 @@ class DashRenderer:
         _stale_args = (self._stale_cue_args(_use_for, filter_row_widgets)
                        if self.filter_callbacks else None)
 
+        # WP-31 D10 (D-36.i): each by() panel and its own sources, as
+        # index pairs, so the script hides a panel a move empties; passed
+        # only when a by() graph has panels to hide.
+        _bp_figs, _bp_srcs, _bp_pairs = [], [], []
+        for _bpg, _bpe in getattr(self, "_facet_map", {}).items():
+            for _bpk, _bpl in _bpe:
+                _bpf = self.figures.get(_bpk)
+                if _bpf is None or _dash_panel_source_rows(_bpf) is None:
+                    continue
+                _idx = []
+                for _bpr in _bpf.renderers:
+                    _bps = getattr(_bpr, "data_source", None)
+                    if _bps is None or _dash_is_swatch(_bpr):
+                        continue
+                    _j = next((i for i, x in enumerate(_bp_srcs)
+                               if x is _bps), None)
+                    if _j is None:
+                        _bp_srcs.append(_bps)
+                        _j = len(_bp_srcs) - 1
+                    if _j not in _idx:
+                        _idx.append(_j)
+                _bp_pairs.append([len(_bp_figs), _idx])
+                _bp_figs.append(_bpf)
+
         # Every callback gets the SAME target lists: "use" is a property of
         # the target and the whole filter set, never of which widget moved
         # (GAPS2 E2).
@@ -55297,6 +55664,10 @@ class DashRenderer:
             if _stale_args:
                 for _k, _v in _stale_args.items():
                     _cb.args[_k] = _v
+            if _bp_pairs:
+                _cb.args["by_panel_figs"] = _bp_figs
+                _cb.args["by_panel_sources"] = _bp_srcs
+                _cb.args["by_panels_json"] = json.dumps(_bp_pairs)
 
         # The CSV download (WP-21), when the build asked for it: the
         # snapshot the filter callbacks read, masked the way they mask it,
@@ -56188,6 +56559,8 @@ class ServerAppBuilder:
                       # xtick()/ytick()'s constant CustomJSTicker code.
                       "_DASH_TICK_MAJOR_JS", "_DASH_TICK_EXTRA_JS",
                       "_DASH_TICK_EVERY_JS",
+                      # WP-31 D10: a by() panel label's box words.
+                      "_DASH_BY_LABEL_BOX_WORDS",
                       # WP-31 D6: alternate's and nogmin/nogmax's code.
                       "_DASH_ALT_LABEL_JS", "_DASH_GRID_NOEND_JS",
                       "_DASH_TICKGAP_PT", "_DASH_LABJUST", "_DASH_LABALIGN",
@@ -56606,6 +56979,8 @@ class ServerAppBuilder:
                          "_dash_by_numticks",
                          "_dash_axis_plan", "_dash_layer_extent",
                          "_dash_tag_hull_roles", "_dash_refinish_axes",
+                         # WP-31 D10: an emptied by() panel is hidden.
+                         "_dash_panel_source_rows", "_dash_panel_visibility",
                          # WP-30 P1.17b: twoway's default base.
                          "_dash_base_spec", "_dash_auto_base_props",
                          "_dash_axis_scale", "_dash_finish_auto_bases",
@@ -56745,6 +57120,11 @@ class ServerAppBuilder:
                          "_dash_by_glyph_fields", "_dash_by_clone_renderers",
                          "_dash_by_clock_side", "_dash_by_legend_cell",
                          "_dash_by_keys", "_dash_by_layout_options",
+                         # WP-31 D10: by()'s regions, legend, labels.
+                         "_dash_by_region_options", "_dash_by_apply_regions",
+                         "_dash_by_panel_matches",
+                         "_dash_by_compass_location",
+                         "_dash_by_subtitle_format",
                          "_dash_by_side", "_dash_by_side_grid",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
                          # The arrowheads' document_ready hooks (WP-31 C1).
@@ -59528,7 +59908,8 @@ class ServerAppBuilder:
             "                by_vars, _key, val_label_names, val_labels,",
             "                date_vars=_date_vars,",
             "                date_formatter=_dash_stata_date_text,",
-            "                formats=_FORMATS), _gdf, _key))",
+            "                formats=_FORMATS, subtitle_format=_dash_by_subtitle_format(",
+            "                    go.get('by', ''))), _gdf, _key))",
             "        # The Total panel is one more panel, answered as the groups",
             "        # are, as saved (P1A-84).",
             "        _t_idx = -1",
@@ -60062,6 +60443,7 @@ class ServerAppBuilder:
             "            # as twoway does under the same `if' (WP-30 P1.3a).",
             "            if _axis_figs is not None:",
             "                _dash_refinish_axes(_axis_figs, _axis_fmap)",
+            "                _dash_panel_visibility(_axis_figs, _axis_fmap)",
             "            # 4. Recompute filter-mode KPIs",
             "            for kpi in _kpi_defs:",
             "                if not _dash_kpi_wanted(kpi):",
