@@ -13441,6 +13441,24 @@ class GlyphMapper:
             # Keyed as the band, whatever glyphs the type drew.
             for _r in fig.renderers[_b_before:]:
                 _r._dash_ci_band = True
+            # twoway draws ciplot(rline) and ciplot(rcap) in the band's
+            # outline style -- gs12 under s2color, not the layer's p#
+            # (WP-31 C4b, test/fixtures/colour_width_edges_truth.json
+            # c4b.*); the band's own colour options win, as on the band.
+            if _ciplot in ("rline", "rcap"):
+                _st = self._ci_band_style(opts)
+                _la = _st.get("line_alpha")
+                for _r in fig.renderers[_b_before:]:
+                    _g = getattr(_r, "glyph", None)
+                    if _g is None or not hasattr(_g, "line_color"):
+                        continue
+                    _g.line_color = _st["line"]
+                    _g.line_alpha = 1.0 if _la is None else _la
+                    _g.line_width = _st["line_width"]
+                    if type(_g).__name__ != "Scatter":
+                        _g.line_dash = list(_st.get("line_dash") or [])
+                    elif hasattr(_g, "fill_color"):
+                        _g.fill_color = _st["line"]
         if band_r is None:
             band_r, _outline_r = self._ci_band_glyphs(
                 fig, _bsrc, x_col, lo_col, hi_col, options)

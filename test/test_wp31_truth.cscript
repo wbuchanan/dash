@@ -10701,6 +10701,52 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u41_ciplot(sp, dp, app, svg):
+    """U41-14: ciplot(rline)'s two limit Lines, saved and served, are the
+    band colour twoway strokes (the path colour that is not the fit's)."""
+    import re
+    from sfi import Macro
+    with open(svg, encoding="utf-8") as fh:
+        cols = [c.lower() for c in re.findall(r'<path [^>]*style="fill:none;stroke:(#[0-9A-Fa-f]{6})', fh.read())]
+    (a, b), _ = _u41_glyphs(sp, dp, app, "Line")
+    bad = []
+    for name, gs in (("saved", a), ("served", b)):
+        got = [str(g.line_color).lower() for g in gs]
+        if len(got) != 3 or got[2] not in cols or {got[0], got[1]} != set(cols) - {got[2]}:
+            bad.append("%s %s, twoway %s" % (name, got, cols))
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
+* ==== S41 C4b: fitplot() and ciplot() colours ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41f"
+    capture mkdir "`u41d'"
+    sysuse auto, clear
+
+    // U41-14: lfitci ..., ciplot(rline) draws the limits in the band's
+    // outline colour and the fit in p1, saved and served, as twoway
+    // (live) under s2color and stcolor.
+    global u41_bad ""
+    local k 140
+    foreach sch in s2color stcolor {
+        local ++k
+        capture graph drop u41t
+        quietly twoway lfitci mpg weight, ciplot(rline) scheme(`sch') name(u41t, replace)
+        quietly graph export "`u41d'/t`k'.svg", replace
+        graph drop u41t
+        _u41_spec "`u41d'" `k' lfitci mpg weight, ciplot(rline) scheme(`sch')
+        python: import __main__ as _u41_m; _u41_m._u41_ciplot("`u41d'/s`k'.json", "`u41d'/d`k'.json", "`u41d'/a`k'.py", "`u41d'/t`k'.svg")
+    }
+    _w31_expect U41-14 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-14 "ciplot(rline) draws the limits in the band's outline colour, saved and served, as twoway"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

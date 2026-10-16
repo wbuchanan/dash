@@ -443,7 +443,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
 - **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit 660be06.
-- **C4b Tracked:** Open (WP-31 section 41).
+- **C4b Tracked:** Closed in WP-31, BUGS.md "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured", commit pending.
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Closed in WP-31, BUGS.md "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn", commit b2af9fc.
 - **C6b Tracked:** Closed in WP-31, BUGS.md "mband and mspline over data with missing y draw fewer vertices than twoway", commit 6dd0c80.
