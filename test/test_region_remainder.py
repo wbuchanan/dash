@@ -384,6 +384,33 @@ class TestInner:
 
 
 # ---------------------------------------------------------------------------
+# marginonly and the plot region's inner box
+# ---------------------------------------------------------------------------
+
+_PMO = {k: v for k, v in _cases("inner.p_").items()
+        if k != "inner.p_marginonly_copy"}
+
+
+def _tw_inner(rec):
+    """twoway drew the plot region's inner box: a rect inside the plot
+    region's fill (x beyond 400 units)."""
+    return any(r["x"] > 400 for r in rec["rects"])
+
+
+class TestPlotMarginonly:
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("case", sorted(_PMO))
+    def test_inner_box(self, mode, case):
+        """plotregion(marginonly) drops the copy's inner-box edits too
+        (measured: ifcolor(red) marginonly draws no inner box)."""
+        figs, _ = _cached("pmo", mode, _PMO)
+        f = figs[case]
+        boxes = [r for r in f.renderers + f.center
+                 if "dash_inner_box" in (getattr(r, "tags", None) or [])]
+        assert bool(boxes) == _tw_inner(_P[case]), case
+
+
+# ---------------------------------------------------------------------------
 # The refused margin names
 # ---------------------------------------------------------------------------
 

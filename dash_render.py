@@ -36034,7 +36034,15 @@ def _dash_inner_box(fig):
                  "ilwidth": "lwidth", "ilpattern": "lpattern"}
         table = _dash_region_table()
         mapped = []
-        for tok in _dash_by_tokens(_dash_by_tokens_commas(raw)[0]):
+        toks = _dash_by_tokens(_dash_by_tokens_commas(raw)[0])
+        # WP-31 D11: marginonly posts none of the copy's box edits, the
+        # inner box's included (measured: ifcolor(red) marginonly draws no
+        # inner box); dash.ado cuts each copy that holds it before copies
+        # merge, so here it is the one copy's.
+        if any("(" not in t and _dash_subopt_canon(t.strip(), table)
+               == "marginonly" for t in toks):
+            return None
+        for tok in toks:
             if "(" not in tok:
                 continue
             full = _dash_subopt_canon(tok.split("(", 1)[0].strip(), table)

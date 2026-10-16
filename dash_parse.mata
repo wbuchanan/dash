@@ -9606,19 +9606,24 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
 string scalar _dash_rep_region(string rowvector w1, string rowvector n1,
                                string rowvector w2, string rowvector n2)
 {
-    string rowvector a, an, drop
+    string rowvector a, an, drop, w2b, n2b
     string scalar    out, nm, base, pre, rw, tn
     real rowvector   alive
     real scalar      i, j, k, has
 
-    a     = w1
-    an    = n1
+    // WP-31 D11: a copy with marginonly posts only its margin() edits
+    // (_fr_area_parse_and_log.ado), so it is cut to them here, per copy,
+    // before the merge; the merged text never carries marginonly.
+    a  = _dash_rep_region_mo(w1, n1, 1)
+    an = _dash_rep_region_mo(w1, n1, 0)
+    w2b = _dash_rep_region_mo(w2, n2, 1)
+    n2b = _dash_rep_region_mo(w2, n2, 0)
     alive = J(1, cols(a), 1)
-    for (j = 1; j <= cols(w2); j++) {
-        nm = n2[j]
+    for (j = 1; j <= cols(w2b); j++) {
+        nm = n2b[j]
         if (nm == "margin" | nm == "imargin") continue
         if (nm == "") {
-            tn = _dash_rep_optname(w2[j])
+            tn = _dash_rep_optname(w2b[j])
             for (i = 1; i <= cols(a); i++) {
                 if (an[i] == "" & _dash_rep_optname(a[i]) == tn) alive[i] = 0
             }
@@ -9670,10 +9675,26 @@ string scalar _dash_rep_region(string rowvector w1, string rowvector n1,
         if (!alive[i]) continue
         out = out + (out == "" ? "" : " ") + _dash_rep_region_word(a[i], an[i])
     }
-    for (j = 1; j <= cols(w2); j++) {
-        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(w2[j], n2[j])
+    for (j = 1; j <= cols(w2b); j++) {
+        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(w2b[j], n2b[j])
     }
     return(out)
+}
+
+// _dash_rep_region_mo(w, n, words) -- one region copy's words (words 1)
+// or their full names (words 0), cut to its margin() words when the copy
+// holds marginonly (WP-31 D11); else as given.
+string rowvector _dash_rep_region_mo(string rowvector w, string rowvector n,
+                                     real scalar words)
+{
+    real rowvector keep
+    real scalar    i
+
+    if (!anyof(n, "marginonly")) return(words ? w : n)
+    keep = J(1, cols(n), 0)
+    for (i = 1; i <= cols(n); i++) keep[i] = (n[i] == "margin")
+    if (!any(keep)) return(J(1, 0, ""))
+    return(select(words ? w : n, keep))
 }
 
 // _dash_rep_region_word(w, full) -- a region word as full(arg), or as

@@ -3807,9 +3807,9 @@ inside the region; {cmd:graphregion()} is checked before
 {cmd:ishadestyle()} are drawn as {cmd:twoway} draws them
 ({cmd:shadestyle(none)} leaves the region unfilled, and
 {cmd:intensity(inten50)} mixes the fill halfway to white, as
-{cmd:fintensity()} does a bar's); {cmd:marginonly} keeps the copy's
-colours and lines off and draws only its {cmd:margin()}, as
-{cmd:twoway} does.  {cmd:graphregion(margin())} takes the same
+{cmd:fintensity()} does a bar's); {cmd:marginonly} keeps that copy's
+colours, lines and inner box off and draws only its {cmd:margin()}, as
+{cmd:twoway} does, while the region's other copies draw as typed.  {cmd:graphregion(margin())} takes the same
 {it:marginstyle} forms as {cmd:plotregion(margin())} below, over the
 scheme's {cmd:margin graph} ({cmd:medium}), and widens the figure's
 border by the change, a percentage of the figure's smaller side fixed
