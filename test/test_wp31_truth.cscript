@@ -12504,6 +12504,72 @@ if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
 }
 * ==== end S45 ====
 
+python:
+def _u45_left_titles(page):
+    """u45_bad: "" when the saved page's first figure has left axes titled
+    AX2, AX3, AX4 outward and its TXT label is on the default y range,
+    else what it has (WP-31 D9b)."""
+    import json
+    import re
+    from sfi import Macro
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    objs = {}
+    def walk(o):
+        if isinstance(o, dict):
+            if o.get("type") == "object" and "id" in o:
+                objs[o["id"]] = o
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', html, re.S):
+        try:
+            walk(json.loads(m.group(1)))
+        except ValueError:
+            pass
+    bad = []
+    figs = [o for o in objs.values() if o.get("name") == "Figure"]
+    lefts = []
+    for f in figs:
+        ids = [a.get("id") for a in (f.get("attributes") or {}).get("left", [])]
+        t = [(objs.get(i) or {}).get("attributes", {}).get("axis_label") for i in ids]
+        t = [x for x in t if isinstance(x, str) and x.startswith("AX")]
+        if t:
+            lefts.append(t)
+    if lefts != [["AX2", "AX3", "AX4"]]:
+        bad.append("left %s" % lefts)
+    labs = [o for o in objs.values() if o.get("name") == "Label"
+            and (o.get("attributes") or {}).get("text") == "TXT"]
+    if not labs or any((o["attributes"].get("y_range_name") or "default") != "default" for o in labs):
+        bad.append("TXT %s" % [o.get("attributes", {}).get("y_range_name") for o in labs])
+    Macro.setGlobal("u45_bad", "; ".join(bad)[:1500])
+end
+
+* ==== S45 D9b: Three or more axes in number order; text follows its axis ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
+    display as text "S45 start " c(current_date) " " c(current_time)
+    local u45d "`w31_work'/s45d9b"
+    capture mkdir "`u45d'"
+
+    // U45-04: twoway draws (y2) (y4) (y3) with axes 2, 3, 4 outward on
+    // the left (fixture axis2_move_truth.json first_used.y243); the page
+    // does, and text(30 3000, yaxis(2)) is on the axis mpg is drawn on.
+    sysuse auto, clear
+    capture twoway (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(4)) (scatter trunk weight, yaxis(3)), ytitle(AX2, axis(2)) ytitle(AX4, axis(4)) ytitle(AX3, axis(3)) text(30 3000 "TXT", yaxis(2))
+    _w31_expect U45-04 "(_rc == 0)" "twoway rc `=_rc'"
+    capture noisily dash (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(4)) (scatter trunk weight, yaxis(3)), ytitle(AX2, axis(2)) ytitle(AX4, axis(4)) ytitle(AX3, axis(3)) text(30 3000 "TXT", yaxis(2)) saving("`u45d'/o.html", replace)
+    _w31_expect U45-04 "(_rc == 0)" "dash rc `=_rc'"
+    python: import __main__ as _u45_m; _u45_m._u45_left_titles(r"`u45d'/o.html")
+    _w31_expect U45-04 `"("${u45_bad}" == "")"' `"${u45_bad}"'
+    _w31_done U45-04 "three axes in number order and the added text on its axis"
+    macro drop u45_*
+    display as text "S45 end " c(current_date) " " c(current_time)
+}
+* ==== end S45 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

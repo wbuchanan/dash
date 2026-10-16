@@ -486,7 +486,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit 8768cac.
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
 - **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit c8a5e9a.
-- **D9b Tracked:** Open (WP-31 section 45).
+- **D9b Tracked:** Closed in WP-31, BUGS.md "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis", commit pending.
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit af3273a.
 - **D10b Tracked:** Closed in WP-31, BUGS.md "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn", commit pending.
 - **D10c Tracked:** Closed in WP-31, BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales", commit pending.

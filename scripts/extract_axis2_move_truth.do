@@ -104,6 +104,20 @@ _am_probe first_x23 (scatter mpg weight, xaxis(2)) (scatter mpg price, xaxis(3))
 _am_probe first_y2lone scatter mpg weight, yaxis(2) ytitle(AX2, axis(2))
 _am_probe first_y12 (scatter price weight, yaxis(2)) (scatter mpg weight, yaxis(1)), ytitle(AX1, axis(1)) ytitle(AX2, axis(2))
 
+* WP-31 D9b: three or four y axes with the first layer on axis 1 -- which
+* axis is drawn where, by its title.
+_am_probe first_y123 (scatter mpg weight) (scatter price weight, yaxis(2)) (scatter trunk weight, yaxis(3)), ytitle(AX1) ytitle(AX2, axis(2)) ytitle(AX3, axis(3))
+_am_probe first_y132 (scatter mpg weight) (scatter price weight, yaxis(3)) (scatter trunk weight, yaxis(2)), ytitle(AX1) ytitle(AX3, axis(3)) ytitle(AX2, axis(2))
+_am_probe first_y1432 (scatter mpg weight) (scatter price weight, yaxis(4)) (scatter trunk weight, yaxis(3)) (scatter turn weight, yaxis(2)), ytitle(AX1) ytitle(AX4, axis(4)) ytitle(AX3, axis(3)) ytitle(AX2, axis(2))
+_am_probe first_y1342 (scatter mpg weight) (scatter price weight, yaxis(3)) (scatter trunk weight, yaxis(4)) (scatter turn weight, yaxis(2)), ytitle(AX1) ytitle(AX3, axis(3)) ytitle(AX4, axis(4)) ytitle(AX2, axis(2))
+_am_probe first_y213 (scatter price weight, yaxis(2)) (scatter mpg weight) (scatter trunk weight, yaxis(3)), ytitle(AX2, axis(2)) ytitle(AX1) ytitle(AX3, axis(3))
+_am_probe first_y243 (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(4)) (scatter trunk weight, yaxis(3)), ytitle(AX2, axis(2)) ytitle(AX4, axis(4)) ytitle(AX3, axis(3))
+
+* WP-31 D9b: an added text(..., yaxis(#)) on a renumbered axis -- where
+* its marker text TXT lands beside the left axis's labels.
+_am_probe text_y23 (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)), text(30 3000 "TXT", yaxis(2)) ytitle(AX2, axis(2)) ytitle(AX3, axis(3))
+_am_probe text_y23b (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)), text(10000 3000 "TXT", yaxis(3)) ytitle(AX2, axis(2)) ytitle(AX3, axis(3))
+
 * horizontal with yaxis(2): the default axis titles.
 _am_probe horizontal_y2 bar mpg weight, horizontal yaxis(2)
 _am_probe horizontal_ctrl bar mpg weight, horizontal
@@ -200,7 +214,7 @@ def axes(doc):
     return out
 
 
-out = {"move": {}, "first_used": {}, "horizontal": {}}
+out = {"move": {}, "first_used": {}, "horizontal": {}, "text": {}}
 keys = G("AM_KEYS").split()
 for key in keys:
     group, name = key.split("_", 1)
@@ -212,7 +226,14 @@ for key in keys:
                         for n in range(1, 10) if pair(G("AM_SY%d_%s" % (n, key)))}
         r["xscales"] = {str(n): pair(G("AM_SX%d_%s" % (n, key)))
                         for n in range(1, 10) if pair(G("AM_SX%d_%s" % (n, key)))}
-        r["axes"] = axes(svg_document(os.path.join(work, key + ".svg")))
+        _doc = svg_document(os.path.join(work, key + ".svg"))
+        r["axes"] = axes(_doc)
+        if group == "text":
+            # WP-31 D9b: the added text's place and every text's, so a test
+            # reads which axis's scale placed it.
+            r["texts"] = [{"text": t["text"], "x": t["x"], "y": t["y"]}
+                          for t in _doc["texts"]]
+            r["plotregion"] = dict(_doc["plotregion"])
     out[group][name] = r
 try:
     with open(os.path.join(work, "git_head.txt")) as fh:

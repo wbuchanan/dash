@@ -4487,7 +4487,11 @@ the left (bottom) and the next on the right (top), each with the options
 written for it -- {cmd:(scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3))}
 has axis 2 on the left and axis 3 on the right, and
 {cmd:(scatter price weight, yaxis(2)) (scatter mpg weight)} axis 2 on the
-left and axis 1 on the right.  Every second axis re-scales over the rows a
+left and axis 1 on the right.  With three or more axes of a letter they
+are drawn outward in number order whichever layer uses them first
+({cmd:(scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(4)) (scatter trunk weight, yaxis(3))}
+draws axes 2, 3 and 4 outward on the left), and an added
+{cmd:text(..., yaxis(}{it:#}{cmd:))} stays on the axis it names.  Every second axis re-scales over the rows a
 filter move keeps, as the first axes do, in the saved page and the served
 app, and a sideways ({cmd:horizontal}) layer on {cmd:yaxis(2)} titles its
 axes as {cmd:twoway} titles them.

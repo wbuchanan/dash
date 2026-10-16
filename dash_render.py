@@ -4493,6 +4493,26 @@ def _dash_renumber_axis_options(go, axisn, side, mapping):
                 box[k] = v
 
 
+def _dash_renumber_text_axes(rec, remap):
+    """An added_text record *rec* with its ``at_yaxis``/``at_xaxis`` moved
+    to the number its axis is drawn as (*remap*: ``{side: {typed: drawn}}``,
+    WP-31 D9b); a new dict, or *rec* itself when nothing moves or it is
+    not a record."""
+    if not isinstance(rec, dict):
+        return rec
+    out = rec
+    for side, mapping in remap.items():
+        k = "at_%saxis" % side
+        n = rec.get(k, 1)
+        if isinstance(n, bool) or not isinstance(n, int) or n not in mapping:
+            continue
+        if mapping[n] != n:
+            if out is rec:
+                out = dict(rec)
+            out[k] = mapping[n]
+    return out
+
+
 def _dash_lone_second_axes(spec):
     """The spec with a graph's lone second axis drawn as its only axis.
 
@@ -4544,9 +4564,21 @@ def _dash_lone_second_axes(spec):
                     break
                 if nos[0] not in used:
                     used.append(nos[0])
-            if tied or not used or used[0] == 1:
+            if tied or not used:
                 continue
-            remap[side] = {t: d + 1 for d, t in enumerate(used)}
+            if len(used) >= 3:
+                # WP-31 D9b (measured, axis2_move_truth.json first_used
+                # y123 ... y243): three or more axes are drawn in number
+                # order whatever order the layers first use them.
+                order = sorted(used)
+            elif used[0] == 1:
+                continue
+            else:
+                order = used
+            mapping = {t: d + 1 for d, t in enumerate(order)}
+            if all(t == d for t, d in mapping.items()):
+                continue
+            remap[side] = mapping
         if not remap:
             graphs.append(g)
             continue
@@ -4573,6 +4605,12 @@ def _dash_lone_second_axes(spec):
             axisn = dict(axisn) if isinstance(axisn, dict) else None
             for side, mapping in remap.items():
                 _dash_renumber_axis_options(go, axisn, side, mapping)
+            # WP-31 D9b (measured, axis2_move_truth.json text): an added
+            # text() is placed on its axis's scale, so it moves with it.
+            recs = go.get("added_text")
+            if isinstance(recs, list):
+                go["added_text"] = [_dash_renumber_text_axes(r, remap)
+                                    for r in recs]
             if axisn is not None:
                 go["axisn"] = {k: v for k, v in axisn.items() if v}
             g["graph_options"] = go

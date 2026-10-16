@@ -123,8 +123,9 @@ class TestTheFixture:
             "scripts/extract_axis2_move_truth.do"
 
     def test_keys(self):
+        # "text" added by WP-31 D9b (added text on a renumbered axis).
         assert sorted(_TRUTH) == ["_meta", "first_used", "horizontal",
-                                  "move"]
+                                  "move", "text"]
         assert {"full", "foreign", "x2full", "x2foreign", "x2range"} <= \
             set(_TRUTH["move"])
         assert {"y23", "y32", "y2opts", "y12"} <= set(_TRUTH["first_used"])

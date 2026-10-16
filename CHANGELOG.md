@@ -527,7 +527,7 @@ and now matches Stata.
 
 - graphregion(margin(l+1e400)) drew all four sides zero with a note; the left side is medium with twoway's note and the others are kept, as twoway draws it (l=1e400 and margin(1e400 1 1 1) make the side zero, silently). (WP-31, D11b)
 
-<!-- WP-31 D9b -->
+- with three or more axes of a letter and the first layer off axis 1 the axes were drawn in the order the layers first used them, and text(..., yaxis(#)) kept its typed number when its axis was renumbered; the axes are drawn in number order and the text stays on its axis, as twoway draws them (WP-31, D9b)
 
 <!-- WP-31 D1d -->
 
