@@ -28,6 +28,11 @@
 *!       apostrophe written as JSON escapes (backslash u 0060, 0024 and
 *!       0027), so the result can be expanded inside compound quotes.
 *!
+*!   _dash_dp_format(fmt)
+*!       fmt with its decimal point a comma when c(dp) is "comma" and fmt
+*!       is a numeric %w.df/g/e[c] format (WP-31 G2): display %9.2f under
+*!       set dp comma prints as %9,2f does.  Any other format unchanged.
+*!
 *!   _dash_json_str_args()
 *!       dash.ado's _dash_json_str: its `0' read by value, the text
 *!       JSON-escaped into the local _dash_jsv, the name into _dash_jsn.
@@ -672,6 +677,14 @@ mata:
 // backslash came out as four and a quote as \\".  Nothing called it then;
 // pcarrowi's labels do now (WP-22).  Every character is replaced in one
 // subinstr() pass, the backslash first because every escape adds one.
+// _dash_dp_format(fmt) -- see the header (WP-31 G2).
+string scalar _dash_dp_format(string scalar fmt)
+{
+    if (c("dp") != "comma") return(fmt)
+    if (!ustrregexm(fmt, "^%-?0?[0-9]+[.][0-9]+[fge]c?$")) return(fmt)
+    return(subinstr(fmt, ".", ",", 1))
+}
+
 string scalar _json_escape(string scalar s) {
     string scalar out, hex, bs
     real   scalar c

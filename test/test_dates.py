@@ -160,19 +160,22 @@ class TestEpochConversion:
         assert checked == 10, f"{checked} %tc values checked"
 
     def test_tC_differs_from_tc_by_the_accumulated_leap_seconds(self, truth):
-        """Leap-second data IS available; treating %tC as %tc is wrong.
+        """Leap-second data IS available, and dash applies it (WP-31 G2).
 
-        dash converts %tC using the same epoch as %tc and must SAY so rather
-        than pretending the two are the same format.
+        Flipped: this pinned a warning that %tC was converted with %tc's
+        epoch; %tC now converts with Stata's own leap-second table, so a
+        2009 instant (22 leap seconds before it) reads 22 s earlier than
+        the same number read as %tc, and nothing is warned.
         """
         assert "IS available" in truth["leap_seconds"]["finding"]
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dash_render._stata_dates_to_datetime(
+            tC = dash_render._stata_dates_to_datetime(
                 pd.Series([1234567890123.0]), "tC")
-        assert any("leap" in str(w.message).lower() for w in caught), (
-            "%tC must warn that leap seconds are not applied"
-        )
+        tc = dash_render._stata_dates_to_datetime(
+            pd.Series([1234567890123.0]), "tc")
+        assert not any("leap" in str(w.message).lower() for w in caught)
+        assert (tc.iloc[0] - tC.iloc[0]).total_seconds() == 22.0
 
     def test_missing_values_become_nat(self):
         got = dash_render._stata_dates_to_datetime(

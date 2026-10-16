@@ -440,7 +440,7 @@ program define _dash_require_mata
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
-        _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
+        _dash_kpi_pctile _json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
         _dash_legend_first_refusal _dash_bare_string_refusal ///
         _dash_axlabel_refusal ///
@@ -7095,7 +7095,10 @@ program define _dash_formats_json
         // r(132), "too few quotes", on every render of the variable -- and
         // $DD was expanded as a global, so the spec said %tdDD! (measured
         // 24sep2026; test_program_coverage.cscript PC-03).
-        mata: st_local("_fjv", _json_escape(st_varformat(st_local("v"))))
+        // Under set dp comma a numeric format's decimal point is a comma
+        // (display %9.2f prints 3,14, as %9,2f does; WP-31 G2), so the
+        // format the page writes with is the comma one.
+        mata: st_local("_fjv", _json_escape(_dash_dp_format(st_varformat(st_local("v")))))
         // %t and %-t followed by one of the eight kind letters, case
         // sensitively: %tc and %tC are different formats.
         mata: st_local("_fdate", strofreal(regexm(st_varformat(st_local("v")), "^%-?t[cCdhmqwy]")))
@@ -7108,6 +7111,33 @@ program define _dash_formats_json
 
     c_local `out_macro'      `"{`parts'}"'
     c_local `datevars_macro' `"`datevars'"'
+end
+
+
+// ================================================================
+// _dash_graph_set_fonts <macro> -- the faces graph set svg gives the
+// three font tags, as build_options keys (WP-31 G2)
+//
+// {stSans}, {stSerif} and {stMono} draw in graph set's fontfacesans,
+// fontfaceserif and fontfacemono (measured: graph set svg fontfacesans
+// Courier makes {stSans:a} Courier; fontface alone does not).  The
+// faces are read with translator query, which changes no setting and
+// prints nothing; each is escaped in Mata, by value.  <macro> becomes
+// ,"fontfacesans":"..."... or empty when the query fails.
+// ================================================================
+program define _dash_graph_set_fonts
+    version 19
+    args out
+    local json ""
+    capture quietly translator query gph2svg
+    if !_rc {
+        foreach k in fontfacesans fontfaceserif fontfacemono {
+            local _gf `"`r(`k')'"'
+            mata: st_local("_gfe", _json_escape(st_local("_gf")))
+            local json `"`json',"`k'":"`_gfe'""'
+        }
+    }
+    c_local `out' `"`json'"'
 end
 
 
@@ -10951,12 +10981,16 @@ program define _dash_render_immediate
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
+    // c(dp) before the font query: read inside it, it gave "period"
+    // under set dp comma (measured 16oct2026).
+    local _dash_dp = c(dp)
+    _dash_graph_set_fonts _dash_gsf
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
     _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'"`_dash_gsf', "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -12303,6 +12337,10 @@ program define _dash_prepare_spec, rclass
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
+    // c(dp) before the font query: read inside it, it gave "period"
+    // under set dp comma (measured 16oct2026).
+    local _dash_dp = c(dp)
+    _dash_graph_set_fonts _dash_gsf
     // The session's own scheme.  A Stata user has already chosen how their
     // graphs should look; without this dash was the one command in the
     // session that ignored it.  An explicit scheme() or theme() still wins --
@@ -12355,7 +12393,7 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'"`_dash_gsf',"formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:

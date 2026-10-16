@@ -606,6 +606,37 @@ def _stata_date_kind(fmt: "str | None") -> "str | None":
     return "t" + m.group(1)
 
 
+#: The %tc instants (ms after 01jan1960) after which Stata's %tC counts
+#: one more second: the 27 leap seconds through 2016, measured with
+#: Cofc() (test/fixtures/data_locale_truth.json leap.table, WP-31 G2).
+_STATA_LEAP_SECONDS_TC_MS: tuple = (
+    394416000000, 410313600000, 441849600000, 473385600000,
+    504921600000, 536544000000, 568080000000, 599616000000,
+    631152000000, 678412800000, 709948800000, 741484800000,
+    804643200000, 883612800000, 946771200000, 978307200000,
+    1025568000000, 1057104000000, 1088640000000, 1136073600000,
+    1183334400000, 1230768000000, 1451692800000, 1546387200000,
+    1656720000000, 1751328000000, 1798848000000)
+
+
+def _dash_tc_from_tC(values):
+    """%tc milliseconds of %tC values, as Stata's cofC() gives them (WP-31
+    G2): one second subtracted per leap second at or before the instant.
+    A value inside a leap second maps as cofC maps it, past the instant
+    (fixture leap.inside).  NaN and infinities stay as they are."""
+    v = np.asarray(values, dtype=float)
+    table = np.asarray(_STATA_LEAP_SECONDS_TC_MS, dtype=float)
+    # The k-th leap second (from 0) is counted once the %tC value reaches
+    # its instant plus the k + 1 seconds before and including it.
+    shifted = table + 1000.0 * np.arange(1, len(table) + 1)
+    with np.errstate(invalid="ignore"):
+        k = np.searchsorted(shifted, v, side="right")
+    out = v - 1000.0 * k
+    bad = ~np.isfinite(v)
+    out[bad] = v[bad]
+    return out
+
+
 def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
     """Convert Stata SIF values of a given date *kind* to datetime64[ms].
 
@@ -661,13 +692,9 @@ def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
     n = len(raw)
 
     if kind == "tC":
-        warnings.warn(
-            "dash: %tC is a leap-second-corrected millisecond count. dash "
-            "converts it with the same epoch as %tc, so timestamps are off "
-            "by the accumulated leap seconds (up to 27 seconds for recent "
-            "dates). Use %tc if that matters.",
-            UserWarning, stacklevel=3,
-        )
+        # Stata's own leap-second table (WP-31 G2): the axis holds %tc
+        # milliseconds, so a %tC value is cofC()'s first.
+        raw = _dash_tc_from_tC(raw)
 
     def _from_parts(year, month):
         # Days after 01jan1960 of the first day of each (year, month): the
@@ -13131,7 +13158,7 @@ def _dash_key_format(zopts):
     return "%9.0g", fmt[:60]
 
 
-def _dash_key_ticks(units, kind, fmt, labels=None):
+def _dash_key_ticks(units, kind, fmt, labels=None, dp="period"):
     """Colour-key ticks given in the variable's Stata units, as
     ``(positions, overrides)`` for a FixedTicker and its
     ``major_label_overrides`` (WP-30 P1.23b).
@@ -13162,7 +13189,7 @@ def _dash_key_ticks(units, kind, fmt, labels=None):
             continue
         key = str(float(u))
         out[pos] = (str(labels[key]) if key in labels
-                    else _dash_fmt_text(u, fmt))
+                    else _dash_fmt_text(u, fmt, dp=dp))
     positions = sorted(out)
     return positions, {p: out[p] for p in positions}
 
@@ -15020,7 +15047,9 @@ class GlyphMapper:
         _cv_kind = (getattr(self, "date_vars", {}) or {}).get(varname)
         _cv_kind = _cv_kind if _cv_kind in _STATA_DATE_KINDS else ""
         _key_fmt, _key_bad = _dash_key_format(self.z_options)
-        _num_text = (lambda v: _dash_fmt_text(v, _key_fmt))
+        _num_text = (lambda v: _dash_fmt_text(v, _key_fmt,
+                                              dp=getattr(self, "dp",
+                                                         "period")))
 
         def _vlookup(v: float) -> str:
             """Return the Stata value label for v if defined, else the
@@ -15280,7 +15309,8 @@ class GlyphMapper:
             # discrete key too; zlabel()/zscale() have nothing to draw on
             # a Legend (no ticks, no mapper range) and are named once.
             _dash_apply_z_options(fig, _legend, mapper, self.z_options,
-                                 *self.z_context)
+                                 *self.z_context, dp=getattr(self, "dp",
+                                                             "period"))
             if add_key:
                 # clegend() places the key; under coloruseplegend twoway
                 # puts the keys in the plot legend, which plegend() places
@@ -15347,13 +15377,17 @@ class GlyphMapper:
                                or [_lo_s])
                     if minmax:
                         _kt = sorted(set(_kt) | {_lo_s, _hi_s})
-                    _pos, _ovr = _dash_key_ticks(_kt, _cv_kind, _key_fmt)
+                    _pos, _ovr = _dash_key_ticks(_kt, _cv_kind, _key_fmt,
+                                                 dp=getattr(self, "dp",
+                                                            "period"))
                     _cbar.ticker = FixedTicker(ticks=_pos)
                     _cbar.major_label_overrides = _ovr
                 mapper = _dash_apply_z_options(fig, _cbar, mapper,
                                                self.z_options,
                                                *self.z_context,
-                                               kind=_cv_kind, units=_units)
+                                               kind=_cv_kind, units=_units,
+                                               dp=getattr(self, "dp",
+                                                          "period"))
                 _cbar.color_mapper = mapper
 
             color_spec = {"field": varname, "transform": mapper}
@@ -15719,7 +15753,9 @@ class GlyphMapper:
                     # is .1, never 0.10000000149011612; no format at all
                     # is Stata's %9.0g.
                     rendered = ["." if m else
-                                _dash_fmt_text(v, _numfmt or "%9.0g", _st)
+                                _dash_fmt_text(v, _numfmt or "%9.0g", _st,
+                                               dp=getattr(self, "dp",
+                                                          "period"))
                                 for v, m in zip(raw, _miss)]
                 # An extended missing value is labelled .a, or its value
                 # label, as twoway labels it (WP-31 G1).
@@ -16002,7 +16038,8 @@ class GlyphMapper:
             for x in v[bad]:
                 if x not in seen:
                     seen.append(x)
-            shown = ", ".join(_dash_fmt_text(x, "%9.0g") for x in seen[:10])
+            shown = ", ".join(_dash_fmt_text(x, "%9.0g", dp=getattr(
+                self, "dp", "period")) for x in seen[:10])
             more = (f" and {len(seen) - 10} more" if len(seen) > 10 else "")
             _dash_warn_once(
                 ("mlabvposition", name, "range"),
@@ -16113,7 +16150,8 @@ class GlyphMapper:
         if col not in source.data:
             raw = list(source.data[values_col or var])
             _st = getattr(self, "storage_types", {}).get(var)
-            source.data[col] = ["." if m else _dash_fmt_text(v, fmt, _st)
+            source.data[col] = ["." if m else _dash_fmt_text(
+                v, fmt, _st, dp=getattr(self, "dp", "period"))
                                 for v, m in zip(raw, _miss)]
         return col
 
@@ -22287,7 +22325,8 @@ class GlyphMapper:
             else:
                 styles[str(k)] = {"fill_color": list(cols)}
         return {"rule": rule, "styles": styles,
-                "kfmt": _dash_key_format(self.z_options)[0]}
+                "kfmt": _dash_dp_fmt(_dash_key_format(self.z_options)[0],
+                                     getattr(self, "dp", "period"))}
 
     def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax) -> None:
         """contour's colour key (WP-31 B4b): see :meth:`map_contour`."""
@@ -22307,7 +22346,7 @@ class GlyphMapper:
         cb.width = 12
         fmt, _bad = _dash_key_format(self.z_options)
         pos, ovr = _dash_key_ticks([t for t in ticks if lo <= t <= hi], "",
-                                   fmt)
+                                   fmt, dp=getattr(self, "dp", "period"))
         cb.ticker = FixedTicker(ticks=pos)
         cb.major_label_overrides = ovr
         zo = dict(self.z_options or {})
@@ -22315,7 +22354,8 @@ class GlyphMapper:
             _dash_style_note("zscale", self.z_options.get("zscale", ""),
                              "sub-option", "not drawn on a contour key")
         _dash_apply_z_options(fig, cb, None, zo, *self.z_context,
-                              units=(zmin, zmax))
+                              units=(zmin, zmax),
+                              dp=getattr(self, "dp", "period"))
         self._colorvar_key_place(
             fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
 
@@ -28823,7 +28863,7 @@ function dash_stata_value_of(columnValue, dateKind) {
     return (vfloor >= range[0] && vfloor <= range[1]) ? vfloor : null;
 }
 
-function dash_fmt(value, fmt, storage, strip) {
+function dash_fmt(value, fmt, storage, strip, dp) {
     // _dash_fmt
     var v = Number(value);
     if (isNaN(v) && value !== null && value !== undefined
@@ -28841,6 +28881,10 @@ function dash_fmt(value, fmt, storage, strip) {
                   group: false, comma_dec: false};
         kind = "g";
     }
+    // set dp comma (WP-31 G2): a numeric format's decimal mark is a comma.
+    if (dp === "comma" && (kind === "f" || kind === "g" || kind === "e")) {
+        parsed = Object.assign({}, parsed, {comma_dec: true});
+    }
     var result;
     if (!isFinite(v)) {
         var width = kind === "t" ? dash_fmt_picture_width(parsed) : parsed.width;
@@ -28854,9 +28898,9 @@ function dash_fmt(value, fmt, storage, strip) {
     return strip ? result.trim() : result;
 }
 
-function dash_fmt_text(value, fmt, storage) {
+function dash_fmt_text(value, fmt, storage, dp) {
     // _dash_fmt_text
-    return dash_fmt(value, fmt, storage, true);
+    return dash_fmt(value, fmt, storage, true, dp);
 }
 
 function dash_html_escape(s) {
@@ -33609,7 +33653,7 @@ def _dash_by_subtitle_format(by_raw):
 def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                       date_vars=None, numeric_formats=None,
                       date_formatter=None, formats=None,
-                      subtitle_format=""):
+                      subtitle_format="", dp=None):
     """The title of one by() panel, the same in both render modes.
 
     twoway's rule, measured 23sep2026 from its SVG export: the value's label
@@ -33688,7 +33732,8 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                 # `: display fmt value' (RunGraph :437-446).
                 _f = ((formats or {}).get(var) or "%9.0g"
                       if subtitle_format == "var" else subtitle_format)
-                parts.append(_dash_fmt(val, _f, strip=True))
+                parts.append(_dash_fmt(val, _f, strip=True,
+                                       dp=_dash_page_dp(dp)))
                 continue
         # Raw: a facet label titles a panel (fig.title.text), which Bokeh
         # draws on the canvas, and it also feeds a per-facet KPI card that
@@ -33719,11 +33764,11 @@ def _dash_stata_date_text(value, fmt):
     if GlyphMapper._mlabel_missing(value):
         return "."
     if isinstance(value, (int, float, np.integer, np.floating)):
-        return _dash_fmt_text(float(value), fmt)
+        return _dash_fmt_text(float(value), fmt)  # no dp: a %t picture
     ms = _dash_json_value(value)
     if not isinstance(ms, float):
         return str(value)
-    return _dash_fmt_text(_dash_stata_value_of(ms, kind), fmt)
+    return _dash_fmt_text(_dash_stata_value_of(ms, kind), fmt)  # no dp: a %t picture
 
 
 # ===========================================================================
@@ -34677,7 +34722,7 @@ def _dash_stata_value_of(column_value, date_kind):
     return float(v) if lo <= v <= hi else None
 
 
-def _dash_fmt(value, fmt, storage=None, strip=False):
+def _dash_fmt(value, fmt, storage=None, strip=False, dp="period"):
     """*value* (a Stata numeric value -- for a ``%t`` format, the Stata
     date/period NUMBER itself, never epoch milliseconds) written exactly
     as Stata's ``display %fmt (value)`` writes it, right-aligned to the
@@ -34693,6 +34738,11 @@ def _dash_fmt(value, fmt, storage=None, strip=False):
     tests).  A format ``_dash_fmt_kind`` cannot place (``None``, ``"x"``,
     ``"H"``) is written in ``%9.0g`` instead -- never raises; naming the
     refusal is the caller's job through :func:`_dash_fmt_refusal`.
+
+    *dp* is the page's ``set dp`` (``build_options["dp"]``, WP-31 G2):
+    under ``"comma"`` a numeric format's decimal point is a comma and its
+    thousands separator a period, as ``display`` writes them; a date
+    picture is unchanged.
     """
     try:
         v = float(value)
@@ -34715,6 +34765,8 @@ def _dash_fmt(value, fmt, storage=None, strip=False):
         parsed = {"kind": "g", "width": 9, "dec": 0, "left": False,
                   "zero": False, "group": False, "comma_dec": False}
         kind = "g"
+    if dp == "comma" and kind in ("f", "g", "e"):
+        parsed = dict(parsed, comma_dec=True)
     if not math.isfinite(v):
         width = (_dash_fmt_picture_width(parsed) if kind == "t"
                   else parsed["width"])
@@ -34727,11 +34779,11 @@ def _dash_fmt(value, fmt, storage=None, strip=False):
     return result.strip() if strip else result
 
 
-def _dash_fmt_text(value, fmt, storage=None):
+def _dash_fmt_text(value, fmt, storage=None, dp="period"):
     """:func:`_dash_fmt` with its padding stripped -- the page-facing
     form every card, label, tooltip and axis tick uses.  ``"."`` for a
-    missing value."""
-    return _dash_fmt(value, fmt, storage=storage, strip=True)
+    missing value; *dp* the page's decimal mark."""
+    return _dash_fmt(value, fmt, storage=storage, strip=True, dp=dp)
 
 
 #: The body of every page-side Stata formatter (WP-28 S12, GAPS2 E3/G6):
@@ -34742,15 +34794,61 @@ _DASH_FMT_MODEL_JS = """
 var _dash_v = kind ? dash_stata_value_of(%s, kind) : %s;
 if ((_dash_v === null || _dash_v === undefined) && kind) { _dash_v = dash_stata_number_of(%s, kind); }
 if (_dash_v === null || _dash_v === undefined) { return "."; }
-return dash_fmt_text(_dash_v, fmt, storage);
+return dash_fmt_text(_dash_v, fmt, storage, dp);
 """
 
 
-def _dash_fmt_model_args(fmt, kind, storage):
+def _dash_fmt_model_args(fmt, kind, storage, dp="period"):
     """The args of a page-side formatter: *fmt* (``%9.0g`` when empty),
-    the date *kind* (``""`` for a number) and the *storage* type."""
+    the date *kind* (``""`` for a number), the *storage* type and the
+    page's decimal mark *dp* (WP-31 G2)."""
     return {"fmt": str(fmt or "%9.0g"), "kind": str(kind or ""),
-            "storage": str(storage or "")}
+            "storage": str(storage or ""),
+            "dp": "comma" if dp == "comma" else "period"}
+
+
+def _dash_dp_fmt(fmt, dp):
+    """*fmt* in the page's decimal mark (WP-31 G2): under ``"comma"`` a
+    numeric ``%w.d`` format becomes ``%w,d`` -- what ``display`` writes
+    under ``set dp comma`` -- for a writer handed a format, not a mark
+    (the saved page's KPI and colour-key rebuilds).  Any other format, and
+    any format under ``"period"``, unchanged."""
+    fmt = str(fmt or "")
+    if dp == "comma" and re.fullmatch(r"%-?0?\d+\.\d+[fge]c?", fmt):
+        return fmt.replace(".", ",", 1)
+    return fmt
+
+
+def _dash_page_dp(dp=None):
+    """*dp* when given; else the decimal mark of the generated app's one
+    page (its ``_DASH_MAPPER``, set by ``_dash_page_settings`` from the
+    app's own spec), else ``"period"``.  The saved renderer passes *dp*;
+    only a writer the app calls without it reads the app's (WP-31 G2)."""
+    if dp:
+        return dp
+    return getattr(globals().get("_DASH_MAPPER"), "dp", "period") or "period"
+
+
+def _dash_cache_dp(cache):
+    """The page's decimal mark a document's formatter cache carries
+    (``_dash_page_settings``), ``"period"`` when it carries none."""
+    return (cache.get("dp", "period") if isinstance(cache, dict)
+            else "period")
+
+
+def _dash_page_settings(mapper, cache, build_options):
+    """Hand one page's settings from its spec's *build_options* to the
+    page's *mapper* and formatter *cache* (WP-31 G2): ``set dp``
+    (``mapper.dp``, ``cache["dp"]``) and the faces ``graph set`` gives the
+    font tags (``mapper._dash_gt_fonts``).  Both modes call it once per
+    document."""
+    dp = _dash_build_dp({"build_options": build_options})
+    if mapper is not None:
+        mapper.dp = dp
+        mapper._dash_gt_fonts = _dash_gt_fonts_of(build_options)
+    if isinstance(cache, dict):
+        cache["dp"] = dp
+    return dp
 
 
 def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
@@ -34762,8 +34860,8 @@ def _dash_fmt_tick_formatter(fmt, kind, storage, cache):
     *cache* (a dict per rendered document; None builds a fresh one): the
     writer is large, and a Bokeh model belongs to one document."""
     from bokeh.models import CustomJSTickFormatter
-    args = _dash_fmt_model_args(fmt, kind, storage)
-    key = ("tick", args["fmt"], args["kind"], args["storage"])
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
+    key = ("tick", args["fmt"], args["kind"], args["storage"], args["dp"])
     if cache is not None and key in cache:
         return cache[key]
     model = CustomJSTickFormatter(
@@ -34783,10 +34881,10 @@ def _dash_fmt_label_tick_formatter(labels, fmt, kind, storage, cache):
     ``code``.  One model per ``(labels, fmt, kind, storage)`` in
     *cache*."""
     from bokeh.models import CustomJSTickFormatter
-    args = _dash_fmt_model_args(fmt, kind, storage)
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
     args["labels"] = str(labels)
     key = ("label", args["labels"], args["fmt"], args["kind"],
-           args["storage"])
+           args["storage"], args["dp"])
     if cache is not None and key in cache:
         return cache[key]
     code = (_DASH_FMT_JS
@@ -34808,8 +34906,8 @@ def _dash_fmt_hover(fmt, kind, storage, cache):
     """The ``CustomJSHover`` twin of :func:`_dash_fmt_tick_formatter`, for
     a ``@{col}{custom}`` tooltip field: it writes BokehJS's ``value``."""
     from bokeh.models import CustomJSHover
-    args = _dash_fmt_model_args(fmt, kind, storage)
-    key = ("hover", args["fmt"], args["kind"], args["storage"])
+    args = _dash_fmt_model_args(fmt, kind, storage, _dash_cache_dp(cache))
+    key = ("hover", args["fmt"], args["kind"], args["storage"], args["dp"])
     if cache is not None and key in cache:
         return cache[key]
     model = CustomJSHover(
@@ -39724,7 +39822,8 @@ def _dash_minor_text(ax, v, spec=None, value_labels=None):
     if val is None:
         return "."
     try:
-        return _dash_fmt_text(val, fmt, storage=args.get("storage") or None)
+        return _dash_fmt_text(val, fmt, storage=args.get("storage") or None,
+                              dp=args.get("dp", "period"))
     except Exception:  # noqa: BLE001 -- a format the writer refuses
         return _fmt_num(v)
 
@@ -43043,7 +43142,7 @@ def _dash_graph_text_props(model):
             args = getattr(model, prop, None) or {}
             if ("labels" not in args
                     or not set(args) - {"labels"} <= {"fmt", "kind",
-                                                      "storage"}
+                                                      "storage", "dp"}
                     or not isinstance(args["labels"], str)):
                 continue
         out.append((prop, how))
@@ -43278,6 +43377,36 @@ _DASH_GT_FONTS = {
     "stSerif": "Times, Times New Roman, serif",
     "stMono": "Courier, Courier New, monospace",
 }
+
+def _dash_gt_fonts_of(build_options):
+    """The CSS family each Stata font tag draws in for one page (WP-31
+    G2): ``_DASH_GT_FONTS`` with the face ``graph set svg fontfacesans``,
+    ``fontfaceserif`` and ``fontfacemono`` name (dash.ado reads them with
+    ``translator query gph2svg`` into *build_options*) put first.  A face
+    that is not plain text (letters, digits, blanks, ``-``, ``_``, ``.``;
+    at most 64 characters) is not read."""
+    out = dict(_DASH_GT_FONTS)
+    bo = build_options if isinstance(build_options, dict) else {}
+    for tag, key in (("stSans", "fontfacesans"), ("stSerif", "fontfaceserif"),
+                     ("stMono", "fontfacemono")):
+        face = str(bo.get(key, "") or "").strip()
+        if (not face or len(face) > 64
+                or not re.fullmatch(r"[A-Za-z0-9 ._-]+", face)):
+            continue
+        rest = [f.strip() for f in out[tag].split(",")
+                if f.strip().lower() != face.lower()]
+        out[tag] = ", ".join([face] + rest)
+    return out
+
+
+def _dash_build_dp(spec):
+    """The decimal mark dash.ado recorded, ``build_options["dp"]``
+    (``c(dp)``): ``"comma"`` or ``"period"`` (WP-31 G2).  The formats it
+    wrote are already in that mark."""
+    bo = spec.get("build_options", {}) if isinstance(spec, dict) else {}
+    dp = bo.get("dp", "period") if isinstance(bo, dict) else "period"
+    return "comma" if dp == "comma" else "period"
+
 
 #: Each style tag: (dimension, value).  Bold and italic share one dimension
 #: (twoway: the innermost wins), as do raised and lowered.
@@ -44148,7 +44277,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                 return _dash_graph_text_plain(vlabels[rv])
             if isinstance(rv, float):
                 if is_date:
-                    return _dash_fmt_text(
+                    return _dash_fmt_text(  # no dp: a %t picture
                         _dash_stata_value_of(rv, date_kind or "td"), _dfmt)
                 if rv.is_integer():
                     k = str(int(rv))
@@ -44156,7 +44285,8 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                         return _dash_graph_text_plain(vlabels[k])
                 # The variable's display text (GAPS2 E3, G6): %8.0gc's
                 # 4,099, a float-stored 0.1's .1.
-                return _dash_fmt_text(rv, _nfmt, storage or None)
+                return _dash_fmt_text(rv, _nfmt, storage or None,
+                                      dp=_dash_cache_dp(fmt_cache))
             return rv
 
         # DISCOVERY Q26: values sharing one display text are ONE entry --
@@ -49435,7 +49565,7 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar,
 
 
 def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
-                          kind="", units=None):
+                          kind="", units=None, dp="period"):
     """Draw zlabel()/ztitle()/zscale() -- the colour key's own axis
     options -- on the Legend or ColorBar :meth:`GlyphMapper._apply_colorvar`
     built (GAPS2 X2).
@@ -49568,7 +49698,7 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
                     _ticks = list(spec["ticks"])
                 if _ticks is not None:
                     _pos, _ovr = _dash_key_ticks(_ticks, kind, _kfmt,
-                                                 spec["labels"])
+                                                 spec["labels"], dp=dp)
                     key_obj.ticker = FixedTicker(ticks=_pos)
                     key_obj.major_label_overrides = _ovr
             elif spec["mode"] == "explicit" and spec["ticks"]:
@@ -50527,7 +50657,7 @@ def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
 
 
 def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
-                           date_vars=None, storage=None):
+                           date_vars=None, storage=None, dp=None):
     """A KPI card's text: Stata's ``display`` of the statistic under
     *fmt_str*, trimmed (``_dash_fmt_text``), the text
     ``test/fixtures/format_truth.json``'s ``kpi`` block records.
@@ -50562,8 +50692,8 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
         return "."
     kind = (date_vars or {}).get(varname)
     if kind and _dash_kpi_date_valued(stat):
-        return _dash_fmt_text(v, fmt)
-    return _dash_fmt_text(v, fmt, storage)
+        return _dash_fmt_text(v, fmt)  # no dp: a %t picture
+    return _dash_fmt_text(v, fmt, storage, dp=_dash_page_dp(dp))
 
 
 def _dash_placement_map(layout_opt, valid_names=None):
@@ -50951,7 +51081,8 @@ def _dash_add_hover_text(source, var, vlabels):
     return col
 
 
-def _dash_add_code_text(source, var, fmt="", storage="", vlabels=None):
+def _dash_add_code_text(source, var, fmt="", storage="", vlabels=None,
+                        dp="period"):
     """Write the tooltip text of a variable holding extended missing values
     into ``__dasht_<var>`` on *source* (WP-31 G1): each row's value in the
     variable's display format (``%9.0g`` when it has none a page writes),
@@ -50975,7 +51106,7 @@ def _dash_add_code_text(source, var, fmt="", storage="", vlabels=None):
         elif GlyphMapper._mlabel_missing(v):
             out.append(".")
         else:
-            out.append(_dash_fmt_text(v, fmt, storage or None))
+            out.append(_dash_fmt_text(v, fmt, storage or None, dp=dp))
     data[col] = out
     return col
 
@@ -51158,7 +51289,8 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                 continue
             _got = (_dash_add_hover_text(_src, _name, _vl) if _vl else
                     _dash_add_code_text(_src, _name, formats.get(_name, ""),
-                                        storage_types.get(_name, "")))
+                                        storage_types.get(_name, ""),
+                                        dp=_dash_cache_dp(fmt_cache)))
             _col = _col or _got
         if _col:
             _text_cols[_name] = _col
@@ -54216,6 +54348,7 @@ class DashRenderer:
             value, fmt_str, varname, stat,
             date_vars=getattr(self, "date_vars", {}),
             storage=getattr(self, "storage_types", {}).get(varname),
+            dp=getattr(self, "dp", "period"),
         )
 
     # ------------------------------------------------------------------
@@ -54763,6 +54896,7 @@ class DashRenderer:
             getattr(self, "numeric_formats", {}),
             _dash_stata_date_text,
             formats=getattr(self, "formats", {}),
+            dp=getattr(self, "dp", "period"),
             subtitle_format=subtitle_format)
 
     # ------------------------------------------------------------------
@@ -56683,7 +56817,8 @@ class DashRenderer:
             # The effective format and the storage type, for dash_fmt_text
             # (WP-28, GAPS2 E1).  Data only: JSON-encoded into
             # kpi_config_json, never into the callback's code or a style.
-            "fmt": kfmt,
+            "fmt": _dash_dp_fmt(kfmt or "%9.0g", getattr(self, "dp",
+                                                         "period")),
             "storage": getattr(self, "storage_types", {}).get(kvar, "") or "",
             "has_qual": qual_ids is not None,
             "qual_ids": qual_ids if qual_ids is not None else [],
@@ -57603,6 +57738,11 @@ class DashRenderer:
         # The style notes were reset at the top: one per (option, value)
         # per render.
         self._fmt_models = {}
+        # The page's set dp and graph set faces (WP-31 G2), on the mapper
+        # and the formatter cache, as the generated app hands them.
+        self.dp = _dash_page_settings(
+            self.mapper, self._fmt_models,
+            self.master_spec.get("build_options", {}) or {})
 
         # Carried RAW; every site that puts these into HTML escapes them
         # itself.  Escaping here as well was a double escape in the
@@ -58166,6 +58306,8 @@ class ServerAppBuilder:
                       # Extended missing values' columns (WP-31 G1).
                       "_DASH_CODE_PREFIX", "_DASH_CODE_TEXT_PREFIX",
                       "_DASH_CODE_LETTERS", "_DASH_MISSING_LABEL_KEY",
+                      # Stata's leap seconds for %tC (WP-31 G2).
+                      "_STATA_LEAP_SECONDS_TC_MS",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # The time-series columns (WP-30 P1.7).
                       "_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
@@ -58728,6 +58870,12 @@ class ServerAppBuilder:
                          "_dash_attach_missing_codes", "_dash_code_text",
                          "_dash_add_code_text", "_dash_label_key",
                          "_dash_with_codes",
+                         # %tC through Stata's leap seconds and the graph
+                         # set font faces (WP-31 G2).
+                         "_dash_tc_from_tC", "_dash_build_dp",
+                         "_dash_gt_fonts_of",
+                         "_dash_dp_fmt", "_dash_cache_dp",
+                         "_dash_page_settings", "_dash_page_dp",
                          # dot's rows in the axis plan (WP-31 B5c).
                          "_dash_dots_plan",
                          # minor labels on an outer axis (WP-31 D1b).
@@ -60572,6 +60720,7 @@ class ServerAppBuilder:
             "    # One Stata formatter model per format, for this document",
             "    # only: a Bokeh model belongs to one document (WP-28 S12).",
             "    _fmt_cache = {}",
+            "    _dash_page_settings(_DASH_MAPPER, _fmt_cache, spec.get('build_options', {}))",
             "    # The dataset's Stata metadata reaches the mapper, as it does",
             "    # when the saved renderer builds one: a served colour key used",
             "    # to read '0'/'1' where the saved one reads the value labels.",

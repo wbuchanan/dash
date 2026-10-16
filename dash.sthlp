@@ -4281,6 +4281,10 @@ A numeric axis's ticks are written in the display format {cmd:twoway}
 labels that axis with: the format of the variable its first layer draws
 there, so a scatter of {cmd:mpg} on {cmd:weight} in {cmd:auto} labels
 {cmd:weight}, whose format is {cmd:%8.0gc}, {cmd:2,000 3,000 4,000 5,000}.
+{cmd:set dp comma} is read: every number dash writes uses your decimal mark
+({cmd:2.000 3.000} on that axis, {cmd:3,14} for a {cmd:%9.2f} value).
+{cmd:%tC} values are converted with Stata's own leap-second table, so
+timestamps are exact.
 A range plot's axis takes its first y variable's format and a
 paired-coordinate plot's its first pair's; a layer's {cmd:xvarformat()}
 or {cmd:yvarformat()} replaces its variable's.  {cmd:scatteri},

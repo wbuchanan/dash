@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "G2": "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read",
     "G3": "Working columns are generated in the user's data, user variables named x, y, top, count or density are shadowed in hover() and mlabel(), numbers are embedded as JSON text and the cell count counts every exported row",
     "G5": "One format-writer model is emitted per distinct tick format and per tooltip kind",
     "E10": "User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle",

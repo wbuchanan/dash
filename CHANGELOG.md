@@ -468,7 +468,7 @@ and now matches Stata.
 
 - `scatter y x, by(v, missing)` with `.a` and `.b` in v drew one "(missing)" panel; it draws a panel each for `.a` and `.b`, titled by their value labels, as twoway does. Marker labels and tooltips show `.a` where they showed `.`, and a dropdown filter on v offers `.a` and `.b` (WP-31, G1)
 
-<!-- WP-31 G2 -->
+- numbers ignored set dp comma (3.14 under `%9.2f`, 2,000 on a `%8.0gc` axis); they use it (3,14; 2.000), on axes, tooltips, marker labels, KPI cards and filters. `%tC` timestamps were up to 27 s off; they are exact. The `{stSans}`, `{stSerif}` and `{stMono}` tags draw in graph set's faces (WP-31, G2)
 
 <!-- WP-31 E10 -->
 

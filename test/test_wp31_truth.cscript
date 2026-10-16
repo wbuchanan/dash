@@ -11734,6 +11734,132 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
 }
 * ==== end S43 ====
 
+python:
+def _u43_dp(sp, dp, app, fixture):
+    """u43_bad: under set dp comma, weight's tick writer is not the comma
+    format in both modes, or the writers' text differs from twoway's
+    ticks (data_locale_truth.json dp.axis)."""
+    import __main__ as m
+    import json
+    import dash_render as dr
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        want = json.load(fh)["dp.axis"]["ticks"][4:]
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    bo = spec["build_options"]
+    bad = []
+    if bo.get("dp") != "comma" or bo["formats"].get("weight") != "%8,0gc":
+        bad.append("spec dp %s weight %s" % (bo.get("dp"),
+                                              bo["formats"].get("weight")))
+    for mode, models in zip(("saved", "served"), m._u43_models(sp, dp, app)):
+        args = [dict(x.args) for x in models
+                if type(x).__name__ == "CustomJSTickFormatter"]
+        if not any(a.get("fmt") == "%8,0gc" for a in args):
+            bad.append("%s: no %%8,0gc tick writer in %s" % (
+                mode, sorted({a.get("fmt") for a in args})))
+    got = [dr._dash_fmt_text(v, "%8,0gc") for v in (2000, 3000, 4000, 5000)]
+    if got != want:
+        bad.append("ticks %s, twoway %s" % (got, want))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+
+
+def _u43_fonts(sp, dp, app):
+    """u43_bad: the spec lacks the faces translator query gph2svg gives,
+    or either mode's mapper does not put fontfacesans first for stSans."""
+    import __main__ as m
+    import json
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from sfi import Macro
+    with open(sp, encoding="utf-8") as fh:
+        bo = json.load(fh)["build_options"]
+    face = bo.get("fontfacesans", "")
+    bad = [] if face == Macro.getGlobal("u43_sans") else [
+        "spec fontfacesans %r, graph set %r" % (face,
+                                                 Macro.getGlobal("u43_sans"))]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        ns = dict(__name__="dash_u43f_app")
+        exec(compile(src.replace(
+            "if __name__ != '__main__':\n    make_document(curdoc())", "pass"),
+            "dash_u43f_app.py", "exec"), ns)
+        ns["make_document"](Document())
+    for mode, mp in (("saved", r.mapper), ("served", ns["_DASH_MAPPER"])):
+        fam = getattr(mp, "_dash_gt_fonts", {}).get("stSans", "")
+        if not fam.startswith(face):
+            bad.append("%s stSans %r" % (mode, fam))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+
+
+def _u43_tC():
+    """u43_bad: dash's %tC conversion of the u43tC column differs from
+    Stata's cofC() of it (the u43tc column)."""
+    import numpy as np
+    import dash_render as dr
+    from sfi import Data, Macro
+    C = np.asarray(Data.get(var="u43tC"), dtype=float)
+    c = np.asarray(Data.get(var="u43tc"), dtype=float)
+    got = dr._dash_tc_from_tC(C)
+    n = int(np.sum(got != c))
+    Macro.setGlobal("u43_bad", "" if n == 0 else
+                    "%d of %d differ, first %s" % (n, len(c), [
+                        (C[i], got[i], c[i]) for i in
+                        np.flatnonzero(got != c)[:3]]))
+end
+
+* ==== S43 G2: Locale, leap seconds and fonts ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
+    display as text "S43 start " c(current_date) " " c(current_time)
+    local u43d "`w31_work'/s43g2"
+    capture mkdir "`u43d'"
+    local u43fx "`c(pwd)'/fixtures/data_locale_truth.json"
+
+    // U43-03: under set dp comma the page writes weight's ticks as
+    // twoway labels them (2.000 3.000 ...), saved and served.
+    sysuse auto, clear
+    local u43dp = c(dp)
+    set dp comma
+    _u43_spec "`u43d'" 5 scatter mpg weight,
+    set dp `u43dp'
+    python: import __main__ as _u43_m; _u43_m._u43_dp("`u43d'/s5.json", "`u43d'/d5.json", "`u43d'/a5.py", r"`u43fx'")
+    _w31_expect U43-03 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-03 "set dp comma reaches every tick writer as twoway writes its ticks, saved and served"
+
+    // U43-04: the {stSans} family starts with graph set svg's
+    // fontfacesans, read with translator query (no setting is changed).
+    quietly translator query gph2svg
+    global u43_sans `"`r(fontfacesans)'"'
+    _u43_spec "`u43d'" 6 scatter mpg weight,
+    python: import __main__ as _u43_m; _u43_m._u43_fonts("`u43d'/s6.json", "`u43d'/d6.json", "`u43d'/a6.py")
+    _w31_expect U43-04 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-04 "the font tags draw in graph set's faces, saved and served"
+    macro drop u43_sans
+
+    // U43-05: %tC converts as Stata's cofC() does, over 1972-2026 and
+    // inside and after each leap second.
+    clear
+    quietly set obs 2000
+    set seed 4305
+    quietly generate double u43tC = round(tC(01jan1972 00:00:00) + runiform() * (tC(01jan2026 00:00:00) - tC(01jan1972 00:00:00)))
+    quietly replace u43tC = Cofc(tc(31dec2016 23:59:59.999) + 1) - 500 in 1
+    quietly replace u43tC = Cofc(tc(31dec2016 23:59:59.999) + 1) + 500 in 2
+    quietly replace u43tC = Cofc(tc(30jun1972 23:59:59.999) + 1) - 1 in 3
+    quietly generate double u43tc = cofC(u43tC)
+    python: import __main__ as _u43_m; _u43_m._u43_tC()
+    _w31_expect U43-05 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-05 "%tC converts as cofC() does, inside leap seconds too"
+    display as text "S43 end " c(current_date) " " c(current_time)
+}
+* ==== end S43 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

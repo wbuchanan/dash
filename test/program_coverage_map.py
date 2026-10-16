@@ -185,6 +185,8 @@ COVERAGE = {
         "_dash_plottype_families": ("test_parser.cscript:P1A-56",),
         "_dash_process_segment": ("test_parser.cscript:P1A-31",
                                   "test_parser.cscript:P1A-52"),
+        # WP-31 G2: the graph set svg faces of the font tags.
+        "_dash_graph_set_fonts": ("test_wp31_truth.cscript:U43-04",),
         "_dash_formats_json": ("test_program_coverage.cscript:PC-01",
                                "test_program_coverage.cscript:PC-02",
                                "test_program_coverage.cscript:PC-03",
@@ -451,6 +453,8 @@ COVERAGE = {
     },
     "dash_parse.mata": {
         # e2e: through _dash_json_str_args; direct in PC-28.
+        # WP-31 G2: the comma formats under set dp comma.
+        "_dash_dp_format": ("test_wp31_truth.cscript:U43-03",),
         "_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
         # e2e: _dash_json_str is this function's one caller.
