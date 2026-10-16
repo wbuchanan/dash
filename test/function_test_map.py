@@ -520,6 +520,7 @@ FUNCTIONS = {
  '_dash_common_count_ticks': 'test/test_natscale_axes.py::TestByPanelsShareOneScale::test_ylabel_count',
  '_dash_axis_count_ticks': 'test/test_natscale_axes.py::TestLogAxisTicks::test_price_under_yscale_log',
  '_dash_stata_pick': 'test/test_stata_ticks.py::TestTheRangeRule::test_mismatch_falls_to_model',
+ '_dash_minor_pool_size': 'test/test_minor_label_pool_d1d.py::TestThePoolSize::test_bound_holds_over_any_scale',
  '_dash_renumber_text_axes': 'test/test_axis_order_d9b.py::TestTextFollowsItsAxis::test_renumbered',
  '_dash_stata_or_model': 'test/test_stata_ticks.py::TestTheRangeRule::test_mismatch_falls_to_model',
  '_dash_stata_num': 'test/test_stata_ticks.py::TestTheRangeRule::test_a_bad_table_is_none',

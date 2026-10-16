@@ -41043,6 +41043,34 @@ def _dash_axis_innermost(fig, ax, side=None):
     return not on or on[0] is ax
 
 
+def _dash_minor_pool_size(n_build, n_minor, count, margin):
+    """The Labels a far-side or outer axis's ``##N`` pool holds (WP-31
+    D1d): S35's ``2 * n_build + 2 * max(N - 1, 1) + 4`` for *n_build*
+    labels at build, raised for a ``#count`` axis to the bound of twoway's
+    rule over any scale it can take -- at most count + 1 majors (natscale's
+    largest answer), N positions an interval and four more intervals, the
+    span widened by its *margin* (:func:`_dash_margin_pair`) either side --
+    and capped at the tick cap.  Pure arithmetic."""
+    try:
+        nm = max(int(n_minor), 1)
+        nb = max(int(n_build), 0)
+    except (TypeError, ValueError, OverflowError):
+        return 4
+    k = 2 * nb + 2 * max(nm - 1, 1) + 4
+    try:
+        c = int(count) if count is not None else None
+    except (TypeError, ValueError, OverflowError):
+        c = None
+    if c is not None and c > 0:
+        f = _dash_margin_pair(margin)
+        pad = 0.0
+        if f is not None and f[0] + f[1] < 0.9:
+            pad = max(f[0], f[1], 0.0) / (1.0 - f[0] - f[1])
+        k = max(k, math.ceil((min(c, _MAX_AXIS_TICKS) + 4) * nm
+                             * (1.0 + 2.0 * pad)))
+    return min(k, _MAX_AXIS_TICKS + 1)
+
+
 def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
                             size, color, angle, side, anchor=None):
     """The label model(s) of one axis's minor labels (WP-31 D1, D-24.b):
@@ -41452,7 +41480,13 @@ def _dash_finish_minor_ticks(fig):
                 if e.get("refinish"):
                     continue
                 look, size, color, angle, side = mn["look"]
-                k = 2 * len(pl) + 2 * max(int(mn["lb"]) - 1, 1) + 4
+                # WP-31 D1d: as many Labels as any scale the axis can take
+                # after a move or a zoom places (the saved page cannot add
+                # models after load).
+                k = _dash_minor_pool_size(
+                    len(pl), mn["lb"], _dash_count_of(e.get("base")),
+                    (getattr(fig, "_dash_margin", None) or {}).get(
+                        e["letter"]))
                 pool, _src = _dash_minor_label_model(
                     fig, ax, mn["which"], mn["axis_no"], [0.0] * k,
                     [""] * k, look, size, color, angle, side,
@@ -60328,6 +60362,8 @@ class ServerAppBuilder:
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
+                         # D1d: the outer axes' minor-label pool.
+                         "_dash_minor_pool_size",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
                          "_dash_add_code_text", "_dash_label_key",

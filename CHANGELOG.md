@@ -529,7 +529,7 @@ and now matches Stata.
 
 - with three or more axes of a letter and the first layer off axis 1 the axes were drawn in the order the layers first used them, and text(..., yaxis(#)) kept its typed number when its axis was renumbered; the axes are drawn in number order and the text stays on its axis, as twoway draws them (WP-31, D9b)
 
-<!-- WP-31 D1d -->
+- a far-side or outer axis's ##N minor labels after a filter move stopped at the build's label pool (58 of twoway's 79 on a #8 ##10 axis); every label twoway draws is drawn (WP-31, D1d)
 
 - by(..., style(econ)), style(stata7) and style(rescale) were named and drew the default style (rescale its scales only); they draw as twoway, through the by() words and options their bygraphstyle files give -- econ's edkbg panels, stata7's two-label axes on every panel, rescale's own axes with three labels (WP-31, D10c)
 

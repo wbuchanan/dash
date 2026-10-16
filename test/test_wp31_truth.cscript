@@ -12570,6 +12570,70 @@ if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
 }
 * ==== end S45 ====
 
+python:
+def _u45_pool(page, need):
+    """u45_bad: "" when the saved page's axis-2 minor-label pool holds at
+    least *need* Labels, else its size (WP-31 D1d)."""
+    import json
+    import re
+    from sfi import Macro
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    n = len(re.findall(r'"name":"Label","id":"[^"]+","attributes":\{[^{}]*"name":"dash_minor_labels","tags":\["y","2"\]', html))
+    Macro.setGlobal("u45_pool", str(n))
+    Macro.setGlobal("u45_bad", "" if n >= int(need) else "pool %d < %s" % (n, need))
+end
+
+* ==== S45 D1d: The outer axis's minor-label pool covers a move ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
+    display as text "S45 start " c(current_date) " " c(current_time)
+    local u45d "`w31_work'/s45d1d"
+    capture mkdir "`u45d'"
+
+    // U45-05: over the rows a move to 579.2-1015.5 keeps, twoway draws
+    // its ymlabel(##10, axis(2)) labels; the page built over all the rows
+    // holds a pool of at least that many for the move.
+    clear
+    quietly set obs 62
+    quietly generate double z = 544.565209100813 + (_n - 1) * (1492.1494388394729 - 544.565209100813) / 59 in 1/60
+    quietly replace z = 579.1993581170549 in 61
+    quietly replace z = 1015.5177101036923 in 62
+    quietly generate double a = 10 + _n / 2
+    quietly generate double obs = _n
+    preserve
+    quietly keep if z >= 579.1993581170549 & z <= 1015.5177101036923
+    capture twoway (scatter a obs) (scatter z obs, yaxis(2)), ylabel(#8, axis(2)) ymlabel(##10, axis(2)) name(u45g, replace)
+    _w31_expect U45-05 "(_rc == 0)" "twoway rc `=_rc'"
+    // The minor set is a rule (S24): delta / between from the major
+    // minimum, over the region's scale, the majors left out.
+    local u45b = 0`.u45g.yaxis2.minor._between_ticks'
+    local u45m0 = `.u45g.yaxis2.major.min'
+    local u45dl = `.u45g.yaxis2.major.delta'
+    local u45lo = `.u45g.yaxis2.plotregion.yscale.curmin'
+    local u45hi = `.u45g.yaxis2.plotregion.yscale.curmax'
+    local u45need 0
+    if `u45b' > 0 & `u45dl' > 0 {
+        local u45d1 = `u45dl' / `u45b'
+        local u45v = `u45m0' - `u45d1' * floor((`u45m0' - `u45lo') / `u45d1' + 1e-9)
+        while `u45v' <= `u45hi' + 1e-9 * `u45dl' {
+            if abs((`u45v' - `u45m0') / `u45dl' - round((`u45v' - `u45m0') / `u45dl')) > 1e-6 local ++u45need
+            local u45v = `u45v' + `u45d1'
+        }
+    }
+    restore
+    capture noisily dash (scatter a obs) (scatter z obs, yaxis(2)), ylabel(#8, axis(2)) ymlabel(##10, axis(2)) saving("`u45d'/p.html", replace)
+    _w31_expect U45-05 "(_rc == 0)" "dash rc `=_rc'"
+    python: import __main__ as _u45_m; _u45_m._u45_pool(r"`u45d'/p.html", "`u45need'")
+    _w31_expect U45-05 "(`u45need' > 0)" "twoway drew no minor label"
+    _w31_expect U45-05 `"("${u45_bad}" == "")"' `"${u45_bad}"'
+    _w31_done U45-05 "the axis-2 pool (${u45_pool}) covers twoway's `u45need' kept-row labels"
+    capture graph drop u45g
+    macro drop u45_*
+    display as text "S45 end " c(current_date) " " c(current_time)
+}
+* ==== end S45 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
