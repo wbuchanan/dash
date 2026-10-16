@@ -442,6 +442,7 @@ program define _dash_require_mata
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
+        _dash_legend_first_refusal ///
         _dash_axlabel_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
@@ -3408,6 +3409,14 @@ program define _dash_check_legend
     // keywords only when Mata says it is.
     mata: _dash_text_args(0, 0, 0)
     local legval : copy local _dash_txt
+    // A word twoway cannot read before the keyword is refused first, as
+    // twoway reads them left to right: legend(po(9) top) is "option po()
+    // not allowed" (WP-31 D16; tabs_legend_edges_truth.json legend.*).
+    mata: st_local("_lgm", _dash_legend_first_refusal(st_local("legval")))
+    if `: length local _lgm' {
+        mata: _dash_say("err", "", st_local("_lgm"), "")
+        exit 198
+    }
     local rest `"`macval(legval)'"'
     while `: length local rest' {
         gettoken tok rest : rest, bind quotes

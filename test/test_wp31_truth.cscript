@@ -9762,6 +9762,76 @@ if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
 }
 * ==== end S39 ====
 
+python:
+def _u39_keys(sp, dp, app):
+    """The legend key texts, saved (u39_s) and served (u39_v), joined by
+    "|"."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Legend
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u39k_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u39k_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+
+    def keys(figs):
+        out = []
+        for f in figs:
+            for lg in f.select({"type": Legend}):
+                for it in lg.items:
+                    lab = it.label
+                    out.append(lab.get("value") if isinstance(lab, dict)
+                               else str(getattr(lab, "value", lab)))
+        return "|".join(out)
+    Macro.setGlobal("u39_s", keys(list(r.figures.values())))
+    Macro.setGlobal("u39_v", keys(list(doc.roots)))
+end
+* ==== S39 D16: legend edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
+    display as text "S39 start " c(current_date) " " c(current_time)
+    local u39d "`w31_work'/s39b"
+    capture mkdir "`u39d'"
+    dash clear
+    sysuse auto, clear
+    // U39-06: legend(label(1)) on two layers draws key 1 with no text and
+    // label(1 "A") draws A, as twoway draws them (label.one, label.one_text:
+    // twoway's SVG holds Price and no Mileage (mpg)), saved and served.
+    local bad ""
+    local j 0
+    foreach c in `"label(1)|"' `"label(1 "A")|A"' {
+        local ++j
+        gettoken lo want : c, parse("|")
+        local want = substr(`"`want'"', 2, .)
+        dash clear
+        quietly dash scatter mpg weight || scatter price weight, legend(`lo') name(u39k)
+        _dash_serve_spec, specpath("`u39d'/s`j'.json") datapath("`u39d'/d`j'.json")
+        python: import __main__ as _u39_m; _u39_m._u39_keys("`u39d'/s`j'.json", "`u39d'/d`j'.json", "`u39d'/a`j'.py")
+        foreach m in s v {
+            if `"${u39_`m'}"' != `"`want'|Price"' local bad `"`bad' `lo' `m': ${u39_`m'};"'
+        }
+    }
+    _w31_expect U39-06 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U39-06 "legend(label(1)) blanks key 1 and label(1 text) draws it, saved and served"
+    macro drop u39_s u39_v
+    dash clear
+    display as text "S39 end " c(current_date) " " c(current_time)
+}
+* ==== end S39 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -917,7 +917,7 @@ and now matches Stata.
 
 - tabs() with a name that is not registered, a tab's layout() it cannot read, and layout() placing two names in one cell are refused, r(198), and the message names them; the name was dropped from the tab, and the second graph took the cell, without a word. (WP-31, D14)
 
-<!-- WP-31 D16 -->
+- legend(po(9) top) named top; it is now refused with twoway's first line, "option po() not allowed", r(198); the words inside legend(region()) and legend(title()) are checked as twoway checks them (legend(region(xx)) and legend(title("T", xx)): "option xx not allowed", r(198)). (WP-31, D16)
 
 <!-- WP-31 E1 -->
 
@@ -1045,7 +1045,7 @@ Changed behaviour.
 
 - A tab takes its own layout(): tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) draws the first tab as one row of two, saved and served. layout(s1:1,1 s2:1,1) in a spec that did not come through dash build drew s2 in the cell and lost s1 in both modes; s1 keeps the cell, s2 takes the next free one and a note says so. (WP-31, D14)
 
-<!-- WP-31 D16 -->
+- title("T", prefix suffix) prints twoway's line, "option prefix ignored, may not be combined with suffix", and draws T; legend(title("T", color(red) size(large))) draws the legend title red and large, where both were dropped; legend(label(1)) blanks key 1 in both modes (since D4). (WP-31, D16)
 
 <!-- WP-31 E13 -->
 

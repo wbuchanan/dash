@@ -34702,6 +34702,25 @@ def _dash_legend_box(legend, calls, words):
             legend.title_text_font_style = "normal"
             legend.title_text_font_size = legend.label_text_font_size
             legend.title_text_color = legend.label_text_color
+            # The title's own color() and size(), as twoway draws them; a
+            # name it does not know is noted and the default kept (WP-31
+            # D16, tabs_legend_edges_truth.json nested.title_*).
+            if _sub.get("color"):
+                c = _colour(_sub["color"], "legend(title(color))")
+                if c and c != "none":
+                    legend.title_text_color = c
+            if _sub.get("size"):
+                try:
+                    _base = float(str(legend.label_text_font_size)[:-2])
+                except (TypeError, ValueError):
+                    _base = 10.0
+                try:
+                    _pt = T.resolve_size(str(_sub["size"]), "text", _base)
+                    if not 0 < _pt <= 1000:
+                        raise ValueError("not a size")
+                    legend.title_text_font_size = f"{round(_pt, 3):g}pt"
+                except (ValueError, TypeError):
+                    _note("title(size)", _sub["size"], "size")
     if "nobox" in words and "box" not in words:
         legend.border_line_color = None
         legend.background_fill_color = None

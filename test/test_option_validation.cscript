@@ -2392,6 +2392,57 @@ capture erase "`_u391h'"
 capture dash clear
 _u05_judge U39-01 `"`bad'"' "tabs() names and per-tab layout() checked, same-cell placements refused, as layout() refuses its errors"
 
+// U39-03 (WP-31 D16): twoway refuses the first legend() word it cannot
+// read, left to right: legend(po(9) top) is "option po() not allowed";
+// legend(top po(9)) and legend(top) "option top not allowed", where dash
+// adds its position() advice (tabs_legend_edges_truth.json legend.*).
+local bad ""
+_u05_rc "scatter mpg weight, legend(po(9) top)" "option po() not allowed"
+if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [po(9) top: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+foreach c in "legend(top po(9))" "legend(top)" {
+    _u05_rc "scatter mpg weight, `c'" "option top not allowed"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`c': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_judge U39-03 `"`bad'"' "legend() words refused left to right in twoway's words"
+
+// U39-04 (WP-31 D16): title("T", prefix suffix) prints twoway's line and
+// is drawn (title.prefix_suffix), whichever comes first.
+local bad ""
+foreach c in `"title("T", prefix suffix)"' `"title("T", suffix prefix)"' {
+    _u05_rc `"scatter mpg weight, `c'"' "option prefix ignored, may not be combined with suffix"
+    if r(trc) != 0 | r(drc) != 0 | r(tn) != 1 | r(dn) != 1 {
+        local bad `"`bad' [`c': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_rc `"scatter mpg weight, title("T", prefix)"' "option prefix ignored"
+if r(trc) != 0 | r(drc) != 0 | r(tn) != 0 | r(dn) != 0 {
+    local bad `"`bad' [prefix alone: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+_u05_judge U39-04 `"`bad'"' "title(, prefix suffix) prints twoway's ignored line"
+
+// U39-05 (WP-31 D16): the words inside legend(region()) and
+// legend(title()) are read as twoway reads them: an unknown word is
+// refused, "option xx not allowed", r(198); a style name it does not know
+// is drawn with a note, rc 0 (nested.*).
+local bad ""
+foreach c in "legend(region(xx))" `"legend(title("T", xx))"' "legend(region(lcolor(red) xx))" `"legend(title("T", size(large) xx))"' {
+    _u05_rc `"scatter mpg weight, `c'"' "option xx not allowed"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`c': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach c in "legend(region(lcolor(bogus)))" "legend(region(fcolor(red)))" `"legend(title("T", size(bogus)))"' `"legend(title("T", size(large)))"' "legend(region(lwidth(bogus)))" `"legend(title("T", color(bogus)))"' `"legend(title("T"))"' {
+    _u05_rc `"scatter mpg weight, `c'"' ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_judge U39-05 `"`bad'"' "words inside legend(region()) and legend(title()) refused or taken as twoway does"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

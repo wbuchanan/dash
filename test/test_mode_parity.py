@@ -2649,6 +2649,8 @@ CORPUS = [
     _case("tabs per-tab layout", bo={"tabs": "A: g1 g2, layout(1 2) / B: g3"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")]),
                   ("g3", [_sc()])]),
+    _case("legend label(1) blank", [_sc(), plot_for("line")],
+          go={"legend": 'label(1) title("T", color(red) size(large))'}),
 ]
 
 

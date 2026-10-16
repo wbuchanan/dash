@@ -120,6 +120,10 @@
 *!   _dash_layout_refusal(layout, registry)
 *!       "" when dash build can draw layout() as written, else the refusal.
 *!
+*!   _dash_legend_first_refusal(text)
+*!       twoway's refusal of a legend() word before top/bottom/left/right,
+*!       or "" (WP-31 D16).
+*!
 *!   _dash_tabs_unwrap(tabs)
 *!       tabs() less one pair of quotes around the whole value (WP-31 D14).
 *!
@@ -9315,6 +9319,15 @@ real scalar _dash_subreq_check(string scalar kind)
             _dash_subreq_clear()
             return(198)
         }
+        // 2b. The words inside region() and the legend's own titles, read
+        //     with twoway's region and title tables (WP-31 D16): they
+        //     reached the renderer unread.
+        msg = _dash_subreq_nested(toks, names)
+        if (msg != "") {
+            _dash_say("err", "", msg, "")
+            _dash_subreq_clear()
+            return(198)
+        }
         // 3. twoway's notes, once each.
         lastpos   = ""
         lastring  = ""
@@ -9413,6 +9426,22 @@ real scalar _dash_subreq_check(string scalar kind)
             _dash_subreq_toks(kinds[k], toks, cid)
             if (cols(toks) == 0) continue
             fam = (substr(kinds[k], 1, 8) == "axtitle:" ? "axtitle" : "title")
+            if (fam == "title") {
+                // twoway takes the suffix and prints this line, rc 0
+                // (WP-31 D16; tabs_legend_edges_truth.json title.*).
+                for (c = 1; c <= max(cid); c++) {
+                    hasp = 0
+                    hass = 0
+                    for (i = 1; i <= cols(toks); i++) {
+                        if (cid[i] != c) continue
+                        if (_dash_so_canon(toks[i], "title") == "prefix") hasp = 1
+                        if (_dash_so_canon(toks[i], "title") == "suffix") hass = 1
+                    }
+                    if (hasp & hass) {
+                        _dash_say("txt", "option prefix ignored, may not be combined with suffix", "", "")
+                    }
+                }
+            }
             if (fam == "axtitle") {
                 for (c = 1; c <= max(cid); c++) {
                     hasp = 0
@@ -9439,6 +9468,64 @@ real scalar _dash_subreq_check(string scalar kind)
         return(0)
     }
     return(0)
+}
+
+// _dash_subreq_nested(toks, names) -- twoway's refusal of a word inside a
+// legend's region() (the region table) or its title(), subtitle(), note(),
+// caption() or t1title() ... r2title() (the title table, after the text's
+// comma), or "" (WP-31 D16).  toks are the legend's words and names their
+// canonical names (_dash_so_resolve).  Measured: legend(region(xx)) and
+// legend(title("T", xx)) are "option xx not allowed", r(198); a style
+// name it does not know is drawn with a note (the renderer's).
+string scalar _dash_subreq_nested(string rowvector toks, string rowvector names)
+{
+    string rowvector w, nm
+    string scalar    v, body, sub, msg
+    real scalar      i, at
+
+    for (i = 1; i <= cols(toks); i++) {
+        if (i > cols(names)) break
+        if (!strpos(toks[i], "(")) continue
+        v = _dash_rep_value(toks[i])
+        if (names[i] == "region") {
+            w = _dash_rep_toks(v, 0)
+            if (cols(w) == 0) continue
+            if (_dash_so_resolve(w, J(1, cols(w), 1), "region", nm, msg, at)) return(msg)
+        }
+        else if (anyof(("title", "subtitle", "note", "caption", "t1title",
+                        "t2title", "b1title", "b2title", "l1title",
+                        "l2title", "r1title", "r2title"), names[i])) {
+            sub = ""
+            if (!_dash_rep_split(v, body, sub)) continue
+            w = _dash_rep_toks(sub, 1)
+            if (cols(w) == 0) continue
+            if (_dash_so_resolve(w, J(1, cols(w), 1), "title", nm, msg, at)) return(msg)
+        }
+    }
+    return("")
+}
+
+// _dash_legend_first_refusal(text) -- twoway's refusal of legend() text
+// whose first word twoway cannot read comes before a bare top, bottom,
+// left or right, or "" (WP-31 D16).  twoway reads the words left to right:
+// legend(po(9) top) is "option po() not allowed", which _dash_check_legend
+// named top for.  Where the keyword comes first, or there is none, "":
+// _dash_check_legend and _dash_subreq_check answer as before.
+string scalar _dash_legend_first_refusal(string scalar text)
+{
+    string rowvector toks, names, kw
+    string scalar    msg
+    real scalar      at, j
+
+    toks = _dash_rep_toks(text, 0)
+    if (cols(toks) == 0) return("")
+    kw = ("top", "bottom", "left", "right")
+    if (!_dash_so_resolve(toks, J(1, cols(toks), 1), "legend", names, msg, at)) return("")
+    if (anyof(kw, toks[at])) return("")
+    for (j = at + 1; j <= cols(toks); j++) {
+        if (anyof(kw, toks[j])) return(msg)
+    }
+    return("")
 }
 
 // _dash_subreq_region(v) -- twoway's refusal of one region copy's value v,

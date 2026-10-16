@@ -973,7 +973,15 @@ there, is an invalid point.  The literal is read as data and never run.
     r(121)), a {cmd:label()} key that is no positive integer, and
     {cmd:ytitle("Y", prefix suffix)}.  {cmd:legend(position(13))}, a
     non-numeric {cmd:ring()} and a non-integer {cmd:order()} word draw the
-    default with {cmd:twoway}'s note.  {cmd:rows()} wins over
+    default with {cmd:twoway}'s note.  {cmd:legend()}'s words are read left
+    to right, as {cmd:twoway} reads them, so {cmd:legend(po(9) top)} is
+    {cmd:option po() not allowed}; the words inside
+    {cmd:legend(region())} and {cmd:legend(title())} are checked as
+    {cmd:twoway} checks them ({cmd:legend(region(xx))}: {cmd:option xx not allowed}),
+    and the legend title's {cmd:color()} and {cmd:size()} are drawn.
+    {cmd:title("T", prefix suffix)} prints {cmd:twoway}'s line,
+    {cmd:option prefix ignored, may not be combined with suffix}, and draws
+    the title.  {cmd:rows()} wins over
     {cmd:cols()}, and in one copy a word wins over its {cmd:no} form
     ({cmd:on} over {cmd:off}, {cmd:grid} over {cmd:nogrid}).  Repeated
     copies merge sub-option by sub-option under the full name, the last

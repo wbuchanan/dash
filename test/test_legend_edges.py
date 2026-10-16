@@ -1,0 +1,140 @@
+"""legend() and title() edges (WP-31 D16, section 39).
+
+GAPS3 D16: ``legend(po(9) top)`` named ``top`` where twoway refuses
+``po()`` first; ``title("T", prefix suffix)`` printed no line where twoway
+prints "option prefix ignored, may not be combined with suffix"; the words
+inside ``legend(region())`` and ``legend(title())`` were not checked.
+
+Measured (test/fixtures/tabs_legend_edges_truth.json): twoway refuses the
+first legend() word it cannot read, left to right; it refuses an unknown
+word inside region() or title() as "option xx not allowed", r(198); it
+draws title(, size()) and title(, color()) inside legend() and notes a
+style name it does not know.  label(1) with no text blanks key 1 (drawn
+since WP-31 D4; the regex and both modes are pinned here as guards).
+"""
+import json
+import os
+import sys
+import warnings
+
+import pytest
+from bokeh.models import Legend, Title
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, _HERE)
+
+import dash_render as dr
+import test_tabs_layout_edges as T
+
+_FIXTURE = os.path.join(_HERE, "fixtures", "tabs_legend_edges_truth.json")
+_TRUTH = json.load(open(_FIXTURE))
+MODES = ("saved", "served")
+
+
+def _two_layer(go):
+    sp = T._spec(["g1"])
+    g = sp["graphs"][0]
+    g["graph_options"].update(go)
+    g["plots"].append({"type": "scatter", "yvar": "weight", "xvar": "mpg",
+                       "options": {}})
+    return sp
+
+
+def _legends(roots):
+    return [lg for r in roots for lg in r.select({"type": Legend})]
+
+
+def _key_texts(roots):
+    out = []
+    for lg in _legends(roots):
+        for it in lg.items:
+            lab = it.label
+            out.append(lab.get("value") if isinstance(lab, dict)
+                       else getattr(lab, "value", lab))
+    return out
+
+
+class TestLabelBlank:
+    def test_regex(self):
+        m = dr._DASH_LEGEND_LABEL_RE.fullmatch("1")
+        assert m and m.group(1) == "1" and m.group(2) is None
+        m = dr._DASH_LEGEND_LABEL_RE.fullmatch('1 "A"')
+        assert m and m.group(2).strip() == '"A"'
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_blank(self, mode):
+        """twoway draws key 1 with no text (fixture label.one)."""
+        assert "Mileage (mpg)" not in (_TRUTH["label"]["one"]["svg_texts"]
+                                       or [])
+        roots, _ = T._root(mode, _two_layer({"legend": "label(1)"}))
+        texts = _key_texts(roots)
+        assert texts and texts[0] == "", texts
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_text(self, mode):
+        assert "A" in _TRUTH["label"]["one_text"]["svg_texts"]
+        roots, _ = T._root(mode, _two_layer({"legend": 'label(1 "A")'}))
+        assert _key_texts(roots)[0] == "A"
+
+
+class TestPrefixSuffix:
+    @pytest.mark.parametrize("mode", MODES)
+    def test_winner(self, mode):
+        """twoway draws the title's text, T, with prefix and suffix both
+        given (fixture title.prefix_suffix)."""
+        rec = _TRUTH["title"]["prefix_suffix"]
+        assert rec["rc"] == 0 and "T" in rec["svg_texts"]
+        roots, _ = T._root(mode, _two_layer({"title": '"T", prefix suffix'}))
+        titles = [t.text for r in roots for t in r.select({"type": Title})
+                  if t.text]
+        assert "T" in titles, titles
+
+
+class TestTheChecks:
+    def test_records(self):
+        for grp, keys in (("legend", ("po9_top", "top_po9", "top")),
+                          ("title", ("prefix_suffix", "suffix_prefix")),
+                          ("nested", ("region_lcolor_bogus",
+                                      "region_fcolor_red", "region_bad_word",
+                                      "title_size_bogus", "title_size_large",
+                                      "title_bad_word"))):
+            for k in keys:
+                assert "rc" in _TRUTH[grp][k] and "lines" in _TRUTH[grp][k]
+        assert _TRUTH["legend"]["po9_top"]["first"] == "option po() not allowed"
+        assert _TRUTH["title"]["prefix_suffix"]["lines"] == [
+            "option prefix ignored, may not be combined with suffix"]
+
+    def test_kinds_exist(self):
+        """Mata checks the words inside legend(region()) and
+        legend(title()), and the legend's words in twoway's order."""
+        src = open(os.path.join(_HERE, "..", "dash_parse.mata"),
+                   encoding="utf-8").read()
+        assert "_dash_subreq_nested(" in src
+        assert "_dash_legend_first_refusal(" in src
+
+
+class TestLegendTitleStyle:
+    """legend(title("T", color() size())): twoway draws them (fixture
+    nested.title_size_large) and notes a name it does not know
+    (nested.title_size_bogus, nested.title_color_bogus)."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_drawn(self, mode):
+        roots, _ = T._root(mode, _two_layer(
+            {"legend": 'title("T", color(red) size(large))'}))
+        lg = _legends(roots)[0]
+        assert lg.title == "T"
+        assert str(lg.title_text_color).lower() in ("#ff0000", "red"), \
+            lg.title_text_color
+        assert lg.title_text_font_size != lg.label_text_font_size
+
+    @pytest.mark.parametrize("probe,word,key", [
+        ('title("T", color(bogus))', "colour", "title_color_bogus"),
+        ('title("T", size(bogus))', "size", "title_size_bogus"),
+    ])
+    def test_named(self, probe, word, key):
+        assert _TRUTH["nested"][key]["rc"] == 0
+        assert "bogus" in _TRUTH["nested"][key]["lines"][0]
+        _, msgs = T._root("saved", _two_layer({"legend": probe}))
+        assert any("bogus" in m and word in m for m in msgs), msgs

@@ -489,6 +489,10 @@ COVERAGE = {
         # cell read without its leading zeros.
         "_dash_tabs_refusal": ("test_option_validation.cscript:U39-01",),
         "_dash_tabs_unwrap": ("test_option_validation.cscript:U39-01",),
+        # WP-31 D16: legend() words in twoway's order; the words inside
+        # legend(region()) and legend(title()).
+        "_dash_legend_first_refusal": ("test_option_validation.cscript:U39-03",),
+        "_dash_subreq_nested": ("test_option_validation.cscript:U39-05",),
         "_dash_layout_digits": ("test_option_validation.cscript:U39-01",),
         # WP-31 D6: the axis label forms twoway refuses.
         "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),
