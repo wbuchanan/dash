@@ -473,6 +473,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit pending.
 - **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.
+- **D1d Tracked:** Open (WP-31 section 45).
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
@@ -485,8 +486,11 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit 8768cac.
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
 - **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit pending.
+- **D9b Tracked:** Open (WP-31 section 45).
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit pending.
+- **D10b Tracked:** Open (WP-31 section 39).
 - **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit pending.
+- **D11b Tracked:** Open (WP-31 section 39).
 - **D12 Tracked:** Open (WP-31 section 38).
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Open (WP-31 section 42).

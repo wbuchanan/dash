@@ -523,6 +523,14 @@ and now matches Stata.
 
 <!-- WP-31 E11b -->
 
+<!-- WP-31 D10b -->
+
+<!-- WP-31 D11b -->
+
+<!-- WP-31 D9b -->
+
+<!-- WP-31 D1d -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security

@@ -293,3 +293,28 @@ AC-45.1 every probe equal at build; AC-45.2 the three auto misses equal; AC-45.3
 - **For S36 (by-remainder, landed):** the `style(rescale) noyrescale` x count (test_by_scales.py:426) is a by() grammar matter; with D-45a the panel's x range under that style is what dash.ado summarizes -- if S36 made the range right, the xfail may now pass (strict xfail would then FAIL: 45-02 checks and, if so, flips it with `Flipped:` and the reason "the panel's ticks are Stata's own at build").
 - **python_exec hazard** as S40.
 - **Decisions for ratification:** D-45b (model kept as fallback; xfails retargeted), D-45d's branch.
+
+## Addendum (16oct2026, DECISIONS D32): row D9b added to this section
+
+### D9b: With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis
+
+**Gap.** `_dash_lone_second_axes` renumbers only when the first layer is not on axis 1; `text()`'s yaxis()/xaxis() keeps its typed number.
+
+**Requirement.** Probe twoway with three and four y axes in several first-use orders (extend scripts/extract_axis2_move_truth.do); renumber axes 2-9 by that rule; carry text(..., yaxis(#)) with its axis; both modes, kept after a move.
+
+**Fits S45** because S45 owns the axis finish (R11) in batch 15.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D9b)`; close the BUGS.md entry "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis" (Resolution ending `Closes GAPS3 D9 (WP-31, D9b).`), delete its `"D9b":` WP31_OPEN line, rewrite GAPS3.md's `- **D9b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D9b -->` under `### Results that change` with a line ending `(WP-31, D9b)`. dash replaces twoway (D13).
+
+## Addendum (16oct2026, DECISIONS D32): row D1d added to this section
+
+### D1d: An outer axis's ##N minor labels after a move are capped at its build's label pool
+
+**Gap.** S35's pool is `2 * n_build + 2*max(N-1,1) + 4` Labels; the saved page cannot add models after load.
+
+**Requirement.** Size the pool from the ##N rule's bound over the axis's full data range (or the tick cap), with a test that zooms/moves to the largest count; both modes.
+
+**Fits S45** because S45 owns the axis finish JS in batch 15.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D1d)`; close the BUGS.md entry "An outer axis's ##N minor labels after a move are capped at its build's label pool" (Resolution ending `Closes GAPS3 D1 (WP-31, D1d).`), delete its `"D1d":` WP31_OPEN line, rewrite GAPS3.md's `- **D1d Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D1d -->` under `### Results that change` with a line ending `(WP-31, D1d)`. dash replaces twoway (D13).
+

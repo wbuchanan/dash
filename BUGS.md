@@ -4005,3 +4005,27 @@
   - Description: GAPS3.md E11, found by WP-31 section 32 (E11): _init_properties reads every gsize (heading, axis_title, tick_label, note, ...) through _gsize, which converts a #pt value at 4 / size_ref_in, before it sets size_ref_in to min(graphsize x, graphsize y); the first read finds no size_ref_in and uses 4.0. A user scheme with `graphsize x 3.12  graphsize y 2.392` and `gsize heading 12pt` draws the heading as if at 4 in. E11's per-figure copies (_dash_scheme_at_ref) set the reference first and are right.
   - Suggested fix: WP-31 section 44 (style file resolver): set size_ref_in from the scheme's graphsize before the first _gsize read (read graphsize first), measured against twoway with such a user scheme.
   - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn
+  - File Names and Line Numbers: dash_render.py _dash_share_by_scales, _dash_by_apply_regions, _dash_by_side_grid, _dash_graph_margin (skips by() graphs)
+  - Description: GAPS3.md D10, found by WP-31 sections 36 and 37 (D10 and D11 residuals): shrink and overallshrink (twoway draws the panels' contents x .795, measured), by()'s graphregion()/plotregion() margin() (twoway insets the whole array once; dash strips it and names it, and _dash_graph_margin skips by() graphs), by()'s plotregion() outline (drawn on each panel's border, not once around the array) and the bystyles econ, stata7, combine, rescale and altleg beyond their scales stay named or differ.
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): draw each as twoway draws it, measured (S36's fixture by_remainder_truth.json has the probes), in both renderers, or document a measured limit (M17).
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: margin(l+1e400) draws zeros with a note where twoway draws a medium margin
+  - File Names and Line Numbers: dash_render.py _dash_margin_sides; dash_parse.mata _dash_margin_term_rc
+  - Description: GAPS3.md D11, found by WP-31 section 37 (D11): a margin term past double precision (l+1e400) is read by twoway as missing, noted as gsize "." and drawn medium; dash draws zeros with a note. The drawn size of a unit after an operator (l+3pt) is accepted by both but not measured.
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): read an overflowing term as twoway does (medium, with its note) and measure l+3pt's geometry, in both renderers.
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis
+  - File Names and Line Numbers: dash_render.py _dash_lone_second_axes, _dash_renumber_axis_options; the added-text axis reader
+  - Description: GAPS3.md D9, found by WP-31 section 35 (D9 residual): D9 draws the first-used axis first, but with three or more axes and the first layer on axis 1 the order of the others is dash's number order (twoway's first-use order not measured), and an added text(..., yaxis(#)) is not moved when its axis is renumbered.
+  - Suggested fix: WP-31 section 45 (date ticks natscale): measure twoway's order of axes 2-9 by first use and renumber added text with its axis, in both renderers.
+  - Resolution: Not fixed because WP-31 section 45 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: An outer axis's ##N minor labels after a move are capped at its build's label pool
+  - File Names and Line Numbers: dash_render.py _dash_apply_minor_ticks (the Label pool), _DASH_AXIS_FINISH_JS dash_minor_place
+  - Description: GAPS3.md D1, found by WP-31 section 35 (D1b residual): far-side and outer axes draw ##N labels from a pool of Labels sized twice the build's count plus a few; a move that needs more draws only that many.
+  - Suggested fix: WP-31 section 45 (date ticks natscale): size the pool by the axis's largest possible label count (the tick cap) or grow it, measured, in both renderers.
+  - Resolution: Not fixed because WP-31 section 45 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

@@ -100,13 +100,13 @@
 | 36 | by-remainder | D10 + D3b (D24) | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
-| 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) + D4b (D25) | 13 | 31 | -- | green | S | 3 |
+| 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) + D4b (D25) + D10b (D32) + D11b (D32) | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) + C17b (D30) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
 | 44 | style-file-resolver | E10 + C8c (D18) + E11b (D31) | 15 | 40 | -- | red | L | 4 |
-| 45 | date-ticks-natscale | D15 | 15 | 01 | -- | red | L | 3 |
+| 45 | date-ticks-natscale | D15 + D9b (D32) + D1d (D32) | 15 | 01 | -- | red | L | 3 |
 | 46 | estimator-edges | C11, C12, C16, G6, G7, F5 + C10d (D14) | 15 | 01 | -- | yellow | M | 4 |
 | 47 | function-fallback-fixtures | F2, F3 + C18b (D14) | 16 | 01 | -- | yellow | M | 3 |
 | 48 | data-table | H2t (new) | 16 | 01 | 53, 54 | yellow | L | 4 |
@@ -157,6 +157,10 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D6b | alternate on an axis(2) to axis(9) label option is named, not drawn (D30) | S33 | S35 (12) | RC |
 | C17b | lal() is read as dash's lalpha() where twoway reads it as lalign() (D30) | S34 | S41 (14) | CB |
 | E11b | A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches (D31) | S32 | S44 (15) | RC |
+| D10b | by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn (D32) | S36 | S39 (13) | RC |
+| D11b | margin(l+1e400) draws zeros with a note where twoway draws a medium margin (D32) | S37 | S39 (13) | RC |
+| D9b | With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis (D32) | S35 | S45 (15) | RC |
+| D1d | An outer axis's ##N minor labels after a move are capped at its build's label pool (D32) | S35 | S45 (15) | RC |
 
 ## Batch execution order
 

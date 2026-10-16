@@ -416,3 +416,27 @@ TR-39.9's entries.
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D4b)`; close the BUGS.md entry "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn" (Resolution ending `Closes GAPS3 D4 (WP-31, D4b).`), delete its `"D4b":` WP31_OPEN line, rewrite GAPS3.md's `- **D4b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D4b -->` under `### Results that change` with a line ending `(WP-31, D4b)`. dash replaces twoway (D13).
 
+## Addendum (16oct2026, DECISIONS D32): row D10b added to this section
+
+### D10b: by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn
+
+**Gap.** S36 drew by()'s regions per panel and named the rest; S37's `_dash_graph_margin` returns early on by() graphs because their graph region holds the whole array.
+
+**Requirement.** Using `test/fixtures/by_remainder_truth.json` (re-extract with any new probes): scale the panel contents by twoway's shrink factor for shrink/overallshrink; inset the panel grid once by by()'s region margin(); draw by()'s plotregion() outline once around the array (a wrapper box on the grid layout); draw the econ, stata7, combine, rescale and altleg bystyles' remaining attributes; both modes; drop each from the note as it is drawn.
+
+**Fits S39** because S39 owns the dashboard layout checks and grid cells in batch 13.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D10b)`; close the BUGS.md entry "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn" (Resolution ending `Closes GAPS3 D10 (WP-31, D10b).`), delete its `"D10b":` WP31_OPEN line, rewrite GAPS3.md's `- **D10b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D10b -->` under `### Results that change` with a line ending `(WP-31, D10b)`. dash replaces twoway (D13).
+
+## Addendum (16oct2026, DECISIONS D32): row D11b added to this section
+
+### D11b: margin(l+1e400) draws zeros with a note where twoway draws a medium margin
+
+**Gap.** `_dash_margin_sides` gives zeros for `l+1e400`; twoway gives medium with the gsize note. `l+3pt`'s geometry is unmeasured.
+
+**Requirement.** Probe both in plotregion() and graphregion() (extend scripts/extract_region_remainder_truth.do), then match the margin and the note; both modes.
+
+**Fits S39** because S39 takes D10b's region margins in the same batch.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D11b)`; close the BUGS.md entry "margin(l+1e400) draws zeros with a note where twoway draws a medium margin" (Resolution ending `Closes GAPS3 D11 (WP-31, D11b).`), delete its `"D11b":` WP31_OPEN line, rewrite GAPS3.md's `- **D11b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D11b -->` under `### Results that change` with a line ending `(WP-31, D11b)`. dash replaces twoway (D13).
+

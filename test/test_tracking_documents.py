@@ -2037,6 +2037,10 @@ WP31_OPEN = {
     "D4b": "Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn",
     "C17b": "lal() is read as dash's lalpha() where twoway reads it as lalign()",
     "E11b": "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches",
+    "D10b": "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn",
+    "D11b": "margin(l+1e400) draws zeros with a note where twoway draws a medium margin",
+    "D9b": "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis",
+    "D1d": "An outer axis's ##N minor labels after a move are capped at its build's label pool",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2178,6 +2182,10 @@ WP31_LISTS = {
     "D6b": ("Results that change",),
     "C17b": ("Changed behaviour",),
     "E11b": ("Results that change",),
+    "D10b": ("Results that change",),
+    "D11b": ("Results that change",),
+    "D9b": ("Results that change",),
+    "D1d": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2318,6 +2326,10 @@ WP31_SECTION = {
     "D6b": 35,
     "C17b": 41,
     "E11b": 44,
+    "D10b": 39,
+    "D11b": 39,
+    "D9b": 45,
+    "D1d": 45,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2533,7 +2545,8 @@ class TestWp31Tracking:
         # 131 -> 132: D25 adds D4b.
         # 132 -> 134: D30 adds D6b, C17b.
         # 134 -> 135: D31 adds E11b.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 135
+        # 135 -> 139: D32 adds D10b, D11b, D9b, D1d.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 139
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
