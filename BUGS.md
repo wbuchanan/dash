@@ -3682,11 +3682,11 @@
   - Suggested fix: WP-31 section 46 (estimator edges): write business dates and copy twoway's error.
   - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists
+- [x] Title: The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists
   - File Names and Line Numbers: dash_render.py:16560-16563, :16627-16632, :364-381; dash.ado:2229-2234
   - Description: GAPS3.md F5, re-verified at 6370ca4: `map_qfitci` docstring still describes a 500-resample bootstrap; the code is analytic (bootstrap only on LinAlgError). The header comment at :364-381 narrates fpfitci's former bootstrap. `_dash_fold_typed`'s comment says line types are always joined in x order (false since WP-29).
   - Suggested fix: WP-31 section 46 (estimator edges): fix the three comments.
-  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, F5). map_qfitci's docstring says the band is analytic (_dash_fitci_se) with _bootstrap_ci only on a singular design (LinAlgError); the module header says _N_BOOT_DEFAULT is used only by that fallback and no longer narrates fpfitci's former bootstrap; _dash_fold_typed's comment says twoway and dash join a connected type's points in the data's order, or in x order under sort. Comments only; no behaviour changes in either renderer. Pinned by test/test_comments_true.py::TestComments::test_qfitci_docstring, test/test_comments_true.py::TestComments::test_header_no_bootstrap_narrative, test/test_comments_true.py::TestComments::test_fold_typed_comment. Closes GAPS3 F5 (WP-31, F5).
 
 - [ ] Title: The function points-free fallback evaluates ten math names only
   - File Names and Line Numbers: dash_render.py:~11683 `_SAFE_FUNCS`, :20567

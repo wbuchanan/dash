@@ -1978,7 +1978,6 @@ WP31_OPEN = {
     "C16": "A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted",
     "G6": "Fractional %t values are floored on load and join-order edge cases differ",
     "G7": "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses",
-    "F5": "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists",
     "F2": "The function points-free fallback evaluates ten math names only",
     "F3": "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values",
     "H2t": "No per-graph data table shows the rows a graph draws (the data table)",

@@ -361,10 +361,9 @@ def _dash_bokeh_check(version=None):
 # ---------------------------------------------------------------------------
 # Optional scientific dependencies
 # ---------------------------------------------------------------------------
-# One bootstrap resample count for every CI layer.  These call sites had
-# drifted to 200 in three places and 500 in a fourth, with the docstring
-# claiming 200 -- so the same band was computed to different precision
-# depending on which plot type drew it.
+# The resample count of ``_bootstrap_ci``, used only as the LinAlgError
+# fallback of the CI layers (a singular design); every band is otherwise
+# analytic, from the fit's standard errors.
 _N_BOOT_DEFAULT = 200
 
 # Stata's factory default confidence level.  dash.ado serializes the SESSION
@@ -376,10 +375,8 @@ _DEFAULT_LEVEL = 95.0
 # They used 200 and 150 respectively, over different x-ranges, so the same
 # curve drawn two ways did not overlay.
 # fpfit/fpfitci evaluate at the distinct observed x values, exactly as Stata
-# does -- this is a cap for resource exhaustion, not a grid size.  It was
-# 1000 while fpfitci's band was a 200-resample bootstrap refitting 36 models
-# per resample; the band is now Stata's analytic stdp, so the cap only has
-# to keep a pathological dataset from drawing a line of a million points.
+# does -- this is a cap for resource exhaustion, not a grid size: it only
+# keeps a pathological dataset from drawing a line of a million points.
 # nlsw88 has 1546 distinct x values, which the old cap silently replaced
 # with a 1000-point linspace.
 _FP_GRID_MAX = 20000
@@ -19265,10 +19262,11 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add a quadratic fit line with a 95% CI band to *fig*.
+        """Add a quadratic fit line with its confidence band to *fig*.
 
-        Uses a bootstrap approach (500 resamples) to compute the CI band
-        because scipy does not provide analytical CIs for polynomial regression.
+        The band is analytic (``_dash_fitci_se`` from the fit's standard
+        errors, Stata's rule); ``_bootstrap_ci`` runs only when the design is
+        singular (LinAlgError).
 
         Args:
             fig:     Bokeh Figure object.

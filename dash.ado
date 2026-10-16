@@ -2721,12 +2721,12 @@ program define _dash_fold_typed, sclass
     }
     local area_types "area rarea"
     local arrow_types "pcarrow pcbarrow pcarrowi"
-    // A bare sort: twoway joins a connected type's points in the order of x
-    // with it, and dash always joins line, connected, area, tsline and the
-    // range line and area types in that order (map_line, map_area,
-    // map_rline, map_rarea and the types drawn through them), so there it is
-    // what dash draws and is not named.  On every other type it is named, as
-    // it was.  sort(varlist) is named by _dash_parse_plot_opts on every type.
+    // A bare sort: twoway joins a connected type's points in the data's
+    // order, or in x order under sort (WP-29 P0.1); dash does the same
+    // (map_line, map_area, map_rline, map_rarea and the types drawn through
+    // them), so a bare sort on sort_types is drawn and not named.  On every
+    // other type it is named, as it was.  sort(varlist) is named by
+    // _dash_parse_plot_opts on every type.
     local sort_types "line connected area tsline rline rarea rconnected tsrline"
     mata: st_local("_ft", strofreal(st_global("s(sort)") != ""))
     if `_ft' & !`: list ptype in sort_types' {

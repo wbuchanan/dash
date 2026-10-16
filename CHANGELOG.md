@@ -1059,7 +1059,7 @@ Changed behaviour.
 
 <!-- WP-31 C16 -->
 
-<!-- WP-31 F5 -->
+- The qfitci docstring, the module header's resample-count comment and the comment above dash.ado's sort rule describe the code: an analytic band with a bootstrap only on a singular design, and points joined in the data's order (WP-31, F5)
 
 <!-- WP-31 F3 -->
 

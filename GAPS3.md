@@ -524,7 +524,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
-- **F5 Tracked:** Open (WP-31 section 46).
+- **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit pending.
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
 - **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
