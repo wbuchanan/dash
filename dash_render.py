@@ -2204,6 +2204,13 @@ _DASH_STALE_STATUS_HTML = (
     '(grid unfiltered) were computed before the filter was applied, and a '
     'saved page does not recompute them; dash serve does.</p>')
 
+#: WP-31 E10 (DECISIONS A24): the rows of every style file this process has
+#: read, keyed by the file's (realpath, st_dev, st_ino, st_size, st_mtime),
+#: so a served app that builds a parser per document reads each file once.
+#: At most SchemeParser._STYLE_FILE_MEMO_MAX entries, first in first out.
+#: The served app's copy starts empty (no path is written into an app).
+_DASH_STYLE_FILE_MEMO: dict = {}
+
 #: WP-31 B5b (D-18 risk 1): the most dots one dot layer draws.  twoway
 #: draws ndots() per observation and end (75 by default); above this many in
 #: all the rows are drawn with fewer dots, and the note says how many.
@@ -9731,6 +9738,21 @@ class SchemeParser:
     #: The longest scheme name looked for: an 80-character name plus
     #: ``.scheme``.
     _MAX_SCHEME_NAME_CHARS: int = 87
+    #: WP-31 E10: the classes whose style files are read
+    #: (``style/<class>-<name>.style``), and the reader's bounds: at most
+    #: 200 lines of at most 400 bytes from a file (Stata's longest of the
+    #: 161 option-class files has 21 lines), 400 files in the memo.
+    _STYLE_FILE_CLASSES: "tuple[str, ...]" = (
+        "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle")
+    _STYLE_FILE_MAX_LINES: int = 200
+    _STYLE_FILE_MAX_LINE_BYTES: int = 400
+    _STYLE_FILE_MEMO_MAX: int = 400
+    #: A style file's ``set <attr> [scheme] [<value>]`` line; a value is a
+    #: style name or a number, never a path (no slash, no dot run).
+    _STYLE_SET_RE = re.compile(
+        r"^\s*set\s+([A-Za-z_][A-Za-z0-9_]{0,40})(?:\s+(scheme))?"
+        r"(?:\s+([A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}))?"
+        r"\s*$")
     #: What a scheme NAME may not hold (M7, register P1.25.4): any blank,
     #: a C0 or C1 control character or DEL, a slash or backslash, a colon,
     #: a double quote, a backtick or a dollar sign.  A scheme is named,
@@ -9768,6 +9790,14 @@ class SchemeParser:
             if self.name.lower().startswith("scheme-"):
                 self.name = self.name[len("scheme-"):]
         self.is_fallback: bool = False
+        # WP-31 E10: the leaf values and class directives Stata's own
+        # scheme-<name>.scheme declares and dash's copy does not, read
+        # along the ado-path for a shipped name, kept as "@stata <key>"
+        # for the style resolver alone (_style_leaf).
+        if shipped is not None:
+            for k, v in self._stata_scheme_props(shipped).items():
+                if k not in self._props:
+                    self._props["@stata " + k] = v
         self._init_properties()
 
     # ------------------------------------------------------------------
@@ -10031,7 +10061,9 @@ class SchemeParser:
 
     @classmethod
     def _read_scheme_lines(cls, path: str,
-                           expect: "tuple[int, int] | None" = None
+                           expect: "tuple[int, int] | None" = None,
+                           max_lines: "int | None" = None,
+                           max_line_bytes: "int | None" = None
                            ) -> "list[str]":
         """The lines of scheme file *path*, read as data and bounded.
 
@@ -10039,7 +10071,9 @@ class SchemeParser:
         regular file, the very file ``_admit`` checked when *expect* is
         given, and at most ``_MAX_SCHEME_BYTES`` (at most one byte more is
         read).  The lines and their numbers are ``readlines()``'s with
-        universal newlines."""
+        universal newlines.  A style file is read with *max_lines* (the
+        lines past it are not returned) and *max_line_bytes* (a longer
+        line is returned empty), WP-31 E10."""
         import stat as _stat
         base = cls._safe_name(os.path.basename(path))
         try:
@@ -10063,8 +10097,14 @@ class SchemeParser:
             raise ValueError(
                 f"dash scheme: '{base}' is larger than 1,048,576 bytes; it "
                 "was not read.")
-        return (data.decode("utf-8", errors="replace")
-                .replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+        lines = (data.decode("utf-8", errors="replace")
+                 .replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+        if max_lines is not None:
+            lines = lines[:max(0, int(max_lines))]
+        if max_line_bytes is not None:
+            lines = [ln if len(ln.encode("utf-8")) <= max_line_bytes else ""
+                     for ln in lines]
+        return lines
 
     # ------------------------------------------------------------------
     # File parsing
@@ -12141,13 +12181,289 @@ class SchemeParser:
     # P1.14.3; plan E7-E10)
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Stata's style files (WP-31 E10, section 44; DECISIONS A24)
+    # ------------------------------------------------------------------
+
+    _STYLE_FILE_P_RE = re.compile(r"p#[a-z_]{0,40}")
+
+    #: Stata's 29 shadestyle files (WP-31 E10; style_files_truth.json
+    #: ``all.files``): the fill side's names, matched as _STYLE_KNOWN is.
+    _STYLE_SHADE_KNOWN: frozenset = frozenset((
+        "background", "ci", "ci2", "clegend_inner", "clegend_outer",
+        "contour_begin", "contour_end", "dendrogram", "dotchart",
+        "foreground", "fpall", "fpgraph", "fpgrp", "fpspacer",
+        "histogram", "legend", "matrix_plotregion", "none", "p#",
+        "p#area", "p#bar", "p#box", "p#other", "p#pie", "plotregion",
+        "sunflower", "sunflowerdb", "sunflowerlb", "symbol"
+    ))
+
+    def _style_known(self, stata_class: str) -> frozenset:
+        """Stata's style names of *stata_class* (``_STYLE_KNOWN``, and
+        ``_STYLE_SHADE_KNOWN`` for shadestyle)."""
+        if stata_class == "shadestyle":
+            return self._STYLE_SHADE_KNOWN
+        return self._STYLE_KNOWN.get(stata_class, frozenset())
+
+
+    #: The scheme keys the style resolver reads from Stata's own scheme
+    #: file (WP-31 E10): its leaf classes and the five class directives.
+    _STYLE_STATA_KEYS: frozenset = frozenset((
+        "color", "symbol", "symbolsize", "linewidth", "linepattern",
+        "intensity", "linestyle", "markerstyle", "areastyle",
+        "seriesstyle", "shadestyle"))
+
+    def _stata_scheme_props(self, name: str, depth: int = 0,
+                            seen: "set | None" = None) -> dict:
+        """``{key: value}`` of the ``_STYLE_STATA_KEYS`` lines of Stata's
+        own ``scheme-<name>.scheme``, found on the ado-path as findfile
+        finds it (each directory, then its ``s/`` letter subdirectory),
+        its ``#include`` lines spliced in where they stand (at most four
+        deep), admitted and read with the scheme guards.  ``{}`` with no
+        ado-path or no such file; never raises."""
+        dirs = tuple(self.__dict__.get("_ado_dirs") or ())
+        seen = set() if seen is None else seen
+        if not dirs or depth > 4 or name in seen or \
+                not self._scheme_name_ok(name):
+            return {}
+        seen.add(name)
+        f = f"scheme-{name}.scheme"
+        out: dict = {}
+        for d in dirs:
+            for sub in (d, os.path.join(d, f[0])):
+                if f not in self._style_listing(sub):
+                    continue
+                try:
+                    path = self._admit(d, os.path.join(sub, f),
+                                       self._safe_name(name))
+                    lines = self._read_scheme_lines(
+                        path, expect=getattr(self, "_admitted", {}).get(path))
+                except (ValueError, OSError):
+                    return {}
+                for raw in lines:
+                    line = raw.replace("\t", " ").strip()
+                    if not line or line.startswith(("*", "//")):
+                        continue
+                    t = self._scheme_tokens(line)
+                    if not t:
+                        continue
+                    if t[0] == "#include" and len(t) >= 2:
+                        out.update(self._stata_scheme_props(
+                            t[1], depth + 1, seen))
+                    elif t[0] in self._STYLE_STATA_KEYS and len(t) >= 3:
+                        out[f"{t[0]} {t[1]}"] = t[2]
+                    elif t[0] in self._STYLE_STATA_KEYS and len(t) == 2:
+                        out[t[0]] = t[1]
+                return out
+        return out
+
+    def _style_walk(self) -> "list[tuple[str, str]]":
+        """``(root, directory)`` pairs a style file is looked for in, in
+        findfile's order (measured, U44-02): each ado-path directory, then
+        its ``style/`` subdirectory; never its letter subdirectory.  The
+        ado-path is ``_ado_dirs`` (dash.ado's ``scheme_dirs``); a parser
+        built with ``__init__`` and none walks the working directory and
+        the package directories, as the scheme reader does; one rebuilt
+        without ``__init__`` (the served app's) walks nothing and reads
+        the rows embedded at registration."""
+        dirs = self.__dict__.get("_ado_dirs")
+        if dirs is None:
+            return []
+        dirs = tuple(dirs) or ((os.getcwd(),)
+                               + tuple(self._SCHEME_SEARCH_DIRS))
+        out: list = []
+        for d in dirs:
+            for sub in (d, os.path.join(d, "style")):
+                if (d, sub) not in out:
+                    out.append((d, sub))
+        return out
+
+    def _style_listing(self, d: str) -> frozenset:
+        """The names in directory *d*, listed once per parser."""
+        cache = self.__dict__.setdefault("_style_listing_memo", {})
+        got = cache.get(d)
+        if got is None:
+            try:
+                got = (frozenset(os.listdir(d)) if os.path.isdir(d)
+                       else frozenset())
+            except OSError:
+                got = frozenset()
+            cache[d] = got
+        return got
+
+    def _style_name_ok(self, stata_class: str, name: Any) -> bool:
+        """Whether *name* may name a ``<stata_class>-<name>.style`` file
+        (rule 1): a class of ``_STYLE_FILE_CLASSES`` and a name of
+        ``_STYLE_KNOWN`` or of the form ``p#<stub>``, or one passing the
+        scheme name rule with at most 64 characters and no ``#``."""
+        if stata_class not in self._STYLE_FILE_CLASSES:
+            return False
+        s = str(name)
+        if s in self._style_known(stata_class):
+            return True
+        if self._STYLE_FILE_P_RE.fullmatch(s):
+            return True
+        return (len(s) <= 64 and "#" not in s and "." not in s
+                and self._scheme_name_ok(s))
+
+    def _style_file_path(self, stata_class: str, file: Any) -> "str | None":
+        """The first ``<stata_class>-<file>.style`` on the walk, admitted
+        by ``_admit`` (contained, a regular file, under the size cap;
+        its ValueError is the caller's), or None.  No path is built from
+        a name that fails :meth:`_style_name_ok`."""
+        if not self._style_name_ok(stata_class, file):
+            return None
+        fname = f"{stata_class}-{file}.style"
+        for root, d in self._style_walk():
+            if fname in self._style_listing(d):
+                return self._admit(root, os.path.join(d, fname),
+                                   self._safe_name(str(file)))
+        return None
+
+    def _style_file_rows(self, stata_class: str, file: Any
+                         ) -> "tuple | None":
+        """Rows ``(attr, kind, value)`` of ``<stata_class>-<file>.style``:
+        the rows embedded at registration first (A24), else the file on
+        the walk, read through ``_read_scheme_lines`` with the admitted
+        identity and the style caps and memoised per process
+        (``_DASH_STYLE_FILE_MEMO``); None when there is no file.  A file
+        refused by a guard is noted once and remembered as None."""
+        key = f"{stata_class} {file}"
+        emb = self.__dict__.get("_embedded_style_rows") or {}
+        if key in emb:
+            return emb[key]
+        memo = self.__dict__.setdefault("_style_rows_memo", {})
+        if key in memo:
+            return memo[key]
+        rows = None
+        try:
+            path = self._style_file_path(stata_class, file)
+            if path is not None:
+                st = os.stat(path)
+                mkey = (os.path.realpath(path), st.st_dev, st.st_ino,
+                        st.st_size, st.st_mtime)
+                pm = _DASH_STYLE_FILE_MEMO
+                if mkey in pm:
+                    rows = pm[mkey]
+                else:
+                    rows = self._style_parse_rows(self._read_scheme_lines(
+                        path,
+                        expect=getattr(self, "_admitted", {}).get(path),
+                        max_lines=self._STYLE_FILE_MAX_LINES,
+                        max_line_bytes=self._STYLE_FILE_MAX_LINE_BYTES))
+                    while len(pm) >= self._STYLE_FILE_MEMO_MAX:
+                        pm.pop(next(iter(pm)))
+                    pm[mkey] = rows
+        except (ValueError, OSError) as exc:
+            shown = _dash_display(f"{stata_class}-{file}.style")
+            why = _dash_display(str(exc).replace("dash scheme: ", "", 1),
+                                limit=160)
+            _dash_warn_once(("style-file", shown),
+                            f"dash: style file {shown} was not read ({why}); "
+                            "default attributes used")
+            self.__dict__.setdefault("_style_refused", set()).add(key)
+            rows = None
+        memo[key] = rows
+        rec = self.__dict__.get("_style_record")
+        if rows is not None and rec is not None and \
+                rows != self._STYLE_TABLE.get(stata_class, {}).get(file):
+            rec[key] = rows
+        return rows
+
+    @classmethod
+    def _style_parse_rows(cls, lines: "list[str]") -> tuple:
+        """The ``set`` rows of a style file's *lines* (D-44a): ``scheme``
+        rows and literal rows; ``sequence``, ``label``, comments, quoted
+        values and anything else skipped."""
+        rows = []
+        for line in lines:
+            m = cls._STYLE_SET_RE.match(line)
+            if m is None:
+                continue
+            attr, is_scheme, val = m.group(1), m.group(2), m.group(3)
+            if is_scheme:
+                rows.append((attr, "scheme", val if val is not None else ""))
+            elif val is not None:
+                rows.append((attr, "literal", val))
+        return tuple(rows)
+
+    def _style_rows(self, stata_class: str, file: str) -> "tuple | None":
+        """D-44b: the embedded or file rows of *file*, else the transcribed
+        table's, else None."""
+        rows = self._style_file_rows(stata_class, file)
+        if rows is not None:
+            return rows
+        return self._STYLE_TABLE.get(stata_class, {}).get(file)
+
+    #: style_bundle tokens walked for each name a spec can ask for.
+    _STYLE_SPEC_TOKENS: "tuple[str, ...]" = (
+        "series.marker", "series.line", "series.area", "marker", "line",
+        "area")
+
+    @classmethod
+    def style_rows_for_spec(cls, spec: Any, ado_dirs: Any = ()) -> dict:
+        """``{"<class> <file>": [[attr, kind, value], ...]}`` for every style
+        file the spec's named styles reach along *ado_dirs* whose rows the
+        transcribed table does not already hold (DECISIONS A24), at most
+        400 keys.  Written into ``build_options["_style_rows"]`` at
+        registration (dash.ado, ``_dash_embed_style_rows``) so a served
+        host without Stata's files draws what the registering machine
+        drew.  Every graph's scheme and the dashboard's are walked."""
+        if not isinstance(spec, dict):
+            return {}
+        bo = spec.get("build_options")
+        bo = bo if isinstance(bo, dict) else {}
+        dirs = tuple(ado_dirs or ())
+        names: list = []
+        schemes = [_resolve_scheme_name(spec, dirs)]
+        for g in spec.get("graphs") or []:
+            if not isinstance(g, dict):
+                continue
+            go = g.get("graph_options")
+            if isinstance(go, dict) and str(go.get("scheme") or "").strip():
+                schemes.append(_dash_scheme_choice(
+                    str(go.get("scheme")).strip(), "graph", dirs))
+            for pl in g.get("plots") or []:
+                opts = pl.get("options") if isinstance(pl, dict) else None
+                if not isinstance(opts, dict):
+                    continue
+                for k, v in opts.items():
+                    if not (isinstance(k, str) and k.endswith("style")
+                            and isinstance(v, str)):
+                        continue
+                    for w in v.replace('"', " ").split()[:64]:
+                        if w not in names and len(names) < 400:
+                            names.append(w)
+        out: dict = {}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for sname in dict.fromkeys(schemes):
+                try:
+                    sp = cls.resolve_or_fallback(sname, "the style rows",
+                                                 ado_dirs=dirs)
+                except Exception:   # noqa: BLE001 -- never fail a build
+                    continue
+                rec: dict = {}
+                sp.__dict__["_style_record"] = rec
+                try:
+                    for n in names:
+                        for tok in cls._STYLE_SPEC_TOKENS:
+                            sp.style_bundle(tok, n)
+                finally:
+                    sp.__dict__.pop("_style_record", None)
+                for k, rows in rec.items():
+                    if len(out) < 400:
+                        out.setdefault(k, [list(r) for r in rows])
+        return out
+
     _STYLE_P_RE = re.compile(r"p([1-9]|1[0-5])([a-z_]*)")
 
     def _style_kind(self, stata_class: str, name: Any) -> str:
         """What *name* is in Stata class *stata_class*: ``"blank"``,
-        ``"p"`` (p1-p15, S32's bundles), ``"table"`` (a name of
-        ``_STYLE_TABLE``), ``"known"`` (a Stata style file outside the
-        table, D-36c) or ``"unknown"``.
+        ``"p"`` (p1-p15, S32's bundles), ``"file"`` (a style file on the
+        walk or rows embedded at registration, WP-31 E10), ``"table"`` (a
+        name of ``_STYLE_TABLE`` with no file), ``"known"`` (a Stata style
+        name with no file and no table entry, D-36c) or ``"unknown"``.
 
         Case-sensitive, as Stata's lookup is: ``P3``, ``p0``, ``p03`` and
         ``p16line`` are unknown (plan E9.2).  *name* is only matched against
@@ -12161,9 +12477,17 @@ class SchemeParser:
         if m is not None and not m.group(2):
             return "p"
         table = self._STYLE_TABLE.get(stata_class, {})
-        known = self._STYLE_KNOWN.get(stata_class, frozenset())
+        known = self._style_known(stata_class)
         file = "p#" + m.group(2) if m is not None else s
-        if file in table and (m is not None or not s.startswith("p#")):
+        if s.startswith("p#"):
+            return "unknown"
+        # WP-31 E10: a name with a style file on the walk (or rows
+        # embedded at registration) is "file"; the table answers only
+        # where there is none.
+        if (m is None or file in table or file in known) and \
+                self._style_file_rows(stata_class, file) is not None:
+            return "file"
+        if file in table:
             return "table"
         if file in known:
             return "known"
@@ -12199,11 +12523,12 @@ class SchemeParser:
         steps = self._style_steps(key)
         props = self._props
         for st in steps:
-            v = props.get(f"{leaf_class} {st}" if st else leaf_class, "")
+            k = f"{leaf_class} {st}" if st else leaf_class
+            v = props.get(k, "") or props.get("@stata " + k, "")
             if str(v).strip():
                 return str(v).strip().strip('"').strip()
             if hop and st and self._style_kind(leaf_class, st) in (
-                    "p", "table", "known"):
+                    "p", "table", "file", "known"):
                 return st
         if hop:
             return None
@@ -12272,7 +12597,7 @@ class SchemeParser:
         (``_style_leaf(..., hop=True)``): ``none`` is not drawn, p1-p15 is
         S32's bundle, a table name recurses (depth at most 6) and anything
         else is the class default (E9.3)."""
-        rows = self._STYLE_TABLE[stata_class][file]
+        rows = self._style_rows(stata_class, file) or ()
         attrs = self._STYLE_ATTR[stata_class]
         vals: dict = {}
         for attr, kind, val in rows:
@@ -12353,14 +12678,26 @@ class SchemeParser:
             return None
         role = self._STYLE_ROLE_OF[sub]
         kind = self._style_kind(sub, name) if name else "unknown"
-        if kind == "table" and depth < 6:
+        if kind == "unknown" and name:
+            # A scheme directive naming no style (WP-31 E10, U44-04):
+            # twoway's note, once, re-emitted on a memo hit.
+            shown = _dash_display(name)
+            text = (f"dash: named style {shown} not found in class {sub}, "
+                    "default attributes used")
+            nk = ("named-style", sub, shown)
+            _dash_warn_once(nk, text)
+            pending = self.__dict__.get("_style_pending")
+            if pending is not None:
+                pending.append((nk, text))
+        if kind in ("table", "file") and depth < 6:
             m = self._STYLE_P_RE.fullmatch(name)
             file, num = (("p#" + m.group(2), m.group(1)) if m is not None
                          else (name, ""))
             return self._style_resolve(sub, file, num, depth + 1)
         if kind != "p":
             name = self._STYLE_DEFAULT.get(sub, "p1")
-            if self._style_kind(sub, name) == "table" and depth < 6:
+            if self._style_kind(sub, name) in ("table", "file") and \
+                    depth < 6:
                 return self._style_resolve(sub, name, "", depth + 1)
             name = "p1"
         b = self.style_bundle(role, name)
@@ -12420,17 +12757,20 @@ class SchemeParser:
         table name or ``"<default>"``, never by other user text; a hit
         re-emits the D-36g notes its resolution raised."""
         memo = self.__dict__.setdefault("_style_memo", {})
-        if kind == "table":
+        if kind in ("table", "file"):
             mk = (cls, s)
         else:
-            self._style_note(stata_class, s, kind)
+            # A file a guard refused was named once by _style_file_rows.
+            if f"{stata_class} {s}" not in self.__dict__.get(
+                    "_style_refused", ()):
+                self._style_note(stata_class, s, kind)
             mk = (cls, "<default>")
         hit = memo.get(mk)
         if hit is None:
             prev = self.__dict__.get("_style_pending")
             self.__dict__["_style_pending"] = []
             try:
-                if kind == "table":
+                if kind in ("table", "file"):
                     m = self._STYLE_P_RE.fullmatch(s)
                     file, num = (("p#" + m.group(2), m.group(1))
                                  if m is not None else (s, ""))
@@ -12501,7 +12841,7 @@ class SchemeParser:
             return {"fill": self.plotregion_color, "fill_alpha": 1.0,
                     "intensity": 1.0}
         kind = self._style_kind("shadestyle", s)
-        if kind in ("table", "p"):
+        if kind in ("table", "file", "p"):
             try:
                 if kind == "p":
                     b = self._style_sub("shadestyle", s, 0)
@@ -13822,7 +14162,7 @@ class GlyphMapper:
         # else is p1 with twoway's note (or D-36c's for a Stata name dash
         # does not draw).
         k = self.scheme._style_kind("seriesstyle", s)
-        if k == "table":
+        if k in ("table", "file"):
             return "named", s
         self.scheme._style_note("seriesstyle", s, k)
         return "p", 0
@@ -32594,6 +32934,84 @@ _THEME_SCHEME_MAP: "dict[str, str]" = {
 
 #: The most ado-path directories a spec's ``scheme_dirs`` may name.
 _DASH_MAX_SCHEME_DIRS = 64
+
+
+_DASH_STYLE_ROW_KEY_RE = re.compile(
+    r"(seriesstyle|markerstyle|areastyle|linestyle|shadestyle) "
+    r"([A-Za-z_][A-Za-z0-9_]{0,63}|p#[a-z_]{0,40})")
+_DASH_STYLE_ROW_TOKEN_RE = re.compile(
+    r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|")
+
+
+def _dash_style_rows_of(build_options: dict) -> dict:
+    """``build_options["_style_rows"]`` (WP-31 E10, DECISIONS A24) as
+    ``{"<class> <file>": ((attr, kind, value), ...)}``: at most 400 keys of
+    at most 200 rows, each key a class of the five and a style name, each
+    row three tokens a style file's ``set`` line could hold and kind
+    ``scheme`` or ``literal``.  Anything else is dropped; never raises."""
+    try:
+        raw = (build_options or {}).get("_style_rows")
+    except AttributeError:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict = {}
+    for k, rows in list(raw.items())[:400]:
+        if not (isinstance(k, str) and _DASH_STYLE_ROW_KEY_RE.fullmatch(k)
+                and isinstance(rows, list) and len(rows) <= 200):
+            continue
+        good = []
+        for r in rows:
+            if not (isinstance(r, (list, tuple)) and len(r) == 3
+                    and all(isinstance(x, str) for x in r)
+                    and r[1] in ("scheme", "literal") and r[0]
+                    and _DASH_STYLE_ROW_TOKEN_RE.fullmatch(r[0])
+                    and _DASH_STYLE_ROW_TOKEN_RE.fullmatch(r[2])):
+                good = None
+                break
+            good.append(tuple(r))
+        if good is not None:
+            out[k] = tuple(good)
+    return out
+
+
+def _dash_embed_style_rows(text: str) -> str:
+    """dash.ado's spec *text* (its last ``}`` written later by
+    ``_dash_fn_spec_tail``) with ``"_style_rows"`` added to its
+    build_options: the rows of every style file the spec's named styles
+    reach along its ``scheme_dirs`` (``SchemeParser.style_rows_for_spec``;
+    WP-31 E10, DECISIONS A24).  *text* unchanged when there is nothing to
+    add or it is not such a spec; never raises."""
+    try:
+        if not text.endswith("}"):
+            return text
+        spec = json.loads(text + "}")
+        bo = spec.get("build_options")
+        if not isinstance(bo, dict) or "_style_rows" in bo:
+            return text
+        rows = SchemeParser.style_rows_for_spec(
+            spec, _dash_scheme_dirs_of(bo))
+        if not rows:
+            return text
+        return text[:-1] + ',"_style_rows":' + json.dumps(
+            rows, separators=(",", ":")) + "}"
+    except Exception:   # noqa: BLE001 -- the spec is written either way
+        return text
+
+
+def _dash_style_archive_note(build_options: dict) -> None:
+    """WP-31 E10 (D-44e): ``c(adoarchive)`` is undefined in StataNow 19.5
+    (r(133), measured); dash.ado writes it as it reads, "" here.  A "1"
+    (an install reading from a compressed ado archive) is named once: its
+    style files are not read and the transcribed table is drawn."""
+    try:
+        v = str((build_options or {}).get("adoarchive", "") or "").strip()
+    except AttributeError:
+        return
+    if v == "1":
+        _dash_warn_once(("style-archive",),
+                        "dash: style files inside a compressed ado archive "
+                        "are not read; dash's transcribed styles are drawn")
 
 
 def _dash_scheme_dirs_of(build_options: dict) -> "tuple[str, ...]":
@@ -54071,6 +54489,11 @@ class DashRenderer:
         # directory name reaches the page.
         self._scheme_dirs: "tuple[str, ...]" = _dash_scheme_dirs_of(_build_opts)
         _build_opts.pop("scheme_dirs", None)
+        # WP-31 E10 (A24): the style rows the registering machine read,
+        # first in every parser; a compressed-archive install is named.
+        self._style_rows_emb: dict = _dash_style_rows_of(_build_opts)
+        _build_opts.pop("_style_rows", None)
+        _dash_style_archive_note(_build_opts)
         _scheme_name: str = _resolve_scheme_name(self.master_spec,
                                                  self._scheme_dirs)
         # Every scheme this build resolves, by the name it was asked for.
@@ -55101,6 +55524,9 @@ class DashRenderer:
         if sch is None:
             sch = SchemeParser.resolve_or_fallback(
                 key, context, ado_dirs=getattr(self, "_scheme_dirs", ()))
+            emb = getattr(self, "_style_rows_emb", None)
+            if emb:
+                sch.__dict__["_embedded_style_rows"] = emb
             cache[key] = sch
         return sch
 
@@ -58137,8 +58563,14 @@ class ServerAppBuilder:
         _bo = self.spec.get("build_options")
         self._scheme_dirs: "tuple[str, ...]" = _dash_scheme_dirs_of(
             _bo if isinstance(_bo, dict) else {})
+        # WP-31 E10 (A24): the style rows embedded at registration, and
+        # those this build reads itself, travel into the app as data.
+        self._style_rows_emb: dict = _dash_style_rows_of(
+            _bo if isinstance(_bo, dict) else {})
         if isinstance(_bo, dict):
             _bo.pop("scheme_dirs", None)
+            _bo.pop("_style_rows", None)
+            _dash_style_archive_note(_bo)
         # Each function layer's stored points onto its plot (WP-29 P0.6),
         # before the spec is capped and embedded: the app draws them.
         self.spec = _dash_attach_function_points(self.spec)
@@ -58179,7 +58611,15 @@ class ServerAppBuilder:
             self.scheme_requested, "the dashboard",
             ado_dirs=self._scheme_dirs,
         )
+        if self._style_rows_emb:
+            self.scheme.__dict__["_embedded_style_rows"] = \
+                self._style_rows_emb
         self._resolve_graph_schemes()
+        _own = _dash_style_rows_of({"_style_rows": (
+            SchemeParser.style_rows_for_spec(self.spec, self._scheme_dirs)
+            if self._scheme_dirs else {})})
+        self._style_rows_app: dict = dict(_own)
+        self._style_rows_app.update(self._style_rows_emb)
 
     def _resolve_graph_schemes(self) -> None:
         """Each graph's own ``scheme()``, by the saved renderer's rule
@@ -58206,6 +58646,9 @@ class ServerAppBuilder:
                 parser = SchemeParser.resolve_or_fallback(
                     choice, f"graph {go.get('name', '') or '(unnamed)'}",
                     ado_dirs=self._scheme_dirs)
+                if self._style_rows_emb:
+                    parser.__dict__["_embedded_style_rows"] = \
+                        self._style_rows_emb
                 cache[choice] = parser
             if parser is not self.scheme:
                 self.graph_schemes[raw] = parser
@@ -58327,6 +58770,9 @@ class ServerAppBuilder:
                       # _dash_anglestyle_degrees' table of Stata's
                       # anglestyles, for mlabangle() (WP-22).
                       "_DASH_ANGLESTYLES",
+                      # SchemeParser's style-file memo (WP-31 E10, A24),
+                      # written empty: no path reaches an app.
+                      "_DASH_STYLE_FILE_MEMO",
                       # The sub-option tables and the filter parser's own.
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
@@ -58508,6 +58954,9 @@ class ServerAppBuilder:
             if _val is None:
                 continue
             if _name in _already_names:
+                continue
+            if _name == "_DASH_STYLE_FILE_MEMO":
+                out.append("%s = {}" % (_name,))
                 continue
             if isinstance(_val, pd.Timestamp):
                 # repr() is Timestamp('...'), a name the app has not got.
@@ -59087,6 +59536,10 @@ class ServerAppBuilder:
         # served figure is styled by the same code the saved one is.
         out += [
             "_SCHEME_PROPS = %r" % (dict(getattr(self.scheme, "_props", {})),),
+            "# WP-31 E10 (A24): the style files' rows, read where the app",
+            "# was built; the app reads no style file.",
+            "_DASH_STYLE_ROWS = %r" % (
+                dict(getattr(self, "_style_rows_app", {}) or {}),),
             "_DASH_SCHEME_IS_FALLBACK = %r"
             % (bool(getattr(self.scheme, "is_fallback", False)),),
             "_DASH_SCHEME_REQUESTED = %r" % (self.scheme_requested,),
@@ -59098,6 +59551,7 @@ class ServerAppBuilder:
             "    _s._props = dict(_SCHEME_PROPS)",
             "    _s.name = %r" % (getattr(self.scheme, "name", "s2color"),),
             "    _s.is_fallback = _DASH_SCHEME_IS_FALLBACK",
+            "    _s._embedded_style_rows = _DASH_STYLE_ROWS",
             "    _s._init_properties()",
             "    return _s",
             "",
@@ -59157,6 +59611,7 @@ class ServerAppBuilder:
             "        _s._props = dict(_e['props'])",
             "        _s.name = _e['name']",
             "        _s.is_fallback = _e['is_fallback']",
+            "        _s._embedded_style_rows = _DASH_STYLE_ROWS",
             "        _s._init_properties()",
             "        _DASH_GRAPH_SCHEMES[raw] = _s",
             "    return _s",

@@ -25,7 +25,8 @@ The audit of every name the worker reaches (``_WORKER_AUDIT``; verdicts):
   only after the build |
 | ``df``, ``spec``, ``graphs``, ``g``, ``plot``, ``_sort_keys``,
   ``_shared_pos`` (the layer redraws' closures), ``_DASH_TRANSPOSE``,
-  ``_GRAPH_SCHEME_PROPS`` | read only after the build |
+  ``_GRAPH_SCHEME_PROPS``, ``_DASH_STYLE_ROWS`` (WP-31 E10's embedded
+  style rows) | read only after the build |
 | ``_DASH_GRAPH_SCHEMES`` (S34's per-scheme cache) | GIL-atomic get/set of
   an equal SchemeParser per name, never iterated |
 | ``_DASH_REF_SCHEMES`` (WP-31 E11's per-reference cache) | GIL-atomic
@@ -79,7 +80,7 @@ _WORKER_AUDIT = {
     "_kpi_defs", "_kpi_divs", "_kpi_qual_rows", "_date_vars",
     "df", "spec", "graphs", "g", "plot", "_sort_keys", "_shared_pos",
     "_DASH_TRANSPOSE", "_GRAPH_SCHEME_PROPS", "_DASH_GRAPH_SCHEMES",
-    "_DASH_REF_SCHEMES", "_go",
+    "_DASH_REF_SCHEMES", "_go", "_DASH_STYLE_ROWS",
 }
 
 

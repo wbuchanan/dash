@@ -786,7 +786,10 @@ class TestTheEmptyPlanIsInert:
         # WP-30 P1.14b adds section 36's two cases (other named styles).
         own = {"named styles p1-p15", "p() and the plot index",
                "named styles on a ci fit", "other named styles",
-               "an unknown named style"}
+               "an unknown named style",
+               # WP-31 E10 adds section 44's style-file case.
+               "pstyle(fpall) and lstyle(refline) from style files "
+               "(WP-31 E10)"}
         holders = {ps.values[0] for ps in tp.CORPUS
                    for g in ps.values[1].get("graphs", [])
                    for p in g.get("plots", [])

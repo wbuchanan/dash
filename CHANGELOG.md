@@ -470,7 +470,7 @@ and now matches Stata.
 
 - numbers ignored set dp comma (3.14 under `%9.2f`, 2,000 on a `%8.0gc` axis); they use it (3,14; 2.000), on axes, tooltips, marker labels, KPI cards and filters. `%tC` timestamps were up to 27 s off; they are exact. The `{stSans}`, `{stSerif}` and `{stMono}` tags draw in graph set's faces (WP-31, G2)
 
-<!-- WP-31 E10 -->
+- 57 Stata style names (fpall, refmarker, plotregion, sunflower, ...) drew default attributes with a note; they draw their style file's attributes, and a scheme's class directives and your own *.style files are read (WP-31, E10)
 
 <!-- WP-31 D15 -->
 

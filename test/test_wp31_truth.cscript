@@ -11952,6 +11952,236 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
 }
 * ==== end S43 ====
 
+python:
+def _u44_look(sp, dp, app, kind, attrs, empty=None):
+    """{mode: [attr values]} of the first *kind* glyph in both modes, and
+    the saved render's notes; with *empty*, the served app is built from
+    the spec rewritten to walk only that empty directory (A24)."""
+    import __main__ as m
+    import json, warnings
+    import dash_render as dr
+    if empty is not None:
+        with open(sp, encoding="utf-8") as fh:
+            spec = json.load(fh)
+        spec["build_options"]["scheme_dirs"] = [empty]
+        sp = sp + ".empty.json"
+        with open(sp, "w", encoding="utf-8") as fh:
+            json.dump(spec, fh)
+    a, b = m._u03_docs(sp, dp, app)
+    out = {}
+    for name, figs in (("saved", a), ("served", b)):
+        gs = [r.glyph for f in figs for r in f.renderers
+              if type(getattr(r, "glyph", None)).__name__ == kind
+              and not dr._dash_is_swatch(r)]
+        out[name] = None
+        if gs:
+            out[name] = [str(getattr(gs[0], x)).lower() for x in attrs]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    return out, [str(x.message) for x in w]
+
+
+def _u44_hex(rgb):
+    p = rgb.split()
+    if len(p) != 3:
+        return rgb
+    return "#%02x%02x%02x" % tuple(int(float(x)) for x in p)
+
+
+def _u44_cmp(sp, dp, app, kind, attr, want, note_bad="", empty=None):
+    """u44_bad: where either mode's *attr* differs from twoway's *want*,
+    or a note holds *note_bad*."""
+    from sfi import Macro
+    got, notes = _u44_look(sp, dp, app, kind, [attr], empty)
+    bad = []
+    for name, v in got.items():
+        if v is None or v[0] != want.lower():
+            bad.append("%s %s=%s, twoway %s" % (name, attr, v, want))
+    if note_bad:
+        bad += ["note: " + n for n in notes if note_bad in n]
+    Macro.setGlobal("u44_bad", "; ".join(bad))
+
+
+def _u44_notes(sp, dp, want):
+    """u44_bad: unless the saved render's notes hold *want*."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    dr._dash_reset_notes()
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    got = [str(x.message) for x in w]
+    Macro.setGlobal("u44_bad", "" if want in got else
+                    "no note %r in %s" % (want, got[:6]))
+
+
+def _u44_find(dirs_json, names):
+    """u44_bad: where dash's walk finds a different file than findfile."""
+    import json
+    import dash_render as dr
+    from sfi import Macro
+    sp = dr.SchemeParser("s2color", ado_dirs=dr._dash_scheme_dirs_of(
+        {"scheme_dirs": json.loads(dirs_json)}))
+    bad = []
+    for pair in names.split(";"):
+        if not pair:
+            continue
+        f, want = pair.split("=", 1)
+        c, n = f.split("-", 1)
+        got = sp._style_file_path(c, n) or ""
+        import os
+        if os.path.realpath(got or "/x0") != os.path.realpath(want or "/x0"):
+            bad.append("%s dash %s findfile %s" % (f, got, want))
+    Macro.setGlobal("u44_bad", "; ".join(bad))
+
+
+def _u44_rows(sp, key):
+    import json
+    from sfi import Macro
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    rows = (spec.get("build_options") or {}).get("_style_rows") or {}
+    Macro.setGlobal("u44_bad", "" if key in rows else
+                    "build_options._style_rows lacks %r: %s" % (
+                        key, sorted(rows)[:5]))
+end
+
+capture program drop _u44_spec
+program define _u44_spec
+    // _u44_spec <dir> <k> <dash command>: dash's spec for the command.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0' name(zu44`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+end
+
+capture program drop _u44_tw
+program define _u44_tw, rclass
+    // _u44_tw <path> <twoway command>: plot 1's style value at <path>.
+    version 19
+    gettoken path 0 : 0
+    capture graph drop u44g
+    quietly twoway `0' nodraw name(u44g, replace)
+    return local v "`.u44g.plotregion1.plot1.style.`path''"
+    capture graph drop u44g
+end
+
+* ==== S44 E10: Style file resolver ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
+    display as text "S44 start " c(current_date) " " c(current_time)
+    local u44d "`w31_work'/s44"
+    capture mkdir "`u44d'"
+    local u44u "`u44d'/ado"
+    capture mkdir "`u44u'"
+    capture mkdir "`u44u'/style"
+    local u44fx "`c(pwd)'/fixtures/style_files_truth.json"
+    tempname u44f
+    file open `u44f' using "`u44u'/style/linestyle-u44b.style", write text replace
+    file write `u44f' "set width thick" _n "set color red" _n "set pattern dash" _n
+    file close `u44f'
+    file open `u44f' using "`u44u'/scheme-u44h.scheme", write text replace
+    file write `u44f' "#include s2color" _n "linestyle ci u44b" _n
+    file close `u44f'
+    file open `u44f' using "`u44u'/scheme-u44n.scheme", write text replace
+    file write `u44f' "#include s2color" _n "linestyle ci nosuch" _n
+    file close `u44f'
+    adopath ++ "`u44u'"
+    sysuse auto, clear
+
+    // U44-01: the fixture is stamped and lists the 161 files.
+    python: import json; from sfi import Macro; _u44_d = json.load(open(Macro.getLocal("u44fx"))); Macro.setGlobal("u44_bad", "" if sum(len(_u44_d["all.files"][c]) for c in ("linestyle", "areastyle", "markerstyle", "seriesstyle")) == 161 and len(_u44_d["_meta"]) == 5 else "fixture")
+    _w31_expect U44-01 `"("${u44_bad}" == "")"' "${u44_bad}"
+    _w31_done U44-01 "style_files_truth.json is stamped and lists the 161 style files"
+
+    // U44-02: dash's walk finds the file findfile finds.
+    local pairs ""
+    foreach f in linestyle-refline markerstyle-refmarker areastyle-plotregion seriesstyle-fpall shadestyle-foreground linestyle-u44b {
+        capture findfile `f'.style
+        local fn ""
+        if !_rc local fn "`r(fn)'"
+        local pairs "`pairs'`f'=`fn';"
+    }
+    _dash_scheme_dirs
+    python: _u44_find(r"""`macval(_dash_sdirs)'""", r"`pairs'")
+    _w31_expect U44-02 `"("${u44_bad}" == "")"' "${u44_bad}"
+    _w31_done U44-02 "the style file dash reads is the one findfile finds"
+
+    // U44-03: Stata names outside the table draw their file, both modes.
+    local k 0
+    local u3bad ""
+    foreach c in "Scatter fill_color marker.fillcolor.rgb scatter mpg weight, mstyle(refmarker)" ///
+        "Scatter fill_color marker.fillcolor.rgb scatter mpg weight, pstyle(fpall)" ///
+        "VArea fill_color area.shadestyle.color.rgb area mpg weight, sort astyle(plotregion)" {
+        local ++k
+        gettoken kind c : c
+        gettoken attr c : c
+        gettoken path c : c
+        _u44_tw `path' `c'
+        python: from sfi import Macro; Macro.setLocal("want", _u44_hex(r"`r(v)'"))
+        _u44_spec "`u44d'" `k' `c'
+        python: _u44_cmp(r"`u44d'/s`k'.json", r"`u44d'/d`k'.json", r"`u44d'/a`k'.py", "`kind'", "`attr'", r"`want'", "not drawn by dash")
+        if "${u44_bad}" != "" local u3bad "`u3bad' [`c': ${u44_bad}]"
+    }
+    _w31_expect U44-03 `"(`"`u3bad'"' == "")"' `"`u3bad'"'
+    _w31_done U44-03 "mstyle(refmarker), pstyle(fpall), astyle(plotregion) draw their files as twoway, both modes"
+
+    // U44-04: a scheme directive redefines a hop; one naming no style is
+    // noted in twoway's words.
+    _u44_tw line.color.rgb line mpg weight, sort pstyle(ci) scheme(u44h)
+    local want = "`r(v)'"
+    python: from sfi import Macro; Macro.setLocal("want", _u44_hex(r"`want'"))
+    _u44_spec "`u44d'" 4 line mpg weight, sort pstyle(ci) scheme(u44h)
+    python: _u44_cmp(r"`u44d'/s4.json", r"`u44d'/d4.json", r"`u44d'/a4.py", "Line", "line_color", r"`want'")
+    local u4bad "${u44_bad}"
+    _u44_spec "`u44d'" 5 line mpg weight, sort pstyle(ci) scheme(u44n)
+    python: _u44_notes(r"`u44d'/s5.json", r"`u44d'/d5.json", "dash: named style nosuch not found in class linestyle, default attributes used")
+    local u4bad "`u4bad'${u44_bad}"
+    _w31_expect U44-04 `"(`"`u4bad'"' == "")"' `"`u4bad'"'
+    _w31_done U44-04 "linestyle ci u44b redefines pstyle(ci)'s line; linestyle ci nosuch is noted as twoway notes it"
+
+    // U44-05: c(adoarchive) is undefined here (r(133)); the spec carries "".
+    capture local u44aa = c(adoarchive)
+    local u5rc = _rc
+    python: import json; from sfi import Macro; Macro.setGlobal("u44_bad", "" if json.load(open(Macro.getLocal("u44d") + "/s4.json"))["build_options"].get("adoarchive") == "" else "adoarchive key")
+    _w31_expect U44-05 `"(`u5rc' == 133 & "${u44_bad}" == "")"' "c(adoarchive) rc `u5rc' ${u44_bad}"
+    _w31_done U44-05 "c(adoarchive) is undefined (r(133)) and the spec writes it empty"
+
+    // U44-06: a style file that is a link out of its directory, and one
+    // over 1 MiB, are refused with one note, the default drawn, rc 0.
+    shell ln -sf /etc/hosts "`u44u'/style/linestyle-u44x.style"
+    python: open(r"`u44u'/style/linestyle-u44y.style", "w").write("set color red\n" + "*" * 2097152 + "\n")
+    _u44_spec "`u44d'" 6 line mpg weight, sort lstyle(u44x)
+    local u6rc = _rc
+    python: _u44_notes(r"`u44d'/s6.json", r"`u44d'/d6.json", "dash: style file linestyle-u44x.style was not read ('linestyle-u44x.style' for scheme 'u44x' resolves via symlink outside allowed directories (the directory it was found in); it was not read.); default attributes used")
+    local u6bad "${u44_bad}"
+    _u44_spec "`u44d'" 7 line mpg weight, sort lstyle(u44y)
+    python: _u44_cmp(r"`u44d'/s7.json", r"`u44d'/d7.json", r"`u44d'/a7.py", "Line", "line_color", "#000000")
+    local u6bad "`u6bad'${u44_bad}"
+    _w31_expect U44-06 `"(`u6rc' == 0 & `"`u6bad'"' == "")"' `"`u6bad'"'
+    _w31_done U44-06 "a linked or oversized style file is refused with a note and the default drawn"
+
+    // U44-07: the registered spec embeds the user file's rows, and the
+    // served app over an empty walk draws them as the saved page does.
+    _u44_spec "`u44d'" 8 line mpg weight, sort lstyle(u44b)
+    python: _u44_rows(r"`u44d'/s8.json", "linestyle u44b")
+    local u7bad "${u44_bad}"
+    capture mkdir "`u44d'/empty"
+    python: _u44_cmp(r"`u44d'/s8.json", r"`u44d'/d8.json", r"`u44d'/a8.py", "Line", "line_color", "#ff0000", empty=r"`u44d'/empty")
+    local u7bad "`u7bad'${u44_bad}"
+    _w31_expect U44-07 `"(`"`u7bad'"' == "")"' `"`u7bad'"'
+    _w31_done U44-07 "the spec carries _style_rows and an empty walk draws them in both modes"
+
+    adopath - "`u44u'"
+    dash clear
+    display as text "S44 end " c(current_date) " " c(current_time)
+}
+* ==== end S44 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

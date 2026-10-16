@@ -2678,6 +2678,13 @@ CORPUS = [
     _case("title with {dup 3:ab} {hline 2} (WP-31 E9)", [_sc()],
           go={"title": '"{dup 3:ab} {hline 2} {cmd:x}"',
               "xlabel": '3000 "{center 6:c}" 4000 "{help twoway}"'}),
+    # WP-31 E10: Stata's style files along BASE (scheme_dirs), a name
+    # outside the table and a table name, alike in both modes.
+    _case("pstyle(fpall) and lstyle(refline) from style files (WP-31 E10)",
+          [plot_for("scatter", {"pstyle": "fpall"}),
+           plot_for("line", {"lstyle": "refline"})],
+          {"scheme": "s2color",
+           "scheme_dirs": ["/Applications/StataNow/ado/base"]}),
 ]
 
 

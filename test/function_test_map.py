@@ -1171,6 +1171,20 @@ FUNCTIONS = {
  '_dash_spec_field': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_the_layer_pass_rule',
  '_dash_spec_units': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_spec_units_reads_only_dash_transforms',
  '_dash_stata_number_of': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_number_reader',
+ # WP-31 S44 (E10): Stata's style files
+ 'SchemeParser._style_walk': 'test/test_style_files.py::TestTheWalk::test_order_is_findfiles',
+ 'SchemeParser._style_listing': 'test/test_style_files.py::TestHostileStyleFiles::test_no_path_from_a_bad_name',
+ 'SchemeParser._style_name_ok': 'test/test_style_files.py::TestHostileStyleFiles::test_no_path_from_a_bad_name',
+ 'SchemeParser._style_file_path': 'test/test_style_files.py::TestTheWalk::test_user_root_vs_style_dir',
+ 'SchemeParser._style_file_rows': 'test/test_style_files.py::TestTheReaderIsMemoised::test_one_read_per_file',
+ 'SchemeParser._style_parse_rows': 'test/test_style_files.py::TestHostileStyleFiles::test_a_path_like_value_is_skipped',
+ 'SchemeParser._style_rows': 'test/test_style_files.py::TestDirectives::test_redefines',
+ 'SchemeParser._style_known': 'test/test_style_files.py::TestDirectives::test_shadestyle',
+ 'SchemeParser._stata_scheme_props': 'test/test_style_files.py::TestEveryKnownNameDraws::test_every_record',
+ 'SchemeParser.style_rows_for_spec': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_served_without_files_draws_embedded_rows',
+ '_dash_style_rows_of': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_bad_embedded_rows_are_dropped',
+ '_dash_embed_style_rows': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_the_spec_text_gains_the_rows',
+ '_dash_style_archive_note': 'test/test_style_files.py::TestAdoArchive::test_measured_branch',
  # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
  'SchemeParser._style_kind': 'test/test_style_names.py::TestKinds::test_p0_p03_p16line_p3other_are_unknown',
  'SchemeParser._style_leaf': 'test/test_style_names.py::TestAUserScheme::test_a_missing_key_takes_s2colors_value',
@@ -1389,6 +1403,10 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "_dash_embed_style_rows": (
+        "WP-31 S44 (E10) keeps it under WP-26's seam rule: dash.ado's two "
+        "spec writers call it through their python: lines (A24), which the "
+        "name-based call graph of this file does not read."),
     "_dash_finish_text_value": (
         "WP-30 P1.11b keeps it under WP-26's seam rule: S09's (new, changed) form of "
         "_dash_finish_text_runs, which _dash_finish_graph_text now calls; "

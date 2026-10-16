@@ -10990,7 +10990,7 @@ program define _dash_render_immediate
     _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'"`_dash_gsf', "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -11002,7 +11002,10 @@ program define _dash_render_immediate
     python: import sys
     python: from sfi import Macro as _dash_M
     python: _dash_xm = sys.modules["_dash_render_export"]
-    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("spec_json_path"), _dash_M.getLocal("master_json"))
+    // WP-31 E10 (A24): the rows of the style files the spec's named
+    // styles reach on this machine, embedded as build_options._style_rows.
+    // c(adoarchive) is undefined in StataNow 19.5 (r(133)) and writes "".
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("spec_json_path"), _dash_xm._dash_embed_style_rows(_dash_M.getLocal("master_json")))
     mata: _dash_fn_spec_tail(st_local("spec_json_path"), "", st_local("fp_sc"))
 
     // ---- Locate dash_render.py ----
@@ -12400,7 +12403,7 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'"`_dash_gsf',"formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:
@@ -12412,7 +12415,8 @@ program define _dash_prepare_spec, rclass
     python: import sys
     python: from sfi import Macro as _dash_M
     python: _dash_xm = sys.modules["_dash_render_export"]
-    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("specpath"), _dash_M.getLocal("master_json"))
+    // WP-31 E10 (A24): the style rows, as _dash_render_immediate embeds them.
+    python: _dash_wsp = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("specpath"), _dash_xm._dash_embed_style_rows(_dash_M.getLocal("master_json")))
     mata: _dash_fn_spec_tail(st_local("specpath"), st_local("_fp_names"), "")
 
     return local layout          `"`layout'"'

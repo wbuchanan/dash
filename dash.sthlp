@@ -5609,11 +5609,31 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     foreground line for a line style and its background area for an area
     style -- with
     {cmd:(note: dash: named style} {it:name} {cmd:not found in class} {it:class}{cmd:, default attributes used)}
-    once.  A name Stata knows that {cmd:dash} does not draw ({cmd:fpall},
-    {cmd:dendrogram}, {cmd:sunflower}, {cmd:star}, {cmd:plotregion},
-    {cmd:outline}, {cmd:legend} and the rest of Stata's style files
-    outside these lists) draws the same defaults, with
+    once.  A style name -- {cmd:lstyle(refline)}, {cmd:pstyle(fpall)}, your
+    own {cmd:lstyle(mine)} -- is looked up as Stata looks it up: a
+    {cmd:linestyle}, {cmd:areastyle}, {cmd:markerstyle}, {cmd:seriesstyle}
+    or {cmd:shadestyle} directive in the scheme first, then the
+    {cmd:style/<class>-<name>.style} file in your ado-path's style
+    directories, with the same size and location checks as a scheme file.
+    So every name of Stata's 161 style files ({cmd:fpall},
+    {cmd:dendrogram}, {cmd:sunflower}, {cmd:star}, {cmd:refmarker},
+    {cmd:plotregion}, {cmd:outline}, {cmd:legend} and the rest) and a
+    package's or your own {cmd:linestyle-mine.style} draw their file's
+    attributes, and a scheme's {cmd:linestyle ci mine} redefines what
+    {cmd:pstyle(ci)}'s line draws.  Each directory is searched before its
+    {cmd:style/} subdirectory, as {cmd:findfile} searches.  The rows are
+    read when the graph is registered and travel with the dashboard, so
+    {cmd:dash serve} on a machine without Stata's files draws the same
+    page.  A style file that is a link out of its directory, or larger
+    than 1,048,576 bytes, is not read: it is named in a note and the
+    defaults are drawn.  Stata 19.5 has no {cmd:adoarchive} value in
+    {cmd:creturn} ({cmd:r(133)}); were style files read from a compressed ado archive,
+    {cmd:dash} would say {cmd:(note: dash: style files inside a compressed ado archive are not read; dash's transcribed styles are drawn)}.
+    Where no style file can be found (a renderer run without Stata's
+    ado-path) a name Stata knows outside the lists above draws the same
+    defaults, with
     {cmd:(note: dash: named style} {it:name} {cmd:of class} {it:class} {cmd:is not drawn by dash; default attributes used)}.
+    The {cmd:textboxstyle} and {cmd:color} style files are not read.
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
