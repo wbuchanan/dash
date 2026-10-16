@@ -195,6 +195,9 @@ foreach s in s2color stcolor {
     _cw_probe c4b.`s'.ciplot_rline twoway lfitci mpg weight, ciplot(rline) scheme(`s')
     _cw_probe c4b.`s'.ciplot_rcap  twoway lfitci mpg weight, ciplot(rcap) scheme(`s')
     _cw_probe c4b.`s'.ciplot_rarea twoway lfitci mpg weight, ciplot(rarea) scheme(`s')
+    foreach t in rbar rspike rcapsym rscatter rconnected scatter line connected area bar spike dropline dot {
+        _cw_probe c4b.`s'.ciplot_`t' twoway lfitci mpg weight, ciplot(`t') scheme(`s')
+    }
 }
 
 * lal.*: which abbreviations of lalign() twoway reads (C17b); outside,

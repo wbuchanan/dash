@@ -3178,11 +3178,13 @@ draws their line as one of {cmd:scatter}, {cmd:line}, {cmd:connected},
 {cmd:rspike}, {cmd:rcap}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline},
 {cmd:rconnected}) or as one of those eight through the lower limit; a name
 {cmd:twoway} does not know prints its two notes and draws the default.
-{cmd:ciplot(rline)} and {cmd:ciplot(rcap)} draw the limits in the band's
-outline colour and width (gs12 under {cmd:s2color}), and
-{cmd:fitplot()} draws the fit in the layer's colour, as {cmd:twoway}
-draws them; the other range types are drawn in the layer's colour, which
-has not been compared with {cmd:twoway}'s.
+Without {cmd:pstyle()}, the view {cmd:ciplot()} names is drawn in the
+{cmd:ci} series style, as {cmd:twoway} draws it: its lines in the band's
+outline colour (gs12 under {cmd:s2color}; {cmd:ci_line}, gs8, for
+{cmd:line} and {cmd:connected}), its markers in {cmd:ci_symbol} and its
+bars and areas in {cmd:ci_area}; {cmd:fitplot()} draws the fit in the
+layer's colour.  {cmd:ciplot(dot)} also draws {cmd:dot}'s rows of dots,
+which {cmd:twoway} leaves out.
 {opt smoothplot(plottype)} is taken on {cmd:lpolyci} and, as in
 {cmd:twoway}, changes nothing.  {opt estopts(string)}, {opt predopts(string)}
 and {opt estcmd(cmd)} are run by Stata when the graph is registered --

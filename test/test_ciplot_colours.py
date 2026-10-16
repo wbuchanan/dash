@@ -94,5 +94,56 @@ class TestCiplotColours:
         assert a == b
 
     def test_a_colour_option_still_wins(self, mode, scheme):
-        gs = _glyphs(mode, {"ciplot": "rline", "alcolor": "red"}, scheme)
+        # The view's own line option (rline takes lcolor()) over the ci
+        # style; the fit line keeps p1.
+        gs = _glyphs(mode, {"ciplot": "rline", "lcolor": "red"}, scheme)
         assert {g.line_color for g in gs[:2]} == {"#ff0000"}
+
+
+#: Every type ciplot() takes but rarea (the default band, above): twoway
+#: draws each in the ci series style -- lines in ci_arealine (ci_line for
+#: line and connected), markers in ci_symbol, fills in ci_area (fixture
+#: c4b.<scheme>.ciplot_<type>, measured 16oct2026).
+_DOT_ROWS: list = []
+CIPLOT_TYPES = ("rline", "rcap", "rbar", "rspike", "rcapsym", "rscatter",
+                "rconnected", "scatter", "line", "connected", "area", "bar",
+                "spike", "dropline", "dot")
+
+
+def _drawn_colours(gs, fit):
+    out = set()
+    for g in gs:
+        if g in _DOT_ROWS:
+            continue
+        kind = type(g).__name__
+        if kind in ("Line", "Segment") and g.line_color != fit:
+            out.add(g.line_color)
+        elif kind == "Scatter":
+            if getattr(g, "fill_alpha", 1) and g.marker not in ("dash",):
+                out.add(g.fill_color)
+            if g.line_width and g.line_color != fit:
+                out.add(g.line_color)
+        elif kind in ("VBar", "VArea", "Quad"):
+            out.add(g.fill_color)
+    return out
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("scheme", SCHEMES)
+@pytest.mark.parametrize("ptype", CIPLOT_TYPES)
+def test_every_ciplot_type_is_twoways(mode, scheme, ptype):
+    rec = TRUTH[f"c4b.{scheme}.ciplot_{ptype}"]
+    fit = _fit_colour(scheme)
+    want = {c for e in rec["elements"] if e[0] != "text"
+            for c in (e[1], e[2]) if c not in _CHROME and c != fit}
+    d = _draw(tp._spec([plot_for("lfitci", {"ciplot": ptype})],
+                       {"scheme": scheme}), mode)
+    rs = [r for r in d.figures[0].renderers
+          if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)]
+    gs = [r.glyph for r in rs]
+    # dot's rows of dots: twoway draws none under ciplot(dot) where dash
+    # draws its rows (a residual of the hand-back); the markers are
+    # compared.
+    _DOT_ROWS[:] = [r.glyph for r in rs if "dash_dots" in (r.tags or [])]
+    got = _drawn_colours(gs, fit)
+    assert got == want, (ptype, got, want)

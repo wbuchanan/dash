@@ -491,7 +491,7 @@ and now matches Stata.
 
 - dash (scatter close open) (scatter close volume, xaxis(2)) (scatter close date, xaxis(3)) on sysuse sp500: axis 3 labelled 14,976 to 15,341 -> 01jan2001 to 01jan2002, as twoway; tlabel(01feb2001 01jun2001 01oct2001, axis(3)), ttitle(), ttick(), tscale() and tline() with axis(3) refused (r(198), r(121)) -> drawn on axis 3, and tmlabel(01apr2001 01oct2001, axis(2)) named -> drawn at those dates (WP-31, C10e)
 
-- lfitci mpg weight, ciplot(rline) and ciplot(rcap) drew the limits in the layer's colour (navy under s2color); they are drawn in the band's outline colour (gs12), as twoway draws them; fitplot() keeps the layer's colour, as twoway (WP-31, C4b)
+- lfitci mpg weight, ciplot() drew its view in the layer's colour (navy under s2color); without pstyle() it is drawn in the ci style, as twoway draws it: lines in the band's outline colour (gs12; gs8 for line and connected), markers in gs8, bars and areas in gs12; fitplot() keeps the layer's colour, as twoway (WP-31, C4b)
 
 - mband and mspline on data with a missing y or x: the band count and the bands' x range from the complete rows only (auto with mpg missing in 10/12: mband 8 vertices, mspline 78) -> from every row with y or x, as twoway does (9 and 89) (WP-31, C6b)
 

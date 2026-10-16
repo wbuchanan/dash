@@ -10719,6 +10719,38 @@ def _u41_ciplot(sp, dp, app, svg):
     Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
 end
 
+python:
+def _u41_ciall(sp, dp, app, svg, fit):
+    """U41-16: the colours dash draws a ciplot() view in, saved and
+    served, against every fill and stroke twoway's SVG holds but the
+    chrome and the fit's."""
+    import re
+    import dash_render as dr
+    from sfi import Macro
+    chrome = {"", "none", "#eaf2f3", "#ffffff", "#f0f0f0", "#000000", fit}
+    with open(svg, encoding="utf-8") as fh:
+        txt = fh.read()
+    want = {c.lower() for c in re.findall(r'(?:fill|stroke):(#[0-9A-Fa-f]{6})', txt)} - chrome
+    a, b = __import__("__main__")._u03_docs(sp, dp, app)
+    bad = []
+    for name, figs in (("saved", a), ("served", b)):
+        got = set()
+        for r in figs[0].renderers:
+            g = getattr(r, "glyph", None)
+            if g is None or dr._dash_is_swatch(r):
+                continue
+            k = type(g).__name__
+            if k in ("Line", "Segment"):
+                got.add(str(g.line_color).lower())
+            elif k in ("Scatter", "VBar", "VArea"):
+                got.add(str(g.fill_color).lower())
+        got -= chrome
+        if got != want:
+            bad.append("%s %s, twoway %s" % (name, sorted(got), sorted(want)))
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
 * ==== S41 C4b: fitplot() and ciplot() colours ====
 local only : env WP31_ONLY
 if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
@@ -10743,6 +10775,22 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
     }
     _w31_expect U41-14 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
     _w31_done U41-14 "ciplot(rline) draws the limits in the band's outline colour, saved and served, as twoway"
+
+    // U41-16: every other view ciplot() takes is drawn in the ci series
+    // style (ci_arealine, ci_line, ci_symbol, ci_area), as twoway (live).
+    global u41_bad ""
+    local k 160
+    foreach t in rbar rspike rcapsym rscatter rconnected scatter line bar {
+        local ++k
+        capture graph drop u41t
+        quietly twoway lfitci mpg weight, ciplot(`t') scheme(s2color) name(u41t, replace)
+        quietly graph export "`u41d'/t`k'.svg", replace
+        graph drop u41t
+        _u41_spec "`u41d'" `k' lfitci mpg weight, ciplot(`t') scheme(s2color)
+        python: import __main__ as _u41_m; _u41_m._u41_ciall("`u41d'/s`k'.json", "`u41d'/d`k'.json", "`u41d'/a`k'.py", "`u41d'/t`k'.svg", "#1a476f")
+    }
+    _w31_expect U41-16 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-16 "ciplot() with rbar, rspike, rcapsym, rscatter, rconnected, scatter, line and bar draws twoway's ci colours, saved and served"
     display as text "S41 end " c(current_date) " " c(current_time)
 }
 * ==== end S41 ====

@@ -13436,29 +13436,21 @@ class GlyphMapper:
         band_r = None
         if _ciplot and _ciplot != "rarea":
             _b_before = len(fig.renderers)
+            # twoway draws the view in the ci series style when no
+            # pstyle() is given -- lines in ci_arealine (ci_line for line
+            # and connected), markers in ci_symbol, fills in ci_area,
+            # gs12/gs8 under s2color -- not in the layer's p# (WP-31 C4b,
+            # test/fixtures/colour_width_edges_truth.json
+            # c4b.<scheme>.ciplot_<type>, every type ciplot() takes); a
+            # given pstyle() and the colour options still win.
+            _copts = opts
+            if self._ci_pstyle(opts)[0] == "":
+                _copts = dict(opts, pstyle="ci")
             band_r = self._dash_draw_range_as(
-                fig, _bsrc, x_col, lo_col, hi_col, _ciplot, opts, color_idx)
+                fig, _bsrc, x_col, lo_col, hi_col, _ciplot, _copts, color_idx)
             # Keyed as the band, whatever glyphs the type drew.
             for _r in fig.renderers[_b_before:]:
                 _r._dash_ci_band = True
-            # twoway draws ciplot(rline) and ciplot(rcap) in the band's
-            # outline style -- gs12 under s2color, not the layer's p#
-            # (WP-31 C4b, test/fixtures/colour_width_edges_truth.json
-            # c4b.*); the band's own colour options win, as on the band.
-            if _ciplot in ("rline", "rcap"):
-                _st = self._ci_band_style(opts)
-                _la = _st.get("line_alpha")
-                for _r in fig.renderers[_b_before:]:
-                    _g = getattr(_r, "glyph", None)
-                    if _g is None or not hasattr(_g, "line_color"):
-                        continue
-                    _g.line_color = _st["line"]
-                    _g.line_alpha = 1.0 if _la is None else _la
-                    _g.line_width = _st["line_width"]
-                    if type(_g).__name__ != "Scatter":
-                        _g.line_dash = list(_st.get("line_dash") or [])
-                    elif hasattr(_g, "fill_color"):
-                        _g.fill_color = _st["line"]
         if band_r is None:
             band_r, _outline_r = self._ci_band_glyphs(
                 fig, _bsrc, x_col, lo_col, hi_col, options)
