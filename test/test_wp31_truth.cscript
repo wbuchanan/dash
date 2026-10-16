@@ -12634,6 +12634,86 @@ if inlist("`only'", "", "S45") & `: list posof "S45" in w31_run' {
 }
 * ==== end S45 ====
 
+// S46 helpers (WP-31 C16 ...).  _u46_move: the saved page's recast
+// histogram or kdensity after one filter move -- the page rendered, the
+// widget set and its own callback run under node (test/js_runner.py) --
+// its points (the columns of role x and y) written to a JSON file; global
+// u46_frozen holds the number of frozen layers the page tagged and
+// u46_tagged 1 when the recast layer carries its recount config.
+python:
+def _u46_move(sp, dp, kind, value, out):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    rc = [x for f in r.figures.values() for x in f.renderers
+          if "recast_cols" in (getattr(x, "_dash_agg_config", None) or {})]
+    Macro.setGlobal("u46_tagged", "1" if rc else "0")
+    Macro.setGlobal("u46_frozen", str(sum(
+        len(v) for v in r.frozen_layer_registry.values())))
+    xs, ys = [], []
+    if rc:
+        cols = rc[0]._dash_agg_config["recast_cols"]
+        d = rc[0].data_source.data
+        xk = [k for k, v in cols.items() if v == "x"][0]
+        yk = [k for k, v in cols.items() if v == "y"][0]
+        xs = [float(v) for v in d[xk]]
+        ys = [float(v) for v in d[yk]]
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump({"x": xs, "y": ys}, fh)
+end
+
+* ==== S46 C16: Recast layers recounted ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+    capture graph drop _all
+
+    // U46-05: after a move the saved page's recast histogram (bins 10(5)45,
+    // the build's and twoway's on the kept rows alike) and recast kdensity
+    // over range(10 45) are twoway's on the kept rows, and the kdensity,
+    // whose grid is the user's, carries no stale cue.
+    local k 0
+    foreach c in "histogram mpg, start(10) width(5) recast(line)|histogram mpg if foreign == 1, start(10) width(5) recast(line)|1" "kdensity mpg, range(10 45) recast(line)|kdensity mpg if foreign == 1, range(10 45) recast(line)|0" {
+        local ++k
+        mata: u46_t = ustrsplit(st_local("c"), "[|]"); st_local("cmd", u46_t[1]); st_local("tw", u46_t[2]); st_local("nfr", u46_t[3])
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `cmd' name(zu46c`k')
+        _w31_expect U46-05 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u46d'/c`k'.json") datapath("`u46d'/cd`k'.json") filter(foreign, type(dropdown))
+        python: __import__("__main__")._u46_move("`u46d'/c`k'.json", "`u46d'/cd`k'.json", "Select", "Foreign", "`u46d'/cg`k'.json")
+        _w31_expect U46-05 "(${u46_tagged} == 1)" "`cmd': the recast layer carries no recount config"
+        _w31_expect U46-05 "(${u46_frozen} == `nfr')" "`cmd': ${u46_frozen} frozen layers, expected `nfr' (the un-recast layer's cue)"
+        _u10_ss "`u46d'/ct`k'.json" "`u46d'/ct`k'.gph" `tw'
+        python: __import__("__main__")._u10_close("`u46d'/ct`k'.json", "`u46d'/cg`k'.json", "", 3e-7, 0)
+        _w31_expect U46-05 "(${u10_ok} == 1)" "dash `cmd' moved to Foreign: ${u10_msg}"
+    }
+    _w31_done U46-05 "a recast histogram and kdensity are recounted by the saved page after a move, as twoway draws the kept rows"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

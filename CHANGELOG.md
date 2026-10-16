@@ -1057,7 +1057,7 @@ Changed behaviour.
 
 - The help states what each display format costs a page: one tick formatter and one tooltip formatter of about 37 KB each, one per distinct format, never more (WP-31, G5)
 
-<!-- WP-31 C16 -->
+- A saved page recounts a histogram or kdensity drawn by recast() as scatter, line, connected, area, bar, spike or dropline after a filter move, as it recounts the bars and the curve; it kept the build's points (WP-31, C16)
 
 - The qfitci docstring, the module header's resample-count comment and the comment above dash.ado's sort rule describe the code: an analytic band with a bootstrap only on a singular design, and points joined in the data's order (WP-31, F5)
 

@@ -994,6 +994,9 @@ FUNCTIONS = {
  # WP-31 C5: baroffset()'s moved centres.
  'GlyphMapper._bar_extent.<locals>._moved': 'test/test_distribution_odds.py::TestBaroffset::test_numeric',
  'GlyphMapper._hist_bar_edges': 'test/test_distribution_odds.py::TestHistogramConfig::test_helper',
+ 'GlyphMapper._tag_recast': 'test/test_recast_refit.py::TestRecastRefit::test_tagged',
+ 'GlyphMapper._hist_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
+ 'GlyphMapper._kde_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
  '_dash_numlist_floats': 'test/test_distribution_odds.py::TestDroplineHelpers::test_helper',
  '_dash_function_drops': 'test/test_distribution_odds.py::TestDroplineHelpers::test_function_drops',
  '_dash_function_drops.<locals>._real': 'test/test_distribution_odds.py::TestDroplineHelpers::test_function_drops',

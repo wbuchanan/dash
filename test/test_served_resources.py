@@ -501,13 +501,15 @@ class TestTheSavedPageIsUnchanged:
         # with WP-31 D12's zoom statement (code only), merged in batch 13.
         # Re-derived after WP-31 G1: the filter mask's code gains the
         # extended-missing option branch (code only); and after WP-31 G2:
-        # each Stata writer's args and code carry the page's dp.
+        # each Stata writer's args and code carry the page's dp; and after
+        # WP-31 C16: the filter code's recast writer (code only).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
     # old -> new: G1 the filter mask code (8c7b23d4...); G2 dp
-    "77a8a775026db70b9269252b5bdc2ceb1803b7241f176249b23ffc7b2c60ea8e")
+    # (77a8a775...); C16 the recast writer in the filter code
+    "b02f3e94f266dec0fdcb273ef5d41ffc31393b2f495ea12c365f038d4e624836")
 
 
 # ===========================================================================

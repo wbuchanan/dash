@@ -3747,6 +3747,12 @@ MOVE_CORPUS = [
     # WP-31 E8: rarea's outline Lines follow the move with the fill.
     _move_case("rarea, dropdown to Foreign (WP-31 E8)", _MOVES[0],
                [plot_for("rarea", {"sort": "1"})]),
+    # WP-31 C16: a recast histogram and kdensity are recounted.
+    _move_case("histogram recast(line), dropdown to Foreign (WP-31 C16)",
+               _MOVES[0], [plot_for("histogram", {"recast": "line"})]),
+    _move_case("kdensity recast(area), range (WP-31 C16)", _MOVES[1],
+               [plot_for("kdensity", {"recast": "area",
+                                      "range": "10 45"})]),
 ]
 
 

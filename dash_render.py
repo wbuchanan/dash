@@ -20918,9 +20918,22 @@ class GlyphMapper:
                       + np.asarray(axis_edges[i0 + 1:i1 + 1], dtype=float))
                 / 2.0,
                 "y": np.asarray(tops[i0:i1], dtype=float)})
-            return self._dash_draw_xy_as(fig, _mid, "x", "y",
-                                         options["recast"], options,
-                                         color_idx)
+            _before = len(fig.renderers)
+            _first = self._dash_draw_xy_as(fig, _mid, "x", "y",
+                                           options["recast"], options,
+                                           color_idx)
+            # The recast layer is recounted after a saved move like the
+            # bars it stands for (WP-31 C16): the bars' config, with the
+            # role of each column of the target's own source.
+            if i1 > i0:
+                self._tag_recast(list(fig.renderers[_before:]),
+                                 _mid.data["x"], _mid.data["y"],
+                                 self._hist_agg_config(
+                                     yvar, axis_edges, edges, i0, i1, ymode,
+                                     options, wtype, discrete, start, h, nb,
+                                     _hgap, _hoff),
+                                 self._agg_member_ids(source, view))
+            return _first
         r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
                                        yvar))
         if i1 <= i0:
@@ -20929,7 +20942,21 @@ class GlyphMapper:
             return r
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
         r._dash_agg_source = hist_source
-        r._dash_agg_config = {
+        r._dash_agg_config = self._hist_agg_config(
+            yvar, axis_edges, edges, i0, i1, ymode, options, wtype, discrete,
+            start, h, nb, _hgap, _hoff)
+        # The rows these bars count; DashRenderer hands them to the recount
+        # when they are a subset of the data.
+        r._dash_agg_rows = self._agg_member_ids(source, view)
+        return r
+
+    def _hist_agg_config(self, yvar, axis_edges, edges, i0, i1, ymode,
+                         options, wtype, discrete, start, h, nb, gap, off):
+        """The saved page's recount config for a histogram's kept bars
+        ``i0:i1`` (``map_histogram``; WP-31 C16 shares it with the recast
+        layer)."""
+        _hgap, _hoff = gap, off
+        cfg = {
             "type":      "histogram",
             "varname":   yvar,
             # The drawn edges of the kept bars (axis units).
@@ -20968,18 +20995,63 @@ class GlyphMapper:
         # _STATA_DATE_KINDS only, and every number is finite.
         _hk = (self.date_vars or {}).get(yvar)
         if _hk in _STATA_DATE_KINDS:
-            r._dash_agg_config["datekind"] = _hk
-            r._dash_agg_config["unit_edges"] = edges[i0:i1 + 1].tolist()
-            r._dash_agg_config["bin_first"] = int(i0)
+            cfg["datekind"] = _hk
+            cfg["unit_edges"] = edges[i0:i1 + 1].tolist()
+            cfg["bin_first"] = int(i0)
         _wk = (self.date_vars or {}).get(
             str(options.get("wexp", "")).strip()) if wtype is not None \
             else None
         if _wk in _STATA_DATE_KINDS:
-            r._dash_agg_config["wdatekind"] = _wk
-        # The rows these bars count; DashRenderer hands them to the recount
-        # when they are a subset of the data.
-        r._dash_agg_rows = self._agg_member_ids(source, view)
-        return r
+            cfg["wdatekind"] = _wk
+        return cfg
+
+    @staticmethod
+    def _tag_recast(added, xs, ys, cfg, rows):
+        """Tag a recast histogram's or kdensity's renderers for the saved
+        page's recount (WP-31 C16).
+
+        *added* are the renderers ``_dash_draw_xy_as`` drew for the
+        computed points (*xs*, *ys*).  Each renderer's own source is the
+        agg source, its config *cfg* plus ``recast_cols``: every column's
+        role, ``"x"``, ``"y"``, ``"index"`` (0..n-1) or ``["const", v]``
+        (a base), read off the columns as built; ``_FILTER_JS``'s
+        ``dash_recast_data`` writes the recounted points by it.  A layer
+        with a column of any other shape (dot's dots, a stepped join) is
+        left untagged and keeps the build with its cue.
+        """
+        xs = np.asarray(xs, dtype=float)
+        ys = np.asarray(ys, dtype=float)
+        n = len(xs)
+        if n == 0 or not added:
+            return
+        plans = []
+        for g in added:
+            ds = getattr(g, "data_source", None)
+            if not isinstance(ds, ColumnDataSource) or not ds.data:
+                return
+            cols = {}
+            for k, v in ds.data.items():
+                try:
+                    a = np.asarray(v, dtype=float)
+                except (TypeError, ValueError):
+                    return
+                if a.ndim != 1 or len(a) != n:
+                    return
+                if np.array_equal(a, xs, equal_nan=True):
+                    cols[k] = "x"
+                elif np.array_equal(a, ys, equal_nan=True):
+                    cols[k] = "y"
+                elif np.array_equal(a, np.arange(n, dtype=float)):
+                    cols[k] = "index"
+                elif np.isfinite(a[0]) and np.all(a == a[0]):
+                    cols[k] = ["const", float(a[0])]
+                else:
+                    return
+            plans.append((g, ds, cols))
+        for g, ds, cols in plans:
+            g._dash_agg_source = ds
+            g._dash_agg_config = dict(cfg, recast_cols=cols)
+            g._dash_agg_rows = rows
 
     @staticmethod
     def _histogram_counts(
@@ -21309,9 +21381,19 @@ class GlyphMapper:
         kd_source = ColumnDataSource({"x": x_draw, "y": density})
         # recast(): the computed points drawn as the target (WP-30 P1.8b).
         if options.get("recast"):
-            return self._dash_draw_xy_as(fig, kd_source, "x", "y",
-                                         options["recast"], options,
-                                         color_idx)
+            _before = len(fig.renderers)
+            _first = self._dash_draw_xy_as(fig, kd_source, "x", "y",
+                                           options["recast"], options,
+                                           color_idx)
+            # Re-estimated after a saved move like the curve (WP-31 C16);
+            # see _tag_recast.
+            self._tag_recast(list(fig.renderers[_before:]), x_draw, density,
+                             self._kde_agg_config(yvar, x_draw, x_range,
+                                                  kernel, bw, _bw_zero,
+                                                  options, wtype, _karea,
+                                                  _kboundary),
+                             self._agg_member_ids(source, view))
+            return _first
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -21323,7 +21405,24 @@ class GlyphMapper:
         # through as a fixed bandwidth; otherwise the JS re-derives it from the
         # filtered rows, which is what Stata would do on that subset.
         r._dash_agg_source = kd_source
-        r._dash_agg_config = {
+        r._dash_agg_config = self._kde_agg_config(
+            yvar, x_draw, x_range, kernel, bw, _bw_zero, options, wtype,
+            _karea, _kboundary)
+        # A stepped curve stays stepped when a saved move recomputes it
+        # (_FILTER_JS's dash_join_rebuild; WP-30 P1.8a).
+        _kd_style = _dash_join_spec(options)[0]
+        if _kd_style not in ("direct", "none"):
+            r._dash_agg_config["join"] = {"style": _kd_style}
+        # The rows this curve is estimated from; see map_histogram.
+        r._dash_agg_rows = self._agg_member_ids(source, view)
+        return r
+
+    def _kde_agg_config(self, yvar, x_draw, x_range, kernel, bw, bw_zero,
+                        options, wtype, karea, kboundary):
+        """The saved page's re-estimate config for a kdensity curve
+        (``map_kdensity``; WP-31 C16 shares it with the recast layer)."""
+        _bw_zero, _karea, _kboundary = bw_zero, karea, kboundary
+        cfg = {
             "type":      "kdensity",
             "varname":   yvar,
             # The drawn grid (axis units).
@@ -21349,21 +21448,14 @@ class GlyphMapper:
         # map_histogram.
         _kk = (self.date_vars or {}).get(yvar)
         if _kk in _STATA_DATE_KINDS:
-            r._dash_agg_config["datekind"] = _kk
-            r._dash_agg_config["x_eval"] = x_range.tolist()
+            cfg["datekind"] = _kk
+            cfg["x_eval"] = x_range.tolist()
         _wk = (self.date_vars or {}).get(
             str(options.get("wexp", "")).strip()) if wtype is not None \
             else None
         if _wk in _STATA_DATE_KINDS:
-            r._dash_agg_config["wdatekind"] = _wk
-        # A stepped curve stays stepped when a saved move recomputes it
-        # (_FILTER_JS's dash_join_rebuild; WP-30 P1.8a).
-        _kd_style = _dash_join_spec(options)[0]
-        if _kd_style not in ("direct", "none"):
-            r._dash_agg_config["join"] = {"style": _kd_style}
-        # The rows this curve is estimated from; see map_histogram.
-        r._dash_agg_rows = self._agg_member_ids(source, view)
-        return r
+            cfg["wdatekind"] = _wk
+        return cfg
 
     # ------------------------------------------------------------------
     # Phase 2 range plot types
@@ -32101,6 +32193,24 @@ function dash_panels_visibility(pairs, sources, figs) {
     }
 }
 // DASH_FIT_HELPERS_END
+// WP-31 C16: a recast histogram's or kdensity's own source, rebuilt from
+// the recounted points (xs, ys) by the role GlyphMapper._tag_recast read
+// off each column: x, y, the row index, or a constant base -- kept as it
+// stands (the axis finish moves a base with the axis), or the build's
+// value when the column's length changes.
+function dash_recast_data(cols, xs, ys, prev) {
+    const out = {};
+    for (const k of Object.keys(cols)) {
+        const role = cols[k];
+        const old = prev ? prev[k] : null;
+        if (role === 'x') out[k] = xs.slice();
+        else if (role === 'y') out[k] = ys.slice();
+        else if (role === 'index') out[k] = xs.map((_v, i) => i);
+        else if (old && old.length === xs.length) out[k] = Array.from(old);
+        else out[k] = xs.map(() => role[1]);
+    }
+    return out;
+}
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
 const agg_configs = JSON.parse(agg_configs_json);
@@ -32181,6 +32291,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
     }
 
+    // WP-31 C16: a recast layer's source as it stood (its base columns).
+    const _prev = ac.recast_cols ? src.data : null;
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
@@ -32231,6 +32343,12 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 left:  _hl,
                 right: _hr,
             };
+            if (ac.recast_cols) {
+                // WP-31 C16: the recast layer's midpoints and heights.
+                const _mx = [];
+                for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
+                src.data = dash_recast_data(ac.recast_cols, _mx, new Array(n_bins).fill(0), _prev);
+            }
             src.change.emit();
             continue;
         }
@@ -32264,6 +32382,13 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             left:  _hl,
             right: _hr,
         };
+        if (ac.recast_cols) {
+            // WP-31 C16: midpoints and heights, as the recast target
+            // reads them (map_histogram's recast source).
+            const _mx = [];
+            for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
+            src.data = dash_recast_data(ac.recast_cols, _mx, src.data.top, _prev);
+        }
         src.change.emit();
 
     } else if (ac.type === 'kdensity') {
@@ -32272,6 +32397,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             // Fewer than 2 data points — clear kdensity curve rather than
             // leaving the previous curve visible as stale data.
             src.data = { x: [], y: [] };
+            if (ac.recast_cols) src.data = dash_recast_data(ac.recast_cols, [], [], null);
             src.change.emit();
             continue;
         }
@@ -32348,6 +32474,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const _area = (ac.area === undefined || ac.area === null) ? 1 : ac.area;
         if (_area !== 1) for (let i = 0; i < ys.length; i++) ys[i] *= _area;
         src.data = { x: xs, y: ys };
+        // WP-31 C16: a recast curve's own source takes the grid and the
+        // density by its columns' roles.
+        if (ac.recast_cols) src.data = dash_recast_data(ac.recast_cols, xs, ys, _prev);
         // A stepped curve stays stepped (WP-30 P1.8a).
         if (ac.join) {
             src.data = dash_join_rebuild(src.data,

@@ -3664,11 +3664,11 @@
   - Suggested fix: WP-31 section 46 (estimator edges): evaluate per panel.
   - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted
+- [x] Title: A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted
   - File Names and Line Numbers: dash_render.py:17994-18004, :1913-1930
   - Description: GAPS3.md C16, re-verified at 6370ca4: A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted.
   - Suggested fix: WP-31 section 46 (estimator edges): tag the recast renderer for the recount.
-  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, C16). map_histogram's and map_kdensity's recast() branches tag the renderers _dash_draw_xy_as draws with the un-recast layer's recount config (GlyphMapper._hist_agg_config, _kde_agg_config) plus recast_cols, each column's role read off the target's own source by GlyphMapper._tag_recast; _FILTER_JS's histogram and kdensity branches write the recounted midpoints and heights (the grid and the density) into that source through dash_recast_data, so the saved page recounts a recast histogram or kdensity after a move as it recounts the bars and the curve, where it kept the build's points (and under kdensity's range() drew them with no cue); the served app recomputed them already. Measured: the un-recast histogram and kdensity keep their "(bins unfiltered)" and "(grid unfiltered)" cue after a move (their bins and grid are the build's), so the recast layer keeps that same cue rather than none. Pinned by test/test_recast_refit.py::TestRecastRefit::test_js_equals_python, test/test_recast_refit.py::TestRecastRefit::test_tagged, test/test_recast_refit.py::TestRecastRefit::test_cue_as_the_unrecast_layer, test/test_wp31_truth.cscript U46-05. Still marked, as documented in the help: recast(dot) and a histogram recast to a range type keep the build's points with the cue (dot's dots are drawn on the axis rows; the range types draw through _dash_draw_range_as). Closes GAPS3 C16 (WP-31, C16).
 
 - [ ] Title: Fractional %t values are floored on load and join-order edge cases differ
   - File Names and Line Numbers: dash_render.py:612-620, :16187-16210

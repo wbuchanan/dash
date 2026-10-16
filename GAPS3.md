@@ -465,7 +465,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
 - **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit 52b3d18.
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit d5556ea.
-- **C16 Tracked:** Open (WP-31 section 46).
+- **C16 Tracked:** Closed in WP-31, BUGS.md "A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted", commit pending.
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
 - **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit 90ca733.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.

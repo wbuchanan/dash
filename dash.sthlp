@@ -2142,7 +2142,10 @@ recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
-grid chosen when the dashboard was built, so neither moves as you filter; it
+grid chosen when the dashboard was built, so neither moves as you filter
+(a histogram or density drawn by {cmd:recast()} as {cmd:scatter},
+{cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar}, {cmd:spike} or
+{cmd:dropline} is recounted after a move the same way); it
 refits every fitted or smoothed line ({cmd:lfit}, {cmd:qfit},
 {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess},
 {cmd:lpoly}, {cmd:lpolyci}, {cmd:mband}, {cmd:mspline}) from the rows that
@@ -3235,7 +3238,10 @@ time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
 them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
 {cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
 keyed as the layer is keyed without it; on the saved page a recast fit
-or density is marked after a filter move, as the fits are.  A
+is marked after a filter move, and a recast histogram or density is
+recounted as the bars and the curve are (drawn as {cmd:dot}, or a
+histogram as a range type, it is
+marked).  A
 {cmd:histogram} also takes the range types ({cmd:rarea}, {cmd:rbar},
 {cmd:rspike}, {cmd:rcap}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline},
 {cmd:rconnected}), its bins drawn as the range from 0 to each bin's
