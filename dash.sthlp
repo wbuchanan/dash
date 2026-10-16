@@ -2591,6 +2591,13 @@ umask.  On Windows, privacy rests on your per-user TEMP folder, which has not
 been tested.
 
 
+{pstd}
+{ul:Page size.}  Each distinct display format on a page carries one tick
+formatter and one tooltip formatter of about 37 KB each, the writer that
+writes numbers and dates as Stata's {cmd:display} does; the page's script
+cannot share one model between an axis and a tooltip, so a page with many
+formats grows by that much for each.
+
 {marker limits}
 {title:Resource limits}
 

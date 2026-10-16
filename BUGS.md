@@ -3634,11 +3634,11 @@
   - Suggested fix: WP-31 section 43 (data missing locale): keep numeric carried columns as arrays.
   - Resolution: Fixed 16oct2026 (WP-31, G4). GlyphMapper._carry_cols keeps a numeric carried column (hover(), mlabel, the row id) as a float64 array (integers become floats, so NaN can stand for a dropped row) and a date column as a datetime64 array; only text and other objects become a list. The mapper is a class member, so both renderers carry it. Pinned by test/test_carry_cols.py::TestArrays::test_numeric_stays_array, ::test_int_becomes_float_array, ::test_text_is_list, ::test_dates_stay_arrays, ::test_selector_applies, ::test_build_is_faster_than_lists, test/test_wp31_truth.cscript U43-01. Closes GAPS3 G4 (WP-31, G4).
 
-- [ ] Title: One format-writer model is emitted per distinct tick format and per tooltip kind
+- [x] Title: One format-writer model is emitted per distinct tick format and per tooltip kind
   - File Names and Line Numbers: dash_render.py:27945
   - Description: GAPS3.md G5, re-verified at 6370ca4: One ~33 KB format-writer model per distinct tick format and per (fmt, kind) tooltip.
   - Suggested fix: WP-31 section 43 (data missing locale): share one writer per page.
-  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, G5), by measurement and documentation. Measured: _DASH_FMT_JS is 37,997 bytes (about 37 KB); Bokeh gives a model's code to that model alone, with no way to share it without a page script of its own, and a CustomJSTickFormatter cannot serve as a HoverTool formatter, so a page needs one tick writer and one tooltip writer per distinct display format, which the caches already give: _dash_fmt_tick_formatter, _dash_fmt_label_tick_formatter and _dash_fmt_hover key each model by (how, fmt, kind, storage, dp), dp since WP-31 G2. The help's Page size paragraph states the cost. Pinned by test/test_format_writer_sharing.py::TestOneWriterPerQuadruple::test_no_duplicate_models, ::test_key_carries_dp, ::test_help_states_the_size. Closes GAPS3 G5 (WP-31, G5).
 
 - [ ] Title: User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle
   - File Names and Line Numbers: dash_render.py:8115 `_STYLE_TABLE`, :8663-8711, :9424-9492
