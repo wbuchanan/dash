@@ -287,12 +287,17 @@ class TestTheSchemeKeys:
         assert list(k["Patch"][0].glyph.line_dash) == _dash("dash")
 
     def test_a_user_schemes_other_keys_are_read(self, tmp_path, monkeypatch):
-        """pstyle(p2) follows p#other -> pother -> p# -> p, as Stata does:
-        economist's `linewidth pother thick' is the band's outline."""
+        """pstyle(p2)'s outline follows p#other -> pother -> p# -> p, as
+        Stata does: economist's `linewidth pother thick' is the band's
+        outline.  Flipped (WP-31 E7): its fill follows shadestyle p#'s
+        chain, `color p#shade' and `intensity p#shade' -> pshade -> p# ->
+        p; `color p2other' and `intensity pbar' were wrong, as measured
+        (test/fixtures/colour_width_edges_truth.json ci.color_p1other,
+        ci.inten200)."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / "oz.scheme").write_text(
-            "#include s2color\ncolor p2other red\nlinewidth pother vthick\n"
-            "intensity pbar inten30\n", encoding="utf-8")
+            "#include s2color\ncolor p2shade red\nlinewidth pother vthick\n"
+            "intensity pshade inten30\n", encoding="utf-8")
         k = _parts(_draw("lfitci", "oz.scheme", {"pstyle": "p2"}).renderers)
         assert _hex(k["VArea"][0].glyph.fill_color) == _blend("#ff0000", 0.3)
         assert k["Patch"][0].glyph.line_width == pytest.approx(5.376)

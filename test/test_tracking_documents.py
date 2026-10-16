@@ -1975,7 +1975,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "E4": "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element",
     "E5": "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)",
-    "E7": "A pstyle(p#) CI band under a scheme intensity above full is clamped to full",
     "E8": "rarea and rbar outlines are not stroked where twoway strokes them from the scheme",
     "E9": "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed",
     "G1": "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips",

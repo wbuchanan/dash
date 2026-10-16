@@ -10392,6 +10392,73 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u41_svg_fill(svg):
+    """The fill of the first <use> twoway draws (a band's polygon)."""
+    import re
+    with open(svg, encoding="utf-8") as fh:
+        m = re.search(r'<use [^>]*style="stroke:none;fill:(#[0-9A-Fa-f]{6})', fh.read())
+    return m.group(1).lower() if m else ""
+
+
+def _u41_band(sp, dp, app, svg):
+    """U41-08: dash's band fill, saved and served, against twoway's."""
+    from sfi import Macro
+    import dash_render as dr
+    want = _u41_svg_fill(svg)
+    out = []
+    a, b = __import__("__main__")._u03_docs(sp, dp, app)
+    for figs in (a, b):
+        gs = [r.glyph for r in figs[0].renderers
+              if type(getattr(r, "glyph", None)).__name__ == "VArea"
+              and not dr._dash_is_swatch(r)]
+        out.append(str(gs[0].fill_color).lower() if gs else "")
+    bad = [] if out == [want, want] else ["dash %s, twoway %s" % (out, want)]
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
+capture program drop _u41_bandcase
+program define _u41_bandcase
+    // _u41_bandcase <dir> <k> <scheme name> <scheme line>: twoway's and
+    // dash's lfitci pstyle(p1) band under s2color plus the line.
+    version 19
+    args dir k name line
+    tempname f
+    file open `f' using "`dir'/scheme-`name'.scheme", write text replace
+    file write `f' "#include s2color" _n `"`line'"' _n
+    file close `f'
+    capture graph drop u41t
+    quietly twoway lfitci mpg weight, pstyle(p1) scheme(`name') name(u41t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u41t
+    _u41_spec "`dir'" `k' lfitci mpg weight, pstyle(p1) scheme(`name')
+    python: import __main__ as _u41_m; _u41_m._u41_band("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg")
+end
+
+* ==== S41 E7: CI band intensity ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41b"
+    capture mkdir "`u41d'"
+    sysuse auto, clear
+    adopath ++ "`u41d'"
+
+    // U41-08: an lfitci pstyle(p1) band reads shadestyle p#'s chain:
+    // p1bar's inten200 leaves it, p1shade's draws it at twice full, and
+    // color p1shade colours it, saved and served, as twoway (live).
+    global u41_bad ""
+    _u41_bandcase "`u41d'" 81 u41b1 "intensity p1bar inten200"
+    _u41_bandcase "`u41d'" 82 u41b2 "intensity p1shade inten200"
+    _u41_bandcase "`u41d'" 83 u41b3 "color p1shade red"
+    adopath - "`u41d'"
+    _w31_expect U41-08 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-08 "an lfitci pstyle(p1) band draws shadestyle p#'s colour and intensity, above full kept, saved and served, as twoway"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

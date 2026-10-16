@@ -3586,11 +3586,11 @@
   - Suggested fix: WP-31 section 41 (colour width outline edges): read comma RGB in every context and refuse where twoway does.
   - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: A pstyle(p#) CI band under a scheme intensity above full is clamped to full
+- [x] Title: A pstyle(p#) CI band under a scheme intensity above full is clamped to full
   - File Names and Line Numbers: dash_render.py:10746-10750 vs :10732
   - Description: GAPS3.md E7, re-verified at 6370ca4: pstyle(p#) CI band under a scheme intensity above full is clamped to full (`_intensity` default clamp=True); histogram passes clamp=False.
   - Suggested fix: WP-31 section 41 (colour width outline edges): pass clamp=False on the band reader.
-  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, E7). Measured first (scripts/extract_colour_width_edges_truth.do, ci.*): an lfitci band under pstyle(p1) or astyle(p1) is filled in shadestyle p#'s chain, color and intensity p#shade -> pshade -> p# -> p, not p#other's colour and p#bar's intensity: intensity p1bar inten200 leaves it at s2color's inten80 (#486c8c), intensity p1shade inten200 draws it at twice full (#0d2438), color p1shade red draws it red where color p1other red changes nothing. SchemeParser._init_properties now builds p_other_band_styles' fill from color p#shade and its intensity from intensity p#shade with _intensity(..., clamp=False), so an intensity above full is kept and blended as the histogram's is; the outline keys (p#otherline, linewidth and linepattern p#other) are unchanged. Both renderers share the parser. Pinned by test/test_band_intensity.py::TestBandIntensity::test_above_full_kept, ::test_the_chain_is_shadestyle_pnums, ::test_fill_matches_twoway, test/test_wp31_truth.cscript U41-08; fixture test/fixtures/colour_width_edges_truth.json. Closes GAPS3 E7 (WP-31, E7).
 
 - [ ] Title: rarea and rbar outlines are not stroked where twoway strokes them from the scheme
   - File Names and Line Numbers: dash_render.py:18494-18513, :18588

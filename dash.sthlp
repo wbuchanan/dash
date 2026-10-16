@@ -3619,7 +3619,11 @@ scheme's {cmd:ci} style and not in its line's colour: filled in
 {cmd:color ci_arealine} at {cmd:linewidth ci_area} and
 {cmd:linepattern ci_area} -- under {cmd:s2color} an opaque gs12 band
 outlined in gs12 -- with the fit line over it.  {cmd:pstyle(p}{it:#}{cmd:)},
-{it:#} from 1 to 15, draws the band and the line in that plot style, and
+{it:#} from 1 to 15, draws the band and the line in that plot style --
+the band filled in the scheme's {cmd:color p}{it:#}{cmd:shade} at
+{cmd:intensity p}{it:#}{cmd:shade} (each down to {cmd:p}{it:#} and
+{cmd:p}, as twoway reads them; an intensity above full, such as
+{cmd:inten200}, darkens it as twoway does) -- and
 {cmd:pstyle(ci2)} the band in the scheme's {cmd:ci2} colours;
 {cmd:pstyle(ci)} and {cmd:pstyle(ci2)} draw the line in
 {cmd:color ci_line}.  Any other style name is named in a note and drawn

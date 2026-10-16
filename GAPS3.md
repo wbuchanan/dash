@@ -505,7 +505,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E4 Tracked:** Open (WP-31 section 41).
 - **E5 Tracked:** Open (WP-31 section 41).
 - **E6 Tracked:** Closed in WP-31, BUGS.md "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn", commit db38355.
-- **E7 Tracked:** Open (WP-31 section 41).
+- **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit pending.
 - **E8 Tracked:** Open (WP-31 section 41).
 - **E9 Tracked:** Open (WP-31 section 42).
 - **E10 Tracked:** Open (WP-31 section 44).

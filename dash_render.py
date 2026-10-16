@@ -11451,22 +11451,30 @@ class SchemeParser:
             "intensity histogram", 1.0, clamp=False)
         self.histogram_line_width: float = self._bounded_lwidth(
             "linewidth histogram", self.default_line_width)
-        # ...and under pstyle(p#): areastyle p# (style/areastyle-p#.style)
-        # is linestyle and shadestyle p#other -- fill `color p#other' at
-        # `intensity p#bar' (shadestyle-p#other.style), outline `color
-        # p#otherline' at `linewidth p#other' and `linepattern p#other'
-        # (linestyle-p#other.style) -- each down Stata's p#stub -> pstub ->
-        # p# -> p chain.  economist's `linewidth pother thick' is the one
-        # key a shipped scheme sets.
+        # ...and under pstyle(p#) or astyle(p#): the outline is linestyle
+        # p#other -- `color p#otherline' at `linewidth p#other' and
+        # `linepattern p#other' (linestyle-p#other.style) -- each down
+        # Stata's p#stub -> pstub -> p# -> p chain; economist's `linewidth
+        # pother thick' is the one key a shipped scheme sets.  The fill is
+        # shadestyle p#'s chain, `color p#shade' at `intensity p#shade'
+        # (style/shadestyle-p#.style), not p#other's `intensity p#bar':
+        # measured (WP-31 E7, test/fixtures/colour_width_edges_truth.json
+        # ci.*), `intensity p1bar inten200' leaves an lfitci pstyle(p1)
+        # band at inten80, `intensity p1shade inten200' draws it at twice
+        # full (#0d2438) -- above full is kept, as the histogram's is --
+        # and `color p1shade red' draws it red where `color p1other red'
+        # changes nothing.
         self.p_other_band_styles: list = []
         for _i in range(1, 16):
-            _fc, _fa = self._stub_color_alpha(_i, "other")
+            _fc, _fa = self._stub_color_alpha(_i, "shade")
             _oc, _oa = self._stub_color_alpha(_i, "otherline")
-            _ik = self._first_present((f"intensity p{_i}bar", "intensity pbar",
+            _ik = self._first_present((f"intensity p{_i}shade",
+                                       "intensity pshade",
                                        f"intensity p{_i}", "intensity p"))
             self.p_other_band_styles.append({
                 "fill": _fc, "fill_alpha": _fa,
-                "intensity": (self._intensity(_ik, self.fill_alpha) if _ik
+                "intensity": (self._intensity(_ik, self.fill_alpha,
+                                              clamp=False) if _ik
                               else self.fill_alpha),
                 "line": _oc, "line_alpha": _oa,
                 "line_width": self._band_lwidth(
