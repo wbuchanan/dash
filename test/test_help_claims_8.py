@@ -1300,7 +1300,8 @@ class TestTheUnitsAreStatas:
         assert "11 pt based on a 4 inch high graph" in src
 
     def test_medium_text_is_3_8194_or_11_point_in_dash(self):
-        assert dr.SchemeParser._GSIZE_NUMERIC_PT_PER_UNIT == 2.88
+        # Flipped (WP-31 E13): one constant, OptionTranslator.PT_PER_RS.
+        assert dr.OptionTranslator.PT_PER_RS == 2.88
         assert round(3.8194 * 2.88, 1) == 11.0
         assert round(6.0 * 2.88, 2) == 17.28
 

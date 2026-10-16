@@ -10309,6 +10309,89 @@ if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
 }
 * ==== end S40 ====
 
+python:
+def _u41_glyphs(sp, dp, app, kind):
+    """[(saved glyphs), (served glyphs)] of class *kind* in the first
+    figure, swatches left out, with the saved render's notes."""
+    import __main__ as m
+    import warnings
+    import dash_render as dr
+    a, b = m._u03_docs(sp, dp, app)
+    out = []
+    for figs in (a, b):
+        out.append([r.glyph for r in figs[0].renderers
+                    if type(getattr(r, "glyph", None)).__name__ == kind
+                    and not dr._dash_is_swatch(r)])
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    return out, [str(x.message) for x in w]
+
+
+def _u41_truth(fixture, key):
+    import json
+    with open(fixture, encoding="utf-8") as fh:
+        return json.load(fh)[key]
+
+
+def _u41_hist(sp, dp, app, fixture):
+    """U41-09: the bars' opacity in both modes against hist.pct."""
+    import __main__ as m
+    from sfi import Macro
+    rec = _u41_truth(fixture, "hist.pct")
+    want = [float(e[5]) for e in rec["elements"]
+            if e[0] == "rect" and e[1] == "#cac27e"][0]
+    (a, b), _ = _u41_glyphs(sp, dp, app, "Quad")
+    bad = []
+    for name, gs in (("saved", a), ("served", b)):
+        if not gs or abs(float(gs[0].fill_alpha) - want) > 1e-9:
+            bad.append("%s fill_alpha %s, twoway %s" % (
+                name, [g.fill_alpha for g in gs[:1]], want))
+    Macro.setGlobal("u41_bad", "; ".join(bad))
+end
+
+capture program drop _u41_spec
+program define _u41_spec
+    // _u41_spec <dir> <k> <dash command>: dash's spec for the command.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0' name(zu41`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+end
+
+* ==== S41 E13: Dead constants and histogram opacity ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41"
+    capture mkdir "`u41d'"
+    local u41fx "`c(pwd)'/fixtures/colour_width_edges_truth.json"
+    sysuse auto, clear
+
+    // U41-01: the fixture is stamped and holds every probe.
+    local bad ""
+    python: import json; from sfi import Macro; _d = json.load(open(r"`u41fx'", encoding="utf-8")); _miss = [k for k in ("sl.eq_glued", "sl.paren", "sl.quoted_comma", "lw.vvthin_x10", "ol.rarea", "ol.rbar", "ci.p1shade_inten200", "hist.pct", "c4b.s2color.ciplot_rline", "lal.lal") if k not in _d] + [k for k in ("stata_version", "born_date", "dash_commit", "extracted", "source") if not _d["_meta"].get(k)] + (["sc"] if sum(k.startswith("sc.") for k in _d) != 13 else []); Macro.setLocal("bad", " ".join(_miss))
+    _w31_expect U41-01 `"(`"`bad'"' == "")"' `"missing: `bad'"'
+    _w31_done U41-01 "colour_width_edges_truth.json is stamped and holds every probe"
+
+    // U41-09: a scheme's %40 on color histogram draws at 0.4 in both
+    // modes, as twoway writes it.
+    tempname u41f
+    file open `u41f' using "`u41d'/scheme-u41h.scheme", write text replace
+    file write `u41f' "#include s2color" _n `"color histogram "202 194 126%40""' _n
+    file close `u41f'
+    adopath ++ "`u41d'"
+    _u41_spec "`u41d'" 9 histogram mpg, scheme(u41h)
+    python: import __main__ as _u41_m; _u41_m._u41_hist("`u41d'/s9.json", "`u41d'/d9.json", "`u41d'/a9.py", r"`u41fx'")
+    adopath - "`u41d'"
+    _w31_expect U41-09 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-09 "a scheme's %40 on color histogram draws the bars at 0.4, saved and served, as twoway"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

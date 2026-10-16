@@ -1930,3 +1930,32 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
                             "symbolsize p1 %s\n" % bad)
             v = s.default_marker_size(0)
             assert math.isfinite(v) and v >= 0, bad[:20]
+
+
+class TestHistogramSchemeOpacity:
+    """WP-31 E13 (a guard): a scheme whose `color histogram' carries %NN
+    draws the bars at that opacity in both modes, as twoway writes
+    fill-opacity 0.40 for "202 194 126%40" (test/fixtures/
+    colour_width_edges_truth.json hist.pct)."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_percent_on_color_histogram(self, tmp_path, monkeypatch, mode):
+        from bokeh.models import Quad
+        with open(os.path.join(_HERE, "fixtures",
+                               "colour_width_edges_truth.json"),
+                  encoding="utf-8") as fh:
+            rec = json.load(fh)["hist.pct"]
+        bars = [e for e in rec["elements"]
+                if e[0] == "rect" and e[1] == "#cac27e"]
+        assert bars and float(bars[0][5]) == 0.4
+        (tmp_path / "u41h.scheme").write_text(
+            '#include s2color\ncolor histogram "202 194 126%40"\n',
+            encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        fig = _both_modes(tmp_path, [{"type": "histogram", "var": "mpg",
+                                      "options": {}}], "u41h")[mode]
+        quads = [r.glyph for r in fig.renderers
+                 if isinstance(getattr(r, "glyph", None), Quad)]
+        assert quads
+        assert quads[0].fill_color == "#cac27e"
+        assert quads[0].fill_alpha == 0.4

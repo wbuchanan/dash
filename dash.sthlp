@@ -5772,7 +5772,12 @@ A confidence band's keys are carried -- {cmd:color ci_area},
 them (see {help dash##ciband:The band's look}), and so are a histogram's:
 {cmd:color histogram} and {cmd:histogram_line}, {cmd:intensity histogram}
 and {cmd:linewidth histogram}; and so are the keys Stata's style files
-read for the named styles, {cmd:color refline} among them.  {cmd:graph} never reads
+read for the named styles, {cmd:color refline} among them.  The shipped
+schemes declare {cmd:color plabel}, {cmd:color pline},
+{cmd:color plineplot}, {cmd:linewidth p}{it:#}{cmd:solid} and
+{cmd:linewidth parea}, which Stata's own files declare too; no drawing
+reads them.  A histogram draws the {cmd:%}{it:#} opacity a scheme's
+{cmd:color histogram} carries, as twoway does.  {cmd:graph} never reads
 these files (see below).
 
 {pstd}

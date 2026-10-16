@@ -1049,7 +1049,7 @@ Changed behaviour.
 
 - title("T", prefix suffix) prints twoway's line, "option prefix ignored, may not be combined with suffix", and draws T; legend(title("T", color(red) size(large))) draws the legend title red and large, where both were dropped; legend(label(1)) blanks key 1 in both modes (since D4); the note for legend(region(lcolor(bogus))) names it as typed, where it read legend(region(lcolor)(bogus)). (WP-31, D16)
 
-<!-- WP-31 E13 -->
+- The served app's header no longer carries the unread _SIZE_MAP; one constant (PT_PER_RS) gives points per unit; the histogram's scheme opacity is pinned by a test (WP-31, E13)
 
 <!-- WP-31 G3 -->
 

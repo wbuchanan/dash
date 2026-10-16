@@ -3598,11 +3598,11 @@
   - Suggested fix: WP-31 section 41 (colour width outline edges): stroke from the scheme's area line style.
   - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: _SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified
+- [x] Title: _SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified
   - File Names and Line Numbers: dash_render.py:6992-7007, :48084, :8899, :7015, :17911-18060
   - Description: GAPS3.md E13, re-verified at 6370ca4: Shipped scheme keys the renderer never references (`color plabel`, `color pline`, `color plineplot`, `linewidth p#solid`, `linewidth parea`); `_SIZE_MAP` kept and serialised into the served app though nothing reads it; `_GSIZE_NUMERIC_PT_PER_UNIT` duplicates `PT_PER_RS`; scheme `%NN` opacity on histogram unverified though the help promises every layer.
   - Suggested fix: WP-31 section 41 (colour width outline edges): drop the dead map and constant and verify histogram opacity with a test.
-  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, E13). OptionTranslator._SIZE_MAP, read by no size path, is deleted with the three lines ServerAppBuilder._generate_app_source wrote into the served app's header; SchemeParser._GSIZE_NUMERIC_PT_PER_UNIT is deleted and _gsize reads OptionTranslator.PT_PER_RS, the one constant for 2.88 pt per relative unit. Measured (scripts/extract_colour_width_edges_truth.do, hist.pct): twoway draws a scheme's color histogram "202 194 126%40" at fill-opacity 0.40, and both renderers already draw the bars at 0.4; a test pins it. The five scheme keys no drawing reads (color plabel, pline, plineplot, linewidth p#solid, parea) stay in the shipped files, as Stata's own files declare them, and the help says so. Pinned by test/test_dead_constants.py::TestDeadConstants::test_size_map_gone, ::test_app_header_has_no_size_map, ::test_one_pt_per_unit_constant, test/test_scheme_consumption.py::TestHistogramSchemeOpacity::test_percent_on_color_histogram, test/test_wp31_truth.cscript U41-01, U41-09; fixture test/fixtures/colour_width_edges_truth.json. Closes GAPS3 E13 (WP-31, E13).
 
 - [ ] Title: Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed
   - File Names and Line Numbers: dash_render.py:34473-34481, :33876-34123

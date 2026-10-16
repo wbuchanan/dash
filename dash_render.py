@@ -7428,30 +7428,13 @@ class OptionTranslator:
     }
 
     # ------------------------------------------------------------------
-    # Stata marker size keyword → pixel size (approximate)
-    # ------------------------------------------------------------------
-    _SIZE_MAP: dict[str, int] = {
-        "tiny":     3,
-        "vsmall":   5,
-        "small":    7,
-        "medsmall": 9,
-        "medium":   11,
-        "medlarge": 13,
-        "large":    15,
-        "vlarge":   19,
-        "huge":     24,
-    }
-
-    # No size path reads _SIZE_MAP any more (WP-30 P1.12a): every marker,
-    # text and gap size goes through resolve_size below.  It stays defined
-    # because the served app's header still emits it as a global no app
-    # code reads (research N3); removing it needs _generate_app_source.
-
-    # ------------------------------------------------------------------
     # Stata's size units (WP-30 P1.12a).  One unit for every class: a
     # Stata relative size (rs) is min(width, height)/100 of the graph, so
     # on the 4-inch reference graph 1 rs = 4 x 72 / 100 = 2.88 pt, which
-    # dash draws as 3.84 CSS px.
+    # dash draws as 3.84 CSS px.  A bare number in a scheme's `gsize'
+    # directive is the same relative size (SchemeParser._gsize), so it
+    # too is 2.88 pt per unit at the 4-inch reference (WP-31 E13: one
+    # constant, the served header no longer carries the unread size map).
     # ------------------------------------------------------------------
     PT_PER_RS: float = 2.88
     PX_PER_PT: float = 4.0 / 3.0
@@ -9430,8 +9413,7 @@ class SchemeParser:
     # A bare number in a `gsize' directive is a Stata relative size: 100 =
     # the graph's smaller dimension.  The keyword table above is stated at
     # Stata's 4-inch reference (medium 3.8194 = 11pt), so the numeric
-    # branch uses the same reference: 4in * 72pt / 100 = 2.88pt per unit.
-    _GSIZE_NUMERIC_PT_PER_UNIT: float = 2.88
+    # branch uses the same reference, OptionTranslator.PT_PER_RS.
     #: The largest text size a numeric gsize may ask for.  Bokeh's FontSize
     #: property takes any CSS length, so the bound is dash's: a 1000pt
     #: glyph is taller than the graph.
@@ -10288,7 +10270,7 @@ class SchemeParser:
         # zeros go so that 11.0 reads "11pt".  A size that rounds to
         # nothing, or is over 1000pt, is not a size a graph can use: the
         # default, said aloud in the shape `_color' uses.
-        pt = round(val * self._GSIZE_NUMERIC_PT_PER_UNIT, 3)
+        pt = round(val * OptionTranslator.PT_PER_RS, 3)
         if not 0 < pt <= self._GSIZE_MAX_PT:
             warnings.warn(
                 f"dash scheme: size '{raw}' (from '{key}') is "
@@ -59057,10 +59039,6 @@ class ServerAppBuilder:
             "# Width of the filterposition(left) sidebar, shared with the",
             "# standalone renderer so the two documents match.",
             "_SIDEBAR_WIDTH_PX = %d" % _SIDEBAR_WIDTH_PX,
-            "",
-            "# Stata msize() keyword -> pixels, the same map OptionTranslator",
-            "# uses, so one keyword means one size in both modes.",
-            "_SIZE_MAP = %r" % (dict(OptionTranslator._SIZE_MAP),),
             "",
             # _resolve_color and its own colour table (_SCOLOR, read through
             # `import re as _re_clr') were written here, and nothing in the
