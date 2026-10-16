@@ -10780,7 +10780,7 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
     // style (ci_arealine, ci_line, ci_symbol, ci_area), as twoway (live).
     global u41_bad ""
     local k 160
-    foreach t in rbar rspike rcapsym rscatter rconnected scatter line bar {
+    foreach t in rbar rspike rcapsym rscatter rconnected scatter line bar dot {
         local ++k
         capture graph drop u41t
         quietly twoway lfitci mpg weight, ciplot(`t') scheme(s2color) name(u41t, replace)
@@ -10790,7 +10790,7 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
         python: import __main__ as _u41_m; _u41_m._u41_ciall("`u41d'/s`k'.json", "`u41d'/d`k'.json", "`u41d'/a`k'.py", "`u41d'/t`k'.svg", "#1a476f")
     }
     _w31_expect U41-16 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
-    _w31_done U41-16 "ciplot() with rbar, rspike, rcapsym, rscatter, rconnected, scatter, line and bar draws twoway's ci colours, saved and served"
+    _w31_done U41-16 "ciplot() with rbar, rspike, rcapsym, rscatter, rconnected, scatter, line, bar and dot draws twoway's ci colours, saved and served"
     display as text "S41 end " c(current_date) " " c(current_time)
 }
 * ==== end S41 ====

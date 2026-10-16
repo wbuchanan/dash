@@ -141,9 +141,15 @@ def test_every_ciplot_type_is_twoways(mode, scheme, ptype):
     rs = [r for r in d.figures[0].renderers
           if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)]
     gs = [r.glyph for r in rs]
-    # dot's rows of dots: twoway draws none under ciplot(dot) where dash
-    # draws its rows (a residual of the hand-back); the markers are
-    # compared.
-    _DOT_ROWS[:] = [r.glyph for r in rs if "dash_dots" in (r.tags or [])]
+    # dot's rows of dots: twoway draws none under ciplot(dot), so dash's
+    # rows renderer holds no dot (it stays, empty, for the saved page's
+    # move); one that draws is compared with the rest.
+    _rows = [r for r in rs if "dash_dots" in (r.tags or [])]
+    if ptype == "dot":
+        assert _rows and all(
+            len(next(iter(r.data_source.data.values()), [])) == 0
+            for r in _rows), "ciplot(dot) drew rows of dots"
+    _DOT_ROWS[:] = [r.glyph for r in _rows
+                    if not len(next(iter(r.data_source.data.values()), []))]
     got = _drawn_colours(gs, fit)
     assert got == want, (ptype, got, want)

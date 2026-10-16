@@ -3183,8 +3183,8 @@ Without {cmd:pstyle()}, the view {cmd:ciplot()} names is drawn in the
 outline colour (gs12 under {cmd:s2color}; {cmd:ci_line}, gs8, for
 {cmd:line} and {cmd:connected}), its markers in {cmd:ci_symbol} and its
 bars and areas in {cmd:ci_area}; {cmd:fitplot()} draws the fit in the
-layer's colour.  {cmd:ciplot(dot)} also draws {cmd:dot}'s rows of dots,
-which {cmd:twoway} leaves out.
+layer's colour.  {cmd:ciplot(dot)} draws the markers without
+{cmd:dot}'s rows of dots, as {cmd:twoway} draws it.
 {opt smoothplot(plottype)} is taken on {cmd:lpolyci} and, as in
 {cmd:twoway}, changes nothing.  {opt estopts(string)}, {opt predopts(string)}
 and {opt estcmd(cmd)} are run by Stata when the graph is registered --

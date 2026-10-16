@@ -13467,6 +13467,11 @@ class GlyphMapper:
             _copts = opts
             if self._ci_pstyle(opts)[0] == "":
                 _copts = dict(opts, pstyle="ci")
+            # twoway's ciplot(dot) draws the markers and no rows of dots
+            # (fixture c4b.<scheme>.ciplot_dot): ndots(1) draws none, and
+            # the saved page's move keeps none (its config is the tag's).
+            if _ciplot == "dot":
+                _copts = dict(_copts, ndots="1")
             band_r = self._dash_draw_range_as(
                 fig, _bsrc, x_col, lo_col, hi_col, _ciplot, _copts, color_idx)
             # Keyed as the band, whatever glyphs the type drew.
