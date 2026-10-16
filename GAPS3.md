@@ -510,7 +510,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
 - **E10 Tracked:** Partly closed in WP-31 (section 44, commit pending): the four classes, shadestyle, user files, class directives on named and default styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read").
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
-- **E11b Tracked:** Open (WP-31 section 44).
+- **E11b Tracked:** Closed in WP-31, BUGS.md "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches", commit pending.
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
 - **E13 Tracked:** Closed in WP-31, BUGS.md "_SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified", commit e1e0207.
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.

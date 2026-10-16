@@ -521,7 +521,7 @@ and now matches Stata.
 
 - dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) alternate): one row of labels and a note naming alternate -> two rows, 0 and 10,000 nearest the plot and 5,000 and 15,000 outside them, as twoway; axes 3 to 9 and altgap() alike (WP-31, D6b)
 
-<!-- WP-31 E11b -->
+- a scheme of your own with a #-pt gsize (gsize heading 12-pt) and a smaller graphsize side other than 4 in drew that size as if the graph were 4 in (12 points at 3.12 x 2.392 in came out 7.2 points on the graph); it draws twoway's 12 points (WP-31, E11b)
 
 - by(foreign, shrink) drew the panels at full size and named shrink; they are drawn at 0.855 of it, as twoway draws them (overallshrink too, less with by()'s title and subtitle); by(, graphregion(margin(large))) and plotregion(margin()) inset the array once (4.5 and 8 units), where margin() was named; by(, plotregion(lcolor(red))) outlines the array once, where each panel was outlined; style(altleg) is no longer named. (WP-31, D10b)
 

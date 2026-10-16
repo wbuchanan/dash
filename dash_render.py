@@ -11102,6 +11102,17 @@ class SchemeParser:
         # from the start, so the scheme's #-pt sizes convert at it too.
         if getattr(self, "_ref_override", None):
             self.size_ref_in = float(self._ref_override)
+        else:
+            # WP-31 E11b (D31): the scheme's own reference, the smaller
+            # graphsize side, before any #-pt gsize below converts at it
+            # (set again, the same way, where graphsize_x/_y are read).
+            _gx0 = self._float("graphsize x", None)
+            _gy0 = self._float("graphsize y", None)
+            self.size_ref_in = (
+                float(min(_gx0, _gy0))
+                if (_gx0 is not None and _gy0 is not None
+                    and math.isfinite(_gx0) and math.isfinite(_gy0)
+                    and _gx0 > 0 and _gy0 > 0) else 4.0)
         # Parsed for S16 (P1.2b): whether the scheme's background is white.
         # First, with the foreground and background, because every colour
         # below reads colour*#, bg and fg through them (WP-30 P1.13a).

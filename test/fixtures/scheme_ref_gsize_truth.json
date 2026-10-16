@@ -1,0 +1,37 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "0273f66d665eba39aadc5abd0e5b1992f26feedb",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_scheme_ref_gsize_truth.do",
+  "stata_version": "19.5"
+ },
+ "u11a": {
+  "height_in": 2.392,
+  "lines": [
+   "#include s2color",
+   "graphsize x 3.12",
+   "graphsize y 2.392",
+   "gsize heading 12-pt"
+  ],
+  "title_font_units": 119.95,
+  "viewbox": [
+   2246.0,
+   1722.0
+  ],
+  "width_in": 3.12
+ },
+ "u11b": {
+  "height_in": 4.0,
+  "lines": [
+   "#include s2color",
+   "gsize heading 12-pt"
+  ],
+  "title_font_units": 120.04,
+  "viewbox": [
+   3960.0,
+   2880.0
+  ],
+  "width_in": 5.5
+ }
+}

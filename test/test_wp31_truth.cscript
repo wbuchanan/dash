@@ -12261,6 +12261,59 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
 }
 * ==== end S44 ====
 
+python:
+def _u44_title(sp, dp, app, svg):
+    """u44_bad: where either mode's title size differs from twoway's
+    points on the graph (*svg*) at the scheme's reference, 4 / ref."""
+    import __main__ as m
+    import re
+    from sfi import Macro
+    with open(svg, encoding="utf-8") as fh:
+        txt = fh.read()
+    g = re.search(r'width="([\d.]+)in" height="([\d.]+)in" viewBox="0 0 ([\d.]+) ([\d.]+)"', txt)
+    f = re.search(r"font-size:([\d.]+)px[^>]*>Tq</text>", txt)
+    hin = float(g.group(2))
+    pt = float(f.group(1)) / (float(g.group(4)) / hin) * 72.0
+    want = pt * 4.0 / min(float(g.group(1)), hin)
+    a, b = m._u03_docs(sp, dp, app)
+    bad = []
+    for name, figs in (("saved", a), ("served", b)):
+        got = [str(x.title.text_font_size) for x in figs if getattr(x.title, "text", "")]
+        if not got or abs(float(got[0].rstrip("pt")) - want) > 0.05:
+            bad.append("%s %s, twoway %.3fpt" % (name, got, want))
+    Macro.setGlobal("u44_bad", "; ".join(bad))
+end
+
+* ==== S44 E11b: A scheme's #-pt gsizes at its own reference ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
+    display as text "S44 start " c(current_date) " " c(current_time)
+    local u44d "`w31_work'/s44e"
+    capture mkdir "`u44d'"
+    tempname u44f
+    file open `u44f' using "`u44d'/scheme-u11a.scheme", write text replace
+    file write `u44f' "#include s2color" _n "graphsize x 3.12" _n "graphsize y 2.392" _n "gsize heading 12-pt" _n
+    file close `u44f'
+    adopath ++ "`u44d'"
+    sysuse auto, clear
+
+    // U44-10: gsize heading 12-pt under a 3.12 x 2.392 in scheme: the
+    // title twoway draws (live SVG) and dash's, both modes.
+    capture graph drop u44t
+    quietly twoway scatter mpg weight, title("Tq") scheme(u11a) name(u44t, replace)
+    quietly graph export "`u44d'/u11a.svg", replace name(u44t)
+    capture graph drop u44t
+    _u44_spec "`u44d'" 10 scatter mpg weight, title("Tq") scheme(u11a)
+    python: _u44_title(r"`u44d'/s10.json", r"`u44d'/d10.json", r"`u44d'/a10.py", r"`u44d'/u11a.svg")
+    _w31_expect U44-10 `"("${u44_bad}" == "")"' "${u44_bad}"
+    _w31_done U44-10 "a scheme's 12-pt heading on a 2.392 in graph draws twoway's 12 points, both modes"
+
+    adopath - "`u44d'"
+    dash clear
+    display as text "S44 end " c(current_date) " " c(current_time)
+}
+* ==== end S44 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
