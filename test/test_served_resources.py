@@ -491,11 +491,14 @@ class TestTheSavedPageIsUnchanged:
         # Re-derived after WP-31 batch 10: B4c's contour branch changes only
         # the filter callback's code; D4 gives the legend the scheme's
         # geometry (glyph size, standoff, margin, padding, spacing, rows).
+        # Re-derived after WP-31 batch 11: D7 sets the axis title's
+        # standoff to the scheme's axis_title_gap (minuscule, 1 px) where
+        # Bokeh's default drew 5; every other model property is the same.
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "4180cf7a313ff51e368b9072cac4c0ee9d5429c7fdb770df368b732f56fe9d66")
+    "db7f3494b545b72a04f6cb4031d5c77e21c4460f3b44c7c6bb3432ae6cbb537e")
 
 
 # ===========================================================================

@@ -61,10 +61,11 @@ end
 // ---------------------------------------------------------------
 // 1. comma mode still names an unsupported graph-level option
 // ---------------------------------------------------------------
+// Flipped: WP-31 D5 draws fxsize(), so play() is the pending example.
 sysuse auto, clear
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(c1) fxsize(30)"' "`logfile'"
-cert_file_has "`logfile'", needle("fxsize()")
+_dash_note_for `"dash scatter mpg weight, name(c1) play(x)"' "`logfile'"
+cert_file_has "`logfile'", needle("play()")
 assert r(found) == 1
 
 display as result "  [1/4] comma mode names it: PASS"
@@ -73,8 +74,8 @@ display as result "  [1/4] comma mode names it: PASS"
 // 2. paren mode names it too
 // ---------------------------------------------------------------
 dash clear
-_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) fxsize(30)"' "`logfile'"
-cert_file_has "`logfile'", needle("fxsize()")
+_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) play(x)"' "`logfile'"
+cert_file_has "`logfile'", needle("play()")
 assert r(found) == 1
 
 display as result "  [2/4] paren mode names it: PASS"

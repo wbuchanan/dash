@@ -8958,11 +8958,16 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w30_run' {
     _da_case DA-07 obs_first "(scatter close obs) (scatter close date)"
     _w30_done DA-07 "a date beside a number is drawn in Stata units over twoway's [0, 15340], labelled as twoway labels it"
     _da_data
+    // Flipped: WP-31 D6 gives minmax every layer, as twoway reads it
+    // (1 15340, P2.20), where dash read the first (the date's range).
+    quietly summarize obs
+    local _da_lo = r(min)
+    local _da_hi = r(max)
     quietly summarize date
-    global DA_MINMAX "`r(min)' `r(max)'"
+    global DA_MINMAX "`=min(`_da_lo', r(min))' `=max(`_da_hi', r(max))'"
     _da_case DA-08 minmax_date_first "(scatter close date) (scatter close obs)" "xlabel(minmax)"
-    display as text "  DA-08: twoway's minmax reads every layer (1 15340, P2.20); dash reads the first: ${DA_MINMAX}"
-    _w30_done DA-08 "xlabel(minmax) on a mixed axis ticks the date's Stata values"
+    display as text "  DA-08: twoway's minmax reads every layer (1 15340, P2.20): ${DA_MINMAX}"
+    _w30_done DA-08 "xlabel(minmax) on a mixed axis ticks every layer's minimum and maximum"
     _da_case DA-09 bar_date_y "(bar date obs in 1/20) (scatter close obs in 1/20)"
     _da_case DA-09 bar_date_base "(bar date obs in 1/20, base(14970))"
     _w30_done DA-09 "a date bar beside a number stands on 0; base(14970) on a date axis stands on 26dec2000"

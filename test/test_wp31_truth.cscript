@@ -1611,8 +1611,9 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
     // (fixture mla.*, from each spelling's saved .gph): ml(), mla(),
     // mlab(), mlabe() and mlabel() are mlabel(), and dash records
     // mlabel "make"; mla(center) is refused with twoway's rc and line;
-    // mlal(), mlali() and mlalign() are mlalign(), which dash takes and
-    // names in its note as mlalign() until it is drawn (WP-31 S34).
+    // mlal(), mlali() and mlalign() are mlalign(), which dash takes;
+    // Flipped: WP-31 E3 reads mlalign(), and inside is twoway's default
+    // picture, so no note names it.
     // ------------------------------------------------------------
     python: _u08_mla()
     _w31_expect U08-4 "(${u08_mn} == 9)" "the fixture holds ${u08_mn} spellings, want 9"
@@ -1642,10 +1643,10 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
             quietly log close u08m
             _w31_expect U08-4 "(`rc' == 0)" "dash scatter mpg weight, `opt' saving() rc `rc'"
             python: _u08_has("`lf'", "ignoring unsupported option(s): mlalign()")
-            _w31_expect U08-4 "(${u08_found} == 1)" "dash `opt' did not name mlalign() in its note"
+            _w31_expect U08-4 "(${u08_found} == 0)" "dash `opt' still named mlalign() in its note"
         }
     }
-    _w31_done U08-4 "ml() mla() mlab() mlabe() are mlabel(), mla(center) is refused, and mlal() .. mlalign() are mlalign(), named until drawn, as twoway binds them"
+    _w31_done U08-4 "ml() mla() mlab() mlabe() are mlabel(), mla(center) is refused, and mlal() .. mlalign() are mlalign(), read silently at inside, as twoway binds them"
 
     set linesize `u8ls'
     capture erase "`lf'"
@@ -7491,6 +7492,47 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
 }
 * ==== end S32 ====
 
+* ==== S32 E11: Size reference ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
+    display as text "S32 start " c(current_date) " " c(current_time)
+    local u32d "`w31_work'/s32e"
+    capture mkdir "`u32d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    global u32_repo "`c(pwd)'/.."
+
+    // U32-8: an absolute title size is half the share of an 8 x 8 graph
+    // it is of a 4 x 4 one, in twoway and in dash (whose reference is
+    // min(xsize, ysize)); a relative size the same share of both.
+    foreach z in 4 8 {
+        foreach t in 14pt 5 {
+            _u32_tw "`u32d'/t8_`z'_`t'.svg" scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
+            python: _u32_plot("`u32d'/t8_`z'_`t'.svg")
+            local tw`z'_`t' = real(word("${u32_tw}", 5)) / real(word("${u32_tw}", 6))
+            _u32_dash "`u32d'" 8_`z'_`t' scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
+            python: _u32_check("`u32d'", "8_`z'_`t'", "ref")
+            foreach m in s v {
+                local r`m'`z'_`t' : word 1 of ${u32_`m'}
+                local p`m'`z'_`t' : word 2 of ${u32_`m'}
+            }
+        }
+    }
+    local twa = `tw8_14pt' / `tw4_14pt'
+    local twr = `tw8_5' / `tw4_5'
+    _w31_expect U32-8 "abs(`twa' - .5) < .02 & abs(`twr' - 1) < .02" "twoway's share 8x8/4x4: 14pt `twa', size(5) `twr'"
+    foreach m in s v {
+        _w31_expect U32-8 "`r`m'4_14pt' == 4 & `r`m'8_14pt' == 8" "`m': reference `r`m'4_14pt' and `r`m'8_14pt'"
+        _w31_expect U32-8 "abs(`p`m'8_14pt' / `p`m'4_14pt' - `twa') < .02" "`m': 14pt drawn `p`m'4_14pt' -> `p`m'8_14pt'"
+        _w31_expect U32-8 "abs(`p`m'8_5' / `p`m'4_5' - `twr') < .02" "`m': size(5) drawn `p`m'4_5' -> `p`m'8_5'"
+    }
+    _w31_done U32-8 "the size reference is min(xsize, ysize), as twoway's, saved and served"
+    dash clear
+    display as text "S32 end " c(current_date) " " c(current_time)
+}
+* ==== end S32 ====
+
 // S33 (WP-31 D6) helpers: draw one command in twoway (SVG export and
 // log) and in dash (both modes, log), and describe one axis fact for one
 // case into globals u33_tw (twoway), u33_s (saved) and u33_v (served).
@@ -8221,47 +8263,6 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
     display as text "S34 end " c(current_date) " " c(current_time)
 }
 * ==== end S34 ====
-
-* ==== S32 E11: Size reference ====
-local only : env WP31_ONLY
-if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
-    display as text "S32 start " c(current_date) " " c(current_time)
-    local u32d "`w31_work'/s32e"
-    capture mkdir "`u32d'"
-    capture graph drop _all
-    set scheme s2color
-    sysuse auto, clear
-    global u32_repo "`c(pwd)'/.."
-
-    // U32-8: an absolute title size is half the share of an 8 x 8 graph
-    // it is of a 4 x 4 one, in twoway and in dash (whose reference is
-    // min(xsize, ysize)); a relative size the same share of both.
-    foreach z in 4 8 {
-        foreach t in 14pt 5 {
-            _u32_tw "`u32d'/t8_`z'_`t'.svg" scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
-            python: _u32_plot("`u32d'/t8_`z'_`t'.svg")
-            local tw`z'_`t' = real(word("${u32_tw}", 5)) / real(word("${u32_tw}", 6))
-            _u32_dash "`u32d'" 8_`z'_`t' scatter mpg weight, title("T", size(`t')) xsize(`z') ysize(`z')
-            python: _u32_check("`u32d'", "8_`z'_`t'", "ref")
-            foreach m in s v {
-                local r`m'`z'_`t' : word 1 of ${u32_`m'}
-                local p`m'`z'_`t' : word 2 of ${u32_`m'}
-            }
-        }
-    }
-    local twa = `tw8_14pt' / `tw4_14pt'
-    local twr = `tw8_5' / `tw4_5'
-    _w31_expect U32-8 "abs(`twa' - .5) < .02 & abs(`twr' - 1) < .02" "twoway's share 8x8/4x4: 14pt `twa', size(5) `twr'"
-    foreach m in s v {
-        _w31_expect U32-8 "`r`m'4_14pt' == 4 & `r`m'8_14pt' == 8" "`m': reference `r`m'4_14pt' and `r`m'8_14pt'"
-        _w31_expect U32-8 "abs(`p`m'8_14pt' / `p`m'4_14pt' - `twa') < .02" "`m': 14pt drawn `p`m'4_14pt' -> `p`m'8_14pt'"
-        _w31_expect U32-8 "abs(`p`m'8_5' / `p`m'4_5' - `twr') < .02" "`m': size(5) drawn `p`m'4_5' -> `p`m'8_5'"
-    }
-    _w31_done U32-8 "the size reference is min(xsize, ysize), as twoway's, saved and served"
-    dash clear
-    display as text "S32 end " c(current_date) " " c(current_time)
-}
-* ==== end S32 ====
 
 * ==== append new blocks above this line ====
 
