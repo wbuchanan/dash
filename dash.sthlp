@@ -5620,7 +5620,11 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:plotregion}, {cmd:outline}, {cmd:legend} and the rest) and a
     package's or your own {cmd:linestyle-mine.style} draw their file's
     attributes, and a scheme's {cmd:linestyle ci mine} redefines what
-    {cmd:pstyle(ci)}'s line draws.  Each directory is searched before its
+    {cmd:pstyle(ci)}'s line draws.  A directive on a plot's own style is
+    drawn as well: {cmd:linestyle p1line mine} a line plot's line,
+    {cmd:linestyle p1 mine} the connecting line of {cmd:connected} and the
+    other series (not a line plot's, which Stata's schemes declare as
+    {cmd:p1line}), {cmd:shadestyle p1area mine} an area's fill.  Each directory is searched before its
     {cmd:style/} subdirectory, as {cmd:findfile} searches.  The rows are
     read when the graph is registered and travel with the dashboard, so
     {cmd:dash serve} on a machine without Stata's files draws the same

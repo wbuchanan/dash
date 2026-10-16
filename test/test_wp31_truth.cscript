@@ -12176,6 +12176,30 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
     _w31_expect U44-07 `"(`"`u7bad'"' == "")"' `"`u7bad'"'
     _w31_done U44-07 "the spec carries _style_rows and an empty walk draws them in both modes"
 
+    // U44-08: a class directive on a plot's own default style: a line
+    // plot's line under linestyle p1line, a connected plot's under
+    // linestyle p1, both modes as twoway.
+    file open `u44f' using "`u44u'/scheme-u44l.scheme", write text replace
+    file write `u44f' "#include s2color" _n "linestyle p1line u44b" _n
+    file close `u44f'
+    file open `u44f' using "`u44u'/scheme-u44p.scheme", write text replace
+    file write `u44f' "#include s2color" _n "linestyle p1 u44b" _n
+    file close `u44f'
+    local u8bad ""
+    local k 20
+    foreach c in "u44l line" "u44p connected" "u44p line" {
+        local ++k
+        gettoken sch c : c
+        local c = strtrim("`c'")
+        _u44_tw line.color.rgb `c' mpg weight, sort scheme(`sch')
+        python: from sfi import Macro; Macro.setLocal("want", _u44_hex(r"`r(v)'"))
+        _u44_spec "`u44d'" `k' `c' mpg weight, sort scheme(`sch')
+        python: _u44_cmp(r"`u44d'/s`k'.json", r"`u44d'/d`k'.json", r"`u44d'/a`k'.py", "Line", "line_color", r"`want'")
+        if "${u44_bad}" != "" local u8bad "`u8bad' [`sch' `c': ${u44_bad}]"
+    }
+    _w31_expect U44-08 `"(`"`u8bad'"' == "")"' `"`u8bad'"'
+    _w31_done U44-08 "linestyle p1line and linestyle p1 redraw a plot's own line as twoway, both modes"
+
     adopath - "`u44u'"
     dash clear
     display as text "S44 end " c(current_date) " " c(current_time)

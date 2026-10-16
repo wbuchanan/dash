@@ -539,3 +539,56 @@ class TestAdoArchive:
         _, notes = _draw(plot_for("line", {"lstyle": "refline"}), "s2color",
                          "standalone", (), {"adoarchive": ""})
         assert not [n for n in notes if "compressed ado archive" in n]
+
+
+# ---------------------------------------------------------------------------
+# Directives on a plot's own default style (E10 follow-up)
+# ---------------------------------------------------------------------------
+
+def _default_scheme(tmp_path, line):
+    return _scheme_dir(tmp_path, [line], {
+        "style/linestyle-u44b.style": U44B,
+        "style/shadestyle-u44s.style":
+            "set color red\nset intensity inten50\n"})
+
+
+@needs_base
+@pytest.mark.parametrize("mode", MODES)
+class TestDefaultSeriesDirectives:
+    """twoway (scheme records): `linestyle p1line u44b' redraws a line
+    plot's line; `linestyle p1 u44b' a connecting line (p1connect) but not
+    a line plot's (s2color declares linestyle p1line); `shadestyle p1area
+    u44s' an area's fill."""
+
+    def test_p1line(self, mode, tmp_path):
+        rec = TRUTH["scheme"]["u44l|line"]["line"]
+        assert (rec["color"], rec["pattern"]) == ("#ff0000", "dash")
+        d = _default_scheme(tmp_path, "linestyle p1line u44b")
+        rs, _ = _draw(plot_for("line"), "u44x", mode, (d, BASE))
+        assert _red_line(tsn._one(rs, "Line")) == RED
+
+    def test_p1_reaches_the_connecting_line_only(self, mode, tmp_path):
+        assert TRUTH["scheme"]["u44|line"]["line"]["color"] == "#1a476f"
+        assert TRUTH["scheme"]["u44|scatter"]["line"]["color"] == "#ff0000"
+        d = _default_scheme(tmp_path, "linestyle p1 u44b")
+        rs, _ = _draw(plot_for("line"), "u44x", mode, (d, BASE))
+        assert tsn._hex(tsn._one(rs, "Line").line_color) == "#1a476f"
+        rs, _ = _draw(plot_for("connected"), "u44x", mode, (d, BASE))
+        assert _red_line(tsn._one(rs, "Line")) == RED
+
+    def test_p1area_shade(self, mode, tmp_path):
+        rec = TRUTH["scheme"]["u44s|area"]["area"]
+        d = _default_scheme(tmp_path, "shadestyle p1area u44s")
+        rs, _ = _draw(plot_for("area"), "u44x", mode, (d, BASE))
+        assert tsn._hex(tsn._one(rs, "VArea").fill_color) == \
+            dr.GlyphMapper._blend_intensity(rec["fill"],
+                                            rec["intensity"] / 100.0)
+
+    def test_nosuch_is_noted(self, mode, tmp_path):
+        rec = TRUTH["scheme"]["u44m|scatter"]
+        d = _default_scheme(tmp_path, "linestyle p1 nosuch")
+        rs, notes = _draw(plot_for("connected"), "u44x", mode, (d, BASE))
+        assert tsn._hex(tsn._one(rs, "Line").line_color) == \
+            rec["line"]["color"]
+        assert [n for n in notes if "named style" in n] == [
+            "dash: " + rec["notes"][0][len("(note: "):-1]]

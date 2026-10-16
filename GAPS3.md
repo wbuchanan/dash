@@ -508,7 +508,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit 5bc828a.
 - **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit 1a2c566.
 - **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
-- **E10 Tracked:** Partly closed in WP-31 (section 44, commit pending): the four classes, shadestyle, user files, directives on named styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read") and class directives on a plot's own default style (BUGS.md "A scheme's class directive on a plot's own default style (linestyle p1line mine, linestyle p1 mine, shadestyle p1area mine) is not drawn").
+- **E10 Tracked:** Partly closed in WP-31 (section 44, commit pending): the four classes, shadestyle, user files, class directives on named and default styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read").
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Open (WP-31 section 44).
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.

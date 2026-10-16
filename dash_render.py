@@ -9794,10 +9794,10 @@ class SchemeParser:
         # scheme-<name>.scheme declares and dash's copy does not, read
         # along the ado-path for a shipped name, kept as "@stata <key>"
         # for the style resolver alone (_style_leaf).
-        if shipped is not None:
-            for k, v in self._stata_scheme_props(shipped).items():
-                if k not in self._props:
-                    self._props["@stata " + k] = v
+        for k, v in self._stata_scheme_props(
+                shipped if shipped is not None else self.name).items():
+            if k not in self._props:
+                self._props["@stata " + k] = v
         self._init_properties()
 
     # ------------------------------------------------------------------
@@ -11870,6 +11870,12 @@ class SchemeParser:
                        plain ``color p#``.
         """
         idx = index % 15
+        role = self._p_directive_role(plot_type)
+        ov = self._p_directive(role, idx) if role else None
+        if ov is not None:
+            c = ov.get("fill" if role == "area" else "line")
+            if c is not None:
+                return c
         cycle = self._cycle_for(plot_type)
         if cycle == "lineplot":
             return self.p_lineplot_colors[idx]
@@ -11894,6 +11900,10 @@ class SchemeParser:
         a user colour with its own %NN still wins over it.
         """
         idx = index % 15
+        role = self._p_directive_role(plot_type)
+        ov = self._p_directive(role, idx) if role else None
+        if ov is not None:
+            return ov.get("fill_alpha" if role == "area" else "line_alpha")
         cycle = self._cycle_for(plot_type)
         if cycle == "lineplot":
             return self.p_lineplot_alphas[idx]
@@ -11956,10 +11966,16 @@ class SchemeParser:
 
     def default_line_pattern(self, index: int) -> list:
         """Return the Bokeh dash list for the line plot at *index*."""
+        ov = self._p_directive("lineplot", index)
+        if ov is not None:
+            return list(ov.get("line_dash") or [])
         return self.p_lineplot_patterns[index % 15]
 
     def default_connect_pattern(self, index: int) -> list:
         """Return the dash list for a connected plot's connecting line."""
+        ov = self._p_directive("connect", index)
+        if ov is not None:
+            return list(ov.get("line_dash") or [])
         return self.p_line_patterns[index % 15]
 
     def linewidth_pt(self, role: str) -> float:
@@ -12088,6 +12104,11 @@ class SchemeParser:
             i = int(index) % 15 + 1
         except (TypeError, ValueError, OverflowError):
             i = 1
+        # WP-31 E10: a class directive on the plot's own line.
+        if k in ("", "lineplot"):
+            ov = self._p_directive("lineplot" if k else "connect", i - 1)
+            if ov is not None and ov.get("line_width") is not None:
+                return ov["line_width"]
         if k:
             keys = [f"linewidth p{i}{k}", f"linewidth p{k}"]
             if k != "bar":
@@ -12205,6 +12226,88 @@ class SchemeParser:
             return self._STYLE_SHADE_KNOWN
         return self._STYLE_KNOWN.get(stata_class, frozenset())
 
+
+    #: A plot's own default style roles a scheme's class directive can
+    #: redefine (WP-31 E10, measured in style_files_truth.json `scheme'):
+    #: a line plot's line (seriesstyle p#line: linestyle p#line), the
+    #: connecting line of the other series (linestyle p#connect) and an
+    #: area's fill (areastyle p#area: shadestyle p#area).
+    _P_DIRECTIVE_ROLES: "dict[str, tuple[str, str]]" = {
+        "lineplot": ("linestyle", "line"), "connect": ("linestyle", "connect"),
+        "area": ("shadestyle", "area")}
+    _P_FORM_RE = re.compile(r"p[0-9]{0,2}[a-z_]{0,40}")
+
+    def _p_directive(self, role: str, index: Any) -> "dict | None":
+        """The bundle a scheme's class directive gives plot *index*'s
+        *role* (``_P_DIRECTIVE_ROLES``), or None for the scheme's default.
+
+        The key walks Stata's chain (``<class> p#<stub>``, ``p<stub>``,
+        ``p#``, ``p``; dash's keys, then Stata's own ``@stata`` ones); the
+        first declared value decides.  A p-form value (``p1line``, ``p1``)
+        is the default style the scheme's leaf keys already draw; any other
+        name is resolved as a named style (a file, the table, or the class
+        default with twoway's note, re-emitted on every use)."""
+        try:
+            i = int(index) % 15 + 1
+        except (TypeError, ValueError, OverflowError):
+            return None
+        memo = self.__dict__.setdefault("_p_directive_memo", {})
+        k = (role, i)
+        if k not in memo:
+            memo[k] = None      # a resolution that asks again is the default
+            hit = None
+            cls, stub = self._P_DIRECTIVE_ROLES[role]
+            props = getattr(self, "_props", None) or {}
+            for st in (f"p{i}{stub}", f"p{stub}", f"p{i}", "p"):
+                key = f"{cls} {st}"
+                v = str(props.get(key, "") or props.get("@stata " + key, "")
+                        or "").strip().strip('"').strip()
+                if not v:
+                    continue
+                if self._P_FORM_RE.fullmatch(v):
+                    break
+                prev = self.__dict__.get("_style_pending")
+                self.__dict__["_style_pending"] = []
+                try:
+                    b = self._style_sub(cls, v, 0)
+                    if b is None:
+                        b = self._style_none("line" if cls == "linestyle"
+                                             else "area")
+                    notes = tuple(self.__dict__["_style_pending"])
+                finally:
+                    cur = self.__dict__.pop("_style_pending", None) or []
+                    if prev is not None:
+                        prev.extend(cur)
+                        self.__dict__["_style_pending"] = prev
+                hit = (dict(b), notes)
+                break
+            memo[k] = hit
+        hit = memo[k]
+        if hit is None:
+            return None
+        for nk, text in hit[1]:
+            _dash_warn_once(nk, text)
+        return dict(hit[0])
+
+    def _p_directive_role(self, plot_type: str) -> "str | None":
+        """The ``_p_directive`` role of *plot_type*'s default colour."""
+        cycle = self._cycle_for(plot_type)
+        if cycle == "lineplot":
+            return "lineplot"
+        if cycle in ("line", "p"):
+            return "connect"
+        if plot_type in ("area", "rarea"):
+            return "area"
+        return None
+
+    def area_intensity(self, index: int, plot_type: str = "area") -> float:
+        """An area's fill intensity: a ``shadestyle p#area`` directive's
+        (WP-31 E10), else ``p_area_intensity``."""
+        ov = self._p_directive("area", index) if plot_type in (
+            "area", "rarea") else None
+        if ov is not None and ov.get("intensity") is not None:
+            return float(ov["intensity"])
+        return self.p_area_intensity[int(index) % 15]
 
     #: The scheme keys the style resolver reads from Stata's own scheme
     #: file (WP-31 E10): its leaf classes and the five class directives.
@@ -12449,6 +12552,9 @@ class SchemeParser:
                     for n in names:
                         for tok in cls._STYLE_SPEC_TOKENS:
                             sp.style_bundle(tok, n)
+                    for role in cls._P_DIRECTIVE_ROLES:
+                        for i in range(15):
+                            sp._p_directive(role, i)
                 finally:
                     sp.__dict__.pop("_style_record", None)
                 for k, rows in rec.items():
@@ -17256,7 +17362,7 @@ class GlyphMapper:
             options, "area", "fill",
             self.scheme.default_color(color_idx, "area"))
         _f = self._style_value(options, "area", "intensity",
-                               self.scheme.p_area_intensity[color_idx % 15])
+                               self.scheme.area_intensity(color_idx))
         _oa = self._style_options(options, ("area",))
         # Honour fill color option.  An unknown name was dropped in silence
         # here, and nothing downstream reads color() for an area.
@@ -21251,7 +21357,7 @@ class GlyphMapper:
             options, "area", "fill",
             self.scheme.default_color(color_idx, "area"))
         _f = self._style_value(options, "area", "intensity",
-                               self.scheme.p_area_intensity[color_idx % 15])
+                               self.scheme.area_intensity(color_idx))
         _oa = self._style_options(options, ("area",))
         # color() is the band's colour, as on area: twoway's rarea with
         # color(red) is filled #FF3333 and stroked #FF0000 (SVG, 23sep2026),
