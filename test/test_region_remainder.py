@@ -388,19 +388,31 @@ class TestInner:
 # ---------------------------------------------------------------------------
 
 class TestRefusals:
-    def test_table_equals_fixture(self):
+    def test_every_refused_text_is_checked(self):
+        """Every margin text twoway refuses (refusals.*, terms.*, gterms.*)
+        is put to dash in test_option_validation.cscript U37-04, where
+        dash's rc and line are compared with twoway's in the same run."""
+        with open(os.path.join(_HERE, "test_option_validation.cscript"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        m = re.search(r"// U37-04.*?_u05_judge U37-04", src, re.S)
+        assert m
+        texts = {re.search(r"margin\((.*)\)\)$", v["cmd"]).group(1)
+                 for k, v in _P.items()
+                 if k.startswith(("refusals.", "terms.", "gterms."))
+                 and v["rc"]}
+        missing = sorted(t for t in texts if '"%s|' % t not in m.group(0))
+        assert texts and not missing, missing
+
+    def test_the_rule_is_margin_class(self):
+        """dash_parse.mata refuses by margin.class's rule, not by a table
+        of names."""
         with open(os.path.join(_ROOT, "dash_parse.mata"),
                   encoding="utf-8") as fh:
             src = fh.read()
-        m = re.search(r"string matrix _dash_margin_refused_table\(\)\s*\{"
-                      r"(.*?)\n\}", src, re.S)
-        assert m, "no _dash_margin_refused_table"
-        rows = set(re.findall(r'\("([^"]*)", "([^"]*)", "([^"]*)"\)',
-                              m.group(1)))
-        want = {(k.split(".", 1)[1], str(v["rc"]), v["err"])
-                for k, v in _P.items()
-                if k.startswith("refusals.") and v["rc"]}
-        assert want and rows == want
+        assert "real scalar _dash_margin_term_rc(" in src
+        assert "_dash_margin_refused_table" not in src
+
 
 
 # ---------------------------------------------------------------------------

@@ -135,6 +135,20 @@ foreach f of local _sty {
     _rr_probe grefusals.`nm' 0 s2color : graphregion(margin(`nm'))
 }
 
+* ---- terms: margin texts margin.class reads token by token ---------------------
+local _k 0
+foreach t in "l+abc" "l-abc" "r+x" "t+5 b-q" "l+" "l+5 r+" "+abc" "l+1e400" "l+5pt" "l+5 bogus" "1 abc" "l=abc" "l+5in" "b+2cm" "l+abc r+def" "l + abc" "l+5." "l+.5" "l+-5" "l+5e2" "l+inf" "l+." {
+    local ++_k
+    _rr_probe terms.`_k' 0 s2color : plotregion(margin(`t'))
+    _rr_probe gterms.`_k' 0 s2color : graphregion(margin(`t'))
+}
+
+* ---- marginonly with the plot region's inner box -------------------------------
+_rr_probe inner.p_marginonly_ifcolor 1 s2color : plotregion(ifcolor(red) marginonly)
+_rr_probe inner.p_marginonly_ilcolor 1 s2color : plotregion(ilcolor(blue) ilwidth(thick) marginonly)
+_rr_probe inner.p_ifcolor 1 s2color : plotregion(ifcolor(red))
+_rr_probe inner.p_marginonly_copy 1 s2color : plotregion(ifcolor(red)) plotregion(margin(l+5) marginonly)
+
 * ---- intensity ---------------------------------------------------------------
 foreach i in inten0 inten50 inten80 full *.5 50 bogus {
     local k = subinstr(subinstr("`i'", "*", "star", .), ".", "", .)

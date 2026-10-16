@@ -2319,22 +2319,38 @@ foreach c in "pcspike mpg weight price length" "pcscatter mpg weight price lengt
 }
 _u05_judge U34-10 `"`bad'"' "headlabel taken on every paired-coordinate type, as twoway takes it"
 
-// U37-04 (WP-31 D11): a margin style name twoway fails on is refused as
-// twoway refuses it, in plotregion() and graphregion(), rc and line
-// (test/fixtures/region_remainder_truth.json refusals.allsides-ms, r(7));
-// a name twoway draws runs (a guard).
+// U37-04 (WP-31 D11): a margin text twoway fails on is refused as twoway
+// refuses it, in plotregion() and graphregion(), rc and line
+// (test/fixtures/region_remainder_truth.json refusals.allsides-ms and
+// terms.*: margin.class reads a token after + or - as a number, r(7) "'<t>'
+// found where number expected"); the texts it draws run (guards).
 local bad ""
 foreach r in plotregion graphregion {
-    _u05_rc "scatter mpg weight, `r'(margin(allsides-ms))" "'ms' found where number expected"
-    if r(trc) != 7 | r(drc) != r(trc) | r(tn) < 1 | r(dn) < 1 {
-        local bad `"`bad' [`r' allsides-ms: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    foreach p in `"allsides-ms|'ms' found where number expected"' ///
+        `"l+abc|'a' found where number expected"' ///
+        `"l-abc|'a' found where number expected"' ///
+        `"r+x|'x' found where number expected"' ///
+        `"t+5 b-q|'q' found where number expected"' ///
+        `"+abc|'a' found where number expected"' ///
+        `"l+abc r+def|'a' found where number expected"' ///
+        `"l + abc|'a' found where number expected"' ///
+        `"l+inf|'y' found where number expected"' ///
+        `"l+.|'.' found where number expected"' {
+        gettoken t e : p, parse("|")
+        local e = substr(`"`e'"', 2, .)
+        _u05_rc `"scatter mpg weight, `r'(margin(`t'))"' `"`e'"'
+        if r(trc) != 7 | r(drc) != r(trc) | r(tn) < 1 | r(dn) < 1 {
+            local bad `"`bad' [`r' "`t'": twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+        }
     }
-    _u05_rc "scatter mpg weight, `r'(margin(medium))" ""
-    if r(trc) != 0 | r(drc) != 0 {
-        local bad `"`bad' [`r' medium: twoway `r(trc)', dash `r(drc)']"'
+    foreach t in "medium" "l+" "l+5 r+" "l+5in" "l+5 bogus" "1 abc" "l+.5" {
+        _u05_rc `"scatter mpg weight, `r'(margin(`t'))"' ""
+        if r(trc) != 0 | r(drc) != 0 {
+            local bad `"`bad' [`r' "`t'": twoway `r(trc)', dash `r(drc)']"'
+        }
     }
 }
-_u05_judge U37-04 `"`bad'"' "margin(allsides-ms) refused as twoway refuses it; margin(medium) runs"
+_u05_judge U37-04 `"`bad'"' "margin texts twoway fails on refused in its rc and words; the texts it draws run"
 
 // ----------------------------------------------------------------
 // Summary

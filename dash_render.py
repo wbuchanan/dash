@@ -35764,8 +35764,9 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
     ``{l|r|b|t}{+|-|=}#`` edit a side in order (``l+5 l+5`` is
     ``l+10``), and ``L+10`` is ``L`` -- an unknown gsize, medium, with
     twoway's gsize note -- on the left and +10 on the right (measured).
-    A term whose number is not one, a non-finite number or a text over
-    2,000 characters gives zeros and *noted*.  Linear in the text; only
+    A term whose number is not one (dash.ado refuses it first, as twoway
+    does, r(7)), a non-finite number or a text over 2,000 characters
+    gives zeros and *noted*.  Linear in the text; only
     floats come out."""
     num = r"[0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]{1,4})?"
     cur = [float(v) for v in start]

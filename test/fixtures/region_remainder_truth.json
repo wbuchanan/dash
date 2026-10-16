@@ -1,7 +1,7 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "fdd8f4553055c6b3b1e0d37a39a6448eae8c4040",
+  "dash_commit": "ad0f3db5fbbbc080aa06aa136101a8ed865f419c",
   "extracted": "16 Oct 2026",
   "source": "scripts/extract_region_remainder_truth.do",
   "stata_version": "19.5",
@@ -1635,6 +1635,170 @@
    "rc": 0,
    "scheme": "s2color"
   },
+  "gterms.1": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.10": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5 bogus))",
+   "err": "",
+   "notes": [
+    "(note:  named style ogus not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.11": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(1 abc))",
+   "err": "",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style c not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.12": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l=abc))",
+   "err": "",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style c not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.13": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5in))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.14": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(b+2cm))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.15": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+abc r+def))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.16": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l + abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.17": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5.))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.18": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+.5))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.19": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+-5))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.2": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l-abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.20": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5e2))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.21": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+inf))",
+   "err": "'y' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.22": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+.))",
+   "err": "'.' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.3": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(r+x))",
+   "err": "'x' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.4": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(t+5 b-q))",
+   "err": "'q' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.5": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.6": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5 r+))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.7": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(+abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "gterms.8": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+1e400))",
+   "err": "",
+   "notes": [
+    "(note:  named style . not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "gterms.9": {
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+5pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
   "inner.icolor": {
    "canvas": {
     "h": 2880.0,
@@ -2570,12 +2734,352 @@
    ],
    "scheme": "s2color"
   },
+  "inner.p_ifcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "err": "",
+   "gaps": {
+    "bottom": 457.06,
+    "left": 457.04,
+    "right": 167.22,
+    "top": 167.1
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2255.84,
+    "w": 3335.74,
+    "x": 457.04,
+    "y": 167.1
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "scheme": "s2color"
+  },
   "inner.p_marginonly": {
    "canvas": {
     "h": 2880.0,
     "w": 3960.0
    },
    "cmd": "twoway scatter mpg weight, plotregion(fcolor(red) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.p_marginonly_copy": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red)) plotregion(margin(l+5) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 457.06,
+    "left": 600.96,
+    "right": 167.22,
+    "top": 167.1
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2255.84,
+    "w": 3191.82,
+    "x": 600.96,
+    "y": 167.1
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3197.58,
+     "x": 598.08,
+     "y": 164.22
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3191.82,
+     "x": 600.96,
+     "y": 167.1
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.p_marginonly_ifcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red) marginonly)",
+   "err": "",
+   "gaps": {
+    "bottom": 393.69,
+    "left": 393.68,
+    "right": 103.86,
+    "top": 103.74
+   },
+   "notes": [],
+   "plot_box": {
+    "h": 2382.57,
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 103.74
+   },
+   "rc": 0,
+   "rects": [
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "w": 3960.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "#eaf2f3",
+     "fill_opacity": null,
+     "h": 2880.0,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3959.88,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2874.24,
+     "stroke": "#eaf2f3",
+     "stroke_width": 5.76,
+     "w": 3954.12,
+     "x": 2.88,
+     "y": 2.88
+    },
+    {
+     "fill": "#ffffff",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#ffffff",
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "scheme": "s2color"
+  },
+  "inner.p_marginonly_ilcolor": {
+   "canvas": {
+    "h": 2880.0,
+    "w": 3960.0
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ilcolor(blue) ilwidth(thick) marginonly)",
    "err": "",
    "gaps": {
     "bottom": 393.69,
@@ -6303,6 +6807,170 @@
      "y": 103.74
     }
    ],
+   "scheme": "s2color"
+  },
+  "terms.1": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.10": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5 bogus))",
+   "err": "",
+   "notes": [
+    "(note:  named style ogus not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.11": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(1 abc))",
+   "err": "",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style c not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.12": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l=abc))",
+   "err": "",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style c not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.13": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5in))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.14": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(b+2cm))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.15": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+abc r+def))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.16": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l + abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.17": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5.))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.18": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+.5))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.19": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+-5))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.2": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l-abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.20": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5e2))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.21": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+inf))",
+   "err": "'y' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.22": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+.))",
+   "err": "'.' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.3": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(r+x))",
+   "err": "'x' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.4": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(t+5 b-q))",
+   "err": "'q' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.5": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.6": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5 r+))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.7": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(+abc))",
+   "err": "'a' found where number expected",
+   "notes": [],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "terms.8": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+1e400))",
+   "err": "",
+   "notes": [
+    "(note:  named style . not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "terms.9": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5pt))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
    "scheme": "s2color"
   }
  }

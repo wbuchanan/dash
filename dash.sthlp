@@ -3823,8 +3823,9 @@ its margin and the plot region that Bokeh does not draw --
 {cmd:graphregion(ilcolor(red))} outlines that box in {cmd:twoway} and
 changes nothing in {cmd:dash}, and {cmd:graphregion(ifcolor(red))} fills
 the box in {cmd:twoway} and the whole border in {cmd:dash}.  A margin
-style name {cmd:twoway} fails on ({cmd:allsides-ms}) fails here with its
-return code and words, r(7).
+text {cmd:twoway} fails on -- a style name such as {cmd:allsides-ms}, or
+a term whose sign is followed by no number, such as {cmd:l+abc} -- fails
+here with its return code and words, r(7).
 
 {pstd}
 {ul:Plot-region margin.}  {cmd:plotregion(margin())} takes {cmd:twoway}'s

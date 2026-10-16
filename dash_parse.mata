@@ -573,8 +573,9 @@
 *!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
 *!       title or region sub-option twoway refuses (kind legend, zlabel,
 *!       title or region; the region's helpers are _dash_subreq_region
-*!       and, for the margin style names twoway fails on with their own
-*!       rc, _dash_subreq_margin over _dash_margin_refused_table);
+*!       and, for the margin() texts twoway fails on with their own rc,
+*!       _dash_subreq_margin over _dash_margin_term_rc and
+*!       _dash_margin_isnum);
 *!       -1 hands a cols()/rows()/holes() value to dash.ado's
 *!       _dash_subopt_check through its locals _so_name, _so_value and
 *!       _so_kind; prints twoway's legend notes (WP-30 P1.19).  Its helpers
@@ -9209,18 +9210,17 @@ real scalar _dash_subreq_check(string scalar kind)
                 }
             }
         }
-        // WP-31 D11: a margin style name twoway fails on, when the
-        // region's log is run, after every copy has parsed.
+        // WP-31 D11: a margin() text twoway fails on, when the region's
+        // log is run, after every copy has parsed.
         for (k = 1; k <= 2; k++) {
             f = (k == 1 ? "region:graphregion" : "region:plotregion")
             for (q = 1; q <= rows(o); q++) {
                 if (_dash_subreq[o[q], 1] != f) continue
-                i = _dash_subreq_margin(_dash_subreq[o[q], 4])
-                if (i) {
-                    w = _dash_margin_refused_table()[i, .]
-                    _dash_say("err", "", w[3], "")
+                rc = _dash_subreq_margin(_dash_subreq[o[q], 4], msg)
+                if (rc) {
+                    _dash_say("err", "", msg, "")
                     _dash_subreq_clear()
-                    return(strtoreal(w[2]))
+                    return(rc)
                 }
             }
         }
@@ -9316,42 +9316,97 @@ string scalar _dash_subreq_region(string scalar v)
     return("")
 }
 
-// _dash_margin_refused_table() -- the margin style names twoway fails on
-// (WP-31 D11, D-37.e): name, rc, first error line; equal to
-// test/fixtures/region_remainder_truth.json refusals.* with rc != 0
-// (margin.class reads allsides-ms as gsizes a and sides, then "ms" after
-// the minus, which is not a number).
-string matrix _dash_margin_refused_table()
+// _dash_margin_term_rc(t, msg) -- twoway's return code for margin(t), 7
+// with its line in msg, or 0 (WP-31 D11, measured in
+// test/fixtures/region_remainder_truth.json refusals.* and terms.*).
+// margin.class's setstyle takes a style name when t holds -pt -in -cm or
+// -rs, starts with the word scheme, or is one word with no + - =;
+// otherwise it hides the units rs pt in cm as w x y z, splits t at blanks
+// and at each of l r t b + -, and reads the token after + or - as a
+// number: when it is not one, its part before x, y or z (that letter
+// itself when it leads) must be, or "'<part>' found where number
+// expected", r(7) (allsides-ms fails on ms, l+abc on a, l+inf on y).
+real scalar _dash_margin_term_rc(string scalar t, string scalar msg)
 {
-    return(("allsides-ms", "7", "'ms' found where number expected"))
+    string rowvector w
+    string scalar    s, c, tok, num
+    real scalar      i, op, p
+
+    msg = ""
+    s = strtrim(t)
+    if (s == "") return(0)
+    if (strpos(s, "-pt") | strpos(s, "-in") | strpos(s, "-cm") |
+        strpos(s, "-rs")) return(0)
+    w = tokens(s)
+    if (cols(w) == 0) return(0)
+    if (w[1] == "scheme") return(0)
+    if (cols(w) == 1 & !strpos(s, "+") & !strpos(s, "-") & !strpos(s, "=")) {
+        return(0)
+    }
+    s = subinstr(s, "rs", "w")
+    s = subinstr(s, "pt", "x")
+    s = subinstr(s, "in", "y")
+    s = subinstr(s, "cm", "z")
+    op  = 0
+    tok = ""
+    for (i = 1; i <= strlen(s) + 1; i++) {
+        c = (i <= strlen(s) ? substr(s, i, 1) : " ")
+        if (!anyof((" ", "l", "r", "t", "b", "+", "-", char(9)), c)) {
+            tok = tok + c
+            continue
+        }
+        if (tok != "") {
+            if (tok == "=") op = 0
+            else {
+                if (op & !_dash_margin_isnum(tok)) {
+                    p = 0
+                    for (p = 1; p <= strlen(tok); p++) {
+                        if (anyof(("x", "y", "z"), substr(tok, p, 1))) break
+                    }
+                    num = (p == 1 ? substr(tok, 1, 1) : substr(tok, 1, p - 1))
+                    if (!_dash_margin_isnum(num)) {
+                        msg = "'" + num + "' found where number expected"
+                        return(7)
+                    }
+                }
+                op = 0
+            }
+            tok = ""
+        }
+        if (c == "+" | c == "-") op = 1
+    }
+    return(0)
 }
 
-// _dash_subreq_margin(v) -- the row of _dash_margin_refused_table() one
-// region copy's last margin() names, or 0 (WP-31 D11).
-real scalar _dash_subreq_margin(string scalar v)
+// _dash_margin_isnum(s) -- 1 when s is a number as -confirm number- takes
+// one inside margin.class (digits, one point, an exponent; no sign, the
+// signs being parse characters there).
+real scalar _dash_margin_isnum(string scalar s)
+{
+    return(ustrregexm(s, "^([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+]?[0-9]+)?$"))
+}
+
+// _dash_subreq_margin(v, msg) -- twoway's return code for one region
+// copy's margin() texts, read in order (_dash_margin_term_rc), its line
+// in msg; 0 when every one parses (WP-31 D11).
+real scalar _dash_subreq_margin(string scalar v, string scalar msg)
 {
     string rowvector w, names
-    string matrix    tab
-    string scalar    body, sub, msg, arg
-    real scalar      at, i, j, hit
+    string scalar    body, sub, m
+    real scalar      at, i, rc
 
+    msg  = ""
     body = v
     (void) _dash_rep_split(v, body, sub)
     w = _dash_rep_toks(body, 0)
     if (cols(w) == 0) return(0)
-    if (_dash_so_resolve(w, J(1, cols(w), 1), "region", names, msg, at)) {
+    if (_dash_so_resolve(w, J(1, cols(w), 1), "region", names, m, at)) {
         return(0)
     }
-    tab = _dash_margin_refused_table()
-    hit = 0
     for (i = 1; i <= cols(w); i++) {
         if (names[i] != "margin") continue
-        arg = strtrim(_dash_rep_value(w[i]))
-        hit = 0
-        for (j = 1; j <= rows(tab); j++) {
-            if (arg == tab[j, 1]) hit = j
-        }
-        if (hit) return(hit)
+        rc = _dash_margin_term_rc(_dash_rep_value(w[i]), msg)
+        if (rc) return(rc)
     }
     return(0)
 }

@@ -799,8 +799,9 @@ COVERAGE = {
         "_dash_rep_region": ("test_twoway_option_parity.cscript:RS-12",),
         "_dash_rep_region_word": ("test_twoway_option_parity.cscript:RS-10",),
         "_dash_subreq_region": ("test_twoway_option_parity.cscript:RS-01",),
-        # WP-31 S37 (D11): the margin style names twoway fails on
-        "_dash_margin_refused_table": ("test_option_validation.cscript:U37-04",),
+        # WP-31 S37 (D11): the margin() texts twoway fails on
+        "_dash_margin_term_rc": ("test_option_validation.cscript:U37-04",),
+        "_dash_margin_isnum": ("test_option_validation.cscript:U37-04",),
         "_dash_subreq_margin": ("test_option_validation.cscript:U37-04",),
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         "_dash_axreq_accept_line": ("test_suboption_reporting.cscript:XP-01",),
