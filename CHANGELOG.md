@@ -462,7 +462,7 @@ and now matches Stata.
 
 - lfitci ..., pstyle(p1) under a scheme declaring intensity p1shade inten200 drew the band at s2color's inten80 and one declaring intensity p1bar inten200 drew it at full; the band reads color and intensity p#shade as twoway does, an intensity above full blended as twoway blends it (#0d2438), and p1bar's is not read (WP-31, E7)
 
-<!-- WP-31 E8 -->
+- rarea and rbar drew no outline; they are outlined in the scheme's area line style, as twoway outlines them: rarea along both bounds in its plot colour at the medium width, rbar each bar in its plot colour (WP-31, E8)
 
 <!-- WP-31 E9 -->
 

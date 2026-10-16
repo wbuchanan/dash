@@ -20601,7 +20601,37 @@ class GlyphMapper:
             r.glyph.fill_alpha = _fill_a
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # No marker labels: twoway draws none on rarea (measured).
-        return [r]
+        # twoway strokes the rarea polygon in linestyle p#area (colour
+        # p#arealine -> p#, width p#area -> p medium, pattern solid; WP-31
+        # E8, test/fixtures/colour_width_edges_truth.json ol.rarea: the
+        # stroke is clipped to the polygon, so its inner half shows, as
+        # wide as a medium line).  The scheme's p#other/p#otherline chain
+        # ends at the same values and is what style_bundle("area", ...)
+        # copies (DECISIONS A34).  VArea has no stroke, so the two bounds
+        # are Lines on the same source, after the fill so hover and the
+        # legend read the fill first; the closing edges at the x ends are
+        # documented, not drawn.  alcolor()/alwidth()/alpattern(),
+        # lcolor() and color() reach them through the aline role.
+        _b = self.scheme.p_other_band_styles[color_idx % 15]
+        # The outline's own options win over lcolor() as twoway reads them
+        # (color() < lcolor() < acolor() < alcolor(); _render_ci_band).
+        _lo = dict(options)
+        for _src, _dst in (("acolor", "lcolor"), ("alcolor", "lcolor"),
+                           ("alwidth", "lwidth"), ("alpattern", "lpattern")):
+            if str(options.get(_src, "") or "").strip():
+                _lo[_dst] = options[_src]
+        _outlines = []
+        for _yb in (y1var, y2var):
+            _o = fig.line(x=xvar, y=_yb, source=source,
+                          line_color=_b["line"],
+                          line_alpha=(1.0 if _b.get("line_alpha") is None
+                                      else _b["line_alpha"]),
+                          line_width=_b["line_width"],
+                          line_dash=list(_b.get("line_dash") or []))
+            _o.tags = ["dash_rarea_outline"]
+            self._apply_line_opts(_o, _lo, role="aline")
+            _outlines.append(_o)
+        return [r] + _outlines
 
     def map_rbar(
         self,
@@ -20665,11 +20695,18 @@ class GlyphMapper:
                                    fill_color=self._blend_intensity(
                                        _fill_base, _f,
                                        self.scheme.naturally_white),
-                                   line_alpha=0,
                                    legend_label=y1var,
                                    **self._scheme_alpha_kw(
                                        color_idx, "rbar", fill=True,
                                        line=False))
+        # twoway outlines each bar in color p# (WP-31 E8, fixture ol.rbar:
+        # navy around an inten80 navy fill under s2color), the outline
+        # colour of the scheme's band style (DECISIONS A34); color() and
+        # blcolor() still win in _rbar_finish.
+        _rb_b = self.scheme.p_other_band_styles[color_idx % 15]
+        _rbar_kwargs["line_color"] = _rb_b["line"]
+        _rbar_kwargs["line_alpha"] = (1.0 if _rb_b.get("line_alpha") is None
+                                      else _rb_b["line_alpha"])
         _rbar_lw = self.scheme.plot_line_width(color_idx, "bar")
         if _rbar_lw is not None:
             _rbar_kwargs["line_width"] = _rbar_lw

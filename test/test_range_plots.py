@@ -174,14 +174,12 @@ class TestRbarLegendColor:
         )
 
     def test_rbar_line_alpha_zero_or_no_border(self, fig, range_cds, gm):
-        """BUG-3b: vbar glyph must have line_alpha=0 (transparent border)."""
+        """BUG-3b: the bar's border is never white.  Flipped (WP-31 E8):
+        it was transparent (line_alpha=0); twoway outlines each bar in its
+        plot colour (test/fixtures/colour_width_edges_truth.json ol.rbar),
+        so the border is the scheme's p1, opaque."""
         renderers = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
         r = renderers[0] if isinstance(renderers, list) else renderers
         glyph = r.glyph
-        la = getattr(glyph, "line_alpha", None)
-        # Accept either line_alpha==0 or a value spec object (Bokeh field/value spec)
-        if la is not None:
-            la_val = la.value if hasattr(la, "value") else la
-            assert la_val == 0, (
-                f"map_rbar glyph should have line_alpha=0, got {la_val!r}"
-            )
+        assert glyph.line_color == gm.scheme.p_other_band_styles[0]["line"]
+        assert glyph.line_alpha == 1.0

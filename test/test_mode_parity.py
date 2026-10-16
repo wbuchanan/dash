@@ -2670,6 +2670,9 @@ CORPUS = [
     _case("by shrink margin outline", [_sc()], None,
           {"by": "foreign, shrink graphregion(margin(large)) "
                  "plotregion(lcolor(red))"}),
+    # WP-31 E8: rarea's and rbar's outlines from the scheme.
+    _case("rarea default outline (WP-31 E8)", [plot_for("rarea")]),
+    _case("rbar default outline (WP-31 E8)", [plot_for("rbar")]),
 ]
 
 
@@ -3726,6 +3729,10 @@ MOVE_CORPUS = [
     # after a move.
     _move_case("msymbol(pipe) msangle(30), dropdown (WP-31 E1)", _MOVES[0],
                [_sc(msymbol="pipe", msangle="30"), _sc(msymbol="p")]),
+
+    # WP-31 E8: rarea's outline Lines follow the move with the fill.
+    _move_case("rarea, dropdown to Foreign (WP-31 E8)", _MOVES[0],
+               [plot_for("rarea", {"sort": "1"})]),
 ]
 
 

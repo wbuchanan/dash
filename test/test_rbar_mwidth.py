@@ -196,7 +196,9 @@ class TestWithoutMwidth:
             assert (_field(g.x), _field(g.bottom), _field(g.top)) == \
                 ("x", "lo", "hi")
             assert bg._width_value(r) == 1.0
-            assert g.line_color == "#1f77b4" and g.line_alpha == 0
+            # Flipped (WP-31 E8): the outline was Bokeh's default at alpha
+            # 0; twoway outlines each bar in color p# (fixture ol.rbar).
+            assert g.line_color == "#1a476f" and g.line_alpha == 1.0
             assert g.line_width == pytest.approx(lw)
             assert g.fill_color == fill
             assert "dash_rbar_mwidth" not in (r.tags or [])

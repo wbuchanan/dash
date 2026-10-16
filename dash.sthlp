@@ -401,7 +401,12 @@ data and crosses itself where {cmd:twoway}'s does; add {cmd:sort} for a
 picture along {it:x}.  Each bound of {cmd:rline} and {cmd:tsrline} keeps
 its own missing values: it is drawn through the observations where that
 bound is present, as {cmd:twoway} draws it ({cmd:rarea} leaves out an
-observation missing either bound).  A malformed name in {cmd:sort()} is
+observation missing either bound).  {cmd:rarea} is outlined in the
+scheme's area line style -- its plot colour at the medium line width,
+under {cmd:s2color} navy as wide as {cmd:line}'s -- along its two bounds,
+which {cmd:alcolor()}, {cmd:alwidth()}, {cmd:alpattern()}, {cmd:lcolor()}
+and {cmd:color()} restyle; the short edges {cmd:twoway} also strokes
+where the area closes at its first and last {it:x} are not drawn.  A malformed name in {cmd:sort()} is
 refused on every plot type -- {cmd:sort(x*)} is "* invalid name",
 r(198) -- and a name that is no usable variable on the plot types that
 draw observations: {cmd:sort(nosuch)} on {cmd:line} is "variable nosuch not
@@ -552,6 +557,8 @@ millisecond for {cmd:%tc} and {cmd:%tC}, and a week, month, quarter,
 half-year or year for {cmd:%tw} to {cmd:%ty}; so monthly data held as
 {cmd:%td} dates draws bars a day wide, as in {cmd:twoway}, and
 {cmd:barwidth(30)} widens them.  Widths do not change when a filter moves.
+{cmd:rbar}'s bars are outlined in their plot colour, as {cmd:twoway}
+outlines them; {cmd:blcolor()} and {cmd:color()} restyle the outline.
 With {cmd:mwidth}, {cmd:rbar} draws each bar as wide as a marker of its
 {cmd:msize()} (the scheme's symbol size by default), in screen units,
 as {cmd:twoway}'s {cmd:rbar} {cmd:mwidth} draws, whatever the spacing

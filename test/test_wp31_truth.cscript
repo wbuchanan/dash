@@ -10459,6 +10459,83 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u41_outline(sp, dp, app, svg, kind):
+    """U41-06: dash's rarea outline Lines or rbar VBar outline, saved and
+    served, against twoway's live SVG stroke (colour; width as the
+    visible part: a clipped stroke shows its inner half)."""
+    import re
+    import dash_render as dr
+    from sfi import Macro
+    with open(svg, encoding="utf-8") as fh:
+        txt = fh.read()
+    if kind == "rarea":
+        m = re.search(r'<use [^>]*style="fill:none;stroke:(#[0-9A-Fa-f]{6});stroke-width:([0-9.]+)"[^>]*clip-path', txt)
+        want_c, want_w = m.group(1).lower(), float(m.group(2)) / 2
+    else:
+        ms = [m for m in re.finditer(r'<rect [^>]*style="fill:none;stroke:(#[0-9A-Fa-f]{6});stroke-width:([0-9.]+)"', txt)
+              if m.group(1).lower() not in ("#eaf2f3", "#ffffff")]
+        want_c, want_w = ms[0].group(1).lower(), float(ms[0].group(2))
+    px = 0.1 * dr.OptionTranslator.PX_PER_PT
+    a, b = __import__("__main__")._u03_docs(sp, dp, app)
+    bad = []
+    for name, figs in (("saved", a), ("served", b)):
+        rs = [r for r in figs[0].renderers
+              if hasattr(r, "glyph") and not dr._dash_is_swatch(r)]
+        if kind == "rarea":
+            gs = [r.glyph for r in rs if "dash_rarea_outline" in r.tags]
+            if len(gs) != 2:
+                bad.append("%s %d outlines" % (name, len(gs)))
+                continue
+        else:
+            gs = [r.glyph for r in rs if type(r.glyph).__name__ == "VBar"]
+        for g in gs:
+            if str(g.line_color).lower() != want_c or \
+                    abs(float(g.line_width) - want_w * px) > 1e-6 or \
+                    float(g.line_alpha) != 1.0:
+                bad.append("%s %s %s/%s, twoway %s/%s" % (
+                    name, kind, g.line_color, g.line_width, want_c,
+                    want_w * px))
+                break
+    prev = Macro.getGlobal("u41_bad")
+    Macro.setGlobal("u41_bad", "; ".join([prev] * bool(prev) + bad))
+end
+
+capture program drop _u41_olcase
+program define _u41_olcase
+    // _u41_olcase <dir> <k> <kind> <twoway command>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken kind 0 : 0
+    capture graph drop u41t
+    quietly twoway `0' name(u41t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u41t
+    _u41_spec "`dir'" `k' `0'
+    python: import __main__ as _u41_m; _u41_m._u41_outline("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`kind'")
+end
+
+* ==== S41 E8: rarea and rbar outlines ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
+    display as text "S41 start " c(current_date) " " c(current_time)
+    local u41d "`w31_work'/s41o"
+    capture mkdir "`u41d'"
+    sysuse auto, clear
+
+    // U41-06: rarea's two bounds and rbar's bars are outlined in the
+    // scheme's colour and width, saved and served, as twoway (live).
+    global u41_bad ""
+    _u41_olcase "`u41d'" 61 rarea rarea mpg trunk weight, sort scheme(s2color)
+    _u41_olcase "`u41d'" 62 rarea rarea mpg trunk weight, sort pstyle(p2) scheme(s2color)
+    _u41_olcase "`u41d'" 63 rbar rbar mpg trunk weight, scheme(s2color)
+    _w31_expect U41-06 `"(`"${u41_bad}"' == "")"' `"${u41_bad}"'
+    _w31_done U41-06 "rarea and rbar are outlined in the scheme's colour and width, saved and served, as twoway"
+    display as text "S41 end " c(current_date) " " c(current_time)
+}
+* ==== end S41 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

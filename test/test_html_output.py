@@ -1936,7 +1936,11 @@ class TestOutputBackendAndVisualMarkers:
             "rarea", extra_keys={"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        band = _only_layer(html, "VArea")
+        # Flipped (WP-31 E8): the band is outlined by two Lines along its
+        # bounds, as twoway strokes it (colour_width_edges_truth.json
+        # ol.rarea); the fill is still the one VArea, drawn first.
+        assert _figure_glyphs(html) == [["VArea", "Line", "Line"]]
+        band = _figure_layers(html)[0][0]
         # The band's own fill: the scheme's first series colour at its
         # p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3), opaque by area's rule: twoway's
         # rarea is drawn as area is (WP-30 P1.4a).  Flipped: the 0.5 pinned

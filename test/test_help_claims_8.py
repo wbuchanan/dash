@@ -806,8 +806,13 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
         # twoway's SVG, plan section 16 Evidence E3).
         want_t, want_p = (("#d68592", "#a65d62") if ptype == "rarea"
                           else ("#cc6677", "#90353b"))
-        assert trans and {c for c, _a in trans} == {want_t}, trans
-        assert plain and {c for c, _a in plain} == {want_p}, plain
+        # Flipped (WP-31 E8): rarea's outline Lines are p2 itself, at the
+        # scheme's opacity, as twoway strokes the polygon (fixture
+        # ol.rarea_p2).
+        _ol_t, _ol_p = ({"#cc6677"}, {"#90353b"}) if ptype == "rarea" \
+            else (set(), set())
+        assert trans and {c for c, _a in trans} == {want_t} | _ol_t, trans
+        assert plain and {c for c, _a in plain} == {want_p} | _ol_p, plain
         assert all(abs(a - 0.2) < 1e-9 for _c, a in trans), trans
         assert {a for _c, a in plain} == {1.0}, plain
 
