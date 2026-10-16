@@ -4720,12 +4720,17 @@ Unicode's superscript or subscript characters when each of its
 characters has one (digits, {cmd:+ - = ( )} and, raised, {cmd:n} and
 {cmd:i}).  Markup on part of a text, or a raised run without such
 characters, is drawn in the text's own style and on the line, and
-{cmd:dash} says so in one note for each graph and kind of text.  Tick
-labels and legend keys take a style only when every one of them has it.
-{cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:} and {cmd:{c -(}stMono:} draw
-in the reader's sans-serif, serif and monospace fonts (Helvetica, Times
-and Courier where installed; a {cmd:graph set} font is not read), and
+{cmd:dash} says so in one note for each graph and kind of text:
+{cmd:twoway} draws {cmd:title("a {c -(}bf:b{c )-} c")} with only the b
+bold and {cmd:a{c -(}sup:q{c )-}} with the q raised, where a text
+{cmd:dash} draws has one style and one baseline and q has no Unicode
+superscript.  Tick labels and legend keys take a style only when every
+one of them has it.  {cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:} and
+{cmd:{c -(}stMono:} draw in the reader's sans-serif, serif and monospace
+fonts (Helvetica, Times and Courier where installed), and
 {cmd:{c -(}fontface{c )-}} needs that font on the reader's computer.
+A {cmd:graph set} font face is read where Stata keeps it and leads the
+{c -(}stSans{c )-}, {c -(}stSerif{c )-} and {c -(}stMono{c )-} families.
 As in {cmd:twoway}, a text is cut off at {cmd:{c -(}c 0{c )-}}: the rest
 of the run it sits in is not drawn, and text after that run's closing
 brace, and the text's other lines, are drawn.  The control codes
@@ -4733,11 +4738,30 @@ brace, and the text's other lines, are drawn.  The control codes
 {cmd:{c -(}c 127{c )-}}, 129, 141, 143, 144 and 157) are kept as those
 characters; the page carries them as escaped text, never as markup or
 script.  One small difference is kept: a symbol inside
-{cmd:{c -(}stSymbol:} is drawn as itself.  Other SMCL
-({cmd:{c -(}hline{c )-}}, {cmd:{c -(}space{c )-}},
-{cmd:{c -(}dup{c )-}}, {cmd:{c -(}cmd:{c )-}}, {cmd:{c -(}hi:{c )-}},
-{cmd:{c -(}ccl{c )-}}, {cmd:{c -(}center:{c )-}} and links) and an
-unknown tag are drawn as typed, as are {cmd:$$} and {cmd:\(} pairs.
+{cmd:{c -(}stSymbol:} is drawn as itself.
+
+{pstd}
+The other SMCL directives are drawn as {cmd:twoway} draws them, which
+reads a graph's text as the Results window does on a line of 254
+columns: {cmd:{c -(}hline }{it:#}{cmd:{c )-}} is {it:#} hyphens and
+{cmd:{c -(}hline{c )-}} hyphens to column 254;
+{cmd:{c -(}space }{it:#}{cmd:{c )-}} is {it:#} blanks;
+{cmd:{c -(}dup }{it:#}{cmd::}{it:text}{cmd:{c )-}} is the text {it:#}
+times, its markup read; {cmd:{c -(}cmd:}{it:text}{cmd:{c )-}} and
+{cmd:{c -(}hi:}{it:text}{cmd:{c )-}} are the text in the style around
+them; {cmd:{c -(}center:}{it:text}{cmd:{c )-}} centres the text on what
+is left of the line and {cmd:{c -(}center }{it:#}{cmd::}{it:text}{cmd:{c )-}}
+in {it:#} columns; the links {cmd:{c -(}browse{c )-}},
+{cmd:{c -(}help{c )-}} and {cmd:{c -(}stata{c )-}} are their text after
+the colon, or their argument when they have none; and, in a graph
+option's text or a {cmd:text()} line, {cmd:{c -(}ccl }{it:name}{cmd:{c )-}}
+is {cmd:c(}{it:name}{cmd:)} when the graph is registered.  A count above
+255 (above 999 for {cmd:{c -(}dup{c )-}}), which {cmd:twoway} does not
+read, and an unknown tag are drawn as typed, as are {cmd:$$} and
+{cmd:\(} pairs.  A line longer than 254 characters is drawn as
+{cmd:twoway} draws it: only its last piece, up to 252 characters after
+{cmd:>}.  The expansions of one line stop at 4,000 characters; the rest
+is not drawn, and {cmd:dash} says so in its note.
 
 {pstd}
 Around the graphs, a filter's title, a dropdown's options taken from

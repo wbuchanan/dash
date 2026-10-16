@@ -15601,7 +15601,7 @@ class GlyphMapper:
             from bokeh.core.properties import field as _bk_field
             kwargs["text_font_style"] = _bk_field(style_col)
         if _gt is not None and _gt[1]:
-            kwargs["text_font"] = _gt[1]
+            kwargs["text_font"] = _DASH_GT_FONTS.get(_gt[1], _gt[1])
 
         # mlabangle() (WP-22): an anglestyle, drawn counter-clockwise as
         # Stata draws it.  dash.ado refuses a number outside -360..360 where
@@ -43081,6 +43081,25 @@ _DASH_GT_TAGS = {
     "stSymbol": ("font", "symbol"),
 }
 
+#: The SMCL directives twoway's graph text reads beyond graph_text.sthlp's
+#: (WP-31 E9, test/fixtures/smcl_text_truth.json): name -> (kind, the
+#: largest count twoway reads; a larger count is drawn as typed).
+_DASH_GT_SMCL = {
+    "hline": ("hline", 255), "space": ("space", 255), "dup": ("dup", 999),
+    "center": ("center", 255), "cmd": ("pass", None), "hi": ("pass", None),
+    "browse": ("link", None), "help": ("link", None),
+    "stata": ("link", None),
+}
+
+#: twoway reads a graph text's SMCL on a line of 254 columns and draws only
+#: the last piece the line wraps into (continuations are "> " and 252
+#: characters; smcl_text_truth.json plain300, dup500, dup999).
+_DASH_GT_LINE_WIDTH = 254
+
+#: The characters SMCL expansions may add to one line of text (WP-31 E9,
+#: D-42b); past it the rest of an expansion is dropped and noted.
+_DASH_GT_TEXT_BUDGET = 4000
+
 #: Where the pass writes a whole text's style and font: (Bokeh class, text
 #: property, style property, font property, the kind of text a note names).
 _DASH_GT_STYLE_PROPS = (
@@ -43139,6 +43158,7 @@ def _dash_gt_head(head, term):
     * ``("unit",)``: an unknown ``{...}``, drawn as typed.
     * ``("frame",)``: an unknown ``{...:``, drawn as typed with its text
       still read.
+    * The SMCL directives of ``_DASH_GT_SMCL`` (``_dash_gt_smcl_head``).
 
     Names are case-sensitive; blanks around the head are ignored.  The
     digit caps keep int parsing linear (a 5,000-digit code is literal).
@@ -43146,7 +43166,13 @@ def _dash_gt_head(head, term):
     h = head.strip(" \t")
     tag = _DASH_GT_TAGS.get(h)
     if tag is not None:
-        return ("open" if term == ":" else "set", tag[0], tag[1])
+        # The three font tags travel by name (WP-31 E9, DECISIONS A27);
+        # _dash_graph_text_style maps the name to its CSS family.
+        val = h if h in _DASH_GT_FONTS else tag[1]
+        return ("open" if term == ":" else "set", tag[0], val)
+    smcl = _dash_gt_smcl_head(h, term)
+    if smcl is not None:
+        return smcl
     m = re.fullmatch(r'fontface[ \t]+(?:"([^"]*)"|([^\s"]+))', h)
     if m:
         name = m.group(1) if m.group(1) is not None else m.group(2)
@@ -43178,7 +43204,78 @@ def _dash_gt_head(head, term):
     return ("unit",)
 
 
-def _dash_graph_text_runs(line):
+def _dash_gt_smcl_head(h, term):
+    """The meaning of an SMCL head of ``_DASH_GT_SMCL`` (*h* stripped), as
+    twoway 19.5 draws it (WP-31 E9, test/fixtures/smcl_text_truth.json),
+    or None when *h* names none:
+
+    * ``{hline #}``: ``("grow", "-" * #)``; ``{hline}`` ``("fill", "-")``
+      (hyphens to column 254); ``{space #}`` ``("grow", " " * #)``.
+    * ``{dup #:`` ``("dup", #)``; ``{center:`` / ``{center #:``
+      ``("center", None | #)``.
+    * ``{cmd:`` ``{hi:`` and a link's ``{browse u:`` ``{help x:``
+      ``{stata c:`` ``("pass",)``: the text in the enclosing style;
+      ``{cmd}`` ``{hi}`` ``("drop",)``: nothing.
+    * ``{browse u}`` ``{help x}`` ``{stata c}``: ``("emit", argument)``,
+      one pair of enclosing double quotes removed.
+
+    A count past the directive's bound (255, ``{dup}`` 999), a count on a
+    directive that takes none, a missing one (``{space}``, ``{dup:``) or
+    the wrong terminator is drawn as typed: ``("unit",)`` or
+    ``("frame",)``.  Digits are capped at 6 so int parsing stays linear.
+    """
+    m = re.fullmatch(r"([a-z]+)(?:[ \t]+(.*))?", h, re.S)
+    if m is None or m.group(1) not in _DASH_GT_SMCL:
+        return None
+    kind, top = _DASH_GT_SMCL[m.group(1)]
+    arg = (m.group(2) or "").strip(" \t")
+    typed = ("frame",) if term == ":" else ("unit",)
+    if kind == "pass":
+        if arg:
+            return typed
+        return ("pass",) if term == ":" else ("drop",)
+    if kind == "link":
+        if not arg:
+            return typed
+        if term == ":":
+            return ("pass",)
+        if len(arg) >= 2 and arg[0] == '"' and arg[-1] == '"':
+            arg = arg[1:-1]
+        return ("emit", arg)
+    count = None
+    if arg:
+        if not re.fullmatch(r"[0-9]{1,6}", arg):
+            return typed
+        count = int(arg)
+        if count > top:
+            return typed
+    if kind == "hline":
+        if term != "}":
+            return typed
+        return ("fill", "-") if count is None else ("grow", "-" * count)
+    if kind == "space":
+        if term != "}" or count is None:
+            return typed
+        return ("grow", " " * count)
+    if kind == "dup":
+        if term != ":" or count is None:
+            return typed
+        return ("dup", count)
+    if term != ":":
+        return typed
+    return ("center", count)
+
+
+def _dash_gt_column(total):
+    """The column a line of *total* characters ends at once twoway's
+    254-column line has wrapped it ("> " opens each continuation)."""
+    w = _DASH_GT_LINE_WIDTH
+    if total <= w:
+        return total
+    return 2 + (total - w - 1) % (w - 2) + 1
+
+
+def _dash_graph_text_runs(line, flags=None, wrap=True):
     """The styled runs twoway draws for one line of graph text: a list of
     ``(text, style, level, font)``, *style* ``"normal"``, ``"bold"`` or
     ``"italic"``, *level* -1, 0 or 1, *font* None, a CSS family or
@@ -43197,17 +43294,29 @@ def _dash_graph_text_runs(line):
     (register A34, ratified 06oct2026 "Mirror twoway").  ``{c 0}`` cuts off
     the rest of its own styled run: what follows it is dropped until the
     next tag opens, closes or is set (measured 08oct2026: ``a{c 0}b{bf:c}d``
-    draws ``a``, bold ``c``, ``d``).  Other SMCL (``{hline}``, ``{cmd:}``)
-    is drawn as typed (A32).  One documented difference: a symbol inside
+    draws ``a``, bold ``c``, ``d``).  The SMCL directives of
+    ``_DASH_GT_SMCL`` are expanded as twoway draws them (WP-31 E9,
+    ``_dash_gt_smcl_head``): ``{dup #:t}`` repeats t's runs, ``{center:t}``
+    pads t to the middle of what is left of the 254-column line, a link's
+    quoted argument may hold ``:``.  The expansions of one line add at most
+    ``_DASH_GT_TEXT_BUDGET`` characters; past it the rest is dropped and
+    ``"cut"`` is added to *flags* (a set, when given).  With *wrap*, a line
+    longer than 254 characters keeps only the last piece twoway's line
+    wraps it into, after ``"> "``; without it (dash's own DOM text) the
+    whole line is kept.  ``{ccl name}`` is expanded by dash.ado before
+    the text gets here.  One documented difference: a symbol inside
     ``{stSymbol:}`` is drawn as itself.
 
     Two passes over the positions of ``{``, ``}`` and ``:`` only, no
     recursion, pieces joined once: linear in the text's length (100,000
     ``{`` in about 0.03 s).  Not idempotent: never call it on its output.
     """
+    from bisect import bisect_right as _bisect_right
+
     s = str(line)
     sp = [m.start() for m in re.finditer(r"[{}:]", s)]
     n = len(sp)
+    quotes = None
     # Pass 1: pair each directive with its terminator and each ':' frame
     # with the '}' that closes it.
     acts = {}
@@ -43227,20 +43336,41 @@ def _dash_graph_text_runs(line):
                     acts[p] = (a2, q + 1, 3)
                     k += 3
                     continue
-            acts[p] = (_dash_gt_head(s[p + 1:q], s[q]), q, 2)
+            j = k + 1
+            if (s[q] == ":" and s.count('"', p + 1, q) % 2
+                    and re.match(r"[ \t]*(?:browse|help|stata)[ \t]",
+                                 s[p + 1:q])):
+                # A link's quoted argument holds ':' ({browse "https:..."}):
+                # the directive ends at the first ':' or '}' after its
+                # closing quote (WP-31 E9).
+                if quotes is None:
+                    quotes = [m.start() for m in re.finditer('"', s)]
+                e = _bisect_right(quotes, q)
+                if e < len(quotes):
+                    j = _bisect_right(sp, quotes[e], k + 1)
+                    if j < n and s[sp[j]] in ":}":
+                        q = sp[j]
+                    else:
+                        j = k + 1
+            acts[p] = (_dash_gt_head(s[p + 1:q], s[q]), q, j - k + 1)
             if s[q] == ":":
                 stack.append(p)
-            k += 2
+            k = j + 1
             continue
         if c == "}" and stack:
             closed.add(stack.pop())
         k += 1
-    # Pass 2: emit text in the current state.
+    # Pass 2: emit text in the current state.  *tot* counts the characters
+    # emitted, *grown* those the SMCL expansions added (the budget).
+    budget = _DASH_GT_TEXT_BUDGET
     sym = None
     state = ("normal", 0, None)
     frames = []
     out = []
     cut = False
+    over = False
+    tot = 0
+    grown = 0
     pos = 0
     k = 0
     while k <= n:
@@ -43252,6 +43382,7 @@ def _dash_graph_text_runs(line):
                     sym = str.maketrans(_DASH_GT_STSYMBOL)
                 t = t.translate(sym)
             out.append((state, t))
+            tot += len(t)
         if k == n:
             break
         c = s[p]
@@ -43262,16 +43393,33 @@ def _dash_graph_text_runs(line):
             act, q, step = acts[p]
             nxt = q + 1
             kind = act[0]
-            if s[q] == ":" and step == 2:
-                if p in closed and kind == "open":
-                    frames.append((state, False))
+            if kind in ("grow", "fill"):
+                # An expansion ({hline #}, {hline}, {space #}): counted.
+                want = (max(0, _DASH_GT_LINE_WIDTH - _dash_gt_column(tot))
+                        if kind == "fill" else len(act[1]))
+                room = max(0, budget - grown)
+                if want > room:
+                    want = room
+                    over = True
+                lit = act[1][:1] * want
+                grown += want
+            elif s[q] == ":":
+                extra = None
+                if kind == "dup" and p in closed:
+                    extra = ("dup", len(out), tot, act[1])
+                elif kind == "center" and p in closed:
+                    extra = ("center", len(out), tot, act[1])
+                    out.append((state, ""))
+                if p in closed and kind in ("open", "pass", "dup",
+                                            "center"):
+                    frames.append((state, False, extra))
                     cut = False
                 elif p in closed:
                     lit = s[p:q + 1]
-                    frames.append((state, True))
+                    frames.append((state, True, None))
                 else:
                     lit = s[p:q + 1]
-            elif kind == "set":
+            elif kind in ("set", "drop"):
                 cut = False
             elif kind == "emit":
                 lit = act[1]
@@ -43287,18 +43435,72 @@ def _dash_graph_text_runs(line):
                 else:
                     state = (state[0], state[1], act[2])
         elif c == "}" and frames:
-            saved, literal = frames.pop()
+            saved, literal, extra = frames.pop()
             if literal:
                 lit = "}"
             else:
                 cut = False
+            if extra is not None and extra[0] == "dup":
+                _, i0, t0, times = extra
+                seg = out[i0:]
+                size = tot - t0
+                if times == 0:
+                    del out[i0:]
+                    tot = t0
+                elif size and times > 1:
+                    room = max(0, budget - grown)
+                    copies = times - 1
+                    if size * copies > room:
+                        copies = room // size
+                        over = True
+                    out.extend(seg * copies)
+                    tot += size * copies
+                    grown += size * copies
+            elif extra is not None:
+                _, i0, t0, width = extra
+                size = tot - t0
+                if width is None:
+                    left = max(0, (_DASH_GT_LINE_WIDTH
+                                   - _dash_gt_column(t0) - size) // 2)
+                    right = 0
+                else:
+                    left = max(0, (width - size) // 2)
+                    right = max(0, width - size - left)
+                room = max(0, budget - grown)
+                if left + right > room:
+                    left = min(left, room)
+                    right = min(right, room - left)
+                    over = True
+                grown += left + right
+                out[i0] = (out[i0][0], " " * left)
+                tot += left
+                if right:
+                    out.append((saved, " " * right))
+                    tot += right
             state = saved
         else:
             lit = c
         if lit and not cut:
             out.append((state, lit))
+            tot += len(lit)
         pos = nxt
         k += step
+    if over and flags is not None:
+        flags.add("cut")
+    if wrap and tot > _DASH_GT_LINE_WIDTH:
+        # Only the last piece of twoway's wrapped line is drawn.
+        keep = _dash_gt_column(tot) - 2
+        tail = []
+        for st, t in reversed(out):
+            if not t:
+                continue
+            if len(t) >= keep:
+                tail.append((st, t[len(t) - keep:]))
+                break
+            tail.append((st, t))
+            keep -= len(t)
+        tail.reverse()
+        out = [(tail[0][0], "> ")] + tail
     runs = []
     for st, t in out:
         if not t:
@@ -43310,7 +43512,7 @@ def _dash_graph_text_runs(line):
     return [("".join(pieces), st[0], st[1], st[2]) for st, pieces in runs]
 
 
-def _dash_graph_text_parts(text):
+def _dash_graph_text_parts(text, wrap=True):
     """``(plain, style, font, flags)``: graph text as one Bokeh text draws
     it.
 
@@ -43320,10 +43522,13 @@ def _dash_graph_text_parts(text):
     the runs that hold a non-blank character, one style gives *style*
     (None for normal) and one font gives *font*; several give None and the
     flag ``"inline"`` (one text model has one style and font: register
-    A31).  *flags* is a sorted tuple.
+    A31).  An expansion cut at ``_DASH_GT_TEXT_BUDGET`` adds ``"cut"``.
+    *wrap* keeps each line's last piece of twoway's 254-column line
+    (``_dash_graph_text_runs``).  *flags* is a sorted tuple.
     """
     s = str(text)
-    if "{" not in s:
+    if "{" not in s and (not wrap or len(s) <= _DASH_GT_LINE_WIDTH or all(
+            len(x) <= _DASH_GT_LINE_WIDTH for x in s.split("\n"))):
         return s, None, None, ()
     styles = set()
     fonts = set()
@@ -43331,7 +43536,7 @@ def _dash_graph_text_parts(text):
     lines = []
     for line in s.split("\n"):
         pieces = []
-        for t, st, lv, ft in _dash_graph_text_runs(line):
+        for t, st, lv, ft in _dash_graph_text_runs(line, flags, wrap):
             if lv:
                 table = _DASH_GT_SUP if lv > 0 else _DASH_GT_SUB
                 if all(ch in table or ch.isspace() for ch in t):
@@ -43368,11 +43573,12 @@ def _dash_graph_text(text):
 def _dash_graph_text_plain(text):
     """The characters of graph text without its style and font (a filter
     title, a dropdown option, a tooltip row name).  Text holding no ``{`` is
-    returned unchanged."""
+    returned unchanged.  dash's own DOM text is not cut to twoway's
+    254-column line (WP-31 E9)."""
     s = str(text)
     if "{" not in s:
         return s
-    return _dash_graph_text_parts(s)[0]
+    return _dash_graph_text_parts(s, wrap=False)[0]
 
 
 def _dash_finish_text_runs(value, how):
@@ -43542,7 +43748,7 @@ def _dash_graph_text_style(model, prop, results, fig):
     if styled[0][1] is not None:
         setattr(model, sprop, styled[0][1])
     if styled[0][2] is not None:
-        setattr(model, fprop, styled[0][2])
+        setattr(model, fprop, _DASH_GT_FONTS.get(styled[0][2], styled[0][2]))
     return kind, flags, True
 
 
@@ -43557,6 +43763,9 @@ def _dash_graph_text_note(where, kind, flags):
         parts.append(f"{{sup:}} or {{sub:}} around a character with no "
                      f"raised or lowered form in a {kind} is drawn on the "
                      f"line")
+    if "cut" in flags:
+        parts.append(f"an SMCL expansion past 4,000 characters in a {kind} "
+                     f"was cut there")
     if not parts:
         return
     _dash_warn_once(("graph_text", where, kind),
@@ -57666,6 +57875,9 @@ class ServerAppBuilder:
                       "_DASH_GT_SYMBOLS", "_DASH_GT_CNAMES", "_DASH_GT_STSYMBOL",
                       "_DASH_GT_SUP", "_DASH_GT_SUB", "_DASH_GT_FONTS", "_DASH_GT_TAGS",
                       "_DASH_GT_STYLE_PROPS", "_DASH_MLABSTYLE_PREFIX",
+                      # SMCL in graph text (WP-31 E9).
+                      "_DASH_GT_SMCL", "_DASH_GT_LINE_WIDTH",
+                      "_DASH_GT_TEXT_BUDGET",
                       # The CSV download (WP-21): the page-side writer, the
                       # file's name, the button and the session's pace; and
                       # what _stata_dates_to_datetime reads to convert the
@@ -58035,7 +58247,8 @@ class ServerAppBuilder:
                          "_dash_finish_graph_text", "_dash_graph_text_models",
                          "_dash_graph_text_props", "_dash_finish_text_value",
                          # The graph-text scanner and its pass helpers (WP-30 P1.11b).
-                         "_dash_gt_char", "_dash_gt_head", "_dash_graph_text_runs",
+                         "_dash_gt_char", "_dash_gt_head", "_dash_gt_smcl_head",
+                         "_dash_gt_column", "_dash_graph_text_runs",
                          "_dash_graph_text_parts", "_dash_graph_text", "_dash_graph_text_plain",
                          "_dash_finish_text_runs", "_dash_graph_text_style", "_dash_graph_text_note",
                          "_dash_filter_title",

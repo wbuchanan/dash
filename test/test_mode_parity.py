@@ -2673,6 +2673,11 @@ CORPUS = [
     # WP-31 E8: rarea's and rbar's outlines from the scheme.
     _case("rarea default outline (WP-31 E8)", [plot_for("rarea")]),
     _case("rbar default outline (WP-31 E8)", [plot_for("rbar")]),
+
+    # WP-31 E9: the other SMCL directives, drawn alike in both modes.
+    _case("title with {dup 3:ab} {hline 2} (WP-31 E9)", [_sc()],
+          go={"title": '"{dup 3:ab} {hline 2} {cmd:x}"',
+              "xlabel": '3000 "{center 6:c}" 4000 "{help twoway}"'}),
 ]
 
 

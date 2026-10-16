@@ -1083,6 +1083,8 @@ FUNCTIONS = {
  '_dash_graph_text_style': 'test/test_graph_text.py::TestThePass::test_style_is_set_only_where_markup_asks',
  '_dash_gt_char': 'test/test_graph_text.py::TestGraphTextTruth::test_char_codes',
  '_dash_gt_head': 'test/test_graph_text.py::TestTheScanner::test_heads_name_known_directives_only',
+ '_dash_gt_smcl_head': 'test/test_graph_text.py::TestOtherSmclDirectives::test_each_variant',
+ '_dash_gt_column': 'test/test_graph_text.py::TestOtherSmclDirectives::test_each_variant',
  # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
  'OptionTranslator.__init__': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_a_plain_translator_is_bound_and_another_object_kept',
  'OptionTranslator._colour_base': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',

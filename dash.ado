@@ -471,7 +471,7 @@ program define _dash_require_mata
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
-        _dash_abs_path _dash_graph_names
+        _dash_abs_path _dash_graph_names _dash_gt_ccl
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -8643,6 +8643,11 @@ program define _dash_plot
     }
     local gopts_json "{"
     local gfirst = 1
+    local _gt_textkeys title subtitle note caption xtitle ytitle xlabel ylabel ///
+        legend clegend plegend by ytitle2 xtitle2 ylabel2 xlabel2 xmlabel2 ///
+        ymlabel2 xmlabel ymlabel tlabel tmlabel ttitle tlabel2 ttitle2 ///
+        t1title t2title b1title b2title l1title l2title r1title r2title ///
+        zlabel ztitle
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -8655,6 +8660,12 @@ program define _dash_plot
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue
         local gv : copy local g_`gk'
+        // {ccl name} in a graph text option is c(name), as twoway's
+        // graph text draws it (WP-31 E9): read here, by value, because
+        // the renderer cannot read c().
+        if `: length local gv' & `: list gk in _gt_textkeys' {
+            mata: st_local("gv", _dash_gt_ccl(st_local("gv")))
+        }
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv
             if !`gfirst' local gopts_json `"`gopts_json',"'

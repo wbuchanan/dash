@@ -1,0 +1,1356 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "e19162658c671738d778423b370e8cd9f91c0332",
+    "extracted": "16 Oct 2026",
+    "source": "scripts/extract_smcl_text_truth.do",
+    "stata_version": "19.5"
+  },
+  "fonts.home": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "listing_shows": true,
+    "log_lines": [
+      "       r(fontfacemono) : \"Courier\"",
+      "           r(fontface) : \"Courier\""
+    ],
+    "rc": 0,
+    "readable_home": true,
+    "typed": "graph set svg fontface Courier; graph set window fontface Courier"
+  },
+  "fonts.svg": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a",
+        "weight": "normal"
+      },
+      {
+        "family": "Courier",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a b",
+    "typed": "{stSans:a} b"
+  },
+  "inline.bf_part": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "b",
+        "weight": "bold"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " c",
+        "weight": "normal"
+      }
+    ],
+    "text": "a b c",
+    "typed": "a {bf:b} c"
+  },
+  "inline.sup_2": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "sup",
+        "style": "normal",
+        "text": "2",
+        "weight": "normal"
+      }
+    ],
+    "text": "a2",
+    "typed": "a{sup:2}"
+  },
+  "inline.sup_q": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "sup",
+        "style": "normal",
+        "text": "q",
+        "weight": "normal"
+      }
+    ],
+    "text": "aq",
+    "typed": "a{sup:q}"
+  },
+  "smcl.browse": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "xy",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a xy b",
+    "typed": "a {browse \"https://www.stata.com\":xy} b",
+    "variants": {
+      "bare": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "https://www.stata.com",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a https://www.stata.com b",
+        "typed": "a {browse \"https://www.stata.com\"} b"
+      },
+      "word": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "www.stata.com",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a www.stata.com b",
+        "typed": "a {browse www.stata.com} b"
+      }
+    }
+  },
+  "smcl.ccl": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a 16 Oct 2026 b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a 16 Oct 2026 b",
+    "typed": "a {ccl current_date} b",
+    "variants": {
+      "N": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a 0 b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a 0 b",
+        "typed": "a {ccl N} b"
+      },
+      "blanks": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a 3.141592653589793 b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a 3.141592653589793 b",
+        "typed": "a { ccl  pi } b"
+      },
+      "colon": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a {ccl pi:x} b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a {ccl pi:x} b",
+        "typed": "a {ccl pi:x} b"
+      },
+      "epsdouble": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "2.22044604925e-16",
+            "weight": "normal"
+          }
+        ],
+        "text": "2.22044604925e-16",
+        "typed": "{ccl epsdouble}"
+      },
+      "maxdouble": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "8.9884656743e+307",
+            "weight": "normal"
+          }
+        ],
+        "text": "8.9884656743e+307",
+        "typed": "{ccl maxdouble}"
+      },
+      "nosuch": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a  b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a  b",
+        "typed": "a {ccl nosuchname} b"
+      },
+      "pi": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a 3.141592653589793 b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a 3.141592653589793 b",
+        "typed": "a {ccl pi} b"
+      },
+      "version": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "9",
+            "weight": "normal"
+          }
+        ],
+        "text": "9",
+        "typed": "{ccl version}"
+      }
+    }
+  },
+  "smcl.center": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "                                                                                                                              xy",
+        "weight": "normal"
+      }
+    ],
+    "text": "                                                                                                                              xy",
+    "typed": "{center:xy}",
+    "variants": {
+      "inline": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a                                                                                                                              xy b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a                                                                                                                              xy b",
+        "typed": "a {center:xy} b"
+      },
+      "ls100": {
+        "current_date": "16 Oct 2026",
+        "linesize": 100,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "                                                                                                                              xy",
+            "weight": "normal"
+          }
+        ],
+        "text": "                                                                                                                              xy",
+        "typed": "{center:xy}"
+      },
+      "ls255": {
+        "current_date": "16 Oct 2026",
+        "linesize": 255,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "                                                                                                                              xy",
+            "weight": "normal"
+          }
+        ],
+        "text": "                                                                                                                              xy",
+        "typed": "{center:xy}"
+      },
+      "narrow": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "xy ",
+            "weight": "normal"
+          }
+        ],
+        "text": "xy ",
+        "typed": "{center 3:xy}"
+      },
+      "over": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "xyz",
+            "weight": "normal"
+          }
+        ],
+        "text": "xyz",
+        "typed": "{center 1:xyz}"
+      },
+      "twice": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "                                                                                                                              xy                                                              ab",
+            "weight": "normal"
+          }
+        ],
+        "text": "                                                                                                                              xy                                                              ab",
+        "typed": "{center:xy}{center:ab}"
+      },
+      "w254": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "                                                                                                                              xy                                                                                                                              ",
+            "weight": "normal"
+          }
+        ],
+        "text": "                                                                                                                              xy                                                                                                                              ",
+        "typed": "{center 254:xy}"
+      },
+      "w255": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": ">  ",
+            "weight": "normal"
+          }
+        ],
+        "text": ">  ",
+        "typed": "{center 255:xy}"
+      },
+      "w300": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{center 300:xy}",
+            "weight": "normal"
+          }
+        ],
+        "text": "{center 300:xy}",
+        "typed": "{center 300:xy}"
+      },
+      "width": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "    xy    ",
+            "weight": "normal"
+          }
+        ],
+        "text": "    xy    ",
+        "typed": "{center 10:xy}"
+      }
+    }
+  },
+  "smcl.cmd": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "xy",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a xy b",
+    "typed": "a {cmd:xy} b",
+    "variants": {
+      "set": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "xy",
+            "weight": "normal"
+          }
+        ],
+        "text": "a xy",
+        "typed": "a {cmd}xy"
+      },
+      "styled": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "italic",
+            "text": "x",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "y",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a xy b",
+        "typed": "a {cmd:{it:x}y} b"
+      }
+    }
+  },
+  "smcl.dup3": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a xyxyxy b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a xyxyxy b",
+    "typed": "a {dup 3:xy} b",
+    "variants": {
+      "bare": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a {dup:xy} b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a {dup:xy} b",
+        "typed": "a {dup:xy} b"
+      },
+      "styled": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "y",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "x",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "y b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a xyxy b",
+        "typed": "a {dup 2:{bf:x}y} b"
+      },
+      "unit": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a {dup 3} b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a {dup 3} b",
+        "typed": "a {dup 3} b"
+      },
+      "zero": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a  b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a  b",
+        "typed": "a {dup 0:xy} b"
+      }
+    }
+  },
+  "smcl.dup_big": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "{dup 1000:x}",
+        "weight": "normal"
+      }
+    ],
+    "text": "{dup 1000:x}",
+    "typed": "{dup 1000:x}",
+    "variants": {
+      "bf301": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "weight": "normal"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "typed": "{bf:a}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "d300": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "weight": "normal"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "typed": "{dup 300:x}"
+      },
+      "d500": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "weight": "normal"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "typed": "{dup 500:x}"
+      },
+      "d999": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "weight": "normal"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "typed": "{dup 999:x}"
+      },
+      "plain300": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "weight": "normal"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "typed": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "tail": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "c",
+            "weight": "bold"
+          }
+        ],
+        "text": "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxbc",
+        "typed": "a{dup 600:x}b{bf:c}"
+      }
+    }
+  },
+  "smcl.help": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "twoway",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a twoway b",
+    "typed": "a {help twoway} b",
+    "variants": {
+      "text": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "xy",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a xy b",
+        "typed": "a {help twoway:xy} b"
+      }
+    }
+  },
+  "smcl.hi": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "xy",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a xy b",
+    "typed": "a {hi:xy} b",
+    "variants": {
+      "bfin": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "xy",
+            "weight": "bold"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "bold"
+          }
+        ],
+        "text": "a xy b",
+        "typed": "{bf:a {hi:xy} b}"
+      }
+    }
+  },
+  "smcl.hline": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": ">  b",
+        "weight": "normal"
+      }
+    ],
+    "text": ">  b",
+    "typed": "a {hline} b",
+    "variants": {
+      "after": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "ab",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+            "weight": "normal"
+          }
+        ],
+        "text": "ab------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+        "typed": "ab{hline}"
+      },
+      "bare": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+            "weight": "normal"
+          }
+        ],
+        "text": "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+        "typed": "{hline}"
+      },
+      "blanks": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "--",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a -- b",
+        "typed": "a {hline  2 } b"
+      },
+      "colon": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a {hline 2:x} b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a {hline 2:x} b",
+        "typed": "a {hline 2:x} b"
+      },
+      "h0": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a  b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a  b",
+        "typed": "a {hline 0} b"
+      },
+      "h254": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+            "weight": "normal"
+          }
+        ],
+        "text": "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+        "typed": "{hline 254}"
+      },
+      "h255": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> -",
+            "weight": "normal"
+          }
+        ],
+        "text": "> -",
+        "typed": "{hline 255}"
+      },
+      "h256": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{hline 256}",
+            "weight": "normal"
+          }
+        ],
+        "text": "{hline 256}",
+        "typed": "{hline 256}"
+      },
+      "h300": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "{hline 300}",
+            "weight": "normal"
+          }
+        ],
+        "text": "{hline 300}",
+        "typed": "{hline 300}"
+      },
+      "twice": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "> c",
+            "weight": "normal"
+          }
+        ],
+        "text": "> c",
+        "typed": "a{hline}b{hline}c"
+      }
+    }
+  },
+  "smcl.hline5": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "-----",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a ----- b",
+    "typed": "a {hline 5} b"
+  },
+  "smcl.space3": {
+    "current_date": "16 Oct 2026",
+    "linesize": 79,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a   b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a   b",
+    "typed": "a{space 3}b",
+    "variants": {
+      "bare": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a{space}b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a{space}b",
+        "typed": "a{space}b"
+      },
+      "s255": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": ">   b",
+            "weight": "normal"
+          }
+        ],
+        "text": ">   b",
+        "typed": "a{space 255}b"
+      },
+      "s256": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a{space 256}b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a{space 256}b",
+        "typed": "a{space 256}b"
+      },
+      "s300": {
+        "current_date": "16 Oct 2026",
+        "linesize": 79,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a{space 300}b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a{space 300}b",
+        "typed": "a{space 300}b"
+      }
+    }
+  },
+  "smcl.stata": {
+    "current_date": "16 Oct 2026",
+    "linesize": 80,
+    "rc": 0,
+    "runs": [
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "a ",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": "xy",
+        "weight": "normal"
+      },
+      {
+        "family": "Helvetica",
+        "level": "",
+        "style": "normal",
+        "text": " b",
+        "weight": "normal"
+      }
+    ],
+    "text": "a xy b",
+    "typed": "a {stata sysuse auto:xy} b",
+    "variants": {
+      "bare": {
+        "current_date": "16 Oct 2026",
+        "linesize": 80,
+        "rc": 0,
+        "runs": [
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "a ",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": "sysuse auto",
+            "weight": "normal"
+          },
+          {
+            "family": "Helvetica",
+            "level": "",
+            "style": "normal",
+            "text": " b",
+            "weight": "normal"
+          }
+        ],
+        "text": "a sysuse auto b",
+        "typed": "a {stata sysuse auto} b"
+      }
+    }
+  }
+}

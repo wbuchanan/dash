@@ -316,6 +316,11 @@
 *!       ${name} in a line by the global's value, by text, never
 *!       evaluated (WP-31 D13).
 *!
+*!   _dash_gt_ccl(s)
+*!       s with each {ccl name} replaced by c(name) as twoway's graph text
+*!       draws it (WP-31 E9); applied by dash.ado to the graph's text
+*!       options and by _dash_at_parse to each text() line.
+*!
 *!   _dash_at_dates(u1, u2)
 *!       ttext()'s date literals converted in their x axis's unit by
 *!       _dash_tdate_value, or 198 and the token in _at_err.
@@ -10500,6 +10505,8 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
                     }
                     line = g
                 }
+                // {ccl name} as twoway's graph text draws it (WP-31 E9).
+                line = _dash_gt_ccl(line)
                 // _json_escape() only where a byte needs it.
                 bb = ascii(line)
                 if (cols(bb)) {
@@ -10695,6 +10702,48 @@ string scalar _dash_at_globals(string scalar s)
         if (strlen(s) > 4000) return(s)
     }
     return(s)
+}
+
+// _dash_gt_ccl(s) -- s with each {ccl name} replaced by c(name) as
+// twoway's graph text draws it (WP-31 E9, smcl_text_truth.json smcl.ccl):
+// a string as it is, a number in Mata's %18.0g (c(pi) 3.141592653589793,
+// c(maxdouble) 8.9884656743e+307), an unknown name as nothing.  Blanks
+// around the head and between ccl and the name are read (within 80
+// bytes of the brace); the name is [A-Za-z_][A-Za-z0-9_]*, at most 32
+// characters; {ccl name:...} and any other form are kept.  Each { is
+// looked at once and the pieces joined once, so it is linear; a value is
+// never read again.  dash.ado applies it to the
+// graph's text options and text()/ttext() lines at registration, where
+// the renderer cannot read c().
+string scalar _dash_gt_ccl(string scalar s)
+{
+    string rowvector pc
+    string scalar    nm, whole, val
+    transmorphic     v
+    real rowvector   ix
+    real scalar      i, k, m, last
+
+    if (!ustrregexm(s, "[{][ \t]*ccl[ \t]")) return(s)
+    ix = selectindex(ascii(s) :== 123)
+    pc = J(1, 2 * cols(ix) + 1, "")
+    m = 0
+    last = 1
+    for (k = 1; k <= cols(ix); k++) {
+        i = ix[k]
+        if (i < last) continue
+        if (!ustrregexm(substr(s, i, 80), "^[{][ \t]*ccl[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*[}]")) continue
+        nm = ustrregexs(1)
+        whole = ustrregexs(0)
+        if (strlen(nm) > 32) continue
+        v = c(nm)
+        if (eltype(v) == "string") val = v
+        else val = strtrim(strofreal(v, "%18.0g"))
+        pc[++m] = substr(s, last, i - last)
+        pc[++m] = val
+        last = i + strlen(whole)
+    }
+    pc[++m] = substr(s, last, .)
+    return(invtokens(pc[|1 \ m|], ""))
 }
 
 // _dash_at_json(kind, y, x, ya, xa, lines, opts) -- one added_text record:

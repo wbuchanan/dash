@@ -2251,7 +2251,9 @@ tempfile jg_p48
 _jg_build "`jg_p48'.html"
 local jg_rb = r(rc)
 local jg_rows "`r(rows)'"
-mata: st_global("JG_WANT", st_local("jg_t"))
+// Flipped (WP-31 E9): {stata c} is drawn as c, as twoway draws a link
+// (smcl_text_truth.json smcl.stata bare); nothing runs.
+mata: st_global("JG_WANT", subinstr(st_local("jg_t"), "{stata dash clear}", "dash clear", 1))
 _jg_drawn Title
 local jg_d = r(n)
 cert_file_has "`jg_p48'.html", needle("<script>alert(1)")
@@ -3496,6 +3498,13 @@ local jr_sent "`c(tmpdir)'jse64_executed"
 capture erase "`jr_sent'"
 mata: st_local("jr_t64", "{bf:" + char(34) + "z" + char(34) + "} {stata dash clear} <script>alert(" + char(34) + "x" + char(34) + ")</script> <b>'q'</b> & &amp; }, ] {" + char(34) + "k" + char(34) + ": 1} __import__('os').system('touch " + st_local("jr_sent") + "')")
 mata: st_local("jr_d64", subinstr(st_local("jr_t64"), "{bf:" + char(34) + "z" + char(34) + "}", char(34) + "z" + char(34), 1))
+// Flipped (WP-31 E9): {stata c} is drawn as c, as twoway draws a link
+// (smcl_text_truth.json smcl.stata bare); nothing runs.
+mata: st_local("jr_d64", subinstr(st_local("jr_d64"), "{stata dash clear}", "dash clear", 1))
+// and, as twoway draws a line past 254 characters, only its last wrapped
+// piece after "> " (smcl_text_truth.json plain300).
+mata: _jr_L = ustrlen(st_local("jr_d64")); _jr_k = mod(_jr_L - 255, 252) + 1
+mata: st_local("jr_d64", _jr_L > 254 ? "> " + usubstr(st_local("jr_d64"), _jr_L - _jr_k + 1, _jr_k) : st_local("jr_d64"))
 mata: st_global("JR_WANT", st_local("jr_d64"))
 global JR_NL 1
 mata: st_global("JR_L1", st_local("jr_d64"))

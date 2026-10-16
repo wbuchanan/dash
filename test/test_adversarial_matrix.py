@@ -3069,11 +3069,17 @@ class TestTextPlotOptionBounds:
         doc = _page_document(page)
         legends = list(doc.select({"type": Legend}))
         assert len(legends) == 1, legends
+        # Flipped (WP-31 E9): "as written" was wrong because twoway draws
+        # a line past 254 characters as only its last wrapped piece after
+        # "> " (smcl_text_truth.json plain300); the piece is held and
+        # escaped once.
+        text = dr._dash_graph_text(text)[0]
+        assert text.startswith("> ") and len(text) <= 254
         assert [_text_of(it.label) for it in legends[0].items] == [
             text, "price"]
         assert _holding(doc, text) == [("LegendItem", "label")]
         (block,) = _page_blocks(page)
-        assert block.count("&lt;b&gt;" * 20000) == 1
+        assert block.count(_htmllib.escape(text, quote=False)) == 1
         assert "&amp;lt;b&amp;gt;" not in block
 
 
@@ -3101,6 +3107,13 @@ class TestGraphTextBounds:
         # Flipped (WP-30 P1.2a): the note was one Label, which was wrong
         # because twoway places note() by the scheme's clock; S15 draws it
         # as a side-panel Title, so the Titles are [title, note].
+        # Flipped (WP-31 E9): "drawn as written" was wrong because twoway
+        # draws a line past 254 characters as only its last wrapped
+        # piece after "> " (smcl_text_truth.json plain300); each text is
+        # that piece, held and escaped once.
+        title = dr._dash_graph_text(title)[0]
+        note = dr._dash_graph_text(note)[0]
+        assert title.startswith("> ") and len(title) <= 254
         assert sorted(t.text for t in doc.select({"type": Title})) == sorted(
             [title, note])
         assert [lb.text for lb in doc.select({"type": Label})] == []

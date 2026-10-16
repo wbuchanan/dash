@@ -53,6 +53,15 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
+
+
+def _twoway_line(full):
+    """*full* as twoway draws one line of graph text: whole up to 254
+    characters, else only its last wrapped piece after "> " (WP-31 E9)."""
+    n = len(full)
+    if n <= dr._DASH_GT_LINE_WIDTH:
+        return full
+    return "> " + full[n - (dr._dash_gt_column(n) - 2):]
 from conftest import make_data_json, make_spec, exec_app
 
 _DF = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0], "x": [1.0, 2.0, 3.0, 4.0]})
@@ -705,6 +714,11 @@ class TestTextboxAdversarial:
         # twoway draws as the bold text; the title stays text, never HTML
         # or script, and nothing else in it is read.
         drawn = payload.replace('{bf:"z"}', '"z"')
+        # Flipped (WP-31 E9): {stata c} is drawn as c, as twoway draws a
+        # link, and a line past 254 characters as its last wrapped piece
+        # after "> " (smcl_text_truth.json smcl.stata, plain300); nothing
+        # in the text is run.
+        drawn = _twoway_line(drawn.replace("{stata dash clear}", "dash clear"))
         for got in (saved, served):
             assert got["title"] == drawn
             assert got["labels"] == [drawn]
@@ -904,7 +918,11 @@ class TestALegendLabelAdversarial:
                    "{stata dash clear} %%s {0}" % sentinel)
         saved, served, _ = _legend_both_modes(
             tmp_path, "label(1 %s)" % _cq(payload))
-        assert saved[0][0] == served[0][0] == payload
+        # Flipped (WP-31 E9): {stata c} is drawn as c, as twoway draws a
+        # link (smcl_text_truth.json smcl.stata bare); nothing runs.
+        want = _twoway_line(payload.replace("{stata dash clear}",
+                                            "dash clear"))
+        assert saved[0][0] == served[0][0] == want
         assert not sentinel.exists()
 
     def test_a_labels_words_are_never_sub_options(self, tmp_path):
@@ -926,5 +944,8 @@ class TestALegendLabelAdversarial:
         saved, served, _ = _legend_both_modes(
             tmp_path, "label(1 %s) label(2 %s)" % (nested, _cq(quotes)))
         assert time.monotonic() - t0 < 60
-        assert saved[0][0] == served[0][0] == nested[2:-2]
-        assert saved[0][1] == served[0][1] == quotes
+        # Flipped (WP-31 E9): "the whole label" was wrong because twoway
+        # draws a line past 254 characters as its last wrapped piece
+        # after "> " (smcl_text_truth.json plain300).
+        assert saved[0][0] == served[0][0] == _twoway_line(nested[2:-2])
+        assert saved[0][1] == served[0][1] == _twoway_line(quotes)

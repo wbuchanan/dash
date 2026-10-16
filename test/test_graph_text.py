@@ -282,19 +282,28 @@ class TestGraphTextTruth:
             if len(fams) == 1:
                 fam = next(iter(fams))
                 ok = (font is None and fam in ("Helvetica", "Symbol")) or (
-                    font is not None and fam in font)
+                    font is not None
+                    and fam in dr._DASH_GT_FONTS.get(font, font))
                 if not ok:
                     bad.append((case["id"], "font", font, fam))
         assert not bad
 
     def test_documented_differences(self):
-        """Other SMCL is drawn as typed (A32); a symbol inside {stSymbol:}
-        is drawn as itself (twoway draws its UTF-8 bytes in Symbol)."""
+        """Other SMCL is drawn as twoway draws it (flipped, WP-31 E9: A32
+        drew it as typed); a symbol inside {stSymbol:} is drawn as itself
+        (twoway draws its UTF-8 bytes in Symbol).  {ccl} is expanded by
+        dash.ado, so the renderer keeps it; {center:} centres on what the
+        tick label's two-digit index and "_" leave of the line."""
         d = _need_truth()
         bad = []
         for case in d["cases"]:
             got = dr._dash_graph_text_plain(case["input"])
-            if case["category"] == "other_smcl" and got != case["input"]:
+            want = _twoway_text(case["lines"])
+            if case["id"] == "ccl":
+                want = case["input"]
+            elif case["id"] == "center":
+                got = dr._dash_graph_text_plain("00_" + case["input"])[3:]
+            if case["category"] == "other_smcl" and got != want:
                 bad.append((case["id"], got))
             if case["category"] == "difference" and got != "αβ":
                 bad.append((case["id"], got))
@@ -343,12 +352,16 @@ class TestTheScanner:
         assert p("{c 0x0}x")[0] == "{c 0x0}x"
         assert p("{c -(}c 0{c )-}x")[0] == "{c 0}x"
         t0 = time.perf_counter()
-        assert p("{" * 100000 + "{c 0}x")[0] == "{" * 100000
+        # Flipped (WP-31 E9): a line past 254 characters keeps twoway's
+        # last wrapped piece; the cut and the time are read unwrapped.
+        assert p("{" * 100000 + "{c 0}x", wrap=False)[0] == "{" * 100000
         assert time.perf_counter() - t0 < 1.0
 
     def test_whole_style_and_font_only_when_markup_asks(self):
         p = dr._dash_graph_text_parts
-        serif = dr._DASH_GT_FONTS["stSerif"]
+        # Flipped (WP-31 E9, DECISIONS A27): the font tags travel by name;
+        # _dash_graph_text_style maps the name to its family.
+        serif = "stSerif"
         assert p("{bf:a}{bf:b}") == ("ab", "bold", None, ())
         assert p("{bf:a}b") == ("ab", None, None, ("inline",))
         assert p("{stSerif:a}{stSerif:b}") == ("ab", None, serif, ())
@@ -796,7 +809,9 @@ class TestControlCodesAreEscapedAtEverySink:
                 consts[node.targets[0].id] = ast.literal_eval(node.value)
         for name, val in consts.items():
             assert val == getattr(dr, name), name
-        assert len(consts) == 8
+        # old -> new: 8 -> 11: WP-31 E9 adds _DASH_GT_SMCL,
+        # _DASH_GT_LINE_WIDTH and _DASH_GT_TEXT_BUDGET.
+        assert len(consts) == 11
         b64 = re.search(r'^_SPEC_B64 = "([A-Za-z0-9+/=]+)"', src, re.M)
         spec = json.loads(base64.b64decode(b64.group(1)).decode("utf-8"))
         assert spec["graphs"][0]["graph_options"]["title"] == (
@@ -812,6 +827,21 @@ class TestControlCodesAreEscapedAtEverySink:
             assert "&lt;/script&gt;" in h and "</script>" not in h
             assert "&quot;" in h and "&#x27;" in h
             assert "{c 1}" in h
+
+    def test_expanded_text_is_escaped(self):
+        """SMCL expansions (WP-31 E9) reach every sink before escaping:
+        a {dup} of a script tag is carried escaped in both modes."""
+        payload = "{dup 2:</script><script>alert(1)//}{cmd:<img src=x>}"
+        spec, data = _ctrl_spec(payload)
+        _, _, page = _saved(spec, data)
+        assert "<script>alert" not in page and "<img src=x" not in page
+        assert page.count("alert(1)") >= 2
+        want = "</script><script>alert(1)//" * 2 + "<img src=x>"
+        assert want in set(_json_strings(_page_json(page, "auto")))
+        from bokeh.core.json_encoder import serialize_json
+        doc, _, _ = _served(spec, data)
+        wire = json.loads(serialize_json(doc.to_json()))
+        assert want in set(_json_strings(wire))
 
     def test_notes_hold_no_control_character(self):
         _, ws, _ = _saved(*_ctrl_spec(_CTRL_PAYLOAD))
@@ -1129,3 +1159,263 @@ class TestTheHelp:
                      "keep the text as it is stored"):
             assert need in para, need
         assert "left out" not in para
+
+
+# ---------------------------------------------------------------------------
+# WP-31 E9: the other SMCL directives, the line width, the budget, the
+# documented inline limit and the font tags by name
+# ---------------------------------------------------------------------------
+#
+# twoway 19.5 (test/fixtures/smcl_text_truth.json, from
+# scripts/extract_smcl_text_truth.do) reads a graph text's SMCL as the
+# Results window does on a 254-column line and draws only the line's last
+# wrapped piece ("> " and the characters past column 254, 252 at a time):
+# {hline #} is # hyphens (0-255) and {hline} fills to column 254, {space #}
+# # blanks (1-255), {dup #:t} t # times (0-999, its tags read), {cmd:t}
+# {hi:t} t ({cmd} {hi} nothing), {center:t} t centred on what is left of
+# the line and {center #:t} in # columns (up to 255), a link its text or
+# argument, {ccl name} c(name) (expanded at registration by dash.ado,
+# U42-02).  A count past its bound and the forms twoway does not read are
+# drawn as typed.
+
+_SMCL_FIXTURE = os.path.join(_HERE, "fixtures", "smcl_text_truth.json")
+_SMCL_KEYS = ("smcl.hline", "smcl.hline5", "smcl.space3", "smcl.dup3",
+              "smcl.cmd", "smcl.hi", "smcl.ccl", "smcl.center",
+              "smcl.browse", "smcl.help", "smcl.stata", "smcl.dup_big")
+
+
+def _smcl_truth():
+    if not os.path.exists(_SMCL_FIXTURE):
+        pytest.fail(f"{_SMCL_FIXTURE} is missing; run "
+                    "scripts/extract_smcl_text_truth.do")
+    with open(_SMCL_FIXTURE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _smcl_rows():
+    """Every (key, variant, record) the fixture holds for an SMCL key."""
+    if not os.path.exists(_SMCL_FIXTURE):
+        return []
+    d = _smcl_truth()
+    out = []
+    for key in _SMCL_KEYS:
+        out.append((key, "main", d[key]))
+        for v, rec in sorted(d[key].get("variants", {}).items()):
+            out.append((key, v, rec))
+    return out
+
+
+def _fixture_runs(rec):
+    """twoway's runs as (text, style, level), adjacent equal ones merged."""
+    out = []
+    for r in rec.get("runs", ()):
+        st = "bold" if r["weight"] == "bold" else r["style"]
+        lv = {"sup": 1, "sub": -1}.get(r["level"], 0)
+        if out and out[-1][1:] == (st, lv):
+            out[-1] = (out[-1][0] + r["text"], st, lv)
+        else:
+            out.append((r["text"], st, lv))
+    return out
+
+
+class TestSmclFixture:
+
+    def test_meta(self):
+        d = _smcl_truth()
+        assert sorted(d["_meta"]) == ["born_date", "dash_commit",
+                                      "extracted", "source",
+                                      "stata_version"]
+        assert len([k for k in d if k != "_meta"]) == 17
+        assert re.fullmatch(r"[0-9a-f]{40}", d["_meta"]["dash_commit"])
+
+
+_SMCL_ROWS = _smcl_rows()
+
+
+class TestOtherSmclDirectives:
+
+    @pytest.mark.parametrize(
+        "key,variant,rec", _SMCL_ROWS,
+        ids=[f"{k}-{v}" for k, v, _ in _SMCL_ROWS])
+    def test_each_variant(self, key, variant, rec):
+        """Each typed form draws twoway's text and its runs' styles;
+        {ccl} is expanded by dash.ado before the renderer reads the text,
+        so the renderer keeps it as typed."""
+        assert rec["rc"] == 0
+        got = dr._dash_graph_text(rec["typed"])[0]
+        if key == "smcl.ccl":
+            assert got == rec["typed"]
+            return
+        assert got == rec["text"]
+        mine = [(t, st, lv) for t, st, lv, _ in
+                dr._dash_graph_text_runs(rec["typed"])]
+        if rec.get("runs") and len(_fixture_runs(rec)) > 1:
+            assert mine == _fixture_runs(rec)
+
+    @pytest.fixture(scope="class")
+    def smcl_sinks(self):
+        """One build per mode and sink holding every main key's text:
+        title lines, xlabel overrides and legend keys."""
+        d = _smcl_truth()
+        keys = [k for k in _SMCL_KEYS if k != "smcl.ccl"]
+        quoted = [k for k in keys if '"' in d[k]["typed"]]
+        plain = [k for k in keys if k not in quoted]
+        title = " ".join('`"%s"\'' % d[k]["typed"] for k in keys)
+        xl = " ".join('%d "%s"' % (2000 + 200 * i, d[k]["typed"])
+                      for i, k in enumerate(plain))
+        leg = " ".join('label(%d "%s")' % (i + 1, d[k]["typed"])
+                       for i, k in enumerate(plain))
+        out = {}
+        for mode in MODES:
+            spec = _spec([_sc()], graph_options={"title": title,
+                                                 "xlabel": xl})
+            models, _ = _models(mode, spec, _data(_df()))
+            out[(mode, "title")] = "\n".join(_title_texts(models))
+            out[(mode, "xlabel")] = [
+                v for a in _of(models, LinearAxis)
+                for v in (a.major_label_overrides or {}).values()]
+            spec = _spec([_sc() for _ in plain],
+                         graph_options={"legend": leg})
+            models, _ = _models(mode, spec, _data(_df()))
+            out[(mode, "legend")] = [
+                getattr(i.label, "value", i.label) if not isinstance(
+                    i.label, dict) else i.label.get("value")
+                for i in _of(models, LegendItem)]
+        return d, quoted, out
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("sink", ("title", "xlabel", "legend"))
+    @pytest.mark.parametrize("key", [k for k in _SMCL_KEYS
+                                     if k != "smcl.ccl"])
+    def test_each_directive(self, smcl_sinks, mode, sink, key):
+        d, quoted, out = smcl_sinks
+        if sink != "title" and key in quoted:
+            pytest.skip("a double quote ends a tick or legend label")
+        want = d[key]["text"]
+        got = out[(mode, sink)]
+        if sink == "title":
+            assert want in got.split("\n"), (want, got)
+        else:
+            assert want in got, (want, got)
+
+    def test_ccl_is_left_to_dash_ado(self):
+        assert dr._dash_graph_text_plain("a {ccl pi} b") == "a {ccl pi} b"
+
+    def test_dom_text_is_not_wrapped(self):
+        """Filter titles and tooltip names are dash's own DOM text: the
+        directives are expanded, the 254-column line is not applied."""
+        assert dr._dash_graph_text_plain("a {hline 5} b") == "a ----- b"
+        assert dr._dash_graph_text_plain("{dup 300:x}") == "x" * 300
+
+
+def _dup_expands():
+    if not os.path.exists(_SMCL_FIXTURE):
+        return False
+    rec = _smcl_truth()["smcl.dup_big"]
+    return rec.get("text") != rec["typed"]
+
+
+_NO_CUT = "twoway draws {dup 1000:x} as typed: no count is cut (D-42b)"
+
+
+class TestBounds:
+
+    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
+    def test_dup_is_cut(self):
+        flags = dr._dash_graph_text_parts("{dup 1000:x}")[3]
+        assert "cut" in flags
+
+    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
+    def test_hline_is_cut(self):
+        flags = dr._dash_graph_text_parts("{hline 100000}")[3]
+        assert "cut" in flags
+
+    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
+    @pytest.mark.parametrize("mode", MODES)
+    def test_note_once(self, mode):
+        spec = _spec([_sc()], graph_options={"title": '"{dup 1000:x}"'})
+        _, ws = _models(mode, spec, _data(_df()))
+        assert len([w for w in _gt_notes(ws) if "was cut" in w]) == 1
+
+    def test_total_budget(self):
+        """25 x {hline 200} would expand to 5,000 characters: the
+        expansions stop at 4,000 and the text is flagged."""
+        text = "{hline 200}" * 25
+        runs = dr._dash_graph_text_runs(text, wrap=False)
+        assert sum(len(r[0]) for r in runs) <= dr._DASH_GT_TEXT_BUDGET
+        assert dr._DASH_GT_TEXT_BUDGET == 4000
+        assert "cut" in dr._dash_graph_text_parts(text)[3]
+        nested = "{dup 999:{dup 999:{dup 999:x}}}"
+        t0 = time.perf_counter()
+        runs = dr._dash_graph_text_runs(nested, wrap=False)
+        assert time.perf_counter() - t0 < 1.0
+        assert sum(len(r[0]) for r in runs) <= dr._DASH_GT_TEXT_BUDGET
+        assert "cut" in dr._dash_graph_text_parts(nested)[3]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_cut_note_once(self, mode):
+        spec = _spec([_sc()], graph_options={
+            "title": '"%s" "%s"' % ("{hline 200}" * 25, "{hline 200}" * 25)})
+        _, ws = _models(mode, spec, _data(_df()))
+        notes = [w for w in _gt_notes(ws) if "was cut" in w]
+        assert len(notes) == 1
+        assert "4,000 characters" in notes[0] and "hline" not in notes[0]
+
+    def test_wrap_and_budget_stay_linear(self):
+        shapes = {"dup": "{dup 999:x}" * 20000,
+                  "center": "{center:x}" * 20000,
+                  "hline": "a{hline}" * 20000,
+                  "link": '{browse "' * 20000,
+                  "plain": "x" * 1000000}
+        slow = {}
+        for name, s in shapes.items():
+            t0 = time.perf_counter()
+            dr._dash_graph_text(s)
+            if time.perf_counter() - t0 >= 1.0:
+                slow[name] = time.perf_counter() - t0
+        assert not slow
+
+
+class TestInlineLimitIsDocumented:
+
+    def test_help_example(self):
+        with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            src = fh.read()
+        at = src.index("{ul:Text in graphs.}")
+        para = src[at:src.index("{ul:Tooltips.}")]
+        assert 'title("a {c -(}bf:b{c )-} c")' in para
+        assert "{c -(}sup:q{c )-}" in para
+        assert "4,000 characters" in para
+        assert "254" in para
+        assert "drawn as typed" in para
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_note_once(self, mode):
+        d = _smcl_truth()
+        assert [r["weight"] for r in d["inline.bf_part"]["runs"]] == [
+            "normal", "bold", "normal"]
+        assert [r["level"] for r in d["inline.sup_q"]["runs"]] == ["", "sup"]
+        assert dr._dash_graph_text(d["inline.sup_2"]["typed"])[0] == "a²"
+        spec = _spec([_sc()], graph_options={
+            "title": '"%s"' % d["inline.bf_part"]["typed"],
+            "subtitle": '"%s"' % d["inline.sup_q"]["typed"]})
+        _, ws = _models(mode, spec, _data(_df()))
+        notes = _gt_notes(ws)
+        assert len(notes) == 1
+        assert "part of a title" in notes[0] and "on the line" in notes[0]
+
+
+class TestTagNameFont:
+
+    def test_head_emits_tag_name(self):
+        for name in ("stSans", "stSerif", "stMono"):
+            assert dr._dash_gt_head(name, ":") == ("open", "font", name)
+            runs = dr._dash_graph_text_runs("{%s:a}" % name)
+            assert runs == [("a", "normal", 0, name)]
+        assert dr._dash_gt_head("stSymbol", ":") == ("open", "font",
+                                                     "symbol")
+        fig = _fig()
+        t = Title(text="x")
+        res = [dr._dash_graph_text("{stSerif:x}")]
+        dr._dash_graph_text_style(t, "text", res, fig)
+        assert t.text_font == dr._DASH_GT_FONTS["stSerif"]

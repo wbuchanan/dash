@@ -10833,6 +10833,172 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 }
 * ==== end S41 ====
 
+python:
+def _u42_titles(sp, dp, app):
+    """Every Title text both modes draw for the spec, as two globals
+    (u42_s, u42_v) joined by char(1), and how many notes on graph text
+    each mode raised (u42_ns, u42_nv)."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Title
+    from sfi import Macro
+    with warnings.catch_warnings(record=True) as ws:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    ns = len([w for w in ws if "Text in graphs" in str(w.message)])
+    with warnings.catch_warnings(record=True) as wv:
+        warnings.simplefilter("always")
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        g = dict(__name__="dash_u42_app")
+        exec(compile(src.replace(attach, "pass"), "dash_u42_app.py", "exec"), g)
+        doc = Document()
+        g["make_document"](doc)
+    nv = len([w for w in wv if "Text in graphs" in str(w.message)])
+    figs = {"s": list(r.figures.values()),
+            "v": [m for m in doc.models if type(m).__name__ == "figure"]}
+    for sfx, fl in figs.items():
+        texts = []
+        for f in fl:
+            for m in f.references():
+                if isinstance(m, Title) and m.text:
+                    texts.append(m.text)
+        Macro.setGlobal("u42_" + sfx, "\x01".join(texts))
+    Macro.setGlobal("u42_ns", str(ns))
+    Macro.setGlobal("u42_nv", str(nv))
+
+
+def _u42_check(fx, key, variant, today):
+    """u42_ok 1 when both modes draw the fixture's text for the key (for
+    {ccl current_date}, today's date where twoway drew its own)."""
+    import json
+    from sfi import Macro
+    d = json.load(open(fx, encoding="utf-8"))
+    rec = d[key] if variant == "main" else d[key]["variants"][variant]
+    want = rec["text"]
+    if key == "smcl.ccl" and variant == "main":
+        want = want.replace(rec["current_date"], today)
+    got = [Macro.getGlobal("u42_" + m).split("\x01") for m in ("s", "v")]
+    ok = all(want in g for g in got)
+    Macro.setGlobal("u42_ok", "1" if ok else "0")
+    Macro.setGlobal("u42_got", repr(got)[:200] + " want " + repr(want)[:80])
+
+
+def _u42_typed(fx, key, variant):
+    import json
+    from sfi import Macro
+    d = json.load(open(fx, encoding="utf-8"))
+    rec = d[key] if variant == "main" else d[key]["variants"][variant]
+    Macro.setGlobal("u42_typed", rec["typed"])
+end
+
+capture program drop _u42_reg
+program define _u42_reg
+    // _u42_reg <dir> <k> <fixture> <key> <variant>: _u42_draw on the
+    // key's typed text.
+    version 19
+    args dir k fx key variant
+    python: import __main__ as _u42_m; _u42_m._u42_typed(r"`fx'", "`key'", "`variant'")
+    _u42_draw "`dir'" `k'
+end
+
+capture program drop _u42_draw
+program define _u42_draw
+    // _u42_draw <dir> <k>: register a scatter whose title is ${u42_typed}
+    // and read the titles and graph-text notes both modes draw.
+    version 19
+    args dir k
+    dash clear
+    capture noisily dash scatter mpg weight, title(`"${u42_typed}"') name(u42g`k')
+    if _rc exit _rc
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u42_m; _u42_m._u42_titles("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+* ==== S42 E9: SMCL inline runs ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
+    display as text "S42 start " c(current_date) " " c(current_time)
+    local u42d "`w31_work'/s42"
+    capture mkdir "`u42d'"
+    local u42fx "`c(pwd)'/fixtures/smcl_text_truth.json"
+    sysuse auto, clear
+
+    // U42-01: the fixture is stamped and holds its 17 keys.
+    capture confirm file "`u42fx'"
+    local frc = _rc
+    _w31_expect U42-01 "`frc' == 0" "fixtures/smcl_text_truth.json missing"
+    if `frc' == 0 {
+        python: import json; from sfi import Macro; _d = json.load(open(r"`u42fx'")); Macro.setGlobal("u42_n", str(len([k for k in _d if k != "_meta"]))); Macro.setGlobal("u42_m", " ".join(sorted(_d["_meta"])))
+        _w31_expect U42-01 `"(${u42_n} == 17) & ("${u42_m}" == "born_date dash_commit extracted source stata_version")"' "keys ${u42_n} meta ${u42_m}"
+    }
+    _w31_done U42-01 "smcl_text_truth.json is stamped and holds 17 keys"
+
+    // U42-02: each directive's title, registered through dash.ado and
+    // drawn by both modes, is twoway's text ({ccl} expanded at
+    // registration: today's date, c(pi), an unknown name as nothing).
+    local k 0
+    local bad ""
+    foreach kv in smcl.hline:main smcl.hline5:main smcl.space3:main ///
+        smcl.dup3:main smcl.dup3:styled smcl.cmd:main smcl.hi:main ///
+        smcl.ccl:main smcl.ccl:pi smcl.ccl:nosuch smcl.ccl:colon ///
+        smcl.center:main smcl.center:width smcl.browse:main ///
+        smcl.help:main smcl.stata:main smcl.dup_big:main smcl.dup_big:d300 {
+        local ++k
+        gettoken key variant : kv, parse(":")
+        local variant = substr("`variant'", 2, .)
+        capture noisily _u42_reg "`u42d'" `k' "`u42fx'" `key' `variant'
+        if _rc {
+            local bad "`bad' `kv'(rc `=_rc')"
+            continue
+        }
+        python: import __main__ as _u42_m; _u42_m._u42_check(r"`u42fx'", "`key'", "`variant'", "`c(current_date)'")
+        if "${u42_ok}" != "1" {
+            local bad "`bad' `kv'"
+            display as text _asis `"  `kv': ${u42_got}"'
+        }
+    }
+    _w31_expect U42-02 `"("`bad'" == "")"' "titles differ from twoway's:`bad'"
+    _w31_done U42-02 "every SMCL directive's title is drawn as twoway draws it, saved and served"
+
+    // U42-03: {dup 1000:x} is drawn as typed, as twoway draws it (its
+    // count is past 999), and nothing is noted; 25 {hline 200} stop at
+    // 4,000 characters and say so once.
+    local ++k
+    capture noisily _u42_reg "`u42d'" `k' "`u42fx'" smcl.dup_big main
+    local r1 = _rc
+    python: import __main__ as _u42_m; _u42_m._u42_check(r"`u42fx'", "smcl.dup_big", "main", "")
+    local ok1 "${u42_ok}"
+    local ++k
+    local n1 = ${u42_ns} + ${u42_nv}
+    global u42_typed = 25 * "{hline 200}"
+    capture noisily _u42_draw "`u42d'" `k'
+    local r2 = _rc
+    local n2 "${u42_ns}${u42_nv}"
+    _w31_expect U42-03 `"(`r1' == 0) & ("`ok1'" == "1") & (`n1' == 0) & (`r2' == 0) & ("`n2'" == "11")"' "dup1000 rc `r1' drawn `ok1' notes `n1'; budget rc `r2' notes `n2'"
+    _w31_done U42-03 "{dup 1000:x} is drawn as typed as twoway does; an expansion past 4,000 characters is cut and noted once"
+
+    // U42-04: a {bf:} on part of a title is noted once; the help names
+    // the measured example.
+    local ++k
+    capture noisily _u42_reg "`u42d'" `k' "`u42fx'" inline.bf_part main
+    local r1 = _rc
+    local n1 "${u42_ns}${u42_nv}"
+    cert_file_has "`c(pwd)'/../dash.sthlp", needle(`"title("a {c -(}bf:b{c )-} c")"')
+    local h1 = r(found)
+    cert_file_has "`c(pwd)'/../dash.sthlp", needle("{c -(}sup:q{c )-}")
+    local h2 = r(found)
+    _w31_expect U42-04 `"(`r1' == 0) & ("`n1'" == "11") & (`h1' == 1) & (`h2' == 1)"' "rc `r1' notes `n1' help bf `h1' sup `h2'"
+    _w31_done U42-04 "a style tag on part of a title is noted once and the help documents twoway's picture"
+    dash clear
+    display as text "S42 end " c(current_date) " " c(current_time)
+}
+* ==== end S42 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
