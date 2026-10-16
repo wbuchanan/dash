@@ -478,7 +478,7 @@ and now matches Stata.
 
 - function y = runiform(), by(foreign) drew the same points in every panel; each panel draws its own, evaluated in panel order as twoway evaluates them. function =x, drawn before, is refused r(198) as twoway refuses it (WP-31, C12)
 
-<!-- WP-31 G6 -->
+- A fractional %tm, %tw, %tq, %th or %ty value (%tm 745.5) was drawn on its period's start; it is drawn at its fraction toward the next period, as twoway draws it. rarea with one bound missing on a row left the row out of the band; the row keeps its other bound, the band's edge straight across the gap, as twoway's polygon runs (WP-31, G6)
 
 <!-- WP-31 G7 -->
 

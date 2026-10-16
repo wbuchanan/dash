@@ -403,8 +403,12 @@ order and ignore both.  On data not sorted by {it:x} an area follows the
 data and crosses itself where {cmd:twoway}'s does; add {cmd:sort} for a
 picture along {it:x}.  Each bound of {cmd:rline} and {cmd:tsrline} keeps
 its own missing values: it is drawn through the observations where that
-bound is present, as {cmd:twoway} draws it ({cmd:rarea} leaves out an
-observation missing either bound).  {cmd:rarea} is outlined in the
+bound is present, as {cmd:twoway} draws it; {cmd:rarea} keeps an
+observation missing one bound as {cmd:twoway}'s polygon does, its edge
+running straight across the gap from the bound's neighbours (one at the
+first or last such observation is left out).  A fractional period value
+({cmd:%tm} 745.5) is drawn at its fraction toward the next period and
+shown as the period that holds it, as {cmd:twoway} draws and shows it.  {cmd:rarea} is outlined in the
 scheme's area line style -- its plot colour at the medium line width,
 under {cmd:s2color} navy as wide as {cmd:line}'s -- along its two bounds,
 which {cmd:alcolor()}, {cmd:alwidth()}, {cmd:alpattern()}, {cmd:lcolor()}

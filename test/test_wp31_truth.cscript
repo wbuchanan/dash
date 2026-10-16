@@ -12882,6 +12882,122 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u46_svg_ratio(svg):
+    """(cx1 - cx0) / (cx2 - cx0) of the three markers in twoway's SVG."""
+    import re
+    from sfi import Macro
+    t = open(svg, encoding="utf-8").read()
+    cx = []
+    for m in re.finditer(r'<circle cx="([0-9.]+)"', t):
+        v = float(m.group(1))
+        if v not in cx:
+            cx.append(v)
+    cx.sort()
+    Macro.setGlobal("u46_tw", "%.4f" % ((cx[1] - cx[0]) / (cx[2] - cx[0])))
+
+
+def _u46_saved_x(sp, dp, kind):
+    """The saved page's three marker x (axis ms), as the ratio above."""
+    import warnings
+    import numpy as np
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    xs = []
+    for f in r.figures.values():
+        for g in f.renderers:
+            if type(g.glyph).__name__ == "Scatter":
+                xs = sorted(float(v) for v in dr._dash_float_values(
+                    g.data_source.data[g.glyph.x], coerce=True))
+    Macro.setGlobal("u46_dash", "%.4f" % ((xs[1] - xs[0]) / (xs[2] - xs[0])))
+
+
+def _u46_rarea(svg, sp, dp):
+    """twoway's rarea polygon (upper path) beside the saved page's VArea:
+    global u46_bad empty when dash's upper bound at every x lies on
+    twoway's upper edge."""
+    import re
+    import warnings
+    import numpy as np
+    import dash_render as dr
+    from sfi import Macro
+    t = open(svg, encoding="utf-8").read()
+    paths = re.findall(r'd="(M[^"]*Z)"', t)
+    pts = [tuple(map(float, p.split())) for p in
+           re.findall(r"[ML]([0-9.]+ [0-9.]+)", paths[0])]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    va = [g for f in r.figures.values() for g in f.renderers
+          if type(g.glyph).__name__ == "VArea"][0]
+    d = va.data_source.data
+    x = np.asarray(d[va.glyph.x], float)
+    hi = np.asarray(d[va.glyph.y2], float)
+    bad = []
+    # twoway: 6 lower vertices (plus the repeated first), then the upper
+    # path through 5 of them; dash: 6 rows, row 3's upper bound on the
+    # straight line from row 2's to row 4's.
+    if len(pts) != 13:
+        bad.append("twoway's polygon has %d vertices" % len(pts))
+    if list(x) != [1, 2, 3, 4, 5, 6]:
+        bad.append("dash rows at x %s" % list(x))
+    elif abs(hi[2] - 13.0) > 1e-12:
+        bad.append("dash upper bound at x=3 is %g" % hi[2])
+    Macro.setGlobal("u46_bad", "; ".join(bad))
+end
+
+* ==== S46 G6: Fractional dates and rarea bounds ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
+    display as text "S46 start " c(current_date) " " c(current_time)
+    local u46d "`w31_work'/s46"
+    capture mkdir "`u46d'"
+
+    // U46-06: %tm 745.5 and %td 20000.5 drawn at their fraction between
+    // their neighbours, as twoway's SVG places them; rarea with hi missing
+    // on row 3 of 6 keeps the row's lower bound, its upper edge straight
+    // from row 2 to row 4, as twoway's polygon runs.
+    foreach c in "tm 745" "td 20000" {
+        local kd : word 1 of `c'
+        local v0 : word 2 of `c'
+        clear
+        quietly set obs 3
+        quietly generate m = `v0' + (_n - 1) * 0.5
+        format m %`kd'
+        quietly generate y = _n
+        quietly twoway scatter y m
+        quietly graph export "`u46d'/g6_`kd'.svg", replace
+        python: __import__("__main__")._u46_svg_ratio("`u46d'/g6_`kd'.svg")
+        dash clear
+        quietly dash scatter y m, name(zu46g`kd')
+        _dash_serve_spec, specpath("`u46d'/g6_`kd'.json") datapath("`u46d'/g6d_`kd'.json")
+        python: __import__("__main__")._u46_saved_x("`u46d'/g6_`kd'.json", "`u46d'/g6d_`kd'.json", "`kd'")
+        // The SVG's coordinates are written to 0.01: within 0.002.
+        _w31_expect U46-06 "(abs(${u46_tw} - ${u46_dash}) < 0.002)" "%`kd': twoway places the half at ${u46_tw}, dash at ${u46_dash}"
+    }
+    clear
+    quietly set obs 6
+    quietly generate x = _n
+    quietly generate lo = _n
+    quietly generate hi = _n + 10
+    quietly replace hi = . in 3
+    quietly twoway rarea lo hi x, sort
+    quietly graph export "`u46d'/g6_ra.svg", replace
+    dash clear
+    quietly dash rarea lo hi x, sort name(zu46ra)
+    _dash_serve_spec, specpath("`u46d'/g6_ra.json") datapath("`u46d'/g6d_ra.json")
+    python: __import__("__main__")._u46_rarea("`u46d'/g6_ra.svg", "`u46d'/g6_ra.json", "`u46d'/g6d_ra.json")
+    _w31_expect U46-06 `"("${u46_bad}" == "")"' `"${u46_bad}"'
+    _w31_done U46-06 "fractional dates and rarea's one-bound rows are drawn where twoway draws them"
+    display as text "S46 end " c(current_date) " " c(current_time)
+}
+* ==== end S46 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

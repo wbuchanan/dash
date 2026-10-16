@@ -643,7 +643,8 @@ def _dash_tc_from_tC(values):
     return out
 
 
-def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
+def _stata_dates_to_datetime(values: "pd.Series", kind: str,
+                             fractions: bool = False) -> "pd.Series":
     """Convert Stata SIF values of a given date *kind* to datetime64[ms].
 
     ``%tw``, ``%tm``, ``%tq`` and ``%th`` count CALENDAR periods, not
@@ -666,9 +667,16 @@ def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
     and the calendar is proleptic Gregorian, as numpy's is
     (``mdy(10,15,1582) - mdy(10,4,1582)`` is 11).
 
+    With *fractions* (the data loader's columns; WP-31 G6) a period
+    kind's fraction is placed where twoway draws it, linearly between its
+    period's start and the next (measured: %tm 745.5 halfway between
+    2022m2 and 2022m3); without it, the period's start, as the axis code
+    and its JavaScript twin convert period numbers.
+
     Args:
         values: Numeric Stata values.
         kind:   One of :data:`_STATA_DATE_KINDS`.
+        fractions: Place a period's fraction between periods.
 
     Returns:
         A datetime64[ms] Series with a fresh RangeIndex.  A missing value is
@@ -724,31 +732,47 @@ def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
         elif kind == "td":
             ms = np.floor(raw * 86_400_000.0)
         elif kind == "ty" or kind in per_year:
-            idx = np.floor(raw)
-            if kind == "ty":
-                year, sub = idx, np.zeros(n)
-            else:
-                year = 1960.0 + np.floor(idx / per_year[kind])
-                sub = idx - (year - 1960.0) * per_year[kind]
-            fits = (np.isfinite(year) & (year >= _STATA_YEAR_MIN)
-                    & (year <= _STATA_YEAR_MAX))
-            if fits.any():
-                y = year[fits].astype(np.int64)
-                s = sub[fits].astype(np.int64)
-                if kind == "tm":
-                    days = _from_parts(y, s + 1)
-                elif kind == "tq":
-                    days = _from_parts(y, 3 * s + 1)
-                elif kind == "th":
-                    days = _from_parts(y, 6 * s + 1)
-                elif kind == "tw":
-                    # Stata's weeks restart every year: week 52 is the last
-                    # one, and week 0 of a year is 1 January.  They are not
-                    # 7-day offsets from a single epoch.
-                    days = _from_parts(y, np.ones_like(y)) + 7 * s
+            def _period_ms(idx):
+                out_ms = np.full(n, np.nan)
+                if kind == "ty":
+                    year, sub = idx, np.zeros(n)
                 else:
-                    days = _from_parts(y, np.ones_like(y))
-                ms[fits] = days * 86_400_000.0
+                    year = 1960.0 + np.floor(idx / per_year[kind])
+                    sub = idx - (year - 1960.0) * per_year[kind]
+                fits = (np.isfinite(year) & (year >= _STATA_YEAR_MIN)
+                        & (year <= _STATA_YEAR_MAX))
+                if fits.any():
+                    y = year[fits].astype(np.int64)
+                    s = sub[fits].astype(np.int64)
+                    if kind == "tm":
+                        days = _from_parts(y, s + 1)
+                    elif kind == "tq":
+                        days = _from_parts(y, 3 * s + 1)
+                    elif kind == "th":
+                        days = _from_parts(y, 6 * s + 1)
+                    elif kind == "tw":
+                        # Stata's weeks restart every year: week 52 is the
+                        # last one, and week 0 of a year is 1 January.
+                        # They are not 7-day offsets from a single epoch.
+                        days = _from_parts(y, np.ones_like(y)) + 7 * s
+                    else:
+                        days = _from_parts(y, np.ones_like(y))
+                    out_ms[fits] = days * 86_400_000.0
+                return out_ms
+            idx = np.floor(raw)
+            ms = _period_ms(idx)
+            # A fraction of a period is drawn where twoway draws it,
+            # linearly between its period's start and the next (WP-31 G6,
+            # measured: %tm 745.5 halfway between 2022m2 and 2022m3); the
+            # display still names the period that holds it.
+            frac = raw - idx
+            part = (np.isfinite(ms) & np.isfinite(frac) & (frac > 0)
+                    & bool(fractions))
+            if part.any():
+                nxt = _period_ms(idx + 1.0)
+                part &= np.isfinite(nxt)
+                ms[part] = np.floor(ms[part] + frac[part]
+                                    * (nxt[part] - ms[part]))
     # The range test is the one Stata applies, 01jan0100 00:00:00.000 to
     # 31dec9999 23:59:59.999.  An unknown kind leaves every value NaN.
     ok = np.isfinite(ms) & (ms >= _STATA_MS_MIN) & (ms <= _STATA_MS_MAX)
@@ -1297,7 +1321,8 @@ def _dash_load_columns(df, formats, string_vars, display_names=None):
         raw = df[col]
         numeric = _dash_finite_numeric(raw)
         if numeric.notna().any() or raw.isna().all():
-            converted = _stata_dates_to_datetime(numeric, kind)
+            converted = _stata_dates_to_datetime(numeric, kind,
+                                                 fractions=True)
         else:
             # Legacy transport: jsonio renders a %t* variable THROUGH its
             # display format and emits a string ("02jan2001"), so a spec
@@ -21522,14 +21547,22 @@ class GlyphMapper:
                 source, _rows if _sel is None else _rows[_sel], xvar,
                 options, order)
         else:
-            _ord = self._join_order(
-                source, self._masked_index(source, view, xvar, y1var,
-                                           y2var),
-                xvar, options, order)
+            # A row missing one bound keeps the other (WP-31 G6): its rows
+            # are joined with x and either bound present, and the missing
+            # bound is filled below.
+            _all = self._masked_index(source, view, xvar)
+            _b1 = np.isfinite(_dash_float_values(source.data[y1var]))
+            _b2 = np.isfinite(_dash_float_values(source.data[y2var]))
+            _all = np.asarray(_all, dtype=np.int64)
+            _all = _all[_b1[_all] | _b2[_all]]
+            _ord = self._join_order(source, _all, xvar, options, order)
         _cols = {
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
+        if not _expand:
+            _cols, _ord = _dash_rarea_one_bound(_cols, _ord, xvar, y1var,
+                                                y2var)
         # The caller's other columns -- the variables hover() names --
         # ride along in the same order: each point is an observation.
         source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
@@ -54049,6 +54082,42 @@ def _dash_join_key(source, sort_keys, col):
                      "its join key by.")
 
 
+def _dash_rarea_one_bound(cols, order, xvar, y1var, y2var):
+    """rarea's rows with one bound missing, as twoway's polygon draws them
+    (WP-31 G6).
+
+    twoway's rarea polygon runs along the lower bound through every row
+    that has it and back along the upper bound through every row that has
+    it (measured: ``rarea lo hi x`` with hi missing on row 3 of 6 is the
+    polygon lo1..lo6, hi6, hi5, hi4, hi2, hi1).  A VArea needs both bounds
+    at each x, so a row missing one bound takes the point the polygon's
+    edge passes there: the straight line between that bound's neighbours
+    in the join order.  A row with no neighbour on one side (the first or
+    last with the bound) is left out, as before.  *cols* hold the columns
+    in join order and *order* the row indices; returns both, filtered.
+    """
+    x = np.asarray(cols[xvar], dtype=float)
+    keep = np.isfinite(x)
+    out = {k: np.asarray(v, dtype=float).copy() for k, v in cols.items()}
+    for b in (y1var, y2var):
+        yb = out[b]
+        have = np.flatnonzero(np.isfinite(yb))
+        for i in np.flatnonzero(~np.isfinite(yb)):
+            lo = have[have < i]
+            hi = have[have > i]
+            if not len(lo) or not len(hi):
+                keep[i] = False
+                continue
+            a, c = lo[-1], hi[0]
+            if x[c] == x[a]:
+                yb[i] = yb[a]
+            else:
+                yb[i] = yb[a] + (x[i] - x[a]) * (yb[c] - yb[a]) / (x[c] - x[a])
+    keep &= np.isfinite(out[y1var]) & np.isfinite(out[y2var])
+    return ({k: v[keep] for k, v in out.items()},
+            np.asarray(order)[keep])
+
+
 def _dash_fn_panel_spec(g, idx):
     """The graph *g* as by() panel *idx* (from 0) draws its function layers.
 
@@ -60547,6 +60616,7 @@ class ServerAppBuilder:
                          "_dash_minor_pool_size",
 
                          "_dash_fn_panel_spec",
+                         "_dash_rarea_one_bound",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
                          "_dash_add_code_text", "_dash_label_key",

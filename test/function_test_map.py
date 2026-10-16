@@ -996,6 +996,8 @@ FUNCTIONS = {
  'GlyphMapper._hist_bar_edges': 'test/test_distribution_odds.py::TestHistogramConfig::test_helper',
  '_dash_fn_panel_spec': 'test/test_function_panels.py::TestFunctionPerPanel::test_panel_spec',
  '_dash_fn_panel_spec.<locals>._has': 'test/test_function_panels.py::TestFunctionPerPanel::test_panel_spec',
+ '_dash_rarea_one_bound': 'test/test_data_join_edges.py::TestRareaOneBound::test_helper',
+ '_stata_dates_to_datetime.<locals>._period_ms': 'test/test_data_join_edges.py::TestFractionalDates::test_tm_half',
  'GlyphMapper._tag_recast': 'test/test_recast_refit.py::TestRecastRefit::test_tagged',
  'GlyphMapper._hist_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
  'GlyphMapper._kde_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
