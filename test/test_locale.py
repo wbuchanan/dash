@@ -231,3 +231,45 @@ class TestGraphSetFonts:
                 mod.make_document(Document())
                 mapper = mod._DASH_MAPPER
         assert mapper._dash_gt_fonts["stSans"].startswith("Courier")
+
+
+class TestGraphSetFontsDrawn:
+    """The font tags draw in the page's graph set faces: a title's run and
+    a marker label's whole-label font, both modes (WP-31 G2)."""
+
+    @staticmethod
+    def _models(mode, tmp_path, opts=None, go=None):
+        data = copy.deepcopy(tg._data())
+        for row in data["values"]:
+            row["lab"] = "{stSans:car}"
+        data["variableNames"].append("lab")
+        data["storageTypes"]["lab"] = "str12"
+        data["variableIsString"]["lab"] = True
+        data["variableLabels"]["lab"] = ""
+        spec = tk._spec([tk._graph("g", [{"type": "scatter", "yvar": "mpg",
+                                          "xvar": "weight",
+                                          "options": dict(opts or {})}],
+                                   dict(go or {}), title=False)],
+                        scheme="s2color")
+        spec["build_options"]["fontfacesans"] = "Courier"
+        roots, _n, _o = tk._build(mode, spec, data=data)
+        return [m for r in roots for m in r.references()]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_title_run(self, mode, tmp_path):
+        ms = self._models(mode, tmp_path, go={"title": '"{stSans:T}"'})
+        fonts = [m.text_font for m in ms if type(m).__name__ == "Title"
+                 and str(m.text or "") == "T"]
+        assert fonts and all(str(f).startswith("Courier") for f in fonts), \
+            fonts
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_mlabel_font(self, mode, tmp_path):
+        ms = self._models(mode, tmp_path, opts={"mlabel": "lab"})
+        fonts = [m.text_font for m in ms if type(m).__name__ == "LabelSet"]
+        assert fonts and all(str(f).startswith("Courier") for f in fonts), \
+            fonts
+
+    def test_page_fonts(self):
+        assert dr._dash_page_fonts({"stSans": "X"}) == {"stSans": "X"}
+        assert dr._dash_page_fonts() == dr._DASH_GT_FONTS

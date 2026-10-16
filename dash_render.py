@@ -15830,7 +15830,9 @@ class GlyphMapper:
             from bokeh.core.properties import field as _bk_field
             kwargs["text_font_style"] = _bk_field(style_col)
         if _gt is not None and _gt[1]:
-            kwargs["text_font"] = _DASH_GT_FONTS.get(_gt[1], _gt[1])
+            # The page's graph set faces (WP-31 G2, _dash_page_settings).
+            kwargs["text_font"] = (getattr(self, "_dash_gt_fonts", None)
+                                   or _DASH_GT_FONTS).get(_gt[1], _gt[1])
 
         # mlabangle() (WP-22): an anglestyle, drawn counter-clockwise as
         # Stata draws it.  dash.ado refuses a number outside -360..360 where
@@ -43170,7 +43172,7 @@ def _dash_finish_text_value(value, how):
     return _dash_finish_text_runs(value, how)[:2]
 
 
-def _dash_finish_graph_text(figures):
+def _dash_finish_graph_text(figures, fonts=None):
     """Draw every canvas text as twoway draws it (WP-30 P1.11a, P1.11b).
 
     *figures* maps each graph's or by() panel's key to its figure (the
@@ -43228,7 +43230,7 @@ def _dash_finish_graph_text(figures):
                         res.extend(_dash_finish_text_runs(it.label,
                                                           "value")[2])
                 kind, flags, applied = _dash_graph_text_style(
-                    model, "items", res, fig)
+                    model, "items", res, fig, fonts)
                 touched = touched or applied
                 if kind and flags:
                     pending.setdefault((graph, kind), set()).update(flags)
@@ -43239,7 +43241,7 @@ def _dash_finish_graph_text(figures):
                     setattr(model, prop, new)
                     touched = True
                 kind, flags, applied = _dash_graph_text_style(
-                    model, prop, res, fig)
+                    model, prop, res, fig, fonts)
                 if applied:
                     touched = True
                     if prop == "major_label_overrides":
@@ -43377,6 +43379,17 @@ _DASH_GT_FONTS = {
     "stSerif": "Times, Times New Roman, serif",
     "stMono": "Courier, Courier New, monospace",
 }
+
+def _dash_page_fonts(fonts=None):
+    """*fonts* when given; else the families of the generated app's one
+    page (its ``_DASH_MAPPER``, set by ``_dash_page_settings`` from the
+    app's own spec); else ``_DASH_GT_FONTS``.  The saved renderer passes
+    its page's (WP-31 G2)."""
+    if fonts:
+        return fonts
+    return (getattr(globals().get("_DASH_MAPPER"), "_dash_gt_fonts", None)
+            or _DASH_GT_FONTS)
+
 
 def _dash_gt_fonts_of(build_options):
     """The CSS family each Stata font tag draws in for one page (WP-31
@@ -44042,7 +44055,7 @@ def _dash_finish_text_runs(value, how):
     return value, False, []
 
 
-def _dash_graph_text_style(model, prop, results, fig):
+def _dash_graph_text_style(model, prop, results, fig, fonts=None):
     """``(kind, flags, applied)``: write the whole text's style and font
     the markup asks for onto *model*'s style properties for *prop*.
 
@@ -44112,7 +44125,8 @@ def _dash_graph_text_style(model, prop, results, fig):
     if styled[0][1] is not None:
         setattr(model, sprop, styled[0][1])
     if styled[0][2] is not None:
-        setattr(model, fprop, _DASH_GT_FONTS.get(styled[0][2], styled[0][2]))
+        setattr(model, fprop, _dash_page_fonts(fonts).get(styled[0][2],
+                                                          styled[0][2]))
     return kind, flags, True
 
 
@@ -56702,9 +56716,10 @@ class DashRenderer:
         # Last: every figure, by() panel title and shared by() scale is
         # built, and _build_filter_widgets (_stale_cue_args) has not yet
         # copied the legend text the saved filter script writes back.
-        _dash_finish_graph_text(self.figures)
+        _gtf = getattr(self.mapper, "_dash_gt_fonts", None)
+        _dash_finish_graph_text(self.figures, _gtf)
         _dash_finish_graph_text(
-            _dash_by_chrome_figures(self.figures, self._facet_map))
+            _dash_by_chrome_figures(self.figures, self._facet_map), _gtf)
 
         # ---- 3f. by()'s shared axes and keys (WP-30 P1.15c) ----
         # After the text pass, so the titles, keys and panel labels the
@@ -58873,7 +58888,7 @@ class ServerAppBuilder:
                          # %tC through Stata's leap seconds and the graph
                          # set font faces (WP-31 G2).
                          "_dash_tc_from_tC", "_dash_build_dp",
-                         "_dash_gt_fonts_of",
+                         "_dash_gt_fonts_of", "_dash_page_fonts",
                          "_dash_dp_fmt", "_dash_cache_dp",
                          "_dash_page_settings", "_dash_page_dp",
                          # dot's rows in the axis plan (WP-31 B5c).

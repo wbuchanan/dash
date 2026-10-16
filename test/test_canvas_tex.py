@@ -340,9 +340,10 @@ class TestTheSavedPage:
         orig_pass = dr._dash_finish_graph_text
         orig_cue = dr.DashRenderer._stale_cue_args
 
-        def spy_pass(figures):
+        def spy_pass(figures, *a, **k):
+            # The page's fonts ride along since WP-31 G2.
             calls.append("pass")
-            return orig_pass(figures)
+            return orig_pass(figures, *a, **k)
 
         def spy_cue(self, *a, **k):
             calls.append("stale")
