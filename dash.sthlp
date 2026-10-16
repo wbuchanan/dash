@@ -3292,8 +3292,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     value, along x under {cmd:horizontal}.  {cmd:no}, {cmd:n},
     {cmd:off} and {cmd:false} (lower case, as {cmd:twoway} reads them) are
     no; anything else is yes.  The rows follow the axis when a filter
-    moves in {cmd:dash serve}; a saved page keeps each kept observation's
-    row where it was drawn, over the axis as it was built.  {cmd:twoway}
+    moves, in the saved page and the served app: each kept observation's
+    row is drawn again over the axis the kept rows give.  {cmd:twoway}
     also takes it on {cmd:area}, {cmd:bar}, {cmd:spike} and
     {cmd:dropline}, where it draws nothing different, and refuses it
     elsewhere ({cmd:option dotextend() not allowed}, r(198)){p_end}

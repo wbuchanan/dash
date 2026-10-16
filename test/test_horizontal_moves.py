@@ -386,18 +386,8 @@ class TestAfterASavedMove:
             after = _moved(spec, action, "saved")
             kept = _kept(spec, oracle, "saved")
             for i, t in enumerate(_TURNED):
-                if t == "dot":
-                    # WP-31 B5b residual: the saved page keeps a kept
-                    # observation's row of dots where the build drew it
-                    # (test_dot_rows.py::TestAfterASavedMove, xfail
-                    # strict); its markers and everything else are held
-                    # here, its dots (glyph 0) there.
-                    bad += [m for m in _mismatches([after[i]], [kept[i]],
-                                                   (label, t))
-                            if not (m[2] == "glyphs" and all(
-                                str(d[0]).startswith("[0]/")
-                                for d in m[3]))]
-                    continue
+                # Flipped (WP-31 B5c): a turned dot's rows are rebuilt
+                # over the re-finished axis on the saved page too.
                 if t in dr._DASH_CONTOUR_TYPES:
                     # WP-31 B4b: the saved page keeps a contour as built and
                     # marks it (grid unfiltered) until its twin (B4c,

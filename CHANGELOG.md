@@ -503,7 +503,7 @@ and now matches Stata.
 
 - `dash scatter mpg weight, colorvar(price) colorkeysreverse` drew its colour bar and named colorkeysreverse in the note ("drawn unreversed"); it now draws the same bar in silence, as twoway draws a key that is not discrete the same with colorkeysreverse as without it. (WP-31, C8e)
 
-<!-- WP-31 B5c -->
+- dash dot mpg weight on a saved page, the dropdown at Foreign: 1,650 dots from 10 to 40.58, the build's axis -> 1,672 from 14 to 41, the rows twoway draws for the kept cars, as the served app draws them (WP-31, B5c)
 
 <!-- WP-31 D1b -->
 

@@ -619,18 +619,22 @@ _PLAIN_DIGESTS = {
     # scheme's axis_title_gap (1 px, was Bokeh's 5).
     # def54a8f... -> 2e3fd291...: WP-31 D1c the finish code reads a
     # typed list as no ##N rule (finish JS text only).
+    # 2e3fd291... -> 83ddae14...: WP-31 B5c the axis plan carries each
+    # axis's dot rows (an empty "dots" list here) and the finish code
+    # dash_fill_dots.
     ("saved", "plain"):
-        "2e3fd291ec123e849333ca04551f204ed717691b48cde32b2bb5f67bf565ebee",
+        "83ddae14d85391c005a6e7cc4f6f73c2965d1ccc6e0b80bddd0d0fb8ca0a2550",
     ("saved", "yaxis2"):
-        "2e3fd291ec123e849333ca04551f204ed717691b48cde32b2bb5f67bf565ebee",
+        "83ddae14d85391c005a6e7cc4f6f73c2965d1ccc6e0b80bddd0d0fb8ca0a2550",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
-    # D6/D7/D1c, as the saved page's.
+    # D6/D7/D1c, as the saved page's; 0440b3d9... -> 5a0efbf6...: WP-31
+    # B5c, as the saved page's.
     ("served", "plain"):
-        "0440b3d941f6124c3637b48bfe6f792cfd00b6e65325c96781447155a16f365e",
+        "5a0efbf6a592b72256e1df1a953f8f6b770c90bff09471f551c3fe81bfa9a110",
     ("served", "yaxis2"):
-        "0440b3d941f6124c3637b48bfe6f792cfd00b6e65325c96781447155a16f365e",
+        "5a0efbf6a592b72256e1df1a953f8f6b770c90bff09471f551c3fe81bfa9a110",
 }
 
 

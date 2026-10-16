@@ -401,15 +401,15 @@ class TestAfterAServedMove:
 class TestAfterASavedMove:
 
     @requires_node
-    @pytest.mark.xfail(strict=True, reason=(
-        "WP-31 B5b residual: the saved page keeps each kept observation's "
-        "row where the build drew it; rebuilding it over the re-finished "
-        "axis is the saved page's JavaScript (S22's slot)"))
     def test_measured(self):
+        """Flipped (WP-31 B5c): the saved page rebuilds each kept
+        observation's row over the re-finished axis (dash_fill_dots in
+        _DASH_AXIS_FINISH_JS), as the kept rows' own build draws it."""
         after, kept = _dots_after("saved")
         for a, k in zip(after, kept):
             assert len(a["y"]) == len(k["y"])
             assert np.allclose(a["y"], k["y"])
+            assert list(a["x"]) == list(k["x"])
 
     @requires_node
     def test_the_kept_rows_keep_their_dots(self):

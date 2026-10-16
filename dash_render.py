@@ -37900,6 +37900,120 @@ function dash_fill_auto_bases(a, models, lo, hi) {
         if (src.change) src.change.emit();
     }
 }
+// WP-31 B5c: the twin of GlyphMapper._dot_positions -- where twoway dot
+// draws its dots along a row over the scale [lo, hi]: from the base (0
+// when the scale holds it, else the end nearer 0) to each end (lo and hi;
+// the value under dotextend(no)), stepping as Stata's forvalues steps;
+// a run of more than 10,000 steps is not drawn; over max dots in all,
+// ndots is lowered until they fit.  Returns [positions, end of each].
+function dash_dot_positions(lo, hi, vals, extend, ndots, max) {
+    if (![lo, hi, ndots].every(Number.isFinite)) return [[], []];
+    if (lo > hi) { const t = lo; lo = hi; hi = t; }
+    const ends = [], erow = [];
+    for (let i = 0; i < vals.length; i++) {
+        const v = vals[i];
+        if (extend) {
+            const ok = Number.isFinite(v);
+            ends.push(ok ? lo : NaN, ok ? hi : NaN);
+            erow.push(i, i);
+        } else { ends.push(v); erow.push(i); }
+    }
+    const base = (lo <= 0 && 0 <= hi) ? 0 : (hi < 0 ? hi : lo);
+    const build = (nd) => {
+        if (nd === 1) return null;
+        const delta = (hi - lo) / (nd - 1);
+        if (!Number.isFinite(delta) || delta === 0) return null;
+        const ok = ends.map((e) => Number.isFinite(e) && !(Math.abs(e - base) / delta > 10000));
+        const counts = new Array(ends.length).fill(0);
+        let up = [], down = [];
+        if (delta > 0) {
+            for (const sign of [1, -1]) {
+                let far = null;
+                for (let i = 0; i < ends.length; i++) {
+                    if (!ok[i] || ((ends[i] >= base) !== (sign === 1))) continue;
+                    far = (far === null) ? ends[i] : (sign === 1 ? Math.max(far, ends[i]) : Math.min(far, ends[i]));
+                }
+                if (far === null) continue;
+                const seq = [];
+                let x = base;
+                if (sign === 1) { while (x <= far) { seq.push(x); x += delta; } }
+                else { while (x >= far) { seq.push(x); x -= delta; } }
+                if (sign === 1) up = seq; else down = seq;
+                for (let i = 0; i < ends.length; i++) {
+                    if (!ok[i] || ((ends[i] >= base) !== (sign === 1))) continue;
+                    let c = 0;
+                    if (sign === 1) { while (c < seq.length && seq[c] <= ends[i]) c++; }
+                    else { while (c < seq.length && seq[c] >= ends[i]) c++; }
+                    counts[i] = c;
+                }
+            }
+        } else {
+            up = [base];
+            for (let i = 0; i < ends.length; i++) if (ok[i] && ends[i] === base) counts[i] = 1;
+        }
+        return [counts, up, down];
+    };
+    let nd = ndots;
+    let got = build(nd);
+    if (got === null) return [[], []];
+    const sum = (c) => c.reduce((s, v) => s + v, 0);
+    let total = sum(got[0]);
+    if (Number.isFinite(max) && total > max && nd > 2) {
+        let nd2 = Math.max(2, Math.floor((nd - 1) * max / total));
+        while (true) {
+            got = build(nd2);
+            if (got === null || sum(got[0]) <= max || nd2 <= 2) break;
+            nd2 = Math.max(2, Math.floor(nd2 * 0.9));
+        }
+        if (got === null) return [[], []];
+    }
+    const pos = [], rows = [];
+    for (let i = 0; i < ends.length; i++) {
+        const seq = (ends[i] >= base) ? got[1] : got[2];
+        for (let k = 0; k < got[0][i]; k++) { pos.push(seq[k]); rows.push(erow[i]); }
+    }
+    return [pos, rows];
+}
+// WP-31 B5c: each dot layer the plan names (dash_dots_plan in Python) is
+// refilled from its marker's kept rows over the axis's finished, unpadded
+// scale, as GlyphMapper._dot_fill refills it in the served app.
+function dash_fill_dots(a, models, lo, hi) {
+    if (!Array.isArray(a.dots) || typeof lo !== "number" || typeof hi !== "number"
+            || !isFinite(lo) || !isFinite(hi)) return;
+    for (const d of a.dots) {
+        const ds = models[d.dsrc], ms = models[d.msrc];
+        if (!ds || !ms || !ms.data) continue;
+        const md = ms.data;
+        const al = md[d.along], ac = md[d.across];
+        if (!al || !ac) continue;
+        const n = al.length;
+        let rows = [];
+        const f = (d.mfilt >= 0) ? models[d.mfilt] : null;
+        if (f && d.mfk === "idx" && f.indices) {
+            for (const i of Array.from(f.indices)) if (i >= 0 && i < n) rows.push(i);
+        } else if (f && d.mfk === "bool" && f.booleans) {
+            const b = Array.from(f.booleans);
+            for (let i = 0; i < n && i < b.length; i++) if (b[i]) rows.push(i);
+        } else {
+            for (let i = 0; i < n; i++) rows.push(i);
+        }
+        const num = (v) => (v === null || v === undefined || v === "") ? NaN : Number(v);
+        const kept = rows.filter((i) => Number.isFinite(num(al[i])) && Number.isFinite(num(ac[i])));
+        const got = dash_dot_positions(lo, hi, kept.map((i) => num(al[i])),
+                                       d.extend, d.ndots, d.max);
+        const nd = {x: got[1].map((k) => num(ac[kept[k]])), y: got[0]};
+        if (d.rid && md[d.rid]) nd[d.rid] = got[1].map((k) => md[d.rid][kept[k]]);
+        const old = ds.data || {};
+        let same = Object.keys(old).length === Object.keys(nd).length;
+        for (const k of Object.keys(nd)) {
+            if (!same) break;
+            same = dash_axis_same(Array.from(old[k] || []), nd[k]);
+        }
+        if (same) continue;
+        ds.data = nd;
+        if (ds.change) ds.change.emit();
+    }
+}
 function dash_axis_place(a, lo, hi, cur) {
     if (a.mode !== "count" || a.hold) return cur;
     let t = dash_axis_ticks(lo, hi, a.n, a.kind);
@@ -38167,6 +38281,8 @@ function dash_axis_finish(plan, models) {
         if (r && r.change) r.change.emit();
     }
     for (const f of tg.fills) dash_fill_auto_bases(f[0], models, f[1], f[2]);
+    // WP-31 B5c: dot's rows over each finished scale.
+    for (const f of tg.fills) dash_fill_dots(f[0], models, f[1], f[2]);
     // WP-31 D1: the ##N minor ticks and labels, over each finished scale.
     for (const f of tg.fills) dash_minor_place(f[0], models, f[1], f[2]);
     // WP-31 D7: noextend axes end at their first and last tick.
@@ -40035,6 +40151,74 @@ def _dash_refinish_axes(figures, facet_map):
         _dash_refline_extents(f)
 
 
+def _dash_dots_plan(dr, letter, name, index, models):
+    """The axis plan's entry for one dot layer's rows (WP-31 B5c), or None:
+    ``{"dsrc", "msrc", "mfilt", "mfk", "along", "across", "rid",
+    "extend", "ndots", "max"}`` -- the dots renderer *dr*'s source, its
+    marker's source and view filter (model indexes into *models*, added
+    through *index* as ``_dash_axis_plan`` adds them), the marker columns
+    the rows run along and sit at (the layer's own variables, as
+    ``GlyphMapper._dot_fill`` reads them), the row-identity column or
+    ``""``, dotextend and ndots, and ``_DASH_DOTS_MAX``.  None when the
+    rows do not run along axis *letter* of range *name*, or run in date
+    units (kept as built).  Numbers and column names only."""
+    from bokeh.models import BooleanFilter, IndexFilter
+    try:
+        m = getattr(dr, "_dash_dots_marker", None)
+        spec = None
+        for t in getattr(dr, "tags", None) or ():
+            if isinstance(t, str) and t.startswith("dash_dots:") \
+                    and len(t) <= 200:
+                spec = json.loads(t[len("dash_dots:"):])
+        if m is None or not isinstance(spec, dict):
+            return None
+        along = ("y" if _dash_spec_field(getattr(dr.glyph, "y", None))
+                 == "y" else "x")
+        if along != letter or (getattr(dr, along + "_range_name", "default")
+                               or "default") != name:
+            return None
+        across = "x" if along == "y" else "y"
+        msrc = m.data_source
+        raw = getattr(dr, "_dash_dots_vars", None) or {}
+        cols = {}
+        for which, ltr in (("along", along), ("across", across)):
+            v = getattr(m.glyph, ltr, None)
+            if _dash_spec_units(v):
+                return None
+            f = _dash_spec_field(v)
+            own = raw.get(which)
+            if isinstance(own, str) and own in msrc.data:
+                f = own
+            if not f or f not in msrc.data:
+                return None
+            cols[which] = str(f)
+        filt = getattr(getattr(m, "view", None), "filter", None)
+        fk = ("idx" if isinstance(filt, IndexFilter) else
+              "bool" if isinstance(filt, BooleanFilter) else "")
+        out = {}
+        for key, mod in (("dsrc", dr.data_source), ("msrc", msrc),
+                         ("mfilt", filt if fk else None)):
+            if mod is None:
+                out[key] = -1
+                continue
+            i = index.get(id(mod))
+            if i is None:
+                i = index[id(mod)] = len(models)
+                models.append(mod)
+            out[key] = i
+        nd = float(spec.get("ndots", 75))
+        out.update({
+            "mfk": fk, "along": cols["along"], "across": cols["across"],
+            "rid": (_ROW_ID_COLUMN if _ROW_ID_COLUMN in msrc.data
+                    and _ROW_ID_COLUMN in dr.data_source.data else ""),
+            "extend": bool(spec.get("extend", True)),
+            "ndots": nd if math.isfinite(nd) else 75.0,
+            "max": int(_DASH_DOTS_MAX)})
+        return out
+    except Exception:  # noqa: BLE001 -- a layer the page cannot rebuild
+        return None
+
+
 def _dash_axis_plan(figures, facet_map, zoom=True):
     """``(plan_json, models)``: the data the saved page's re-finish and both
     modes' zoom code read (WP-30 P1.3a, TR-21.10).
@@ -40152,14 +40336,18 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         models.append(base)
                 fields = (_DASH_Y_COORDS if letter == "y"
                           else _DASH_X_COORDS)
-                layers, bars, autobase = [], [], []
+                layers, bars, autobase, dots = [], [], [], []
                 for r in f.renderers:
                     g = getattr(r, "glyph", None)
                     src = getattr(r, "data_source", None)
                     if g is None or src is None or _dash_is_swatch(r):
                         continue
-                    # WP-31 B5b: dot's rows are drawn from the scale.
+                    # WP-31 B5b: dot's rows are drawn from the scale;
+                    # WP-31 B5c: the page rebuilds them over it.
                     if "dash_dots" in (getattr(r, "tags", None) or ()):
+                        _d = _dash_dots_plan(r, letter, name, index, models)
+                        if _d is not None:
+                            dots.append(_d)
                         continue
                     if getattr(r, range_attr, "default") != name:
                         continue
@@ -40290,7 +40478,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                if letter in margins and _dash_margin_pair(
                                    margins[letter]) is not None else None),
                     "range": ri, "ticker": ti,
-                    "layers": layers, "bars": bars, "autobase": autobase}
+                    "layers": layers, "bars": bars, "autobase": autobase,
+                    "dots": dots}
                 # WP-31 D7: a noextend axis the page bounds after each
                 # finish (dash_axis_bounds).
                 if getattr(ax, "_dash_noextend", False):
@@ -56508,6 +56697,8 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # dot's rows in the axis plan (WP-31 B5c).
+                         "_dash_dots_plan",
                          # weighted marker sizes (WP-31 C9).
                          "_dash_weighted_sizes", "_dash_rescale_wsizes",
                          # colorvar()'s colour rule, clegend() and

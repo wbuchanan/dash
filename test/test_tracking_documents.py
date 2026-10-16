@@ -2034,7 +2034,6 @@ WP31_OPEN = {
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
     "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
     "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",
-    "B5c": "dot rows on the saved page keep the build's axis span after a filter move",
     "D1b": "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn",
     "D16b": "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced",
     "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",

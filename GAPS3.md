@@ -438,7 +438,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4d Tracked:** Closed in WP-31, BUGS.md "After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed", commit 62890cf.
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
 - **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit 5e0a387.
-- **B5c Tracked:** Open (WP-31 section 35).
+- **B5c Tracked:** Closed in WP-31, BUGS.md "dot rows on the saved page keep the build's axis span after a filter move", commit pending.
 - **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.

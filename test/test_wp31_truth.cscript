@@ -8514,6 +8514,81 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
 }
 * ==== end S35 ====
 
+// S35 (WP-31 B5c) helpers.  _u35_dots: a registered dot graph's rows of
+// dots after the dropdown move on the saved page (its callback under
+// node; u35_s) and in the served app (u35_v), and the qualified build's
+// (u35_o), each "<count> <first y> <last y>"; twoway's dot rows under the
+// same if are what the qualified build draws (S18, dot_truth.json).
+python:
+def _u35_dot_rows(figs):
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            if "dash_dots" in (r.tags or []):
+                y = list(r.data_source.data.get("y", []))
+                out.append("%d %.9g %.9g" % (len(y), min(y) if y else 0,
+                                             max(y) if y else 0))
+    return "; ".join(out)
+
+
+def _u35_dots(sp, dp, app, osp, odp, oapp, kind, want):
+    import warnings
+    from sfi import Macro
+    from js_runner import JsSession
+    r, doc, a, b = _u35_docs(sp, dp, app)
+    w = [x for x in r.filter_widgets if type(x).__name__ == kind][0]
+    w.value = _u35_value(w, want)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    JsSession([]).run_code(cb.code, cb.args)
+    Macro.setGlobal("u35_s", _u35_dot_rows(a))
+    ws = [m for m in doc.models if type(m).__name__ == kind
+          and hasattr(m, "_dash_var")]
+    v = _u35_value(ws[0], want)
+    ws[0].value = v
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for key in ("value", "value_throttled"):
+            for c in list(ws[0]._callbacks.get(key, [])):
+                c("value", None, v)
+    Macro.setGlobal("u35_v", _u35_dot_rows(b))
+    _r, _d, oa, _ob = _u35_docs(osp, odp, oapp)
+    Macro.setGlobal("u35_o", _u35_dot_rows(oa))
+end
+
+* ==== S35 B5c: dot rows on the saved page after a move ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S35") & `: list posof "S35" in w31_run' {
+    display as text "S35 start " c(current_date) " " c(current_time)
+    local u35d "`w31_work'/s35b"
+    capture mkdir "`u35d'"
+    set scheme s2color
+    sysuse auto, clear
+    python: import __main__ as _u35_m
+
+    // U35-6: the dropdown at Foreign rescales mpg (12..41 -> 14..41); the
+    // rows are the kept rows' own, saved and served.
+    local k 0
+    foreach o in "" "dotextend(no)" "ndots(20)" "horizontal" {
+        local ++k
+        dash clear
+        capture noisily dash dot mpg weight if foreign == 1, `o' name(zu356o)
+        _u35_serve "`u35d'" 6o`k'
+        dash clear
+        capture noisily dash dot mpg weight, `o' name(zu356)
+        _w31_expect U35-6 `"(_rc == 0)"' "case `k' rc `=_rc'"
+        _u35_serve "`u35d'" 6`k' foreign, type(dropdown)
+        python: _u35_m._u35_dots("`u35d'/s6`k'.json", "`u35d'/d6`k'.json", "`u35d'/a6`k'.py", "`u35d'/s6o`k'.json", "`u35d'/d6o`k'.json", "`u35d'/a6o`k'.py", "Select", "Foreign")
+        _w31_expect U35-6 `"("${u35_s}" == "${u35_o}")"' "case `k' saved ${u35_s}; kept build ${u35_o}"
+        _w31_expect U35-6 `"("${u35_v}" == "${u35_o}")"' "case `k' served ${u35_v}; kept build ${u35_o}"
+    }
+    _w31_done U35-6 "dot's rows follow the re-finished axis after a move, saved and served"
+
+    macro drop u35_s u35_v u35_o
+    dash clear
+    display as text "S35 end " c(current_date) " " c(current_time)
+}
+* ==== end S35 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
