@@ -13323,6 +13323,12 @@ class GlyphMapper:
         columns ("x", "y", "x0") are the ones the glyph reads -- and a column
         whose length does not match is skipped rather than guessed at.
 
+        A numeric column stays a float64 array (integers become floats, so
+        NaN can stand for a dropped row) and a date column stays a
+        datetime64 array; only text and other objects become a list.  A
+        list makes bokeh 3.8 validate a million-row column item by item
+        (7.5 of 7.7 s on a million-row line; WP-31 G4).
+
         Args:
             source:   The ColumnDataSource the caller passed in.
             data:     The derived column dict, modified in place.
@@ -13340,12 +13346,17 @@ class GlyphMapper:
             if _k in data:
                 continue
             try:
-                _col = np.asarray(_v, dtype=object)
+                _col = np.asarray(_v)
+                if _col.dtype.kind in "fiub":
+                    _col = _col.astype(float)
+                elif _col.dtype.kind != "M":
+                    _col = np.asarray(_v, dtype=object)
                 if selector is not None:
                     _col = _col[selector]
                 if len(_col) != _n:
                     continue
-                data[_k] = _col.tolist()
+                data[_k] = (_col if _col.dtype.kind in "fM"
+                            else _col.tolist())
             except (TypeError, ValueError, IndexError, KeyError):
                 continue
         return data

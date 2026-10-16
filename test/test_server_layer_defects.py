@@ -1180,7 +1180,8 @@ class TestTheColumnCarry:
         data = {"x0": [1.0, 2.0, 3.0]}
         got = dr.GlyphMapper._carry_cols(self._src(), data)
         assert got["extra"] == ["a", "b", "c"]
-        assert got["num"] == [10.0, 20.0, 30.0]
+        # A numeric column is carried as a float64 array (WP-31 G4).
+        assert got["num"].tolist() == [10.0, 20.0, 30.0]
 
     def test_an_existing_key_is_never_overwritten(self):
         data = {"x": [9.0, 9.0, 9.0]}

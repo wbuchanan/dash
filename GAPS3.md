@@ -528,7 +528,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G1 Tracked:** Open (WP-31 section 43).
 - **G2 Tracked:** Open (WP-31 section 43).
 - **G3 Tracked:** Open (WP-31 section 43).
-- **G4 Tracked:** Open (WP-31 section 43).
+- **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit pending.
 - **G5 Tracked:** Open (WP-31 section 43).
 - **G6 Tracked:** Open (WP-31 section 46).
 - **G7 Tracked:** Open (WP-31 section 46).

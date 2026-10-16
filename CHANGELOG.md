@@ -1053,7 +1053,7 @@ Changed behaviour.
 
 <!-- WP-31 G3 -->
 
-<!-- WP-31 G4 -->
+- A hover(), mlabel or row-id column carried into a derived source was handed to Bokeh as a Python list of objects, which bokeh 3.8 validates item by item (7.5 of 7.7 s on a million-row line); a numeric column is now a float64 array (WP-31, G4)
 
 <!-- WP-31 G5 -->
 

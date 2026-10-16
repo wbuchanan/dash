@@ -3628,11 +3628,11 @@
   - Suggested fix: WP-31 section 43 (data missing locale): reserve derived names by prefix, use binary arrays and count planned rows.
   - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists
+- [x] Title: Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists
   - File Names and Line Numbers: dash_render.py:12420-12424
   - Description: GAPS3.md G4, re-verified at 6370ca4: Carried columns (`hover()`, `mlabel`, row id) upcast to dtype=object and handed to Bokeh as Python lists; bokeh 3.8 validates item by item (7.5 of 7.7 s on a million-row line).
   - Suggested fix: WP-31 section 43 (data missing locale): keep numeric carried columns as arrays.
-  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, G4). GlyphMapper._carry_cols keeps a numeric carried column (hover(), mlabel, the row id) as a float64 array (integers become floats, so NaN can stand for a dropped row) and a date column as a datetime64 array; only text and other objects become a list. The mapper is a class member, so both renderers carry it. Pinned by test/test_carry_cols.py::TestArrays::test_numeric_stays_array, ::test_int_becomes_float_array, ::test_text_is_list, ::test_dates_stay_arrays, ::test_selector_applies, ::test_build_is_faster_than_lists, test/test_wp31_truth.cscript U43-01. Closes GAPS3 G4 (WP-31, G4).
 
 - [ ] Title: One format-writer model is emitted per distinct tick format and per tooltip kind
   - File Names and Line Numbers: dash_render.py:27945

@@ -11543,6 +11543,63 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
 }
 * ==== end S42 ====
 
+python:
+def _u43_carried(sp, dp, app, col):
+    """Every source holding the carried column *col*, saved and served:
+    the column's Python type, into u43_bad when one is not a float array
+    (WP-31 G4: a carried numeric column stays a float64 array)."""
+    import __main__ as m
+    import numpy as np
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    bad, seen = [], 0
+    for figs, mode in ((a, "saved"), (b, "served")):
+        for f in figs:
+            for r in f.renderers:
+                ds = getattr(r, "data_source", None)
+                d = getattr(ds, "data", {}) or {}
+                if col not in d:
+                    continue
+                seen += 1
+                v = d[col]
+                if not (isinstance(v, np.ndarray) and v.dtype.kind == "f"):
+                    bad.append("%s %s: %s" % (mode, type(r.glyph).__name__,
+                                              type(v).__name__))
+    if seen == 0:
+        bad.append("no source carries %s" % col)
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+end
+
+capture program drop _u43_spec
+program define _u43_spec
+    // _u43_spec <dir> <k> <dash command>: the saved and served files of
+    // the command, into <dir>/s<k>.json, d<k>.json and a<k>.py.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0' scheme(s2color) name(zu43`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+end
+
+* ==== S43 G4: Carried columns as arrays ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
+    display as text "S43 start " c(current_date) " " c(current_time)
+    local u43d "`w31_work'/s43"
+    capture mkdir "`u43d'"
+    sysuse auto, clear
+
+    // U43-01: a hover() variable carried into a line's derived source is
+    // a float64 array under Stata's own Python, saved and served.
+    _u43_spec "`u43d'" 1 line mpg weight, sort hover(price)
+    python: import __main__ as _u43_m; _u43_m._u43_carried("`u43d'/s1.json", "`u43d'/d1.json", "`u43d'/a1.py", "price")
+    _w31_expect U43-01 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-01 "line ..., hover(price) carries price as a float array, saved and served"
+    display as text "S43 end " c(current_date) " " c(current_time)
+}
+* ==== end S43 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
