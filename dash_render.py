@@ -3780,13 +3780,33 @@ def _dash_layout_check(layout, names, registered=None):
             continue
         taken.add(n)
         firsts.append((n, r, c))
-    if not repeated and all(n in names for n, _r, _c in firsts):
+    # Two names in one cell: the served grid drew the second and the saved
+    # one the second too, and the first vanished without a word (WP-31
+    # D14).  The first keeps the cell in both; dash.ado refuses it.
+    owner, collided = {}, []
+    for n, r, c in firsts:
+        if n not in names:
+            continue
+        # Compared as digits less leading zeros: an index may be longer
+        # than int() reads.
+        cell = (r.lstrip("0") or "0", c.lstrip("0") or "0")
+        if cell in owner:
+            collided.append((owner[cell], n, f"{cell[0]},{cell[1]}"))
+        else:
+            owner[cell] = n
+    lost = {b for _a, b, _rc in collided}
+    if not repeated and not collided and all(n in names
+                                             for n, _r, _c in firsts):
         return layout, None
-    kept = " ".join(f"{n}:{r},{c}" for n, r, c in firsts if n in names)
+    kept = " ".join(f"{n}:{r},{c}" for n, r, c in firsts
+                    if n in names and n not in lost)
     unknown = list(dict.fromkeys(n for n, _r, _c in firsts
                                  if n not in registered))
     problems = [f"{_dash_display(n)} is placed more than once, so its first "
                 f"place is kept" for n in repeated]
+    problems += [f"{_dash_display(a)} and {_dash_display(b)} are placed in "
+                 f"the same cell {rc}, so {_dash_display(b)} is drawn in the next free cell"
+                 for a, b, rc in collided]
     if unknown:
         listed = ", ".join(_dash_display(n) for n in unknown)
         verb = "is" if len(unknown) == 1 else "are"
@@ -44678,35 +44698,68 @@ def _dash_fxy_size(item, graph_opts):
 
 
 def _dash_parse_tabs(tabs_str, all_names, limit=None):
-    """``'Title: a b / Title2: c'`` -> ``[(title, [names])]``, or None.
+    """``'Title: a b, layout(1 2) / Title2: c'`` -> ``[(title, [names],
+    layout or None)]``, or None.
 
-    Tab titles are the user's text, verbatim.  Only registered names are
-    accepted, so a tabs() option cannot place something that was never
-    registered.  At most *limit* tabs are kept (the ``tabs`` limit, its
-    default when None): a name may sit in any number of tabs, so tabs()
-    alone could ask for thousands -- 3,000 took 14.4 s -- whatever the
-    registry holds.
+    Tab titles are the user's text, verbatim; a title ends at the tab's
+    first colon and its names at the first comma after it.  What follows
+    that comma is the tab's own ``layout()``, in the grid (``rows cols``)
+    or the placement (``name:row,col ...``) form over the tab's names
+    (WP-31 D14); a tab without one keeps its automatic grid.  Only
+    registered names are accepted, so a tabs() option cannot place
+    something that was never registered.  dash.ado refuses an unknown name
+    and a per-tab layout() it cannot read (Mata ``_dash_tabs_refusal``);
+    for a spec that did not come through it, the names are dropped and the
+    layout drawn as the automatic grid, each with one note -- they were
+    dropped without a word.  At most *limit* tabs are kept (the ``tabs``
+    limit, its default when None): a name may sit in any number of tabs,
+    so tabs() alone could ask for thousands -- 3,000 took 14.4 s --
+    whatever the registry holds.
     """
     if limit is None:
         limit = _DASH_LIMITS["tabs"][0]
     if not tabs_str or not str(tabs_str).strip():
         return None
     valid = set(all_names)
-    result = []
+    result, unknown, bad = [], [], []
     for i, segment in enumerate(str(tabs_str).split("/")):
         segment = segment.strip()
         if not segment:
             continue
         if ":" in segment:
-            raw_title, _, items_str = segment.partition(":")
+            raw_title, _, body = segment.partition(":")
             title = raw_title.strip()
-            items = [x.strip() for x in items_str.split() if x.strip()]
         else:
-            items = [x.strip() for x in segment.split() if x.strip()]
-            title = "Tab %d" % (i + 1)
+            body, title = segment, "Tab %d" % (i + 1)
+        body, comma, opts = body.partition(",")
+        items = [x.strip() for x in body.split() if x.strip()]
+        for x in items:
+            if x not in valid and x not in unknown:
+                unknown.append(x)
         safe = [x for x in items if x in valid]
+        layout = None
+        if comma:
+            layout = _dash_tab_layout(opts, items)
+            if layout is None:
+                bad.append(f"{_dash_display(title)}: {_dash_display(opts.strip())}")
         if safe:
-            result.append((title, safe))
+            result.append((title, safe, layout))
+    if unknown:
+        listed = ", ".join(_dash_display(n) for n in unknown)
+        verb = "is not a registered graph or KPI card" if len(unknown) == 1 \
+            else "are not registered graphs or KPI cards"
+        _dash_warn_once(
+            ("tabs", "unknown"),
+            f"dash: tabs(): {listed} {verb}, so "
+            f"{'it is' if len(unknown) == 1 else 'they are'} not placed.",
+            stacklevel=3)
+    if bad:
+        _dash_warn_once(
+            ("tabs", "layout"),
+            f"dash: tabs(): {'; '.join(bad)} is not layout() in the "
+            f"rows cols or name:row,col form over the tab's own names, each "
+            f"cell used once; the tab is drawn in its automatic grid.",
+            stacklevel=3)
     if len(result) > limit:
         _dash_warn_once(
             ("limit", "tabs"),
@@ -44718,27 +44771,88 @@ def _dash_parse_tabs(tabs_str, all_names, limit=None):
     return result or None
 
 
+def _dash_tab_layout(opts, names):
+    """A tab's ``layout()`` value from the text after its first comma, or
+    None when that text is not one ``layout()`` in the grid or placement
+    form over *names*, each name and each cell placed once (WP-31 D14;
+    dash.ado's ``_dash_tabs_refusal`` refuses the same texts)."""
+    m = re.fullmatch(r"\s*layout\((.*)\)\s*", str(opts or ""), re.S)
+    if not m:
+        return None
+    lay = m.group(1).strip(_DASH_ASCII_BLANKS)
+    if _dash_grid_dims(lay):
+        return lay
+    pairs = re.findall(r"([A-Za-z_]\w*)\s*:\s*(\d+)\s*,\s*(\d+)", lay,
+                       re.ASCII)
+    if not pairs or re.sub(r"[A-Za-z_]\w*\s*:\s*\d+\s*,\s*\d+", "", lay,
+                           flags=re.ASCII).strip(_DASH_ASCII_BLANKS):
+        return None
+    seen, cells = set(), set()
+    for n, r, c in pairs:
+        cell = (r.lstrip("0") or "0", c.lstrip("0") or "0")
+        if n not in names or n in seen or cell in cells:
+            return None
+        seen.add(n)
+        cells.add(cell)
+    return lay
+
+
 def _dash_tab_panels(tabs_spec, cell_of):
-    """``(Tabs or None, registered names placed)`` from ``[(title, [names])]``.
-    Each tab is a ceil(sqrt(n)) grid of the cells its names own, with its
-    own toolbar, whose save button writes that tab's grid to dashboard.png."""
+    """``(Tabs or None, registered names placed)`` from ``[(title, [names],
+    layout)]`` (``_dash_parse_tabs``).  Each tab is the grid
+    ``_dash_tab_grid`` lays out of the cells its names own, with its own
+    toolbar, whose save button writes that tab's grid to dashboard.png."""
     from bokeh.models import TabPanel, Tabs
     panels, placed = [], set()
-    for title, names in (tabs_spec or []):
-        items = [c for c in (cell_of(n) for n in names) if c is not None]
-        if not items:
+    for title, names, *rest in (tabs_spec or []):
+        layout = rest[0] if rest else None
+        if not any(cell_of(n) is not None for n in names):
             continue
         placed.update(names)
-        cn = max(1, math.ceil(math.sqrt(len(items))))
-        rows = [items[i:i + cn] for i in range(0, len(items), cn)]
-        while len(rows[-1]) < cn:
-            rows[-1].append(None)
+        rows = _dash_tab_grid(names, layout, cell_of)
         panels.append(TabPanel(
             child=_dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width"))),
             title=title))
     if not panels:
         return None, placed
     return Tabs(tabs=panels, sizing_mode="stretch_width"), placed
+
+
+def _dash_tab_grid(names, layout, cell_of):
+    """One tab's grid rows (WP-31 D14): *names* in a ``rows cols`` grid or
+    ``name:row,col`` placement when *layout* is one (``_dash_parse_tabs``
+    has read it whole), else the ceil(sqrt(n)) grid tabs have always had.
+    *cell_of* maps a name to its cell, or None for one with nothing to draw.
+    Both renderers build their tabs through ``_dash_tab_panels`` and so
+    through this."""
+    if layout:
+        dims = _dash_grid_dims(layout)
+        placement = {} if dims else _dash_placement_map(layout, set(names))
+        if dims:
+            rows_n, cols_n = dims
+        else:
+            rows_n = max((r for r, _ in placement.values()), default=0) + 1
+            cols_n = max((c for _, c in placement.values()), default=0) + 1
+        rest = [n for n in names if n not in placement]
+        if len(rest) > rows_n * cols_n - len(placement):
+            rows_n += math.ceil((len(rest) - (rows_n * cols_n - len(placement)))
+                                / max(1, cols_n))
+        slots = [[None] * cols_n for _ in range(rows_n)]
+        for nm, (r, c) in placement.items():
+            if slots[r][c] is None:
+                slots[r][c] = cell_of(nm)
+        free = [(r, c) for r in range(rows_n) for c in range(cols_n)
+                if (r, c) not in placement.values()]
+        for nm in rest:
+            r, c = free.pop(0)
+            slots[r][c] = cell_of(nm)
+        return slots
+    items = [c for c in (cell_of(n) for n in names) if c is not None]
+    cn = max(1, math.ceil(math.sqrt(len(items))))
+    rows = [items[i:i + cn] for i in range(0, len(items), cn)]
+    while rows and len(rows[-1]) < cn:
+        rows[-1].append(None)
+    return rows
 
 
 # ---- layout(bs): one reading of the rows, for both render modes ------------
@@ -56354,7 +56468,9 @@ class DashRenderer:
             _slots: "list[list[Any]]" = [[None] * cols_n
                                          for _ in range(rows_n)]
             for _nm, (_r, _c) in _placed.items():
-                if 0 <= _r < rows_n and 0 <= _c < cols_n:
+                # The first name keeps a cell (WP-31 D14).
+                if (0 <= _r < rows_n and 0 <= _c < cols_n
+                        and _slots[_r][_c] is None):
                     _slots[_r][_c] = _by_name.get(_nm)
             # Anything the spec did not place fills the remaining cells in
             # registration order, which is what the Bootstrap path does.
@@ -57525,6 +57641,8 @@ class ServerAppBuilder:
                          # An unlinked layer's own rows after a move.
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
                          "_dash_parse_tabs", "_dash_tab_panels",
+                         # A tab's own layout() (WP-31 D14).
+                         "_dash_tab_layout", "_dash_tab_grid",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
                          # and spans, and the 12-column grid they are
@@ -61231,7 +61349,8 @@ class ServerAppBuilder:
             '            _taken = set()',
             '            for _nm, (_r, _c) in placement.items():',
             '                if 0 <= _r < rows_n and 0 <= _c < cols_n:',
-            '                    _slots[_r][_c] = _dash_cell(_nm)',
+            '                    if _slots[_r][_c] is None:',
+            '                        _slots[_r][_c] = _dash_cell(_nm)',
             '                    _taken.add(_nm)',
             '            _free = [(r, c) for r in range(rows_n) for c in range(cols_n)',
             '                     if _slots[r][c] is None]',

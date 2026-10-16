@@ -2644,6 +2644,11 @@ CORPUS = [
     # WP-31 D12: reference lines beyond the frame
     _case("xline beyond the range (WP-31 D12)", [_sc()],
           go={"xline": "3000 10000"}),
+
+    # WP-31 D14/D16
+    _case("tabs per-tab layout", bo={"tabs": "A: g1 g2, layout(1 2) / B: g3"},
+          graphs=[("g1", [_sc()]), ("g2", [plot_for("line")]),
+                  ("g3", [_sc()])]),
 ]
 
 
@@ -4312,8 +4317,10 @@ class TestTheTabsEntryBuildsTwoTabs:
 
     def test_the_string_parses_to_two_tabs(self):
         tabs = self._spec()["build_options"]["tabs"]
+        # Flipped (WP-31 D14): each tab carries its own layout(), None
+        # when it has none.
         assert dr._dash_parse_tabs(tabs, ["g1", "g2"]) == [
-            ("A", ["g1"]), ("B", ["g2"])]
+            ("A", ["g1"], None), ("B", ["g2"], None)]
 
     def test_the_saved_page_builds_two_tabs(self):
         r, _warns = _standalone(self._spec())

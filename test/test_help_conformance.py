@@ -821,9 +821,10 @@ class TestTheParsersFoundSomething:
         # 439 -> 440: D8 the yvarlabel() xvarlabel() entry.
         # 440 -> 442: C17 the mlabprefix() mlabsuffix() and lalign() entries.
         # 442 -> 443: E3 the mlalign() mlabstyle() entry.
-        assert len(defs) == 443, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 443 "
-            f"measured 15oct2026")
+        # 443 -> 444: D14 the Tabs example of a tab's own layout().
+        assert len(defs) == 444, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 444 "
+            f"measured 16oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

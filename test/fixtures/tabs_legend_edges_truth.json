@@ -1,0 +1,484 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "25e755ada4bb20ab885455cb4ed00e9100b8901d",
+  "extracted": "16 Oct 2026 07:48:05",
+  "source": "scripts/extract_tabs_legend_edges_truth.do",
+  "stata_version": "19.5"
+ },
+ "bare": {
+  "after_opt": {
+   "cmd": "twoway scatter mpg weight, msize(small) \"abc\"",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "bars_both": {
+   "cmd": "twoway scatter mpg weight || scatter price weight, title(T) \"abc\"",
+   "first": "parentheses do not balance",
+   "lines": [
+    "parentheses do not balance"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "bars_graph": {
+   "cmd": "twoway scatter mpg weight || scatter price weight, \"abc\"",
+   "first": "parentheses do not balance",
+   "lines": [
+    "parentheses do not balance"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "bars_plot": {
+   "cmd": "twoway scatter mpg weight, \"abc\" || scatter price weight",
+   "first": "parentheses do not balance",
+   "lines": [
+    "parentheses do not balance"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "compound": {
+   "cmd": "twoway scatter mpg weight, `\"abc\"'",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "empty": {
+   "cmd": "twoway scatter mpg weight, \"\"",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "in_title": {
+   "cmd": "twoway scatter mpg weight, title(\"T\") note(\"N\")",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "N",
+    "T"
+   ]
+  },
+  "line": {
+   "cmd": "twoway line mpg weight, \"abc\"",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "paren": {
+   "cmd": "twoway (scatter mpg weight, \"abc\")",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "paren_graph": {
+   "cmd": "twoway (scatter mpg weight), \"abc\"",
+   "first": "invalid syntax",
+   "lines": [
+    "invalid syntax"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "plot": {
+   "cmd": "twoway scatter mpg weight, \"abc\"",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "plot_global": {
+   "cmd": "twoway scatter mpg weight, \"abc\" name(zt1, replace)",
+   "first": "quotes unbalanced",
+   "lines": [
+    "quotes unbalanced"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "two": {
+   "cmd": "twoway scatter mpg weight, \"a\" \"b\"",
+   "first": "invalid syntax",
+   "lines": [
+    "invalid syntax"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  }
+ },
+ "label": {
+  "one": {
+   "cmd": "twoway scatter mpg weight || scatter price weight, legend(label(1))",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "0",
+    "5000",
+    "10000",
+    "15000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "Price"
+   ]
+  },
+  "one_text": {
+   "cmd": "twoway scatter mpg weight || scatter price weight, legend(label(1 \"A\"))",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "0",
+    "5000",
+    "10000",
+    "15000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "A",
+    "Price"
+   ]
+  }
+ },
+ "legend": {
+  "jse47": {
+   "cmd": "twoway scatter mpg weight, legend(label(1 [quote]'90s[quote]) top)",
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100,
+   "svg_texts": null
+  },
+  "po9_top": {
+   "cmd": "twoway scatter mpg weight, legend(po(9) top)",
+   "first": "option po() not allowed",
+   "lines": [
+    "option po() not allowed"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "pos9": {
+   "cmd": "twoway scatter mpg weight, legend(pos(9))",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "top": {
+   "cmd": "twoway scatter mpg weight, legend(top)",
+   "first": "option top not allowed",
+   "lines": [
+    "option top not allowed"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "top_po9": {
+   "cmd": "twoway scatter mpg weight, legend(top po(9))",
+   "first": "option top not allowed",
+   "lines": [
+    "option top not allowed"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  }
+ },
+ "nested": {
+  "region_bad_word": {
+   "cmd": "twoway scatter mpg weight, legend(region(xx))",
+   "first": "option xx not allowed",
+   "lines": [
+    "option xx not allowed"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "region_fcolor_red": {
+   "cmd": "twoway scatter mpg weight, legend(region(fcolor(red)))",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "region_lcolor_bogus": {
+   "cmd": "twoway scatter mpg weight, legend(region(lcolor(bogus)))",
+   "first": "(note:  named style bogus not found in class color, default attributes used)",
+   "lines": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "region_lwidth_bogus": {
+   "cmd": "twoway scatter mpg weight, legend(region(lwidth(bogus)))",
+   "first": "(note:  named style bogus not found in class linewidth, default attributes used)",
+   "lines": [
+    "(note:  named style bogus not found in class linewidth, default attributes used)",
+    "(note:  linewidth not found in scheme, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "title_bad_word": {
+   "cmd": "twoway scatter mpg weight, legend(title(\"T\", xx))",
+   "first": "option xx not allowed",
+   "lines": [
+    "option xx not allowed"
+   ],
+   "rc": 198,
+   "svg_texts": null
+  },
+  "title_color_bogus": {
+   "cmd": "twoway scatter mpg weight, legend(title(\"T\", color(bogus)))",
+   "first": "(note:  named style bogus not found in class color, default attributes used)",
+   "lines": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "title_size_bogus": {
+   "cmd": "twoway scatter mpg weight, legend(title(\"T\", size(bogus)))",
+   "first": "(note:  named style bogus not found in class gsize, default attributes used)",
+   "lines": [
+    "(note:  named style bogus not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  },
+  "title_size_large": {
+   "cmd": "twoway scatter mpg weight, legend(title(\"T\", size(large)))",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ]
+  }
+ },
+ "title": {
+  "by_prefix_suffix": {
+   "cmd": "twoway scatter mpg weight, by(foreign, title(\"B\")) title(\"T\", prefix suffix)",
+   "first": "option prefix ignored, may not be combined with suffix",
+   "lines": [
+    "option prefix ignored, may not be combined with suffix",
+    "option prefix ignored, may not be combined with suffix"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Domestic",
+    "Foreign",
+    "T",
+    "T",
+    "Mileage (mpg)",
+    "Weight (lbs.)",
+    "Graphs by Car origin",
+    "B"
+   ]
+  },
+  "prefix": {
+   "cmd": "twoway scatter mpg weight, title(\"T\", prefix)",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "T"
+   ]
+  },
+  "prefix_suffix": {
+   "cmd": "twoway scatter mpg weight, title(\"T\", prefix suffix)",
+   "first": "option prefix ignored, may not be combined with suffix",
+   "lines": [
+    "option prefix ignored, may not be combined with suffix"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "T"
+   ]
+  },
+  "suffix": {
+   "cmd": "twoway scatter mpg weight, title(\"T\", suffix)",
+   "first": "",
+   "lines": [],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "T"
+   ]
+  },
+  "suffix_prefix": {
+   "cmd": "twoway scatter mpg weight, title(\"T\", suffix prefix)",
+   "first": "option prefix ignored, may not be combined with suffix",
+   "lines": [
+    "option prefix ignored, may not be combined with suffix"
+   ],
+   "rc": 0,
+   "svg_texts": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)",
+    "T"
+   ]
+  }
+ }
+}

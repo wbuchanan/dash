@@ -915,7 +915,7 @@ and now matches Stata.
 
 - dash rscatter lo hi weight, mlabel(lo) (any range type labelled by one of its own variables) is refused as twoway refuses it, "rscatter requires 3 variables: lo hi weight", r(102); rpcap and rpspike "you must specify four variables with twoway rpcap", r(102) (WP-31, C14)
 
-<!-- WP-31 D14 -->
+- tabs() with a name that is not registered, a tab's layout() it cannot read, and layout() placing two names in one cell are refused, r(198), and the message names them; the name was dropped from the tab, and the second graph took the cell, without a word. (WP-31, D14)
 
 <!-- WP-31 D16 -->
 
@@ -1043,7 +1043,7 @@ Changed behaviour.
 
 - A saved page recomputes contour and contourline after a filter move, as the served app does, up to 1,000 distinct points; above that the layer is marked (grid unfiltered). It kept them as built and marked them after every move. (WP-31, B4c)
 
-<!-- WP-31 D14 -->
+- A tab takes its own layout(): tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) draws the first tab as one row of two, saved and served. layout(s1:1,1 s2:1,1) in a spec that did not come through dash build drew s2 in the cell and lost s1 in both modes; s1 keeps the cell, s2 takes the next free one and a note says so. (WP-31, D14)
 
 <!-- WP-31 D16 -->
 

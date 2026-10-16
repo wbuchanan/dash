@@ -319,21 +319,19 @@ assert r(found) == 1
 display "HC3-16 PASS: filter(fore) filters on foreign"
 
 // ----------------------------------------------------------------
-// HC3-17 -- link() takes a KPI card's name; tabs() ignores a name the
-// registry does not hold, without a word; layout() defaults to auto
+// HC3-17 -- link() takes a KPI card's name; tabs() refuses a name the
+// registry does not hold, naming it, as layout() refuses one (WP-31 D14:
+// it was ignored without a word); layout() defaults to auto
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'17.html") replace link(k1 g1)"'
 assert r(rc) == 0
 _hc3_run `"dash build, saving("`hc3'17b.html") replace tabs(A: g1 nosuch / B: g2 / C: nosuch2)"'
+assert r(rc) == 198
+cert_log_has "`r(log)'", needle("tabs() name 'nosuch' not found in registry.")
+assert r(found) == 1
+_hc3_run `"dash build, saving("`hc3'17b.html") replace tabs(A: g1 / B: g2)"'
 assert r(rc) == 0
-cert_log_has "`r(log)'", needle("nosuch")
-assert r(found) == 0
-cert_file_has "`hc3'17b.html", needle(`""title":"C""')
-assert r(found) == 0
-// Tab C is missing because its only name is unknown, not because no tab
-// was built: A and B are there, two TabPanel models and no third.
-// Nothing checked that (24sep2026), and tabs() dropped under layout(auto)
-// -- as it once was, byte-identical page and rc 0 -- left "C" absent too.
+// A and B are there, two TabPanel models and no third.
 cert_file_count "`hc3'17b.html", needle(`""name":"TabPanel""')
 assert r(count) == 2
 cert_file_count "`hc3'17b.html", needle(`""title":"A""')
@@ -348,7 +346,7 @@ foreach hc3n in `""name":"TabPanel""' `""title":"A""' `""title":"B""' {
     cert_file_count "`hc3'17c.html", needle(`"`hc3n'"')
     assert r(count) == 0
 }
-display "HC3-17 PASS: link() takes a KPI name, tabs() skips unknown names, layout() is auto by default"
+display "HC3-17 PASS: link() takes a KPI name, tabs() refuses unknown names, layout() is auto by default"
 
 // ----------------------------------------------------------------
 // HC3-18 -- the help's own examples of layout(), tabs() and filter()

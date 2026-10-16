@@ -441,7 +441,7 @@ program define _dash_require_mata
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
-        _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
+        _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
         _dash_axlabel_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
@@ -11482,6 +11482,25 @@ program define _dash_prepare_spec, rclass
                 display as error "      Use a smaller grid, or set global dash_max_graphs to a higher value (at most `_gceil_s')."
                 exit(198)
             }
+        }
+    }
+
+    // ---- validate tabs() (WP-31 D14) ----
+    // Every name in the registry, as layout() requires, and a tab's own
+    // layout() whole over that tab's names: a name the registry does not
+    // hold was dropped from its tab without a word.  Read in Mata, by
+    // value; the refusal is echoed through _dash_say.
+    // A value written in quotes, tabs("Main: s1"), is read without them:
+    // the names ended in a quote and were dropped, and now would be
+    // refused (_dash_tabs_unwrap).
+    local _tblen : length local tabs
+    if `_tblen' > 0 {
+        mata: st_local("tabs", _dash_tabs_unwrap(st_local("tabs")))
+        mata: st_local("_tref", _dash_tabs_refusal(st_local("tabs"), st_local("registry")))
+        local _treflen : length local _tref
+        if `_treflen' > 0 {
+            mata: _dash_say("err", "`cmdname': ", st_local("_tref"), "")
+            exit(198)
         }
     }
 

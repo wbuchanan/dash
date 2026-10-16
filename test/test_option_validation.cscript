@@ -2352,6 +2352,46 @@ foreach r in plotregion graphregion {
 }
 _u05_judge U37-04 `"`bad'"' "margin texts twoway fails on refused in its rc and words; the texts it draws run"
 
+// U39-01 (WP-31 D14): dash build refuses a tabs() name the registry does
+// not hold, a layout() placing two names in one cell and a per-tab
+// layout() it cannot read, r(198), naming them as layout() names its
+// errors (dash's own options; DECISIONS D5); a per-tab layout() over the
+// tab's names builds, rc 0.
+local bad ""
+capture dash clear
+sysuse auto, clear
+quietly dash scatter mpg weight, name(g1)
+quietly dash scatter price weight, name(g2)
+local _u391 "`c(tmpdir)'dash_u391.log"
+local _u391h "`c(tmpdir)'dash_u391.html"
+foreach p in "tabs(A: nosuch g1)|tabs() name 'nosuch' not found in registry." ///
+    "layout(g1:1,1 g2:1,1)|layout() places 'g1' and 'g2' in the same cell 1,1." ///
+    "tabs(A: g1 g2, layout(3 3 3))|tabs(): layout() must be" ///
+    "tabs(A: g1 g2, layout(g1:1,1 g2:1,1))|tabs(): layout() places 'g1' and 'g2' in the same cell 1,1." ///
+    "tabs(A: g1, layout(g2:1,1))|tabs(): layout() name 'g2' not found in registry." ///
+    "tabs(A: g1 g2, layout(bs))|tabs(): layout() must be 'N M' grid or 'name:row,col' placement inside a tab." ///
+    "tabs(A: g1 g2, cols(2))|tabs(): option cols() not allowed" {
+    gettoken o e : p, parse("|")
+    local e = substr(`"`e'"', 2, .)
+    capture log close _ovlog
+    capture erase "`_u391'"
+    log using "`_u391'", name(_ovlog) text replace
+    capture noisily dash build, saving("`_u391h'") `o' replace
+    local rc = _rc
+    log close _ovlog
+    _ov_count "`_u391'" `"`e'"'
+    if `rc' != 198 | r(n) < 1 local bad `"`bad' [`o': rc `rc', line `r(n)']"'
+}
+foreach o in "tabs(A: g1 g2, layout(1 2))" "tabs(A: g1 g2, layout(g2:1,1 g1:1,2) / B: g1)" "layout(g1:1,1 g2:1,2)" `"tabs("A: g1 g2")"' {
+    capture erase "`_u391h'"
+    capture noisily dash build, saving("`_u391h'") `o' replace
+    if _rc local bad `"`bad' [`o': rc `=_rc']"'
+}
+capture erase "`_u391'"
+capture erase "`_u391h'"
+capture dash clear
+_u05_judge U39-01 `"`bad'"' "tabs() names and per-tab layout() checked, same-cell placements refused, as layout() refuses its errors"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

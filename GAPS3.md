@@ -494,7 +494,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit pending.
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Open (WP-31 section 42).
-- **D14 Tracked:** Open (WP-31 section 39).
+- **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit pending.
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Open (WP-31 section 39).
 - **D16b Tracked:** Open (WP-31 section 39).

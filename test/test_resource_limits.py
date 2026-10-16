@@ -1149,7 +1149,8 @@ class TestTheTabAndFilterLimits:
         dr._dash_reset_notes()
         got, msgs = _warns(lambda: dr._dash_parse_tabs(
             "A: g1 / B: g1 / C: g1 / D: g1", ["g1"], 2))
-        assert [t for t, _ in got] == ["A", "B"]
+        # Flipped (WP-31 D14): a tab is (title, names, layout).
+        assert [t for t, *_ in got] == ["A", "B"]
         assert _named(msgs, "tabs() has 4 tabs", "the 2",
                       "dash_max_tabs", "500"), msgs
 

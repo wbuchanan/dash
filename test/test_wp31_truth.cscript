@@ -9694,6 +9694,74 @@ if inlist("`only'", "", "S38") & `: list posof "S38" in w31_run' {
 }
 * ==== end S38 ====
 
+python:
+def _u39_tabs(sp, dp, app):
+    """Each tab's cells, saved (u39_s) and served (u39_v), as
+    "A:g1@0,0 g2@0,1|B:g3@0,0" -- figures named by their title."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import GridPlot, Tabs
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u39_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u39_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+
+    def cells(roots):
+        out = []
+        for root in roots:
+            for t in root.select({"type": Tabs}):
+                for p in t.tabs:
+                    gs = list(p.child.select({"type": GridPlot}))
+                    got = []
+                    for ch in (gs[0].children if gs else []):
+                        tt = getattr(getattr(ch[0], "title", None), "text", "")
+                        got.append("%s@%d,%d" % (tt, ch[1], ch[2]))
+                    out.append(p.title + ":" + " ".join(sorted(got)))
+        return "|".join(out)
+    Macro.setGlobal("u39_s", cells([r._last_layout_root]))
+    Macro.setGlobal("u39_v", cells(list(doc.roots)))
+end
+* ==== S39 D14: tabs() and layout() edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S39") & `: list posof "S39" in w31_run' {
+    display as text "S39 start " c(current_date) " " c(current_time)
+    local u39d "`w31_work'/s39"
+    capture mkdir "`u39d'"
+    dash clear
+    sysuse auto, clear
+    // U39-02: tabs(A: g1 g2, layout(1 2) / B: g3) draws tab A as one row
+    // of two, g1 then g2, and tab B in its automatic grid, saved and
+    // served (dash's own option: no twoway half).
+    quietly dash scatter mpg weight, title(g1) name(g1)
+    quietly dash scatter price weight, title(g2) name(g2)
+    quietly dash scatter turn weight, title(g3) name(g3)
+    _dash_serve_spec, specpath("`u39d'/s1.json") datapath("`u39d'/d1.json") tabs(A: g1 g2, layout(1 2) / B: g3)
+    python: import __main__ as _u39_m; _u39_m._u39_tabs("`u39d'/s1.json", "`u39d'/d1.json", "`u39d'/a1.py")
+    local bad ""
+    foreach m in s v {
+        if `"${u39_`m'}"' != "A:g1@0,0 g2@0,1|B:g3@0,0" local bad `"`bad' `m': ${u39_`m'};"'
+    }
+    _w31_expect U39-02 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U39-02 "a tab's layout() draws its grid, saved and served; a tab without one keeps the automatic grid"
+    macro drop u39_s u39_v
+    dash clear
+    display as text "S39 end " c(current_date) " " c(current_time)
+}
+* ==== end S39 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -775,6 +775,8 @@ FUNCTIONS = {
  '_dash_style_note': 'test/test_option_validation.py::TestOneNotePerOptionPerRender::test_the_helper_dedups_until_reset',
  '_dash_subopt_name': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
  '_dash_tab_panels': 'test/test_server.py::test_compute_kpi_mean_and_dcount',
+ '_dash_tab_grid': 'test/test_tabs_layout_edges.py::TestPerTabLayout::test_the_tab_grid_helper',
+ '_dash_tab_layout': 'test/test_tabs_layout_edges.py::TestPerTabLayout::test_bad_forms_warn',
  '_dash_text_annotations': 'test/test_axis_options.py::TestTitleTextFidelity::test_note_and_caption_do_not_overlap',
  '_dash_edge_titles': 'test/test_edge_titles.py::TestEdgeTitlesAreDrawn::test_each_side_and_ring',
  '_dash_textbox': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',

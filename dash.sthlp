@@ -1659,7 +1659,8 @@ in a narrow window: both pages declare a viewport.
 A {cmd:layout()} that is not one of these forms as a whole, that names an
 item the registry does not hold, that places an item more than once, or that
 gives a span outside 1 to 12 is refused with {cmd:r(198)}; nothing is drawn
-some other way in silence.
+some other way in silence.  Two names placed in the same cell are refused,
+and the message names both.
 
 
 {marker tabs}
@@ -1684,12 +1685,21 @@ For example:
 {phang2}{cmd:. dash build, saving(d.html) tabs(Overview: k1 s1 / Detail: s2 s3) replace}{p_end}
 
 {pstd}
+A tab may end with {cmd:, layout()} in the grid form ({cmd:layout(1 2)})
+or the placement form ({cmd:layout(g1:1,1 g2:1,2)}) over that tab's names,
+each name and each cell used once; a tab without one is drawn in its
+automatic grid.  The first comma after a tab's colon ends its names:
+
+{phang2}{cmd:. dash build, saving(d.html) tabs(Overview: k1 s1, layout(1 2) / Detail: s2 s3) replace}{p_end}
+
+{pstd}
 Tab titles are used exactly as written, less the blanks around them; the
 first colon ends a title, so a title cannot hold a colon, nor a {cmd:/}.  A
 group written without a colon is titled by its place: {cmd:Tab 2} for the
 second.  A registered item named in no tab is still drawn, below the tabs.
-Names that are not in the registry are ignored without a message, and a tab
-left with no registered name is not drawn.  {cmd:tabs()} works with every
+A name that is not in the registry is refused, as {cmd:layout()} refuses
+one, and the message names it; so is a tab's {cmd:layout()} that is not one
+of its two forms over the tab's names.  {cmd:tabs()} works with every
 {cmd:layout()}.  At most 50 tabs are drawn, the first 50: a note gives the
 number asked for and the global that raises the limit (see
 {help dash##limits:Resource limits}), and an item that only the undrawn

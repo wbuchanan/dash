@@ -120,6 +120,13 @@
 *!   _dash_layout_refusal(layout, registry)
 *!       "" when dash build can draw layout() as written, else the refusal.
 *!
+*!   _dash_tabs_unwrap(tabs)
+*!       tabs() less one pair of quotes around the whole value (WP-31 D14).
+*!
+*!   _dash_tabs_refusal(tabs, registry)
+*!       "" when every tabs() name is registered and every per-tab layout()
+*!       reads whole, else the refusal (WP-31 D14).
+*!
 *!   _dash_axlabel_refusal(text)
 *!       The part of an axis label value twoway refuses, or "" (WP-31 D6).
 *!
@@ -1675,11 +1682,13 @@ void _dash_kpi_pctile(string scalar stat, string scalar numname,
 // written.  Each is an ASCII Stata name; names is meaningful only when the
 // count is not missing.
 // ============================================================
-real scalar _dash_layout_scan(string scalar layout, string scalar names) {
+real scalar _dash_layout_scan(string scalar layout, string scalar names,
+                               | string rowvector cells) {
     string scalar s, ch, d1, d2
     real scalar   n, i, j, k, npair, big, allpos, maxr, maxc, r, c, st
 
     names = ""
+    cells = J(1, 0, "")
     s = layout
     for (i = 9; i <= 13; i++) s = subinstr(s, char(i), " ")
     s = strtrim(s)
@@ -1745,6 +1754,9 @@ real scalar _dash_layout_scan(string scalar layout, string scalar names) {
         while (i <= n & _dash_ascii_in(substr(s, i, 1), 48, 57)) i++
         if (i == j) return(.)
         d2 = substr(s, j, i - j)
+        // Each placement's cell as row,col, without leading zeros, in the
+        // order written (WP-31 D14: _dash_layout_refusal compares them).
+        cells = cells, (_dash_layout_digits(d1) + "," + _dash_layout_digits(d2))
         npair++
         if (strlen(d1) > 9 | strlen(d2) > 9) big = 1
         else {
@@ -1759,6 +1771,16 @@ real scalar _dash_layout_scan(string scalar layout, string scalar names) {
     if (big) return(1e18)
     if (allpos) return(maxr * maxc)
     return((maxr + 1) * (maxc + 1))
+}
+
+// _dash_layout_digits(d): ASCII digits d without its leading zeros ("0"
+// for zeros only), so 01,1 and 1,1 are one cell however long the digits.
+string scalar _dash_layout_digits(string scalar d) {
+    real scalar i
+
+    i = 1
+    while (i < strlen(d) & substr(d, i, 1) == "0") i++
+    return(substr(d, i, .))
 }
 
 real scalar _dash_layout_cells(string scalar layout) {
@@ -1812,8 +1834,8 @@ real scalar _dash_is_varname(string scalar s) {
 // ============================================================
 string scalar _dash_layout_refusal(string scalar layout, string scalar registry) {
     string scalar    s, form, names, spec, tok, nm, span
-    string rowvector reg, nms, toks, seen
-    real scalar      i, eq
+    string rowvector reg, nms, toks, seen, cells
+    real scalar      i, j, eq
 
     form = "layout() must be 'auto', 'N M' grid (N and M >= 1), " +
            "'name:row,col' placement, or 'bs[: name=span ...]' Bootstrap layout."
@@ -1860,7 +1882,7 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
     }
 
     names = ""
-    if (missing(_dash_layout_scan(s, names))) return(form)
+    if (missing(_dash_layout_scan(s, names, cells))) return(form)
     nms = tokens(names)
     for (i = 1; i <= cols(nms); i++) {
         if (!anyof(reg, nms[i])) return("layout() name '" + nms[i] + "' not found in registry.")
@@ -1869,6 +1891,85 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
             if (anyof(nms[|1 \ i - 1|], nms[i])) {
                 return("layout() places '" + nms[i] + "' more than once.")
             }
+        }
+        // Two names in one cell: the second took the cell in the served
+        // app and the first vanished, without a word (WP-31 D14).
+        if (i > 1) {
+            for (j = 1; j < i; j++) {
+                if (cells[j] == cells[i]) {
+                    return("layout() places '" + nms[j] + "' and '" + nms[i] + "' in the same cell " + cells[i] + ".")
+                }
+            }
+        }
+    }
+    return("")
+}
+
+// _dash_tabs_unwrap(tabs): tabs() less one pair of quotes around the whole
+// value, "..." or `"..."', when the value inside holds no double quote;
+// else as given (WP-31 D14).  tabs("Main: s1") was read with its quotes,
+// so the last name ended in one and was dropped from the tab.
+string scalar _dash_tabs_unwrap(string scalar tabs)
+{
+    string scalar t, q
+
+    q = char(34)
+    t = strtrim(tabs)
+    if (strlen(t) >= 4 & substr(t, 1, 2) == char(96) + q & substr(t, -2, 2) == q + char(39)) {
+        t = substr(t, 3, strlen(t) - 4)
+    }
+    else if (strlen(t) >= 2 & substr(t, 1, 1) == q & substr(t, -1, 1) == q) {
+        t = substr(t, 2, strlen(t) - 2)
+    }
+    else return(tabs)
+    if (strpos(t, q)) return(tabs)
+    return(t)
+}
+
+// _dash_tabs_refusal(tabs, registry): "" when every name of every tab is
+// registered and every per-tab layout() reads whole over that tab's names
+// (WP-31 D14); otherwise the refusal, without the command.  Tabs are split
+// at /, a tab's title ends at its first colon and its names at the first
+// comma after that; what follows the comma is the tab's options, of which
+// layout() in the grid or placement form is the only one.  The names were
+// dropped from the tab without a word.
+string scalar _dash_tabs_refusal(string scalar tabs, string scalar registry)
+{
+    string rowvector segs, reg, nms, toks
+    string scalar    seg, body, opts, lay, nm, r
+    real scalar      i, j, c
+
+    reg  = tokens(registry)
+    segs = tokens(subinstr(tabs, "/", char(1)), char(1))
+    for (i = 1; i <= cols(segs); i++) {
+        seg = strtrim(segs[i])
+        if (seg == "" | seg == char(1)) continue
+        c = strpos(seg, ":")
+        body = (c ? substr(seg, c + 1, .) : seg)
+        opts = ""
+        c = strpos(body, ",")
+        if (c) {
+            opts = substr(body, c + 1, .)
+            body = substr(body, 1, c - 1)
+        }
+        nms = tokens(body)
+        for (j = 1; j <= cols(nms); j++) {
+            if (!anyof(reg, nms[j])) return("tabs() name '" + nms[j] + "' not found in registry.")
+        }
+        if (strtrim(opts) == "") continue
+        toks = _dash_rep_toks(opts, 1)
+        for (j = 1; j <= cols(toks); j++) {
+            if (toks[j] == "") continue
+            nm = _dash_rep_optname(toks[j])
+            if (nm != "layout" | !strpos(toks[j], "(")) {
+                return("tabs(): option " + nm + "() not allowed")
+            }
+            lay = strtrim(_dash_rep_value(toks[j]))
+            if (strlower(substr(lay, 1, 2)) == "bs" | lay == "" | lay == "auto") {
+                return("tabs(): layout() must be 'N M' grid or 'name:row,col' placement inside a tab.")
+            }
+            r = _dash_layout_refusal(lay, body)
+            if (r != "") return("tabs(): " + r)
         }
     }
     return("")

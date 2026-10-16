@@ -483,7 +483,13 @@ COVERAGE = {
                               "test_gaps2_truth.cscript:AL-01",
                               "test_suboption_reporting.cscript:AD-09"),
         "_dash_axis_run_tag": ("test_gaps2_truth.cscript:AL-02",),
-        "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
+        "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",
+                                 "test_option_validation.cscript:U39-01"),
+        # WP-31 D14: tabs() names and a tab's own layout(); a placement's
+        # cell read without its leading zeros.
+        "_dash_tabs_refusal": ("test_option_validation.cscript:U39-01",),
+        "_dash_tabs_unwrap": ("test_option_validation.cscript:U39-01",),
+        "_dash_layout_digits": ("test_option_validation.cscript:U39-01",),
         # WP-31 D6: the axis label forms twoway refuses.
         "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),
         "_dash_axlabel_rule": ("test_option_validation.cscript:U33-07",),

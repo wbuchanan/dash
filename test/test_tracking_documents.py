@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "D14": "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()",
     "D16": "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked",
     "E1": "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted",
     "E2": "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending",
