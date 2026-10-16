@@ -1260,6 +1260,7 @@ FUNCTIONS = {
  '_dash_by_layout_options': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_layout_options',
  '_dash_by_legend_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_legend_cell',
  '_dash_by_apply_regions': 'test/test_by_remainder.py::TestRegions::test_each_panel',
+ '_dash_by_label_inside': 'test/test_by_label_position.py::TestThePlace::test_ring0',
  '_dash_by_compass_location': 'test/test_by_remainder.py::test_compass_unit',
  '_dash_by_label_box.<locals>._col': 'test/test_by_remainder.py::TestLabelBox::test_box_colours',
  '_dash_by_panel_matches': 'test/test_by_remainder.py::TestLegend::test_items_span_panels',

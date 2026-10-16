@@ -151,6 +151,9 @@ br legend_ring0_hole s2color `"`two', by(rep78, legend(ring(0)))"'
 br legend_ring0_full s2color `"`two', by(foreign, legend(ring(0)))"'
 br legend_ring0_pos5 s2color `"`two', by(rep78, legend(ring(0) pos(5)))"'
 br legend_ring0_pos1 s2color `"`two', by(rep78, legend(ring(0) pos(1)))"'
+br legend_pos1 s2color `"`two', by(rep78, legend(pos(1)))"'
+br legend_pos12 s2color `"`two', by(foreign, legend(pos(12)))"'
+br legend_ring0_pos12 s2color `"`two', by(foreign, legend(ring(0) pos(12)))"'
 br legend_ring0_full_pos1 s2color `"`two', by(foreign, legend(ring(0) pos(1)))"'
 // the by_alternate stubs
 br alt_no s2color `"`one', by(rep78)"'
@@ -176,7 +179,12 @@ br sub_fcolor_lcolor s2color `"`one', by(foreign) subtitle(, fcolor(yellow) lcol
 br sub_nobox s2color `"`one', by(foreign) subtitle(, nobox)"'
 br sub_size_color s2color `"`one', by(foreign) subtitle(, size(large) color(red))"'
 // D3b: the graph's subtitle(, position() ring()) on the panel labels
+br sub_pos12 s2color `"`one', by(foreign) subtitle(, position(12))"'
 br sub_pos5_ring0 s2color `"`one', by(foreign) subtitle(, position(5) ring(0))"'
+foreach c in 1 3 6 7 9 11 0 {
+    br sub_pos`c'_ring0 s2color `"`one', by(foreign) subtitle(, position(`c') ring(0))"'
+}
+br sub_pos1_ring0_nobexpand s2color `"`one', by(foreign) subtitle(, position(1) ring(0) nobexpand)"'
 br sub_pos12_ring0 s2color `"`one', by(foreign) subtitle(, position(12) ring(0))"'
 br sub_pos6 s2color `"`one', by(foreign) subtitle(, position(6))"'
 br sub_pos9 s2color `"`one', by(foreign) subtitle(, position(9))"'

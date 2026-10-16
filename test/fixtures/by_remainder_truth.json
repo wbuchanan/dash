@@ -7,8 +7,8 @@
 "yesno by_skip_xalternate no",
 "yesno by_skip_yalternate no"
 ],
-"dash_commit": "fdd8f4553055c6b3b1e0d37a39a6448eae8c4040",
-"extracted": "16 Oct 2026 02:42:29",
+"dash_commit": "9dca905224c7d2e62043fd5d413cd6200816d7b1",
+"extracted": "16 Oct 2026 03:19:58",
 "source": "scripts/extract_by_remainder_truth.do",
 "stata_version": "19.5"
 },
@@ -6874,6 +6874,865 @@
 }
 ]
 },
+"legend_pos1": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 3,
+"command": "(scatter mpg weight)(lfit mpg weight), by(rep78, legend(pos(1)))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "1"
+},
+{
+"drawn": true,
+"text": "2"
+},
+{
+"drawn": true,
+"text": "3"
+},
+{
+"drawn": true,
+"text": "4"
+},
+{
+"drawn": true,
+"text": "5"
+}
+],
+"log": [],
+"marker_r": 21.03,
+"n": 5,
+"note": "Graphs by Repair record 1978",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 775.44,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 279.3,
+"y": 506.52
+},
+{
+"fill": "none",
+"h": 770.83,
+"stroke": "#ffffff",
+"sw": 4.61,
+"w": 1131.05,
+"x": 281.61,
+"y": 508.83
+},
+{
+"fill": "#ffffff",
+"h": 775.44,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 1484.13,
+"y": 506.52
+},
+{
+"fill": "none",
+"h": 770.83,
+"stroke": "#ffffff",
+"sw": 4.61,
+"w": 1131.05,
+"x": 1486.44,
+"y": 508.83
+},
+{
+"fill": "#ffffff",
+"h": 775.44,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 2688.84,
+"y": 506.52
+},
+{
+"fill": "none",
+"h": 770.83,
+"stroke": "#ffffff",
+"sw": 4.61,
+"w": 1131.05,
+"x": 2691.14,
+"y": 508.83
+},
+{
+"fill": "#ffffff",
+"h": 775.44,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 279.3,
+"y": 1610.66
+},
+{
+"fill": "none",
+"h": 770.83,
+"stroke": "#ffffff",
+"sw": 4.61,
+"w": 1131.05,
+"x": 281.61,
+"y": 1612.96
+},
+{
+"fill": "#ffffff",
+"h": 775.44,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 1484.13,
+"y": 1610.66
+},
+{
+"fill": "none",
+"h": 770.83,
+"stroke": "#ffffff",
+"sw": 4.61,
+"w": 1131.05,
+"x": 1486.44,
+"y": 1612.96
+},
+{
+"fill": "#d9e6eb",
+"h": 115.59,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 279.3,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 110.98,
+"stroke": "#d9e6eb",
+"sw": 4.61,
+"w": 1131.05,
+"x": 281.61,
+"y": 393.24
+},
+{
+"fill": "#d9e6eb",
+"h": 115.59,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 1484.13,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 110.98,
+"stroke": "#d9e6eb",
+"sw": 4.61,
+"w": 1131.05,
+"x": 1486.44,
+"y": 393.24
+},
+{
+"fill": "#d9e6eb",
+"h": 115.59,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 2688.84,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 110.98,
+"stroke": "#d9e6eb",
+"sw": 4.61,
+"w": 1131.05,
+"x": 2691.14,
+"y": 393.24
+},
+{
+"fill": "#d9e6eb",
+"h": 115.59,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 279.3,
+"y": 1495.07
+},
+{
+"fill": "none",
+"h": 110.98,
+"stroke": "#d9e6eb",
+"sw": 4.61,
+"w": 1131.05,
+"x": 281.61,
+"y": 1497.37
+},
+{
+"fill": "#d9e6eb",
+"h": 115.59,
+"stroke": null,
+"sw": null,
+"w": 1135.65,
+"x": 1484.13,
+"y": 1495.07
+},
+{
+"fill": "none",
+"h": 110.98,
+"stroke": "#d9e6eb",
+"sw": 4.61,
+"w": 1131.05,
+"x": 1486.44,
+"y": 1497.37
+},
+{
+"fill": "#ffffff",
+"h": 186.37,
+"stroke": null,
+"sw": null,
+"w": 2002.65,
+"x": 1821.85,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 180.61,
+"stroke": "#000000",
+"sw": 5.76,
+"w": 1996.89,
+"x": 1824.73,
+"y": 138.27
+}
+],
+"rows": 2,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "10",
+"x": 207.37,
+"y": 1231.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "20",
+"x": 207.37,
+"y": 1013.79
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "30",
+"x": 207.37,
+"y": 796.36
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "40",
+"x": 207.37,
+"y": 578.92
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "10",
+"x": 207.37,
+"y": 2335.36
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "20",
+"x": 207.37,
+"y": 2118.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "30",
+"x": 207.37,
+"y": 1900.61
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 79.94,
+"t": "40",
+"x": 207.37,
+"y": 1683.18
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "2,000",
+"x": 2816.18,
+"y": 1385.88
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "3,000",
+"x": 3135.45,
+"y": 1385.88
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "4,000",
+"x": 3454.61,
+"y": 1385.88
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "5,000",
+"x": 3773.88,
+"y": 1385.88
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "2,000",
+"x": 406.64,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "3,000",
+"x": 725.92,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "4,000",
+"x": 1045.07,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "5,000",
+"x": 1364.34,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "2,000",
+"x": 1611.35,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "3,000",
+"x": 1930.62,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "4,000",
+"x": 2249.9,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "5,000",
+"x": 2569.05,
+"y": 2490.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 87.99,
+"t": "1",
+"x": 847.19,
+"y": 466.21
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 87.99,
+"t": "2",
+"x": 2051.9,
+"y": 466.21
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 87.99,
+"t": "3",
+"x": 3256.73,
+"y": 466.21
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 87.99,
+"t": "4",
+"x": 847.19,
+"y": 1570.46
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 87.99,
+"t": "5",
+"x": 2051.9,
+"y": 1570.46
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 1968.99,
+"y": 263.6
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Fitted values",
+"x": 3195.47,
+"y": 263.6
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 1979.88,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Repair record 1978",
+"x": 118.06,
+"y": 2737.89
+}
+]
+},
+"legend_pos12": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(pos(12)))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 1863.36,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 288.34,
+"y": 513.7
+},
+{
+"fill": "none",
+"h": 1858.47,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1728.59,
+"x": 290.79,
+"y": 516.15
+},
+{
+"fill": "#ffffff",
+"h": 1863.36,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 2091.0,
+"y": 513.7
+},
+{
+"fill": "none",
+"h": 1858.47,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1728.59,
+"x": 2093.45,
+"y": 516.15
+},
+{
+"fill": "#d9e6eb",
+"h": 122.76,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 288.34,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 117.87,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1728.59,
+"x": 290.79,
+"y": 393.39
+},
+{
+"fill": "#d9e6eb",
+"h": 122.76,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 2091.0,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 117.87,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1728.59,
+"x": 2093.45,
+"y": 393.39
+},
+{
+"fill": "#ffffff",
+"h": 186.37,
+"stroke": null,
+"sw": null,
+"w": 2002.65,
+"x": 978.62,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 180.61,
+"stroke": "#000000",
+"sw": 5.76,
+"w": 1996.89,
+"x": 981.49,
+"y": 138.27
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 211.79,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 211.79,
+"y": 1756.93
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 211.79,
+"y": 1190.64
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 211.79,
+"y": 624.21
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 462.58,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 964.38,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1466.19,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 1968.0,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2265.24,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2767.05,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3268.86,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 1155.08,
+"y": 470.97
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2957.75,
+"y": 470.97
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 1125.75,
+"y": 263.6
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Fitted values",
+"x": 2352.24,
+"y": 263.6
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 1979.88,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 118.06,
+"y": 2737.89
+}
+]
+},
 "legend_ring0_full": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -8587,6 +9446,326 @@
 "rot": null,
 "size": 79.94,
 "t": "Graphs by Repair record 1978",
+"x": 118.06,
+"y": 2737.89
+}
+]
+},
+"legend_ring0_pos12": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(ring(0) pos(12)))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 1863.36,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 288.34,
+"y": 513.7
+},
+{
+"fill": "none",
+"h": 1858.47,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1728.59,
+"x": 290.79,
+"y": 516.15
+},
+{
+"fill": "#ffffff",
+"h": 1863.36,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 2091.0,
+"y": 513.7
+},
+{
+"fill": "none",
+"h": 1858.47,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1728.59,
+"x": 2093.45,
+"y": 516.15
+},
+{
+"fill": "#d9e6eb",
+"h": 122.76,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 288.34,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 117.87,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1728.59,
+"x": 290.79,
+"y": 393.39
+},
+{
+"fill": "#d9e6eb",
+"h": 122.76,
+"stroke": null,
+"sw": null,
+"w": 1733.49,
+"x": 2091.0,
+"y": 390.94
+},
+{
+"fill": "none",
+"h": 117.87,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1728.59,
+"x": 2093.45,
+"y": 393.39
+},
+{
+"fill": "#ffffff",
+"h": 186.37,
+"stroke": null,
+"sw": null,
+"w": 2002.65,
+"x": 978.62,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 180.61,
+"stroke": "#000000",
+"sw": 5.76,
+"w": 1996.89,
+"x": 981.49,
+"y": 138.27
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 211.79,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 211.79,
+"y": 1756.93
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 211.79,
+"y": 1190.64
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 211.79,
+"y": 624.21
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 462.58,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 964.38,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1466.19,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 1968.0,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2265.24,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2767.05,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3268.86,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 1155.08,
+"y": 470.97
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2957.75,
+"y": 470.97
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 1125.75,
+"y": 263.6
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Fitted values",
+"x": 2352.24,
+"y": 263.6
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 1979.88,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
 "x": 118.06,
 "y": 2737.89
 }
@@ -25445,6 +26624,299 @@ null
 }
 ]
 },
+"sub_pos0_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(0) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 1230.08,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2982.75,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
 "sub_pos1": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -26031,6 +27503,592 @@ null
 }
 ]
 },
+"sub_pos11_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(11) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 403.05,
+"y": 2334.33
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2155.73,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
+"sub_pos12": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(12))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2118.79,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 258.27
+},
+{
+"fill": "none",
+"h": 2113.89,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 260.72
+},
+{
+"fill": "#ffffff",
+"h": 2118.79,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 258.27
+},
+{
+"fill": "none",
+"h": 2113.89,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 260.72
+},
+{
+"fill": "#d9e6eb",
+"h": 122.89,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 117.99,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 122.89,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 117.99,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1674.51
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 1025.67
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 376.95
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 1230.08,
+"y": 215.42
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2982.75,
+"y": 215.42
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
 "sub_pos12_ring0": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -26324,6 +28382,592 @@ null
 }
 ]
 },
+"sub_pos1_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(1) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 2057.22,
+"y": 2334.33
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 3809.89,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
+"sub_pos1_ring0_nobexpand": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(1) ring(0) nobexpand)",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 122.89,
+"stroke": null,
+"sw": null,
+"w": 429.91,
+"x": 1641.92,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 117.99,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 425.01,
+"x": 1644.36,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 122.89,
+"stroke": null,
+"sw": null,
+"w": 353.31,
+"x": 3471.19,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 117.99,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 348.41,
+"x": 3473.64,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 2057.22,
+"y": 215.42
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 3809.89,
+"y": 215.42
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
 "sub_pos3": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -26581,6 +29225,299 @@ null
 },
 {
 "anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 3809.89,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
+"sub_pos3_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(3) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 2057.22,
+"y": 2334.33
+},
+{
+"anchor": "end",
 "fill": "#000000",
 "rot": null,
 "size": 93.56,
@@ -27203,6 +30140,299 @@ null
 }
 ]
 },
+"sub_pos6_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(6) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 1230.08,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2982.75,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
 "sub_pos7": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -27496,6 +30726,299 @@ null
 }
 ]
 },
+"sub_pos7_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(7) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 403.05,
+"y": 2334.33
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2155.73,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
 "sub_pos9": {
 "alternate_xaxes": false,
 "alternate_yaxes": false,
@@ -27753,6 +31276,299 @@ null
 },
 {
 "anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Foreign",
+"x": 2155.73,
+"y": 2334.33
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 99.99,
+"t": "Mileage (mpg)",
+"x": 170.79,
+"y": 1332.71
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 99.99,
+"t": "Weight (lbs.)",
+"x": 2030.0,
+"y": 2634.61
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 79.94,
+"t": "Graphs by Car origin",
+"x": 218.05,
+"y": 2737.89
+}
+]
+},
+"sub_pos9_ring0": {
+"alternate_xaxes": false,
+"alternate_yaxes": false,
+"canvas": {
+"h": 2880.0,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+"cols": 2,
+"command": "scatter mpg weight, by(foreign) subtitle(, position(9) ring(0))",
+"indiv_margin": [
+1.2,
+1.2,
+1.2,
+1.2
+],
+"labels": [
+{
+"drawn": true,
+"text": "Domestic"
+},
+{
+"drawn": true,
+"text": "Foreign"
+}
+],
+"log": [],
+"marker_r": 22.36,
+"n": 2,
+"note": "Graphs by Car origin",
+"rc": 0,
+"rects": [
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 3960.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#eaf2f3",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 3959.88,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#eaf2f3",
+"sw": 5.76,
+"w": 3954.12,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#ffffff",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#ffffff",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 388.33,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 390.78,
+"y": 137.83
+},
+{
+"fill": "#d9e6eb",
+"h": 2241.68,
+"stroke": null,
+"sw": null,
+"w": 1683.5,
+"x": 2141.0,
+"y": 135.39
+},
+{
+"fill": "none",
+"h": 2236.78,
+"stroke": "#d9e6eb",
+"sw": 4.9,
+"w": 1678.6,
+"x": 2143.45,
+"y": 137.83
+}
+],
+"rows": 1,
+"scheme": "s2color",
+"shrink_indiv": false,
+"shrink_plotregion": false,
+"texts": [
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "10",
+"x": 311.78,
+"y": 2323.23
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "20",
+"x": 311.78,
+"y": 1634.91
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "30",
+"x": 311.78,
+"y": 946.47
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 85.02,
+"t": "40",
+"x": 311.78,
+"y": 258.03
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 558.98,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 1045.32,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 1531.65,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 2017.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "2,000",
+"x": 2311.53,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "3,000",
+"x": 2797.99,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "4,000",
+"x": 3284.33,
+"y": 2487.5
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 85.02,
+"t": "5,000",
+"x": 3770.66,
+"y": 2487.5
+},
+{
+"anchor": null,
+"fill": "#000000",
+"rot": null,
+"size": 93.56,
+"t": "Domestic",
+"x": 403.05,
+"y": 2334.33
+},
+{
+"anchor": null,
 "fill": "#000000",
 "rot": null,
 "size": 93.56,

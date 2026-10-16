@@ -3976,11 +3976,11 @@
   - Suggested fix: WP-31 section 42 (smcl inline runs): measure twoway's expansion in each graph text option and expand globals there the way S30 does for text(), by text substitution only, keeping JSE-65's no-double-expansion and no-evaluation guarantees.
   - Resolution: Not fixed because WP-31 section 42 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: subtitle() position() and ring() on a by() panel's label row are named, not drawn
+- [x] Title: subtitle() position() and ring() on a by() panel's label row are named, not drawn
   - File Names and Line Numbers: dash_render.py by() panel label row; _dash_textbox_place
   - Description: GAPS3.md D3, found by WP-31 section 30 (D3): title()/subtitle()/note()/caption() position() and ring() are drawn through _dash_textbox_place, but on a by() graph the panel label row's subtitle(, position() ring()) is still named in the note.
   - Suggested fix: WP-31 section 36 (by remainder): place the by() panel label subtitle by its position() and ring() as twoway does, both modes.
-  - Resolution: Not fixed because WP-31 section 36 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, D3b). _dash_by_panel_label reads the graph's subtitle(, position() ring()) through _dash_textbox_position and places every panel label as twoway does (measured, by_remainder_truth.json sub_pos*): 12, 11 and 1 o'clock above the plot region, centred, left and right; 6, 7 and 5 below it; 9 and 3 at its bottom left and right corner, drawn below at that side (twoway draws a thin box beside the region with the text at its bottom); a ring above 0 changes nothing; ring(0) or position(0) fills the plot region with the label's box and writes the label at the region's bottom at the clock's horizontal (_dash_by_label_inside); by()'s own subtitle() is the overall subtitle and leaves the labels alone; nothing is named; in both renderers. Pinned by test/test_by_label_position.py::TestThePlace::test_sides, test/test_by_label_position.py::TestThePlace::test_ring0, test/test_by_label_position.py::TestThePlace::test_silent, test/test_wp31_truth.cscript U36-07; fixture test/fixtures/by_remainder_truth.json. Closes GAPS3 D3 (WP-31, D3b).
 
 - [ ] Title: Legend stacked, symplacement(), colgap() and the legend's own subtitle(), note() and caption() are named, not drawn
   - File Names and Line Numbers: dash_render.py _dash_apply_legend, _dash_legend_box; the legend sub-option honoured set

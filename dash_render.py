@@ -46720,7 +46720,9 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     from bokeh.models import Title
     text, opts = _dash_textbox_or_default(
         (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key,
-        placed=False, extra=_DASH_BY_LABEL_BOX_WORDS)
+        placed=False,
+        extra=_DASH_BY_LABEL_BOX_WORDS + ("position", "ring", "bexpand",
+                                          "nobexpand"))
     if not text:
         return None
     if scheme is not None:
@@ -46731,6 +46733,31 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     else:
         side, align = "above", "center"
         size_default, color_default = "13px", "#444444"
+    inside = None
+    if "position" in opts or "ring" in opts:
+        # WP-31 D3b: the graph's subtitle(, position() ring()) moves every
+        # panel label (measured, by_remainder_truth.json sub_pos*): 12, 11
+        # and 1 above the plot region, 6, 7 and 5 below it, 9 and 3 at its
+        # bottom corners (drawn below, at that side, as
+        # _dash_textbox_place draws a beside clock); a ring above 0 changes
+        # nothing; ring(0) or position(0) fills the plot region with the
+        # label's box and writes the label at its bottom
+        # (_dash_by_label_box).
+        place = _dash_textbox_position(
+            opts,
+            scheme.text_clock["subtitle"] if scheme is not None else 12,
+            scheme.text_ring["subtitle"] if scheme is not None else 6,
+            scheme.text_just["subheading"] if scheme is not None
+            else "center", "subtitle", note=False)
+        if place["mode"] == "inside":
+            # nobexpand: the box only round the text, at the compass point
+            # (measured: position(1) ring(0) nobexpand at the top right).
+            inside = dict(place, expand="nobexpand" not in opts)
+        else:
+            side, align = place["side"], place["align"]
+    if "nobexpand" in opts and inside is None:
+        # Outside the plot region the box already spans the panel.
+        _dash_report_suboptions("subtitle", ["nobexpand"], seen, key)
     px = _textbox_size(opts, size_default, OptionTranslator.size_ref_of(fig),
                        "subtitle(size)")
     colour, alpha = _textbox_color(
@@ -46746,8 +46773,79 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     # label's box; by_remainder_truth.json sub_*).
     title._dash_box_opts = {k: opts[k] for k in _DASH_BY_LABEL_BOX_WORDS
                             if k in opts}
+    title._dash_inside = inside
     fig.add_layout(title, side)
+    if inside is not None:
+        # The label is drawn inside the plot region (_dash_by_label_box);
+        # the Title stays the label's text record, hidden.
+        title.visible = False
     return title
+
+
+def _dash_by_label_inside(fig, title, scheme, bo, place, mult=1.0):
+    """A by() panel label at ring(0) or position(0) (WP-31 D3b): twoway
+    expands the label's box over the whole plot region and writes the
+    label at the region's bottom, at the clock's horizontal (measured,
+    by_remainder_truth.json sub_pos*_ring0: 1, 3 and 5 right; 7, 9 and 11
+    left; 0, 6 and 12 centred); under nobexpand the box holds the text
+    only, at the clock's compass point (sub_pos1_ring0_nobexpand: top
+    right).  Expanded, the frame takes the box's fill (none under nobox);
+    a ``Label`` tagged ``dash_by_label_inside`` carries the text in the
+    label's size and colour, pinned to the frame (``Node``), with the
+    box's fill behind it when not expanded; returns it.  Idempotent."""
+    from bokeh.models import Label, Node
+    for m in list(fig.center):
+        if "dash_by_label_inside" in (getattr(m, "tags", None) or []):
+            return m
+    place = place if isinstance(place, dict) else {}
+    sx = place.get("sx") if place.get("sx") in ("left", "right",
+                                                 "center") else "center"
+    expand = bool(place.get("expand", True))
+    if expand:
+        sy, anchor = "bottom", "bottom_" + sx
+    else:
+        sy = place.get("sy") if place.get("sy") in ("top", "bottom",
+                                                     "center") else "center"
+        anchor = str(place.get("anchor") or "center")
+    boxed = not ("nobox" in bo and "box" not in bo)
+    fill = None
+    if boxed:
+        fill = getattr(scheme, "by_label_fill", "#d9e6eb")
+        if bo.get("fcolor") or bo.get("bfcolor") or bo.get("bcolor"):
+            c = _textbox_color(
+                {"color": bo.get("fcolor") or bo.get("bfcolor")
+                 or bo.get("bcolor")}, None,
+                colours=getattr(fig, "_dash_scheme_colours", None))
+            fill = c or fill
+        if expand:
+            fig.background_fill_color = fill
+            fig.background_fill_alpha = 1.0
+    try:
+        mult = float(mult)
+        if not math.isfinite(mult) or mult < 0:
+            mult = 1.0
+    except (TypeError, ValueError):
+        mult = 1.0
+    try:
+        f_pt = OptionTranslator.css_to_pt(title.text_font_size)
+    except Exception:  # noqa: BLE001
+        f_pt = None
+    font = (float(f_pt) * OptionTranslator.PX_PER_PT if f_pt else 13.0) \
+        * mult
+    lab = Label(x=Node(target="frame", symbol=sx),
+                y=Node(target="frame", symbol=sy),
+                anchor=anchor, text=str(title.text),
+                background_fill_color=None if expand else fill,
+                text_font_size="%gpx" % round(font, 2),
+                text_color=title.text_color,
+                text_font_style=title.text_font_style,
+                text_font=title.text_font,
+                tags=["dash_by_label_inside"])
+    if title.text_alpha is not None:
+        lab.text_alpha = title.text_alpha
+    setattr(lab, _DASH_GRAPH_TEXT_DONE, True)
+    fig.center = list(fig.center) + [lab]
+    return lab
 
 
 #: The textbox words a by() panel label's box draws (WP-31 D10): fill,
@@ -47413,6 +47511,9 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
     if title is None or not str(title.text or ""):
         return None
     bo = getattr(title, "_dash_box_opts", None) or {}
+    inside = getattr(title, "_dash_inside", None)
+    if inside is not None:
+        return _dash_by_label_inside(fig, title, scheme, bo, inside, mult)
     if "nobox" in bo and "box" not in bo:
         # subtitle(, nobox): the label without its box (measured).
         return None
@@ -57125,6 +57226,8 @@ class ServerAppBuilder:
                          "_dash_by_panel_matches",
                          "_dash_by_compass_location",
                          "_dash_by_subtitle_format",
+                         # WP-31 D3b: a panel label at ring(0).
+                         "_dash_by_label_inside",
                          "_dash_by_side", "_dash_by_side_grid",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
                          # The arrowheads' document_ready hooks (WP-31 C1).

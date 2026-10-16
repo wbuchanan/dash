@@ -515,7 +515,7 @@ and now matches Stata.
 
 <!-- WP-31 D13b -->
 
-<!-- WP-31 D3b -->
+- dash scatter mpg weight, by(foreign) subtitle(, position(6)) named position() and drew every panel label above its panel; now the labels sit where twoway puts them: below at 6, 7 and 5, above at 12, 11 and 1 (left or right as the clock says), at the bottom corners at 9 and 3, and with ring(0) in the plot region, which takes the label box's fill (WP-31, D3b)
 
 <!-- WP-31 D4b -->
 

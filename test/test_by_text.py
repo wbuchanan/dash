@@ -164,7 +164,10 @@ def _panel_boxes(fig):
     Label but its label)."""
     out = [m.text for m in list(fig.above) + list(fig.below)
            if type(m).__name__ == "Title" and m.name != "dash_by_label"]
-    out += [m.text for m in fig.center if type(m).__name__ == "Label"]
+    # Flipped (WP-31 D3b): a label at ring(0) is drawn in the plot region
+    # (tag dash_by_label_inside); it is the label, not a box of its own.
+    out += [m.text for m in fig.center if type(m).__name__ == "Label"
+            and "dash_by_label_inside" not in (m.tags or [])]
     return sorted(t for t in out if t)
 
 
@@ -339,11 +342,16 @@ class TestTheOverallText:
 
     def test_a_subtitle_sub_option_is_named_once(self, mode):
         """subtitle(, ring(0) pos(1) nobexpand) keeps the labels and names
-        what dash cannot draw once for the graph, not once per panel."""
-        r = _draw(mode, _spec({"subtitle": ", ring(0) pos(1) nobexpand",
+        what dash cannot draw once for the graph, not once per panel.
+        Flipped (WP-31 D3b): ring(0), pos(1) and nobexpand are drawn now
+        (by_remainder_truth.json sub_pos1_ring0_nobexpand), so margin(),
+        which the panel label does not draw, is the example."""
+        r = _draw(mode, _spec({"subtitle": ", ring(0) pos(1) nobexpand "
+                                           "margin(large)",
                                "by": "foreign"}))
         assert [panel_label(f) for f in r.panels] == ["Domestic", "Foreign"]
-        named = [n for n in r.notes if "ring(0)" in n]
+        assert not [n for n in r.notes if "ring(0)" in n], r.notes
+        named = [n for n in r.notes if "margin(large)" in n]
         assert len(named) == 1, r.notes
 
 

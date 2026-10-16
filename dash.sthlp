@@ -2898,7 +2898,12 @@ the panels, is named and ignored.  {cmd:subtitleformat()} writes an
 unlabelled panel value in its numeric format ({cmd:var}: the variable's
 own), and is ignored, as in {cmd:twoway}, when it is not a numeric format.
 The graph's own {cmd:subtitle(, fcolor() lcolor() nobox)} restyle every
-panel label's box; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
+panel label's box, and its {cmd:position()} and {cmd:ring()} place every
+label as {cmd:twoway} does: above the plot region at 12, 11 and 1 o'clock,
+below it at 6, 7 and 5, at its bottom corners at 9 and 3 (below the
+region, where {cmd:twoway} draws a narrow box beside it), and, with
+{cmd:ring(0)}, inside the region, which takes the label box's fill, at its
+bottom; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
 Each panel's plot-region margin is {cmd:twoway}'s, times the panels' size
 multiplier and {cmd:iscale()}.  A one-panel {cmd:by()} whose value label is
 empty draws no label box, as {cmd:twoway}, and the Graphs-by note.  Any
@@ -4729,8 +4734,10 @@ a box above or below the plot already spans the graph, so an unspanned
 box is wider than {cmd:twoway}'s.  {cmd:orientation()}, {cmd:width()},
 {cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
 sub-options are named in the note: a title box has no angle and no fixed
-size.  On a {cmd:by()} graph a panel's label row keeps its place and
-names them.
+size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},
+{cmd:ring()}, the box colours and {cmd:box}/{cmd:nobox}, as {cmd:twoway}
+places and fills it (see Faceting with {cmd:by()}), and names the other
+placement and box sub-options.
 
 
 {marker colorvar}
