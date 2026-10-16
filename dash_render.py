@@ -1116,6 +1116,10 @@ def _dash_read_data_json(text):
 #: variable (WP-31 G1): ``__dashm_<var>``, "" or "a" to "z" in each row.
 _DASH_CODE_PREFIX = "__dashm_"
 
+#: The column a carried user variable takes when a derived key of its name
+#: is taken (WP-31 G3): ``__dashu_<var>``.
+_DASH_USER_ALIAS_PREFIX = "__dashu_"
+
 #: The display-text column of a coded variable's tooltip (WP-31 G1).
 _DASH_CODE_TEXT_PREFIX = "__dasht_"
 
@@ -2439,7 +2443,28 @@ def _dash_graph_qual_cols(g):
     return out
 
 
-def _dash_graph_computed_cells(g, rows, by_groups_limit=1):
+def _dash_by_panel_count(frame, by_raw, limit):
+    """The panels ``by(by_raw)`` draws over *frame* (WP-31 G3): its groups
+    as both modes make them (``_dash_by_groups``; missing values only under
+    ``missing``, .a-.z apart), at most *limit*, plus one for ``total``.
+    None when *frame* is None or lacks a by() variable."""
+    bv, _cols, total, missing, _u = _dash_parse_by(str(by_raw or ""),
+                                                  warn=False)
+    names = bv.split()
+    if frame is None or not names or any(v not in frame.columns
+                                         for v in names):
+        return None
+    work = frame if missing else _dash_by_nonmissing(frame, names)
+    if work.empty:
+        n = 0
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            n = len(_dash_by_groups(work, names, missing, max(1, int(limit))))
+    return n + (1 if total else 0)
+
+
+def _dash_graph_computed_cells(g, rows, by_groups_limit=1, panels=None):
     """-1 unless every plot of *g* is a computed-only type
     (_DASH_COMPUTED_ONLY_TYPES) and *g* has no by(); else the cells its
     computed layers draw -- the Python twin of dash_parse.mata's
@@ -2451,17 +2476,20 @@ def _dash_graph_computed_cells(g, rows, by_groups_limit=1):
     different representations: a graph holding two histograms with
     different bin() values is counted from the first.
 
-    by() returns -1 (not computed-only): the actual panel count is not
-    known before the export, and multiplying the per-panel bound by
-    *by_groups_limit* instead (100 by default) makes even a two-panel
-    by(foreign) on a generic computed type -- kdensity, lpoly, lpolyci,
-    the fits, mspline, mband, all bounded at _DASH_COMPUTED_PLOT_CELLS --
-    read as 12,000,000, over the default cells limit on any dataset,
-    however small.  A by()-faceted graph is counted in full instead, as
-    it was before this section.
+    by() is counted with its real panel count *panels*
+    (``_dash_by_panel_count``, WP-31 G3): each panel's computed layers
+    draw at most their one-panel bound, and a lowess draws two cells per
+    observation whichever panel holds it.  Multiplying by
+    *by_groups_limit* instead (100 by default) made even a two-panel
+    by(foreign) on a generic computed type read as 12,000,000; with
+    *panels* None (unknown) by() returns -1 and the graph is counted in
+    full, as before.
     """
     if str((g.get("graph_options") or {}).get("by") or "").strip():
-        return -1
+        if panels is None:
+            return -1
+    else:
+        panels = 1
     plots = [p for p in (g.get("plots") or []) if isinstance(p, dict)]
     if not plots:
         return -1
@@ -2503,14 +2531,14 @@ def _dash_graph_computed_cells(g, rows, by_groups_limit=1):
         if ptype == "lowess":
             total += 2 * rows
         elif ptype == "histogram":
-            total += 4 * (rows if wd else bins)
+            total += 4 * (rows if wd else bins * panels)
         else:
-            total += _DASH_COMPUTED_PLOT_CELLS
+            total += _DASH_COMPUTED_PLOT_CELLS * panels
 
     return total
 
 
-def _dash_embedded_cells(spec, rows, columns, limits):
+def _dash_embedded_cells(spec, rows, columns, limits, frame=None):
     """(row_cols, extra) -- what a SAVED page embeds for *spec* over
     *rows* observations of *columns* (GAPS2 G3): the Python twin of
     dash.ado's _dash_prepare_spec accounting and dash_parse.mata's
@@ -2558,8 +2586,11 @@ def _dash_embedded_cells(spec, rows, columns, limits):
         touched = bool(
             gname in linked or hover
             or any(gname not in (f.get("exclude") or []) for f in filters))
+        _by = str(go.get("by") or "").strip()
         gc = -1 if touched else _dash_graph_computed_cells(
-            g, rows, by_groups_limit)
+            g, rows, by_groups_limit,
+            _dash_by_panel_count(frame, _by, by_groups_limit)
+            if _by else None)
         if gc >= 0 and not touched:
             extra += gc
             continue
@@ -13519,8 +13550,17 @@ class GlyphMapper:
         except (StopIteration, TypeError):
             return data
         for _k, _v in dict(getattr(source, "data", {}) or {}).items():
+            _key = _k
             if _k in data:
-                continue
+                # A user variable named like a derived key (x, y, top,
+                # count ...) is carried under a reserved alias, so hover()
+                # and mlabel() still reach it (WP-31 G3, _user_field).
+                _key = _DASH_USER_ALIAS_PREFIX + str(_k)
+                if (_key in data or str(_k).startswith("__dash")
+                        or _k == "index"
+                        or GlyphMapper._same_column(_v, data[_k],
+                                                    selector)):
+                    continue
             try:
                 _col = np.asarray(_v)
                 if _col.dtype.kind in "fiub":
@@ -13531,11 +13571,39 @@ class GlyphMapper:
                     _col = _col[selector]
                 if len(_col) != _n:
                     continue
-                data[_k] = (_col if _col.dtype.kind in "fM"
-                            else _col.tolist())
+                data[_key] = (_col if _col.dtype.kind in "fM"
+                              else _col.tolist())
             except (TypeError, ValueError, IndexError, KeyError):
                 continue
         return data
+
+    @staticmethod
+    def _same_column(src_col, derived, selector=None):
+        """True when the derived column already holds the caller's column
+        (after *selector*): the plotted variable itself, which needs no
+        alias (WP-31 G3).  Columns that cannot be compared are not the
+        same."""
+        try:
+            a = np.asarray(src_col)
+            if selector is not None:
+                a = a[selector]
+            b = np.asarray(derived)
+            if a.shape != b.shape:
+                return False
+            if a.dtype.kind in "fiub" and b.dtype.kind in "fiub":
+                return bool(np.array_equal(a.astype(float), b.astype(float),
+                                           equal_nan=True))
+            return bool(np.array_equal(a, b))
+        except (TypeError, ValueError, IndexError):
+            return False
+
+    @staticmethod
+    def _user_field(name, data):
+        """The column a user variable *name* is carried under in *data*:
+        its alias ``__dashu_<name>`` when a derived key of the same name
+        shadows it (``_carry_cols``, WP-31 G3), else *name*."""
+        alias = _DASH_USER_ALIAS_PREFIX + str(name)
+        return alias if alias in (data or {}) else str(name)
 
     def _hover_tool(self, yvar: str, xvar: str,
                    renderers: "list | None" = None) -> HoverTool:
@@ -15671,7 +15739,9 @@ class GlyphMapper:
             )
         if not mlabel_var:
             return
-        values_col = label_col or mlabel_var
+        # A user variable shadowed by a derived key is read from its
+        # alias (WP-31 G3).
+        values_col = label_col or self._user_field(mlabel_var, source.data)
         if values_col not in source.data:
             # Every source that reaches here carries the label column when
             # the data has it (map_line's is the frame, map_dropline's is
@@ -51076,11 +51146,15 @@ def _dash_add_hover_text(source, var, vlabels):
     """
     col = _dash_hover_text_column(var)
     data = getattr(source, "data", None)
-    if data is None or var not in data:
+    if data is None:
+        return None
+    # A shadowed user variable is read from its alias (WP-31 G3).
+    src_col = GlyphMapper._user_field(var, data)
+    if src_col not in data:
         return None
     if col in data:
         return col
-    vals = data[var]
+    vals = data[src_col]
     try:
         n = len(vals)
     except TypeError:
@@ -51107,14 +51181,17 @@ def _dash_add_code_text(source, var, fmt="", storage="", vlabels=None,
     """
     data = getattr(source, "data", None)
     codes_col = _DASH_CODE_PREFIX + str(var)
-    if data is None or var not in data or codes_col not in data:
+    if data is None or codes_col not in data:
+        return None
+    src_col = GlyphMapper._user_field(var, data)
+    if src_col not in data:
         return None
     col = _DASH_CODE_TEXT_PREFIX + str(var)
     if col in data:
         return col
     fmt = fmt if _dash_fmt_kind(fmt) in ("f", "g", "e") else "%9.0g"
     out = []
-    for v, c in zip(data[var], data[codes_col]):
+    for v, c in zip(data[src_col], data[codes_col]):
         if isinstance(c, str) and c:
             out.append(_dash_code_text(c, vlabels))
         elif GlyphMapper._mlabel_missing(v):
@@ -51309,12 +51386,23 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
         if _col:
             _text_cols[_name] = _col
 
-    def _fields_for(names):
+    def _fields_for(names, rends=()):
         """(tooltip rows, formatters, every name considered) for the
-        variables *names*, then hover()'s, that some renderer carries."""
+        variables *names*, then hover()'s, that some renderer carries.  A
+        hover() variable a derived key shadows in *rends*' sources is read
+        from its alias (WP-31 G3, ``GlyphMapper._user_field``)."""
         _wanted, _seen = [], set()
+        _alias = {}
+        _extra = set(hover_extra or [])
+        for _r in rends:
+            for _k in _cols_of(_r):
+                if str(_k).startswith(_DASH_USER_ALIAS_PREFIX):
+                    _base = str(_k)[len(_DASH_USER_ALIAS_PREFIX):]
+                    if _base in _extra:
+                        _alias[_base] = str(_k)
         for _c in list(names) + list(hover_extra or []):
-            if not _c or _c in _seen or _c not in _present:
+            if not _c or _c in _seen or (
+                    _c not in _present and _c not in _alias):
                 continue
             # The column name is written into a tooltip FIELD as `@{name}',
             # which BokehJS parses as HTML (replace_placeholders_html, then
@@ -51338,11 +51426,12 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             # The column a renderer must carry for the full tooltip: the
             # derived label column when hover() found one, else the
             # variable itself.
-            _seen.add(_text_cols.get(_c, _c))
+            _seen.add(_text_cols.get(_c, _alias.get(_c, _c)))
         _flds, _fmts = [], {}
         for _c in _wanted:
             _row, _fmt_pair = _dash_hover_row(
-                _c, _dash_var_label(var_labels, _c), formats.get(_c, ""),
+                _alias.get(_c, _c), _dash_var_label(var_labels, _c),
+                formats.get(_c, ""),
                 date_vars.get(_c, ""), storage_types.get(_c, ""),
                 fmt_cache, text_col=_text_cols.get(_c))
             _flds.append(_row)
@@ -51369,7 +51458,7 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     _tools = []
     _full, _rest = [], []
     for _names, _grends in _groups:
-        _flds, _fmts, _seen = _fields_for(_names)
+        _flds, _fmts, _seen = _fields_for(_names, _grends)
         _g_full = [r for r in _grends if _flds and _seen <= _cols_of(r)]
         _rest.extend(r for r in _grends if not any(r is x for x in _g_full))
         if not _g_full:
@@ -54038,7 +54127,7 @@ class DashRenderer:
         # need not recompute it.
         self._embedded_row_cols, self._embedded_extra = _dash_embedded_cells(
             self.master_spec, self.df.shape[0], list(self.df.columns),
-            self.limits)
+            self.limits, frame=self.df)
         # Refused before anything is drawn from it: dash.ado refuses the
         # same data before exporting it, so this is for a spec that reached
         # the renderer another way.
@@ -58320,6 +58409,7 @@ class ServerAppBuilder:
                       "_DASH_RESERVED_PREFIX",
                       # Extended missing values' columns (WP-31 G1).
                       "_DASH_CODE_PREFIX", "_DASH_CODE_TEXT_PREFIX",
+                      "_DASH_USER_ALIAS_PREFIX",
                       "_DASH_CODE_LETTERS", "_DASH_MISSING_LABEL_KEY",
                       # Stata's leap seconds for %tC (WP-31 G2).
                       "_STATA_LEAP_SECONDS_TC_MS",

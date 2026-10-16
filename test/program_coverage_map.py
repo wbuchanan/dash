@@ -455,6 +455,9 @@ COVERAGE = {
         # e2e: through _dash_json_str_args; direct in PC-28.
         # WP-31 G2: the comma formats under set dp comma.
         "_dash_dp_format": ("test_wp31_truth.cscript:U43-03",),
+        # WP-31 G3: a by() graph's real panel count, through
+        # _dash_computed_cells.
+        "_dash_by_panel_n": ("test_wp31_truth.cscript:U43-07",),
         "_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
         # e2e: _dash_json_str is this function's one caller.

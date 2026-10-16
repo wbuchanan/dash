@@ -512,7 +512,8 @@
 *!       (120,000, the bound on every computed layer this does not count
 *!       exactly) and _dash_filter_excludes(group) (the exclude() names of
 *!       one filter() group, factored out of _dash_filter_refusal) are its
-*!       own internal helpers, called by no other program directly.
+*!       own internal helpers, called by no other program directly; so is
+*!       the one that counts a by() graph's real panels (WP-31 G3).
 *!
 *!   _dash_graph_touched(gname, gjson, filter, link, csv)
 *!       1 when a filter, link(), csv or hover() reaches gname's rows
@@ -11192,22 +11193,23 @@ real scalar _dash_computed_plot_cells() {
 // (max(1, floor(min(sqrt(nobs), 10*log10(nobs))))); every other computed
 // type is bounded by _dash_computed_plot_cells().
 //
-// by() returns -1 (not computed-only): the actual panel count is not
-// known before the export, and multiplying the per-panel bound by the
-// by_groups LIMIT instead (100 by default) makes even a two-panel
-// by(foreign) on a generic computed type -- kdensity, lpoly, lpolyci,
-// the fits, mspline, mband, all bounded at 120,000 -- read as
-// 12,000,000, over the DEFAULT cells limit on any dataset, however
-// small (measured: it refused test_help_claims_6.py's fifty-point lpoly
-// grid under by(foreign), which built before this section and must
-// still build).  A by()-faceted graph is counted in full instead, as it
-// was before this section, until the real panel count is known here.
+// by() is counted with its real panel count (_dash_by_panel_n, WP-31
+// G3): each panel's computed layers draw at most their one-panel bound,
+// and a lowess two cells per observation whichever panel holds it.
+// Multiplying by the by_groups LIMIT instead (100 by default) made even a
+// two-panel by(foreign) on a generic computed type read as 12,000,000; a
+// by() whose variables cannot be read returns -1 (counted in full).
+// dash_render.py's _dash_graph_computed_cells is the twin.
 real scalar _dash_computed_cells(string scalar gjson, real scalar nobs,
                                  real scalar bygroups, string scalar types) {
-    real scalar P, L, H, wd, bin_val, bins, cells
+    real scalar P, L, H, wd, bin_val, bins, cells, G
 
-    if (_dash_json_has_value(gjson, "by")) return(-1)
     if (!_dash_spec_types_in(gjson, types)) return(-1)
+    G = 1
+    if (_dash_json_has_value(gjson, "by")) {
+        G = _dash_by_panel_n(gjson, bygroups)
+        if (G < 0) return(-1)
+    }
 
     P = _dash_json_count_key(gjson, "type", "")
     L = _dash_json_count_key(gjson, "type", "lowess")
@@ -11225,9 +11227,54 @@ real scalar _dash_computed_cells(string scalar gjson, real scalar nobs,
     else if (nobs <= 0) bins = 1
     else bins = max((1, floor(min((sqrt(nobs), 10 * log10(nobs))))))
 
-    cells = L * 2 * nobs + H * 4 * (wd ? nobs : bins) +
-            (P - L - H) * _dash_computed_plot_cells()
+    cells = L * 2 * nobs + H * 4 * (wd ? nobs : bins * G) +
+            (P - L - H) * _dash_computed_plot_cells() * G
     return(cells)
+}
+
+// _dash_by_panel_n(gjson, bygroups) -- the panels the graph's by() draws
+// over the data in memory: its distinct value combinations (rows with a
+// missing value, . or .a-.z or "", left out unless `missing'; each
+// extended missing value its own panel), at most bygroups, plus one for
+// `total'.  -1 when a by() variable is not in the data.  The local
+// _dbp_by is used as scratch.  dash_render.py's _dash_by_panel_count is
+// the twin.
+real scalar _dash_by_panel_n(string scalar gjson, real scalar bygroups)
+{
+    string scalar   raw, vl, op
+    string rowvector vars
+    string matrix   key
+    real colvector  keep
+    real scalar     p, i, idx, n, miss, tot
+
+    _dash_json_get_str(gjson, "by", "_dbp_by")
+    raw = st_local("_dbp_by")
+    p = strpos(raw, ",")
+    vl = p ? substr(raw, 1, p - 1) : raw
+    op = p ? " " + strlower(substr(raw, p + 1, .)) + " " : ""
+    miss = ustrregexm(op, "[ ,](mis|miss|missi|missin|missing)[ ,(]")
+    tot  = ustrregexm(op, "[ ,](tot|tota|total)[ ,(]")
+    vars = tokens(vl)
+    if (cols(vars) == 0) return(-1)
+    n = st_nobs()
+    key = J(n, cols(vars), "")
+    keep = J(n, 1, 1)
+    for (i = 1; i <= cols(vars); i++) {
+        idx = _st_varindex(vars[i], 1)
+        if (idx == .) return(-1)
+        if (st_isstrvar(idx)) {
+            key[., i] = st_sdata(., idx)
+            if (!miss) keep = keep :* (key[., i] :!= "")
+        }
+        else {
+            key[., i] = strofreal(st_data(., idx), "%21x")
+            if (!miss) keep = keep :* (st_data(., idx) :< .)
+        }
+    }
+    key = select(key, keep)
+    n = rows(key) ? rows(uniqrows(key)) : 0
+    if (n > bygroups) n = bygroups
+    return(n + tot)
 }
 
 // _dash_reflines_positions(gjson) -- the reference-line positions of one

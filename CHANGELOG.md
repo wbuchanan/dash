@@ -1051,7 +1051,7 @@ Changed behaviour.
 
 - The served app's header no longer carries the unread _SIZE_MAP; one constant (PT_PER_RS) gives points per unit; the histogram's scheme opacity is pinned by a test (WP-31, E13)
 
-<!-- WP-31 G3 -->
+- A user variable named like one of dash's own columns (x, y, top, count ...) showed that column's values in hover() and mlabel() on layers that rebuild their source (dropline); it shows the user's values. A by()-faceted histogram, kernel density or fit is counted against the cells limit by its panels, not as every observation of its variables (WP-31, G3)
 
 - A hover(), mlabel or row-id column carried into a derived source was handed to Bokeh as a Python list of objects, which bokeh 3.8 validates item by item (7.5 of 7.7 s on a million-row line); a numeric column is now a float64 array (WP-31, G4)
 

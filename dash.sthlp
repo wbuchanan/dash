@@ -197,8 +197,10 @@ dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
 tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
 reserved for every column dash makes -- the qualifier columns
 {cmd:__dashq}{it:#}, the join-order columns {cmd:__dashs}{it:#}, the row
-identity {cmd:__dash_row__}, its marker-label and jitter columns, and the
-missing-code columns {cmd:__dashm_}{it:var} and display-text columns
+identity {cmd:__dash_row__}, its marker-label and jitter columns, the
+alias {cmd:__dashu_}{it:var} under which a variable named like one of its
+own columns ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count} ...) reaches
+{cmd:hover()} and {cmd:mlabel()}, and the missing-code columns {cmd:__dashm_}{it:var} and display-text columns
 {cmd:__dasht_}{it:var} that carry {cmd:.a} to {cmd:.z} -- and data holding such a variable are
 refused with {cmd:r(110)} before anything is exported; every other Stata
 name, however dash-like it looks, is read as your data.

@@ -527,7 +527,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F5 Tracked:** Open (WP-31 section 46).
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit pending.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit pending.
-- **G3 Tracked:** Open (WP-31 section 43).
+- **G3 Tracked:** Partly closed in WP-31 (section 43, commit pending): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit pending.
 - **G5 Tracked:** Open (WP-31 section 43).
 - **G6 Tracked:** Open (WP-31 section 46).

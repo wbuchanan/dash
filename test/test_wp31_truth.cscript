@@ -11860,6 +11860,98 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
 }
 * ==== end S43 ====
 
+python:
+def _u43_shadow(sp, dp, app):
+    """u43_bad: dropline ..., hover(x) with a user variable x does not
+    show the user's x (read from __dashu_x), saved or served."""
+    import __main__ as m
+    from sfi import Data, Macro
+    want = sorted(float(v) for v in Data.get(var="x"))[:3]
+    bad = []
+    for mode, models in zip(("saved", "served"), m._u43_models(sp, dp, app)):
+        fields = [f for x in models if type(x).__name__ == "HoverTool"
+                  for _l, f in (x.tooltips or [])]
+        if not any(f.startswith("@{__dashu_x}") for f in fields):
+            bad.append("%s fields %s" % (mode, fields))
+        got = [sorted(float(v) for v in x.data["__dashu_x"])[:3]
+               for x in models if type(x).__name__ == "ColumnDataSource"
+               and "__dashu_x" in x.data]
+        if not got or got[0] != want:
+            bad.append("%s values %s, data %s" % (mode, got[:1], want))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+
+
+def _u43_cells(cases, bygroups):
+    """u43_bad: where Mata's _dash_computed_cells (u43_mata_<i>) differs
+    from the renderer's twin over the data in memory, per case."""
+    import json
+    import pandas as pd
+    import dash_render as dr
+    from sfi import Data, Macro
+    names = [Data.getVarName(i) for i in range(Data.getVarCount())]
+    df = pd.DataFrame({v: Data.get(var=v, missingval=float("nan"))
+                       for v in names})
+    # rep78's .a/.b as the data file carries them (WP-31 G1).
+    if "u43code" in df.columns:
+        df["__dashm_rep78"] = df.pop("u43code")
+    bad = []
+    for i, g in enumerate(json.loads(cases), 1):
+        by = g["graph_options"].get("by", "")
+        py = dr._dash_graph_computed_cells(
+            g, len(df), bygroups,
+            dr._dash_by_panel_count(df, by, bygroups) if by else None)
+        mt = float(Macro.getGlobal("u43_mata_%d" % i))
+        if py != mt:
+            bad.append("case %d by(%s): mata %s python %s" % (i, by, mt, py))
+    Macro.setGlobal("u43_bad", "; ".join(bad)[:2000])
+end
+
+* ==== S43 G3: Shadowed names and the planned count ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S43") & `: list posof "S43" in w31_run' {
+    display as text "S43 start " c(current_date) " " c(current_time)
+    local u43d "`w31_work'/s43g3"
+    capture mkdir "`u43d'"
+
+    // U43-06: twoway accepts a variable named x; dash's hover(x) shows
+    // the user's x on a dropline, whose own source names a column x.
+    sysuse auto, clear
+    generate x = price
+    capture twoway dropline mpg weight
+    local u43rc = _rc
+    _u43_spec "`u43d'" 7 dropline mpg weight, hover(x)
+    python: import __main__ as _u43_m; _u43_m._u43_shadow("`u43d'/s7.json", "`u43d'/d7.json", "`u43d'/a7.py")
+    _w31_expect U43-06 "(`u43rc' == 0)" "twoway dropline rc `u43rc'"
+    _w31_expect U43-06 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-06 "hover(x) shows the user's x where a derived x shadows it, saved and served"
+
+    // U43-07: a by()-faceted computed-only graph is counted by its real
+    // panels in Stata (_dash_computed_cells) as the renderer counts it.
+    sysuse auto, clear
+    local seen 0
+    forvalues i = 1/`=_N' {
+        if missing(rep78[`i']) {
+            local ++seen
+            quietly replace rep78 = cond(`seen' <= 2, .a, .b) in `i'
+        }
+    }
+    quietly generate str1 u43code = cond(rep78 == .a, "a", cond(rep78 == .b, "b", ""))
+    local u43c1 `"{"name":"h1","graph_options":{"by":"foreign"},"plots":[{"type":"histogram","var":"mpg","options":{}}]}"'
+    local u43c2 `"{"name":"h2","graph_options":{"by":"rep78, missing total"},"plots":[{"type":"kdensity","var":"mpg","options":{}}]}"'
+    local u43c3 `"{"name":"h3","graph_options":{"by":"rep78"},"plots":[{"type":"lowess","yvar":"mpg","xvar":"weight","options":{}}]}"'
+    forvalues i = 1/3 {
+        mata: st_global("u43_mata_`i'", strofreal(_dash_computed_cells(st_local("u43c`i'"), st_nobs(), 100, "histogram kdensity lowess")))
+    }
+    local u43cases `"[`u43c1',`u43c2',`u43c3']"'
+    python: import __main__ as _u43_m; from sfi import Macro as _u43_M; _u43_m._u43_cells(_u43_M.getLocal("u43cases"), 100)
+    _w31_expect U43-07 `"("${u43_mata_2}" != "-1")"' "Mata counted by(rep78, missing total) in full"
+    _w31_expect U43-07 `"("${u43_bad}" == "")"' `"${u43_bad}"'
+    _w31_done U43-07 "by() computed-only graphs are counted by their panels, Mata as the renderer (${u43_mata_1} ${u43_mata_2} ${u43_mata_3})"
+    macro drop u43_mata_*
+    display as text "S43 end " c(current_date) " " c(current_time)
+}
+* ==== end S43 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
