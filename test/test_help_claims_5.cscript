@@ -468,7 +468,9 @@ assert r(found) == 0
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink style(econ)) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("`hc5by'style(econ)")
+// Flipped (WP-31 D10c): style(econ) is drawn as its options and names
+// its label margin in its own line, once; bgcolor(red) ends the list.
+cert_log_has "`logfile'", needle("sub-option style(econ): the panel labels' margin(small)")
 assert r(count) == 1
 capture dash clear
 dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink) name(hc8)

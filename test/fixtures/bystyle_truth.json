@@ -1,0 +1,41 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "79f163023eb2c7e2f05a7995b8ca5e789c1c4236",
+  "extracted": "16 Oct 2026",
+  "source": "scripts/extract_bystyle_truth.do",
+  "stata_version": "19.5"
+ },
+ "styles": {
+  "combine": {
+   "by_words": "rescale individual ixtitle iytitle imargin(medsmall)",
+   "diff_lines": 600,
+   "notes_expanded": [],
+   "notes_style": [
+    "(note: named style combineregion not found in class graphstyle, default attributes used)"
+   ],
+   "options": "subtitle(, nobox)"
+  },
+  "econ": {
+   "by_words": "",
+   "diff_lines": 0,
+   "notes_expanded": [],
+   "notes_style": [],
+   "options": "subtitle(, margin(small)) plotregion(color(edkbg) margin(t=5))"
+  },
+  "rescale": {
+   "by_words": "rescale individual imargin(medsmall)",
+   "diff_lines": 0,
+   "notes_expanded": [],
+   "notes_style": [],
+   "options": "subtitle(, box astextbox blstyle(foreground)) ylabels(#3) xlabels(#3)"
+  },
+  "stata7": {
+   "by_words": "edgelabel ixaxes iyaxes imargin(small)",
+   "diff_lines": 0,
+   "notes_expanded": [],
+   "notes_style": [],
+   "options": "ylabels(#2, labsize(small)) xlabels(#2, labsize(small)) xmticks(##4, style(major_horiz_nolabel)) ymticks(##4, style(major_vert_nolabel)) subtitle(, nobox size(small) position(11)) plotregion(style(none))"
+  }
+ }
+}

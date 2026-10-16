@@ -531,7 +531,7 @@ and now matches Stata.
 
 <!-- WP-31 D1d -->
 
-<!-- WP-31 D10c -->
+- by(..., style(econ)), style(stata7) and style(rescale) were named and drew the default style (rescale its scales only); they draw as twoway, through the by() words and options their bygraphstyle files give -- econ's edkbg panels, stata7's two-label axes on every panel, rescale's own axes with three labels (WP-31, D10c)
 
 ### Security
 

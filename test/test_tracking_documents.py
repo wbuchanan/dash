@@ -2013,7 +2013,6 @@ WP31_OPEN = {
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
     "D9b": "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis",
     "D1d": "An outer axis's ##N minor labels after a move are capped at its build's label pool",
-    "D10c": "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current

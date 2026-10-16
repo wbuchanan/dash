@@ -2814,9 +2814,11 @@ _MUST_WARN = {
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
         "labstyle(x)",
+    # Flipped (WP-31 D10c): style(econ) is drawn as its options, named in
+    # its own line; bgcolor(red) is the sub-option still ignored.
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
-        "style(econ) bgcolor(red)",
+        "bgcolor(red)",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

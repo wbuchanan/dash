@@ -4030,11 +4030,11 @@
   - Suggested fix: WP-31 section 45 (date ticks natscale): size the pool by the axis's largest possible label count (the tick cap) or grow it, measured, in both renderers.
   - Resolution: Not fixed because WP-31 section 45 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales
+- [x] Title: The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales
   - File Names and Line Numbers: dash_render.py _dash_parse_by (style(econ), style(stata7) named; style(rescale|combine) draw only their separate scales)
   - Description: GAPS3.md D10, found by WP-31 section 39 (D10b residual, measured 16oct2026, test/fixtures/by_remainder_truth.json bystyle_*): twoway's style(econ) fills each panel's plot region (#b2bfcb under s2color) and sets the labels lower; style(stata7) draws a y axis on every panel with smaller tick labels; style(combine) and style(rescale) draw each panel in a graph region of its own. dash names econ and stata7 and draws only combine's and rescale's separate scales.
   - Suggested fix: WP-31 section 44 (style file resolver): read each bystyle's style file (bystyle-*.style) through the resolver and draw its attributes through the by() appliers, in both renderers, measured against twoway.
-  - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 16oct2026 (WP-31, D10c). Measured (scripts/extract_bystyle_truth.do, s2color): twoway draws by(rep78, style(econ)), style(stata7) and style(rescale) line for line as the by() words and graph options their bygraphstyle files give; `_dash_bystyle_route` (both renderers, before the spec is drawn or embedded) writes each style as those words and options (`_DASH_BYSTYLE_EXPAND`), a graph's own option winning, so dash's by() appliers draw them; the options dash does not draw are named once in the style's own line. Pinned by test/test_bystyles.py::TestDrawn::test_as_its_expansion, test/test_wp31_truth.cscript U44-11; fixture test/fixtures/bystyle_truth.json. Residual, deferred (WP-31): econ's label margin, rescale's astextbox outline, stata7's minor-tick styles and combine's graph regions (GAPS3 D10c Tracked). Closes GAPS3 D10 (WP-31, D10c).
 
 - [ ] Title: The data file embeds numbers as JSON text (about 0.5 GB per million values)
   - File Names and Line Numbers: dash_render.py _dash_write_stata_data, dash_parse.mata _dash_json_number17
@@ -4059,3 +4059,9 @@
   - Description: GAPS3.md E10 (P2.55), re-verified at 6370ca4: a user's or a package's textboxstyle-*.style and color-*.style files are not read; WP-31 section 44 reads the four option classes and shadestyle.
   - Suggested fix: extend SchemeParser._style_file_rows to the textboxstyle and color classes with readers for their attributes
   - Resolution: Not fixed because WP-31 section 44 read the four option classes and shadestyle only. Graded S3 (WP-31): a user textbox or colour style falls to a note and the default.
+
+- [ ] Title: The bystyles' label margin, astextbox outline and minor-tick styles, and combine's graph regions, are named, not drawn
+  - File Names and Line Numbers: dash_render.py _DASH_BYSTYLE_EXPAND, _dash_bystyle_route
+  - Description: GAPS3.md D10, measured 16oct2026 (test/fixtures/bystyle_truth.json): style(econ) sets the panel labels' margin(small), style(rescale) an astextbox label boxed in the foreground line, style(stata7) xmticks()/ymticks() in style(major_horiz_nolabel)/style(major_vert_nolabel); dash does not draw those sub-options and names them. style(combine) draws its panels in the combine graph regions (its plotregionstyle combineregion, which twoway notes as not found), which no by() words reproduce (600 SVG lines differ); dash draws its scales.
+  - Suggested fix: draw subtitle() margin()/astextbox/blstyle() on by() panel labels and xmtick() style(); measure combine's region geometry
+  - Resolution: Not fixed because WP-31 section 44 drew the bystyles through the options dash draws. Graded S3 (WP-31): named, never silent.

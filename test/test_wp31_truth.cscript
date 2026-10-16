@@ -12314,6 +12314,48 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
 }
 * ==== end S44 ====
 
+python:
+def _u44_panel_fill(sp, dp, app, want):
+    """u44_bad: where a mode's by() panels are not filled *want*."""
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    bad = []
+    for name, figs in (("saved", a), ("served", b)):
+        fills = sorted({str(getattr(f, "background_fill_color", "")).lower() for f in figs})
+        if want.lower() not in fills:
+            bad.append("%s %s, twoway %s" % (name, fills, want))
+    Macro.setGlobal("u44_bad", "; ".join(bad))
+end
+
+* ==== S44 D10c: The econ, stata7, rescale and combine bystyles ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
+    display as text "S44 start " c(current_date) " " c(current_time)
+    local u44d "`w31_work'/s44b"
+    capture mkdir "`u44d'"
+    sysuse auto, clear
+
+    // U44-11: by(rep78, style(econ)) fills its panels edkbg as twoway does
+    // (live SVG), in both modes, with no "not implemented" note for it.
+    capture graph drop u44b
+    quietly twoway scatter mpg weight, by(rep78, style(econ)) scheme(s2color) name(u44b, replace)
+    quietly graph export "`u44d'/econ.svg", replace name(u44b)
+    capture graph drop u44b
+    python: import re; from sfi import Macro; _t = open(Macro.getLocal("u44d") + "/econ.svg").read(); _f = [c.lower() for c in re.findall(r'style="fill:(#[0-9A-Fa-f]{6})"', _t)]; Macro.setLocal("want", "#b2bfcb" if "#b2bfcb" in _f else "absent")
+    _u44_spec "`u44d'" 11 scatter mpg weight, by(rep78, style(econ)) scheme(s2color)
+    python: _u44_panel_fill(r"`u44d'/s11.json", r"`u44d'/d11.json", r"`u44d'/a11.py", r"`want'")
+    local u11bad "${u44_bad}"
+    python: _u44_notes(r"`u44d'/s11.json", r"`u44d'/d11.json", "dash: by() sub-option style(econ): the panel labels' margin(small) is not drawn; the rest of the style is.")
+    local u11bad "`u11bad'${u44_bad}"
+    _w31_expect U44-11 `"("`want'" == "#b2bfcb" & `"`u11bad'"' == "")"' `"`want' `u11bad'"'
+    _w31_done U44-11 "by(rep78, style(econ)) fills its panels as twoway, both modes, naming only its label margin"
+
+    dash clear
+    display as text "S44 end " c(current_date) " " c(current_time)
+}
+* ==== end S44 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -849,8 +849,13 @@ class TestTheSubOptionsDashDoesNotImplement:
         # bystyles econ and stata7 are the example.
         r, doc, saved, served = _by("foreign, style(econ) bgcolor(red) "
                                     "cols(2) total missing")
-        want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "style(econ) bgcolor(red)"]
+        # Flipped (WP-31 D10c): style(econ) is drawn as its options
+        # (bystyle_truth.json); only its label margin is named, in its own
+        # line, and bgcolor(red) is the sub-option still ignored.
+        want = ["dash: by() sub-option style(econ): the panel labels' "
+                "margin(small) is not drawn; the rest of the style is.",
+                "dash: by() sub-option(s) not implemented and ignored: "
+                "bgcolor(red)"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -877,11 +882,15 @@ class TestTheSubOptionsDashDoesNotImplement:
         with warnings.catch_warnings(record=True) as session:
             warnings.simplefilter("always")
             ns["make_document"](Document())
-        want = ("dash: by() sub-option(s) not implemented and ignored: "
-                "style(econ) bgcolor(red)")
-        assert [str(w.message) for w in built].count(want) == 1, \
-            [str(w.message) for w in built]
-        assert want not in [str(w.message) for w in session]
+        # Flipped (WP-31 D10c): style(econ) is drawn as its options and
+        # named in its own line; bgcolor(red) is still ignored.
+        for want in ("dash: by() sub-option(s) not implemented and ignored: "
+                     "bgcolor(red)",
+                     "dash: by() sub-option style(econ): the panel labels' "
+                     "margin(small) is not drawn; the rest of the style is."):
+            assert [str(w.message) for w in built].count(want) == 1, \
+                [str(w.message) for w in built]
+            assert want not in [str(w.message) for w in session]
 
 
 class TestTheSubOptionSplitterReadsStataQuotes:

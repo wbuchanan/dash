@@ -33738,6 +33738,82 @@ def _dash_parse_by(by_raw, warn=True):
     return varlist, by_cols, by_total, by_missing, unsupported
 
 
+#: WP-31 D10c: the bystyles whose bygraphstyle-<name>.style twoway draws
+#: exactly as by() words plus graph options (bystyle_truth.json: the
+#: exported SVGs are line for line the same, s2color).  combine's graph
+#: regions do not reduce to options and stay named.
+_DASH_BYSTYLE_EXPAND = {
+    "econ": ((), {"plotregion": "color(edkbg) margin(t=5)"},
+             "the panel labels' margin(small)"),
+    "stata7": (("edgelabel", "ixaxes", "iyaxes", "imargin(small)"),
+               {"ylabel": "#2, labsize(small)",
+                "xlabel": "#2, labsize(small)",
+                "xmtick": "##4", "ymtick": "##4",
+                "subtitle": ", nobox size(small) position(11)",
+                "plotregion": "style(none)"},
+               "the minor ticks' major_horiz_nolabel and major_vert_nolabel "
+               "styles"),
+    "rescale": (("rescale", "individual", "imargin(medsmall)"),
+                {"ylabel": "#3", "xlabel": "#3"},
+                "the panel labels' astextbox and foreground outline"),
+}
+#: What each expansion leaves out: the measured options dash does not
+#: draw (subtitle() margin() and astextbox/blstyle(), xmtick() style()),
+#: named once by _dash_bystyle_route.
+
+
+def _dash_bystyle_route(spec):
+    """The spec with each graph's ``by(..., style(econ|stata7|rescale))``
+    written as the by() words and graph options it draws as (WP-31 D10c,
+    ``_DASH_BYSTYLE_EXPAND``): the style() word is replaced by the words,
+    and each option is added where the graph does not give it itself (its
+    own wins).  Any other style, and a spec that is not one, unchanged.
+    Both renderers call it before the spec is drawn or embedded; never
+    raises."""
+    try:
+        graphs = spec.get("graphs") if isinstance(spec, dict) else None
+        if not isinstance(graphs, list):
+            return spec
+        for g in graphs:
+            if not isinstance(g, dict):
+                continue
+            go = g.get("graph_options")
+            if not isinstance(go, dict):
+                continue
+            by = go.get("by")
+            if not isinstance(by, str) or "," not in by:
+                continue
+            head, _c, subs = by.partition(",")
+            toks = _dash_by_tokens(subs.strip())
+            hit = None
+            for i, tok in enumerate(toks):
+                if tok.split("(", 1)[0].strip() == "style" and "(" in tok:
+                    arg = tok[tok.index("(") + 1:]
+                    arg = (arg[:-1] if arg.endswith(")") else arg).strip()
+                    hit = (i, arg)
+                    break
+            if hit is None or hit[1] not in _DASH_BYSTYLE_EXPAND:
+                continue
+            words, opts, left = _DASH_BYSTYLE_EXPAND[hit[1]]
+            _dash_warn_once(
+                ("bystyle", hit[1]),
+                "dash: by() sub-option style(%s): %s %s not drawn; the rest "
+                "of the style is." % (hit[1], left,
+                                      "is" if hit[1] != "stata7" else "are"))
+            rest = toks[:hit[0]] + list(words) + toks[hit[0] + 1:]
+            new_by = head.rstrip() + ((", " + " ".join(rest)) if rest else "")
+            targets = [go] + ([g["options"]] if isinstance(
+                g.get("options"), dict) else [])
+            for t in targets:
+                t["by"] = new_by
+                for k, v in opts.items():
+                    if not str(t.get(k, "") or "").strip():
+                        t[k] = v
+        return spec
+    except Exception:   # noqa: BLE001 -- the spec is drawn either way
+        return spec
+
+
 def _dash_by_rescale(by_raw):
     """The letters (``"x"``, ``"y"``) a by() graph draws on each panel's own
     scale, as twoway decides them (bygraph_g.class:292-385, WP-29 P0.2).
@@ -54667,6 +54743,8 @@ class DashRenderer:
         # alone, as the first, as twoway does (BUGS.md, S3).
         # ytitle(, axis(2)) routed to ytitle2() first (WP-28 B3).
         self.master_spec = _dash_route_axis_titles(self.master_spec)
+        # WP-31 D10c: econ, stata7 and rescale as the options they draw.
+        self.master_spec = _dash_bystyle_route(self.master_spec)
         self.master_spec = _dash_route_axis_options(self.master_spec)
         self.master_spec = _dash_lone_second_axes(self.master_spec)
 
@@ -58780,6 +58858,8 @@ class ServerAppBuilder:
         # A lone second axis drawn as the first, as the saved renderer
         # draws it (_dash_lone_second_axes), before the spec is embedded.
         self.spec = _dash_route_axis_titles(self.spec)
+        # WP-31 D10c: econ, stata7 and rescale as the options they draw.
+        self.spec = _dash_bystyle_route(self.spec)
         self.spec = _dash_route_axis_options(self.spec)
         self.spec = _dash_lone_second_axes(self.spec)
         # The data parsed, and as the saved renderer loads it -- each made

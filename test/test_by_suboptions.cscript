@@ -147,11 +147,15 @@ assert `_bys_n' == 1
 assert strpos(`"`macval(_bys_line)'"', "style(econ)") > 0
 display "BYS-02 PASS: by(foreign, style(econ)) names it"
 
+// Flipped (WP-31 D10c): style(econ) is drawn as the options its
+// bygraphstyle file gives (bystyle_truth.json) and names only its label
+// margin, in its own line; bgcolor(red) is named in the list line.
 _bys_render "foreign, style(econ) bgcolor(red)"
 _bys_take
-assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "style(econ) bgcolor(red)") > 0
-display "BYS-03 PASS: two unimplemented sub-options are named in one line"
+assert `_bys_n' == 2
+assert strpos(`"`_bys_line'"', "style(econ)") > 0
+assert strpos(`"`_bys_line'"', "bgcolor(red)") == 0
+display "BYS-03 PASS: style(econ)'s remainder and bgcolor(red) are named, once each"
 
 
 // ================================================================
@@ -255,7 +259,14 @@ assert `_bys_n' == 0
 _bys_render "foreign, r"
 _bys_take
 assert `_bys_n' == 0
+// Flipped (WP-31 D10c): style(rescale) is drawn as its bygraphstyle
+// file's options (bystyle_truth.json); its own note names only the label
+// box's astextbox and outline.  style(combine) keeps the scales note.
 _bys_render "foreign, style(rescale)"
+_bys_take
+assert `_bys_n' == 1
+assert strpos(`"`_bys_line'"', "astextbox and foreground outline") > 0
+_bys_render "foreign, style(combine)"
 _bys_take
 assert `_bys_n' == 1
 assert strpos(`"`_bys_line'"', "only its separate scales are drawn") > 0

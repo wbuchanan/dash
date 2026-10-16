@@ -584,10 +584,12 @@ class TestAnUnimplementedBySuboptionIsNamed:
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
-        hits = [str(w.message) for w in built if "by()" in str(w.message)
-                and "style(econ)" in str(w.message)
-                and "bgcolor(red)" in str(w.message)]
-        assert len(hits) == 1, [str(w.message) for w in built]
+        # Flipped (WP-31 D10c): style(econ) is drawn as its options and
+        # named in its own line (its label margin); bgcolor(red) is still
+        # ignored -- each once, at build time.
+        msgs = [str(w.message) for w in built if "by()" in str(w.message)]
+        assert len([m for m in msgs if "style(econ)" in m]) == 1, msgs
+        assert len([m for m in msgs if "bgcolor(red)" in m]) == 1, msgs
         _, _, warns = served(tmp_path, spec)
         assert not [w for w in warns if "by()" in w and "econ" in w], warns
 

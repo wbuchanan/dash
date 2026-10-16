@@ -2989,11 +2989,18 @@ region, where {cmd:twoway} draws a narrow box beside it), and, with
 bottom; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
 Each panel's plot-region margin is {cmd:twoway}'s, times the panels' size
 multiplier and {cmd:iscale()}.  A one-panel {cmd:by()} whose value label is
-empty draws no label box, as {cmd:twoway}, and the Graphs-by note.  Any
-other sub-option of Stata's {cmd:by()} -- for example {cmd:style(econ)}
-or {cmd:style(stata7)} -- is accepted, named in a warning, and ignored;
-{cmd:style(rescale)} and {cmd:style(combine)} draw their separate scales
-and name the rest of the style.
+empty draws no label box, as {cmd:twoway}, and the Graphs-by note.
+{cmd:style(econ)}, {cmd:style(stata7)} and {cmd:style(rescale)} are drawn
+as the {cmd:by()} words and graph options their bygraphstyle files give,
+which {cmd:twoway} draws line for line alike (econ fills the panels
+{cmd:edkbg}; stata7 labels each panel's axes at two values with minor
+ticks, its labels unboxed at 11 o'clock; rescale gives each panel its own
+axes and scales with three labels); what {cmd:dash} cannot draw of them --
+econ's label margin, rescale's {cmd:astextbox} label outline, stata7's
+minor-tick styles -- is named once.  {cmd:style(combine)} draws its
+separate scales and names the rest of the style.  Any other sub-option of
+Stata's {cmd:by()} -- for example {cmd:bgcolor()} -- is accepted, named in
+a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other
