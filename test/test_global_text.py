@@ -93,3 +93,21 @@ class TestTheHelp:
         assert "before its quotes are read" in para
         assert "is drawn as written" in para
         assert "expanded text is too long" in para
+
+
+class TestTheQuoteRefusals:
+
+    def test_the_help_names_the_refusals_and_the_col_difference(self):
+        """A global holding a double quote in text(), ttext() or a tick
+        label is refused in twoway's words (test_wp31_truth.cscript
+        U42-08); {col #:t}'s repeat is a documented, measured difference
+        (smcl_more_truth.json col.colon)."""
+        src = _read("dash.sthlp")
+        para = src[src.index("{ul:Text in graphs.}"):
+                   src.index("{ul:Tooltips.}")]
+        assert "invalid point" in para
+        assert "invalid label specifier" in para
+        assert "{cmd:{c -(}col }{it:#}{cmd::}{it:text}{cmd:{c )-}}" in para
+        with open(os.path.join(_HERE, "fixtures", "smcl_more_truth.json"),
+                  encoding="utf-8") as fh:
+            assert json.load(fh)["col.colon"]["texts"] == ["Qxxx"]

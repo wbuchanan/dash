@@ -471,7 +471,7 @@ program define _dash_require_mata
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
-        _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals
+        _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -8648,6 +8648,8 @@ program define _dash_plot
         ymlabel2 xmlabel ymlabel tlabel tmlabel ttitle tlabel2 ttitle2 ///
         t1title t2title b1title b2title l1title l2title r1title r2title ///
         zlabel ztitle
+    local _gt_labelkeys xlabel ylabel xmlabel ymlabel tlabel tmlabel xlabel2 ///
+        ylabel2 xmlabel2 ymlabel2 tlabel2 zlabel
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -8675,6 +8677,16 @@ program define _dash_plot
                 mata: _dash_say("err", st_local("gk"), "(): expanded text is too long", "")
                 exit 198
             }
+            // A global holding a double quote splits a tick label's
+            // string, and twoway refuses the label specifier (WP-31 D13b,
+            // measured: "invalid label specifier, :  3000 "a say "hi" b":").
+            if `: list gk in _gt_labelkeys' {
+                mata: st_local("_gtq", _dash_gt_qadded(st_local("gv")))
+                if `: length local _gtq' {
+                    mata: _dash_say("err", "invalid label specifier, :  ", st_local("_gtq"), ":")
+                    exit 198
+                }
+            }
             mata: st_local("gv", _dash_gt_ccl(st_local("_gtg")))
         }
         if `: length local gv' {
@@ -8691,6 +8703,10 @@ program define _dash_plot
     local _at_cnt 0
     local _at_all ""
     if `: length local g_text' {
+        // A global holding a double quote splits a text() string, as
+        // twoway reads it again before its quotes (WP-31 D13b).
+        mata: st_local("_gtq", strofreal(_dash_gt_qtexts(st_local("g_text"))))
+        if `_gtq' _dash_at_quote_refuse text
         _dash_added_text text "`_g_ys'" "`_g_xs'" "" "" `"`macval(g_text)'"'
         local _at_all `"`_at_json'"'
         local _at_cnt = `_at_total'
@@ -8728,6 +8744,8 @@ program define _dash_plot
             }
             mata: st_local("_at_u`a'", _dash_taxis_unit(st_local("_at_tf"), 1))
         }
+        mata: st_local("_gtq", strofreal(_dash_gt_qtexts(st_local("g_ttext"))))
+        if `_gtq' _dash_at_quote_refuse ttext
         _dash_added_text ttext "`_g_ys'" "`_g_xs'" "`_at_u1'" "`_at_u2'" `"`macval(g_ttext)'"'
         if `_at_total' {
             mata: st_local("_at_all", st_local("_at_all") + (st_local("_at_all") != "" ? "," : "") + st_local("_at_json"))
@@ -9269,6 +9287,39 @@ end
 // by commas (_dash_at_json; JSON-escaped, safe inside compound quotes),
 // and _at_total, their number.
 // ----------------------------------------------------------------
+program define _dash_at_quote_refuse
+    // _dash_at_quote_refuse text|ttext: the points and lines in the global
+    // dash__q (_dash_gt_qtexts: a copy whose globals added a double
+    // quote) read as twoway's _parse_log_1textbox reads them --
+    // gettoken by gettoken, numbers by _dash_at_isnum, a ttext() x any
+    // unquoted word -- refused in its words, "invalid point, x y",
+    // r(198), at the first point that is not one (WP-31 D13b, measured:
+    // "invalid point,  hi" b"").  Read by value; nothing is run.  When
+    // every point reads, dash goes on as before.
+    version 19
+    args kind
+    mata: st_local("rest", st_global("dash__q")); st_global("dash__q", "")
+    gettoken y rest : rest
+    gettoken x rest : rest
+    while `"`macval(y)'"' != "" {
+        mata: st_local("ok", strofreal(_dash_at_isnum(st_local("y")) & ///
+            (_dash_at_isnum(st_local("x")) | (st_local("kind") == "ttext" & ///
+            st_local("x") != "" & !strpos(st_local("x"), char(34))))))
+        if !`ok' {
+            mata: _dash_say("err", "invalid point, ", st_local("x") + " " + st_local("y"), "")
+            exit 198
+        }
+        gettoken txtq rest : rest, quotes
+        gettoken txt : txtq
+        while `"`macval(txtq)'"' != "" & `"`macval(txtq)'"' != `"`macval(txt)'"' {
+            gettoken txtq rest : rest, quotes
+            gettoken txt : txtq
+        }
+        local y : copy local txt
+        gettoken x rest : rest
+    }
+end
+
 program define _dash_added_text
     version 19
     mata: _dash_text_args(5, 0, 0)

@@ -11409,6 +11409,113 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w31_run' {
     local r2 = _rc
     _w31_expect U42-06 `"(`r1' == 0) & ("${u42_st}" == "True") & (`ran' == 0) & (`r2' == 198) & (`r3' == 0) & ("${u42_ax}" == "True")"' "rc `r1' stored ${u42_st} ran `ran' long rc `r2' axis 3 rc `r3' expanded ${u42_ax}"
     _w31_done U42-06 "an =exp global is drawn as written and never run, a sub-option's global is read, an expansion past 4,000 characters is refused"
+
+    // U42-08: a global holding a double quote splits the string, as
+    // twoway reads the option again before its quotes: in text() and
+    // ttext() twoway refuses the point the rest makes, and in a tick label
+    // the label specifier, r(198), in its words (measured live beside).
+    // Typed on straight lines: a loop body would expand the global
+    // before either command reads it.
+    global ZTG_quote `"say "hi""'
+    local bad ""
+    capture graph drop _all
+    quietly log using "`u42d'/q1_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, text(30 3000 "a \$ZTG_quote b") nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q1_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, text(30 3000 "a \$ZTG_quote b") name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid point,  hi" b""'
+    cert_log_has "`u42d'/q1_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q1_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' t1(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    capture graph drop _all
+    quietly log using "`u42d'/q2_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, ttext(30 3000 "a \$ZTG_quote b") nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q2_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, ttext(30 3000 "a \$ZTG_quote b") name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid point,  hi" b""'
+    cert_log_has "`u42d'/q2_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q2_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' t2(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    capture graph drop _all
+    quietly log using "`u42d'/q3_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, text(30 3000 "a \$ZTG_quote b" 20 3000 "ok") nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q3_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, text(30 3000 "a \$ZTG_quote b" 20 3000 "ok") name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid point, 20 hi" b""'
+    cert_log_has "`u42d'/q3_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q3_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' t3(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    capture graph drop _all
+    quietly log using "`u42d'/q4_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, xlabel(3000 "a \$ZTG_quote b") nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q4_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, xlabel(3000 "a \$ZTG_quote b") name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid label specifier, :  3000 "a say "hi" b":"'
+    cert_log_has "`u42d'/q4_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q4_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' l1(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    capture graph drop _all
+    quietly log using "`u42d'/q5_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, xlabel(3000 "a \$ZTG_quote b", labsize(small)) nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q5_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, xlabel(3000 "a \$ZTG_quote b", labsize(small)) name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid label specifier, :  3000 "a say "hi" b":"'
+    cert_log_has "`u42d'/q5_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q5_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' l2(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    capture graph drop _all
+    quietly log using "`u42d'/q6_1.log", text replace name(u42q)
+    capture noisily twoway scatter mpg weight, ylabel(20 "a \$ZTG_quote b") nodraw
+    local rc1 = _rc
+    quietly log close u42q
+    dash clear
+    quietly log using "`u42d'/q6_2.log", text replace name(u42q)
+    capture noisily dash scatter mpg weight, ylabel(20 "a \$ZTG_quote b") name(u42q)
+    local rc2 = _rc
+    quietly log close u42q
+    local want `"invalid label specifier, :  20 "a say "hi" b":"'
+    cert_log_has "`u42d'/q6_1.log", needle(`"`macval(want)'"')
+    local n1 = r(count)
+    cert_log_has "`u42d'/q6_2.log", needle(`"`macval(want)'"')
+    local n2 = r(count)
+    if !(`rc1' == 198 & `rc2' == 198 & `n1' == 1 & `n2' == 1) local bad "`bad' l3(twoway `rc1'/`n1' dash `rc2'/`n2')"
+    _w31_expect U42-08 `"("`bad'" == "")"' "refusals differ from twoway's:`bad'"
+    _w31_done U42-08 "a global holding a double quote in text(), ttext() or a tick label is refused as twoway refuses it"
     dash clear
     macro drop ZTG_* ZC
     display as text "S42 end " c(current_date) " " c(current_time)

@@ -4754,7 +4754,9 @@ is left of the line and {cmd:{c -(}center }{it:#}{cmd::}{it:text}{cmd:{c )-}}
 in {it:#} columns, {cmd:{c -(}rcenter:} likewise with an odd blank on
 the left, {cmd:{c -(}right:}{it:text}{cmd:{c )-}} ends the text at column
 254 and {cmd:{c -(}col }{it:#}{cmd:{c )-}} moves to column {it:#} (never
-back); the links {cmd:{c -(}browse{c )-}},
+back; {cmd:{c -(}col }{it:#}{cmd::}{it:text}{cmd:{c )-}}, which
+{cmd:twoway} draws as a repeat of its text (measured:
+{cmd:{c -(}col 5:x{c )-}} is xxx), is drawn as typed); the links {cmd:{c -(}browse{c )-}},
 {cmd:{c -(}help{c )-}} and {cmd:{c -(}stata{c )-}} are their text after
 the colon, or their argument when they have none; and
 {cmd:{c -(}ccl }{it:name}{cmd:{c )-}} is {cmd:c(}{it:name}{cmd:)} -- in
@@ -4767,7 +4769,10 @@ under.  A
 legend or tick label -- written {cmd:\$name} in a do-file -- is the
 global's value, as {cmd:twoway} reads the option's whole text again
 before its quotes are read (so a global holding a double quote splits
-the string, as in {cmd:twoway}) and its sub-options too; by text only: a
+the string, as in {cmd:twoway}, and in {cmd:text()}, {cmd:ttext()} or a
+tick label is refused in its words, {cmd:invalid point, }{it:...} or
+{cmd:invalid label specifier, :}{it:...}{cmd::}, {cmd:r(198)}) and its
+sub-options too; by text only: a
 global holding {cmd:`=1+1'} is drawn as written, where {cmd:twoway}
 evaluates it, and an option whose globals expand past 4,000 characters
 is refused, {it:option}{cmd:(): expanded text is too long},

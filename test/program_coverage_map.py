@@ -392,6 +392,7 @@ COVERAGE = {
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
         "_dash_taxis_fold": ("test_twoway_option_parity.cscript:TA-01", "test_twoway_option_parity.cscript:TA-05"),
         # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
+        "_dash_at_quote_refuse": ("test_wp31_truth.cscript:U42-08",),
         "_dash_added_text": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-33"),
         "_dash_added_text_cap": ("test_resource_limits.cscript:AT-40", "test_resource_limits.cscript:AT-42"),
         "_dash_at_opts": ("test_twoway_option_parity.cscript:AT-05", "test_twoway_option_parity.cscript:AT-06"),
@@ -864,6 +865,9 @@ COVERAGE = {
         "_dash_at_orient": ("test_twoway_option_parity.cscript:AT-05",),
         "_dash_at_globals": ("test_wp31_truth.cscript:U30-10",),
         "_dash_gt_ccl": ("test_wp31_truth.cscript:U42-02",),
+        "_dash_gt_qleft": ("test_wp31_truth.cscript:U42-08",),
+        "_dash_gt_qadded": ("test_wp31_truth.cscript:U42-08",),
+        "_dash_gt_qtexts": ("test_wp31_truth.cscript:U42-08",),
         "_dash_edge_span": ("test_option_validation.cscript:U30-14",),
         "_dash_at_json": ("test_twoway_option_parity.cscript:AT-04", "test_wp30_truth.cscript:AT-20"),
         "_dash_at_records": ("test_twoway_option_parity.cscript:AT-04",),

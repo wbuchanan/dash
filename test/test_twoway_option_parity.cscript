@@ -1937,7 +1937,10 @@ quietly log close _ztplog
 _ztp_logged "`logfile'" "ignoring unsupported"
 local note = r(found)
 mata: st_local("js", st_global("dash_json_zq14h"))
-mata: st_local("ok", strofreal(strpos(st_local("js"), "{bf:B} \u0024S_ADO \u0060c(pwd)\u0027") > 0 & !strpos(st_local("js"), "safe")))
+// Flipped (WP-31 D13b): $S_ADO is the global's value, as twoway reads a
+// graph text option again (global_text_truth.json); the local's quotes
+// stay text and nothing is run.
+mata: st_local("ok", strofreal(strpos(st_local("js"), "{bf:B} ") > 0 & !strpos(st_local("js"), "\u0024S_ADO") & strpos(st_local("js"), " \u0060c(pwd)\u0027") > 0 & !strpos(st_local("js"), "safe")))
 if `rc' | `note' | !`ok' {
     display as error "TP-14e FAIL hostile value: rc `rc', note `note', stored as text `ok'"
     local bad = 1

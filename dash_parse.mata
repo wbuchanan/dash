@@ -316,6 +316,11 @@
 *!       ${name} in a line by the global's value, by text, never
 *!       evaluated (WP-31 D13).
 *!
+*!   _dash_gt_qleft(s), _dash_gt_qadded(s), _dash_gt_qtexts(raw)
+*!       The option text before its options; its globals expanded when
+*!       they add a double quote, which dash.ado refuses as twoway does in
+*!       text(), ttext() and tick labels (WP-31 D13b).
+*!
 *!   _dash_gt_ccl(s)
 *!       s with each {ccl name} replaced by c(name) as twoway's graph text
 *!       draws it (WP-31 E9); applied by dash.ado to the graph's text
@@ -10707,6 +10712,94 @@ string scalar _dash_at_globals(string scalar s)
         if (strlen(s) > 4000) return(s)
     }
     return(s)
+}
+
+// _dash_gt_qleft(s) -- s up to its first comma outside "..." and
+// compound quotes: the part twoway's syntax reads before the options.
+string scalar _dash_gt_qleft(string scalar s)
+{
+    real rowvector b
+    real scalar    i, n, depth, inq
+
+    b = ascii(s)
+    n = cols(b)
+    depth = 0
+    inq = 0
+    for (i = 1; i <= n; i++) {
+        if (depth) {
+            if (b[i] == 96 & i < n) {
+                if (b[i + 1] == 34) {
+                    depth++
+                    i++
+                    continue
+                }
+            }
+            if (b[i] == 34 & i < n) {
+                if (b[i + 1] == 39) {
+                    depth--
+                    i++
+                }
+            }
+            continue
+        }
+        if (inq) {
+            if (b[i] == 34) inq = 0
+            continue
+        }
+        if (b[i] == 96 & i < n) {
+            if (b[i + 1] == 34) {
+                depth = 1
+                i++
+                continue
+            }
+        }
+        if (b[i] == 34) inq = 1
+        else if (b[i] == 44) return(substr(s, 1, i - 1))
+    }
+    return(s)
+}
+
+// _dash_gt_qadded(s) -- the part of option text s before its options with
+// its globals expanded (_dash_at_globals), when the expansion adds a
+// double quote; "" otherwise.  twoway reads a graph text option's whole
+// text again before its quotes (WP-31 D13b, global_text_truth.json), so
+// such a global splits the string; the caller refuses where twoway does.
+string scalar _dash_gt_qadded(string scalar s)
+{
+    string scalar l, e
+
+    if (!strpos(s, "$")) return("")
+    l = _dash_gt_qleft(s)
+    // A copy: _dash_at_globals rewrites its argument in place.
+    e = _dash_at_globals(l + "")
+    if (sum(ascii(e) :== 34) > sum(ascii(l) :== 34)) return(e)
+    return("")
+}
+
+// _dash_gt_qtexts(raw) -- 1, with the global dash__q set to the expanded
+// points and lines, for the first char(30)-separated copy of a text() or
+// ttext() whose globals add a double quote (_dash_gt_qadded); 0 when
+// none does.  dash.ado's _dash_at_quote_refuse then reads it as twoway's
+// _parse_log_1textbox does.
+real scalar _dash_gt_qtexts(string scalar raw)
+{
+    real rowvector ix
+    real scalar    k, a, z
+    string scalar  e
+
+    st_global("dash__q", "")
+    if (!strpos(raw, "$")) return(0)
+    ix = (0, selectindex(ascii(raw) :== 30), strlen(raw) + 1)
+    for (k = 1; k < cols(ix); k++) {
+        a = ix[k] + 1
+        z = ix[k + 1]
+        e = _dash_gt_qadded(substr(raw, a, z - a))
+        if (e != "") {
+            st_global("dash__q", e)
+            return(1)
+        }
+    }
+    return(0)
 }
 
 // _dash_gt_ccl(s) -- s with each {ccl name} replaced by c(name) as
