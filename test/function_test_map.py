@@ -1190,6 +1190,7 @@ FUNCTIONS = {
  '_dash_zyx2_derive.<locals>.colour': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_zyx2_derive.<locals>.get': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_bystyle_route': 'test/test_bystyles.py::TestTheExpansion::test_measured',
+ '_dash_by_label_box.<locals>._rs': 'test/test_bystyles.py::TestTheNamedPartsDrawn::test_econ_label_margin',
  '_dash_style_rows_of': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_bad_embedded_rows_are_dropped',
  '_dash_embed_style_rows': 'test/test_style_files.py::TestBothModesReadTheSameFile::test_the_spec_text_gains_the_rows',
  '_dash_style_archive_note': 'test/test_style_files.py::TestAdoArchive::test_measured_branch',

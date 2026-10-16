@@ -140,34 +140,38 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // Flipped (WP-31 D10b): shrink and overallshrink are drawn now
 // (by_remainder_truth.json shrink_*), so style(econ) and bgcolor(red) are (twoway
 // refuses a second style()).
-_bys_render "foreign, style(econ)"
+// Flipped (WP-31 D10c): style(econ) is drawn whole; bgcolor(red) is the
+// example.
+_bys_render "foreign, bgcolor(red)"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
 assert `_bys_n' == 1
-assert strpos(`"`macval(_bys_line)'"', "style(econ)") > 0
-display "BYS-02 PASS: by(foreign, style(econ)) names it"
+assert strpos(`"`macval(_bys_line)'"', "bgcolor(red)") > 0
+display "BYS-02 PASS: by(foreign, bgcolor(red)) names it"
 
 // Flipped (WP-31 D10c): style(econ) is drawn as the options its
 // bygraphstyle file gives (bystyle_truth.json) and names only its label
 // margin, in its own line; bgcolor(red) is named in the list line.
 _bys_render "foreign, style(econ) bgcolor(red)"
 _bys_take
-assert `_bys_n' == 2
-assert strpos(`"`_bys_line'"', "style(econ)") > 0
-assert strpos(`"`_bys_line'"', "bgcolor(red)") == 0
-display "BYS-03 PASS: style(econ)'s remainder and bgcolor(red) are named, once each"
+// The follow-up draws econ's label margin too: style(econ) is silent.
+assert `_bys_n' == 1
+assert strpos(`"`_bys_line'"', "style(econ)") == 0
+assert strpos(`"`_bys_line'"', "bgcolor(red)") > 0
+display "BYS-03 PASS: style(econ) is drawn in silence and bgcolor(red) is named once"
 
 
 // ================================================================
 // BYS-04 — the supported ones beside them are not named
 // ================================================================
-_bys_render "foreign, cols(2) shrink style(econ)"
+// Flipped (WP-31 D10c): bgcolor(red) is the unimplemented word.
+_bys_render "foreign, cols(2) shrink bgcolor(red)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "style(econ)") > 0
+assert strpos(`"`_bys_line'"', "bgcolor(red)") > 0
 assert strpos(`"`_bys_line'"', "cols") == 0
 assert strpos(`"`_bys_line'"', "shrink") == 0
-display "BYS-04 PASS: cols(2) and shrink are not reported alongside style(econ)"
+display "BYS-04 PASS: cols(2) and shrink are not reported alongside bgcolor(red)"
 
 
 // ================================================================
@@ -193,10 +197,11 @@ display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 qui do "../dash_setup.ado"
 capture noisily _dash_setup_check_files
 // Flipped (WP-31 D10b): overallshrink is drawn; style(econ) is named.
-_bys_render "foreign, style(econ)"
+// Flipped (WP-31 D10c): style(econ) is drawn; bgcolor(red) is named.
+_bys_render "foreign, bgcolor(red)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "style(econ)") > 0
+assert strpos(`"`_bys_line'"', "bgcolor(red)") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 
 // ================================================================
@@ -261,15 +266,15 @@ _bys_take
 assert `_bys_n' == 0
 // Flipped (WP-31 D10c): style(rescale) is drawn as its bygraphstyle
 // file's options (bystyle_truth.json); its own note names only the label
-// box's astextbox and outline.  style(combine) keeps the scales note.
+// box's astextbox and outline (the follow-up draws those: silent).
+// style(combine) names its regions (M17).
 _bys_render "foreign, style(rescale)"
 _bys_take
-assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "astextbox and foreground outline") > 0
+assert `_bys_n' == 0
 _bys_render "foreign, style(combine)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "only its separate scales are drawn") > 0
+assert strpos(`"`_bys_line'"', "graph combine's regions") > 0
 display "BSC-08 PASS: yrescale, xrescale, rescale, r, norescale and noyrescale are honoured, not named; style(rescale) has its own note"
 
 // BSC-09: the saved build says once that range() is not applied.

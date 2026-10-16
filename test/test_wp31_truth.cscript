@@ -12315,6 +12315,18 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
 * ==== end S44 ====
 
 python:
+def _u44_absent(sp, dp, needle):
+    """u44_bad: the saved render's notes that hold *needle*."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    dr._dash_reset_notes()
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    Macro.setGlobal("u44_bad", "; ".join(str(x.message) for x in w if needle in str(x.message)))
+
+
 def _u44_panel_fill(sp, dp, app, want):
     """u44_bad: where a mode's by() panels are not filled *want*."""
     import __main__ as m
@@ -12346,10 +12358,10 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
     _u44_spec "`u44d'" 11 scatter mpg weight, by(rep78, style(econ)) scheme(s2color)
     python: _u44_panel_fill(r"`u44d'/s11.json", r"`u44d'/d11.json", r"`u44d'/a11.py", r"`want'")
     local u11bad "${u44_bad}"
-    python: _u44_notes(r"`u44d'/s11.json", r"`u44d'/d11.json", "dash: by() sub-option style(econ): the panel labels' margin(small) is not drawn; the rest of the style is.")
+    python: _u44_absent(r"`u44d'/s11.json", r"`u44d'/d11.json", "style(econ)")
     local u11bad "`u11bad'${u44_bad}"
     _w31_expect U44-11 `"("`want'" == "#b2bfcb" & `"`u11bad'"' == "")"' `"`want' `u11bad'"'
-    _w31_done U44-11 "by(rep78, style(econ)) fills its panels as twoway, both modes, naming only its label margin"
+    _w31_done U44-11 "by(rep78, style(econ)) fills its panels as twoway, both modes, in silence"
 
     dash clear
     display as text "S44 end " c(current_date) " " c(current_time)

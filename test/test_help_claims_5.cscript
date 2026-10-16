@@ -468,10 +468,12 @@ assert r(found) == 0
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink style(econ)) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-// Flipped (WP-31 D10c): style(econ) is drawn as its options and names
-// its label margin in its own line, once; bgcolor(red) ends the list.
-cert_log_has "`logfile'", needle("sub-option style(econ): the panel labels' margin(small)")
+// Flipped (WP-31 D10c): style(econ) is drawn whole, silently, so the
+// list is bgcolor(red) alone, once.
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: bgcolor(red)")
 assert r(count) == 1
+cert_log_has "`logfile'", needle("sub-option style(econ)")
+assert r(count) == 0
 capture dash clear
 dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink) name(hc8)
 local app "`c(tmpdir)'dash_hc5_app.py"

@@ -587,8 +587,10 @@ class TestAnUnimplementedBySuboptionIsNamed:
         # Flipped (WP-31 D10c): style(econ) is drawn as its options and
         # named in its own line (its label margin); bgcolor(red) is still
         # ignored -- each once, at build time.
+        # Flipped again (WP-31 D10c follow-up): econ's label margin is
+        # drawn too, so style(econ) is silent.
         msgs = [str(w.message) for w in built if "by()" in str(w.message)]
-        assert len([m for m in msgs if "style(econ)" in m]) == 1, msgs
+        assert len([m for m in msgs if "style(econ)" in m]) == 0, msgs
         assert len([m for m in msgs if "bgcolor(red)" in m]) == 1, msgs
         _, _, warns = served(tmp_path, spec)
         assert not [w for w in warns if "by()" in w and "econ" in w], warns

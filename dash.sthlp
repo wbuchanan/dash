@@ -2995,10 +2995,15 @@ as the {cmd:by()} words and graph options their bygraphstyle files give,
 which {cmd:twoway} draws line for line alike (econ fills the panels
 {cmd:edkbg}; stata7 labels each panel's axes at two values with minor
 ticks, its labels unboxed at 11 o'clock; rescale gives each panel its own
-axes and scales with three labels); what {cmd:dash} cannot draw of them --
-econ's label margin, rescale's {cmd:astextbox} label outline, stata7's
-minor-tick styles -- is named once.  {cmd:style(combine)} draws its
-separate scales and names the rest of the style.  Any other sub-option of
+axes and scales with three labels, its label boxes outlined in the
+foreground line); econ's {cmd:subtitle(, margin(small))} label box and
+stata7's major-length minor ticks are drawn too.  {cmd:style(combine)}
+draws its words -- separate scales, each panel's own axes and titles,
+unboxed labels -- but {cmd:twoway} lays its panels out as
+{cmd:graph combine} does, the array 2.2 units in from the graph's edge and
+each panel in a graph region of its own (measured: 600 lines of the
+exported SVG differ from any {cmd:by()} spelling), which {cmd:dash}'s grid
+of panels does not; that is named once.  Any other sub-option of
 Stata's {cmd:by()} -- for example {cmd:bgcolor()} -- is accepted, named in
 a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group

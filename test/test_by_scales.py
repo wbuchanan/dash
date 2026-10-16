@@ -301,13 +301,14 @@ class TestTheRescaleSubOptions:
             assert lines == []
 
     def test_style_rescale_is_named_with_its_own_note(self):
+        # Flipped (WP-31 D10c): style(rescale) and style(combine) are
+        # written as the options they draw (_dash_bystyle_route) before
+        # by() is parsed; a direct parse draws their scales in silence.
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             out = dr._dash_parse_by("foreign, style(rescale)")
         assert out[4] == []
-        assert [str(w.message) for w in caught] == [
-            "dash: by() sub-option style(rescale): only its separate scales "
-            "are drawn; the rest of the style is not implemented."]
+        assert [str(w.message) for w in caught] == []
         # Flipped (WP-30 P1.15b): style(compact) was named; its spacing is
         # drawn now (by_grid_truth.json sizes "style(compact)": 0 units).
         assert dr._dash_parse_by("foreign, style(compact)",

@@ -78,7 +78,9 @@ def _spec(tmp_path):
     and its data; returns the two paths."""
     sp = make_spec([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                      "options": {"mcolor": "notacolor"}}])
-    sp["graphs"][0]["graph_options"]["by"] = "foreign, style(econ)"
+    # Flipped (WP-31 D10c): style(econ) is drawn whole now; bgcolor(red)
+    # is the by() sub-option still named.
+    sp["graphs"][0]["graph_options"]["by"] = "foreign, bgcolor(red)"
     df = pd.DataFrame({"mpg": [20.0, 22.0, 30.0, 18.0],
                        "weight": [3000.0, 2500.0, 2000.0, 3500.0],
                        "foreign": [0.0, 0.0, 1.0, 1.0]})
@@ -316,7 +318,7 @@ class TestTheRendererEntryPoint:
         _, err2, _ = _run(tmp_path / "b", mode, "ignore", monkeypatch, capsys)
         assert _notes(err2) == control
         if mode == "server":
-            assert any("econ" in n for n in control)
+            assert any("bgcolor" in n for n in control)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_an_error_filter_raises_no_note(self, mode, tmp_path,
@@ -366,6 +368,6 @@ class TestTheRendererEntryPoint:
         notes as warnings."""
         sp, dp = _spec(tmp_path)
         out = str(tmp_path / "o.html")
-        with pytest.warns(UserWarning, match="econ"):
+        with pytest.warns(UserWarning, match="bgcolor"):
             dr.main(sp, dp, out)
         assert os.path.exists(out)

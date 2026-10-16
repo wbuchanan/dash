@@ -34,30 +34,14 @@ with open(os.path.join(_HERE, "fixtures", "bystyle_truth.json"),
 
 MODES = ("saved", "served")
 _EXACT = ("econ", "stata7", "rescale")
-#: The measured options dash does not draw, per style: left out of the
-#: expansion and named once (D10c residual).
-_LEFT = {"econ": {"subtitle": None},
-         "stata7": {"xmtick": "##4", "ymtick": "##4"},
-         "rescale": {"subtitle": None}}
-_NOTE = {
-    "econ": "dash: by() sub-option style(econ): the panel labels' "
-            "margin(small) is not drawn; the rest of the style is.",
-    "stata7": "dash: by() sub-option style(stata7): the minor ticks' "
-              "major_horiz_nolabel and major_vert_nolabel styles are not "
-              "drawn; the rest of the style is.",
-    "rescale": "dash: by() sub-option style(rescale): the panel labels' "
-               "astextbox and foreground outline is not drawn; the rest of "
-               "the style is."}
+_ALL = _EXACT + ("combine",)
+#: combine's regions: graph combine's layout, not by()'s grid (M17).
+_COMBINE_NOTE = ("dash: by() sub-option style(combine): its panels are laid "
+                 "out on by()'s grid, not in graph combine's regions.")
 
 
 def _drawn_opts(style):
-    out = _opts(TRUTH["styles"][style]["options"])
-    for k, v in _LEFT[style].items():
-        if v is None:
-            out.pop(k, None)
-        else:
-            out[k] = v
-    return out
+    return _opts(TRUTH["styles"][style]["options"])
 
 
 def _opts(text):
@@ -83,7 +67,7 @@ class TestTheFixture:
 
 
 class TestTheExpansion:
-    @pytest.mark.parametrize("style", _EXACT)
+    @pytest.mark.parametrize("style", _ALL)
     def test_measured(self, style):
         rec = TRUTH["styles"][style]
         spec = tk._spec([tk._graph("g", tk._TWO,
@@ -94,7 +78,6 @@ class TestTheExpansion:
         assert words == rec["by_words"].split(), words
         for k, v in _drawn_opts(style).items():
             assert go.get(k) == v, (k, go.get(k), v)
-        assert "subtitle" not in go or style == "stata7"
 
     def test_a_users_own_option_wins(self):
         spec = tk._spec([tk._graph("g", tk._TWO, {
@@ -103,7 +86,7 @@ class TestTheExpansion:
         assert go["xlabel"] == "#6" and go["ylabel"] == "#3"
 
     def test_combine_and_others_untouched(self):
-        for by in ("rep78, style(combine)", "rep78", "rep78, style(compact)",
+        for by in ("rep78", "rep78, style(compact)",
                    'rep78, title("style(econ)")'):
             spec = tk._spec([tk._graph("g", tk._TWO, {"by": by})])
             assert dr._dash_bystyle_route(spec)["graphs"][0][
@@ -136,13 +119,70 @@ class TestDrawn:
         ra, na, _ = tk._build(mode, a, data=tr._data())
         rb, nb, _ = tk._build(mode, b, data=tr._data())
         assert _summary(ra) == _summary(rb)
-        assert [n for n in na if f"style({style})" in n] == [_NOTE[style]]
+        assert [n for n in na if f"style({style})" in n] == []
         assert [n for n in na if "not implemented" in n] == \
             [n for n in nb if "not implemented" in n]
 
-    def test_combine_still_named(self, mode):
+    def test_combine_names_its_regions(self, mode):
         spec = tk._spec([tk._graph("g", tk._TWO,
                                    {"by": "rep78, style(combine)"})],
                         scheme="s2color")
         _r, notes, _ = tk._build(mode, spec, data=tr._data())
-        assert [n for n in notes if "style(combine)" in n]
+        assert [n for n in notes if "style(combine)" in n] == [_COMBINE_NOTE]
+
+
+def _boxes(roots):
+    from bokeh.models import ColorBar
+    out = []
+    for r in roots:
+        for m in r.references():
+            if isinstance(m, ColorBar) and m.name == "dash_by_label_box":
+                out.append(m)
+    return out
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestTheNamedPartsDrawn:
+    def test_econ_label_margin(self, mode):
+        """margin(small): the label box is as much taller than the
+        default's as twoway draws it (bystyle_econ against bystyle_default
+        label rects, by_remainder_truth.json)."""
+        def h(pid):
+            return [x for x in tr._probe(pid)["rects"]
+                    if x["fill"] == "#d9e6eb"][0]["h"]
+        f = tr._probe("bystyle_default")["texts"]
+        font = [x for x in f if x["t"] == "1"][0]["size"]
+        want = (h("bystyle_econ") - font) / (h("bystyle_default") - font)
+        got = []
+        for by in ("rep78, style(econ)", "rep78"):
+            spec = tk._spec([tk._graph("g", tk._TWO, {"by": by})],
+                            scheme="s2color")
+            roots, _n, _o = tk._build(mode, spec, data=tr._data())
+            b = _boxes(roots)[0]
+            fpx = float(str(b.major_label_text_font_size).rstrip("px"))
+            got.append(b.height - fpx)
+        # Whole pixels: each box height is rounded once.
+        assert abs(got[0] - want * got[1]) <= 1.0, (got, want)
+
+    def test_rescale_outline_is_the_foreground_line(self, mode):
+        spec = tk._spec([tk._graph("g", tk._TWO,
+                                   {"by": "rep78, style(rescale)"})],
+                        scheme="s2color")
+        roots, _n, _o = tk._build(mode, spec, data=tr._data())
+        fg = dr.SchemeParser("s2color").style_bundle("line", "foreground")
+        assert {str(b.bar_line_color).lower() for b in _boxes(roots)} == {
+            fg["line"]}
+
+    def test_stata7_minor_ticks_take_the_major_length(self, mode):
+        """xmticks(##4, style(major_horiz_nolabel)): twoway draws the minor
+        ticks as long as the majors (39.97 against 20.04 units, measured
+        against xmticks(##4))."""
+        spec = tk._spec([tk._graph("g", tk._TWO,
+                                   {"by": "rep78, style(stata7)"})],
+                        scheme="s2color")
+        roots, _n, _o = tk._build(mode, spec, data=tr._data())
+        from bokeh.models import LinearAxis
+        axes = [m for r in roots for m in r.references()
+                if isinstance(m, LinearAxis) and m.minor_tick_out]
+        assert axes and all(a.minor_tick_out == a.major_tick_out
+                            for a in axes)

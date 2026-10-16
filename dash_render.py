@@ -33718,13 +33718,11 @@ def _dash_parse_by(by_raw, warn=True):
             # bystyle_altleg).
             pass
         elif name == "style" and arg.strip() in ("rescale", "combine"):
-            # style(rescale|combine): its separate scales are drawn
-            # (_dash_by_rescale); the rest of the style is not.
-            if warn:
-                warnings.warn(
-                    "dash: by() sub-option style(%s): only its separate "
-                    "scales are drawn; the rest of the style is not "
-                    "implemented." % arg.strip(), UserWarning, stacklevel=2)
+            # style(rescale|combine): written as the options they draw by
+            # _dash_bystyle_route (WP-31 D10c) before the graph is drawn;
+            # a direct parse still draws their separate scales
+            # (_dash_by_rescale), in silence.
+            pass
         else:
             unsupported.append(tok)
     if unsupported and warn:
@@ -33743,23 +33741,26 @@ def _dash_parse_by(by_raw, warn=True):
 #: exported SVGs are line for line the same, s2color).  combine's graph
 #: regions do not reduce to options and stay named.
 _DASH_BYSTYLE_EXPAND = {
-    "econ": ((), {"plotregion": "color(edkbg) margin(t=5)"},
-             "the panel labels' margin(small)"),
+    "econ": ((), {"subtitle": ", margin(small)",
+                  "plotregion": "color(edkbg) margin(t=5)"}, ""),
     "stata7": (("edgelabel", "ixaxes", "iyaxes", "imargin(small)"),
                {"ylabel": "#2, labsize(small)",
                 "xlabel": "#2, labsize(small)",
-                "xmtick": "##4", "ymtick": "##4",
+                "xmtick": "##4, style(major_horiz_nolabel)",
+                "ymtick": "##4, style(major_vert_nolabel)",
                 "subtitle": ", nobox size(small) position(11)",
-                "plotregion": "style(none)"},
-               "the minor ticks' major_horiz_nolabel and major_vert_nolabel "
-               "styles"),
+                "plotregion": "style(none)"}, ""),
     "rescale": (("rescale", "individual", "imargin(medsmall)"),
-                {"ylabel": "#3", "xlabel": "#3"},
-                "the panel labels' astextbox and foreground outline"),
+                {"subtitle": ", box astextbox blstyle(foreground)",
+                 "ylabel": "#3", "xlabel": "#3"}, ""),
+    # combine (bystyle_truth.json: 600 SVG lines differ from these): its
+    # words and its unboxed labels; twoway lays its panels in graph
+    # combine's regions, by()'s grid here (M17), named once.
+    "combine": (("rescale", "individual", "ixtitle", "iytitle",
+                 "imargin(medsmall)"), {"subtitle": ", nobox"},
+                "its panels are laid out on by()'s grid, not in graph "
+                "combine's regions."),
 }
-#: What each expansion leaves out: the measured options dash does not
-#: draw (subtitle() margin() and astextbox/blstyle(), xmtick() style()),
-#: named once by _dash_bystyle_route.
 
 
 def _dash_bystyle_route(spec):
@@ -33795,11 +33796,10 @@ def _dash_bystyle_route(spec):
             if hit is None or hit[1] not in _DASH_BYSTYLE_EXPAND:
                 continue
             words, opts, left = _DASH_BYSTYLE_EXPAND[hit[1]]
-            _dash_warn_once(
-                ("bystyle", hit[1]),
-                "dash: by() sub-option style(%s): %s %s not drawn; the rest "
-                "of the style is." % (hit[1], left,
-                                      "is" if hit[1] != "stata7" else "are"))
+            if left:
+                _dash_warn_once(("bystyle", hit[1]),
+                                "dash: by() sub-option style(%s): %s"
+                                % (hit[1], left))
             rest = toks[:hit[0]] + list(words) + toks[hit[0] + 1:]
             new_by = head.rstrip() + ((", " + " ".join(rest)) if rest else "")
             targets = [go] + ([g["options"]] if isinstance(
@@ -40631,6 +40631,13 @@ def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
     return models, None
 
 
+#: WP-31 D10c: the ticksetstyles of xmtick()/ymtick() style() that draw
+#: the minor ticks as long as the majors (ticksetstyle-major_*_nolabel
+#: .style: tickstyle major_nolabel; measured).
+_DASH_MTICK_MAJOR_STYLES = frozenset(("major_horiz_nolabel",
+                                      "major_vert_nolabel"))
+
+
 def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
                             mlabel_raw, values=None, seen=None, key="", *,
                             date_kind=None, by_graph=False, ref_in=4.0,
@@ -40666,6 +40673,7 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
     from bokeh.models.tickers import ContinuousTicker
     tick_opt, lab_opt = names or (which + "mtick", which + "mlabel")
     specs = []
+    major_look = False
     for role, raw, opt in (("tick", mtick_raw, tick_opt),
                            ("label", mlabel_raw, lab_opt)):
         text = str(raw or "")
@@ -40682,6 +40690,20 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
                          "nolabels"):
                 if _sub in sp.get("typed", {}):
                     bad.append(sp["typed"][_sub])
+            # WP-31 D10c: style(major_horiz_nolabel|major_vert_nolabel),
+            # the ticksetstyles style(stata7) gives: the minor ticks drawn
+            # as long as the majors, unlabelled (measured: 39.97 against
+            # 20.04 units for xmticks(##4)).
+            _keep = []
+            for _t in bad:
+                _n, _arg = _t.split("(", 1)[0].strip(), ""
+                if "(" in _t:
+                    _arg = _t[_t.index("(") + 1:].rstrip(")").strip()
+                if _n == "style" and _arg in _DASH_MTICK_MAJOR_STYLES:
+                    major_look = True
+                else:
+                    _keep.append(_t)
+            bad = _keep
         _dash_report_suboptions(opt, bad, seen, key)
         if date_kind:
             sp = _dash_date_axis_spec(sp, date_kind, opt)
@@ -40776,6 +40798,9 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
             for role, opt, sp in specs:
                 _dash_tick_look(ax, sp, True, by_graph, opt, ref_in,
                                 length_key="minor_length")
+            if major_look:
+                ax.minor_tick_in = ax.major_tick_in
+                ax.minor_tick_out = ax.major_tick_out
         if any(sp.get("grid") for _r, _o, sp in specs):
             for g in grids or ():
                 g.minor_grid_line_color = look.get("minor_grid_color",
@@ -48949,6 +48974,11 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
             inside = dict(place, expand="nobexpand" not in opts)
         else:
             side, align = place["side"], place["align"]
+    if "margin" in opts and inside is not None:
+        # WP-31 D10c draws margin() on the label's box above or below the
+        # region; inside it (ring(0)) the box is the region's.
+        _dash_report_suboptions("subtitle", ["margin(%s)" % opts["margin"]],
+                                seen, key)
     if "nobexpand" in opts and inside is None:
         # Outside the plot region the box already spans the panel.
         _dash_report_suboptions("subtitle", ["nobexpand"], seen, key)
@@ -49045,7 +49075,12 @@ def _dash_by_label_inside(fig, title, scheme, bo, place, mult=1.0):
 #: The textbox words a by() panel label's box draws (WP-31 D10): fill,
 #: outline and box on/off.
 _DASH_BY_LABEL_BOX_WORDS = ("fcolor", "bfcolor", "bcolor", "lcolor", "box",
-                            "nobox")
+                            "nobox",
+                            # WP-31 D10c: the bystyles' label words --
+                            # astextbox (the box twoway draws by default),
+                            # blstyle() the outline's linestyle, margin()
+                            # the box's top and bottom margins.
+                            "astextbox", "blstyle", "margin")
 
 
 def _dash_by_text_cell(scheme, name):
@@ -49726,6 +49761,22 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
         f_pt = None
     font = (float(f_pt) * px if f_pt else 13.0) * mult
     top, bottom = getattr(scheme, "by_label_margin_rs", (0.6, 0.6))
+    # WP-31 D10c: subtitle(, margin()) sets the box's top and bottom
+    # margins (measured: style(econ)'s margin(small) against the default's,
+    # by_remainder_truth.json bystyle_econ); a #pt side over the 4-inch
+    # reference, as margin_sides gives it.
+    if bo.get("margin") and scheme is not None and \
+            hasattr(scheme, "margin_sides"):
+        _ms = scheme.margin_sides(str(bo["margin"]).strip())
+        if _ms:
+            def _rs(v):
+                if isinstance(v, tuple):
+                    return float(v[1]) / OptionTranslator.PT_PER_RS
+                return float(v)
+            try:
+                top, bottom = _rs(_ms[3]), _rs(_ms[2])
+            except (TypeError, ValueError, IndexError):
+                pass
     unit = OptionTranslator.PT_PER_RS * px
     h = int(round(font + (float(top) + float(bottom)) * unit * mult))
     h = max(1, min(h, 2000))
@@ -49744,6 +49795,17 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
                     return c
         return None
     fill = _col("fcolor", "bfcolor", "bcolor") or fill
+    # WP-31 D10c: blstyle(<linestyle>): the outline in that named line
+    # style's colour (style(rescale)'s foreground: black under s2color,
+    # measured); lcolor()/bcolor() still win.
+    if bo.get("blstyle") and scheme is not None and \
+            hasattr(scheme, "style_bundle"):
+        try:
+            _lb = scheme.style_bundle("line", str(bo["blstyle"]))
+        except Exception:  # noqa: BLE001
+            _lb = None
+        if _lb and _lb.get("line"):
+            outline = _lb["line"]
     outline = _col("lcolor", "bcolor") or outline
     fpx = "%gpx" % round(font, 2)
     box = ColorBar(
@@ -59062,6 +59124,8 @@ class ServerAppBuilder:
                       "_DASH_REFLINE_SUBOPT_TABLE", "_DASH_AXLABEL_HONOURED",
                       # WP-31 D1: minor ticks and minor labels.
                       "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
+                      # WP-31 D10c: the major-length minor tick styles.
+                      "_DASH_MTICK_MAJOR_STYLES",
                       "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
                       # The second axes' coordinate names and the
                       # yscale2()/xscale2() sub-options honoured (WP-23).
