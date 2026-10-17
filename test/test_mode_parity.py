@@ -1051,15 +1051,28 @@ def _widget_profile(w):
 
 def _is_stale_status(m):
     """The saved page's hidden note that it does not refit (WP-29 P0.17):
-    the standalone half of the allowance below, never a served model.  Its
-    hidden error line (WP-31 H1, tagged dash_error_status) is the same kind
-    of saved-only status line -- the page's script recomputes what the
-    server recomputes in Python and logs -- under the same allowance."""
-    if isinstance(m, Div) and ({"dash_stale_status", "dash_error_status"}
-                               & set(m.tags or [])):
+    the standalone half of the allowance below, never a served model."""
+    if isinstance(m, Div) and "dash_stale_status" in (m.tags or []):
         _allowed("aggregate layers recompute live")
         return True
     return False
+
+
+def _is_saved_status_chrome(m):
+    """The saved page's hidden error line (WP-31 H1, a Div tagged
+    dash_error_status): page chrome only a saved page has, because only a
+    saved page runs the dashboard in the browser's script -- its failure is
+    written there, where the served app's Python logs it server-side.  It
+    draws nothing and holds no data, so it is no difference between the
+    modes' dashboards and needs no ALLOWED entry; any other model is
+    compared."""
+    return isinstance(m, Div) and "dash_error_status" in (m.tags or [])
+
+
+def _is_saved_only(m):
+    """Either saved-only status line (:func:`_is_stale_status`,
+    :func:`_is_saved_status_chrome`)."""
+    return _is_saved_status_chrome(m) or _is_stale_status(m)
 
 
 def _layout_tree(m, figures):
@@ -1086,7 +1099,7 @@ def _layout_tree(m, figures):
         return ("at", m[1], m[2], m[3], m[4], _layout_tree(m[0], figures))
     if isinstance(m, (list, tuple)):
         return [_layout_tree(x, figures) for x in m
-                if not _is_stale_status(x)]
+                if not _is_saved_only(x)]
     if m is None:
         return None
     tn = type(m).__name__
@@ -1229,7 +1242,7 @@ def _bs_markup_page(r, page, figures, embedded):
         chunk = body[at:nxt if nxt >= 0 else len(body)]
         widgets = [("Widget", _widget_profile(embedded[rid]))
                   for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded
-                  and not _is_stale_status(embedded[rid])]
+                  and not _is_saved_only(embedded[rid])]
         parts.append((at, ("Row", widgets)))
 
     at = body.find(_BS_TABS_CELL_START)
@@ -5095,6 +5108,15 @@ class TestTheGlyphProfile:
 class TestTheStaleStatusSkip:
     """D12-1: only the saved page's status Div tagged dash_stale_status is
     skipped, through the existing allowance."""
+
+    def test_the_error_line_has_its_own_exemption(self):
+        """WP-31 H1: the saved page's hidden error line is skipped as
+        saved-only status chrome, not under the recompute allowance."""
+        err = Div(text="", tags=["dash_error_status"])
+        assert not _is_stale_status(err)
+        assert _is_saved_status_chrome(err)
+        assert not _is_saved_status_chrome(Div(text="", tags=["other"]))
+        assert _layout_tree([err], []) == []
 
     def test_only_a_div_tagged_dash_stale_status_is_skipped(self):
         keep = Div(text="x", tags=["other"])
