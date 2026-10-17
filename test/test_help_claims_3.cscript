@@ -271,7 +271,8 @@ assert r(rc) == 0
 // "no widget was built." ends three of the renderer's warnings.)  The
 // helpers replace r(), so the log's name is kept first.
 local hc3log "`r(log)'"
-cert_log_has "`hc3log'", needle("filter(foreign, type(checkbox)): type() must be one of dropdown, range, slider; no widget was built.")
+// Flipped (WP-31 H2f): the three types were the list until type(multi).
+cert_log_has "`hc3log'", needle("filter(foreign, type(checkbox)): type() must be one of dropdown, range, slider, multi; no widget was built.")
 assert r(found) == 1
 cert_file_has "`hc3'13.html", needle(`""options":[["__all__","All"]"')
 assert r(found) == 0

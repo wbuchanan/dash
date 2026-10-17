@@ -894,6 +894,11 @@ class TestTheFilterWidgetSpansItsReach:
     def test_dropdown_values_both_modes(self, monkeypatch):
         want = ["All"] + ["%g" % v for v in _truth()["p4"]["rep78_if_foreign"]]
         auto = sfm._auto().rename(columns={"rep78": "rep"})
+        # Flipped (WP-31 H2f): the levels alone were right until a dropdown
+        # over a variable with a missing value in its reach listed
+        # "(missing)" last; one foreign car's rep78 is missing.
+        assert auto.loc[auto["foreign"] == 1, "rep"].isna().any()
+        want = want + ["(missing)"]
         monkeypatch.setattr(tp, "_DF", auto)
         spec = tp._spec([plot_for("scatter")], {"filter": "rep, type(dropdown)"},
                         if_expr="foreign == 1")

@@ -291,6 +291,12 @@ _DASH_BOKEH_INTERNALS = (
      "browser test",
      "test/test_export_svg.py::TestTheBundle"
      "::test_the_calls_exist_in_the_shipped_bokehjs"),
+    # WP-31 H2f (DECISIONS A29): Choices.js reads a MultiChoice label as
+    # HTML in the shipped bundle (allowHTML:!0, no override).
+    ("Choices.js allowHTML default in MultiChoice",
+     "_dash_multi_label",
+     "test/test_label_sinks.py::TestMultiChoiceLabels"
+     "::test_multichoice_labels_are_text"),
 )
 
 
@@ -2261,6 +2267,24 @@ _DASH_TABLE_TOGGLE_JS = (
     "dt.visible = cb_obj.active; note.visible = cb_obj.active && capped; "
     "try { const v = Bokeh.index.find_one(dt); "
     "if (v && v.invalidate_layout) v.invalidate_layout(); } catch (e) {}")
+
+#: WP-31 H2f: the saved page's "Reset filters" script.  Each widget whose
+#: value differs from its opening one (``initial_json``, one entry per
+#: widget) is set back; that write fires the widget's own filter callback,
+#: and _FILTER_JS reads every widget, so the last run leaves the opening
+#: rows.  A slider's value_throttled is set too (DECISIONS A28), since a
+#: programmatic value write does not set it.
+_DASH_FILTER_RESET_JS = (
+    "const init = JSON.parse(initial_json);\n"
+    "for (let i = 0; i < widgets.length; i++) {\n"
+    "    const w = widgets[i];\n"
+    "    const v = init[i];\n"
+    "    if (JSON.stringify(w.value) !== JSON.stringify(v)) {\n"
+    "        w.value = v;\n"
+    "        if (w.properties.value_throttled !== undefined) "
+    "{ w.value_throttled = v; }\n"
+    "    }\n"
+    "}\n")
 
 #: WP-31 E10 (DECISIONS A24): the rows of every style file this process has
 #: read, keyed by the file's (realpath, st_dev, st_ino, st_size, st_mtime),
@@ -4918,9 +4942,11 @@ def _dash_filter_effective_type(ftype, varname, column, limit):
     drawn as ``range`` -- the widget a continuous variable wants -- and a
     string variable keeps its dropdown with the first *limit* values listed
     (``_dash_filter_widget`` truncates it).  Either way the user is told,
-    with the limit and the global that raises it.
+    with the limit and the global that raises it.  A ``multi`` (WP-31 H2f)
+    follows the same rule: drawn as ``range`` on a numeric or date
+    variable, truncated with the note on a string one.
     """
-    if ftype != "dropdown" or column is None:
+    if ftype not in ("dropdown", "multi") or column is None:
         return ftype
     series = pd.Series(column)
     # nunique first: since GAPS2 X1, an option is a value through
@@ -28814,6 +28840,18 @@ def _dash_csv_payload(frame, meta):
     return out
 
 
+def _dash_missing_mask(column):
+    """The rows a "(missing)" option keeps (WP-31 H2f): a number's NaN, a
+    string's ``""`` (and a stray None or NaN, which
+    ``_dash_dropdown_values`` folds into it) -- ``dash_filter_mask``'s
+    ``ismiss``."""
+    series = pd.Series(column)
+    if _dash_filter_numeric(series):
+        return series.isna().to_numpy(dtype=bool)
+    return np.array([v is None or (isinstance(v, float) and math.isnan(v))
+                     or v == "" for v in series.tolist()], dtype=bool)
+
+
 def _dash_frame_filter_mask(df, widgets):
     """The served filters' row mask over *df*, from each widget's value.
 
@@ -28849,11 +28887,31 @@ def _dash_frame_filter_mask(df, widgets):
         if wvar is None or wvar not in df.columns:
             continue
         kind = getattr(w, "_dash_ftype", "")
-        if kind == "dropdown":
+        _w_missing = getattr(w, "_dash_missing", None)
+        if kind == "multi":
+            # WP-31 H2f: any of the chosen values, each by the dropdown's
+            # rule; "(missing)" the missing rows; none chosen, every row.
+            vals = list(w.value or [])
+            if not vals:
+                continue
+            _mv = getattr(w, "_dash_multi_values", None) or {}
+            _codes = df.get(_DASH_CODE_PREFIX + str(wvar))
+            keep = np.zeros(len(df), dtype=bool)
+            for v in vals:
+                if _w_missing is not None and v == _w_missing:
+                    keep |= _dash_missing_mask(df[wvar])
+                else:
+                    keep |= _dash_dropdown_mask(
+                        df[wvar], _mv.get(v, v),
+                        getattr(w, "_dash_groups", None), _codes)
+            mask &= keep
+        elif kind == "dropdown":
             # The widget's own sentinel: '__all__' grows an underscore when
             # the data holds that literal value (BUG-37).
             _w_sentinel = getattr(w, "_dash_sentinel", "__all__")
-            if w.value != _w_sentinel:
+            if _w_missing is not None and w.value == _w_missing:
+                mask &= _dash_missing_mask(df[wvar])
+            elif w.value != _w_sentinel:
                 mask &= _dash_dropdown_mask(
                     df[wvar], w.value, getattr(w, "_dash_groups", None),
                     df.get(_DASH_CODE_PREFIX + str(wvar)))
@@ -30082,16 +30140,66 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
         // callback is ever invoked with stale or partially-constructed args.
         if (!w || !(fvar in orig)) continue;
         const col = orig[fvar];
+        // A missing value (WP-31 H2f): a number's null or NaN, a string's
+        // "" -- the rows the "(missing)" option keeps.
+        const ismiss = (v) => v === null || v === undefined || v === '' ||
+            (typeof v === 'number' && Number.isNaN(v));
+        const cpre = '__dashm_' + fvar + '=';
 
-        if (ftype === 'dropdown') {
+        if (ftype === 'multi') {
+            // WP-31 H2f: nothing chosen keeps every row; chosen values
+            // keep the rows equal to any of them, each value by the
+            // dropdown's own rule (a number as a number, spec.groups'
+            // members, an extended missing code by its letter), and
+            // "(missing)" the missing rows.
+            const chosen = Array.isArray(w.value) ? w.value : [];
+            if (chosen.length === 0) continue;
+            const msent = spec.missing_sentinel;
+            const mv = spec.multi_values || {};
+            const miss = !!msent && chosen.includes(msent);
+            const nums = new Set(), texts = new Set(), letters = new Set();
+            for (const s of chosen) {
+                if (s === msent) continue;
+                if (typeof s === 'string' && s.startsWith(cpre)) {
+                    letters.add(s.slice(cpre.length));
+                } else if (spec.numeric) {
+                    const want = Number(Object.prototype.hasOwnProperty
+                        .call(mv, s) ? mv[s] : s);
+                    let members = [want];
+                    if (spec.groups) {
+                        const grp = spec.groups.find((g) => g[0] === want);
+                        if (grp) members = grp;
+                    }
+                    for (const m of members) nums.add(m);
+                } else {
+                    texts.add(String(s));
+                }
+            }
+            const cc = orig['__dashm_' + fvar] || [];
+            for (let i = 0; i < n_rows; i++) {
+                if (!active[i]) continue;
+                const v = col[i];
+                if (miss && ismiss(v)) continue;
+                if (letters.size && letters.has(cc[i])) continue;
+                if (!ismiss(v) && (spec.numeric ? nums.has(Number(v))
+                                   : texts.has(String(v)))) continue;
+                active[i] = false;
+            }
+        } else if (ftype === 'dropdown') {
             const val = w.value;
             // Use per-widget sentinel (may differ from '__all__' when data contains
             // the literal '__all__' value — sentinel is then '__all__' + extra '_').
             const sentinel = spec.sentinel || '__all__';
             if (val === sentinel) continue;
+            if (spec.missing_sentinel && val === spec.missing_sentinel) {
+                // "(missing)" (WP-31 H2f): exactly the missing rows.
+                for (let i = 0; i < n_rows; i++) {
+                    if (active[i] && !ismiss(col[i])) active[i] = false;
+                }
+                continue;
+            }
             // An extended missing value's option (WP-31 G1): the rows
             // whose code column holds its letter.
-            const cpre = '__dashm_' + fvar + '=';
             if (typeof val === 'string' && val.startsWith(cpre)) {
                 const letter = val.slice(cpre.length);
                 const cc = orig['__dashm_' + fvar] || [];
@@ -33288,6 +33396,7 @@ class FilterBuilder:
         storage: str = "",
         fmt_cache: "dict | None" = None,
         date_kind: str = "",
+        _ftype: str = "dropdown",
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
@@ -33326,8 +33435,8 @@ class FilterBuilder:
         # categories are the data's and not the first graph's.
         _values = column if column is not None else source.data.get(varname, [])
         widget, _sentinel = _dash_filter_widget(
-            "dropdown", varname, _values,
-            _dash_filter_title(label, FilterBuilder._safe(varname), "dropdown"),
+            _ftype, varname, _values,
+            _dash_filter_title(label, FilterBuilder._safe(varname), _ftype),
             vlabels, date_kind=date_kind, max_options=max_options, fmt=fmt,
             storage=storage, fmt_cache=fmt_cache)
 
@@ -33375,6 +33484,19 @@ class FilterBuilder:
         return widget, callback
 
     @staticmethod
+    def build_multi(varname: str, source: ColumnDataSource, *args, **kwargs):
+        """Build a multi-select filter (``type(multi)``, WP-31 H2f): a
+        ``MultiChoice`` over the values :meth:`build_dropdown` lists, with
+        the same callback.  Nothing chosen keeps every row; chosen values
+        keep the rows equal to any of them.
+
+        Returns:
+            A ``(MultiChoice widget, CustomJS callback)`` tuple.
+        """
+        kwargs["_ftype"] = "multi"
+        return FilterBuilder.build_dropdown(varname, source, *args, **kwargs)
+
+    @staticmethod
     def build_slider(
         varname: str,
         source: ColumnDataSource,
@@ -33387,6 +33509,7 @@ class FilterBuilder:
         fmt: str = "",
         storage: str = "",
         fmt_cache: "dict | None" = None,
+        direction: str = "ltr",
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
@@ -33403,7 +33526,8 @@ class FilterBuilder:
         widget, _ = _dash_filter_widget(
             "slider", varname, _values,
             _dash_filter_title(label, safe_var, "slider"), None, date_kind,
-            fmt=fmt, storage=storage, fmt_cache=fmt_cache)
+            fmt=fmt, storage=storage, fmt_cache=fmt_cache,
+            direction=direction)
         if widget is None:
             widget = Slider(title=_dash_filter_title(label, safe_var, "slider"),
                             start=0, end=1, value=0, step=1, disabled=True)
@@ -33451,6 +33575,7 @@ class FilterBuilder:
         fmt: str = "",
         storage: str = "",
         fmt_cache: "dict | None" = None,
+        direction: str = "ltr",
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
@@ -33467,7 +33592,8 @@ class FilterBuilder:
         widget, _ = _dash_filter_widget(
             "range", varname, _values,
             _dash_filter_title(label, safe_var, "range"), None, date_kind,
-            fmt=fmt, storage=storage, fmt_cache=fmt_cache)
+            fmt=fmt, storage=storage, fmt_cache=fmt_cache,
+            direction=direction)
         if widget is None:
             widget = RangeSlider(title=_dash_filter_title(label, safe_var, "range"),
                                  start=0, end=1, value=(0, 1), step=1,
@@ -46005,13 +46131,143 @@ def _dash_filter_rangeable(column):
                 or pd.api.types.is_datetime64_any_dtype(series))
 
 
+def _dash_dropdown_options(series, column, varname, vlabels, fmt, storage,
+                           date_kind, limit, fmt_cache=None):
+    """The options a dropdown or multi lists for *series*, "All" aside.
+
+    Returns ``(entries, sentinel, missing, by_label)``: *entries* is the
+    ``(value, label)`` list -- the distinct values in sort order, the first
+    *limit* of them (a note says when more were cut), values sharing one
+    display text as ONE entry (DISCOVERY Q26), then each extended missing
+    code .a-.z (WP-31 G1), then ``(missing)`` when the column holds a
+    missing value (WP-31 H2f); *sentinel* is the "All" value and *missing*
+    the "(missing)" value (None without one), each lengthened with ``_``
+    while it equals a data value; *by_label* maps each entry's text to its
+    member values.  A string column's ``""`` is its missing value, listed
+    as ``(missing)`` and not as a blank entry.
+    """
+    raw_values = _dash_dropdown_values(series)
+    numeric = _dash_filter_numeric(series)
+    is_date = bool(pd.api.types.is_datetime64_any_dtype(series))
+    if numeric:
+        has_missing = bool(series.isna().any())
+    else:
+        has_missing = "" in raw_values
+        raw_values = [v for v in raw_values if v != ""]
+    # A per-widget sentinel absent from the data, so a real category
+    # equal to the literal string "__all__" stays selectable.
+    sentinel = "__all__"
+    while sentinel in raw_values:
+        sentinel += "_"
+    missing = None
+    if has_missing:
+        missing = "__missing__"
+        while missing in raw_values:
+            missing += "_"
+    if len(raw_values) > limit:
+        _dash_warn_once(("limit", "filter_options", str(varname)),
+                        _dash_filter_truncation_note(
+                            varname, len(raw_values), limit),
+                        stacklevel=4)
+        raw_values = raw_values[:limit]
+
+    # A date's option value is its milliseconds (_dash_option_value);
+    # its label is the date in the variable's own format (GAPS2 E3).
+    _dfmt = _dash_date_fmt(fmt, date_kind) if is_date else ""
+    _nfmt = (fmt if _dash_fmt_kind(fmt) in ("f", "g", "e")
+             else "%9.0g")
+
+    def _label(rv):
+        if rv in vlabels:
+            return _dash_graph_text_plain(vlabels[rv])
+        if isinstance(rv, float):
+            if is_date:
+                return _dash_fmt_text(  # no dp: a %t picture
+                    _dash_stata_value_of(rv, date_kind or "td"), _dfmt)
+            if rv.is_integer():
+                k = str(int(rv))
+                if k in vlabels:
+                    return _dash_graph_text_plain(vlabels[k])
+            # The variable's display text (GAPS2 E3, G6): %8.0gc's
+            # 4,099, a float-stored 0.1's .1.
+            return _dash_fmt_text(rv, _nfmt, storage or None,
+                                  dp=_dash_cache_dp(fmt_cache))
+        return rv
+
+    # DISCOVERY Q26: values sharing one display text are ONE entry --
+    # its value the first member's, its label the shared text -- that
+    # selects every member (S17's groups; this forms them by label).
+    by_label = {}
+    for rv in raw_values:
+        by_label.setdefault(str(_label(rv)), []).append(rv)
+
+    # The option label is raw: BokehJS builds each option as
+    # `option({value: label}, label)', a text node, so escaping it only
+    # showed the entities (a value label `Men's' as `Men&#x27;s').  The
+    # value (rv) is compared, never displayed.  Both are pinned in
+    # test_label_sinks.py.
+    entries = [(members[0], text) for text, members in by_label.items()]
+    # An extended missing value .a-.z is its own option, after the
+    # values, titled as twoway titles it (WP-31 G1): its value label,
+    # else .a.  The option's value names the code column and letter,
+    # "__dashm_<var>=a", which both masks compare.
+    if numeric:
+        _letters = ((getattr(column, "attrs", None) or {})
+                    .get("_dash_codes", {}).get(str(varname), ()))
+        for _c in _letters:
+            if _c in _DASH_CODE_LETTERS:
+                entries.append((
+                    f"{_DASH_CODE_PREFIX}{varname}={_c}",
+                    _dash_graph_text_plain(_dash_code_text(_c, vlabels))))
+    if missing is not None:
+        entries.append((missing, "(missing)"))
+    return entries, sentinel, missing, by_label
+
+
+def _dash_multi_label(text):
+    """A MultiChoice option's label as Choices.js must be given it.
+
+    Choices.js, the library behind Bokeh's ``MultiChoice``, reads a label
+    as HTML: its ``allowHTML`` default is true in the shipped bokeh-widgets
+    bundle and Bokeh's view passes no override (DECISIONS A29, on
+    ``_DASH_BOKEH_INTERNALS``), so a value label ``<img onerror=...>`` would
+    be markup.  It is escaped, quotes kept as typed.  A ``Select``'s label
+    is a text node and is never passed through this.
+    """
+    return html.escape(str(text), quote=False)
+
+
+def _dash_filter_reset_button(widgets):
+    """The "Reset filters" button both modes end the filter row with
+    (WP-31 H2f), or None when no filter widget was built.  Its action --
+    each widget back to its ``_dash_initial`` -- is wired by the caller:
+    ``_DASH_FILTER_RESET_JS`` on the saved page, the app's
+    ``_dash_reset_filters`` on the served one."""
+    if not widgets:
+        return None
+    from bokeh.models import Button
+    return Button(label="Reset filters", button_type="default",
+                  tags=["dash_filter_reset"])
+
+
+def _dash_reset_value(widget):
+    """*widget*'s opening value as plain JSON, for the saved reset script:
+    a list for a multi or a range, a number (a date's milliseconds) or the
+    sentinel text otherwise (WP-31 H2f)."""
+    v = getattr(widget, "_dash_initial", widget.value)
+    if isinstance(v, (list, tuple)):
+        return [_dash_json_value(x) for x in v]
+    return _dash_json_value(v)
+
+
 def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                         date_kind="", max_options=None, fmt="", storage="",
-                        fmt_cache=None):
+                        fmt_cache=None, direction="ltr"):
     """The one filter widget both modes show for ``filter(varname, type())``.
 
     Args:
-        ftype:        ``"dropdown"``, ``"slider"`` or ``"range"``.
+        ftype:        ``"dropdown"``, ``"multi"``, ``"slider"`` or
+                      ``"range"``.
         varname:      The variable.
         column:       Its values over the WHOLE dataset -- a widget's
                       categories and bounds describe the data, not whatever
@@ -46032,6 +46288,11 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                       float32 value).
         fmt_cache:    The document's formatter models, one per format
                       (:func:`_dash_fmt_tick_formatter`).
+        direction:    A slider's or range's travel, ``"ltr"`` or
+                      ``"rtl"`` (WP-31 H2f, ``filter(..., direction())``).
+
+    Every widget records its opening value as ``_dash_initial``, which the
+    reset button restores (WP-31 H2f).
 
     Returns:
         ``(widget, sentinel)``.  The widget is None when the column cannot
@@ -46042,79 +46303,40 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                               RangeSlider, Select, Slider)
     series = pd.Series(column)
     is_date = bool(pd.api.types.is_datetime64_any_dtype(series))
-    if ftype == "dropdown":
-        vlabels = value_labels or {}
-        raw_values = _dash_dropdown_values(series)
-        # A per-widget sentinel absent from the data, so a real category
-        # equal to the literal string "__all__" stays selectable.
-        sentinel = "__all__"
-        while sentinel in raw_values:
-            sentinel += "_"
+    if ftype in ("dropdown", "multi"):
         limit = (_DASH_LIMITS["filter_options"][0] if max_options is None
                  else int(max_options))
-        if len(raw_values) > limit:
-            _dash_warn_once(("limit", "filter_options", str(varname)),
-                            _dash_filter_truncation_note(
-                                varname, len(raw_values), limit),
-                            stacklevel=3)
-            raw_values = raw_values[:limit]
-
-        # A date's option value is its milliseconds (_dash_option_value);
-        # its label is the date in the variable's own format (GAPS2 E3).
-        _dfmt = _dash_date_fmt(fmt, date_kind) if is_date else ""
-        _nfmt = (fmt if _dash_fmt_kind(fmt) in ("f", "g", "e")
-                 else "%9.0g")
-
-        def _label(rv):
-            if rv in vlabels:
-                return _dash_graph_text_plain(vlabels[rv])
-            if isinstance(rv, float):
-                if is_date:
-                    return _dash_fmt_text(  # no dp: a %t picture
-                        _dash_stata_value_of(rv, date_kind or "td"), _dfmt)
-                if rv.is_integer():
-                    k = str(int(rv))
-                    if k in vlabels:
-                        return _dash_graph_text_plain(vlabels[k])
-                # The variable's display text (GAPS2 E3, G6): %8.0gc's
-                # 4,099, a float-stored 0.1's .1.
-                return _dash_fmt_text(rv, _nfmt, storage or None,
-                                      dp=_dash_cache_dp(fmt_cache))
-            return rv
-
-        # DISCOVERY Q26: values sharing one display text are ONE entry --
-        # its value the first member's, its label the shared text -- that
-        # selects every member (S17's groups; this forms them by label).
-        _by_label = {}
-        for rv in raw_values:
-            _by_label.setdefault(str(_label(rv)), []).append(rv)
-
-        # The option label is raw: BokehJS builds each option as
-        # `option({value: label}, label)', a text node, so escaping it only
-        # showed the entities (a value label `Men's' as `Men&#x27;s').  The
-        # value (rv) is compared, never displayed.  Both are pinned in
-        # test_label_sinks.py.
-        options = [(sentinel, "All")] + [
-            (members[0], text) for text, members in _by_label.items()]
-        # An extended missing value .a-.z is its own option, after the
-        # values, titled as twoway titles it (WP-31 G1): its value label,
-        # else .a.  The option's value names the code column and letter,
-        # "__dashm_<var>=a", which both masks compare.
-        if _dash_filter_numeric(series):
-            _letters = ((getattr(column, "attrs", None) or {})
-                        .get("_dash_codes", {}).get(str(varname), ()))
-            for _c in _letters:
-                if _c in _DASH_CODE_LETTERS:
-                    options.append((
-                        f"{_DASH_CODE_PREFIX}{varname}={_c}",
-                        _dash_graph_text_plain(_dash_code_text(_c, vlabels))))
-        w = Select(title=title, value=sentinel, options=options)
+        entries, sentinel, missing, _by_label = _dash_dropdown_options(
+            series, column, varname, value_labels or {}, fmt, storage,
+            date_kind, limit, fmt_cache)
+        _numeric = _dash_filter_numeric(series)
+        if ftype == "multi":
+            from bokeh.models import MultiChoice
+            # A MultiChoice option's value is text: the masks read it back
+            # through _dash_multi_values (a number's own float), and the
+            # label goes through Choices.js, which reads it as markup
+            # (_dash_multi_label; DECISIONS A29).
+            w = MultiChoice(title=title, value=[], placeholder="All",
+                            options=[(str(v), _dash_multi_label(text))
+                                     for v, text in entries],
+                            tags=["dash_filter"])
+            w._dash_multi_values = {
+                str(members[0]): members[0]
+                for members in _by_label.values()}
+            w._dash_initial = []
+        else:
+            w = Select(title=title, value=sentinel,
+                       options=[(sentinel, "All")] + entries)
+            w._dash_initial = sentinel
         w._dash_sentinel = sentinel
-        w._dash_ftype = "dropdown"
+        w._dash_ftype = ftype
+        # The "(missing)" option's value, when the column has a missing
+        # value (WP-31 H2f); both masks keep exactly the missing rows for it.
+        w._dash_missing = missing
         # GAPS2 X1 (DISCOVERY Q26): a numeric column's dropdown compares
         # numbers as numbers; _dash_groups maps an entry's value to every
         # member sharing its display text, the value first.
-        w._dash_numeric = _dash_filter_numeric(series)
+        w._dash_numeric = _numeric
         if w._dash_numeric:
             w._dash_groups = {members[0]: tuple(members)
                               for members in _by_label.values()}
@@ -46131,13 +46353,14 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         arr = _dash_period_values(arr, date_kind)
         arr = arr[np.isfinite(arr)]
     if len(arr) == 0:
-        w = (RangeSlider(title=title, start=0, end=1, value=(0, 1), step=1,
+        w = (RangeSlider(title=title, direction=direction, start=0, end=1, value=(0, 1), step=1,
                          disabled=True)
              if ftype == "range" else
-             Slider(title=title, start=0, end=1, value=0, step=1,
+             Slider(title=title, direction=direction, start=0, end=1, value=0, step=1,
                     disabled=True))
         w._dash_ftype = ftype
         w._dash_is_date = is_date
+        w._dash_initial = w.value
         if _period:
             w._dash_unit = date_kind
         return w, None
@@ -46153,39 +46376,40 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
             fmt if _dash_fmt_writes_number(fmt) else "%9.0g",
             "", storage, fmt_cache)
     if _period:
-        w = (RangeSlider(title=title, start=vmin, end=vmax,
+        w = (RangeSlider(title=title, direction=direction, start=vmin, end=vmax,
                          value=(vmin, vmax), step=1, format=_tfmt)
              if ftype == "range" else
-             Slider(title=title, start=vmin, end=vmax, value=vmin, step=1,
+             Slider(title=title, direction=direction, start=vmin, end=vmax, value=vmin, step=1,
                     format=_tfmt))
         w._dash_unit = date_kind
     elif is_date and _is_clock_kind(date_kind):
         # DateRangeSlider's step is a whole number of DAYS, so a clock
         # series spanning one day had a single reachable notch.
         step = _clock_slider_step_ms(vmin, vmax)
-        w = (DatetimeRangeSlider(title=title, start=vmin, end=vmax,
+        w = (DatetimeRangeSlider(title=title, direction=direction, start=vmin, end=vmax,
                                  value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
-             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step,
+             Slider(title=title, direction=direction, start=vmin, end=vmax, value=vmin, step=step,
                     format=_tfmt))
     elif is_date:
         step = _date_slider_step_days(vmin, vmax)
-        w = (DateRangeSlider(title=title, start=vmin, end=vmax,
+        w = (DateRangeSlider(title=title, direction=direction, start=vmin, end=vmax,
                              value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
-             DateSlider(title=title, start=vmin, end=vmax, value=vmin,
+             DateSlider(title=title, direction=direction, start=vmin, end=vmax, value=vmin,
                         step=step, format=_tfmt))
     else:
         # A range of whole numbers steps by 1: (vmax - vmin) / 100 gave
         # rep78, which takes the values 1..5, a step of 0.04.
         step = _whole_number_step(arr, vmax - vmin)
-        w = (RangeSlider(title=title, start=vmin, end=vmax,
+        w = (RangeSlider(title=title, direction=direction, start=vmin, end=vmax,
                          value=(vmin, vmax), step=step, format=_tfmt)
              if ftype == "range" else
-             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step,
+             Slider(title=title, direction=direction, start=vmin, end=vmax, value=vmin, step=step,
                     format=_tfmt))
     w._dash_ftype = ftype
     w._dash_is_date = is_date
+    w._dash_initial = w.value
     return w, None
 
 
@@ -52050,8 +52274,8 @@ def _dash_refline_extents(fig):
 
 
 #: filter() widget types dash builds.
-_DASH_FILTER_TYPES = ("dropdown", "range", "slider")
-_DASH_FILTER_SUBOPTS = frozenset({"type", "exclude", "label"})
+_DASH_FILTER_TYPES = ("dropdown", "range", "slider", "multi")
+_DASH_FILTER_SUBOPTS = frozenset({"type", "exclude", "label", "direction"})
 # G5 (WP-28): every renderer name check calls _dash_is_stata_name (1183)
 # instead of the ASCII-only regex that used to live here; deleted, with
 # its served constants entry, so a Unicode variable name now works in
@@ -52169,8 +52393,9 @@ def _dash_parse_filter_raw(raw, warn=True):
     are joined with ``||`` (``;`` in older specs), and a group ends only at
     one outside quotes and parentheses (``_dash_filter_split``), so a label
     may hold either.  Each group is
-    ``varname[, type(...) exclude(...) label(...)]`` and becomes
-    ``{"varname", "type", "exclude", "label"}``.
+    ``varname[, type(...) exclude(...) label(...) direction(...)]`` and
+    becomes ``{"varname", "type", "exclude", "label"}``, with
+    ``"direction"`` when direction() is given (WP-31 H2f).
 
     What is refused, and why that is all: the variable name and every
     exclude() name must be Stata names (they become column and registry
@@ -52199,6 +52424,7 @@ def _dash_parse_filter_raw(raw, warn=True):
         if rest.startswith(","):
             rest = rest[1:]
         ftype, excl, flabel, bad, ok = "dropdown", [], "", [], True
+        fdir = ""
         # Sub-options may be comma-separated as well as space-separated
         # (filter(foreign, type(dropdown), exclude(g1)) is the documented
         # form); a comma between them is not part of a token, with or
@@ -52224,6 +52450,10 @@ def _dash_parse_filter_raw(raw, warn=True):
                 # label(`"Curb "weight""') and label(Curb weight) all reach
                 # here verbatim.
                 flabel = _dash_filter_label(arg)
+            elif name == "direction" and "(" in tok:
+                # ltr or rtl, on a slider or range (WP-31 H2f); dash.ado
+                # refuses any other word and any other type.
+                fdir = arg.strip().lower()
             else:
                 bad.append(tok)
         if not ok:
@@ -52234,8 +52464,11 @@ def _dash_parse_filter_raw(raw, warn=True):
             continue
         if warn:
             _dash_report_suboptions("filter", bad)
-        result.append({"varname": fvar, "type": ftype, "exclude": excl,
-                       "label": flabel})
+        _row = {"varname": fvar, "type": ftype, "exclude": excl,
+                "label": flabel}
+        if fdir:
+            _row["direction"] = fdir
+        result.append(_row)
     return result
 
 
@@ -59614,8 +59847,10 @@ class DashRenderer:
             if _eff != ftype:
                 ftype = _eff
                 fc = dict(fc, type=_eff)
-            if ftype == "dropdown":
-                widget, cb = FilterBuilder.build_dropdown(
+            if ftype in ("dropdown", "multi"):
+                _bd = (FilterBuilder.build_dropdown if ftype == "dropdown"
+                       else FilterBuilder.build_multi)
+                widget, cb = _bd(
                     fvar, fsource, None, vlabels,
                     exclude_names=excludes,
                     label=flabel,
@@ -59649,6 +59884,7 @@ class DashRenderer:
                     fmt=getattr(self, "formats", {}).get(fvar, ""),
                     storage=getattr(self, "storage_types", {}).get(fvar, ""),
                     fmt_cache=getattr(self, "_fmt_models", None),
+                    direction=fc.get("direction") or "ltr",
                 )
             else:
                 _dash_warn_filter_type(fvar, ftype)
@@ -59725,7 +59961,14 @@ class DashRenderer:
                 # A period slider's unit: both masks compare its period
                 # numbers (WP-28 S12).
                 _entry["unit"] = _w._dash_unit
-            if _entry["type"] == "dropdown":
+            if getattr(_w, "_dash_missing", None) is not None:
+                # The "(missing)" option's value (WP-31 H2f), read from
+                # the widget, as the served mask reads it.
+                _entry["missing_sentinel"] = _w._dash_missing
+            if _entry["type"] == "multi":
+                _entry["multi_values"] = dict(
+                    getattr(_w, "_dash_multi_values", None) or {})
+            if _entry["type"] in ("dropdown", "multi"):
                 _entry["numeric"] = bool(getattr(_w, "_dash_numeric", False))
                 _w_groups = getattr(_w, "_dash_groups", None)
                 if _w_groups:
@@ -59946,6 +60189,20 @@ class DashRenderer:
                 _orig_snapshot = ColumnDataSource(_orig_data)
             filter_row_widgets.append(
                 self._csv_button(_orig_snapshot, _filter_specs))
+
+        # WP-31 H2f: the row ends in "Reset filters", which puts every
+        # widget back to its opening value; each widget it changes fires
+        # its own callback, and _FILTER_JS reads every widget, so the last
+        # run leaves the opening rows.
+        _reset = _dash_filter_reset_button(self.filter_widgets)
+        if _reset is not None:
+            _reset.js_on_click(CustomJS(
+                args={"widgets": list(self.filter_widgets),
+                      "initial_json": json.dumps(
+                          [_dash_reset_value(_w)
+                           for _w in self.filter_widgets])},
+                code=_DASH_FILTER_RESET_JS))
+            filter_row_widgets.append(_reset)
 
         return filter_row_widgets
 
@@ -61193,6 +61450,8 @@ class ServerAppBuilder:
                          "_dash_csv_wanted", "_dash_json_value",
                          "_dash_csv_text_value", "_dash_csv_meta",
                          "_dash_csv_payload", "_dash_frame_filter_mask",
+                         # WP-31 H2f: the "(missing)" option's rows.
+                         "_dash_missing_mask",
                          # hover() names absent from the data (WP-29 P0.10).
                          "_dash_note_hover_missing",
                          "_stata_dates_to_datetime",
@@ -61502,6 +61761,10 @@ class ServerAppBuilder:
                          # WP-31 H2t: a graph's data table.
                          "_dash_table_spec", "_dash_table_vars",
                          "_dash_table_text_frame", "_dash_data_table",
+                         # WP-31 H2f: the filter options, the MultiChoice
+                         # label and the reset button.
+                         "_dash_dropdown_options", "_dash_multi_label",
+                         "_dash_filter_reset_button",
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
@@ -62291,6 +62554,8 @@ class ServerAppBuilder:
                     "exclude": _fs.get("exclude", []) or [],
                     "label": (_fs.get("label") or "").strip(),
                 })
+                if _fs.get("direction"):
+                    filter_specs[-1]["direction"] = str(_fs["direction"])
         elif filter_raw and filter_raw != '"':
             # DashRenderer._parse_filter_raw handles both "||" (Mata-joined)
             # and ";" (legacy) separators, and now label() too.
@@ -62302,13 +62567,16 @@ class ServerAppBuilder:
                     "exclude": _fs["exclude"],
                     "label": (_fs.get("label") or "").strip(),
                 })
+                if _fs.get("direction"):
+                    filter_specs[-1]["direction"] = _fs["direction"]
 
         # The filter limits (WP-19), planned here where the data is at hand
         # so the user is told at build time.  A dropdown over the option
         # limit on a numeric or date variable is served as a range; a string
         # one keeps its dropdown and the app lists its first values.
         filter_specs = _dash_cap_filters(filter_specs, self.limits["filters"])
-        if any(_fs.get("type") == "dropdown" for _fs in filter_specs):
+        if any(_fs.get("type") in ("dropdown", "multi")
+               for _fs in filter_specs):
             try:
                 _fdf = self._frame()
             except (ValueError, TypeError, KeyError, AttributeError):
@@ -62327,14 +62595,14 @@ class ServerAppBuilder:
                     _eplan = None
             if _fdf is not None:
                 for _fi, _fs in enumerate(filter_specs):
-                    if (_fs.get("type") == "dropdown"
+                    if (_fs.get("type") in ("dropdown", "multi")
                             and _fs["var"] in _fdf.columns):
                         _fcol = _fdf[_fs["var"]]
                         if _eplan is not None:
                             _fcol = _fcol[_eplan["filter_rows"][_fi]
                                           .to_numpy(dtype=bool)]
                         _fs["type"] = _dash_filter_effective_type(
-                            "dropdown", _fs["var"], _fcol,
+                            _fs["type"], _fs["var"], _fcol,
                             self.limits["filter_options"])
 
         lines: list[str] = []
@@ -64533,7 +64801,8 @@ class ServerAppBuilder:
             "            max_options=_dash_lim['filter_options'],",
             "            fmt=_FORMATS.get(fvar, ''),",
             "            storage=_storage_types.get(fvar, ''),",
-            "            fmt_cache=_fmt_cache)",
+            "            fmt_cache=_fmt_cache,",
+            "            direction=fspec.get('direction') or 'ltr')",
             "        if widget is None:",
             "            if ftype not in _DASH_FILTER_TYPES:",
             "                _dash_warn_filter_type(fvar, ftype)",
@@ -64963,6 +65232,7 @@ class ServerAppBuilder:
             "                _slot.applied = _slot.gen",
             "        return _on_filter_change",
             "",
+            "    _wired = []",
             "    for w in filter_widgets:",
             "        _cb_for_w = _make_filter_cb(",
             "            w, filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df,",
@@ -64987,7 +65257,38 @@ class ServerAppBuilder:
             "                     if 'value_throttled' in w.properties() else 'value')",
             "            # And a token bucket per callback per session, for changes",
             "            # sent faster than any hand moves a widget.",
-            "            w.on_change(_attr, _dash_event_throttle(doc, _dash_touch(_cb_for_w)))",
+            "            _fire = _dash_event_throttle(doc, _dash_touch(_cb_for_w))",
+            "            _wired.append((w, _attr, _fire))",
+            "            w.on_change(_attr, _fire)",
+            "",
+            "    # ---- Reset filters (WP-31 H2f) ----",
+            "    # Every widget back to its opening value, then ONE recompute:",
+            "    # the widgets' own callbacks are taken off while the values are",
+            "    # written under one hold (a slider's value_throttled is read-only",
+            "    # here, and its callback reads .value), then the first widget's",
+            "    # callback, which reads every widget, runs once.",
+            "    _reset_btn = _dash_filter_reset_button(filter_widgets)",
+            "    if _reset_btn is not None:",
+            "        _reset_widgets = list(filter_widgets)",
+            "        def _dash_reset_filters():",
+            "            for _rw, _ra, _rf in _wired:",
+            "                _rw.remove_on_change(_ra, _rf)",
+            "            doc.hold('combine')",
+            "            try:",
+            "                for _rw in _reset_widgets:",
+            "                    _init = getattr(_rw, '_dash_initial', _rw.value)",
+            "                    if isinstance(_init, (list, tuple)) and isinstance(",
+            "                            _rw.value, list):",
+            "                        _init = list(_init)",
+            "                    if _rw.value != _init:",
+            "                        _rw.value = _init",
+            "            finally:",
+            "                doc.unhold()",
+            "                for _rw, _ra, _rf in _wired:",
+            "                    _rw.on_change(_ra, _rf)",
+            "            if _wired:",
+            "                _wired[0][2]('value', None, None)",
+            "        _reset_btn.on_click(lambda event: _dash_reset_filters())",
             "",
             "    # ---- Wire brush selection callbacks ----",
             "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src):",
@@ -65117,6 +65418,9 @@ class ServerAppBuilder:
             "        # no filter gets a bar of its own.  A new list: the recompute",
             "        # callbacks keep the filters' own.",
             "        filter_widgets = list(filter_widgets) + [_csv_btn]",
+            "    # The row ends in Reset filters (WP-31 H2f), as the saved one does.",
+            "    if _reset_btn is not None:",
+            "        filter_widgets = list(filter_widgets) + [_reset_btn]",
             "",
             "    # The recompute cue (WP-30 P1.31b): a served session's move waits",
             "    # for the worker with its drawing kept, and says so.  Constant text,",

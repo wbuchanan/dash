@@ -598,8 +598,9 @@ class TestTheParsersFoundSomething:
         # 213 -> 216: C17 the mlabprefix() mlabsuffix() and lalign() entries.
         # 216 -> 217: E3 the mlalign() mlabstyle() entry adds mlabstyle().
         # 217 -> 216: E2 mlpattern() leaves the Unsupported list.
-        # 216 -> 217: H2t the Data tables entry defines table.
-        assert len(found) == 217, (
+        # 216 -> 217: H2t the Data tables entry defines table; 217 -> 218:
+        # H2f filter()'s direction() entry.
+        assert len(found) == 218, (
             f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -828,10 +829,11 @@ class TestTheParsersFoundSomething:
         # 442 -> 443: E3 the mlalign() mlabstyle() entry.
         # 443 -> 444: D14 the Tabs example of a tab's own layout().
         # 444 -> 447: H2t the Data tables entries (table, table(rows(#)
-        # open)) and the $dash_max_table_rows row.
-        assert len(defs) == 447, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 447 "
-            f"measured 16oct2026")
+        # open)) and the $dash_max_table_rows row; 447 -> 449: H2f
+        # filter()'s type(multi) and direction() entries.
+        assert len(defs) == 449, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 449 "
+            f"measured 17oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -897,7 +899,9 @@ class TestEveryDocumentedOptionIsAccepted:
         # never declared by `syntax' themselves.
         subopts = {"type", "exclude", "label", "format", "replace", "cols",
                    "rows", "color", "lcolor", "lwidth", "fcolor", "off", "on",
-                   "range", "degree", "estopts"}
+                   "range", "degree", "estopts",
+                   # WP-31 H2f: filter()'s direction().
+                   "direction"}
         # WP-29 P0.9: lpolyci's pwidth() and var() are read out of the
         # catch-all by value (_dash_lpolyci_opts), undeclared so that the
         # repeat check refuses either written twice, as twoway does.

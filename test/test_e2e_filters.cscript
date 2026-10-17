@@ -383,7 +383,10 @@ spec = ftc.spec_of([ftc.scatter_graph("g1", "y", "x")],
                     {"varname": "tiny", "type": "dropdown"}])
 _, r = ftc.saved(df, strings, spec, [])
 opts = [v for v, _ in r.filter_widgets[0].options][1:]
-ok = all(t in opts for t in ("None", "nan", ""))
+# Flipped (WP-31 H2f): "" was listed as a blank option until a string's
+# missing value was listed once, last, as "(missing)".
+ok = all(t in opts for t in ("None", "nan")) and "" not in opts
+ok = ok and opts[-1] == "__missing__"
 for fi, w in enumerate(r.filter_widgets):
     for v in [v for v, _ in w.options][1:]:
         a, _ = ftc.saved(df, strings, spec, [(fi, v)])

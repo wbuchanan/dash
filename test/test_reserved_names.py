@@ -299,7 +299,9 @@ class TestTheBootstrapPagesOwnKeys:
                      filter="foreign, type(dropdown)")
         r, page, msgs = _saved(tmp_path, spec)
         roots = self._roots(r, page)
-        assert roots == ["filter", "figure:g1"]
+        # Flipped (WP-31 H2f): ["filter", "figure:g1"] was right until the
+        # filter row ended in its Reset filters button, the "other" root.
+        assert roots == ["filter", "other", "figure:g1"]
         _one_refusal(msgs, "graph", "__fw_0__")
         doc, built, _ = _served(tmp_path, spec)
         assert _titles(_figures(doc)) == ["g1"]

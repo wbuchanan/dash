@@ -407,7 +407,10 @@ class TestFilterSecurity:
                        for m in _named(models, "CustomJS")}) == sorted(
             {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
              # WP-30 P1.28b: the Save as SVG action, fixed code too.
-             _dr._DASH_SVG_SAVE_JS})
+             _dr._DASH_SVG_SAVE_JS,
+             # Flipped (WP-31 H2f): the set above was every script until
+             # the filter row gained Reset filters, fixed code too.
+             _dr._DASH_FILTER_RESET_JS})
         assert [m["attributes"]["title"]
                 for m in _named(models, "Select")] == [malicious_varname]
 
@@ -464,7 +467,10 @@ class TestFilterSecurity:
                        for m in _named(models, "CustomJS")}) == sorted(
             {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
              # WP-30 P1.28b: the Save as SVG action, fixed code too.
-             _dr._DASH_SVG_SAVE_JS})
+             _dr._DASH_SVG_SAVE_JS,
+             # Flipped (WP-31 H2f): the set above was every script until
+             # the filter row gained Reset filters, fixed code too.
+             _dr._DASH_FILTER_RESET_JS})
         assert [m["attributes"]["options"]
                 for m in _named(models, "Select")] == [[
                     ["__all__", "All"],

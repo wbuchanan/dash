@@ -1918,7 +1918,8 @@ Syntax:
 {cmd:filter(}{it:varname}[{cmd:,}
 {cmd:type(}{it:filter_type}{cmd:)}
 {cmd:exclude(}{it:namelist}{cmd:)}
-{cmd:label(}{it:string}{cmd:)}]{cmd:)}
+{cmd:label(}{it:string}{cmd:)}
+{cmd:direction(}{cmd:ltr}|{cmd:rtl}{cmd:)}]{cmd:)}
 
 {pstd}
 {it:varname} may be abbreviated, as anywhere in Stata, and may hold
@@ -1927,9 +1928,11 @@ is a dropdown.  A {cmd:by()} panel left with no rows by a filter is
 hidden, its cell left blank, and shown again when rows return.
 
 {phang2}{cmd:type(dropdown)} -- select widget listing every distinct value
-    of {it:varname}: a numeric or date variable's values as numbers (a
-    missing value is not listed), a string variable's exact text, its empty
-    string as a blank row.  Selecting a value keeps the observations equal
+    of {it:varname}: a numeric or date variable's values as numbers, a
+    string variable's exact text.  When {it:varname} has a missing value
+    (a numeric {cmd:.}, or a string's empty string) one more entry,
+    {cmd:(missing)}, is listed last; it keeps exactly the observations
+    whose value is missing.  Selecting a value keeps the observations equal
     to it -- a number compared as a number, a text compared exactly, so
     {cmd:"01"} and {cmd:"1"} are two values -- in the saved page and the
     served app alike.  A listed value is written in the variable's display
@@ -1941,6 +1944,15 @@ hidden, its cell left blank, and shown again when rows return.
     {cmd:type(range)} instead, and a string variable lists its first 1,000
     values in sort order, each with a note (see
     {help dash##limits:Resource limits}).
+
+{phang2}{cmd:type(multi)} -- multi-select widget listing the same values
+    as {cmd:type(dropdown)}, {cmd:(missing)} included.  With nothing chosen
+    (the box shows {cmd:All}) every observation is kept; with values chosen,
+    the observations equal to any of them.  It lists at most 1,000 values
+    as a dropdown does: over that, a numeric or date variable is drawn as
+    {cmd:type(range)}, and a string variable lists its first 1,000 values
+    in sort order, with a note naming the variable and how many values it
+    has.
 
 {phang2}{cmd:type(slider)} -- slider that keeps observations where
     {it:varname} is at or above the slider's value; its title ends in a
@@ -1973,6 +1985,13 @@ hidden, its cell left blank, and shown again when rows return.
     filtered by a filter unless every graph of the group is excluded from
     it.
 
+{phang2}{cmd:direction(}{cmd:ltr}|{cmd:rtl}{cmd:)} -- the direction a
+    {cmd:type(slider)} or {cmd:type(range)} widget runs: {cmd:ltr}, the
+    default, puts its minimum on the left, {cmd:rtl} on the right.  The
+    bounds and the observations kept are the same either way.  Any other
+    word, and {cmd:direction()} on a dropdown or multi, stop {cmd:dash build}
+    and {cmd:dash serve} with {cmd:r(198)}.
+
 {phang2}{cmd:label(}{it:string}{cmd:)} -- the text shown beside the widget.
     Without it the variable's own label is used, and failing that its name.
     The text may hold any character -- a semicolon, a {cmd:|} or a
@@ -1981,7 +2000,7 @@ hidden, its cell left blank, and shown again when rows return.
     not balanced; the quotes are not shown.
 
 {pstd}
-{cmd:type()} must be one of the three above; any other value is named in a
+{cmd:type()} must be one of the four above; any other value is named in a
 warning and no widget is built.  Any other sub-option is accepted, named in
 a warning, and ignored.  {cmd:dash build} and {cmd:dash serve} stop with
 {cmd:r(198)} at a group whose variable is not a valid variable name or
@@ -1998,6 +2017,12 @@ option given twice ({cmd:option filter() not allowed}, {cmd:r(198)}), so
 joins them with {cmd:||} internally; you never write the {cmd:||}.  Each
 group is validated on its own, so {cmd:exclude()} on the second filter is
 honoured exactly as on the first.
+
+{pstd}
+{ul:Reset filters.}  A dashboard with at least one filter widget ends its
+filter row with a {cmd:Reset filters} button, which puts every widget back
+to the value it opened with and redraws the dashboard from the opening
+observations, in the saved page and the served app alike.
 
 {pstd}
 {ul:The dropdown's "All" entry.}  A {cmd:type(dropdown)} widget carries an
@@ -2170,6 +2195,7 @@ served app differ as follows:
 {col 5}Requires internet / server{col 38}No{col 59}Yes (local)
 {col 5}Shared as{col 38}one .html file{col 59}one .py, for Python
 {col 5}Filter widgets{col 38}JavaScript{col 59}Python callbacks
+{col 5}Multi-select, reset{col 38}Yes{col 59}Yes
 {col 5}KPI recomputation on filter{col 38}Yes{col 59}Yes
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins

@@ -484,7 +484,8 @@
 *!
 *!   _dash_filter_refusal(filter, registry, vars_out)
 *!       "" when every filter() group names a variable and only registered
-*!       exclude() names, the variables then in vars_out; else the refusal.
+*!       exclude() names, and any direction() is ltr or rtl on a slider or
+*!       range, the variables then in vars_out; else the refusal.
 *!
 *!   _dash_link_refusal(link, registry)
 *!       "" when link() is _all alone or names only registered graphs,
@@ -5211,8 +5212,8 @@ string scalar _dash_filter_refusal(string scalar filter,
                                    string scalar registry,
                                    string scalar vars_out) {
     string rowvector groups, items, reg, names, vars
-    string scalar    v
-    real scalar      g, k
+    string scalar    v, nm, arg, ftype, fdir
+    real scalar      g, k, p, hasdir
 
     st_local(vars_out, "")
     groups = _dash_filter_split(filter, 1)
@@ -5243,6 +5244,37 @@ string scalar _dash_filter_refusal(string scalar filter,
             return("filter() names '" +
                    ustrregexra(usubstr(v, 1, 40), "[^\p{L}\p{N}_.\-]", "?") +
                    "', which is not a valid Stata variable name.")
+        }
+        // direction(ltr|rtl), on a slider or range only (WP-31 H2f): a
+        // sub-option is read as the renderer reads it, its name in any
+        // case, its word trimmed and lower-cased.
+        ftype  = "dropdown"
+        fdir   = ""
+        hasdir = 0
+        for (k = 2; k <= cols(items); k++) {
+            p = strpos(items[k], "(")
+            if (!p) continue
+            nm  = strlower(_dash_blank_trim(substr(items[k], 1, p - 1)))
+            arg = substr(items[k], p + 1, .)
+            if (substr(arg, strlen(arg), 1) == ")") {
+                arg = substr(arg, 1, strlen(arg) - 1)
+            }
+            arg = strlower(_dash_blank_trim(arg))
+            if (nm == "type") ftype = arg
+            else if (nm == "direction") {
+                fdir   = arg
+                hasdir = 1
+            }
+        }
+        if (hasdir) {
+            if (fdir != "ltr" & fdir != "rtl") {
+                return("filter(): direction() takes ltr or rtl; got '" +
+                       ustrregexra(usubstr(fdir, 1, 40), "[^\p{L}\p{N}_.\-]",
+                                   "?") + "'")
+            }
+            if (ftype != "slider" & ftype != "range") {
+                return("filter(): direction() applies to type(slider) and type(range)")
+            }
         }
         vars = vars, v
     }

@@ -516,8 +516,10 @@ _SAVED_DIGEST = (
     # (b02f3e94...); C11 lpoly's 1e-14 weight threshold in the filter code
     # (8fb420d4...); G7 the Stata writer reads %d as %td (965dbdfe...)
     # and %tb through its calendar (43f70b01...); D35 the rule-of-thumb
-    # constants to pe 31 in the filter code
-    "8848eb9410296fda040c17ba3112acd951fc6480f88464053f5bd75fb3261c26")
+    # constants to pe 31 in the filter code (8848eb94...); H2f the mask's
+    # multi and (missing) branches (code only) and the filter row's Reset
+    # filters button with its fixed script, the same under both Pythons
+    "96f4d27bb7c68ddeaedd7726421e045ae28701cd7d5fc94067353f1209d0440b")
 
 
 # ===========================================================================

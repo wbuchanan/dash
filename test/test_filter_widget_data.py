@@ -100,10 +100,14 @@ _WANT_M = {
               "start": 10.0, "end": 18.0, "step": 1, "value": (10.0, 18.0)},
     "slider": {"type": "Slider", "title": "m \u2265", "disabled": False,
                "start": 10.0, "end": 18.0, "step": 1, "value": 10.0},
+    # Flipped (WP-31 H2f): the list without ("__missing__", "(missing)")
+    # was right until a dropdown over a variable with missing values (m is
+    # missing on every foreign car) listed "(missing)" last.
     "dropdown": {"type": "Select", "title": "m", "disabled": False,
                  "value": "__all__",
                  "options": [("__all__", "All"), (10.0, "10"), (12.0, "12"),
-                             (14.0, "14"), (16.0, "16"), (18.0, "18")]},
+                             (14.0, "14"), (16.0, "16"), (18.0, "18"),
+                             ("__missing__", "(missing)")]},
 }
 
 # The saved page's date widgets, and `dm''s first and last dates as the

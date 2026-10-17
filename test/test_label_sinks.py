@@ -1388,3 +1388,55 @@ class TestBokehVersion:
 
     def test_every_minor_in_the_window_was_verified(self):
         assert set(VERIFIED_ON) == VERIFIED_BOKEH
+
+
+# ---------------------------------------------------------------------------
+# WP-31 H2f (S49, DECISIONS A29): a MultiChoice option label goes through
+# Choices.js, whose allowHTML default is true in the shipped bundle and
+# which Bokeh's multi_choice view does not override, so a value label is
+# escaped for it -- and for it only: a Select's option is a text node.
+# ---------------------------------------------------------------------------
+
+def _bundle_allows_html():
+    """Whether the installed bokeh-widgets bundle leaves Choices.js's
+    allowHTML at true for MultiChoice: the default ``allowHTML:!0`` is in
+    the bundle and no ``allowHTML:!1`` overrides it."""
+    path = os.path.join(os.path.dirname(bokeh.__file__), "server", "static",
+                        "js", "bokeh-widgets.min.js")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    return ("allowHTML:!0" in text or "allowHTML:true" in text) and (
+        "allowHTML:!1" not in text and "allowHTML:false" not in text)
+
+
+class TestMultiChoiceLabels:
+
+    def test_multichoice_labels_are_text(self, tmp_path):
+        from test_filter_widgets_ext import _saved, _served, _served_filters
+        from test_filter_widgets_ext import _spec as _fspec
+        vl = {"rl": {"1": "<b>x</b>", "2": "Men's \"best\""}}
+        vln = {"rep": "rl"}
+        escaped = _bundle_allows_html()
+        want_multi = (["&lt;b&gt;x&lt;/b&gt;", "Men's \"best\""] if escaped
+                      else ["<b>x</b>", "Men's \"best\""])
+        for ftype, want in (("multi", want_multi),
+                            ("dropdown", ["<b>x</b>", "Men's \"best\""])):
+            spec = _fspec([{"varname": "rep", "type": ftype}])
+            r, _ = _saved(tmp_path, spec, vl=vl, vln=vln)
+            doc = _served(tmp_path, spec, vl=vl, vln=vln)
+            for w in (r.filter_widgets[0], _served_filters(doc)[0]):
+                labels = [o[1] for o in w.options]
+                assert labels[labels.index(want[0]):][:2] == want, (
+                    ftype, labels)
+
+    def test_the_bundle_fact_is_pinned(self):
+        entry = [e for e in dr._DASH_BOKEH_INTERNALS
+                 if e[1] == "_dash_multi_label"]
+        assert entry == [(
+            "Choices.js allowHTML default in MultiChoice",
+            "_dash_multi_label",
+            "test/test_label_sinks.py::TestMultiChoiceLabels"
+            "::test_multichoice_labels_are_text")]
+        # The rule matches the installed bundle.
+        assert dr._dash_multi_label("<i>") == (
+            "&lt;i&gt;" if _bundle_allows_html() else "<i>")

@@ -2640,6 +2640,28 @@ _ov_said U48-05 "'abcdefghijklmnopqrstuvwxyzabcdefghijklmn...' is not one of the
 _u46_rc U48-06 198 `"dash (scatter mpg weight), table table(rows(5)) name(ou4806)"'
 _ov_said U48-06 "dash: table may not be combined with table()"
 
+// ----------------------------------------------------------------
+// U49-3, U49-4 (WP-31 H2f): filter()'s direction() takes ltr or rtl, on a
+// slider or range only; each refusal is one sentence, r(198).
+// ----------------------------------------------------------------
+sysuse auto, clear
+local _u49k 3
+foreach _u49f in "price, type(range) direction(UP)" "rep78, type(multi) direction(ltr)" {
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'dash_ov.log"
+    capture dash clear
+    quietly dash scatter mpg weight, name(ou49`_u49k')
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash build, saving("`c(tmpdir)'ou49`_u49k'.html") replace nobrowser filter(`_u49f')
+    local _u49rc = _rc
+    log close _ovlog
+    _ov_assert U49-`_u49k' "(`_u49rc' == 198)" "filter(`_u49f'): rc `_u49rc' (expected 198)"
+    if `_u49k' == 3 _ov_said U49-3 "dash build: filter(): direction() takes ltr or rtl; got 'up'"
+    else            _ov_said U49-4 "dash build: filter(): direction() applies to type(slider) and type(range)"
+    local ++_u49k
+}
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

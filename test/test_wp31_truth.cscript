@@ -13608,6 +13608,91 @@ if inlist("`only'", "", "S48") & `: list posof "S48" in w31_run' {
     _w31_done U48-4 "a second table refused r(198)"
     display as text "S48 end " c(current_date) " " c(current_time)
 * ==== end S48 ====
+python:
+def _u49_widgets(sp, dp):
+    """global u49_w: each filter's widget class, direction and its spec
+    text, as the saved page builds them from the spec dash wrote."""
+    import json
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with open(sp, encoding="utf-8") as fh:
+        raw = json.load(fh)["build_options"].get("filter", "")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    got = ["%s:%s" % (type(w).__name__, getattr(w, "direction", "-"))
+           for w in r.filter_widgets]
+    Macro.setGlobal("u49_w", " ".join(got))
+    Macro.setGlobal("u49_raw", raw)
+end
+
+* ==== S49 H2f: filter widgets ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S49") & `: list posof "S49" in w31_run' {
+    display as text "S49 start " c(current_date) " " c(current_time)
+    local u49d "`w31_work'/s49"
+    capture mkdir "`u49d'"
+    sysuse auto, clear
+
+    // U49-1: filter(rep78, type(multi)) is accepted and reaches the spec
+    // and the page as a MultiChoice.
+    dash clear
+    quietly dash scatter mpg weight, name(zu49)
+    capture noisily _dash_serve_spec, specpath("`u49d'/s1.json") datapath("`u49d'/d1.json") filter(rep78, type(multi))
+    local rc1 = _rc
+    _w31_expect U49-1 "(`rc1' == 0)" "type(multi): r(`rc1')"
+    if `rc1' == 0 {
+        python: __import__("__main__")._u49_widgets("`u49d'/s1.json", "`u49d'/d1.json")
+        _w31_expect U49-1 `"(strpos(`"${u49_raw}"', "type(multi)") > 0)"' `"the spec's filter is ${u49_raw}"'
+        _w31_expect U49-1 `"("${u49_w}" == "MultiChoice:-")"' "the page drew ${u49_w}"
+    }
+    _w31_done U49-1 "filter(rep78, type(multi)) writes type(multi) and draws a MultiChoice"
+
+    // U49-2: direction(rtl) on a slider reaches the spec and the model.
+    capture noisily _dash_serve_spec, specpath("`u49d'/s2.json") datapath("`u49d'/d2.json") filter(price, type(slider) direction(rtl))
+    local rc2 = _rc
+    _w31_expect U49-2 "(`rc2' == 0)" "direction(rtl): r(`rc2')"
+    if `rc2' == 0 {
+        python: __import__("__main__")._u49_widgets("`u49d'/s2.json", "`u49d'/d2.json")
+        _w31_expect U49-2 `"(strpos(`"${u49_raw}"', "direction(rtl)") > 0)"' `"the spec's filter is ${u49_raw}"'
+        _w31_expect U49-2 `"("${u49_w}" == "Slider:rtl")"' "the page drew ${u49_w}"
+    }
+    _w31_done U49-2 "filter(price, type(slider) direction(rtl)) draws a right-to-left Slider"
+
+    // U49-3, U49-4: direction() refusals, one sentence each, r(198).
+    local k 3
+    foreach f in "price, type(slider) direction(up)" "rep78, type(dropdown) direction(rtl)" {
+        local lf "`u49d'/r`k'.log"
+        capture log close _u49l
+        quietly log using "`lf'", text replace name(_u49l)
+        capture noisily dash build, saving("`u49d'/r`k'.html") replace nobrowser filter(`f')
+        local rc = _rc
+        quietly log close _u49l
+        if `k' == 3 local msg "dash build: filter(): direction() takes ltr or rtl; got 'up'"
+        else        local msg "dash build: filter(): direction() applies to type(slider) and type(range)"
+        cert_log_has "`lf'", needle(`"`msg'"')
+        _w31_expect U49-`k' "(`rc' == 198) & (r(count) == 1)" `"filter(`f'): r(`rc'), the log says the sentence `r(count)' times"'
+        _w31_done U49-`k' `"filter(`f') is refused r(198): `msg'"'
+        local ++k
+    }
+
+    // U49-5: type(bogus) keeps its note, now listing multi.
+    local lf "`u49d'/r5.log"
+    capture log close _u49l
+    quietly log using "`lf'", text replace name(_u49l)
+    capture noisily dash build, saving("`u49d'/r5.html") replace nobrowser filter(rep78, type(bogus))
+    local rc5 = _rc
+    quietly log close _u49l
+    cert_log_has "`lf'", needle("type() must be one of dropdown, range, slider, multi; no widget was built.")
+    _w31_expect U49-5 "(`rc5' == 0) & (r(count) == 1)" "type(bogus): r(`rc5'), the note `r(count)' times"
+    _w31_done U49-5 "filter(rep78, type(bogus)) builds no widget and says type() must be one of the four"
+    dash clear
+    display as text "S49 end " c(current_date) " " c(current_time)
+}
+* ==== end S49 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

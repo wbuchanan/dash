@@ -570,8 +570,10 @@ class TestAnUnknownFilterTypeIsNamedInBothModes:
     def test_both_modes_say_so_in_the_same_words(self, tmp_path):
         _r, sw = _saved(tmp_path, self._spec("checkbox"), _Q)
         _doc, vw = _served(tmp_path, self._spec("checkbox"), _Q)
+        # Flipped (WP-31 H2f): the three types were the list until
+        # type(multi).
         want = ("dash: filter(mpg, type(checkbox)): type() must be one of "
-                "dropdown, range, slider; no widget was built.")
+                "dropdown, range, slider, multi; no widget was built.")
         assert want in sw
         assert want in vw
 

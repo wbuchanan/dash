@@ -1937,9 +1937,11 @@ class TestThePackageDescription:
         assert "All output is a self-contained" not in pkg
 
     def test_the_filter_widgets_are_the_three_named(self):
-        assert sorted(dr._DASH_FILTER_TYPES) == ["dropdown", "range",
-                                                 "slider"]
-        assert "(dropdown/slider/range)" in _pkg_text()
+        # Flipped (WP-31 H2f): ["dropdown", "range", "slider"] was right
+        # until filter() took type(multi).
+        assert sorted(dr._DASH_FILTER_TYPES) == ["dropdown", "multi",
+                                                 "range", "slider"]
+        assert "(dropdown/multi/slider/range)" in _pkg_text()
 
     def test_setup_is_not_said_to_install_everything(self):
         pkg = _pkg_text()

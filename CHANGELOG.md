@@ -1065,7 +1065,7 @@ Changed behaviour.
 
 - Graphs take a table option: a folded, sortable data table of the drawn rows in Stata's display formats, in both modes (WP-31, H2t)
 
-<!-- WP-31 H2f -->
+- filter() takes type(multi) and direction(rtl), lists (missing) where a variable has missing values, and every filter row ends in a Reset filters button, in both modes (WP-31, H2f)
 
 <!-- WP-31 H2k -->
 

@@ -1334,6 +1334,11 @@ def _render_pair(name, spec):
         # kept as a direct read rather than leaves(std_tree, "Widget") so
         # a reader bug in the Row part cannot also hide from this check.
         std_widgets = [_widget_profile(w) for w in r.filter_widgets]
+        # WP-31 H2f: the row's Reset filters button, read from the page's
+        # own models, as it is no filter widget of the renderer's.
+        std_widgets += [_widget_profile(m) for m in embedded.values()
+                        if "dash_filter_reset" in (getattr(m, "tags", None)
+                                                   or [])]
     else:
         std_widgets = leaves(std_tree, "Widget")
     std_kpis = kpis_of(std_tree)
@@ -1965,6 +1970,11 @@ CORPUS = [
           {"filter": "foreign, type(dropdown)"}),
     _case("filter(, type(range))", [_sc()], {"filter": "price, type(range)"}),
     _case("filter(, type(slider))", [_sc()], {"filter": "price, type(slider)"}),
+    # WP-31 H2f: a multi-select, and a right-to-left slider.
+    _case("multi filter", [plot_for("scatter")],
+          {"filter": "rep, type(multi)"}),
+    _case("filter(, type(slider) direction(rtl))", [_sc()],
+          {"filter": "price, type(slider) direction(rtl)"}),
     _case("filter(, label())", [_sc()],
           {"filter": 'rep, type(range) label("Repair record")'}),
     _case("filter() with a label the old gate refused", [_sc()],
@@ -2862,7 +2872,7 @@ _MUST_WARN = {
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of
 #: any other type is reported and builds none.
-_WIDGET_TYPES = ("dropdown", "range", "slider")
+_WIDGET_TYPES = ("dropdown", "range", "slider", "multi")
 
 
 def _widgets_wanted(spec):
@@ -2875,7 +2885,9 @@ def _widgets_wanted(spec):
     for g in groups:
         t = re.search(r"\btype\((\w+)\)", g)
         n += (t is None) or (t.group(1) in _WIDGET_TYPES)
-    return n
+    # Flipped (WP-31 H2f): the groups alone were the count until a row
+    # with a filter widget ended in its Reset filters button.
+    return n + 1 if n else n
 
 
 class _Agree:
@@ -3143,6 +3155,11 @@ def _served_after_move(spec, move):
         raw = [v for v, lab in w.options if lab == want]
         assert raw, f"no option labelled {want!r}: {w.options}"
         _fire(w, raw[0])
+    elif kind == "MultiChoice":
+        # WP-31 H2f: the values whose options carry the wanted labels.
+        raw = [v for v, lab in w.options if lab in want]
+        assert len(raw) == len(want), f"labels {want!r}: {w.options}"
+        _fire(w, raw)
     else:
         _fire(w, want)
     figs = []
@@ -3229,6 +3246,10 @@ _MOVED_LAYERS += ["rpcap", "rpspike"]
 # WP-31 B4b: contour and contourline refit by the served app after a move
 # (their fill and line sources); the saved page refits them within the cap
 # (WP-31 B4c, test_contour_js.py).
+
+#: WP-31 H2f: a MultiChoice set to two values, chosen by their labels.
+_MULTI_MOVE = ("multi to 3 4", "rep, type(multi)", ("MultiChoice", ["3", "4"]),
+               "rep == 3 | rep == 4")
 
 #: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
 _EMPTYING_MOVES = [
@@ -3773,6 +3794,11 @@ MOVE_CORPUS = [
     # WP-31 H2t: a table graph's figure follows the move alike.
     _move_case("scatter table, dropdown to Foreign", _MOVES[0],
                [plot_for("scatter")], go={"table": "rows(20)"}),
+    # WP-31 H2f: a multi-select set to two values.  The "(missing)" move
+    # has no case here: _DF holds no missing value, and the masks' missing
+    # rule is held by test_filter_widgets_ext.py in node and pandas.
+    _move_case("multi to 3 and 4 (WP-31 H2f)", _MULTI_MOVE,
+               [plot_for("scatter")]),
 ]
 
 
