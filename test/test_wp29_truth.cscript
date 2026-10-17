@@ -4797,6 +4797,12 @@ end
     local want_s = "Slider:" + strofreal(r(min), "%9.0g") + "-" + strofreal(r(max), "%9.0g")
     quietly levelsof rep78 if foreign, local(lv) separate(,)
     local want_d "Select:All,`lv'"
+    // Flipped (WP-31 H2f): "Select:All,3,4,5" was the whole list until a
+    // dropdown over a variable with missing values listed "(missing)"
+    // last (section 49 D-49b); Stata's count of the graph's missing rows
+    // says whether the option is there.
+    quietly count if foreign & missing(rep78)
+    if r(N) > 0 local want_d "`want_d',(missing)"
     quietly dash scatter mpg weight if foreign, name(g1)
     capture noisily dash build, filter(price, type(slider)) filter(rep78, type(dropdown)) saving("`s14d'/er05.html") replace
     local rc = _rc
