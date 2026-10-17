@@ -398,6 +398,19 @@ class TestAreaGapsAfterAMove:
     def test_the_gap_is_kept_after_a_move(self, ptype, move):
         _same_after(plot_for(ptype, {"cmissing": "n"}), move, _gappy())
 
+    @pytest.mark.parametrize("move", _AFTER, ids=[m[0] for m in _AFTER])
+    @pytest.mark.parametrize("opts", [
+        {"connect": "stairstep"}, {"connect": "stepstair"},
+        {"connect": "stairstep", "cmissing": "n"},
+        {"connect": "stepstair", "cmissing": "n"}],
+        ids=["J", "stepstair", "J cmissing(n)", "stepstair cmissing(n)"])
+    @pytest.mark.parametrize("df", ["full", "gappy"])
+    def test_rarea_keeps_its_stairs(self, df, opts, move):
+        """rarea's connect() stairs are rebuilt from the kept rows, the
+        corner toward a row missing a bound included (twoway's R01)."""
+        _same_after(plot_for("rarea", opts), move,
+                    _DF if df == "full" else _gappy())
+
     def test_the_record(self):
         """The area's copy records its gaps' row ids for the rebuild."""
         df = _gappy()
@@ -405,28 +418,48 @@ class TestAreaGapsAfterAMove:
                              {"filter": "foreign, type(dropdown)"}), df)
         joins = json.loads(r.filter_callbacks[0].args["derived_join_json"])
         (rec,) = [j for j in joins if j and j.get("kind") == "area"]
-        assert rec["cmiss"] == "n" and len(rec["gaps"]) == 2
-        assert all(len(g) == 1 for g in rec["gaps"])
+        assert rec["cmiss"] == "n" and rec["repin"] is True
+        assert len(rec["miss"]) == 2 and len(rec["order"]) == len(df)
 
 
 class TestTheGapHelpers:
-    def test_gap_ids(self):
-        """One list per zero-height pair _dash_fill_vertices draws, its
-        missing rows' ids; leading and trailing missing rows close
-        nothing."""
-        ok = [False, True, False, False, True, True, False, True, False]
-        ids = [10, 11, 12, 13, 14, 15, 16, 17, 18]
-        assert dr._dash_fill_gap_ids(ok, ids) == [[12, 13], [16]]
-        _xi, _yi, col = dr._dash_fill_vertices(
-            list(range(len(ok))), ok, "direct", "n")
-        assert int(col.sum()) == 2 * len(dr._dash_fill_gap_ids(ok, ids))
-
     def test_join_record(self):
-        rec = dr._dash_fill_join("x", ("lo", "hi"), "lo", [[3], [5, 6]])
-        assert rec == {"kind": "area", "cmiss": "n", "x": "x",
-                       "ycols": ["lo", "hi"], "pin": "lo",
-                       "gaps": [[3], [5, 6]]}
-        json.dumps(rec)
+        """_dash_fill_join: every row's id in join order and the x of each
+        row not drawn (None when missing), with the style and cmissing."""
+        rec = dr._dash_fill_join("x", ("lo", "hi"), "lo", "stairstep", "n",
+                                 [1.0, 2.0, float("nan"), 4.0],
+                                 [True, False, False, True], [7, 8, 9, 10])
+        assert rec == {"kind": "area", "x": "x", "ycols": ["lo", "hi"],
+                       "pin": "lo", "style": "stairstep", "cmiss": "n",
+                       "repin": False, "order": [7, 8, 9, 10],
+                       "miss": [[8, 2.0], [9, None]]}
+        json.dumps(rec, allow_nan=False)
+        assert dr._dash_fill_join("x", ("b", "y"), "y", "direct", "q", [],
+                                  [], [], repin=True)["cmiss"] == "y"
+
+    @requires_node
+    def test_the_vertex_twin_matches_python(self):
+        """dash_fill_vertices is _dash_fill_vertices, every style and
+        cmissing, rows missing a bound with and without an x."""
+        rng = np.random.default_rng(14)
+        cases = []
+        for _ in range(40):
+            n = int(rng.integers(1, 12))
+            xfin = [bool(v) for v in rng.random(n) > 0.15]
+            ok = [bool(f and v) for f, v in zip(xfin, rng.random(n) > 0.3)]
+            for st in ("direct", "stairstep", "stepstair"):
+                for cm in ("y", "n"):
+                    cases.append((xfin, ok, st, cm))
+        js = (fit_helpers_js() + "const C = " + json.dumps(cases) + ";\n"
+              + dr._FILTER_JS[dr._FILTER_JS.index("function dash_fill_vertices("):
+                              dr._FILTER_JS.index("function dash_fill_rebuild_kept(")]
+              + "process.stdout.write(JSON.stringify(C.map(c => "
+              "dash_fill_vertices(c[0], c[1], c[2], c[3]))));\n")
+        for (xfin, ok, st, cm), got in zip(cases, run_js(js)):
+            xs = [1.0 if f else np.nan for f in xfin]
+            xi, yi, col = dr._dash_fill_vertices(xs, ok, st, cm)
+            assert (got["xi"], got["yi"], got["col"]) == (
+                list(xi), list(yi), list(col)), (xfin, ok, st, cm)
 
 
 @requires_node

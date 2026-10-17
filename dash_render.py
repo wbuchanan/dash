@@ -17575,8 +17575,8 @@ class GlyphMapper:
             # The saved page re-splits it after a move (WP-31 H1).
             if _gap_rid is not None:
                 area_source._dash_join = _dash_fill_join(
-                    xvar, (_y1_col, yvar), yvar,
-                    _dash_fill_gap_ids(_ok, _gap_rid))
+                    xvar, (_y1_col, yvar), yvar, "direct", "n", x_arr, _ok,
+                    _gap_rid, repin=True)
         # The fill is the resolved colour at the p#area intensity, opaque,
         # as twoway draws it (WP-30 P1.2b).
         # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
@@ -21768,14 +21768,12 @@ class GlyphMapper:
             source.data = _dash_fill_rebuild(source.data, xvar,
                                              (y1var, y2var), y1var, _xi,
                                              _yi, _col)
-            # The saved page re-splits it after a move (WP-31 H1); stairs
-            # are not rebuilt there.
-            if (_gap_rid is not None and _cmiss == "n"
-                    and _style not in ("stairstep", "stepstair")
-                    and not bool(np.asarray(_ok).all())):
+            # The saved page redraws its stairs and gaps from the kept rows
+            # after a move (WP-31 H1).
+            if _gap_rid is not None:
                 source._dash_join = _dash_fill_join(
-                    xvar, (y1var, y2var), y1var,
-                    _dash_fill_gap_ids(_ok, _gap_rid))
+                    xvar, (y1var, y2var), y1var, _style, _cmiss,
+                    _cols[xvar], _ok, _gap_rid)
 
         # The fill is the resolved colour at the p#area intensity (WP-30
         # P1.2b); its 0.5 opacity is section 24's.
@@ -30504,56 +30502,94 @@ function dash_join_rebuild(nd, spec, rowId) {
     return out;
 }
 
-// cmissing(n) on an area or rarea after a move (WP-31 H1, DECISIONS A23):
-// the twin of _dash_fill_vertices and _dash_fill_rebuild over the kept
-// rows.  od is the copy as built -- present rows and, at each gap, a
-// zero-height pair with a null row id; spec.gaps holds, per pair, the
-// ids of the missing rows it closes (_dash_fill_gap_ids).  The kept
-// present rows are taken in order; between two of them a gap whose rows
-// one survives is closed again by a zero-height pair -- at the run's end
-// and the next run's start, each spec.ycols column taking the spec.pin
-// column's value there, every other column null -- and a gap before the
-// first or after the last kept row closes nothing.  Hoisted.
+// An area's or rarea's fill after a move (WP-31 H1, DECISIONS A23): the
+// twin of _dash_fill_vertices and _dash_fill_rebuild over the kept rows.
+// od is the copy as built (each drawn row's own vertex carries its row
+// id; a corner or a zero-height vertex carries none); spec is
+// _dash_fill_join's record: every row's id in join order (spec.order) and
+// the x of each row not drawn (spec.miss), the connect() style and
+// cmissing().  The kept rows, in join order, are joined again: x from
+// each vertex's x row, spec.ycols from its y row or, at a zero-height
+// vertex, the spec.pin column; every other column from its row where an
+// observation owns the vertex, else null.  Hoisted.
+function dash_fill_vertices(xfin, ok, style, cmiss) {
+    const ox = [], oy = [], oc = [];
+    let gap = false, prev = -1, pending = null;
+    const emit = (a, b) => {
+        if (gap && ox.length) { ox.push(ox[ox.length - 1], a); oy.push(oy[oy.length - 1], b); oc.push(true, true); }
+        gap = false;
+        ox.push(a); oy.push(b); oc.push(false);
+    };
+    for (let b = 0; b < ok.length; b++) {
+        if (prev >= 0) {
+            const a = prev;
+            if (style === "stairstep" && ok[a] && xfin[b]) {
+                if (ok[b]) emit(b, a); else pending = [b, a];
+            } else if (style === "stepstair" && ok[b] && xfin[a]) {
+                emit(a, b);
+            }
+        }
+        if (ok[b]) {
+            if (pending !== null) { emit(pending[0], pending[1]); pending = null; }
+            emit(b, b);
+        } else if (cmiss === "n") {
+            gap = true;
+            pending = null;
+        }
+        prev = b;
+    }
+    return {xi: ox, yi: oy, col: oc};
+}
 function dash_fill_rebuild_kept(od, spec, rowId, keep) {
     const cols = Object.keys(od);
-    const ids = od[rowId] || [];
-    const gaps = spec.gaps || [], yc = spec.ycols || [], pin = spec.pin;
-    const out = {};
-    for (const c of cols) dash_own_col(out, c);
-    const push = (j, zero) => {
-        for (const c of cols) {
-            if (!zero) out[c].push(od[c][j]);
-            else if (c === spec.x) out[c].push(od[c][j]);
-            else if (yc.indexOf(c) >= 0) out[c].push(od[pin][j]);
-            else out[c].push(null);
-        }
-    };
-    let g = 0, live = false, last = -1;
-    for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        if (id === null || id === undefined) {
-            // A zero-height pair: this vertex and the next.
-            if ((gaps[g] || []).some(r => keep.has(r))) live = true;
-            g++;
-            i++;
-            continue;
-        }
+    const vid = od[rowId] || [];
+    const at = new Map();
+    for (let i = 0; i < vid.length; i++) {
+        if (vid[i] !== null && vid[i] !== undefined && !at.has(vid[i])) at.set(vid[i], i);
+    }
+    const missx = new Map();
+    for (const m of (spec.miss || [])) missx.set(m[0], m[1] === null ? NaN : Number(m[1]));
+    // The kept rows in join order: the vertex each drawn one owns, or -1.
+    const rows = [], xs = [], ok = [];
+    for (const id of (spec.order || [])) {
         if (!keep.has(id)) continue;
-        if (live && last >= 0) { push(last, true); push(i, true); }
-        live = false;
-        push(i, false);
-        last = i;
+        if (at.has(id)) {
+            const v = at.get(id);
+            rows.push(v); ok.push(true);
+            const xv = od[spec.x][v];
+            xs.push((xv === null || xv === undefined) ? NaN : Number(xv));
+        } else if (missx.has(id)) {
+            rows.push(-1); ok.push(false); xs.push(missx.get(id));
+        }
+    }
+    const xfin = xs.map(v => isFinite(v));
+    const st = (spec.style === "stairstep" || spec.style === "stepstair") ? spec.style : "direct";
+    const vt = dash_fill_vertices(xfin, ok, st, spec.cmiss === "n" ? "n" : "y");
+    const yc = spec.ycols || [], pin = spec.pin;
+    const out = {};
+    for (const c of cols) {
+        dash_own_col(out, c);
+        const o = out[c], src = od[c];
+        const isy = yc.indexOf(c) >= 0;
+        for (let k = 0; k < vt.xi.length; k++) {
+            const xr = vt.xi[k], yr = vt.yi[k], z = vt.col[k];
+            if (c === spec.x) o.push(xs[xr]);
+            else if (isy) o.push(z ? od[pin][rows[yr]] : src[rows[yr]]);
+            else o.push((xr === yr && !z) ? src[rows[yr]] : null);
+        }
     }
     return out;
 }
 
-// The zero-height pairs of a split area (a null row id) after the axis
-// finish refilled its default base: each spec.ycols column takes the
+// The zero-height pairs of a split area (a null row id; spec.repin) after
+// the axis finish refilled its default base: each spec.ycols column takes the
 // spec.pin column's value there again, as _dash_finish_auto_bases keeps
 // the build's _dash_base_pin rows.  Hoisted.
 function dash_fill_repin(src, spec, rowId) {
     const d = src.data, has = (c) => Object.prototype.hasOwnProperty.call(d, c);
-    if (!has(rowId) || !has(spec.pin)) return;
+    // Only a layer whose default base the finish refills (map_area): a
+    // rarea's stair corners also carry no row id.
+    if (!spec.repin || !has(rowId) || !has(spec.pin)) return;
     const rid = d[rowId], pv = d[spec.pin];
     let changed = false;
     for (const c of (spec.ycols || [])) {
@@ -55221,34 +55257,30 @@ def _dash_fill_rebuild(data, xcol, ycols, pin, xi, yi, col):
     return new
 
 
-def _dash_fill_gap_ids(ok, ids):
-    """The row ids of each gap :func:`_dash_fill_vertices` closes under
-    cmissing(n), connect direct (WP-31 H1, DECISIONS A23): per zero-height
-    pair, in order, the ids of the missing rows between the run before and
-    the run after; missing rows before the first or after the last present
-    row close nothing and are left out.  The saved page's rebuild after a
-    move keeps a gap while one of its rows survives the filters, as the
-    served redraw over the kept rows does."""
-    out, cur, seen = [], [], False
-    for o, i in zip(ok, ids):
-        if bool(o):
-            if seen and cur:
-                out.append(cur)
-            cur, seen = [], True
-        elif seen:
-            cur.append(int(i))
-    return out
-
-
-def _dash_fill_join(xcol, ycols, pin, gaps):
+def _dash_fill_join(xcol, ycols, pin, style, cmiss, xs, ok, ids,
+                    repin=False):
     """A filled copy's ``_dash_join`` record for the saved page's rebuild
-    after a move (WP-31 H1): the zero-height pairs' *gaps*
-    (:func:`_dash_fill_gap_ids`), the x column *xcol*, the columns *ycols*
-    that take the *pin* column's value there.  JSON data: column names and
-    row ids."""
-    return {"kind": "area", "cmiss": "n", "x": str(xcol),
-            "ycols": [str(c) for c in ycols],
-            "pin": str(pin), "gaps": [list(g) for g in gaps]}
+    after a move (WP-31 H1, DECISIONS A23): what _FILTER_JS's
+    ``dash_fill_rebuild_kept`` needs to redraw :func:`_dash_fill_vertices`
+    and :func:`_dash_fill_rebuild` over the kept rows -- the columns (x
+    *xcol*; *ycols*, which take the *pin* column's value at a zero-height
+    vertex), the connect() *style* and cmissing() *cmiss*, every row's id
+    in join order (*ids*, parallel to *xs* and *ok*) and, for each row not
+    drawn (*ok* false), its id and x (None when missing), since the copy
+    holds no vertex of it while a stair's corner or a gap may need it.
+    *repin*: the layer's default base is refilled by the axis finish, and
+    its zero-height pairs are pinned again after it (map_area).  JSON
+    data: column names, row ids and numbers."""
+    order, miss = [], []
+    for x, o, i in zip(xs, ok, ids):
+        order.append(int(i))
+        if not bool(o):
+            xv = float(x)
+            miss.append([int(i), xv if math.isfinite(xv) else None])
+    return {"kind": "area", "x": str(xcol),
+            "ycols": [str(c) for c in ycols], "pin": str(pin),
+            "style": str(style), "cmiss": "n" if cmiss == "n" else "y",
+            "repin": bool(repin), "order": order, "miss": miss}
 
 
 def _dash_fill_split(src, xcol, ycols, pin, options):
@@ -62640,7 +62672,7 @@ class ServerAppBuilder:
                          "_dash_insert_breaks",
                          "_dash_fill_split",
                          # the saved rebuild's gap record (WP-31 H1).
-                         "_dash_fill_gap_ids", "_dash_fill_join",
+                         "_dash_fill_join",
                          "_dash_fit_points_of",
                          # a layer's yaxis()/xaxis() numbers (WP-31 C10b;
                          # the tie is _dash_axis_groups', C10c).

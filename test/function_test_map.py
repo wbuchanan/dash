@@ -1295,7 +1295,6 @@ FUNCTIONS = {
  '_dash_fill_vertices.<locals>.emit': 'test/test_area_cmissing.py::TestTheHelper::test_rows',
  '_dash_fill_rebuild': 'test/test_area_cmissing.py::TestTheHelper::test_rebuild',
  '_dash_fill_split': 'test/test_area_cmissing.py::TestTheHelper::test_fill_split',
- '_dash_fill_gap_ids': 'test/test_saved_page_errors.py::TestTheGapHelpers::test_gap_ids',
  '_dash_fill_join': 'test/test_saved_page_errors.py::TestTheGapHelpers::test_join_record',
  '_dash_insert_breaks': 'test/test_area_cmissing.py::TestTheHelper::test_insert_breaks',
  '_dash_join_hide': 'test/test_connect_options.py::TestConnectNone::test_no_line_key_kept',

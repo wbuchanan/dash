@@ -462,7 +462,8 @@ observation that has {it:x} and no {it:y}, {cmd:lpoly} and
 each bound, and the step toward an observation missing a bound is drawn
 when a present one follows it, as in {cmd:twoway}).  After a filter
 move both modes split the fill, and break a {cmd:lowess} line, where the
-rows the filter keeps are missing.
+rows the filter keeps are missing, and draw {cmd:rarea}'s steps between
+the rows it keeps.
 
 {phang2}{opt cmissings(y|n ...)} is {cmd:twoway}'s other spelling of
 {cmd:cmissing()}, and is read as it.
