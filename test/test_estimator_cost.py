@@ -505,3 +505,30 @@ class TestDotRows:
             pos, rows, nd = GM._dot_positions(10.0, 40.0, vals, extend, 75)
             assert time.perf_counter() - t0 < 2.0, extend
             assert nd == 75 and len(pos) == len(rows) > 100_000
+
+
+def test_table_text_frame_under_two_seconds_at_100k():
+    """WP-31 H2t: a data table's text columns over 100,000 rows of six
+    variables are written within two seconds -- each distinct value is
+    formatted once and mapped onto the rows (_dash_table_text_frame)."""
+    rng = np.random.default_rng(19)
+    n = 100_000
+    df = pd.DataFrame({
+        "a": rng.integers(0, 5000, n).astype(float),
+        "b": rng.uniform(0.0, 1.0, n).round(2),
+        "c": rng.integers(0, 2, n).astype(float),
+        "d": rng.integers(1, 6, n).astype(float),
+        "e": rng.integers(1000, 16000, n).astype(float),
+        "f": rng.integers(10, 40, n).astype(float),
+    })
+    df.loc[::7, "d"] = np.nan
+    fmts = {"a": "%9.0g", "b": "%9.2f", "c": "%8.0g", "d": "%8.0g",
+            "e": "%8.0gc", "f": "%8.0g"}
+    t0 = time.perf_counter()
+    cols = dr._dash_table_text_frame(
+        df, list(fmts), fmts, {}, {"cl": {"0": "No", "1": "Yes"}},
+        {"c": "cl"}, {}, {})
+    assert time.perf_counter() - t0 < 2.0
+    assert [v for v, _t in cols] == list(fmts)
+    assert df["__dash_tbl_d"].iloc[0] == "."
+    assert set(df["__dash_tbl_c"]) == {"No", "Yes"}

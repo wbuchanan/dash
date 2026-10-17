@@ -1063,7 +1063,7 @@ Changed behaviour.
 
 - Stata's values for weighted qfitci and fpfitci bands, stdf/stdr under fweights, all eight kernels on kdensity, lpoly and lpolyci, and histogram bars on bin edges are recorded and pinned; line pattern lengths and lpoly's default bandwidth by degree and kernel were pinned earlier. (WP-31, F3)
 
-<!-- WP-31 H2t -->
+- Graphs take a table option: a folded, sortable data table of the drawn rows in Stata's display formats, in both modes (WP-31, H2t)
 
 <!-- WP-31 H2f -->
 

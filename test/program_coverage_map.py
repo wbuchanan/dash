@@ -381,6 +381,8 @@ COVERAGE = {
         "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         "_dash_line_check": ("test_suboption_reporting.cscript:XP-01",),
+        "_dash_table_check": ("test_wp31_truth.cscript:U48-3", "test_option_validation.cscript:U48-05"),
+        "_dash_table_fold": ("test_wp31_truth.cscript:U48-1", "test_option_validation.cscript:U48-06"),
         "_dash_line_expand": ("test_suboption_reporting.cscript:XP-08", "test_suboption_reporting.cscript:XP-04"),
         "_dash_refline_panels": ("test_suboption_reporting.cscript:XP-07",),
         "_dash_reflines_cap": ("test_suboption_reporting.cscript:XP-07",),

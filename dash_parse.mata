@@ -7130,6 +7130,8 @@ real scalar _dash_rep_unique(string scalar key, string scalar typed,
                // time as twoway refuses it ("option headlabel not
                // allowed", r(198), measured 13oct2026).
                "headlabel",
+               // WP-31 H2t: dash's own option, taken once.
+               "table",
                // GAPS2 X2: colorvarminmax, now declared, is refused a
                // second time as twoway refuses it.  colorlevels() is NOT
                // here: twoway takes it twice (measured 26sep2026).

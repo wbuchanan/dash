@@ -2203,6 +2203,8 @@ _DASH_LIMITS = {
     "reflines":       (10_000, 100_000, "dash_max_reflines"),
     # text() and ttext() points times by() panels (WP-30 P1.10, A28).
     "added_text":     (1_000, 100_000, "dash_max_added_text"),
+    # The rows a graph's data table lists at most (WP-31 H2t).
+    "table_rows":     (1_000, 100_000, "dash_max_table_rows"),
 }
 
 
@@ -2246,6 +2248,19 @@ _DASH_STALE_STATUS_HTML = (
     'font-size:12px">Layers marked (unfiltered), (bins unfiltered) or '
     '(grid unfiltered) were computed before the filter was applied, and a '
     'saved page does not recompute them; dash serve does.</p>')
+
+#: WP-31 H2t: a graph's data table.  Its text columns are
+#: ``__dash_tbl_<var>`` (the variable's display text, one per row, carried
+#: by the graph's own source so a filter move rewrites them with the rows);
+#: the note under a capped table is this fixed text; the toggle shows and
+#: hides the table and the note, then asks the table to lay itself out
+#: again (SlickGrid measures nothing while hidden).
+_DASH_TABLE_PREFIX = "__dash_tbl_"
+_DASH_TABLE_CAP_NOTE = "The table lists at most {cap:,} rows of those drawn."
+_DASH_TABLE_TOGGLE_JS = (
+    "dt.visible = cb_obj.active; note.visible = cb_obj.active && capped; "
+    "try { const v = Bokeh.index.find_one(dt); "
+    "if (v && v.invalidate_layout) v.invalidate_layout(); } catch (e) {}")
 
 #: WP-31 E10 (DECISIONS A24): the rows of every style file this process has
 #: read, keyed by the file's (realpath, st_dev, st_ino, st_size, st_mtime),
@@ -28741,7 +28756,9 @@ def _dash_csv_meta(columns, formats, string_flags, value_labels,
     value_labels = value_labels if isinstance(value_labels, dict) else {}
     value_label_names = (value_label_names
                          if isinstance(value_label_names, dict) else {})
-    cols = [str(c) for c in columns if str(c) != _ROW_ID_COLUMN]
+    # A data table's text columns (WP-31 H2t) are no data columns.
+    cols = [str(c) for c in columns if str(c) != _ROW_ID_COLUMN
+            and not str(c).startswith(_DASH_TABLE_PREFIX)]
     strings = [c for c in cols if string_flags.get(c)]
     dates = {}
     labels = {}
@@ -47426,10 +47443,17 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
                             cn)
         _dash_fxy_size(grid, gopts_of(name) or {})
-        return _dash_name_save(_dash_reflow(grid))
+        cell = _dash_name_save(_dash_reflow(grid))
+        # A by() graph's data table, once under its grid (WP-31 H2t, D6).
+        tbl = getattr(figs[0], "_dash_table", None)
+        return column(cell, *tbl, sizing_mode="stretch_width") if tbl \
+            else cell
     if name in figures:
         _dash_fxy_size(figures[name], gopts_of(name) or {})
-        return figures[name]
+        # A graph's data table under its figure (WP-31 H2t).
+        tbl = getattr(figures[name], "_dash_table", None)
+        return column(figures[name], *tbl, sizing_mode="stretch_width") \
+            if tbl else figures[name]
     return kpi_divs.get(name)
 
 
@@ -53060,6 +53084,178 @@ def _dash_hover_layer_vars(plot):
     return out
 
 
+def _dash_table_spec(graph_opts, limits=None):
+    """A graph's ``table`` option (WP-31 H2t), or None when it has none.
+
+    *graph_opts*' ``table`` is dash.ado's value: ``"on"`` for the bare
+    word, else the text of ``table(rows(#) open)``.  Returns ``{"rows":
+    cap, "open": bool}``: *cap* is ``rows(#)`` when given, else the
+    ``table_rows`` limit of *limits* (``_dash_limits``), held to 1 ..
+    the limit's ceiling; ``open`` draws the table unfolded.
+    """
+    raw = str((graph_opts or {}).get("table", "") or "").strip()
+    if not raw:
+        return None
+    default, ceiling, _glob = _DASH_LIMITS["table_rows"]
+    lim = limits if isinstance(limits, dict) else {}
+    cap = lim.get("table_rows") or default
+    m = re.search(r"(?:^|\s)rows\(\s*([0-9]{1,9})\s*\)", raw)
+    if m:
+        cap = int(m.group(1))
+    cap = max(1, min(int(cap), ceiling))
+    is_open = bool(re.search(r"(?:^|\s)open(?:\s|$)", raw))
+    return {"rows": cap, "open": is_open}
+
+
+def _dash_table_vars(graph):
+    """The variables a graph's data table lists, in order (WP-31 H2t): the
+    by() variables, then every layer's plotted variables in tooltip order
+    (:func:`_dash_hover_layer_vars`), then the hover() variables, each
+    once; a name that is no Stata name (a hand-built spec's other text) is
+    dropped."""
+    g = graph if isinstance(graph, dict) else {}
+    go = g.get("graph_options") or {}
+    out = []
+    by_raw = str(go.get("by", "") or "").strip()
+    if by_raw:
+        out += _dash_parse_by(by_raw, warn=False)[0].split()
+    for p in g.get("plots") or []:
+        if isinstance(p, dict):
+            out += _dash_hover_layer_vars(p)
+    out += str(go.get("hover", "") or "").split()
+    return [v for v in dict.fromkeys(out) if _dash_is_stata_name(v)]
+
+
+def _dash_table_text_frame(df, variables, formats, storage_types,
+                           value_labels, value_label_names, variable_labels,
+                           date_vars, dp="period", bcal=None):
+    """Add each listed variable's display text to *df* as the string column
+    ``__dash_tbl_<var>`` (WP-31 H2t); return ``[(var, title)]``.
+
+    A number is ``_dash_fmt_text`` under the variable's format (a value
+    label when one applies), a date its date text under its own format, a
+    missing value ``.`` (an extended code its letter or its label), a
+    string variable its value.  Each DISTINCT value is written once and
+    mapped onto the rows, so 100,000 rows of six variables cost six small
+    formatting passes, not 600,000 calls.  *title* is the variable's label,
+    else its name.  A variable *df* lacks is skipped.
+    """
+    formats = formats if isinstance(formats, dict) else {}
+    storage_types = storage_types if isinstance(storage_types, dict) else {}
+    variable_labels = (variable_labels if isinstance(variable_labels, dict)
+                       else {})
+    date_vars = date_vars if isinstance(date_vars, dict) else {}
+    out = []
+    for var in variables or []:
+        if var not in df.columns:
+            continue
+        col = df[var]
+        fmt = str(formats.get(var, "") or "")
+        vmap = _dash_value_labels_for(var, value_labels, value_label_names)
+        is_dt = bool(pd.api.types.is_datetime64_any_dtype(col))
+        if is_dt:
+            num = pd.Series(np.nan, index=col.index)
+            ok = col.notna().to_numpy()
+            num[ok] = (col[ok].astype("datetime64[ms]").astype("int64")
+                       .astype(float).to_numpy())
+        elif pd.api.types.is_numeric_dtype(col):
+            num = col.astype(float)
+        else:
+            df[_DASH_TABLE_PREFIX + var] = (
+                col.astype(object).where(col.notna(), "").map(str))
+            out.append((var, variable_labels.get(var) or var))
+            continue
+        kind = str(date_vars.get(var) or "") or "td"
+        tmap = {}
+        for v in pd.unique(num.dropna().to_numpy()):
+            v = float(v)
+            if is_dt:
+                sv = _dash_stata_value_of(v, kind)
+                tmap[v] = ("." if sv is None else
+                           _dash_fmt_text(sv, _dash_date_fmt(fmt, kind),
+                                          bcal=bcal))
+                continue
+            lab = vmap.get(str(int(v))) if (vmap and v.is_integer()) else None
+            if lab is None and vmap:
+                lab = vmap.get(str(v))
+            tmap[v] = (_dash_graph_text_plain(lab) if lab is not None else
+                       _dash_fmt_text(v, fmt or "%9.0g",
+                                      storage_types.get(var) or None,
+                                      dp=dp, bcal=bcal))
+        text = num.map(tmap).astype(object)
+        miss = text.isna()
+        text[miss] = "."
+        codes = _DASH_CODE_PREFIX + var
+        if bool(miss.any()) and codes in df.columns:
+            for i, c in df.loc[miss, codes].items():
+                if isinstance(c, str) and c in _DASH_CODE_LETTERS:
+                    text[i] = _dash_graph_text_plain(_dash_code_text(c, vmap))
+        df[_DASH_TABLE_PREFIX + var] = text
+        out.append((var, variable_labels.get(var) or var))
+    return out
+
+
+def _dash_data_table(fig, columns, spec, source=None, mask=None):
+    """Build a graph's folded data table (WP-31 H2t) and hang it on *fig*.
+
+    *columns* is ``[(var, title)]`` (:func:`_dash_table_text_frame`),
+    *spec* :func:`_dash_table_spec`'s.  The table is bound to the source
+    the figure draws its rows from -- the first renderer whose source
+    holds every text column, with that renderer's view mask
+    (``GlyphMapper._view_mask``) -- or to *source* and *mask* when given
+    (a by() graph's table over every panel's rows).  Its view is ONE
+    ``IndexFilter`` of the first ``rows`` drawn positions (DECISIONS A29;
+    S51 rewrites ``indices`` on a brush), the cap in its tags.  Under it a
+    ``Div`` note, shown when more rows are drawn than listed, and over it
+    a ``Toggle``.  Sets ``fig._dash_table = (toggle, table, note)`` and
+    returns it; None (and nothing set) when no source carries the text.
+    """
+    from bokeh.models import (CDSView, CustomJS, DataTable, Div,
+                              IndexFilter, TableColumn, Toggle)
+    if not spec or not columns:
+        return None
+    fields = [_DASH_TABLE_PREFIX + v for v, _t in columns]
+    src = source
+    if src is None:
+        for r in getattr(fig, "renderers", []) or []:
+            ds = getattr(r, "data_source", None)
+            data = getattr(ds, "data", None)
+            if data is None or not all(f in data for f in fields):
+                continue
+            src = ds
+            mask = GlyphMapper._view_mask(getattr(r, "view", None),
+                                          len(data[fields[0]]))
+            break
+    if src is None or fields[0] not in src.data:
+        return None
+    n = len(src.data[fields[0]])
+    kept = (np.flatnonzero(np.asarray(mask, dtype=bool)) if mask is not None
+            else np.arange(n))
+    cap = int(spec["rows"])
+    n_drawn = int(len(kept))
+    capped = bool(n_drawn > cap)
+    cols = [TableColumn(field=f, title=str(t), sortable=True)
+            for f, (_v, t) in zip(fields, columns)]
+    dt = DataTable(
+        source=src,
+        view=CDSView(filter=IndexFilter(
+            indices=[int(i) for i in kept[:cap]])),
+        columns=cols, index_position=None, sortable=True,
+        height=min(400, 28 + 25 * min(n_drawn, cap)),
+        sizing_mode="stretch_width", visible=bool(spec["open"]),
+        tags=["dash_table", "dash_table_cap=%d" % cap])
+    note = Div(text=html.escape(_DASH_TABLE_CAP_NOTE.format(cap=cap)),
+               visible=bool(spec["open"]) and capped,
+               tags=["dash_table_note"], html_attributes={"role": "note"})
+    toggle = Toggle(label="Data table", active=bool(spec["open"]),
+                    button_type="light", tags=["dash_table_toggle"])
+    toggle.js_on_change("active", CustomJS(
+        args=dict(dt=dt, note=note, capped=capped),
+        code=_DASH_TABLE_TOGGLE_JS))
+    fig._dash_table = (toggle, dt, note)
+    return fig._dash_table
+
+
 def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                       var_labels=None, date_vars=None, numeric_formats=None,
                       univar="", layers=None, value_labels=None,
@@ -54712,6 +54908,10 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
         if by_raw:
             extra += [v for v in _dash_parse_by(by_raw, warn=False)[0].split()
                       if v in need]
+        if str(go.get("table", "") or "").strip():
+            # The data table's text, on the graph's rows (WP-31 H2t).
+            extra += [_DASH_TABLE_PREFIX + v for v in _dash_table_vars(g)
+                      if _DASH_TABLE_PREFIX + v in need]
         grows = pd.Series(False, index=idx)
         for pi, p in enumerate(g.get("plots") or []):
             if not isinstance(p, dict):
@@ -56142,6 +56342,12 @@ class DashRenderer:
         for hv in hover_str.split():
             if hv and hv not in seen and hv in df.columns:
                 seen.append(hv)
+        if str(g_spec.get("graph_options", {}).get("table", "")
+               or "").strip():
+            # The data table's text columns (WP-31 H2t).
+            seen += [c for c in (_DASH_TABLE_PREFIX + v for v in
+                                 _dash_table_vars(g_spec))
+                     if c in df.columns and c not in seen]
         return seen
 
     def __init__(
@@ -56303,6 +56509,9 @@ class DashRenderer:
         # the renderer another way.
         _dash_refuse_string_plot_vars(self.master_spec, self.string_vars,
                                       "dashboard")
+        # WP-31 H2t: every table graph's variables as display text, before
+        # the page plan and any source is built (render() plans first).
+        self._dash_add_table_text()
         # Stata's data in memory, for lowess adjust and lpoly's grid.
         self.mapper.dataset = self.df
 
@@ -56317,6 +56526,40 @@ class DashRenderer:
                             getattr(self, "numeric_formats", {}),
                             storage_types=getattr(self, "storage_types", {}),
                             formats=getattr(self, "formats", {}))
+
+    def _dash_table_columns(self, g) -> list:
+        """``[(var, title)]`` for graph *g*'s data table: its variables
+        whose text column ``self.df`` holds (WP-31 H2t)."""
+        return [(v, self.variable_labels.get(v) or v)
+                for v in _dash_table_vars(g)
+                if _DASH_TABLE_PREFIX + v in self.df.columns]
+
+    def _dash_table_copy(self, g, frame):
+        """A source of graph *g*'s data-table columns over *frame*'s rows
+        the page holds, with their row identities (WP-31 H2t): the table of
+        a linked graph that draws only some of the link group's rows."""
+        return self._make_source(
+            [_DASH_TABLE_PREFIX + v for v, _t in self._dash_table_columns(g)],
+            df=frame)
+
+    def _dash_add_table_text(self) -> None:
+        """The text columns of every graph given ``table`` (WP-31 H2t),
+        added to ``self.df`` once (:func:`_dash_table_text_frame`); a
+        dashboard without a table adds none."""
+        want = []
+        for g in self.master_spec.get("graphs", []) or []:
+            if isinstance(g, dict) and _dash_table_spec(
+                    g.get("graph_options") or {}, self._limits):
+                want += [v for v in _dash_table_vars(g) if v not in want]
+        if want:
+            _dash_table_text_frame(
+                self.df, want, getattr(self, "formats", {}),
+                getattr(self, "storage_types", {}), self.value_labels,
+                self.value_label_names, self.variable_labels,
+                getattr(self, "date_vars", {}),
+                dp=_dash_build_dp(self.master_spec),
+                bcal=(self.master_spec.get("build_options", {})
+                      or {}).get("bcal"))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -56769,6 +57012,10 @@ class DashRenderer:
             models = list(getattr(fig, "renderers", []))
             for side in ("center", "above", "below", "left", "right"):
                 models.extend(getattr(fig, side, []) or [])
+            # A data table's own copy of a linked graph's rows (WP-31 H2t).
+            _tbl = getattr(fig, "_dash_table", None)
+            if _tbl:
+                models.append(_tbl[1])
             for m in models:
                 src = (getattr(m, "data_source", None)
                        if hasattr(m, "data_source")
@@ -58864,6 +59111,20 @@ class DashRenderer:
                             g_vars, df=group_df, rows=_grows.get(name))
                         facet_entries.append((fkey, label))
                     self._facet_map[name] = facet_entries
+                    if _dash_table_spec(g.get("graph_options", {}),
+                                        self._limits):
+                        # WP-31 H2t (D6): the data table's own source,
+                        # every panel's rows once (the Total panel's are
+                        # theirs already), under the graph's name, so a
+                        # filter move rewrites it as it rewrites a graph's.
+                        _tb_idx = set()
+                        for _lb, _gdf in by_groups:
+                            if not _gdf.attrs.get("_dash_total"):
+                                _tb_idx.update(_gdf.index)
+                        _qdf = self._apply_graph_filter(g)
+                        self.sources[name] = self._make_source(
+                            g_vars, df=_qdf[_qdf.index.isin(_tb_idx)],
+                            rows=_grows.get(name))
 
         # ---- 3. Build figures ----
         for g in graphs:
@@ -58948,6 +59209,26 @@ class DashRenderer:
                     _first._dash_by_chrome = _dash_by_chrome(
                         _go, _bv, self.variable_labels, self.scheme,
                         getattr(self, "_reported_subopts", None), name)
+                    # WP-31 H2t (D6): one data table under the grid.
+                    _tspec = _dash_table_spec(_go, self._limits)
+                    _tsrc = self.sources.get(name)
+                    if _tspec and _tsrc is not None:
+                        if name in link_names:
+                            # A copy of the panels' rows of the link
+                            # group's source, which the move keeps by row
+                            # identity (_collect_derived_sources).
+                            _tmask = np.zeros(len(self._link_index),
+                                              dtype=bool)
+                            for (_fk, _lb), (_l2, _m) in zip(
+                                    self._facet_map[name],
+                                    self._facet_masks.get(name, [])):
+                                if _fk not in self._facet_total_keys:
+                                    _tmask |= np.asarray(_m, dtype=bool)
+                            _tsrc = self._dash_table_copy(
+                                g, self.df.loc[self._link_index[_tmask]])
+                        _dash_data_table(
+                            _first, self._dash_table_columns(g), _tspec,
+                            source=_tsrc)
             else:
                 src = self.sources.get(name)
                 if src is None:
@@ -58962,6 +59243,21 @@ class DashRenderer:
                     if name in link_names:
                         _dash_dim_nonselection(_fig)
                     self.figures[name] = _fig
+                    # WP-31 H2t: the graph's data table, under its figure.
+                    _tspec = _dash_table_spec(g.get("graph_options", {}),
+                                              self._limits)
+                    if _tspec and name in link_names:
+                        # A linked graph draws the link group's source,
+                        # through views a move rebuilds: the table lists a
+                        # copy of the graph's own rows, which a move keeps
+                        # by row identity (_collect_derived_sources).
+                        _dash_data_table(
+                            _fig, self._dash_table_columns(g), _tspec,
+                            source=self._dash_table_copy(
+                                g, self._apply_graph_filter(g)))
+                    elif _tspec:
+                        _dash_data_table(_fig, self._dash_table_columns(g),
+                                         _tspec)
                 except Exception as exc:
                     raise RuntimeError(
                         f"dash_render: failed to build figure '{name}': {exc}"
@@ -60559,6 +60855,9 @@ class ServerAppBuilder:
                       # The resource limits (WP-19): the app groups by(),
                       # lists a dropdown and parses tabs() under them.
                       "_DASH_LIMITS",
+                      # WP-31 H2t: a graph's data table.
+                      "_DASH_TABLE_PREFIX", "_DASH_TABLE_CAP_NOTE",
+                      "_DASH_TABLE_TOGGLE_JS",
                       # The recompute's pace, _dash_event_throttle's defaults.
                       "_DASH_EVENT_RATE", "_DASH_EVENT_BURST",
                       # WP-30 P1.31a: the session cap, the idle close,
@@ -61178,6 +61477,9 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # WP-31 H2t: a graph's data table.
+                         "_dash_table_spec", "_dash_table_vars",
+                         "_dash_table_text_frame", "_dash_data_table",
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
@@ -63078,6 +63380,17 @@ class ServerAppBuilder:
             "    # rows -- for lowess adjust and lpoly's grid, as the saved",
             "    # renderer sets it.",
             "    _DASH_MAPPER.dataset = df",
+            "    # WP-31 H2t: every table graph's variables as display text,",
+            "    # before the page plan and any source, as the saved renderer adds them.",
+            "    _tbl_want = []",
+            "    for _gt in graphs:",
+            "        if _dash_table_spec(_gt.get('graph_options', {}) or {}, _dash_lim):",
+            "            _tbl_want += [_v for _v in _dash_table_vars(_gt) if _v not in _tbl_want]",
+            "    if _tbl_want:",
+            "        _dash_table_text_frame(df, _tbl_want, _FORMATS, _storage_types,",
+            "                               val_labels, val_label_names, var_labels,",
+            "                               _date_vars, dp=_dash_cache_dp(_fmt_cache),",
+            "                               bcal=_fmt_cache.get('bcal'))",
             "",
             "    # ---- Determine linked graphs, by the saved renderer's rule ----",
             "    linked_names = set(_dash_link_names(",
@@ -63332,6 +63645,22 @@ class ServerAppBuilder:
             "                    _srcs.append(_rs)",
             "        return _ly_src, _srcs",
             "",
+            "    def _dash_table_copy(gname, frame, cols):",
+            "        # A source of a data table's text over *frame*'s rows the",
+            "        # document holds, with their labels (WP-31 H2t).",
+            "        _f = frame[frame.index.isin(_EMBED_GROWS.get(gname, frame.index[0:0]))]",
+            "        _d = {_DASH_TABLE_PREFIX + _v: _dash_column_values(",
+            "                  _dash_embed_values(_f[_DASH_TABLE_PREFIX + _v],",
+            "                                     _EMBED['need'].get(_DASH_TABLE_PREFIX + _v)))",
+            "              for _v, _t in cols}",
+            "        _d['index'] = list(_f.index)",
+            "        return ColumnDataSource(_d)",
+            "",
+            "    def _dash_table_cols(g):",
+            "        # [(var, title)] for a graph's data table (WP-31 H2t).",
+            "        return [(_v, var_labels.get(_v) or _v) for _v in _dash_table_vars(g)",
+            "                if _DASH_TABLE_PREFIX + _v in df.columns]",
+            "",
             "    def _hover_cols_of(gname):",
             "        # The columns the tooltip reads -- the first layer's",
             "        # variables, which _dash_build_hover names, and the ones",
@@ -63345,7 +63674,11 @@ class ServerAppBuilder:
             "                _raw = (_gx.get('graph_options', {}).get('hover', '') or '').strip()",
             "                _p0 = (_gx.get('plots') or [{}])[0] or {}",
             "                _tip = [_p0.get(_k, '') for _k in ('xvar', 'yvar', 'yvar1', 'yvar2', 'zvar')]",
-            "                return [_c for _c in dict.fromkeys(_tip + _raw.split())",
+            "                # A data table's text columns ride along (WP-31 H2t).",
+            "                _tbl = ([_DASH_TABLE_PREFIX + _v for _v in _dash_table_vars(_gx)]",
+            "                        if str(_gx.get('graph_options', {}).get('table', '') or '').strip()",
+            "                        else [])",
+            "                return [_c for _c in dict.fromkeys(_tip + _raw.split() + _tbl)",
             "                        if _c and _c in df.columns]",
             "        return []",
             "",
@@ -63880,6 +64213,17 @@ class ServerAppBuilder:
             "        if _fac_label is None:",
             "            _dash_apply_frame_aspect(fig, go, _SCHEME_GRAPHSIZE_X,",
             "                                     _SCHEME_GRAPHSIZE_Y)",
+            "            # WP-31 H2t: the graph's data table, under its figure.",
+            "            _tspec = _dash_table_spec(go, _dash_lim)",
+            "            if _tspec and gname in linked_names:",
+            "                # A linked graph draws the link group's source through",
+            "                # views: the table lists a copy of the graph's own rows,",
+            "                # refreshed by a move as a graph's source is.",
+            "                _tsrc = _dash_table_copy(gname, g_df, _dash_table_cols(g))",
+            "                graph_sources.setdefault(gname, []).append(_tsrc)",
+            "                _dash_data_table(fig, _dash_table_cols(g), _tspec, source=_tsrc)",
+            "            elif _tspec:",
+            "                _dash_data_table(fig, _dash_table_cols(g), _tspec)",
             "        return fig",
 
             "    # ---- Build figures: one call per graph, or per by() panel ----",
@@ -64015,6 +64359,22 @@ class ServerAppBuilder:
             "            figures[_f0]._dash_by_chrome = _dash_by_chrome(",
             "                go, by_vars, var_labels, _DASH_SCHEME,",
             "                _reported_subopts, gname)",
+            "            # WP-31 H2t (D6): one data table under the grid, over",
+            "            # every panel's rows (a Total panel's are theirs already).",
+            "            _tspec = _dash_table_spec(go, _dash_lim)",
+            "            if _tspec:",
+            "                _tidx = work_df.index[0:0]",
+            "                for _fi, (_label, _gdf, _key) in enumerate(_panels):",
+            "                    if _fi != _t_idx:",
+            "                        _tidx = _tidx.union(_gdf.index)",
+            "                _tcols = _dash_table_cols(g)",
+            "                _tsrc = _dash_table_copy(gname, work_df[work_df.index.isin(_tidx)],",
+            "                                         _tcols)",
+            "                # Under the graph's name, so a move rewrites it with the",
+            "                # graph's own mask, as a graph's source (beside the link",
+            "                # group's, for a linked graph).",
+            "                graph_sources.setdefault(gname, []).append(_tsrc)",
+            "                _dash_data_table(figures[_f0], _tcols, _tspec, source=_tsrc)",
             "",
             "    # Every canvas text drawn as typed (WP-30 P1.11a): last, once",
             "    # every figure, by() panel title and shared scale is built,",

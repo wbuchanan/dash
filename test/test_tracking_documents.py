@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "H2t": "No per-graph data table shows the rows a graph draws (the data table)",
     "H2f": "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)",
     "H2k": "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)",
     "H2l": "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)",

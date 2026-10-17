@@ -598,7 +598,8 @@ class TestTheParsersFoundSomething:
         # 213 -> 216: C17 the mlabprefix() mlabsuffix() and lalign() entries.
         # 216 -> 217: E3 the mlalign() mlabstyle() entry adds mlabstyle().
         # 217 -> 216: E2 mlpattern() leaves the Unsupported list.
-        assert len(found) == 216, (
+        # 216 -> 217: H2t the Data tables entry defines table.
+        assert len(found) == 217, (
             f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -687,7 +688,9 @@ class TestTheParsersFoundSomething:
         # 269 -> 271: D8 yvarlabel xvarlabel declared (_dash_label_split)
         # 271 -> 274: C17 mlabprefix mlabsuffix lalign declared there
         # 274 -> 275: E3 mlabstyle declared there
-        assert len(_ado_declarations()) == 275
+        # 275 -> 277: H2t table and table2 declared (both parsers and
+        # _dash_label_split)
+        assert len(_ado_declarations()) == 277
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -824,8 +827,10 @@ class TestTheParsersFoundSomething:
         # 440 -> 442: C17 the mlabprefix() mlabsuffix() and lalign() entries.
         # 442 -> 443: E3 the mlalign() mlabstyle() entry.
         # 443 -> 444: D14 the Tabs example of a tab's own layout().
-        assert len(defs) == 444, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 444 "
+        # 444 -> 447: H2t the Data tables entries (table, table(rows(#)
+        # open)) and the $dash_max_table_rows row.
+        assert len(defs) == 447, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 447 "
             f"measured 16oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -959,14 +964,20 @@ class TestEveryDashOnlyOptionIsDocumented:
         # them, so there is nothing to define -- the Unsupported section's
         # prose says they are refused.
         refused = {"title2", "subtitle2"}
+        # WP-31 H2t: table2() is the second declaration of table, its
+        # argument form -- the user types table(rows(#) open), which the
+        # Data tables entry defines; no command is written as table2().
+        internal = {"table2"}
         h = _help_text()
+        assert "{opt table(rows(#) open)}" in h
         sec = h[h.index("{marker unsupported}"):h.index("{marker dependencies}")]
         for name in refused:
             assert "{opt %s(string)}" % name in sec and "r(198)" in sec, name
         undocumented = sorted(name for name in _ado_declarations()
                               if not _twoway_spelling(name)
                               and name not in documented
-                              and name not in refused)
+                              and name not in refused
+                              and name not in internal)
         assert not undocumented, (
             f"{len(undocumented)} options exist only in dash -- twoway has no "
             f"such option, so the help's redirect to the twoway manual cannot "
@@ -1204,4 +1215,6 @@ class TestInternalLinksResolve:
         # sentence to the new Textbox options paragraph.
         # 98 -> 99 links: WP-31 D2b links the Edge titles paragraph to it.
         # 99 -> 100: E4 the empty-parentheses sentence links Style lists.
-        assert len(refs) == 100 and len(set(refs)) == 36
+        # 100 -> 102 links, 36 -> 37 targets: H2t the table_rows limit
+        # and the saved-versus-served table link the new Data tables entry.
+        assert len(refs) == 102 and len(set(refs)) == 37

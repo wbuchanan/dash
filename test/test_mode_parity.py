@@ -1096,6 +1096,13 @@ def _layout_tree(m, figures):
         return ("TabPanel", m.title, _layout_tree(m.child, figures))
     if isinstance(m, Tabs):
         return ("Tabs", [_layout_tree(t, figures) for t in m.tabs])
+    if tn == "DataTable":
+        # A graph's data table (WP-31 H2t): its column titles and fields,
+        # whether it is shown, and its cap, compared in both modes.
+        return ("DataTable", [(c.title, c.field) for c in m.columns],
+                m.visible, list(m.tags or []))
+    if tn == "Toggle" and "dash_table_toggle" in (m.tags or []):
+        return ("Toggle", m.label, m.active)
     if isinstance(m, Widget):
         return ("Widget", _widget_profile(m))
     if isinstance(m, GridPlot):
@@ -2691,6 +2698,10 @@ CORPUS = [
     # fallback with comparisons, cond() and normal(), alike in both modes.
     _case("function cond", [plot_for("function", {"range": "-3 3"},
                                      expr="cond(x > 1, normal(x), 0)")]),
+    # WP-31 H2t: a graph's data table, and one under a by() grid.
+    _case("scatter table", [plot_for("scatter")], go={"table": "on"}),
+    _case("by table", [plot_for("scatter")],
+          go={"table": "on", "by": "foreign"}),
 ]
 
 
@@ -3759,6 +3770,9 @@ MOVE_CORPUS = [
     _move_case("kdensity recast(area), range (WP-31 C16)", _MOVES[1],
                [plot_for("kdensity", {"recast": "area",
                                       "range": "10 45"})]),
+    # WP-31 H2t: a table graph's figure follows the move alike.
+    _move_case("scatter table, dropdown to Foreign", _MOVES[0],
+               [plot_for("scatter")], go={"table": "rows(20)"}),
 ]
 
 

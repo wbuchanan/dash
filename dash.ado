@@ -961,8 +961,13 @@ program define _dash_parse_graph_opts, sclass
         TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
         TSCALE2(string asis)      TTITLE2(string asis) ///
         CLEGend(string asis)      PLEGend(string asis)      PCYCle(string) ///
+        TABLE                     TABLE2(string asis) ///
         * ///
     ]
+    // WP-31 H2t: table, dash's own, bare or table(rows(#) open), as one
+    // value: "on" for the bare word, else the text typed (_dash_table_fold).
+    _dash_table_fold `"`table'"' `"`macval(table2)'"'
+    local table : copy local _tb_val
 
     // aspectratio(#[, placement(compassdir)]) as twoway reads it (WP-31
     // D5): the number goes on to the rules, placement() to its own key.
@@ -1113,6 +1118,7 @@ program define _dash_parse_graph_opts, sclass
     sreturn local nodraw       : copy local nodraw
     sreturn local play         : copy local play
     sreturn local replace      : copy local replace
+    sreturn local table        : copy local table
     sreturn local _pending  : copy local _dash_pending
     sreturn local _unknown  : copy local _dash_unknown
 end
@@ -1195,6 +1201,9 @@ program define _dash_parse_plot_opts, sclass
     // WP-31 S34: yvarlabel(), xvarlabel() and the other options the
     // syntax below has no room for, read the same way (_dash_label_split).
     _dash_label_split
+    // WP-31 H2t: table, read by _dash_label_split, folded to one value.
+    _dash_table_fold `"`table'"' `"`macval(table2)'"'
+    local table : copy local _tb_val
     mata: st_local("0", ", " + _dash_zyx_text)
     syntax [, ///
         MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
@@ -1733,6 +1742,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_nodraw       : copy local nodraw
     sreturn local g_play         : copy local play
     sreturn local g_replace      : copy local replace
+    sreturn local g_table        : copy local table
     sreturn local _pending  : copy local _dash_pending
     sreturn local _unknown  : copy local _dash_unknown
 end
@@ -2471,16 +2481,17 @@ end
 // ================================================================
 program define _dash_label_split
     version 19
-    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle"
+    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle table table2"
     foreach o of local lo {
         c_local `o' ""
     }
-    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal)")))
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal|table)")))
     if !`_lb_any' exit
     mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
     mata: _dash_lb_in = ""
     mata: _dash_lb_out = ""
     mata: st_local("_ln", strofreal(cols(_dash_lb_tok)))
+    local _lb_tab 0
     forvalues _li = 1/`_ln' {
         mata: st_local("0", ", " + _dash_lb_tok[`_li'])
         // la(), lal() .. lalign() are lalign(), as twoway reads them
@@ -2490,15 +2501,21 @@ program define _dash_label_split
         // parser's LALPha.
         capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
             MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-            MLABSTyle(string asis) ]
+            MLABSTyle(string asis) TABLE TABLE2(string asis) ]
         local _rc_lb = _rc
+        // A second table (WP-31 H2t) goes on with the rest, as typed: the
+        // repeat check then refuses it as a second name() is refused.
+        if !`_rc_lb' & (`"`table'`macval(table2)'"' != "") {
+            if `_lb_tab' local _rc_lb 1
+            local _lb_tab 1
+        }
         if `_rc_lb' mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
         else  mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
     }
     mata: st_local("0", ", " + _dash_lb_in)
     syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
         MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-        MLABSTyle(string asis) ]
+        MLABSTyle(string asis) TABLE TABLE2(string asis) ]
     foreach o of local lo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -4908,7 +4925,8 @@ program define _dash_limit_table
         tabs=50,500 ///
         filters=20,200 ///
         reflines=10000,100000 ///
-        added_text=1000,100000
+        added_text=1000,100000 ///
+        table_rows=1000,100000
     c_local _dash_limit_rows "`rows'"
 end
 
@@ -6913,7 +6931,7 @@ program define _dash_process_segment, rclass
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title ///
-            zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+            zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval
@@ -8218,7 +8236,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
         local g_`gk' ""
     }
 
@@ -8262,7 +8280,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 // Kept apart and merged in after the segment loop: an option
@@ -8330,7 +8348,7 @@ program define _dash_plot
     // a second copy, in another plot group, another || segment or after
     // the comma, is "option scheme() not allowed", r(198) (measured
     // 24sep2026 for each; name() has its own check, above and below).
-    local _g_unique "saving scheme aspectratio aspectplacement xsize ysize scale fxsize fysize nodraw play"
+    local _g_unique "saving scheme aspectratio aspectplacement xsize ysize scale fxsize fysize nodraw play table"
     // The function layers, collected for evaluation after the loop.
     local _fn_m 0
     // The fit layers' points (WP-31 C4): each segment's in _ft_sc
@@ -8373,7 +8391,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
             local _sg_`gk' ""
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
@@ -8484,12 +8502,13 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
                 if `_gseen_`gk'' {
                     display as error "option `gk'() not allowed"
-                    display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
+                    if "`gk'" == "table" display as error "      A graph takes one table; this command gives it more than once."
+                    else display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
                     exit 198
                 }
                 local _gseen_`gk' 1
@@ -8516,7 +8535,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
@@ -8544,6 +8563,8 @@ program define _dash_plot
     foreach _lx in g_xline g_yline g_xline2 g_yline2 {
         if `"`macval(`_lx')'"' != "" _dash_line_expand `_lx' `"`macval(`_lx')'"'
     }
+    // WP-31 H2t: table()'s sub-options, rows(#) and open (_dash_table_check).
+    if `"`macval(g_table)'"' != "" _dash_table_check `"`macval(g_table)'"'
     _dash_subopt_check zlabel
     // The label forms twoway refuses, in its words (WP-31 D6; measured,
     // test/fixtures/axis_look_truth.json ref_*): r(198) "invalid label
@@ -8983,7 +9004,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
+          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
         // text() and ttext() are written as added_text records below
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue
@@ -9391,6 +9412,66 @@ program define _dash_line_check
         exit 198
     }
     mata: _dash_axreq_accept_line(`row')
+end
+
+// ----------------------------------------------------------------
+// _dash_table_fold "<flag>" "<text>"  -- table's two declarations as one
+// value (WP-31 H2t)
+//
+// -syntax- cannot declare one option both bare and with parentheses, so
+// both parsers declare TABLE, the bare word, and TABLE2(string asis), the
+// argument form (measured 17oct2026: table sets the flag, table(rows(5))
+// the text, table() neither).  Written in full, as dash's own option: a
+// shorter spelling would be shared by the two declarations.  The caller's
+// local _tb_val is "on" for the bare word, else the text typed; both
+// together are refused, r(198).  The text is read by value.
+// ----------------------------------------------------------------
+program define _dash_table_fold
+    version 19
+    args flag t
+    if "`flag'" != "" & `"`macval(t)'"' != "" {
+        display as error "dash: table may not be combined with table()"
+        exit 198
+    }
+    if "`flag'" != "" c_local _tb_val on
+    else c_local _tb_val `"`macval(t)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_table_check <text>  -- table()'s sub-options (WP-31 H2t)
+//
+// table is dash's own (twoway has no data table): "on" (the bare word) or
+// table(rows(#) open), rows(#) a whole number from 1 to 100,000 -- the
+// rows the table lists at most -- and open the table unfolded.  Any other
+// word is refused, r(198), echoed by value and cut to 40 characters.  The
+// tokens are read with _dash_opt_tokens, by value, never by -syntax-.
+// ----------------------------------------------------------------
+program define _dash_table_check
+    version 19
+    args t
+    mata: st_local("_tb_t", strtrim(st_local("t")))
+    if `"`macval(_tb_t)'"' == "on" exit
+    mata: _dash_tb_tok = _dash_opt_tokens(st_local("_tb_t"))
+    mata: st_local("_tb_n", strofreal(cols(_dash_tb_tok)))
+    forvalues _ti = 1/`_tb_n' {
+        mata: st_local("_tb_w", _dash_tb_tok[`_ti'])
+        if `"`macval(_tb_w)'"' == "open" continue
+        mata: st_local("_tb_r", strofreal(regexm(st_local("_tb_w"), "^rows[(](.*)[)]$")))
+        if `_tb_r' {
+            mata: st_local("_tb_v", strtrim(regexs(1)))
+            mata: st_local("_tb_ok", strofreal(strlen(st_local("_tb_v")) >= 1 & strlen(st_local("_tb_v")) <= 6 & !strlen(subinstr(subinstr(subinstr(subinstr(subinstr(subinstr(subinstr(subinstr(subinstr(subinstr(st_local("_tb_v"), "0", ""), "1", ""), "2", ""), "3", ""), "4", ""), "5", ""), "6", ""), "7", ""), "8", ""), "9", ""))))
+            if `_tb_ok' {
+                if `_tb_v' >= 1 & `_tb_v' <= 100000 continue
+            }
+            mata: _dash_say("err", "dash: table(rows()) takes an integer from 1 to 100,000; got '", (ustrlen(st_local("_tb_v")) <= 40 ? st_local("_tb_v") : usubstr(st_local("_tb_v"), 1, 40) + "..."), "'")
+            mata: mata drop _dash_tb_tok
+            exit 198
+        }
+        mata: _dash_say("err", "dash: table() takes rows(#) and open; '", (ustrlen(st_local("_tb_w")) <= 40 ? st_local("_tb_w") : usubstr(st_local("_tb_w"), 1, 40) + "..."), "' is not one of them")
+        mata: mata drop _dash_tb_tok
+        exit 198
+    }
+    mata: mata drop _dash_tb_tok
 end
 
 // ----------------------------------------------------------------

@@ -572,9 +572,11 @@ class TestTheLimitsTable:
         # wrong because P1.21a adds the reflines limit (A68).
         # Flipped (WP-30 P1.10): 9 -> 10 keys; the nine-key set was wrong
         # because P1.10 adds the added_text limit (A28).
+        # 10 -> 11 keys (WP-31 H2t): the table_rows limit.
         assert set(dr._DASH_LIMITS) == {
             "cells", "bytes", "graphs", "plots", "filter_options",
-            "by_groups", "tabs", "filters", "reflines", "added_text"}
+            "by_groups", "tabs", "filters", "reflines", "added_text",
+            "table_rows"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
             assert 1 <= default <= ceiling, key
             assert glob == "dash_max_" + key, key

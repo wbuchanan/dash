@@ -1867,6 +1867,43 @@ the figures: a KPI card in a grid is left blank, and the title, the filters
 and the tab strip, which sit outside every grid, are not in it.
 
 
+{marker table}
+{title:Data tables}
+
+{pstd}
+{cmd:table} is a graph option of {cmd:dash}'s own ({cmd:twoway} draws no
+table).  It puts a {bf:Data table} button under the graph, or under the
+panels of a {cmd:by()} graph, and behind it a table of the observations
+the graph draws.  The table is folded away when the page opens, so the
+layout is the graph's alone until you press the button.
+
+{synoptset 24 tabbed}{...}
+{synopthdr:option}
+{synoptline}
+{synopt:{opt table}}a folded data table under the graph.{p_end}
+{synopt:{opt table(rows(#) open)}}the same, listing at most {it:#}
+    observations (a whole number from 1 to 100,000; the default is
+    {cmd:$dash_max_table_rows}, 1,000), unfolded when the page opens with
+    {cmd:open}.  Write {cmd:table} or {cmd:table()}, not both; a graph takes
+    one, and any other word in the parentheses is refused with
+    {cmd:r(198)}.{p_end}
+{synoptline}
+
+{pstd}
+The columns are the variables the graph plots, in the order its tooltip
+names them, then its {cmd:hover()} variables; a {cmd:by()} graph's own
+variables come first, each row in its panel.  A column is headed by the
+variable's label, else its name, and every cell is the value as Stata
+displays it: the variable's display format, its value label when it has
+one, a date in its date format, and {cmd:.} for a missing value.  Click a
+heading to sort by it; the table scrolls through its rows.  It lists the
+rows the graph draws, after its {cmd:if} and {cmd:in}, and follows every
+filter move, in a saved page and under {cmd:dash serve} alike.  When the
+graph draws more rows than the table lists, the first are listed, with
+the note {it:The table lists at most # rows of those drawn.}  The CSV
+download is unchanged: it writes the data, not the table.
+
+
 {marker filters}
 {title:Filters}
 
@@ -2142,6 +2179,7 @@ served app differ as follows:
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as SVG{col 38}Yes{col 59}Yes
+{col 5}{help dash##table:Data table} ({cmd:table}){col 38}Yes{col 59}Yes
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes
 {col 7}{cmd:filterposition()}
@@ -2680,6 +2718,9 @@ that moves it for the rest of the session:
     {cmd:text()} times the graph's {cmd:by()} panels, in one graph and over
     the dashboard; default 1,000, at most 100,000.  Refused with
     {cmd:r(134)}.{p_end}
+{synopt:{cmd:$dash_max_table_rows}}rows a graph's {help dash##table:data table}
+    lists when {cmd:table()} gives no {cmd:rows()}; default 1,000, at most
+    100,000.  The first drawn rows are listed, with a note.{p_end}
 {synoptline}
 
 {pstd}

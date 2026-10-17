@@ -2628,6 +2628,18 @@ _ov_said U46-11 "insufficient observations"
 _u46_rc U46-12 3000 `"dash lpolyci mpg weight, pwidth(+800) name(ou4612)"'
 _ov_said U46-12 "expression invalid"
 
+// ----------------------------------------------------------------
+// U48-05..U48-06 (WP-31 H2t): table(), dash's own option, refuses a word
+// it does not take (echoed, cut to 40 characters) and the bare word beside
+// the argument form after a plot group's comma, r(198), in dash's words
+// (in one plot's options the two are a second table, U48-4).
+_u46_rc U48-05 198 `"dash scatter mpg weight, table(bogus) name(ou4805)"'
+_ov_said U48-05 "dash: table() takes rows(#) and open; 'bogus' is not one of them"
+_u46_rc U48-05 198 `"dash scatter mpg weight, table(rows(5) abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz) name(ou4805)"'
+_ov_said U48-05 "'abcdefghijklmnopqrstuvwxyzabcdefghijklmn...' is not one of them"
+_u46_rc U48-06 198 `"dash (scatter mpg weight), table table(rows(5)) name(ou4806)"'
+_ov_said U48-06 "dash: table may not be combined with table()"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

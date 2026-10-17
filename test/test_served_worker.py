@@ -81,6 +81,11 @@ _WORKER_AUDIT = {
     "df", "spec", "graphs", "g", "plot", "_sort_keys", "_shared_pos",
     "_DASH_TRANSPOSE", "_GRAPH_SCHEME_PROPS", "_DASH_GRAPH_SCHEMES",
     "_DASH_REF_SCHEMES", "_go", "_DASH_STYLE_ROWS",
+    # WP-31 H2t: a table graph's layer carries its text columns, named
+    # through _dash_table_vars, which reads by()'s grammar tables -- module
+    # constants, read and never written.
+    "_DASH_BY_AXES_SPELLINGS", "_DASH_BY_GRAMMAR", "_DASH_BY_SUPPORTED",
+    "_DASH_BY_TEXT_SPELLINGS",
 }
 
 
