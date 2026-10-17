@@ -469,7 +469,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
 - **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit 90ca733.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
-- **C18b Tracked:** Closed in WP-31, BUGS.md "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it", commit pending.
+- **C18b Tracked:** Closed in WP-31, BUGS.md "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it", commit 59b4ee2.
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit 0862bf7.
 - **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.
@@ -522,8 +522,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1f Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)", commit 54554e2.
 - **F1g Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)", commit b9488d3.
 F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: the lpoly/lpolyci exact-fit bandwidth, where the saved page keeps the build and marks the layer (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", C11b)
-- **F2 Tracked:** Closed in WP-31, BUGS.md "The function points-free fallback evaluates ten math names only", commit pending.
-- **F3 Tracked:** Closed in WP-31, BUGS.md "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values", commit pending.
+- **F2 Tracked:** Closed in WP-31, BUGS.md "The function points-free fallback evaluates ten math names only", commit 5075645.
+- **F3 Tracked:** Closed in WP-31, BUGS.md "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values", commit 0e97169.
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
 - **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit 1918fc4.
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
@@ -536,10 +536,10 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit 8b367e7.
 - **G7 Tracked:** Closed in WP-31, BUGS.md "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses", commit 75f0f12.
 - **H1 Tracked:** Open (WP-31 section 52).
-- **H2f Tracked:** Closed in WP-31, BUGS.md "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)", commit pending.
+- **H2f Tracked:** Closed in WP-31, BUGS.md "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)", commit e7c500a.
 - **H2k Tracked:** Open (WP-31 section 50).
 - **H2l Tracked:** Open (WP-31 section 51).
-- **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit pending.
+- **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
 - **H2x Tracked:** Open (WP-31 section 53).
 - **H3 Tracked:** Open (WP-31 section 55).
 - **H4 Tracked:** Open (WP-31 section 55).
