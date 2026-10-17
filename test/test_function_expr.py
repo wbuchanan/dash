@@ -72,7 +72,9 @@ _RTOL = {"y = x^9^9^9": 1e-13}
 # Flipped (WP-31 F2): c(pi), normalden(), ln(), comparisons and max() were
 # outside the fallback; it now reads them, and only a hexadecimal literal
 # is left to the stored points.
-_FALLBACK_UNSUPPORTED = {"y = 1.8X+01*x"}
+# Flipped again (WP-31 F2): hexadecimal literals are read too, so the
+# fallback draws every probe twoway draws.
+_FALLBACK_UNSUPPORTED = set()
 
 #: The refusals of twoway (E3, u06 truth): each draws nothing in a spec
 #: without points.
@@ -689,7 +691,10 @@ class TestTheParser:
         for text in (".", ".a", ".z"):
             t = _parse(text)
             assert t[0] == "c" and math.isnan(t[1]), text
-        for text in (".ab", "..", "1e", "1.2.3", "0x10", "1.8X+01"):
+        # Flipped (WP-31 F2): 1.8X+01 is a hexadecimal literal twoway
+        # reads (3); the fallback reads it too.
+        assert _parse("1.8X+01") == ("c", 3.0)
+        for text in (".ab", "..", "1e", "1.2.3", "0x10", "1.8X01"):
             with pytest.raises(ValueError):
                 _parse(text)
 
@@ -1041,5 +1046,21 @@ class TestTheParserF2:
     def test_c_pi_token(self):
         assert list(_eval("c(pi)*x", [1.0])) == [math.pi]
         for text in ("c (pi)", "c(e)", "c(PI)", "c(pi", "c()"):
+            with pytest.raises(ValueError):
+                _parse(text)
+
+    def test_hex_literals(self):
+        """Measured (fixture fallback_grammar): twoway reads 1.<hex>X<sign>
+        <hex>; +3ff is missing, -3ff is 0, 1.0X+400 and malformed forms
+        are refused."""
+        assert _parse("1.8X+01") == ("c", 3.0)
+        assert _parse("1.0x-1") == ("c", 0.5)
+        assert _parse("1.0X-3ff") == ("c", 0.0)
+        t = _parse("1.fX+3ff")
+        assert t[0] == "c" and math.isnan(t[1]) and t[2] == "."
+        assert list(_eval("x*1.0X+1", [3.0])) == [6.0]
+        for text in ("1.X+1", "2.0X+1", "0.8X+1", "1X+1", "1.0X1",
+                     "1.0X+0001", "1.0X+400", "1.0X-400",
+                     "1.00000000000000000X+1", "1.0X+1x", "1.0X+1.5"):
             with pytest.raises(ValueError):
                 _parse(text)

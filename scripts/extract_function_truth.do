@@ -485,6 +485,29 @@ zg c (pi)
 zg c(pi )*x
 zg c(e)
 zg c(PI)
+// --- hexadecimal literals
+zg 1.8X+01*x
+zg 1.0X+1
+zg -1.0X+0*x
+zg 1.0X-1*x
+zg 1.0x+1
+zg 1.fX+3ff
+zg 1.0X+3ff
+zg 1.fffffffffffffX+3fe
+zg 1.0X-3ff
+zg x*1.0X+1
+zg 1.0X+1^2
+zg 1.X+1
+zg 2.0X+1
+zg 0.8X+1
+zg 1X+1
+zg 1.0X1
+zg 1.0X+0001
+zg 1.0X+400
+zg 1.0X-400
+zg 1.00000000000000000X+1
+zg 1.0X+1x
+zg 1.0X+1.5
 // --- arity and refusals
 zg sin(x, 1)
 zg normalden(x, 1, 2, 3)

@@ -55414,7 +55414,10 @@ def _stata_fn_parse(text):
     binds looser than ``^`` (``!x^-1`` is 0 at x = 0, so it is
     ``!(x^-1)``), ``-!x`` is ``-(!x)`` and ``!-x`` is refused.  Tokens are
     ASCII only; blanks and tabs separate them.  A NUMBER is
-    ``digits[.digits][e[+-]digits]``, ``.digits[...]`` or ``digits.``;
+    ``digits[.digits][e[+-]digits]``, ``.digits[...]``, ``digits.`` or
+    a hexadecimal literal ``1.hhh X[+-]hhh`` (1-13 and 1-3 hex digits,
+    exponent at most 3ff; +3ff is missing, below the least normal double
+    0);
     MISSING is ``.`` or ``.a``-``.z``; the bare names are ``x`` and
     ``_pi``; ``c(pi)`` is ``c`` written directly before ``(``, then
     ``pi`` and ``)``, blanks allowed inside (twoway takes ``c( pi )`` and
@@ -55465,6 +55468,37 @@ def _stata_fn_parse(text):
         if ch in " \t":
             i += 1
             continue
+        if ch == "1" and text[i + 1:i + 2] == ".":
+            # A hexadecimal literal, measured (WP-31 F2).
+            hexch = "0123456789abcdefABCDEF"
+            j = i + 2
+            while j < n and text[j] in hexch:
+                j += 1
+            if 3 <= j - i <= 15 and j < n and text[j] in "xX":
+                k = j + 1
+                if not (k < n and text[k] in "+-"):
+                    raise ValueError("malformed number")
+                e0 = k + 1
+                k = e0
+                while k < n and text[k] in hexch:
+                    k += 1
+                if not 1 <= k - e0 <= 3 or (k < n and (
+                        text[k] in namech or text[k] == ".")):
+                    raise ValueError("malformed number")
+                ex = int(text[e0:k], 16)
+                if ex > 1023:
+                    raise ValueError("malformed number")
+                if text[j + 1] == "-":
+                    ex = -ex
+                if ex == 1023:
+                    toks.append(("c", float("nan"), "."))
+                else:
+                    mant = 1.0 + int(text[i + 2:j], 16) / 16.0 ** (j - i - 2)
+                    v = math.ldexp(mant, ex)
+                    toks.append(("c", 0.0 if v < 2.2250738585072014e-308
+                                 else v))
+                i = k
+                continue
         if ch.isdigit() or (ch == "." and i + 1 < n and text[i + 1].isdigit()):
             j = i
             while j < n and text[j].isdigit():
