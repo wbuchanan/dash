@@ -555,7 +555,8 @@ assert `_env_py' >= 3
 mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
 display "ENV-12: programs running python: `_env_pyprogs'"
 // Flipped (WP-30 P1.32): _dash_require_deps runs python: (its two captured lines) and joins the list.
-assert "`_env_pyprogs'" == "_dash_require_deps _dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
+// Flipped (WP-31 D15): _dash_stata_ticks_gen gathers Stata's own #N ticks through the module and joins it, guarded.
+assert "`_env_pyprogs'" == "_dash_require_deps _dash_do_render _dash_empty_data _dash_stata_ticks_gen _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))

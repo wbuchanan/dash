@@ -7302,9 +7302,10 @@ program define _dash_stata_ticks_gen
     version 19
     local reqs `"`0'"'
     local acc ""
-    // The loader, not _dash_require_python alone: the module it reads is
-    // the one _dash_xm_load keeps, and its guard runs first
-    // (test_dependency_guards.py).
+    // The loader too, not _dash_require_python alone: the module it reads
+    // is the one _dash_xm_load keeps, and both guards run first
+    // (test_env_guards.cscript ENV-12, test_dependency_guards.py).
+    _dash_require_python
     _dash_xm_load
     python: import sys
     python: from sfi import Macro as _dash_M
@@ -12559,6 +12560,11 @@ program define _dash_prepare_spec, rclass
         // _natscale/_tsnatscale while the qualifier columns exist
         // (_dash_axis_ticks_stata); carried as build_options.stata_ticks.
         // Captured: a failure leaves every axis to the renderer's model.
+        // The guards first, uncaptured: dash ran them on entry, so they
+        // cannot refuse here, and every python: line stands below them
+        // (test_env_guards.cscript ENV-12, test_dependency_guards.py).
+        _dash_require_python
+        _dash_require_deps
         capture _dash_xm_load
         if _rc == 0 {
             capture python: import sys
