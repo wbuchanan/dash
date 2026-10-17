@@ -8761,14 +8761,16 @@ def _da_check(case, key, sp, dp, app):
                         bad.append("%s y2 [%r, %r] span %r twoway %r" % (
                             mode, day(lo), day(hi), span, tw2))
                 if key == "y2date_n5":
+                    # Flipped (WP-31 D15): the #5 ticks are twoway's own,
+                    # asked of Stata at export, where they were dash's
+                    # model over the layer's extent.
                     ticks = list(getattr(ax.ticker, "ticks", []) or [])
-                    lo, hi = dr._dash_layer_extent(
-                        f.renderers, "y_range_name", "y2", "td")
+                    tt2 = [float(v) for v in
+                           (Macro.getGlobal("DA_TT2") or "").split()]
                     if not ticks or any((t - E) % 86400000 for t in ticks) \
-                            or ticks != dr._dash_axis_count_ticks(
-                                lo, hi, 5, "td"):
-                        bad.append("%s ticks %r" % (mode, [day(t) for t in
-                                                           ticks]))
+                            or [day(t) for t in ticks] != tt2:
+                        bad.append("%s ticks %r, twoway %r" % (
+                            mode, [day(t) for t in ticks], tt2))
             elif case == "DA-06":
                 fit = [x for x in f.renderers
                        if type(x.glyph).__name__ == "Line"
@@ -8904,8 +8906,15 @@ program define _da_case
     quietly twoway `cmd', `opts' name(g, replace)
     global DA_TW "`.g.plotregion1.xscale.curmin' `.g.plotregion1.xscale.curmax' `.g.plotregion1.yscale.curmin' `.g.plotregion1.yscale.curmax'"
     global DA_TW2 ""
+    global DA_TT2 ""
     if strpos(`"`cmd'"', "yaxis(2)") {
         global DA_TW2 "`.g.plotregion2.yscale.curmin' `.g.plotregion2.yscale.curmax'"
+        // The ticks twoway draws on axis 2 (WP-31 D15: dash draws them).
+        local nt "`.g.yaxis2.major.dlg_tickpos.arrnels'"
+        if "`nt'" == "" | "`nt'" == "." local nt 0
+        forvalues i = 1/`nt' {
+            global DA_TT2 "${DA_TT2} `.g.yaxis2.major.dlg_tickpos[`i']'"
+        }
     }
     capture graph drop _all
     capture dash clear
@@ -10368,13 +10377,15 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w30_run' {
     // TN-01: line close date (sp500): twoway's quarterly ticks, both modes.
     _s44_case TN-01 sp500 date td x tw "line close date" ""
     _w30_done TN-01 "line close date: dash's saved and served x ticks are twoway's 01jan2001(quarterly)01jan2002"
-    // TN-02: %tw-%ty default axes: dash's model over the data (A8).
-    _s44_case TN-02 sp500 w tw x model "scatter close w" ""
-    _s44_case TN-02 sp500 m tm x model "scatter close m" ""
-    _s44_case TN-02 sp500 q tq x model "scatter close q" ""
-    _s44_case TN-02 sp500 h th x model "scatter close h" ""
-    _s44_case TN-02 yearly y ty x model "line val y" ""
-    _w30_done TN-02 "%tw, %tm, %tq, %th and %ty default axes take dash's model over the data"
+    // TN-02: %tw-%ty default axes.  Flipped (WP-31 D15): twoway's own
+    // ticks, asked of Stata's _tsnatscale at export, where they were dash's
+    // model over the data (A8), which missed %th's last tick.
+    _s44_case TN-02 sp500 w tw x tw "scatter close w" ""
+    _s44_case TN-02 sp500 m tm x tw "scatter close m" ""
+    _s44_case TN-02 sp500 q tq x tw "scatter close q" ""
+    _s44_case TN-02 sp500 h th x tw "scatter close h" ""
+    _s44_case TN-02 yearly y ty x tw "line val y" ""
+    _w30_done TN-02 "%tw, %tm, %tq, %th and %ty default axes draw twoway's ticks"
     // TN-03: a date beside a number, in Stata units: 01jan1960 ... 01jan2000.
     _s44_case TN-03 sp500 date su:td x tw "(scatter close date) (scatter close obs)" ""
     _w30_done TN-03 "a date beside a number is ticked as twoway ticks it, in Stata units"
