@@ -102,8 +102,8 @@ assert `"$dash_opts_filter"' == "foreign, type(dropdown) || weight, type(range)"
 display "HC3-01 PASS: repeated filter() options are carried joined with ||"
 
 // ----------------------------------------------------------------
-// HC3-02 -- Stata's syntax refuses an option given twice; so a second
-// link() is refused, and a dashboard has one link group
+// HC3-02 -- Stata's syntax refuses an option given twice; link() is the
+// exception, a copy per link group
 // ----------------------------------------------------------------
 capture program drop _hc3_twice
 program define _hc3_twice
@@ -114,11 +114,13 @@ _hc3_run `"_hc3_twice, filter(a) filter(b)"'
 assert r(rc) == 198
 cert_log_has "`r(log)'", needle("option filter() not allowed")
 assert r(found) == 1
+// Flipped (WP-31 H2l): a second link() was r(198) "option link() not
+// allowed" until link() became repeatable, one copy per link group,
+// joined with || as repeated filter() options are.
 _hc3_run `"dash build, saving("`hc3'02.html") replace link(g1) link(g2)"'
-assert r(rc) == 198
-cert_log_has "`r(log)'", needle("option link() not allowed")
-assert r(found) == 1
-display "HC3-02 PASS: syntax refuses a repeated option; a second link() is r(198)"
+assert r(rc) == 0
+assert `"$dash_opts_link"' == "g1 || g2"
+display "HC3-02 PASS: syntax refuses a repeated option; a second link() is a second link group"
 
 // ----------------------------------------------------------------
 // HC3-03 -- a semicolon in a quoted label
