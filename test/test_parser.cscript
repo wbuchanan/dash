@@ -3519,7 +3519,9 @@ display "KT-12 PASS: function _y = and function ü = are refused r(111) in twowa
 sysuse auto, clear
 quietly graph drop _all
 dash clear
-dash function y = normalden(x), range(-3 3) n(7) name(fn02)
+// Flipped (WP-31 F2): invlogit() is drawn by the fallback now;
+// invlogit(), which it still refuses, takes its place in FN-02..FN-04.
+dash function y = invlogit(x), range(-3 3) n(7) name(fn02)
 macro drop dash_fpts_fn02
 local h02 "`c(tmpdir)'dash_fn02.html"
 capture erase "`h02'"
@@ -3528,10 +3530,10 @@ assert r(rc) == 0
 local lg02 "`r(log)'"
 cert_log_has "`lg02'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
 assert r(count) == 1
-cert_log_has "`lg02'", needle("normalden() is not one of them")
+cert_log_has "`lg02'", needle("invlogit() is not one of them")
 assert r(count) == 1
 capture erase "`h02'"
-display "FN-02 PASS: a saved build names normalden() as what the fallback cannot evaluate, once, rc 0"
+display "FN-02 PASS: a saved build names invlogit() as what the fallback cannot evaluate, once, rc 0"
 
 local a03 "`c(tmpdir)'dash_fn03.py"
 capture erase "`a03'"
@@ -3540,13 +3542,13 @@ assert r(rc) == 0
 local lg03 "`r(log)'"
 cert_log_has "`lg03'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
 assert r(count) == 1
-cert_log_has "`lg03'", needle("normalden() is not one of them")
+cert_log_has "`lg03'", needle("invlogit() is not one of them")
 assert r(count) == 1
 capture erase "`a03'"
 dash clear
 display "FN-03 PASS: dash build, server prints the same note once, rc 0"
 
-dash function y = normalden(x), range(-3 3) n(7) name(fn04)
+dash function y = invlogit(x), range(-3 3) n(7) name(fn04)
 mata: st_global("dash_fpts_fn04", `"{"1":"abc"}"')
 local h04 "`c(tmpdir)'dash_fn04.html"
 capture erase "`h04'"
@@ -3557,11 +3559,11 @@ cert_log_has "`lg04'", needle("are not dash's and are not used; run the graph's 
 assert r(count) == 1
 cert_log_has "`lg04'", needle("drawn from its expression")
 assert r(count) == 0
-cert_log_has "`lg04'", needle("normalden() is not one of them")
+cert_log_has "`lg04'", needle("invlogit() is not one of them")
 assert r(count) == 1
 capture erase "`h04'"
 dash clear
-display "FN-04 PASS: points that are not dash's are said to be unused, and the layer's note names normalden()"
+display "FN-04 PASS: points that are not dash's are said to be unused, and the layer's note names invlogit()"
 
 dash function y = sin(x), range(0 2) n(5) name(fn05)
 macro drop dash_fpts_fn05
