@@ -13547,6 +13547,7 @@ if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
 * ==== end S47 ====
 
 * ==== S48 H2t: data table ====
+local only : env WP31_ONLY
 if inlist("`only'", "", "S48") & `: list posof "S48" in w31_run' {
     display as text "S48 start " c(current_date) " " c(current_time)
     local u48d "`w31_work'/s48"
@@ -13560,28 +13561,38 @@ if inlist("`only'", "", "S48") & `: list posof "S48" in w31_run' {
         python: import json as _u48j; from sfi import Macro as _u48M; _u48M.setGlobal("u48_tab", str(_u48j.load(open(r"`spec'", encoding="utf-8"))["graphs"][0]["graph_options"].get("table", "<none>")))
     end
     sysuse auto, clear
+
     // U48-1: bare table writes "table":"on", in the plot options and after
     // a plot group's comma alike.
     foreach t in table {
+        dash clear
         capture noisily dash scatter mpg weight, `t' name(zu48a)
         local drc = _rc
         _dash_serve_spec, specpath("`u48d'/a.json") datapath("`u48d'/ad.json")
         _u48_key "`u48d'/a.json"
         _w31_expect U48-1 `"(`drc' == 0) & ("${u48_tab}" == "on")"' `"`t': rc `drc', table key "${u48_tab}""'
+    }
     _w31_done U48-1 "bare table writes graph_options table = on"
+
     // U48-2: table(rows(50) open) writes the text typed, after the comma
     // of a plot group too.
+    dash clear
     capture noisily dash scatter mpg weight, table(rows(50) open) name(zu48b)
+    local drc = _rc
     _dash_serve_spec, specpath("`u48d'/b.json") datapath("`u48d'/bd.json")
     _u48_key "`u48d'/b.json"
     _w31_expect U48-2 `"(`drc' == 0) & ("${u48_tab}" == "rows(50) open")"' `"rc `drc', table key "${u48_tab}""'
+    dash clear
     capture noisily dash (scatter mpg weight), table(rows(5)) name(zu48c)
+    local drc = _rc
     _dash_serve_spec, specpath("`u48d'/c.json") datapath("`u48d'/cd.json")
     _u48_key "`u48d'/c.json"
     _w31_expect U48-2 `"(`drc' == 0) & ("${u48_tab}" == "rows(5)")"' `"graph options: rc `drc', table key "${u48_tab}""'
     _w31_done U48-2 "table(rows(#) open) writes the text typed"
+
     // U48-3: rows() outside 1..100,000 is refused, r(198), in dash's words.
     foreach v in 0 100001 x {
+        dash clear
         capture log close _u48l
         quietly log using "`u48d'/r`v'.log", text replace name(_u48l)
         capture noisily dash scatter mpg weight, table(rows(`v')) name(zu48d)
@@ -13589,13 +13600,16 @@ if inlist("`only'", "", "S48") & `: list posof "S48" in w31_run' {
         quietly log close _u48l
         cert_log_has "`u48d'/r`v'.log", needle("dash: table(rows()) takes an integer from 1 to 100,000; got '`v''")
         _w31_expect U48-3 "(`drc' == 198) & r(found)" "rows(`v'): rc `drc'"
+    }
     _w31_done U48-3 "table(rows()) out of range refused r(198)"
+
     // U48-4: a second table in one option list, or in another, is
     // refused as a second name() is -- a flag named without parentheses,
     // as twoway names one (option headlabel not allowed).
     foreach o in "table table|table" "table(rows(5)) table(rows(6))|table()" {
         gettoken o nm : o, parse("|")
         local nm = substr("`nm'", 2, .)
+        dash clear
         capture log close _u48l
         quietly log using "`u48d'/twice.log", text replace name(_u48l)
         capture noisily dash scatter mpg weight, `o' name(zu48e)
@@ -13603,10 +13617,15 @@ if inlist("`only'", "", "S48") & `: list posof "S48" in w31_run' {
         quietly log close _u48l
         cert_log_has "`u48d'/twice.log", needle("option `nm' not allowed")
         _w31_expect U48-4 "(`drc' == 198) & r(found)" "`o': rc `drc'"
+    }
+    dash clear
     capture noisily dash (scatter mpg weight, table) (line mpg weight, table) , name(zu48f)
+    local drc = _rc
     _w31_expect U48-4 "(`drc' == 198)" "table in two plot groups: rc `drc'"
     _w31_done U48-4 "a second table refused r(198)"
+    dash clear
     display as text "S48 end " c(current_date) " " c(current_time)
+}
 * ==== end S48 ====
 python:
 def _u49_widgets(sp, dp):
