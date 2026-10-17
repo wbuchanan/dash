@@ -60920,6 +60920,12 @@ class ServerAppBuilder:
                          "_dash_colorrule_palette", "_dash_colorrule_default",
                          # WP-31 C8c: a hue keeps the begin shade.
                          "_dash_colorrule_sv",
+                         # SchemeParser's own reads: a user scheme's
+                         # colorvar() default (C8c) and the style rows a
+                         # spec reaches (E10), named as both renderers
+                         # name a scheme.
+                         "_dash_zyx2_derive", "_dash_scheme_choice",
+                         "_resolve_scheme_name", "_dash_scheme_dirs_of",
                          "_dash_clegend_opts", "_dash_pcycle",
                          # a filled layer's vertices under cmissing(n) and
                          # rarea's connect() (WP-31 C6).
