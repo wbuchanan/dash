@@ -1113,7 +1113,7 @@ Changed behaviour.
 
 <!-- WP-31 I6 -->
 
-<!-- WP-31 C18b -->
+- `dash scatteri 1.0X+3ff 1` (or pci, pcarrowi): a hexadecimal coordinate whose exponent is +3ff is taken as a missing point, as twoway holds it; it was refused r(198) "is not a number" (WP-31, C18b)
 
 <!-- WP-31 G3c -->
 

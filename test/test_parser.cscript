@@ -953,6 +953,38 @@ if `"`u65bad'"' != "" {
 display "U06-05 PASS: scatteri and pci read p/p as twoway's division and refuse p/q, each rc twoway's"
 
 // ================================================================
+// U47-8 (WP-31 C18b) -- a hexadecimal literal coordinate: dash takes
+// what twoway takes, as the value twoway holds (1.0X+3ff is missing, so
+// the point draws nothing), and refuses what twoway refuses, with its rc,
+// in the same run.
+// ================================================================
+local u478bad ""
+foreach c in "scatteri 1.0X+3ff 1|[[null,1]]" "scatteri -1.0X+0 1|[[-1,1]]" ///
+    "scatteri 1.8X+01 1|[[3,1]]" "scatteri 1 1.fX+3ff|[[1,null]]" ///
+    "pci 1.0X+3ff 0 0 1|[[null,0,0,1]]" "scatteri 1.0X+400 1|" ///
+    "scatteri 1.X+1 1|" "scatteri 2.0X+1 1|" {
+    local at = strpos(`"`c'"', "|")
+    local cmd = substr(`"`c'"', 1, `at' - 1)
+    local want = substr(`"`c'"', `at' + 1, .)
+    quietly sysuse auto, clear
+    capture twoway `cmd', nodraw
+    local trc = _rc
+    dash clear
+    _p1a_logrun `"dash `cmd', name(u478)"'
+    local drc = r(rc)
+    if `trc' != `drc' local u478bad `"`u478bad' [`cmd': twoway `trc', dash `drc']"'
+    if `"`want'"' != "" & !strpos(`"${dash_json_u478}"', `""values":`want'"') {
+        local u478bad `"`u478bad' [`cmd': values not `want']"'
+    }
+}
+dash clear
+if `"`u478bad'"' != "" {
+    display as error `"U47-8 FAIL:`u478bad'"'
+    exit 9
+}
+display "U47-8 PASS: scatteri and pci take the hexadecimal literals twoway takes and refuse the rest, each rc twoway's"
+
+// ================================================================
 // P1A-62 -- what twoway drops at the end of scatteri's list is dropped,
 // and named
 //
@@ -1183,6 +1215,23 @@ assert(_dash_imm_number("1e308") == "null")
 assert(_dash_imm_number("1e39") == "null")
 assert(_dash_imm_number("1.7014117839e38") == "null")
 assert(_dash_imm_number("1.7014117837e38") == "1.70141178370000e+38")
+// WP-31 C18b (U47-8): a hexadecimal literal twoway takes but holds as
+// missing (an exponent of +3ff is past c(maxdouble), which strtoreal()
+// reads as missing) is a missing point; a malformed one or an exponent
+// past 3ff stays no number (measured: 1.0X+400, 1.0X-400, 1.X+1, 2.0X+1).
+assert(_dash_imm_number("1.0X+3ff") == "null")
+assert(_dash_imm_number("1.fX+3ff") == "null")
+assert(_dash_imm_number("1.0x+3FF") == "null")
+assert(_dash_imm_number("-1.0X+3ff") == "null")
+assert(_dash_imm_number("1.fffffffffffffX+3ff") == "null")
+assert(_dash_imm_number("-1.0X+0") == "-1")
+assert(_dash_imm_number("1.0X-3ff") == "0")
+assert(_dash_imm_number("1.0X+400") == "")
+assert(_dash_imm_number("1.0X-400") == "")
+assert(_dash_imm_number("1.X+1") == "")
+assert(_dash_imm_number("2.0X+1") == "")
+assert(_dash_imm_number("1.0X+3ff0") == "")
+assert(_dash_imm_number("1.00000000000000000X+1") == "")
 assert(_dash_imm_number(".A") == "")
 assert(_dash_imm_number("-.") == "")
 assert(_dash_imm_number("") == "")

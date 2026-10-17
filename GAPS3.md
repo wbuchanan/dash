@@ -469,7 +469,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
 - **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit 90ca733.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
-- **C18b Tracked:** Open (WP-31 section 47).
+- **C18b Tracked:** Closed in WP-31, BUGS.md "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it", commit pending.
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit 0862bf7.
 - **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.

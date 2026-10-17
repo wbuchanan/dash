@@ -13480,6 +13480,72 @@ if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
 }
 * ==== end S47 ====
 
+python:
+def _u47_points(sp, dp, app):
+    """global u47_np: the finite (x, y) points a scatteri layer draws,
+    saved then served, as "<saved> <served>"."""
+    import numpy as np
+    from bokeh.models import GlyphRenderer
+    from sfi import Macro
+    r, _page, doc = __import__("__main__")._u02_docs(sp, dp, app)
+    out = []
+    for roots in ([r._last_layout_root], list(doc.roots)):
+        n = 0
+        for root in roots:
+            for m in root.references():
+                if isinstance(m, GlyphRenderer) and type(m.glyph).__name__ == "Scatter":
+                    d = m.data_source.data
+                    gx, gy = m.glyph.x, m.glyph.y
+                    if isinstance(gx, str) and isinstance(gy, str) and gx in d:
+                        xs = np.asarray(list(d[gx]), float)
+                        ys = np.asarray(list(d[gy]), float)
+                        n += int((np.isfinite(xs) & np.isfinite(ys)).sum())
+        out.append(str(n))
+    Macro.setGlobal("u47_np", " ".join(out))
+end
+
+* ==== S47 C18b: hexadecimal literal coordinates ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
+    display as text "S47 start " c(current_date) " " c(current_time)
+    local u47d "`w31_work'/s47"
+    capture mkdir "`u47d'"
+
+    // U47-9: scatteri 1.0X+3ff 1 2 2: twoway holds the first point as
+    // missing and draws the second only (its serset); dash draws the same
+    // one point, saved and served.
+    clear
+    capture graph drop _all
+    capture serset drop _all
+    capture twoway scatteri 1.0X+3ff 1 2 2, nodraw
+    local trc = _rc
+    local tn = -1
+    if `trc' == 0 {
+        quietly serset set 0
+        preserve
+        quietly serset use, clear
+        quietly ds
+        local _s1 : word 1 of `r(varlist)'
+        local _s2 : word 2 of `r(varlist)'
+        quietly count if !missing(`_s1') & !missing(`_s2')
+        local tn = r(N)
+        restore
+    }
+    dash clear
+    capture noisily dash scatteri 1.0X+3ff 1 2 2, name(u479)
+    local drc = _rc
+    _w31_expect U47-9 "(`trc' == 0) & (`drc' == 0) & (`tn' == 1)" "twoway r(`trc') with `tn' drawn point(s), dash r(`drc')"
+    if `drc' == 0 {
+        _dash_serve_spec, specpath("`u47d'/h.json") datapath("`u47d'/hd.json")
+        python: __import__("__main__")._u47_points("`u47d'/h.json", "`u47d'/hd.json", "`u47d'/h_app.py")
+        _w31_expect U47-9 `"("${u47_np}" == "1 1")"' `"dash draws ${u47_np} point(s) (saved served)"'
+    }
+    _w31_done U47-9 "a hexadecimal coordinate past c(maxdouble) is a missing point, as twoway holds it"
+    dash clear
+    display as text "S47 end " c(current_date) " " c(current_time)
+}
+* ==== end S47 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

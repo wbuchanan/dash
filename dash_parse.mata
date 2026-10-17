@@ -2719,6 +2719,14 @@ string scalar _dash_imm_number(string scalar tok)
     // strtoreal() reads a decimal number too big for a double as missing,
     // as twoway does; anything else it reads as missing is no number.
     if (_dash_imm_decimal(t)) return("null")
+    // A hexadecimal literal whose exponent is +3ff is past c(maxdouble):
+    // strtoreal() reads it as missing, and twoway takes it and holds the
+    // point as missing (1.0X+3ff, 1.fX+3ff, -1.0X+3ff; WP-31 C18b,
+    // measured).  1.0X+400 and any other form strtoreal() refuses are
+    // twoway's "invalid point" too.
+    if (ustrregexm(t, "^[+-]?1[.][0-9a-fA-F]{1,13}[xX][+]3[fF][fF]$")) {
+        return("null")
+    }
     return("")
 }
 
