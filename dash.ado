@@ -7302,7 +7302,10 @@ program define _dash_stata_ticks_gen
     version 19
     local reqs `"`0'"'
     local acc ""
-    _dash_require_python
+    // The loader, not _dash_require_python alone: the module it reads is
+    // the one _dash_xm_load keeps, and its guard runs first
+    // (test_dependency_guards.py).
+    _dash_xm_load
     python: import sys
     python: from sfi import Macro as _dash_M
     python: _dash_xm = sys.modules["_dash_render_export"]

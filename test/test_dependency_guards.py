@@ -721,6 +721,15 @@ class TestTheGuardOrder:
             guard = [i for i, ln in enumerate(body_n)
                      if ln.split(" ")[0] in ("_dash_require_deps",
                                               "_dash_xm_load", "_dash_tmp_open")]
+            # Flipped (WP-31 D15): a captured loader whose next line takes
+            # the branch only on success guards what that branch runs --
+            # _dash_prepare_spec asks for Stata's own ticks so, and a
+            # failure leaves every axis to the renderer's model.
+            guard += [i for i, ln in enumerate(body_n)
+                      if ln == "capture _dash_xm_load"
+                      and i + 1 < len(body_n)
+                      and body_n[i + 1] == "if _rc == 0 {"]
+            guard.sort()
             if not guard or guard[0] > py[0]:
                 late.append(name)
         assert late == [], late
