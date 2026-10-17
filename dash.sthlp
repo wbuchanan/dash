@@ -3981,11 +3981,9 @@ and the point symbol, keep their size.  On {cmd:line}, {cmd:area},
 {cmd:bar}, {cmd:spike}, the range lines, areas, bars and caps, the pc
 lines and arrows, and {cmd:function}, {cmd:twoway} accepts a weight and
 draws nothing different, and so does {cmd:dash}, saying nothing.  Both
-modes rescale the markers to the rows a filter keeps; on a saved page a
-layer drawn from part of a shared source (a plot with its own {cmd:if} or
-{cmd:in}, a panel of a linked {cmd:by()} graph) keeps the sizes it was
-drawn with and is marked {cmd:(unfiltered)} while a filter has removed
-one of its rows.  On a layer
+modes rescale the markers to the rows a filter keeps, a plot with its
+own {cmd:if} or {cmd:in} and a panel of a linked {cmd:by()} graph each
+to its own kept rows.  On a layer
 that uses it the weight is exported with the data; on any other layer the
 weight variable is not exported.
 

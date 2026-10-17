@@ -374,9 +374,9 @@ _AFTER = [
 ]
 
 
-def _same_after(plot, move, df):
+def _same_after(plot, move, df, spec=None):
     _, filt, action, oracle = move
-    spec = _spec([plot], {"filter": filt})
+    spec = spec or _spec([plot], {"filter": filt})
     after = sl._saved_after_move(spec, action, df)
     want = sl._saved_of_rows(spec, oracle, df)
     for i, (a, b) in enumerate(zip(after, want)):
@@ -455,6 +455,33 @@ class TestWeightedSizesTwin:
         _same_after(plot_for("scatter", {"weight": "aweight",
                                          "wexp": "price"}), move, _DF)
 
+    _W = {"weight": "aweight", "wexp": "price"}
+
+    @requires_node
+    @pytest.mark.parametrize("move", _AFTER, ids=[m[0] for m in _AFTER])
+    @pytest.mark.parametrize("own", [{"if_expr": "mpg > 15"},
+                                     {"in_expr": "2/8"}],
+                             ids=["own if", "own in"])
+    def test_a_layer_with_its_own_view_rescales(self, own, move):
+        """A layer drawn from part of its source (its own if or in) is
+        rescaled from its own kept rows too, and is not marked."""
+        _same_after(plot_for("scatter", self._W, **own), move, _DF)
+
+    @requires_node
+    def test_a_linked_by_panel_rescales(self):
+        _, filt, action, oracle = _AFTER[2]
+        spec = _spec(None, {"filter": filt, "link": "g1 g2"}, None,
+                     [("g1", [plot_for("scatter", self._W)],
+                       {"by": "foreign"}), ("g2", [plot_for("scatter")])])
+        _same_after(None, _AFTER[2], _DF, spec)
+
+    def test_no_weighted_layer_is_marked(self):
+        for own in ({"if_expr": "mpg > 15"}, {"in_expr": "2/8"}, {}):
+            r = _page(filt="price, type(slider)",
+                      plots=[plot_for("scatter", self._W, **own)])
+            assert not any(getattr(x, "_dash_frozen", None)
+                           for f in r.figures.values() for x in f.renderers)
+
     def test_the_tag(self):
         r = _page(filt="foreign, type(dropdown)",
                   plots=[plot_for("scatter", {"weight": "aweight",
@@ -462,7 +489,9 @@ class TestWeightedSizesTwin:
         tags = [t for s in r.sources.values() for t in (s.tags or [])
                 if isinstance(t, str) and t.startswith("dash_wsize=")]
         assert len(tags) == 1
-        col, wexp, xf, yf, base, cap = tags[0][len("dash_wsize="):].split("|")
+        col, wexp, xf, yf, base, cap, inc = (
+            tags[0][len("dash_wsize="):].split("|"))
+        assert inc == ""  # no view: every row of the source is drawn
         assert col == "__dash_wsize" and wexp == "price"
         assert (xf, yf) == ("weight", "mpg")
         assert float(cap) == 10.0 and float(base) > 0

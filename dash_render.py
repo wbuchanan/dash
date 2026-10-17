@@ -18228,16 +18228,22 @@ class GlyphMapper:
         # WP-31 H1 (DECISIONS A23): the saved page rescales them after a
         # move too (_FILTER_JS's dash_rescale_wsizes, read from this tag:
         # the size column, the weight, the glyph's x and y fields, the
-        # base size and the cap) when the renderer draws every row of its
-        # source.  Under a view -- a by() panel or a qualifier over a
-        # shared source -- the layer keeps the stale cue (_dash_wsized).
+        # base size, the cap and, for a renderer drawn through a view --
+        # its own if/in, a linked by() panel --, the column marking the
+        # rows the view draws, which travels with each row through the
+        # move).  A name holding "|" cannot be tagged; that layer keeps
+        # the stale cue (_dash_wsized).
         _xy = [getattr(glyph, k, None) for k in ("x", "y")]
         _xy = [f if isinstance(f, str) and f in src.data else ""
                for f in _xy]
+        _in = ""
+        if sel is not None and len(sel) == n:
+            _in = col + "_in"
+            src.data[_in] = [bool(v) for v in sel]
         _parts = [col, str(wexp), *_xy]
-        if sel is None and not any("|" in p for p in _parts):
+        if not any("|" in p for p in _parts):
             src.tags = [*(src.tags or []), "dash_wsize=" + "|".join(
-                _parts + [repr(float(base)), repr(_cap)])]
+                _parts + [repr(float(base)), repr(_cap), _in])]
         else:
             renderer._dash_wsized = True
 
@@ -31135,17 +31141,21 @@ function dash_weighted_sizes(w, base, cap) {
     return out;
 }
 // _dash_rescale_wsizes: each size column a "dash_wsize=" tag names
-// (GlyphMapper._weight_markers: column|weight|x field|y field|base|cap)
-// recomputed over the rows the source now holds that its renderer draws
-// -- finite x and y -- so the kept rows' weights set the scale.
+// (GlyphMapper._weight_markers: column|weight|x field|y field|base|cap|
+// view column) recomputed over the rows the source now holds that its
+// renderer draws -- finite x and y, and marked in the view column when
+// the renderer has a view -- so the kept rows' weights set the scale.
 function dash_rescale_wsizes(src) {
     const d = src.data;
     let done = false;
     for (const t of (src.tags || [])) {
         if (typeof t !== "string" || !t.startsWith("dash_wsize=")) continue;
         const p = t.slice(11).split("|");
-        if (p.length !== 6) continue;
+        if (p.length !== 6 && p.length !== 7) continue;
         const [col, wexp, xf, yf] = p;
+        // The rows a renderer drawn through a view draws (WP-31 H1).
+        const inc = (p.length === 7 && p[6]
+                     && Object.prototype.hasOwnProperty.call(d, p[6])) ? d[p[6]] : null;
         const base = Number(p[4]), cap = Number(p[5]);
         if (!Object.prototype.hasOwnProperty.call(d, col)
             || !Object.prototype.hasOwnProperty.call(d, wexp)) continue;
@@ -31153,7 +31163,7 @@ function dash_rescale_wsizes(src) {
         const num = (v) => (v === null || v === undefined) ? NaN : Number(v);
         const idx = [];
         for (let i = 0; i < n; i++) {
-            let ok = true;
+            let ok = !inc || inc[i] === true || inc[i] === 1;
             for (const f of [xf, yf]) {
                 if (f && Object.prototype.hasOwnProperty.call(d, f) && !isFinite(num(d[f][i]))) ok = false;
             }
@@ -58945,11 +58955,11 @@ class DashRenderer:
                             _fr._dash_frozen = _ftag
             # WP-31 C9 (DECISIONS A23, M8): weighted markers are sized from
             # the drawn rows' smallest and largest weights; the saved page
-            # rescales them after a move (WP-31 H1) except under a view,
-            # where _weight_markers sets _dash_wsized and a move that
-            # removes a row of the layer marks it with the stale cue --
-            # any finite weight counts, a zero one too, as it sets the
-            # scale.
+            # rescales them after a move (WP-31 H1), with or without a
+            # view.  Only a layer _weight_markers could not tag (a name
+            # holding "|") sets _dash_wsized, and a move that removes a row
+            # of it marks it with the stale cue -- any finite weight
+            # counts, a zero one too, as it sets the scale.
             elif any(getattr(_fr, "_dash_wsized", False)
                      for _fr in _layer_renderers):
                 if ptype.lower() in _PC_TYPES:
