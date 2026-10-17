@@ -519,7 +519,9 @@ _SAVED_DIGEST = (
     # constants to pe 31 in the filter code (8848eb94...); H2f the mask's
     # multi and (missing) branches (code only) and the filter row's Reset
     # filters button with its fixed script, the same under both Pythons
-    "96f4d27bb7c68ddeaedd7726421e045ae28701cd7d5fc94067353f1209d0440b")
+    # (96f4d27b...); H2f the filter code's hold and the reset's one run
+    # (code and the reset's callback arg), the same under both Pythons
+    "5236a3eb2597fd20a5b6530ba32b95d6a3df2f2785a90ca64b269c63faa78055")
 
 
 # ===========================================================================

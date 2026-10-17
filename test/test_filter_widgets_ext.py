@@ -372,10 +372,15 @@ class TestTheResetButton:
         assert json.loads(cb.args["initial_json"]) == [
             "__all__", [], 3799.0, [1800.0, 4080.0]]
         assert cb.code == dr._DASH_FILTER_RESET_JS
+        # The one run it makes is a filter callback's own.
+        assert cb.args["callback"] is r.filter_callbacks[0]
+        assert cb.args["callback"].code == dr._FILTER_JS
 
-    def test_n_runs_are_idempotent(self, tmp_path):
-        """The reset sets each moved widget; each write reruns the mask
-        (its own callback's); the last run keeps the opening rows."""
+    def test_one_run_restores_the_opening_rows(self, tmp_path):
+        """The reset holds every widget's own callback while it writes
+        (``globalThis.__dash_filter_hold``) and then runs the filter
+        callback ONCE, which reads every widget and keeps the opening
+        rows.  At 1584acd each changed widget fired its own run."""
         r, _ = _saved(tmp_path, _spec(_FOUR))
         specs = _saved_specs(r)
         initial = [dr._dash_json_value(w._dash_initial)
@@ -393,21 +398,43 @@ class TestTheResetButton:
                   + ";\nconst initial_json = " + json.dumps(
                       json.dumps(initial))
                   + ";\nconst runs = [];\nconst widgets = [];\n"
+                  "const count = () => dash_filter_mask(orig, specs, widgets)"
+                  ".filter(Boolean).length;\n"
+                  "const callback = {execute(obj, data) { runs.push(count()); }};\n"
                   "for (let i = 0; i < moved.length; i++) {\n"
                   "  const w = {_v: moved[i], start: starts[i], end: ends[i],"
                   " properties: {}};\n"
                   "  Object.defineProperty(w, 'value', {get() { return this._v; },"
-                  " set(v) { this._v = v; runs.push(dash_filter_mask(orig,"
-                  " specs, widgets).filter(Boolean).length); }});\n"
+                  " set(v) { this._v = v; if (!globalThis.__dash_filter_hold)"
+                  " callback.execute(this, {}); }});\n"
                   "  widgets.push(w);\n}\n"
-                  "const before = dash_filter_mask(orig, specs, widgets)"
-                  ".filter(Boolean).length;\n"
-                  + dr._DASH_FILTER_RESET_JS
-                  + "\nprocess.stdout.write(JSON.stringify({before, runs}));")
+                  "const before = count();\n"
+                  "const out = (() => {\n" + dr._DASH_FILTER_RESET_JS
+                  + "\n})();\n"
+                  "process.stdout.write(JSON.stringify({before, runs,"
+                  " held: !!globalThis.__dash_filter_hold}));")
         got = run_js(script)
         assert got["before"] < len(_F)
-        assert len(got["runs"]) == 4
-        assert got["runs"][-1] == len(_F)
+        assert got["runs"] == [len(_F)], got
+        assert got["held"] is False
+
+    def test_the_filter_script_waits_while_held(self, tmp_path):
+        """_FILTER_JS writes nothing while the reset holds it."""
+        from js_runner import JsSession
+        r, _ = _saved(tmp_path, _spec([{"varname": "rep",
+                                        "type": "dropdown"}]))
+        [cb] = r.filter_callbacks
+        w = r.filter_widgets[0]
+        src = cb.args["all_graph_sources"][0]
+        n0 = len(src.data["mpg"])
+        w.value = 3.0
+        sess = JsSession(r.filter_callbacks)
+        sess.run_code("globalThis.__dash_filter_hold = true;\n" + cb.code
+                      + "\nglobalThis.__dash_filter_hold = false;",
+                      cb.args, w)
+        assert len(src.data["mpg"]) == n0
+        sess.run(cb, w)
+        assert len(src.data["mpg"]) == 2
 
     def test_served_reset_runs_one_move(self, tmp_path):
         doc = _served(tmp_path, _spec(_FOUR))

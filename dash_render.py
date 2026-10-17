@@ -2270,21 +2270,30 @@ _DASH_TABLE_TOGGLE_JS = (
 
 #: WP-31 H2f: the saved page's "Reset filters" script.  Each widget whose
 #: value differs from its opening one (``initial_json``, one entry per
-#: widget) is set back; that write fires the widget's own filter callback,
-#: and _FILTER_JS reads every widget, so the last run leaves the opening
-#: rows.  A slider's value_throttled is set too (DECISIONS A28), since a
+#: widget) is set back under ``globalThis.__dash_filter_hold``, which
+#: _FILTER_JS returns early under, so no widget's own callback runs; then
+#: ``callback`` -- a filter callback, which reads every widget -- runs
+#: once.  A slider's value_throttled is set too (DECISIONS A28), since a
 #: programmatic value write does not set it.
 _DASH_FILTER_RESET_JS = (
     "const init = JSON.parse(initial_json);\n"
-    "for (let i = 0; i < widgets.length; i++) {\n"
-    "    const w = widgets[i];\n"
-    "    const v = init[i];\n"
-    "    if (JSON.stringify(w.value) !== JSON.stringify(v)) {\n"
-    "        w.value = v;\n"
-    "        if (w.properties.value_throttled !== undefined) "
+    "let moved = false;\n"
+    "globalThis.__dash_filter_hold = true;\n"
+    "try {\n"
+    "    for (let i = 0; i < widgets.length; i++) {\n"
+    "        const w = widgets[i];\n"
+    "        const v = init[i];\n"
+    "        if (JSON.stringify(w.value) !== JSON.stringify(v)) {\n"
+    "            w.value = v;\n"
+    "            if (w.properties.value_throttled !== undefined) "
     "{ w.value_throttled = v; }\n"
+    "            moved = true;\n"
+    "        }\n"
     "    }\n"
-    "}\n")
+    "} finally {\n"
+    "    globalThis.__dash_filter_hold = false;\n"
+    "}\n"
+    "if (moved && callback) { callback.execute(widgets[0], {}); }\n")
 
 #: WP-31 E10 (DECISIONS A24): the rows of every style file this process has
 #: read, keyed by the file's (realpath, st_dev, st_ino, st_size, st_mtime),
@@ -30280,6 +30289,9 @@ const active = dash_filter_mask(orig, filter_specs, all_widgets);
 // Build new data arrays containing only active rows from the primary source.
 // This snapshot is used for KPI value updates and for the primary `source`
 // fallback path (a source render() registered under no graph's name).
+// WP-31 H2f: the Reset filters button writes every widget under this hold
+// and then runs one filter callback itself, so a widget's own run waits.
+if (globalThis.__dash_filter_hold) { return; }
 const new_data = {};
 const cols = Object.keys(orig);
 for (const col of cols) { dash_own_col(new_data, col); }
@@ -60191,13 +60203,17 @@ class DashRenderer:
                 self._csv_button(_orig_snapshot, _filter_specs))
 
         # WP-31 H2f: the row ends in "Reset filters", which puts every
-        # widget back to its opening value; each widget it changes fires
-        # its own callback, and _FILTER_JS reads every widget, so the last
-        # run leaves the opening rows.
+        # widget back to its opening value with the widgets' own callbacks
+        # held, then runs one filter callback, which reads every widget.
         _reset = _dash_filter_reset_button(self.filter_widgets)
         if _reset is not None:
+            # The one run: the first callback that filters (a disabled
+            # widget's is empty).
+            _run = next((c for c in self.filter_callbacks
+                         if c.code == _FILTER_JS), None)
             _reset.js_on_click(CustomJS(
                 args={"widgets": list(self.filter_widgets),
+                      "callback": _run,
                       "initial_json": json.dumps(
                           [_dash_reset_value(_w)
                            for _w in self.filter_widgets])},

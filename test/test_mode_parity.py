@@ -5167,3 +5167,37 @@ class TestTheTwoModesAgreeOnDateUnits:
                             [x for x in srv if x not in std])
         if "a date beside a number" in name:
             assert any(k == "td" for _t, _p, k in std), std
+
+
+# ---------------------------------------------------------------------------
+# WP-31 H2f: a dropdown set to "(missing)", over a frame of this test's own
+# whose rep is missing in two rows (_DF has no missing value).
+# ---------------------------------------------------------------------------
+
+_MISSING_DF = _DF.assign(rep=[3.0, 4.0, None, 5.0, 4.0, None, 5.0, 4.0, 3.0,
+                              4.0])
+
+
+class TestAMissingDropdownMoveAgrees:
+    """The served document after "(missing)" is chosen is the saved
+    document drawn from ``if missing(rep)``."""
+
+    @pytest.fixture
+    def moved(self, monkeypatch):
+        monkeypatch.setattr(sys.modules[__name__], "_DF", _MISSING_DF)
+        spec = _spec([plot_for("scatter")],
+                     {"filter": "rep, type(dropdown)"}, None, None, None, "")
+        before = _served_after_move(spec, ("Select", "All"))
+        srv = _served_after_move(spec, ("Select", "(missing)"))
+        std = _saved_with_qualifier(spec, "missing(rep)")
+        return before, srv, std
+
+    def test_same_glyphs_after_the_move(self, moved):
+        _before, (srv, _), (std, _) = moved
+        assert len(std) == len(srv) == 1
+        diffs = _diff(std[0]["glyphs"], srv[0]["glyphs"])
+        assert not diffs, _explain("dropdown to (missing)", "glyphs", diffs)
+
+    def test_the_move_changed_something(self, moved):
+        (before, _), (srv, _), _std = moved
+        assert _diff(before, srv), "the move left every figure unchanged"
