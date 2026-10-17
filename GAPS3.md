@@ -450,22 +450,22 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit 44761fa.
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
-- **C8c Tracked:** Closed in WP-31, BUGS.md "A user-supplied scheme's colorvar() default colour rule falls back to s2color's", commit pending.
+- **C8c Tracked:** Closed in WP-31, BUGS.md "A user-supplied scheme's colorvar() default colour rule falls back to s2color's", commit 9e80c0d.
 - **C8d Tracked:** Closed in WP-31, BUGS.md "pcycle() refuses a fraction where twoway draws it on a graph of few series", commit 4f9c3e4.
 - **C8e Tracked:** Closed in WP-31, BUGS.md "colorkeysreverse on a colorvar() colour bar is named, not drawn", commit 59fcd19.
 - **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit 5895120.
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
-- **C10d Tracked:** Closed in WP-31, BUGS.md "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve", commit pending.
+- **C10d Tracked:** Closed in WP-31, BUGS.md "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve", commit 844e1cf.
 - **C10e Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit 78df376.
-- **C11 Tracked:** Closed in WP-31, BUGS.md "lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if", commit pending.
+- **C11 Tracked:** Closed in WP-31, BUGS.md "lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if", commit 1108a12.
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
-- **C12 Tracked:** Closed in WP-31, BUGS.md "function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed", commit pending.
+- **C12 Tracked:** Closed in WP-31, BUGS.md "function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed", commit 10be1b6.
 - **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
 - **C14 Tracked:** Closed in WP-31, BUGS.md "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)", commit 52b3d18.
 - **C15 Tracked:** Closed in WP-31, BUGS.md "Bar marker labels default to 3 o'clock where twoway's bar default is 12", commit d5556ea.
-- **C16 Tracked:** Closed in WP-31, BUGS.md "A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted", commit pending.
+- **C16 Tracked:** Closed in WP-31, BUGS.md "A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted", commit 3c33dd5.
 - **C17 Tracked:** Closed in WP-31, BUGS.md "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on", commit 7f73bbe.
 - **C17b Tracked:** Closed in WP-31, BUGS.md "lal() is read as dash's lalpha() where twoway reads it as lalign()", commit 90ca733.
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
@@ -473,7 +473,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Closed in WP-31, BUGS.md "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn", commit 0862bf7.
 - **D1c Tracked:** Closed in WP-31, BUGS.md "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule", commit fc92e8d.
-- **D1d Tracked:** Closed in WP-31, BUGS.md "An outer axis's ##N minor labels after a move are capped at its build's label pool", commit pending.
+- **D1d Tracked:** Closed in WP-31, BUGS.md "An outer axis's ##N minor labels after a move are capped at its build's label pool", commit 20ee5f0.
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
@@ -486,17 +486,17 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit 8768cac.
 - **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit 6cc4f83.
 - **D9 Tracked:** Closed in WP-31, BUGS.md "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis", commit c8a5e9a.
-- **D9b Tracked:** Closed in WP-31, BUGS.md "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis", commit pending.
+- **D9b Tracked:** Closed in WP-31, BUGS.md "With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis", commit c685d0d.
 - **D10 Tracked:** Closed in WP-31, BUGS.md "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn", commit af3273a.
-- **D10b Tracked:** Closed in WP-31, BUGS.md "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn", commit pending.
-- **D10c Tracked:** Closed in WP-31, BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales", commit pending.
+- **D10b Tracked:** Closed in WP-31, BUGS.md "by()'s shrink, overallshrink, region margins, array outline and the econ, stata7, combine and rescale bystyles are named, not drawn", commit 90d8a51.
+- **D10c Tracked:** Closed in WP-31, BUGS.md "The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales", commit f91707a.
 - **D11 Tracked:** Closed in WP-31, BUGS.md "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white", commit a8ae5a6.
 - **D11b Tracked:** Closed in WP-31, BUGS.md "margin(l+1e400) draws zeros with a note where twoway draws a medium margin", commit 880accb.
 - **D12 Tracked:** Closed in WP-31, BUGS.md "An out-of-range xline() or yline() is clipped to the frame and an unextended end stays put after a zoom", commit 397d1a3.
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Closed in WP-31, BUGS.md "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them", commit 47e2f82.
 - **D14 Tracked:** Closed in WP-31, BUGS.md "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()", commit bb9f4a9.
-- **D15 Tracked:** Closed in WP-31, BUGS.md "Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction", commit pending.
+- **D15 Tracked:** Closed in WP-31, BUGS.md "Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction", commit 023caab.
 - **D16 Tracked:** Closed in WP-31, BUGS.md "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked", commit 398149e.
 - **D16b Tracked:** Closed in WP-31, BUGS.md "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced", commit 78f2ba0.
 - **E1 Tracked:** Closed in WP-31, BUGS.md "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted", commit ab33ff3.
@@ -508,9 +508,9 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E7 Tracked:** Closed in WP-31, BUGS.md "A pstyle(p#) CI band under a scheme intensity above full is clamped to full", commit 5bc828a.
 - **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit 1a2c566.
 - **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
-- **E10 Tracked:** Partly closed in WP-31 (section 44, commit pending): the four classes, shadestyle, user files, class directives on named and default styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read").
+- **E10 Tracked:** Partly closed in WP-31 (section 44, commit dda6868): the four classes, shadestyle, user files, class directives on named and default styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read").
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
-- **E11b Tracked:** Closed in WP-31, BUGS.md "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches", commit pending.
+- **E11b Tracked:** Closed in WP-31, BUGS.md "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches", commit dc4c0ec.
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
 - **E13 Tracked:** Closed in WP-31, BUGS.md "_SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified", commit e1e0207.
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
@@ -524,14 +524,14 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
-- **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit pending.
+- **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit 1918fc4.
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
 - **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.
 - **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
-- **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit pending.
-- **G7 Tracked:** Closed in WP-31, BUGS.md "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses", commit pending.
+- **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit 8b367e7.
+- **G7 Tracked:** Closed in WP-31, BUGS.md "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses", commit 75f0f12.
 - **H1 Tracked:** Open (WP-31 section 52).
 - **H2f Tracked:** Open (WP-31 section 49).
 - **H2k Tracked:** Open (WP-31 section 50).
