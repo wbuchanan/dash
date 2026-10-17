@@ -36,6 +36,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from conftest import make_data_json
+from js_runner import requires_node as js_runner_requires_node
 
 _N = 12
 _DF = pd.DataFrame({
@@ -476,8 +477,10 @@ class TestBinRows:
         assert sorted(i for b in got for i in b) == sorted(
             i for i, x in zip(ids, xs) if np.isfinite(x))
 
-    @pytest.mark.xfail(strict=False, reason="S52 inserts the twin")
+    @js_runner_requires_node
     def test_members_agree_with_the_js_twin(self):
+        # Flipped (WP-31 H1): xfail until S52 put dash_bin_members in
+        # _FILTER_JS; it is there now.
         import js_runner
         js = dr._FILTER_JS
         assert "function dash_bin_members(" in js

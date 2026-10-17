@@ -303,18 +303,9 @@ class TestSlidersFireOnRelease:
 # ---------------------------------------------------------------------------
 
 def _bar_members(edges, xs, ids):
-    """Stata's bar rule (GlyphMapper._histogram_counts): x is bar
-    floor((x - start)/h), folded into the first and last bars."""
-    edges = np.asarray(edges, dtype=float)
-    nb = len(edges) - 1
-    h = (edges[-1] - edges[0]) / nb
-    out = [[] for _ in range(nb)]
-    for x, i in zip(xs, ids):
-        if x is None or not np.isfinite(x):
-            continue
-        j = int(np.floor((x - edges[0]) / h)) if h > 0 else 0
-        out[min(max(j, 0), nb - 1)].append(i)
-    return out
+    """The served twin, S51's ``_dash_bin_members`` (Stata's bar rule)."""
+    return [list(b) for b in dr._dash_bin_members(
+        edges, [np.nan if x is None else x for x in xs], ids)]
 
 
 @requires_node
