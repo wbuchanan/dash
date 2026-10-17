@@ -53418,7 +53418,7 @@ def _dash_table_text_frame(df, variables, formats, storage_types,
                 sv = _dash_stata_value_of(v, kind)
                 tmap[v] = ("." if sv is None else
                            _dash_fmt_text(sv, _dash_date_fmt(fmt, kind),
-                                          bcal=bcal))
+                                          dp=dp, bcal=bcal))
                 continue
             lab = vmap.get(str(int(v))) if (vmap and v.is_integer()) else None
             if lab is None and vmap:

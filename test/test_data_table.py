@@ -250,6 +250,18 @@ class TestTheText:
                                   {"d": "td"})
         assert list(df["__dash_tbl_d"]) == ["03jan2002", "."]
 
+    def test_a_date_cell_is_written_under_the_page_dp(self):
+        # A date cell takes the page's set dp as a number cell does (a
+        # %tb format writes a day off its calendar as %9.0g, S43's comma).
+        df = pd.DataFrame({"d": pd.to_datetime(["2002-01-03"]),
+                           "x": [1.5]})
+        with mock.patch.object(dr, "_dash_fmt_text",
+                               wraps=dr._dash_fmt_text) as fmt:
+            dr._dash_table_text_frame(df, ["d", "x"], {"d": "%td"}, {}, {},
+                                      {}, {}, {"d": "td"}, dp="comma")
+        assert [c.kwargs.get("dp") for c in fmt.call_args_list] == \
+            ["comma", "comma"]
+
     def test_the_csv_omits_the_text_columns(self):
         meta = dr._dash_csv_meta(["mpg", "__dash_tbl_mpg"], {}, {}, {}, {})
         assert meta["columns"] == ["mpg"]
