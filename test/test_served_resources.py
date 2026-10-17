@@ -528,7 +528,9 @@ _SAVED_DIGEST = (
     # H1 the filter code's try block and twins, the error status Div and
     # its callback arg, the brush code's guard and the window hooks (a
     # dropdown page: no slider); re-derived on the merged batch-17 tree
-    "REDERIVE")
+    # with H1's follow-ups (the fill rebuild's twins in the filter code),
+    # the same under both Pythons
+    "b796859090353fdf8c8bf574f2c4b9629ec12a23bd093388c234dc4ff69b5196")
 
 
 # ===========================================================================
