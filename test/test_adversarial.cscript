@@ -1097,7 +1097,9 @@ dash clear
 dash scatter mpg weight, name(j1)
 tempfile p19js p19jd
 _dash_serve_spec, specpath("`p19js'") datapath("`p19jd'")
-cert_file_has "`p19js'", needle(`","limits":{"cells":148,"by_groups":7,"tabs":3}}}"')
+// Flipped (WP-31 E10): the registration's _style_rows and _stata_props
+// now follow limits in build_options, so limits no longer ends the spec.
+cert_file_has "`p19js'", needle(`","limits":{"cells":148,"by_groups":7,"tabs":3}"')
 assert r(found) == 1
 // The immediate route leaves no spec file to read; that the renderer
 // parsed a spec carrying limits is what rc 0 shows, on both routes.
