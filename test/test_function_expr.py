@@ -20,7 +20,7 @@ served app (``ServerAppBuilder``'s generated module).
 
 P1.22 is closed by disposition (WP-30, maintainer decision M12): a graph
 registered in Stata is always drawn from Stata's points, and the fallback
-keeps its ten functions; a layer it cannot draw gives one note naming what
+keeps its functions (twenty since WP-31 F2); a layer it cannot draw gives one note naming what
 it needs and the function or name it met (``GlyphMapper._mark_needs_points``,
 ``GlyphMapper._needs_points_why``).
 """
@@ -69,8 +69,10 @@ MODES = ["saved", "served"]
 #: 4.440168821029662e+70 in Stata (1.8e-15 apart).
 _RTOL = {"y = x^9^9^9": 1e-13}
 
-_FALLBACK_UNSUPPORTED = {"y = c(pi)*x", "y = normalden(x)", "y = ln(x)",
-                         "y = 1.8X+01*x", "y = (x>1)*x", "y = max(x,1)"}
+# Flipped (WP-31 F2): c(pi), normalden(), ln(), comparisons and max() were
+# outside the fallback; it now reads them, and only a hexadecimal literal
+# is left to the stored points.
+_FALLBACK_UNSUPPORTED = {"y = 1.8X+01*x"}
 
 #: The refusals of twoway (E3, u06 truth): each draws nothing in a spec
 #: without points.
@@ -82,23 +84,34 @@ _REFUSED = ["pi*x", "e*x", "pi", "e", "PI", "E", "x**2", "x%2", "x//1", "+x",
 #: note it gives -- the first function the fallback refuses, the first bare
 #: name, or neither (the tokenizer reads left to right, so the first
 #: refusal decides).
-_NEEDS_STATA_FUNCS = {"normalden(x)": "normalden", "normal(x)": "normal",
-                      "ln(x)": "ln", "c(pi)*x": "c",
-                      "cond(x>1,x,0)": "cond", "min(x,1)": "min",
-                      "max(x,1)": "max", "round(x)": "round",
-                      "int(x-1)": "int", "scalar(s)*x": "scalar",
-                      "invlogit(x)": "invlogit",
+# Flipped (WP-31 F2): normalden, normal, ln, c(pi), cond, min, max, round
+# and int were refused names; the fallback now evaluates them, and the
+# functions it still refuses take their place.
+_NEEDS_STATA_FUNCS = {"lnnormal(x)": "lnnormal", "invlogit(x)": "invlogit",
+                      "c(e)*x": "c", "sign(x)": "sign",
+                      "cond(x>1,x,0)+sign(x)": "sign",
+                      "ln(x)+lnnormal(x)": "lnnormal",
+                      "scalar(s)*x": "scalar",
                       "__import__('os')": "__import__"}
 _NEEDS_STATA_NAMES = {"pi*x": "pi", "e*x": "e", "PI": "PI", "E": "E",
                       "s*x": "s", "_b[_cons]+_b[weight]*x": "_b",
                       "sin (x)": "sin"}
-_NO_NAME = ["x>1", "(x>1)*x", "x^", "sin(x,1)", "2x", "ｓｉｎ(x)",
-            "1>normalden(x)", "x**2"]
+# Flipped (WP-31 F2): "x>1", "(x>1)*x" and "1>normalden(x)" are read now;
+# twoway's refusals of the new operators take their place.
+_NO_NAME = ["x=1", "x<>1", "!-x", "x||1", "x^", "sin(x,1)", "2x",
+            "ｓｉｎ(x)", "min(x)", "x**2"]
 _HEAD = ("dash: graph 'g1' plot 1 (function) drew nothing: it needs the "
          "points Stata computes for it when dash registers the graph")
-_KNOWS = ("without them dash evaluates only x, _pi, numbers, + - * / ^ and "
-          "sin(), cos(), tan(), exp(), log(), log10(), sqrt(), abs(), "
-          "floor() and ceil()")
+# Flipped (WP-31 F2): the fallback knows the comparisons, logic and the
+# functions F2 added.
+_KNOWS = ("without them dash evaluates only x, _pi, c(pi), numbers and "
+          "missing values, + - * / ^, the comparisons == != ~= > < >= <=, "
+          "! ~ & | and sin(), cos(), tan(), exp(), log(), log10(), sqrt(), "
+          "abs(), floor(), ceil(), ln(), int(), trunc(), round(), min(), "
+          "max(), cond(), normal(), normalden() and invnormal()")
+_KNOWN_FUNCS = ["sin", "cos", "tan", "exp", "log", "log10", "sqrt", "abs",
+                "floor", "ceil", "ln", "int", "trunc", "round", "min", "max",
+                "cond", "normal", "normalden", "invnormal"]
 
 
 # ---------------------------------------------------------------------------
@@ -655,7 +668,9 @@ class TestTheParser:
             ("c", 1.0), ("fold", "/", [("c", 2.0), ("c", 3.0)])])
         assert _parse("1-2-3") == ("fold", "-", [("c", 1.0), ("c", 2.0),
                                                  ("c", 3.0)])
-        assert _parse("sin(x)") == ("call", "sin", ("x",))
+        # Flipped (WP-31 F2): a call holds a list of arguments now (cond(),
+        # min(), max(), round() and normalden() take several).
+        assert _parse("sin(x)") == ("call", "sin", [("x",)])
         assert _parse("(x)") == ("x",)
 
     def test_ascii_names_only(self):
@@ -680,8 +695,13 @@ class TestTheParser:
 
     def test_refusals(self):
         for text in _REFUSED + ["", " ", "x+", "(x", "x)", "sin()", "sin",
-                                "x>1", "x==1", "x&1", "!x", '"x"', "'x'",
-                                "x,1", "x[1]", "max(x,1)", "c(pi)"]:
+                                # Flipped (WP-31 F2): x>1, x==1, x&1, !x,
+                                # max(x,1) and c(pi) are read now; twoway's
+                                # refusals of the new tokens replace them.
+                                "x=1", "x=>1", "x=<1", "x<>1", "x&&1",
+                                "x||1", "x!", "x!1", "!-x", '"x"', "'x'",
+                                "x,1", "x[1]", "max(x)", "c (pi)", "c(PI)",
+                                "c(e)", "cond(x,1)"]:
             with pytest.raises(ValueError):
                 _parse(text)
 
@@ -762,18 +782,20 @@ class TestTheFallbackSaysWhatItNeeds:
 
 class TestTheNeedsPointsMark:
     def test_the_parser_names_what_it_refused(self):
+        # Flipped (WP-31 F2): normalden() and ln() are read now; functions
+        # the fallback still refuses take their place.
         for text, want, msg in (
-                ("normalden(x)", ("function", "normalden"),
+                ("lnnormal(x)", ("function", "lnnormal"),
                  "unknown function"),
                 ("pi*x", ("name", "pi"), "unknown name"),
-                ("ln(x)+normalden(x)", ("function", "ln"),
+                ("invlogit(x)+lnnormal(x)", ("function", "invlogit"),
                  "unknown function")):
             with pytest.raises(ValueError) as ei:
                 _parse(text)
             assert str(ei.value) == msg, text
             assert ei.value.dash_refused == want, text
         with pytest.raises(ValueError) as ei:
-            _parse("x>1")
+            _parse("x=1")
         assert getattr(ei.value, "dash_refused", None) is None
 
     def test_mark_needs_points_marks_each_renderer(self):
@@ -816,16 +838,18 @@ class TestTheNeedsPointsMark:
     def test_the_note_lists_exactly_what_the_fallback_knows(self):
         tree = ast.parse(textwrap.dedent(inspect.getsource(
             dr._stata_fn_parse)))
+        # Flipped (WP-31 F2): the whitelist is the arity table ``funcs``
+        # (a dict, name -> (least, most)) of 20 names, not a tuple of 10.
         funcs = None
         for node in ast.walk(tree):
             if (isinstance(node, ast.Assign)
                     and any(getattr(t, "id", None) == "funcs"
                             for t in node.targets)):
-                funcs = [e.value for e in node.value.elts]
-        assert funcs and len(funcs) == 10
+                funcs = [e.value for e in node.value.keys]
+        assert funcs == _KNOWN_FUNCS
         text = dr.GlyphMapper._needs_points_why(ValueError("x"))
-        assert re.findall(r"(\w+)\(\)", text)[:10] == funcs
-        assert "x, _pi, numbers, + - * / ^" in text
+        assert re.findall(r"(\w+)\(\)", text)[:20] == funcs
+        assert "x, _pi, c(pi), numbers and missing values, + - * / ^" in text
 
     @pytest.mark.parametrize("mode", MODES)
     def test_the_mark_is_never_serialised(self, mode):
@@ -887,3 +911,135 @@ class TestTheHelp:
                      "in Stata"):
             assert want in para, want
         assert "a note names it" not in para
+
+
+# ---------------------------------------------------------------------------
+# WP-31 F2: comparisons, logic, cond(), min/max, round, normal and c(pi)
+# ---------------------------------------------------------------------------
+
+_GRID = np.linspace(-3.0, 3.0, 13)
+
+
+def _grammar():
+    return _fixture().get("fallback_grammar", {})
+
+
+def _grammar_ids(rc_zero):
+    try:
+        with open(_FIXTURE, encoding="utf-8") as fh:
+            g = json.load(fh).get("fallback_grammar", {})
+    except OSError:
+        return []
+    return sorted(k for k, v in g.items() if (v["rc"] == 0) == rc_zero)
+
+
+def _agrees(got, want):
+    """Missing on both sides, else within 1e-12 (absolute or relative)."""
+    got = np.asarray(got, dtype=float)
+    want = _floats(want)
+    if got.ndim == 0:
+        got = np.full(want.shape, float(got))
+    if got.shape != want.shape:
+        return False
+    if not np.array_equal(np.isnan(got), np.isnan(want)):
+        return False
+    ok = ~np.isnan(want)
+    return bool(np.allclose(got[ok], want[ok], rtol=1e-12, atol=1e-12))
+
+
+class TestExtendedGrammar:
+    def test_the_fixture_holds_the_probes(self):
+        g = _grammar()
+        assert len(g) >= 60
+        assert g["normal(-40)"]["y"][0] == "0"
+        assert g["cond(., 1, 2)"]["y"][0] == "1"
+
+    @pytest.mark.parametrize("probe", _grammar_ids(True))
+    def test_against_the_fixture(self, probe):
+        want = _grammar()[probe]["y"]
+        got = _eval(probe, _GRID)
+        assert _agrees(got, want), (probe, list(got), want)
+
+    @pytest.mark.parametrize("probe", _grammar_ids(False))
+    def test_what_twoway_refuses_is_refused(self, probe):
+        with pytest.raises(ValueError):
+            _parse(probe)
+
+    @pytest.mark.parametrize("probe", ["!x^2", "!x^-1", "-x^2", "-!x",
+                                       "2 < x < 4", "x == 2 == 1",
+                                       "1 | 0 & 0", "0 & 0 | 1", "2^!x"])
+    def test_precedence(self, probe):
+        assert _agrees(_eval(probe, _GRID), _grammar()[probe]["y"]), probe
+
+    def test_the_trees(self):
+        # Measured (fixture "!x^-1" is 0 at x = 0): ! binds looser than ^,
+        # tighter than unary minus; "!-x" is refused as twoway refuses it.
+        assert _parse("!x^2") == ("not", ("pow", ("x",),
+                                          [(False, ("c", 2.0))]))
+        assert _parse("-!x") == ("neg", ("not", ("x",)))
+        assert _parse("1 | 0 & 0") == ("fold", "|", [
+            ("c", 1.0), ("fold", "&", [("c", 0.0), ("c", 0.0)])])
+        assert _parse("x ~= 1") == ("cmp", ["!="], [("x",), ("c", 1.0)])
+        assert _parse("c(pi)") == ("c", math.pi)
+        assert _parse("c( pi )") == ("c", math.pi)
+
+
+class TestMissingCodes:
+    def test_each(self):
+        for text, want in ((".a == .", 0.0), (".a == .a", 1.0),
+                           (".a < .b", 1.0), (". < .a", 1.0),
+                           (".z > .y", 1.0), (". > 1e300", 1.0),
+                           ("max(.a, .b) == .", 1.0), ("!.", 0.0),
+                           ("x & .", 1.0), ("cond(., 1, 2)", 1.0),
+                           ("cond(., 1, 2, 3)", 3.0)):
+            assert list(_eval(text, [2.0])) == [want], text
+        assert np.isnan(_eval(".a + 1", [2.0])).all()
+        assert list(_eval("(.a + 1) == .", [2.0])) == [1.0]
+        assert list(_eval("cond(x > 0, .a, .b) == .a", [-1.0, 1.0])) == [
+            0.0, 1.0]
+        t = _parse(".b")
+        assert t[0] == "c" and math.isnan(t[1]) and t[2] == ".b"
+
+
+class TestNormalTails:
+    @pytest.mark.parametrize("z", ["-40", "-38", "-37.5", "-37", "-20",
+                                   "-8.3", "-8", "0", "8", "8.3", "9", "40"])
+    def test_each_point(self, z):
+        want = float(_grammar()[f"normal({z})"]["y"][0])
+        got = float(_eval(f"normal({z})", [0.0])[0])
+        if want == 0.0 or want == 1.0:
+            assert got == want, (z, got)
+        elif want > 1e-300:
+            assert math.isclose(got, want, rel_tol=1e-12, abs_tol=0), (z, got)
+        else:
+            assert abs(got - want) <= 1e-12, (z, got)
+
+
+class TestTheParserIsBoundedF2:
+    def test_long_argument_lists_do_not_recurse(self):
+        t0 = time.time()
+        text = "max(" + ",".join(["x"] * 50000) + ",3)"
+        assert list(_eval(text, [0.0, 4.0])) == [3.0, 4.0]
+        text = "&".join(["x"] * 50000)
+        assert list(_eval(text, [0.0, 4.0])) == [0.0, 1.0]
+        text = "<".join(["x"] * 50000)
+        assert _parse(text)[0] == "cmp"
+        assert time.time() - t0 < 10.0
+
+
+class TestTheParserF2:
+    def test_arity(self):
+        for text in ("sin(x,1)", "cond(x)", "cond(x,1)", "cond(x,1,2,3,4)",
+                     "round(x,1,2)", "min()", "min(x)", "max(x)",
+                     "normalden(x,1,2,3)", "invnormal(x,1)", "ln(x,1)"):
+            with pytest.raises(ValueError) as ei:
+                _parse(text)
+            # The name is one the fallback knows: the note says the
+            # expression cannot be read, not that the name is unknown.
+            assert getattr(ei.value, "dash_refused", None) is None, text
+
+    def test_c_pi_token(self):
+        assert list(_eval("c(pi)*x", [1.0])) == [math.pi]
+        for text in ("c (pi)", "c(e)", "c(PI)", "c(pi", "c()"):
+            with pytest.raises(ValueError):
+                _parse(text)

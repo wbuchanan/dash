@@ -18799,8 +18799,11 @@ class GlyphMapper:
             else:
                 tail = "the name " + shown + " is not one of them"
         return (head + "this spec carries none; without them dash evaluates "
-                "only x, _pi, numbers, + - * / ^ and sin(), cos(), tan(), "
-                "exp(), log(), log10(), sqrt(), abs(), floor() and ceil(), "
+                "only x, _pi, c(pi), numbers and missing values, + - * / ^, "
+                "the comparisons == != ~= > < >= <=, ! ~ & | and sin(), "
+                "cos(), tan(), exp(), log(), log10(), sqrt(), abs(), "
+                "floor(), ceil(), ln(), int(), trunc(), round(), min(), "
+                "max(), cond(), normal(), normalden() and invnormal(), "
                 "and " + tail)
 
     @staticmethod
@@ -24911,12 +24914,16 @@ class GlyphMapper:
 
         A spec without points (written by hand) is drawn by a small
         interpreter of Stata's grammar (``_stata_fn_parse``,
-        ``_stata_fn_eval``): ``x``, ``_pi``, numbers and Stata's missing
-        values, ``+ - * / ^`` with Stata's precedence (``^`` folds left to
-        right and a sign after it takes one operand; ``/`` binds tighter
-        than ``*``, ``-`` than ``+``), and the functions ``sin``, ``cos``,
-        ``tan``, ``exp``, ``log``, ``log10``, ``sqrt``, ``abs``, ``floor``
-        and ``ceil``.  A missing value propagates as in Stata.  Anything
+        ``_stata_fn_eval``): ``x``, ``_pi``, ``c(pi)``, numbers and Stata's
+        missing values (``.a``-``.z`` kept apart), ``+ - * / ^`` with
+        Stata's precedence (``^`` folds left to right and a sign after it
+        takes one operand; ``/`` binds tighter than ``*``, ``-`` than
+        ``+``), the comparisons ``== != ~= > < >= <=``, ``!`` and ``~``,
+        ``&`` and ``|``, and the functions ``sin``, ``cos``, ``tan``,
+        ``exp``, ``log``, ``log10``, ``sqrt``, ``abs``, ``floor``,
+        ``ceil``, ``ln``, ``int``, ``trunc``, ``round``, ``min``, ``max``,
+        ``cond``, ``normal``, ``normalden`` and ``invnormal`` (WP-31 F2).
+        A missing value propagates as in Stata.  Anything
         else -- ``pi``, ``e``, ``**``, a leading ``+``, any other name --
         draws the layer empty, marked the same way with the function or
         name the parser refused (M12, WP-30 P1.22).  A later edit keeps
@@ -55386,45 +55393,68 @@ def _dash_function_drops(points, n_cap=10000):
 
 def _stata_fn_parse(text):
     """Parse a twoway function expression by Stata's grammar, for a spec
-    without stored points (WP-29 P0.6).
+    without stored points (WP-29 P0.6, WP-31 F2).
 
-    The grammar is the one measured in twoway (section 04 E1):
+    The grammar is the one measured in twoway (section 04 E1, and WP-31
+    F2's ``fallback_grammar`` probes in function_expr_truth.json):
 
+        or   := and ('|' and)*          and  := cmp ('&' cmp)*
+        cmp  := sum (CMPOP sum)*        CMPOP: == != ~= > < >= <=
         sum  := diff ('+' diff)*        diff := prod ('-' prod)*
         prod := quot ('*' quot)*        quot := neg ('/' neg)*
-        neg  := '-'* pow                pow  := atom ('^' expo)*
-        expo := ('-' | '+')* atom
-        atom := NUMBER | MISSING | 'x' | '_pi' | FUNC '(' sum ')'
-              | '(' sum ')'
+        neg  := '-'* not                not  := ('!' | '~')* pow
+        pow  := atom ('^' expo)*        expo := ('-' | '+')* ('!' | '~')* atom
+        atom := NUMBER | MISSING | 'x' | '_pi' | 'c(pi)'
+              | FUNC '(' or (',' or)* ')' | '(' or ')'
 
     so ``2^3^x`` is ``(2^3)^x``, ``2^-1^2`` is ``(2^-1)^2``, ``-x^2`` is
-    ``-(x^2)``, ``0.1*3/0.3`` is ``0.1*(3/0.3)`` and ``1e16+1-2`` is
-    ``1e16+(1-2)``.  Tokens are ASCII only; blanks and tabs separate them.
-    A NUMBER is ``digits[.digits][e[+-]digits]``, ``.digits[...]`` or
-    ``digits.``; MISSING is ``.`` or ``.a``-``.z``; the bare names are
-    ``x`` and ``_pi``; FUNC is one of ten names written directly before
-    its ``(``.  Everything else is refused, as twoway refuses ``pi``,
-    ``e``, ``**``, ``%``, ``//``, ``+x``, ``x^``, ``2x``, ``sin (x)`` and
-    ``sin(x,1)`` -- and as this fallback refuses what it does not know.
+    ``-(x^2)``, ``0.1*3/0.3`` is ``0.1*(3/0.3)``, ``1e16+1-2`` is
+    ``1e16+(1-2)``, ``2 < x < 4`` is ``(2 < x) < 4`` and ``1 | 0 & 0`` is
+    ``1 | (0 & 0)``.  Measured, and not as [U] 13.2.1's table reads: ``!``
+    binds looser than ``^`` (``!x^-1`` is 0 at x = 0, so it is
+    ``!(x^-1)``), ``-!x`` is ``-(!x)`` and ``!-x`` is refused.  Tokens are
+    ASCII only; blanks and tabs separate them.  A NUMBER is
+    ``digits[.digits][e[+-]digits]``, ``.digits[...]`` or ``digits.``;
+    MISSING is ``.`` or ``.a``-``.z``; the bare names are ``x`` and
+    ``_pi``; ``c(pi)`` is ``c`` written directly before ``(``, then
+    ``pi`` and ``)``, blanks allowed inside (twoway takes ``c( pi )`` and
+    refuses ``c (pi)``); FUNC is a name of ``funcs`` written directly
+    before its ``(``, with the number of arguments ``funcs`` gives.
+    Everything else is refused, as twoway refuses ``pi``, ``e``, ``**``,
+    ``%``, ``//``, ``+x``, ``x^``, ``2x``, ``sin (x)``, ``sin(x,1)``,
+    ``min(x)``, ``x = 1``, ``x <> 1``, ``x && 1`` and ``!-x`` -- and as
+    this fallback refuses what it does not know.
 
-    Chains are folded in loops, into n-ary nodes, and the parser recurses
-    only into a parenthesis or a call, at most ``_FN_EXPR_MAX_NEST`` deep,
-    so no expression can exhaust the stack.  Self-contained: the served app
-    copies it verbatim.
+    Chains are folded in loops, into n-ary nodes, runs of ``-`` and ``!``
+    are collapsed, an argument list is read in a loop, and the parser
+    recurses only into a parenthesis or a call, at most
+    ``_FN_EXPR_MAX_NEST`` deep, so no expression can exhaust the stack.
+    Self-contained: the served app copies it verbatim.
 
     Returns:
-        A tree of tuples: ``("c", value)``, ``("x",)``, ``("neg", node)``,
-        ``("fold", op, [nodes])``, ``("pow", base, [(odd, node), ...])``
-        (odd: the exponent's sign is minus) and ``("call", name, node)``.
+        A tree of tuples: ``("c", value)`` (a number), ``("c", nan, code)``
+        (a missing value, code ``"."`` or ``".a"``-``".z"``), ``("x",)``,
+        ``("neg", node)``, ``("not", node)``, ``("fold", op, [nodes])``
+        (op ``+ - * / & |``), ``("cmp", [ops], [nodes])`` (``~=`` read as
+        ``!=``), ``("pow", base, [(odd, node), ...])`` (odd: the exponent's
+        sign is minus) and ``("call", name, [nodes])``.
 
     Raises:
         ValueError: the text is not an expression this grammar takes.  A
-            refusal at a name carries it as ``exc.dash_refused``,
-            ``("function" | "name", <name>)``, for the empty layer's note
-            (WP-30 P1.22).
+            refusal at a name the fallback does not know carries it as
+            ``exc.dash_refused``, ``("function" | "name", <name>)``, for
+            the empty layer's note (WP-30 P1.22); a known function with
+            the wrong number of arguments carries none.
     """
-    funcs = ("sin", "cos", "tan", "exp", "log", "log10", "sqrt", "abs",
-             "floor", "ceil")
+    # name -> (least, most) arguments; None: no most.  Measured: min() and
+    # max() take two or more, cond() three or four, round() one or two,
+    # normalden() one to three.  The order is the note's.
+    funcs = {"sin": (1, 1), "cos": (1, 1), "tan": (1, 1), "exp": (1, 1),
+             "log": (1, 1), "log10": (1, 1), "sqrt": (1, 1), "abs": (1, 1),
+             "floor": (1, 1), "ceil": (1, 1), "ln": (1, 1), "int": (1, 1),
+             "trunc": (1, 1), "round": (1, 2), "min": (2, None),
+             "max": (2, None), "cond": (3, 4), "normal": (1, 1),
+             "normalden": (1, 3), "invnormal": (1, 1)}
     if not isinstance(text, str) or not text.isascii():
         raise ValueError("function expressions are ASCII")
     toks = []
@@ -55463,7 +55493,7 @@ def _stata_fn_parse(text):
                 j += 1
             if j < n and (text[j] in namech or text[j] == "."):
                 raise ValueError("malformed missing value")
-            toks.append(("c", float("nan")))
+            toks.append(("c", float("nan"), text[i:j]))
             i = j
             continue
         if ch in namech:
@@ -55472,6 +55502,18 @@ def _stata_fn_parse(text):
                 j += 1
             name = text[i:j]
             if j < n and text[j] == "(":
+                if name == "c":
+                    k = j + 1
+                    while k < n and text[k] in " \t":
+                        k += 1
+                    if text[k:k + 2] == "pi":
+                        k += 2
+                        while k < n and text[k] in " \t":
+                            k += 1
+                        if k < n and text[k] == ")":
+                            toks.append(("c", math.pi))
+                            i = k + 1
+                            continue
                 if name not in funcs:
                     exc = ValueError("unknown function")
                     exc.dash_refused = ("function", name)
@@ -55489,7 +55531,11 @@ def _stata_fn_parse(text):
                 raise exc
             i = j
             continue
-        if ch in "+-*/^()":
+        if text[i:i + 2] in ("==", "!=", "~=", ">=", "<="):
+            toks.append(("o", text[i:i + 2]))
+            i += 2
+            continue
+        if ch in "+-*/^()><&|,!~":
             toks.append(("o", ch))
             i += 1
             continue
@@ -55497,6 +55543,7 @@ def _stata_fn_parse(text):
 
     pos = [0]
     depth = [0]
+    cmpops = ("==", "!=", "~=", ">", "<", ">=", "<=")
 
     def peek():
         return toks[pos[0]] if pos[0] < len(toks) else None
@@ -55504,8 +55551,25 @@ def _stata_fn_parse(text):
     def is_op(t, c):
         return t is not None and t[0] == "o" and t[1] == c
 
+    def is_not(t):
+        return is_op(t, "!") or is_op(t, "~")
+
     def fold(op, nodes):
         return nodes[0] if len(nodes) == 1 else ("fold", op, nodes)
+
+    def nots(count, node):
+        # !!x is 1 where x is nonzero, so a run keeps one or two.
+        if count == 0:
+            return node
+        node = ("not", node)
+        return ("not", node) if count % 2 == 0 else node
+
+    def args():
+        nodes = [level_or()]
+        while is_op(peek(), ","):
+            pos[0] += 1
+            nodes.append(level_or())
+        return nodes
 
     def atom():
         t = peek()
@@ -55519,12 +55583,21 @@ def _stata_fn_parse(text):
             if depth[0] > _FN_EXPR_MAX_NEST:
                 raise ValueError("nested too deeply")
             pos[0] += 1
-            inner = level_sum()
+            if t[0] == "f":
+                if is_op(peek(), ")"):
+                    raise ValueError("wrong number of arguments")
+                nodes = args()
+                least, most = funcs[t[1]]
+                if len(nodes) < least or (most is not None
+                                          and len(nodes) > most):
+                    raise ValueError("wrong number of arguments")
+            else:
+                nodes = [level_or()]
             if not is_op(peek(), ")"):
                 raise ValueError("unbalanced parenthesis")
             pos[0] += 1
             depth[0] -= 1
-            return ("call", t[1], inner) if t[0] == "f" else inner
+            return ("call", t[1], nodes) if t[0] == "f" else nodes[0]
         raise ValueError("operand expected")
 
     def level_pow():
@@ -55537,15 +55610,26 @@ def _stata_fn_parse(text):
                 if is_op(peek(), "-"):
                     odd = not odd
                 pos[0] += 1
-            exps.append((odd, atom()))
+            count = 0
+            while is_not(peek()):
+                count += 1
+                pos[0] += 1
+            exps.append((odd, nots(count, atom())))
         return ("pow", base, exps) if exps else base
+
+    def level_not():
+        count = 0
+        while is_not(peek()):
+            count += 1
+            pos[0] += 1
+        return nots(count, level_pow())
 
     def level_neg():
         odd = False
         while is_op(peek(), "-"):
             odd = not odd
             pos[0] += 1
-        node = level_pow()
+        node = level_not()
         return ("neg", node) if odd else node
 
     def chain(op, lower):
@@ -55567,9 +55651,26 @@ def _stata_fn_parse(text):
     def level_sum():
         return chain("+", level_diff)
 
+    def level_cmp():
+        nodes = [level_sum()]
+        ops = []
+        while (peek() is not None and peek()[0] == "o"
+               and peek()[1] in cmpops):
+            op = peek()[1]
+            pos[0] += 1
+            ops.append("!=" if op == "~=" else op)
+            nodes.append(level_sum())
+        return ("cmp", ops, nodes) if ops else nodes[0]
+
+    def level_and():
+        return chain("&", level_cmp)
+
+    def level_or():
+        return chain("|", level_and)
+
     if not toks:
         raise ValueError("expression required")
-    tree = level_sum()
+    tree = level_or()
     if pos[0] != len(toks):
         raise ValueError("unexpected text after the expression")
     return tree
@@ -55577,61 +55678,216 @@ def _stata_fn_parse(text):
 
 def _stata_fn_eval(tree, x):
     """Evaluate a ``_stata_fn_parse`` tree over the grid *x* with Stata's
-    missing-value rules (WP-29 P0.6).
+    missing-value rules (WP-29 P0.6, WP-31 F2).
 
-    Stata has no infinity: any operation whose result it cannot hold is
-    missing, and a missing value stays missing through every later
-    operation.  numpy heals some of them -- ``1/inf`` is 0, ``exp(-inf)``
-    is 0, ``inf**0`` and ``1**nan`` are 1 -- so every intermediate value
-    that is not finite is made NaN, and ``^`` with a NaN on either side is
-    NaN: ``x^.``, ``(0^-1)^0+x``, ``1/(1/0)+x`` and ``exp(-exp(1000))+x``
-    are missing at every x, as in twoway (section 04 E5).  ``^`` is folded
-    left to right, each exponent's sign applied to it alone.
+    Each node gives two arrays: ``v`` (float, NaN where missing) and ``m``
+    (the missing code: 0 none, 1 ``.``, 2-27 ``.a``-``.z``).  Stata has no
+    infinity: any arithmetic result it cannot hold is ``.``, and a missing
+    operand gives ``.`` (``.a + 1`` is ``.``).  numpy heals some of them --
+    ``1/inf`` is 0, ``exp(-inf)`` is 0, ``inf**0`` and ``1**nan`` are 1 --
+    so every intermediate value that is not finite is made ``.``, and
+    ``^`` with a missing side is ``.``: ``x^.``, ``(0^-1)^0+x``,
+    ``1/(1/0)+x`` and ``exp(-exp(1000))+x`` are missing at every x, as in
+    twoway (section 04 E5).  ``^`` is folded left to right, each
+    exponent's sign applied to it alone.
 
-    Self-contained (numpy only): the served app copies it verbatim.
+    Measured (function_expr_truth.json ``fallback_grammar``): comparisons
+    give 0 or 1, never missing, ordering on the pair (m, v), so every
+    number is below ``.``, ``. < .a < ... < .z`` and ``.a == .`` is 0;
+    ``!v`` is 1 only where v is 0 (a missing is nonzero); ``&``/``|``
+    read a missing as true; ``cond(c, a, b[, d])`` is a where c is
+    nonzero, b where c is 0 and d (else a) where c is missing, keeping
+    the chosen value's code; ``min()``/``max()`` skip missing arguments
+    and are ``.`` when all are; ``round(x)`` is ``floor(x + .5)``
+    (``round(-2.5)`` is -2), ``round(x, u)`` is ``u * floor(x/u + .5)``,
+    ``x`` when u is 0, ``.`` when u is missing; ``int()`` and ``trunc()``
+    drop the fraction; ``ln()`` is ``log()``; ``normal(z)`` is
+    ``erfc(-z/sqrt(2))/2``, 0 below the least normal double (normal(-38)
+    is 0, normal(-37.5) 4.6e-308); ``normalden(z[, s])`` and
+    ``normalden(x, m, s)`` are ``.`` when s <= 0; ``invnormal(p)`` is
+    ``.`` outside (0, 1).
+
+    Self-contained (numpy and math only): the served app copies it
+    verbatim.
 
     Returns:
         A float array the shape of *x*, NaN where Stata has a missing value.
     """
     xs = np.asarray(x, dtype=float)
-    table = {"sin": np.sin, "cos": np.cos, "tan": np.tan, "exp": np.exp,
-             "log": np.log, "log10": np.log10, "sqrt": np.sqrt,
-             "abs": np.abs, "floor": np.floor, "ceil": np.ceil}
+    codes = {".": 1}
+    for k, ch in enumerate("abcdefghijklmnopqrstuvwxyz"):
+        codes["." + ch] = k + 2
+    tiny = 2.2250738585072014e-308
+    erfc = np.vectorize(math.erfc, otypes=[float])
     ops = {"+": np.add, "-": np.subtract, "*": np.multiply,
            "/": np.divide}
 
-    def m(v):
-        return np.where(np.isfinite(v), v, np.nan)
+    def miss(v, m=None):
+        bad = ~np.isfinite(v)
+        if m is not None:
+            bad = bad | (m != 0)
+        return (np.where(bad, np.nan, v),
+                np.where(bad, 1, 0).astype(np.int8))
+
+    def anym(pairs):
+        bad = np.zeros(xs.shape, dtype=bool)
+        for _v, m in pairs:
+            bad = bad | (m != 0)
+        return bad
+
+    def true(p):
+        return (p[1] != 0) | (p[0] != 0)
+
+    def flag(b):
+        return (np.where(b, 1.0, 0.0), np.zeros(xs.shape, dtype=np.int8))
+
+    def compare(op, a, b):
+        va, ma, vb, mb = a[0], a[1], b[0], b[1]
+        gt = (ma > mb) | ((ma == mb) & (va > vb))
+        lt = (ma < mb) | ((ma == mb) & (va < vb))
+        eq = (ma == mb) & ((ma != 0) | (va == vb))
+        return {"==": eq, "!=": ~eq, ">": gt, "<": lt, ">=": gt | eq,
+                "<=": lt | eq}[op]
+
+    def normal(z):
+        r = 0.5 * erfc(-z / math.sqrt(2.0))
+        return np.where(r < tiny, 0.0, r)
+
+    def phi(z):
+        return np.exp(-0.5 * z * z) / math.sqrt(2.0 * math.pi)
+
+    def invnormal(p):
+        # Acklam's rational approximation on the lower tail, then two
+        # Halley steps on normal(); the upper half is -invnormal(1 - p),
+        # exact for p >= .5.
+        a = (-3.969683028665376e+01, 2.209460984245205e+02,
+             -2.759285104469687e+02, 1.383577518672690e+02,
+             -3.066479806614716e+01, 2.506628277459239e+00)
+        b = (-5.447609879822406e+01, 1.615858368580409e+02,
+             -1.556989798598866e+02, 6.680131188771972e+01,
+             -1.328068155288572e+01)
+        c = (-7.784894002430293e-03, -3.223964580411365e-01,
+             -2.400758277161838e+00, -2.549732539343734e+00,
+             4.374664141464968e+00, 2.938163982698783e+00)
+        d = (7.784695709041462e-03, 3.224671290700398e-01,
+             2.445134137142996e+00, 3.754408661907416e+00)
+        ok = (p > 0) & (p < 1)
+        pp = np.where(ok, p, 0.5)
+        upper = pp > 0.5
+        q = np.where(upper, 1.0 - pp, pp)
+        t = np.sqrt(-2.0 * np.log(q))
+        tail = ((((((c[0] * t + c[1]) * t + c[2]) * t + c[3]) * t + c[4])
+                 * t + c[5]) / ((((d[0] * t + d[1]) * t + d[2]) * t + d[3])
+                                * t + 1.0))
+        r = q - 0.5
+        s = r * r
+        mid = ((((((a[0] * s + a[1]) * s + a[2]) * s + a[3]) * s + a[4])
+                * s + a[5]) * r / (((((b[0] * s + b[1]) * s + b[2]) * s
+                                     + b[3]) * s + b[4]) * s + 1.0))
+        z = np.where(q < 0.02425, tail, mid)
+        for _ in range(2):
+            e = 0.5 * erfc(-z / math.sqrt(2.0)) - q
+            u = e / phi(z)
+            z = z - u / (1.0 + z * u / 2.0)
+        return np.where(ok, np.where(upper, -z, z), np.nan)
+
+    def f_round(pairs):
+        v = pairs[0][0]
+        if len(pairs) == 1:
+            return miss(np.floor(v + 0.5), anym(pairs).astype(np.int8))
+        u = pairs[1][0]
+        safe = np.where(u == 0, 1.0, u)
+        r = np.where(u == 0, v, safe * np.floor(v / safe + 0.5))
+        return miss(r, anym(pairs).astype(np.int8))
+
+    def f_extreme(pairs, pick):
+        acc = np.full(xs.shape, np.nan)
+        for v, m in pairs:
+            use = m == 0
+            acc = np.where(use & np.isnan(acc), v,
+                           np.where(use, pick(acc, v), acc))
+        return miss(acc)
+
+    def f_cond(pairs):
+        c, a, b = pairs[0], pairs[1], pairs[2]
+        d = pairs[3] if len(pairs) == 4 else a
+        isna = c[1] != 0
+        yes = c[0] != 0
+        v = np.where(isna, d[0], np.where(yes, a[0], b[0]))
+        m = np.where(isna, d[1], np.where(yes, a[1], b[1])).astype(np.int8)
+        return v, m
+
+    def f_normalden(pairs):
+        z = pairs[0][0]
+        sd = pairs[-1][0] if len(pairs) > 1 else np.ones(xs.shape)
+        mean = pairs[1][0] if len(pairs) == 3 else np.zeros(xs.shape)
+        good = sd > 0
+        s = np.where(good, sd, 1.0)
+        r = np.where(good, phi((z - mean) / s) / s, np.nan)
+        return miss(r, anym(pairs).astype(np.int8))
+
+    def unary(f):
+        return lambda pairs: miss(f(pairs[0][0]), pairs[0][1])
+
+    table = {"sin": unary(np.sin), "cos": unary(np.cos),
+             "tan": unary(np.tan), "exp": unary(np.exp),
+             "log": unary(np.log), "log10": unary(np.log10),
+             "sqrt": unary(np.sqrt), "abs": unary(np.abs),
+             "floor": unary(np.floor), "ceil": unary(np.ceil),
+             "ln": unary(np.log), "int": unary(np.trunc),
+             "trunc": unary(np.trunc), "round": f_round,
+             "min": lambda pairs: f_extreme(pairs, np.minimum),
+             "max": lambda pairs: f_extreme(pairs, np.maximum),
+             "cond": f_cond, "normal": unary(normal),
+             "normalden": f_normalden, "invnormal": unary(invnormal)}
 
     def ev(node):
         kind = node[0]
         if kind == "c":
-            return m(np.full(xs.shape, node[1], dtype=float))
+            if len(node) == 3:
+                return (np.full(xs.shape, np.nan),
+                        np.full(xs.shape, codes[node[2]], dtype=np.int8))
+            return miss(np.full(xs.shape, node[1], dtype=float))
         if kind == "x":
-            return xs.copy()
+            return miss(xs.copy())
         if kind == "neg":
-            return -ev(node[1])
+            v, m = ev(node[1])
+            return miss(-v, m)
+        if kind == "not":
+            v, m = ev(node[1])
+            return flag((m == 0) & (v == 0))
         if kind == "fold":
-            f = ops[node[1]]
+            op = node[1]
             acc = ev(node[2][0])
+            if op in ("&", "|"):
+                hit = true(acc)
+                for sub in node[2][1:]:
+                    t = true(ev(sub))
+                    hit = (hit & t) if op == "&" else (hit | t)
+                return flag(hit)
+            f = ops[op]
             for sub in node[2][1:]:
-                acc = m(f(acc, ev(sub)))
+                b = ev(sub)
+                acc = miss(f(acc[0], b[0]), acc[1] | b[1])
+            return acc
+        if kind == "cmp":
+            acc = ev(node[2][0])
+            for op, sub in zip(node[1], node[2][1:]):
+                acc = flag(compare(op, acc, ev(sub)))
             return acc
         if kind == "pow":
             a = ev(node[1])
             for odd, sub in node[2]:
                 b = ev(sub)
-                if odd:
-                    b = -b
-                a = np.where(np.isnan(a) | np.isnan(b), np.nan,
-                             m(np.power(a, b)))
+                bv = -b[0] if odd else b[0]
+                a = miss(np.power(a[0], bv), a[1] | b[1])
             return a
         if kind == "call":
-            return m(table[node[1]](ev(node[2])))
+            return table[node[1]]([ev(sub) for sub in node[2]])
         raise ValueError("not a function expression tree")
 
     with np.errstate(all="ignore"):
-        return ev(tree)
+        return ev(tree)[0]
 
 
 def _dash_note_no_second_y(plot_type):

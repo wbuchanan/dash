@@ -4872,7 +4872,8 @@ class TestServerFunctionExpressionOperators:
         # Flipped (WP-29 P0.6): the parser's function-name table and its
         # refusal of any other call.
         source = _build_function_app(dr_module, "x + 1")
-        assert '"floor", "ceil")' in source, (
+        # Flipped (WP-31 F2): the table is the arity dict, ending invnormal.
+        assert '"invnormal": (1, 1)}' in source, (
             "generated server source must contain the parser's function-name table"
         )
         assert '"unknown function"' in source, (

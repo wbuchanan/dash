@@ -395,13 +395,17 @@ class TestARejectedExpressionIsStillReported:
                            "options": {}}])
         _, warns = _draw(mode, tmp_path, _spec([g]),
                          _DF if data == "six" else _EMPTY_DATA)
+        # Flipped (WP-31 F2): the note lists what the fallback reads now.
         assert _empty_reports(warns) == [
             "dash: graph 'a1' plot 1 (function) drew nothing: it needs the "
             "points Stata computes for it when dash registers the graph, and "
             "this spec carries none; without them dash evaluates only x, "
-            "_pi, numbers, + - * / ^ and sin(), cos(), tan(), exp(), log(), "
-            "log10(), sqrt(), abs(), floor() and ceil(), and __import__() is "
-            "not one of them."], warns
+            "_pi, c(pi), numbers and missing values, + - * / ^, the "
+            "comparisons == != ~= > < >= <=, ! ~ & | and sin(), cos(), "
+            "tan(), exp(), log(), log10(), sqrt(), abs(), floor(), ceil(), "
+            "ln(), int(), trunc(), round(), min(), max(), cond(), normal(), "
+            "normalden() and invnormal(), and __import__() is not one of "
+            "them."], warns
 
 
 # ===========================================================================

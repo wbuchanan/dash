@@ -2275,9 +2275,11 @@ CORPUS = [
           {"scheme": "s1mono"}),
     _case("msymbol(smcircle) msize(large)",
           [plot_for("scatter", {"msymbol": "smcircle", "msize": "large"})]),
+    # Flipped (WP-31 F2): normalden() is drawn by the fallback now; a
+    # function it still refuses keeps the case an empty layer.
     _case("function without points needing Stata (WP-30 P1.22)",
           [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
-                           expr="normalden(x)")]),
+                           expr="invlogit(x)")]),
     # WP-30 P1.17b: twoway's default base
     _case("spike base(5)", [plot_for("spike", {"base": "5"})]),
     _case("area on a log y", [plot_for("area")], None, {"yscale": "log"}),
@@ -2685,6 +2687,10 @@ CORPUS = [
            plot_for("line", {"lstyle": "refline"})],
           {"scheme": "s2color",
            "scheme_dirs": ["/Applications/StataNow/ado/base"]}),
+    # WP-31 F2: a function spec without points, drawn by the shared
+    # fallback with comparisons, cond() and normal(), alike in both modes.
+    _case("function cond", [plot_for("function", {"range": "-3 3"},
+                                     expr="cond(x > 1, normal(x), 0)")]),
 ]
 
 

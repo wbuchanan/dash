@@ -482,7 +482,7 @@ and now matches Stata.
 
 - A %d (or %dCCYY-NN-DD) or %tb<cal> business-calendar variable or xvarformat() was drawn %9.0g with a note; %d is written as the %td date it is, and %tb as its calendar's date (%tbu46 5 is 08jan2024; a value outside the calendar the bare number), on the axis and in tooltips, as twoway writes them (WP-31, G7)
 
-<!-- WP-31 F2 -->
+- A function layer whose spec carries no stored points is drawn for comparisons, ! and ~, & and |, cond(), n-ary min()/max(), round(), int(), trunc(), ln(), normal(), normalden(), invnormal() and c(pi), with Stata's missing-value rules; it was drawn empty with a note. (WP-31, F2)
 
 - `dash lfit mpg weight [aw=price-price]` (or any weight zero on every row): twoway's "(note:  regress could not fit model)" alone, and on kdensity and histogram nothing (was: also "74 observation(s) with a zero or negative weight are excluded", naming the internal column __dashw1) (WP-31, A5b)
 - `dash scatter mpg weight [aw=price-price]`: r(101) "- not allowed", and `[aw=(price)]` r(198) "( invalid name", as twoway reads a weight on scatter, line, the other glyph types, mspline and mband (was: evaluated); `dash mspline mpg weight [aw=w]`: no note (was: "accepts the weight and does not use it"); a note naming a weight expression names it as typed (was: __dashw1) (WP-31, A5b)

@@ -282,6 +282,225 @@ forvalues i = 2/800 {
 zf rf22 3 "0 2" y = `chain'
 
 // ---------------------------------------------------------------------------
+// WP-31 F2: the fallback's grammar.  Each probe `zg <text>' (the text after
+// `y = ') runs `capture noisily twoway function y = <text>, range(-3 3) n(13)
+// nodraw' between two sentinel lines of a named log, keeping the rc and the
+// message twoway printed; on rc 0 the generator gives the 13 y values
+// (x = -3(.5)3) and each value's missing code ("" when not missing).
+// ---------------------------------------------------------------------------
+global ZF_REC2 "`scratch'/function_grammar_records.txt"
+global ZF_LOG2 "`scratch'/function_grammar_msg.log"
+capture erase "${ZF_REC2}"
+
+mata:
+// The missing code of each value ("" for a number, "." or ".a"-".z").
+string scalar _zg_codes(real colvector v)
+{
+    string colvector s
+    real scalar i
+    s = J(rows(v), 1, "")
+    for (i = 1; i <= rows(v); i++) {
+        if (v[i] >= .) s[i] = strofreal(v[i])
+    }
+    return(invtokens(s', ","))
+}
+// The lines of the message log between the two sentinels, joined by " | ".
+string scalar _zg_msg(string scalar path)
+{
+    real scalar fh, on
+    string scalar line, out
+    out = ""
+    on = 0
+    fh = fopen(path, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        line = strtrim(line)
+        if (line == "@@ZG_BEGIN") {
+            on = 1
+            continue
+        }
+        if (line == "@@ZG_END") break
+        if (on & line != "") out = out + (out == "" ? "" : " | ") + line
+    }
+    fclose(fh)
+    return(subinstr(out, char(9), " "))
+}
+void _zg_put(string scalar line)
+{
+    real scalar fh
+    fh = fopen(st_global("ZF_REC2"), "a")
+    fput(fh, line)
+    fclose(fh)
+}
+end
+
+capture program drop zg
+program define zg
+    version 19
+    local text = strtrim(`"`macval(0)'"')
+    clear
+    capture log close zglog
+    quietly log using "${ZF_LOG2}", text replace name(zglog)
+    display "@@ZG_BEGIN"
+    capture noisily twoway function y = `macval(text)', range(-3 3) n(13) nodraw
+    local rc = _rc
+    display "@@ZG_END"
+    quietly log close zglog
+    mata: st_local("msg", _zg_msg(st_global("ZF_LOG2")))
+    local gy ""
+    local gm ""
+    if `rc' == 0 {
+        clear
+        preserve
+        tempvar fy fx
+        twoway__function_gen y = `macval(text)', range(-3 3) x(x) n(13) generate(`fy' `fx')
+        mata: st_local("gy", _zf_nums(st_data((1, 13), "`fy'")))
+        mata: st_local("gm", _zg_codes(st_data((1, 13), "`fy'")))
+        restore
+    }
+    mata: _zg_put(invtokens((st_local("text"), st_local("rc"), ///
+        st_local("msg"), st_local("gy"), st_local("gm")), char(9)))
+    display as text "grammar probe rc=`rc'"
+end
+
+// --- comparisons and logic
+zg x > 1
+zg x >= 1
+zg x < 1
+zg x <= 1
+zg x == 1
+zg x != 1
+zg x ~= 1
+zg !x
+zg ~x
+zg x & 1
+zg x | 0
+// --- precedence
+zg !x^2
+zg (!x)^2
+zg -x^2
+zg -!x
+zg !-x
+zg 2 < x < 4
+zg x == 2 == 1
+zg 1 | 0 & 0
+zg 0 & 0 | 1
+zg x > 1 + 1
+zg x + 1 > 1 & x < 2
+zg 2*!x
+zg 2^!x
+zg !!x
+zg !x^-1
+zg -x^-1
+// --- missing values
+zg x & .
+zg . | 0
+zg !.
+zg . == .
+zg .a == .
+zg .a == .a
+zg .a < .b
+zg . < .a
+zg .z > .y
+zg . > 1e300
+zg x < .
+zg .a + 1
+zg .a * 0
+zg (.a + 1) == .
+zg max(.a, .b) == .
+zg min(.b, .a) == .
+zg cond(x > 0, .a, .b) == .a
+zg cond(x > 0, .a, .b) == .b
+// --- cond
+zg cond(x > 0, 1, 2)
+zg cond(x, 1, 2)
+zg cond(., 1, 2)
+zg cond(., 1, 2, 3)
+zg cond(x > 0, x, -x, 9)
+zg cond(x)
+zg cond(x, 1)
+zg cond(x, 1, 2, 3, 4)
+// --- min and max
+zg min(x, 1, .)
+zg max(x, 1, .)
+zg max(., .)
+zg min(.)
+zg min(x)
+zg max(x)
+zg min(x, .)
+zg max(x, -x, 2*x, 1)
+zg min()
+// --- rounding
+zg round(x)
+zg round(-2.5)
+zg round(2.5)
+zg round(-0.5)
+zg round(x, .5)
+zg round(x, 2)
+zg round(x, 0)
+zg round(x, .)
+zg round(x, -1)
+zg round(x, 1, 2)
+zg int(-2.7)
+zg int(x/2)
+zg trunc(2.7)
+zg trunc(x/2)
+// --- logs and the normal
+zg ln(x)
+zg ln(0)
+zg normal(x)
+zg normal(-40)
+zg normal(-38)
+zg normal(-37.5)
+zg normal(-37)
+zg normal(-20)
+zg normal(-8.3)
+zg normal(-8)
+zg normal(0)
+zg normal(8)
+zg normal(8.3)
+zg normal(9)
+zg normal(40)
+zg normal(.)
+zg normalden(x)
+zg normalden(x, 2)
+zg normalden(x, 1, 2)
+zg normalden(x, 0)
+zg normalden(x, -1)
+zg normalden(x, 1, 0)
+zg normalden(40)
+zg invnormal(.975)
+zg invnormal(.025)
+zg invnormal(.5)
+zg invnormal(1e-300)
+zg invnormal(1e-10)
+zg invnormal(1 - 1e-10)
+zg invnormal(0)
+zg invnormal(1)
+zg invnormal(normal(x))
+// --- constants
+zg c(pi)
+zg c(pi)*x
+zg c( pi )
+zg c (pi)
+zg c(pi )*x
+zg c(e)
+zg c(PI)
+// --- arity and refusals
+zg sin(x, 1)
+zg normalden(x, 1, 2, 3)
+zg invnormal(x, 1)
+zg ln(x, 1)
+zg x = 1
+zg x => 1
+zg x =< 1
+zg x <> 1
+zg x && 1
+zg x || 1
+zg x !
+zg x ! 1
+zg x, 1
+
+// ---------------------------------------------------------------------------
 // Write the fixture.
 // ---------------------------------------------------------------------------
 python:
@@ -316,6 +535,18 @@ with open(rec_path, encoding="utf-8") as fh:
             "serset_y": nums(f[9]),
         })
 
+grammar = {}
+with open(Macro.getGlobal("ZF_REC2"), encoding="utf-8") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        f = line.split("\t")
+        if len(f) != 5:
+            raise SystemExit("bad grammar record: %r" % line[:80])
+        grammar[f[0]] = {"rc": int(f[1]), "msg": f[2], "y": nums(f[3]),
+                         "m": f[4].split(",") if f[3] != "" else []}
+
 meta = {
     "stata_version": Macro.getGlobal("ZF_SVER"),
     "born_date": Macro.getGlobal("ZF_BORN"),
@@ -325,11 +556,17 @@ meta = {
                "(variable 1 y, variable 2 x); twoway__function_gen <text>, "
                "range() x(x) n() generate(fy fx) under preserve: x0 = r(min), "
                "dx = r(delta), gen_y in generator order; numbers %24.17g "
-               "text, missing null"),
+               "text, missing null; fallback_grammar (WP-31 F2): keyed by "
+               "the text after y =, twoway function y = <text>, range(-3 3) "
+               "n(13) nodraw: rc and msg (the lines twoway printed), then "
+               "the generator's y (x = -3(.5)3) and m, each value's missing "
+               "code"),
 }
 with open(out_path, "w", encoding="utf-8") as fh:
-    json.dump({"_meta": meta, "probes": probes}, fh, indent=2,
+    json.dump({"_meta": meta, "probes": probes,
+               "fallback_grammar": grammar}, fh, indent=2,
               sort_keys=True, ensure_ascii=False)
     fh.write("\n")
-print("wrote %d probes to %s" % (len(probes), out_path))
+print("wrote %d probes and %d grammar probes to %s"
+      % (len(probes), len(grammar), out_path))
 end

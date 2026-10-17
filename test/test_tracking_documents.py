@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "F2": "The function points-free fallback evaluates ten math names only",
     "F3": "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values",
     "H2t": "No per-graph data table shows the rows a graph draws (the data table)",
     "H2f": "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)",

@@ -13214,6 +13214,120 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
 }
 * ==== end S46 ====
 
+python:
+def _u47_grammar(path):
+    """globals u47_ok1/u47_bad1 (rc-0 probes the fallback draws as twoway
+    does) and u47_ok2/u47_bad2 (refused probes the fallback refuses) over
+    function_expr_truth.json's fallback_grammar (WP-31 F2)."""
+    import json
+    import math
+    import numpy as np
+    import dash_render as dr
+    from sfi import Macro
+    g = json.load(open(path, encoding="utf-8"))["fallback_grammar"]
+    x = np.linspace(-3.0, 3.0, 13)
+    bad1, bad2, n1, n2 = [], [], 0, 0
+    for text, p in sorted(g.items()):
+        if p["rc"] == 0:
+            n1 += 1
+            try:
+                got = np.asarray(dr._stata_fn_eval(dr._stata_fn_parse(text),
+                                                   x), dtype=float)
+            except ValueError as exc:
+                bad1.append("%s refused (%s)" % (text, exc))
+                continue
+            if got.ndim == 0:
+                got = np.full(13, float(got))
+            want = np.array([np.nan if v is None else float(v)
+                             for v in p["y"]])
+            same = (np.array_equal(np.isnan(got), np.isnan(want))
+                    and all(math.isclose(a, b, rel_tol=1e-12, abs_tol=1e-12)
+                            for a, b in zip(got[~np.isnan(want)],
+                                            want[~np.isnan(want)])))
+            if not same:
+                bad1.append(text)
+        else:
+            n2 += 1
+            try:
+                dr._stata_fn_parse(text)
+                bad2.append(text)
+            except ValueError:
+                pass
+    Macro.setGlobal("u47_n1", str(n1))
+    Macro.setGlobal("u47_n2", str(n2))
+    Macro.setGlobal("u47_bad1", "; ".join(bad1)[:300])
+    Macro.setGlobal("u47_bad2", "; ".join(bad2)[:300])
+
+
+def _u47_fallback_modes(sp, dp, app):
+    """global u47_bad empty when a function spec stripped of its stored
+    points draws, saved and served, the y Stata stored for it."""
+    import json
+    import os
+    import numpy as np
+    from bokeh.models import Plot
+    from sfi import Macro
+    spec = json.load(open(sp, encoding="utf-8"))
+    tab = list((spec.pop("function_points", None) or {}).values())
+    bad = []
+    if not tab or "1" not in tab[0] or "y" not in tab[0]["1"]:
+        Macro.setGlobal("u47_bad", "no stored points")
+        return
+    want = np.array([np.nan if v is None else float(v)
+                     for v in tab[0]["1"]["y"]])
+    sp2 = os.path.splitext(sp)[0] + "_nopoints.json"
+    json.dump(spec, open(sp2, "w", encoding="utf-8"))
+    r, _page, doc = __import__("__main__")._u02_docs(sp2, dp, app)
+    roots = {"saved": [r._last_layout_root], "served": list(doc.roots)}
+    for mode, rs in roots.items():
+        ys = []
+        for root in rs:
+            for m in root.references():
+                if isinstance(m, Plot):
+                    for g in m.renderers:
+                        d = getattr(getattr(g, "data_source", None), "data",
+                                    {})
+                        if "y_fn" in d:
+                            ys.append(np.asarray(list(d["y_fn"]), float))
+        if len(ys) != 1 or ys[0].shape != want.shape or not np.allclose(
+                ys[0], want, rtol=1e-12, atol=0, equal_nan=True):
+            bad.append("%s draws %s" % (mode, [list(y[:3]) for y in ys]))
+    Macro.setGlobal("u47_bad", "; ".join(bad)[:300])
+end
+
+* ==== S47 F2: function fallback grammar ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
+    display as text "S47 start " c(current_date) " " c(current_time)
+    local u47d "`w31_work'/s47"
+    capture mkdir "`u47d'"
+
+    // U47-1, U47-2: each fallback_grammar probe of function_expr_truth.json
+    // (twoway function y = <text>, range(-3 3) n(13)): the fallback draws
+    // twoway's 13 values where twoway draws them (missing on both sides,
+    // else within 1e-12) and refuses what twoway refuses.
+    python: __import__("__main__")._u47_grammar("fixtures/function_expr_truth.json")
+    _w31_expect U47-1 `"("${u47_bad1}" == "") & (${u47_n1} >= 60)"' `"${u47_n1} probes; differ: ${u47_bad1}"'
+    _w31_done U47-1 "the fallback evaluates every probe twoway draws as twoway does"
+    _w31_expect U47-2 `"("${u47_bad2}" == "") & (${u47_n2} >= 10)"' `"${u47_n2} probes; accepted: ${u47_bad2}"'
+    _w31_done U47-2 "the fallback refuses every probe twoway refuses"
+
+    // U47-3: a registered function graph carries Stata's points; the same
+    // spec without them is drawn by the fallback, saved and served, to the
+    // same 300 values.
+    clear
+    dash clear
+    capture noisily dash function y = cond(x > 1, normal(x), 0), range(-3 3) name(u473)
+    _w31_expect U47-3 "(_rc == 0)" "dash function cond() rc `=_rc'"
+    _dash_serve_spec, specpath("`u47d'/fn.json") datapath("`u47d'/fnd.json")
+    python: __import__("__main__")._u47_fallback_modes("`u47d'/fn.json", "`u47d'/fnd.json", "`u47d'/fn_app.py")
+    _w31_expect U47-3 `"("${u47_bad}" == "")"' `"${u47_bad}"'
+    _w31_done U47-3 "a function spec without points draws Stata's values in both modes"
+    dash clear
+    display as text "S47 end " c(current_date) " " c(current_time)
+}
+* ==== end S47 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

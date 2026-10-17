@@ -54,12 +54,17 @@ _DF = pd.DataFrame({
 
 
 #: WP-30 P1.22: the one note for a rejected function expression, plot 2.
+#: Flipped (WP-31 F2): the note lists the comparisons, logic and functions
+#: the fallback reads now.
 _REJECTED_FN_NOTE = (
     "dash: graph 'g1' plot 2 (function) drew nothing: it needs the points "
     "Stata computes for it when dash registers the graph, and this spec "
-    "carries none; without them dash evaluates only x, _pi, numbers, "
-    "+ - * / ^ and sin(), cos(), tan(), exp(), log(), log10(), sqrt(), "
-    "abs(), floor() and ceil(), and __import__() is not one of them.")
+    "carries none; without them dash evaluates only x, _pi, c(pi), "
+    "numbers and missing values, + - * / ^, the comparisons "
+    "== != ~= > < >= <=, ! ~ & | and sin(), cos(), tan(), exp(), log(), "
+    "log10(), sqrt(), abs(), floor(), ceil(), ln(), int(), trunc(), "
+    "round(), min(), max(), cond(), normal(), normalden() and "
+    "invnormal(), and __import__() is not one of them.")
 
 
 from conftest import render_models  # noqa: E402

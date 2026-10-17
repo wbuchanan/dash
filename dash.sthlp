@@ -650,17 +650,21 @@ the estimates does not move them, and neither does a filter on the page,
 saved or served.  Evaluating has {cmd:twoway}'s side effects:
 {cmd:runiform()} advances the random-number stream as {cmd:twoway} does,
 and data holding at least {cmd:n()} observations are marked changed
-({cmd:c(changed)}).  Under {cmd:by()}, {cmd:dash} evaluates the expression
-once and draws it in every panel, where {cmd:twoway} evaluates it once per
-panel; only random draws differ.  A dashboard spec written by hand, which
-carries no points, is drawn by {cmd:dash} itself, with the same operators
-and missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
-{cmd:cos}, {cmd:tan}, {cmd:exp}, {cmd:log}, {cmd:log10}, {cmd:sqrt},
-{cmd:abs}, {cmd:floor} and {cmd:ceil}.  Any other function, name or form
+({cmd:c(changed)}).  A dashboard spec written by hand, which carries no
+points, is drawn by {cmd:dash} itself.  A spec without stored points is
+evaluated by dash's own reader of Stata's grammar: {cmd:+ - * / ^}, the
+comparisons {cmd:== != ~= > < >= <=}, {cmd:!} and {cmd:~}, {cmd:&} and
+{cmd:|}, {cmd:cond()}, {cmd:min()}, {cmd:max()}, {cmd:round()},
+{cmd:int()}, {cmd:trunc()}, {cmd:ln()}, {cmd:log()}, {cmd:log10()},
+{cmd:exp()}, {cmd:sqrt()}, {cmd:abs()}, {cmd:floor()}, {cmd:ceil()},
+{cmd:sin()}, {cmd:cos()}, {cmd:tan()}, {cmd:normal()}, {cmd:normalden()},
+{cmd:invnormal()}, {cmd:_pi} and {cmd:c(pi)}, with Stata's missing values
+({cmd:.a} to {cmd:.z} kept apart); anything else is named in the note.
+Any other function, name or form
 draws that layer empty, saved or served, with one note: the layer needs
 the points Stata computes when {cmd:dash} registers the graph, and the
 note names the first function or name it uses that {cmd:dash} cannot
-evaluate ({cmd:normalden()}, {cmd:pi}), or says that the expression
+evaluate ({cmd:invlogit()}, {cmd:pi}), or says that the expression
 cannot be read.  Stored points that cannot be read get the same note.
 Registering the graph with {cmd:dash} computes its points in Stata, or
 refuses the expression as {cmd:twoway} does.
