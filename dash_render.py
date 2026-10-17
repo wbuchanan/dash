@@ -53244,6 +53244,11 @@ def _dash_data_table(fig, columns, spec, source=None, mask=None):
         height=min(400, 28 + 25 * min(n_drawn, cap)),
         sizing_mode="stretch_width", visible=bool(spec["open"]),
         tags=["dash_table", "dash_table_cap=%d" % cap])
+    # The rows of a view narrower than its source (a layer's own if/in):
+    # the saved renderer then lists a copy of them (DashRenderer.
+    # _dash_table_copy), since its IndexFilter is not rebuilt by a move.
+    dt._dash_view_rows = (None if mask is None or bool(np.all(mask))
+                          else [int(i) for i in kept])
     note = Div(text=html.escape(_DASH_TABLE_CAP_NOTE.format(cap=cap)),
                visible=bool(spec["open"]) and capped,
                tags=["dash_table_note"], html_attributes={"role": "note"})
@@ -59256,8 +59261,25 @@ class DashRenderer:
                             source=self._dash_table_copy(
                                 g, self._apply_graph_filter(g)))
                     elif _tspec:
-                        _dash_data_table(_fig, self._dash_table_columns(g),
-                                         _tspec)
+                        _tb = _dash_data_table(
+                            _fig, self._dash_table_columns(g), _tspec)
+                        _vr = (getattr(_tb[1], "_dash_view_rows", None)
+                               if _tb else None)
+                        if _vr is not None and \
+                                _ROW_ID_COLUMN in _tb[1].source.data:
+                            # The first layer draws its own if/in through
+                            # a view a move rebuilds; the table lists a
+                            # copy of those rows, which a move keeps by
+                            # row identity (_collect_derived_sources), as
+                            # the served table keeps its layer's rows.
+                            _ids = _tb[1].source.data[_ROW_ID_COLUMN]
+                            _lab = {v: k for k, v in
+                                    self._row_rank_map().items()}
+                            _dash_data_table(
+                                _fig, self._dash_table_columns(g), _tspec,
+                                source=self._dash_table_copy(
+                                    g, self.df.loc[[_lab[int(_ids[i])]
+                                                    for i in _vr]]))
                 except Exception as exc:
                     raise RuntimeError(
                         f"dash_render: failed to build figure '{name}': {exc}"

@@ -303,6 +303,44 @@ class TestTheView:
         assert _rows(dt)["Mileage (mpg)"] == [
             dr._dash_fmt_text(v, "%8.0g") for v in keep["mpg"]]
 
+    @staticmethod
+    def _layer_if(go, bo=None):
+        # A second layer over every row, so the graph's source holds more
+        # rows than the first layer draws.
+        return _table_spec(go, bo, plots=[
+            plot_for("scatter", if_expr="mpg > 22"),
+            plot_for("scatter", yvar="price", xvar="weight")])
+
+    @requires_node
+    def test_a_layer_if_table_follows_a_saved_move(self):
+        # The first layer draws its own if through a view of the graph's
+        # source: the table lists those rows, and after a move the rows of
+        # them the move keeps, as the served app does.
+        spec = self._layer_if({"table": "on", "hover": "foreign"},
+                              {"filter": "foreign, type(dropdown)"})
+        r = _saved(spec)
+        dt = _one(r._last_layout_root)[2]
+        want = [dr._dash_fmt_text(v, "%8.0g") for v in _DF["mpg"] if v > 22]
+        assert _rows(dt)["Mileage (mpg)"] == want
+        w = r.filter_widgets[0]
+        w.value = [v for v, lab in w.options if lab == "Foreign"][0]
+        cb = r.filter_callbacks[0]
+        JsSession([]).run_code(cb.code, cb.args)
+        keep = _DF[(_DF["mpg"] > 22) & (_DF["foreign"] == 1)]
+        assert _rows(dt)["Mileage (mpg)"] == [
+            dr._dash_fmt_text(v, "%8.0g") for v in keep["mpg"]]
+
+    def test_a_layer_if_table_follows_a_served_move(self):
+        from test_mode_parity import _fire, _widgets_of
+        doc = _served(self._layer_if({"table": "on", "hover": "foreign"},
+                                     {"filter": "foreign, type(dropdown)"}))
+        dt = _one(doc)[2]
+        w = [x for x in _widgets_of(doc) if isinstance(x, Select)][0]
+        _fire(w, [v for v, lab in w.options if lab == "Foreign"][0])
+        keep = _DF[(_DF["mpg"] > 22) & (_DF["foreign"] == 1)]
+        assert _rows(dt)["Mileage (mpg)"] == [
+            dr._dash_fmt_text(v, "%8.0g") for v in keep["mpg"]]
+
     def test_a_linked_table_follows_a_served_move(self):
         from test_mode_parity import _fire, _widgets_of
         doc = _served(self._linked({"table": "on", "hover": "foreign"},
@@ -545,3 +583,35 @@ class TestTheTableFollowsAMove:
         got = self._run({"table": "on", "by": "foreign"})
         assert got["after_len"] == 5, got
         assert set(got["after_text"]) == {"Foreign"}, got
+
+    def test_served_doc_in_chrome(self):
+        """The served app's table in a browser: shown by its toggle, and
+        holding the kept rows after the server answers a dropdown move."""
+        import responsive_probe
+        if responsive_probe.find_chrome() is None:
+            pytest.skip("headless Chrome is not installed; set DASH_CHROME "
+                        "(a skip is red under DASH_STRICT=1)")
+        from test_csp_browser import _CspProbe
+        from test_server_serves import _Served
+        tag, sp, dp = _write(_table_spec(
+            {"table": "on", "hover": "foreign"},
+            {"filter": "foreign, type(dropdown)"}))
+        # bokeh serve answers at /<the file's name>: app.py, at /app.
+        ap = os.path.join(tempfile.mkdtemp(dir=_TMP), "app.py")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(sp, dp).build(ap)
+        table = ("(() => { const t = __dash_models('DataTable')[0]; "
+                 "return JSON.stringify([t.visible, t.source.get_length(), "
+                 "t.source.data['__dash_tbl_foreign'].slice()]); })()")
+        with _Served(ap) as srv, _CspProbe(srv.url("/app")) as p:
+            p.in_task("__dash_models('Toggle')[0].active = true;")
+            shown = p.wait_change(table, p.read(table))
+            assert shown[0] is True and shown[1] == 10, shown
+            p.in_task(
+                "const s = __dash_models('Select')[0]; const o = "
+                "s.options.find(o => (Array.isArray(o) ? o[1] : o) === "
+                "'Foreign'); s.value = Array.isArray(o) ? o[0] : o;")
+            after = p.wait_change(table, shown, timeout=20)
+            assert after[1] == 5 and set(after[2]) == {"Foreign"}, after
+            assert p.js_errors() == [], p.js_errors()
