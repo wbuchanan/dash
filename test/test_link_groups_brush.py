@@ -417,6 +417,24 @@ class TestBrushFilter:
         want = [i for i, v in enumerate(ids) if v in (1, 4, 7)][:2]
         assert out["flt"][tid] == want
 
+    def test_the_served_table_view_follows_a_brush(self, tmp_path):
+        """The served app's linked data table lists the selected rows,
+        capped, and every row again (its cap) when the selection clears."""
+        graphs = [_graph("g1", go={"table": "rows(2)"}), _graph("g2")]
+        doc, _ = _served(_spec(graphs, link="_all", brush="filter"),
+                         tmp_path)
+        [dt] = list(doc.select({"type": DataTable}))
+        f1 = [f for f in _served_figs(doc)
+              if getattr(f, "_dash_table", None)][0]
+        src = _glyph_renderers(f1)[0].data_source
+        src.selected.indices = [1, 4, 7]
+        picked = {src.data["index"][i] for i in (1, 4, 7)}
+        tl = list(dt.source.data["index"])
+        assert list(dt.view.filter.indices) == [
+            i for i, v in enumerate(tl) if v in picked][:2]
+        src.selected.indices = []
+        assert list(dt.view.filter.indices) == [0, 1]
+
     def test_served_cb_recomputes_every_card(self, tmp_path):
         doc, _ = _served(_spec(_FOUR[:2], link="_all", brush="filter",
                                kpis=[_kpi("filter")]), tmp_path)
