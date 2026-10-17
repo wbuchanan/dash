@@ -327,30 +327,37 @@ class TestBinMembersTwin:
                      + ")));\n")
         assert out == _bar_members(edges, xs, ids)
 
-    def test_a_move_recomputes_the_members(self):
-        """A histogram source carrying __dash_bin_rows gets its members
-        recomputed from the kept rows after a move."""
+    # rbar and rspike (recast to a range type) are not refitted on the
+    # saved page: the layer keeps its build and is marked (WP-31 C16).
+    @pytest.mark.parametrize("recast", ["", "scatter", "bar"])
+    def test_a_move_recomputes_the_members(self, recast):
+        """Every source of a histogram that carries __dash_bin_rows -- its
+        bars', or what recast() draws for them (S51) -- holds the kept
+        rows' members after a move."""
         r = _page(filt="foreign, type(dropdown)",
-                  plots=[plot_for("histogram")])
+                  plots=[plot_for("histogram",
+                                  {"recast": recast} if recast else {})])
         cb = r.filter_callbacks[0]
-        (src,) = cb.args["agg_sources"]
-        n = len(src.data["top"])
-        src.data = dict(src.data, __dash_bin_rows=[[-1]] * n)
+        acs = json.loads(cb.args["agg_configs_json"])
+        pairs = [(s, ac) for s, ac in zip(cb.args["agg_sources"], acs)
+                 if "__dash_bin_rows" in s.data]
+        assert pairs, "no refitted source carries the bars' rows"
         (w,) = r.filter_widgets
         w.value = [v for v, lab in w.options if lab == "Foreign"][0]
         JsSession([]).run(cb)
-        (ac,) = json.loads(cb.args["agg_configs_json"])
         kept = _DF[_DF["foreign"] == 1]
-        nb = len(ac["bin_edges"]) - 1
-        first = ac.get("bin_first") or 0
-        grid = [ac["start"] + k * ac["width"]
-                for k in range((ac.get("bin") or nb) + 1)]
         rid = cb.args["orig_source"].data[dr._ROW_ID_COLUMN]
         ids = [int(i) for i in np.asarray(rid)[(_DF["foreign"] == 1)
                                                 .to_numpy()]]
-        want = _bar_members(grid, list(kept["mpg"]), ids)[first:first + nb]
-        got = [[int(i) for i in b] for b in src.data["__dash_bin_rows"]]
-        assert got == want
+        for src, ac in pairs:
+            nb = len(ac["bin_edges"]) - 1
+            first = ac.get("bin_first") or 0
+            grid = [ac["start"] + k * ac["width"]
+                    for k in range((ac.get("bin") or nb) + 1)]
+            want = _bar_members(grid, list(kept["mpg"]),
+                                ids)[first:first + nb]
+            got = [[int(i) for i in b] for b in src.data["__dash_bin_rows"]]
+            assert got == want, recast
 
 
 # ---------------------------------------------------------------------------
