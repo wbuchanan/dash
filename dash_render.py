@@ -39275,9 +39275,11 @@ def _dash_stata_ticks_take(request):
 
 
 #: WP-31 D15: dash.ado's export calls these two by name on this module
-#: (_dash_render_export), as _DASH_ADO_ENTRY_POINTS' functions.
+#: (_dash_render_export), as _DASH_ADO_ENTRY_POINTS' functions; and E10's
+#: spec writer the style rows it embeds.
 _DASH_ADO_ENTRY_POINTS = _DASH_ADO_ENTRY_POINTS + (_dash_stata_tick_plan,
-                                                   _dash_stata_ticks_take)
+                                                   _dash_stata_ticks_take,
+                                                   _dash_embed_style_rows)
 
 
 def _dash_off_date_ticks(lo, hi, n, kind):

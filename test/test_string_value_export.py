@@ -575,7 +575,9 @@ class TestDashAdoUsesTheWriter:
             "_dash_preview_path", "_dash_tmp_write_text", "_dash_tmp_clear",
             "_dash_run_renderer", "_dash_dep_versions",
             # 8 -> 10: D15 Stata's own #N ticks asked at export.
-            "_dash_stata_tick_plan", "_dash_stata_ticks_take"}
+            "_dash_stata_tick_plan", "_dash_stata_ticks_take",
+            # 10 -> 11: E10 the spec writer embeds the style rows.
+            "_dash_embed_style_rows"}
 
     def test_names_and_path_reach_python_by_value(self):
         """The path and the variable names are read by Macro.getLocal(),
