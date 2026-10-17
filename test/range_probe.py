@@ -71,7 +71,11 @@ _MOVE_JS = r"""
   for (const d of (window.Bokeh ? Bokeh.documents : [])) {
     for (const m of d.all_models) {
       if (m && m.constructor && m.constructor.__name__ === "RangeSlider") {
-        m.value = [m.start, m.start + fraction * (m.end - m.start)];
+        // A drag ends by writing value_throttled, which the page's
+        // slider callback fires on (WP-31 H1); a value write alone does not.
+        const v = [m.start, m.start + fraction * (m.end - m.start)];
+        m.value = v;
+        m.value_throttled = v;
         n += 1;
       }
     }
@@ -98,7 +102,8 @@ _MOVE_TIMED_JS = r"""
   const key = () => plots.map(p => p.y_range.start + "," + p.y_range.end);
   const old = key();
   const t0 = performance.now();
-  for (const m of sliders) m.value = [m.start, m.start + fraction * (m.end - m.start)];
+  // value_throttled too, as a drag's release writes it (WP-31 H1).
+  for (const m of sliders) { const v = [m.start, m.start + fraction * (m.end - m.start)]; m.value = v; m.value_throttled = v; }
   const tick = () => {
     const k = key();
     const done = k.every(v => v === k[0]) && k.some((v, i) => v !== old[i]);
