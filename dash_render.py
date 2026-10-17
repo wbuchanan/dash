@@ -2739,6 +2739,8 @@ def _dash_embedded_cells(spec, rows, columns, limits, frame=None):
 
     for k in kpis:
         _add(k.get("var"))
+        # A weighted card's weight (WP-31 H2k), read with its variable.
+        _add(k.get("wexp"))
         for key in ("qual_col", "qual_col_total"):
             _add(k.get(key))
 
@@ -2802,6 +2804,8 @@ def _dash_hover_unembedded(spec):
     for k in spec.get("kpis", []) or []:
         if isinstance(k, dict) and k.get("var"):
             other.add(k.get("var"))
+        if isinstance(k, dict) and k.get("wexp"):
+            other.add(k.get("wexp"))
     for f in _dash_parse_filter_raw(build.get("filter", ""), warn=False):
         if f.get("varname"):
             other.add(f.get("varname"))
@@ -30596,33 +30600,48 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
 
         const col = data_obj[k.varname];
         if (!col) continue;
+        // WP-31 H2k: a weighted card's weights travel as their own column
+        // beside its variable; without it the card cannot be recomputed.
+        const wcol = k.wvar ? data_obj[k.wvar] : null;
+        if (k.wvar && !wcol) continue;
+        const wkind = wcol ? (k.wkind || '') : '';
         // A KPI with its own if/in qualifier is restricted to the rows that
         // qualifier selects, intersected with the rows the filters kept.  Without
         // this the card opens on the conditional value and silently becomes the
         // unconditional one the first time any widget moves.
-        let src_col = col;
-        if (k.has_qual) {
-            const qset = new Set(k.qual_ids || []);
-            const rids = data_obj[ROW_ID];
-            src_col = [];
-            if (rids) {
-                for (let qi = 0; qi < col.length; qi++) {
-                    if (qset.has(rids[qi])) src_col.push(col[qi]);
-                }
-            }
-        }
+        const qset = k.has_qual ? new Set(k.qual_ids || []) : null;
+        const rids = data_obj[ROW_ID];
         // A string variable's missing value is "", and a string is no
         // number: count and dcount keep the strings that are not "", every
         // other statistic numbers only (dash kpi refuses a string variable
         // for those).  isNaN() dropped EVERY string, so count(make) read 0
         // from the first filter move on.
         const _cnt = (k.stat === 'count' || k.stat === 'dcount');
-        const _vals0 = src_col.filter(v => v !== null && v !== undefined &&
-            (typeof v === 'string' ? (_cnt && v !== '') : !isNaN(v)));
-        // WP-29 P0.20: a date in its Stata values, as summarize takes every
-        // statistic but count and dcount; a value with no Stata date is
-        // dropped (after the null test: Number(null) is 0).
-        const vals = k.unitkind ? _vals0.map(v => dash_stata_value_of(v, k.unitkind)).filter(v => v !== null) : _vals0;
+        // The kept values and their weights, pair by pair: a row with a
+        // missing or zero weight is dropped, as summarize drops it.
+        const vals = [];
+        const ws = [];
+        for (let qi = 0; qi < col.length; qi++) {
+            if (qset && !(rids && qset.has(rids[qi]))) continue;
+            let v = col[qi];
+            if (v === null || v === undefined) continue;
+            if (typeof v === 'string' ? !(_cnt && v !== '') : isNaN(v)) continue;
+            // WP-29 P0.20: a date in its Stata values, as summarize takes
+            // every statistic but count and dcount; a value with no Stata
+            // date is dropped (after the null test: Number(null) is 0).
+            if (k.unitkind) {
+                v = dash_stata_value_of(v, k.unitkind);
+                if (v === null) continue;
+            }
+            let w = 1;
+            if (wcol) {
+                w = wcol[qi];
+                if (w === null || w === undefined || typeof w !== 'number' ||
+                        !isFinite(w) || w === 0) continue;
+            }
+            vals.push(v);
+            ws.push(w);
+        }
 
         // Stata's answers on few rows: the count, distinct count and sum of
         // no rows are 0 and every other statistic is missing, and sd, var,
@@ -30631,57 +30650,70 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
         // "." (test_help_claims_4.py, scopes empty and one).
         let result = NaN;
         const stat = k.stat;
+        // summarize's r(N): an fweight's sum, else the observations kept.
+        const _wsum = ws.reduce((a, b) => a + b, 0);
         if (stat === 'count') {
-            result = vals.length;
+            result = wkind === 'fweight' ? _wsum : vals.length;
         } else if (stat === 'dcount') {
             result = new Set(vals.map(String)).size;
         } else if (stat === 'sum') {
-            result = vals.reduce((a, b) => a + b, 0);
+            // Weight times value under the raw weights, as r(sum) is.
+            let _sum = 0;
+            for (let i = 0; i < vals.length; i++) _sum += ws[i] * vals[i];
+            result = _sum;
         } else if (vals.length > 0) {
+            const mo = dash_kpi_moments(vals, ws, wkind);
+            const _var = (vals.length > 1 && mo.bigW > 1)
+                ? mo.s2 / (mo.bigW - 1) : NaN;
+            const _sd = _var >= 0 ? Math.sqrt(_var) : NaN;
+            const _m2 = mo.s2 / mo.bigW;
             if (stat === 'mean') {
-                result = vals.reduce((a, b) => a + b, 0) / vals.length;
+                result = mo.mean;
             } else if (stat === 'min') {
                 // Iterative reduction avoids RangeError: Maximum call stack
                 // size exceeded that spread-based Math.min would hit on large arrays.
                 result = vals.reduce((a, b) => a < b ? a : b, vals[0]);
             } else if (stat === 'max') {
                 result = vals.reduce((a, b) => a > b ? a : b, vals[0]);
-            } else if (stat === 'sd' && vals.length > 1) {
-                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-                result = Math.sqrt(
-                    vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
-                );
-            } else if (stat === 'var' && vals.length > 1) {
-                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-                result = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0)
-                         / (vals.length - 1);
-            } else if (stat === 'cv' && vals.length > 1) {
-                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-                const sd = Math.sqrt(
-                    vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
-                );
-                result = mu ? sd / mu : NaN;
+            } else if (stat === 'range') {
+                result = vals.reduce((a, b) => a > b ? a : b, vals[0])
+                         - vals.reduce((a, b) => a < b ? a : b, vals[0]);
+            } else if (stat === 'sd') {
+                result = _sd;
+            } else if (stat === 'var') {
+                result = _var;
+            } else if (stat === 'cv') {
+                result = mo.mean ? _sd / mo.mean : NaN;
+            } else if (stat === 'semean') {
+                // tabstat's se(mean), r(sd)/sqrt(r(N)).
+                result = _sd / Math.sqrt(wkind === 'fweight' ? _wsum : vals.length);
             } else if (stat === 'skewness' && vals.length > 1) {
                 // Stata's biased m3 / m2^1.5, matching the Python side.
-                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-                const m2 = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / vals.length;
-                const m3 = vals.reduce((a, b) => a + Math.pow(b - mu, 3), 0) / vals.length;
-                result = m2 > 0 ? m3 / Math.pow(m2, 1.5) : NaN;
+                result = _m2 > 0 ? (mo.s3 / mo.bigW) / Math.pow(_m2, 1.5) : NaN;
+            } else if (stat === 'kurtosis' && vals.length > 1) {
+                // Stata's m4 / m2^2, summarize, detail's r(kurtosis).
+                result = _m2 > 0 ? (mo.s4 / mo.bigW) / (_m2 * _m2) : NaN;
             } else {
                 // median, p50, p25, p75 and any other pNN.  dash_pctl is
                 // STATA's percentile rule, the same one _stata_percentile
                 // implements in Python -- p25/p75 used to have no branch at all
                 // here and fell through to result = 0 on the first filter move,
                 // and a rule that merely looked reasonable would disagree with
-                // the initial render.
-                const s = vals.slice().sort((a, b) => a - b);
+                // the initial render.  A weighted card sorts its pairs and
+                // takes the weighted rule, dash_wpctl (WP-31 H2k).
+                const ord = vals.map((v, i) => i);
+                ord.sort((a, b) => vals[a] - vals[b] || a - b);
+                const s = ord.map(i => vals[i]);
+                const sw = ord.map(i => ws[i]);
+                const pc = wcol ? (p => dash_wpctl(s, sw, p))
+                                : (p => dash_pctl(s, p));
                 if (stat === 'median') {
-                    result = dash_pctl(s, 50);
+                    result = pc(50);
                 } else if (stat === 'iqr') {
-                    result = dash_pctl(s, 75) - dash_pctl(s, 25);
+                    result = pc(75) - pc(25);
                 } else {
                     const mp = /^p(\\d{1,2}(?:\\.\\d+)?)$/.exec(stat);
-                    if (mp) result = dash_pctl(s, parseFloat(mp[1]));
+                    if (mp) result = pc(parseFloat(mp[1]));
                 }
             }
         }
@@ -30770,7 +30802,6 @@ function dash_pctl(sorted, p) {
     const k = Math.ceil(i);
     return sorted[Math.min(Math.max(k, 1), n) - 1];
 }
-// Stata's kernels ([R] kdensity), mirroring _KERNELS in dash_render.py.
 // Stata's WEIGHTED percentile ([R] summarize): with W_j the running sum of
 // the weights of the sorted values and P = p/100 * W, the first j with
 // W_j >= P gives x_j, or the mean of x_j and x_(j+1) when W_j == P exactly.
@@ -30796,6 +30827,36 @@ function dash_wpctl(sorted, w, p) {
     return sorted[n - 1];
 }
 
+// WP-31 H2k: summarize's weighted sums over a card's kept values and
+// weights (unit weights when the card has none), the twin of
+// DashRenderer._kpi_statistic: an aweight is scaled to sum to the
+// observation count, so W is n for it and the weights' sum otherwise.
+// Returns the count n, the weights' raw sum, W, the weighted mean and the
+// weighted sums of the 2nd, 3rd and 4th powers of the deviations.
+function dash_kpi_moments(vals, ws, kind) {
+    const n = vals.length;
+    let tot = 0;
+    for (let i = 0; i < n; i++) tot += ws[i];
+    const scale = kind === 'aweight' ? n / tot : 1;
+    const bigW = kind === 'aweight' ? n : tot;
+    let sx = 0;
+    for (let i = 0; i < n; i++) sx += ws[i] * scale * vals[i];
+    const mean = sx / bigW;
+    let s2 = 0, s3 = 0, s4 = 0;
+    for (let i = 0; i < n; i++) {
+        const d = vals[i] - mean;
+        const w = ws[i] * scale;
+        s2 += w * d * d;
+        s3 += w * d * d * d;
+        s4 += w * d * d * d * d;
+    }
+    return {n: n, tot: tot, bigW: bigW, mean: mean, s2: s2, s3: s3, s4: s4};
+}
+
+// Stata's kernels ([R] kdensity), mirroring _KERNELS in dash_render.py.
+// (Below dash_wpctl and dash_kpi_moments, so the brush callback's slice
+// from dash_pctl to this line carries what a weighted KPI card takes;
+// WP-31 H2k.)
 function dash_kernel(name) {
     const S5 = Math.sqrt(5);
     switch (name) {
@@ -55188,9 +55249,10 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
     kpis = [k for k in spec.get("kpis", []) or [] if isinstance(k, dict)]
     for k in kpis:
         if str(k.get("update", "filter") or "filter") in ("brush", "both"):
-            kv = str(k.get("var") or k.get("varname") or "")
-            if kv in need:
-                need[kv] = need[kv] | link_rows | every_graph
+            for kv in (str(k.get("var") or k.get("varname") or ""),
+                       str(k.get("wexp") or "")):
+                if kv in need:
+                    need[kv] = need[kv] | link_rows | every_graph
     filter_rows = []
     for f in filters or []:
         reach = pd.Series(False, index=idx)
@@ -55213,9 +55275,10 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
                 continue
             kr = _dash_embed_rows_of(k, frame, masks)
             reach = reach | kr
-            kv = str(k.get("var") or k.get("varname") or "")
-            if kv in need:
-                need[kv] = need[kv] | kr
+            for kv in (str(k.get("var") or k.get("varname") or ""),
+                       str(k.get("wexp") or "")):
+                if kv in need:
+                    need[kv] = need[kv] | kr
         if fvar in need:
             need[fvar] = need[fvar] | reach
         filter_rows.append(reach)
@@ -56952,7 +57015,8 @@ class DashRenderer:
             (getattr(self, "date_vars", {}) or {}).get(varname))
 
     @staticmethod
-    def _kpi_statistic(col: "pd.Series", stat: str) -> float:
+    def _kpi_statistic(col: "pd.Series", stat: str, weights=None,
+                       kind: str = "") -> float:
         """Compute one KPI statistic the way Stata computes it.
 
         Two places computed these and both used pandas' defaults.  The
@@ -56964,12 +57028,28 @@ class DashRenderer:
         implementation already existed in this module as
         ``_stata_percentile``; the KPI paths simply never called it.
 
-        Variance and standard deviation use N-1, and skewness is the biased
-        m3/m2^1.5, both matching Stata.
+        Variance and standard deviation use N-1, and skewness and kurtosis
+        are the biased m3/m2^1.5 and m4/m2^2, all matching Stata.
+
+        WP-31 H2k: *weights* (aligned with *col* by index when a Series,
+        else by position) and *kind* -- ``aweight``, ``fweight`` or
+        ``iweight`` -- give ``summarize [<kind>=w]``'s answer, measured in
+        test/fixtures/kpi_weights_truth.json: a row with a missing or zero
+        weight is dropped; the mean and the moments are weighted; the
+        variance divides by W - 1, where W is the sum of the weights, an
+        aweight's first scaled to sum to the observation count; ``count``
+        is r(N), the sum of the weights for an fweight and the observation
+        count otherwise; ``sum`` is the sum of weight times value under the
+        raw weights; ``semean`` is sd/sqrt(r(N)), tabstat's se(mean);
+        percentiles take the weighted rule
+        (:func:`_stata_weighted_percentile`); ``dcount`` ignores the
+        weights.  No weight is the unit weight, one body for both.
 
         Args:
-            col:  The column, already reduced to non-missing values.
-            stat: The statistic name.
+            col:     The column, already reduced to non-missing values.
+            stat:    The statistic name.
+            weights: The weights, or None.
+            kind:    The weight class when *weights* is given.
 
         Returns:
             The value.
@@ -56984,51 +57064,87 @@ class DashRenderer:
             # count(make) with three makes blank read 74 where Stata counts
             # 71, and dcount counted "" as a value.
             col = col[[not (isinstance(v, str) and v == "") for v in col]]
+        if weights is None:
+            w = np.ones(len(col))
+        elif isinstance(weights, pd.Series):
+            w = pd.to_numeric(weights.reindex(col.index),
+                              errors="coerce").to_numpy(dtype=float)
+        else:
+            w = np.asarray(weights, dtype=float)
+        keep = np.isfinite(w) & (w != 0)
+        if not keep.all():
+            col = col[keep]
+            w = w[keep]
+        n = len(col)
+        wkind = str(kind or "") if weights is not None else ""
         if s == "count":
-            return float(len(col))
+            return float(w.sum()) if wkind == "fweight" else float(n)
         if s == "dcount":
             return float(col.nunique())
         if s == "sum":
             # Before the empty check: Stata's summarize gives r(sum) = 0 over
             # no observations, and this gave missing (measured, test/
             # fixtures/kpi_pctile_truth.json scope `empty').
-            return float(col.sum()) if len(col) else 0.0
-        if len(col) == 0:
+            return float((w * col.to_numpy(dtype=float)).sum()) if n else 0.0
+        if n == 0:
             return float("nan")
-        if s == "mean":
-            return float(col.mean())
+        v = col.to_numpy(dtype=float)
         if s == "min":
-            return float(col.min())
+            return float(v.min())
         if s == "max":
-            return float(col.max())
-        if s == "sd":
-            return float(col.std(ddof=1))
-        if s == "var":
-            return float(col.var(ddof=1))
-        if s == "cv":
-            m = float(col.mean())
-            return float(col.std(ddof=1) / m) if m else float("nan")
-        if s == "skewness":
-            # Stata's biased m3 / m2^1.5, not the sample-corrected form.
-            v = col.to_numpy(dtype=float)
-            m = v.mean()
-            m2 = ((v - m) ** 2).mean()
-            m3 = ((v - m) ** 3).mean()
-            return float(m3 / m2 ** 1.5) if m2 > 0 else float("nan")
+            return float(v.max())
+        if s == "range":
+            return float(v.max() - v.min())
+        if s in ("mean", "sd", "var", "cv", "skewness", "kurtosis",
+                 "semean"):
+            tot = float(w.sum())
+            # An aweight is scaled to sum to the observation count.
+            wn = w * (n / tot) if wkind == "aweight" else w
+            big_w = float(n) if wkind == "aweight" else tot
+            m = float((wn * v).sum() / big_w)
+            if s == "mean":
+                return m
+            d = v - m
+            if s in ("skewness", "kurtosis"):
+                m2 = float((wn * d ** 2).sum() / big_w)
+                if not m2 > 0:
+                    return float("nan")
+                if s == "skewness":
+                    return float((wn * d ** 3).sum() / big_w / m2 ** 1.5)
+                return float((wn * d ** 4).sum() / big_w / m2 ** 2)
+            if n < 2 or not big_w > 1:
+                return float("nan")
+            var = float((wn * d ** 2).sum() / (big_w - 1))
+            if s == "var":
+                return var
+            sd = math.sqrt(var) if var >= 0 else float("nan")
+            if s == "sd":
+                return sd
+            if s == "semean":
+                r_n = tot if wkind == "fweight" else float(n)
+                return float(sd / math.sqrt(r_n))
+            return float(sd / m) if m else float("nan")
 
-        srt = np.sort(col.to_numpy(dtype=float))
+        order = np.argsort(v, kind="stable")
+        srt = v[order]
+        # The weighted rule, or with no weight Stata's own percentile.
+        sw = None if weights is None else w[order]
         if s == "iqr":
-            return float(_stata_percentile(srt, 75)
-                         - _stata_percentile(srt, 25))
-        if s in ("median", "p50"):
-            return float(_stata_percentile(srt, 50))
-        _p = _dash_kpi_pctile(s)
-        if _p is not None:
-            return float(_stata_percentile(srt, _p))
-        raise ValueError(f"Unknown KPI statistic: '{stat}'")
+            ps = (75.0, 25.0)
+        elif s in ("median", "p50"):
+            ps = (50.0,)
+        else:
+            _p = _dash_kpi_pctile(s)
+            if _p is None:
+                raise ValueError(f"Unknown KPI statistic: '{stat}'")
+            ps = (_p,)
+        got = [_stata_percentile(srt, p) if sw is None
+               else _stata_weighted_percentile(srt, sw, p) for p in ps]
+        return float(got[0] - got[1]) if s == "iqr" else float(got[0])
 
     def _compute_kpi_stat_on_df(
-        self, df: "pd.DataFrame", stat: str, varname: str
+        self, df: "pd.DataFrame", stat: str, varname: str,
+        wexp: str = "", wkind: str = ""
     ) -> float:
         """Compute a KPI statistic on an arbitrary DataFrame.
 
@@ -57043,17 +57159,24 @@ class DashRenderer:
             stat:    One of: mean, sum, count, dcount, min, max, median,
                      sd, p25, p50, p75.
             varname: Column name in *df*.
+            wexp:    The KPI's weight variable (WP-31 H2k), "" for none.
+            wkind:   Its class: aweight, fweight or iweight.
 
         Returns:
             Computed statistic as a float.
 
         Raises:
-            ValueError: If stat is unknown or varname not in *df*.
+            ValueError: If stat is unknown, or varname or wexp not in *df*.
         """
         if varname not in df.columns:
             raise ValueError(f"Variable '{varname}' not in DataFrame")
+        if wexp and wexp not in df.columns:
+            raise ValueError(f"Weight variable '{wexp}' not in DataFrame")
         col = df[varname].dropna()
         col = self._kpi_column(col, stat, varname)
+        if wexp:
+            return self._kpi_statistic(col, stat, weights=df[wexp],
+                                       kind=wkind)
         return self._kpi_statistic(col, stat)
 
     def _effective_kpi_fmt(self, kpi: dict, varname: str) -> str:
@@ -59203,10 +59326,11 @@ class DashRenderer:
         brush_kpi_vars: list[str] = []
         for kpi in kpis:
             if kpi.get("update", "filter") in ("brush", "both"):
-                kvar = kpi.get("var") or kpi.get("varname", "")
-                if (kvar and kvar not in brush_kpi_vars
-                        and kvar in self.df.columns):
-                    brush_kpi_vars.append(kvar)
+                for kvar in (kpi.get("var") or kpi.get("varname", ""),
+                             kpi.get("wexp", "")):
+                    if (kvar and kvar not in brush_kpi_vars
+                            and kvar in self.df.columns):
+                        brush_kpi_vars.append(kvar)
         if link_names:
             linked_vars: list[str] = []
             for g in graphs:
@@ -59231,9 +59355,10 @@ class DashRenderer:
                 # "brush" too: a brush KPI still needs its column on the
                 # source it is brushing, or the recompute finds nothing.
                 if kupdate in ("filter", "brush", "both"):
-                    kvar = kpi.get("var") or kpi.get("varname", "")
-                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
-                        linked_vars.append(kvar)
+                    for kvar in (kpi.get("var") or kpi.get("varname", ""),
+                                 kpi.get("wexp", "")):
+                        if kvar and kvar not in linked_vars and kvar in self.df.columns:
+                            linked_vars.append(kvar)
             _AGG_TYPES_RENDER = frozenset({"histogram", "kdensity"})
             for g in graphs:
                 gname = g.get("graph_options", {}).get("name", "")
@@ -59601,7 +59726,8 @@ class DashRenderer:
                     # 21.2973 where Stata's summarize reports 24.7727.
                     _kdf = self._apply_graph_filter(kpi)
                     raw_val = self._compute_kpi_stat_on_df(
-                        _kdf, stat, varname)
+                        _kdf, stat, varname, kpi.get("wexp", "") or "",
+                        kpi.get("weight", "") or "")
                     kpi_copy["value"] = self._format_kpi_value(
                         raw_val, self._effective_kpi_fmt(kpi, varname),
                         varname, stat
@@ -59655,6 +59781,10 @@ class DashRenderer:
             "storage": getattr(self, "storage_types", {}).get(kvar, "") or "",
             "has_qual": qual_ids is not None,
             "qual_ids": qual_ids if qual_ids is not None else [],
+            # The KPI's weight (WP-31 H2k): its column and class, data
+            # only; a name dash kpi proved a numeric variable.
+            "wvar": str(kdef.get("wexp", "") or ""),
+            "wkind": str(kdef.get("weight", "") or ""),
             # A statistic of a date variable whose result is itself a date
             # has to be re-rendered as a date, not as a number of ms.
             "datekind": (
@@ -59741,6 +59871,7 @@ class DashRenderer:
         # missing value draws from such a copy, and a brush on it reached
         # no script at all (BUGS.md, measured 24sep2026 on auto).
         _need = {c.get("varname") for c in cfg if c.get("varname")}
+        _need |= {c.get("wvar") for c in cfg if c.get("wvar")}
         _need.add(_ROW_ID_COLUMN)
         _brushable = list(self.sources.values())
         for _der_list in getattr(self, "derived_source_registry",
@@ -63319,8 +63450,11 @@ class ServerAppBuilder:
             # nothing in it -- rscatter and pcscatter are drawn, and
             # redrawn after a filter move, by GlyphMapper.map_rscatter and
             # map_pcscatter.
-            "def _compute_kpi(df, stat, varname, date_vars=None):",
+            "def _compute_kpi(df, stat, varname, date_vars=None, wexp='', wkind=''):",
             '    """Compute a KPI statistic from df[varname]. Returns float.',
+            "",
+            "    *wexp* and *wkind* are the card's weight variable and class",
+            "    (WP-31 H2k), '' for none; the weights are df[wexp].",
             "",
             "    Delegates to _kpi_statistic, which is the standalone",
             "    renderer's own function copied in verbatim above -- so a",
@@ -63335,6 +63469,9 @@ class ServerAppBuilder:
             "        # P0.20).",
             "        series = _dash_kpi_column(series, stat, varname,",
             "                                  (date_vars or {}).get(varname))",
+            "        if wexp:",
+            "            return float(_kpi_statistic(series, stat,",
+            "                                        weights=df[wexp], kind=wkind))",
             "        return float(_kpi_statistic(series, stat))",
             "    except Exception:",
             "        return float('nan')",
@@ -64759,7 +64896,8 @@ class ServerAppBuilder:
             "                or (kpi.get('in_expr') or '').strip()",
             "                or kpi.get('qual_col')):",
             "            _kpi_qual_rows[kname] = _k_df.index",
-            "        val = _compute_kpi(_k_df, kstat, kvar, _date_vars)",
+            "        val = _compute_kpi(_k_df, kstat, kvar, _date_vars,",
+            "                           kpi.get('wexp', '') or '', kpi.get('weight', '') or '')",
             "        disp = _format_kpi(val, kfmt, kvar, kstat, _date_vars)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
             "        # disable_math: the card is escaped HTML, not maths; a",
@@ -64975,7 +65113,8 @@ class ServerAppBuilder:
             "            _k_rows = _kpi_qual_rows.get(kname)",
             "            _k_fdf = (_k_all if _k_rows is None",
             "                      else _k_all[_k_all.index.isin(_k_rows)])",
-            "            return _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
+            "            return _compute_kpi(_k_fdf, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars,",
+            "                                kpi.get('wexp', '') or '', kpi.get('weight', '') or '')",
             "        def _dash_move_compute(plan):",
             "            \"\"\"Worker thread, or the loop inline (WP-30 P1.31b): every",
             "            layer redraw and card statistic of *plan*.  It builds only",
@@ -65353,7 +65492,8 @@ class ServerAppBuilder:
             "                _k_rows = _kpi_qual_rows.get(kname)",
             "                _k_sel = (sel_df if _k_rows is None",
             "                          else sel_df[sel_df.index.isin(_k_rows)])",
-            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars)",
+            "                val = _compute_kpi(_k_sel, kpi.get('stat', 'mean'), kpi.get('var', ''), _date_vars,",
+            "                                   kpi.get('wexp', '') or '', kpi.get('weight', '') or '')",
             "                disp = _format_kpi(val, kpi.get('fmt', ''),",
             "                                   kpi.get('var', ''),",
             "                                   kpi.get('stat', 'mean'), _date_vars)",

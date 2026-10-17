@@ -521,7 +521,11 @@ _SAVED_DIGEST = (
     # filters button with its fixed script, the same under both Pythons
     # (96f4d27b...); H2f the filter code's hold and the reset's one run
     # (code and the reset's callback arg), the same under both Pythons
-    "5236a3eb2597fd20a5b6530ba32b95d6a3df2f2785a90ca64b269c63faa78055")
+    # (5236a3eb...); H2k the KPI recompute's weights (the filter and brush
+    # code) and kpi_config's wvar and wkind keys -- the base's _FILTER_JS
+    # and config without the two keys give the old digest on the new tree
+    # -- the same under both Pythons
+    "269a2cff0314855b769b2169a137e570d21864785a5fd1aa8aabafe2dcd10137")
 
 
 # ===========================================================================

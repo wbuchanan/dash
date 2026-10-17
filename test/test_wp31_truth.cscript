@@ -13712,6 +13712,157 @@ if inlist("`only'", "", "S49") & `: list posof "S49" in w31_run' {
 }
 * ==== end S49 ====
 
+python:
+def _u50_cards(sp, dp):
+    """global u50_<name>: each KPI card's value text on the saved page the
+    spec dash wrote builds."""
+    import re
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    for name, div in r.kpi_divs.items():
+        m = re.search(r'id="kpi_val_[^"]*"[^>]*>([^<]*)<', div.text or "")
+        Macro.setGlobal("u50_" + name, m.group(1).strip() if m else "")
+end
+
+* ==== S50 H2k: KPI weights ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S50") & `: list posof "S50" in w31_run' {
+    display as text "S50 start " c(current_date) " " c(current_time)
+    local u50d "`w31_work'/s50"
+    capture mkdir "`u50d'"
+    sysuse auto, clear
+
+    // U50-1: a weighted KPI writes its class and variable into the spec.
+    dash clear
+    quietly dash scatter mpg price, name(zu50)
+    foreach s in mean sd p75 kurtosis {
+        quietly dash kpi `s'(mpg) [aw=weight], title("`s'") name(a_`s') fmt(%12.6f)
+    }
+    foreach s in mean var {
+        quietly dash kpi `s'(mpg) [fw=rep78], title("fw `s'") name(f_`s') fmt(%12.6f)
+        quietly dash kpi `s'(mpg) [iw=weight], title("iw `s'") name(i_`s') fmt(%12.6f)
+    }
+    quietly dash kpi semean(mpg), title("se") name(u_semean) fmt(%12.6f)
+    quietly dash kpi semean(mpg) [aw=weight], title("se aw") name(a_semean) fmt(%12.6f)
+    quietly dash kpi range(mpg), title("range") name(u_range) fmt(%12.6f)
+    quietly dash kpi range(mpg) [aw=wei], title("range aw") name(a_range) fmt(%12.6f)
+    capture noisily _dash_serve_spec, specpath("`u50d'/s1.json") datapath("`u50d'/d1.json")
+    local rc1 = _rc
+    _w31_expect U50-1 "(`rc1' == 0)" "_dash_serve_spec: r(`rc1')"
+    if `rc1' == 0 {
+        cert_file_has "`u50d'/s1.json", needle(`""name":"a_mean","stat":"mean","var":"mpg""')
+        _w31_expect U50-1 "r(found) == 1" "the spec holds no KPI a_mean"
+        cert_file_has "`u50d'/s1.json", needle(`""update":"filter","weight":"aweight","wexp":"weight","if_expr""')
+        _w31_expect U50-1 "r(found) == 1" "the spec holds no aweight by weight"
+        cert_file_has "`u50d'/s1.json", needle(`""weight":"fweight","wexp":"rep78""')
+        _w31_expect U50-1 "r(found) == 1" "the spec holds no fweight by rep78"
+        // An abbreviated weight is written out: [aw=wei] is weight.
+        cert_file_has "`u50d'/s1.json", needle(`""name":"a_range","stat":"range","var":"mpg""')
+        _w31_expect U50-1 "r(found) == 1" "the spec holds no KPI a_range"
+        cert_file_has "`u50d'/d1.json", needle(`""rep78""')
+        _w31_expect U50-1 "r(found) >= 1" "the data holds no rep78 column"
+        python: __import__("__main__")._u50_cards("`u50d'/s1.json", "`u50d'/d1.json")
+    }
+    _w31_done U50-1 "dash kpi mean(mpg) [aw=weight] writes weight aweight, wexp weight; the data carries the weight"
+
+    // U50-2..U50-5: each aweighted card is summarize [aw=weight], detail,
+    // measured here, as the card shows it and as dash kpi stored it.
+    quietly summarize mpg [aw=weight], detail
+    local u50_mean = r(mean)
+    local u50_sd = r(sd)
+    local u50_p75 = r(p75)
+    local u50_kurtosis = r(kurtosis)
+    local k 2
+    foreach s in mean sd p75 kurtosis {
+        local want = strtrim(string(`u50_`s'', "%12.6f"))
+        _w31_expect U50-`k' `"("${u50_a_`s'}" == "`want'")"' `"`s': the card shows ${u50_a_`s'}, summarize gives `want'"'
+        _w31_expect U50-`k' "(reldif(${dash_kpi_a_`s'__val}, `u50_`s'') < 1e-12)" `"`s': dash kpi stored ${dash_kpi_a_`s'__val}, summarize gives `u50_`s''"'
+        _w31_done U50-`k' "`s'(mpg) [aw=weight] is summarize's `want'"
+        local ++k
+    }
+
+    // U50-6: fweight and iweight cards, mean and Var.
+    foreach c in "f fw rep78" "i iw weight" {
+        gettoken p c : c
+        gettoken cl wv : c
+        local wv = strtrim("`wv'")
+        quietly summarize mpg [`cl'=`wv']
+        local u50_mean = r(mean)
+        local u50_var = r(Var)
+        foreach s in mean var {
+            local want = strtrim(string(`u50_`s'', "%12.6f"))
+            _w31_expect U50-6 `"("${u50_`p'_`s'}" == "`want'")"' `"`s' [`cl'=`wv']: the card shows ${u50_`p'_`s'}, summarize gives `want'"'
+        }
+    }
+    _w31_done U50-6 "mean and Var of mpg under [fw=rep78] and [iw=weight] are summarize's"
+
+    // U50-7: a pweight is refused as summarize refuses it, and an iweight
+    // with a statistic summarize, detail would need.
+    local k 0
+    foreach c in "p50(mpg) [pw=weight]|pweights not allowed" "p50(mpg) [iw=weight]|iweights not allowed" "kurtosis(mpg) [iw=weight]|iweights not allowed" {
+        local ++k
+        gettoken cmd msg : c, parse("|")
+        local msg = substr(`"`msg'"', 2, .)
+        local lf "`u50d'/r7_`k'.log"
+        capture log close _u50l
+        quietly log using "`lf'", text replace name(_u50l)
+        capture noisily dash kpi `cmd', title("x") name(r7_`k')
+        local rc = _rc
+        quietly log close _u50l
+        cert_log_has "`lf'", needle(`"`msg'"')
+        _w31_expect U50-7 "(`rc' == 101) & (r(count) == 1)" `"`cmd': r(`rc'), "`msg'" `r(count)' times"'
+    }
+    capture summarize mpg [pw=weight]
+    _w31_expect U50-7 "(_rc == 101)" "summarize [pw=weight] is r(`=_rc')"
+    _w31_done U50-7 "[pw=] and an iweight with a detail statistic are refused r(101) in summarize's words"
+
+    // U50-8: a weight expression is refused; dash evaluates none.
+    local lf "`u50d'/r8.log"
+    capture log close _u50l
+    quietly log using "`lf'", text replace name(_u50l)
+    capture noisily dash kpi mean(mpg) [aw=weight/2], title("x") name(r8)
+    local rc = _rc
+    quietly log close _u50l
+    cert_log_has "`lf'", needle("dash kpi: the weight must be a variable name; dash does not evaluate 'weight/2'.")
+    _w31_expect U50-8 "(`rc' == 198) & (r(count) == 1)" "[aw=weight/2]: r(`rc'), the sentence `r(count)' times"
+    _w31_done U50-8 "[aw=weight/2] is refused r(198)"
+
+    // U50-9: semean is r(sd)/sqrt(r(N)), tabstat's se(mean).
+    quietly summarize mpg
+    local want = strtrim(string(r(sd) / sqrt(r(N)), "%12.6f"))
+    _w31_expect U50-9 `"("${u50_u_semean}" == "`want'")"' "semean: the card shows ${u50_u_semean}, r(sd)/sqrt(r(N)) is `want'"
+    quietly tabstat mpg [aw=weight], statistics(semean) save
+    matrix u50T = r(StatTotal)
+    local want = strtrim(string(u50T[1, 1], "%12.6f"))
+    _w31_expect U50-9 `"("${u50_a_semean}" == "`want'")"' "semean [aw=weight]: the card shows ${u50_a_semean}, tabstat gives `want'"
+    _w31_done U50-9 "semean(mpg), unweighted and [aw=weight], is tabstat's se(mean)"
+
+    // U50-10: range is r(max) - r(min).
+    quietly summarize mpg
+    local want = strtrim(string(r(max) - r(min), "%12.6f"))
+    _w31_expect U50-10 `"("${u50_u_range}" == "`want'") & ("${u50_a_range}" == "`want'")"' "range: the cards show ${u50_u_range} and ${u50_a_range}, summarize gives `want'"
+    _w31_done U50-10 "range(mpg) is r(max) - r(min)"
+
+    // U50-11: a string weight is refused r(109), Stata's words.
+    local lf "`u50d'/r11.log"
+    capture log close _u50l
+    quietly log using "`lf'", text replace name(_u50l)
+    capture noisily dash kpi mean(mpg) [aw=make], title("x") name(r11)
+    local rc = _rc
+    quietly log close _u50l
+    cert_log_has "`lf'", needle("type mismatch")
+    _w31_expect U50-11 "(`rc' == 109) & (r(count) == 1)" "[aw=make]: r(`rc'), type mismatch `r(count)' times"
+    _w31_done U50-11 "[aw=make] is refused r(109) type mismatch"
+    dash clear
+    display as text "S50 end " c(current_date) " " c(current_time)
+}
+* ==== end S50 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

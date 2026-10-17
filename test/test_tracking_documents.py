@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "H2k": "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)",
     "H2l": "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)",
     "H1": "Saved-page JavaScript errors fail silently and saved sliders fire on every drag step",
     "H2x": "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)",

@@ -2008,6 +2008,10 @@ CORPUS = [
     _case("a KPI updated by brush", [_sc()],
           kpis=[_kpi(update="brush", update_graph="g1")]),
     _case("a percentile KPI", [_sc()], kpis=[_kpi(stat="p50")]),
+    # WP-31 H2k: a weighted card, by a weight no graph plots.
+    _case("weighted kpi", [plot_for("scatter")],
+          kpis=[_kpi(stat="mean", var="mpg", weight="aweight",
+                     wexp="weight")]),
     _case("a styled count KPI", [_sc()],
           kpis=[_kpi(stat="count", title="N", subtitle="obs", color="white",
                      bgcolor="#2c3e50")]),
@@ -3441,6 +3445,10 @@ MOVE_CORPUS = [
     _move_case("WP-30 P1.15c: two layers under by(), range", _MOVES[1],
                [_sc(), plot_for("lfit")], {"by": "foreign"}),
     _move_case("a KPI, dropdown", _MOVES[0], [_sc()], kpis=[_kpi()]),
+    _move_case("weighted kpi, dropdown to Foreign", _MOVES[0],
+               [plot_for("scatter")],
+               kpis=[_kpi(stat="sd", var="mpg", weight="fweight",
+                          wexp="weight")]),
     _move_case("a KPI with its own if, range", _MOVES[1], [_sc()],
                kpis=[_kpi(if_expr="foreign == 0")]),
     # Linked: this entry named a linked pair and set no link(), so it

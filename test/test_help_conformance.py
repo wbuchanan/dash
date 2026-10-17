@@ -1124,7 +1124,8 @@ class TestKpiStatisticsAreDocumented:
         second `local valid_stats "`valid_stats' ..."' line -- p25, p50 and
         p75 added there -- read 12, above the "10" this was, and the table
         check never asked about the three."""
-        assert len(self._valid_stats()) == 15
+        # 15 -> 18: kurtosis, semean and range (WP-31 H2k).
+        assert len(self._valid_stats()) == 18
 
     def test_every_accepted_statistic_is_in_the_table(self):
         """A help-to-code consistency guard, deliberately over text: every

@@ -270,23 +270,33 @@ class TestEveryStatisticMatchesStata:
 
     @pytest.mark.parametrize("stat", [
         "mean", "sum", "count", "min", "max", "median", "sd",
-        "p25", "p50", "p75",
+        "p25", "p50", "p75", "kurtosis", "semean", "range",
     ])
     def test_unconditional(self, truth, auto, stat):
-        want = _stat(truth, "all", stat)
+        # kurtosis, semean and range (WP-31 H2k) are measured by
+        # scripts/extract_kpi_weights_truth.do, unweighted scope.
+        if stat in ("kurtosis", "semean", "range"):
+            with open(os.path.join(_HERE, "fixtures",
+                                   "kpi_weights_truth.json"),
+                      encoding="utf-8") as fh:
+                want = float(json.load(fh)["unweighted"]["all"][stat])
+        else:
+            want = _stat(truth, "all", stat)
         dr = _render_kpi(auto, stat=stat, var="mpg", fmt="%12.6f")
         assert f"{want:.6f}" in _card_text(dr), (
             f"{stat}: expected {want:.6f}; card: {_card_text(dr)[:200]}"
         )
 
+    # Flipped (WP-31 H2k): this was test_the_statistics_the_command_does_not_
+    # yet_accept, whose docstring claimed a capability gap; dash kpi and both
+    # renderers have accepted the four since WP-28.
     @pytest.mark.parametrize("stat", ["var", "cv", "iqr", "skewness"])
-    def test_the_statistics_the_command_does_not_yet_accept(self, truth, auto,
-                                                            stat):
-        """Capability gap: accepted by neither dash.ado nor the renderer."""
+    def test_var_cv_iqr_skewness(self, truth, auto, stat):
+        """var, cv, iqr and skewness against Stata."""
         want = _stat(truth, "all", stat)
         dr = _render_kpi(auto, stat=stat, var="mpg", fmt="%12.6f")
         assert f"{want:.6f}" in _card_text(dr), (
-            f"{stat} is not supported; expected {want:.6f}"
+            f"{stat}: expected {want:.6f}; card: {_card_text(dr)[:200]}"
         )
 
     @pytest.mark.parametrize("key,missing_rows", [
@@ -352,6 +362,10 @@ class TestKpisUnderFiltering:
             helpers
             + "\nconst vals = " + json.dumps([float(v) for v in values]) + ";"
             + "\nconst stat = " + json.dumps(stat) + ";"
+            # The weights the block reads beside the values (WP-31 H2k):
+            # an unweighted card's are ones.
+            + "\nconst ws = vals.map(() => 1);"
+            + "\nconst wcol = null;\nconst wkind = '';"
             + "\nlet result = 0;\n" + block
             + "\nprocess.stdout.write(JSON.stringify(result));"
         )

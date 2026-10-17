@@ -2053,7 +2053,7 @@ brush selections change (depending on the {cmd:update()} option).
 
 {pstd}
 {ul:Syntax:}
-{cmd:dash kpi} {it:stat}{cmd:(}{it:varname}{cmd:)} {ifin} {cmd:,}
+{cmd:dash kpi} {it:stat}{cmd:(}{it:varname}{cmd:)} {ifin} {weight} {cmd:,}
 {cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}
 {cmdab:nam:e}{cmd:(}{it:id}{cmd:)}
 [{it:options}]
@@ -2079,6 +2079,9 @@ brush selections change (depending on the {cmd:update()} option).
 {synopt:{cmd:cv}}coefficient of variation, {cmd:sd}/{cmd:mean}{p_end}
 {synopt:{cmd:iqr}}interquartile range, {cmd:p75} - {cmd:p25}{p_end}
 {synopt:{cmd:skewness}}skewness{p_end}
+{synopt:{cmd:kurtosis}}kurtosis, Stata's m4/m2^2{p_end}
+{synopt:{cmd:semean}}standard error of the mean, {cmd:sd}/sqrt(N){p_end}
+{synopt:{cmd:range}}range, {cmd:max} - {cmd:min}{p_end}
 {synopt:{cmd:p25}}25th percentile{p_end}
 {synopt:{cmd:p50}}50th percentile (same as {cmd:median}){p_end}
 {synopt:{cmd:p75}}75th percentile{p_end}
@@ -2100,13 +2103,32 @@ the dashboard opens and after every filter move or brush, in the saved page
 and the served app alike.
 
 {pstd}
+{cmd:aweight}s, {cmd:fweight}s and {cmd:iweight}s are allowed, as
+{cmd:summarize} allows them; see {help weight}.  The weight is a numeric
+variable, not an expression: {cmd:[aw=weight/2]} is refused with
+{cmd:r(198)}.  Every statistic is then the one {cmd:summarize} with that
+weight reports -- {cmd:dash kpi mean(mpg) [aw=weight]} shows the mean
+{cmd:summarize mpg [aw=weight]} reports, {cmd:count} is its {cmd:r(N)}
+(the sum of the weights for an {cmd:fweight}), {cmd:sum} its {cmd:r(sum)},
+percentiles, {cmd:skewness} and {cmd:kurtosis} those of
+{cmd:summarize, detail}, and {cmd:semean} is {cmd:tabstat}'s
+{cmd:se(mean)}, {cmd:sd}/sqrt({cmd:r(N)}); {cmd:dcount} takes no weight,
+but an observation with a missing or zero weight is left out of every
+statistic, as {cmd:summarize} leaves it out.  The card stays weighted after
+every filter move and brush, in both modes.  {cmd:pweight}s are refused with
+{cmd:summarize}'s {cmd:r(101)}, and so is an {cmd:iweight} with
+{cmd:median}, {cmd:iqr}, a percentile, {cmd:skewness}, {cmd:kurtosis} or
+{cmd:semean}, which {cmd:summarize, detail} and {cmd:tabstat} do not take
+one for.
+
+{pstd}
 {cmd:count} and {cmd:dcount} also take a string variable, and count its
 values that are not empty; every other statistic needs a numeric variable
 and refuses a string one with {cmd:r(109)}.  Over no observations -- a
 filter can leave a card none -- {cmd:count}, {cmd:dcount} and {cmd:sum} are
 0 and every other statistic is missing, shown as {cmd:.}, as
-{cmd:summarize} has them; {cmd:sd}, {cmd:var}, {cmd:cv} and {cmd:skewness}
-of one observation are missing too.  Of a date variable, {cmd:mean},
+{cmd:summarize} has them; {cmd:sd}, {cmd:var}, {cmd:cv}, {cmd:semean},
+{cmd:skewness} and {cmd:kurtosis} of one observation are missing too.  Of a date variable, {cmd:mean},
 {cmd:min}, {cmd:max}, {cmd:median} and every percentile are dates, and
 both the saved page and the served app (see
 {help dash##server_mode:Server Mode}) show them as dates: in {cmd:fmt()}'s

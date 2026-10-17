@@ -5571,7 +5571,8 @@ string scalar _dash_option_names_scan(string scalar raw,
 // A KPI is a marker global, dash_kpi_<name> = "1", and one global per
 // field, dash_kpi_<name>__<field>, for these fields: its statistic,
 // variable, value, displayed value, fmt(), title(), subtitle(), color(),
-// bgcolor(), update(), and its own if and in.  dash.ado's _dash_kpi writes
+// bgcolor(), update(), its own if and in, and its weight's class and
+// variable (WP-31 H2k).  dash.ado's _dash_kpi writes
 // them, _dash_prepare_spec reads them and _dash_item_globals retires them;
 // test_registry_collision.cscript (REG-25) holds the writer to this list.
 //
@@ -5590,7 +5591,7 @@ string scalar _dash_option_names_scan(string scalar raw,
 string rowvector _dash_kpi_fields()
 {
     return(("sta", "var", "val", "dsp", "fmt", "tit", "sub", "col",
-            "bg", "upd", "if", "in"))
+            "bg", "upd", "if", "in", "wgt", "wex"))
 }
 
 

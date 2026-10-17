@@ -1067,7 +1067,7 @@ Changed behaviour.
 
 - filter() takes type(multi) and direction(rtl), lists (missing) where a variable has missing values, and every filter row ends in a Reset filters button, in both modes (WP-31, H2f)
 
-<!-- WP-31 H2k -->
+- dash kpi takes [aweight fweight iweight] with summarize's formulas and adds kurtosis, semean and range, in both modes (WP-31, H2k)
 
 <!-- WP-31 H2l -->
 

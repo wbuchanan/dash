@@ -11544,7 +11544,9 @@ program define _dash_kpi
     // them went straight to Python.
     mata: _dash_check_utf8(strtrim(st_local("0")))
 
-    syntax anything(name=statspec) [if] [in] , ///
+    // WP-31 H2k: the weight classes summarize takes; a pweight is named
+    // here so it is refused in summarize's words below, not syntax's.
+    syntax anything(name=statspec) [if] [in] [aweight fweight iweight pweight] , ///
         TItle(string)           ///
         NAMe(string)            ///
         [ FMT(string)           ///
@@ -11576,7 +11578,7 @@ program define _dash_kpi
         exit(198)
     }
 
-    local valid_stats "mean sum count dcount min max median sd var cv iqr skewness p25 p50 p75"
+    local valid_stats "mean sum count dcount min max median sd var cv iqr skewness kurtosis semean range p25 p50 p75"
     // p# for any percentile Stata's _pctile computes -- p10, p97.5, p0.5 --
     // not only the three in the list.  Measured at 4ede074, p97.5 stopped at
     // the pattern above, which had no point in it, and the rule here read
@@ -11615,6 +11617,57 @@ program define _dash_kpi
     }
 
     confirm variable `kpi_var'
+
+    // WP-31 H2k: the weight, as summarize takes it (measured,
+    // scripts/extract_kpi_weights_truth.do).  summarize refuses a pweight,
+    // r(101) "pweights not allowed", and summarize, detail and tabstat an
+    // iweight, r(101) "iweights not allowed" -- so an iweight goes only
+    // with the statistics plain summarize returns.  The weight is a
+    // variable, which the page carries as a column: dash evaluates no
+    // expression.  A string weight is refused by syntax above, r(109)
+    // "type mismatch"; a negative or noninteger frequency weight by
+    // summarize itself, below, in its words.
+    local _kw ""
+    if "`weight'" != "" {
+        if "`weight'" == "pweight" {
+            display as error "pweights not allowed"
+            exit 101
+        }
+        // syntax returns exp as "= weight", a blank after the =; read by
+        // value, in Mata, so the text is never expanded.
+        mata: st_local("_kw", strtrim(substr(st_local("exp"), 2, .)))
+        mata: st_local("_kw_ok", strofreal(ustrregexm(st_local("_kw"), ///
+            "^[\p{L}_][\p{L}\p{N}_]*$") & ustrlen(st_local("_kw")) <= 32))
+        if `_kw_ok' {
+            // An abbreviation, as summarize takes one, written out: the
+            // page's column is the variable's own name.
+            capture unab _kwf : `_kw', max(1)
+            if _rc local _kw_ok 0
+            else local _kw : copy local _kwf
+        }
+        if `_kw_ok' {
+            capture confirm numeric variable `_kw', exact
+            if _rc local _kw_ok 0
+        }
+        if !`_kw_ok' {
+            mata: _dash_say("err", "dash kpi: the weight must be a " + ///
+                "variable name; dash does not evaluate '", ///
+                usubstr(st_local("_kw"), 1, 40) + ///
+                (ustrlen(st_local("_kw")) > 40 ? "..." : ""), "'.")
+            exit 198
+        }
+        if "`weight'" == "iweight" & !inlist("`stat'", "mean", "sum", ///
+                "count", "dcount", "min", "max", "sd", "var") & ///
+                !inlist("`stat'", "cv", "range") {
+            display as error "iweights not allowed"
+            exit 101
+        }
+        // summarize proves the weights as it would for the statistic:
+        // negative weights r(402), a noninteger fweight r(401).
+        quietly summarize `_kw' `macval(if)' `macval(in)' [`weight'=`_kw']
+    }
+    local _kwc = cond("`_kw'" == "", "", "[`weight'=`_kw']")
+
     // count and dcount take a string variable -- its non-missing and its
     // distinct values -- and every other statistic needs a number.  A
     // string used to pass: summarize skips it, so mean(make) was stored as
@@ -11753,21 +11806,34 @@ program define _dash_kpi
     // (measured 24sep2026; test_json_escaping.cscript JSE-58).
     local kpi_value ""
 
-    if inlist("`stat'", "mean", "sum", "min", "max", "sd") {
-        quietly summarize `kpi_var' `macval(if)' `macval(in)'
+    // WP-31 H2k: under a weight every summarize and _pctile below takes
+    // it (`_kwc'), and a missing or zero weight drops its observation.
+    if inlist("`stat'", "mean", "sum", "min", "max", "sd", "range", "semean") {
+        quietly summarize `kpi_var' `macval(if)' `macval(in)' `_kwc'
         if      "`stat'" == "mean"  local kpi_value = r(mean)
         else if "`stat'" == "sum"   local kpi_value = r(sum)
         else if "`stat'" == "min"   local kpi_value = r(min)
         else if "`stat'" == "max"   local kpi_value = r(max)
         else if "`stat'" == "sd"    local kpi_value = r(sd)
+        else if "`stat'" == "range" local kpi_value = r(max) - r(min)
+        // tabstat's se(mean): r(sd)/sqrt(r(N)), r(N) the sum of an
+        // fweight and the observation count otherwise (measured).
+        else if "`stat'" == "semean" local kpi_value = r(sd) / sqrt(r(N))
     }
     else if "`stat'" == "count" {
         // The non-missing values, as count if !missing() counts them: for a
         // number that is summarize's r(N), and a string, which summarize
-        // skips, has its values that are not "" counted too.
+        // skips, has its values that are not "" counted too.  Under a
+        // weight, summarize's r(N) of that marker: an fweight's sum, else
+        // the observations the weight keeps.
         tempvar _dash_nm
         quietly generate byte `_dash_nm' = !missing(`kpi_var') `macval(if)' `macval(in)'
-        quietly count if `_dash_nm' == 1
+        if "`_kw'" == "" {
+            quietly count if `_dash_nm' == 1
+        }
+        else {
+            quietly summarize `_dash_nm' if `_dash_nm' == 1 `_kwc'
+        }
         local kpi_value = r(N)
     }
     else if "`stat'" == "dcount" {
@@ -11777,31 +11843,41 @@ program define _dash_kpi
         // is numeric-only; tabulate dies at 200k distinct; levelsof fails
         // once r(levels) exceeds c(macrolen).  egen group() has no ceiling,
         // works for string and numeric alike, and was the fastest measured.
+        // A weight is not used, but its missing and zero weights drop
+        // their observations, as summarize drops them (WP-31 H2k).
         tempvar _dash_grp
         quietly egen `_dash_grp' = group(`kpi_var') `macval(if)' `macval(in)'
+        if "`_kw'" != "" {
+            quietly replace `_dash_grp' = . if missing(`_kw') | `_kw' == 0
+        }
         quietly summarize `_dash_grp', meanonly
         local kpi_value = cond(r(N) == 0, 0, r(max))
     }
     else if "`stat'" == "median" {
-        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(50)
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)' `_kwc', p(50)
         local kpi_value = r(r1)
     }
     else if "`stat'" == "iqr" {
-        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(25 75)
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)' `_kwc', p(25 75)
         local kpi_value = r(r2) - r(r1)
     }
     else if `is_pctile' {
         // Any percentile, not the three p(25 50 75) was frozen at.  The
         // number as _dash_kpi_pctile wrote it, which is the text the
         // renderers parse, so all three read the same double.
-        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(`_pct_num')
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)' `_kwc', p(`_pct_num')
         local kpi_value = r(r1)
     }
-    else if inlist("`stat'", "var", "cv", "skewness") {
-        quietly summarize `kpi_var' `macval(if)' `macval(in)', detail
+    else if inlist("`stat'", "var", "cv") {
+        // Plain summarize, which takes an iweight (detail does not).
+        quietly summarize `kpi_var' `macval(if)' `macval(in)' `_kwc'
         if      "`stat'" == "var"      local kpi_value = r(Var)
         else if "`stat'" == "cv"       local kpi_value = cond(r(mean)==0, ., r(sd)/r(mean))
-        else if "`stat'" == "skewness" local kpi_value = r(skewness)
+    }
+    else if inlist("`stat'", "skewness", "kurtosis") {
+        quietly summarize `kpi_var' `macval(if)' `macval(in)' `_kwc', detail
+        if      "`stat'" == "skewness" local kpi_value = r(skewness)
+        else if "`stat'" == "kurtosis" local kpi_value = r(kurtosis)
     }
 
     local kpi_display = "`kpi_value'"
@@ -11828,6 +11904,9 @@ program define _dash_kpi
     global dash_kpi_`name'__val  "`kpi_value'"
     global dash_kpi_`name'__dsp  "`kpi_display'"
     global dash_kpi_`name'__upd  "`update'"
+    // WP-31 H2k: the weight's class and variable; empty, no global.
+    global dash_kpi_`name'__wgt  "`weight'"
+    global dash_kpi_`name'__wex  "`_kw'"
     // The user's text is stored by value, from Mata.  global ... "`title'"
     // read it again for macros -- A\$g B \`=1+1' C was stored as "A<what $g
     // held> B 2 C", and a \`=filewrite(...)' in a title wrote a file -- and
@@ -12226,6 +12305,21 @@ program define _dash_prepare_spec, rclass
             }
             local kpi_var = "${dash_kpi_`gname'__var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
+            // WP-31 H2k: a weighted card's weight is exported beside its
+            // variable, so both renderers recompute it weighted.
+            local _kwv = "${dash_kpi_`gname'__wex}"
+            if "`_kwv'" != "" {
+                capture confirm numeric variable `_kwv', exact
+                if _rc {
+                    mata: _dash_say("err", "`cmdname': KPI '", ///
+                        st_local("gname"), "' is weighted by a variable " + ///
+                        "the data no longer holds as a number. Run dash " + ///
+                        "clear and register it again.")
+                    exit 198
+                }
+                if !`: list _kwv in all_vars' local all_vars "`all_vars' `_kwv'"
+                if !`: list _kwv in row_vars' local row_vars "`row_vars' `_kwv'"
+            }
             // GAPS2 G3: a KPI always counts its variable (and, below, its
             // own qualifier column) -- it never draws from a computed-only
             // layer, so it is never excluded from row_vars.
@@ -12740,12 +12834,14 @@ program define _dash_prepare_spec, rclass
         mata: st_local("_kcol_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__col")))
         mata: st_local("_kbg_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__bg")))
         mata: st_local("kupdate",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__upd")))
+        mata: st_local("kweight",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__wgt")))
+        mata: st_local("kwexp",       _json_escape(st_global("dash_kpi_" + st_local("gname") + "__wex")))
         // The KPI's if and in travel as the column that holds Stata's
         // answer (_dash_qual_take, above), and as no text.
         local _kqc : copy local _kqc_`k'
 
         if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
-        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"","in_expr":"","qual_col":"`_kqc'"}"'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","weight":"`kweight'","wexp":"`kwexp'","if_expr":"","in_expr":"","qual_col":"`_kqc'"}"'
         local n_kpis = `n_kpis' + 1
     }
 

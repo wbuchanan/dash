@@ -705,7 +705,7 @@ foreach g of local _r24own {
     local r24v_`g' `"${`g'}"'
 }
 dash scatter price weight, name(a_tit) title("Graph a_tit")
-foreach f in stat disp sta dsp var val fmt sub col bg upd if in {
+foreach f in stat disp sta dsp var val fmt sub col bg upd if in wgt wex {
     capture noisily dash kpi mean(price), title("T`f'") name(a_`f')
     assert _rc == 0
 }
@@ -715,9 +715,9 @@ foreach g of local _r24own {
 _reg_spec r24
 assert r(rc) == 0
 local sp "`r(spec)'"
-cert_file_has "`sp'", needle(`"{"name":"a","stat":"mean","var":"mpg","value":"21.2972972972973","display":"21.2972972972973","fmt":"","title":"A","subtitle":"","color":"","bgcolor":"","update":"filter","if_expr":"","in_expr":"","qual_col":""}"')
+cert_file_has "`sp'", needle(`"{"name":"a","stat":"mean","var":"mpg","value":"21.2972972972973","display":"21.2972972972973","fmt":"","title":"A","subtitle":"","color":"","bgcolor":"","update":"filter","weight":"","wexp":"","if_expr":"","in_expr":"","qual_col":""}"')
 assert r(found) == 1
-foreach f in stat disp sta dsp var val fmt sub col bg upd if in {
+foreach f in stat disp sta dsp var val fmt sub col bg upd if in wgt wex {
     cert_file_has "`sp'", needle(`"{"name":"a_`f'","stat":"mean","var":"price""')
     assert r(found) == 1
 }
@@ -732,13 +732,14 @@ display "REG-25 PASS: no KPI or graph named a_<field> changes KPI a"
 // the registrar writes cannot be left behind by a replace.
 dash clear
 local k18 "k23456789012345678"
-capture noisily dash kpi mean(mpg) if foreign == 1 in 1/70, name(`k18') ///
+capture noisily dash kpi mean(mpg) if foreign == 1 in 1/70 [aw=weight], name(`k18') ///
     title("T") subtitle("S") fmt(%9.2f) color(red) bgcolor(white) update(both)
 assert _rc == 0
 local held : all globals "dash_kpi_`k18'*"
 mata: _dash_item_globals("`k18'", "_r25own")
 local r25n : word count `held'
-assert `r25n' == 13
+// 13 -> 15: the weight's class and variable (WP-31 H2k).
+assert `r25n' == 15
 assert `: list held == _r25own'
 local r25p "dash_kpi_`k18'__"
 foreach g of local held {
@@ -750,10 +751,11 @@ foreach g of local held {
         assert strpos("`r25f'", "_") == 0
     }
 }
-// _dash_kpi_fields(): twelve words of one to three lower-case letters.
+// _dash_kpi_fields(): fourteen words of one to three lower-case letters.
+// 12 -> 14: the weight's class and variable, wgt and wex (WP-31 H2k).
 mata: st_local("_r25fl", invtokens(_dash_kpi_fields()))
 local r25fn : word count `_r25fl'
-assert `r25fn' == 12
+assert `r25fn' == 14
 local r25fu : list uniq _r25fl
 assert `: list r25fu == _r25fl'
 foreach f of local _r25fl {
