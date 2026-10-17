@@ -5548,7 +5548,12 @@ def _s21_move(doc, mode):
                     n += 1
         return n
     import js_runner
-    cbs = list((w.js_property_callbacks or {}).get("change:value", []))
+    # A saved slider recomputes on release, change:value_throttled (WP-31
+    # H1), a Select on change:value; a drag's release writes both, so the
+    # move runs the callbacks under either key (the JS reads w.value).
+    jpc = w.js_property_callbacks or {}
+    cbs = [cb for k in ("change:value", "change:value_throttled")
+           for cb in jpc.get(k, [])]
     for cb in cbs:
         js_runner.JsSession([cb]).run(cb)
     return len(cbs)
