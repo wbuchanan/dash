@@ -626,3 +626,72 @@ class TestIntersection:
                  if "kpi_val_k1" in (d.text or "")]
         want1 = float(np.mean([vals[i] for i in sorted(l1)]))
         assert _card_value(texts[0]) == pytest.approx(want1, abs=1e-3)
+
+
+# ---------------------------------------------------------------------------
+# release: the saved page in Chrome
+# ---------------------------------------------------------------------------
+
+_SRC_JS = (
+    "JSON.stringify(__dash_models('ColumnDataSource').map(s => ({"
+    "cols: Object.keys(s.data).sort(), n: s.get_length(), "
+    "sel: s.selected.indices.length})))")
+_CARD_JS = ("JSON.stringify(__dash_models('Div').map(m => m.text)"
+            ".filter(t => t && t.indexOf('kpi_val_k1') >= 0))")
+
+
+@pytest.mark.release
+class TestInChrome:
+    def test_box_select_on_a_histogram_then_a_scatter(self, tmp_path):
+        """The shipped page in headless Chrome: a selection on the
+        histogram's bars selects their rows (the card reads their mean),
+        then a selection on the scatter intersects with it."""
+        from test_csp_browser import _CspProbe
+        r = _saved(_spec([_graph("g1", "histogram"), _graph("g2")],
+                         kpis=[_kpi()]))
+        members = _hist_renderer(r.figures["g1"]).data_source.data[
+            "__dash_bin_rows"]
+        spec = _spec([_graph("g1", "histogram"), _graph("g2")],
+                     kpis=[_kpi()])
+        sp, dp = tmp_path / "s.json", tmp_path / "d.json"
+        sp.write_text(json.dumps(spec))
+        dp.write_text(json.dumps(make_data_json(_DF)))
+        page = tmp_path / "page.html"
+        page.write_text(dr.DashRenderer(str(sp), str(dp)).render(),
+                        encoding="utf-8")
+        try:
+            probe = _CspProbe("file://" + str(page))
+            p = probe.__enter__()
+        except RuntimeError as exc:
+            pytest.skip(str(exc))
+        try:
+            before = p.read(_CARD_JS)
+            p.in_task(
+                "for (const s of __dash_models('ColumnDataSource')) "
+                "if (s.data.__dash_bin_rows) s.selected.indices = [0];")
+            after = p.wait_change(_CARD_JS, before)
+            ids0 = sorted(members[0])
+            want = float(_DF["mpg"].iloc[ids0].mean())
+            assert _card_value(after[0]) == pytest.approx(want, abs=1e-3), (
+                after, want)
+            sel = {tuple(x["cols"]): x["sel"] for x in p.read(_SRC_JS)}
+            raw = [v for k, v in sel.items()
+                   if dr._ROW_ID_COLUMN in k and "weight" not in k]
+            assert raw == [len(ids0)], sel
+            # Six of the scatter's rows overlapping the bar's in part,
+            # intersected with them.
+            p.in_task(
+                "for (const s of __dash_models('ColumnDataSource')) "
+                "if (s.data.weight && s.data.%s) "
+                "s.selected.indices = [2, 3, 4, 5, 6, 7];"
+                % dr._ROW_ID_COLUMN)
+            after2 = p.wait_change(_CARD_JS, after)
+            both = sorted(set(ids0) & set(range(2, 8)))
+            assert both and both != ids0, (ids0, both)
+            want2 = float(_DF["mpg"].iloc[both].mean())
+            assert _card_value(after2[0]) == pytest.approx(want2, abs=1e-3), (
+                after2, want2, both)
+            assert p.js_errors() == [], p.js_errors()
+            assert p.violations() == [], p.violations()
+        finally:
+            probe.__exit__(None, None, None)
