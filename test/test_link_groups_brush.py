@@ -501,6 +501,26 @@ class TestBinRows:
         assert len(members) == len(hr.data_source.data["top"])
         assert sorted(i for b in members for i in b) == list(range(_N))
 
+    @pytest.mark.parametrize("recast", ["rbar", "rspike", "scatter",
+                                        "bar"])
+    def test_a_recast_histogram_carries_bin_members(self, recast):
+        """histogram, recast(): the target's bars or points stand for
+        the bins and select their rows as the bars do."""
+        g = _graph("g1", "histogram")
+        g["plots"][0]["options"]["recast"] = recast
+        r = _saved(_spec([g], kpis=[_kpi()]))
+        hr = _hist_renderer(r.figures["g1"])
+        assert hr is not None, "recast(%s): no bin rows" % recast
+        members = hr.data_source.data["__dash_bin_rows"]
+        assert sorted(i for b in members for i in b) == list(range(_N))
+        cb = _brush_callbacks(r).get(id(hr.data_source))
+        assert cb is not None and cb.args["raw_source"] is not None
+        out = _js_cb(cb, [0])
+        raw = cb.args["raw_source"]
+        rid = list(raw.data[dr._ROW_ID_COLUMN])
+        assert out["sel"][raw.id] == [i for i, v in enumerate(rid)
+                                      if v in set(members[0])]
+
     def test_bar_source_carries_its_rows(self):
         """A twoway bar draws one bar per observation: its source holds
         the rows (no bins), and a selection on it reaches the brush."""

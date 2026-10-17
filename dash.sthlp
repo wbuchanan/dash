@@ -1794,8 +1794,8 @@ never more opaque than they are drawn unselected.  The other layers -- lines (th
 smoothers, densities, histograms, and the other range and paired-coordinate
 plots -- are drawn from data of their own and do not show a selection.  An
 {cmd:rbar} shows it in neither mode: its bars are drawn from its own rows.
-A box or lasso selection on a {cmd:histogram}'s bars selects the
-observations those bars count, as if they had been selected one by one:
+A box or lasso selection on a {cmd:histogram}'s bars, or on what
+{cmd:recast()} draws for them, selects the observations those bars count, as if they had been selected one by one:
 the group's other graphs and the KPI cards follow them.  On the saved page
 this holds until a filter moves; after a move the bars select nothing.
 

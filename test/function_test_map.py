@@ -680,6 +680,7 @@ FUNCTIONS = {
  '_dash_link_groups': 'test/test_link_groups_brush.py::TestLinkGroups::test_the_groups_are_read_from_the_separator',
  '_dash_brush_mode': 'test/test_link_groups_brush.py::TestBrushFilter::test_the_mode_is_read_from_the_build_options',
  '_dash_bin_members': 'test/test_link_groups_brush.py::TestBinRows::test_members_agree_with_the_histogram_count',
+ 'GlyphMapper.map_histogram.<locals>._bin_tag': 'test/test_link_groups_brush.py::TestBinRows::test_a_recast_histogram_carries_bin_members',
  '_dash_linked_views': 'test/test_served_linked_views.py::TestLinkedViews::test_a_filter_two_renderers_share_is_listed_once',
  '_dash_listed_names': 'test/test_reserved_names.py::TestTheRule::test_the_names_are_listed_bounded_and_printable',
  '_dash_lpoly_weights': 'test/test_statistical_helpers.py::TestWeightNormalisation::test_lpoly_normalises_an_aweight_to_mean_one',

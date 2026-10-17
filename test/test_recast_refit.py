@@ -81,7 +81,12 @@ class TestRecastRefit:
             assert cfg is not None, (ptype, target, type(g.glyph).__name__)
             assert cfg["type"] == ptype
             assert g._dash_agg_source is g.data_source
-            assert set(cfg["recast_cols"]) == set(g.data_source.data)
+            # Flipped (WP-31 H2l): a recast histogram's target carries
+            # each bar's rows (__dash_bin_rows), which the refit does not
+            # write and so drops at a move (the bars select nothing after
+            # one, as the bars themselves do); every other column is one.
+            assert set(cfg["recast_cols"]) == set(g.data_source.data) - {
+                "__dash_bin_rows"}
 
     @requires_node
     @pytest.mark.parametrize("target", _TARGETS)

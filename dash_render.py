@@ -21062,6 +21062,35 @@ class GlyphMapper:
             "left":  _hl,
             "right": _hr,
         })
+        # WP-31 H2l: the rows each bar counts, so a box or lasso selection
+        # on the bars -- or on what recast() draws for them -- selects
+        # those rows of the layer's own source (_BRUSH_JS; the served
+        # _make_brush_cb).
+        _bin_rows = None
+        _rid = source.data.get(_ROW_ID_COLUMN)
+        if _rid is None:
+            # The served app's sources carry the row labels as 'index'.
+            _rid = source.data.get("index")
+        if _rid is not None and i1 > i0:
+            _bx = self._masked_rows(source, view, yvar)[0]
+            _bsel = GlyphMapper._view_mask(view, len(_rid))
+            _bids = (list(_rid) if _bsel is None
+                     else [v for v, k in zip(list(_rid), _bsel) if k])
+            _bin_rows = _dash_bin_members(edges, _bx, _bids)[i0:i1]
+
+        def _bin_tag(before):
+            # The recast target's renderers whose source holds one row a
+            # bar: they carry the bars' rows as the bars do.
+            if _bin_rows is None:
+                return
+            for _br in list(fig.renderers[before:]):
+                _bd = getattr(_br, "data_source", None)
+                if _bd is None or not _bd.data:
+                    continue
+                _bn = len(next(iter(_bd.data.values())))
+                if _bn == len(_bin_rows):
+                    _bd.data["__dash_bin_rows"] = list(_bin_rows)
+                    _br._dash_bin_raw = source
         # recast() to a range type (WP-31 C7): the bins drawn as the
         # range over (centre, 0, height), as twoway draws histogram's
         # y2xview (area_cmissing_truth.json H01); rbar's bars are the
@@ -21082,8 +21111,11 @@ class GlyphMapper:
             _rng = ColumnDataSource({
                 "x": _hc, "lo": np.zeros(len(_hc)),
                 "hi": np.asarray(tops[i0:i1], dtype=float)})
-            return self._dash_draw_range_as(fig, _rng, "x", "lo", "hi", _tgt,
+            _rb = len(fig.renderers)
+            _ret = self._dash_draw_range_as(fig, _rng, "x", "lo", "hi", _tgt,
                                             _hopts, color_idx)
+            _bin_tag(_rb)
+            return _ret
         # recast(): the bars' midpoints and heights drawn as the target,
         # as twoway draws histogram's serset (WP-30 P1.8b).
         if options.get("recast"):
@@ -21107,21 +21139,11 @@ class GlyphMapper:
                                      options, wtype, discrete, start, h, nb,
                                      _hgap, _hoff),
                                  self._agg_member_ids(source, view))
+            # After the refit's tags, which read the target's own columns.
+            _bin_tag(_before)
             return _first
-        # WP-31 H2l: the rows each bar counts, so a box or lasso selection
-        # on the bars selects those rows of the layer's own source
-        # (_BRUSH_JS; the served _make_brush_cb).
-        _rid = source.data.get(_ROW_ID_COLUMN)
-        if _rid is None:
-            # The served app's sources carry the row labels as 'index'.
-            _rid = source.data.get("index")
-        if _rid is not None and i1 > i0:
-            _bx = self._masked_rows(source, view, yvar)[0]
-            _bsel = GlyphMapper._view_mask(view, len(_rid))
-            _bids = (list(_rid) if _bsel is None
-                     else [v for v, k in zip(list(_rid), _bsel) if k])
-            hist_source.data["__dash_bin_rows"] = _dash_bin_members(
-                edges, _bx, _bids)[i0:i1]
+        if _bin_rows is not None:
+            hist_source.data["__dash_bin_rows"] = _bin_rows
         r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
                                        yvar))
         if "__dash_bin_rows" in hist_source.data:
