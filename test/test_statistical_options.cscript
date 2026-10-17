@@ -212,7 +212,7 @@
 *!     LB-15 level() outside 10..99.99        r(198); inside rc 0
 *!     LB-16 level() with 3 decimals          r(198)
 *!     LB-17 level() not a number             r(7) / r(198)
-*!     LB-18 the order of the checks; D6 and D7 pinned
+*!     LB-18 the order of the checks; D7 pinned
 *!     LB-19 p(800) is p(), never pwidth()
 *!     LB-20 pwidth()/var() on lpoly scatter lfitci kdensity: noted (D9)
 *!
@@ -1062,13 +1062,12 @@ foreach pair in "var(0) bwidth(0)|bwidth()" "var(0) kernel(foo)|kernel" "var(0) 
     }
     else display as text `"LB-18 D7: [`o'] twoway rc ${lb_trc} "${lb_tmsg}"; dash "${lb_dmsg}""'
 }
-// ... and this one is D6: twoway counts the observations first.
-_lb_pair LB-18 "pwidth(0)" "if _n==1" quiet
-if ${lb_trc} != 2001 | ${lb_drc} != 198 | `"${lb_dmsg}"' != "pwidth() must be a positive number" {
-    display as error `"LB-18 FAIL: D6 twoway rc ${lb_trc}, dash rc ${lb_drc} "${lb_dmsg}""'
-    local bad = 1
-}
-_so_tally LB-18 `bad' "lpolyci's refusals come in twoway's order, apart from D6 and D7"
+// ... and D6: twoway counts the observations first.  Flipped (WP-31
+// C11): dash counts them first too, so D6 matches twoway exactly, rc 2001
+// "insufficient observations", where dash refused pwidth(0) first, r(198).
+_lb_pair LB-18 "pwidth(0)" "if _n==1"
+local bad = `bad' | ${lb_bad}
+_so_tally LB-18 `bad' "lpolyci's refusals come in twoway's order, apart from D7"
 
 // LB-19: p(800) is p(), never pwidth().  Flipped (WP-30 P1.14a): it was
 // "p(800) is pstyle()"; p() is twoway's own whole-plot style option, and
