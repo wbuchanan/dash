@@ -2219,7 +2219,10 @@ capture dash clear
 // entry hands the command on as a command line, which expands one again,
 // and that is its own work, with its own tests.
 // ----------------------------------------------------------------
-local jg_sent "`c(tmpdir)'jse48_executed"
+// The sentinel is a short name in the working directory: a c(tmpdir)
+// path made the title pass twoway's 254-column line on a long tmpdir, so
+// only its "> " tail was drawn (WP-31 E9) and the case followed the path.
+local jg_sent "jse48_x"
 capture erase "`jg_sent'"
 mata: st_local("jg_t", char(39) + " {err}{stata dash clear} </script><script>alert(1)</script> " + ///
     "__import__('os').system('touch " + st_local("jg_sent") + "') }],{x:1} =1+1")
