@@ -647,7 +647,9 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # 76 -> 88: WP-31 C8b documented colorr, colorst, colore, colorli,
     # colorformiss, colorkeysran, colorkeysrev, colorotherlab,
     # colorusepleg, cleg, pleg and pcyc (twoway's minimums).
-    assert len(seen) == 88, (
+    # 88 -> 89: WP-31 H2l documented br:ush(), dash's own option (twoway
+    # has no brush), at the minimum its BRush() declaration takes.
+    assert len(seen) == 89, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
