@@ -1438,14 +1438,6 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
-    "SchemeParser.stata_props_for_spec": (
-        "WP-31 S44 (E10) keeps it under WP-26's seam rule: only "
-        "_dash_embed_style_rows calls it, from dash.ado's two spec writers' "
-        "python: lines, which the name-based call graph does not read."),
-    "_dash_embed_style_rows": (
-        "WP-31 S44 (E10) keeps it under WP-26's seam rule: dash.ado's two "
-        "spec writers call it through their python: lines (A24), which the "
-        "name-based call graph of this file does not read."),
     "_dash_finish_text_value": (
         "WP-30 P1.11b keeps it under WP-26's seam rule: S09's (new, changed) form of "
         "_dash_finish_text_runs, which _dash_finish_graph_text now calls; "
