@@ -242,7 +242,10 @@ _FLAG = re.compile(r"\b(?:no)?([A-Z][A-Za-z0-9]*)\b")
 # Flipped (WP-31 D5): xoverhangs and yoverhangs ("P2.13 (Sizing)") were
 # allowed to reach no spec; they are drawn and written now.
 _ALLOW = {}
-_GRAPH_ALIASES = {"pbgc", "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2"}
+# table2: TABLE2() is table's argument form, folded onto s(table) by
+# _dash_table_fold (WP-31 H2t).
+_GRAPH_ALIASES = {"pbgc", "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2",
+                  "table2"}
 
 
 def _declared(prog):

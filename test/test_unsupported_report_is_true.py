@@ -460,7 +460,11 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            # colorformissing() is twoway's spelling of colormissing(),
            # copied onto it before the spec is written (WP-31 C8b;
            # test_wp31_truth.cscript U17-03).
-           "colorformissing"}
+           "colorformissing",
+           # TABLE2() is table's argument form, folded by _dash_table_fold
+           # onto table before the spec is written (WP-31 H2t;
+           # test_wp31_truth.cscript U48-1, U48-2).
+           "table2"}
 
 #: Options that decide where a command goes rather than what it draws.
 #: Declared so the spelling binds, and refused as twoway refuses it: no
@@ -864,6 +868,9 @@ LIVE_VALUES = {
                ("zlabel", "4000(4000)16000", "#3")),
     "zscale": (dict(_CV), dict(_CV), "scatter", ("zscale", "log", "reverse")),
     "ztitle": (dict(_CV), dict(_CV), "scatter", ("ztitle", "A", "B")),
+    # WP-31 H2t: dash's own data table, drawn under the figure
+    # (test_data_table.py); "" is no table.
+    "table": ({}, {}, "scatter", ("table", "rows(5) open", "")),
 }
 
 
@@ -925,8 +932,10 @@ class TestEveryDeclaredOptionIsClassified:
         # 227 -> 236: B5b the nine dot options declared
         # 236 -> 240 and 88 -> 92: D1 axis(2) minor forms xmlabel2
         # ymlabel2 xmtick2 ymtick2 declared in both blocks
+        # 92 -> 94: H2t table and table2() declared in the graph block (the
+        # plot block reads them through _dash_label_split)
         assert len(_declared_plot()) == 240, len(_declared_plot())
-        assert len(_declared_graph()) == 92, len(_declared_graph())
+        assert len(_declared_graph()) == 94, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no
