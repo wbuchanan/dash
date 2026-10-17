@@ -24,7 +24,7 @@ The audit of every name the worker reaches (``_WORKER_AUDIT``; verdicts):
   ``_kpi_divs`` (membership only), ``_kpi_qual_rows``, ``_date_vars`` | read
   only after the build |
 | ``df``, ``spec``, ``graphs``, ``g``, ``plot``, ``_sort_keys``,
-  ``_shared_pos`` (the layer redraws' closures), ``_DASH_TRANSPOSE``,
+  ``_shared_pos_of`` (the layer redraws' closures), ``_DASH_TRANSPOSE``,
   ``_GRAPH_SCHEME_PROPS``, ``_DASH_STYLE_ROWS`` (WP-31 E10's embedded
   style rows) | read only after the build |
 | ``_DASH_GRAPH_SCHEMES`` (S34's per-scheme cache) | GIL-atomic get/set of
@@ -78,7 +78,9 @@ _WORKER_AUDIT = {
     "_DASH_NOTED", "_fmt_cache", "warnings",
     "_slot", "_df_ref", "_agg_srcs", "_fgvals", "_owner_rows",
     "_kpi_defs", "_kpi_divs", "_kpi_qual_rows", "_date_vars",
-    "df", "spec", "graphs", "g", "plot", "_sort_keys", "_shared_pos",
+    # WP-31 H2l: _shared_pos became _shared_pos_of, one position map per
+    # link group, built before any session and never written after.
+    "df", "spec", "graphs", "g", "plot", "_sort_keys", "_shared_pos_of",
     "_DASH_TRANSPOSE", "_GRAPH_SCHEME_PROPS", "_DASH_GRAPH_SCHEMES",
     "_DASH_REF_SCHEMES", "_go", "_DASH_STYLE_ROWS",
     # WP-31 H2t: a table graph's layer carries its text columns, named
