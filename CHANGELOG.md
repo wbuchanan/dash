@@ -1061,7 +1061,7 @@ Changed behaviour.
 
 - The qfitci docstring, the module header's resample-count comment and the comment above dash.ado's sort rule describe the code: an analytic band with a bootstrap only on a singular design, and points joined in the data's order (WP-31, F5)
 
-<!-- WP-31 F3 -->
+- Stata's values for weighted qfitci and fpfitci bands, stdf/stdr under fweights, all eight kernels on kdensity, lpoly and lpolyci, and histogram bars on bin edges are recorded and pinned; line pattern lengths and lpoly's default bandwidth by degree and kernel were pinned earlier. (WP-31, F3)
 
 <!-- WP-31 H2t -->
 

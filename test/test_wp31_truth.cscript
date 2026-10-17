@@ -13328,6 +13328,158 @@ if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
 }
 * ==== end S47 ====
 
+python:
+def _u47_take(out):
+    """The data in memory (a serset just loaded) to *out* as columns."""
+    import json
+    from sfi import Data
+    rows = Data.get()
+    cols = [[None if v is None or v != v or abs(v) > 8.98e307 else float(v)
+             for v in col] for col in zip(*rows)] if rows else []
+    json.dump(cols, open(out, "w", encoding="utf-8"))
+
+
+def _u47_sources(sp, dp, app, need):
+    """{mode: data of the first source holding every key in *need*}."""
+    r, _page, doc = __import__("__main__")._u02_docs(sp, dp, app)
+    out = {}
+    for mode, roots in (("saved", [r._last_layout_root]),
+                        ("served", list(doc.roots))):
+        for root in roots:
+            for m in root.references():
+                d = getattr(m, "data", None)
+                if isinstance(d, dict) and all(k in d for k in need):
+                    out.setdefault(mode, d)
+    return out
+
+
+def _u47_band(sp, dp, app, tw, ix, ilo, ihi):
+    """global u47_bad empty when both modes' band equals twoway's serset
+    *tw* (columns ix, ilo, ihi) at every row twoway draws a band; a row
+    twoway leaves without one has none in dash, or lpolyci's D4 pinch."""
+    import json
+    import numpy as np
+    from sfi import Macro
+    cols = json.load(open(tw, encoding="utf-8"))
+    tx, tlo, thi = (np.array([np.nan if v is None else v for v in cols[i]])
+                    for i in (ix, ilo, ihi))
+    span = float(np.nanmax(thi) - np.nanmin(tlo)) or 1.0
+    bad = []
+    srcs = _u47_sources(sp, dp, app, ("y_lower", "y_upper"))
+    for mode in ("saved", "served"):
+        d = srcs.get(mode)
+        if d is None:
+            bad.append(mode + " draws no band")
+            continue
+        xk = [k for k in d if k.startswith("x_")][0]
+        bx = np.asarray(list(d[xk]), float)
+        lo = np.asarray(list(d["y_lower"]), float)
+        hi = np.asarray(list(d["y_upper"]), float)
+        n = 0
+        for xv, lv, uv in zip(tx, tlo, thi):
+            if not np.isfinite(xv):
+                continue
+            hit = np.where(np.abs(bx - xv) <= 1e-6 * max(abs(xv), 1.0))[0]
+            if not np.isfinite(lv):
+                if len(hit) and np.isfinite(lo[hit[0]]) and lo[hit[0]] != hi[hit[0]]:
+                    bad.append("%s band at %g" % (mode, xv))
+                continue
+            if not len(hit):
+                bad.append("%s no band at %g" % (mode, xv))
+                continue
+            k = hit[0]
+            n += 1
+            for a, b in ((lo[k], lv), (hi[k], uv)):
+                if abs(a - b) > 1e-6 * abs(b) + 2e-6 * span:
+                    bad.append("%s %g: %r vs %r" % (mode, xv, a, b))
+        if n == 0:
+            bad.append(mode + " compared no row")
+    Macro.setGlobal("u47_bad", "; ".join(bad)[:300])
+
+
+def _u47_bars(sp, dp, app, tw):
+    """global u47_bad empty when both modes' non-empty bars equal twoway
+    histogram's drawn serset heights (column 0)."""
+    import json
+    import numpy as np
+    from sfi import Macro
+    cols = json.load(open(tw, encoding="utf-8"))
+    want = np.array([v for v in cols[0] if v is not None], float)
+    bad = []
+    srcs = _u47_sources(sp, dp, app, ("top", "left", "right"))
+    for mode in ("saved", "served"):
+        d = srcs.get(mode)
+        if d is None:
+            bad.append(mode + " draws no bars")
+            continue
+        top = np.asarray(list(d["top"]), float)
+        got = top[top > 0]
+        if got.shape != want.shape or not np.allclose(got, want, rtol=1e-6):
+            bad.append("%s %s vs %s" % (mode, list(got), list(want)))
+    Macro.setGlobal("u47_bad", "; ".join(bad)[:300])
+end
+
+* ==== S47 F3: statistical truth extended ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S47") & `: list posof "S47" in w31_run' {
+    display as text "S47 start " c(current_date) " " c(current_time)
+    local u47d "`w31_work'/s47"
+    capture mkdir "`u47d'"
+
+    // U47-4..U47-7: twoway's drawn serset (saved .gph, graph use, serset
+    // use) beside dash's band or bars, saved and served.
+    local u47c1 "qfitci mpg weight [aw=price]"
+    local u47c2 "lfitci mpg weight [fw=fw], stdf"
+    local u47c3 "lpolyci mpg weight, kernel(cosine) bwidth(300)"
+    local u47c4 "histogram v, bin(10)"
+    forvalues k = 1/4 {
+        local id = `k' + 3
+        if `k' < 4 {
+            sysuse auto, clear
+            quietly generate fw = int(price/1000)
+        }
+        else {
+            clear
+            quietly set obs 11
+            quietly generate v = (_n - 1)/10
+        }
+        capture graph drop _all
+        capture serset drop _all
+        local sep = cond(strpos("`u47c`k''", ","), "", ",")
+        capture noisily twoway `u47c`k''`sep' nodraw saving("`u47d'/tw`id'.gph", replace)
+        local trc = _rc
+        _w31_expect U47-`id' "(`trc' == 0)" "twoway `u47c`k'' rc `trc'"
+        if `trc' == 0 {
+            preserve
+            capture graph drop _all
+            capture serset drop _all
+            quietly graph use "`u47d'/tw`id'.gph"
+            quietly serset set 0
+            quietly serset use, clear
+            python: __import__("__main__")._u47_take("`u47d'/tw`id'.json")
+            restore
+        }
+        dash clear
+        capture noisily dash `u47c`k''`sep' name(u47g`id')
+        _w31_expect U47-`id' "(_rc == 0)" "dash `u47c`k'' rc `=_rc'"
+        _dash_serve_spec, specpath("`u47d'/d`id'.json") datapath("`u47d'/dd`id'.json")
+        if `k' == 1 | `k' == 2 {
+            python: __import__("__main__")._u47_band("`u47d'/d`id'.json", "`u47d'/dd`id'.json", "`u47d'/a`id'.py", "`u47d'/tw`id'.json", 3, 1, 2)
+        }
+        else if `k' == 3 {
+            python: __import__("__main__")._u47_band("`u47d'/d`id'.json", "`u47d'/dd`id'.json", "`u47d'/a`id'.py", "`u47d'/tw`id'.json", 1, 2, 3)
+        }
+        else {
+            python: __import__("__main__")._u47_bars("`u47d'/d`id'.json", "`u47d'/dd`id'.json", "`u47d'/a`id'.py", "`u47d'/tw`id'.json")
+        }
+        _w31_expect U47-`id' `"("${u47_bad}" == "")"' `"`u47c`k'': ${u47_bad}"'
+        _w31_done U47-`id' "`u47c`k'': dash draws twoway's serset in both modes"
+    }
+    dash clear
+    display as text "S47 end " c(current_date) " " c(current_time)
+}
+* ==== end S47 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

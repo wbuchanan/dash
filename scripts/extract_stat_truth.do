@@ -1961,6 +1961,192 @@ foreach wspec in "auto aw price" "auto fw fw" "census aw pop" "sp500 aw volume" 
 }
 
 * ===========================================================================
+* LAYER 15 -- WP-31 F3: the truth GAPS2 C12/C14 left unmeasured
+*
+* weighted_ci   twoway qfitci / fpfitci under [aw=] and [fw=] (LAYER 14's
+*               weight specs) and [pw=] (the aw variable as a pweight), the
+*               drawn serset: fit lower upper fit_x.
+* fitci_std_fw  twoway lfitci / qfitci, stdf | stdr, under auto's [fw=fw].
+* kernels       twoway kdensity / lpoly / lpolyci at a fixed bwidth() for
+*               each of the eight kernels on auto and nlsw88, the drawn
+*               serset (kdensity: kde_y kde_x; lpoly: lpoly_y lpoly_x;
+*               lpolyci: lp_y lp_x lower upper, measured order).
+* histogram_edge (generator) and histogram_edge_twoway (the drawn serset of
+*               twoway histogram ..., frequency) for GAPS2 C14's values on
+*               bin edges: x = 0(.1)1 (float) with bin(10), 200 values
+*               rounded to hundredths with bin(20), 21 values in .1(.1)1
+*               with bin(27); the drawn serset of every edge case.  The data
+*               of the new cases are recorded in histogram_edge_data.
+* ===========================================================================
+foreach wspec in "auto aw price" "auto fw fw" "census aw pop" "sp500 aw volume" "nlsw88 aw hours" "auto pw price" "census pw pop" "sp500 pw volume" "nlsw88 pw hours" {
+    tokenize `wspec'
+    local ds `1'
+    local wt `2'
+    local wv `3'
+    local w  "`wt'=`wv'"
+    local yv ""
+    local xv ""
+    forvalues d = 1/`NDS' {
+        if "${ZQ_DSN_`d'}" == "`ds'" {
+            local yv "${ZQ_DSY_`d'}"
+            local xv "${ZQ_DSX_`d'}"
+        }
+    }
+    local dk "`ds':`wt'_`wv'"
+    if "`wt'" == "pw" local dk "`ds':aw_`wv'"
+    foreach pt in qfitci fpfitci {
+        local key "`ds':`wt'_`wv':`pt'"
+        sysuse `ds', clear
+        if "`wv'" == "fw" quietly generate fw = int(price/1000)
+        local p "${ZQ_WORK}/wci_`ds'_`wt'_`pt'.gph"
+        capture twoway `pt' `yv' `xv' [`w'] || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(weighted_ci) key(`key') fld(cmd) val(twoway `pt' `yv' `xv' [`w'])
+        zq_s, sec(weighted_ci) key(`key') fld(weight_type) val(`wt')
+        zq_s, sec(weighted_ci) key(`key') fld(weight_var) val(`wv')
+        zq_s, sec(weighted_ci) key(`key') fld(data_key) val(`dk')
+        zq_n, sec(weighted_ci) key(`key') fld(rc) val(`rc')
+        if `rc' == 0 {
+            preserve
+            zq_serset fit lower upper fit_x, path("`p'") set(0)
+            zq_curve fit_x fit lower upper, sec(weighted_ci) key(`key') maxn(200)
+            restore
+        }
+    }
+    display as text "weighted_ci probed: `wspec'"
+}
+
+foreach pt in lfitci qfitci {
+    foreach std in stdf stdr {
+        local key "auto:fw_fw:`pt':`std'"
+        sysuse auto, clear
+        quietly generate fw = int(price/1000)
+        local p "${ZQ_WORK}/sfw_`pt'_`std'.gph"
+        capture twoway `pt' mpg weight [fw=fw], `std' level(95) || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(fitci_std_fw) key(`key') fld(cmd) val(twoway `pt' mpg weight [fw=fw], `std' level(95))
+        zq_s, sec(fitci_std_fw) key(`key') fld(std) val(`std')
+        zq_s, sec(fitci_std_fw) key(`key') fld(data_key) val(auto:fw_fw)
+        zq_n, sec(fitci_std_fw) key(`key') fld(rc) val(`rc')
+        if `rc' == 0 {
+            preserve
+            zq_serset fit lower upper fit_x, path("`p'") set(0)
+            zq_curve fit_x fit lower upper, sec(fitci_std_fw) key(`key') maxn(200)
+            restore
+        }
+    }
+}
+display as text "fitci_std_fw probed"
+
+foreach kspec in "auto mpg weight 3 500" "nlsw88 wage ttl_exp 2 3" {
+    tokenize `kspec'
+    local ds `1'
+    local yv `2'
+    local xv `3'
+    local kbw `4'
+    local lbw `5'
+    foreach k in epanechnikov epan2 biweight cosine gaussian parzen rectangle triangle {
+        foreach pt in kdensity lpoly lpolyci {
+            local key "`ds':`pt':`k'"
+            sysuse `ds', clear
+            local p "${ZQ_WORK}/k_`ds'_`pt'_`k'.gph"
+            if "`pt'" == "kdensity" {
+                local c "twoway kdensity `yv', kernel(`k') bwidth(`kbw')"
+                local bw `kbw'
+            }
+            else {
+                local c "twoway `pt' `yv' `xv', kernel(`k') bwidth(`lbw')"
+                local bw `lbw'
+            }
+            capture `c' || , nodraw saving("`p'", replace)
+            local rc = _rc
+            zq_s, sec(kernels) key(`key') fld(cmd) val(`c')
+            zq_s, sec(kernels) key(`key') fld(kernel) val(`k')
+            zq_s, sec(kernels) key(`key') fld(type) val(`pt')
+            zq_n, sec(kernels) key(`key') fld(bwidth) val(`bw')
+            zq_n, sec(kernels) key(`key') fld(rc) val(`rc')
+            if `rc' == 0 {
+                preserve
+                if "`pt'" == "kdensity" {
+                    zq_serset kde_y kde_x, path("`p'") set(0)
+                    zq_curve kde_x kde_y, sec(kernels) key(`key') maxn(300)
+                }
+                else if "`pt'" == "lpoly" {
+                    zq_serset lpoly_y lpoly_x, path("`p'") set(0)
+                    zq_curve lpoly_x lpoly_y, sec(kernels) key(`key') maxn(300)
+                }
+                else {
+                    zq_serset lp_y lp_x lower upper, path("`p'") set(0)
+                    zq_curve lp_x lp_y lower upper, sec(kernels) key(`key') maxn(300)
+                }
+                restore
+            }
+        }
+    }
+    display as text "kernels probed: `ds'"
+}
+
+* ---- values on bin edges (GAPS2 C14) ------------------------------------
+capture program drop zq_edge_data
+program define zq_edge_data
+    syntax , Key(string)
+    preserve
+    quietly generate long obs_index = _n
+    quietly keep obs_index v
+    zq_curve obs_index v, sec(histogram_edge_data) key(`key') maxn(3000)
+    restore
+end
+
+capture program drop zq_edge_twoway
+program define zq_edge_twoway
+    syntax , Key(string) VARname(string) Opts(string)
+    local p "${ZQ_WORK}/edge_`=subinstr("`key'", ":", "_", .)'.gph"
+    capture twoway histogram `varname', `opts' nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(histogram_edge_twoway) key(`key') fld(cmd) val(twoway histogram `varname', `opts')
+    zq_n, sec(histogram_edge_twoway) key(`key') fld(rc) val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset bar_height zero bin_midpoint, path("`p'") set(0)
+        quietly keep bar_height bin_midpoint
+        zq_curve bin_midpoint bar_height, sec(histogram_edge_twoway) key(`key') maxn(100)
+        restore
+    }
+end
+
+clear
+quietly set obs 11
+quietly generate v = (_n - 1)/10
+zq_edge_data, key(edge:x01:bin10)
+zq_hist_edge, key(edge:x01:bin10) varname(v) opts(frequency bin(10))
+zq_edge_twoway, key(edge:x01:bin10) varname(v) opts(frequency bin(10))
+
+clear
+set seed 4747
+quietly set obs 200
+quietly generate double v = round(10*runiform(), .01)
+zq_edge_data, key(edge:hund200:bin20)
+zq_hist_edge, key(edge:hund200:bin20) varname(v) opts(frequency bin(20))
+zq_edge_twoway, key(edge:hund200:bin20) varname(v) opts(frequency bin(20))
+
+clear
+quietly set obs 21
+quietly generate double v = mod(_n - 1, 10)/10 + .1
+quietly replace v = .3 if inlist(_n, 11, 12, 13)
+zq_edge_data, key(edge:v21:bin27)
+zq_hist_edge, key(edge:v21:bin27) varname(v) opts(frequency bin(27))
+zq_edge_twoway, key(edge:v21:bin27) varname(v) opts(frequency bin(27))
+
+sysuse nlsw88, clear
+foreach b in 27 51 54 83 {
+    zq_edge_twoway, key(nlsw88:ttl_exp:bin`b') varname(ttl_exp) opts(frequency bin(`b'))
+}
+zq_edge_twoway, key(nlsw88:ttl_exp:bin27_density) varname(ttl_exp) opts(bin(27))
+sysuse census, clear
+zq_edge_twoway, key(census:pop:bin75) varname(pop) opts(frequency bin(75))
+display as text "histogram edges probed: 3 new cases, 9 drawn sersets"
+
+* ===========================================================================
 file close zqrec
 display as text "records written to ${ZQ_REC}"
 
@@ -2411,12 +2597,8 @@ UNVERIFIED = {
         "inference from measurement and is recorded as such: an implementation "
         "should be checked against the pairs in "
         "mband_default_band_count_rule_search, not only against the formula.",
-    "histogram.y_axis_bar_heights_under_twoway":
-        "Bar heights are taken from twoway__histogram_gen's generate() output, "
-        "which is the same subroutine twoway histogram calls, and cross-checked "
-        "against the serset min/max in the saved .gph.  The individual bar "
-        "heights inside a drawn twoway histogram serset were not enumerated "
-        "separately.",
+    # WP-31 F3: the histogram entry is gone -- LAYER 15 enumerates the bar
+    # heights of the drawn twoway histogram serset (histogram_edge_twoway).
 }
 
 CONTRADICTIONS = {
@@ -2884,6 +3066,12 @@ doc = {
             "weighted_probes": len(sections.get("weighted", {})),
             "weighted_data_probes": len(sections.get("weighted_data", {})),
             "rules_wp18_recorded": len(RULES_WP18),
+            # WP-31 F3
+            "weighted_ci_probes": len(sections.get("weighted_ci", {})),
+            "fitci_std_fw_probes": len(sections.get("fitci_std_fw", {})),
+            "kernel_probes": len(sections.get("kernels", {})),
+            "histogram_edge_twoway_probes": len(sections.get("histogram_edge_twoway", {})),
+            "histogram_edge_data_probes": len(sections.get("histogram_edge_data", {})),
         },
     },
     "rules": RULES,
@@ -2917,7 +3105,10 @@ for name in ("datasets", "histogram", "histogram_edge", "histogram_resolved_cmd"
              "mspline", "mspline_knots", "fpfit_repeated", "fpfit_repeated_data",
              "fpfit_shift", "fpfit_shift_curve", "fitci_std", "fitci_std_rebuild",
              "lowess_more", "histogram_discrete", "histogram_discrete_twoway",
-             "weight_acceptance", "weighted", "weighted_data"):
+             "weight_acceptance", "weighted", "weighted_data",
+             # WP-31 F3
+             "weighted_ci", "fitci_std_fw", "kernels",
+             "histogram_edge_twoway", "histogram_edge_data"):
     doc[name] = sections.get(name, {})
 
 with open(OUT, "w") as fh:

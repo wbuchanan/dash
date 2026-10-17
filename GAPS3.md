@@ -523,7 +523,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1g Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)", commit b9488d3.
 F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: the lpoly/lpolyci exact-fit bandwidth, where the saved page keeps the build and marks the layer (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", C11b)
 - **F2 Tracked:** Closed in WP-31, BUGS.md "The function points-free fallback evaluates ten math names only", commit pending.
-- **F3 Tracked:** Open (WP-31 section 47).
+- **F3 Tracked:** Closed in WP-31, BUGS.md "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values", commit pending.
 - **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
 - **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit 1918fc4.
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.

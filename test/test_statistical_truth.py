@@ -249,8 +249,11 @@ class TestHistogramEdgeAgainstStata:
             assert float(tops.sum()) == pytest.approx(float(rec["N"]))
 
     def test_the_fixture_holds_the_seven_edge_probes(self, truth):
-        assert set(truth["histogram_edge"]) == {key for key, _ in _EDGE_CASES}, (
-            "a regenerated fixture must keep exactly these seven probes, "
+        # Flipped (WP-31 F3): GAPS2 C14's three on-edge data sets join the
+        # seven probes (TestHistogramOnEdge draws them); 7 -> 10.
+        assert set(truth["histogram_edge"]) == (
+            {key for key, _ in _EDGE_CASES} | set(_ON_EDGE)), (
+            "a regenerated fixture must keep exactly these ten probes, "
             "not shrink the parametrisation"
         )
         for key, rec in truth["histogram_edge"].items():
@@ -1840,3 +1843,216 @@ class TestKdensityAsDrawn:
             _at_samples(rec, gy, "kde_y"), want, rtol=2e-6,
             atol=1e-9 * _span(want),
             err_msg=f"{name}: {rec['cmd']}")
+
+
+# ======================================================================
+# WP-31 F3: weighted qfitci/fpfitci bands, stdf/stdr under fw, the eight
+# kernels, histogram bars on bin edges (LAYER 15 of extract_stat_truth.do)
+# ======================================================================
+
+_WCI_SPECS = ("auto:aw_price", "auto:fw_fw", "census:aw_pop",
+              "sp500:aw_volume", "nlsw88:aw_hours", "auto:pw_price",
+              "census:pw_pop", "sp500:pw_volume", "nlsw88:pw_hours")
+_WCI_KEYS = [f"{s}:{pt}" for s in _WCI_SPECS for pt in ("qfitci", "fpfitci")]
+_KERNELS = ("epanechnikov", "epan2", "biweight", "cosine", "gaussian",
+            "parzen", "rectangle", "triangle")
+_KERNEL_KEYS = [f"{ds}:{pt}:{k}" for ds in ("auto", "nlsw88")
+                for pt in ("kdensity", "lpoly", "lpolyci") for k in _KERNELS]
+_ON_EDGE = ("edge:x01:bin10", "edge:hund200:bin20", "edge:v21:bin27")
+
+
+def _wci_frame(truth, datasets, rec):
+    """(y, x, w, options, wvar) for a weighted_ci or fitci_std_fw record:
+    the weight column from weighted_data, typed as the record says."""
+    ds = rec["data_key"].split(":")[0]
+    y, x = _need(datasets, ds)
+    w = _weight_column(truth, rec["data_key"])
+    wvar = truth["weighted_data"][rec["data_key"]]["weight_var"]
+    wt = rec.get("weight_type",
+                 truth["weighted_data"][rec["data_key"]]["weight_type"])
+    return y, x, w, {"weight": _WEIGHT_TYPE[wt], "wexp": wvar}, wvar
+
+
+def _check_band(rec, gx, gy, glo, ghi, key):
+    assert len(gx) == rec["n_points"], (
+        f"{key}: dash drew {len(gx)} points, Stata {rec['n_points']}")
+    np.testing.assert_allclose(_at_samples(rec, gx, "fit_x"),
+                               _series(rec, "fit_x"), rtol=1e-6)
+    span = _span(rec["fit"])
+    for name, got in (("fit", gy), ("lower", glo), ("upper", ghi)):
+        np.testing.assert_allclose(
+            _at_samples(rec, got, name), _series(rec, name),
+            rtol=1e-6, atol=2e-6 * span,
+            err_msg=f"{key}: {name} differs from {rec['cmd']}")
+
+
+class TestWeightedCiBands:
+    """qfitci and fpfitci under [aw=], [fw=] and [pw=] against twoway's
+    drawn band (GAPS2 C12)."""
+
+    @pytest.mark.parametrize("key", _WCI_KEYS)
+    def test_each(self, truth, datasets, mapper, key):
+        rec = _rec(truth, "weighted_ci", key)
+        assert rec["rc"] == 0, f"{key}: {rec['cmd']} failed in Stata"
+        y, x, w, opts, wvar = _wci_frame(truth, datasets, rec)
+        opts["level"] = "95"
+        src = _weighted_source(y, x, w, wvar)
+        if key.endswith(":qfitci"):
+            rs = mapper.map_qfitci(figure(), src, "y", "x", opts)
+            gx, gy, glo, ghi = _band_data(rs, "x_fit", "y_fit")
+        else:
+            rs = mapper.map_fpfitci(figure(), src, "y", "x", opts)
+            gx, gy, glo, ghi = _band_data(rs, "x_fp", "y_fp")
+        _check_band(rec, gx, gy, glo, ghi, key)
+
+
+class TestFitciStdUnderFw:
+    """lfitci/qfitci stdf and stdr under auto's [fw=fw]."""
+
+    @pytest.mark.parametrize("key", [f"auto:fw_fw:{pt}:{std}"
+                                     for pt in ("lfitci", "qfitci")
+                                     for std in ("stdf", "stdr")])
+    def test_each(self, truth, datasets, mapper, key):
+        rec = _rec(truth, "fitci_std_fw", key)
+        assert rec["rc"] == 0, f"{key}: {rec['cmd']} failed in Stata"
+        y, x, w, opts, wvar = _wci_frame(truth, datasets, rec)
+        opts.update({rec["std"]: rec["std"], "level": "95"})
+        fn = mapper.map_lfitci if ":lfitci:" in key else mapper.map_qfitci
+        rs = fn(figure(), _weighted_source(y, x, w, wvar), "y", "x", opts)
+        gx, gy, glo, ghi = _band_data(rs, "x_fit", "y_fit")
+        _check_band(rec, gx, gy, glo, ghi, key)
+
+
+class TestEightKernels:
+    """kdensity, lpoly and lpolyci at a fixed bwidth() for each of Stata's
+    eight kernels against twoway's drawn serset (GAPS2 C12: six kernels had
+    only test_kernel_flags.py's own formulas)."""
+
+    @pytest.mark.parametrize("key", _KERNEL_KEYS)
+    def test_each(self, truth, datasets, mapper, key):
+        rec = _rec(truth, "kernels", key)
+        assert rec["rc"] == 0, f"{key}: {rec['cmd']} failed in Stata"
+        ds, pt, kern = key.split(":")
+        y, x = _need(datasets, ds)
+        bw = float(rec["bwidth"])
+        if pt == "kdensity":
+            want_x = _series(rec, "kde_x")
+            want = _series(rec, "kde_y")
+            got = dash_render._kde_curve(y, want_x, bw, kern)
+            np.testing.assert_allclose(
+                got, want, rtol=1e-6, atol=1e-6 * _span(want),
+                err_msg=f"{key}: dash's density differs from {rec['cmd']}")
+            return
+        src = ColumnDataSource({"y": list(y), "x": list(x)})
+        opts = {"kernel": kern, "bwidth": repr(bw)}
+        if pt == "lpoly":
+            r = mapper.map_lpoly(figure(), src, "y", "x", opts)
+            gx, gy = _line_data(r, "x_lp", "y_lp")
+            want_x, want = _series(rec, "lpoly_x"), _series(rec, "lpoly_y")
+            pairs = [("lpoly_y", gy, want)]
+        else:
+            rs = mapper.map_lpolyci(figure(), src, "y", "x", opts)
+            band = [g for g in rs if "y_lower" in g.data_source.data][0]
+            line = [g for g in rs if "y_lp" in g.data_source.data][0]
+            gx, gy = _line_data(line, "x_lp", "y_lp")
+            bd = band.data_source.data
+            want_x, want = _series(rec, "lp_x"), _series(rec, "lp_y")
+            pairs = [("lp_y", gy, want)]
+            # The band, row by row: where twoway's band is missing (too few
+            # observations in the window for a standard error) dash draws
+            # no band point there either.
+            bx = np.asarray(bd["x_lp"], float)
+            blo = np.asarray(bd["y_lower"], float)
+            bhi = np.asarray(bd["y_upper"], float)
+            wlo, whi = _series(rec, "lower"), _series(rec, "upper")
+            span = _span(wlo[np.isfinite(wlo)])
+            for xv, lv, uv in zip(want_x, wlo, whi):
+                if not np.isfinite(xv):
+                    continue
+                hit = np.where(np.abs(bx - xv) <= 1e-6 * abs(xv))[0]
+                if not np.isfinite(lv):
+                    # None, or lpolyci_truth.json's D4 pinch (lower ==
+                    # upper, a band of no width) where the pilot fit has no
+                    # residual degrees of freedom (test_lpolyci_band.py).
+                    assert not len(hit) or not np.isfinite(blo[hit[0]]) \
+                        or blo[hit[0]] == bhi[hit[0]], (
+                        f"{key}: dash draws a band at x = {xv} where "
+                        f"twoway draws none")
+                    continue
+                assert len(hit) == 1, f"{key}: no band point at x = {xv}"
+                k = hit[0]
+                assert abs(blo[k] - lv) <= 1e-6 * abs(lv) + 1e-6 * span, (
+                    key, xv, blo[k], lv)
+                assert abs(bhi[k] - uv) <= 1e-6 * abs(uv) + 1e-6 * span, (
+                    key, xv, bhi[k], uv)
+        keep = np.isfinite(want_x)
+        assert len(gx) == int(keep.sum()), (
+            f"{key}: dash drew {len(gx)} points, twoway {int(keep.sum())}")
+        np.testing.assert_allclose(gx, want_x[keep], rtol=1e-6,
+                                   err_msg=f"{key}: grid")
+        for name, got, w in pairs:
+            w = w[keep]
+            ok = np.isfinite(w)
+            np.testing.assert_allclose(
+                np.asarray(got)[ok], w[ok], rtol=1e-6,
+                atol=1e-6 * _span(w),
+                err_msg=f"{key}: {name} differs from {rec['cmd']}")
+
+
+class TestHistogramOnEdge:
+    """GAPS2 C14: values that sit on bin edges, bar by bar against the
+    generator and against twoway histogram's drawn serset, in Python and
+    in the saved page's recount (``_FILTER_JS`` under node)."""
+
+    def _draw(self, truth, key):
+        data = _series(_rec(truth, "histogram_edge_data", key), "v")
+        rec = _rec(truth, "histogram_edge", key)
+        src = ColumnDataSource({"v": list(data)})
+        mapper_ = GlyphMapper(OptionTranslator(), SchemeParser("s2color"))
+        r = mapper_.map_histogram(figure(), src, "v",
+                                  {"bin": str(rec["bin"]),
+                                   "frequency": "frequency"})
+        return data, rec, r
+
+    @pytest.mark.parametrize("key", _ON_EDGE)
+    def test_each(self, truth, key):
+        data, rec, r = self._draw(truth, key)
+        tw = _rec(truth, "histogram_edge_twoway", key)
+        assert rec["rc"] == 0 and tw["rc"] == 0, key
+        tops = np.asarray(r.data_source.data["top"], float)
+        assert len(tops) == rec["bin"]
+        got = tops[tops > 0]
+        np.testing.assert_array_equal(got, _series(rec, "bar_height"),
+                                      err_msg=f"{key}: {rec['cmd']}")
+        np.testing.assert_array_equal(got, _series(tw, "bar_height"),
+                                      err_msg=f"{key}: {tw['cmd']}")
+        assert float(tops.sum()) == float(rec["N"])
+
+    @pytest.mark.parametrize("key", _ON_EDGE)
+    def test_the_saved_page_recount(self, truth, key):
+        from js_runner import run_filter_js_block
+        data, rec, r = self._draw(truth, key)
+        got = run_filter_js_block("histogram", r._dash_agg_config, data)
+        tops = np.asarray(got["top"], float)
+        np.testing.assert_array_equal(tops[tops > 0],
+                                      _series(rec, "bar_height"),
+                                      err_msg=f"{key}: the saved page")
+
+    @pytest.mark.parametrize("key", [k for k, _ in _EDGE_CASES
+                                     if not k.endswith("_start")]
+                             + list(_ON_EDGE))
+    def test_the_drawn_serset_is_the_generator(self, truth, key):
+        """The unverified note is gone: twoway histogram's drawn bars are
+        the generator's non-empty bars, on every edge case."""
+        rec = _rec(truth, "histogram_edge", key)
+        tw = _rec(truth, "histogram_edge_twoway", key)
+        assert tw["rc"] == 0, key
+        want = _series(rec, "bar_height")
+        want = want[~np.isnan(want)]
+        np.testing.assert_allclose(_series(tw, "bar_height"), want,
+                                   rtol=1e-6, err_msg=key)
+
+    def test_unverified_holds_what_remains(self, truth):
+        assert sorted(truth["unverified"]) == [
+            "lpoly.rot_bandwidth_formula",
+            "mband.default_band_count_formula"]
