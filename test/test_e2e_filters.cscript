@@ -5,7 +5,8 @@
 *! HE-01 through HE-04
 *! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1, FL-QT-2,
 *!        FL-X1-1, FL-E2-1 and FL-E2-2, QF-01 and QF-02,
-*!        SCU-01, SCU-02 and SCU-03, EW-01
+*!        SCU-01, SCU-02 and SCU-03, EW-01,
+*!        U52-01, U52-02 and U52-03 (WP-31 H1)
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -649,6 +650,50 @@ ftc.put("ew_01w", saved_after)
 end
 assert "${ew_01}" == "1"
 display "EW-01 PASS: the served bar is ${ew_01w} wide before and after the move to Foreign, as the saved page draws it after the move and from the Foreign rows alone"
+restore
+
+// ================================================================
+// U52-01..U52-03 (WP-31 H1): the saved slider recomputes on release
+// (change:value_throttled), a dropdown on every change, the page holds one
+// error status line, and every inline script it runs is one its policy
+// names (the window error hooks are a document callback, not a script).
+// ================================================================
+preserve
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(u52)
+tempfile u52a u52b
+capture noisily dash build, saving("`u52a'.html") replace filter(price, type(slider))
+local u52rc = _rc
+cert_file_count "`u52a'.html", needle("dash-error-status")
+local u52n = r(count)
+cert_file_has "`u52a'.html", needle("change:value_throttled")
+local u52t = r(found)
+python:
+import filter_truth_check as ftc
+from sfi import Macro
+k = ftc.u52_keys(Macro.getLocal("u52a") + ".html")
+print("U52-01 keys", k)
+ftc.put("u52_01", int(k == {"Slider": ["change:value_throttled"]}))
+ftc.put("u52_03", int(ftc.u52_hashes_ok(Macro.getLocal("u52a") + ".html")))
+end
+assert `u52rc' == 0 & `u52n' == 1 & `u52t' == 1 & "${u52_01}" == "1"
+display "U52-01 ok: the saved Slider's one callback key is change:value_throttled and the page holds one error status line"
+dash build, saving("`u52b'.html") replace filter(foreign, type(dropdown))
+python:
+import filter_truth_check as ftc
+from sfi import Macro
+k = ftc.u52_keys(Macro.getLocal("u52b") + ".html")
+print("U52-02 keys", k)
+ftc.put("u52_02", int(k == {"Select": ["change:value"]}))
+end
+assert "${u52_02}" == "1"
+display "U52-02 ok: the saved Select keeps change:value"
+assert "${u52_03}" == "1"
+display "U52-03 ok: the slider page was sealed and every inline script it runs is named by its policy"
+capture erase "`u52a'.html"
+capture erase "`u52b'.html"
+dash clear
 restore
 
 // ----------------------------------------------------------------

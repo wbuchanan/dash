@@ -410,7 +410,10 @@ class TestFilterSecurity:
              _dr._DASH_SVG_SAVE_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
-             _dr._DASH_FILTER_RESET_JS})
+             _dr._DASH_FILTER_RESET_JS,
+             # Flipped (WP-31 H1): and the window error hooks, fixed code
+             # too (the page's error line is an arg, never text in it).
+             _dr._dash_error_hooks(_dr.Div())[0].code})
         assert [m["attributes"]["title"]
                 for m in _named(models, "Select")] == [malicious_varname]
 
@@ -470,7 +473,10 @@ class TestFilterSecurity:
              _dr._DASH_SVG_SAVE_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
-             _dr._DASH_FILTER_RESET_JS})
+             _dr._DASH_FILTER_RESET_JS,
+             # Flipped (WP-31 H1): and the window error hooks, fixed code
+             # too (the page's error line is an arg, never text in it).
+             _dr._dash_error_hooks(_dr.Div())[0].code})
         assert [m["attributes"]["options"]
                 for m in _named(models, "Select")] == [[
                     ["__all__", "All"],

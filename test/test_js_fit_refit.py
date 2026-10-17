@@ -555,8 +555,10 @@ class TestThePageSize:
 
 # lowess takes no atobs (it is drawn at the observations): C4 added atobs
 # to the lfit/qfit keys only.
+# keepmissing: cmissing(n)'s missing points in the refit (WP-31 H1, D16).
 _LW_KEYS = (_KEYS - {"atobs"}) | {"bwidth", "mean", "noweight", "adjust",
-                                  "logit", "y_all_mean", "max_ops"}
+                                  "logit", "y_all_mean", "max_ops",
+                                  "keepmissing"}
 _LW_FRAME = _FRAME.assign(y01=(_FRAME["y"] > _FRAME["y"].median())
                           .astype(float))
 
@@ -573,6 +575,7 @@ class TestLowessConfig:
         assert cfg["noweight"] is False and cfg["adjust"] is False
         assert cfg["logit"] is False and cfg["y_all_mean"] is None
         assert cfg["max_ops"] == dr._DASH_LOWESS_JS_MAX_OPS == 2e8
+        assert cfg["keepmissing"] is False
         json.dumps(cfg, allow_nan=False)
 
     def test_an_out_of_range_bwidth_is_point_eight(self):

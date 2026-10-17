@@ -114,7 +114,9 @@ class TestLpolyThreshold:
         src = _read("dash_render.py")
         stmt = '_FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@"'
         assert src.count(stmt) == 1
-        assembly = src.index("_FILTER_JS = (_FILTER_JS + _DASH_AXIS_FINISH_JS")
+        # Flipped (WP-31 H1): the assembly now wraps the body in a try
+        # block (_FILTER_JS = (_DASH_FILTER_MASK_JS + "try {\n" ...).
+        assembly = src.index('_FILTER_JS = (_DASH_FILTER_MASK_JS + "try {\\n"')
         assert src.index(stmt) < assembly
         loop = src[src.index('for _tok, _val in (("@@DASH_MAX_TICKS@@"'):
                    src.index("del _tok, _val")]

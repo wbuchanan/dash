@@ -525,3 +525,20 @@ class TestRangesAndTickersCommit:
         assert (r.start, r.end, r.reset_start, r.reset_end) == (2, 8, 2, 8)
         assert list(t.ticks) == [2.0, 4.0, 6.0, 8.0]
         assert sl.start == 0.0
+
+
+@js_runner.requires_node
+class TestExpectError:
+    """WP-31 H1: a callback that throws still reports the state it left,
+    so a test can read the page's error status Div after the throw."""
+
+    def test_a_throwing_callback_still_reports_state(self):
+        d = Div(text="a")
+        sess = js_runner.JsSession([])
+        sess.run_code("d.text = 'b'; throw new Error('x');", {"d": d},
+                      expect_error=True)
+        assert d.text == "b"
+        with pytest.raises(AssertionError):
+            sess.run_code("throw new Error('y');", {"d": d})
+        with pytest.raises(AssertionError):
+            sess.run_code("d.text = 'c';", {"d": d}, expect_error=True)

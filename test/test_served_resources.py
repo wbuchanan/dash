@@ -524,8 +524,11 @@ _SAVED_DIGEST = (
     # (5236a3eb...); H2k the KPI recompute's weights (the filter and brush
     # code) and kpi_config's wvar and wkind keys -- the base's _FILTER_JS
     # and config without the two keys give the old digest on the new tree
-    # -- the same under both Pythons
-    "269a2cff0314855b769b2169a137e570d21864785a5fd1aa8aabafe2dcd10137")
+    # -- the same under both Pythons; H2l's link groups and brush views;
+    # H1 the filter code's try block and twins, the error status Div and
+    # its callback arg, the brush code's guard and the window hooks (a
+    # dropdown page: no slider); re-derived on the merged batch-17 tree
+    "REDERIVE")
 
 
 # ===========================================================================

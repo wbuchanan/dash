@@ -535,7 +535,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
 - **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit 8b367e7.
 - **G7 Tracked:** Closed in WP-31, BUGS.md "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses", commit 75f0f12.
-- **H1 Tracked:** Open (WP-31 section 52).
+- **H1 Tracked:** Closed in WP-31, BUGS.md "Saved-page JavaScript errors fail silently and saved sliders fire on every drag step", commit pending.
 - **H2f Tracked:** Closed in WP-31, BUGS.md "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)", commit e7c500a.
 - **H2k Tracked:** Closed in WP-31, BUGS.md "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)", commit pending.
 - **H2l Tracked:** Open (WP-31 section 51).

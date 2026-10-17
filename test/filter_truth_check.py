@@ -362,3 +362,57 @@ def vbar_width(fig):
     """The width *fig*'s single VBar draws (EW-01)."""
     w = _one_glyph(fig, "VBar").glyph.width
     return float(getattr(w, "value", w))
+
+
+# ---------------------------------------------------------------------------
+# WP-31 section 52: test_e2e_filters.cscript U52-01..U52-03 (H1)
+# ---------------------------------------------------------------------------
+
+def _u52_doc(page):
+    """The Bokeh document JSON a saved page embeds, parsed with ``json``
+    (its one ``<script type="application/json">`` element)."""
+    at = page.index('<script type="application/json"')
+    start = page.index(">", at) + 1
+    return json.loads(page[start:page.index("</script>", start)])
+
+
+def u52_keys(path):
+    """``{widget type: [js_property_callbacks keys]}`` of the Slider,
+    RangeSlider and Select models in the saved page at *path*."""
+    with open(path, encoding="utf-8") as fh:
+        doc = _u52_doc(fh.read())
+    out = {}
+
+    def walk(v):
+        if isinstance(v, dict):
+            if v.get("name") in ("Slider", "RangeSlider", "Select") \
+                    and isinstance(v.get("attributes"), dict):
+                cbs = v["attributes"].get("js_property_callbacks") or {}
+                # A Bokeh map is {"type": "map", "entries": [[key, v]]}.
+                keys = ([e[0] for e in cbs.get("entries", [])]
+                        if cbs.get("type") == "map" else list(cbs))
+                out.setdefault(v["name"], []).extend(keys)
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    walk(doc)
+    return out
+
+
+def u52_hashes_ok(path):
+    """True when every inline script the page at *path* runs is named by
+    the page's policy (``_dash_script_hashes`` against the CSP meta)."""
+    import html as _html
+    import re as _re
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    m = _re.search(r'http-equiv="Content-Security-Policy"\s+content="([^"]*)"',
+                   page, _re.I)
+    if m is None:
+        return False
+    policy = _html.unescape(m.group(1))
+    hashes = dr._dash_script_hashes(page)
+    return bool(hashes) and all(("'sha256-%s'" % h) in policy
+                                for h in hashes)

@@ -1071,7 +1071,7 @@ Changed behaviour.
 
 - link() may be repeated for several groups; dash build takes brush(filter); a box or lasso selection on bars or histogram bins selects their rows; concurrent selections are intersected on the saved page as when served (WP-31, H2l)
 
-<!-- WP-31 H1 -->
+- The saved page reports script errors in a status line, recomputes sliders on release, and after a filter move keeps area gaps, breaks a lowess line, rescales weighted markers and maps histogram bins to their rows as the served app does (WP-31, H1)
 
 <!-- WP-31 H2x -->
 

@@ -159,9 +159,12 @@ def stand_in(m, models, objs):
     ``end``, ``step``, ``indices``, ``width`` the model has -- the
     superset every write-back rule and every widget kind needs."""
     if isinstance(m, ColumnDataSource):
+        # Its string tags too, as BokehJS's model holds them: the page
+        # reads a "dash_wsize=" tag after a move (WP-31 H1).
         return {"__type__": "ColumnDataSource",
                 "data": {str(c): encode(list(v), models, objs)
-                         for c, v in m.data.items()}}
+                         for c, v in m.data.items()},
+                "tags": [t for t in (m.tags or []) if isinstance(t, str)]}
     if isinstance(m, BooleanFilter):
         return {"__type__": "BooleanFilter",
                 "booleans": [bool(b) for b in (m.booleans or [])]}
@@ -275,8 +278,13 @@ for (const o of Object.values(REG)) {
 const args = resolve(RAW.args);
 const names = Object.keys(args);
 const cb_obj = RAW.cb_obj ? resolve(RAW.cb_obj) : null;
-new Function(...names, "cb_obj", "cb_data", '"use strict";\n' + RAW.code)(
-  ...names.map((n) => args[n]), cb_obj, {});
+// WP-31 H1: a callback that throws still reports the state it left (the
+// page's error status Div among it), and node exits 1.
+let _err = null;
+try {
+  new Function(...names, "cb_obj", "cb_data", '"use strict";\n' + RAW.code)(
+    ...names.map((n) => args[n]), cb_obj, {});
+} catch (e) { _err = e; process.exitCode = 1; }
 const out = {};
 for (const [id, o] of Object.entries(REG)) {
   if (o.__type__ === "ColumnDataSource") out[id] = {data: o.data};
@@ -306,6 +314,7 @@ for (const [id, o] of Object.entries(REG)) {
   }
 }
 process.stdout.write(JSON.stringify(out));
+if (_err) { process.stderr.write(String((_err && _err.stack) || _err)); }
 """
 
 
@@ -363,7 +372,8 @@ class JsSession:
         return self.run_code(callback.code, callback.args, cb_obj,
                              commit=commit)
 
-    def run_code(self, code, args, cb_obj=None, *, commit=True):
+    def run_code(self, code, args, cb_obj=None, *, commit=True,
+                 expect_error=False):
         """Run *code* with *args* (and optionally *cb_obj*) under node.
 
         Encodes ``dict(args)`` from the Python models AS THEY ARE NOW --
@@ -375,6 +385,9 @@ class JsSession:
         missing values); with ``commit=False`` the Python models are left
         exactly as they were (a dry run).  Returns node's output, a
         ``{model id: {...}}`` dict, and appends it to ``self.runs``.
+        With *expect_error* (WP-31 H1) the callback must throw: node's exit
+        is 1 and the state it left before the throw is returned (and
+        committed) all the same.
         """
         models, objs = {}, {}
         payload = {"models": models, "args": encode(dict(args), models, objs),
@@ -392,7 +405,11 @@ class JsSession:
         try:
             res = subprocess.run([node(), path], capture_output=True,
                                  text=True, timeout=120)
-            assert res.returncode == 0, res.stderr[:3000]
+            if expect_error:
+                assert res.returncode == 1 and res.stderr, (
+                    res.returncode, res.stderr[:3000])
+            else:
+                assert res.returncode == 0, res.stderr[:3000]
             out = json.loads(res.stdout)
         finally:
             os.unlink(path)

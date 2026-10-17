@@ -1051,8 +1051,12 @@ def _widget_profile(w):
 
 def _is_stale_status(m):
     """The saved page's hidden note that it does not refit (WP-29 P0.17):
-    the standalone half of the allowance below, never a served model."""
-    if isinstance(m, Div) and "dash_stale_status" in (m.tags or []):
+    the standalone half of the allowance below, never a served model.  Its
+    hidden error line (WP-31 H1, tagged dash_error_status) is the same kind
+    of saved-only status line -- the page's script recomputes what the
+    server recomputes in Python and logs -- under the same allowance."""
+    if isinstance(m, Div) and ({"dash_stale_status", "dash_error_status"}
+                               & set(m.tags or [])):
         _allowed("aggregate layers recompute live")
         return True
     return False

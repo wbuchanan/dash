@@ -380,6 +380,9 @@ class TestTheShippedJavascriptMasksByIdentity:
             # The CDSView rebuild needs the view list; this harness exercises
             # the row masking, so an empty list is the right stub.
             + "const view_filters = [];\n"
+            # The weighted-marker rescale the loop ends with (WP-31 H1).
+            + js[js.index("function dash_weighted_sizes("):
+                 js.index("// ---- WP-31 F1: the fit layers' shared helpers")]
             + block
             + "\nprocess.stdout.write(JSON.stringify("
             "_srcs.map(s => s.data ? s.data['x'] : null)));"

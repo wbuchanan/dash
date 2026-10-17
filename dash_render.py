@@ -2254,6 +2254,14 @@ _DASH_STALE_STATUS_HTML = (
     'font-size:12px">Layers marked (unfiltered), (bins unfiltered) or '
     '(grid unfiltered) were computed before the filter was applied, and a '
     'saved page does not recompute them; dash serve does.</p>')
+#: WP-31 H1: the filter area's error line, written by the saved page's
+#: dash_report_js_error when a script fails; %s is the failure's message,
+#: escaped and at most 300 characters.  #5c0011 on #fde7e9 is about 10.5:1.
+_DASH_JS_ERROR_HTML = (
+    '<p role="status" aria-live="polite" aria-atomic="true" '
+    'style="margin:0;padding:2px 6px;background:#fde7e9;color:#5c0011;'
+    'font-size:12px">The filter script of this page stopped with an '
+    'error: %s. Reload the page; if it recurs, rebuild the dashboard.</p>')
 
 #: WP-31 H2t: a graph's data table.  Its text columns are
 #: ``__dash_tbl_<var>`` (the variable's display text, one per row, carried
@@ -17559,10 +17567,16 @@ class GlyphMapper:
         _nodrop = bool(str(options.get("nodropbase", "") or "").strip())
         if _cmiss_n and not _nodrop and not bool(_ok.all()):
             _xi, _yi, _col = _dash_fill_vertices(x_arr, _ok, "direct", "n")
+            _gap_rid = area_source.data.get(_ROW_ID_COLUMN)
             area_source.data = _dash_fill_rebuild(
                 area_source.data, xvar, (_y1_col, yvar), yvar, _xi, _yi,
                 _col)
             _pin_rows = np.flatnonzero(_col)
+            # The saved page re-splits it after a move (WP-31 H1).
+            if _gap_rid is not None:
+                area_source._dash_join = _dash_fill_join(
+                    xvar, (_y1_col, yvar), yvar,
+                    _dash_fill_gap_ids(_ok, _gap_rid))
         # The fill is the resolved colour at the p#area intensity, opaque,
         # as twoway draws it (WP-30 P1.2b).
         # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
@@ -18204,14 +18218,28 @@ class GlyphMapper:
             col = f"__dash_wsize{k}"
         src.data[col] = sizes
         glyph.size = col
-        renderer._dash_wsized = True
         # A served move writes the kept rows into this source
         # (_dash_refresh_linked/_unlinked), and the sizes are rescaled from
         # them there (_dash_rescale_wsizes), as twoway would draw them.
+        _cap = float(getattr(self.scheme, "max_wted_symsize", 10.0))
         specs = list(getattr(src, "_dash_wsize_specs", None) or [])
-        specs.append((renderer, col, wexp, float(base),
-                      float(getattr(self.scheme, "max_wted_symsize", 10.0))))
+        specs.append((renderer, col, wexp, float(base), _cap))
         src._dash_wsize_specs = specs
+        # WP-31 H1 (DECISIONS A23): the saved page rescales them after a
+        # move too (_FILTER_JS's dash_rescale_wsizes, read from this tag:
+        # the size column, the weight, the glyph's x and y fields, the
+        # base size and the cap) when the renderer draws every row of its
+        # source.  Under a view -- a by() panel or a qualifier over a
+        # shared source -- the layer keeps the stale cue (_dash_wsized).
+        _xy = [getattr(glyph, k, None) for k in ("x", "y")]
+        _xy = [f if isinstance(f, str) and f in src.data else ""
+               for f in _xy]
+        _parts = [col, str(wexp), *_xy]
+        if sel is None and not any("|" in p for p in _parts):
+            src.tags = [*(src.tags or []), "dash_wsize=" + "|".join(
+                _parts + [repr(float(base)), repr(_cap)])]
+        else:
+            renderer._dash_wsized = True
 
     @staticmethod
     def _layer_weight_column(source: ColumnDataSource, options,
@@ -19568,7 +19596,10 @@ class GlyphMapper:
                                          _FIT_GRID, None),
                     bwidth=float(bw), mean=mean, noweight=noweight,
                     adjust=_adj, logit=_lgt, y_all_mean=_my,
-                    max_ops=float(_DASH_LOWESS_JS_MAX_OPS))
+                    max_ops=float(_DASH_LOWESS_JS_MAX_OPS),
+                    # cmissing(n): the refit's missing points (WP-31 H1,
+                    # DECISIONS D16), as _cmiss_gap_x gives them here.
+                    keepmissing=bool(_dash_join_spec(options)[1] == "n"))
 
         # lowess.ado:89 smooths only when r(N) >= 3 and the range of x is at
         # least 1e-30.  dash used len < 2 or a zero std: two rows drew a
@@ -21704,10 +21735,19 @@ class GlyphMapper:
                    & np.isfinite(_cols[y2var]))
             _xi, _yi, _col = _dash_fill_vertices(_cols[xvar], _ok, _style,
                                                  _cmiss)
+            _gap_rid = source.data.get(_ROW_ID_COLUMN)
             # A gap's zero-height pair sits on the lower bound.
             source.data = _dash_fill_rebuild(source.data, xvar,
                                              (y1var, y2var), y1var, _xi,
                                              _yi, _col)
+            # The saved page re-splits it after a move (WP-31 H1); stairs
+            # are not rebuilt there.
+            if (_gap_rid is not None and _cmiss == "n"
+                    and _style not in ("stairstep", "stepstair")
+                    and not bool(np.asarray(_ok).all())):
+                source._dash_join = _dash_fill_join(
+                    xvar, (y1var, y2var), y1var,
+                    _dash_fill_gap_ids(_ok, _gap_rid))
 
         # The fill is the resolved colour at the p#area intensity (WP-30
         # P1.2b); its 0.5 opacity is section 24's.
@@ -30021,6 +30061,45 @@ function dash_stata_number_of(ms, kind) {
 """
 
 
+# WP-31 H1: a saved-page script's failure, written into the page's error
+# status Div (built in Python; *d*, else the callback's own
+# ``dash_error_status`` arg) as escaped text, at most 300 characters of the
+# message; the caller rethrows, so the console still has it.  The HTML is a
+# JS string literal (json.dumps), never JSON.parse'd.  It reads
+# dash_html_escape, so it follows _DASH_FMT_JS in every script that holds
+# it: _FILTER_JS (through _DASH_FILTER_MASK_JS), the brush wiring
+# (_dash_js_guarded) and the window hooks (_dash_error_hooks).
+_DASH_JS_ERROR_JS = """
+function dash_report_js_error(e, d) {
+    const _DASH_JS_ERROR_HTML = @@DASH_JS_ERROR_HTML@@;
+    const div = d || ((typeof dash_error_status !== "undefined") ? dash_error_status : null);
+    if (!div) return;
+    let msg = "";
+    try { msg = String((e && e.message) ? e.message : e); } catch (_x) { msg = "error"; }
+    if (msg.length > 300) msg = msg.slice(0, 297) + "...";
+    div.text = _DASH_JS_ERROR_HTML.replace("%s", function () { return dash_html_escape(msg); });
+    div.visible = true;
+}
+""".replace("@@DASH_JS_ERROR_HTML@@", json.dumps(_DASH_JS_ERROR_HTML))
+
+
+#: The two functions a script outside _DASH_FILTER_MASK_JS needs to report
+#: (WP-31 H1), declared outside its try block so its catch sees them.
+_DASH_JS_REPORT_JS = (
+    _DASH_FMT_JS[_DASH_FMT_JS.index("function dash_html_escape("):
+                 _DASH_FMT_JS.index("function dash_civil_from_days(")]
+    + _DASH_JS_ERROR_JS)
+
+
+def _dash_js_guarded(body):
+    """*body* inside ``try { ... } catch (e) { dash_report_js_error(e);
+    throw e; }`` (WP-31 H1), after the reporter's own declarations, so a
+    failure reaches the page's error status line and still the console.
+    The brush wiring's scripts; _FILTER_JS is wrapped at its assembly."""
+    return (_DASH_JS_REPORT_JS + "try {\n" + body
+            + "\n} catch (e) { dash_report_js_error(e); throw e; }")
+
+
 _DASH_CSV_JS = """
 function dash_csv_missing(v) {
     return v === null || v === undefined ||
@@ -30128,7 +30207,7 @@ dash_csv_download(dash_csv_text(data, data, rows, meta), meta.filename);
 # (x >= 5 is false for NaN).  It used to be compared as JavaScript compares
 # null, as 0, so range(-1, 10) kept every missing row and range(5, 10)
 # dropped it, and the two modes' KPI cards disagreed (test_export.py).
-_DASH_FILTER_MASK_JS = _DASH_FMT_JS + """
+_DASH_FILTER_MASK_JS = _DASH_FMT_JS + _DASH_JS_ERROR_JS + """
 // The ONE rule a dropdown value is compared by, shared with
 // _dash_dropdown_mask in Python and pinned by
 // test/test_dropdown_values.py::TestOneRule::test_node_and_pandas_agree and
@@ -30397,6 +30476,68 @@ function dash_join_rebuild(nd, spec, rowId) {
     return out;
 }
 
+// cmissing(n) on an area or rarea after a move (WP-31 H1, DECISIONS A23):
+// the twin of _dash_fill_vertices and _dash_fill_rebuild over the kept
+// rows.  od is the copy as built -- present rows and, at each gap, a
+// zero-height pair with a null row id; spec.gaps holds, per pair, the
+// ids of the missing rows it closes (_dash_fill_gap_ids).  The kept
+// present rows are taken in order; between two of them a gap whose rows
+// one survives is closed again by a zero-height pair -- at the run's end
+// and the next run's start, each spec.ycols column taking the spec.pin
+// column's value there, every other column null -- and a gap before the
+// first or after the last kept row closes nothing.  Hoisted.
+function dash_fill_rebuild_kept(od, spec, rowId, keep) {
+    const cols = Object.keys(od);
+    const ids = od[rowId] || [];
+    const gaps = spec.gaps || [], yc = spec.ycols || [], pin = spec.pin;
+    const out = {};
+    for (const c of cols) dash_own_col(out, c);
+    const push = (j, zero) => {
+        for (const c of cols) {
+            if (!zero) out[c].push(od[c][j]);
+            else if (c === spec.x) out[c].push(od[c][j]);
+            else if (yc.indexOf(c) >= 0) out[c].push(od[pin][j]);
+            else out[c].push(null);
+        }
+    };
+    let g = 0, live = false, last = -1;
+    for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        if (id === null || id === undefined) {
+            // A zero-height pair: this vertex and the next.
+            if ((gaps[g] || []).some(r => keep.has(r))) live = true;
+            g++;
+            i++;
+            continue;
+        }
+        if (!keep.has(id)) continue;
+        if (live && last >= 0) { push(last, true); push(i, true); }
+        live = false;
+        push(i, false);
+        last = i;
+    }
+    return out;
+}
+
+// The zero-height pairs of a split area (a null row id) after the axis
+// finish refilled its default base: each spec.ycols column takes the
+// spec.pin column's value there again, as _dash_finish_auto_bases keeps
+// the build's _dash_base_pin rows.  Hoisted.
+function dash_fill_repin(src, spec, rowId) {
+    const d = src.data, has = (c) => Object.prototype.hasOwnProperty.call(d, c);
+    if (!has(rowId) || !has(spec.pin)) return;
+    const rid = d[rowId], pv = d[spec.pin];
+    let changed = false;
+    for (const c of (spec.ycols || [])) {
+        if (c === spec.pin || !has(c)) continue;
+        const col = d[c];
+        for (let i = 0; i < rid.length; i++) {
+            if ((rid[i] === null || rid[i] === undefined) && col[i] !== pv[i]) { col[i] = pv[i]; changed = true; }
+        }
+    }
+    if (changed) src.change.emit();
+}
+
 const ROW_ID = __DASH_ROW_ID__;
 
 // The set of row identities that survived every active filter, taken from
@@ -30551,7 +30692,10 @@ if (_primary_ids) {
         // A line drawn by connect() or cmissing(n): its breaks and stairs
         // rebuilt from the kept rows (WP-30 P1.8a).
         const _jn = _djoin[_di];
-        if (_jn && (_jn.x in _nd) && (_jn.y in _nd)) {
+        if (_jn && _jn.kind === "area") {
+            // A filled layer split under cmissing(n) (WP-31 H1).
+            _dsrcs[_di].data = dash_fill_rebuild_kept(_od, _jn, ROW_ID, _dkeep_ids);
+        } else if (_jn && (_jn.x in _nd) && (_jn.y in _nd)) {
             _dsrcs[_di].data = dash_join_rebuild(_nd, _jn, ROW_ID);
         } else {
             _dsrcs[_di].data = _nd;
@@ -30560,6 +30704,9 @@ if (_primary_ids) {
         _dsrcs[_di].change.emit();
     }
 }
+// Weighted markers sized from the rows each source now holds (WP-31 H1,
+// DECISIONS A23), as the served app's _dash_rescale_wsizes does.
+for (const _ws of [..._srcs, ..._dsrcs]) dash_rescale_wsizes(_ws);
 // A by() panel a move leaves without rows is hidden, and shown again when
 // rows return (WP-31 D10); the grid keeps its cell.  The pairs are index
 // pairs into by_panel_figs and by_panel_sources, never names.
@@ -30898,6 +31045,105 @@ function dash_kernel(name) {
         default:  // epanechnikov -- Stata's default
             return z => (Math.abs(z) < S5 ? 0.75 * (1 - z * z / 5) / S5 : 0);
     }
+}
+// ---- WP-31 H1 (DECISIONS A23, A28): the saved move's twins ----
+// _dash_bin_members (S51's text, verbatim): Stata's bar rule, as
+// GlyphMapper._histogram_counts counts -- value x is bar floor((x -
+// start)/h) over the equal-width edges, an index below 0 folded into bar
+// 0 and one past the last bar into the last; a missing x is in no bar.
+function dash_bin_members(edges, xs, ids) { const nb = edges.length - 1; const out = []; for (let j = 0; j < nb; j++) out.push([]); if (nb < 1) return out; const start = edges[0], h = (edges[nb] - start) / nb; for (let i = 0; i < xs.length; i++) { const x = xs[i]; if (x === null || x === undefined || !Number.isFinite(x)) continue; let j = h > 0 ? Math.floor((x - start) / h) : 0; if (j < 0) j = 0; if (j > nb - 1) j = nb - 1; out[j].push(ids[i]); } return out; }
+// GlyphMapper._cmiss_gap_x without distinct (lowess under cmissing(n)):
+// the sorted x of the layer's kept rows with an x and no y, one per row.
+function dash_lw_gap_x(ac, data, pick) {
+    const xc = pick(data[ac.xvar]), yc = pick(data[ac.yvar]);
+    if (!xc || !yc) return [];
+    const fin = (v) => typeof v === "number" && isFinite(v);
+    const out = [];
+    for (let i = 0; i < xc.length; i++) {
+        let xv = xc[i], yv = yc[i];
+        if (!fin(xv)) continue;
+        if (ac.xdatekind) { xv = dash_stata_value_of(xv, ac.xdatekind); if (xv === null) continue; }
+        if (fin(yv) && ac.ydatekind) { yv = dash_stata_value_of(yv, ac.ydatekind); if (yv === null) yv = NaN; }
+        if (!fin(yv)) out.push(xv);
+    }
+    return out.sort((a, b) => a - b);
+}
+// A histogram's bin -> rows after a move: the kept rows' values (and ids)
+// as the histogram branch keeps them -- a missing value, a missing or
+// non-positive weight, a value with no Stata date dropped -- binned over
+// the full grid the branch counts on (ac.start, ac.width, ac.bin bars)
+// and sliced to the drawn bars (ac.bin_first on), as the counts are.
+function dash_hist_bin_rows(ac, xc, rid, wc, n_bins) {
+    const xs = [], ids = [];
+    for (let i = 0; i < xc.length; i++) {
+        let v = xc[i];
+        if (v === null || v === undefined || isNaN(v)) continue;
+        let w = wc ? wc[i] : 1;
+        if (wc && (w === null || w === undefined || isNaN(w))) continue;
+        if (ac.datekind) { v = dash_stata_value_of(v, ac.datekind); if (v === null) continue; }
+        if (wc && ac.wdatekind) { w = dash_stata_value_of(w, ac.wdatekind); if (w === null) continue; }
+        if (wc && !(w > 0)) continue;
+        xs.push(v); ids.push(rid ? rid[i] : null);
+    }
+    const first = ac.bin_first || 0, n_grid = ac.bin || n_bins;
+    const grid = [];
+    for (let k = 0; k <= n_grid; k++) grid.push(ac.start + k * ac.width);
+    return dash_bin_members(grid, xs, ids).slice(first, first + n_bins);
+}
+// _dash_weighted_sizes (WP-31 C9): marker i at base * scale * sqrt(w_i),
+// scale = 1.5 / sqrt(w_min), cut to cap / sqrt(w_max) when
+// scale * sqrt(w_max) would pass cap; a weight at or below zero anywhere
+// leaves 1.5 / sqrt(w_min) infinite, so the cut's scale is used.  A
+// missing weight's marker is 0, a negative one's NaN (not drawn); with
+// no weight above zero every entry is NaN.
+function dash_weighted_sizes(w, base, cap) {
+    const n = w.length;
+    const out = new Array(n).fill(NaN);
+    const fin = (v) => typeof v === "number" && isFinite(v);
+    let wmin = Infinity, wmax = -Infinity, any = false;
+    for (const v of w) if (fin(v)) { any = true; if (v < wmin) wmin = v; if (v > wmax) wmax = v; }
+    if (!any || !(wmax > 0)) return out;
+    let scale = wmin > 0 ? 1.5 / Math.sqrt(wmin) : Infinity;
+    if (scale * Math.sqrt(wmax) > cap) scale = cap / Math.sqrt(wmax);
+    for (let i = 0; i < n; i++) {
+        const v = w[i];
+        if (!fin(v)) out[i] = 0;
+        else if (v >= 0) out[i] = base * scale * Math.sqrt(v);
+    }
+    return out;
+}
+// _dash_rescale_wsizes: each size column a "dash_wsize=" tag names
+// (GlyphMapper._weight_markers: column|weight|x field|y field|base|cap)
+// recomputed over the rows the source now holds that its renderer draws
+// -- finite x and y -- so the kept rows' weights set the scale.
+function dash_rescale_wsizes(src) {
+    const d = src.data;
+    let done = false;
+    for (const t of (src.tags || [])) {
+        if (typeof t !== "string" || !t.startsWith("dash_wsize=")) continue;
+        const p = t.slice(11).split("|");
+        if (p.length !== 6) continue;
+        const [col, wexp, xf, yf] = p;
+        const base = Number(p[4]), cap = Number(p[5]);
+        if (!Object.prototype.hasOwnProperty.call(d, col)
+            || !Object.prototype.hasOwnProperty.call(d, wexp)) continue;
+        const W = d[wexp], n = W.length;
+        const num = (v) => (v === null || v === undefined) ? NaN : Number(v);
+        const idx = [];
+        for (let i = 0; i < n; i++) {
+            let ok = true;
+            for (const f of [xf, yf]) {
+                if (f && Object.prototype.hasOwnProperty.call(d, f) && !isFinite(num(d[f][i]))) ok = false;
+            }
+            if (ok) idx.push(i);
+        }
+        const sz = dash_weighted_sizes(idx.map(i => num(W[i])), base, cap);
+        const out = new Array(n).fill(NaN);
+        for (let k = 0; k < idx.length; k++) out[idx[k]] = sz[k];
+        d[col] = out;
+        done = true;
+    }
+    if (done) src.change.emit();
 }
 // ---- WP-31 F1: the fit layers' shared helpers (S10) ----
 // Every later estimator port (lfitci..fpfitci, contour) builds on these.
@@ -32758,6 +33004,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
+        // WP-31 H1 (A28): a source carrying its bins' member rows
+        // (__dash_bin_rows, S51) has them recomputed for the kept rows.
+        const _bin_rows = !!(src.data && src.data.__dash_bin_rows !== undefined);
+        const _bin_rows_of = () => dash_hist_bin_rows(ac, raw_col,
+            _pick(_ac_data[ROW_ID]), (ac.wvar && _ac_data[ac.wvar]) ? _pick(_ac_data[ac.wvar]) : null, n_bins);
         // gap() and baroffset() (WP-31 C5, S12's keys): each bar is
         // width * (100 - gap)/100 wide, centred on its bin moved by
         // baroffset bar widths.  Without them the bars are the edges.
@@ -32811,6 +33062,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
                 src.data = dash_recast_data(ac.recast_cols, _mx, new Array(n_bins).fill(0), _prev);
             }
+            if (_bin_rows) src.data.__dash_bin_rows = _bin_rows_of();
             src.change.emit();
             continue;
         }
@@ -32851,6 +33103,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
             src.data = dash_recast_data(ac.recast_cols, _mx, src.data.top, _prev);
         }
+        if (_bin_rows) src.data.__dash_bin_rows = _bin_rows_of();
         src.change.emit();
 
     } else if (ac.type === 'kdensity') {
@@ -33019,7 +33272,10 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const kx = [], ky = [];
         for (let i = 0; i < ys.length; i++) if (isFinite(ys[i])) { kx.push(sm.xs[i]); ky.push(ys[i]); }
-        dash_fit_write(src, ac, kx, ky, null);
+        // cmissing(n): a kept row with an x and no y breaks the line
+        // there, as map_lowess inserts it (WP-31 H1, DECISIONS D16).
+        const _lb = dash_insert_breaks(kx, [ky], ac.keepmissing ? dash_lw_gap_x(ac, _ac_data, _pick) : []);
+        dash_fit_write(src, ac, _lb.xs, _lb.cols[0], null);
     } else if (ac.type === 'lfitci' || ac.type === 'qfitci') {
         // WP-31 F1b: map_lfitci and map_qfitci on the kept rows -- regress
         // on [1, x - mean(x)] or _qfit_design's design, predict stdp, stdf
@@ -33677,7 +33933,8 @@ class FilterBuilder:
         """Build a numeric threshold slider filter widget.
 
         Shows rows where ``varname >= slider.value``.  Callback args are
-        populated by :meth:`DashRenderer.render`.
+        populated by :meth:`DashRenderer.render`.  The callback fires on
+        release (``value_throttled``), as the served app's does (WP-31 H1).
 
         Returns:
             A ``(Slider widget, CustomJS callback)`` tuple.
@@ -33722,7 +33979,8 @@ class FilterBuilder:
             },
             code=_FILTER_JS,
         )
-        widget.js_on_change("value", callback)
+        # WP-31 H1: on release, as the served app's slider fires.
+        widget.js_on_change("value_throttled", callback)
         return widget, callback
 
     @staticmethod
@@ -33744,6 +34002,8 @@ class FilterBuilder:
 
         Shows rows where ``varname >= start AND varname <= end``.  Callback
         args are populated by :meth:`DashRenderer.render`.
+        The callback fires on release (``value_throttled``), as the served
+        app's does (WP-31 H1).
 
         Returns:
             A ``(RangeSlider widget, CustomJS callback)`` tuple.
@@ -33789,7 +34049,8 @@ class FilterBuilder:
             },
             code=_FILTER_JS,
         )
-        widget.js_on_change("value", callback)
+        # WP-31 H1: on release, as the served app's slider fires.
+        widget.js_on_change("value_throttled", callback)
         return widget, callback
 
 
@@ -41538,11 +41799,24 @@ _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 # re-finishing every planned axis over the rows the move kept.  Appended
 # here, not in _FILTER_JS's literal: that is defined before the constants
 # the finish code names.  `typeof' because a hand-built caller passes no
-# plan.
-_FILTER_JS = (_FILTER_JS + _DASH_AXIS_FINISH_JS
+# plan.  WP-31 H1 (DECISIONS A28): everything after the mask's function
+# declarations -- the body, every helper the brush builder and the test
+# harnesses slice by marker, and the axis finish -- runs inside one try
+# block whose catch writes the page's error status line and rethrows.
+_FILTER_JS = (_DASH_FILTER_MASK_JS + "try {\n"
+              + _FILTER_JS[len(_DASH_FILTER_MASK_JS):]
+              + _DASH_AXIS_FINISH_JS
               + 'if (typeof axis_plans_json !== "undefined" && axis_models) '
               '{ dash_axis_finish(JSON.parse(axis_plans_json), '
-              'axis_models); }\n')
+              'axis_models); }\n'
+              # A split area's zero-height pairs keep their height of 0
+              # once the finish has refilled its default base (WP-31 H1;
+              # the build's _dash_base_pin).
+              + "for (let _di = 0; _di < _dsrcs.length; _di++) "
+              "{ const _jn = _djoin[_di]; "
+              'if (_jn && _jn.kind === "area") '
+              "dash_fill_repin(_dsrcs[_di], _jn, ROW_ID); }\n"
+              + "} catch (e) { dash_report_js_error(e); throw e; }\n")
 
 
 def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
@@ -51458,6 +51732,26 @@ def _dash_by_stack_hooks(models):
     return out
 
 
+def _dash_error_hooks(err_div):
+    """The window error hooks of a saved page (WP-31 H1): one ``CustomJS``
+    for ``document_ready`` that sets ``window.onerror`` and listens for
+    ``unhandledrejection``, each writing the failure into *err_div* (the
+    filter row's error status Div) through ``dash_report_js_error``.  A
+    Bokeh model, serialised with the document, so the page gains no
+    inline script.  ``[]`` when *err_div* is None."""
+    from bokeh.models import CustomJS
+    if err_div is None:
+        return []
+    return [CustomJS(
+        name="dash_error_hooks", args={"d": err_div},
+        code=_DASH_JS_REPORT_JS
+        + "\nwindow.onerror = function (msg, src, line, col, err) "
+          "{ dash_report_js_error(err || msg, d); };\n"
+          "window.addEventListener('unhandledrejection', function (ev) "
+          "{ dash_report_js_error(ev && ev.reason ? ev.reason : ev, d); });"
+          "\n")]
+
+
 def _dash_arrow_head_hooks(models):
     """The arrowhead scripts (``CustomJS`` named ``dash_arrow_head``, WP-31
     C1) under *models*, for the document's ``document_ready`` hooks, beside
@@ -54895,6 +55189,36 @@ def _dash_fill_rebuild(data, xcol, ycols, pin, xi, yi, col):
     return new
 
 
+def _dash_fill_gap_ids(ok, ids):
+    """The row ids of each gap :func:`_dash_fill_vertices` closes under
+    cmissing(n), connect direct (WP-31 H1, DECISIONS A23): per zero-height
+    pair, in order, the ids of the missing rows between the run before and
+    the run after; missing rows before the first or after the last present
+    row close nothing and are left out.  The saved page's rebuild after a
+    move keeps a gap while one of its rows survives the filters, as the
+    served redraw over the kept rows does."""
+    out, cur, seen = [], [], False
+    for o, i in zip(ok, ids):
+        if bool(o):
+            if seen and cur:
+                out.append(cur)
+            cur, seen = [], True
+        elif seen:
+            cur.append(int(i))
+    return out
+
+
+def _dash_fill_join(xcol, ycols, pin, gaps):
+    """A filled copy's ``_dash_join`` record for the saved page's rebuild
+    after a move (WP-31 H1): the zero-height pairs' *gaps*
+    (:func:`_dash_fill_gap_ids`), the x column *xcol*, the columns *ycols*
+    that take the *pin* column's value there.  JSON data: column names and
+    row ids."""
+    return {"kind": "area", "cmiss": "n", "x": str(xcol),
+            "ycols": [str(c) for c in ycols],
+            "pin": str(pin), "gaps": [list(g) for g in gaps]}
+
+
 def _dash_fill_split(src, xcol, ycols, pin, options):
     """Split a band *src* (a ColumnDataSource drawn as a VArea between
     ``ycols[0]`` and ``ycols[1]``) at its missing points when the layer's
@@ -56949,6 +57273,8 @@ class DashRenderer:
         self.kpi_divs: dict[str, Div] = {}               # name → Div
         self.filter_widgets: list = []
         self.filter_callbacks: list = []
+        # WP-31 H1: the error status Div, when the page has a filter.
+        self.error_status_div = None
         # One Stata formatter model per (format, kind, storage), for this
         # document (WP-28 S12): sliders, axes and tooltips share them.
         self._fmt_models: dict = {}
@@ -58596,11 +58922,12 @@ class DashRenderer:
                         if not _dash_is_swatch(_fr):
                             _fr._dash_frozen = _ftag
             # WP-31 C9 (DECISIONS A23, M8): weighted markers are sized from
-            # the drawn rows' smallest and largest weights, which a saved
-            # page does not recompute after a move (S52 will); until then a
-            # move that removes a row of the layer marks it with the stale
-            # cue -- any finite weight counts, a zero one too, as it sets
-            # the scale.
+            # the drawn rows' smallest and largest weights; the saved page
+            # rescales them after a move (WP-31 H1) except under a view,
+            # where _weight_markers sets _dash_wsized and a move that
+            # removes a row of the layer marks it with the stale cue --
+            # any finite weight counts, a zero one too, as it sets the
+            # scale.
             elif any(getattr(_fr, "_dash_wsized", False)
                      for _fr in _layer_renderers):
                 if ptype.lower() in _PC_TYPES:
@@ -59030,7 +59357,11 @@ class DashRenderer:
         # serialised as before.
         _by_hooks = (_dash_by_stack_hooks(all_models)
                      + _dash_arrow_head_hooks(all_models))
-        if _by_hooks:
+        # WP-31 H1: the window error hooks; S53/S54 append theirs here.
+        _err_hooks = _dash_error_hooks(getattr(self, "error_status_div",
+                                               None))
+        _hooks = [*_by_hooks, *_err_hooks]
+        if _hooks:
             from bokeh.document import Document as _HookDoc
             # file_html() left the models in _dummy_col's document.
             if _dummy_col.document is not None:
@@ -59039,7 +59370,7 @@ class DashRenderer:
             _hook_doc = _HookDoc()
             for _m in all_models:
                 _hook_doc.add_root(_m)
-            _hook_doc.js_on_event("document_ready", *_by_hooks)
+            _hook_doc.js_on_event("document_ready", *_hooks)
 
         # ---- Get individual Bokeh component divs ----
         script_tag, div_list = components(all_models)
@@ -60178,11 +60509,20 @@ class DashRenderer:
                         "brush_views": _views_of.get(_grp, []),
                         "tables": _tables_of.get(_grp, []),
                     },
-                    code=code,
+                    code=_dash_js_guarded(code),
                 ))
                 n += 1
             except (AttributeError, ValueError):
                 continue
+        # WP-31 H1: a brush script's failure is written into the page's
+        # error line, the filter row's, when the page has one.
+        _err = getattr(self, "error_status_div", None)
+        if _err is not None:
+            for src in _brushable:
+                for _bcb in src.selected.js_property_callbacks.get(
+                        "change:indices", []):
+                    if "dash_report_js_error(e)" in (_bcb.code or ""):
+                        _bcb.args["dash_error_status"] = _err
         return n
 
     def _build_filter_widgets(
@@ -60544,6 +60884,16 @@ class DashRenderer:
         # The saved page's stale cue (WP-29 P0.17): one set of models and
         # lists, shared by every callback; None when no frozen layer is
         # reached by a filter, and then nothing is added.
+        # WP-31 H1: the page's error status line, hidden until a script
+        # fails (dash_report_js_error); one per page, before the stale
+        # status Div, read by every filter and brush callback.
+        self.error_status_div = None
+        if self.filter_callbacks:
+            self.error_status_div = Div(
+                text="", visible=False, tags=["dash_error_status"],
+                css_classes=["dash-error-status"],
+                sizing_mode="stretch_width", disable_math=True)
+            filter_row_widgets.append(self.error_status_div)
         _stale_args = (self._stale_cue_args(_use_for, filter_row_widgets)
                        if self.filter_callbacks else None)
 
@@ -60598,6 +60948,7 @@ class DashRenderer:
             if _stale_args:
                 for _k, _v in _stale_args.items():
                     _cb.args[_k] = _v
+            _cb.args["dash_error_status"] = self.error_status_div
             if _bp_pairs:
                 _cb.args["by_panel_figs"] = _bp_figs
                 _cb.args["by_panel_sources"] = _bp_srcs
@@ -60949,11 +61300,15 @@ class DashRenderer:
         # callback of the document file_html() serialises.
         _by_hooks = (_dash_by_stack_hooks([layout_root])
                      + _dash_arrow_head_hooks([layout_root]))
-        if _by_hooks:
+        # WP-31 H1: the window error hooks; S53/S54 append theirs here.
+        _err_hooks = _dash_error_hooks(getattr(self, "error_status_div",
+                                               None))
+        _hooks = [*_by_hooks, *_err_hooks]
+        if _hooks:
             from bokeh.document import Document as _HookDoc
             _hook_doc = _HookDoc()
             _hook_doc.add_root(layout_root)
-            _hook_doc.js_on_event("document_ready", *_by_hooks)
+            _hook_doc.js_on_event("document_ready", *_hooks)
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
         # Every script on this page is Bokeh's, hashed here, before the
         # head below is spliced in (WP-30 P1.29).
@@ -61513,6 +61868,9 @@ class ServerAppBuilder:
                       # map_lowess writes the saved page's lowess cap into
                       # its refit config (WP-31 F1c).
                       "_DASH_LOWESS_JS_MAX_OPS",
+                      # The saved page's error line (WP-31 H1), beside the
+                      # stale constants.
+                      "_DASH_JS_ERROR_HTML",
                       # _stata_date_kind's own pattern, for an axis format().
                       "_MS_PER_DAY", "_DATE_FMT_RE",
                       # _dash_anglestyle_degrees' table of Stata's
@@ -62249,6 +62607,8 @@ class ServerAppBuilder:
                          "_dash_fill_rebuild",
                          "_dash_insert_breaks",
                          "_dash_fill_split",
+                         # the saved rebuild's gap record (WP-31 H1).
+                         "_dash_fill_gap_ids", "_dash_fill_join",
                          "_dash_fit_points_of",
                          # a layer's yaxis()/xaxis() numbers (WP-31 C10b;
                          # the tie is _dash_axis_groups', C10c).
@@ -66125,8 +66485,12 @@ class ServerAppBuilder:
             "    # The stacked view of every by() grid (WP-30 P1.15c).",
             "    _by_hooks = (_dash_by_stack_hooks([layout])",
             "                 + _dash_arrow_head_hooks([layout]))",
-            "    if _by_hooks:",
-            "        doc.js_on_event('document_ready', *_by_hooks)",
+            "    # WP-31 H1: the served app logs a script error server-side;",
+            "    # S53/S54 append their document_ready hooks to this list.",
+            "    _err_hooks = []",
+            "    _hooks = [*_by_hooks, *_err_hooks]",
+            "    if _hooks:",
+            "        doc.js_on_event('document_ready', *_hooks)",
             "    doc.title = title_text or 'dash'",
             "    # ---- The idle close (WP-30 P1.31a) ----",
             "    # Only a served session: its document is cleared, says why,",

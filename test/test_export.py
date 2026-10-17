@@ -76,7 +76,9 @@ def _saved_mask(orig, specs, values):
         "const kpi_config_json = '[]';\n"
         "const all_widgets = " + json.dumps(widgets) + ";\n"
         + prefix
-        + "\nprocess.stdout.write(JSON.stringify(active));\n")
+        + "\nprocess.stdout.write(JSON.stringify(active));\n"
+        # The prefix opens _FILTER_JS's try block (WP-31 H1).
+        + "} finally {}\n")
     return _run_js(harness)
 
 
@@ -122,7 +124,9 @@ class TestTheSavedFilterMaskFailsMissingValues:
                 [{"varname": "x", "type": "range"}])) + ";\n"
             "const kpi_config_json = '[]';\n"
             "const all_widgets = [{value: [-1, 10]}];\n"
-            + prefix + "\nprocess.stdout.write(JSON.stringify(active));\n")
+            + prefix + "\nprocess.stdout.write(JSON.stringify(active));\n"
+            # The prefix opens _FILTER_JS's try block (WP-31 H1).
+            + "} finally {}\n")
         assert got == [False, False, True, False, True, True]
 
     def test_a_dropdown_never_matches_a_missing_value(self):

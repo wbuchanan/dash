@@ -498,7 +498,11 @@ class TestInChrome:
             p.in_task("__dash_models('MultiChoice')[0].value = "
                       "['__missing__'];")
             assert p.wait_change(self._COUNT, 4) == 2
-            p.in_task("__dash_models('Slider')[0].value = 5000;")
+            # A slider's callback runs on release (WP-31 H1): a drag ends
+            # by writing value_throttled, which a value write alone does
+            # not.
+            p.in_task("__dash_models('Slider')[0].value = 5000; "
+                      "__dash_models('Slider')[0].value_throttled = 5000;")
             assert p.wait_change(self._COUNT, 2) == 0
             p.in_task("(() => { const b = __dash_models('Button').find("
                       "b => b.tags.includes('dash_filter_reset'));"

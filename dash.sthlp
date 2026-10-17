@@ -461,9 +461,8 @@ observation that has {it:x} and no {it:y}, {cmd:lpoly} and
 {cmd:twoway} does; {cmd:rarea} draws both bounds by it ({cmd:J} steps
 each bound, and the step toward an observation missing a bound is drawn
 when a present one follows it, as in {cmd:twoway}).  After a filter
-move the served app redraws the split; the saved page joins the fill
-across the gap again, and a {cmd:lowess} line, which the saved page
-recomputes, too, until a later release.
+move both modes split the fill, and break a {cmd:lowess} line, where the
+rows the filter keeps are missing.
 
 {phang2}{opt cmissings(y|n ...)} is {cmd:twoway}'s other spelling of
 {cmd:cmissing()}, and is read as it.
@@ -2250,7 +2249,7 @@ served app differ as follows:
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}Yes{col 59}Yes
-{col 5}A slider recomputes{col 38}at every step{col 59}when released
+{col 5}A slider recomputes{col 38}when released{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as SVG{col 38}Yes{col 59}Yes
@@ -2260,9 +2259,15 @@ served app differ as follows:
 {col 7}{cmd:filterposition()}
 {col 5}Bootstrap {cmd:layout(bs)}{col 38}reflows{col 59}reflows
 {col 5}Health endpoint{col 38}n/a{col 59}{cmd:/health}
+{col 5}Script errors shown{col 38}status line{col 59}server log
 {col 5}Who can open it{col 38}who has the file{col 59}who has its link
 {col 5}Deployment{col 38}email, open file{col 59}{cmd:python app.py}
 {col 5}{hline 72}
+
+{pstd}
+If the page's script fails during a move, a status line under the filters
+says so (a screen reader announces it) and the browser console holds the
+error.
 
 {pstd}
 {ul:What a filter move redraws.}  The saved page draws every layer that
@@ -2604,8 +2609,8 @@ room for new ones, so a flood of addresses cannot reset a real client's
 count.
 
 {pstd}
-{ul:Recomputation.}  In the served app a slider recomputes the dashboard
-when you release it, not at every step of the drag as on the saved page.
+{ul:Recomputation.}  A slider recomputes the dashboard when you release
+it, not at every step of the drag, in the served app and on the saved page.
 In each browser session, each filter widget and each brushed data source
 then recomputes at most 10 times in a burst and twice a second after that;
 changes that arrive faster are folded into one recomputation with the
@@ -3975,10 +3980,12 @@ word, as {cmd:twoway} stops it; and markers labelled by {cmd:mlabel()},
 and the point symbol, keep their size.  On {cmd:line}, {cmd:area},
 {cmd:bar}, {cmd:spike}, the range lines, areas, bars and caps, the pc
 lines and arrows, and {cmd:function}, {cmd:twoway} accepts a weight and
-draws nothing different, and so does {cmd:dash}, saying nothing.  The
-served app rescales the markers to the rows a filter keeps; a saved page
-keeps the sizes it was drawn with and marks the layer
-{cmd:(unfiltered)} while a filter has removed one of its rows.  On a layer
+draws nothing different, and so does {cmd:dash}, saying nothing.  Both
+modes rescale the markers to the rows a filter keeps; on a saved page a
+layer drawn from part of a shared source (a plot with its own {cmd:if} or
+{cmd:in}, a panel of a linked {cmd:by()} graph) keeps the sizes it was
+drawn with and is marked {cmd:(unfiltered)} while a filter has removed
+one of its rows.  On a layer
 that uses it the weight is exported with the data; on any other layer the
 weight variable is not exported.
 

@@ -139,8 +139,10 @@ def _linked(figs):
 
 
 def _callbacks(r):
+    # A slider's callback is under change:value_throttled (WP-31 H1).
     return [cb for w in r.filter_widgets
-            for cb in (w.js_property_callbacks.get("change:value") or [])]
+            for k in ("change:value", "change:value_throttled")
+            for cb in (w.js_property_callbacks.get(k) or [])]
 
 
 # ---------------------------------------------------------------------------

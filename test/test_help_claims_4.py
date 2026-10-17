@@ -1860,12 +1860,15 @@ class TestTheModesDifferHere:
             assert type(widget).__name__ == "DateRangeSlider"
             assert (widget.start, widget.end) == (ms0, ms1)
 
-    def test_the_saved_slider_recomputes_at_every_step(self, tmp_path,
+    def test_the_saved_slider_recomputes_when_released(self, tmp_path,
                                                        truth):
+        # Flipped (WP-31 H1): change:value was the saved wiring, at every
+        # drag step; the served app fires on release, and now so does the
+        # page.
         spec = _pair_spec(filters=[{"varname": "mpg", "type": "slider"}])
         r = _saved(tmp_path, spec, _auto(truth))
         assert list((r.filter_widgets[0].js_property_callbacks or {})) \
-            == ["change:value"]
+            == ["change:value_throttled"]
         ns = _served_app(tmp_path, spec, _auto(truth))
         doc = _served_session(ns)
         w = _served_widget(doc, "mpg")

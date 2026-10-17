@@ -376,38 +376,43 @@ class TestAfterAMove:
         want = _want(_base("served", "scatter"), kept)
         assert np.allclose(np.sort(_sizes(r)), want)
 
-    def test_saved_is_marked(self):
-        """M8: until the saved page recomputes the sizes (S52), a move that
-        removes a row marks the layer with the stale cue."""
+    def test_saved_is_not_marked(self):
+        """The saved page rescales the sizes after a move (WP-31 H1), so a
+        layer drawing every row of its source is not marked.
+        Flipped (WP-31 H1, DECISIONS A23): the stale cue was M8's stand-in
+        until the page recomputed the sizes; it now does."""
         r, _ = tp._standalone(_wspec("scatter", filt=self._FILT))
         (mk,) = _markers(r.figures.values())
-        tag = getattr(mk, "_dash_frozen", None)
-        assert tag is not None
-        assert tag["kind"] == "fit" and tag["wvar"] == "price"
-        assert tag["wrule"] == "any"
+        assert getattr(mk, "_dash_frozen", None) is None
         reg = r._collect_frozen_layers()
-        assert any(mk in rends for groups in reg.values()
-                   for _t, rends in groups)
+        assert not any(mk in rends for groups in reg.values()
+                       for _t, rends in groups)
 
     @requires_node
-    def test_saved_page_shows_the_cue(self):
+    def test_saved_page_shows_no_cue(self):
         """Under node, the page's own script: a move that removes rows
-        dims the weighted markers and shows the caption; moving back to
-        every row clears it."""
+        leaves the weighted markers and the caption as they were.
+        Flipped (WP-31 H1, DECISIONS A23): the move dimmed them and showed
+        the caption while the page kept the build's sizes."""
         import test_saved_stale_cue as sc
         from test_saved_filter_layers import _render
         r = _render(_wspec("scatter", filt=self._FILT))
-        sc._assert_clear(r)
+        assert not [m for m in r._last_layout_root.references()
+                    if "dash_stale_cue" in (getattr(m, "tags", None) or [])]
         sc._act(r, ("Select", "Foreign"))
-        sc._assert_marked(r)
-        sc._back(r, "Select")
-        sc._assert_clear(r)
+        (mk,) = _markers(r.figures.values())
+        assert mk.muted is False
 
-    @pytest.mark.xfail(strict=True,
-                       reason="fixed in S52 (batch 17), DECISIONS A23")
     def test_saved(self):
-        """The saved page recomputes the size column from the kept rows."""
-        assert "__dash_wsize" in dr._FILTER_JS
+        """The saved page recomputes the size column from the kept rows
+        (test_saved_page_errors.py::TestWeightedSizesTwin runs it).
+        Flipped (WP-31 H1, DECISIONS A23): xfail(strict) until the page
+        had the twin of _dash_rescale_wsizes."""
+        assert "function dash_rescale_wsizes(" in dr._FILTER_JS
+        r, _ = tp._standalone(_wspec("scatter", filt=self._FILT))
+        (mk,) = _markers(r.figures.values())
+        assert any(str(t).startswith("dash_wsize=")
+                   for t in (mk.data_source.tags or []))
 
 
 class TestTheAdoText:
