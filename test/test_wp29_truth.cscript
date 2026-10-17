@@ -1531,10 +1531,11 @@ end
     capture erase "`fx23_app'"
 
     // ------------------------------------------------------------
-    // FX-24: by() -- the documented residual.  twoway evaluates once per
-    // panel (by(foreign, total): draws 1-3, 4-6, 7-9); dash once, drawn in
-    // every panel: its points are twoway's first panel's, and the state is
-    // left after 3 draws where twoway leaves it after 9.
+    // FX-24: by().  twoway evaluates once per panel (by(foreign, total):
+    // draws 1-3, 4-6, 7-9).  Flipped (WP-31 C12): so does dash, so the
+    // state is left after 9 draws, as twoway leaves it, and the first
+    // panel's points are draws 1-3; the residual (one evaluation, drawn in
+    // every panel, 3 draws) is closed.
     // ------------------------------------------------------------
     sysuse auto, clear
     dash clear
@@ -1543,7 +1544,6 @@ end
     quietly set obs 9
     set seed 1
     quietly gen double u = runiform() in 1/3
-    local fx24_s3 = c(rngstate)
     quietly replace u = runiform() in 4/9
     local fx24_s9 = c(rngstate)
     mata: st_matrix("fx24_want", st_data((1, 3), "u")')
@@ -1554,11 +1554,11 @@ end
     set seed 1
     capture noisily dash function y = runiform(), range(0 2) n(3) by(foreign, total) name(fx24)
     _w29_expect FX-24 "(_rc == 0)" "dash by() r(`=_rc')"
-    _w29_expect FX-24 `"(c(rngstate) == "`fx24_s3'")"' "dash did not take exactly three draws"
+    _w29_expect FX-24 `"(c(rngstate) == "`fx24_s9'")"' "dash did not take nine draws, as twoway takes"
     _fx_stored fx24
     mata: st_local("fx_eq", strofreal(st_matrix("fx_dy") == st_matrix("fx24_want")))
-    _w29_expect FX-24 "(`fx_eq' == 1)" "the stored points are not the first three draws"
-    _w29_done FX-24 "by(): one evaluation, twoway's first panel's points, drawn in every panel (the documented residual)"
+    _w29_expect FX-24 "(`fx_eq' == 1)" "the first panel's stored points are not the first three draws"
+    _w29_done FX-24 "by(): one evaluation per panel, as twoway's, the first panel's points its first three draws"
     dash clear
     macro drop fx_names fx_html fx_app fx_bad
     capture matrix drop fx_sy fx_sx fx_dy fx24_want
