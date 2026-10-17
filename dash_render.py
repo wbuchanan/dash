@@ -21077,8 +21077,24 @@ class GlyphMapper:
                                      _hgap, _hoff),
                                  self._agg_member_ids(source, view))
             return _first
+        # WP-31 H2l: the rows each bar counts, so a box or lasso selection
+        # on the bars selects those rows of the layer's own source
+        # (_BRUSH_JS; the served _make_brush_cb).
+        _rid = source.data.get(_ROW_ID_COLUMN)
+        if _rid is None:
+            # The served app's sources carry the row labels as 'index'.
+            _rid = source.data.get("index")
+        if _rid is not None and i1 > i0:
+            _bx = self._masked_rows(source, view, yvar)[0]
+            _bsel = GlyphMapper._view_mask(view, len(_rid))
+            _bids = (list(_rid) if _bsel is None
+                     else [v for v, k in zip(list(_rid), _bsel) if k])
+            hist_source.data["__dash_bin_rows"] = _dash_bin_members(
+                edges, _bx, _bids)[i0:i1]
         r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
                                        yvar))
+        if "__dash_bin_rows" in hist_source.data:
+            r._dash_bin_raw = source
         if i1 <= i0:
             # No bar has a date on the axis: nothing for the page to
             # recount.
@@ -33400,22 +33416,96 @@ _BRUSH_JS = """
 const idx = (cb_obj && cb_obj.indices) ? cb_obj.indices : [];
 const src_data = brush_source.data;
 const cols = Object.keys(src_data);
+const _bins = src_data.__dash_bin_rows;
 
-// Nothing selected means every row, not no rows -- the same fallback the
-// server path uses (`sel_df = _df_ref.iloc[indices] if indices else _df_ref').
-// Without it, clearing a selection would blank every card instead of
-// restoring it.
-const sel = {};
-if (idx.length === 0) {
-    for (const c of cols) sel[c] = src_data[c];
+if (_bins && typeof raw_source !== "undefined" && raw_source) {
+    // WP-31 H2l: a selection on histogram bars selects the rows each bar
+    // counts (GlyphMapper.map_histogram's __dash_bin_rows), in the
+    // layer's own source; that source's own callback does the rest.
+    const want = new Set();
+    for (const b of idx) for (const r of (_bins[b] || [])) want.add(r);
+    const rid = raw_source.data[ROW_ID] || [];
+    const pos = [];
+    for (let i = 0; i < rid.length; i++) if (want.has(rid[i])) pos.push(i);
+    raw_source.selected.indices = pos;
 } else {
-    for (const c of cols) {
-        const col = src_data[c];
-        sel[c] = idx.map(i => col[i]);
+    // The rows selected, by identity.  Every brushed source keeps its own
+    // in brush_state, one column each holding one array (no JSON, so a
+    // drag re-serialises nothing); the rows a card counts are those every
+    // non-empty column holds (WP-31 H2l), as the served app intersects
+    // them.  Nothing selected anywhere means every row, not no rows --
+    // the same fallback the server path uses; without it, clearing a
+    // selection would blank every card instead of restoring it.
+    const rid_b = src_data[ROW_ID];
+    let keep = null;
+    let home = brush_source;
+    if (rid_b === undefined) {
+        if (idx.length) keep = idx;
+    } else if (typeof brush_state === "undefined" || !brush_state) {
+        if (idx.length) keep = new Set(idx.map(i => rid_b[i]));
+    } else {
+        const st = Object.assign({}, brush_state.data);
+        st[src_key] = [idx.map(i => rid_b[i])];
+        brush_state.data = st;
+        for (const k of Object.keys(st)) {
+            const l = st[k] ? st[k][0] : null;
+            if (!l || !l.length) continue;
+            const s = new Set(l);
+            keep = keep === null ? s
+                : new Set([...keep].filter(x => s.has(x)));
+            // A source that holds every row kept: its own rows are the
+            // values the cards read.
+            if (brush_peers && brush_peers[k]) home = brush_peers[k];
+        }
+    }
+    const sel = {};
+    const hdata = home.data;
+    if (keep === null) {
+        for (const c of cols) sel[c] = src_data[c];
+    } else if (rid_b === undefined) {
+        for (const c of cols) {
+            const col = src_data[c];
+            sel[c] = idx.map(i => col[i]);
+        }
+    } else {
+        const hid = hdata[ROW_ID] || [];
+        const pos = [];
+        for (let i = 0; i < hid.length; i++) if (keep.has(hid[i])) pos.push(i);
+        for (const c of Object.keys(hdata)) {
+            const col = hdata[c];
+            sel[c] = pos.map(i => col[i]);
+        }
+    }
+
+    dash_apply_kpis(sel, kpi_config, kpi_divs, ROW_ID);
+
+    if (typeof brush_filter !== "undefined" && brush_filter) {
+        // brush(filter): every view over the group's rows lists the rows
+        // kept, or every row again (null) when nothing is selected; its
+        // IndexFilter was built in Python (_wire_brush_callbacks).
+        for (const pair of (brush_views || [])) {
+            const flt = pair[0], vs = pair[1];
+            if (keep === null) { flt.indices = null; continue; }
+            const vid = vs.data[ROW_ID] || [];
+            const pos = [];
+            for (let i = 0; i < vid.length; i++) if (keep.has(vid[i])) pos.push(i);
+            flt.indices = pos;
+        }
+        // A data table lists the first rows kept, at most its cap.
+        for (const t of (tables || [])) {
+            let cap = Infinity;
+            for (const tg of (t.tags || [])) {
+                const m = /^dash_table_cap=(\\d+)$/.exec(String(tg));
+                if (m) cap = Number(m[1]);
+            }
+            const tid = t.source.data[ROW_ID] || [];
+            const pos = [];
+            for (let i = 0; i < tid.length && pos.length < cap; i++)
+                if (keep === null || keep.has(tid[i])) pos.push(i);
+            t.view.filter.indices = pos;
+        }
     }
 }
-
-dash_apply_kpis(sel, kpi_config, kpi_divs, ROW_ID);
 """
 
 
@@ -47307,13 +47397,92 @@ def _dash_link_names(link, graph_names):
     when saved and none when served (measured 23sep2026).  Names may be
     separated by ``;``, as older specs wrote them.
     """
+    return [n for g in _dash_link_groups(link, graph_names) for n in g]
+
+
+def _dash_link_groups(link, graph_names):
+    """The link groups ``link()`` makes, in both modes (WP-31 H2l): each
+    copy of ``link()`` one group, which dash.ado joins with ``||``
+    (``"g1 g2 || g3 g4"``).  A list may carry ``"||"`` items, as the saved
+    renderer's word split leaves them.  ``_all`` anywhere is every graph,
+    one group (dash.ado takes it alone); a name a group before already
+    holds is dropped from the later one, with a note (dash.ado refuses
+    it, so only a hand-built spec reaches this); a group left empty is
+    dropped.  ``;`` is a blank, as older specs wrote it.
+
+    Returns:
+        ``[[name, ...], ...]``, in the order given.
+    """
     if isinstance(link, (list, tuple)):
-        names = [str(x) for x in link]
+        text = " ".join(str(x) for x in link)
     else:
-        names = str(link or "").replace(";", " ").split()
-    if "_all" in names:
-        return [n for n in graph_names if n]
-    return names
+        text = str(link or "")
+    groups = [part.replace(";", " ").split() for part in text.split("||")]
+    if any("_all" in g for g in groups):
+        return [[n for n in graph_names if n]]
+    out, seen = [], set()
+    for g in groups:
+        kept = []
+        for n in g:
+            if n in seen:
+                _dash_warn_once(
+                    ("link-two-groups", n),
+                    "dash: link() name '%s' is in more than one link "
+                    "group; it stays in the first" % n)
+                continue
+            seen.add(n)
+            kept.append(n)
+        if kept:
+            out.append(kept)
+    return out
+
+
+def _dash_brush_mode(build_options):
+    """``"filter"`` when ``dash build, brush(filter)`` asks a selection to
+    hide the rows it leaves out (WP-31 H2l), else ``"highlight"``, the
+    dimming dash has always drawn.  dash.ado refuses any other word."""
+    bo = build_options if isinstance(build_options, dict) else {}
+    return ("filter" if str(bo.get("brush", "") or "").strip().lower()
+            == "filter" else "highlight")
+
+
+def _dash_bin_members(edges, xs, row_ids):
+    """The row ids each histogram bar counts (WP-31 H2l), by the rule
+    ``GlyphMapper._histogram_counts`` counts them -- twoway__histogram_
+    gen.ado:200-203: bar ``floor((x - edges[0]) / h)``, an index below 0
+    folded into bar 0 and one at or past the last edge into the last bar
+    -- so a selection on bar j reaches exactly the rows its height counts.
+    A missing *x* is in no bar.
+
+    Args:
+        edges:   The grid's ``nb + 1`` equally spaced edges (Stata units).
+        xs:      Each row's value, aligned with *row_ids*.
+        row_ids: Each row's ``__dash_row__``.
+
+    Returns:
+        ``nb`` lists of ids, in row order.
+    """
+    e = np.asarray(edges, dtype=float)
+    nb = int(len(e) - 1)
+    if nb < 1:
+        return []
+    out = [[] for _ in range(nb)]
+    start = float(e[0])
+    h = (float(e[-1]) - start) / nb
+    x = np.asarray(xs, dtype=float)
+    ok = np.isfinite(x)
+    if not h > 0:
+        idx = np.zeros(len(x), dtype=np.int64)
+    else:
+        with np.errstate(invalid="ignore"):
+            idx = np.floor((np.where(ok, x, start) - start) / h)
+        idx = np.clip(idx, 0, nb - 1).astype(np.int64)
+    for i, (keep, b) in enumerate(zip(ok, idx)):
+        if keep:
+            v = row_ids[i]
+            out[int(b)].append(int(v) if isinstance(v, (int, np.integer))
+                               else v)
+    return out
 
 
 def _dash_excluded(key, excluded, owner_of):
@@ -55192,7 +55361,8 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
     graphs = [g for g in spec.get("graphs", []) or [] if isinstance(g, dict)]
     names = [str((g.get("graph_options") or {}).get("name", "") or "")
              for g in graphs]
-    linked = set(_dash_link_names(link_names, names))
+    groups = _dash_link_groups(link_names, names)
+    linked = {n for g in groups for n in g}
     graph_rows = {}
     for g, name in zip(graphs, names):
         go = g.get("graph_options") or {}
@@ -55243,12 +55413,23 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
     members = [n for n in names if n in linked]
     for n in members:
         link_rows = link_rows | graph_rows[n]
+    # WP-31 H2l: each link group's rows, the rows its one source holds.
+    group_members = [[n for n in names if n in g] for g in groups]
+    link_group_rows = []
+    for gm in group_members:
+        gr = pd.Series(False, index=idx)
+        for n in gm:
+            gr = gr | graph_rows[n]
+        link_group_rows.append(gr)
     every_graph = pd.Series(False, index=idx)
     for r in graph_rows.values():
         every_graph = every_graph | r
     kpis = [k for k in spec.get("kpis", []) or [] if isinstance(k, dict)]
+    # Under brush(filter) every card follows a selection (WP-31 H2l).
+    _bf = _dash_brush_mode(spec.get("build_options")) == "filter"
     for k in kpis:
-        if str(k.get("update", "filter") or "filter") in ("brush", "both"):
+        if _bf or str(k.get("update", "filter") or "filter") in (
+                "brush", "both"):
             for kv in (str(k.get("var") or k.get("varname") or ""),
                        str(k.get("wexp") or "")):
                 if kv in need:
@@ -55261,8 +55442,9 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
             continue
         fvar = str(f.get("varname") or f.get("var") or "")
         excl = list(f.get("exclude") or [])
-        if members and _dash_filter_applies("", excl, {}, members=members):
-            reach = reach | link_rows
+        for gm, gr in zip(group_members, link_group_rows):
+            if gm and _dash_filter_applies("", excl, {}, members=gm):
+                reach = reach | gr
         for n in names:
             if n not in linked and _dash_filter_applies(n, excl, {}):
                 reach = reach | graph_rows[n]
@@ -55294,7 +55476,8 @@ def _dash_embed_plan(spec, frame, masks, link_names, filters, csv=False):
                 and str(c)[len(_DASH_CODE_PREFIX):] in need):
             need[str(c)] = rows
     return {"rows": rows, "need": need, "graph_rows": graph_rows,
-            "link_rows": link_rows, "filter_rows": filter_rows}
+            "link_rows": link_rows, "link_group_rows": link_group_rows,
+            "filter_rows": filter_rows}
 
 
 def _dash_embed_values(series, need):
@@ -57433,8 +57616,8 @@ class DashRenderer:
         Returns:
             A CDSView, or *view*.
         """
-        linked = getattr(self, "_dash_linked_source", None)
-        if linked is None or source is not linked:
+        # Any link group's source (WP-31 H2l: one per group).
+        if not getattr(source, "_dash_link_source", False):
             return view
         data = source.data
         if (xvar not in data or yvar not in data
@@ -59308,11 +59491,23 @@ class DashRenderer:
         # link(_all) is documented and was expanded only in the two dead
         # helpers, so the shipped path produced an unlinked dashboard and
         # returned rc 0.  The served app reads it by the same rule.
-        link_names[:] = _dash_link_names(link_names, all_graph_names)
+        # WP-31 H2l: each link() copy is a group with a source of its own;
+        # link_names stays the flat union every other reader takes.
+        _link_given = list(link_names)
+        self._link_groups = _dash_link_groups(_link_given, all_graph_names)
+        link_names[:] = [n for g in self._link_groups for n in g]
+        self._link_group_of = {n: k for k, g in enumerate(self._link_groups)
+                               for n in g}
+        # A selection's non-selected rows: dimmed, or hidden under
+        # brush(filter).
+        self._brush_mode = _dash_brush_mode(
+            (getattr(self, "master_spec", None) or {}).get("build_options"))
+        self._brush_alpha = (0.0 if self._brush_mode == "filter"
+                             else _NONSELECTION_ALPHA)
         # None until a link group builds its source, below.
         self._dash_linked_source = None
         # WP-29 P0.11: the rows and cells the page holds, once.
-        _plan = self._ensure_embed(graphs, kpis, link_names, filters_cfg)
+        _plan = self._ensure_embed(graphs, kpis, _link_given, filters_cfg)
         _grows = _plan["graph_rows"]
 
         # ---- 2. Build ColumnDataSources ----
@@ -59325,7 +59520,8 @@ class DashRenderer:
         # _make_source drops no rows, so the column costs a graph nothing.
         brush_kpi_vars: list[str] = []
         for kpi in kpis:
-            if kpi.get("update", "filter") in ("brush", "both"):
+            if (self._brush_mode == "filter"
+                    or kpi.get("update", "filter") in ("brush", "both")):
                 for kvar in (kpi.get("var") or kpi.get("varname", ""),
                              kpi.get("wexp", "")):
                     if (kvar and kvar not in brush_kpi_vars
@@ -59369,19 +59565,29 @@ class DashRenderer:
                         vname = plot.get("var") or plot.get("yvar", "")
                         if vname and vname not in linked_vars and vname in self.df.columns:
                             linked_vars.append(vname)
-            # The link group's rows only (WP-29 P0.11): each graph's and
-            # each layer's if/in together, never every row of the data.
-            self._link_index = self.df.index[
-                _plan["link_rows"].to_numpy(dtype=bool)]
-            linked_source = self._make_source(linked_vars,
-                                              rows=_plan["link_rows"])
-            # The link group's one source, so a layer that would draw from a
-            # copy of it can draw from it through a view instead
-            # (_linked_scatter_view).
-            self._dash_linked_source = linked_source
-            # ... and a jittered scatter puts its points on it
-            # (GlyphMapper._linked_jitter_columns).
-            linked_source._dash_link_source = True
+            # Each link group's rows only (WP-29 P0.11): each graph's and
+            # each layer's if/in together, never every row of the data;
+            # one source per group (WP-31 H2l).
+            _grp_rows = list(_plan.get("link_group_rows") or [])
+            _src_of_name: dict = {}
+            self._link_index_of: dict = {}
+            for _k, _grp in enumerate(self._link_groups):
+                _rows_k = (_grp_rows[_k] if _k < len(_grp_rows)
+                           else _plan["link_rows"])
+                _lidx = self.df.index[_rows_k.to_numpy(dtype=bool)]
+                linked_source = self._make_source(linked_vars, rows=_rows_k)
+                # A jittered scatter puts its points on it
+                # (GlyphMapper._linked_jitter_columns), and a layer that
+                # would draw from a copy of it draws from it through a view
+                # instead (_linked_scatter_view).
+                linked_source._dash_link_source = True
+                linked_source._dash_link_group = _k
+                if self._dash_linked_source is None:
+                    self._dash_linked_source = linked_source
+                    self._link_index = _lidx
+                for _n in _grp:
+                    _src_of_name[_n] = linked_source
+                    self._link_index_of[_n] = _lidx
             # Per-graph qualifier views for linked graphs.  The shared source
             # supports brush selection across all linked graphs and cannot be
             # filtered per-graph.  CDSView with BooleanFilter applies each
@@ -59391,6 +59597,8 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
+                    linked_source = _src_of_name[name]
+                    _link_index = self._link_index_of[name]
                     self.sources[name] = linked_source
                     # Build a CDSView for linked graphs that have qualifiers.
                     _g_fdf = self._apply_graph_filter(g)
@@ -59400,7 +59608,7 @@ class DashRenderer:
                     # length would never intersect with it.
                     _df_idx_set = frozenset(_g_fdf.index)
                     _bool_mask = [
-                        bool(i in _df_idx_set) for i in self._link_index
+                        bool(i in _df_idx_set) for i in _link_index
                     ]
                     if not all(_bool_mask):
                         _qf = BooleanFilter(booleans=_bool_mask)
@@ -59423,7 +59631,7 @@ class DashRenderer:
                             if group_df.attrs.get("_dash_total"):
                                 self._facet_total_keys.add(fkey)
                             _gidx = frozenset(group_df.index)
-                            mask = [i in _gidx for i in self._link_index]
+                            mask = [i in _gidx for i in _link_index]
                             facet_entries_lnk.append((fkey, label))
                             facet_masks_lnk.append((label, mask))
                         self._facet_map[name]   = facet_entries_lnk
@@ -59557,7 +59765,8 @@ class DashRenderer:
                             self.scheme,
                             getattr(self, "_reported_subopts", None), name)
                         if name in link_names:
-                            _dash_dim_nonselection(fig)
+                            _dash_dim_nonselection(fig, self._brush_alpha)
+                            fig._dash_link_group = self._link_group_of[name]
                         self.figures[fkey] = fig
                     except Exception as exc:
                         raise RuntimeError(
@@ -59592,15 +59801,15 @@ class DashRenderer:
                             # A copy of the panels' rows of the link
                             # group's source, which the move keeps by row
                             # identity (_collect_derived_sources).
-                            _tmask = np.zeros(len(self._link_index),
-                                              dtype=bool)
+                            _lix = self._link_index_of[name]
+                            _tmask = np.zeros(len(_lix), dtype=bool)
                             for (_fk, _lb), (_l2, _m) in zip(
                                     self._facet_map[name],
                                     self._facet_masks.get(name, [])):
                                 if _fk not in self._facet_total_keys:
                                     _tmask |= np.asarray(_m, dtype=bool)
                             _tsrc = self._dash_table_copy(
-                                g, self.df.loc[self._link_index[_tmask]])
+                                g, self.df.loc[_lix[_tmask]])
                         _dash_data_table(
                             _first, self._dash_table_columns(g), _tspec,
                             source=_tsrc)
@@ -59616,7 +59825,8 @@ class DashRenderer:
                     _fig = self._make_figure(g, src, facet_view=_qual_view,
                                              rescale=_brs)
                     if name in link_names:
-                        _dash_dim_nonselection(_fig)
+                        _dash_dim_nonselection(_fig, self._brush_alpha)
+                        _fig._dash_link_group = self._link_group_of[name]
                     self.figures[name] = _fig
                     # WP-31 H2t: the graph's data table, under its figure.
                     _tspec = _dash_table_spec(g.get("graph_options", {}),
@@ -59815,6 +60025,41 @@ class DashRenderer:
                                           "", "bgcolor"),
         }
 
+    def _brush_filter_views(self):
+        """brush(filter)'s views (WP-31 H2l): per link group, every
+        renderer of its figures drawing rows (a source with the row
+        identity) gets an ``IndexFilter`` -- ``indices`` None, every row --
+        intersected with the view it already has, which a filter move
+        keeps rebuilding; the brush script writes ``indices``.  Built here,
+        in Python: the page loads no ``bokeh-api`` and has no model
+        constructor.  Also each group figure's data table.
+
+        Returns:
+            ``({group: [[IndexFilter, source], ...]}, {group: [DataTable]})``.
+        """
+        from bokeh.models import AllIndices, IndexFilter, IntersectionFilter
+        views: dict = {}
+        tables: dict = {}
+        for fig in self.figures.values():
+            k = getattr(fig, "_dash_link_group", None)
+            if k is None:
+                continue
+            for r in getattr(fig, "renderers", []) or []:
+                ds = getattr(r, "data_source", None)
+                view = getattr(r, "view", None)
+                if (ds is None or view is None
+                        or _ROW_ID_COLUMN not in getattr(ds, "data", {})):
+                    continue
+                flt = IndexFilter(indices=None, tags=["dash_brush_view"])
+                old = view.filter
+                view.filter = (flt if old is None or isinstance(old, AllIndices)
+                               else IntersectionFilter(operands=[old, flt]))
+                views.setdefault(k, []).append([flt, ds])
+            tb = getattr(fig, "_dash_table", None)
+            if tb and tb[1] is not None:
+                tables.setdefault(k, []).append(tb[1])
+        return views, tables
+
     def _wire_brush_callbacks(self, kpis: list) -> int:
         """Attach a selection callback for every ``update(brush|both)`` KPI.
 
@@ -59832,16 +60077,33 @@ class DashRenderer:
             byte-identical to a dashboard with no brush KPI.
         """
         defs = {k.get("name", ""): k for k in kpis}
+        # Under brush(filter) every card follows a selection, and every
+        # view of a link group hides the rows it leaves out (WP-31 H2l).
+        _bf = getattr(self, "_brush_mode", "highlight") == "filter"
         cfg: list = []
         divs: list = []
         for kname, kdiv in self.kpi_divs.items():
             kdef = defs.get(kname, {})
-            if kdef.get("update", "filter") not in ("brush", "both"):
+            if not _bf and kdef.get("update", "filter") not in (
+                    "brush", "both"):
                 continue
             cfg.append(self._kpi_callback_config(kname, kdef))
             divs.append(kdiv)
-        if not cfg:
-            return 0
+        # Histogram bars whose rows a selection reaches (WP-31 H2l):
+        # (bars' source, the layer's own source).
+        _bin_layers: list = []
+        for _f in self.figures.values():
+            for _r in getattr(_f, "renderers", []) or []:
+                _raw = getattr(_r, "_dash_bin_raw", None)
+                if _raw is not None:
+                    _bin_layers.append((_r.data_source, _raw))
+        if not cfg and not _bf:
+            # No card follows a brush: only bars over a link group's
+            # source, whose selection the group's other graphs show.
+            _bin_layers = [(b, raw) for b, raw in _bin_layers
+                           if getattr(raw, "_dash_link_source", False)]
+            if not _bin_layers:
+                return 0
 
         # The helper lives in _FILTER_JS; concatenating puts it in scope
         # without giving the brush path its own copy of the arithmetic.
@@ -59878,18 +60140,43 @@ class DashRenderer:
                                  {}).values():
             _brushable.extend(s for s in _der_list
                               if _need <= set(s.data))
+        # WP-31 H2l: one page-level state, a column per brushed source,
+        # so concurrent selections intersect by row identity.
+        _bstate = ColumnDataSource(data={}, name="dash_brush_state")
+        _keys: dict = {}
+        _peers: dict = {}
+        for src in _brushable:
+            if id(src) not in _keys and _ROW_ID_COLUMN in src.data:
+                _keys[id(src)] = "s%d" % len(_keys)
+                _peers[_keys[id(src)]] = src
+        if not cfg and not _bf:
+            # Only the bars are wired (above); the source each selects
+            # is the group's, whose other graphs show the selection.
+            _brushable = []
+        _bin_raw = {id(b): raw for b, raw in _bin_layers}
+        _brushable.extend(b for b, _raw in _bin_layers)
+        _views_of, _tables_of = (self._brush_filter_views() if _bf
+                                 else ({}, {}))
         n = 0
         seen: set = set()
         for src in _brushable:
             if id(src) in seen:
                 continue
             seen.add(id(src))
+            _grp = getattr(src, "_dash_link_group", None)
             try:
                 src.selected.js_on_change("indices", CustomJS(
                     args={
                         "brush_source": src,
                         "kpi_config_json": json.dumps(cfg),
                         "kpi_divs": divs,
+                        "raw_source": _bin_raw.get(id(src)),
+                        "brush_state": _bstate,
+                        "src_key": _keys.get(id(src), ""),
+                        "brush_peers": _peers,
+                        "brush_filter": bool(_bf),
+                        "brush_views": _views_of.get(_grp, []),
+                        "tables": _tables_of.get(_grp, []),
                     },
                     code=code,
                 ))
@@ -61912,6 +62199,9 @@ class ServerAppBuilder:
                          # label and the reset button.
                          "_dash_dropdown_options", "_dash_multi_label",
                          "_dash_filter_reset_button",
+                         # WP-31 H2l: link groups, brush(filter), bin rows.
+                         "_dash_link_groups", "_dash_brush_mode",
+                         "_dash_bin_members",
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
@@ -63836,16 +64126,21 @@ class ServerAppBuilder:
             "                               bcal=_fmt_cache.get('bcal'))",
             "",
             "    # ---- Determine linked graphs, by the saved renderer's rule ----",
-            "    linked_names = set(_dash_link_names(",
+            "    # WP-31 H2l: each link() copy is a group with a source of its own.",
+            "    _link_groups = _dash_link_groups(",
             "        link_opt, [g.get('graph_options', {}).get('name', '')",
-            "                   for g in graphs]))",
+            "                   for g in graphs])",
+            "    linked_names = set(n for _lg in _link_groups for n in _lg)",
+            "    # brush(filter) hides what a selection leaves out (WP-31 H2l).",
+            "    _brush_filter = _dash_brush_mode(bo) == 'filter'",
+            "    _BRUSH_ALPHA = 0.0 if _brush_filter else _NONSELECTION_ALPHA",
             "",
             "    # The filters, parsed at build time; the page plan reads them.",
             "    _filter_specs = " + repr(filter_specs),
             "    # WP-29 P0.11: the rows and cells this document may send --",
             "    # the saved page's plan, by the one function both modes run.",
             "    _EMBED = _dash_embed_plan(spec, df, _qual_masks,",
-            "                              sorted(linked_names), _filter_specs,",
+            "                              link_opt, _filter_specs,",
             "                              _dash_csv_wanted(bo))",
             "    # WP-29 P0.11: the browser receives the saved page's row numbers,",
             "    # never an observation's own (_dash_page_index).  Every map keyed",
@@ -63855,10 +64150,11 @@ class ServerAppBuilder:
             "    _qual_masks = _dash_relabel(_qual_masks, _dash_old_index, df.index)",
             "    _sort_keys = _dash_relabel(_sort_keys, _dash_old_index, df.index)",
             "    _EMBED = _dash_relabel(_EMBED, _dash_old_index, df.index)",
-            "    # Each graph's rows (page ranks) and the link group's mask.",
+            "    # Each graph's rows (page ranks) and each link group's mask.",
             "    _EMBED_GROWS = {_g: df.index[_m.to_numpy(dtype=bool)]",
             "                    for _g, _m in _EMBED['graph_rows'].items()}",
-            "    _EMBED_LINK = _EMBED['link_rows'].to_numpy(dtype=bool)",
+            "    _EMBED_LINKS = [_m.to_numpy(dtype=bool)",
+            "                    for _m in (_EMBED.get('link_group_rows') or [])]",
             "",
             "    # ---- Collect all variable names ----",
             "    all_vars = set()",
@@ -63885,28 +64181,38 @@ class ServerAppBuilder:
             "    # selection on this source cannot be mapped back to rows, and",
             "    # a linked graph's brush would compute over the wrong ones.",
             "    linked_vars = _dash_with_codes(list(all_vars), df.columns)",
-            "    # The link group's rows only, each column blanked where the",
-            "    # page does not read it (WP-29 P0.11).",
-            "    _ldf = df[_EMBED_LINK]",
-            "    _shared_data = {v: _dash_column_values(_dash_embed_values(",
-            "                        _ldf[v], _EMBED['need'].get(v)))",
-            "                    if v in df.columns else []",
-            "                    for v in linked_vars}",
-            "    _shared_data['index'] = list(_ldf.index)",
-            "    shared_source = ColumnDataSource(_shared_data)",
-            "    # A jittered scatter puts its points on it, as on the saved",
-            "    # page (GlyphMapper._linked_jitter_columns).",
-            "    shared_source._dash_link_source = True",
-            "    # Positions in shared_source, by row label, for the CDSView a",
-            "    # qualified linked graph needs.",
-            "    _shared_pos = {_lbl: _i for _i, _lbl in enumerate(_ldf.index)}",
+            "    # Each link group's rows only, each column blanked where the",
+            "    # page does not read it (WP-29 P0.11); one source per group",
+            "    # (WP-31 H2l), and each group's member names to it.",
+            "    _shared_sources = []",
+            "    _shared_of = {}",
+            "    _shared_pos_of = {}",
+            "    for _k, _lg in enumerate(_link_groups):",
+            "        _ldf = df[_EMBED_LINKS[_k]]",
+            "        _shared_data = {v: _dash_column_values(_dash_embed_values(",
+            "                            _ldf[v], _EMBED['need'].get(v)))",
+            "                        if v in df.columns else []",
+            "                        for v in linked_vars}",
+            "        _shared_data['index'] = list(_ldf.index)",
+            "        _ss = ColumnDataSource(_shared_data)",
+            "        # A jittered scatter puts its points on it, as on the saved",
+            "        # page (GlyphMapper._linked_jitter_columns).",
+            "        _ss._dash_link_source = True",
+            "        _ss._dash_link_group = _k",
+            "        _shared_sources.append(_ss)",
+            "        # Positions in it, by row label, for the CDSView a",
+            "        # qualified linked graph needs.",
+            "        _shared_pos_of[id(_ss)] = {_lbl: _i for _i, _lbl",
+            "                                   in enumerate(_ldf.index)}",
+            "        for _n in _lg:",
+            "            _shared_of[_n] = _ss",
             "",
             "    # ---- Per-graph independent sources (for non-linked) ----",
             "    graph_sources: dict = {}",
             "    for g in graphs:",
             "        gname = g.get('graph_options', {}).get('name', '')",
             "        if gname in linked_names:",
-            "            graph_sources[gname] = [shared_source]",
+            "            graph_sources[gname] = [_shared_of[gname]]",
             "        else:",
             "            gvars = []",
             "            for p in g.get('plots', []):",
@@ -64009,7 +64315,7 @@ class ServerAppBuilder:
             "                # builds its own sources from the layer's rows.",
             "                _ly_src, _ly_view = _dash_layer_source(",
             "                    g_df, df, xvar, yvar, '',",
-            "                    gname, _ln, _shared, _shared_pos, _fallback,",
+            "                    gname, _ln, _shared, _shared_pos_of.get(id(_shared)), _fallback,",
             "                    extra_cols=_hv + [plot.get('zvar', '')]",
             "                    + _dash_option_columns(opts, df.columns))",
             "                if _ly_src is not None:",
@@ -64032,7 +64338,7 @@ class ServerAppBuilder:
             "                    extra_cols=_hv + ([y3var] if y3var else [])",
             "                    + _dash_option_columns(opts, df.columns),",
             "                    df=df, gname=gname, linked_names=_ln,",
-            "                    shared_source=_shared, shared_pos=_shared_pos)",
+            "                    shared_source=_shared, shared_pos=_shared_pos_of.get(id(_shared)))",
             "                # A joining layer's join key, read by frame label.",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
             "                       if ptype in _DASH_JOIN_TYPES and _ok else None)",
@@ -64047,7 +64353,7 @@ class ServerAppBuilder:
             "            else:",
             "                _ly_src, _ly_view = _dash_layer_source(",
             "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, _ln, _shared, _shared_pos, _fallback,",
+            "                    gname, _ln, _shared, _shared_pos_of.get(id(_shared)), _fallback,",
             "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
             "                    # mband and mspline read the rows missing y or x too:",
             "                    # the band count and range are twoway's (WP-31 C6b).",
@@ -64223,7 +64529,7 @@ class ServerAppBuilder:
             "                                            'clegend', 'plegend')}",
             "        _DASH_MAPPER.z_context = (_reported_subopts, gname)",
             "        _src_list = graph_sources.get(gname)",
-            "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else shared_source)",
+            "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else _shared_of.get(gname))",
             "        # ---- Per-graph if_expr / in_expr filtering ----",
             "        # Read from graph_options first; fall back to top-level graph key",
             "        # so that qualifiers set by dash.ado at the graph level are honoured.",
@@ -64458,7 +64764,7 @@ class ServerAppBuilder:
             "            # callback call as well, so there is exactly one place that",
             "            # decides how a layer is drawn.",
             "            _drawn = _dash_draw_layer(fig, g_df, plot, pi, gname,",
-            "                                      linked_names, shared_source, src,",
+            "                                      linked_names, _shared_of.get(gname), src,",
             "                                      sidx=_pstyle_idx[pi])",
             "            _ly_src = _drawn[0]",
             "            if _ly_src is not None:",
@@ -64648,7 +64954,8 @@ class ServerAppBuilder:
             "        # linked faceted one alike, as the saved renderer's two call",
             "        # sites do (WP-28 E14).",
             "        if gname in linked_names:",
-            "            _dash_dim_nonselection(fig, _NONSELECTION_ALPHA)",
+            "            _dash_dim_nonselection(fig, _BRUSH_ALPHA)",
+            "            fig._dash_link_group = _shared_of[gname]._dash_link_group",
             "        # WP-31 D5: scale(), the overhangs and aspectratio()'s",
             "        # frame, last, as the saved renderer applies them.",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
@@ -64768,7 +65075,8 @@ class ServerAppBuilder:
             "                # A panel of a linked graph draws from the shared",
             "                # source through a view, as the saved one does.",
             "                linked_names.add(_fname)",
-            "                graph_sources[_fname] = [shared_source]",
+            "                _shared_of[_fname] = _shared_of[gname]",
+            "                graph_sources[_fname] = [_shared_of[gname]]",
             "            else:",
             "                _pgdf = _gdf[_gdf.index.isin(",
             "                    _EMBED_GROWS.get(gname, _gdf.index[0:0]))]",
@@ -64989,8 +65297,8 @@ class ServerAppBuilder:
             "    # whose brush script counts that source whole (_BRUSH_JS).  A",
             "    # move writes them afresh before it clears the selection; only",
             "    # when a card follows the brush, since nothing else reads them.",
-            "    _brush_on = any(k.get('update', 'filter') in ('brush', 'both')",
-            "                    for k in kpi_defs)",
+            "    _brush_on = _brush_filter or any(",
+            "        k.get('update', 'filter') in ('brush', 'both') for k in kpi_defs)",
             "    _brush_rows: dict = {}",
             "    for _bgn, _bsl in graph_sources.items():",
             "        for _bs in (_bsl if isinstance(_bsl, list) else [_bsl]):",
@@ -64999,13 +65307,15 @@ class ServerAppBuilder:
             "                # saved page's source holds them.",
             "                _brush_rows[id(_bs)] = _owner_rows[_bgn].intersection(",
             "                    _EMBED_GROWS.get(_facet_to_orig.get(_bgn, _bgn), df.index))",
-            "    _brush_rows[id(shared_source)] = df.index[_EMBED_LINK]",
+            "    for _k, _ss in enumerate(_shared_sources):",
+            "        _brush_rows[id(_ss)] = df.index[_EMBED_LINKS[_k]]",
             "",
             "    # The views over the link group's ONE source, with the rows each",
             "    # owns -- a by() panel's, a qualified graph's or layer's -- read",
             "    # now, while the source holds every row.  A move writes the",
             "    # source once and recounts each view (_dash_refresh_linked).",
-            "    _linked_views = _dash_linked_views(figures.values(), shared_source)",
+            "    _linked_views = {id(_ss): _dash_linked_views(figures.values(), _ss)",
+            "                     for _ss in _shared_sources}",
             "    # A linked layer drawn from a COPY of that source (a line in its join order,",
             "    # a jittered scatter) keeps its view; the redraw a move triggers",
             "    # is that layer's own rows, so the view then selects them all.",
@@ -65013,13 +65323,18 @@ class ServerAppBuilder:
             "",
             "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None, _axis_figs=None, _axis_fmap=None, _doc=None, _slot=None):",
             "        _redrawn_views = _redrawn_views or {}",
-            "        # GAPS2 E2: the graph names sharing _shared's identity, so the",
-            "        # link group's own mask is the AND of the filters that apply",
-            "        # to at least one member -- unless every member is excluded.",
-            "        _shared_members = [_gn for _gn, _srcs in _all_sources.items()",
-            "                          if any(_s is _shared for _s in",
-            "                                 (_srcs if isinstance(_srcs, list) else [_srcs]))] \\",
-            "            if _shared is not None else []",
+            "        # GAPS2 E2: the graph names sharing each link group's source",
+            "        # (WP-31 H2l: _shared is the list of them), so a group's own",
+            "        # mask is the AND of the filters that apply to at least one",
+            "        # member -- unless every member is excluded.",
+            "        _shared = list(_shared or [])",
+            "        _shared_ids = {id(_ss) for _ss in _shared}",
+            "        _linked_views = _linked_views or {}",
+            "        _shared_pos = _shared_pos or {}",
+            "        _shared_members = {id(_ss): [_gn for _gn, _srcs in _all_sources.items()",
+            "                                     if any(_s is _ss for _s in",
+            "                                            (_srcs if isinstance(_srcs, list) else [_srcs]))]",
+            "                           for _ss in _shared}",
             "        def _mask_for(target, members=None, _masks=None):",
             "            # Every target's OWN mask -- the AND of the filters whose",
             "            # exclude() does not remove it -- recomputed on every move,",
@@ -65054,8 +65369,9 @@ class ServerAppBuilder:
             "            _tm = {}",
             "            for gname in _all_sources:",
             "                _tm[gname] = _mask_for(gname, _masks=_masks)",
-            "            if _shared_members:",
-            "                _tm[None] = _mask_for(None, _shared_members, _masks=_masks)",
+            "            for _sid, _sm in _shared_members.items():",
+            "                if _sm:",
+            "                    _tm[('link', _sid)] = _mask_for(None, _sm, _masks=_masks)",
             "            for key in _agg_srcs:",
             "                _tm[key[0]] = _mask_for(key[0], _masks=_masks)",
             "            for kpi in _kpi_defs:",
@@ -65140,17 +65456,17 @@ class ServerAppBuilder:
             "            # own mask below (the download's rule, _dash_frame_filter_",
             "            # mask, is the same function, over that target's own",
             "            # applicable widgets rather than every one).",
-            "            _shared_hit = False",
+            "            _shared_hit = set()",
             "            for gname, srcs in _all_sources.items():",
             "                srcs = srcs if isinstance(srcs, list) else [srcs]",
-            "                if _shared is not None and any(s is _shared for s in srcs):",
+            "                if any(id(s) in _shared_ids for s in srcs):",
             "                    # The link group's ONE source, which every member",
             "                    # and panel draws from: written once, below, with",
             "                    # every row the filters keep.  Each member used to",
             "                    # write its own rows into it in turn, and the last",
             "                    # one written was what every linked graph showed.",
-            "                    _shared_hit = True",
-            "                    srcs = [s for s in srcs if s is not _shared]",
+            "                    _shared_hit.update(id(s) for s in srcs if id(s) in _shared_ids)",
+            "                    srcs = [s for s in srcs if id(s) not in _shared_ids]",
             "                    if not srcs:",
             "                        continue",
             "                # A by() graph's panels answer to its name, as on the",
@@ -65245,19 +65561,21 @@ class ServerAppBuilder:
             "            # Written whenever a member the filter does not exclude",
             "            # draws from it; a member exclude() names shares it, and is",
             "            # filtered with the group, in both modes.",
-            "            if _shared_hit:",
+            "            for _k, _ss in enumerate(_shared):",
+            "                if id(_ss) not in _shared_hit:",
+            "                    continue",
             "                # The link group's OWN mask: every filter that",
             "                # applies to at least one member (GAPS2 E2), not",
             "                # necessarily the same as any one member's own.",
-            "                _shared_mask = plan['masks'][None]",
-            "                _shared_fdf = _df_ref[_shared_mask & _EMBED_LINK]",
+            "                _shared_mask = plan['masks'][('link', id(_ss))]",
+            "                _shared_fdf = _df_ref[_shared_mask & _EMBED_LINKS[_k]]",
             "                if _brush_on:",
-            "                    _brush_rows[id(_shared)] = _shared_fdf.index",
+            "                    _brush_rows[id(_ss)] = _shared_fdf.index",
             "                _dash_refresh_linked(",
-            "                    _shared, _shared_fdf, _linked_views,",
-            "                    snapshot=_orig_src_data.get(id(_shared), {}),",
-            "                    pos_of=_shared_pos, need=_EMBED['need'])",
-            "                _shared.selected.indices = []",
+            "                    _ss, _shared_fdf, _linked_views.get(id(_ss), []),",
+            "                    snapshot=_orig_src_data.get(id(_ss), {}),",
+            "                    pos_of=_shared_pos.get(id(_ss)), need=_EMBED['need'])",
+            "                _ss.selected.indices = []",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
             "                # Redraw through the mapper.  This used to dispatch on",
@@ -65393,8 +65711,8 @@ class ServerAppBuilder:
             "            w, filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df,",
             "            _facet_map, _facet_group_vals, _orig_src_data,",
             "            _graph_qualifiers, _facet_to_orig, _redrawn_ids,",
-            "            _shared=shared_source, _linked_views=_linked_views,",
-            "            _shared_pos=_shared_pos, _redrawn_views=_redrawn_views,",
+            "            _shared=_shared_sources, _linked_views=_linked_views,",
+            "            _shared_pos=_shared_pos_of, _redrawn_views=_redrawn_views,",
             "            _axis_figs=figures, _axis_fmap=_facet_map,",
             "            _doc=doc, _slot=_slot,",
             "        )",
@@ -65446,9 +65764,51 @@ class ServerAppBuilder:
             "        _reset_btn.on_click(lambda event: _dash_reset_filters())",
             "",
             "    # ---- Wire brush selection callbacks ----",
-            "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src):",
+            "    # WP-31 H2l: every brushed source's selected rows (labels), so",
+            "    # concurrent selections intersect by row identity, as the saved",
+            "    # page's brush_state does; and brush(filter)'s views per group.",
+            "    _brush_sel: dict = {}",
+            "    _brush_views: dict = {}",
+            "    if _brush_filter:",
+            "        from bokeh.models import AllIndices, IndexFilter, IntersectionFilter",
+            "        for _bf_fig in figures.values():",
+            "            _bk = getattr(_bf_fig, '_dash_link_group', None)",
+            "            if _bk is None:",
+            "                continue",
+            "            for _bf_r in getattr(_bf_fig, 'renderers', []) or []:",
+            "                _bf_ds = getattr(_bf_r, 'data_source', None)",
+            "                _bf_v = getattr(_bf_r, 'view', None)",
+            "                if _bf_ds is None or _bf_v is None or 'index' not in _bf_ds.data:",
+            "                    continue",
+            "                _bf_f = IndexFilter(indices=None, tags=['dash_brush_view'])",
+            "                _bf_old = _bf_v.filter",
+            "                _bf_v.filter = (_bf_f if _bf_old is None or isinstance(_bf_old, AllIndices)",
+            "                                else IntersectionFilter(operands=[_bf_old, _bf_f]))",
+            "                _brush_views.setdefault(_bk, []).append((_bf_f, _bf_ds))",
+            "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src, _raw=None):",
             "        def _on_selection_change(attr, old, new):",
             "            indices = new",
+            "            _bins = _src.data.get('__dash_bin_rows')",
+            "            if _bins is not None and _raw is not None:",
+            "                # A selection on histogram bars selects the rows each",
+            "                # bar counts in the layer's own source, whose own",
+            "                # callback does the rest (WP-31 H2l).",
+            "                _want = set()",
+            "                for _b in (indices or []):",
+            "                    if 0 <= _b < len(_bins):",
+            "                        _want.update(_bins[_b])",
+            "                _rl = list(_raw.data.get('index', []))",
+            "                _raw.selected.indices = [i for i, l in enumerate(_rl) if l in _want]",
+            "                return",
+            "            _ids = _src.data.get('index')",
+            "            if indices and _ids is not None:",
+            "                _brush_sel[id(_src)] = frozenset(",
+            "                    _ids[i] for i in indices if 0 <= i < len(_ids))",
+            "            else:",
+            "                _brush_sel.pop(id(_src), None)",
+            "            _keep = None",
+            "            for _ls in _brush_sel.values():",
+            "                _keep = _ls if _keep is None else (_keep & _ls)",
             "            # Selection indices are positions in THIS source, and a",
             "            # plot's source is g_df[cols].dropna() -- not the frame.",
             "            # Reading them as positions in _df_ref therefore named",
@@ -65456,7 +65816,10 @@ class ServerAppBuilder:
             "            # Bokeh keeps the original labels in the 'index' column,",
             "            # so the mapping is by row identity, as the standalone",
             "            # path does it.",
-            "            if not indices:",
+            "            if _keep is not None and _ids is not None:",
+            "                # The rows every selection holds (WP-31 H2l).",
+            "                sel_df = _df_ref[_df_ref.index.isin(_keep)]",
+            "            elif not indices:",
             "                # Nothing selected: every row the brushed graph or",
             "                # panel shows, as the saved page's brush script",
             "                # counts its brushed source whole (_BRUSH_JS) --",
@@ -65483,7 +65846,8 @@ class ServerAppBuilder:
             "                                          if l in _idx]]",
             "            for kpi in _kpi_defs:",
             "                kupdate = kpi.get('update', 'filter')",
-            "                if kupdate not in ('brush', 'both'):",
+            "                # Under brush(filter) every card follows (WP-31 H2l).",
+            "                if not _brush_filter and kupdate not in ('brush', 'both'):",
             "                    continue",
             "                kname = kpi.get('name', '')",
             "                if kname not in _kpi_divs:",
@@ -65502,16 +65866,24 @@ class ServerAppBuilder:
             "                kcolor = kpi.get('color', '') or ''",
             "                kbg = kpi.get('bgcolor', '') or ''",
             "                _kpi_divs[kname].text = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
+            "            if _brush_filter:",
+            "                for _vl in _brush_views.values():",
+            "                    for _flt, _vs in _vl:",
+            "                        if _keep is None:",
+            "                            _flt.indices = None",
+            "                        else:",
+            "                            _vi = list(_vs.data.get('index', []))",
+            "                            _flt.indices = [i for i, l in enumerate(_vi) if l in _keep]",
             "        return _on_selection_change",
             "",
             "    # Wire the brush to every source a glyph actually draws from.",
             "    #",
-            "    # This used to be one line -- shared_source.selected.on_change",
-            "    # -- and shared_source is rendered by nothing: each plot builds",
+            "    # This used to be one line -- the link group's source's",
+            "    # selected.on_change -- and that source was rendered by nothing: each plot builds",
             "    # its own ColumnDataSource from the cleaned frame.  Measured:",
             "    # with a KPI declared update(brush), the served document",
             "    # contained exactly one ColumnDataSource, the graph's own, and",
-            "    # shared_source was not in the document at all.  Nothing could",
+            "    # the link source was not in the document at all.  Nothing could",
             "    # select it, so the KPI never changed -- with or without",
             "    # link(), which the earlier reading of this blamed.",
             "    #",
@@ -65520,8 +65892,7 @@ class ServerAppBuilder:
             "    # bins or a fitted line's points have no row identity, and",
             "    # mapping a selection on them back to observations would",
             "    # produce a confident, wrong number.",
-            "    if any(k.get('update', 'filter') in ('brush', 'both')",
-            "           for k in kpi_defs):",
+            "    if _brush_on:",
             "        _brush_wired = set()",
             "        for _bsrcs in graph_sources.values():",
             "            for _bsrc in (_bsrcs if isinstance(_bsrcs, list) else [_bsrcs]):",
@@ -65534,6 +65905,18 @@ class ServerAppBuilder:
             "                # can send selections as fast as it can send values.",
             "                _bsrc.selected.on_change('indices', _dash_event_throttle(",
             "                    doc, _dash_touch(_make_brush_cb(kpi_divs, kpi_defs, df, _bsrc))))",
+            "        # Histogram bars, whose selection selects the rows each bar",
+            "        # counts in the layer's own source (WP-31 H2l).",
+            "        for _bfig in figures.values():",
+            "            for _br in getattr(_bfig, 'renderers', []) or []:",
+            "                _braw = getattr(_br, '_dash_bin_raw', None)",
+            "                _bds = getattr(_br, 'data_source', None)",
+            "                if _braw is None or _bds is None or id(_bds) in _brush_wired:",
+            "                    continue",
+            "                _brush_wired.add(id(_bds))",
+            "                _bds.selected.on_change('indices', _dash_event_throttle(",
+            "                    doc, _dash_touch(_make_brush_cb(kpi_divs, kpi_defs, df, _bds,",
+            "                                                    _raw=_braw))))",
             "",
             "    # ---- CSV download (WP-21) ----",
             "    # Opt-in (dash build, csv).  The server masks its frame with",

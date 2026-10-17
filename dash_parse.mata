@@ -482,14 +482,19 @@
 *!       " || ", into the local filter_out, and `0' without them into
 *!       cmd_out.
 *!
+*!   _dash_extract_links(link_out, cmd_out)
+*!       Two or more link() copies in the caller's `0': their texts,
+*!       joined with " || " (one link group each), into link_out, and
+*!       `0' without them into cmd_out; one copy or none leaves both "".
+*!
 *!   _dash_filter_refusal(filter, registry, vars_out)
 *!       "" when every filter() group names a variable and only registered
 *!       exclude() names, and any direction() is ltr or rtl on a slider or
 *!       range, the variables then in vars_out; else the refusal.
 *!
 *!   _dash_link_refusal(link, registry)
-*!       "" when link() is _all alone or names only registered graphs,
-*!       else the refusal.
+*!       "" when link() is _all alone or each group names only registered
+*!       graphs, none in two groups, else the refusal.
 *!
 *!   _dash_filter_setvars(filter, names)
 *!       filter with each group's variable replaced by the next of names.
@@ -5055,6 +5060,88 @@ void _dash_extract_filters(string scalar filter_out,
 
 
 // ============================================================
+// 7a. LINK GROUPS (WP-31 H2l)
+//     _dash_extract_links(link_out, cmd_out)
+//
+// link() may be given more than once: each copy is a link group, with a
+// source of its own (link(g1 g2) link(g3 g4)).  -syntax- takes one copy
+// of an option, so with two or more copies this takes every top-level
+// link(...) out of `0' -- quote-aware and at paren depth 0, as
+// _dash_extract_filters reads filter() -- and joins their texts with
+// " || ", the renderer's group separator (_dash_link_groups).  With one
+// copy or none it changes nothing (both locals ""), so a single link()
+// reaches -syntax- exactly as before.
+// ============================================================
+void _dash_extract_links(string scalar link_out, string scalar cmd_out) {
+    string scalar raw, lraw, result, remaining, ch, pc
+    real scalar   i, n, jj, k, depth, nxt, in_dq, in_cq, k_dq, k_cq
+    real scalar   out_depth, copies
+
+    raw       = st_local("0")
+    lraw      = strlower(raw)
+    n         = strlen(raw)
+    result    = ""
+    remaining = ""
+    copies    = 0
+    i         = 1
+    in_dq     = 0
+    in_cq     = 0
+    out_depth = 0
+    while (i <= n) {
+        nxt = _dash_quote_step(raw, n, i, in_dq, in_cq)
+        if (nxt) {
+            remaining = remaining + substr(raw, i, nxt - i)
+            i = nxt
+            continue
+        }
+        pc = (i > 1 ? substr(raw, i - 1, 1) : "")
+        if (out_depth == 0 & i + 3 <= n & substr(lraw, i, 4) == "link" &
+            (i == 1 | pc == " " | pc == "," | pc == char(9))) {
+            jj = i + 4
+            while (jj <= n & substr(raw, jj, 1) == " ") jj++
+            if (jj <= n & substr(raw, jj, 1) == "(") {
+                depth = 1
+                k     = jj + 1
+                k_dq  = 0
+                k_cq  = 0
+                while (k <= n & depth > 0) {
+                    nxt = _dash_quote_step(raw, n, k, k_dq, k_cq)
+                    if (nxt) {
+                        k = nxt
+                        continue
+                    }
+                    ch = substr(raw, k, 1)
+                    if      (ch == "(") depth++
+                    else if (ch == ")") depth--
+                    k++
+                }
+                if (depth == 0) {
+                    if (copies) result = result + " || "
+                    result = result + strtrim(substr(raw, jj + 1, k - 2 - jj))
+                    copies++
+                    i = k
+                    while (i <= n & substr(raw, i, 1) == " ") i++
+                    continue
+                }
+            }
+        }
+        ch = substr(raw, i, 1)
+        if      (ch == "(") out_depth++
+        else if (ch == ")" & out_depth > 0) out_depth--
+        remaining = remaining + ch
+        i++
+    }
+    if (copies < 2) {
+        st_local(link_out, "")
+        st_local(cmd_out,  "")
+        return
+    }
+    st_local(link_out, result)
+    st_local(cmd_out,  strtrim(remaining))
+}
+
+
+// ============================================================
 // 7b. FILTER GROUPS
 //     _dash_filter_split(s, groups)
 //     _dash_filter_items(group)
@@ -5292,21 +5379,49 @@ string scalar _dash_filter_refusal(string scalar filter,
 // quotes and all; and a link(\$m) was accepted as whatever $m held
 // (measured 24sep2026; test_json_escaping.cscript JSE-56, JSE-58).  Read
 // here by value.
+// link()'s groups (WP-31 H2l): the text split at each "||", which
+// _dash_extract_links writes between the copies of link().
+string rowvector _dash_link_split(string scalar link) {
+    string rowvector out
+    string scalar    rest
+    real scalar      p
+
+    out  = J(1, 0, "")
+    rest = link
+    while ((p = strpos(rest, "||")) > 0) {
+        out  = out, substr(rest, 1, p - 1)
+        rest = substr(rest, p + 2, .)
+    }
+    return((out, rest))
+}
+
 string scalar _dash_link_refusal(string scalar link, string scalar registry) {
-    string rowvector words, reg
-    real scalar      k
+    string rowvector words, reg, groups, seen
+    real scalar      k, g
 
     if (link == "_all") return("")
-    words = _dash_blank_words(link)
-    reg   = tokens(registry)
-    for (k = 1; k <= cols(words); k++) {
-        // _all links every graph, so beside names it is a contradiction.
-        if (words[k] == "_all") {
-            return("link(_all) links every graph; give it alone, or name the graphs to link.")
+    reg    = tokens(registry)
+    groups = _dash_link_split(link)
+    seen   = J(1, 0, "")
+    for (g = 1; g <= cols(groups); g++) {
+        words = _dash_blank_words(groups[g])
+        for (k = 1; k <= cols(words); k++) {
+            // _all links every graph, so beside names, or beside another
+            // group, it is a contradiction.
+            if (words[k] == "_all") {
+                if (cols(groups) > 1) {
+                    return("link(_all) links every graph; give it alone.")
+                }
+                return("link(_all) links every graph; give it alone, or name the graphs to link.")
+            }
+            if (!anyof(reg, words[k])) {
+                return("link() name '" + words[k] + "' not found in registry.")
+            }
+            if (anyof(seen, words[k])) {
+                return("link() name '" + words[k] + "' is in more than one group.")
+            }
         }
-        if (!anyof(reg, words[k])) {
-            return("link() name '" + words[k] + "' not found in registry.")
-        }
+        seen = seen, words
     }
     return("")
 }

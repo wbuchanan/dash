@@ -600,7 +600,8 @@ class TestTheParsersFoundSomething:
         # 217 -> 216: E2 mlpattern() leaves the Unsupported list.
         # 216 -> 217: H2t the Data tables entry defines table; 217 -> 218:
         # H2f filter()'s direction() entry.
-        assert len(found) == 218, (
+        # 218 -> 219: H2l the dash build syntax and synopt define brush().
+        assert len(found) == 219, (
             f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -691,7 +692,8 @@ class TestTheParsersFoundSomething:
         # 274 -> 275: E3 mlabstyle declared there
         # 275 -> 277: H2t table and table2 declared (both parsers and
         # _dash_label_split)
-        assert len(_ado_declarations()) == 277
+        # 277 -> 278: H2l brush() declared by dash build's syntaxes
+        assert len(_ado_declarations()) == 278
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -831,8 +833,9 @@ class TestTheParsersFoundSomething:
         # 444 -> 447: H2t the Data tables entries (table, table(rows(#)
         # open)) and the $dash_max_table_rows row; 447 -> 449: H2f
         # filter()'s type(multi) and direction() entries.
-        assert len(defs) == 449, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 449 "
+        # 449 -> 450: H2l the brush() synopt entry.
+        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
             f"measured 17oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1222,4 +1225,6 @@ class TestInternalLinksResolve:
         # 99 -> 100: E4 the empty-parentheses sentence links Style lists.
         # 100 -> 102 links, 36 -> 37 targets: H2t the table_rows limit
         # and the saved-versus-served table link the new Data tables entry.
-        assert len(refs) == 102 and len(set(refs)) == 37
+        # 102 -> 103 links: H2l the brush() synopt links Linking and
+        # Brushing.
+        assert len(refs) == 103 and len(set(refs)) == 37

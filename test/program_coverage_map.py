@@ -599,7 +599,10 @@ COVERAGE = {
         # e2e: link() and exclude() names split at blanks with their quotes,
         # as the renderer splits them, and refused by dash by name.
         "_dash_blank_words": ("test_json_escaping.cscript:JSE-56",),
-        "_dash_link_refusal": ("test_json_escaping.cscript:JSE-56",),
+        "_dash_link_refusal": ("test_json_escaping.cscript:JSE-56",
+                               "test_wp31_truth.cscript:U51-1"),
+        "_dash_extract_links": ("test_wp31_truth.cscript:U51-1",),
+        "_dash_link_split": ("test_wp31_truth.cscript:U51-1",),
         # e2e: a program's own arguments and the user's text between them,
         # read by value -- a title, a qualifier and values holding "'.
         # e2e: a qualifier's names outside its literals are exported, each

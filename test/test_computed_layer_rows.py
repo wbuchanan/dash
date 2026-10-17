@@ -131,7 +131,9 @@ def _call(name, kind, source, view):
         out.append({k: [float(v) for v in vals]
                     for k, vals in src.data.items()
                     if vals is not None and len(vals)
-                    and not isinstance(vals[0], str)})
+                    # __dash_bin_rows (WP-31 H2l): each bar's member
+                    # rows, a list per bar, not a computed number.
+                    and not isinstance(vals[0], (str, list))})
     return out
 
 
@@ -378,7 +380,9 @@ def _rendered(tmp_path, plots, frame, mode, tag, link="", graph_options=None):
         out.append({k: [float(v) for v in vals]
                     for k, vals in src.data.items()
                     if vals is not None and len(vals)
-                    and not isinstance(vals[0], str)})
+                    # __dash_bin_rows (WP-31 H2l): each bar's member
+                    # rows, a list per bar, not a computed number.
+                    and not isinstance(vals[0], (str, list))})
     # Bokeh's select() walks a set of references, so the renderers of two
     # renders of one spec -- two by() panels, say -- come back in no fixed
     # order (measured: the same test passed and failed on one tree).  The

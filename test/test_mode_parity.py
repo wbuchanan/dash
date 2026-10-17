@@ -2716,6 +2716,12 @@ CORPUS = [
     _case("scatter table", [plot_for("scatter")], go={"table": "on"}),
     _case("by table", [plot_for("scatter")],
           go={"table": "on", "by": "foreign"}),
+    # WP-31 H2l: two link groups, and brush(filter)'s glyph alphas.
+    _case("two link groups", bo={"link": "g1 g2 || g3 g4"},
+          graphs=[("g1", [_sc()]), ("g2", [_sc()]), ("g3", [_sc()]),
+                  ("g4", [plot_for("line")])]),
+    _case("brush filter", bo={"link": "_all", "brush": "filter"},
+          graphs=[("g1", [_sc()]), ("g2", [_sc()])]),
 ]
 
 
@@ -3807,6 +3813,11 @@ MOVE_CORPUS = [
     # rule is held by test_filter_widgets_ext.py in node and pandas.
     _move_case("multi to 3 and 4 (WP-31 H2f)", _MULTI_MOVE,
                [plot_for("scatter")]),
+    # WP-31 H2l: a move writes each link group's own source.
+    _move_case("two link groups, dropdown to Foreign", _MOVES[0],
+               graphs=[("g1", [_sc()]), ("g2", [_sc()]), ("g3", [_sc()]),
+                       ("g4", [_sc()])],
+               bo={"link": "g1 g2 || g3 g4"}),
 ]
 
 

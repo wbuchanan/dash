@@ -539,6 +539,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H2f Tracked:** Closed in WP-31, BUGS.md "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)", commit e7c500a.
 - **H2k Tracked:** Closed in WP-31, BUGS.md "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)", commit pending.
 - **H2l Tracked:** Open (WP-31 section 51).
+- **H2l Tracked:** Closed in WP-31, BUGS.md "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)", commit pending.
 - **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
 - **H2x Tracked:** Open (WP-31 section 53).
 - **H3 Tracked:** Open (WP-31 section 55).

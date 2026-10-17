@@ -80,6 +80,7 @@
 {cmdab:sub:title}{cmd:(}{it:string}{cmd:)}
 {cmdab:lay:out}{cmd:(}{it:layout_spec}{cmd:)}
 {cmd:link(}{it:namelist} | {cmd:_all}{cmd:)}
+{cmdab:br:ush}{cmd:(highlight}|{cmd:filter)}
 {cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)} {cmd:label(}{it:string}{cmd:)}]{cmd:)}
 {cmd:tabs(}{it:tab_spec}{cmd:)}
 {cmdab:filterpos:ition}{cmd:(top}|{cmd:left)}
@@ -1451,8 +1452,11 @@ The following options are available on {cmd:dash build}.
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}dashboard subtitle{p_end}
 {synopt:{cmdab:lay:out}{cmd:(}{it:spec}{cmd:)}}grid layout; see
     {help dash##layout:Layout}{p_end}
-{synopt:{cmd:link(}{it:names}{cmd:)}}names of graphs to link for brushing;
-    see {help dash##linking:Linking and Brushing}{p_end}
+{synopt:{cmd:link(}{it:names}{cmd:)}}names of graphs to link for brushing,
+    one link group a copy; see {help dash##linking:Linking and Brushing}{p_end}
+{synopt:{cmdab:br:ush}{cmd:(}{it:mode}{cmd:)}}what a selection does to the
+    rows it leaves out: {cmd:highlight} (the default) draws them faint,
+    {cmd:filter} hides them; see {help dash##linking:Linking and Brushing}{p_end}
 {synopt:{cmd:filter(}{it:varname,...}{cmd:)}}add a filter widget;
     see {help dash##filters:Filters}{p_end}
 {synopt:{cmd:tabs(}{it:tab_spec}{cmd:)}}group graphs and KPI cards into
@@ -1791,19 +1795,39 @@ never more opaque than they are drawn unselected.  The other layers -- lines (th
 smoothers, densities, histograms, and the other range and paired-coordinate
 plots -- are drawn from data of their own and do not show a selection.  An
 {cmd:rbar} shows it in neither mode: its bars are drawn from its own rows.
+A box or lasso selection on a {cmd:histogram}'s bars selects the
+observations those bars count, as if they had been selected one by one:
+the group's other graphs and the KPI cards follow them.  On the saved page
+this holds until a filter moves; after a move the bars select nothing.
 
 {pstd}
 {cmd:link(}{it:name1} {it:name2} [{it:name3} ...]{cmd:)} -- link the
 specified graphs.  All graphs must have been registered with {cmd:name()};
 a name the registry does not hold is refused with {cmd:r(198)}, and a KPI
-card's name is accepted and has no effect.  Only one link group per
-dashboard is supported: {cmd:link()} is given once, as Stata's
-{cmd:syntax} refuses an option given twice ({cmd:r(198)}).
+card's name is accepted and has no effect.  {cmd:link()} may be given
+more than once: each copy is a link group with a source of its own, so
+{cmd:link(g1 g2) link(g3 g4)} brushes g1 with g2 and g3 with g4, and a
+selection in one group does not reach the other.  A graph named in two
+groups is refused with {cmd:r(198)}.
 
 {pstd}
 {cmd:link(_all)} -- link all registered graphs.  {cmd:_all} stands alone:
-beside other names it is refused with {cmd:r(198)}, and no graph may be
-named {cmd:_all}.
+beside other names, or beside another {cmd:link()}, it is refused with
+{cmd:r(198)}, and no graph may be named {cmd:_all}.
+
+{pstd}
+{cmd:brush(filter)} -- a selection hides the observations it leaves out
+instead of drawing them faint: in the brushed graph, which then shows the
+selection only, in the other graphs of its link group, and in a linked
+graph's data table, which lists the selected rows; clearing the selection
+shows every row again.  Every KPI card follows the selection, whatever its
+{cmd:update()}.  {cmd:brush(highlight)}, the default, is the faint drawing
+described above.  Any other word is refused with {cmd:r(198)}.
+
+{pstd}
+Selections in several graphs act together, in both modes: a KPI card that
+follows a brush counts the observations every current selection holds, and
+clearing one selection leaves the others' effect.
 
 {pstd}
 Graphs not in the link group receive their own independent data source
@@ -2220,6 +2244,9 @@ served app differ as follows:
 {col 5}Multi-select, reset{col 38}Yes{col 59}Yes
 {col 5}KPI recomputation on filter{col 38}Yes{col 59}Yes
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
+{col 5}Several link groups{col 38}Yes{col 59}Yes
+{col 5}brush(filter){col 38}Yes{col 59}Yes
+{col 5}Brush on histogram bars{col 38}until a move{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}Yes{col 59}Yes

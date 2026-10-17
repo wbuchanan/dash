@@ -720,7 +720,9 @@ def _layer_arrays(fig):
     out = []
     for r in _layers(fig):
         d = r.data_source.data
-        out.append({k: np.asarray(d[k], float).tolist() for k in sorted(d)})
+        # __dash_bin_rows (WP-31 H2l): each bar's member rows, no number.
+        out.append({k: np.asarray(d[k], float).tolist() for k in sorted(d)
+                    if k != "__dash_bin_rows"})
     return out
 
 

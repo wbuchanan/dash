@@ -510,7 +510,7 @@ N_DOC = len(DOC)
 # "ignoring unsupported option(s): nobr()", and so is filterpos(top).  They
 # are sent to dash build instead (A4b, after the loop), whose syntax
 # refuses an option it does not declare.
-A4_BUILD = {"nobrowser": "", "filterposition": "top"}
+A4_BUILD = {"nobrowser": "", "filterposition": "top", "brush": "filter"}
 DOC_BUILD = [(s, f) for s, f in DOC if f in A4_BUILD]
 DOC = [(s, f) for s, f in DOC if f not in A4_BUILD]
 def doc_cmd(spelling, full):
@@ -972,8 +972,10 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
 // colorkeysrange colorkeysreverse colorotherlabel() coloruseplegend
 // clegend() plegend() pcycle().
 // 170 -> 169: WP-31 A3b, nam() is dash kpi's only (A8), not a graph's.
-if ${ZQA_NDOC} != 169 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (169 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 169 -> 171 (A4b 4 -> 6): WP-31 H2l documents dash build's br() and
+// brush().
+if ${ZQA_NDOC} != 171 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 6 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (171 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }

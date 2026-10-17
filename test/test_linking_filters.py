@@ -161,23 +161,26 @@ class TestLinkAll:
         """
         import inspect
         shared = inspect.getsource(DashRenderer._build_sources_and_figures)
-        assert "_dash_link_names(" in shared, (
+        # Flipped (WP-31 H2l): link() makes several groups now, read by
+        # _dash_link_groups; _dash_link_names is their flat union, so the
+        # rule lives in the one function both call.
+        assert "_dash_link_groups(" in shared, (
             "the shared source builder does not read link() by the shared "
             "rule"
         )
         src = open(os.path.join(_HERE, "..", "dash_render.py")).read()
         code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
-        assert code.count('if "_all" in names') == 1, (
+        assert code.count('if any("_all" in g for g in groups)') == 1, (
             "_all is expanded in more than one place, so the copies can "
             "drift apart again"
         )
         assert "== '_all'" not in code and '== "_all"' not in code
-        # Defined once, called by the saved builder, the server builder,
-        # the app's make_document, and _dash_embedded_cells (GAPS2 G3,
-        # WP-28 section 08: which graphs link() reaches decides whether a
-        # computed-only graph's rows are counted), and _dash_embed_plan
-        # (WP-29 P0.11), which CALLS it -- no copy.  Flipped: 5 -> 6.
-        assert code.count("_dash_link_names(") == 6
+        # Defined once each; _dash_link_groups called by _dash_link_names,
+        # the saved builder, _dash_embed_plan and the app's make_document;
+        # _dash_link_names by the server builder and _dash_embedded_cells.
+        # 6 -> 3 and 5: WP-31 H2l moved the rule into _dash_link_groups.
+        assert code.count("_dash_link_names(") == 3
+        assert code.count("_dash_link_groups(") == 5
 
 
 # ======================================================================

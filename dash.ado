@@ -436,7 +436,7 @@ program define _dash_require_mata
     // ended in r(3499) naming it (test_program_coverage.cscript PC-30);
     // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
-        _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_extract_filters _dash_extract_links _dash_extract_qual_vars _dash_extract_vars ///
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
@@ -12006,6 +12006,11 @@ program define _dash_prepare_spec, rclass
     // stays declared, and never sees a value.
     mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
     local 0 : copy local _cmd_nofilter
+    // WP-31 H2l: link() may be given more than once, one link group a
+    // copy; two or more are taken out here and joined with " || ".
+    mata: _dash_extract_links("_link_parts", "_cmd_nolink")
+    local _lkparts : length local _link_parts
+    if `_lkparts' > 0 local 0 : copy local _cmd_nolink
 
     syntax [, ///
         CMDname(string)         ///
@@ -12026,8 +12031,10 @@ program define _dash_prepare_spec, rclass
         TABS(string asis)       ///
         FILTERPOSition(string)  ///
         CSV                     ///
+        BRush(string)           ///
     ]
     local filter : copy local _filter_parts
+    if `_lkparts' > 0 local link : copy local _link_parts
 
     if `"`cmdname'"' == "" local cmdname "dash build"
 
@@ -12043,7 +12050,7 @@ program define _dash_prepare_spec, rclass
     // an inherited title holding $m or `...' was expanded after all
     // (measured 24sep2026; test_json_escaping.cscript JSE-58).
     if "`inherit'" != "" {
-        foreach _bo in title subtitle layout link theme scheme tabs filterposition filter csv {
+        foreach _bo in title subtitle layout link theme scheme tabs filterposition filter csv brush {
             local _cur : length local `_bo'
             if `_cur' == 0 {
                 mata: st_local("_bo_val", st_global("dash_opts_" + st_local("_bo")))
@@ -12216,6 +12223,21 @@ program define _dash_prepare_spec, rclass
             mata: _dash_say("err", "`cmdname': ", st_local("_lkref"), "")
             exit(198)
         }
+    }
+
+    // ---- brush(): highlight (the default) or filter (WP-31 H2l) ----
+    // Read by value and compared in Mata, so no word of it is run.
+    local _brlen : length local brush
+    local _dash_brush_json ""
+    if `_brlen' > 0 {
+        mata: st_local("_brok", strofreal(anyof(("highlight", "filter"), ///
+            strlower(strtrim(st_local("brush"))))))
+        if "`_brok'" != "1" {
+            display as error "`cmdname': brush() takes highlight or filter"
+            exit(198)
+        }
+        mata: st_local("brush", strlower(strtrim(st_local("brush"))))
+        local _dash_brush_json `","brush":"`brush'""'
     }
 
     // ---- validate the filter() groups: exclude() names, variable names ----
@@ -12936,7 +12958,7 @@ program define _dash_prepare_spec, rclass
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'`_dash_brush_json'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:
@@ -12988,6 +13010,11 @@ program define _dash_build
     mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
     local filter : copy local _filter_parts
     local 0      : copy local _cmd_nofilter
+    // WP-31 H2l: two or more link() copies, one link group each, joined
+    // with " || " (_dash_extract_links); handed on as one link().
+    mata: _dash_extract_links("_link_parts", "_cmd_nolink")
+    local _lkparts : length local _link_parts
+    if `_lkparts' > 0 local 0 : copy local _cmd_nolink
 
     syntax [, ///
         SAVing(string asis)     ///
@@ -13003,7 +13030,9 @@ program define _dash_build
         TABS(string asis)       ///
         FILTERPOSition(string)  ///
         CSV                     ///
+        BRush(string)           ///
     ]
+    if `_lkparts' > 0 local link : copy local _link_parts
 
     // ---- check registry is not empty ----
     if "${dash_graph_registry}" == "" {
@@ -13085,6 +13114,7 @@ program define _dash_build
     // expands the user's title() or label() text a second time.
     local _fwd_opts : copy local 0
     local _fwd_opts : subinstr local _fwd_opts "," ""
+    if `_lkparts' > 0 local _fwd_opts `"`macval(_fwd_opts)' link(`macval(link)')"'
 
     // Everything is handed on as the user wrote it: the options through
     // macval(), so the line is not read again for macros, and filter() as
@@ -13112,7 +13142,7 @@ program define _dash_build
     global dash_opts_layout         `"`r(layout)'"'
     global dash_opts_filterposition `"`r(filterposition)'"'
     global dash_opts_csv            "`csv'"
-    foreach _bo in title subtitle link theme scheme tabs filter {
+    foreach _bo in title subtitle link theme scheme tabs filter brush {
         mata: st_global("dash_opts_" + st_local("_bo"), st_local(st_local("_bo")))
     }
 

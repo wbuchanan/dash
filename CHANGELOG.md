@@ -1069,7 +1069,7 @@ Changed behaviour.
 
 - dash kpi takes [aweight fweight iweight] with summarize's formulas and adds kurtosis, semean and range, in both modes (WP-31, H2k)
 
-<!-- WP-31 H2l -->
+- link() may be repeated for several groups; dash build takes brush(filter); a box or lasso selection on bars or histogram bins selects their rows; concurrent selections are intersected on the saved page as when served (WP-31, H2l)
 
 <!-- WP-31 H1 -->
 

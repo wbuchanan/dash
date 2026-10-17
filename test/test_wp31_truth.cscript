@@ -13863,6 +13863,99 @@ if inlist("`only'", "", "S50") & `: list posof "S50" in w31_run' {
 }
 * ==== end S50 ====
 
+* ==== S51 H2l: link groups and brush ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S51") & `: list posof "S51" in w31_run' {
+    display as text "S51 start " c(current_date) " " c(current_time)
+    local u51d "`w31_work'/s51"
+    capture mkdir "`u51d'"
+    // link() groups and brush() are dash's own (twoway has neither): no
+    // twoway truth; the spec keys and the refusals in dash's words.
+    capture program drop _u51_bo
+    program define _u51_bo
+        version 19
+        args spec key
+        python: import json as _u51j; from sfi import Macro as _u51M; _u51M.setGlobal("u51_v", str(_u51j.load(open(r"`spec'", encoding="utf-8"))["build_options"].get("`key'", "<none>")))
+    end
+    sysuse auto, clear
+    dash clear
+    foreach g in g1 g2 g3 g4 {
+        quietly dash scatter mpg weight, name(`g')
+    }
+
+    // U51-1: link(g1 g2) link(g3 g4) writes one group a copy, joined
+    // with " || "; dash build draws it.
+    capture noisily _dash_serve_spec, specpath("`u51d'/s1.json") datapath("`u51d'/d1.json") link(g1 g2) link(g3 g4)
+    local rc1 = _rc
+    _w31_expect U51-1 "(`rc1' == 0)" "two link() copies: r(`rc1')"
+    if `rc1' == 0 {
+        _u51_bo "`u51d'/s1.json" link
+        _w31_expect U51-1 `"("${u51_v}" == "g1 g2 || g3 g4")"' `"link key "${u51_v}""'
+    }
+    capture noisily dash build, saving("`u51d'/b1.html") replace nobrowser link(g1 g2) link(g3 g4)
+    local rc1b = _rc
+    capture confirm file "`u51d'/b1.html"
+    _w31_expect U51-1 "(`rc1b' == 0) & (_rc == 0)" "dash build with two link() copies: r(`rc1b')"
+    _w31_done U51-1 `"link(g1 g2) link(g3 g4) writes "link":"g1 g2 || g3 g4""'
+
+    // U51-2, U51-3, U51-5: the refusals, one sentence each, r(198), on
+    // dash build.
+    local k 2
+    foreach o in "link(g1 g2) link(g2 g3)" "link(_all) link(g1 g2)" "brush(bogus)" {
+        if `k' == 4 local k 5
+        local lf "`u51d'/r`k'.log"
+        capture log close _u51l
+        quietly log using "`lf'", text replace name(_u51l)
+        capture noisily dash build, saving("`u51d'/r`k'.html") replace nobrowser `o'
+        local rc = _rc
+        quietly log close _u51l
+        if `k' == 2 local msg "dash build: link() name 'g2' is in more than one group."
+        if `k' == 3 local msg "dash build: link(_all) links every graph; give it alone."
+        if `k' == 5 local msg "dash build: brush() takes highlight or filter"
+        cert_log_has "`lf'", needle(`"`msg'"')
+        _w31_expect U51-`k' "(`rc' == 198) & (r(count) == 1)" `"`o': r(`rc'), the log says the sentence `r(count)' times"'
+        _w31_done U51-`k' `"`o' is refused r(198): `msg'"'
+        local ++k
+    }
+
+    // U51-4: brush(filter) writes "brush":"filter" (any case).
+    capture noisily _dash_serve_spec, specpath("`u51d'/s4.json") datapath("`u51d'/d4.json") link(g1 g2) brush(FILTER)
+    local rc4 = _rc
+    _w31_expect U51-4 "(`rc4' == 0)" "brush(FILTER): r(`rc4')"
+    if `rc4' == 0 {
+        _u51_bo "`u51d'/s4.json" brush
+        _w31_expect U51-4 `"("${u51_v}" == "filter")"' `"brush key "${u51_v}""'
+    }
+    _w31_done U51-4 `"brush(filter) writes "brush":"filter""'
+
+    // U51-6: one link() writes no separator and no brush key (the spec
+    // every earlier dashboard wrote).
+    capture noisily _dash_serve_spec, specpath("`u51d'/s6.json") datapath("`u51d'/d6.json") link(g1 g2)
+    local rc6 = _rc
+    _w31_expect U51-6 "(`rc6' == 0)" "one link(): r(`rc6')"
+    if `rc6' == 0 {
+        _u51_bo "`u51d'/s6.json" link
+        _w31_expect U51-6 `"("${u51_v}" == "g1 g2")"' `"link key "${u51_v}""'
+        _u51_bo "`u51d'/s6.json" brush
+        _w31_expect U51-6 `"("${u51_v}" == "<none>")"' `"brush key "${u51_v}""'
+    }
+    _w31_done U51-6 "a single link(g1 g2) writes no || and no brush key"
+
+    // U51-7: dash serve refuses brush(bogus) in the same sentence.
+    local lf "`u51d'/r7.log"
+    capture log close _u51l
+    quietly log using "`lf'", text replace name(_u51l)
+    capture noisily _dash_serve_spec, specpath("`u51d'/s7.json") datapath("`u51d'/d7.json") brush(bogus)
+    local rc7 = _rc
+    quietly log close _u51l
+    cert_log_has "`lf'", needle("dash serve: brush() takes highlight or filter")
+    _w31_expect U51-7 "(`rc7' == 198) & (r(count) == 1)" "dash serve brush(bogus): r(`rc7'), the sentence `r(count)' times"
+    _w31_done U51-7 "dash serve refuses brush(bogus) r(198)"
+    dash clear
+    display as text "S51 end " c(current_date) " " c(current_time)
+}
+* ==== end S51 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
