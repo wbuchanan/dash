@@ -834,8 +834,9 @@ class TestTheParsersFoundSomething:
         # open)) and the $dash_max_table_rows row; 447 -> 449: H2f
         # filter()'s type(multi) and direction() entries.
         # 449 -> 450: H2l the brush() synopt entry.
-        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
+        # 450 -> 452: H2k the weighted KPI example's two lines.
+        assert len(defs) == 452, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 452 "
             f"measured 17oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

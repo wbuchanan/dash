@@ -2145,6 +2145,9 @@ every filter move and brush, in both modes.  {cmd:pweight}s are refused with
 {cmd:semean}, which {cmd:summarize, detail} and {cmd:tabstat} do not take
 one for.
 
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash kpi mean(mpg) [aw=weight], title("Weighted MPG") name(kw)}{p_end}
+
 {pstd}
 {cmd:count} and {cmd:dcount} also take a string variable, and count its
 values that are not empty; every other statistic needs a numeric variable

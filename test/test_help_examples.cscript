@@ -575,6 +575,9 @@ _hx_pin shown placeholder `"python set exec "/path/to/venv/bin/python", permanen
 _hx_pin shown outside `"python app.py"'
 //   described  a sentence's subject; an example runs the command itself
 _hx_pin shown described `"dash build, saving(app.py) server"'
+//   (WP-31 H2k) the weights sentence's dash kpi mean(mpg) [aw=weight];
+//   the example under it runs it, with its title() and name()
+_hx_pin shown described `"dash kpi mean(mpg) [aw=weight]"'
 //   fragment  not a command: a subcommand with an option, the start of a
 //             template, a kpi without its required title() and name()
 _hx_pin shown fragment `"dash build, server"'

@@ -78,17 +78,21 @@ class TestTheShapeOfTheExamples:
     groups, 98 commands, 102 lines (29, 63 and 65 at 4ede074); WP-30
     P1.11b's Text in graphs example makes 33, 100 and 104; WP-30 P1.7's
     Time-series operators example (sp500, tsset, dash line D.close date)
-    makes 34, 103 and 107."""
+    makes 34, 103 and 107; WP-31 H2k's weighted KPI example makes 35,
+    106 and 110."""
 
     # 6 -> 7 (the Tabs group): WP-31 D14 the per-tab layout() build.
-    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
-                   5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
+    # New group of 2 at index 9: WP-31 H2k, the weighted KPI example.
+    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 2, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4,
+                   2, 2, 5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
-        assert len(groups) == 34
+        # 34 -> 35: WP-31 H2k, the weighted KPI example group.
+        assert len(groups) == 35
         # 103 -> 104, 107 -> 108: WP-31 D14 the per-tab layout() build.
-        assert len(_commands(groups)) == 104
-        assert sum(len(c.lines) for c in _commands(groups)) == 108
+        # 104 -> 106, 108 -> 110: WP-31 H2k, the weighted KPI example.
+        assert len(_commands(groups)) == 106
+        assert sum(len(c.lines) for c in _commands(groups)) == 110
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES
@@ -521,7 +525,9 @@ class TestTheShownCommands:
         # 10 -> 12: WP-30 P1.17b's base() and P1.32's guard sentences.
         # 12 -> 11: WP-31 B4b drew contour and contourline, and the
         # refusal sentence's inline dash scatter y x, colorvar(z) went.
-        assert forms.count(("dash.sthlp", "inline")) == 11
+        # 11 -> 12: WP-31 H2k, the weights sentence's dash kpi mean(mpg)
+        # [aw=weight], which the example below it runs.
+        assert forms.count(("dash.sthlp", "inline")) == 12
         assert forms.count(("dash_setup.sthlp", "line")) == 7
         # dash_setup.sthlp once also named `python set exec` inline, in the
         # prose; WP-23 rewrote that paragraph, and the command is shown
@@ -533,7 +539,8 @@ class TestTheShownCommands:
         # P0.8 added two date-unit illustrations (13 + 2).
         # WP-30 P1.17b and P1.32: two more sentence illustrations (15 + 2).
         # 17 -> 16: WP-31 B4b, the contour refusal's dash scatter is gone.
-        assert len({s.text for s in shown}) == 16
+        # 16 -> 17: WP-31 H2k, the weighted KPI sentence.
+        assert len({s.text for s in shown}) == 17
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
@@ -639,11 +646,13 @@ class TestThePinnedLists:
         # longer an expected refusal.
         # 25 -> 24: WP-31 B4b -- the dash scatter fragment pin goes with
         # the contour refusal sentence that showed it.
-        assert len(lines) == len(pins) == 24
+        # 24 -> 25: WP-31 H2k -- the weighted KPI sentence's described pin.
+        assert len(lines) == len(pins) == 25
         kinds = [k for k, _v, _t in pins]
         # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
+        # shown 16 -> 17: WP-31 H2k, as above.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 16)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 17)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]
