@@ -1001,7 +1001,6 @@ FUNCTIONS = {
  '_dash_bcal_td': 'test/test_date_format_edges.py::TestBusinessCalendars::test_tb_text',
  '_dash_fmt_writes_number': 'test/test_date_format_edges.py::TestBusinessCalendars::test_tb_is_a_numeric_axis_format',
  '_lpoly_fit_degree': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_the_fit_degree_is_bounded',
- '_lpoly_fit_degree_max_pe': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_constants_reach_the_bound',
  '_dash_lpoly_degree_frozen': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_the_saved_page_keeps_it_with_the_cue',
  'GlyphMapper._lpoly_degree_note': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_draws_with_one_note',
  'GlyphMapper._tag_recast': 'test/test_recast_refit.py::TestRecastRefit::test_tagged',

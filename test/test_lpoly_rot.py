@@ -336,7 +336,7 @@ class TestRotConstants:
             # to pe 13, 3e-7 at 17, 8% by pe 25 (the quadrature of high powers
             # loses its precision, which is part of why dash notes a degree
             # past 7); the literal keeps the page the same on every host.
-            for p in range(9, dr._lpoly_fit_degree_max_pe() + 1, 2):
+            for p in range(9, (dr._LPOLY_DEGREE_FIT_MAX | 1) + 1, 2):
                 c = dr._lpoly_rot_constant(k, p)
                 assert tab[(k, p)] > 0 and math.isfinite(tab[(k, p)]), (k, p)
                 if p <= 13:

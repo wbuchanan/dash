@@ -26371,12 +26371,6 @@ def _lpoly_fit_degree(degree, x):
     return int(max(0, min(d, nd - 1, _LPOLY_DEGREE_FIT_MAX)))
 
 
-def _lpoly_fit_degree_max_pe():
-    """The largest rule-of-thumb degree pe a bounded fit reaches."""
-    d = _LPOLY_DEGREE_FIT_MAX
-    return d if d % 2 else d + 1
-
-
 # WP-31 D35: the constants for pe 9 .. the bounded fit's (degree 8 and
 # above), written once from the same quadrature as the table's.  They are
 # a literal, not computed at import: at these powers the quadrature's last
@@ -60899,7 +60893,7 @@ class ServerAppBuilder:
                          "_dash_minor_pool_size",
 
                          "_dash_lpoly_degree_frozen",
-                         "_lpoly_fit_degree", "_lpoly_fit_degree_max_pe",
+                         "_lpoly_fit_degree",
                          "_dash_fn_panel_spec",
                          "_dash_rarea_one_bound",
                          # extended missing values .a-.z (WP-31 G1).

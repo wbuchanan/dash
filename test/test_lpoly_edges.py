@@ -232,11 +232,20 @@ class TestLpolyHighDegree:
         assert 'display as error "option degree() not allowed"' in ado
 
     def test_constants_reach_the_bound(self):
-        top = dr._lpoly_fit_degree_max_pe()
+        # The largest rule-of-thumb degree pe a bounded fit reaches: the
+        # bound, or the odd degree above it (the literal table replaced the
+        # import-time loop, and with it _lpoly_fit_degree_max_pe).
+        top = dr._LPOLY_DEGREE_FIT_MAX | 1
+        assert max(pe for _, pe in dr._LPOLY_ROT_CONSTANTS) == top
         for k in ("epanechnikov", "gaussian", "biweight"):
+            # Flipped (WP-31 D35, 33bfb08): the constants are a literal now,
+            # whose last digits the host's numpy need not reproduce (pe 9
+            # differs at 1e-14 under Stata's Python), so the table is held
+            # to reach the bound here and to the quadrature, within the
+            # host's precision, by test_lpoly_rot.py's TestRotConstants.
             for pe in range(9, top + 1, 2):
-                assert dr._LPOLY_ROT_CONSTANTS[(k, pe)] == \
-                    dr._lpoly_rot_constant(k, pe)
+                c = dr._LPOLY_ROT_CONSTANTS[(k, pe)]
+                assert c > 0 and np.isfinite(c), (k, pe)
 
     def test_the_fit_degree_is_bounded(self):
         x = np.arange(10.0)
