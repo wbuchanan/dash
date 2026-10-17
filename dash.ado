@@ -4368,7 +4368,11 @@ program define _dash_validate_value, rclass
             mata: _dash_say("err", "variable ", st_strscalar(st_local("T")), " not found")
             exit 111
         }
-        if "`opt'" == "bwidth" | ("`opt'" == "n" & `isnum' & `R' <= 0) {
+        // A number only: other text keeps dash's sentence, which shows it
+        // as typed (test_json_escaping.cscript JSE-69); twoway reads it as
+        // an expression, and a macro reference typed in it expands there
+        // (rc 0, measured 17oct2026), which dash never does.
+        if ("`opt'" == "bwidth" & `isnum') | ("`opt'" == "n" & `isnum' & `R' <= 0) {
             display as error "`opt'() must be a positive number"
             exit 198
         }
