@@ -12092,6 +12092,13 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w31_run' {
     file write `u44f' "#include s2color" _n "linestyle ci nosuch" _n
     file close `u44f'
     adopath ++ "`u44u'"
+    // twoway lists a style class's files once a session, at its first
+    // graph: a session that drew before linestyle-u44b.style existed notes
+    // "named style u44b not found" and draws black (measured 17oct2026,
+    // the certification run's shared sessions).  discard drops that list
+    // (and the auto-loaded programs, which load again); the programs this
+    // script defines stay.
+    discard
     sysuse auto, clear
 
     // U44-01: the fixture is stamped and lists the 161 files.
