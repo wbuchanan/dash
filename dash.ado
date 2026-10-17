@@ -11261,6 +11261,9 @@ program define _dash_render_immediate
         // _natscale/_tsnatscale while the qualifier columns exist
         // (_dash_axis_ticks_stata); carried as build_options.stata_ticks.
         // Captured: a failure leaves every axis to the renderer's model.
+        // The Python guard first, uncaptured, as dash ran it on entry, so
+        // every python: line stands below it (test_env_guards ENV-12).
+        _dash_require_python
         capture _dash_xm_load
         if _rc == 0 {
             capture python: import sys
