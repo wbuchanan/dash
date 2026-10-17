@@ -509,6 +509,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit 1a2c566.
 - **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
 - **E10 Tracked:** Partly closed in WP-31 (section 44, commit dda6868): the four classes, shadestyle, user files, class directives on named and default styles, adoarchive, rows embedded at registration; open: textboxstyle and color-*.style files (BUGS.md "textboxstyle and color-*.style files on the ado-path are not read").
+- **E10b Tracked:** Open (WP-31 section 56).
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Closed in WP-31, BUGS.md "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches", commit dc4c0ec.
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
@@ -528,6 +529,8 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
 - **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count; open: the binary data file and the strL loop (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)" and "The strL binary check reads every observation one at a time"), and the working columns in the user's data (BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))").
+- **G3c Tracked:** Open (WP-31 section 55).
+- **G3d Tracked:** Open (WP-31 section 55).
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.
 - **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
 - **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit 8b367e7.

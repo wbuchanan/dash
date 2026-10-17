@@ -2003,6 +2003,9 @@ WP31_OPEN = {
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
+    "G3c": 'The strL binary check reads every observation one at a time',
+    "G3d": "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))",
+    "E10b": 'textboxstyle and color-*.style files on the ado-path are not read',
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2149,6 +2152,9 @@ WP31_LISTS = {
     "D9b": ("Results that change",),
     "D1d": ("Results that change",),
     "D10c": ("Results that change",),
+    "G3c": ("Fixed in WP-31",),
+    "G3d": ("Fixed in WP-31",),
+    "E10b": ("Fixed in WP-31",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2294,6 +2300,9 @@ WP31_SECTION = {
     "D9b": 45,
     "D1d": 45,
     "D10c": 44,
+    "G3c": 55,
+    "G3d": 55,
+    "E10b": 56,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2511,7 +2520,8 @@ class TestWp31Tracking:
         # 134 -> 135: D31 adds E11b.
         # 135 -> 139: D32 adds D10b, D11b, D9b, D1d.
         # 139 -> 140: D34 adds D10c.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 140
+        # 140 -> 143: D36 adds G3c, G3d, E10b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 143
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

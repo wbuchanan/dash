@@ -1115,6 +1115,12 @@ Changed behaviour.
 
 <!-- WP-31 C18b -->
 
+<!-- WP-31 G3c -->
+
+<!-- WP-31 G3d -->
+
+<!-- WP-31 E10b -->
+
 ### Fixed in WP-30
 
 Failures the drop-in re-audit of 30sep2026 ranked P1 that WP-30 fixed

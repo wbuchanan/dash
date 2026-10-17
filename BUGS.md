@@ -4046,16 +4046,16 @@
   - File Names and Line Numbers: dash_render.py _dash_write_stata_data (the StrLConnector.isBinary loop)
   - Description: GAPS3.md G3, re-verified at 6370ca4: strL check loops per observation.
   - Suggested fix: one Mata st_sview pass over the strL variables before the export
-  - Resolution: Not fixed because WP-31 section 43 closed G3's shadowing and count parts only. Graded S3 (WP-31): a time cost on large strL data, not a wrong picture.
+  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): a time cost on large strL data, not a wrong picture.
 
 - [ ] Title: Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))
   - File Names and Line Numbers: dash.ado _dash_qual_gen, _dash_sort_gen, _dash_tsop_gen, _dash_wexp_gen
   - Description: GAPS3.md G3, re-verified at 6370ca4: working columns are generated in the user's data (r(900) possible at c(maxvar)).
   - Suggested fix: a frame-based marker or a tempvar-count check before generate
-  - Resolution: Not fixed because WP-31 section 43 closed G3's shadowing and count parts only. Graded S3 (WP-31): fails loudly at c(maxvar), never a wrong picture.
+  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): fails loudly at c(maxvar), never a wrong picture.
 
 - [ ] Title: textboxstyle and color-*.style files on the ado-path are not read
   - File Names and Line Numbers: dash_render.py _dash_textbox (S30), _SCOLOR colour table
   - Description: GAPS3.md E10 (P2.55), re-verified at 6370ca4: a user's or a package's textboxstyle-*.style and color-*.style files are not read; WP-31 section 44 reads the four option classes and shadestyle.
   - Suggested fix: extend SchemeParser._style_file_rows to the textboxstyle and color classes with readers for their attributes
-  - Resolution: Not fixed because WP-31 section 44 read the four option classes and shadestyle only. Graded S3 (WP-31): a user textbox or colour style falls to a note and the default.
+  - Resolution: Not fixed because WP-31 section 56 has not landed. Graded S3 (WP-31): a user textbox or colour style falls to a note and the default.

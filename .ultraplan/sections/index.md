@@ -116,8 +116,8 @@
 | 52 | saved-page-errors-throttle | H1 (E11, E12), S14's and S20's after-move residuals (A23) | 17 | 10, 14, 20, 49 | 53, 54 | yellow | M | 5 |
 | 53 | export-print | H2x (E10, J7: composite PNG/SVG, print stylesheet) | 18 | 48 | -- | yellow | M | 4 |
 | 54 | accessibility | K6 | 18 | 48, 49 | -- | yellow | M | 4 |
-| 55 | served-hygiene | H3, H4, H7 | 18 | 01 | -- | green | S | 4 |
-| 56 | help-reconciliation | J1, J2 | 19 | 02-55 | -- | yellow | M | 6 |
+| 55 | served-hygiene | H3, H4, H7 + G3c, G3d (D36) | 18 | 01 | -- | green | S | 4 |
+| 56 | help-reconciliation | J1, J2 + E10b (D36) | 19 | 02-55 | -- | yellow | M | 6 |
 | 57 | examples | J3 | 19 | 21, 26 | -- | green | S | 3 |
 | 58 | register-drift | J4, J5, J6 | 19 | 01 | -- | green | S | 7 |
 | 59 | readme-package-versions | I2, I3, I4, I5, I7 | 20 | 01 | -- | green | S | 8 |
@@ -162,6 +162,9 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D9b | With three or more axes the outer axes keep dash's number order, and text(..., yaxis(#)) is not renumbered with its axis (D32) | S35 | S45 (15) | RC |
 | D1d | An outer axis's ##N minor labels after a move are capped at its build's label pool (D32) | S35 | S45 (15) | RC |
 | D10c | The econ and stata7 bystyles are named and the combine and rescale bystyles draw only their scales (D34) | S39 | S44 (15) | RC |
+| G3c | The strL binary check reads every observation one at a time (D36) | S43 | S55 (18) | FX |
+| G3d | Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar)) (D36) | S43 | S55 (18) | FX |
+| E10b | textboxstyle and color-*.style files on the ado-path are not read (D36) | S44 | S56 (19) | FX |
 
 ## Batch execution order
 

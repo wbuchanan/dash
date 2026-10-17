@@ -176,3 +176,10 @@ AC-56.1 `grep -c 'dropped in silence' dash.sthlp` → 0. AC-56.2 `python3 -m pyt
 - **Trap:** `_unsupported_section()` reads `{opt...}` only inside `{phang2}`/`{phang}` entries; a name written `{cmd:...}` in a prose `{pstd}` is not collected. Write every listed option as `{opt name}` inside an entry.
 - **Tracked lines (A11):** both closing tasks write `commit pending`; the merger's step k.3b writes the sha; no amend anywhere. **A14:** no truth block (nothing is compared with twoway's drawing). **Files (A13):** `<files>` lists primary files; the tracking documents and flipped tests are implied.
 - **Decisions for maintainer ratification:** D-56.c (drop the once-a-minute claim rather than add a throttle).
+
+
+## Addendum (17oct2026, DECISIONS D36): row E10b added to this section
+
+**Gap.** BUGS.md "textboxstyle and color-*.style files on the ado-path are not read" (found by WP-31 S44; graded S3: a user textbox or colour style falls to a note and the default).
+
+**Requirement.** Document the limit in the help's scheme and style paragraph with the measured picture (a user textboxstyle or color style draws the default with twoway's note text); failing tests first; close the BUGS entry, the GAPS3 E10b Tracked line (`commit pending`), the CHANGELOG `<!-- WP-31 E10b -->` marker in "Fixed in WP-31" and the WP31_OPEN line; one commit ending `(WP-31 E10b)`.

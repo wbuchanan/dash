@@ -184,3 +184,17 @@ Parity: none (no page content changes).
 - **Commit body forms:** `Regression: test/test_served_resources.py::TestNoMathjax::test_the_served_page_names_no_mathjax_script -- failed at 6370ca4 with AssertionError: bokeh-mathjax-3.x.min.js is listed`; `Flipped: test/test_program_coverage_map.py (key _json_escape) -- renamed _dash_json_escape because every library name is now prefixed`; `BUGS.md: "<title>" (closed)`; `GAPS3: H3 Tracked` / `H4 Tracked` / `H7 Tracked`.
 - **Decisions for ratification:** H3's off-loop build left as a residual (D-55a); refuse-not-override for `BOKEH_RESOURCES`, report-only for `BOKEH_MINIFIED/DEV` (D-55b). **Decided:** `/health` omits `rows` (D-55c; A30, R4-23); the argv restore precedes every exit (D-55e; R4-24).
 - **Tracked lines (A11):** every closing task writes `commit pending`; no amend anywhere. **A14:** one truth block (H4's, appended by 55-02); 55-01 appends none. **Files (A13):** `<files>` lists primary files; the tracking documents and flipped tests are implied.
+
+
+## Addendum (17oct2026, DECISIONS D36): row G3c added to this section
+
+**Gap.** BUGS.md "The strL binary check reads every observation one at a time" (found by WP-31 S43; graded S3: a time cost on large strL data, not a wrong picture).
+
+**Requirement.** One Mata st_sview pass over the strL variables before the export, timed on 10^6 rows; failing tests first; close the BUGS entry, the GAPS3 G3c Tracked line (`commit pending`), the CHANGELOG `<!-- WP-31 G3c -->` marker in "Fixed in WP-31" and the WP31_OPEN line; one commit ending `(WP-31 G3c)`.
+
+
+## Addendum (17oct2026, DECISIONS D36): row G3d added to this section
+
+**Gap.** BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))" (found by WP-31 S43; graded S3: fails loudly at c(maxvar), never a wrong picture).
+
+**Requirement.** Tempvars counted against c(maxvar) before any generate, refusing with dash's words before the user's data is touched; failing tests first; close the BUGS entry, the GAPS3 G3d Tracked line (`commit pending`), the CHANGELOG `<!-- WP-31 G3d -->` marker in "Fixed in WP-31" and the WP31_OPEN line; one commit ending `(WP-31 G3d)`.
