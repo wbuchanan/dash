@@ -11656,9 +11656,10 @@ program define _dash_kpi
                 (ustrlen(st_local("_kw")) > 40 ? "..." : ""), "'.")
             exit 198
         }
-        if "`weight'" == "iweight" & !inlist("`stat'", "mean", "sum", ///
-                "count", "dcount", "min", "max", "sd", "var") & ///
-                !inlist("`stat'", "cv", "range") {
+        // The statistics summarize computes with an iweight; a family list,
+        // as a string inlist() takes at most ten arguments.
+        local _kpi_iw "mean sum count dcount min max sd var cv range"
+        if "`weight'" == "iweight" & !`: list stat in _kpi_iw' {
             display as error "iweights not allowed"
             exit 101
         }
