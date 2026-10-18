@@ -3008,6 +3008,27 @@ def _dash_label_ccl(text, sfi):
         sfi.SFIToolkit.stata(f"capture macro drop {g}")
 
 
+def _dash_strl_first_binary(v, nobs, sfi):
+    """The first observation (1-based) at which strL variable *v* holds
+    binary data, or 0 (WP-31 G3c).
+
+    One Mata pass: ``strpos(st_sdata(., v), char(0))`` over the whole
+    column, the first hit or ``st_nobs() + 1`` stored in a scalar made for
+    the read and dropped at once.  *v* is a Stata name the caller checked
+    (:func:`_dash_is_stata_name`), so it is safe in the command.
+    """
+    tk = sfi.SFIToolkit
+    nm = "__dashbin" + secrets.token_hex(6)
+    tk.stata(f'quietly mata: st_numscalar("{nm}", min((selectindex(strpos('
+             f'st_sdata(., "{v}"), char(0)) :> 0) \\ st_nobs() + 1)))')
+    try:
+        got = sfi.Scalar.getValue(nm)
+    finally:
+        tk.stata(f"capture scalar drop {nm}")
+    first = int(got) if got is not None and got == got else 0
+    return first if 0 < first <= nobs else 0
+
+
 def _dash_write_stata_data(path, varnames, sfi=None):
     """Write the data file both renderers read, from the data in memory.
 
@@ -3123,12 +3144,20 @@ def _dash_write_stata_data(path, varnames, sfi=None):
                 tk.stata(f"capture drop {tmp}")
             _note(f"string variable {v}")
         if data.isVarTypeStrL(v):
-            for i in range(nobs):
-                if sfi.StrLConnector(v, i).isBinary():
-                    return (f"dash: strL variable {v} holds binary data in "
-                            f"observation {i + 1}, which is not text a "
-                            f"dashboard can show.  Drop it or replace that "
-                            f"value first.")
+            # WP-31 G3c: one Mata pass over the variable, where every
+            # observation had its own StrLConnector (0.74 s a million rows
+            # against 0.05 s, measured 18oct2026).  A strL is binary when it
+            # holds a NUL byte -- StrLConnector.isBinary() agreed on text,
+            # high bytes, an embedded char(0) and a fileread() binary,
+            # measured -- and st_sview() takes no strL, so st_sdata() reads
+            # it.  The first such observation, or _N + 1 for none, comes
+            # back through a scalar made for the read and dropped at once.
+            first = _dash_strl_first_binary(v, nobs, sfi)
+            if first:
+                return (f"dash: strL variable {v} holds binary data in "
+                        f"observation {first}, which is not text a "
+                        f"dashboard can show.  Drop it or replace that "
+                        f"value first.")
         cols[v] = [str(x) for x in vals]
 
     var_labels, label_names, value_labels = {}, {}, {}

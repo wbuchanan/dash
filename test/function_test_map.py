@@ -1004,6 +1004,7 @@ FUNCTIONS = {
  '_dash_nonce_scripts': 'test/test_csp.py::TestTheServedTemplate::test_only_script_elements_get_the_nonce',
  '_dash_drop_mathjax': 'test/test_served_resources.py::TestNoMathjax::test_only_a_mathjax_element_is_dropped',
  '_dash_env_bundle_note': 'test/test_served_env.py::TestBundleNote::test_the_two_notes',
+ '_dash_strl_first_binary': 'test/test_string_value_export.py::TestTheWriter::test_the_binary_check_is_one_mata_pass_a_variable',
  '_dash_saved_head': 'test/test_csp.py::TestThePolicyConstants::test_the_standalone_meta_is_built_from_the_constant',
  '_dash_script_hashes': 'test/test_csp.py::TestTheScriptHashes::test_only_executable_inline_scripts_are_hashed',
  '_dash_seal_saved_page': 'test/test_csp.py::TestAHostileFragmentIsNotAdmitted::test_the_seal_refuses_an_unhashed_script',

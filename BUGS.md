@@ -4048,11 +4048,11 @@
   - Suggested fix: a binary (base64 float64) column form read by both renderers and the served route
   - Resolution: Not fixed because WP-31 section 43 closed G3's shadowing and count parts only. Graded S3 (WP-31): a size cost, not a wrong picture.
 
-- [ ] Title: The strL binary check reads every observation one at a time
+- [x] Title: The strL binary check reads every observation one at a time
   - File Names and Line Numbers: dash_render.py _dash_write_stata_data (the StrLConnector.isBinary loop)
   - Description: GAPS3.md G3, re-verified at 6370ca4: strL check loops per observation.
   - Suggested fix: one Mata st_sview pass over the strL variables before the export
-  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): a time cost on large strL data, not a wrong picture.
+  - Resolution: Fixed 18oct2026 (WP-31, G3c). _dash_write_stata_data checks each strL variable with one Mata pass, _dash_strl_first_binary (new): strpos(st_sdata(., v), char(0)) over the column, the first hit read back through a scalar made for the read and dropped at once, where every observation had its own StrLConnector. Measured on 10^6 rows: 0.74 s for the loop, 0.05 s for the pass; StrLConnector.isBinary() and a NUL byte agreed on plain text, high bytes, an embedded char(0) and a fileread() binary. st_sview() takes no strL (r(3300), measured), so the pass reads with st_sdata(). Pinned by test/test_string_value_export.py::TestTheWriter::test_the_binary_check_is_one_mata_pass_a_variable, test/test_string_values.cscript U55-6. Closes GAPS3 G3c (WP-31, G3c).
 
 - [ ] Title: Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))
   - File Names and Line Numbers: dash.ado _dash_qual_gen, _dash_sort_gen, _dash_tsop_gen, _dash_wexp_gen

@@ -505,6 +505,31 @@ assert `rc' == 198 & r(found) == 1
 capture dash clear
 display "SV-07 PASS: a binary strL is refused, r(198), naming the variable and observation"
 
+// U55-6 (WP-31 G3c) -- the check is one Mata pass, timed on 10^6 rows:
+// the first binary observation is named, wherever it is.  The per-
+// observation loop it replaced took 0.74 s of a build at this size; the
+// pass 0.05 s (measured 18oct2026).
+clear
+quietly set obs 1000000
+gen long rowid = _n
+gen double y = mod(_n, 97)
+gen strL L = "t" + string(mod(_n, 13))
+mata: st_sstore(777777, "L", "q" + char(0))
+mata: st_sstore(888888, "L", "r" + char(0))
+capture dash clear
+tempfile p
+timer clear 55
+timer on 55
+_sv_run `"dash scatter y rowid, mlabel(L) saving("`p'.html")"'
+timer off 55
+local rc = r(rc)
+cert_log_has "`r(log)'", needle("dash: strL variable L holds binary data in observation 777777,")
+assert `rc' == 198 & r(found) == 1
+quietly timer list 55
+display "U55-6: refused in " %5.2f r(t55) " s at 10^6 rows"
+capture dash clear
+display "U55-6 PASS: a binary strL at 10^6 rows is found in one pass and named by its first observation"
+
 // ----------------------------------------------------------------
 // SV-08 -- the prefix the writer's own names use is not the user's
 // concern: a variable named like a Python identifier dash uses, or like a

@@ -1990,7 +1990,6 @@ WP31_OPEN = {
     "H6": "The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS",
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
-    "G3c": 'The strL binary check reads every observation one at a time',
     "G3d": "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))",
     "E10b": 'textboxstyle and color-*.style files on the ado-path are not read',
 }

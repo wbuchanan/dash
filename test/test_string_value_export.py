@@ -155,12 +155,19 @@ class FakeSfi:
 
         class StrLConnector:
             def __init__(self, v, i):
+                fake.connectors += 1
                 self.v, self.i = v, i
 
             def isBinary(self):
                 return (self.v, self.i) in fake.binary
 
         self.globals, self.commands, self.shown = {}, [], []
+        self.scalars, self.connectors = {}, 0
+
+        class Scalar:
+            @staticmethod
+            def getValue(name):
+                return fake.scalars[name]
 
         class Macro:
             @staticmethod
@@ -220,10 +227,25 @@ class FakeSfi:
                     return
                 if re.fullmatch(r"capture mata: mata drop \w+ \w+", cmd):
                     return
+                # WP-31 G3c: the strL binary check, one Mata pass a variable.
+                m = re.fullmatch(r'quietly mata: st_numscalar\("(\w+)", '
+                                 r'min\(\(selectindex\(strpos\(st_sdata\(\., '
+                                 r'"(\w+)"\), char\(0\)\) :> 0\) '
+                                 r'\\ st_nobs\(\) \+ 1\)\)\)', cmd)
+                if m:
+                    n = len(fake.columns[m.group(2)])
+                    hits = [i + 1 for i in range(n)
+                            if (m.group(2), i) in fake.binary]
+                    fake.scalars[m.group(1)] = float(min(hits + [n + 1]))
+                    return
+                m = re.fullmatch(r"capture scalar drop (\w+)", cmd)
+                if m:
+                    fake.scalars.pop(m.group(1), None)
+                    return
                 raise AssertionError("unexpected Stata command: %r" % cmd)
 
         self.Data, self.ValueLabel, self.StrLConnector = Data, ValueLabel, StrLConnector
-        self.Macro, self.SFIToolkit = Macro, SFIToolkit
+        self.Macro, self.SFIToolkit, self.Scalar = Macro, SFIToolkit, Scalar
 
 
 def _write(tmp_path, fake, names, fname="data.json"):
@@ -381,6 +403,28 @@ class TestTheWriter:
         assert msg.startswith("dash: strL variable s holds binary data in "
                               "observation 3")
         assert not os.path.exists(path)
+
+    def test_the_binary_check_is_one_mata_pass_a_variable(self, tmp_path):
+        """WP-31 G3c: the check read every observation of a strL through
+        its own StrLConnector, 0.74 s per million rows (measured 18oct2026
+        at 4c211a4); one st_sdata() pass in Mata takes 0.05 s."""
+        fake = _fake_auto(strl=True)
+        fake.binary = {("s", 2), ("s", 4)}
+        path, msg = _write(tmp_path, fake, "s")
+        assert msg.startswith("dash: strL variable s holds binary data in "
+                              "observation 3,")
+        assert fake.connectors == 0
+        passes = [c for c in fake.commands if "st_sdata" in c]
+        assert len(passes) == 1
+        assert not fake.scalars
+
+    def test_a_strl_without_binary_data_is_written(self, tmp_path):
+        fake = _fake_auto(strl=True)
+        path, msg = _write(tmp_path, fake, "s")
+        assert msg == ""
+        assert fake.connectors == 0
+        assert len([c for c in fake.commands if "st_sdata" in c]) == 1
+        assert not fake.scalars
 
     def test_a_label_that_is_not_utf8_is_read_through_ustrfix(self, tmp_path):
         fake = _fake_auto()
