@@ -30,6 +30,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from js_runner import requires_node  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "region_remainder_truth.json")
 _ROOT = os.path.join(_HERE, "..")
@@ -202,11 +203,44 @@ class TestGraphMargin:
         assert (f.min_border_right, f.min_border_top,
                 f.min_border_bottom) == (None, None, None)
 
+    @requires_node
+    def test_a_resize_redraws_the_margin(self):
+        """D39 D-37.a: twoway's margin is a share of the graph's smaller
+        side whatever its size, so the borders follow a resize of the page:
+        the figure carries a callback on its outer size that sets each
+        changed side to its border before the margin plus the change times
+        min(W, H)."""
+        f = figure(width=400, height=300)
+        f.min_border_left = 20
+        dr._dash_graph_margin(f, dr.SchemeParser("s2color"),
+                              {"graphregion": "margin(l+5 t+10)"})
+        cbs = [cb for k in ("outer_width", "outer_height")
+               for cb in f.js_property_callbacks.get("change:" + k, [])]
+        assert len(cbs) == 2 and cbs[0] is cbs[1]
+        cb = cbs[0]
+        assert cb.code == dr._DASH_GRAPH_MARGIN_JS
+        from js_runner import run_js
+        src = """
+const fig = {outer_width: 1000, outer_height: 500, min_border_left: 35,
+             min_border_right: null, min_border_top: 35,
+             min_border_bottom: null};
+const sides = %s;
+(function (fig, sides) { %s })(fig, sides);
+console.log(JSON.stringify(fig));
+""" % (json.dumps(cb.args["sides"]), cb.code)
+        got = run_js(src)
+        # Built at 400 x 300: left 20 + 15, top 5 (min_border) + 30.  At
+        # 1000 x 500: left 20 + 25, top 5 + 50.
+        assert got["min_border_left"] == 45
+        assert got["min_border_top"] == 55
+        assert got["min_border_right"] is None
+
     def test_served_copy(self):
         with open(os.path.join(_ROOT, "dash_render.py"),
                   encoding="utf-8") as fh:
             src = fh.read()
         assert src.count('"_dash_graph_margin",') == 1
+        assert src.count('"_DASH_GRAPH_MARGIN_JS",') == 1
         assert re.search(r'"_dash_plot_margin",\s*"_dash_graph_margin",',
                          src)
 

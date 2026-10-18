@@ -1071,6 +1071,8 @@ FUNCTIONS = {
  'GlyphMapper._colorvar_level_colour': 'test/test_colorvar_coverage.py::TestLinePerLevel::test_the_level_index_reads_each_mapper_as_the_scalar_does',
  'GlyphMapper._colorvar_line_parts': 'test/test_colorvar_line_levels.py::TestOneLinePerLevel::test_the_measured_paths',
  'GlyphMapper._colorvar_line_draw': 'test/test_colorvar_line_levels.py::TestOneLinePerLevel::test_each_bound_is_one_line_a_level',
+ '_dash_short_side_share': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
+ '_dash_short_side_share.<locals>._size': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
  '_dash_textbox_margin_px': 'test/test_textbox_placement.py::TestBox::test_an_unspanned_box_is_its_text_and_margin',
  '_dash_textbox_style': 'test/test_textbox_placement.py::TestBox::test_box_props',
  '_dash_textbox_insert': 'test/test_textbox_placement.py::TestRingOrder::test_rings_on_one_side',

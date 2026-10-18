@@ -3265,7 +3265,10 @@ panel's border and its outline ({cmd:lcolor()}, {cmd:lwidth()},
 ({cmd:large}, 8 units), {cmd:graphregion(margin())} by the margin less the
 scheme's graph margin ({cmd:large} 4.5 units, {cmd:l+5} 5 on the left); a
 graph margin smaller than the scheme's, which {cmd:twoway} draws as a
-larger array, insets nothing, a dashboard cell having no room to give.  {cmd:subtitleformat()} writes an
+larger array, insets nothing, a dashboard cell having no room to give.
+A unit is 1% of the graph's smaller side, by the graph's
+{cmd:xsize()}/{cmd:ysize()} or the scheme's size, so the inset follows a
+resize of the page.  {cmd:subtitleformat()} writes an
 unlabelled panel value in its numeric format ({cmd:var}: the variable's
 own), and is ignored, as in {cmd:twoway}, when it is not a numeric format.
 The graph's own {cmd:subtitle(, fcolor() lcolor() nobox)} restyle every
@@ -4218,8 +4221,12 @@ colours, lines and inner box off and draws only its {cmd:margin()}, as
 {cmd:twoway} does, while the region's other copies draw as typed.  {cmd:graphregion(margin())} takes the same
 {it:marginstyle} forms as {cmd:plotregion(margin())} below, over the
 scheme's {cmd:margin graph} ({cmd:medium}), and widens the figure's
-border by the change, a percentage of the figure's smaller side fixed
-when the page is built.  {cmd:istyle()}, {cmd:ilstyle()},
+border by the change, a percentage of the figure's smaller side, as
+{cmd:twoway} draws it at any size: the border follows a resize of the
+page.  On a {cmd:by()} graph {cmd:twoway} draws a {cmd:graphregion(margin())}
+given outside {cmd:by()} as nothing, and so does {cmd:dash}; given in
+{cmd:by()} it insets the whole array (see Faceting with {cmd:by()}).
+{cmd:istyle()}, {cmd:ilstyle()},
 {cmd:ilcolor()}, {cmd:ilwidth()}, {cmd:ilpattern()}, {cmd:ilalign()}
 and {cmd:lalign()} on {cmd:graphregion()}, and {cmd:lalign()},
 {cmd:ilalign()}, {cmd:iintensity()} and {cmd:ishadestyle()} on

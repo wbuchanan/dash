@@ -124,23 +124,36 @@ class TestArrayInset:
         assert abs((left("regions_plot_margin_small") - base) / 28.8
                    - 1.2) < 0.05
 
+    # Flipped (WP-32, D39 D-37.a): the inset was fixed px at dash's 4-inch
+    # reference (3.84 px a unit), so it stayed put when the page was
+    # resized.  twoway's margin is a share of the graph's smaller side, so
+    # the inset is a CSS percentage of the cell's width: the units times
+    # min(W, H) / W, the graph's own ratio (s2color 5.5 x 4 in: 4 / 5.5),
+    # which follows any resize.
+    @staticmethod
+    def _pct(*units):
+        k = min(1.0, 4.0 / 5.5)
+        return " ".join("%.4g%%" % (u * k) for u in units)
+
     @pytest.mark.parametrize("mode", MODES)
     def test_graph_margin(self, mode):
-        px = int(round(4.5 * _UNIT))
-        assert self._pad(mode, "gm_large") == "%dpx %dpx %dpx %dpx" % (
-            px, px, px, px)
+        assert self._pad(mode, "gm_large") == self._pct(4.5, 4.5, 4.5, 4.5)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_plot_margin(self, mode):
-        px = int(round(8.0 * _UNIT))
-        assert self._pad(mode, "pm_large") == "%dpx %dpx %dpx %dpx" % (
-            px, px, px, px)
+        assert self._pad(mode, "pm_large") == self._pct(8.0, 8.0, 8.0, 8.0)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_terms_add(self, mode):
-        s, l = int(round(1.2 * _UNIT)), int(round(6.2 * _UNIT))
-        assert self._pad(mode, "pm_both") == "%dpx %dpx %dpx %dpx" % (
-            s, s, s, l)
+        assert self._pad(mode, "pm_both") == self._pct(1.2, 1.2, 1.2, 6.2)
+
+    def test_the_inset_follows_the_graphs_ratio(self):
+        """A taller-than-wide graph: min(W, H) is W, the units themselves
+        (xsize(3) ysize(6))."""
+        st = dr._dash_by_array_styles(
+            "foreign, graphregion(margin(large))", dr.SchemeParser("s2color"),
+            {"xsize": "3", "ysize": "6"})
+        assert st["padding"] == "4.5% 4.5% 4.5% 4.5%"
 
     @pytest.mark.parametrize("mode", MODES)
     def test_not_named(self, mode):

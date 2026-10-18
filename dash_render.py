@@ -39150,15 +39150,47 @@ def _dash_graph_margin(fig, scheme, graph_opts):
     short = float(min(w, h)) if w and h else 0.0
     if short <= 0:
         return
+    follow = []
     for name, i in (("min_border_left", 0), ("min_border_right", 1),
                     ("min_border_bottom", 2), ("min_border_top", 3)):
-        add = (sides[i] - start[i]) / 100.0 * short
+        rel = sides[i] - start[i]
+        add = rel / 100.0 * short
         if not math.isfinite(add) or abs(add) < 1e-9:
             continue  # an untouched side keeps None (inherits min_border)
         cur = getattr(fig, name)
         if cur is None:
             cur = fig.min_border or 0  # None until set (Bokeh 3.8)
-        setattr(fig, name, max(0, int(round(cur + add))))
+        new = max(0, int(round(cur + add)))
+        setattr(fig, name, new)
+        follow.append([name, float(rel), int(new - cur)])
+    if follow:
+        # D39 D-37.a: the side follows a resize of the page -- twoway's
+        # margin is the change times min(W, H) at any size -- through the
+        # figure's drawn size (outer_width/outer_height, which BokehJS sets).
+        from bokeh.models import CustomJS
+        cb = CustomJS(args={"fig": fig, "sides": follow},
+                      code=_DASH_GRAPH_MARGIN_JS)
+        fig.js_on_change("outer_width", cb)
+        fig.js_on_change("outer_height", cb)
+
+
+#: graphregion(margin()) after a resize (D39 D-37.a): each side in *sides*
+#: is ``[border name, change in relative units, px added so far]``; the
+#: side takes the change times min(outer W, outer H) / 100 in place of what
+#: was added before, so what other passes added to the border stays.
+_DASH_GRAPH_MARGIN_JS = """
+const w = fig.outer_width, h = fig.outer_height;
+if (!(w > 0) || !(h > 0)) { return; }
+const unit = Math.min(w, h) / 100;
+for (const side of sides) {
+  const want = Math.round(side[1] * unit);
+  if (!isFinite(want) || want === side[2]) { continue; }
+  const cur = fig[side[0]] == null ? 0 : fig[side[0]];
+  const next = Math.max(0, cur - side[2] + want);
+  side[2] = want;
+  fig[side[0]] = next;
+}
+"""
 
 def _dash_inner_box(fig):
     """The plot region's inner box on *fig* (WP-30 P1.20b), as twoway
@@ -53016,7 +53048,32 @@ def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
         cell.outline_line_color = None
 
 
-def _dash_by_array_styles(by_raw, scheme=None):
+def _dash_short_side_share(graph_opts, scheme):
+    """min(W, H) / W of a graph (D39 D-37.a): its xsize() and ysize() when
+    each is a positive number, else the scheme's graphsize for that side;
+    1 when neither gives a size."""
+    go = graph_opts or {}
+
+    def _size(key, dflt):
+        try:
+            v = float(str(go.get(key, "") or "").strip())
+        except ValueError:
+            v = None
+        if v is not None and math.isfinite(v) and v > 0:
+            return v
+        try:
+            d = float(dflt)
+        except (TypeError, ValueError):
+            return None
+        return d if math.isfinite(d) and d > 0 else None
+    w = _size("xsize", getattr(scheme, "graphsize_x", None))
+    h = _size("ysize", getattr(scheme, "graphsize_y", None))
+    if not w or not h:
+        return 1.0
+    return min(1.0, h / w)
+
+
+def _dash_by_array_styles(by_raw, scheme=None, graph_opts=None):
     """The CSS by()'s regions put on the panel array (WP-31 D10b): its
     margin() as padding and its plotregion() outline as a border, once
     around the array, as twoway draws them (by_remainder_truth.json
@@ -53026,8 +53083,12 @@ def _dash_by_array_styles(by_raw, scheme=None):
     margin (medium): large is 4.5 units, l+5 is 5 on the left; a smaller
     margin, which twoway draws as a larger array, is no inset (a
     dashboard cell has no room to give).  plotregion(margin()) insets by
-    the margin itself (large 8, small 1.2).  Units are dash's relative
-    units (``_dash_by_spacing``'s).  ``{}`` when by() gives neither."""
+    the margin itself (large 8, small 1.2).  A unit is 1% of the graph's
+    smaller side, as in twoway, so the padding is a CSS percentage of the
+    cell's width, the units times min(W, H) / W by the graph's ratio
+    (xsize()/ysize() from *graph_opts*, else the scheme's graphsize), and
+    follows a resize of the page (D39 D-37.a; it was px at dash's 4-inch
+    reference).  ``{}`` when by() gives neither."""
     reg = _dash_by_region_options(by_raw)
     sch = scheme if scheme is not None else SchemeParser.fallback()
     out = {}
@@ -53055,14 +53116,13 @@ def _dash_by_array_styles(by_raw, scheme=None):
             except (TypeError, ValueError):
                 return 0.0
             return v if math.isfinite(v) else 0.0
-        unit = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
         side = [max(0.0, _num(g[i]) - _num(gstart[i])) + max(0.0, _num(p[i]))
                 for i in range(4)]
-        px = [int(round(min(1e4, v) * unit)) for v in side]
-        if any(px):
+        k = _dash_short_side_share(graph_opts, sch)
+        pct = [min(1e4, v) * k for v in side]
+        if any(v >= 5e-5 for v in pct):
             # CSS order: top right bottom left; sides are l r b t.
-            out["padding"] = "%dpx %dpx %dpx %dpx" % (px[3], px[1], px[2],
-                                                      px[0])
+            out["padding"] = " ".join("%.4g%%" % pct[i] for i in (3, 1, 2, 0))
     if reg["outline"]:
         base = {"fill": None, "fill_alpha": None, "line": None,
                 "line_alpha": None,
@@ -53124,7 +53184,7 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     fl = opts["flags"]
     side = {"legend_at": keys["legend_at"], "clegend_at": keys["clegend_at"],
             "cells": [], "hook": None, "ring0": bool(keys.get("ring0")),
-            "styles": _dash_by_array_styles(go.get("by", ""), scheme)}
+            "styles": _dash_by_array_styles(go.get("by", ""), scheme, go)}
     tcells = []
     for d, name, where, flag in (("y", "dash_by_ytitle", "left",
                                   "outer_ytitles"),
@@ -63195,6 +63255,7 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
+                      "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
@@ -63790,7 +63851,8 @@ class ServerAppBuilder:
                          "_dash_refresh_unlinked", "_dash_keep_jitter",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          # by()'s shrink and its array's CSS (WP-31 D10b).
-                         "_dash_by_shrink_factor", "_dash_by_array_styles",
+                         "_dash_by_shrink_factor", "_dash_short_side_share",
+                         "_dash_by_array_styles",
                          # A tab's own layout() (WP-31 D14).
                          "_dash_tab_layout", "_dash_tab_grid",
                          "_dash_header_fragments", "_dash_header_models",
