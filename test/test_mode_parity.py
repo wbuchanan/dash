@@ -5645,3 +5645,139 @@ class TestASequenceOfMovesAgrees:
         for step in range(1, len(served)):
             assert _diff(served[step - 1][0], served[step][0]), (
                 f"{name}: move {step + 1} left every figure unchanged")
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6): the notes a page shows at run time, after a move.
+# ---------------------------------------------------------------------------
+
+def _shown_notes(models):
+    """Every text the page SHOWS beside its data, as sorted plain data: a
+    visible Title (a figure's title, the stale cue's caption), a visible
+    Label, a visible Div that is no KPI card (a header, a status line) and
+    a visible legend item's label.  KPI cards are compared by the move
+    entries (TestAFilterMoveAgrees), hidden models show nothing."""
+    out = []
+    for m in models:
+        if isinstance(m, Title) and m.text and m.visible:
+            out.append(("Title", m.text))
+        elif (type(m).__name__ == "Label" and isinstance(m.text, str)
+              and m.text and m.visible):
+            out.append(("Label", m.text))
+        elif (isinstance(m, Div) and m.text and m.visible
+              and not _kpi_card(m)):
+            out.append(("Div", m.text))
+        elif type(m).__name__ == "LegendItem" and m.visible:
+            out.append(("Legend", str(_label_of(m))))
+    return sorted(out, key=repr)
+
+
+def _served_notes_after_move(spec, move):
+    """``(notes, warnings)``: what the served page shows after *move*, and
+    what the app's own callbacks report while making it."""
+    doc, _ = _served(spec)
+    kind, want = move
+    widgets = [w for w in _widgets_of(doc) if type(w).__name__ == kind]
+    assert widgets, f"no {kind} widget in the served document"
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _fire(widgets[0], _move_widget_value(widgets[0], kind, want))
+    return (_shown_notes(list(doc.models)),
+            sorted(str(w.message) for w in caught))
+
+
+def _saved_notes_after_move(spec, move):
+    """What the saved page shows after *move*, made by its own filter
+    script under node (``js_runner.JsSession`` writes each Div's text and
+    each Title's, Label's and Div's visibility back)."""
+    import js_runner
+    r, _ = _standalone(spec)
+    kind, want = move
+    pairs = [(w, cb) for w, cb in zip(r.filter_widgets, r.filter_callbacks)
+             if type(w).__name__ == kind]
+    assert pairs, f"no {kind} widget on the saved page"
+    w, cb = pairs[0]
+    value = _move_widget_value(w, kind, want)
+    session = js_runner.JsSession(r.filter_callbacks)
+    session.set(w, list(value) if kind == "RangeSlider" else value)
+    session.run(cb)
+    return _shown_notes(r._last_layout_root.references())
+
+
+def _without_stale_cue(notes):
+    """*notes* less the saved page's stale cue: its caption, its status
+    line and each legend key's suffix (WP-29 P0.17)."""
+    out = []
+    for kind, text in notes:
+        if kind == "Title" and text == dr._DASH_STALE_CUE_TEXT:
+            continue
+        if kind == "Div" and text == dr._DASH_STALE_STATUS_HTML:
+            continue
+        if kind == "Legend":
+            for suffix in dr._DASH_STALE_SUFFIX.values():
+                if text.endswith(suffix):
+                    text = text[:-len(suffix)]
+        out.append((kind, text))
+    return sorted(out, key=repr)
+
+
+#: The move entries whose notes are compared: every _JS_ORACLE_CASES entry
+#: (one per moved layer kind) and the entries where the saved page shows
+#: its stale cue after the move, plus two of this section's own.
+_NOTE_CASES = _JS_ORACLE_CASES | {
+    "lpoly, dropdown to Foreign", "lpoly emptied, slider to 10000",
+    "lfit recast scatter, dropdown (WP-30 P1.8b)",
+    "lfit with points after a move (WP-31 C4)"}
+_NOTE_MOVES = [p for p in MOVE_CORPUS if p.values[0] in _NOTE_CASES] + [
+    _move_case("lpoly degree(8), slider to 4500", _MOVES[2],
+               [plot_for("lpoly", {"degree": "8"})]),
+    _move_case("lfitci with points, slider to 4500", _MOVES[2],
+               [plot_for("lfitci", {"estopts": "noconstant", "points": {
+                   "x": [2000.0, 3000.0, 4000.0], "y": [11.0, 21.0, 31.0],
+                   "lo": [1.0, 2.0, 3.0], "hi": [20.0, 30.0, 40.0],
+                   "nobs": 10}})]),
+]
+
+
+#: Differences this comparison found (WP-32, 18oct2026), pinned so the test
+#: fails the day an entry agrees (delete its name then), and filed in
+#: BUGS.md "Found by the runtime-notes parity entry: a fit drawn from
+#: Stata's points is stale after a move and the served page does not say
+#: so".  Never ALLOWED (R8).  A fit drawn from Stata's own points
+#: (estopts()/predopts()/estcmd()) is refitted by neither mode after a
+#: move; the saved page marks it "(unfiltered)" with its caption and
+#: status line, the served page shows nothing and the app only logs
+#: "is drawn as registered; a filter move does not refit it".
+_NOTES_FOUND_AFTER_MOVE = frozenset({
+    "lfit with points after a move (WP-31 C4)",
+    "lfitci with points, slider to 4500",
+})
+
+
+@pytest.mark.parametrize("name,spec,action,oracle", _NOTE_MOVES)
+class TestTheRuntimeNotesAgree:
+    def test_same_notes_after_the_move(self, name, spec, action, oracle):
+        """The titles, labels, status lines and legend keys the page shows
+        after a move are the same in both modes, and the served app's
+        callbacks report nothing the page does not show (WP-32: notes
+        were compared at build only, TestTheTwoModesAgree's warnings).
+
+        The saved page's stale cue is ``_allowed("aggregate layers
+        recompute live")`` where the served app refits the layer -- and
+        only there: a layer the served app does not refit either is the
+        same stale layer in both modes, and then the cue is a note one
+        page shows and the other does not."""
+        srv, srv_said = _served_notes_after_move(spec, action)
+        std = _saved_notes_after_move(spec, action)
+        refits = not [w for w in srv_said if "does not refit" in w]
+        if refits and std != _without_stale_cue(std):
+            _allowed("aggregate layers recompute live")
+            std = _without_stale_cue(std)
+        if name in _NOTES_FOUND_AFTER_MOVE:
+            assert std != srv and srv_said, (
+                f"{name}: the notes now agree after the move; delete it "
+                f"from _NOTES_FOUND_AFTER_MOVE")
+            return
+        assert (std, []) == (srv, srv_said), (
+            f"{name}: the notes after the move differ\n  saved  {std}\n"
+            f"  served {srv}\n  served callbacks said {srv_said}")
