@@ -201,10 +201,16 @@ def _assert_nine_tools(fig, where):
     # Flipped (WP-30 P1.28b): only HoverTool after the nine was wrong
     # because a layout(bs) item's own toolbar now carries the Save as SVG
     # action (register P1.28.7): at most one, tagged dash_svg_save.
+    # Flipped (WP-31 H2x): at most one action was wrong because a
+    # layout(bs) item's toolbar now also carries Save dashboard (tag
+    # dash_composite_png, DECISIONS A30): at most one of each.
     rest = fig.tools[len(_NINE):]
     acts = [t for t in rest if type(t).__name__ == "CustomAction"]
-    assert len(acts) <= 1 and all("dash_svg_save" in t.tags
-                                  for t in acts), (where, names)
+    tags = sorted(tag for t in acts for tag in t.tags
+                  if tag in ("dash_svg_save", "dash_composite_png"))
+    assert len(acts) == len(tags) and tags in (
+        [], ["dash_svg_save"], ["dash_composite_png", "dash_svg_save"]), (
+        where, names)
     assert set(names[len(_NINE):]) <= {"HoverTool", "CustomAction"}, (
         where, names)
 
@@ -755,7 +761,9 @@ class TestTheHelpDocumentsTheToolbar:
         want = [_HELP_LABELS[a] for a in dr._DASH_FIGURE_TOOLS.split(",")]
         # Flipped (WP-30 P1.28b): the nine rows alone was wrong because
         # the Save as SVG action has a row after Save.
-        assert rows == want + ["Save as SVG"], rows
+        # Flipped (WP-31 H2x): and Save dashboard, the third control
+        # (DECISIONS A30), has a row after it.
+        assert rows == want + ["Save as SVG", "Save dashboard"], rows
 
     def test_it_names_the_files_the_save_button_writes(self):
         sec = " ".join(_toolbar_section().split())

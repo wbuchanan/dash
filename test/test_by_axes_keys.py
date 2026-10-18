@@ -828,9 +828,14 @@ class TestTheStackHook:
         else:
             _r, _n, doc = _build(mode, spec)
             hooks = doc.callbacks._js_event_callbacks.get("document_ready", [])
-            assert [h.name for h in hooks] == ["dash_by_stack"]
+            # Flipped (WP-31 H2x): the stack hook alone was wrong because
+            # every page now also runs the print hook (dash_print), last
+            # in the one document_ready list; a page with no by() grid
+            # runs that one only.
+            assert [h.name for h in hooks] == ["dash_by_stack", "dash_print"]
             _r, _n, doc = _build(mode, plain)
-            assert not doc.callbacks._js_event_callbacks.get("document_ready")
+            assert [h.name for h in doc.callbacks._js_event_callbacks.get(
+                "document_ready", [])] == ["dash_print"]
 
 
 class TestTheSchemeKeys:

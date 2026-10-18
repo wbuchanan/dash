@@ -483,7 +483,13 @@ class TestSavedPageInChrome:
         with _CspProbe(_url(_saved_page("rich")), downloads=dl) as p:
             p.in_task("__dash_view(__dash_models('Button')[0])"
                       ".button_el.click();")
-            p.in_task("__dash_models('SaveTool')[0].do.emit(undefined);")
+            # Flipped (WP-31 H2x): the save button a reader can click, the
+            # grid's merged one (named "dashboard").  SaveTool [0] in
+            # document order is a hidden figure's own inside the grid, with
+            # no file name: BokehJS stops at window.prompt() for one, so
+            # the PNG never came (measured in Chrome, headless or not).
+            p.in_task("__dash_models('SaveTool').filter(t => t.filename)[0]"
+                      ".do.emit(undefined);")
             end = time.time() + 10
             while time.time() < end and not (
                     {"dashboard.csv", "dashboard.png"} <= set(os.listdir(dl))):

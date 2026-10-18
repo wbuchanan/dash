@@ -407,7 +407,13 @@ class TestFilterSecurity:
                        for m in _named(models, "CustomJS")}) == sorted(
             {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
              # WP-30 P1.28b: the Save as SVG action, fixed code too.
-             _dr._DASH_SVG_SAVE_JS,
+             # Flipped (WP-31 H2x): the grid-alone SVG code was wrong for
+             # the top-level grid, whose Save as SVG and Save dashboard
+             # write the whole dashboard, and the print hook is one more
+             # fixed script; the page's models reach them only as ids.
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_SVG_SAVE_JS,
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_COMPOSITE_SAVE_JS,
+             _dr._DASH_PRINT_HOOK_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
              _dr._DASH_FILTER_RESET_JS,
@@ -470,7 +476,13 @@ class TestFilterSecurity:
                        for m in _named(models, "CustomJS")}) == sorted(
             {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
              # WP-30 P1.28b: the Save as SVG action, fixed code too.
-             _dr._DASH_SVG_SAVE_JS,
+             # Flipped (WP-31 H2x): the grid-alone SVG code was wrong for
+             # the top-level grid, whose Save as SVG and Save dashboard
+             # write the whole dashboard, and the print hook is one more
+             # fixed script; the page's models reach them only as ids.
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_SVG_SAVE_JS,
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_COMPOSITE_SAVE_JS,
+             _dr._DASH_PRINT_HOOK_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
              _dr._DASH_FILTER_RESET_JS,

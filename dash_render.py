@@ -291,6 +291,12 @@ _DASH_BOKEH_INTERNALS = (
      "browser test",
      "test/test_export_svg.py::TestTheBundle"
      "::test_the_calls_exist_in_the_shipped_bokehjs"),
+    # WP-31 H2x: the whole-dashboard export's BokehJS calls.
+    ("BokehJS LayoutDOMView.export('png').canvas, CanvasLayer.to_blob "
+     "(S53's _DASH_COMPOSITE_JS)",
+     "browser test",
+     "test/test_export_composite.py::TestTheBundle"
+     "::test_the_calls_exist_in_the_shipped_bokehjs"),
     # WP-31 H2f (DECISIONS A29): Choices.js reads a MultiChoice label as
     # HTML in the shipped bundle (allowHTML:!0, no override).
     ("Choices.js allowHTML default in MultiChoice",
@@ -47472,6 +47478,11 @@ _DASH_SAVE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,31}")
 #: page data reaches the code.  A Bokeh that cannot export says so once.
 #: The three BokehJS calls are on _DASH_BOKEH_INTERNALS.
 _DASH_SVG_SAVE_JS = r"""
+if (typeof header !== "undefined" && header !== null) {
+  dash_composite_save("svg", grid, name, dash_composite_models(grid, header,
+    header_ids, widget_ids, tabs_id, kpi_ids, toggle_ids));
+  return;
+}
 const stem = (typeof name === "string"
               && /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)) ? name : "dashboard";
 const say = () => window.alert("dash: this browser could not write an SVG "
@@ -47505,6 +47516,351 @@ _DASH_SVG_SAVE_ICON = "data:image/svg+xml;base64," + base64.b64encode(
     b'text-anchor="middle" fill="#666">SVG</text></svg>').decode("ascii")
 
 
+#: The whole dashboard as one image (WP-31 H2x, DECISIONS A30): the
+#: header, the filters' titles and current values, the tab strip with the
+#: active tab marked, the KPI cards and then the grid's own exported
+#: image, top to bottom.  BokehJS exports a layout's canvases only (a Div,
+#: a widget and a tab strip are DOM, not canvas), so everything above the
+#: grid is drawn here from the Bokeh models' values -- never read from the
+#: page -- with the fixed fonts and arithmetic of section 53's D-53b.
+#: ``dash_composite_layout`` returns ``{W, H, items}`` in CSS pixels;
+#: ``dash_composite_png`` paints it onto a canvas and
+#: ``dash_composite_svg`` writes it as SVG, every text body and every
+#: attribute value through ``dash_html_escape`` and a colour held to
+#: ``#rrggbb[aa]`` or a colour word (``dash_svg_attr``).  A data table is
+#: a DOM widget and is not drawn; an open one adds a caption saying so.
+#: The calls into BokehJS are on _DASH_BOKEH_INTERNALS.
+_DASH_COMPOSITE_JS = (
+    _DASH_FMT_JS[_DASH_FMT_JS.index("function dash_html_escape("):
+                 _DASH_FMT_JS.index("function dash_civil_from_days(")]
+    + r"""
+const DASH_COMPOSITE_FONTS = ["bold 20px sans-serif", "14px sans-serif",
+  "bold 14px sans-serif", "13px sans-serif", "bold 36px sans-serif",
+  "11px sans-serif"];
+const DASH_COMPOSITE_ENTITIES = {"&amp;": "&", "&lt;": "<", "&gt;": ">",
+  "&quot;": "\"", "&#x27;": "'", "&#39;": "'", "&nbsp;": " "};
+function dash_text_of_html(s) {
+  return String(s == null ? "" : s).replace(/<[^>]*>/g, "")
+    .replace(/&(?:amp|lt|gt|quot|#x27|#39|nbsp);/g,
+             (e) => DASH_COMPOSITE_ENTITIES[e])
+    .replace(/\s+/g, " ").trim();
+}
+function dash_text_of_div(d) {
+  if (d == null) return "";
+  if (typeof d === "string") return d.replace(/\s+/g, " ").trim();
+  if (d.visible === false) return "";
+  return dash_text_of_html(d.text);
+}
+function dash_composite_number(x) {
+  const n = Number(x);
+  return isFinite(n) ? String(Number(n.toPrecision(6))) : String(x);
+}
+function dash_widget_value_text(w) {
+  const v = w.value;
+  if (Array.isArray(w.options)) {
+    const lab = (val) => {
+      for (const o of w.options) {
+        const ov = Array.isArray(o) ? o[0] : o;
+        if (String(ov) === String(val)) return String(Array.isArray(o) ? o[1] : o);
+      }
+      return String(val);
+    };
+    if (Array.isArray(v)) return v.length ? v.map(lab).join(", ") : "(all)";
+    return v == null ? "" : lab(v);
+  }
+  const date = /Date/.test(String(w.type || ""));
+  const one = (x) => (date && isFinite(Number(x)))
+    ? new Date(Number(x)).toISOString().slice(0, 10)
+    : dash_composite_number(x);
+  if (Array.isArray(v)) return v.map(one).join(" - ");
+  return v == null ? "" : one(v);
+}
+function dash_style_of(attrs) {
+  const m = /style="([^"]*)"/.exec(attrs || "");
+  return m ? m[1] : "";
+}
+function dash_css_value(style, prop) {
+  const m = new RegExp("(?:^|;)\\s*" + prop + ":\\s*([^;]+)").exec(style || "");
+  return m ? m[1].trim() : "";
+}
+function dash_kpi_cards_of(div) {
+  const out = [];
+  if (div == null || div.visible === false) return out;
+  const parts = String(div.text || "").split('class="db-kpi-card"').slice(1);
+  for (const part of parts) {
+    const head = /^\s*style="([^"]*)"/.exec(part);
+    const leaves = [];
+    const re = /<div\b([^>]*)>([^<]*)<\/div>/g;
+    let m;
+    while (leaves.length < 3 && (m = re.exec(part)) !== null) leaves.push(m);
+    if (leaves.length < 3) continue;
+    out.push({title: dash_text_of_html(leaves[0][2]),
+              value: dash_text_of_html(leaves[1][2]),
+              subtitle: dash_text_of_html(leaves[2][2]),
+              fill: dash_css_value(head ? head[1] : "", "background"),
+              color: dash_css_value(dash_style_of(leaves[1][1]), "color")});
+  }
+  return out;
+}
+function dash_svg_colour(c, fallback) {
+  const s = String(c == null ? "" : c);
+  return /^#[0-9a-fA-F]{6,8}$|^[a-zA-Z]+$/.test(s) ? s : fallback;
+}
+function dash_svg_attr(v, kind) {
+  if (kind === "fill") return dash_html_escape(dash_svg_colour(v, "#ffffff"));
+  if (kind === "color") return dash_html_escape(dash_svg_colour(v, "#000000"));
+  if (kind === "number") {
+    const n = Number(v);
+    return dash_html_escape(String(isFinite(n) ? n : 0));
+  }
+  return dash_html_escape(v);
+}
+function dash_composite_models(grid, header, header_ids, widget_ids,
+                               tabs_id, kpi_ids, toggle_ids) {
+  const doc = grid == null ? null : grid.document;
+  const get = (id) => (id && doc != null) ? (doc.get_model_by_id(id) || null) : null;
+  const all = (ids) => (ids || []).map(get).filter((x) => x != null);
+  const ht = header || [], hi = header_ids || [];
+  return {header: [0, 1].map((i) => get(hi[i]) || String(ht[i] || "")),
+          widgets: all(widget_ids), tabs: get(tabs_id), kpis: all(kpi_ids),
+          toggles: all(toggle_ids)};
+}
+function dash_composite_layout(m, gridW, gridH, measure) {
+  const M = 16, W = Math.max(gridW, 960);
+  const items = [];
+  let y = M;
+  const text = (t, x, ty, font, color, align) => items.push(
+    {kind: "text", text: t, x: x, y: ty, font: font,
+     color: color || "#000000", align: align || "left"});
+  const head = m.header || [];
+  const title = dash_text_of_div(head[0]), sub = dash_text_of_div(head[1]);
+  if (title) { text(title, M, y + 20, DASH_COMPOSITE_FONTS[0]); y += 28; }
+  if (sub) { text(sub, M, y + 14, DASH_COMPOSITE_FONTS[1], "#444444"); y += 22; }
+  const ws = m.widgets || [];
+  if (ws.length) {
+    let x = M;
+    for (const w of ws) {
+      const val = dash_widget_value_text(w);
+      const t = w.title ? String(w.title) + ": " + val : val;
+      const width = measure(t, DASH_COMPOSITE_FONTS[3]);
+      if (x > M && x + width > W - M) { y += 20; x = M; }
+      text(t, x, y + 13, DASH_COMPOSITE_FONTS[3]);
+      x += width + 24;
+    }
+    y += 24;
+  }
+  const tabs = m.tabs;
+  if (tabs != null && tabs.tabs && tabs.tabs.length) {
+    let x = M;
+    tabs.tabs.forEach((p, i) => {
+      const t = String(p.title == null ? "" : p.title);
+      const on = i === tabs.active;
+      const font = on ? DASH_COMPOSITE_FONTS[2] : DASH_COMPOSITE_FONTS[1];
+      const width = measure(t, font);
+      text(t, x, y + 14, font);
+      if (on) items.push({kind: "line", x1: x, y1: y + 18, x2: x + width,
+                          y2: y + 18, color: "#000000", width: 2});
+      x += width + 24;
+    });
+    y += 28;
+  }
+  const cards = [];
+  for (const d of (m.kpis || [])) cards.push(...dash_kpi_cards_of(d));
+  if (cards.length) {
+    const cw = 220, ch = 110, gap = 16;
+    const n = Math.max(1, Math.floor((W - 2 * M + gap) / (cw + gap)));
+    cards.forEach((c, i) => {
+      const cx = M + (i % n) * (cw + gap), cy = y + Math.floor(i / n) * (ch + gap);
+      items.push({kind: "card", x: cx, y: cy, w: cw, h: ch,
+                  fill: c.fill || "#ffffff"});
+      text(c.title, cx + cw / 2, cy + 20, DASH_COMPOSITE_FONTS[3], "#000000", "center");
+      text(c.value, cx + cw / 2, cy + 62, DASH_COMPOSITE_FONTS[4],
+           c.color || "#000000", "center");
+      text(c.subtitle, cx + cw / 2, cy + 92, DASH_COMPOSITE_FONTS[5], "#000000", "center");
+    });
+    y += Math.ceil(cards.length / n) * (ch + gap);
+  }
+  if ((m.toggles || []).some((t) => t && t.active)) {
+    text("Data tables are not included", M, y + 11, DASH_COMPOSITE_FONTS[5], "#666666");
+    y += 18;
+  }
+  items.push({kind: "grid", x: 0, y: y, w: gridW, h: gridH});
+  return {W: W, H: y + gridH + M, items: items};
+}
+function dash_composite_round_rect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function dash_composite_png(lay, gridCanvas, dpr) {
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(lay.W * dpr);
+  c.height = Math.ceil(lay.H * dpr);
+  const ctx = c.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, lay.W, lay.H);
+  for (const it of lay.items) {
+    if (it.kind === "card") {
+      dash_composite_round_rect(ctx, it.x, it.y, it.w, it.h, 8);
+      ctx.fillStyle = dash_svg_colour(it.fill, "#ffffff");
+      ctx.fill();
+      ctx.strokeStyle = "#999999";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (it.kind === "text") {
+      ctx.font = DASH_COMPOSITE_FONTS.includes(it.font) ? it.font : "13px sans-serif";
+      ctx.fillStyle = dash_svg_colour(it.color, "#000000");
+      ctx.textAlign = it.align === "center" ? "center" : "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(it.text, it.x, it.y);
+    } else if (it.kind === "line") {
+      ctx.strokeStyle = dash_svg_colour(it.color, "#000000");
+      ctx.lineWidth = it.width;
+      ctx.beginPath();
+      ctx.moveTo(it.x1, it.y1);
+      ctx.lineTo(it.x2, it.y2);
+      ctx.stroke();
+    } else if (it.kind === "grid" && gridCanvas != null) {
+      ctx.drawImage(gridCanvas, it.x, it.y, it.w, it.h);
+    }
+  }
+  return c;
+}
+function dash_composite_svg(lay, gridSvg) {
+  const a = dash_svg_attr;
+  const out = ['<svg xmlns="http://www.w3.org/2000/svg" width="' + a(lay.W, "number")
+    + '" height="' + a(lay.H, "number") + '" viewBox="0 0 ' + a(lay.W, "number")
+    + " " + a(lay.H, "number") + '">',
+    '<rect x="0" y="0" width="' + a(lay.W, "number") + '" height="'
+    + a(lay.H, "number") + '" fill="#ffffff"/>'];
+  for (const it of lay.items) {
+    if (it.kind === "card") {
+      out.push('<rect x="' + a(it.x, "number") + '" y="' + a(it.y, "number")
+        + '" width="' + a(it.w, "number") + '" height="' + a(it.h, "number")
+        + '" rx="8" ry="8" fill="' + a(it.fill, "fill") + '" stroke="#999999"/>');
+    } else if (it.kind === "text") {
+      const font = DASH_COMPOSITE_FONTS.includes(it.font) ? it.font : "13px sans-serif";
+      const bold = font.startsWith("bold ");
+      const size = /(\d+)px/.exec(font)[1];
+      out.push('<text x="' + a(it.x, "number") + '" y="' + a(it.y, "number")
+        + '" font-family="sans-serif" font-size="' + a(size, "number") + '"'
+        + (bold ? ' font-weight="bold"' : "")
+        + ' text-anchor="' + (it.align === "center" ? "middle" : "start")
+        + '" fill="' + a(it.color, "color") + '">' + dash_html_escape(it.text)
+        + "</text>");
+    } else if (it.kind === "line") {
+      out.push('<line x1="' + a(it.x1, "number") + '" y1="' + a(it.y1, "number")
+        + '" x2="' + a(it.x2, "number") + '" y2="' + a(it.y2, "number")
+        + '" stroke="' + a(it.color, "color") + '" stroke-width="'
+        + a(it.width, "number") + '"/>');
+    } else if (it.kind === "grid") {
+      const g = String(gridSvg || "").replace(/^\s*<\?xml[^>]*\?>\s*/, "");
+      out.push('<g transform="translate(' + a(it.x, "number") + ","
+        + a(it.y, "number") + ')">' + g + "</g>");
+    }
+  }
+  out.push("</svg>");
+  return out.join("");
+}
+function dash_composite_download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function dash_composite_save(kind, grid, name, m) {
+  const stem = (typeof name === "string"
+                && /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)) ? name : "dashboard";
+  const say = () => window.alert("dash: this browser could not write an image "
+    + "of the whole dashboard; use the save button for a PNG of the graphs.");
+  try {
+    const view = Bokeh.index.find_one(grid);
+    if (view == null) { say(); return; }
+    const dpr = window.devicePixelRatio || 1;
+    const scratch = document.createElement("canvas").getContext("2d");
+    const measure = (t, font) => { scratch.font = font; return scratch.measureText(t).width; };
+    if (kind === "png") {
+      const gc = view.export("png").canvas;
+      const lay = dash_composite_layout(m, gc.width / dpr, gc.height / dpr, measure);
+      dash_composite_png(lay, gc, dpr).toBlob((blob) => {
+        if (blob == null) { say(); return; }
+        dash_composite_download(blob, stem + "-full.png");
+      }, "image/png");
+      return;
+    }
+    view.export("svg").to_blob().then((blob) => blob.text()).then((svg) => {
+      const wm = /<svg\b[^>]*\bwidth="([\d.]+)/.exec(svg);
+      const hm = /<svg\b[^>]*\bheight="([\d.]+)/.exec(svg);
+      const r = view.el.getBoundingClientRect();
+      const lay = dash_composite_layout(m, wm ? Number(wm[1]) : r.width,
+                                        hm ? Number(hm[1]) : r.height, measure);
+      dash_composite_download(new Blob([dash_composite_svg(lay, svg)],
+                                       {type: "image/svg+xml"}),
+                              stem + "-full.svg");
+    }).catch(say);
+  } catch (e) {
+    say();
+  }
+}
+""")
+
+#: The Save dashboard action's callback (WP-31 H2x): the composite as a
+#: PNG, ``<name>-full.png``, after ``_DASH_COMPOSITE_JS``.
+_DASH_COMPOSITE_SAVE_JS = r"""
+dash_composite_save("png", grid, name, dash_composite_models(grid, header,
+  header_ids, widget_ids, tabs_id, kpi_ids, toggle_ids));
+"""
+
+#: The Save dashboard button's icon: a page outline holding a small
+#: picture, 18 by 18, a data: URI as _DASH_SVG_SAVE_ICON is.
+_DASH_COMPOSITE_PNG_ICON = "data:image/svg+xml;base64," + base64.b64encode(
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" '
+    b'viewBox="0 0 18 18"><path d="M3.5 1.5h7l4 4v11h-11z" fill="none" '
+    b'stroke="#666" stroke-width="1.2"/><path d="M5.5 5h4M5.5 7h3" '
+    b'stroke="#666" stroke-width="1"/><path d="M5.5 14l2.5-3 2 2 1.5-1.5 '
+    b'1 2.5z" fill="#666"/></svg>').decode("ascii")
+
+#: The print layout (WP-31 H2x, D-53e): ``_DASH_PRINT_WIDTH_PX`` wide.  The
+#: page-level rules reach the layout(bs) page's own markup (its container
+#: and filter bar); a Bokeh model renders in a shadow root, which the
+#: ``:host`` rule of ``_DASH_PRINT_HIDE_CSS`` reaches from inside: it is
+#: attached to every shown toolbar and every filter control, so neither is
+#: printed.  The plain grid's width is fixed by ``_DASH_PRINT_HOOK_JS``.
+_DASH_PRINT_WIDTH_PX = 1000
+_DASH_PRINT_CSS = ("@media print { .db-container { width: 1000px !important; "
+                   "max-width: 1000px !important; } .db-filter-bar "
+                   "{ display: none !important; } }")
+_DASH_PRINT_HIDE_CSS = "@media print { :host { display: none !important; } }"
+
+#: The document_ready hook that fixes each root at the print width while
+#: the page prints and gives it back its own sizing afterwards.
+_DASH_PRINT_HOOK_JS = r"""
+window.addEventListener('beforeprint', () => {
+  for (const r of roots) {
+    r._dash_sm = r.sizing_mode; r._dash_w = r.width;
+    r.sizing_mode = 'fixed'; r.width = 1000;
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const r of roots) {
+    if (r._dash_sm === undefined) continue;
+    r.sizing_mode = r._dash_sm; r.width = r._dash_w;
+    r._dash_sm = undefined;
+  }
+});
+"""
+
+
 def _dash_save_filename(name=None):
     """The file name, without extension, a save button writes.
 
@@ -47519,7 +47875,7 @@ def _dash_save_filename(name=None):
     return s if _DASH_SAVE_NAME_RE.fullmatch(s) else _DASH_SAVE_NAME
 
 
-def _dash_name_save(model, name=None):
+def _dash_name_save(model, name=None, composite=None):
     """Name the PNG the save button on *model*'s own toolbar writes.
 
     *model* is a figure, or a grid from ``gridplot()``, which merges every
@@ -47537,6 +47893,14 @@ def _dash_name_save(model, name=None):
     figures cannot be saved as a PNG.  A model named twice (a by() graph's
     sub-grid) keeps one action, whose name is the last one given, as its
     save button's file name is.
+
+    *composite* (WP-31 H2x, DECISIONS A30) is ``_dash_add_composites``'s
+    dict -- the header's text and the ids of the header Divs, filters,
+    Tabs, KPI Divs and table toggles -- for a top-level grid.  With it the Save as SVG action
+    writes the whole dashboard (``_DASH_COMPOSITE_JS`` before its code)
+    and ONE more action, "Save dashboard" (tag ``dash_composite_png``),
+    writes it as a PNG: three controls.  A second call updates both
+    actions' arguments and adds nothing.
     """
     from bokeh.models import CustomAction, CustomJS, SaveTool
     filename = _dash_save_filename(name)
@@ -47548,17 +47912,165 @@ def _dash_name_save(model, name=None):
             saved = True
     if not saved:
         return model
+    args = {"grid": model, "name": filename, **(composite or {})}
+    svg_code = (_DASH_COMPOSITE_JS + _DASH_SVG_SAVE_JS if composite
+                else _DASH_SVG_SAVE_JS)
+    actions = {}
     for tool in toolbar.tools:
-        if isinstance(tool, CustomAction) and "dash_svg_save" in tool.tags:
-            tool.callback.args = {**tool.callback.args, "grid": model,
-                                  "name": filename}
-            return model
-    toolbar.tools = list(toolbar.tools) + [CustomAction(
-        description="Save as SVG", icon=_DASH_SVG_SAVE_ICON,
-        tags=["dash_svg_save"],
-        callback=CustomJS(args={"grid": model, "name": filename},
-                          code=_DASH_SVG_SAVE_JS))]
+        if isinstance(tool, CustomAction):
+            for tag in ("dash_svg_save", "dash_composite_png"):
+                if tag in tool.tags:
+                    actions[tag] = tool
+    new = []
+    if "dash_svg_save" in actions:
+        act = actions["dash_svg_save"]
+        act.callback.args = {**act.callback.args, **args}
+        if composite:
+            act.callback.code = svg_code
+    else:
+        new.append(CustomAction(
+            description="Save as SVG", icon=_DASH_SVG_SAVE_ICON,
+            tags=["dash_svg_save"],
+            callback=CustomJS(args=dict(args), code=svg_code)))
+    if composite:
+        if "dash_composite_png" in actions:
+            act = actions["dash_composite_png"]
+            act.callback.args = {**act.callback.args, **args}
+        else:
+            new.append(CustomAction(
+                description="Save dashboard", icon=_DASH_COMPOSITE_PNG_ICON,
+                tags=["dash_composite_png"],
+                callback=CustomJS(args=dict(args),
+                                  code=(_DASH_COMPOSITE_JS
+                                        + _DASH_COMPOSITE_SAVE_JS))))
+    if new:
+        toolbar.tools = list(toolbar.tools) + new
     return model
+
+
+def _dash_layout_walk(model, inside=False):
+    """``(model, inside_a_grid)`` for *model* and every model its layout
+    holds, in reading order: a grid's cells by (row, column), each tab's
+    content, a row's or a column's children.  *inside_a_grid* is True
+    under a ``GridPlot`` or a figure, so a by() sub-grid and a figure in
+    a grid are told apart from a top-level grid (WP-31 H2x)."""
+    from bokeh.models import GridBox, GridPlot, Plot, Tabs
+    if model is None:
+        return
+    yield model, inside
+    if isinstance(model, (GridPlot, GridBox)):
+        kids = sorted((c for c in model.children if c and c[0] is not None),
+                      key=lambda c: (c[1], c[2]))
+        for c in kids:
+            yield from _dash_layout_walk(
+                c[0], inside or isinstance(model, GridPlot))
+    elif isinstance(model, Tabs):
+        for panel in model.tabs:
+            yield from _dash_layout_walk(panel.child, inside)
+    elif not isinstance(model, Plot):
+        for child in getattr(model, "children", None) or []:
+            yield from _dash_layout_walk(child, inside)
+
+
+def _dash_add_composites(roots, header=None, kpis=True):
+    """Give every top-level grid under *roots* the composite export (WP-31
+    H2x, DECISIONS A30); returns the grids.
+
+    A top-level grid is a ``GridPlot`` or a figure that no grid holds and
+    whose shown toolbar has a save button: the dashboard's grid, each
+    tab's grid, each layout(bs) item.  Its composite draws the header
+    (*header*, two raw strings, for the layout(bs) page whose title is
+    markup; else the title and subtitle Divs found under *roots*), every
+    filter control, the first ``Tabs``, the KPI cards (none when *kpis*
+    is False: under layout(bs) a card is an item of its own, D-53f) and
+    the table toggles, which only say whether a caption is drawn.  The
+    action is given their ids, which ``dash_composite_models`` looks up
+    in the grid's document when it runs, so it reads their values then
+    and only through their properties (BR-53.4); a by() sub-grid keeps
+    the grid-alone SVG.
+    """
+    from bokeh.models import (AbstractSlider, Div, GridPlot, InputWidget,
+                              Plot, SaveTool, Tabs, Toggle)
+    seen, grids, widgets, kpi_divs, toggles = set(), [], [], [], []
+    heads, tabs = ["", ""], None
+    for root in roots or ():
+        for m, inside in _dash_layout_walk(root):
+            if id(m) in seen:
+                continue
+            seen.add(id(m))
+            if isinstance(m, (GridPlot, Plot)) and not inside:
+                tools = getattr(getattr(m, "toolbar", None), "tools", ())
+                if m.toolbar_location is not None and any(
+                        isinstance(t, SaveTool) and t.filename
+                        for t in tools):
+                    grids.append(m)
+            elif isinstance(m, Tabs) and tabs is None:
+                tabs = m
+            elif isinstance(m, Toggle) and "dash_table_toggle" in m.tags:
+                toggles.append(m)
+            elif isinstance(m, (InputWidget, AbstractSlider)) and not inside:
+                widgets.append(m)
+            elif isinstance(m, Div):
+                text = m.text or ""
+                if text.startswith('<h2 class="db-title"') and not heads[0]:
+                    heads[0] = m
+                elif (text.startswith('<p class="db-subtitle"')
+                      and not heads[1]):
+                    heads[1] = m
+                elif 'class="db-kpi-card"' in text and kpis:
+                    kpi_divs.append(m)
+    text = ["", ""]
+    if header is not None:
+        text = [str(h or "") for h in list(header)[:2]]
+        text += [""] * (2 - len(text))
+        heads = ["", ""]
+    # Ids, not the models: an action's args are references, and a grid
+    # whose action held the Tabs or the filters would hold every tab's
+    # figures and the filter bar in its reference graph.
+    for g in grids:
+        save = [t for t in g.toolbar.tools if isinstance(t, SaveTool)][0]
+        _dash_name_save(g, save.filename, composite={
+            "header": list(text),
+            "header_ids": [h.id if h else "" for h in heads],
+            "widget_ids": [w.id for w in widgets],
+            "tabs_id": tabs.id if tabs is not None else "",
+            "kpi_ids": [k.id for k in kpi_divs],
+            "toggle_ids": [t.id for t in toggles]})
+    return grids
+
+
+def _dash_print_models(roots, fixed=True):
+    """The print layout (WP-31 H2x, D-53e): ``(css or None, CustomJS)``.
+
+    ``_DASH_PRINT_HIDE_CSS`` goes on every shown toolbar and every filter
+    control under *roots*.  The hook (named ``dash_print``) is the
+    caller's to append to its ``document_ready`` list; it fixes *roots*
+    at ``_DASH_PRINT_WIDTH_PX`` while printing.  With *fixed* False --
+    the saved layout(bs) page, whose items sit in dash's own markup --
+    it fixes none of them, and *css* (``_DASH_PRINT_CSS``) is returned
+    for that page's own ``<style>``, beside ``_DASH_GRID_CSS``: its
+    rules name only that markup (on a Bokeh root it would also be a
+    stylesheet the two modes' models differ by).
+    """
+    from bokeh.models import (AbstractButton, AbstractSlider, CustomJS,
+                              GridPlot, InlineStyleSheet, InputWidget, Plot)
+    hide = InlineStyleSheet(css=_DASH_PRINT_HIDE_CSS)
+    roots = [r for r in (roots or ()) if r is not None]
+    seen = set()
+    for root in roots:
+        for m, inside in _dash_layout_walk(root):
+            if id(m) in seen:
+                continue
+            seen.add(id(m))
+            if (isinstance(m, (GridPlot, Plot))
+                    and m.toolbar_location is not None):
+                m.toolbar.stylesheets = list(m.toolbar.stylesheets) + [hide]
+            elif (isinstance(m, (InputWidget, AbstractSlider,
+                                 AbstractButton)) and not inside):
+                m.stylesheets = list(m.stylesheets) + [hide]
+    hook = CustomJS(args={"roots": list(roots) if fixed else []},
+                    code=_DASH_PRINT_HOOK_JS, name="dash_print")
+    return (None if fixed else _DASH_PRINT_CSS), hook
 
 
 def _dash_reflow(grid, stack=True):
@@ -59421,10 +59933,18 @@ class DashRenderer:
         # serialised as before.
         _by_hooks = (_dash_by_stack_hooks(all_models)
                      + _dash_arrow_head_hooks(all_models))
+        # WP-31 H2x: each item's whole-dashboard export (the header is
+        # this page's markup, so its text; a KPI card is an item of its
+        # own, D-53f) and the print layout, whose container the
+        # stylesheet fixes.
+        _dash_add_composites(all_models, header=(title_text, subtitle_text),
+                             kpis=False)
         # WP-31 H1: the window error hooks; S53/S54 append theirs here.
         _err_hooks = _dash_error_hooks(getattr(self, "error_status_div",
                                                None))
+        _print_css, _print_hook = _dash_print_models(all_models, fixed=False)
         _hooks = [*_by_hooks, *_err_hooks]
+        _hooks += [_print_hook]
         if _hooks:
             from bokeh.document import Document as _HookDoc
             # file_html() left the models in _dummy_col's document.
@@ -59565,6 +60085,8 @@ class DashRenderer:
             f"{_extracted_head}\n"
             "  <style>\n"
             f"{_DASH_GRID_CSS}\n"
+            # WP-31 H2x: the print width of this page's own markup.
+            f"{_print_css}\n"
             f"{scheme_css_block}\n"
             "  </style>\n"
             "</head>\n"
@@ -61360,6 +61882,8 @@ class DashRenderer:
         # again on its way into the embedded JSON, which is correct and
         # would otherwise read as a double escape.
         self._last_layout_root = layout_root
+        # The whole dashboard as one PNG or SVG (WP-31 H2x).
+        _dash_add_composites([layout_root])
         # The stacked view of every by() grid (WP-30 P1.15c), as a
         # callback of the document file_html() serialises.
         _by_hooks = (_dash_by_stack_hooks([layout_root])
@@ -61367,7 +61891,10 @@ class DashRenderer:
         # WP-31 H1: the window error hooks; S53/S54 append theirs here.
         _err_hooks = _dash_error_hooks(getattr(self, "error_status_div",
                                                None))
+        # WP-31 H2x: the print layout's stylesheet and hook.
+        _print_css, _print_hook = _dash_print_models([layout_root])
         _hooks = [*_by_hooks, *_err_hooks]
+        _hooks += [_print_hook]
         if _hooks:
             from bokeh.document import Document as _HookDoc
             _hook_doc = _HookDoc()
@@ -62119,6 +62646,12 @@ class ServerAppBuilder:
                       "_DASH_FIGURE_TOOLS", "_DASH_SAVE_NAME",
                       "_DASH_SAVE_NAME_RE",
                       "_DASH_SVG_SAVE_JS", "_DASH_SVG_SAVE_ICON",
+                      # The whole-dashboard export and the print layout
+                      # (WP-31 H2x).
+                      "_DASH_COMPOSITE_JS", "_DASH_COMPOSITE_SAVE_JS",
+                      "_DASH_COMPOSITE_PNG_ICON", "_DASH_PRINT_WIDTH_PX",
+                      "_DASH_PRINT_CSS", "_DASH_PRINT_HIDE_CSS",
+                      "_DASH_PRINT_HOOK_JS",
                       # layout(bs): the automatic rows' KPI count, and the
                       # served grid's columns, track and gutter (WP-21).
                       "_MAX_KPIS_PER_ROW", "_DASH_BS_COLUMNS",
@@ -62554,6 +63087,9 @@ class ServerAppBuilder:
                          # cell and tab helpers above call it, and so does
                          # the grid make_document builds (WP-21).
                          "_dash_save_filename", "_dash_name_save",
+                         # WP-31 H2x: the composite export and print.
+                         "_dash_layout_walk", "_dash_add_composites",
+                         "_dash_print_models",
                          # Every grid's fit to its width (TR-27.2).
                          "_dash_reflow",
                          # by() axes and keys (WP-30 P1.15c).
@@ -66559,6 +67095,9 @@ class ServerAppBuilder:
             "                                             _DASH_SCHEME.css_block()),",
             "                        layout, sizing_mode='stretch_width')",
             '',
+            "    # The whole dashboard as one PNG or SVG (WP-31 H2x); under",
+            "    # layout(bs) a KPI card is an item of its own (D-53f).",
+            "    _dash_add_composites([layout], kpis=not _dash_is_bs_layout(layout_opt))",
             '    doc.add_root(layout)',
             "    # The stacked view of every by() grid (WP-30 P1.15c).",
             "    _by_hooks = (_dash_by_stack_hooks([layout])",
@@ -66566,7 +67105,10 @@ class ServerAppBuilder:
             "    # WP-31 H1: the served app logs a script error server-side;",
             "    # S53/S54 append their document_ready hooks to this list.",
             "    _err_hooks = []",
+            "    # WP-31 H2x: the print layout's stylesheet and hook.",
+            "    _print_css, _print_hook = _dash_print_models([layout])",
             "    _hooks = [*_by_hooks, *_err_hooks]",
+            "    _hooks += [_print_hook]",
             "    if _hooks:",
             "        doc.js_on_event('document_ready', *_hooks)",
             "    doc.title = title_text or 'dash'",

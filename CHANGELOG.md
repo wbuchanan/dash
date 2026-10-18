@@ -1073,7 +1073,7 @@ Changed behaviour.
 
 - The saved page reports script errors in a status line, recomputes sliders on release, and after a filter move keeps area gaps, breaks a lowess line, rescales weighted markers and maps histogram bins to their rows as the served app does (WP-31, H1)
 
-<!-- WP-31 H2x -->
+- Every top-level grid toolbar saves the whole dashboard -- title, filters, tabs, KPI cards and graphs -- as SVG (Save as SVG) or PNG (Save dashboard), and pages print at a fixed width without toolbars, in both modes (WP-31, H2x)
 
 <!-- WP-31 K6 -->
 

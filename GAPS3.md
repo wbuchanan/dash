@@ -540,7 +540,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H2k Tracked:** Closed in WP-31, BUGS.md "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)", commit d1076a8.
 - **H2l Tracked:** Closed in WP-31, BUGS.md "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)", commit 01d9b3f.
 - **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
-- **H2x Tracked:** Open (WP-31 section 53).
+- **H2x Tracked:** Closed in WP-31, BUGS.md "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)", commit pending.
 - **H3 Tracked:** Open (WP-31 section 55).
 - **H4 Tracked:** Open (WP-31 section 55).
 - **H6 Tracked:** Open (WP-31 section 60).

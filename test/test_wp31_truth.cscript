@@ -13956,6 +13956,78 @@ if inlist("`only'", "", "S51") & `: list posof "S51" in w31_run' {
 }
 * ==== end S51 ====
 
+python:
+def _u53_page(path):
+    # The saved page's composite and print markers, as globals.
+    from sfi import Macro
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    Macro.setGlobal("u53_png", str(page.count('"dash_composite_png"')))
+    Macro.setGlobal("u53_svg", str(page.count('"dash_svg_save"')))
+    Macro.setGlobal("u53_css", str(page.count("@media print { :host { display: none")))
+    Macro.setGlobal("u53_bp", str(page.count("beforeprint")))
+
+def _u53_app(spec, data, app):
+    # Write the served app dash serve would run, for cert_file_has.
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(spec, data).build(app)
+end
+
+* ==== S53 H2x: export and print ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S53") & `: list posof "S53" in w31_run' {
+    display as text "S53 start " c(current_date) " " c(current_time)
+    local u53d "`w31_work'/s53"
+    capture mkdir "`u53d'"
+    // The whole-dashboard export and the print layout are dash's own
+    // (twoway draws neither): no twoway truth; the markers each page and
+    // the served app carry.
+    sysuse auto, clear
+    dash clear
+    quietly dash scatter mpg weight, name(g1) by(foreign)
+    quietly dash scatter price weight, name(g2)
+
+    // U53-1: one top-level grid holds the composite PNG action once; the
+    // Save as SVG action is on its toolbar and on the by() sub-grid's.
+    capture noisily dash build, saving("`u53d'/p1.html") replace nobrowser title("Cars")
+    local rc1 = _rc
+    _w31_expect U53-1 "(`rc1' == 0)" "dash build: r(`rc1')"
+    _w31_expect U53-2 "(`rc1' == 0)" "dash build: r(`rc1')"
+    if `rc1' == 0 {
+        python: _u53_page(r"`u53d'/p1.html")
+        _w31_expect U53-1 "(${u53_png} == 1) & (${u53_svg} == 2)" "dash_composite_png ${u53_png} times, dash_svg_save ${u53_svg} times"
+        // U53-2: one print stylesheet (shared by the toolbars and the
+        // filters) and one beforeprint hook.
+        _w31_expect U53-2 "(${u53_css} == 1) & (${u53_bp} == 1)" "print rule ${u53_css} times, beforeprint ${u53_bp} times"
+    }
+    _w31_done U53-1 "the top-level grid has Save dashboard once; Save as SVG on each toolbar"
+    _w31_done U53-2 "the page holds one print stylesheet and one beforeprint hook"
+
+    // U53-3: the served app defines the same constants and appends the
+    // print hook to its document_ready list.
+    capture noisily _dash_serve_spec, specpath("`u53d'/s3.json") datapath("`u53d'/d3.json") title("Cars")
+    local rc3 = _rc
+    _w31_expect U53-3 "(`rc3' == 0)" "_dash_serve_spec: r(`rc3')"
+    if `rc3' == 0 {
+        python: _u53_app(r"`u53d'/s3.json", r"`u53d'/d3.json", r"`u53d'/app3.py")
+        foreach n in "_DASH_COMPOSITE_JS = " "_DASH_COMPOSITE_SAVE_JS = " "_DASH_PRINT_CSS = " "_DASH_PRINT_HOOK_JS = " "def _dash_add_composites(" "def _dash_print_models(" "_hooks += [_print_hook]" {
+            cert_file_has "`u53d'/app3.py", needle(`"`n'"')
+            _w31_expect U53-3 "(r(found) == 1)" `"the app holds `n'"'
+        }
+    }
+    _w31_done U53-3 "the served app defines the composite and print names"
+    dash clear
+    display as text "S53 end " c(current_date) " " c(current_time)
+}
+* ==== end S53 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

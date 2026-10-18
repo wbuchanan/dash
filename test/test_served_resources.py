@@ -529,8 +529,11 @@ _SAVED_DIGEST = (
     # its callback arg, the brush code's guard and the window hooks (a
     # dropdown page: no slider); re-derived on the merged batch-17 tree
     # with H1's follow-ups (the fill rebuild's twins in the filter code),
-    # the same under both Pythons
-    "b796859090353fdf8c8bf574f2c4b9629ec12a23bd093388c234dc4ff69b5196")
+    # the same under both Pythons; b7968590... -> 9aecdc39...: WP-31 H2x
+    # the grid's composite export actions (model ids masked by _digest),
+    # the print hide stylesheet on the toolbar and the filter, the same
+    # under both Pythons
+    "9aecdc39aba136361a5d9e6d1b2928ca0f0c4c832d48a039e56e3a59760ed59c")
 
 
 # ===========================================================================

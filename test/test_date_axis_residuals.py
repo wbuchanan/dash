@@ -569,15 +569,32 @@ def _gunzip(v):
 
 def _digest(model):
     """sha256 of *model*'s page JSON with every id removed and every gzipped
-    buffer decompressed."""
+    buffer decompressed.  WP-31 H2x: an id held as a value (the composite
+    export's model ids) is masked too, since ids follow Bokeh's own count
+    of the models it builds, which differs between Bokeh releases."""
+    ids = set()
+
+    def collect(o):
+        if isinstance(o, dict):
+            if isinstance(o.get("id"), str):
+                ids.add(o["id"])
+            for v in o.values():
+                collect(v)
+        elif isinstance(o, (list, tuple)):
+            for v in o:
+                collect(v)
+
     def strip(o):
         if isinstance(o, dict):
             return {k: strip(v) for k, v in o.items() if k != "id"}
         # A map's entries are tuples (P1.3a's range callbacks hold ids).
         if isinstance(o, (list, tuple)):
             return [strip(v) for v in o]
+        if isinstance(o, str) and o in ids:
+            return "<id>"
         return _gunzip(o)
     item = json_item(model)
+    collect(item["doc"]["roots"])
     doc = strip(item["doc"]["roots"])
     return hashlib.sha256(
         json.dumps(doc, sort_keys=True).encode("utf-8")).hexdigest()
@@ -640,10 +657,14 @@ _PLAIN_DIGESTS = {
     # writer's %tb (writer JS text only).
     # Merged batch 15 (D15, D15 follow-up, G7, C11 degree): 4f04a250...
     # saved, 7533995b... served, re-derived on the merged tree.
+    # 4f04a250... -> 913aa1ee... saved, 7533995b... -> e69103bd... served:
+    # WP-31 H2x the grid's Save dashboard action and the composite SVG
+    # code and ids, the print hide stylesheet on the toolbar (and, served,
+    # the root's print hook args); the same under both Pythons.
     ("saved", "plain"):
-        "4f04a25098b4277ab391b44239616225e586b8dd85bd74711824893a748f4c2b",
+        "913aa1eeb52489767366bc98519d2f2d5a4e34e799ffbef7af29eff4a3b3e7a6",
     ("saved", "yaxis2"):
-        "4f04a25098b4277ab391b44239616225e586b8dd85bd74711824893a748f4c2b",
+        "913aa1eeb52489767366bc98519d2f2d5a4e34e799ffbef7af29eff4a3b3e7a6",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -658,9 +679,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "7533995b574758063821b8505544ebaaf0356bf3567be459c84e9592ef386991",
+        "e69103bd25f087b07440ca985d01ba2cdcb1cd51b26a401392a9e9967a9672cd",
     ("served", "yaxis2"):
-        "7533995b574758063821b8505544ebaaf0356bf3567be459c84e9592ef386991",
+        "e69103bd25f087b07440ca985d01ba2cdcb1cd51b26a401392a9e9967a9672cd",
 }
 
 

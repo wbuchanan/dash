@@ -1560,8 +1560,10 @@ it is no longer in memory, and no note is printed.
 
 {pstd}
 {ul:Images.}  The toolbar's save button writes the figures as a PNG image at
-the screen's resolution.  Its Save as SVG button writes them as a vector
-SVG file.  A do-file cannot write an image of a dashboard:
+the screen's resolution.  Its Save as SVG button writes the whole
+dashboard as a vector SVG file, and its Save dashboard button writes the
+whole dashboard as a PNG (see {help dash##toolbar:The toolbar}).  A do-file
+cannot write an image of a dashboard:
 that needs a web browser driven from Stata, which {cmd:dash} does not ship.
 A do-file finds the page in {cmd:r(filename)} (see
 {help dash##results:Stored results}).  {cmd:saving()} always writes HTML
@@ -1576,9 +1578,11 @@ SVG drawing mode, because a figure drawn as SVG cannot be saved by the
 toolbar's button.
 
 {pstd}
-{ul:Printing.}  Printing the page from the browser prints what the screen
-shows: with {cmd:tabs()}, the tab that is showing and none of the others.
-Print each tab in turn.
+{ul:Printing.}  Printing the page from the browser prints it 1000 pixels
+wide, whatever the paper, without the toolbars and the filters, and gives
+the screen back its own layout afterwards; this is so in both modes.  It
+prints what the screen shows: with {cmd:tabs()}, the tab that is showing
+and none of the others.  Print each tab in turn.
 
 {pstd}
 With {cmd:csv}, the dashboard carries a {bf:Download CSV} button beside its
@@ -1858,7 +1862,9 @@ Every figure carries the same tools, in both render modes:
 {synopt:Reset}return to the extent the last filter move gave the axes, and clear the
     selection and what Undo would step back through.{p_end}
 {synopt:Save}write the figures to a PNG image; see below.{p_end}
-{synopt:Save as SVG}write the same figures as a vector SVG file; see
+{synopt:Save as SVG}write the whole dashboard as a vector SVG file; on a
+    {cmd:by()} graph's own panels, those panels alone; see below.{p_end}
+{synopt:Save dashboard}write the whole dashboard as a PNG image; see
     below.{p_end}
 {synoptline}
 
@@ -1883,12 +1889,27 @@ serves as one PNG file.  A grid -- the dashboard's, a tab's, or a
 {cmd:by()} graph's panels -- is saved as {cmd:dashboard.png}.  A graph that
 {cmd:layout(bs)} places on its own, with its {cmd:by()} panels if it has
 any, is saved under its name: {cmd:g1.png} for the graph registered as
-{cmd:g1}.  Save as SVG writes the same figures as a vector image,
-{cmd:dashboard.svg} or {cmd:g1.svg}, drawn from what is on screen, after
-any filter you moved; a figure with more than 10,000 points makes a large
-file.  Your browser decides where the file goes.  The image holds only
-the figures: a KPI card in a grid is left blank, and the title, the filters
-and the tab strip, which sit outside every grid, are not in it.
+{cmd:g1}.  The save button's image holds only the figures: a KPI card in
+a grid is left blank, and the title, the filters and the tab strip, which
+sit outside every grid, are not in it.
+
+{pstd}
+{ul:Saving the whole dashboard.}  Save dashboard (a PNG) and Save as SVG (a
+vector image) write the whole dashboard, top to bottom: the title and
+subtitle, each filter's title and its current value, the tab strip with the
+tab that is showing in bold and underlined, the KPI cards with their titles,
+values, subtitles and colours, and then the image of the grid whose toolbar
+you used.  The text is what the page shows at that moment, after any filter
+you moved.  The files are {cmd:dashboard-full.png} and
+{cmd:dashboard-full.svg}, or {cmd:g1-full.png} and {cmd:g1-full.svg} for an
+item {cmd:layout(bs)} places on its own; there each item's file holds the
+header, the filters and the tab strip above that item alone, and a KPI card,
+an item of its own, has no button.  On the panels of a {cmd:by()} graph in a
+grid, Save as SVG writes those panels alone, {cmd:dashboard.svg}.  A figure
+with more than 10,000 points makes a large SVG.  A data table is not drawn:
+when one is open the image says {cmd:Data tables are not included}.  The
+text is drawn in the browser's sans-serif font, which can differ from the
+page's.  Your browser decides where the file goes.
 
 
 {marker table}
@@ -2257,6 +2278,8 @@ served app differ as follows:
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as SVG{col 38}Yes{col 59}Yes
+{col 5}Toolbar, whole dashboard{col 38}Yes{col 59}Yes
+{col 5}Print at a fixed width{col 38}Yes{col 59}Yes
 {col 5}{help dash##table:Data table} ({cmd:table}){col 38}Yes{col 59}Yes
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes

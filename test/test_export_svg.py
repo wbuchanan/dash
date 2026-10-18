@@ -206,7 +206,12 @@ class TestEveryToolbar:
         """A toolbar the page shows holds one action iff it holds a save
         button, named as that save button; a hidden toolbar (a figure's
         inside a grid), a by() chrome cell and a KPI card hold none."""
-        bad, shown = [], 0
+        # Flipped (WP-31 H2x): one action beside each save was wrong
+        # because a top-level grid's toolbar now also carries Save
+        # dashboard (tag dash_composite_png), three controls (DECISIONS
+        # A30); its Save as SVG takes the composite's models, and a by()
+        # sub-grid keeps the grid-alone SVG and no composite.
+        bad, shown, composites = [], 0, 0
         for case in sorted(_CASES):
             sub = tmp_path / re.sub(r"\W+", "_", case)
             sub.mkdir()
@@ -221,11 +226,22 @@ class TestEveryToolbar:
                     bad.append((case, type(m).__name__, m.name, len(acts)))
                 elif acts:
                     shown += 1
+                    tools = m.toolbar.tools
+                    pngs = [t for t in tools if isinstance(t, CustomAction)
+                            and "dash_composite_png" in (t.tags or ())]
+                    whole = "header" in acts[0].callback.args
+                    composites += whole
+                    if len(pngs) != int(whole) or (
+                            acts[0].callback.code != (
+                                dr._DASH_COMPOSITE_JS + dr._DASH_SVG_SAVE_JS
+                                if whole else dr._DASH_SVG_SAVE_JS)):
+                        bad.append((case, "composite", m.name, len(pngs)))
                     if acts[0].callback.args["name"] != saves[0].filename:
                         bad.append((case, "name",
                                     acts[0].callback.args["name"],
                                     saves[0].filename))
         assert shown >= len(_CASES), shown
+        assert composites >= len(_CASES), composites
         assert bad == [], bad
 
 
@@ -348,7 +364,10 @@ class TestInChrome:
             page = _write(dr.DashRenderer(sp, dp).render(), "page.html")
         with cb._CspProbe(cb._url(page)) as p:
             entry, name = _export(p)
-            assert name == "dashboard.svg"
+            # Flipped (WP-31 H2x): dashboard.svg, the grid alone, was wrong
+            # on a top-level grid because Save as SVG now writes the whole
+            # dashboard there (A30); its grid is the same vector image.
+            assert name == "dashboard-full.svg"
             before = _marks(entry)
             views = p.read(cb._VIEWS_JS)
             p.in_task(cb._MOVE_SELECT_JS)
@@ -376,7 +395,9 @@ class TestInChrome:
                           step + ".html")
             with cb._CspProbe(cb._url(page)) as p:
                 entry, name = _export(p)
-                assert name == "dashboard.svg"
+                # Flipped (WP-31 H2x): the whole dashboard on a top-level
+                # grid (A30), as on the saved page.
+                assert name == "dashboard-full.svg"
                 got.append(_marks(entry))
                 assert p.js_errors() == [], p.js_errors()
         assert got == [20, 10], got
@@ -409,10 +430,37 @@ class TestInChrome:
                 entry, name = _export(p, i)
                 names.append(name)
                 texts.append(entry["text"])
-            assert sorted(names) == ["g1.svg", "g2.svg"], names
-            g1 = texts[names.index("g1.svg")]
+            # Flipped (WP-31 H2x): g1.svg was wrong because a layout(bs)
+            # item's Save as SVG now writes the dashboard's header and
+            # filters above the item (D-53f).
+            assert sorted(names) == ["g1-full.svg", "g2-full.svg"], names
+            g1 = texts[names.index("g1-full.svg")]
             for label in ("SUBTX", "NOTEX"):
                 assert re.search(r"<text\b[^>]*>%s</text>" % label, g1), label
+            assert p.violations() == [] and p.js_errors() == []
+
+    def test_a_by_sub_grid_keeps_the_grid_alone(self):
+        """WP-31 H2x: a by() sub-grid's Save as SVG has no composite
+        models and still writes the sub-grid alone."""
+        cb = _cb()
+        spec = cb._spec([cb._graph("g1", [cb._scatter()], by="foreign"),
+                         cb._graph("g2", [cb._scatter()])])
+        d, sp, dp = cb._files("svg_by_alone", spec, cb._frame(20))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            page = _write(dr.DashRenderer(sp, dp).render(), "by.html")
+        with cb._CspProbe(cb._url(page)) as p:
+            acts = p.read("JSON.stringify(__dash_models('CustomAction')"
+                          ".filter(a => a.tags.includes('dash_svg_save'))"
+                          ".map(a => a.callback.code.startsWith("
+                          "'function dash_html_escape')))")
+            assert True in acts and False in acts, acts
+            entry, name = _export(p, acts.index(False))
+            assert not name.endswith("-full.svg"), name
+            assert entry["type"] == "image/svg+xml"
+            assert not entry["text"].startswith(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="'), (
+                entry["text"][:120])
             assert p.violations() == [] and p.js_errors() == []
 
     def test_a_failure_is_said_once(self):

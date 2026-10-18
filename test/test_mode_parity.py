@@ -2012,6 +2012,12 @@ CORPUS = [
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
     _case("tabs() with an unassigned item", bo={"tabs": "A: g1"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
+    # WP-31 H2x: each tab's grid carries the three export controls, the
+    # composite's arg names read by _svg_action in both modes.
+    _case("tabs with kpis composite",
+          bo={"tabs": "A: g1 k1 / B: g2", "title": "T"},
+          graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
+          kpis=[_kpi()]),
     _case("a faceted graph in a tab", bo={"tabs": "A: g1"},
           graphs=[("g1", [_sc()], {"by": "foreign"}),
                   ("g2", [plot_for("line")])]),

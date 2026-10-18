@@ -835,9 +835,10 @@ class TestTheParsersFoundSomething:
         # filter()'s type(multi) and direction() entries.
         # 449 -> 450: H2l the brush() synopt entry.
         # 450 -> 452: H2k the weighted KPI example's two lines.
-        assert len(defs) == 452, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 452 "
-            f"measured 17oct2026")
+        # 452 -> 453: H2x the toolbar table's Save dashboard entry.
+        assert len(defs) == 453, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 453 "
+            f"measured 18oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -1228,4 +1229,5 @@ class TestInternalLinksResolve:
         # and the saved-versus-served table link the new Data tables entry.
         # 102 -> 103 links: H2l the brush() synopt links Linking and
         # Brushing.
-        assert len(refs) == 103 and len(set(refs)) == 37
+        # 103 -> 104 links: H2x the Images paragraph links The toolbar.
+        assert len(refs) == 104 and len(set(refs)) == 37
