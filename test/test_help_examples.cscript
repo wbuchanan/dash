@@ -574,7 +574,7 @@ _hx_pin shown placeholder `"python set exec "/path/to/venv/bin/python", permanen
 //            dash_setup lines: they install dash from the network and its
 //            Python packages; the release gate runs net install from a
 //            copy of the package and the setup suites run dash_setup
-_hx_pin shown install `"net install dash, from("https://github.com/wbuchanan/dash/raw/main/")"'
+_hx_pin shown install `"net install dash, from("https://wbuchanan.github.io/dash")"'
 _hx_pin shown install `"dash_setup"'
 //   outside  run outside Stata, it starts the server; the app it runs is
 //            the one an example writes, which the pyapp check compiles

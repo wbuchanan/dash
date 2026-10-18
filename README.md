@@ -36,7 +36,7 @@ Beyond the graphs, a dashboard can carry:
 ## Installation
 
 ```stata
-net install dash, from("https://github.com/wbuchanan/dash/raw/main/")
+net install dash, from("https://wbuchanan.github.io/dash")
 dash_setup
 ```
 
@@ -60,3 +60,11 @@ dash (scatter mpg weight) (lfit mpg weight), title("MPG vs Weight") saving(fit.h
   dashboard options.
 - `help dash_setup` -- installing and checking the Python dependencies.
 - [CHANGELOG.md](CHANGELOG.md) -- what changed in each release.
+
+## Support
+
+To report a problem or ask for a feature, file an issue at
+<https://github.com/wbuchanan/dash> (the Issues tab), saying which versions
+of dash and Stata you run and giving the command that shows the problem.
+The maintainer, Billy Buchanan, can be reached at
+<william@williambuchanan.net>.

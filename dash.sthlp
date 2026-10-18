@@ -255,9 +255,9 @@ This help file documents only the features that differ from or extend
 {title:Installation}
 
 {pstd}
-Install {cmd:dash} from its GitHub repository with
+Install {cmd:dash} from its web page with
 
-{phang2}{cmd:net install dash, from("https://github.com/wbuchanan/dash/raw/main/")}{p_end}
+{phang2}{cmd:net install dash, from("https://wbuchanan.github.io/dash")}{p_end}
 
 {pstd}
 and then run, once, the command that checks the Python packages
@@ -6575,6 +6575,15 @@ that links Stata to it.  See
 
 {pstd}
 Billy Buchanan{p_end}
+{pstd}
+{browse "mailto:william@williambuchanan.net":william@williambuchanan.net}{p_end}
+
+{pstd}
+To report a problem or ask for a feature, file an issue at
+{browse "https://github.com/wbuchanan/dash":https://github.com/wbuchanan/dash}
+(the {it:Issues} tab). Say which version of {cmd:dash} and of Stata you
+run, give the command that shows the problem, on {cmd:sysuse} data where
+you can, and copy the notes or error it printed.{p_end}
 
 
 {marker alsosee}

@@ -25,7 +25,10 @@ _ROOT = os.path.dirname(_HERE)
 #: The net install source (WP-31 D-59.a; ratification item 2): the raw tree
 #: of the GitHub repository's main branch, which holds stata.toc and
 #: dash.pkg at its root.
-INSTALL_URL = "https://github.com/wbuchanan/dash/raw/main/"
+INSTALL_URL = "https://wbuchanan.github.io/dash"
+#: The maintainer's support address and issue tracker (maintainer, 18oct2026).
+SUPPORT_EMAIL = "william@williambuchanan.net"
+ISSUES_URL = "https://github.com/wbuchanan/dash"
 
 _NET_INSTALL = re.compile(r'net install dash, from\("([^"]+)"\)')
 
@@ -68,8 +71,9 @@ def test_dash_pkg_has_author_and_kw():
     assert d.count("Author: Billy Buchanan") == 1, d
     kws = [l[len("KW: "):] for l in d if l.startswith("KW: ")]
     assert kws == ["twoway", "dashboard", "bokeh", "interactive graphics"]
-    # no email in a shipped file (D-59.b, ratification item 3)
-    assert not any(l.startswith("Support:") for l in d)
+    # the maintainer's support address (ratified 18oct2026)
+    assert [l for l in d if l.startswith("Support:")] == [
+        "Support: " + SUPPORT_EMAIL], d
     dist = d.index(next(l for l in d if l.startswith("Distribution-Date:")))
     assert d[dist + 1] == "Author: Billy Buchanan"
 
@@ -123,3 +127,17 @@ def test_every_help_title_is_in_the_jump_list():
     # every jump lands on a marker
     markers = set(re.findall(r"\{marker ([A-Za-z0-9_]+)\}", h))
     assert not [t for t in targets if t not in markers]
+
+
+def test_help_and_readme_say_where_to_file_an_issue():
+    """The help's Author section and the README name the support address
+    and say to file an issue at the repository (maintainer, 18oct2026)."""
+    h = _read("dash.sthlp")
+    m = re.search(r"\{marker author\}\n\{title:Author\}\n(.*?)\n\{marker ",
+                  h, re.S)
+    assert m, "no Author section"
+    body = m.group(1)
+    assert SUPPORT_EMAIL in body, body
+    assert ISSUES_URL in body and "issue" in body.lower(), body
+    readme = _read("README.md")
+    assert SUPPORT_EMAIL in readme and ISSUES_URL in readme
