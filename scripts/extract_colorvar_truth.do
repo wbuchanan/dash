@@ -315,6 +315,7 @@ if os.path.exists(ghfile):
 meta = {
     "stata_version": Macro.getGlobal("ZS_STATA_VERSION"),
     "born_date": Macro.getGlobal("ZS_BORN_DATE"),
+    "source": "scripts/extract_colorvar_truth.do",
     "dash_commit": dash_commit,
     "extracted": __import__("datetime").date.today().isoformat(),
     "svg_truth_functions": ["svg_document", "svg_marker_fills", "svg_texts"],

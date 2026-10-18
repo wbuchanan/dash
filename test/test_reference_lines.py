@@ -77,9 +77,10 @@ def _hex(c):
 
 class TestTheFixture:
     def test_it_is_stamped(self):
+        # Flipped: WP-32 regenerated the fixture; its generator now writes source.
         meta = _FIX["_meta"]
         assert set(meta) == {"stata_version", "born_date", "dash_commit",
-                             "extracted"}
+                             "extracted", "source"}
         assert meta["stata_version"].startswith("19.")
         want = ({f"P{i:02d}" for i in range(1, 16)}
                 | {f"R{i:02d}" for i in range(1, 39)}

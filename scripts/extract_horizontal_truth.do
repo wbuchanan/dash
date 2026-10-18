@@ -254,6 +254,7 @@ with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
 out = {"accept": accept, "recast": recast, "draw": draw,
        "_meta": {"stata_version": Macro.getLocal("stata_version"),
                  "born_date": Macro.getLocal("born_date"),
+                 "source": "scripts/extract_horizontal_truth.do",
                  "dash_commit": Macro.getLocal("dash_commit").strip(),
                  "extracted": Macro.getLocal("extracted"),
                  "scheme": "stcolor",

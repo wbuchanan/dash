@@ -27,6 +27,11 @@
 *! each spelling of the "rule" probes mapped to the letters whose panel
 *! scale min/max differ between panels.  A backtick in it is spelled \x60.
 
+* make truth (no driver): DASH_REPO stands in for the global.
+if "${W29_REPO}" == "" {
+    local _w29_env : environment DASH_REPO
+    if `"`_w29_env'"' != "" global W29_REPO `"`_w29_env'"'
+}
 if "${W29_REPO}" == "" {
     display as error "extract_by_scales_truth.do: set global W29_REPO to the repository root"
     exit 198
@@ -303,6 +308,7 @@ out = {
     "_meta": {
         "stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_by_scales_truth.do",
         "dash_commit": Macro.getLocal("dash_commit").strip(),
         "extracted": Macro.getLocal("extracted"),
         "method": ".Graph.graphs[k] members via bygraph_g.class "

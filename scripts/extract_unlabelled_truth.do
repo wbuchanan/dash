@@ -345,6 +345,7 @@ doc = {
         "stata_version": Macro.getGlobal("ZU_SVER"),
         "born_date": Macro.getGlobal("ZU_BORN"),
         "extracted": Macro.getGlobal("ZU_DATE"),
+        "source": "scripts/extract_unlabelled_truth.do",
         "dash_commit": DASH_COMMIT,
         "scheme_in_force": Macro.getGlobal("ZU_SCHEME"),
         "method": ("Each probe regenerates 12 unlabelled observations "

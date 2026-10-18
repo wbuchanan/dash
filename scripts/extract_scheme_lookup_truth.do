@@ -532,6 +532,7 @@ with open(os.path.join(Macro.getGlobal("LK_WORK"), "git_head.txt")) as fh:
     head = fh.read().strip()
 out = {"_meta": {"stata_version": Macro.getGlobal("LK_STATA"),
                  "born_date": Macro.getGlobal("LK_BORN"),
+                 "source": "scripts/extract_scheme_lookup_truth.do",
                  "dash_commit": head,
                  "extracted": Macro.getGlobal("LK_WHEN")}}
 for k in sorted(LK):

@@ -184,8 +184,9 @@ def _scatter_size(mode, tmp_path, msize=None, scheme_df=None):
 class TestTheFixture:
 
     def test_meta_is_stamped(self):
+        # Flipped: WP-32 regenerated the fixture; its generator now writes source.
         assert sorted(_T["_meta"]) == ["born_date", "dash_commit",
-                                       "extracted", "stata_version"]
+                                       "extracted", "source", "stata_version"]
         assert all(_T["_meta"][k] for k in _T["_meta"])
 
     def test_every_case_was_measured(self):

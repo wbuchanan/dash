@@ -1,12 +1,13 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
   "excluded": {
    "bgfg_14": "UNCLEAR: color foreground bg after color background red",
    "opt_17": "UNCLEAR clamp at an exact half (research p1-13 section 3)"
   },
-  "extracted": " 8 Oct 2026 01:35:00",
+  "extracted": "18 Oct 2026 17:30:48",
+  "source": "scripts/extract_colour_grammar_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

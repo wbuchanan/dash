@@ -1,7 +1,11 @@
 {
  "_meta": {
-  "measured": "22sep2026",
-  "stata": "StataNow 19.5 MP, console binary (arch -arm64 /usr/local/bin/stata-mp -b), set graphics off, sysuse auto",
+  "stata_version": "19.5",
+  "born_date": "12 Aug 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
+  "source": "scripts/extract_value_truth.do",
+  "stata": "console binary (stata_slot.sh), set graphics off, sysuse auto",
   "purpose": "twoway's own verdict on bad option VALUES, so dash refuses what twoway refuses and reports what twoway notes. Read by test/test_option_validation.py; the rules it grounds are the table in dash.ado (_dash_option_rules).",
   "how": "one `capture noisily twoway ...` per probe, rc and the joined message recorded; `graph query <style>` output parsed for the vocabularies (this Stata stores nothing in r() for it); `confirm numeric format` for the format probes",
   "finding": "twoway never rejects a bad style NAME: it prints `(note: named style X not found in class Y, default attributes used)` and draws with the default (rc 0). It rejects bad numbers, ranges, enums and unknown variables (rc 198/125/126/121/122/111/4026).",
@@ -22,12 +26,7 @@
     "linestyle": 76,
     "gsizestyle": 47
    }
-  },
-  "additions": [
-   "23sep2026 (WP-22 TR-22.3): clwidth_1-8 and mlabangle_1-8, drawn with `set graphics off' in the same way; clwidth(-1) is refused only where the connecting line is drawn (bar: rc 0), mlabangle(400) only where marker labels are drawn (line: rc 0)",
-   "24sep2026 (S3 batch, the ci band): alwidth_1-12, drawn with `set graphics off' in the same way; alwidth(-1) and alwidth(20000) are refused on lfitci and rarea, the types that draw an area's outline, and not on scatter or line (rc 0)",
-   "30sep2026 (WP-28 S00, scripts/extract_value_truth_additions.do merged by scripts/merge_value_truth.py): colorlevels_1-8 (twoway refuses abc and 2.5, rc 198, and draws 1, 257 and -1, rc 0) and the axis-label/tick options ylabel, xtick, ytick, xmtick, ymtick, xmlabel, ymlabel _1-3 (abc refused rc 198, #5 and a numlist drawn); xlabel2 and ylabel2 are dash's own spellings, twoway refuses them as not allowed (rc 198)"
-  ]
+  }
  },
  "vocab": {
   "colorstyle": [
@@ -1888,7 +1887,7 @@
    "value": "notacolour",
    "command": "twoway scatter mpg weight, mcolor(notacolour)",
    "rc": 0,
-   "message": "(note: named style notacolour not found in class color, default attributes used)"
+   "message": "(note: named style notacolour not found in class color, default attributes used) (note: named style notacolour not found in class color, default attributes used)"
   },
   {
    "id": "mcolor_2",
@@ -1912,7 +1911,7 @@
    "value": "255 0 0",
    "command": "twoway scatter mpg weight, mcolor(255 0 0)",
    "rc": 0,
-   "message": "(note: named style 255 not found in class color, default attributes used)"
+   "message": "(note: named style 255 not found in class color, default attributes used) (note: named style 255 not found in class color, default attributes used)"
   },
   {
    "id": "mcolor_5",
@@ -1944,7 +1943,7 @@
    "value": "300 0 0",
    "command": "twoway scatter mpg weight, mcolor(300 0 0)",
    "rc": 0,
-   "message": "(note: named style 300 not found in class color, default attributes used)"
+   "message": "(note: named style 300 not found in class color, default attributes used) (note: named style 300 not found in class color, default attributes used)"
   },
   {
    "id": "mcolor_9",
@@ -1984,7 +1983,7 @@
    "value": "grey",
    "command": "twoway scatter mpg weight, mcolor(grey)",
    "rc": 0,
-   "message": "(note: named style grey not found in class color, default attributes used)"
+   "message": "(note: named style grey not found in class color, default attributes used) (note: named style grey not found in class color, default attributes used)"
   },
   {
    "id": "mcolor_14",
@@ -2000,7 +1999,7 @@
    "value": "1 2 3 4",
    "command": "twoway scatter mpg weight, mcolor(1 2 3 4)",
    "rc": 0,
-   "message": "(note: named style 1 not found in class color, default attributes used)"
+   "message": "(note: named style 1 not found in class color, default attributes used) (note: named style 1 not found in class color, default attributes used)"
   },
   {
    "id": "mcolor_16",
@@ -2608,7 +2607,7 @@
    "value": "abc",
    "command": "twoway line mpg weight, lwidth(abc)",
    "rc": 0,
-   "message": "(note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used)"
+   "message": "(note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used) (note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used)"
   },
   {
    "id": "lwidth_2",
@@ -2664,7 +2663,7 @@
    "value": "bogus",
    "command": "twoway line mpg weight, lpattern(bogus)",
    "rc": 0,
-   "message": "(note: named style bogus not found in class linepattern, default attributes used)"
+   "message": "(note: named style bogus not found in class linepattern, default attributes used) (note: named style bogus not found in class linepattern, default attributes used)"
   },
   {
    "id": "lpattern_2",
@@ -2728,7 +2727,7 @@
    "value": "notacolour",
    "command": "twoway line mpg weight, lcolor(notacolour)",
    "rc": 0,
-   "message": "(note: named style notacolour not found in class color, default attributes used)"
+   "message": "(note: named style notacolour not found in class color, default attributes used) (note: named style notacolour not found in class color, default attributes used)"
   },
   {
    "id": "lcolor_2",
@@ -3816,7 +3815,7 @@
    "value": "color(notacolour)",
    "command": "twoway scatter mpg weight, plotregion(color(notacolour))",
    "rc": 0,
-   "message": "(note: named style notacolour not found in class color, default attributes used)"
+   "message": "(note: named style notacolour not found in class color, default attributes used) (note: named style notacolour not found in class color, default attributes used)"
   },
   {
    "id": "plotregion_2",
@@ -3840,7 +3839,7 @@
    "value": "color(notacolour)",
    "command": "twoway scatter mpg weight, graphregion(color(notacolour))",
    "rc": 0,
-   "message": "(note: named style notacolour not found in class color, default attributes used)"
+   "message": "(note: named style notacolour not found in class color, default attributes used) (note: named style notacolour not found in class color, default attributes used)"
   },
   {
    "id": "graphregion_2",
@@ -4184,7 +4183,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  xmlabel(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "xmlabel_2",
@@ -4208,7 +4207,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  xmtick(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "xmtick_2",
@@ -4232,7 +4231,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  xtick(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "xtick_2",
@@ -4256,7 +4255,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  ylabel(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "ylabel_2",
@@ -4304,7 +4303,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  ymlabel(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "ymlabel_2",
@@ -4328,7 +4327,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  ymtick(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "ymtick_2",
@@ -4352,7 +4351,7 @@
    "value": "abc",
    "command": "twoway scatter mpg weight,  ytick(abc)",
    "rc": 198,
-   "message": "invalid label specifier, :  abc:"
+   "message": "invalid label specifier, : abc:"
   },
   {
    "id": "ytick_2",

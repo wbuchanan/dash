@@ -270,6 +270,7 @@ for cid, scheme, rc, svg, bsvg, log in recs:
     probes[cid] = rec
 meta = {"stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_refline_extent_truth.do",
         "dash_commit": Macro.getLocal("dash_commit"),
         "extracted": Macro.getLocal("extracted"),
         "scheme": {k: v["scheme"] for k, v in probes.items()}}

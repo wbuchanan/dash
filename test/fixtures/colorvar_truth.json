@@ -233,9 +233,10 @@
   },
   "_meta": {
     "born_date": "12 Aug 2026",
-    "dash_commit": "80d268b3f0a273f223aca6340645fce52cedea17",
-    "extracted": "2026-09-26",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "2026-10-18",
     "marker_order_selfcheck": "observation",
+    "source": "scripts/extract_colorvar_truth.do",
     "stata_version": "19.5",
     "svg_truth_functions": [
       "svg_document",

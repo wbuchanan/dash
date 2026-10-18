@@ -44,9 +44,9 @@
    "west": "w",
    "zz": null
   },
-  "dash_commit": "2f51a5058df30a526536402dbdd5c0eea68d9d4d",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
   "data": "auto; monthly: t %tm 1995m1-2004m12, tn = t unformatted, y = 10 + mod(_n, 7), y2, tsset t; daily: d %td from 01jan2001 every 5 days, y = 5 + mod(_n, 9)",
-  "extracted": " 9 Oct 2026",
+  "extracted": "18 Oct 2026",
   "orient": {
    "bogus": null,
    "h": null,
@@ -63,6 +63,7 @@
    "vertical": -90.0
   },
   "scheme": "stcolor unless the command names one",
+  "source": "scripts/extract_added_text_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

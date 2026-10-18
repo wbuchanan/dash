@@ -367,6 +367,7 @@ with open(Macro.getLocal("records"), encoding="utf-8") as fh:
 schemes = sorted({c[2:].rsplit("-", 1)[0] for c in cases if c.startswith("B-")})
 meta = {"stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_named_style_truth.do",
         "dash_commit": Macro.getLocal("dash_commit"),
         "extracted": Macro.getLocal("extracted")}
 out = os.path.join(repo, "test", "fixtures", "named_style_truth.json")

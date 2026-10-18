@@ -321,6 +321,7 @@ for i in range(Data.getObsTotal()):
 meta = {
     "stata_version": Macro.getGlobal("ZK_SVER"),
     "born_date": Macro.getGlobal("ZK_BORN"),
+    "source": "scripts/extract_mlabvpos_truth.do",
     "dash_commit": Macro.getGlobal("ZK_COMMIT"),
     "extracted": Macro.getGlobal("ZK_DATE"),
     "scheme": "stcolor",

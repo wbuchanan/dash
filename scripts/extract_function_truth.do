@@ -574,6 +574,7 @@ meta = {
     "stata_version": Macro.getGlobal("ZF_SVER"),
     "born_date": Macro.getGlobal("ZF_BORN"),
     "extracted": Macro.getGlobal("ZF_DATE"),
+    "source": "scripts/extract_function_truth.do",
     "dash_commit": Macro.getGlobal("ZF_COMMIT"),
     "method": ("twoway function <text>, range() n() nodraw: rc and serset "
                "(variable 1 y, variable 2 x); twoway__function_gen <text>, "

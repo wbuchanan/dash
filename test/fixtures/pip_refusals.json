@@ -3,9 +3,10 @@
   "stata_version": "not used (pip output)",
   "pip_version": "25.3",
   "python_version": "3.13.11",
-  "born_date": "01oct2026",
-  "dash_commit": "e77651efb92a528076f3732f30691afe35fc3f57",
-  "extracted": "2026-10-01T10:26:51"
+  "born_date": "not used (pip output)",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "2026-10-18T17:27:30",
+  "source": "scripts/extract_pip_refusals.py"
  },
  "externally_managed": {
   "argv": [

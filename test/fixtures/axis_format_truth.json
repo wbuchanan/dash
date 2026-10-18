@@ -1,10 +1,11 @@
 {
   "_meta": {
     "born_date": "12 Aug 2026",
-    "dash_commit": "4f8e528254fc29fa47274cb5d9f193625906392b",
-    "extracted": " 7 Oct 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
     "scheme": "stcolor",
     "script": "scripts/extract_axis_format_truth.do",
+    "source": "scripts/extract_axis_format_truth.do",
     "stata_version": "19.5"
   },
   "cases": {

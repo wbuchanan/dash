@@ -208,6 +208,7 @@ out["_meta"] = {
     "generated_by": "scripts/extract_date_axis_truth.do",
     "stata_version": meta.get("stata_version"),
     "born_date": meta.get("born_date"),
+    "source": "scripts/extract_date_axis_truth.do",
     "dash_commit": meta.get("dash_commit"),
     "extracted": meta.get("extracted"),
     "method": ("sysuse sp500; obs = _n, d2 = date + 30 (%td), m = mofd(date) "

@@ -228,6 +228,7 @@ with open(os.path.join(W, "table.json")) as fh:
 meta = {
     "stata_version": Macro.getGlobal("ZK_SVER"),
     "born_date": Macro.getGlobal("ZK_BORN"),
+    "source": "scripts/extract_mlabtextstyle_truth.do",
     "dash_commit": Macro.getGlobal("ZK_COMMIT"),
     "extracted": Macro.getGlobal("ZK_DATE"),
     "table": table,

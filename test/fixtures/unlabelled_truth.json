@@ -1,10 +1,11 @@
 {
   "_meta": {
     "born_date": "12 Aug 2026",
-    "dash_commit": "e77651efb92a528076f3732f30691afe35fc3f57",
-    "extracted": " 1 Oct 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
     "method": "Each probe regenerates 12 unlabelled observations (_zu_data), runs its setup, exports the twoway command to SVG and reads it through scripts/svg_truth.py; texts exclude numeric tick labels; keys_in_drawn_order are the probe's <text> entries minus its legend(off) twin's, by multiset, sorted by (y, x).",
     "scheme_in_force": "s2color",
+    "source": "scripts/extract_unlabelled_truth.do",
     "stata_version": "19.5"
   },
   "probes": {

@@ -1,10 +1,11 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "f7e034db0f60371839cffae9fd7c61cc34e21e5a",
-  "extracted": " 8 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "generated_by": "scripts/extract_date_axis_truth.do",
   "method": "sysuse sp500; obs = _n, d2 = date + 30 (%td), m = mofd(date) (%tm), yr = year(date) (%ty); scheme s2color. Per case twoway <cmd>, name(g): .g.plotregion1.xscale/.yscale curmin/curmax (plotregion2 for a second axis) and the exported SVG's text elements in document order.",
+  "source": "scripts/extract_date_axis_truth.do",
   "stata_version": "19.5"
  },
  "axis2": {

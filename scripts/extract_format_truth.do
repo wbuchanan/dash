@@ -334,6 +334,7 @@ doc = {
     "_meta": {
         "stata_version": meta.get("stata_version", ""),
         "born_date": meta.get("born_date", ""),
+        "source": "scripts/extract_format_truth.do",
         "dash_commit": DASH_COMMIT,
         "extracted": meta.get("extracted", ""),
         "script": "scripts/extract_format_truth.do",

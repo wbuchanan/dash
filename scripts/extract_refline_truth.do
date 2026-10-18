@@ -296,6 +296,7 @@ for cid, scheme, rc, svg, log in recs:
     probes[cid] = rec
 meta = {"stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_refline_truth.do",
         "dash_commit": Macro.getLocal("dash_commit"),
         "extracted": Macro.getLocal("extracted")}
 out = os.path.join(repo, "test", "fixtures", "refline_truth.json")

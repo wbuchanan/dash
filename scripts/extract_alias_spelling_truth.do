@@ -15,8 +15,8 @@
 *! test/test_help_conformance.py reads the result: a spelling dash accepts
 *! and twoway does not must be named in dash.sthlp.
 *!
-*! Output: the JSON file named by the first argument, normally
-*! test/fixtures/alias_spelling_truth.json.  Run from a scratch directory,
+*! Output: the JSON file named by the first argument, else
+*! test/fixtures/alias_spelling_truth.json under DASH_REPO.  Run from a scratch directory,
 *! because batch mode writes its .log to the working directory, with the
 *! console binary (never the GUI application):
 *!
@@ -41,10 +41,25 @@
 *! Stata.
 version 16.0
 args outfile
-if `"`outfile'"' == "" {
-    display as error "usage: do extract_alias_spelling_truth.do <output.json>"
+* With no argument (make truth), the fixture under DASH_REPO, else under the
+* current directory when it is a dash tree.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zqs_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zqs_bad' {
+    display as error "extract_alias_spelling_truth.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
     exit 198
 }
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+if _rc {
+    local _zqs_show = substr(`"`repo'"', 1, 200)
+    display as error `"extract_alias_spelling_truth.do: `_zqs_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+if `"`outfile'"' == "" local outfile `"`repo'/test/fixtures/alias_spelling_truth.json"'
 
 clear all
 set more off
@@ -62,6 +77,13 @@ global ZQS_SVER = c(stata_version)
 global ZQS_EDIT = c(edition_real)
 global ZQS_BORN = c(born_date)
 global ZQS_DATE = c(current_date)
+tempfile gh
+shell git -C "`repo'" rev-parse HEAD > "`gh'"
+tempname ghf
+file open `ghf' using "`gh'", read text
+file read `ghf' zqs_commit
+file close `ghf'
+global ZQS_COMMIT `"`zqs_commit'"'
 
 tempname rec
 file open `rec' using "${ZQS_REC}", write text replace
@@ -244,11 +266,12 @@ for t, rows in out["plottypes"].items():
     out["plottypes"][t] = {"probes": rows, "shortest_accepted": rows_min}
 
 out["_meta"] = {
-    "generated_by": "scripts/extract_alias_spelling_truth.do",
     "stata_version": sfi.Macro.getGlobal("ZQS_SVER"),
+    "born_date": sfi.Macro.getGlobal("ZQS_BORN"),
+    "dash_commit": sfi.Macro.getGlobal("ZQS_COMMIT").strip(),
+    "extracted": sfi.Macro.getGlobal("ZQS_DATE"),
+    "source": "scripts/extract_alias_spelling_truth.do",
     "stata_edition": sfi.Macro.getGlobal("ZQS_EDIT"),
-    "stata_born_date": sfi.Macro.getGlobal("ZQS_BORN"),
-    "run_date": sfi.Macro.getGlobal("ZQS_DATE"),
     "dataset": "sysuse auto, clear; generate int t = _n; tsset t",
     "method": ("Each probe is run as twoway <command> nodraw saving(); rc is "
                "recorded, and where rc is 0 the live-format .gph, with the "

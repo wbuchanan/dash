@@ -1,11 +1,12 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "e77651efb92a528076f3732f30691afe35fc3f57",
-  "extracted": " 1 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "generated_by": "scripts/extract_date_units_truth.do",
   "method": "sysuse sp500 with m q w tc yr generated from date (data.gen_cmds). histogram: twoway__histogram_gen <v> [if], density|frequency [width() start() bin() discrete] gen(), bars placed at floor((x - start)/width). kdensity: r(bwidth) of kdensity <v>, nograph, and twoway__kdensity_gen <v> [if], gen() n(5) range() [bwidth()]. lpoly: lpoly close <v> [if], nograph gen() n(5) bwidth(). fits: fracpoly: regress close date with predict double; regress close m; regress date close. kpi: summarize <v> [if] [in], detail, value and display text. axis_labels: twoway <cmd> exported to SVG, tick texts read back.",
   "precision": "%21.0g; histogram heights compared at rel 1e-9",
+  "source": "scripts/extract_date_units_truth.do",
   "stata_version": "19.5"
  },
  "axis_labels": {

@@ -386,10 +386,11 @@
  "_meta": {
   "born_date": "12 Aug 2026",
   "by_panel_selfcheck": "held",
-  "dash_commit": "fc24cd27e6d1a5f4e47ca7123c142625cc5bd3ed",
-  "extracted": "2026-10-01",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "2026-10-18",
   "qualified_order_selfcheck": "held",
   "script": "scripts/extract_colorvar_qualifier_truth.do",
+  "source": "scripts/extract_colorvar_qualifier_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

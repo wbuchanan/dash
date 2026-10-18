@@ -345,6 +345,7 @@ try:
 except OSError:
     commit = ""
 out = {"_meta": {"stata_version": G("OB_VERSION"), "born_date": G("OB_BORN"),
+                 "source": "scripts/extract_intensity_truth.do",
                  "dash_commit": commit, "extracted": G("OB_WHEN"),
                  "rule": "E4",
                  "excluded": {"navy_fi_5200":

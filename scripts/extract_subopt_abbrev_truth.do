@@ -370,6 +370,7 @@ for pid in Macro.getGlobal("ZS_IDS").split():
     probes[pid] = rec
 out = {"_meta": {"stata_version": Macro.getGlobal("ZS_SVER"),
                  "born_date": Macro.getGlobal("ZS_BORN"),
+                 "source": "scripts/extract_subopt_abbrev_truth.do",
                  "dash_commit": Macro.getGlobal("ZS_COMMIT"),
                  "extracted": Macro.getGlobal("ZS_DATE"),
                  "scheme_in_force": Macro.getGlobal("ZS_SCHEME"),

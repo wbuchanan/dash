@@ -2,8 +2,9 @@
   "_meta": {
     "born_date": "12 Aug 2026",
     "c0_rule": "{c 0} cuts off the rest of its own styled run on its own line; text after the run's closing brace and other lines are drawn (measured 08oct2026, scratch note 29-c0-truth.txt)",
-    "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
-    "extracted": " 8 Oct 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
+    "source": "scripts/extract_graph_text_truth.do",
     "stata_version": "19.5"
   },
   "cases": [

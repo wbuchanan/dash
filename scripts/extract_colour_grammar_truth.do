@@ -493,6 +493,7 @@ try:
 except OSError:
     commit = ""
 out = {"_meta": {"stata_version": G("CG_VERSION"), "born_date": G("CG_BORN"),
+                 "source": "scripts/extract_colour_grammar_truth.do",
                  "dash_commit": commit, "extracted": G("CG_WHEN"),
                  "excluded": excluded},
        "probes": probes}

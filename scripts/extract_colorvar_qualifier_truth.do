@@ -314,6 +314,7 @@ if os.path.exists(ghfile):
 meta = {
     "stata_version": Macro.getGlobal("ZQ_STATA_VERSION"),
     "born_date": Macro.getGlobal("ZQ_BORN_DATE"),
+    "source": "scripts/extract_colorvar_qualifier_truth.do",
     "dash_commit": dash_commit,
     "extracted": datetime.date.today().isoformat(),
     "script": "scripts/extract_colorvar_qualifier_truth.do",

@@ -50,9 +50,10 @@
     "pcspike"
    ]
   },
-  "dash_commit": "c48a92c5b150c5f3f800bb18800aeb21f68dc39c",
-  "extracted": " 8 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "scheme": "stcolor",
+  "source": "scripts/extract_recast_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

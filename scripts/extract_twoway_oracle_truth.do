@@ -107,6 +107,7 @@ outdir = Macro.getLocal("outdir")
 failed = Macro.getLocal("failed").split()
 meta = {"stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_twoway_oracle_truth.do",
         "dash_commit": Macro.getLocal("dash_commit").strip(),
         "extracted": Macro.getLocal("extracted"),
         "method": ("each answer asked of twoway in a run of the script "

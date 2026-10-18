@@ -27,6 +27,11 @@
 *! per-probe logs (never calling Stata) and writes the JSON.  A backtick in
 *! that block is spelled \x60.
 
+* make truth (no driver): DASH_REPO stands in for the global.
+if "${W29_REPO}" == "" {
+    local _w29_env : environment DASH_REPO
+    if `"`_w29_env'"' != "" global W29_REPO `"`_w29_env'"'
+}
 if "${W29_REPO}" == "" {
     display as error "extract_axis2_truth.do: set global W29_REPO to the repository root"
     exit 198
@@ -478,6 +483,7 @@ out = {
     "_meta": {
         "stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_axis2_truth.do",
         "dash_commit": Macro.getLocal("dash_commit").strip(),
         "extracted": Macro.getLocal("extracted"),
         "method": ".Graph members via graph_g.class ParseAndLogAxes "

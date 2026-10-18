@@ -289,6 +289,7 @@ if os.path.exists(ghfile):
 meta = {
     "stata_version": Macro.getGlobal("KT_STATA_VERSION"),
     "born_date": Macro.getGlobal("KT_BORN_DATE"),
+    "source": "scripts/extract_key_text_truth.do",
     "dash_commit": dash_commit,
     "extracted": Macro.getGlobal("KT_EXTRACTED"),
     "script": "scripts/extract_key_text_truth.do",

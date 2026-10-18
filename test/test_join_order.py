@@ -903,8 +903,9 @@ class TestTheFixture:
 
     def test_meta_stamp(self):
         meta = _truth()["_meta"]
+        # Flipped: WP-32 regenerated the fixture; its generator now writes source.
         assert sorted(meta) == ["born_date", "dash_commit", "extracted",
-                                "stata_version"]
+                                "source", "stata_version"]
         assert all(str(v).strip() for v in meta.values())
 
     @pytest.mark.parametrize("jid", ["J3", "J4", "J5"])

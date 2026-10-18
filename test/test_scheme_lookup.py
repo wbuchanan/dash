@@ -217,8 +217,9 @@ def _recreate(root, rec):
 class TestTheWalkIsStatas:
     def test_the_fixture_is_stamped(self):
         d = _fixture()
+        # Flipped: WP-32 regenerated the fixture; its generator now writes source.
         assert sorted(d["_meta"]) == ["born_date", "dash_commit",
-                                      "extracted", "stata_version"]
+                                      "extracted", "source", "stata_version"]
         assert len([k for k in d if k != "_meta"]) == 22
 
     def test_each_measured_placement(self, tmp_path, monkeypatch):

@@ -284,7 +284,7 @@ GENERATORS = {
     "bystyle_truth.json": "scripts/extract_bystyle_truth.do",
     "catchall_options_truth.json": "scripts/extract_catchall_options_truth.do",
     "chrome_truth.json": "scripts/extract_chrome_truth.do",
-    "ci_band_style_truth.json": "scripts/extract_scheme_truth.py",
+    "ci_band_style_truth.json": "scripts/extract_ci_band_style_truth.do",
     "ci_plot_index_truth.json": "scripts/extract_ci_plot_index_truth.do",
     "color_truth.json": "scripts/extract_color_truth.py",
     "colorvar_options_truth.json": "scripts/extract_colorvar_options_truth.do",
@@ -389,72 +389,16 @@ GENERATORS = {
     "utf8_cases.txt": "scripts/gen_utf8_cases.py",
     "value_bounds_truth.json": "scripts/extract_value_bounds_truth.do",
     "value_list_truth.json": "scripts/extract_value_list_truth.do",
-    "value_truth.json": "scripts/merge_value_truth.py",
+    "value_truth.json": "scripts/extract_value_truth.do",
     "varlabel_mlabel_truth.json": "scripts/extract_varlabel_mlabel_truth.do",
     "weight_operator_truth.json": "scripts/extract_weight_operator_truth.do",
     "weighted_markers_truth.json": "scripts/extract_weighted_markers_truth.do",
 }
 
-#: The five _meta keys every regenerated fixture carries.
+#: The five _meta keys every JSON fixture carries (WP-32 regenerated the 50
+#: that lacked one through their generators).
 META_KEYS = ("stata_version", "born_date", "dash_commit", "extracted",
              "source")
-
-#: Fixtures written before the five keys were required, each by a generator
-#: that predates them; `make truth' rewrites them with the five keys and the
-#: entry is then deleted (test_a_pending_fixture_is_still_pending fails
-#: until it is).  Nothing may join this list.
-PENDING_META = frozenset({
-    "added_text_truth.json",
-    "alias_spelling_truth.json",
-    "axis2_truth.json",
-    "axis_add_truth.json",
-    "axis_format_truth.json",
-    "axis_subopt_truth.json",
-    "bar_geometry_truth.json",
-    "by_chrome_truth.json",
-    "by_grid_truth.json",
-    "by_scales_truth.json",
-    "by_text_truth.json",
-    "chrome_truth.json",
-    "ci_band_style_truth.json",
-    "color_truth.json",
-    "colorvar_qualifier_truth.json",
-    "colorvar_truth.json",
-    "colour_grammar_truth.json",
-    "connect_truth.json",
-    "date_axis_truth.json",
-    "date_units_truth.json",
-    "format_truth.json",
-    "function_expr_truth.json",
-    "graph_text_truth.json",
-    "help_claims_6_truth.json",
-    "horizontal_truth.json",
-    "intensity_truth.json",
-    "join_order_truth.json",
-    "key_text_truth.json",
-    "lpoly_rot_truth.json",
-    "lpolyci_truth.json",
-    "mlabtextstyle_truth.json",
-    "mlabvpos_truth.json",
-    "named_style_truth.json",
-    "parser_twoway_truth.json",
-    "pip_refusals.json",
-    "recast_truth.json",
-    "refline_extent_truth.json",
-    "refline_truth.json",
-    "scheme_lookup_truth.json",
-    "scheme_truth.json",
-    "series_label_truth.json",
-    "stylelist_truth.json",
-    "subopt_abbrev_truth.json",
-    "svg_truth_smoke.json",
-    "taxis_truth.json",
-    "text_truth.json",
-    "twoway_option_parity_truth.json",
-    "unlabelled_truth.json",
-    "value_list_truth.json",
-    "value_truth.json",
-})
 
 #: Fixtures whose generator GENERATORS names but which is not yet written:
 #: such a fixture keeps its old _meta and probe paths, and
@@ -524,16 +468,11 @@ class TestEveryFixtureHasMeta:
 
     @pytest.mark.parametrize(
         "rel", [f for f in _json_fixtures()
-                if f not in PENDING_META | GENERATOR_PENDING])
+                if f not in GENERATOR_PENDING])
     def test_every_fixture_has_meta(self, rel):
         missing = [k for k in META_KEYS if k not in _meta(_load(rel))]
         assert not missing, f"{rel}: _meta lacks {missing}"
         assert _meta(_load(rel))["source"] == GENERATORS[rel]
-
-    @pytest.mark.parametrize("rel", sorted(PENDING_META))
-    def test_a_pending_fixture_is_still_pending(self, rel):
-        missing = [k for k in META_KEYS if k not in _meta(_load(rel))]
-        assert missing, f"{rel} has the five keys: delete it from PENDING_META"
 
     def test_the_pending_generator_is_still_pending(self):
         for rel in GENERATOR_PENDING:

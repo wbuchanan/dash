@@ -385,6 +385,7 @@ for pid in order:
 
 meta = {"stata_version": Macro.getGlobal("AXL_META_VERSION"),
         "born_date": Macro.getGlobal("AXL_META_BORN"),
+        "source": "scripts/extract_axis_subopt_truth.do",
         "dash_commit": Macro.getGlobal("AXL_META_COMMIT"),
         "extracted": Macro.getGlobal("AXL_META_DATE"),
         "scheme_in_force": Macro.getGlobal("AXL_META_SCHEME")}

@@ -361,6 +361,7 @@ for pid, b in boxes.items():
 out = {"probes": {pid: probes[pid] for pid in order}, "label_box": box_out}
 out["_meta"] = {"stata_version": Macro.getGlobal("BC_SVER"),
                 "born_date": Macro.getGlobal("BC_BORN"),
+                "source": "scripts/extract_by_chrome_truth.do",
                 "dash_commit": Macro.getGlobal("BC_COMMIT"),
                 "extracted": Macro.getGlobal("BC_DATE"),
                 "script": "scripts/extract_by_chrome_truth.do",

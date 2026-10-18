@@ -1,12 +1,13 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
-  "extracted": " 8 Oct 2026 01:32:50",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026 17:30:05",
   "method": ".Graph members per probe; panel observations from the sersets; texts from the SVG through scripts/svg_truth.py",
   "probes": 39,
   "scheme": "stcolor",
   "script": "scripts/extract_by_text_truth.do",
+  "source": "scripts/extract_by_text_truth.do",
   "stata_version": "19.5"
  },
  "data": {

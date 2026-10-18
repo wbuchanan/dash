@@ -896,7 +896,7 @@ class TestTheFixture:
         assert sorted(FIX) == ["_meta", "externally_managed", "no_pip", "offline_no_match",
                                "user_disabled", "user_in_venv"]
         assert sorted(FIX["_meta"]) == ["born_date", "dash_commit", "extracted", "pip_version",
-                                        "python_version", "stata_version"]
+                                        "python_version", "source", "stata_version"]
         for k, rec in FIX.items():
             if k != "_meta":
                 assert isinstance(rec["argv"], list) and isinstance(rec["rc"], int)

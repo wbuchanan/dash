@@ -300,6 +300,7 @@ doc = {
         "edition": Macro.getGlobal("ZS_EDIT"),
         "born_date": Macro.getGlobal("ZS_BORN"),
         "extracted": Macro.getGlobal("ZS_DATE"),
+        "source": "scripts/extract_svg_truth_smoke.do",
         "dash_commit": DASH_COMMIT,
         "scheme": Macro.getGlobal("ZS_SCHEME"),
         "command": COMMAND,

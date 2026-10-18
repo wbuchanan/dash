@@ -1,10 +1,11 @@
 {
  "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
   "dataset": "sysuse auto, clear; generate int t = _n; tsset t",
-  "generated_by": "scripts/extract_alias_spelling_truth.do",
+  "extracted": "18 Oct 2026",
   "method": "Each probe is run as twoway <command> nodraw saving(); rc is recorded, and where rc is 0 the live-format .gph, with the *! header lines, the .command/.date/.time lines and the K<hex> object ids normalised away, is compared with the reference's.  twoway_accepts is true when rc is 0 and the two are identical -- for a full-name probe, whose reference is the plot without the option, when rc is 0 and the two differ -- false when rc is not 0, and null when rc is 0 but the reference drawn twice did not normalise to identical text, so resolution could not be verified.",
-  "run_date": "23 Sep 2026",
-  "stata_born_date": "12 Aug 2026",
+  "source": "scripts/extract_alias_spelling_truth.do",
   "stata_edition": "MP",
   "stata_version": "19.5"
  },

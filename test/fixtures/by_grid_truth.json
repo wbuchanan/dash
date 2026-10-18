@@ -1,10 +1,11 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "1dfee5e7fb2430c8bd40951aa5576d5055e75390",
-  "extracted": " 8 Oct 2026 16:41:26",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026 17:28:37",
   "method": "twoway scatter mpg weight per probe; rows/cols and indiv_margin from the .Graph object; panel cells from the label texts of the SVG export, as drawn: twoway draws no empty row or column, so cells are counted over the rows and columns that hold a panel (rows/cols are the object's, before that); the size multiplier from the smallest numeric text (the marker labels) over the plain graph's; by_indiv from the scheme files' #include chains",
   "script": "scripts/extract_by_grid_truth.do",
+  "source": "scripts/extract_by_grid_truth.do",
   "stata_version": "19.5"
  },
  "accepted": {

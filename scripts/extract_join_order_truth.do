@@ -300,6 +300,7 @@ with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
             out["ranks"][rid] = [int(float(v)) for v in val.split()]
 out["_meta"] = {"stata_version": Macro.getLocal("stata_version"),
                 "born_date": Macro.getLocal("born_date"),
+                "source": "scripts/extract_join_order_truth.do",
                 "dash_commit": Macro.getLocal("dash_commit").strip(),
                 "extracted": Macro.getLocal("extracted")}
 path = os.path.join(repo, "test", "fixtures", "join_order_truth.json")

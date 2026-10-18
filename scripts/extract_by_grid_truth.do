@@ -397,6 +397,7 @@ out["declared"] = seen
 
 out["_meta"] = {"stata_version": Macro.getGlobal("BG_SVER"),
                 "born_date": Macro.getGlobal("BG_BORN"),
+                "source": "scripts/extract_by_grid_truth.do",
                 "dash_commit": Macro.getGlobal("BG_COMMIT"),
                 "extracted": Macro.getGlobal("BG_DATE"),
                 "script": "scripts/extract_by_grid_truth.do",

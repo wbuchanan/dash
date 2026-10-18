@@ -1,8 +1,13 @@
 {
   "_meta": {
-    "generated_utc": "2026-09-19T16:31:10Z",
+    "born_date": "12 Aug 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
+    "generated_utc": "2026-10-18T21:28:21Z",
     "n_colors": 92,
     "note": "Every entry is the `set rgb' line of Stata's own color-<name>.style file. These are the colours Stata draws; dash's _COLOR_MAP must agree with them exactly.",
+    "source": "scripts/extract_color_truth.py",
+    "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "style_dir": "/Applications/StataNow/ado/base/style"
   },
   "colors": {

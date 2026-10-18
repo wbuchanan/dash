@@ -504,6 +504,7 @@ out["_meta"] = {
     "generated_by": "scripts/extract_date_units_truth.do",
     "stata_version": meta.get("stata_version"),
     "born_date": meta.get("born_date"),
+    "source": "scripts/extract_date_units_truth.do",
     "dash_commit": meta.get("dash_commit"),
     "extracted": meta.get("extracted"),
     "method": ("sysuse sp500 with m q w tc yr generated from date (data.gen_cmds). "

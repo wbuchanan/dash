@@ -2,10 +2,11 @@
  "_meta": {
   "answers": 786,
   "born_date": "12 Aug 2026",
-  "dash_commit": "641e585779f4543f05e847cce040df985323deac",
-  "extracted": " 9 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_parser.cscript",
+  "source": "scripts/extract_twoway_oracle_truth.do",
   "stata_version": "19.5"
  },
  "answers": {

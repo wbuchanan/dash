@@ -10,8 +10,8 @@ Stata's truth, measured 24sep2026 with StataNow 19.5 (batch) from the graph
 object -- .Graph.plotregion1.plot1.style.area, the band, and plot2's line --
 for each of the four ci types under each of the twenty shipped schemes, and
 kept in test/fixtures/ci_band_style_truth.json (below).
-ci_band_style_truth.json has no generator and covers the twenty schemes
-measured 24sep2026; StataCorp's six internal schemes are certified against
+ci_band_style_truth.json is written by scripts/extract_ci_band_style_truth.do
+(WP-32; first measured by hand 24sep2026) and covers the twenty schemes; StataCorp's six internal schemes are certified against
 twoway's graph object by test_wp30_truth.cscript SX-06 and
 test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws::test_the_ci_band_is_statas.
 The fixture's truth:
@@ -198,8 +198,8 @@ class TestTheBandAgainstStata:
             _check(_draw(ptype, scheme, opts), want, var, scheme)
 
     def test_the_fixture_covers_every_scheme_and_type(self):
-        """ci_band_style_truth.json has no generator and covers the twenty
-        schemes measured 24sep2026; StataCorp's six internal schemes are
+        """ci_band_style_truth.json (scripts/extract_ci_band_style_truth.do)
+        covers the twenty shipped schemes; StataCorp's six internal schemes are
         certified against twoway's graph object by test_wp30_truth.cscript
         SX-06 and test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws
         ::test_the_ci_band_is_statas."""

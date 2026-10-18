@@ -97,9 +97,10 @@ def main(argv=None):
             "stata_version": "not used (pip output)",
             "pip_version": pip_version,
             "python_version": pyv.strip(),
-            "born_date": now.strftime("%d%b%Y").lower(),
+            "born_date": "not used (pip output)",
             "dash_commit": r.stdout.decode().strip(),
             "extracted": now.isoformat(timespec="seconds"),
+            "source": "scripts/extract_pip_refusals.py",
         }}
         out.update(recs)
         with open(a.out, "w", encoding="utf-8") as fh:

@@ -321,6 +321,7 @@ out = {
     "_meta": {
         "stata_version": Macro.getGlobal("ZG_SVER"),
         "born_date": Macro.getGlobal("ZG_BORN"),
+        "source": "scripts/extract_graph_text_truth.do",
         "dash_commit": Macro.getGlobal("ZG_COMMIT"),
         "extracted": Macro.getGlobal("ZG_DATE"),
         "c0_rule": ("{c 0} cuts off the rest of its own styled run on its "

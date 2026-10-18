@@ -106,9 +106,10 @@ hooks:
 # scripts/extract_*.do runs through scripts/stata_slot.sh, one at a time
 # (concurrent Stata sessions can unlink Python from Stata's settings),
 # from TRUTH_DIR with DASH_REPO naming this checkout; then the Python
-# generators that need no arguments.  pip_refusals.json and value_truth.json
-# take arguments (scripts/extract_pip_refusals.py --managed/--plain,
-# scripts/merge_value_truth.py <probe-dir> <note>) and are named, not run.
+# generators that need no arguments.  pip_refusals.json takes arguments
+# (scripts/extract_pip_refusals.py --managed/--plain; WP-32 used
+# /opt/homebrew/bin/python3.13 and /opt/anaconda3/bin/python3) and is named,
+# not run.
 TRUTH_DIR ?= $(or $(TMPDIR),/tmp)/dash_truth
 truth:
 	@mkdir -p "$(TRUTH_DIR)"; failed=0; \
@@ -122,7 +123,6 @@ truth:
 	    echo "make truth: $$py"; $(PYTHON) "$$py" || failed=1; \
 	done; \
 	echo "make truth: run by hand: $(PYTHON) scripts/extract_pip_refusals.py --managed <python> --plain <python> --out test/fixtures/pip_refusals.json"; \
-	echo "make truth: run by hand: $(PYTHON) scripts/merge_value_truth.py <probe-dir> <note>"; \
 	git status --short -- test/fixtures; \
 	exit $$failed
 

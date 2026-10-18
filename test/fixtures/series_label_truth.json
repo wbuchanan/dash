@@ -1,11 +1,12 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "41d6e10c803d01051f103fcf3c90ff8ed1e5c9ed",
-  "extracted": " 7 Oct 2026 16:06:22",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026 17:41:26",
   "method": "keys are the bare SVG's non-numeric texts minus its legend(off) twin's, by multiset, in (y, x) order; titles are twoway's axis objects (.Graph.<axis>.title.text[1]; under by() .Graph.l1title and .Graph.b1title); svg_titles are the texts the legend(off) SVG draws on each side.",
   "probes": 150,
   "scheme": "stcolor",
+  "source": "scripts/extract_series_label_truth.do",
   "stata_version": "19.5"
  },
  "data": {

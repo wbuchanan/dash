@@ -1,9 +1,10 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "b79db35e54c4a093209e847fd97a94e36de167a1",
-  "extracted": " 8 Oct 2026 08:27:14",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026 17:36:16",
   "generator": "scripts/extract_mlabtextstyle_truth.do",
+  "source": "scripts/extract_mlabtextstyle_truth.do",
   "stata_version": "19.5",
   "table": {
    "axis_title": [

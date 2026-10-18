@@ -228,6 +228,7 @@ with open(Macro.getLocal("records"), encoding="utf-8") as fh:
         cases[cid] = rec
 meta = {"stata_version": Macro.getLocal("stata_version"),
         "born_date": Macro.getLocal("born_date"),
+        "source": "scripts/extract_stylelist_truth.do",
         "dash_commit": Macro.getLocal("dash_commit"),
         "extracted": Macro.getLocal("extracted")}
 out = os.path.join(repo, "test", "fixtures", "stylelist_truth.json")

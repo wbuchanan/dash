@@ -60,8 +60,11 @@ def main(argv):
             "source": os.path.basename(path),
         }
 
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from extract_scheme_truth import meta_stamp
     out = {
         "_meta": {
+            **meta_stamp("scripts/extract_color_truth.py"),
             "generated_utc": datetime.datetime.now(
                 datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "style_dir": style_dir,

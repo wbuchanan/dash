@@ -273,6 +273,7 @@ written.append(os.path.join(work, "git_head.txt"))
 out = {"widths": widths, "caps": caps, "rcapsym": rcapsym,
        "refusals": refusals,
        "_meta": {"stata_version": G("BG_VERSION"), "born_date": G("BG_BORN"),
+                 "source": "scripts/extract_bar_geometry_truth.do",
                  "dash_commit": commit, "extracted": G("BG_WHEN")}}
 with open(G("BG_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)

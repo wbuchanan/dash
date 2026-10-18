@@ -1,10 +1,11 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "957d00c8d4a5ef292f6dcda757461d66e3c0f3c2",
-  "extracted": " 7 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "method": "each probe's twoway command run with capture noisily into its own log (rc and the option/invalid/note lines) and, when it drew, its SVG export read through scripts/svg_truth.py, by scripts/extract_subopt_abbrev_truth.do",
   "scheme_in_force": "stcolor",
+  "source": "scripts/extract_subopt_abbrev_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

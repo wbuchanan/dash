@@ -131,6 +131,26 @@ DEFAULT_STATA_BASE = "/Applications/StataNow/ado/base"
 STATA_VERSION = "StataNow 19.5 (MP), born 12 Aug 2026"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def meta_stamp(source):
+    """The five _meta keys every fixture carries (test_fixtures_are_committed
+    .py META_KEYS): the Stata release and born date whose files are read
+    (STATA_VERSION), dash's commit, the date (Stata's c(current_date) form)
+    and the generator."""
+    m = re.search(r"born (\d{1,2} [A-Z][a-z]{2} \d{4})$", STATA_VERSION)
+    try:
+        import subprocess
+        head = subprocess.run(["git", "-C", REPO_ROOT, "rev-parse", "HEAD"],
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL).stdout.decode().strip()
+    except OSError:
+        head = ""
+    return {"stata_version": STATA_VERSION,
+            "born_date": m.group(1) if m else "",
+            "dash_commit": head,
+            "extracted": datetime.date.today().strftime("%d %b %Y").lstrip("0"),
+            "source": source}
 DEFAULT_SCHEMES_DIR = REPO_ROOT
 
 # Number of overlaid plots in a Stata scheme's colour cycle.
@@ -2997,7 +3017,10 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--stata-base", default=DEFAULT_STATA_BASE,
                     help="Stata ado/base directory (default: %(default)s)")
-    ap.add_argument("--out", required=True, help="output JSON path")
+    ap.add_argument("--out", default=os.path.join(
+                        REPO_ROOT, "test", "fixtures", "scheme_truth.json"),
+                    help="output JSON path (default: test/fixtures/"
+                         "scheme_truth.json)")
     ap.add_argument("--schemes", nargs="*", default=SCHEMES)
     ap.add_argument("--schemes-dir", default=DEFAULT_SCHEMES_DIR,
                     help="directory of dash's translated <name>.scheme files "
@@ -3030,7 +3053,7 @@ def main(argv=None) -> int:
             ),
             "generated_utc": datetime.datetime.now(
                 datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "stata_version": STATA_VERSION,
+            **meta_stamp("scripts/extract_scheme_truth.py"),
             "scheme_dir": os.path.join(base, "s"),
             "style_dir": os.path.join(base, "style"),
             "also_identical_in": "/Applications/Stata/ado/base "

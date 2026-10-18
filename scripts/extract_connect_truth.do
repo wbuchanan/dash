@@ -364,6 +364,7 @@ for rec in probes.values():
 out = {"probes": probes, "matrix": matrix,
        "_meta": {"stata_version": Macro.getLocal("stata_version"),
                  "born_date": Macro.getLocal("born_date"),
+                 "source": "scripts/extract_connect_truth.do",
                  "dash_commit": Macro.getLocal("dash_commit").strip(),
                  "extracted": Macro.getLocal("extracted"),
                  "scheme": "stcolor"}}

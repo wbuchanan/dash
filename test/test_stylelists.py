@@ -204,8 +204,9 @@ def _check(case):
 class TestTheFixture:
     def test_meta_is_stamped(self):
         meta = _fixture()["_meta"]
+        # Flipped: WP-32 regenerated the fixture; its generator now writes source.
         assert sorted(meta) == ["born_date", "dash_commit", "extracted",
-                                "stata_version"]
+                                "source", "stata_version"]
         assert meta["stata_version"].startswith("19.")
 
     def test_every_case_is_recorded(self):

@@ -1,9 +1,10 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "dc18acadffb388baf49c9dd85e35f83017fdd4f3",
-  "extracted": " 1 Oct 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
   "method": ".Graph.graphs[k] members via bygraph_g.class (scripts/extract_by_scales_truth.do)",
+  "source": "scripts/extract_by_scales_truth.do",
   "stata_version": "19.5"
  },
  "data": {

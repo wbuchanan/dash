@@ -28,6 +28,11 @@
 *!  precision and read by the python: blocks only through sfi (they never
 *!  call Stata); json.dump writes every double so it round-trips.
 version 19
+* make truth (no driver): DASH_REPO stands in for the global.
+if "${W29_REPO}" == "" {
+    local _w29_env : environment DASH_REPO
+    if `"`_w29_env'"' != "" global W29_REPO `"`_w29_env'"'
+}
 if "${W29_REPO}" == "" {
     display as error "set global W29_REPO to the repository root"
     exit 198
@@ -524,6 +529,7 @@ LW["_meta"] = {
     "stata_version": Macro.getGlobal("LW_SVER"),
     "born_date": Macro.getGlobal("LW_BORN"),
     "extracted": Macro.getGlobal("LW_DATE"),
+    "source": "scripts/extract_lpoly_rot_truth.do",
     "dash_commit": Macro.getGlobal("LW_COMMIT"),
     "method": "lpoly r(bwidth)/r(ngrid) and Mata invsym(quadcross()) on raw powers",
     "script": "scripts/extract_lpoly_rot_truth.do",

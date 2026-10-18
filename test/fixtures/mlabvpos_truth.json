@@ -1,7 +1,7 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "e3680f61ee5b69299576da4ea30abd29b6cd78b2",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
   "data": [
    {
     "bpos": 0,
@@ -256,11 +256,12 @@
     "y3": 18.5
    }
   ],
-  "extracted": " 8 Oct 2026 08:00:01",
+  "extracted": "18 Oct 2026 17:36:42",
   "generator": "scripts/extract_mlabvpos_truth.do",
   "probes": 18,
   "references": 143,
   "scheme": "stcolor",
+  "source": "scripts/extract_mlabvpos_truth.do",
   "stata_version": "19.5"
  },
  "probes": {

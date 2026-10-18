@@ -1,10 +1,11 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "87ec2a5da965e2c2440aa9e7fee0a5b8505e637e",
-  "extracted": " 8 Oct 2026 18:13:49",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026 17:28:12",
   "method": "twoway per probe under the named scheme; the graph object's rows, cols, holes, key holes, style switches, l1/b1/r1 title text, overall legend and colour key draw_view and relative_position, and per panel the draw_view of its y, x and y2 axes, their titles, its legend and colour key; label boxes from the rects written just before each panel label's text in the SVG export",
   "script": "scripts/extract_by_chrome_truth.do",
+  "source": "scripts/extract_by_chrome_truth.do",
   "stata_version": "19.5"
  },
  "label_box": {

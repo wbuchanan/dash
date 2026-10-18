@@ -2,8 +2,9 @@
  "_meta": {
   "stata_version": "19.5",
   "born_date": "12 Aug 2026",
-  "dash_commit": "87ec2a5da965e2c2440aa9e7fee0a5b8505e637e",
-  "extracted": " 8 Oct 2026"
+  "source": "scripts/extract_axis_add_truth.do",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026"
  },
  "probes": {
   "base": {

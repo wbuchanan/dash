@@ -145,6 +145,7 @@ out = {"_meta": {
     "stata_version": Macro.getGlobal("ZC_SVER"),
     "born_date": Macro.getGlobal("ZC_BORN"),
     "extracted": Macro.getGlobal("ZC_DATE"),
+    "source": "scripts/extract_chrome_truth.do",
     "dash_commit": Macro.getGlobal("ZC_COMMIT"),
     "units": "rs = min(viewBox W, H)/100",
     "method": ("twoway scatter mpg weight of auto with the plot-region "

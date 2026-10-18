@@ -297,6 +297,7 @@ for cid, frm in (("e03", "e02"), ("e04", "e02"), ("e05", "e02"),
 doc = {
     "_meta": {"stata_version": Macro.getGlobal("AF_SVER"),
               "born_date": Macro.getGlobal("AF_BORN"),
+              "source": "scripts/extract_axis_format_truth.do",
               "dash_commit": Macro.getLocal("dash_commit"),
               "extracted": Macro.getGlobal("AF_DATE"),
               "scheme": "stcolor",

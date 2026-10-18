@@ -218,6 +218,7 @@ with open(Macro.getGlobal("ADD_REC"), encoding="utf-8",
 
 meta = {"stata_version": Macro.getGlobal("ADD_META_VERSION"),
         "born_date": Macro.getGlobal("ADD_META_BORN"),
+        "source": "scripts/extract_axis_add_truth.do",
         "dash_commit": Macro.getGlobal("ADD_META_COMMIT"),
         "extracted": Macro.getGlobal("ADD_META_DATE")}
 out = os.path.join(REPO, "test", "fixtures", "axis_add_truth.json")

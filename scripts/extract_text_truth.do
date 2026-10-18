@@ -461,6 +461,7 @@ doc = {
         "stata_version": Macro.getGlobal("ZA_SVER"),
         "born_date": Macro.getGlobal("ZA_BORN"),
         "extracted": Macro.getGlobal("ZA_DATE"),
+        "source": "scripts/extract_text_truth.do",
         "dash_commit": DASH_COMMIT,
         "scheme_in_force": Macro.getGlobal("ZA_SCHEME"),
         "method": ("Each probe's twoway command (plus the option under "

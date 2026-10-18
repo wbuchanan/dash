@@ -1,10 +1,20 @@
 {
  "_meta": {
-  "measured": "24sep2026, StataNow 19.5 MP, batch, `sysuse auto', `twoway <type> mpg weight, scheme(<s>) nodraw <options>'",
+  "born_date": "12 Aug 2026",
+  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+  "extracted": "18 Oct 2026",
+  "measured": "batch, , ",
   "read_from": ".Graph.plotregion1.plot1.style.area (the band: shadestyle.color.rgb/.opacity, shadestyle.intensity.val, linestyle.color.rgb/.opacity, linestyle.width.val, linestyle.pattern.stylename) and .Graph.plotregion1.plot2.style.line (the fit line)",
-  "refused": "alwidth(-1) and alwidth(20000): gm_linewidth must be between 0.000 and 1.0e+04, r(198); alwidth(10000) and alwidth(0) draw",
-  "svg": "graph export .svg of the same graphs: the band's fill is the colour blended towards white by its intensity (red at fintensity(50) is #FF8080) at fill-opacity = the colour's opacity, and its outline is a closed path (Z) round the band, ends included; acolor(none) draws no band; alwidth(none) strokes 0.00",
-  "types": "every row was measured on each type in `types' and was identical across them"
+  "refused": {
+   "alwidth(-1)": 198,
+   "alwidth(0)": 0,
+   "alwidth(10000)": 0,
+   "alwidth(20000)": 198
+  },
+  "source": "scripts/extract_ci_band_style_truth.do",
+  "stata_version": "19.5",
+  "svg": "by hand, 24sep2026, not rerun by this generator: graph export .svg of the same graphs: the band's fill is the colour blended towards white by its intensity (red at fintensity(50) is #FF8080) at fill-opacity = the colour's opacity, and its outline is a closed path (Z) round the band, ends included; acolor(none) draws no band; alwidth(none) strokes 0.00",
+  "types": "every row was measured on each type in  and was identical across them"
  },
  "cases": {
   "economist": {

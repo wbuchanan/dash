@@ -261,6 +261,7 @@ with open(os.path.join(WORK, "data.json"), encoding="utf-8") as fh:
 out = {
     "_meta": {"stata_version": Macro.getGlobal("BT_SVER"),
               "born_date": Macro.getGlobal("BT_BORN"),
+              "source": "scripts/extract_by_text_truth.do",
               "dash_commit": Macro.getGlobal("BT_COMMIT"),
               "extracted": Macro.getGlobal("BT_DATE"),
               "scheme": "stcolor", "probes": len(order),

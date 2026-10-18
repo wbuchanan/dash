@@ -1,9 +1,10 @@
 {
   "_meta": {
     "born_date": "12 Aug 2026",
-    "dash_commit": "a551e64d092424727897d976726765fc23d52448",
-    "extracted": "17 Oct 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
     "method": "twoway function <text>, range() n() nodraw: rc and serset (variable 1 y, variable 2 x); twoway__function_gen <text>, range() x(x) n() generate(fy fx) under preserve: x0 = r(min), dx = r(delta), gen_y in generator order; numbers %24.17g text, missing null; fallback_grammar (WP-31 F2): keyed by the text after y =, twoway function y = <text>, range(-3 3) n(13) nodraw: rc and msg (the lines twoway printed), then the generator's y (x = -3(.5)3) and m, each value's missing code",
+    "source": "scripts/extract_function_truth.do",
     "stata_version": "19.5"
   },
   "fallback_grammar": {

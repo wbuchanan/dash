@@ -1,10 +1,11 @@
 {
   "_meta": {
     "born_date": "12 Aug 2026",
-    "dash_commit": "da35cdaf6179de4373fe7e8ce417d4ca116c48e1",
-    "extracted": " 1 Oct 2026",
+    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "extracted": "18 Oct 2026",
     "method": "Each probe's twoway command (plus the option under test, if any) is exported to SVG and read through scripts/svg_truth.py; added_texts/removed_texts are the probe's <text> elements minus its control probe's, by multiset (collections.Counter), kept in the probe's own document order; added_fills is a set difference of svg_fills() colours.",
     "scheme_in_force": "stcolor",
+    "source": "scripts/extract_text_truth.do",
     "stata_version": "19.5"
   },
   "probes": {
