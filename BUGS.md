@@ -4088,10 +4088,10 @@
   - File Names and Line Numbers: dash.ado _dash_subopt_colour_check / _dash_stylelist_check (the comma-colour refusal)
   - Description: Found by the 18oct2026 follow-up to WP-31 section 56. twoway takes `mcolor(255 0,0)` with rc 0 and its "named style 255 not found" note; dash refuses it r(198) "invalid '0'", the refusal twoway gives `mcolor(255,0,0)` (which dash matches).
   - Suggested fix: refuse a comma colour only when twoway does (measure which blank-and-comma forms twoway reads as a named style), and note the rest in twoway's words.
-  - Resolution: Not fixed: found after WP-31's sections landed; S61's closeout or a later package takes it. Graded S3 (WP-31): a refusal of a form twoway draws with a note.
+  - Resolution: Not fixed: it stays open because it was found after WP-31's sections landed, for S61's closeout or a later package. Graded S3 (WP-31): a refusal of a form twoway draws with a note.
 
 - [ ] Title: A quote inside a compound-quoted mlabfontface() value gives r(198) where twoway gives r(132)
   - File Names and Line Numbers: dash_parse.mata _dash_mlabff_refusal
   - Description: Found by the 18oct2026 follow-up to WP-31 section 56. `mlabfontface(`"a"b"')` is r(132) in twoway; dash refuses it r(198). Every other measured mlabfontface() form matches (test_abbreviations.cscript MLF-01).
   - Suggested fix: give twoway's r(132) and words for a quote inside a compound-quoted value.
-  - Resolution: Not fixed: found after WP-31's sections landed; S61's closeout or a later package takes it. Graded S3 (WP-31): which return code a refused value gets.
+  - Resolution: Not fixed: it stays open because it was found after WP-31's sections landed, for S61's closeout or a later package. Graded S3 (WP-31): which return code a refused value gets.
