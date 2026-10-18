@@ -2357,7 +2357,7 @@ served app differ as follows:
 {col 5}brush(filter){col 38}Yes{col 59}Yes
 {col 5}Brush on histogram bars{col 38}until a move{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
-{col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
+{col 5}Kernel density on filter{col 38}grid recomputed{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}Yes{col 59}Yes
 {col 5}A slider recomputes{col 38}when released{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
@@ -2427,7 +2427,9 @@ layer: it is dimmed, its legend key reads
 "(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows
 "Marked layers were computed before the filter", and a note under the
 filters says the same in text a screen reader reads.  A density drawn over
-{cmd:range()} keeps the grid you gave and is not marked.  A
+{cmd:range()} keeps the grid you gave and is not marked; one without it
+is drawn on the kept rows' grid, as {cmd:twoway} draws it, and is not
+marked unless its variable is a date or it is drawn as {cmd:dot}.  A
 {cmd:contour} or {cmd:contourline} is recomputed up to 1,000 distinct
 points; above that it is kept as built and marked "(grid unfiltered)",
 and the served app recomputes its surface.  The marks go when
@@ -3740,9 +3742,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
 {synopt:{opt boundary}}{cmd:kdensity}: the curve evaluated one bandwidth
     past the data at each end; not with {cmd:range()}
     ({cmd:only one of options range() or boundary is allowed}, r(198)).
-    After a filter move
-    the saved page keeps the curve's grid and marks it (see the stale
-    cue){p_end}
+    After a filter move both modes draw it one bandwidth past the kept
+    rows{p_end}
 {synopt:{opt droplines(numlist)}}{cmd:function}: a line from the base to
     the curve at each {it:x}, drawn before the curve in its line style;
     every {it:x} within {cmd:range()}

@@ -3928,6 +3928,8 @@ _JS_ORACLE_CASES = frozenset(
     [f"{t}, slider to 4500" for t in _MOVED_LAYERS]
     + [f"{t}, {m[0]}" for t in ("scatter", "lfit", "histogram")
        for m in _MOVES[:2]]
+    # WP-31 H6: a move that narrows a density's span (17-30 of 14-30).
+    + ["kdensity, dropdown to Foreign"]
     + ["by(foreign) shared scale, price slider",
        "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"])
 assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
@@ -3983,7 +3985,6 @@ _JS_FOUND_AFTER_MOVE = frozenset({
     'histogram, dropdown to Foreign',
     'histogram, range to 4500-11385',
     'histogram, slider to 4500',
-    'kdensity, slider to 4500',
 })
 
 

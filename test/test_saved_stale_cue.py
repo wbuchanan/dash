@@ -66,6 +66,11 @@ from test_server_layer_defects import plot_for  # noqa: E402
 # Flipped (WP-31 F1g): held fpfit and fpfitci, frozen until the page
 # refitted them.
 _FROZEN = ["histogram", "kdensity"]
+#: The options that keep each frozen type frozen.  Flipped (WP-31 H6): a
+#: kdensity without range() is drawn on the kept rows' own grid by the
+#: saved page and is no longer marked; one drawn as dot (recast(dot),
+#: which the page does not recount) keeps the build's grid and the cue.
+_FROZEN_OPTS = {"histogram": {}, "kdensity": {"recast": "dot"}}
 # DECISIONS A20 (WP-31 B4c): contour and contourline are no computed-only
 # type (their rows are embedded) and are refitted within the cap; a capped
 # one is marked (TestTheCueAppearsOnAMove::test_a_capped_contour_is_marked).
@@ -232,7 +237,7 @@ class TestTheCueAppearsOnAMove:
     @pytest.mark.parametrize("t", _FROZEN)
     def test_a_layer_the_move_took_rows_from_is_marked(self, t, move):
         _, filt, action, _oracle = move
-        r = _render(_spec([plot_for("scatter"), plot_for(t)],
+        r = _render(_spec([plot_for("scatter"), plot_for(t, _FROZEN_OPTS[t])],
                           {"filter": filt}))
         cue = _one_cue(r)
         built = _cue(r)["labels"]["g1"]
@@ -568,8 +573,10 @@ class TestTheWeightedSample:
         # kdensity [pw], frozen: lowess, which refuses every weight, lpoly
         # and lpolyci are refitted by the saved page (WP-31 F1c, F1d, F1e).
         # Flipped (WP-31 F1e): measured on lpolyci [pw].
+        # Flipped (WP-31 H6): kdensity [pw] drawn as dot, as the page
+        # redraws a plain kdensity's grid and no longer marks it.
         df = _wdf()
-        r = self._run(df, plot_for("kdensity", _PW))
+        r = self._run(df, plot_for("kdensity", dict(_PW, recast="dot")))
         _assert_marked(r)
 
 
@@ -875,8 +882,9 @@ class TestTheFrozenTag:
                            # A refused weight: kdensity [pw] (lowess,
                            # lpoly and lpolyci are refitted since WP-31
                            # F1c, F1d, F1e).  Flipped (WP-31 F1e): it was
-                           # lpolyci [pw].
-                           plot_for("kdensity", _PW)],
+                           # lpolyci [pw].  Flipped (WP-31 H6): drawn as
+                           # dot, which the page does not recount.
+                           plot_for("kdensity", dict(_PW, recast="dot"))],
                           {"filter": "foreign, type(dropdown)"}), _wdf())
         tags = []
         for x in r.figures["g1"].renderers:

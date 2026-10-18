@@ -545,7 +545,10 @@ _SAVED_DIGEST = (
     # e3a57293... -> 0322e5ad...: WP-31 H6, the filter code redraws each
     # CI band's outline after the refit (code only: the page has no CI
     # layer, so no ci_outlines arg); the same under both Pythons.
-    "0322e5adb2e8619c0f45c057469b082e7c3a6285a36b99c19e0a394fc398158f")
+    # 0322e5ad... -> 00a009f6...: WP-31 H6, the filter code draws a
+    # kdensity on the kept rows' grid (code only: the page has no
+    # kdensity); the same under both Pythons.
+    "00a009f6a58c7374f79c9a88e0e6dd9bb6fdf5ad48417925443d4afc70f7880c")
 
 
 # ===========================================================================

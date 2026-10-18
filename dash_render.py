@@ -21835,6 +21835,8 @@ class GlyphMapper:
             _karea = 1.0
         x_range = np.linspace(_lo, _hi,
                               int(n_pts))
+        # WP-31 H6: the page redraws a grid the user did not give.
+        _kgrid_n = int(n_pts) if _rng is None else None
         density = _kde_curve(arr, x_range, bw, kernel, w) * float(_karea)
 
         # WP-29 P0.8: the grid, range() and the bandwidth are in the
@@ -21858,7 +21860,7 @@ class GlyphMapper:
                              self._kde_agg_config(yvar, x_draw, x_range,
                                                   kernel, bw, _bw_zero,
                                                   options, wtype, _karea,
-                                                  _kboundary),
+                                                  _kboundary, _kgrid_n),
                              self._agg_member_ids(source, view))
             return _first
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
@@ -21874,7 +21876,7 @@ class GlyphMapper:
         r._dash_agg_source = kd_source
         r._dash_agg_config = self._kde_agg_config(
             yvar, x_draw, x_range, kernel, bw, _bw_zero, options, wtype,
-            _karea, _kboundary)
+            _karea, _kboundary, _kgrid_n)
         # A stepped curve stays stepped when a saved move recomputes it
         # (_FILTER_JS's dash_join_rebuild; WP-30 P1.8a).
         _kd_style = _dash_join_spec(options)[0]
@@ -21885,9 +21887,11 @@ class GlyphMapper:
         return r
 
     def _kde_agg_config(self, yvar, x_draw, x_range, kernel, bw, bw_zero,
-                        options, wtype, karea, kboundary):
+                        options, wtype, karea, kboundary, grid_n=None):
         """The saved page's re-estimate config for a kdensity curve
-        (``map_kdensity``; WP-31 C16 shares it with the recast layer)."""
+        (``map_kdensity``; WP-31 C16 shares it with the recast layer).
+        *grid_n*, the curve's n() when no range() was given, lets the page
+        redraw the grid over the kept rows (WP-31 H6)."""
         _bw_zero, _karea, _kboundary = bw_zero, karea, kboundary
         cfg = {
             "type":      "kdensity",
@@ -21910,6 +21914,14 @@ class GlyphMapper:
             "area":      float(_karea),
             "boundary":  _kboundary,
         }
+        # WP-31 H6: with no range() and no date, the page draws the curve
+        # on the kept rows' own grid, n() points from their minimum to their
+        # maximum (one bandwidth past each with boundary), as twoway and the
+        # served refit do; the layer is then not marked.
+        if grid_n is not None and (self.date_vars or {}).get(yvar) \
+                not in _STATA_DATE_KINDS:
+            cfg["regrid"] = True
+            cfg["n"] = int(grid_n)
         # WP-29 P0.8: a date variable is re-estimated in its Stata units at
         # x_eval, the unit grid of the points drawn at x_grid; see
         # map_histogram.
@@ -33505,7 +33517,21 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             continue;
         }
         const kfn = dash_kernel(ac.kernel || 'epanechnikov');
-        const xs = ac.x_grid;
+        let xs = ac.x_grid;
+        if (ac.regrid === true && ac.n >= 1) {
+            // WP-31 H6: the kept rows' grid (map_kdensity's linspace).
+            let glo = Infinity, ghi = -Infinity;
+            for (const v of vals) { if (v < glo) glo = v; if (v > ghi) ghi = v; }
+            if (ac.boundary) { glo -= h; ghi += h; }
+            const gn = Math.floor(ac.n);
+            if (gn === 1) xs = [glo];
+            else {
+                const step = (ghi - glo) / (gn - 1);
+                xs = [];
+                for (let i = 0; i < gn; i++) xs.push(i * step + glo);
+                xs[gn - 1] = ghi;
+            }
+        }
         // WP-29 P0.8: evaluated at the unit grid, drawn at x_grid.
         const xe = ac.x_eval || xs;
         const ys = xe.map(x => {
@@ -59897,6 +59923,12 @@ class DashRenderer:
                 _ftag = self._frozen_layer_tag(ptype.lower(), popts,
                                                source_for_plot, _plot_view,
                                                _frozen_vars, kind=_fkind)
+                if _ftag is not None and _fkind is None and any(
+                        (getattr(_fr, "_dash_agg_config", None) or {}).get(
+                            "regrid") is True for _fr in _layer_renderers):
+                    # WP-31 H6: the page redraws this layer's grid over the
+                    # kept rows, so nothing is left to mark.
+                    _ftag = None
                 if _ftag is None and GlyphMapper._rot_conditional(
                         _layer_renderers):
                     # WP-31 C11b: a refitted lpoly or lpolyci on the rule

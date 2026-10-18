@@ -1252,9 +1252,14 @@ class TestTheSavedPageRecountsALayersOwnRows:
                     want.append(c / (len(v) * (b - a)))
                 got = after["top"]
             else:
+                # Flipped (WP-31 H6): the grid is the kept rows' own, n()
+                # points from their minimum to their maximum, as twoway
+                # and the served refit draw it; it was the build's.
                 grid = np.asarray(after["x"], dtype=float)
-                assert list(grid) == [float(x) for x in src.data["x"]], (
-                    "%s: the saved page moved its density grid" % title)
+                assert list(grid) == list(np.linspace(
+                    v.min(), v.max(), len(src.data["x"]))), (
+                    "%s: the saved page kept the build's density grid"
+                    % title)
                 want = list(dr._kde_curve(v, grid, dr._stata_kde_bandwidth(v),
                                           "epanechnikov"))
                 got = after["y"]

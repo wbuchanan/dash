@@ -459,15 +459,14 @@ class TestTheAdoText:
 
 
 # ---------------------------------------------------------------------------
-# The saved page after a move: a boundary density keeps the grid cue
+# The saved page after a move: a boundary density is redrawn
 # ---------------------------------------------------------------------------
 
 class TestBoundaryAfterASavedMove:
-    """The saved page re-estimates a kdensity on the build's grid; with
-    boundary that grid is [min - h, max + h] of every row, where twoway's
-    would be the kept rows' -- so, like any kdensity without range(), the
-    layer keeps the "grid" stale cue (WP-29 P0.17), never a silent
-    difference (WP-31 C5)."""
+    """With boundary the grid is [min - h, max + h]; the saved page draws
+    it over the kept rows, as twoway does (WP-31 H6; it kept the build's
+    grid with the "grid" stale cue until then, WP-31 C5).  The kind stays
+    "grid" for a layer the page cannot redraw (a date, recast(dot))."""
 
     def test_the_kind_is_grid(self):
         assert dr._dash_stale_kind("kdensity",
@@ -477,7 +476,9 @@ class TestBoundaryAfterASavedMove:
                                     "area": "74"}) == "grid"
 
     @requires_node
-    def test_a_move_marks_it(self):
+    def test_a_move_redraws_it(self):
+        """Flipped (WP-31 H6): the page draws the curve on the kept rows'
+        [min - h, max + h], as twoway does, and marks nothing."""
         import test_saved_stale_cue as sc
         from test_mode_parity import _spec
         from test_server_layer_defects import plot_for
@@ -485,12 +486,7 @@ class TestBoundaryAfterASavedMove:
             [plot_for("scatter"),
              plot_for("kdensity", {"boundary": "boundary", "area": "74"})],
             {"filter": "foreign, type(dropdown)"}))
-        cue = sc._one_cue(r)
-        assert cue.visible is False
+        rends = r.figures["g1"].renderers
+        assert not any(hasattr(x, "_dash_frozen") for x in rends)
         sc._act(r, ("Select", "Foreign"))
-        rends = sc._layer_rends(r)
-        assert rends and all(x.muted for x in rends)
-        assert cue.visible is True
-        items = sc._items_of(r.figures["g1"], rends)
-        assert items and all(sc._text(i.label).endswith(
-            dr._DASH_STALE_SUFFIX["grid"]) for i in items)
+        assert not any(x.muted for x in rends)
