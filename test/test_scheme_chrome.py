@@ -378,7 +378,11 @@ class TestChromeAfterAMove:
             for prop in ("text_font_style", "major_tick_",
                          "major_label_orientation", "grid_line_dash",
                          "axis_line_color", ".align"):
-                assert prop not in code, prop
+                # A write, not a read: the export's canvas code reads its
+                # own items' `.align` (it.align === ...), which is no
+                # chrome write.  Flipped: WP-32 D-53d draws table text.
+                assert not re.search(re.escape(prop) + r"\w*\s*=(?!=)",
+                                     code), prop
 
 
 class TestTheChromeKeysAreRead:
