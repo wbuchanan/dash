@@ -1245,8 +1245,11 @@ if `rca' != 0 | `fa' != 0 | `raw' != 0 | `ndoc' != 1 | `dec' != 0 {
     local bad22 "`bad22' [markup: rc=`rca' file=`fa' raw=`raw' documents=`ndoc' in the document=`dec']"
 }
 // The control: the same markup as a title does reach a model, and the
-// same reading finds it there -- once, in one document -- while the raw
-// page still holds it only escaped.
+// same reading finds it there -- twice, in one document: the figure's
+// Title text and its host's aria-label -- while the raw page still holds
+// it only escaped.  Flipped (WP-31 K6): once was wrong because a graph
+// title now also names its figure for assistive technology, an attribute
+// BokehJS sets with setAttribute and never parses.
 local out22t "`c(tmpdir)'dash_hc1_22t.html"
 capture erase "`out22t'"
 dash clear
@@ -1262,7 +1265,7 @@ if `ft' == 0 {
     local rawt = r(found)
     capture noisily python: _hc_decoded("out22t", "nd22", "dect", "ndoct")
 }
-if `rct' != 0 | `ft' != 0 | `rawt' != 0 | `ndoct' != 1 | `dect' != 1 {
+if `rct' != 0 | `ft' != 0 | `rawt' != 0 | `ndoct' != 1 | `dect' != 2 {
     local bad22 "`bad22' [title control: rc=`rct' file=`ft' raw=`rawt' documents=`ndoct' in the document=`dect']"
 }
 // Python in the qualifier: -syntax- parses the expression and refuses the

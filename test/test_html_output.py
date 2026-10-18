@@ -371,6 +371,12 @@ def _text_homes(html: str, needle: str) -> list:
         if isinstance(node, dict):
             if node.get("type") == "object" and "name" in node:
                 model = node["name"]
+            if attr == "html_attributes" and node.get("type") == "map":
+                # A host attribute, by its own name ("html_attributes:
+                # aria-label"), not by the map's "entries" key.
+                for key, v in node.get("entries") or []:
+                    walk(v, model, "html_attributes:%s" % key)
+                return
             for k, v in node.items():
                 walk(v, model, attr if k == "attributes" else k)
         elif isinstance(node, list):
@@ -431,11 +437,18 @@ def _inlined_bokehjs(html: str) -> list:
             and len(stamp.findall(body)) == 1]
 
 
-def _assert_drawn_as_text(html: str, payload: str, model: str) -> None:
+def _assert_drawn_as_text(html: str, payload: str, model: str,
+                          named: str = "") -> None:
     """*payload* reaches the page as the text of exactly one *model* -- a
     Title or a Label, which BokehJS draws on the canvas, where text is
     never markup -- and nowhere else: in no Div, HTMLTitle or HTMLLabel,
     whose text BokehJS renders as HTML, and not in the page's own markup.
+
+    *named* is the model whose host the payload also names (WP-31 K6: a
+    graph title is its figure's ``aria-label``): that one more home is the
+    host's ``html_attributes`` ``aria-label`` exactly, which BokehJS sets
+    with setAttribute (StyledElementView._apply_html_attributes) and never
+    parses -- an attribute sink, as test_label_sinks classifies it.
 
     The page text cannot show this.  The document is escaped as a whole on
     its way into the page, so the payload is never in the page text,
@@ -444,7 +457,10 @@ def _assert_drawn_as_text(html: str, payload: str, model: str) -> None:
     HTMLLabel, both passed ``payload not in html``.
     """
     homes = _text_homes(html, payload)
-    assert homes == [(model, "text", payload)], homes
+    want = [(model, "text", payload)]
+    if named:
+        want.insert(0, (named, "html_attributes:aria-label", payload))
+    assert homes == want, homes
     markup = _outside_document(html)
     # What is read is the page's own markup: its Bokeh root element is here.
     assert re.search(r'<div id="[^"]+" data-root-id="[^"]+"', markup), \
@@ -900,7 +916,11 @@ class TestXssInHtmlOutput:
         html = _render_to_html(spec, data)
         # The title is the figure's Title -- canvas text -- and live markup
         # nowhere.  "not in html" alone could not fail on the document.
-        _assert_drawn_as_text(html, "<script>alert(1)</script>", "Title")
+        # Flipped (WP-31 K6): the Title alone was wrong because the graph
+        # title is now also the figure host's aria-label, set as an
+        # attribute and never parsed.
+        _assert_drawn_as_text(html, "<script>alert(1)</script>", "Title",
+                              named="Figure")
 
     def test_html_contains_csp_meta(self):
         """HTML output includes Content-Security-Policy meta tag."""
@@ -1100,7 +1120,11 @@ class TestGraphOptionsInHtml:
         # Bokeh escapes the whole document on its way into the page, so the
         # literal tag is never in the page text whatever model carries it;
         # the document is read instead (see _assert_drawn_as_text).
-        _assert_drawn_as_text(html, "<script>alert(2)</script>", "Title")
+        # Flipped (WP-31 K6): the Title alone was wrong because the graph
+        # title is now also the figure host's aria-label, set as an
+        # attribute and never parsed.
+        _assert_drawn_as_text(html, "<script>alert(2)</script>", "Title",
+                              named="Figure")
 
 
 # ================================================================

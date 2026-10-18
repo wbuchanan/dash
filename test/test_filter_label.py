@@ -278,9 +278,18 @@ class TestTheLabelIsNotAnInjectionVector:
         # string holding the payload's call is found, wherever it sits; the
         # third payload's label is its apostrophe alone, and its call is in
         # the refused groups, so nothing in the document holds it.
+        # Flipped (WP-31 K6): the title alone was wrong because the label
+        # also names the widget's host -- its html_attributes aria-label,
+        # which BokehJS sets with setAttribute and never parses (an
+        # attribute sink, test_label_sinks).  The host holds exactly a role
+        # and that name: no payload becomes an attribute of its own.
         where = _document_strings_holding(page, "alert(1)")
-        assert where == ([(self._WIDGET[ftype], "title")]
+        assert where == ([(self._WIDGET[ftype], "html_attributes"),
+                          (self._WIDGET[ftype], "title")]
                          if "alert(1)" in label else []), (raw, where)
+        host = dict(dr.filter_widgets[0].html_attributes or {})
+        assert set(host) == {"role", "aria-label"}, (raw, host)
+        assert host["role"] == "group", (raw, host)
         # The reader finds the label itself, the apostrophe too, where it is.
         assert (self._WIDGET[ftype], "title") in _document_strings_holding(
             page, label), raw
