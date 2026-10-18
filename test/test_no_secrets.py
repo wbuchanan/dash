@@ -43,7 +43,9 @@ PATTERNS = (
 #: dash.sthlp's Author section and README.md.  It is a contact, not a
 #: secret; every key pattern above is still refused in these files.
 _EMAIL_ALLOWED = (".ultraplan/",)
-_EMAIL_ALLOWED_FILES = frozenset({"dash.pkg", "dash.sthlp", "README.md"})
+# test/test_readme.py pins the address those three files must give (D38).
+_EMAIL_ALLOWED_FILES = frozenset({"dash.pkg", "dash.sthlp", "README.md",
+                                  "test/test_readme.py"})
 
 
 def _tracked():
@@ -118,8 +120,10 @@ def test_the_suites_own_key_is_allowed():
 
 
 def test_the_contact_files_still_refuse_keys():
-    """D38's three files are exempt from the address check only."""
-    assert _EMAIL_ALLOWED_FILES == {"dash.pkg", "dash.sthlp", "README.md"}
+    """D38's three files, and the test that pins their address, are exempt
+    from the address check only."""
+    assert _EMAIL_ALLOWED_FILES == {"dash.pkg", "dash.sthlp", "README.md",
+                                    "test/test_readme.py"}
     # README.md arrives with S59 (batch 20); the two shipped files exist.
     assert _text("dash.pkg") is not None and _text("dash.sthlp") is not None
     for rel in sorted(_EMAIL_ALLOWED_FILES):
