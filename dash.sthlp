@@ -3510,8 +3510,11 @@ layer's colour.  {cmd:ciplot(dot)} draws the markers without
 and {opt estcmd(cmd)} are run by Stata when the graph is registered --
 {cmd:regress} (or {cmd:fracpoly} with {cmd:estcmd()}) and {cmd:predict},
 through {cmd:twoway}'s own fit generator -- so the layer is drawn as
-registered and does not refit after a filter move: the saved page marks it
-as computed before the filter, and the served app says so.  A
+registered and does not refit after a filter move: both the saved page and
+{cmd:dash serve} mark it, while a move has removed observations, with the
+legend key "(unfiltered)", the caption "Marked layers were computed before
+the filter" and a note under the filters (the served page's is worded for
+{cmd:dash serve}); the served page does not dim it.  A
 {cmd:predopts()} of {cmd:predict}'s observation-level options
 ({cmd:residuals}, {cmd:cooksd}, ...) is evaluated at the observations and
 refused with {cmd:range()}, as {cmd:twoway} refuses it.  Their text may not

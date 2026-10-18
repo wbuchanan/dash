@@ -173,7 +173,7 @@ try:
         Span,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         TabPanel,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         Tabs,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
-        Title as _BkTitle,
+        Title as _BkTitle,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         WheelZoomTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     )
     from bokeh.plotting import figure as bokeh_figure
@@ -2278,8 +2278,9 @@ _DASH_LOWESS_JS_MAX_OPS = 2e8
 # A saved page does not refit a computed layer after a filter move; while
 # the filters that reach it have removed a row of its estimation sample it
 # is marked instead.  Each constant below is part of that cue (M3: a
-# visible cue, no JavaScript estimator).  Saved-page only: the served app
-# refits and reads none of them.
+# visible cue, no JavaScript estimator).  The served app refits every
+# such layer except a fit drawn from Stata's own points, which it marks
+# with the caption, the suffix and _DASH_STALE_SERVED_HTML (WP-32).
 #: WP-29 P0.17 (M3): a marked layer draws at this share of its own alphas.
 _DASH_STALE_ALPHA = 0.3
 #: WP-29 P0.17 (M3): what a marked layer's legend key gains, by kind.
@@ -2295,6 +2296,16 @@ _DASH_STALE_STATUS_HTML = (
     'font-size:12px">Layers marked (unfiltered), (bins unfiltered) or '
     '(grid unfiltered) were computed before the filter was applied, and a '
     'saved page does not recompute them; dash serve does.</p>')
+#: WP-32: the served page's status line for a fit drawn from Stata's own
+#: points (estopts()/predopts()/estcmd()) that a filter move has left
+#: stale: the saved line's look, worded for dash serve, which refits every
+#: other layer.  Fixed text (no user text is spliced in).
+_DASH_STALE_SERVED_HTML = (
+    '<p role="status" aria-live="polite" aria-atomic="true" '
+    'style="margin:0;padding:2px 6px;background:#fff4ce;color:#3d2f00;'
+    'font-size:12px">Layers marked (unfiltered) were computed by Stata '
+    'when the dashboard was registered, and dash serve does not recompute '
+    'them after a filter move.</p>')
 #: WP-31 H1: the filter area's error line, written by the saved page's
 #: dash_report_js_error when a script fails; %s is the failure's message,
 #: escaped and at most 300 characters.  #5c0011 on #fde7e9 is about 10.5:1.
@@ -2494,6 +2505,95 @@ def _dash_stale_glyph(glyph):
         else:
             setattr(g, a, _DASH_STALE_ALPHA)
     return g
+
+
+def _dash_stale_cue_title():
+    """The hidden caption a marked layer's graph shows (WP-29 P0.17), one
+    per figure at index 0 of ``fig.above``: the saved page's and, for a fit
+    drawn from Stata's points, the served page's (WP-32)."""
+    from bokeh.models import Title
+    return Title(text=_DASH_STALE_CUE_TEXT, visible=False,
+                 tags=["dash_stale_cue"], text_font_size="9pt",
+                 text_font_style="normal", text_color="#3d2f00",
+                 background_fill_color="#fff4ce",
+                 border_line_color="#8a6d00", align="left")
+
+
+def _dash_points_stale_models(aggs):
+    """The served page's stale-cue models for the fits drawn from Stata's
+    own points (WP-32, BUGS.md "Found by the runtime-notes parity entry: a
+    fit drawn from Stata's points is stale after a move and the served page
+    does not say so"), or None when no layer of *aggs* is one.
+
+    *aggs* is the served app's ``{(graph, layer): agg}`` redraw table; an
+    agg whose ``"frozen"`` lists the layer's renderers gets ``"cue"``, its
+    figure's hidden caption (:func:`_dash_stale_cue_title`, one per
+    figure, at index 0 of ``fig.above`` as on the saved page), and
+    ``"status"``, the one hidden status Div, which is returned for the
+    filter row.  :func:`_dash_points_stale_follow` shows them."""
+    from bokeh.models import Div
+    status, cues = None, {}
+    for agg in aggs.values():
+        if not agg.get("frozen"):
+            continue
+        fig = agg["fig"]
+        if id(fig) not in cues:
+            cues[id(fig)] = _dash_stale_cue_title()
+            fig.above = [cues[id(fig)]] + list(fig.above)
+        if status is None:
+            # disable_math: the note is fixed HTML, never maths.
+            status = Div(text=_DASH_STALE_SERVED_HTML, visible=False,
+                         tags=["dash_stale_status"],
+                         sizing_mode="stretch_width", disable_math=True)
+        agg["cue"], agg["status"] = cues[id(fig)], status
+    return status
+
+
+def _dash_points_stale_follow(aggs):
+    """After a served move, the cue :func:`_dash_points_stale_models` made,
+    shown as the saved page shows its own (WP-29 P0.17): each legend key of
+    a stale layer (``agg["stale"]``, from the redraw's
+    ``_dash_points_stale``) gains ``_DASH_STALE_SUFFIX["fit"]``, its
+    figure's caption and the status line show; a layer whose rows are all
+    kept again loses them.  Only string labels are touched; never raises
+    on an agg without the cue."""
+    from bokeh.models import Legend
+    cues, status, any_stale = {}, None, False
+    for agg in aggs.values():
+        rends, cue = agg.get("frozen"), agg.get("cue")
+        if not rends or cue is None:
+            continue
+        stale = bool(agg.get("stale"))
+        any_stale = any_stale or stale
+        status = agg.get("status") or status
+        cues[id(cue)] = (cue, stale or cues.get(id(cue), (cue, False))[1])
+        fig, ids = agg["fig"], {id(r) for r in rends}
+        for side in (fig.center, fig.above, fig.below, fig.left, fig.right):
+            for leg in side:
+                if not isinstance(leg, Legend):
+                    continue
+                for it in leg.items:
+                    if not any(id(x) in ids for x in it.renderers):
+                        continue
+                    base = getattr(it, "_dash_stale_base", None)
+                    if base is None:
+                        lab = it.label
+                        base = (lab.get("value") if isinstance(lab, dict)
+                                else getattr(lab, "value", None))
+                        if not isinstance(base, str):
+                            continue  # a field label
+                        it._dash_stale_base = base
+                    want = base + (_DASH_STALE_SUFFIX["fit"] if stale
+                                   else "")
+                    lab = it.label
+                    now = (lab.get("value") if isinstance(lab, dict)
+                           else getattr(lab, "value", None))
+                    if now != want:
+                        it.label = {"value": want}
+    for cue, shown in cues.values():
+        cue.visible = shown
+    if status is not None:
+        status.visible = any_stale
 
 #: One bound on every computed layer above except a histogram and a
 #: lowess, which are counted exactly (see _dash_graph_computed_cells):
@@ -19416,9 +19516,10 @@ class GlyphMapper:
         renderer is marked ``_dash_points_frozen``; the figure builder tags
         the layer with the stale cue's kind "fit".  When the layer holds
         fewer rows than Stata's sample (*nrows* against ``nobs``: a filter
-        move in the served app) one note says the layer is drawn as
-        registered.  Points that cannot be read draw the layer empty, with
-        a note.
+        move in the served app) each renderer is marked
+        ``_dash_points_stale``, and the served page shows the stale cue
+        (:func:`_dash_points_stale_follow`).  Points that cannot be read
+        draw the layer empty, with a note.
         """
         pts = _dash_fit_points_of(options)
         if pts is None:
@@ -19437,12 +19538,12 @@ class GlyphMapper:
             plo = phi = np.full(len(px), np.nan)
         _nobs = (options.get("points") or {}).get("nobs") \
             if isinstance(options.get("points"), dict) else None
-        if isinstance(_nobs, (int, float)) and not isinstance(_nobs, bool) \
-                and nrows < _nobs:
-            _dash_warn_once(
-                ("fit-points", ptype, str(yvar), str(xvar)),
-                f"dash: {ptype} with {_name} is drawn as registered; a "
-                f"filter move does not refit it.")
+        # Fewer rows than Stata's sample (a served filter move): the layer
+        # is stale, and the served page shows the saved page's cue for it
+        # (WP-32, _dash_points_stale_follow); a note to the server's log,
+        # which no reader of the page sees, was all it said.
+        _stale = (isinstance(_nobs, (int, float))
+                  and not isinstance(_nobs, bool) and nrows < _nobs)
         # Computed in Stata units, drawn where the axes draw them (WP-29
         # P0.8), as the mappers' own fits are.
         px, _ox = self._on_axis(fig, px, xvar, "x", options)
@@ -19479,6 +19580,7 @@ class GlyphMapper:
         for _r in (out if isinstance(out, list) else [out]):
             if _r is not None:
                 _r._dash_points_frozen = True
+                _r._dash_points_stale = _stale
         return out
 
     def map_lfit(
@@ -62681,11 +62783,7 @@ class DashRenderer:
             if not use:
                 continue  # an excluded graph gets nothing
             fig = self.figures[fig_key]
-            cue = _BkTitle(text=_DASH_STALE_CUE_TEXT, visible=False,
-                           tags=["dash_stale_cue"], text_font_size="9pt",
-                           text_font_style="normal", text_color="#3d2f00",
-                           background_fill_color="#fff4ce",
-                           border_line_color="#8a6d00", align="left")
+            cue = _dash_stale_cue_title()
             fig.above = [cue] + list(fig.above)
             titles.append(cue)
             t_idx = len(titles) - 1
@@ -63837,6 +63935,9 @@ class ServerAppBuilder:
                       "_MAX_AXIS_TICKS",
                       # WP-32: the empty axis's extent.
                       "_DASH_EMPTY_SCALE",
+                      # WP-32: the served stale cue's texts.
+                      "_DASH_STALE_CUE_TEXT", "_DASH_STALE_SUFFIX",
+                      "_DASH_STALE_SERVED_HTML",
                       # WP-28 S14 (B1): _dash_parse_axis_spec's leading
                       # rule, and _dash_expand_numlist's three numlist
                       # forms.
@@ -64802,6 +64903,10 @@ class ServerAppBuilder:
                     # map_contour draws with, in both renderers.
                     _dash_contour_zticks, _dash_contour_cuts,
                     _dash_contour_cut_rule, _dash_contour_bar_follow,
+                    # WP-32: the stale cue of a fit drawn from Stata's
+                    # points, built and followed on the served page.
+                    _dash_stale_cue_title, _dash_points_stale_models,
+                    _dash_points_stale_follow,
                     _dash_contour_colours, _dash_contour_line_style,
                     _dash_contour_fill_levels, _dash_is_horizontal_opts,
                     # qfit's and qfitci's shared design (the WP-18 review).
@@ -66828,6 +66933,12 @@ class ServerAppBuilder:
             "                        if _kb is not None else [],",
             "                        dict(_kb.major_label_overrides or {})",
             "                        if _kb is not None else {})",
+            "            # WP-32: a fit drawn from Stata's points over fewer rows",
+            "            # than Stata's sample is stale; the page says so.",
+            "            if _out:",
+            "                _out[0]._dash_points_stale = any(",
+            "                    getattr(_rr, '_dash_points_stale', False)",
+            "                    for _rr in _tfig.renderers)",
             "            return _out",
             "        return lambda frame: _dash_under_graph_scheme(g, _redraw, frame)",
             "",
@@ -67123,6 +67234,12 @@ class ServerAppBuilder:
             "                }",
             "                for _rs in agg_sources[(gname, pi)]['sources']:",
             "                    _redrawn_ids.add(id(_rs))",
+            "                # WP-32: a fit drawn from Stata's own points is never",
+            "                # refitted; its renderers carry the page's stale cue.",
+            "                _pf = [_rr for _rr in fig.renderers[_r_before:]",
+            "                       if getattr(_rr, '_dash_points_frozen', False)]",
+            "                if _pf:",
+            "                    agg_sources[(gname, pi)].update(frozen=_pf, fig=fig)",
             "                # WP-31 B4d: the contour's colour key, moved with it.",
             "                for _side in ('right', 'left', 'above', 'below', 'center'):",
             "                    for _km in getattr(fig, _side, None) or []:",
@@ -67958,12 +68075,18 @@ class ServerAppBuilder:
             "                _ck = getattr(_fresh[0], '_dash_ckey', None) if _fresh else None",
             "                if _ck is not None and agg.get('ckey') is not None:",
             "                    _dash_contour_bar_follow(agg['ckey'], *_ck)",
+            "                if agg.get('frozen'):",
+            "                    agg['stale'] = bool(_fresh) and getattr(",
+            "                        _fresh[0], '_dash_points_stale', False)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",
             "                        'expected; the layer may be stale.' % (",
             "                            agg.get('type'), key[1] + 1, len(_fresh), len(agg['sources'])),",
             "                        UserWarning)",
+            "            # 3a. The stale cue of a fit drawn from Stata's points",
+            "            # (WP-32), as the saved page shows its own.",
+            "            _dash_points_stale_follow(_agg_srcs)",
             "            # 3b. Tick and range the axes again over the rows kept,",
             "            # as twoway does under the same `if' (WP-30 P1.3a).",
             "            if _axis_figs is not None:",
@@ -68320,6 +68443,11 @@ class ServerAppBuilder:
             "        # no filter gets a bar of its own.  A new list: the recompute",
             "        # callbacks keep the filters' own.",
             "        filter_widgets = list(filter_widgets) + [_csv_btn]",
+            "    # WP-32: the stale cue's status line, before the reset button",
+            "    # as on the saved page, for a fit drawn from Stata's points.",
+            "    _stale_status = _dash_points_stale_models(agg_sources)",
+            "    if _stale_status is not None and filter_widgets:",
+            "        filter_widgets = list(filter_widgets) + [_stale_status]",
             "    # The row ends in Reset filters (WP-31 H2f), as the saved one does.",
             "    if _reset_btn is not None:",
             "        filter_widgets = list(filter_widgets) + [_reset_btn]",

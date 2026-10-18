@@ -148,6 +148,16 @@ ALLOWED = {
         "app draws it above sidebar and content -- a layout(bs) entry "
         "never sets filterposition(left)."
     ),
+    "the move oracle draws no stale cue": (
+        "After a move the served page marks a fit drawn from Stata's own "
+        "points (estopts()/predopts()/estcmd()), which neither mode refits, "
+        "with the saved page's cue: its legend keys gain ' (unfiltered)' "
+        "(WP-32).  The move entries' oracle is the saved renderer over the "
+        "kept rows, a build, which marks nothing; the saved page's cue is "
+        "drawn by its own script.  The chrome comparison drops the served "
+        "suffix, and TestTheRuntimeNotesAgree compares the cue of both "
+        "pages after the move, the saved one through its own script."
+    ),
     "a served session's recompute cue": (
         "A served SESSION -- the launched app a browser connects to, never "
         "a document built in process -- recomputes a move on its worker "
@@ -3273,6 +3283,25 @@ def _legends_of(fig_profile):
     return [x for x in fig_profile["annotations"] if x["kind"] == "Legend"]
 
 
+def _without_served_cue(legends):
+    """*legends* (``_legends_of``) less the stale suffix the served page
+    gives a fit drawn from Stata's points after a move (WP-32).  The move
+    oracle is the saved renderer over the kept rows, which never marks a
+    layer -- the saved page's cue is its script's -- so the cue is compared
+    where both pages' own code draws it: ``_allowed("the move oracle draws
+    no stale cue")``, TestTheRuntimeNotesAgree."""
+    suffix = dr._DASH_STALE_SUFFIX["fit"]
+    out = []
+    for leg in legends:
+        items = [(lab[:-len(suffix)] if isinstance(lab, str)
+                  and lab.endswith(suffix) else lab, kinds)
+                 for lab, kinds in leg["items"]]
+        if items != leg["items"]:
+            _allowed("the move oracle draws no stale cue")
+        out.append(dict(leg, items=items))
+    return out
+
+
 def _move_widget_value(w, kind, want):
     """The raw value a move sets on *w*: a Select's and a MultiChoice's
     options are picked by their labels, as ``_served_after_move`` does."""
@@ -4085,7 +4114,8 @@ class TestAFilterMoveAgrees:
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
             ca = {"chrome": a["chrome"], "legends": _legends_of(a)}
-            cb = {"chrome": b["chrome"], "legends": _legends_of(b)}
+            cb = {"chrome": b["chrome"],
+                  "legends": _without_served_cue(_legends_of(b))}
             diffs = _diff(ca, cb)
             assert not diffs, _explain(name, f"figure {i} chrome after the "
                                              f"move", diffs)
@@ -5748,19 +5778,14 @@ _NOTE_MOVES = [p for p in MOVE_CORPUS if p.values[0] in _NOTE_CASES] + [
 ]
 
 
-#: Differences this comparison found (WP-32, 18oct2026), pinned so the test
-#: fails the day an entry agrees (delete its name then), and filed in
-#: BUGS.md "Found by the runtime-notes parity entry: a fit drawn from
+#: Differences this comparison found, pinned so the test fails the day an
+#: entry agrees (delete its name then).  Never ALLOWED (R8).  Emptied
+#: (WP-32, 18oct2026): the two fits drawn from Stata's own points were
+#: marked by the saved page alone; the served page now shows the same cue
+#: (BUGS.md "Found by the runtime-notes parity entry: a fit drawn from
 #: Stata's points is stale after a move and the served page does not say
-#: so".  Never ALLOWED (R8).  A fit drawn from Stata's own points
-#: (estopts()/predopts()/estcmd()) is refitted by neither mode after a
-#: move; the saved page marks it "(unfiltered)" with its caption and
-#: status line, the served page shows nothing and the app only logs
-#: "is drawn as registered; a filter move does not refit it".
-_NOTES_FOUND_AFTER_MOVE = frozenset({
-    "lfit with points after a move (WP-31 C4)",
-    "lfitci with points, slider to 4500",
-})
+#: so").
+_NOTES_FOUND_AFTER_MOVE = frozenset()
 
 
 @pytest.mark.parametrize("name,spec,action,oracle", _NOTE_MOVES)
@@ -5778,7 +5803,14 @@ class TestTheRuntimeNotesAgree:
         page shows and the other does not."""
         srv, srv_said = _served_notes_after_move(spec, action)
         std = _saved_notes_after_move(spec, action)
-        refits = not [w for w in srv_said if "does not refit" in w]
+        # The served page marks a layer it does not refit with the same
+        # cue, its status line worded for dash serve (WP-32): that line is
+        # compared as the saved one, and a served page showing no cue is
+        # one that refits.
+        srv = sorted([(k, dr._DASH_STALE_STATUS_HTML
+                       if (k, t) == ("Div", dr._DASH_STALE_SERVED_HTML)
+                       else t) for k, t in srv], key=repr)
+        refits = srv == _without_stale_cue(srv)
         if refits and std != _without_stale_cue(std):
             _allowed("aggregate layers recompute live")
             std = _without_stale_cue(std)

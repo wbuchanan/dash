@@ -290,9 +290,44 @@ class TestEstoptsPoints:
         lines = [x for x in figs[0].renderers
                  if type(getattr(x, "glyph", None)).__name__ == "Line"]
         assert _ys(lines[-1]) == _PTS["y"]
+        # Flipped (WP-32, BUGS.md "Found by the runtime-notes parity
+        # entry: a fit drawn from Stata's points is stale after a move and
+        # the served page does not say so"): the app wrote one note to the
+        # server's log, which no reader of the page sees; the page now
+        # shows the saved page's cue -- the key's suffix, the caption and a
+        # status line worded for dash serve -- and the log says nothing.
         notes = [str(c.message) for c in caught
                  if "is drawn as registered" in str(c.message)]
-        assert len(notes) == 1, notes
+        assert notes == [], notes
+        keys = [str(it.label.get("value") if isinstance(it.label, dict)
+                    else getattr(it.label, "value", it.label))
+                for m in doc.models if type(m).__name__ == "LegendItem"
+                for it in [m]]
+        assert "Fitted values" + dr._DASH_STALE_SUFFIX["fit"] in keys, keys
+        cues = [m for m in doc.models if type(m).__name__ == "Title"
+                and m.text == dr._DASH_STALE_CUE_TEXT]
+        assert [c.visible for c in cues] == [True], cues
+        status = [m for m in doc.models if type(m).__name__ == "Div"
+                  and m.text == dr._DASH_STALE_SERVED_HTML]
+        assert [d.visible for d in status] == [True], status
+
+    def test_served_move_back_clears_the_cue(self):
+        """Every row kept again: the layer is Stata's fit of them, so the
+        served cue is taken off (the saved page's rule, P0.17)."""
+        doc, _ = _served(_spec([plot_for("scatter"), _pts_plot("lfit")],
+                               {"filter": _MOVES[0][1]}))
+        sel = [w for w in _widgets_of(doc) if type(w).__name__ == "Select"]
+        raw = [v for v, lab in sel[0].options if lab == "Foreign"][0]
+        first = sel[0].value
+        _fire(sel[0], raw)
+        _fire(sel[0], first)
+        cues = [m for m in doc.models if type(m).__name__ == "Title"
+                and m.text == dr._DASH_STALE_CUE_TEXT]
+        assert cues and not any(c.visible for c in cues)
+        keys = [str(m.label.get("value") if isinstance(m.label, dict)
+                    else getattr(m.label, "value", m.label))
+                for m in doc.models if type(m).__name__ == "LegendItem"]
+        assert "Fitted values" in keys, keys
 
     def test_attach_puts_points_on_a_fit_layer(self):
         spec = _spec([plot_for("lfit", {"estopts": "noconstant"}),
@@ -303,6 +338,62 @@ class TestEstoptsPoints:
         assert plots[0]["options"]["points"] == _PTS
         assert "points" not in plots[1]["options"]
         assert "points" not in plots[1]
+
+
+class TestTheServedStaleCue:
+    """The served page's cue for a fit drawn from Stata's points (WP-32,
+    BUGS.md "Found by the runtime-notes parity entry: a fit drawn from
+    Stata's points is stale after a move and the served page does not say
+    so"), helper by helper."""
+
+    @staticmethod
+    def _agg():
+        from bokeh.plotting import figure
+        fig = figure()
+        line = fig.line([1, 2], [3, 4], legend_label="Fitted values")
+        dots = fig.scatter([1, 2], [3, 4], legend_label="Mileage")
+        return fig, line, dots, {("g1", 1): {"frozen": [line], "fig": fig},
+                                 ("g1", 0): {"sources": []}}
+
+    @staticmethod
+    def _keys(fig):
+        return [it.label.get("value") if isinstance(it.label, dict)
+                else it.label.value for it in fig.legend[0].items]
+
+    def test_the_caption_is_the_saved_pages(self):
+        t = dr._dash_stale_cue_title()
+        assert (t.text, t.visible, t.tags) == (
+            dr._DASH_STALE_CUE_TEXT, False, ["dash_stale_cue"])
+
+    def test_models_give_one_caption_per_figure_and_one_status(self):
+        fig, _l, _d, aggs = self._agg()
+        aggs[("g1", 2)] = {"frozen": [_l], "fig": fig}
+        status = dr._dash_points_stale_models(aggs)
+        assert status.text == dr._DASH_STALE_SERVED_HTML
+        assert status.visible is False
+        assert fig.above[0] is aggs[("g1", 1)]["cue"] \
+            is aggs[("g1", 2)]["cue"]
+        assert len([m for m in fig.above
+                    if m.text == dr._DASH_STALE_CUE_TEXT]) == 1
+        assert "cue" not in aggs[("g1", 0)]
+
+    def test_models_are_none_without_a_points_layer(self):
+        assert dr._dash_points_stale_models({("g", 0): {"sources": []}}) \
+            is None
+
+    def test_follow_marks_a_stale_layer_and_clears_it(self):
+        fig, _l, _d, aggs = self._agg()
+        status = dr._dash_points_stale_models(aggs)
+        aggs[("g1", 1)]["stale"] = True
+        dr._dash_points_stale_follow(aggs)
+        assert self._keys(fig) == ["Fitted values (unfiltered)", "Mileage"]
+        assert fig.above[0].visible and status.visible
+        dr._dash_points_stale_follow(aggs)   # twice: one suffix
+        assert self._keys(fig)[0] == "Fitted values (unfiltered)"
+        aggs[("g1", 1)]["stale"] = False
+        dr._dash_points_stale_follow(aggs)
+        assert self._keys(fig) == ["Fitted values", "Mileage"]
+        assert not fig.above[0].visible and not status.visible
 
 
 # ---------------------------------------------------------------------------
