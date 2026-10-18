@@ -303,6 +303,18 @@ _DASH_BOKEH_INTERNALS = (
      "_dash_multi_label",
      "test/test_label_sinks.py::TestMultiChoiceLabels"
      "::test_multichoice_labels_are_text"),
+    # WP-31 K6 (D-54e): the tab strips' keyboard script reads Bokeh's
+    # header elements in the Tabs view's shadow root.
+    (".bk-tab header class (the strip is its parent) and Tabs.active",
+     "_dash_tabs_keys_hook (runs _DASH_TABS_KEYS_JS; browser test)",
+     "test/test_accessibility.py::TestTheBundle"
+     "::test_the_tab_header_class_exists_in_the_bundle"),
+    # WP-31 K6: the sliders' handles (noUiSlider's, in Bokeh's slider
+    # views) are named by _DASH_SLIDER_NAMES_JS.
+    (".noUi-handle (role=slider) in BokehJS's slider views",
+     "_dash_slider_names_hook (runs _DASH_SLIDER_NAMES_JS; browser test)",
+     "test/test_accessibility.py::TestTheBundle"
+     "::test_the_slider_handle_class_exists_in_the_bundle"),
 )
 
 
@@ -2268,6 +2280,76 @@ _DASH_JS_ERROR_HTML = (
     'style="margin:0;padding:2px 6px;background:#fde7e9;color:#5c0011;'
     'font-size:12px">The filter script of this page stopped with an '
     'error: %s. Reload the page; if it recurs, rebuild the dashboard.</p>')
+#: WP-31 K6 (D-54e): the tab strips' keyboard script, a document_ready
+#: CustomJS (``_dash_tabs_keys_hook``) with ``tabs``, the page's Tabs
+#: models.  Bokeh draws each header as a ``div.bk-tab`` in the Tabs view's
+#: shadow root (on ``_DASH_BOKEH_INTERNALS``) with a click handler only;
+#: this names the headers' parent (the header row) a tablist, each header a tab with
+#: aria-selected and a roving tabindex, and moves the active tab and the
+#: focus together on Enter, Space, ArrowLeft/ArrowRight (wrapping), Home
+#: and End.  Fixed text: nothing of the user's is spliced in.
+_DASH_TABS_KEYS_JS = (
+    "for (const t of tabs) {\n"
+    "  let v = null;\n"
+    "  try { v = Bokeh.index.find_one(t); } catch (e) { v = null; }\n"
+    "  if (!v || !v.shadow_el) continue;\n"
+    "  const root = v.shadow_el;\n"
+    "  const heads = () => Array.from(root.querySelectorAll('.bk-tab'));\n"
+    "  const first = heads()[0];\n"
+    "  const strip = first ? first.parentElement : null;\n"
+    "  if (strip) {\n"
+    "    strip.setAttribute('role', 'tablist');\n"
+    "    strip.setAttribute('aria-label', 'Dashboard tabs');\n"
+    "  }\n"
+    "  const mark = () => {\n"
+    "    heads().forEach((h, i) => {\n"
+    "      const on = i === t.active;\n"
+    "      h.setAttribute('role', 'tab');\n"
+    "      h.setAttribute('aria-selected', on ? 'true' : 'false');\n"
+    "      h.tabIndex = on ? 0 : -1;\n"
+    "    });\n"
+    "  };\n"
+    "  mark();\n"
+    "  root.addEventListener('keydown', (ev) => {\n"
+    "    const hs = heads();\n"
+    "    const i = hs.indexOf(ev.target);\n"
+    "    if (i < 0 || !hs.length) return;\n"
+    "    let j = null;\n"
+    "    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') j = i;\n"
+    "    else if (ev.key === 'ArrowRight') j = (i + 1) % hs.length;\n"
+    "    else if (ev.key === 'ArrowLeft') j = (i - 1 + hs.length) % hs.length;\n"
+    "    else if (ev.key === 'Home') j = 0;\n"
+    "    else if (ev.key === 'End') j = hs.length - 1;\n"
+    "    if (j === null) return;\n"
+    "    ev.preventDefault();\n"
+    "    if (t.active !== j) t.active = j;\n"
+    "    mark();\n"
+    "    const h = heads()[j];\n"
+    "    if (h) h.focus();\n"
+    "  });\n"
+    "  t.connect(t.properties.active.change, mark);\n"
+    "}\n")
+#: WP-31 K6: the filter sliders' handles named for assistive technology, a
+#: document_ready CustomJS (``_dash_slider_names_hook``) with ``sliders``,
+#: the page's slider and range widgets.  BokehJS draws each handle as a
+#: noUiSlider ``div.noUi-handle`` with ``role="slider"`` and no name (axe
+#: aria-input-field-name); each gets the widget's title, a range's two
+#: ", lower end" and ", upper end".  The title is set with setAttribute
+#: (inert); the script is fixed text.
+_DASH_SLIDER_NAMES_JS = (
+    "for (const s of sliders) {\n"
+    "  let v = null;\n"
+    "  try { v = Bokeh.index.find_one(s); } catch (e) { v = null; }\n"
+    "  if (!v || !v.shadow_el) continue;\n"
+    "  const name = () => {\n"
+    "    const hs = Array.from(v.shadow_el.querySelectorAll('.noUi-handle'));\n"
+    "    const t = String(s.title || 'Filter');\n"
+    "    hs.forEach((h, i) => h.setAttribute('aria-label', hs.length > 1\n"
+    "      ? t + (i === 0 ? ', lower end' : ', upper end') : t));\n"
+    "  };\n"
+    "  name();\n"
+    "  s.connect(s.properties.title.change, name);\n"
+    "}\n")
 
 #: WP-31 H2t: a graph's data table.  Its text columns are
 #: ``__dash_tbl_<var>`` (the variable's display text, one per row, carried
@@ -46758,7 +46840,9 @@ def _dash_filter_reset_button(widgets):
         return None
     from bokeh.models import Button
     return Button(label="Reset filters", button_type="default",
-                  tags=["dash_filter_reset"])
+                  tags=["dash_filter_reset"],
+                  html_attributes={"role": "group",
+                                   "aria-label": "Reset filters"})
 
 
 def _dash_reset_value(widget):
@@ -46851,7 +46935,8 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         if w._dash_numeric:
             w._dash_groups = {members[0]: tuple(members)
                               for members in _by_label.values()}
-        return w, sentinel
+        return _dash_aria(w, _dash_graph_text_plain(title),
+                          role="group"), sentinel
     if ftype not in ("slider", "range"):
         return None, None
     if not (pd.api.types.is_numeric_dtype(series) or is_date):
@@ -46874,7 +46959,8 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         w._dash_initial = w.value
         if _period:
             w._dash_unit = date_kind
-        return w, None
+        return _dash_aria(w, _dash_graph_text_plain(title),
+                          role="group"), None
     vmin, vmax = float(arr.min()), float(arr.max())
     if vmin == vmax:
         vmax = vmin + 1.0
@@ -46921,7 +47007,7 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
     w._dash_ftype = ftype
     w._dash_is_date = is_date
     w._dash_initial = w.value
-    return w, None
+    return _dash_aria(w, _dash_graph_text_plain(title), role="group"), None
 
 
 def _dash_dropdown_mask(column, value, groups=None, codes=None):
@@ -48932,7 +49018,11 @@ def _dash_tab_panels(tabs_spec, cell_of):
             title=title))
     if not panels:
         return None, placed
-    return Tabs(tabs=panels, sizing_mode="stretch_width"), placed
+    # WP-31 K6: the strip is a named region; its header row becomes the
+    # tablist, and each header a tab, in _DASH_TABS_KEYS_JS.
+    return Tabs(tabs=panels, sizing_mode="stretch_width",
+                html_attributes={"role": "region",
+                                 "aria-label": "Dashboard tabs"}), placed
 
 
 def _dash_tab_grid(names, layout, cell_of):
@@ -54433,6 +54523,117 @@ def _dash_hover_layer_vars(plot):
     return out
 
 
+#: The longest accessible name dash writes (WP-31 K6, D-54a).
+_DASH_ARIA_MAX = 120
+
+
+def _dash_aria(model, text, **extra):
+    """Give *model* the accessible name *text* (WP-31 K6): ``aria-label``
+    in its host ``html_attributes``, merged into any it has, with *extra*
+    attributes (``role="group"``; an underscore in a key is a hyphen).
+    The name is its printable characters, at most 120 of them
+    (``_dash_display``); BokehJS writes it with ``setAttribute``, so it is
+    inert.  An empty *text* sets only *extra*.  Returns *model*."""
+    attrs = dict(getattr(model, "html_attributes", None) or {})
+    for k, v in extra.items():
+        attrs[k.replace("_", "-")] = str(v)
+    # Unprintable characters are dropped, not shown as "?": the word
+    # joiner that breaks a slider title's TeX delimiters is no text.
+    name = " ".join("".join(ch for ch in str(text or "")
+                            if ch.isprintable() or ch.isspace()).split())
+    if name:
+        attrs["aria-label"] = _dash_display(name, _DASH_ARIA_MAX)
+    model.html_attributes = attrs
+    return model
+
+
+def _dash_figure_name(graph_opts, plots):
+    """A figure's accessible name (WP-31 K6, D-54a), derived, never
+    invented: the graph's ``title()`` text when it has one, else the first
+    layer described -- ``"scatter of mpg versus weight"`` (its y variables,
+    then its x), ``"histogram of mpg"`` for a univariate layer,
+    ``"pcspike of y1 x1 to y2 x2"`` for paired coordinates, the type alone
+    for a layer that plots no variable -- and ``", <n> more layers"`` when
+    the graph has more than one.  Variable labels are not used.  At most
+    120 characters (``_dash_aria`` caps it)."""
+    title = _parse_textbox_opt(
+        str((graph_opts or {}).get("title", "") or ""))[0]
+    title = " ".join(_dash_graph_text_plain(title).split())
+    if title:
+        return title
+    plots = [p for p in (plots or []) if isinstance(p, dict)]
+    if not plots:
+        return "graph"
+    p = plots[0]
+    ptype = str(p.get("type", "") or "graph").lower()
+    if ptype in _DASH_PC_TYPES:
+        y1, x1, y2, x2 = (str(p.get(k, "") or "") for k in
+                          ("y1var", "x1var", "y2var", "x2var"))
+        name = f"{ptype} of {y1} {x1} to {y2} {x2}"
+    elif isinstance(p.get("var"), str) and p.get("var"):
+        name = f"{ptype} of {p['var']}"
+    else:
+        vs = _dash_hover_layer_vars(p)
+        if len(vs) >= 2:
+            name = f"{ptype} of {' '.join(vs[1:])} versus {vs[0]}"
+        elif vs:
+            name = f"{ptype} of {vs[0]}"
+        else:
+            name = ptype
+    more = len(plots) - 1
+    if more > 0:
+        name += f", {more} more layer" + ("s" if more > 1 else "")
+    return " ".join(name.split())
+
+
+def _dash_name_figure(fig, graph_opts, plots):
+    """Name *fig*'s host for assistive technology (WP-31 K6): ``role="img"``
+    and the ``aria-label`` :func:`_dash_figure_name` derives.  Both modes
+    call it on the figure they have just built."""
+    return _dash_aria(fig, _dash_figure_name(graph_opts, plots), role="img")
+
+
+def _dash_tabs_keys_hook(models):
+    """The tab strips' keyboard script (WP-31 K6, D-54e) for the
+    document's ``document_ready`` hooks: one ``CustomJS`` named
+    ``dash_tabs_keys`` over every ``Tabs`` under *models*, running the
+    fixed ``_DASH_TABS_KEYS_JS``; ``[]`` when there is none.  Both modes
+    call it on the finished layout."""
+    from bokeh.models import CustomJS, Tabs
+    tabs, seen = [], set()
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else ()
+        for m in refs:
+            if isinstance(m, Tabs) and m.id not in seen:
+                seen.add(m.id)
+                tabs.append(m)
+    if not tabs:
+        return []
+    return [CustomJS(name="dash_tabs_keys", args={"tabs": tabs},
+                     code=_DASH_TABS_KEYS_JS)]
+
+
+def _dash_slider_names_hook(models):
+    """The sliders' handle names (WP-31 K6) for the document's
+    ``document_ready`` hooks: one ``CustomJS`` named ``dash_slider_names``
+    over every slider and range widget under *models*, running the fixed
+    ``_DASH_SLIDER_NAMES_JS``; ``[]`` when there is none.  Both modes call
+    it on the finished layout."""
+    from bokeh.models import CustomJS
+    from bokeh.models.widgets.sliders import AbstractSlider
+    sliders, seen = [], set()
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else ()
+        for m in refs:
+            if isinstance(m, AbstractSlider) and m.id not in seen:
+                seen.add(m.id)
+                sliders.append(m)
+    if not sliders:
+        return []
+    return [CustomJS(name="dash_slider_names", args={"sliders": sliders},
+                     code=_DASH_SLIDER_NAMES_JS)]
+
+
 def _dash_table_spec(graph_opts, limits=None):
     """A graph's ``table`` option (WP-31 H2t), or None when it has none.
 
@@ -54593,6 +54794,10 @@ def _dash_data_table(fig, columns, spec, source=None, mask=None):
         height=min(400, 28 + 25 * min(n_drawn, cap)),
         sizing_mode="stretch_width", visible=bool(spec["open"]),
         tags=["dash_table", "dash_table_cap=%d" % cap])
+    # WP-31 K6: the table is a region named after its figure.
+    _dash_aria(dt, "Data table of " + str(
+        (getattr(fig, "html_attributes", None) or {}).get("aria-label")
+        or "the graph"), role="region")
     # The rows of a view narrower than its source (a layer's own if/in):
     # the saved renderer then lists a copy of them (DashRenderer.
     # _dash_table_copy), since its IndexFilter is not rebuilt by a move.
@@ -54602,7 +54807,10 @@ def _dash_data_table(fig, columns, spec, source=None, mask=None):
                visible=bool(spec["open"]) and capped,
                tags=["dash_table_note"], html_attributes={"role": "note"})
     toggle = Toggle(label="Data table", active=bool(spec["open"]),
-                    button_type="light", tags=["dash_table_toggle"])
+                    button_type="light", tags=["dash_table_toggle"],
+                    html_attributes={
+                        "role": "group",
+                        "aria-label": "Show or hide the data table"})
     toggle.js_on_change("active", CustomJS(
         args=dict(dt=dt, note=note, capped=capped),
         code=_DASH_TABLE_TOGGLE_JS))
@@ -59129,6 +59337,8 @@ class DashRenderer:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
+        # WP-31 K6: the figure's host is an image named from its graph.
+        _dash_name_figure(fig, graph_opts, plots)
         # WP-30 P1.3a: twoway's plot-region margin and the scheme's tick
         # counts, for the finisher (Python attributes, never serialised).
         fig._dash_margin = _dash_plot_margin(self.scheme, graph_opts)
@@ -59747,9 +59957,13 @@ class DashRenderer:
         # its text through MathJax otherwise -- where a title of
         # `$$\href{javascript:...}{x}$$' becomes a live link.  The served
         # KPI Div sets this too.
-        return Div(text=html_content, sizing_mode="stretch_width",
-                   disable_math=True,
-                   stylesheets=[InlineStyleSheet(css=self.scheme.css_block())])
+        # WP-31 K6: the card is a named group (its title, else its name).
+        return _dash_aria(
+            Div(text=html_content, sizing_mode="stretch_width",
+                disable_math=True,
+                stylesheets=[InlineStyleSheet(css=self.scheme.css_block())]),
+            _dash_graph_text_plain(kpi_def.get("title", "") or "")
+            or kpi_def.get("name", "kpi"), role="group")
 
     # ------------------------------------------------------------------
     # Bootstrap layout helpers.  The rows and spans are read by the
@@ -59945,6 +60159,9 @@ class DashRenderer:
         _print_css, _print_hook = _dash_print_models(all_models, fixed=False)
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
+        # WP-31 K6: the tab strips' keyboard and slider names scripts.
+        _hooks += (_dash_tabs_keys_hook(all_models)
+                   + _dash_slider_names_hook(all_models))
         if _hooks:
             from bokeh.document import Document as _HookDoc
             # file_html() left the models in _dummy_col's document.
@@ -61895,6 +62112,9 @@ class DashRenderer:
         _print_css, _print_hook = _dash_print_models([layout_root])
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
+        # WP-31 K6: the tab strips' keyboard and slider names scripts.
+        _hooks += (_dash_tabs_keys_hook([layout_root])
+                   + _dash_slider_names_hook([layout_root]))
         if _hooks:
             from bokeh.document import Document as _HookDoc
             _hook_doc = _HookDoc()
@@ -62462,6 +62682,9 @@ class ServerAppBuilder:
                       # The saved page's error line (WP-31 H1), beside the
                       # stale constants.
                       "_DASH_JS_ERROR_HTML",
+                      # WP-31 K6: the name cap and the tabs' keyboard script.
+                      "_DASH_ARIA_MAX", "_DASH_TABS_KEYS_JS",
+                      "_DASH_SLIDER_NAMES_JS",
                       # _stata_date_kind's own pattern, for an axis format().
                       "_MS_PER_DAY", "_DATE_FMT_RE",
                       # _dash_anglestyle_degrees' table of Stata's
@@ -63150,6 +63373,10 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # WP-31 K6: accessible names and the tabs' keys.
+                         "_dash_aria", "_dash_figure_name",
+                         "_dash_name_figure", "_dash_tabs_keys_hook",
+                         "_dash_slider_names_hook",
                          # WP-31 H2t: a graph's data table.
                          "_dash_table_spec", "_dash_table_vars",
                          "_dash_table_text_frame", "_dash_data_table",
@@ -65570,6 +65797,8 @@ class ServerAppBuilder:
             "        if _y_date: _fig_kw['y_axis_type'] = 'datetime'",
             "        elif _ys_log: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        # WP-31 K6: the figure's host is an image named from its graph.",
+            "        _dash_name_figure(fig, go, plots)",
             "        # WP-30 P1.3a: twoway's margin and the scheme's tick counts.",
             "        fig._dash_margin = _dash_plot_margin(_DASH_SCHEME, go)",
             "        fig._dash_margin_args = (_DASH_SCHEME, go)",
@@ -66174,6 +66403,9 @@ class ServerAppBuilder:
             "        kpi_divs[kname] = Div(text=div_html, sizing_mode='stretch_width',",
             "                              disable_math=True,",
             "                              stylesheets=_dash_kpi_stylesheets())",
+            "        # WP-31 K6: the card is a named group, as the saved one.",
+            "        _dash_aria(kpi_divs[kname], _dash_graph_text_plain(ktitle or '') or kname,",
+            "                   role='group')",
             "",
             "    # Reverse map: faceted gname → original gname (for qualifier lookup).",
             "    # Faceted graph names (e.g. 'g1 — 0') are children of original names;",
@@ -66940,7 +67172,8 @@ class ServerAppBuilder:
             "    # no style and no script (the page's policy); a document with no",
             "    # server session recomputes inline and gets none.",
             "    if _dash_worker_wanted(doc) and any(hasattr(_w, '_dash_var') for _w in filter_widgets):",
-            "        _slot.cue = Div(text='Updating...', name='dash_updating', visible=False)",
+            "        _slot.cue = Div(text='Updating...', name='dash_updating', visible=False,",
+            "                        html_attributes={'role': 'status', 'aria-live': 'polite'})",
             "        filter_widgets = list(filter_widgets) + [_slot.cue]",
             '    # ---- Assemble grid layout ----',
             '    #',
@@ -67109,6 +67342,9 @@ class ServerAppBuilder:
             "    _print_css, _print_hook = _dash_print_models([layout])",
             "    _hooks = [*_by_hooks, *_err_hooks]",
             "    _hooks += [_print_hook]",
+            "    # WP-31 K6: the tab strips' keyboard and slider names scripts.",
+            "    _hooks += (_dash_tabs_keys_hook([layout])",
+            "               + _dash_slider_names_hook([layout]))",
             "    if _hooks:",
             "        doc.js_on_event('document_ready', *_hooks)",
             "    doc.title = title_text or 'dash'",

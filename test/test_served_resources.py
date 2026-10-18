@@ -533,7 +533,10 @@ _SAVED_DIGEST = (
     # the grid's composite export actions (model ids masked by _digest),
     # the print hide stylesheet on the toolbar and the filter, the same
     # under both Pythons
-    "9aecdc39aba136361a5d9e6d1b2928ca0f0c4c832d48a039e56e3a59760ed59c")
+    # the same under both Pythons; b796859... -> 713839d1...: K6 the
+    # figure's role="img" and name, the dropdown's and Reset filters'
+    # role="group" and name (html_attributes), the same under both Pythons
+    "REDERIVE")
 
 
 # ===========================================================================

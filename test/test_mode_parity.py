@@ -1076,6 +1076,17 @@ def _is_saved_only(m):
 
 
 def _layout_tree(m, figures):
+    """:func:`_layout_node`, with the model's host ``html_attributes``
+    (WP-31 K6: role and accessible name) appended as ``("attrs", items)``
+    when it has any, so both modes must carry the same."""
+    node = _layout_node(m, figures)
+    attrs = getattr(m, "html_attributes", None)
+    if attrs and isinstance(node, tuple):
+        node = node + (("attrs", sorted(attrs.items())),)
+    return node
+
+
+def _layout_node(m, figures):
     """The document as nested plain data.
 
     A figure becomes ``("figure", i)`` and its profile is appended to
@@ -1240,9 +1251,11 @@ def _bs_markup_page(r, page, figures, embedded):
     if at >= 0:
         nxt = body.find(_BS_SECTION_ROW, at)
         chunk = body[at:nxt if nxt >= 0 else len(body)]
-        widgets = [("Widget", _widget_profile(embedded[rid]))
-                  for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded
-                  and not _is_saved_only(embedded[rid])]
+        # Through _layout_tree, so each widget's html_attributes are
+        # compared as the served row's are (WP-31 K6).
+        widgets = [_layout_tree(embedded[rid], figures)
+                   for rid in _ROOT_ID_RE.findall(chunk) if rid in embedded
+                   and not _is_saved_only(embedded[rid])]
         parts.append((at, ("Row", widgets)))
 
     at = body.find(_BS_TABS_CELL_START)

@@ -560,4 +560,4 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **K2 Tracked:** Open (WP-31 section 60).
 - **K3 Tracked:** Open (WP-31 section 60).
 - **K4 Tracked:** Open (WP-31 section 60).
-- **K6 Tracked:** Open (WP-31 section 54).
+- **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit pending.

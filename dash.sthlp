@@ -7,6 +7,7 @@
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
 {viewerjumpto "Exporting"         "dash##export"}{...}
+{viewerjumpto "Accessibility"     "dash##accessibility"}{...}
 {viewerjumpto "Stored results"    "dash##results"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
@@ -1628,6 +1629,35 @@ browser only what it draws.  When served, each click is computed on the server f
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
+
+
+{marker accessibility}{...}
+{title:Accessibility}
+
+{pstd}
+Saved and served dashboards name their parts for screen readers.  Each
+graph is an image named by its {cmd:title()} text, or, without one, by its
+first plot, as in "scatter of mpg versus weight, 1 more layer" (variable
+names, not labels; at most 120 characters).  Each filter, the
+{bf:Reset filters} button and the {bf:Data table} button is named by its
+title, each slider handle by its filter's title, each data table by its
+graph's name and each KPI card by its title (else its name).  The served
+"Updating..." line and the saved page's error line are status messages.
+
+{pstd}
+The tabs of {cmd:tabs()} work from the keyboard: Tab moves to the active
+tab, the left and right arrows move to the previous and next tab (wrapping),
+Home and End to the first and last, and Enter or Space opens the focused
+tab.
+
+{pstd}
+Every scheme dash ships meets the WCAG AA contrast of 4.5:1 for its text on
+the graph region, the plot region, the legend and KPI boxes, and for its
+tick labels on the plot region; the lowest is {cmd:economist}'s KPI value on
+its box, 13.8:1.  Colours you give in options are not checked.  The pages are
+checked in dash's tests with axe-core, an automated accessibility checker,
+for WCAG 2.1 A and AA; an automated check does not find every barrier.  The
+interface text is English only.
 
 
 {marker results}{...}

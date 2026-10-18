@@ -565,6 +565,9 @@ TEXT_NODE = "DOM text node"
 SLIDER = "DOM text node, innerHTML if it holds TeX"
 HTML = "HTML"
 DATA = "data, not rendered as markup"
+#: WP-31 K6: an accessible name, a host attribute BokehJS writes with
+#: setAttribute (StyledElementView._apply_html_attributes): never parsed.
+ATTRIBUTE = "attribute value (setAttribute)"
 
 #: Every (model, property) user text may reach, and how BokehJS renders it.
 CLASSIFIED = {
@@ -602,6 +605,11 @@ CLASSIFIED = {
     # renderers: identifiers BokehJS never puts on the page.
     ("CategoricalColorMapper", "factors"): DATA,
     ("GlyphRenderer", "name"): DATA,
+    # WP-31 K6: the accessible names on the hosts.
+    **{(k, "html_attributes"): ATTRIBUTE for k in (
+        "figure", "Div", "Select", "MultiChoice", "Slider", "RangeSlider",
+        "DateSlider", "DateRangeSlider", "DatetimeRangeSlider", "DataTable",
+        "Tabs", "Toggle", "Button")},
 }
 
 #: Where user text must never be.
@@ -717,6 +725,18 @@ SINKS = (
          modes=("standalone",)),
     Sink("kpi_rebuild_subtitle", "ksub", ("CustomJS",), "args", "json-html",
          modes=("standalone",)),
+    # WP-31 K6: accessible names, host attributes set by setAttribute,
+    # so they carry the raw text.
+    Sink("figure_name_from_title", "gtitle", ("figure",), "html_attributes",
+         "text"),
+    Sink("kpi_name_from_title", "ktitle", ("Div",), "html_attributes",
+         "text"),
+    Sink("dropdown_name_from_variable_label", "vlmake", ("Select",),
+         "html_attributes", "text"),
+    Sink("slider_name_from_variable_label", "vlrep", ("Slider",),
+         "html_attributes", "text"),
+    Sink("range_name_from_variable_label", "vlweight", ("RangeSlider",),
+         "html_attributes", "text"),
     # Data.
     Sink("string_data_values", "sv0", ("ColumnDataSource",), "data", "data"),
     # WP-31 D1: xmlabel()'s text is the column a LabelSet named

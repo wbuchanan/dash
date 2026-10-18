@@ -1229,5 +1229,7 @@ class TestInternalLinksResolve:
         # and the saved-versus-served table link the new Data tables entry.
         # 102 -> 103 links: H2l the brush() synopt links Linking and
         # Brushing.
-        # 103 -> 104 links: H2x the Images paragraph links The toolbar.
-        assert len(refs) == 104 and len(set(refs)) == 37
+        # 103 -> 104 links: H2x the Images paragraph links The toolbar;
+        # 104 -> 105 and 37 -> 38 targets: K6 the Accessibility jump link
+        # (dash##accessibility).
+        assert len(refs) == 105 and len(set(refs)) == 38

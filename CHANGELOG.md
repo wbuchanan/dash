@@ -1075,7 +1075,7 @@ Changed behaviour.
 
 - Every top-level grid toolbar saves the whole dashboard -- title, filters, tabs, KPI cards and graphs -- as SVG (Save as SVG) or PNG (Save dashboard), and pages print at a fixed width without toolbars, in both modes (WP-31, H2x)
 
-<!-- WP-31 K6 -->
+- Every figure, filter, KPI card and tab strip carries an accessible name and role, tabs work from the keyboard, scheme contrast is measured and the pages pass an automated checker (WP-31, K6)
 
 <!-- WP-31 H3 -->
 

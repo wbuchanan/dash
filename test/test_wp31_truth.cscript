@@ -14028,6 +14028,68 @@ if inlist("`only'", "", "S53") & `: list posof "S53" in w31_run' {
 }
 * ==== end S53 ====
 
+* ==== S54 K6: accessibility ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S54") & `: list posof "S54" in w31_run' {
+    display as text "S54 start " c(current_date) " " c(current_time)
+    local u54d "`w31_work'/s54"
+    capture mkdir "`u54d'"
+    // Accessible names and roles are dash's own (a Stata graph has none):
+    // no twoway truth; the built page's model JSON is read, each needle
+    // counted (cert_file_count).  BokehJS writes each html_attributes pair
+    // as ["key","value"].
+    sysuse auto, clear
+    dash clear
+    quietly dash scatter mpg weight, title(Mileage) name(g1)
+    quietly dash scatter price weight, name(g2)
+    quietly dash kpi mean(mpg), title(Average mileage) name(k1)
+
+    // U54-1: one role=img per graph; the filter widget named by its title.
+    capture noisily dash build, saving("`u54d'/a.html") replace nobrowser filter(foreign, type(dropdown))
+    local rc1 = _rc
+    _w31_expect U54-1 "(`rc1' == 0)" "dash build: r(`rc1')"
+    if `rc1' == 0 {
+        cert_file_count "`u54d'/a.html", needle(`"["role","img"]"')
+        local nimg = r(count)
+        cert_file_count "`u54d'/a.html", needle(`"["aria-label","Mileage"]"')
+        local nt = r(count)
+        cert_file_count "`u54d'/a.html", needle(`"["aria-label","scatter of price versus weight"]"')
+        local nn = r(count)
+        cert_file_count "`u54d'/a.html", needle(`"["aria-label","Car origin"]"')
+        local nf = r(count)
+        _w31_expect U54-1 "(`nimg' == 2) & (`nt' == 1) & (`nn' == 1) & (`nf' == 1)" "role=img `nimg', title name `nt', derived name `nn', filter name `nf'"
+    }
+    _w31_done U54-1 "each graph is role=img with its name; the filter is named"
+
+    // U54-2: the KPI card is a group named by its title.
+    if `rc1' == 0 {
+        cert_file_count "`u54d'/a.html", needle(`"["aria-label","Average mileage"]"')
+        local nk = r(count)
+        cert_file_count "`u54d'/a.html", needle(`"["role","group"]"')
+        local ng = r(count)
+        _w31_expect U54-2 "(`nk' == 1) & (`ng' >= 1)" "KPI name `nk', role=group `ng'"
+    }
+    _w31_done U54-2 "a KPI card is role=group named by its title"
+
+    // U54-3: tabs() gives a named region and the keyboard script, once.
+    capture noisily dash build, saving("`u54d'/b.html") replace nobrowser tabs(One: g1 k1 / Two: g2)
+    local rc3 = _rc
+    _w31_expect U54-3 "(`rc3' == 0)" "dash build tabs(): r(`rc3')"
+    if `rc3' == 0 {
+        cert_file_count "`u54d'/b.html", needle(`"["aria-label","Dashboard tabs"]"')
+        local nr = r(count)
+        cert_file_count "`u54d'/b.html", needle(`""name":"dash_tabs_keys""')
+        local nh = r(count)
+        cert_file_count "`u54d'/b.html", needle("keydown")
+        local nkd = r(count)
+        _w31_expect U54-3 "(`nr' == 1) & (`nh' == 1) & (`nkd' >= 1)" "tabs region `nr', hook `nh', keydown `nkd'"
+    }
+    _w31_done U54-3 "tabs() is a named region with the keyboard script"
+    dash clear
+    display as text "S54 end " c(current_date) " " c(current_time)
+}
+* ==== end S54 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

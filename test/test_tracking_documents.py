@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "K6": "One aria-live region, no alt text and English-only interface",
     "H3": "The served make_document builds on the event loop, catch_warnings can swap filters, a brush made during a move is cleared, and the bundle ships bokeh-mathjax",
     "H4": "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read",
     "H7": "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__",

@@ -661,10 +661,13 @@ _PLAIN_DIGESTS = {
     # WP-31 H2x the grid's Save dashboard action and the composite SVG
     # code and ids, the print hide stylesheet on the toolbar (and, served,
     # the root's print hook args); the same under both Pythons.
+    # 4f04a250... -> bff51822... saved, 7533995b... -> aee4df70... served:
+    # WP-31 K6 the figure's role="img" and aria-label html_attributes,
+    # the same under bokeh 3.8 (Stata's Python) and 3.9.
     ("saved", "plain"):
-        "913aa1eeb52489767366bc98519d2f2d5a4e34e799ffbef7af29eff4a3b3e7a6",
+        "REDERIVE",
     ("saved", "yaxis2"):
-        "913aa1eeb52489767366bc98519d2f2d5a4e34e799ffbef7af29eff4a3b3e7a6",
+        "REDERIVE",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -679,9 +682,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "e69103bd25f087b07440ca985d01ba2cdcb1cd51b26a401392a9e9967a9672cd",
+        "REDERIVE",
     ("served", "yaxis2"):
-        "e69103bd25f087b07440ca985d01ba2cdcb1cd51b26a401392a9e9967a9672cd",
+        "REDERIVE",
 }
 
 
