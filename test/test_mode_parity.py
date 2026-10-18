@@ -6046,9 +6046,10 @@ class TestTheExportsAgree:
         assert not diffs, _explain(state, "composite exports", diffs)
 
     def test_the_moves_reach_the_exports(self, state, moves):
-        """Guards the guard: the state after a move is not the build's."""
+        """Guards the guard: the state after a move is not the build's
+        (the build's own state has no move to check, and is skipped)."""
         if not moves:
-            return
+            pytest.skip("the build state has no move")
         built = _saved_exports(_EXPORT_SPEC, [])
         moved = _saved_exports(_EXPORT_SPEC, moves)
         assert built[0] != moved[0] and built[1] != moved[1]
