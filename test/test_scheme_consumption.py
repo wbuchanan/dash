@@ -250,7 +250,7 @@ _UNREAD_KEYS = {
     # zyx2_ring gained its reader in GlyphMapper._colorvar_key_place
     # (WP-32).
     # text_option_vertical gained its reader in _dash_added_text (WP-32).
-    "numticks_minor": "BUGS.md: the scheme's default minor tick counts",
+    # numticks_minor gained its reader in _dash_apply_axis_options (WP-32).
     "legend_span": "BUGS.md: whether the legend spans the graph",
 }
 

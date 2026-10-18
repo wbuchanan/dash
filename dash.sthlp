@@ -4771,6 +4771,10 @@ widen that axis, as a label does, unless {cmd:norescale} is given; a line,
 {ul:Minor ticks and labels.}  {cmd:xmtick()} and {cmd:ymtick()} draw minor
 ticks, and {cmd:xmlabel()} and {cmd:ymlabel()} minor ticks with a label at
 each, as {cmd:twoway} draws them, in the saved page and the served app.
+A scheme's {cmd:numticks_g horizontal_minor} {it:N} (and
+{cmd:vertical_minor}) draws as {cmd:xmlabel(#}{it:N}{cmd:)} (and
+{cmd:ymlabel()}) where no {cmd:xmlabel()} is given, as {cmd:twoway} draws
+it; the shipped schemes' 0 draws none.
 They take the grammar of {cmd:xtick()}: a numlist or
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, with quoted text after a value in
 {cmd:xmlabel()}, {cmd:#}{it:N}, {cmd:minmax}, and the rule {cmd:##}{it:N},

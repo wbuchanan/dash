@@ -164,3 +164,48 @@ class TestTextVerticalAlignment:
         assert lab.x_offset == pytest.approx(-0.15 * _shift_px(lab),
                                              abs=0.01)
         assert lab.y_offset == pytest.approx(0.0, abs=0.01)
+
+
+# ---------------------------------------------------------------------------
+# `numticks_g horizontal_minor' and `vertical_minor': the minor tickset
+# ---------------------------------------------------------------------------
+#
+# Measured 18oct2026 (s2color, SVG, ``twoway scatter mpg weight``): a user
+# scheme's `numticks_g horizontal_minor 4' draws byte for byte as
+# xmlabel(#4), and `vertical_minor 3' as ymlabel(#3) -- a labelled minor
+# tickset at the minortick_label size; xmlabel(#2) beside the scheme's 4
+# draws its own two.  dash drew no minor tickset for the scheme's count.
+
+def _minor(mode, go, bo):
+    fig = _draw(tp._spec([plot_for("scatter")], bo, go), mode).figures[0]
+    out = {}
+    for letter, axes in (("x", fig.xaxis), ("y", fig.yaxis)):
+        t = axes[0].ticker
+        out[letter] = (list((getattr(t, "args", None) or {}).get("mextra")
+                            or []) if type(t).__name__ == "CustomJSTicker"
+                       else None)
+    out["labelsets"] = sum(type(m).__name__ == "LabelSet"
+                           for m in fig.center)
+    return out
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestTheSchemesMinorTickset:
+
+    def test_the_schemes_count_is_the_mlabel_rule(self, mode, tmp_path,
+                                                  monkeypatch):
+        _user_scheme(tmp_path, monkeypatch, "wnh4.scheme",
+                     ["#include s2color", "numticks_g horizontal_minor 4"])
+        _user_scheme(tmp_path, monkeypatch, "wnv3.scheme",
+                     ["#include s2color", "numticks_g vertical_minor 3"])
+        s2 = {"scheme": "s2color"}
+        assert _minor(mode, {}, s2) == {"x": None, "y": None,
+                                        "labelsets": 0}
+        want_x = _minor(mode, {"xmlabel": "#4"}, s2)
+        assert want_x["x"] and want_x["labelsets"] == 1
+        assert _minor(mode, {}, {"scheme": "wnh4"}) == want_x
+        assert _minor(mode, {}, {"scheme": "wnv3"}) == _minor(
+            mode, {"ymlabel": "#3"}, s2)
+        # xmlabel() still wins.
+        assert _minor(mode, {"xmlabel": "#2"}, {"scheme": "wnh4"}) == \
+            _minor(mode, {"xmlabel": "#2"}, s2)

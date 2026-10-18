@@ -43691,6 +43691,16 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         # after the label and tick options, so they join that ticker.
         mt = str(graph_opts.get(ax_key[0] + "mtick", "") or "")
         ml = str(graph_opts.get(ax_key[0] + "mlabel", "") or "")
+        if not ml.strip():
+            # The scheme's `numticks_g horizontal_minor' / `vertical_minor'
+            # (WP-32, measured 18oct2026: a count of 4 draws as xmlabel(#4),
+            # labelled, and xmlabel() replaces it): s2color's 0 draws none.
+            _nm = (getattr(getattr(fig, "_dash_scheme", None) or
+                           SchemeParser.fallback(), "numticks_minor", None)
+                   or {}).get(ax_key[0])
+            if isinstance(_nm, int) and not isinstance(_nm, bool) \
+                    and _nm > 0:
+                ml = f"#{_nm}"
         if mt.strip() or ml.strip():
             _dash_apply_minor_ticks(fig, axis_obj, grid_obj, ax_key[0], 1,
                                     mt, ml, col, seen, key, date_kind=kind,

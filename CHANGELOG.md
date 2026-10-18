@@ -937,6 +937,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - `dash line y x, colorvar(z) zscale(log)` with a continuous z was split into the log colour bar's 256 bins (101 lines for z = 1 to 101); it is cut at the levels twoway draws, the same as without zscale(log) (the key's labels, any below the minimum dropped), and the log key is drawn in those levels' colours. (WP-32)
 - `clegend(ring(0))` without position() drew the colour key outside the plot, and a scheme's `gridringstyle zyx2legend_ring` was read by nothing; ring(0) draws the key inside the plot at the scheme's position (3 o'clock), the scheme's ring is the default, and a ring inside the legend's 3 draws the key between the plot and the legend, as twoway draws them. (WP-32)
 - `text(30 3000 "T", alignment(top))` (and bottom and baseline) was named and drawn at middle, and a scheme's `vertical_text text_option` was read by nothing; alignment() moves the text 0.15 of its size up (top, bottom) or down (baseline) from middle's place, as twoway draws it, and the scheme's value is the default. (WP-32)
+- A scheme's `numticks_g horizontal_minor N` and `vertical_minor N` were read by nothing; they draw as xmlabel(#N) and ymlabel(#N) where no xmlabel() or ymlabel() is given, a labelled minor tickset, as twoway draws them. (WP-32)
 
 ### Fixed in WP-31
 
