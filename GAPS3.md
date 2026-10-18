@@ -557,7 +557,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **J4 Tracked:** Closed in WP-31, BUGS.md "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings", commit 7b282bd.
 - **J5 Tracked:** Closed in WP-31, BUGS.md "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted", commit d8fe429.
 - **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit 6ef3e05.
-- **K2 Tracked:** Closed in WP-32, BUGS.md "A renderer without its source file cannot write a served app", commit pending.
+- **K2 Tracked:** Closed in WP-32, BUGS.md "A renderer without its source file cannot write a served app", commit 10269c5.
 - **K3 Tracked:** Partly closed in WP-31 (section 60, commit 1956dda): a committed generator for every fixture, make truth and truth-check, the _meta and path guard, and in WP-32 (commit 8ef92e8) the 50 older fixtures regenerated with the five _meta keys; open: the scheme visual truth (BUGS.md "The scheme visual truth covers 4 of 26 schemes and renders no histogram").
 - **K4 Tracked:** Closed in WP-32, BUGS.md "Harness guards", commit 43bbab8.
 - **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit e826446.
