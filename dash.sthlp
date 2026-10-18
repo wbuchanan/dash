@@ -3030,8 +3030,10 @@ no bound on it (about 70 MB at 200,000 rows and one scatter, about 150 MB
 with three), so set {cmd:maxsessions()} to fit the machine and the data.  Before it listens the app
 prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
 draws the dashboard once, so a long start is not a failure and no reader
-pays for the first drawing.  Opening a session still runs on the server's
-one event loop.
+pays for the first drawing.  Under {cmd:dash serve} and {cmd:python app.py}
+a new session's dashboard is drawn off the server's event loop, two at a
+time, so the server answers other readers meanwhile; under {cmd:bokeh serve},
+which gives an app no such hook, it is drawn on the loop.
 
 
 {marker examples}

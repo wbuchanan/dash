@@ -926,6 +926,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - Save as SVG and Save dashboard draw each open data table where it sits in the grid -- its column titles and the rows it shows -- where the image left it blank and said "Data tables are not included" (WP-32, D-53d)
 - Printing a dashboard with tabs() prints every tab, each on a page of its own scaled to fit the paper (the tab's graphs and open tables and the tab strip with it marked), where it printed only the tab that was showing (WP-32, D-53e)
 - A dash_render installed without its source file (a .pyc alone) writes a served app for dash build, server and dash serve, where the build failed with "OSError: source code not available"; the app runs under the Python that wrote it (WP-32, K2)
+- A served session's dashboard is drawn off the server's event loop under dash serve and python app.py, two at a time, so /health, other readers' moves and other new sessions are answered while one is drawn (1.6-4.6 s at 100-200k rows held them all) (WP-32, H3)
 
 ### Fixed in WP-31
 
