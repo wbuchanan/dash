@@ -81,7 +81,7 @@ M1 ─ WP-01 ──┐
 
 # Milestone 1 — Correct and installable
 
-## WP-01 · Parser integrity
+## WP-01 · Parser integrity — DONE
 
 **Gaps closed:** A6, A7, A8 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
@@ -165,7 +165,7 @@ M1 ─ WP-01 ──┐
 
 ---
 
-## WP-02 · Computed layers must honour their rows
+## WP-02 · Computed layers must honour their rows — DONE
 
 **Gaps closed:** A1, A2 · **Severity:** S1 · **Effort:** M · **Depends on:** —
 
@@ -274,7 +274,7 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 
 ---
 
-## WP-03 · `dash serve` accepts its own options
+## WP-03 · `dash serve` accepts its own options — DONE
 
 **Gaps closed:** C1, C2, C3 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
@@ -343,7 +343,7 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 
 ---
 
-## WP-04 · Registry integrity
+## WP-04 · Registry integrity — DONE
 
 **Gaps closed:** K1, K2, K3 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
@@ -414,7 +414,7 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 
 ---
 
-## WP-05 · Packaged install and scheme reachability
+## WP-05 · Packaged install and scheme reachability — DONE
 
 **Gaps closed:** B1, B2, B3, B4 · **Severity:** S1 · **Effort:** M · **Depends on:** —
 
@@ -549,7 +549,7 @@ should land:
 
 ---
 
-## WP-06 · `dash_setup` tells the truth
+## WP-06 · `dash_setup` tells the truth — DONE
 
 **Gaps closed:** J1, J2, J6 (all but rollback) · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
@@ -652,7 +652,7 @@ should land:
 
 ---
 
-## WP-07 · Environment verification at entry
+## WP-07 · Environment verification at entry — DONE
 
 **Gaps closed:** J3, J4, J5 · **Severity:** S2 · **Effort:** S · **Depends on:** —
 
@@ -742,7 +742,7 @@ should land:
 
 ---
 
-## WP-08 · Input hardening — UTF-8, JSON escaping, paths
+## WP-08 · Input hardening — UTF-8, JSON escaping, paths — DONE
 
 **Gaps closed:** A9, E6, E7 · **Severity:** S2 · **Effort:** M · **Depends on:** —
 
@@ -863,7 +863,7 @@ should land:
 
 # Milestone 2 — One renderer
 
-## WP-09 · Server unification — table-driven dispatch
+## WP-09 · Server unification — table-driven dispatch — DONE
 
 **Gaps closed:** D1, D7 · **Severity:** S1 · **Effort:** L · **Depends on:** WP-02
 
@@ -927,7 +927,7 @@ should land:
 > Measured identical at the previous commit and at this one, so it is not a
 > regression; it stays on the inventory for WP-12's parity corpus.
 
-## WP-10 · Server layer defects
+## WP-10 · Server layer defects — DONE
 
 **Gaps closed:** D2, D3, D5, D6 · **Severity:** S1 · **Effort:** M · **Depends on:** WP-09
 
@@ -1099,7 +1099,7 @@ Covered by WP-12's expanded parity corpus plus targeted regression tests in
 
 ---
 
-## WP-11 · Server facets
+## WP-11 · Server facets — DONE
 
 **Gaps closed:** D4 · **Severity:** S1 · **Effort:** M · **Depends on:** WP-09
 

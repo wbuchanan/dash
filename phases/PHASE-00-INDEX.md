@@ -1,5 +1,7 @@
 # Phase index — finishing the ultraplan
 
+> **Historical (10oct2026).** The phase files in phases/ are superseded by ROADMAP.md (WP-12 to WP-30) and .ultraplan/handoff/DROPIN-REMAINING.md; their PARTIAL markers and definitions of done are the state of 20sep2026 (ca5fe35) and are not maintained.
+
 This directory breaks the remaining work in [`../REMAINING.md`](../REMAINING.md)
 into **31 sequentially numbered phases**, each scoped to one to three epics. Every
 phase document is self-contained: it carries the evidence for its own work, user

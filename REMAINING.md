@@ -1,5 +1,7 @@
 # Remaining work to finish the ultraplan
 
+> **Historical (10oct2026).** Superseded by ROADMAP.md (WP-12 to WP-30) and .ultraplan/handoff/DROPIN-REMAINING.md; the PARTIAL markers below are the state of 20sep2026 (ca5fe35) and are not maintained.
+
 Audit of all 89 tasks across 16 sections against `ca5fe35`
 (`feature/batch4-interactive-layer`, 61 commits ahead of `main`, tree clean).
 

@@ -556,7 +556,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **J3 Tracked:** Closed in WP-31, BUGS.md "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists", commit pending.
 - **J4 Tracked:** Closed in WP-31, BUGS.md "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings", commit pending.
 - **J5 Tracked:** Closed in WP-31, BUGS.md "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted", commit pending.
-- **J6 Tracked:** Open (WP-31 section 58).
+- **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit pending.
 - **K2 Tracked:** Open (WP-31 section 60).
 - **K3 Tracked:** Open (WP-31 section 60).
 - **K4 Tracked:** Open (WP-31 section 60).
