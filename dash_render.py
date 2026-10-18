@@ -5770,6 +5770,26 @@ def _dash_nonce_scripts(markup, nonce):
     return Markup("".join(out))
 
 
+def _dash_drop_mathjax(markup):
+    """``markup`` without its ``bokeh-mathjax`` script element (WP-31 H3).
+
+    Bokeh's server writes every BokehJS component into a served page
+    (``bundle_for_objs_and_resources(None, ...)`` forces them all on),
+    MathJax included: 1.79 MB per session that dash never uses, since every
+    TeX pair it writes is broken (:func:`_dash_inert_tex`).  Only an element
+    whose opening tag has a ``src`` naming ``bokeh-mathjax`` and whose body
+    is empty is removed; an inline script, whatever its text, is copied
+    unchanged, as is everything else.
+
+    Returns:
+        A ``markupsafe.Markup``, so the template does not escape it.
+    """
+    from markupsafe import Markup
+    return Markup(re.sub(
+        r'<script\b[^>]*\bsrc="[^"]*/bokeh-mathjax[^"]*"[^>]*>\s*'
+        r'</script\s*>[ \t]*\n?', "", str(markup), flags=re.I))
+
+
 def _dash_served_template(nonce=None):
     """The served page's template: Bokeh's own page, plus the CSP <meta>
     and the saved page's viewport <meta> (WP-28 E14), with every script
@@ -5789,6 +5809,8 @@ def _dash_served_template(nonce=None):
     * ``js_resources`` (BokehJS) and ``inner_body`` (the page's own
       scripts) pass through :func:`_dash_nonce_scripts`, which gives each
       script element the nonce and edits nothing else.
+      ``js_resources`` first loses its MathJax element
+      (:func:`_dash_drop_mathjax`, WP-31 H3).
 
     The policy is :func:`_dash_csp_served` of the page's nonce: only a
     script carrying it runs.  The nonce is written into the template's
@@ -5843,11 +5865,13 @@ def _dash_served_template(nonce=None):
         + _dash_csp_meta(policy)
         + "\n    " + _DASH_VIEWPORT_META
         + "\n{% endblock %}\n"
-        "{% block js_resources %}{{ dash_nonce_scripts(super()) }}"
+        "{% block js_resources %}"
+        "{{ dash_nonce_scripts(dash_drop_mathjax(super())) }}"
         "{% endblock %}\n"
         "{% block inner_body %}{{ dash_nonce_scripts(super()) }}"
         "{% endblock %}",
         globals={"base": FILE,
+                 "dash_drop_mathjax": _dash_drop_mathjax,
                  "dash_nonce_scripts": functools.partial(
                      _dash_nonce_scripts, nonce=nonce)})
 
@@ -63377,6 +63401,8 @@ class ServerAppBuilder:
                          "_dash_aria", "_dash_figure_name",
                          "_dash_name_figure", "_dash_tabs_keys_hook",
                          "_dash_slider_names_hook",
+                         # WP-31 H3: the served bundle without MathJax.
+                         "_dash_drop_mathjax",
                          # WP-31 H2t: a graph's data table.
                          "_dash_table_spec", "_dash_table_vars",
                          "_dash_table_text_frame", "_dash_data_table",

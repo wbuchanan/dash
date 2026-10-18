@@ -1077,7 +1077,7 @@ Changed behaviour.
 
 - Every figure, filter, KPI card and tab strip carries an accessible name and role, tabs work from the keyboard, scheme contrast is measured and the pages pass an automated checker (WP-31, K6)
 
-<!-- WP-31 H3 -->
+- A served dashboard no longer ships Bokeh's MathJax component (bokeh-mathjax.min.js, 1.79 MB per session), which dash never uses (WP-31, H3)
 
 <!-- WP-31 H7 -->
 

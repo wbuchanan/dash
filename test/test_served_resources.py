@@ -642,3 +642,58 @@ class TestEstimatorMemo:
         assert not hasattr(dr.GlyphMapper._stata_lowess, "_dash_memo_of")
         assert not hasattr(dr.GlyphMapper._fp_fit, "_dash_memo_of")
         _reset(lowess_ns)
+
+
+# ===========================================================================
+# WP-31 H3: the served bundle leaves out Bokeh's MathJax component.  Bokeh's
+# server writes every component (``bundle_for_objs_and_resources(None, ...)``
+# forces them all on), so a served session fetched bokeh-mathjax (1.79 MB)
+# though dash breaks every TeX pair (_dash_inert_tex) and never uses it.
+# ===========================================================================
+def _server_page(template):
+    """The page Bokeh's server writes: its own bundle of server resources
+    (``server_html_page_for_session``'s two calls), with ``template``."""
+    from bokeh.embed.bundle import bundle_for_objs_and_resources
+    from bokeh.embed.elements import html_page_for_render_items
+    from bokeh.resources import Resources
+    bundle = bundle_for_objs_and_resources(
+        None, Resources(mode="server", root_url="/"))
+    return html_page_for_render_items(bundle, {}, [], "dash",
+                                      template=template)
+
+
+def _script_srcs(page):
+    import re
+    return re.findall(r'<script[^>]*\bsrc="([^"]*)"', page)
+
+
+class TestNoMathjax:
+    def test_the_served_page_names_no_mathjax_script(self, ns):
+        doc = _make(ns, _Served("s-mj"))
+        page = _server_page(doc.template)
+        assert _script_srcs(page)
+        assert "bokeh-mathjax" not in page
+
+    def test_the_renderers_template_names_none_either(self):
+        page = _server_page(dr._dash_served_template())
+        assert "bokeh-mathjax" not in page
+
+    def test_every_other_component_is_present(self):
+        from bokeh.resources import Resources
+        want = [c for c in Resources(mode="server").components
+                if c != "bokeh-mathjax"]
+        srcs = _script_srcs(_server_page(dr._dash_served_template()))
+        names = [s.rsplit("/", 1)[-1].split(".")[0] for s in srcs]
+        assert names == want
+
+    def test_only_a_mathjax_element_is_dropped(self):
+        tag = '<script type="text/javascript" src="/static/js/%s.min.js">' \
+              '</script>'
+        text = "\n".join(tag % c for c in ("bokeh", "bokeh-mathjax",
+                                           "bokeh-tables"))
+        out = str(dr._dash_drop_mathjax(text))
+        assert out.count("<script") == 2
+        assert "bokeh-mathjax" not in out and "bokeh-tables" in out
+        inline = '<script type="text/javascript">var a = "bokeh-mathjax";' \
+                 '</script>'
+        assert str(dr._dash_drop_mathjax(inline)) == inline

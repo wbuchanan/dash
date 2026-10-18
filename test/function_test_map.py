@@ -1002,6 +1002,7 @@ FUNCTIONS = {
  '_dash_csp_standalone': 'test/test_csp.py::TestTheStandalonePolicy::test_hashes_are_inserted_sorted_and_once',
  '_dash_new_nonce': 'test/test_csp.py::TestTheNonce::test_a_nonce_is_fresh_and_urlsafe',
  '_dash_nonce_scripts': 'test/test_csp.py::TestTheServedTemplate::test_only_script_elements_get_the_nonce',
+ '_dash_drop_mathjax': 'test/test_served_resources.py::TestNoMathjax::test_only_a_mathjax_element_is_dropped',
  '_dash_saved_head': 'test/test_csp.py::TestThePolicyConstants::test_the_standalone_meta_is_built_from_the_constant',
  '_dash_script_hashes': 'test/test_csp.py::TestTheScriptHashes::test_only_executable_inline_scripts_are_hashed',
  '_dash_seal_saved_page': 'test/test_csp.py::TestAHostileFragmentIsNotAdmitted::test_the_seal_refuses_an_unhashed_script',
