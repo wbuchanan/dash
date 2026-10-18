@@ -2299,8 +2299,10 @@ _GAPS3_OPEN = re.compile(r"^Open \(WP-31 section (\d{2})\)\.$")
 #: A closing commit writes "commit pending"; the merger's step k.3b rewrites
 #: it to the landed sha on s3-bugs (DECISIONS A11), so the reader accepts
 #: both and the batch-end gate (G2) and S61.3 forbid "pending".
+#: WP-32 (DECISIONS D39 item 1) closes WP-31's partly closed rows in the
+#: same forms, naming its own package.
 _GAPS3_CLOSED = re.compile(
-    r'^Closed in WP-31, BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
+    r'^Closed in WP-3[12], BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
 _GAPS3_PARTLY = re.compile(
     r'^Partly closed in WP-31 \(section (\d{2}), commit ([0-9a-f]{7,40}|pending)\): '
     r'(\S.*); open: (\S.*) \(BUGS\.md "([^"]+)"\)\.$')
