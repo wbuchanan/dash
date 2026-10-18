@@ -340,6 +340,16 @@ class TestTheLauncherStartsTheChildWatched:
         assert cmd[:5] == [sys.executable, "-P", "-c", dr._DASH_BOOT, app]
         assert "--parent-watch" in cmd[5:], cmd[5:]
 
+    def test_inside_stata_the_child_is_the_linked_python(self, tmp_path,
+                                                         monkeypatch):
+        """WP-31 I3: inside Stata the child is c(python_exec), the Python
+        Stata is linked to, not sys.executable (under a venv link, the
+        venv's base)."""
+        exe = _fake_python(tmp_path, "python3")
+        _stub_linked_sfi(monkeypatch, exe)
+        _app, cmd, _kw = self._launch(tmp_path, monkeypatch)
+        assert cmd[0] == exe and cmd[1:4] == ["-P", "-c", dr._DASH_BOOT]
+
     def test_the_child_stays_in_statas_process_group(self, tmp_path,
                                                      monkeypatch):
         """A5a: no new session or process group, so a console Ctrl+C
@@ -1113,3 +1123,56 @@ class TestTheAdoEndsWithROne:
         assert i_close < i_err
         assert "press Break (Ctrl+C in console Stata) to stop it." in text
         assert "Stata is blocked until the server stops (Ctrl+C)" not in text
+
+
+# ---------------------------------------------------------------------------
+# WP-31 I3: the interpreter dash serve starts its app with
+# ---------------------------------------------------------------------------
+
+def _fake_python(tmp_path, name):
+    d = tmp_path / "pybin"
+    d.mkdir(exist_ok=True)
+    p = d / name
+    p.write_text("#!/bin/sh\n")
+    p.chmod(0o755)
+    return str(p)
+
+
+def _stub_linked_sfi(monkeypatch, exec_value):
+    mod = types.ModuleType("sfi")
+    mod.SFIToolkit = types.SimpleNamespace(
+        macroExpand=lambda s: {"\x60c(python_exec)'": exec_value}[s])
+    monkeypatch.setitem(sys.modules, "sfi", mod)
+
+
+class TestTheChildInterpreter:
+
+    def test_outside_stata_it_is_this_python(self, monkeypatch):
+        monkeypatch.delitem(sys.modules, "sfi", raising=False)
+        assert dr._dash_child_python() == sys.executable
+
+    def test_the_linked_python_is_used(self, tmp_path, monkeypatch, capsys):
+        exe = _fake_python(tmp_path, "python3.13")
+        _stub_linked_sfi(monkeypatch, exe)
+        assert dr._dash_child_python() == exe
+        assert capsys.readouterr().out == ""
+
+    def test_a_bad_path_falls_back_with_a_note(self, tmp_path, monkeypatch,
+                                               capsys):
+        _stub_linked_sfi(monkeypatch, str(tmp_path / "nowhere" / "python3"))
+        assert dr._dash_child_python() == sys.executable
+        out = capsys.readouterr().out
+        assert out.count("dash: ") == 1 and sys.executable in out, out
+        assert "nowhere" in out
+
+    @pytest.mark.parametrize("bad", ["python3", "bin/python3",
+                                     "{dir}/py;thon3", "{dir}/py$thon3",
+                                     "{dir}/notpy"])
+    def test_a_relative_or_shell_path_is_refused(self, tmp_path, monkeypatch,
+                                                 capsys, bad):
+        name = os.path.basename(bad.format(dir="x"))
+        real = _fake_python(tmp_path, name)
+        value = bad.format(dir=os.path.dirname(real))
+        _stub_linked_sfi(monkeypatch, value)
+        assert dr._dash_child_python() == sys.executable
+        assert capsys.readouterr().out.count("dash: ") == 1

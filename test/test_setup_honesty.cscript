@@ -1205,6 +1205,63 @@ assert `u59pyc' == 0
 assert "`u59after'" == "0"
 display "U59-1 PASS: a render from an installed tree writes no __pycache__ and leaves dont_write_bytecode as it was"
 
+// ---- U59-2 (WP-31 I3): a failure after an install names it and its undo ----
+tempfile lg592
+quietly log using "`lg592'", replace text name(u592)
+capture noisily _dash_setup_summary, failures(1) warnings(0) ///
+    items(" bokeh (could not install)") installed(" packaging numpy")
+local u592rc = _rc
+quietly log close u592
+_hon_has "`lg592'" "Installed by this run: packaging numpy" u592a
+_hon_has "`lg592'" "To undo: " u592b
+_hon_has "`lg592'" "-m pip uninstall packaging numpy" u592c
+// and nothing when nothing was installed
+tempfile lg592n
+quietly log using "`lg592n'", replace text name(u592n)
+capture noisily _dash_setup_summary, failures(1) warnings(0) items(" bokeh (could not install)")
+quietly log close u592n
+_hon_has "`lg592n'" "Installed by this run" u592d
+display "U59-2 measured: rc `u592rc' installed `u592a' undo `u592b' line `u592c' none-said `u592d'"
+assert `u592rc' == 198 & `u592a' == 1 & `u592b' == 1 & `u592c' == 1 & `u592d' == 0
+display "U59-2 PASS: a failed run names the packages it installed and the pip uninstall line"
+
+// ---- U59-3 (WP-31 I3): Unmet lists failures only, Warnings the warnings ----
+tempfile lg593
+quietly log using "`lg593'", replace text name(u593)
+capture noisily _dash_setup_summary, failures(1) warnings(1) ///
+    items("bokeh (could not install)") warnitems(" packaging (version checks approximate)")
+local u593rc = _rc
+quietly log close u593
+_hon_has "`lg593'" "Unmet: bokeh (could not install)" u593a
+_hon_has "`lg593'" "Unmet: bokeh (could not install) packaging" u593b
+_hon_has "`lg593'" "Warnings: packaging (version checks approximate)" u593c
+display "U59-3 measured: rc `u593rc' unmet `u593a' mixed `u593b' warnings `u593c'"
+assert `u593rc' == 198 & `u593a' == 1 & `u593b' == 0 & `u593c' == 1
+display "U59-3 PASS: Unmet names the failures alone and Warnings the warnings"
+
+// ---- U59-4 (WP-31 I3): a dash_setup_lib.py in the working directory is not loaded ----
+local u594d "`c(tmpdir)'dash_u594_`c(current_time)'"
+local u594d : subinstr local u594d ":" "", all
+capture mkdir "`u594d'"
+local u594here "`c(pwd)'"
+quietly {
+    file open u594f using "`u594d'/dash_setup_lib.py", write text replace
+    file write u594f "PLANTED = True" _n
+    file close u594f
+}
+python: import sys; sys.modules.pop("_dash_setup_lib", None)
+quietly cd "`u594d'"
+capture noisily _dash_setup_lib
+local u594rc = _rc
+local u594ok = r(ok)
+quietly cd "`u594here'"
+python: import sys; from sfi import Macro; _m = sys.modules.get("_dash_setup_lib"); Macro.setLocal("u594planted", "1" if getattr(_m, "PLANTED", False) else "0")
+python: import sys; sys.modules.pop("_dash_setup_lib", None)
+python: import shutil; from sfi import Macro; shutil.rmtree(Macro.getLocal("u594d"), ignore_errors=True)
+display "U59-4 measured: rc `u594rc' ok `u594ok' planted `u594planted'"
+assert `u594rc' == 0 & `u594ok' == 1 & "`u594planted'" == "0"
+display "U59-4 PASS: dash_setup loads the dash_setup_lib.py beside it, not one in the working directory"
+
 
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
 

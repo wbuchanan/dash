@@ -37,6 +37,9 @@ program define dash_setup, rclass
     local n_warn 0
     local fail_items ""
     local warn_items ""
+    // WP-31 I3: what this run pip-installed, named in a failed summary
+    // with the pip uninstall line that removes it.
+    local installed_now ""
 
     // Minimum version requirements stored as locals, here so that venv()
     // can install them too.
@@ -89,7 +92,8 @@ program define dash_setup, rclass
         local n_fail = `n_fail' + 1
         local fail_items `"`fail_items' Python (not linked to Stata)"'
         _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-            items(`"`fail_items'`warn_items'"')
+            items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         exit 198
     }
 
@@ -114,7 +118,8 @@ program define dash_setup, rclass
         local n_fail = `n_fail' + 1
         local fail_items `"`fail_items' Python (could not be started)"'
         _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-            items(`"`fail_items'`warn_items'"')
+            items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         exit 198
     }
     _dash_pyver_ok "`pyver'" "`c_pymin'"
@@ -161,14 +166,16 @@ program define dash_setup, rclass
             local n_fail = `n_fail' + 1
             local fail_items `"`fail_items' venv() (Python `pyver' needs `c_pymin')"'
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
+                items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         }
         _dash_setup_lib
         if r(ok) != 1 {
             local n_fail = `n_fail' + 1
             local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
+                items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         }
         // The path is read by the helper with getLocal and held there for
         // _dash_setup_venv: it never passes through Stata's parser again.
@@ -178,7 +185,8 @@ program define dash_setup, rclass
             local n_fail = `n_fail' + 1
             local fail_items `"`fail_items' venv() (path refused)"'
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
+                items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         }
         _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'" "`max_bokeh'"
         local v_step "`r(step)'"
@@ -192,13 +200,15 @@ program define dash_setup, rclass
             local n_fail = `n_fail' + 1
             local fail_items `"`fail_items' venv() (`v_step' failed)"'
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"')
+                items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
         }
         return local venv_python `"`v_py'"'
         return local venv_linked "`v_linked'"
         if "`v_linked'" != "1" {
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                items(`"`fail_items'`warn_items'"') venvready
+                items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"') venvready
             exit
         }
         python: import importlib; importlib.invalidate_caches()
@@ -208,8 +218,11 @@ program define dash_setup, rclass
     // before step 2 (a run with everything present starts no process).
     local _need 0
     foreach m in packaging bokeh numpy pandas {
+        python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
         capture python: import `m'
-        if _rc != 0 local _need 1
+        local _imp_rc = _rc
+        python: import sys; sys.path[:] = _dash_sp
+        if `_imp_rc' != 0 local _need 1
     }
     if `_need' {
         // -- ensure detection (also before the below verdict) --
@@ -227,7 +240,8 @@ program define dash_setup, rclass
                 local n_fail = `n_fail' + 1
                 local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
                 _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                    items(`"`fail_items'`warn_items'"')
+                    items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
             }
             local det_done 1
             return local python `"`d_py'"'
@@ -247,8 +261,11 @@ program define dash_setup, rclass
     // ----------------------------------------------------------------
     // packaging is used inside the per-package version-gate loop; install
     // it FIRST so the loop never hits ModuleNotFoundError mid-run.
+    python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
     capture python: import packaging
-    if _rc != 0 {
+    local _imp_rc = _rc
+    python: import sys; sys.path[:] = _dash_sp
+    if `_imp_rc' != 0 {
         if "`det_managed'" == "1" {
             display as text "  packaging .......... {err}not installed{txt} — this Python is externally managed"
             if `guide_shown' == 0 {
@@ -278,10 +295,14 @@ program define dash_setup, rclass
             // output is shown: a failure here used to give no reason.  No
             // --user retry for packaging.
             _dash_setup_pip "packaging" 0 "`det_version'"
+            if "`r(outcome)'" == "ok" local installed_now "`installed_now' packaging"
             python: import importlib; importlib.invalidate_caches()
             // Mark whether packaging is now available
+            python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
             capture python: import packaging
-            if _rc != 0 {
+            local _imp_rc = _rc
+            python: import sys; sys.path[:] = _dash_sp
+            if `_imp_rc' != 0 {
                 display as text "  packaging .......... {err}could not install{txt} — " ///
                     "versions will be compared approximately"
                 local pkg_has_packaging 0
@@ -313,8 +334,11 @@ program define dash_setup, rclass
 
     foreach pkg of local pkg_list {
         // Try importing the package; if it fails, pip-install it
+        python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
         capture python: import `pkg'
-        if _rc != 0 {
+        local _imp_rc = _rc
+        python: import sys; sys.path[:] = _dash_sp
+        if `_imp_rc' != 0 {
             // The minimum reaches pip.  It was declared at the top and only
             // ever used AFTER the install, to grumble at what pip had
             // chosen; the command itself was a bare name, so a fresh
@@ -345,7 +369,8 @@ program define dash_setup, rclass
                     local fail_items `"`fail_items' `pkg' (no pip)"'
                 }
                 _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                    items(`"`fail_items'`warn_items'"')
+                    items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
             }
             display as text "  `pkg' ............. {res}missing{txt} — installing via pip..."
             // A system Python the user cannot write to is the ordinary
@@ -355,6 +380,7 @@ program define dash_setup, rclass
             // disabled.  A package --user installed is put on sys.path.
             local _user = ("`det_user'" == "1" & "`det_managed'" != "1")
             _dash_setup_pip "`_spec'" `_user' "`det_version'"
+            if "`r(outcome)'" == "ok" local installed_now "`installed_now' `pkg'"
             local _outcome "`r(outcome)'"
             if "`_outcome'" == "externally-managed" & `guide_shown' == 0 {
                 _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
@@ -369,8 +395,11 @@ program define dash_setup, rclass
             }
             python: import importlib; importlib.invalidate_caches()
             // Re-check after install
+            python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
             capture python: import `pkg'
-            if _rc != 0 {
+            local _imp_rc = _rc
+            python: import sys; sys.path[:] = _dash_sp
+            if `_imp_rc' != 0 {
                 if inlist("`_outcome'", "externally-managed", "no-pip") {
                     local fail_items `"`fail_items' `pkg' (`_outcome')"'
                 }
@@ -388,7 +417,8 @@ program define dash_setup, rclass
                 // and the message come from one place.
                 local n_fail = `n_fail' + 1
                 _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                    items(`"`fail_items'`warn_items'"')
+                    items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
             }
         }
 
@@ -428,7 +458,8 @@ program define dash_setup, rclass
                     local n_fail = `n_fail' + 1
                     local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
                     _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                        items(`"`fail_items'`warn_items'"')
+                        items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
                 }
                 local det_done 1
                 return local python `"`d_py'"'
@@ -489,7 +520,8 @@ program define dash_setup, rclass
                     local n_fail = `n_fail' + 1
                     local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
                     _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-                        items(`"`fail_items'`warn_items'"')
+                        items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
                 }
                 local det_done 1
                 return local python `"`d_py'"'
@@ -545,7 +577,8 @@ program define dash_setup, rclass
     // ----------------------------------------------------------------
     return local hint_cmd `"`hint_cmd'"'
     _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-        items(`"`fail_items'`warn_items'"')
+        items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
+                installed(`"`installed_now'"')
 
 end
 
@@ -816,7 +849,15 @@ end
 // ================================================================
 program define _dash_setup_summary
     version 19
-    syntax , FAILures(integer) WARNings(integer) [ITEMS(string) VENVready]
+    // WP-31 I3: items() the failures, warnitems() the warnings (Unmet
+    // named both when a run had both), installed() what this run
+    // pip-installed (dash's own package names).
+    syntax , FAILures(integer) WARNings(integer) [ITEMS(string) ///
+        WARNITems(string) INSTalled(string) VENVready]
+    // Unmet: and Warned: print items() as they come (each item starts
+    // with its blank); the two new lines trim theirs.
+    local warnshow = strtrim(`"`warnitems'"')
+    local installed = strtrim(`"`installed'"')
 
     display as text "{hline 60}"
 
@@ -825,6 +866,18 @@ program define _dash_setup_summary
             "requirement(s)."
         if `"`items'"' != "" {
             display as error "  Unmet: `items'"
+        }
+        if `"`warnshow'"' != "" {
+            display as text "  Warnings: `warnshow'"
+        }
+        if `"`installed'"' != "" {
+            display as text "  Installed by this run: `installed'"
+            local pkgs `"`installed'"'
+            local pip_cmd ""
+            capture _dash_setup_lib
+            if _rc == 0 & r(ok) == 1 {
+                python: import sys; sys.modules["_dash_setup_lib"].stata_undo_line()
+            }
         }
         display as error "  dash will not work until these are resolved."
         display as error "  Fix them and run {cmd:dash_setup} again."
@@ -846,6 +899,7 @@ program define _dash_setup_summary
         // since WP-18; each item now says what it costs.
         display as text "{res}dash_setup complete{txt}, with `warnings' " ///
             "warning(s)."
+        local items `"`items'`warnitems'"'
         if `"`items'"' != "" {
             display as text "  Warned: `items'"
         }
@@ -1017,6 +1071,7 @@ program define _dash_setup_check_files, rclass
     local _sch_ok "0"
     // WP-31 I7: the probe writes no bytecode beside the installed renderer.
     python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
+    python: import sys, os; _dash_sp = list(sys.path); sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]
     capture python: ///
         import importlib.util as _iu, sfi, warnings; ///
         _sp = _iu.spec_from_file_location("_dash_setup_probe", sfi.Macro.getLocal("render_py")); ///
@@ -1028,6 +1083,7 @@ program define _dash_setup_check_files, rclass
             "0" if _m.SchemeParser.resolve_or_fallback("s2color", "dash_setup").is_fallback else "1"); ///
         warnings.filters[:] = _dash_setup_filters
     local _sch_rc = _rc
+    python: import sys; sys.path[:] = _dash_sp
     python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
     if `_sch_rc' != 0 | "`_sch_ok'" != "1" {
         display as error "  schemes ............ {err}unreachable{txt}"
@@ -1050,29 +1106,30 @@ end
 // ================================================================
 // dash_setup's pip and venv steps run in dash_setup_lib.py, shipped beside
 // dash_render.py.  It is found the way _dash_setup_check_files finds the
-// renderer -- findfile, else beside dash_setup.ado -- made absolute, and
+// renderer -- beside dash_setup.ado, else findfile (WP-31 I3) -- made absolute, and
 // loaded once per path as sys.modules["_dash_setup_lib"], with no bytecode
 // written.  findfile searches the working directory first (Stata's own
-// rule; residual R4).
+// rule), so it is the fallback only.
 //
 // Returns r(ok): 1 loaded, 0 not found or not loadable (each named).
 // ================================================================
 program define _dash_setup_lib, rclass
     version 19
     local lib ""
-    capture findfile dash_setup_lib.py
+    // WP-31 I3: the copy beside dash_setup.ado first -- findfile searches
+    // the working directory first, so a dash_setup_lib.py there was the
+    // one loaded -- then the ado-path.
+    capture findfile dash_setup.ado
     if _rc == 0 {
-        local lib `"`r(fn)'"'
+        local _ado `"`r(fn)'"'
+        local _beside = substr(`"`_ado'"', 1, ///
+            strlen(`"`_ado'"') - strlen("dash_setup.ado")) + "dash_setup_lib.py"
+        capture confirm file `"`_beside'"'
+        if _rc == 0 local lib `"`_beside'"'
     }
-    else {
-        capture findfile dash_setup.ado
-        if _rc == 0 {
-            local _ado `"`r(fn)'"'
-            local _beside = substr(`"`_ado'"', 1, ///
-                strlen(`"`_ado'"') - strlen("dash_setup.ado")) + "dash_setup_lib.py"
-            capture confirm file `"`_beside'"'
-            if _rc == 0 local lib `"`_beside'"'
-        }
+    if `"`lib'"' == "" {
+        capture findfile dash_setup_lib.py
+        if _rc == 0 local lib `"`r(fn)'"'
     }
     if `"`lib'"' == "" {
         display as error "  dash_setup_lib.py .. {err}not found{txt}"

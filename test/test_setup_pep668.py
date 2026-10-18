@@ -317,6 +317,21 @@ class TestPipArgv:
         assert lib.pip_install_argv("/e", ["bokeh>=3.8,<4"], (3, 13, 9))[-1] == "bokeh>=3.8,<4"
 
 
+class TestTheUndoLine:
+    """WP-31 I3: a failed dash_setup names what it installed and the pip
+    line that removes it."""
+
+    def test_the_uninstall_vector(self, lib):
+        assert lib.pip_uninstall_argv("/e", ["packaging", "numpy"]) == \
+            ["/e", "-m", "pip", "uninstall", "packaging", "numpy"]
+
+    @pytest.mark.parametrize("bad", ["numpy; rm -rf ~", "-y", "", "../x",
+                                     "bokeh>=3.8"])
+    def test_only_names_are_taken(self, lib, bad):
+        with pytest.raises(ValueError, match="refusing the package name"):
+            lib.pip_uninstall_argv("/e", ["numpy", bad])
+
+
 class TestClassifyFailure:
 
     @pytest.mark.parametrize("record, kind", [
@@ -742,6 +757,18 @@ class TestStataEntryPoints:
         assert fake_sfi["local"]["pip_note"] == ""
         assert "To upgrade: " + want in capsys.readouterr().out
 
+    def test_stata_undo_line_names_the_linked_interpreter(self, lib, fake_sfi, capsys):
+        fake_sfi["exec"] = "/opt/My Python/bin/python3"
+        fake_sfi["local"].update(pkgs=" packaging  numpy")
+        lib.stata_undo_line()
+        want = "'/opt/My Python/bin/python3' -m pip uninstall packaging numpy"
+        assert fake_sfi["local"]["pip_cmd"] == want
+        assert "To undo: " + want in capsys.readouterr().out
+        fake_sfi["local"].update(pkgs="numpy {bf:x}")
+        lib.stata_undo_line()
+        assert fake_sfi["local"]["pip_cmd"] == ""
+        assert "To undo:" not in capsys.readouterr().out
+
     def test_stata_guide_prints_plain_text(self, lib, fake_sfi, capsys):
         fake_sfi["exec"] = "/opt/{bf:X}/python3"
         fake_sfi["local"].update(kind="managed", ensurepip="1", managed="1")
@@ -944,3 +971,61 @@ class TestTheBokehWindow:
                                 dict(mins, bokeh_ceil=ceil), sys.version_info)
             assert got["above"] == want, (ceil, got)
             assert got["ok"] is True, got
+
+
+# ---------------------------------------------------------------------------
+# WP-31 I3: dash_setup's wiring (read from dash_setup.ado)
+# ---------------------------------------------------------------------------
+
+def _setup_program(name):
+    with open(os.path.join(ROOT, "dash_setup.ado"), encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    start = next(i for i, l in enumerate(lines)
+                 if l == "program define " + name
+                 or l.startswith("program define %s," % name))
+    return [l.strip() for l in lines[start:lines.index("end", start)]]
+
+
+#: The two lines that keep the working directory off the import path for
+#: one probe, and put sys.path back (dash.ado uses the same pair).
+PATH_PRUNE = ('python: import sys, os; _dash_sp = list(sys.path); '
+              'sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]')
+PATH_RESTORE = 'python: import sys; sys.path[:] = _dash_sp'
+
+
+class TestTheSetupWiring:
+
+    def test_every_summary_gets_the_warnings_and_the_installs_apart(self):
+        body = " ".join(_setup_program("dash_setup"))
+        calls = body.split("_dash_setup_summary ,")[1:]
+        assert len(calls) >= 10
+        for c in calls:
+            head = c.split("_dash_setup_summary")[0][:400]
+            assert 'items(`"`fail_items\'"\')' in head, head
+            assert 'warnitems(`"`warn_items\'"\')' in head, head
+            assert 'installed(`"`installed_now\'"\')' in head, head
+        assert "`fail_items'`warn_items'" not in body
+
+    def test_an_install_pip_reports_ok_is_recorded(self):
+        body = _setup_program("dash_setup")
+        pips = [i for i, l in enumerate(body) if l.startswith("_dash_setup_pip ")]
+        assert len(pips) == 2
+        for i in pips:
+            nxt = body[i + 1:i + 4]
+            assert any(l.startswith('if "`r(outcome)\'" == "ok" local installed_now')
+                       for l in nxt), nxt
+
+    def test_every_import_probe_runs_off_the_working_directory(self):
+        body = _setup_program("dash_setup")
+        probes = [i for i, l in enumerate(body)
+                  if l.startswith("capture python: import ")]
+        assert len(probes) == 5  # the any-missing loop, packaging twice, each package twice
+        for i in probes:
+            assert body[i - 1] == PATH_PRUNE, body[i - 1]
+            assert body[i + 2] == PATH_RESTORE, body[i + 1:i + 3]
+
+    def test_the_lib_beside_dash_setup_is_taken_before_the_ado_path(self):
+        body = _setup_program("_dash_setup_lib")
+        beside = next(i for i, l in enumerate(body) if "findfile dash_setup.ado" in l)
+        search = next(i for i, l in enumerate(body) if "findfile dash_setup_lib.py" in l)
+        assert beside < search

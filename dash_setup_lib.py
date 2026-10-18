@@ -263,6 +263,18 @@ def pip_install_argv(exe, specs, version, user=False):
             (["--user"] if user else []) + list(specs))
 
 
+_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def pip_uninstall_argv(exe, names):
+    """The pip line that removes what a failed dash_setup run installed
+    (WP-31 I3): package names only, no flags."""
+    for name in names:
+        if not isinstance(name, str) or not _NAME_RE.fullmatch(name):
+            raise ValueError("dash_setup: refusing the package name %r" % (name,))
+    return [exe, "-m", "pip", "uninstall"] + list(names)
+
+
 def bokeh_requirement(installed, floor, ceil):
     """The bokeh requirement dash_setup installs (WP-30 P1.30, M9, A107).
 
@@ -705,6 +717,29 @@ def stata_shell_line():
         cmd, note = "", ""
     sfi.Macro.setLocal("pip_cmd", cmd)
     sfi.Macro.setLocal("pip_note", note)
+
+
+def stata_undo_line():
+    """The pip uninstall line for the local `pkgs' (what this run
+    installed), naming the linked Python, quoted for the shell; sets
+    pip_cmd and prints it after "To undo: " (WP-31 I3).  A name that is
+    not a package name prints nothing."""
+    import sfi
+    cmd = ""
+    try:
+        names = sfi.Macro.getLocal("pkgs").split()
+        exe, raw = _linked()
+        try:
+            cmd = shell_line(pip_uninstall_argv(exe or raw, names),
+                             os.name == "nt")
+        except ValueError:
+            cmd = ""
+        if cmd:
+            print("  To undo: " + cmd)
+    except Exception as exc:
+        _internal(exc)
+        cmd = ""
+    sfi.Macro.setLocal("pip_cmd", cmd)
 
 
 def stata_guide():

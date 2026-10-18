@@ -1866,7 +1866,13 @@ class TestDashSetupHelpMatchesTheAdo:
                 j -= 1
             cap = lines[j].strip()
             assert cap.startswith("capture python: import "), (i + 1, cap)
-            assert lines[j + 1].strip() == "if _rc != 0 {", (i + 1, cap)
+            # Flipped (WP-31 I3): the import runs off the working directory,
+            # so its rc is kept before sys.path is put back; the branch is
+            # the same failed import's.
+            assert [ln.strip() for ln in lines[j + 1:j + 4]] == [
+                "local _imp_rc = _rc",
+                "python: import sys; sys.path[:] = _dash_sp",
+                "if `_imp_rc' != 0 {"], (i + 1, cap)
         lib = _read(os.path.join(_ROOT, "dash_setup_lib.py"))
         tree = ast.parse(lib)
         holders = sorted(n.name for n in ast.walk(tree)

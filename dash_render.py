@@ -68493,6 +68493,46 @@ def _dash_relay_kind(line, in_traceback=False):
     return "keep", s, False
 
 
+#: Characters a c(python_exec) dash serve starts its app with may not
+#: hold (WP-31 I3): none is needed in an interpreter's path, and each is
+#: one a shell or Stata would read.
+_DASH_CHILD_PY_BAD = frozenset(';|&$`<>"\'\n\r\t*?{}')
+
+
+def _dash_child_python():
+    """The interpreter dash serve starts its app with (WP-31 I3).
+
+    Inside Stata, ``c(python_exec)`` -- the Python Stata is linked to, a
+    venv's own bin/python under a venv link -- where ``sys.executable`` is
+    the venv's base, which found the venv's packages only through the
+    PYTHONPATH Stata exports.  It is taken only when it is an absolute path
+    to an executable file whose name starts with "python" and that holds
+    none of _DASH_CHILD_PY_BAD; otherwise ``sys.executable``, with one
+    note.  Outside Stata, ``sys.executable``: the Python running this.
+    """
+    import sys
+    exe = sys.executable
+    sfi = sys.modules.get("sfi")
+    if sfi is None:
+        return exe
+    try:
+        raw = str(sfi.SFIToolkit.macroExpand("\x60c(python_exec)'") or "")
+    except Exception:
+        return exe
+    if not raw:
+        return exe
+    ok = (len(raw) <= 4096 and os.path.isabs(raw)
+          and not (set(raw) & _DASH_CHILD_PY_BAD)
+          and os.path.basename(raw).lower().startswith("python")
+          and os.path.isfile(raw) and os.access(raw, os.X_OK))
+    if ok:
+        return raw
+    print("dash: c(python_exec) (%s) is not an absolute path to a Python "
+          "dash serve can start; the app runs with %s"
+          % (_dash_display(raw, 200), _dash_display(exe, 200)), flush=True)
+    return exe
+
+
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
                       ready_seconds=30.0, prebind=True, expect=None,
                       erase_app_when_ready=False, link_dir=None, said=(),
@@ -68617,8 +68657,9 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     _frame = _dash_app_frame(_data)
     del _data
 
-    _cmd = [sys.executable, "-P", "-c", _DASH_BOOT, app_path, "--port",
-            str(port)]
+    # WP-31 I3: inside Stata, the Python Stata is linked to.
+    _cmd = [_dash_child_python(), "-P", "-c", _DASH_BOOT, app_path,
+            "--port", str(port)]
     if not no_browser:
         _cmd.append("--show")
     if timeout > 0:

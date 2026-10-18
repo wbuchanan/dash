@@ -1137,6 +1137,7 @@ FUNCTIONS = {
  '_dash_dep_fail': 'test/test_dependency_guards.py::TestTheRendererRefusesWithTheRemedy::test_a_missing_package_is_one_line_naming_dash_setup',
  '_dash_dep_versions': 'test/test_dependency_guards.py::TestTheVersionNote::test_numpy_or_pandas_below_the_minimum_is_noted',
  '_dash_hand_run_note': 'test/test_dependency_guards.py::TestTheVersionNote::test_a_hand_run_renderer_prints_the_note',  # WP-31 S59 (I4)
+ '_dash_child_python': 'test/test_serve_lifecycle.py::TestTheChildInterpreter::test_the_linked_python_is_used',  # WP-31 S59 (I3)
  # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
  'GlyphMapper._mark_needs_points': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_mark_needs_points_marks_each_renderer',
  'GlyphMapper._needs_points_why': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_the_why_of_each_refusal',
@@ -1553,6 +1554,8 @@ SETUP_FUNCTIONS = {
     "managed_message": _P + "TestMessages::test_the_managed_message_names_the_python_and_never_the_override_flag",
     "nopip_message": _P + "TestMessages::test_the_nopip_message_offers_ensurepip_only_where_it_works",
     "pip_install_argv": _P + "TestPipArgv::test_the_exact_vector_and_safe_path_flag",
+    # WP-31 S59 (I3): the undo line of a failed run.
+    "pip_uninstall_argv": _P + "TestTheUndoLine::test_the_uninstall_vector",
     "resolve_exe": _P + "TestResolveExe::test_a_relative_path_is_resolved_against_the_stata_directory",
     "run_child": _P + "TestRunChild::test_a_pip_package_in_the_working_directory_is_not_run",
     "safe_flags": _P + "TestVersionAndFlags::test_safe_flags_only_from_3_11",
@@ -1561,6 +1564,7 @@ SETUP_FUNCTIONS = {
     "stata_guide": _P + "TestStataEntryPoints::test_stata_guide_prints_plain_text",
     "stata_pip": _P + "TestStataEntryPoints::test_stata_pip_retries_with_user_only_when_allowed_and_adds_the_user_site",
     "stata_shell_line": _P + "TestStataEntryPoints::test_stata_shell_line_names_the_linked_interpreter_quoted",
+    "stata_undo_line": _P + "TestStataEntryPoints::test_stata_undo_line_names_the_linked_interpreter",
     "stata_venv": _P + "TestStataEntryPoints::test_stata_venv_check_and_stata_venv_with_a_recorded_run",
     "stata_venv_check": _P + "TestStataEntryPoints::test_stata_venv_check_and_stata_venv_with_a_recorded_run",
     "validate_venv_path": _P + "TestValidateVenvPath::test_refusals",

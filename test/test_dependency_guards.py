@@ -837,3 +837,65 @@ print("ok")
 """ % (os.path.dirname(os.path.abspath(__file__)), str(tmp_path))
         rc, out, err = _run(code, cwd=str(tmp_path))
         assert rc == 0 and out.strip().endswith("ok"), err
+
+
+# ---------------------------------------------------------------------------
+# WP-31 I3: the working directory is not on the import path of dash's probes
+# ---------------------------------------------------------------------------
+# Stata's embedded Python starts with "" first on sys.path (measured
+# 18oct2026: ['', '/Applications/StataNow/ado/base/py', '', ...]), so a
+# bokeh.py, numpy.py or pandas.py in the working directory was found
+# before the installed package by _dash_require_deps' probe and by the
+# renderer's own imports in _dash_xm_load.
+
+_PATH_PRUNE = ('python: import sys, os; _dash_sp = list(sys.path); '
+               'sys.path[:] = [p for p in sys.path if p not in ("", os.getcwd())]')
+_PATH_RESTORE = 'python: import sys; sys.path[:] = _dash_sp'
+
+
+class TestTheWorkingDirectoryIsNotImported:
+
+    def test_the_dependency_probe_is_pruned(self):
+        body = [l.strip() for l in _body("_dash_require_deps")]
+        probe = [i for i, l in enumerate(body) if "find_spec(m)" in l]
+        assert len(probe) == 1
+        i = probe[0]
+        # captured there, as every python: line of _dash_require_deps is
+        assert body[i - 1] == "capture " + _PATH_PRUNE, body[i - 1]
+        assert "capture " + _PATH_RESTORE in body[i + 1:i + 3], body[i + 1:i + 3]
+
+    def test_the_renderer_load_is_pruned(self):
+        body = [l.strip() for l in _body("_dash_xm_load")]
+        load = min(i for i, l in enumerate(body) if "exec_module" in l)
+        stored = body.index('python: sys.modules["_dash_render_export"] = _dash_xm')
+        prunes = [i for i, l in enumerate(body) if l == _PATH_PRUNE]
+        restores = [i for i, l in enumerate(body) if l == _PATH_RESTORE]
+        assert len(prunes) == 1 and prunes[0] < load
+        assert len(restores) == 3
+        assert restores[-1] > stored
+        exits = [i for i, l in enumerate(body)
+                 if l in ("exit 198", "exit `_dd_rc'") and i < stored]
+        assert len(exits) == 2
+        for e in exits:
+            assert any(0 < e - r <= 2 for r in restores), (e, restores)
+
+    def test_the_working_directory_is_not_on_the_import_path(self, tmp_path):
+        """The lines as dash.ado holds them, run with "" first on sys.path
+        and a planted bokeh.py in the working directory: the probe and the
+        import see the installed bokeh, and sys.path is put back."""
+        body = [l.strip() for l in _body("_dash_xm_load")]
+        prune = next((l for l in body if l == _PATH_PRUNE), "python: pass")
+        restore = next((l for l in body if l == _PATH_RESTORE), "python: pass")
+        (tmp_path / "bokeh.py").write_text("raise ImportError('planted')\n")
+        code = (
+            "import sys, os, json\n"
+            "sys.path.insert(0, '')\n"
+            "before = list(sys.path)\n"
+            "exec(sys.argv[1].split(':', 1)[1].strip())\n"
+            "import bokeh\n"
+            "exec(sys.argv[2].split(':', 1)[1].strip())\n"
+            "print(json.dumps([bokeh.__file__, sys.path == before]))\n")
+        rc, out, err = _run(code, prune, restore, cwd=str(tmp_path))
+        assert rc == 0, err
+        f, same = _json_s25.loads(out.strip().split("\n")[-1])
+        assert os.path.dirname(f) != str(tmp_path) and same, (f, same)

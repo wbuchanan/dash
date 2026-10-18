@@ -1095,7 +1095,7 @@ Changed behaviour.
 
 - README.md gives the net install line, the requirements and dash_setup; dash.pkg carries Author and KW lines; help dash has Installation and Author sections and its jump list names every section. (WP-31, I2)
 
-<!-- WP-31 I3 -->
+- A failed dash_setup names the packages the run installed and the pip uninstall line that undoes it, and lists Unmet requirements apart from Warnings; dash serve starts its app with the Python Stata is linked to, falling back to the renderer's interpreter with a note; and a dash_setup_lib.py or bokeh.py in the working directory is no longer imported. (WP-31, I3)
 
 - python dash_render.py and a served app run by hand print the same numpy and pandas version note Stata prints, and the first line of each carries the comment that a SyntaxError there means a Python older than 3.11. (WP-31, I4)
 
