@@ -218,3 +218,38 @@ class TestSubtitle:
                         n_graphs=2)
         text = " ".join(d.text for d in _find(doc, Div))
         assert "<script>" not in text
+
+
+def _app_source(tmp_path):
+    """The source ServerAppBuilder writes for a one-scatter spec."""
+    tag = next(_SEQ)
+    bo = dict(_DEFAULT_BO, registry="g1")
+    spec = tmp_path / f"spec_{tag}.json"
+    data = tmp_path / f"data_{tag}.json"
+    app = tmp_path / f"app_{tag}.py"
+    spec.write_text(json.dumps({"graphs": [_graph("g1")], "kpis": [],
+                                "build_options": bo}))
+    data.write_text(json.dumps(make_data_json(_DF)))
+    dr.ServerAppBuilder(str(spec), str(data)).build(str(app))
+    return app.read_text(encoding="utf-8")
+
+
+class TestTheAppHeader:
+    """GAPS3 J5 (WP-31 section 58): the served app's header said "Launch
+    with: bokeh serve <this_file.py>", where dash serve runs it with
+    ``python <file>``; a dead escaped title sat in the generator, and
+    ``_SIZE_MAP`` was emitted into the app (removed by WP-31 E13)."""
+
+    def test_it_names_how_dash_runs_it(self, tmp_path):
+        src = _app_source(tmp_path)
+        head = src.split('"""', 2)[1]
+        assert "# Launch with: python <this_file.py>" in head, head
+        assert "dash serve" in head, head
+        assert "bokeh serve <this_file.py>" not in src
+
+    def test_no_dead_title_safe(self):
+        with open(dr.__file__, encoding="utf-8") as fh:
+            assert "title_safe" not in fh.read()
+
+    def test_no_size_map_is_emitted(self, tmp_path):
+        assert "_SIZE_MAP =" not in _app_source(tmp_path)

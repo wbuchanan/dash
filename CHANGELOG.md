@@ -1089,7 +1089,7 @@ Changed behaviour.
 
 - The tracking documents say what is true: 62 closed BUGS.md entries that began "Not fixed" open with their closer, GAPS.md's summary and ROADMAP's open count are dated, TWOWAY_COVERAGE_AUDIT.md's inert list names only pending options, and eight stale test docstrings are rewritten. (WP-31, J4)
 
-<!-- WP-31 J5 -->
+- The server app that dash build, server writes opens with how dash runs it (python <file>, or dash serve), its class docstring no longer names bokeh serve as the way or five layer types as the recomputed ones, and a dead escaped title is gone. (WP-31, J5)
 
 <!-- WP-31 J6 -->
 
