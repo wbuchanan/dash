@@ -648,6 +648,60 @@ class TestTheWarningFilters:
         t2.join(10)
         assert order == ["first out", "second in"]
 
+    def test_library_blocks_serialise_with_dash_own(self, ns):
+        """WP-32 (BUGS.md "Served build on the event loop"): in a serving
+        process every catch_warnings block -- pandas', numpy's, Bokeh's,
+        through the real warnings module -- is held under the same lock
+        as dash's own, so a library block on one thread cannot interleave
+        with a block on another and leave a filter swapped."""
+        import warnings as real
+        orig = real.catch_warnings
+        try:
+            ns["_dash_lock_library_warnings"]()
+            assert real.catch_warnings is not orig
+            assert issubclass(real.catch_warnings, orig)
+            ns["_dash_lock_library_warnings"]()  # once per process
+            again = real.catch_warnings
+            inside, release, order = (threading.Event(), threading.Event(),
+                                      [])
+
+            def holder():
+                with ns["warnings"].catch_warnings():
+                    inside.set()
+                    release.wait(10)
+                    order.append("dash out")
+
+            def library():
+                with real.catch_warnings():
+                    order.append("library in")
+            t1 = threading.Thread(target=holder)
+            t1.start()
+            assert inside.wait(10)
+            t2 = threading.Thread(target=library)
+            t2.start()
+            t2.join(0.3)
+            assert order == []
+            release.set()
+            t1.join(10)
+            t2.join(10)
+            assert order == ["dash out", "library in"]
+            assert again is real.catch_warnings
+        finally:
+            real.catch_warnings = orig
+
+    def test_only_a_serving_process_locks_the_library(self, app_src):
+        """The lock is taken by the launcher (python app.py) and by a
+        bokeh serve session, never by loading the app or _dash_server_app
+        (a test, Stata's process, a trial)."""
+        main = app_src[app_src.index("if __name__ == '__main__':"):]
+        assert "_dash_lock_library_warnings()" in main
+        srv = app_src[app_src.index("def _dash_server_app("):
+                      app_src.index("if __name__ == '__main__':")]
+        assert "_dash_lock_library_warnings()" not in srv
+        assert ("if __name__ != '__main__' and not _DASH_TRIAL and \\\n"
+                "        getattr(curdoc(), 'session_context', None) is not "
+                "None:\n    _dash_lock_library_warnings()") in app_src
+
     def test_filters_survive(self, ns):
         w = ns["warnings"]
         assert type(w).__name__ == "_DashWarnings"

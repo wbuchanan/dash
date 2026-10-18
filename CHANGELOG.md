@@ -927,6 +927,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - Printing a dashboard with tabs() prints every tab, each on a page of its own scaled to fit the paper (the tab's graphs and open tables and the tab strip with it marked), where it printed only the tab that was showing (WP-32, D-53e)
 - A dash_render installed without its source file (a .pyc alone) writes a served app for dash build, server and dash serve, where the build failed with "OSError: source code not available"; the app runs under the Python that wrote it (WP-32, K2)
 - A served session's dashboard is drawn off the server's event loop under dash serve and python app.py, two at a time, so /health, other readers' moves and other new sessions are answered while one is drawn (1.6-4.6 s at 100-200k rows held them all) (WP-32, H3)
+- A served process (dash serve, python app.py, a bokeh serve session) holds every catch_warnings block -- pandas', numpy's and Bokeh's as well as dash's -- under one lock, so a block on a build or recompute thread can no longer interleave with one on the loop and leave a warning filter swapped (WP-32, H3)
 
 ### Fixed in WP-31
 

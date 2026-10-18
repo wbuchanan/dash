@@ -1457,6 +1457,7 @@ FUNCTIONS = {
  'app:_DashBuildHandler.on_session_created.<locals>._build': 'test/test_served_build.py::TestTheLoopAnswersWhileASessionBuilds::test_health_and_a_second_session',
  'app:_dash_build_off_loop': 'test/test_served_build.py::TestTheBuildOffTheLoopDrawsTheSameDocument::test_threaded_equals_inline',
  'app:_dash_build_pool': 'test/test_served_build.py::TestTheLoopAnswersWhileASessionBuilds::test_health_and_a_second_session',
+ 'app:_dash_lock_library_warnings': 'test/test_served_worker.py::TestTheWarningFilters::test_library_blocks_serialise_with_dash_own',
  'app:_dash_cur_scheme': 'test/test_served_build.py::TestTheBuildOffTheLoopDrawsTheSameDocument::test_threaded_equals_inline',
  'app:_dash_current_loop': 'test/test_served_worker.py::TestBokehThreadRules::test_the_thread_rules',
  'app:_dash_plan_mapper': 'test/test_served_worker.py::TestTheTripwires::test_the_worker_draws_with_its_own_mapper_and_scheme',

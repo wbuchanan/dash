@@ -344,6 +344,21 @@ def _clear_bokeh_curdoc():
         pass
 
 
+# A generated app's launcher (WP-32) locks the process's catch_warnings
+# for good, as a serving process should.  A test that runs the launcher in
+# this process would leave pytest's own per-test catch_warnings block
+# holding that lock against every other thread of the next test, so the
+# real class is put back after each test.
+_REAL_CATCH_WARNINGS = warnings.catch_warnings
+
+
+@pytest.fixture(autouse=True)
+def _restore_catch_warnings():
+    yield
+    if warnings.catch_warnings is not _REAL_CATCH_WARNINGS:
+        warnings.catch_warnings = _REAL_CATCH_WARNINGS
+
+
 # ============================================================
 # Generated server apps: each block of text compiled once (WP-30 A3)
 # ============================================================
