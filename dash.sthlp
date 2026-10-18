@@ -1636,8 +1636,8 @@ five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 
 {pstd}
 Saved and served dashboards name their parts for screen readers.  Each
-graph is an image named by its {cmd:title()} text, or, without one, by its
-first plot, as in "scatter of mpg versus weight, 1 more layer" (variable
+graph is a named group -- an image only when it has no toolbar -- named by
+its {cmd:title()} text, or, without one, by its first plot, as in "scatter of mpg versus weight, 1 more layer" (variable
 names, not labels; at most 120 characters).  Each filter, the
 {bf:Reset filters} button and the {bf:Data table} button is named by its
 title, each slider handle by its filter's title, each data table by its
