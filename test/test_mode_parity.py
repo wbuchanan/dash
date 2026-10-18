@@ -5894,3 +5894,152 @@ class TestTheBsGridBelow992Agrees:
         assert not diffs, _explain(name, f"bs grid at {px} px", diffs)
         if width == "phone":
             assert [c[1] for c in std] == [0] * len(std), std
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6): the export outputs -- the CSV download's bytes, and the
+# whole-dashboard PNG's layout and SVG's text -- at build and after moves.
+# ---------------------------------------------------------------------------
+
+#: A dashboard with every part the exports draw: a title and subtitle, a
+#: dropdown and a range, a tab strip, a KPI card, a %td date column and a
+#: labelled one, and the CSV download (``csv``).
+_EXPORT_SPEC = _spec(graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
+                     build_options={
+                         "title": "Cars & co", "subtitle": "1978",
+                         "filter": "foreign, type(dropdown) || "
+                                   "price, type(range)",
+                         "tabs": "A: g1 / B: g2", "csv": "1",
+                         "formats": {"when": "%td"}},
+                     kpis=[_kpi()])
+
+#: (name, moves): the export's state, each move made after the last.
+_EXPORT_STATES = [
+    ("at build", []),
+    ("after dropdown to Foreign", [("Select", "Foreign")]),
+    ("after dropdown to Foreign then range to 4500-11385",
+     [("Select", "Foreign"), ("RangeSlider", (4500.0, 11385.0))]),
+]
+
+
+def _composite_plain(models, args):
+    """The composite action's models (``dash_composite_models``), looked up
+    by the ids its args hold, as plain objects carrying the properties the
+    page's ``_DASH_COMPOSITE_JS`` reads -- a Div's text and visibility, a
+    widget's type, title, value and options, the tab strip's titles and
+    active tab, a table toggle's state."""
+    import js_runner
+
+    def div(m):
+        return {"text": m.text, "visible": bool(m.visible)}
+
+    def widget(w):
+        out = {"type": type(w).__name__, "title": w.title,
+               "value": js_runner.encode(w.value, {}, {})}
+        if hasattr(w, "options"):
+            out["options"] = [list(o) if isinstance(o, (list, tuple)) else o
+                              for o in w.options]
+        return out
+
+    head = [models[i] if i else str(t or "")
+            for i, t in zip(args["header_ids"], args["header"])]
+    tabs = models.get(args["tabs_id"]) if args["tabs_id"] else None
+    return {
+        "header": [div(h) if not isinstance(h, str) else h for h in head],
+        "widgets": [widget(models[i]) for i in args["widget_ids"]],
+        "tabs": ({"tabs": [{"title": p.title} for p in tabs.tabs],
+                  "active": tabs.active} if tabs is not None else None),
+        "kpis": [div(models[i]) for i in args["kpi_ids"]],
+        "toggles": [{"active": bool(models[i].active)}
+                    for i in args["toggle_ids"]]}
+
+
+#: The grid's own image in the composite: BokehJS's export, which needs a
+#: browser, so both modes are given this one.
+_EXPORT_GRID_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="1200" '
+                    'height="600"><path d="M0 0"/></svg>')
+
+
+def _composite_outputs(models):
+    """``[(layout, svg), ...]``, one per top-level grid's "Save dashboard"
+    action (tag dash_composite_png) among *models*: the layout the PNG is
+    painted from and the SVG text, from ``_DASH_COMPOSITE_JS`` under node
+    with a fixed text measure (7 px a character)."""
+    import js_runner
+    from bokeh.models import CustomAction
+    by_id = {m.id: m for m in models}
+    acts = [m for m in models if isinstance(m, CustomAction)
+            and "dash_composite_png" in (m.tags or [])]
+    assert acts, "no Save dashboard action"
+    plains = [_composite_plain(by_id, a.callback.args) for a in acts]
+    src = dr._DASH_COMPOSITE_JS + r"""
+const out = %s.map((m) => {
+  const lay = dash_composite_layout(m, 1200, 600, (t, f) => 7 * t.length);
+  return [lay, dash_composite_svg(lay, %s)];
+});
+console.log(JSON.stringify(out));
+""" % (json.dumps(plains), json.dumps(_EXPORT_GRID_SVG))
+    return js_runner.run_js(src)
+
+
+def _saved_exports(spec, moves):
+    """``(csv text, composites)`` of the saved page after *moves*, each
+    made by its own filter script under node; the CSV is its Download CSV
+    button's script run under node (test_export._saved_file)."""
+    import js_runner
+    import test_export as te
+    r, _ = _standalone(spec)
+    session = js_runner.JsSession(r.filter_callbacks)
+    for kind, want in moves:
+        [(w, cb)] = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                              r.filter_callbacks)
+                     if type(w).__name__ == kind]
+        value = _move_widget_value(w, kind, want)
+        session.set(w, list(value) if kind == "RangeSlider" else value)
+        session.run(cb)
+    return (te._saved_file(r, {}),
+            _composite_outputs(list(r._last_layout_root.references())))
+
+
+def _served_exports(spec, moves):
+    """The same of the served app after *moves*, made by its callbacks;
+    the CSV is its button's click and page-side writer under node
+    (test_export._served_file)."""
+    import test_export as te
+    doc, _ = _served(spec)
+    for kind, want in moves:
+        [w] = [w for w in _widgets_of(doc) if type(w).__name__ == kind]
+        _fire(w, _move_widget_value(w, kind, want))
+    return te._served_file(doc, {}), _composite_outputs(list(doc.models))
+
+
+@pytest.mark.parametrize("state,moves", _EXPORT_STATES,
+                         ids=[s[0] for s in _EXPORT_STATES])
+class TestTheExportsAgree:
+    """WP-32: the bytes each mode's exports write.  The CSV file is
+    compared whole; the whole-dashboard PNG by the layout it is painted
+    from (its pixels need a browser canvas) and the SVG by its text, with
+    the grid's own image -- BokehJS's, browser-only -- the same stand-in
+    in both.  The export code itself is not this file's."""
+
+    def test_same_csv_bytes(self, state, moves):
+        saved, _ = _saved_exports(_EXPORT_SPEC, moves)
+        served, _ = _served_exports(_EXPORT_SPEC, moves)
+        assert saved.count("\r\n") >= 2, saved
+        assert saved == served, (state, saved, served)
+
+    def test_same_composite_png_layout_and_svg(self, state, moves):
+        _, saved = _saved_exports(_EXPORT_SPEC, moves)
+        _, served = _served_exports(_EXPORT_SPEC, moves)
+        assert saved and any(i["kind"] == "text" and i["text"] == "Cars & co"
+                             for i in saved[0][0]["items"]), saved
+        diffs = _diff(saved, served)
+        assert not diffs, _explain(state, "composite exports", diffs)
+
+    def test_the_moves_reach_the_exports(self, state, moves):
+        """Guards the guard: the state after a move is not the build's."""
+        if not moves:
+            return
+        built = _saved_exports(_EXPORT_SPEC, [])
+        moved = _saved_exports(_EXPORT_SPEC, moves)
+        assert built[0] != moved[0] and built[1] != moved[1]
