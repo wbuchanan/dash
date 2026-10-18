@@ -246,7 +246,7 @@ _UNREAD_KEYS = {
     # By design: Stata's note textbox reads `gsize small_body', not this.
     "note_font_size": "gsize note: Stata's note() box does not read it",
     # BUGS.md "Five scheme keys are parsed and read by nothing".
-    "by_legend_ring": "BUGS.md: a by() legend's ring",
+    # by_legend_ring gained its reader in _dash_by_keys (WP-32).
     "zyx2_ring": "BUGS.md: the contour legend's ring",
     "text_option_vertical": "BUGS.md: text()'s vertical alignment",
     "numticks_minor": "BUGS.md: the scheme's default minor tick counts",

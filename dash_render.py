@@ -53158,9 +53158,15 @@ def _dash_by_keys(figs, opts, scheme):
         if words & {"on", "draw"}:
             drawn = True
         if drawn:
+            # No ring(): the scheme's `gridringstyle by_legend_ring'
+            # (s2color 3), which twoway draws exactly as the same ring()
+            # (measured 18oct2026, WP-32); ring 1 is drawn as ring 0 (the
+            # two SVGs are one byte for byte).
+            if ring is None:
+                ring = getattr(scheme, "by_legend_ring", 3)
             try:
-                out["ring0"] = ring is not None and float(ring) == 0
-            except ValueError:
+                out["ring0"] = ring is not None and float(ring) <= 1
+            except (TypeError, ValueError):
                 out["ring0"] = False
             # legend(ring(0)): outside the panels on its clock's side, as
             # twoway draws it, aligned at the compass along that side

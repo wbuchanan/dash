@@ -1045,3 +1045,38 @@ class TestTheLabelBox:
         key = _cell(grid, "dash_by_clegend")[0]
         assert all(b is not k for f in _panels(grid) for b in _boxes(f)
                    for k in key.left + key.above)
+
+
+class TestTheSchemesByLegendRing:
+    """`gridringstyle by_legend_ring' (WP-32, BUGS.md "Five scheme keys
+    are parsed and read by nothing"): measured 18oct2026 (StataNow 19.5,
+    SVG), a user scheme `#include s2color' with `gridringstyle
+    by_legend_ring 0' draws `twoway (scatter mpg weight) (scatter trunk
+    weight), by(foreign)' byte for byte as s2color with by(foreign,
+    legend(ring(0))), and ring 1 as legend(ring(1)), which is ring 0's
+    drawing; s2color's 3 is the legend below the axis titles."""
+
+    @staticmethod
+    def _out(ring, legend=""):
+        from bokeh.plotting import figure
+        figs = []
+        for _ in range(2):
+            f = figure()
+            f.scatter([1], [1], legend_label="a")
+            f.line([1], [1], legend_label="b")
+            figs.append(f)
+        sp = dr.SchemeParser("s2color")
+        sp.by_legend_ring = ring
+        opts = dr._dash_by_axes_options("g" + (", " + legend if legend
+                                               else ""))
+        return dr._dash_by_keys(figs, opts, sp)
+
+    def test_the_schemes_ring_is_the_default(self):
+        assert self._out(0)["ring0"] is True
+        assert self._out(1)["ring0"] is True
+        assert self._out(3)["ring0"] is False
+
+    def test_legend_ring_still_wins(self):
+        assert self._out(0, "legend(ring(3))")["ring0"] is False
+        assert self._out(3, "legend(ring(0))")["ring0"] is True
+        assert self._out(3, "legend(ring(1))")["ring0"] is True

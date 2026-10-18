@@ -3182,7 +3182,8 @@ as {cmd:twoway} draws it: outside the panels on its position's side, aligned
 at that position's corner ({cmd:pos(5)} at the right, as a corner
 {cmd:position()} is without {cmd:ring(0)} too), and below or left of the
 panels between them and the axis title, which the default legend sits
-beyond.  Clicking a key of
+beyond; {cmd:ring(1)} is drawn the same, and with no {cmd:ring()} the
+scheme's {cmd:gridringstyle by_legend_ring} is read as one.  Clicking a key of
 the overall legend hides that series in every panel.
 Under {cmd:colorvar()} no colour key is drawn unless
 {cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
