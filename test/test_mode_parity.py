@@ -5507,3 +5507,141 @@ class TestAMissingDropdownMoveAgrees:
     def test_the_move_changed_something(self, moved):
         (before, _), (srv, _), _std = moved
         assert _diff(before, srv), "the move left every figure unchanged"
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6, BUGS.md "Parity guard: the surfaces it does not
+# compare"): a sequence of moves, compared after each one.
+# ---------------------------------------------------------------------------
+
+def _multi(name, plots, filt, steps, kpis=None):
+    """A sequence entry: ``steps`` is ``[(move, if), ...]``, each move made
+    on the page the previous one left."""
+    spec = _spec(plots, {"filter": filt}, kpis=kpis)
+    return pytest.param(name, spec, [s[0] for s in steps],
+                        [s[1] for s in steps], id=name)
+
+
+#: Two or more successive moves: one widget moved back and forth, a slider
+#: narrowed then widened to every row, two widgets of one filter() moved in
+#: turn (the second keeps the first's value), and a range then a narrower
+#: range.  The ``if`` of each step is the rows every widget leaves then.
+_MULTI_MOVES = [
+    _multi("scatter and lfit, dropdown to Foreign then Domestic",
+           [_sc(), plot_for("lfit")], "foreign, type(dropdown)",
+           [(("Select", "Foreign"), "foreign == 1"),
+            (("Select", "Domestic"), "foreign == 0")], kpis=[_kpi()]),
+    _multi("histogram, slider to 4500 then 5000 then 3799",
+           [plot_for("histogram")], "price, type(slider)",
+           [(("Slider", 4500.0), "price >= 4500"),
+            (("Slider", 5000.0), "price >= 5000"),
+            (("Slider", 3799.0), "price >= 3799")]),
+    _multi("scatter and lfit, dropdown then slider then dropdown",
+           [_sc(), plot_for("lfit")],
+           "foreign, type(dropdown) || price, type(slider)",
+           [(("Select", "Foreign"), "foreign == 1"),
+            (("Slider", 4500.0), "foreign == 1 & price >= 4500"),
+            (("Select", "Domestic"), "foreign == 0 & price >= 4500")],
+           kpis=[_kpi()]),
+    _multi("kdensity, range to 4500-11385 then 3799-5000",
+           [plot_for("kdensity")], "price, type(range)",
+           [(("RangeSlider", (4500.0, 11385.0)),
+             "price >= 4500 & price <= 11385"),
+            (("RangeSlider", (3799.0, 5000.0)),
+             "price >= 3799 & price <= 5000")]),
+]
+
+
+def _served_after_moves(spec, moves):
+    """``[(figures, cards), ...]``: the served document after each move of
+    *moves*, made one after another on ONE document by the app's own
+    callbacks (``_served_after_move`` makes one move on a fresh one)."""
+    doc, _ = _served(spec)
+    out = []
+    for kind, want in moves:
+        widgets = [w for w in _widgets_of(doc) if type(w).__name__ == kind]
+        assert widgets, f"no {kind} widget in the served document"
+        _fire(widgets[0], _move_widget_value(widgets[0], kind, want))
+        figs = []
+        _layout_tree(doc.roots[0], figs)
+        cards = [_kpi_card(m.text) for m in _walk_models(doc)
+                 if isinstance(m, Div) and _kpi_card(m.text or "")]
+        out.append((figs, cards))
+    return out
+
+
+def _saved_js_after_moves(spec, moves):
+    """``[glyph profiles, ...]``: the saved page after each move of *moves*,
+    each made by the page's own filter script under node in ONE
+    ``js_runner.JsSession``, so a move starts from the sources and widget
+    values the previous one left (``_saved_js_after_move`` makes one)."""
+    import js_runner
+    r, _ = _standalone(spec)
+    session = js_runner.JsSession(r.filter_callbacks)
+    out = []
+    for kind, want in moves:
+        pairs = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind]
+        assert pairs, f"no {kind} widget on the saved page"
+        w, cb = pairs[0]
+        value = _move_widget_value(w, kind, want)
+        session.set(w, list(value) if kind == "RangeSlider" else value)
+        session.run(cb)
+        figs = []
+        _layout_tree(r._last_layout_root, figs)
+        out.append([f["glyphs"] for f in figs])
+    return out
+
+
+@pytest.mark.parametrize("name,spec,moves,oracles", _MULTI_MOVES)
+class TestASequenceOfMovesAgrees:
+    """After EACH move of a sequence the served document is the saved
+    renderer given the rows every widget then leaves, and the saved page's
+    own script, carried from move to move, draws the served glyphs (WP-32:
+    every move entry before was one move from the build)."""
+
+    _RENDERED = {}
+
+    @classmethod
+    def _once(cls, render, spec, moves):
+        key = (render.__name__, json.dumps(spec, sort_keys=True),
+               json.dumps(moves))
+        if key not in cls._RENDERED:
+            cls._RENDERED[key] = render(spec, moves)
+        return copy.deepcopy(cls._RENDERED[key])
+
+    def test_same_figures_after_each_move(self, name, spec, moves, oracles):
+        served = self._once(_served_after_moves, spec, moves)
+        assert len(served) == len(oracles) >= 2
+        for step, ((srv, srv_cards), oracle) in enumerate(zip(served,
+                                                              oracles)):
+            std, std_cards = _saved_with_qualifier(spec, oracle)
+            assert len(std) == len(srv), f"{name}: figure counts differ"
+            for i, (a, b) in enumerate(zip(std, srv)):
+                for key in ("glyphs", "axes", "chrome", "annotations"):
+                    diffs = _diff(a[key], b[key])
+                    assert not diffs, _explain(
+                        name, f"move {step + 1}, figure {i} {key}", diffs)
+            assert std_cards == srv_cards, (name, step, std_cards, srv_cards)
+
+    def test_saved_js_agrees_with_served_after_each_move(self, name, spec,
+                                                         moves, oracles):
+        served = self._once(_served_after_moves, spec, moves)
+        js = self._once(_saved_js_after_moves, spec, moves)
+        assert len(js) == len(served) == len(moves)
+        for step, (glyphs, (srv, _)) in enumerate(zip(js, served)):
+            assert len(glyphs) == len(srv), f"{name}: figure counts differ"
+            for i, (a, b) in enumerate(zip(glyphs, srv)):
+                diffs = _diff(a, b["glyphs"])
+                assert not diffs, _explain(
+                    name, f"move {step + 1}, figure {i} glyphs, saved JS "
+                          f"against served", diffs)
+
+    def test_each_move_changed_something(self, name, spec, moves, oracles):
+        """Guards the guard: a step that leaves the page as the one before
+        it compares one state twice."""
+        served = self._once(_served_after_moves, spec, moves)
+        for step in range(1, len(served)):
+            assert _diff(served[step - 1][0], served[step][0]), (
+                f"{name}: move {step + 1} left every figure unchanged")
