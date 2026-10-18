@@ -1093,7 +1093,7 @@ Changed behaviour.
 
 - REMAINING.md and phases/ carry a historical notice naming ROADMAP.md and DROPIN-REMAINING.md as their successors, and ROADMAP.md's WP-01 to WP-11 headings carry the DONE suffix the tracking test reads. (WP-31, J6)
 
-<!-- WP-31 I2 -->
+- README.md gives the net install line, the requirements and dash_setup; dash.pkg carries Author and KW lines; help dash has Installation and Author sections and its jump list names every section. (WP-31, I2)
 
 <!-- WP-31 I3 -->
 

@@ -167,7 +167,7 @@ void _hx_pin_add(string scalar kind, string scalar value, string scalar text)
     if (kind == "special") ok = (value == "serve")
     if (kind == "expect")  ok = ustrregexm(value, "^[1-9][0-9]*$")
     if (kind == "check")   ok = (value == "titled" | value == "bygroups" | value == "pyapp")
-    if (kind == "shown")   ok = (value == "outside" | value == "python" | value == "placeholder" | value == "fragment" | value == "described")
+    if (kind == "shown")   ok = (value == "outside" | value == "python" | value == "placeholder" | value == "fragment" | value == "described" | value == "install")
     if (!ok) {
         printf("{err}HX: no handler for the pin %s %s\n", _hx_safe(kind), _hx_safe(value))
         exit(198)
@@ -487,8 +487,8 @@ end
 // shown: a command the help shows and does not run, checked without
 // running it (help_examples.check_shown): the Python of a `python:' line
 // compiles; the file `python app.py' runs is one an example writes; an
-// example runs the command a sentence describes.  A placeholder or a
-// fragment is accounted for and nothing more.
+// example runs the command a sentence describes.  A placeholder, a
+// fragment or an install line is accounted for and nothing more.
 capture program drop _hx_shown
 program define _hx_shown, rclass
     version 16.0
@@ -570,6 +570,12 @@ _hx_pin shown placeholder `""/path/to/python3" -m pip install --upgrade "bokeh>=
 _hx_pin shown placeholder `""/path/to/python3" -m ensurepip --upgrade"'
 _hx_pin shown placeholder `"dash_setup, venv("~/.dash/venv")"'
 _hx_pin shown placeholder `"python set exec "/path/to/venv/bin/python", permanently"'
+//   install  (WP-31 I2) the Installation section's net install and
+//            dash_setup lines: they install dash from the network and its
+//            Python packages; the release gate runs net install from a
+//            copy of the package and the setup suites run dash_setup
+_hx_pin shown install `"net install dash, from("https://github.com/wbuchanan/dash/raw/main/")"'
+_hx_pin shown install `"dash_setup"'
 //   outside  run outside Stata, it starts the server; the app it runs is
 //            the one an example writes, which the pyapp check compiles
 _hx_pin shown outside `"python app.py"'

@@ -522,7 +522,9 @@ class TestTheShownCommands:
 
     def test_how_many(self, shown):
         forms = [(s.file, s.form) for s in shown]
-        assert forms.count(("dash.sthlp", "line")) == 1
+        # 1 -> 3: WP-31 I2, the Installation section's net install and
+        # dash_setup lines.
+        assert forms.count(("dash.sthlp", "line")) == 3
         # WP-29 P0.8: two date-unit illustrations joined the six.
         # 8 -> 9: WP-30 batch 4 added one inline example.
         # 9 -> 10: WP-30 P1.26b's Notes paragraph shows dash build, server.
@@ -544,7 +546,8 @@ class TestTheShownCommands:
         # WP-30 P1.17b and P1.32: two more sentence illustrations (15 + 2).
         # 17 -> 16: WP-31 B4b, the contour refusal's dash scatter is gone.
         # 16 -> 17: WP-31 H2k, the weighted KPI sentence.
-        assert len({s.text for s in shown}) == 17
+        # 17 -> 19: WP-31 I2, the Installation section's two lines.
+        assert len({s.text for s in shown}) == 19
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
@@ -619,7 +622,9 @@ _PIN = re.compile(r"""^_hx_pin\s+(\w+)\s+(\S+)\s+`"(.*)"'\s*$""")
 _HANDLERS = {
     "special": {"serve"},
     "check": {"titled", "bygroups", "pyapp"},
-    "shown": {"outside", "python", "placeholder", "fragment", "described"},
+    # "install": WP-31 I2, the Installation section's two lines.
+    "shown": {"outside", "python", "placeholder", "fragment", "described",
+              "install"},
 }
 
 
@@ -651,12 +656,13 @@ class TestThePinnedLists:
         # 25 -> 24: WP-31 B4b -- the dash scatter fragment pin goes with
         # the contour refusal sentence that showed it.
         # 24 -> 25: WP-31 H2k -- the weighted KPI sentence's described pin.
-        assert len(lines) == len(pins) == 25
+        # 25 -> 27: WP-31 I2 -- the Installation section's two install pins.
+        assert len(lines) == len(pins) == 27
         kinds = [k for k, _v, _t in pins]
         # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
-        # shown 16 -> 17: WP-31 H2k, as above.
+        # shown 16 -> 17: WP-31 H2k, as above.  17 -> 19: WP-31 I2.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 17)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 19)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]

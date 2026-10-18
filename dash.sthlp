@@ -2,6 +2,7 @@
 {* *! version 0.1.0  09oct2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
+{viewerjumpto "Installation"      "dash##install"}{...}
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}
 {viewerjumpto "Differences from twoway" "dash##differences"}{...}
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
@@ -10,16 +11,30 @@
 {viewerjumpto "Accessibility"     "dash##accessibility"}{...}
 {viewerjumpto "Stored results"    "dash##results"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
+{viewerjumpto "Tabs"              "dash##tabs"}{...}
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
 {viewerjumpto "The toolbar"       "dash##toolbar"}{...}
+{viewerjumpto "Data tables"       "dash##table"}{...}
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
 {viewerjumpto "Temporary files"   "dash##tempfiles"}{...}
 {viewerjumpto "Resource limits"   "dash##limits"}{...}
 {viewerjumpto "Examples"          "dash##examples"}{...}
+{viewerjumpto "Faceting with by()" "dash##faceting"}{...}
+{viewerjumpto "Marker Label Options" "dash##marker_labels"}{...}
+{viewerjumpto "Statistical Layer Options" "dash##smoother_options"}{...}
+{viewerjumpto "Weights"           "dash##weights"}{...}
+{viewerjumpto "Region Styling Options" "dash##region_options"}{...}
+{viewerjumpto "Axis and Display Options" "dash##axis_options"}{...}
+{viewerjumpto "Mapping a Variable to Colour" "dash##colorvar"}{...}
+{viewerjumpto "Figure proportions" "dash##geometry"}{...}
+{viewerjumpto "Marker and Transparency Options" "dash##markers"}{...}
+{viewerjumpto "Stata scheme support" "dash##scheme"}{...}
+{viewerjumpto "Unsupported Stata twoway options" "dash##unsupported"}{...}
 {viewerjumpto "Dependencies"      "dash##dependencies"}{...}
 {viewerjumpto "Author"            "dash##author"}{...}
+{viewerjumpto "Also see"          "dash##alsosee"}{...}
 {vieweralsosee "twoway"              "help twoway"}{...}
 {vieweralsosee "scatter"             "help scatter"}{...}
 {vieweralsosee "line"                "help line"}{...}
@@ -235,6 +250,21 @@ shadowed by the derived field in {cmd:hover()} and {cmd:mlabel()}.
 This help file documents only the features that differ from or extend
 {cmd:twoway}.
 
+
+{marker install}
+{title:Installation}
+
+{pstd}
+Install {cmd:dash} from its GitHub repository with
+
+{phang2}{cmd:net install dash, from("https://github.com/wbuchanan/dash/raw/main/")}{p_end}
+
+{pstd}
+and then run, once, the command that checks the Python packages
+{cmd:dash} uses and installs the missing ones (see
+{help dash##dependencies:Dependencies} and {helpb dash_setup}):
+
+{phang2}{cmd:dash_setup}{p_end}
 
 {marker plottypes}
 {title:Plot types}
@@ -6541,6 +6571,13 @@ that links Stata to it.  See
 
 
 {marker author}
+{title:Author}
+
+{pstd}
+Billy Buchanan{p_end}
+
+
+{marker alsosee}
 {title:Also see}
 
 {psee}

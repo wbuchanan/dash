@@ -25,6 +25,11 @@ d sets up a private environment instead.
 d
 d Version: 0.1.0  09oct2026
 d Distribution-Date: 20261009
+d Author: Billy Buchanan
+d KW: twoway
+d KW: dashboard
+d KW: bokeh
+d KW: interactive graphics
 d
 f dash.ado
 f dash.sthlp

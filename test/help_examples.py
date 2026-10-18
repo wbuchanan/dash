@@ -764,7 +764,7 @@ def check_shown(item, kind, groups):
     elif kind == "described":
         if not any(t.startswith(item.text) for t in cmds):
             problems.append("no example runs the command it describes")
-    elif kind not in ("placeholder", "fragment"):
+    elif kind not in ("placeholder", "fragment", "install"):
         problems.append("no check for the kind %r" % kind)
     return problems
 

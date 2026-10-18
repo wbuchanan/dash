@@ -1981,7 +1981,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "I2": "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short",
     "I3": "A failed dash_setup leaves installed packages in place and does not say what it installed, the served child is sys.executable, Unmet lists warnings beside a failure, and a dash_setup_lib.py in the working directory is found first",
     "I4": "_dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser",
     "I5": "Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines",

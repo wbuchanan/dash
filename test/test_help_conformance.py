@@ -890,8 +890,10 @@ class TestTheParsersFoundSomething:
         # the catch-all (Area, bar and line edge styles .. Graph-wide
         # settings).
         # 462 -> 466: J2 the Linking section's four example lines.
-        assert len(defs) == 466, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 466 "
+        # 466 -> 468: I2 the Installation section's net install and
+        # dash_setup lines.
+        assert len(defs) == 468, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 468 "
             f"measured 18oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1334,4 +1336,8 @@ class TestInternalLinksResolve:
         # 103 -> 104 links: H2x the Images paragraph links The toolbar;
         # 104 -> 105 and 37 -> 38 targets: K6 the Accessibility jump link
         # (dash##accessibility).
-        assert len(refs) == 105 and len(set(refs)) == 38
+        # 105 -> 121 links, 38 -> 44 targets: I2 the Jump To list names
+        # every titled section (15 new jumps, six of them to sections no
+        # link named: install, alsosee and four others) and the
+        # Installation paragraph links Dependencies.
+        assert len(refs) == 121 and len(set(refs)) == 44

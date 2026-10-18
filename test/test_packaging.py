@@ -432,6 +432,7 @@ _ROOT_ALSO = frozenset({
     "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md",
     "GAPS2.md", "GAPS3.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
     "PhilSchummSuggestion.md",
+    "README.md",  # WP-31 I2: the repository's README
 })
 
 

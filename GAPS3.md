@@ -545,7 +545,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H4 Tracked:** Closed in WP-31, BUGS.md "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read", commit c479d32.
 - **H6 Tracked:** Open (WP-31 section 60).
 - **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit 47d113d.
-- **I2 Tracked:** Open (WP-31 section 59).
+- **I2 Tracked:** Closed in WP-31, BUGS.md "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short", commit pending.
 - **I3 Tracked:** Open (WP-31 section 59).
 - **I4 Tracked:** Open (WP-31 section 59).
 - **I5 Tracked:** Open (WP-31 section 59).
