@@ -62,6 +62,8 @@ file holds, mechanically:
    names, until their section lands; then the key is gone, the Tracked
    line reads Closed or Partly closed, no marker is left, each list holds a
    line ending "(WP-31, <id>)", and a closed Resolution holds it too.
+   WP-31's closeout left WP31_OPEN empty; test_no_wp31_entry_remains_open
+   keeps every entry closed with no marker left.
 11. The counts and summaries the documents state are true or dated
    (TestTheCountsAreTrue, WP-31 J4 and J6): no closed BUGS.md entry's
    Resolution begins "Not fixed"; ROADMAP.md's open-entry count is dated;
@@ -1979,10 +1981,9 @@ class TestWp30Tracking:
 #: WP-31 (.ultraplan/sections/index.md A4): the BUGS.md entries S01 opened,
 #: one per manifest row id, by id, with their exact titles, one key per line
 #: in Appendix A order.  A section's closing commit closes the entry in place
-#: and deletes its own key line.  S61 leaves it {}.
-WP31_OPEN = {
-    # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
-}
+#: and deletes its own key line.  S61 left it {} (18oct2026 closeout), and
+#: TestWp31Tracking::test_no_wp31_entry_remains_open keeps it so.
+WP31_OPEN = {}
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
 #: release its line belongs in (section-01 Appendix A).
@@ -2603,6 +2604,37 @@ class TestWp31Tracking:
             m = _GAPS3_TRACKED.match(
                 "- **%s Tracked:** Open (WP-31 section 03)." % pid)
             assert m and m.group("id") == pid, pid
+
+    def test_no_wp31_entry_remains_open(self, bugs):
+        # WP-31's closeout (S61.3): the allowance is empty and no marker is
+        # left, so the release guard exempts nothing; every id's
+        # (WP-31, <id>) sits in a closed entry or names a residual; and no
+        # open entry keeps a section's wording ("Not fixed because WP-31
+        # section ..."): a residual reads "Not fixed: deferred at WP-31's
+        # closeout because ..." (D-61.b).  Reopening an entry, putting a key
+        # back or re-adding a marker fails here.
+        entries, _p = bugs
+        assert WP31_OPEN == {}, (
+            "WP31_OPEN is {} after WP-31's closeout; it holds %s"
+            % sorted(WP31_OPEN))
+        markers = _wp31_markers(_read("CHANGELOG.md"))
+        assert not markers, "markers left in CHANGELOG.md: %s" % markers
+        bad = _wp31_closure_problems(set(), set(markers), entries)
+        bad += ["%r is open in a WP-31 section's form" % e["title"]
+                for e in entries if not e["closed"]
+                and (_WP31_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+                     or e["fields"].get("Resolution", "").startswith(
+                         "  - Resolution: Not fixed because WP-31 section"))]
+        assert not bad, "\n".join(bad)
+
+    def test_no_gaps3_line_is_open(self):
+        # S61.3: every Tracked line reads Closed or Partly closed, and none
+        # still says "commit pending" (DECISIONS A11: the merger's step k.3b
+        # rewrites each to the landed sha).
+        _rows, tracked, _d = _parse_gaps3(_read("GAPS3.md"))
+        bad = ["%s: %s" % (pid, text) for pid, text in sorted(tracked.items())
+               if _GAPS3_OPEN.match(text) or "commit pending" in text]
+        assert not bad, "\n".join(bad)
 
 
 # ===========================================================================

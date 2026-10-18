@@ -3752,7 +3752,7 @@
   - File Names and Line Numbers: dash_render.py make_document (the generated app's template), the served move path
   - Description: GAPS3.md H3, the parts WP-31 section 55 left open: make_document builds on the event loop (1.6-4.6 s at 100-200k rows; no per-session memory bound, 64-150 MB per session at 200k rows by decision); library catch_warnings can swap filters; a brush made while a move waits is cleared.
   - Suggested fix: build the document off the event loop (a worker thread with a next-tick handoff), keep warnings filters per thread, and keep a brush made while a move waits.
-  - Resolution: Not fixed because WP-31 section 55 closed H3's MathJax part only (D-55a: no WP-31 section owns the make_document restructuring). Graded S3 (WP-31): a served session stalls the other sessions of its process while it builds; the row was graded S3 and its remainder keeps that grade.
+  - Resolution: Not fixed: deferred at WP-31's closeout because section 55 closed H3's MathJax part only and no WP-31 section owns the make_document restructuring (D-55a). Graded S3 (WP-31): a served session stalls the other sessions of its process while it builds; the row was graded S3 and its remainder keeps that grade.
 
 - [x] Title: BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read
   - File Names and Line Numbers: dash_render.py:48376-48396, :50985-51007; dash.ado:8166-8167
@@ -3842,7 +3842,7 @@
   - File Names and Line Numbers: dash_render.py _dash_source_of, ServerAppBuilder
   - Description: GAPS3.md K2, the part WP-31 section 60 left open: ServerAppBuilder copies the renderer's functions with inspect.getsource, which has no fallback; imported from a .pyc with no .py beside it (an install that kept only bytecode), `dash build, server` and `dash serve` fail with "OSError: source code not available" (test_wp31_truth.cscript U60-6 pins the refusal).
   - Suggested fix: ship the app's source text as data beside the renderer (or embed it at build), or refuse earlier in dash's words naming the missing file.
-  - Resolution: Not fixed because WP-31 section 60's tasks certify end-to-end behaviour and change no renderer code (D-60e: a missing fallback is documented, not built). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
+  - Resolution: Not fixed: deferred at WP-31's closeout because section 60's tasks certify end-to-end behaviour and change no renderer code (D-60e: a missing fallback is documented, not built). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
 
 - [x] Title: Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard
   - File Names and Line Numbers: scripts/, test/fixtures/
@@ -3854,7 +3854,7 @@
   - File Names and Line Numbers: test/fixtures/*.json listed in test/test_fixtures_are_committed.py PENDING_META; test/fixtures/scheme_visual/
   - Description: GAPS3.md K3, the parts WP-31 section 60 left open: 50 fixtures written before the five _meta keys were required (most lack only `source`) wait for `make truth` to rewrite them through their committed generators; the scheme visual truth covers 4 of 26 schemes and renders no histogram.
   - Suggested fix: run `make truth` once on the certified machine (several hours, one Stata slot), commit the rewritten fixtures with their value changes reported, empty PENDING_META; add scheme_visual renders.
-  - Resolution: Not fixed because a full `make truth` run (117 Stata scripts in one slot) did not fit S60's hand-back. Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
+  - Resolution: Not fixed: deferred at WP-31's closeout because a full `make truth` run (117 Stata scripts in one slot) did not fit section 60's hand-back. Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
 
 - [x] Title: The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails
   - File Names and Line Numbers: as cited
@@ -3866,7 +3866,7 @@
   - File Names and Line Numbers: test/ (the generated app's dispatch, the scheme-key list, the CSS guard, the tracking counts); test/test_natscale.py:76, test/test_by_scales.py:426
   - Description: GAPS3.md K4, the parts WP-31 section 60 left open: no AST count of the generated app's dispatch; the scheme-key enumeration is hand-written; no CSS-guard served arm; tracking-document counts unchecked; strict xfails test_natscale.py:76 and test_by_scales.py:426 (known divergences).
   - Suggested fix: count the dispatch from the app's AST, derive the scheme keys from SchemeParser, add a served arm to the CSS guard, check the tracking counts, and close or re-file the two divergences.
-  - Resolution: Not fixed because WP-31 section 60 closed K4's process-leak clause only (its tasks name no other K4 clause). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
+  - Resolution: Not fixed: deferred at WP-31's closeout because section 60 closed K4's process-leak clause only (its tasks name no other K4 clause). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
 
 - [x] Title: The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS
   - File Names and Line Numbers: test/test_mode_parity.py:111-155, :2802, :3247-3298
@@ -3878,13 +3878,13 @@
   - File Names and Line Numbers: test/test_mode_parity.py
   - Description: GAPS3.md H6, the parts WP-31 section 60 left open: no multi-move sequence, no bs layout under 992 px, runtime notes, PNG/SVG/CSV bytes, ado-path schemes or launched-process behaviour; test_mode_parity.py runs only in the batch tier.
   - Suggested fix: add the other surfaces one entry each, through the saved-JS oracle where a script is involved.
-  - Resolution: Not fixed because WP-31 section 60's tasks name no other surface (its brush entry, D-60f, landed). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
+  - Resolution: Not fixed: deferred at WP-31's closeout because section 60's tasks name no other surface (its brush entry, D-60f, landed). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
 
 - [ ] Title: Found by the move-parity extension: axes of degenerate or emptied layers after a move
   - File Names and Line Numbers: dash_render.py _dash_hull_ranges, _dash_finish_count_ticks (the served re-finish), _DASH_AXIS_FINISH_JS dash_axis_compute (the saved page's); test/test_mode_parity.py _AXES_FOUND_AFTER_MOVE
   - Description: Found by WP-31 section 60 (H6), 18oct2026. After a move that leaves a layer drawing nothing -- an lpoly or lpolyci layer whose kept rows give no drawable point, or a layer no rows (31 MOVE_CORPUS entries) -- the served app keeps the build's Range1d and ticks (lpoly, slider to 4500: x 3065.63-3067.7, two ticks), and so does the saved page's own script under node, where the saved renderer given the kept rows draws an empty DataRange1d with no ticks. Measured (twoway on test_mode_parity._DF, 18oct2026): a lone layer with no rows (lfit if foreign==0 & price>=10000, which notes "regress could not fit model", rc 0; scatter, bar, kdensity alike) draws an empty scale -- .Graph.plotregion1.xscale curmin 1e300, curmax -1e300 -- and no ticks, so the page built from the kept rows is right and both live modes are wrong. Also measured, both modes differ from twoway at build as well: twoway lpoly mpg weight (one point drawn) keeps x over its evaluation grid, 1800-4080 with ticks 2000(500)4000, where dash's x spans the one point; lpoly/lpolyci if price>=4500 and lowess if price>=10000 keep x over the grid (y empty); histogram of no rows draws y -1 to 1 with ticks -1 and 1. The CI outline, histogram bins and kdensity grid parts of this entry were fixed (WP-31 H6).
   - Suggested fix: give an axis whose layers draw nothing one Range1d form in all three (build, served re-finish, saved-page finish): no ticks and a fixed extent written in place, since the saved page cannot swap its Range1d for a DataRange1d; then delete each name from _AXES_FOUND_AFTER_MOVE.  The grid-x and empty-histogram-y forms are a separate build difference.
-  - Resolution: Not fixed: it stays open because the section's hand-back time ran out after the outline, bins and grid causes (WP-31 H6 follow-up, 18oct2026). Graded S3 (WP-31): a difference between the two modes after a move.
+  - Resolution: Not fixed: deferred at WP-31's closeout because the H6 follow-up's time ran out after the outline, bins and grid causes (18oct2026). Graded S3 (WP-31): a difference between the two modes after a move.
 
 - [x] Title: No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally
   - File Names and Line Numbers: Makefile:24-92; .gitignore; .git/info/exclude:130
@@ -4076,7 +4076,7 @@
   - File Names and Line Numbers: dash_render.py _dash_write_stata_data, dash_parse.mata _dash_json_number17
   - Description: GAPS3.md G3, re-verified at 6370ca4: numbers embedded as JSON text (~0.5 GB per million values).
   - Suggested fix: a binary (base64 float64) column form read by both renderers and the served route
-  - Resolution: Not fixed because WP-31 section 43 closed G3's shadowing and count parts only. Graded S3 (WP-31): a size cost, not a wrong picture.
+  - Resolution: Not fixed: deferred at WP-31's closeout because the binary data file (G3b) stays open past WP-31 (DECISIONS D36); section 43 closed G3's shadowing and count parts only. Graded S3 (WP-31): a size cost, not a wrong picture.
 
 - [x] Title: The strL binary check reads every observation one at a time
   - File Names and Line Numbers: dash_render.py _dash_write_stata_data (the StrLConnector.isBinary loop)
@@ -4130,7 +4130,7 @@
   - File Names and Line Numbers: dash_setup.ado (_dash_setup_pip); dash_setup_lib.py pip_install_argv
   - Description: Residual of GAPS3 I3 (WP-31 section 59): dash_setup installs packaging, bokeh, numpy and pandas from the index by version range (pip install "bokeh>=3.8,<3.10"), never with --require-hashes; a hash-pinned install needs every transitive wheel's hash for each platform and Python, which only a maintained lock file can hold.
   - Suggested fix: ship a lock file of hashes per supported platform and Python, regenerated at each release, and install with --require-hashes from it (ratification item 1 of WP-31 section 59).
-  - Resolution: Not fixed: it stays open because hash pinning needs a maintained per-platform lock file and waits on the maintainer's ruling (WP-31 section 59, ratification item 1). Graded S3 (WP-31): supply-chain hardening of an install the user runs.
+  - Resolution: Not fixed: deferred at WP-31's closeout because hash pinning needs a maintained per-platform lock file (DECISIONS D38: hash-pinned installs stay deferred; WP-31 section 59, ratification item 1). Graded S3 (WP-31): supply-chain hardening of an install the user runs.
 
 - [x] Title: A quoted colour inside a title, line or label sub-option is drawn black with its quotes named
   - File Names and Line Numbers: dash_render.py OptionTranslator.stata_colour, OptionTranslator.parse_color_alpha
