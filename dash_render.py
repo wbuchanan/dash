@@ -57,7 +57,7 @@ Dependencies
   computed with numpy alone (WP-18), so neither is imported.
 
 Author:  (see dash.sthlp)
-Version: 1.0.0  25mar2026
+Version: 0.1.0  09oct2026
 """
 
 from __future__ import annotations  # dash needs Python 3.11 or later: link a newer Python, then run dash_setup

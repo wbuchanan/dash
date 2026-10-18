@@ -1,4 +1,4 @@
-*! dash_parse.mata  v2.0
+*! dash_parse.mata  v0.1.0
 *! Mata utilities for the dash command.
 *!
 *! Options are parsed by Stata's -syntax-, where dash.ado declares twoway's

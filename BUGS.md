@@ -3820,11 +3820,11 @@
   - Suggested fix: WP-31 section 59 (readme package versions): print the note from the renderer's and the app's main and accept the SyntaxError.
   - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines
+- [x] Title: Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines
   - File Names and Line Numbers: dash_render.py:60; dash.ado:1, :13, :6638; test/test_pkg_metadata.py:50-57
   - Description: GAPS3.md I5, re-verified at 6370ca4: Version headers disagree: dash_render.py `Version: 1.0.0 25mar2026`; dash.ado:1, :13, :6638 and dash_parse.mata:1 say `v2.0`; test_pkg_metadata.py pins only the `*! Version:` lines.
   - Suggested fix: WP-31 section 59 (readme package versions): renumber every header and extend the pin to every file and header.
-  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 18oct2026 (WP-31, I5). Every version header reads 0.1.0: dash_render.py's docstring Version line (1.0.0  25mar2026) is 0.1.0  09oct2026, dash.ado's first line, Architecture note and _dash_plot comment and dash_parse.mata's first line (v2.0) are v0.1.0 or (0.1.0); test_pkg_metadata.py's VERSION_SOURCES gains the renderer's Version line and HEADER_SOURCES the v-headers. Pinned by test/test_pkg_metadata.py::TestEveryShippedFileAgreesOnTheVersion::test_every_header_states_the_declared_version, test/test_pkg_metadata.py::TestEveryShippedFileAgreesOnTheVersion::test_all_shipped_files_state_the_same_version. Closes GAPS3 I5 (WP-31, I5).
 
 - [ ] Title: The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind
   - File Names and Line Numbers: dash.ado:6118-6133 unguarded vs :6296-6299

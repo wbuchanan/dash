@@ -1983,7 +1983,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "I3": "A failed dash_setup leaves installed packages in place and does not say what it installed, the served child is sys.executable, Unmet lists warnings beside a failure, and a dash_setup_lib.py in the working directory is found first",
     "I4": "_dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser",
-    "I5": "Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines",
     "I7": "The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind",
     "K2": "Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback",
     "K3": "Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard",

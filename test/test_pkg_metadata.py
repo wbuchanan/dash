@@ -55,7 +55,21 @@ VERSION_SOURCES = {
     # "27mar2026}{..." -- exclude the brace explicitly.
     "dash.sthlp":        r"^\{\*\s*\*!\s*version\s+(\S+)\s+([^}\s]+)\}",
     "dash_setup.sthlp":  r"^\{\*\s*\*!\s*version\s+(\S+)\s+([^}\s]+)\}",
+    # WP-31 I5: the renderer's docstring said 1.0.0  25mar2026.
+    "dash_render.py":    r"^Version:\s*(\S+)\s+(\S+)\s*$",
 }
+
+#: WP-31 I5: the first-line ``v<version>`` headers and the Architecture
+#: notes, which said v2.0 when every Version line said 0.1.0.  Each
+#: pattern must match at least once and every match must state the
+#: declared version.  dash_setup.ado, dash_setup_lib.py and the help files
+#: carry no such header.
+HEADER_SOURCES = (
+    ("dash.ado", r"^\*! dash\.ado\s+v(\S+)$"),
+    ("dash.ado", r"^\*! Architecture \((\S+)\):$"),
+    ("dash.ado", r"^// _dash_plot\s+\S+ parse and route a plot definition \((\S+)\)$"),
+    ("dash_parse.mata", r"^\*! dash_parse\.mata\s+v(\S+)$"),
+)
 
 
 def _read(path):
@@ -199,6 +213,24 @@ class TestEveryShippedFileAgreesOnTheVersion:
             "shipped files disagree on the version: %s"
             % ", ".join("%s=%s %s" % (f, v[0], v[1]) for f, v in sorted(seen.items()))
         )
+
+    def test_every_header_states_the_declared_version(self):
+        """WP-31 I5: every version-bearing header agrees with the Version
+        lines; no file still says v2.0 or 1.0.0."""
+        want = _declared_version("dash.pkg")[0]
+        bad = []
+        for filename, rx in HEADER_SOURCES:
+            got = re.findall(rx, _read(os.path.join(REPO_ROOT, filename)),
+                             re.MULTILINE)
+            if not got:
+                bad.append("%s: no line matches %r" % (filename, rx))
+            bad += ["%s: %s != %s" % (filename, g, want)
+                    for g in got if g.lstrip("v") != want]
+        for filename in ("dash.ado", "dash_parse.mata", "dash_render.py"):
+            text = _read(os.path.join(REPO_ROOT, filename))
+            bad += ["%s: %s" % (filename, m.group(0)) for m in
+                    re.finditer(r"\(v2\.0\)|\bv2\.0\b|\b1\.0\.0\b", text)]
+        assert not bad, "; ".join(bad)
 
     def test_the_manifest_version_is_the_code_version(self):
         """PKG-08. The manifest's is what `ado describe` shows the user."""

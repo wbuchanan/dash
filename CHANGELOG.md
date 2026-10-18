@@ -1099,7 +1099,7 @@ Changed behaviour.
 
 <!-- WP-31 I4 -->
 
-<!-- WP-31 I5 -->
+- Every version header reads 0.1.0: dash_render.py said 1.0.0 25mar2026 and dash.ado and dash_parse.mata said v2.0; test_pkg_metadata.py pins the renderer's Version line and the v-headers with the six Version lines. (WP-31, I5)
 
 <!-- WP-31 I7 -->
 

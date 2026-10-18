@@ -1,4 +1,4 @@
-*! dash.ado  v2.0
+*! dash.ado  v0.1.0
 *! Main entry point for the dash command — interactive HTML dashboards
 *! from Stata twoway syntax.
 *!
@@ -10,7 +10,7 @@
 *!   dash clear
 *!   dash serve [, <serve_opts>]
 *!
-*! Architecture (v2.0):
+*! Architecture (0.1.0):
 *!   - Every option is parsed by Stata's -syntax-.  twoway's options are
 *!     declared with twoway's own minimum abbreviations, so -syntax-
 *!     resolves a prefix as twoway does; nothing rewrites an option word
@@ -8207,7 +8207,7 @@ program define _dash_report_ignored
 end
 
 // ================================================================
-// _dash_plot  — parse and route a plot definition (v2.0)
+// _dash_plot  — parse and route a plot definition (0.1.0)
 // ================================================================
 program define _dash_plot
     version 19
