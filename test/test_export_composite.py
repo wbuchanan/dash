@@ -29,7 +29,8 @@ from bokeh.layouts import gridplot
 from bokeh.models import (AbstractSlider, CustomAction, CustomJS, DataTable,
                           Div,
                           GridPlot, InlineStyleSheet,
-                          InputWidget, Plot, SaveTool, Select, Tabs)
+                          InputWidget, Plot, SaveTool, Select, TabPanel,
+                          Tabs)
 from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -631,8 +632,10 @@ class TestPrint:
         assert (".db-container { width: 1000px" in page) == (layout == "bs")
         doc, _ns, _src = tt._served(tmp_path, spec)
         cbs = doc.callbacks._js_event_callbacks["document_ready"]
-        assert [c.code for c in cbs].count(dr._DASH_PRINT_HOOK_JS) == 1
-        assert cbs[-1].name == "dash_print"
+        # D39 (D-53e): the hook draws each tab with the composite code
+        assert [c.code for c in cbs].count(
+            dr._DASH_COMPOSITE_JS + dr._DASH_PRINT_HOOK_JS) == 1
+        (hook,) = [c for c in cbs if c.name == "dash_print"]
 
     def test_the_css_is_fixed_text(self):
         css = dr._DASH_PRINT_CSS
@@ -661,12 +664,18 @@ class TestPrint:
         sheet, hook = dr._dash_print_models([root])
         assert sheet is None and isinstance(hook, CustomJS)
         assert hook.args["roots"] == [root] and hook.name == "dash_print"
+        # D39 (D-53e): the Tabs and the data tables under the roots
+        assert hook.args["tabs"] == [] and hook.args["tables"] == []
+        assert hook.code == dr._DASH_COMPOSITE_JS + dr._DASH_PRINT_HOOK_JS
         (hide,) = root.toolbar.stylesheets
         assert hide.css == dr._DASH_PRINT_HIDE_CSS
         item = gridplot([[figure(tools=dr._DASH_FIGURE_TOOLS)]])
         css, hook2 = dr._dash_print_models([item], fixed=False)
         assert css == dr._DASH_PRINT_CSS
         assert hook2.args["roots"] == [] and item.stylesheets == []
+        tabs = Tabs(tabs=[TabPanel(child=root, title="A")])
+        _s, hook3 = dr._dash_print_models([tabs], fixed=False)
+        assert hook3.args["tabs"] == [tabs] and hook3.args["roots"] == []
 
     @js_runner.requires_node
     def test_the_hook_restores(self):
@@ -674,12 +683,12 @@ class TestPrint:
 const L = {};
 globalThis.window = {addEventListener(t, f) { L[t] = f; }};
 const r = {sizing_mode: "stretch_width", width: null};
-new Function("roots", %s)([r]);
+new Function("roots", "tabs", "tables", %s)([r], [], []);
 L.beforeprint();
 const during = [r.sizing_mode, r.width];
 L.afterprint();
 console.log(JSON.stringify([during, [r.sizing_mode, r.width]]));
-""" % json.dumps(dr._DASH_PRINT_HOOK_JS))
+""" % json.dumps(dr._DASH_COMPOSITE_JS + dr._DASH_PRINT_HOOK_JS))
         assert out == [["fixed", 1000], ["stretch_width", None]]
 
 
@@ -835,6 +844,55 @@ class TestInChrome:
             after = p.read("JSON.stringify(Bokeh.documents[0].roots()[0]"
                            ".sizing_mode)")
             assert after == "stretch_width", after
+            assert p.js_errors() == [], p.js_errors()
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_print_draws_every_tab_on_a_page_of_its_own(self, tmp_path,
+                                                          layout):
+        """D39 (D-53e): while the page prints, each Tabs is replaced by one
+        canvas per tab -- the tab's grid as Save dashboard draws it, with
+        that tab marked -- each on a page of its own and fitted to it; the
+        tab that was not showing is drawn too, and afterprint gives the
+        page back."""
+        cb = _cb()
+        spec = tt._spec([tt._graph("g1"), tt._graph("g2", [tt._LINE]),
+                         tt._graph("g3", [tt._LINE])],
+                        tabs="A: g1 / B: g2", layout=layout)
+        _r, page = tt._saved(tmp_path, spec)
+        path = tsvg._write(page, "tabs_%s.html" % layout)
+        probe = r"""JSON.stringify((() => {
+          const t = __dash_models('Tabs')[0];
+          const tv = Bokeh.index.find_one(t);
+          const host = tv.el.parentNode;
+          const cs = [...host.querySelectorAll('canvas.dash-print-tab')];
+          const ink = cs.map((c) => {
+            const d = c.getContext('2d').getImageData(0, 0, c.width,
+                                                       c.height).data;
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) n++;
+            }
+            return n;
+          });
+          return [t.active, getComputedStyle(tv.el).display, cs.length,
+                  cs.map((c) => [c.style.width, c.style.breakBefore,
+                                 c.style.maxHeight, c.style.objectFit]),
+                  ink];
+        })())"""
+        with cb._CspProbe(cb._url(path)) as p:
+            p._send("Emulation.setEmulatedMedia", {"media": "print"})
+            p._eval("window.dispatchEvent(new Event('beforeprint')); 0")
+            got = p.read(probe)
+            assert got[0] == 0 and got[1] == "none", got
+            assert got[2] == 2, got
+            assert all(s == ["100%", "page", "100vh", "contain"]
+                       for s in got[3]), got
+            # each tab's grid is drawn, the hidden tab B's included
+            assert all(n > 2000 for n in got[4]), got
+            p._eval("window.dispatchEvent(new Event('afterprint')); 0")
+            p._send("Emulation.setEmulatedMedia", {"media": ""})
+            after = p.read(probe)
+            assert after[0] == 0 and after[1] != "none" and after[2] == 0, after
             assert p.js_errors() == [], p.js_errors()
 
     def test_print_media_fixes_the_bs_container(self):

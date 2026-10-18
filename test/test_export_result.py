@@ -165,7 +165,9 @@ class TestTheHelpStatesWhatDashReturns:
                   "{cmd:saving(fig.png)} writes {cmd:fig.html}",
                   "{cmd:.tif}, {cmd:.gif}, {cmd:.emf} or {cmd:.wmf}",
                   "has no SVG drawing mode",
-                  "the tab that is showing and none of the others",
+                  # Flipped: D39 (D-53e) -- every tab prints, each on a
+                  # page of its own fitted to it.
+                  "every tab, each on a page of its own",
                   "A do-file cannot write an image of a dashboard"]
         missing = [c for c in claims if c not in flat]
         assert not missing, missing

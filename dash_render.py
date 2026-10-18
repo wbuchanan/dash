@@ -48584,15 +48584,74 @@ _DASH_PRINT_CSS = ("@media print { .db-container { width: 1000px !important; "
 _DASH_PRINT_HIDE_CSS = "@media print { :host { display: none !important; } }"
 
 #: The document_ready hook that fixes each root at the print width while
-#: the page prints and gives it back its own sizing afterwards.
+#: the page prints and gives it back its own sizing afterwards.  It runs
+#: after ``_DASH_COMPOSITE_JS`` (D39, D-53e): a Tabs shows one tab, so
+#: while the page prints each Tabs under *tabs* is hidden and replaced by
+#: one canvas per tab -- that tab's grid laid out and drawn at once, its
+#: open tables (*tables*) over it and the strip with that tab marked, as
+#: Save dashboard draws it -- each on a page of its own, scaled to the
+#: page's width and height.  The tabs are shown and hidden through their
+#: views, never through ``active``, so no tab change reaches a callback or
+#: the server.  A tab that cannot be drawn leaves the Tabs as it is.
 _DASH_PRINT_HOOK_JS = r"""
+const dash_print_done = [];
+function dash_print_tab_canvas(t, tv, i, dpr, measure) {
+  tv.child_views.forEach((v, j) => { v.el.style.display = j === i ? "" : "none"; });
+  tv.invalidate_layout();
+  const cv = tv.child_views[i];
+  if (cv == null || !(cv.bbox.width > 0 && cv.bbox.height > 0)) return null;
+  const gc = cv.export("png").canvas;
+  const m = {header: ["", ""], widgets: [], kpis: [],
+             tabs: {tabs: t.tabs, active: i},
+             tables: dash_composite_tables(cv, tables)};
+  const c = dash_composite_png(dash_composite_layout(m, gc.width / dpr,
+                                                     gc.height / dpr, measure), gc, dpr);
+  c.className = "dash-print-tab";
+  c.setAttribute("role", "img");
+  c.setAttribute("aria-label", String(t.tabs[i].title == null ? "" : t.tabs[i].title));
+  Object.assign(c.style, {display: "block", width: "100%", height: "auto",
+                          maxHeight: "100vh", objectFit: "contain",
+                          objectPosition: "left top", breakBefore: "page",
+                          breakInside: "avoid"});
+  return c;
+}
 window.addEventListener('beforeprint', () => {
   for (const r of roots) {
     r._dash_sm = r.sizing_mode; r._dash_w = r.width;
     r.sizing_mode = 'fixed'; r.width = 1000;
   }
+  if (!(tabs || []).length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const scratch = document.createElement("canvas").getContext("2d");
+  const measure = (s, font) => { scratch.font = font; return scratch.measureText(s).width; };
+  for (const t of tabs) {
+    const tv = Bokeh.index.find_one(t);
+    if (tv == null || tv.el == null || !tv.el.isConnected) continue;
+    const shown = tv.child_views.map((v) => v.el.style.display);
+    let made = [];
+    try {
+      for (let i = 0; i < tv.child_views.length; i++) {
+        const c = dash_print_tab_canvas(t, tv, i, dpr, measure);
+        if (c == null) { made = null; break; }
+        made.push(c);
+      }
+    } catch (e) {
+      made = null;
+    }
+    tv.child_views.forEach((v, j) => { v.el.style.display = shown[j]; });
+    if (made == null || !made.length) { tv.invalidate_layout(); continue; }
+    const display = tv.el.style.display;
+    tv.el.after(...made);
+    tv.el.style.display = "none";
+    dash_print_done.push({tv: tv, made: made, display: display});
+  }
 });
 window.addEventListener('afterprint', () => {
+  for (const d of dash_print_done.splice(0)) {
+    for (const c of d.made) c.remove();
+    d.tv.el.style.display = d.display;
+    d.tv.invalidate_layout();
+  }
   for (const r of roots) {
     if (r._dash_sm === undefined) continue;
     r.sizing_mode = r._dash_sm; r.width = r._dash_w;
@@ -48786,7 +48845,10 @@ def _dash_print_models(roots, fixed=True):
     ``_DASH_PRINT_HIDE_CSS`` goes on every shown toolbar and every filter
     control under *roots*.  The hook (named ``dash_print``) is the
     caller's to append to its ``document_ready`` list; it fixes *roots*
-    at ``_DASH_PRINT_WIDTH_PX`` while printing.  With *fixed* False --
+    at ``_DASH_PRINT_WIDTH_PX`` while printing and draws every tab of
+    each ``Tabs`` under *roots* on a page of its own (D39, D-53e; its
+    code is ``_DASH_COMPOSITE_JS`` then ``_DASH_PRINT_HOOK_JS``, its
+    args *roots*, the Tabs and the data tables).  With *fixed* False --
     the saved layout(bs) page, whose items sit in dash's own markup --
     it fixes none of them, and *css* (``_DASH_PRINT_CSS``) is returned
     for that page's own ``<style>``, beside ``_DASH_GRID_CSS``: its
@@ -48794,23 +48856,30 @@ def _dash_print_models(roots, fixed=True):
     stylesheet the two modes' models differ by).
     """
     from bokeh.models import (AbstractButton, AbstractSlider, CustomJS,
-                              GridPlot, InlineStyleSheet, InputWidget, Plot)
+                              DataTable, GridPlot, InlineStyleSheet,
+                              InputWidget, Plot, Tabs)
     hide = InlineStyleSheet(css=_DASH_PRINT_HIDE_CSS)
     roots = [r for r in (roots or ()) if r is not None]
-    seen = set()
+    seen, tabs, tables = set(), [], []
     for root in roots:
         for m, inside in _dash_layout_walk(root):
             if id(m) in seen:
                 continue
             seen.add(id(m))
+            if isinstance(m, Tabs):
+                tabs.append(m)
+            elif isinstance(m, DataTable) and "dash_table" in m.tags:
+                tables.append(m)
             if (isinstance(m, (GridPlot, Plot))
                     and m.toolbar_location is not None):
                 m.toolbar.stylesheets = list(m.toolbar.stylesheets) + [hide]
             elif (isinstance(m, (InputWidget, AbstractSlider,
                                  AbstractButton)) and not inside):
                 m.stylesheets = list(m.stylesheets) + [hide]
-    hook = CustomJS(args={"roots": list(roots) if fixed else []},
-                    code=_DASH_PRINT_HOOK_JS, name="dash_print")
+    hook = CustomJS(args={"roots": list(roots) if fixed else [],
+                          "tabs": tabs, "tables": tables},
+                    code=_DASH_COMPOSITE_JS + _DASH_PRINT_HOOK_JS,
+                    name="dash_print")
     return (None if fixed else _DASH_PRINT_CSS), hook
 
 

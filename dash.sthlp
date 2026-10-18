@@ -1623,10 +1623,12 @@ toolbar's button.
 
 {pstd}
 {ul:Printing.}  Printing the page from the browser prints it 1000 pixels
-wide, whatever the paper, without the toolbars and the filters, and gives
-the screen back its own layout afterwards; this is so in both modes.  It
-prints what the screen shows: with {cmd:tabs()}, the tab that is showing
-and none of the others.  Print each tab in turn.
+wide, without the toolbars and the filters, and gives the screen back its
+own layout afterwards; this is so in both modes.  With {cmd:tabs()} it
+prints every tab, each on a page of its own and scaled to fit the paper:
+the tab's graphs, its open data tables and the tab strip with that tab
+marked, drawn as Save dashboard draws them; the tab that is showing stays
+the one that shows.
 
 {pstd}
 With {cmd:csv}, the dashboard carries a {bf:Download CSV} button beside its

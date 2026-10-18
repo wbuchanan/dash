@@ -413,7 +413,9 @@ class TestFilterSecurity:
              # fixed script; the page's models reach them only as ids.
              _dr._DASH_COMPOSITE_JS + _dr._DASH_SVG_SAVE_JS,
              _dr._DASH_COMPOSITE_JS + _dr._DASH_COMPOSITE_SAVE_JS,
-             _dr._DASH_PRINT_HOOK_JS,
+             # Flipped (WP-32 D-53e): the print hook draws each tab with
+             # the composite code, so the composite code comes first.
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_PRINT_HOOK_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
              _dr._DASH_FILTER_RESET_JS,
@@ -482,7 +484,9 @@ class TestFilterSecurity:
              # fixed script; the page's models reach them only as ids.
              _dr._DASH_COMPOSITE_JS + _dr._DASH_SVG_SAVE_JS,
              _dr._DASH_COMPOSITE_JS + _dr._DASH_COMPOSITE_SAVE_JS,
-             _dr._DASH_PRINT_HOOK_JS,
+             # Flipped (WP-32 D-53e): the print hook draws each tab with
+             # the composite code, so the composite code comes first.
+             _dr._DASH_COMPOSITE_JS + _dr._DASH_PRINT_HOOK_JS,
              # Flipped (WP-31 H2f): the set above was every script until
              # the filter row gained Reset filters, fixed code too.
              _dr._DASH_FILTER_RESET_JS,
