@@ -542,7 +542,10 @@ _SAVED_DIGEST = (
     # c2ebbb94... -> e3a57293...: WP-31 K6 follow-up, a figure with a
     # toolbar is role="group", not "img" (axe nested-interactive); the
     # same under both Pythons.
-    "e3a572938eb8ee5bec3c0ec858c4172371032cdf4661b683895fccad1890042e")
+    # e3a57293... -> 0322e5ad...: WP-31 H6, the filter code redraws each
+    # CI band's outline after the refit (code only: the page has no CI
+    # layer, so no ci_outlines arg); the same under both Pythons.
+    "0322e5adb2e8619c0f45c057469b082e7c3a6285a36b99c19e0a394fc398158f")
 
 
 # ===========================================================================

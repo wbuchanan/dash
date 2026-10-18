@@ -3974,20 +3974,16 @@ _AXES_FOUND_AFTER_MOVE = frozenset({
     'rbar with its own if emptied, slider to 10000',
     'rspike with its own if emptied, slider to 10000',
 })
-#: Saved page's own script against the served app: the CI band's outline
-#: (x_/y_ci_outline) of lfitci, qfitci, fpfitci and lpolyci keeps other
-#: values than the served refit (its filled band agrees); a histogram keeps
-#: its build-time bin count (3 where the served refit draws 2); kdensity's
-#: line differs.
+#: Saved page's own script against the served app: a histogram keeps its
+#: build-time bin count (3 where the served refit draws 2); kdensity's
+#: line differs.  (The CI band's outline of lfitci, qfitci, fpfitci and
+#: lpolyci follows the refit since WP-31 H6: headless Chrome, like node,
+#: kept the build's outline before.)
 _JS_FOUND_AFTER_MOVE = frozenset({
-    'fpfitci, slider to 4500',
     'histogram, dropdown to Foreign',
     'histogram, range to 4500-11385',
     'histogram, slider to 4500',
     'kdensity, slider to 4500',
-    'lfitci, slider to 4500',
-    'lpolyci, slider to 4500',
-    'qfitci, slider to 4500',
 })
 
 

@@ -18806,8 +18806,10 @@ class GlyphMapper:
     def _tag_fitci(self, line_r, ptype, source, view, xvar, yvar, wtype, w,
                    fig, options):
         """Hand an lfitci or qfitci layer to the saved page's refit (WP-31
-        F1b): only the LINE renderer is tagged -- the band and its outline
-        read the same source and follow it.  S10's config with the
+        F1b): only the LINE renderer is tagged -- the band reads the same
+        source and follows it, and its outline, on a source of its own, is
+        redrawn from it (render() step 3b's ``outline_cols``, WP-31 H6).
+        S10's config with the
         columns ``x_fit y_fit y_lower y_upper``, the grid as the mapper
         reads it (n() as given), atobs, the band's level (the float
         ``_resolve_level`` returns, any finite number) and its standard
@@ -33889,6 +33891,30 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         src.data = _cd;
         src.change.emit();
     // DASH_FIT_BRANCHES_END
+    }
+}
+// WP-31 H6: each CI band's outline (a closed Patch round the band, ends
+// included, on a source of its own) redrawn from the band source the refit
+// above wrote, as _ci_band_glyphs builds it.  Column names arrive as data
+// and are read with hasOwnProperty only.
+if (typeof ci_outlines !== "undefined" && ci_outlines) {
+    for (let ai = 0; ai < agg_configs.length; ai++) {
+        const ac = agg_configs[ai];
+        if (typeof ac.outline !== "number" || !Array.isArray(ac.outline_cols)) continue;
+        const osrc = ci_outlines[ac.outline], src = agg_sources[ai];
+        if (!osrc || !src || !src.data) continue;
+        const own = (k) => Object.prototype.hasOwnProperty.call(src.data, k);
+        const [kx, klo, khi] = ac.outline_cols;
+        const xs = own(kx) ? Array.from(src.data[kx]) : [];
+        const lo = own(klo) ? Array.from(src.data[klo]) : [];
+        const hi = own(khi) ? Array.from(src.data[khi]) : [];
+        let ox = [], oy = [];
+        if (xs.length && lo.length === xs.length && hi.length === xs.length) {
+            ox = xs.concat(xs.slice().reverse(), xs.slice(0, 1));
+            oy = lo.concat(hi.slice().reverse(), lo.slice(0, 1));
+        }
+        osrc.data = {x_ci_outline: ox, y_ci_outline: oy};
+        osrc.change.emit();
     }
 }
 // ---- Marks on the layers a saved page does not recompute (WP-29 P0.17) ----
@@ -61808,6 +61834,10 @@ class DashRenderer:
         # naming its own by position (``key``).
         _contour_keys_all: list = []
         _bars = getattr(self, "_contour_bars", {})
+        # WP-31 H6: the CI outlines the refit redraws, each config naming
+        # its own by position (``outline``).
+        _outlines_all: list = []
+        _outl = getattr(self, "_ci_outlines", {})
         for _gname, _agg_list in self.agg_source_registry.items():
             _use_i = _use_for(_gname)
             if not _use_i:
@@ -61821,6 +61851,9 @@ class DashRenderer:
                 if id(_agg_cds) in _bars:
                     _agg_cfgs_all[-1]["key"] = len(_contour_keys_all)
                     _contour_keys_all.append(_bars[id(_agg_cds)])
+                if id(_agg_cds) in _outl:
+                    _agg_cfgs_all[-1]["outline"] = len(_outlines_all)
+                    _outlines_all.append(_outl[id(_agg_cds)])
 
         # The copies of rows a mapper built, each with its own snapshot,
         # and its own "use".
@@ -61927,6 +61960,8 @@ class DashRenderer:
             _cb.args["agg_configs_json"]  = json.dumps(_agg_cfgs_all)
             if _contour_keys_all:
                 _cb.args["contour_keys"] = _contour_keys_all
+            if _outlines_all:
+                _cb.args["ci_outlines"] = _outlines_all
             _cb.args["derived_sources"]   = _der_srcs_all
             _cb.args["derived_sources_orig"] = _der_srcs_orig_all
             _cb.args["derived_use_json"]  = _der_use_json_all
@@ -62411,7 +62446,20 @@ class DashRenderer:
         # recount keeps to them; one drawn from every row carries nothing.
         _n_rows = int(self._embed["rows"].sum())
         self._contour_bars = {}
+        self._ci_outlines = {}
         for _gname, _fig in self.figures.items():
+            # WP-31 H6: a CI band's outline Patch has a source of its own
+            # (_ci_band_glyphs); the page's refit redraws it from the band
+            # source it writes (dash_ci_outline_follow in _FILTER_JS).
+            _outl = {}
+            for _r in _fig.renderers:
+                _o = getattr(_r, "_dash_ci_outline", None)
+                _g = getattr(_r, "glyph", None)
+                if _o is None or _g is None:
+                    continue
+                _f = [getattr(_g, _a, None) for _a in ("x", "y1", "y2")]
+                if all(isinstance(_v, str) for _v in _f):
+                    _outl[id(_r.data_source)] = (_o.data_source, _f)
             _agg_list = []
             for _r in _fig.renderers:
                 if not (hasattr(_r, "_dash_agg_source")
@@ -62425,6 +62473,10 @@ class DashRenderer:
                 _rows = getattr(_r, "_dash_agg_rows", None)
                 if _rows is not None and len(_rows) < _n_rows:
                     _cfg["member_ids"] = _rows
+                if id(_r._dash_agg_source) in _outl:
+                    _osrc, _ocols = _outl[id(_r._dash_agg_source)]
+                    _cfg["outline_cols"] = [str(c) for c in _ocols]
+                    self._ci_outlines[id(_r._dash_agg_source)] = _osrc
                 _agg_list.append((_r._dash_agg_source, _cfg))
                 # WP-31 B4d: a contour's colour key, which the page's
                 # refit moves with the bands.
