@@ -539,7 +539,10 @@ _SAVED_DIGEST = (
     # Merged batch 18 (H2x, K6, H3/H4): re-derived on the merged tree;
     # 8af16d2e... -> c2ebbb94...: the batch-18 gate, the composite code's
     # entity table keyed by name, the same under both Pythons.
-    "c2ebbb944f7316eda1d2592839cbf2e57cfd0a207b09b4e841a1d92cffeb9006")
+    # c2ebbb94... -> e3a57293...: WP-31 K6 follow-up, a figure with a
+    # toolbar is role="group", not "img" (axe nested-interactive); the
+    # same under both Pythons.
+    "e3a572938eb8ee5bec3c0ec858c4172371032cdf4661b683895fccad1890042e")
 
 
 # ===========================================================================

@@ -6845,6 +6845,7 @@ border-bottom:1px solid #dee2e6}
 """
 
 
+
 # ===========================================================================
 # Region option helpers — parse plotregion() / graphregion() sub-options
 # ===========================================================================
@@ -54678,10 +54679,17 @@ def _dash_figure_name(graph_opts, plots):
 
 
 def _dash_name_figure(fig, graph_opts, plots):
-    """Name *fig*'s host for assistive technology (WP-31 K6): ``role="img"``
-    and the ``aria-label`` :func:`_dash_figure_name` derives.  Both modes
-    call it on the figure they have just built."""
-    return _dash_aria(fig, _dash_figure_name(graph_opts, plots), role="img")
+    """Name *fig*'s host for assistive technology (WP-31 K6): the
+    ``aria-label`` :func:`_dash_figure_name` derives, with ``role="group"``
+    when the figure has a toolbar and ``role="img"`` when it has none.  A
+    toolbar holds focusable controls (its Bokeh logo is a link) and an
+    img's children are presentational, which axe reports as
+    nested-interactive.  Both modes call it on the figure they have just
+    built."""
+    bare = (getattr(fig, "toolbar_location", None) is None
+            or not list(getattr(fig, "tools", None) or []))
+    return _dash_aria(fig, _dash_figure_name(graph_opts, plots),
+                      role="img" if bare else "group")
 
 
 def _dash_tabs_keys_hook(models):
@@ -59428,7 +59436,7 @@ class DashRenderer:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
-        # WP-31 K6: the figure's host is an image named from its graph.
+        # WP-31 K6: the figure's host is named from its graph.
         _dash_name_figure(fig, graph_opts, plots)
         # WP-30 P1.3a: twoway's plot-region margin and the scheme's tick
         # counts, for the finisher (Python attributes, never serialised).

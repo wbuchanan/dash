@@ -114,7 +114,11 @@ class TestFigureNames:
             names = sorted(_attrs(f).get("aria-label", "")
                            for f in _figures(models))
             roles = {_attrs(f).get("role") for f in _figures(models)}
-            assert roles == {"img"}, (mode, roles)
+            # Flipped: was {"img"}.  A figure built with its own toolbar
+            # holds focusable controls (the toolbar's Bokeh logo link), and
+            # role="img" makes its children presentational: axe's
+            # nested-interactive on six example pages (WP-31 K6 follow-up).
+            assert roles == {"group"}, (mode, roles)
             assert names == ["Mileage by weight",
                              "scatter of mpg versus weight, 1 more layer"], (
                 mode, names)
@@ -139,7 +143,23 @@ class TestFigureNames:
         dr._dash_name_figure(fig, {"title": "x" * 300}, [_SCATTER])
         name = fig.html_attributes["aria-label"]
         assert len(name) == 120 and name.endswith("..."), name
-        assert fig.html_attributes["role"] == "img"
+        # Flipped: was "img" (a figure with a toolbar is a group; above).
+        assert fig.html_attributes["role"] == "group"
+
+    def test_a_figure_with_a_toolbar_is_a_group(self):
+        """axe nested-interactive (examples/sp500_dates.do and the five
+        layout(bs) examples): a figure's own toolbar holds a focusable link,
+        and an img's children are presentational, so a figure with a
+        toolbar is a named group; one with no toolbar stays a named img."""
+        fig = dr.bokeh_figure()
+        dr._dash_name_figure(fig, {"title": "T"}, [_SCATTER])
+        assert _attrs(fig) == {"role": "group", "aria-label": "T"}
+        bare = dr.bokeh_figure(toolbar_location=None)
+        dr._dash_name_figure(bare, {"title": "T"}, [_SCATTER])
+        assert _attrs(bare) == {"role": "img", "aria-label": "T"}
+        empty = dr.bokeh_figure(tools="")
+        dr._dash_name_figure(empty, {}, [_SCATTER])
+        assert _attrs(empty)["role"] == "img"
 
     def test_pc_and_univariate_forms(self):
         assert dr._dash_figure_name({}, [_HIST]) == "histogram of mpg"

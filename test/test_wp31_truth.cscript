@@ -14044,22 +14044,25 @@ if inlist("`only'", "", "S54") & `: list posof "S54" in w31_run' {
     quietly dash scatter price weight, name(g2)
     quietly dash kpi mean(mpg), title(Average mileage) name(k1)
 
-    // U54-1: one role=img per graph; the filter widget named by its title.
+    // U54-1: each graph a named role=group (its toolbar holds a focusable
+    // link, so not role=img: axe nested-interactive, WP-31 K6 follow-up);
+    // the filter widget named by its title.
     capture noisily dash build, saving("`u54d'/a.html") replace nobrowser filter(foreign, type(dropdown))
     local rc1 = _rc
     _w31_expect U54-1 "(`rc1' == 0)" "dash build: r(`rc1')"
     if `rc1' == 0 {
         cert_file_count "`u54d'/a.html", needle(`"["role","img"]"')
         local nimg = r(count)
-        cert_file_count "`u54d'/a.html", needle(`"["aria-label","Mileage"]"')
+        cert_file_count "`u54d'/a.html", needle(`"[["role","group"],["aria-label","Mileage"]]"')
         local nt = r(count)
-        cert_file_count "`u54d'/a.html", needle(`"["aria-label","scatter of price versus weight"]"')
+        cert_file_count "`u54d'/a.html", needle(`"[["role","group"],["aria-label","scatter of price versus weight"]]"')
         local nn = r(count)
         cert_file_count "`u54d'/a.html", needle(`"["aria-label","Car origin"]"')
         local nf = r(count)
-        _w31_expect U54-1 "(`nimg' == 2) & (`nt' == 1) & (`nn' == 1) & (`nf' == 1)" "role=img `nimg', title name `nt', derived name `nn', filter name `nf'"
+        // Flipped: role=img 2 -> 0 (a figure with a toolbar is a group).
+        _w31_expect U54-1 "(`nimg' == 0) & (`nt' == 1) & (`nn' == 1) & (`nf' == 1)" "role=img `nimg', title group `nt', derived group `nn', filter name `nf'"
     }
-    _w31_done U54-1 "each graph is role=img with its name; the filter is named"
+    _w31_done U54-1 "each graph is a role=group with its name; the filter is named"
 
     // U54-2: the KPI card is a group named by its title.
     if `rc1' == 0 {
