@@ -4378,10 +4378,13 @@ the first plot's key.
 The legend is laid out as {cmd:twoway} lays it out.  Its keys are the
 scheme's size -- under {cmd:s2color} a line key 13 units long and
 {cmd:medsmall} high, its text a {cmd:vsmall} gap after it, the rows a
-{cmd:tiny} gap apart, where a unit is 2.88 points -- and a marker key is
-the marker's own size; {cmd:symxsize()}, {cmd:symysize()}, {cmd:keygap()}
-and {cmd:rowgap()} change them, {cmd:forcesize} draws every key at
-{cmd:symxsize()} by {cmd:symysize()}, and an unknown size is
+{cmd:tiny} gap apart, where a unit is 2.88 points.  A marker key takes the
+same box, {cmd:symxsize()} by {cmd:symysize()}: the box does not grow with
+the marker, and the browser draws a key's marker at 0.4 of the box's
+smaller side, where {cmd:twoway} draws it at the marker's own size and
+its key only as wide as the marker.  {cmd:symxsize()}, {cmd:symysize()},
+{cmd:keygap()} and {cmd:rowgap()} change them, {cmd:forcesize} draws the
+same box, and an unknown size is
 {cmd:twoway}'s {cmd:medium}, with a note.  The keys fill a grid of
 {it:n} keys, {cmd:holes()} counted: {cmd:rows(}{it:r}{cmd:)} makes
 1 + int(({it:n}-1)/{it:r}) columns, {cmd:cols()} the columns given, and

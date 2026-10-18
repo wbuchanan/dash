@@ -671,10 +671,14 @@ _PLAIN_DIGESTS = {
     # 758304bd... -> bbe2bc2f... saved, e975974d... -> 9935c1c8... served:
     # WP-31 K6 follow-up, a figure with a toolbar is role="group", not
     # "img" (axe nested-interactive); the same under both Pythons.
+    # bbe2bc2f... -> ac6ee365... saved, 9935c1c8... -> 0710df1c... served:
+    # WP-32 D-31.a the (hidden) legend's key box is symxsize() by
+    # symysize(), 50 x 13 (was 15 x 15); masked model diff, the same under
+    # both Pythons.
     ("saved", "plain"):
-        "bbe2bc2fce3affb2d17078e8052aff2ea6cb98188efde3507fbbc240d75b6699",
+        "ac6ee365d6a3f2c1e8bd57d8649f7e1714a1ac3b0c8c83c03166787a7d83f096",
     ("saved", "yaxis2"):
-        "bbe2bc2fce3affb2d17078e8052aff2ea6cb98188efde3507fbbc240d75b6699",
+        "ac6ee365d6a3f2c1e8bd57d8649f7e1714a1ac3b0c8c83c03166787a7d83f096",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -689,9 +693,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "9935c1c832078a779e561b54548b074fdf04b9a15d9a740b6d903fb9487e9ba7",
+        "0710df1cdf375acd55f4dbff6259203cadf1e96dfece19dced952875aa772f6f",
     ("served", "yaxis2"):
-        "9935c1c832078a779e561b54548b074fdf04b9a15d9a740b6d903fb9487e9ba7",
+        "0710df1cdf375acd55f4dbff6259203cadf1e96dfece19dced952875aa772f6f",
 }
 
 

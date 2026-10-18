@@ -37874,12 +37874,11 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #     relative units, 2.88 pt each, 4/3 px per pt) and its box margins,
     #     then symxsize(), symysize(), keygap() and rowgap() (an unknown
     #     size is twoway's medium, with its note: legend_geometry_truth.json
-    #     symx_bogus).  twoway draws a marker key at the marker's own size,
-    #     not squeezed into symysize() (default_geometry), and Bokeh draws a
-    #     legend marker at 0.4 of the key box, so a key box holding a
-    #     marker is at least 2.5 times the marker; a legend of marker keys
-    #     only is as wide as that, as twoway's marker key is.  forcesize
-    #     forces symxsize() x symysize() (legend_options.sthlp).
+    #     symx_bogus).  Every key box is twoway's key size, symxsize() by
+    #     symysize(), a marker key's too (D39 D-31.a: the box no longer
+    #     grows to 2.5 times the marker; Bokeh draws a legend marker at 0.4
+    #     of the box, twoway at the marker's own size), so forcesize and
+    #     noforcesize draw the same box (legend_options.sthlp).
     _T = OptionTranslator
     _lref = _T.size_ref_of(fig)
 
@@ -37912,27 +37911,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 _geom[_gname] = _px_units(3.8194)
         else:
             _geom[_gname] = _px_units(_units)
-    _forced = "forcesize" in _words and "noforcesize" not in _words
     for lg in plot_legends:
         _w, _h = _geom["symxsize"], _geom["symysize"]
-        if not _forced:
-            _msz, _only_marks = 0.0, True
-            for _it in lg.items:
-                for _r in (_it.renderers or []):
-                    _g = getattr(_r, "glyph", None)
-                    if type(_g).__name__ == "Scatter":
-                        _sz = getattr(_g, "size", None)
-                        if isinstance(_sz, (int, float)) and \
-                                math.isfinite(_sz):
-                            _msz = max(_msz, float(_sz))
-                    else:
-                        _only_marks = False
-            if _msz > 0:
-                _floor = min(200, int(math.ceil(_msz / 0.4)))
-                _h = max(_h, _floor)
-                if _only_marks and not _dash_legend_arg(_calls,
-                                                        ("symxsize",)):
-                    _w = _floor
         lg.glyph_width = max(1, _w)
         lg.glyph_height = max(1, _h)
         lg.label_standoff = _geom["keygap"]

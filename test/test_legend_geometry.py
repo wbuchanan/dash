@@ -32,7 +32,6 @@ decides this file's rules:
   columns.
 """
 import json
-import math
 import os
 import sys
 import warnings
@@ -208,16 +207,23 @@ class TestDefaultGeometry:
         assert (lg.glyph_width, lg.glyph_height, lg.label_standoff,
                 lg.spacing) == (50, 13, 8, 19)
 
-    def test_a_marker_key_is_drawn_at_the_markers_size(self, mode):
-        """twoway draws a scatter's key at the marker's own size
-        (default_geometry: the key marker is the plot's), and Bokeh draws
-        a legend marker at 0.4 of the key box."""
+    def test_a_marker_key_takes_twoways_key_size(self, mode):
+        """A legend of marker keys takes twoway's key size, symxsize() by
+        symysize() (default_geometry: key_xsize 13, key_ysize 3.4722), as
+        every other legend does.  Flipped (WP-32, D39 D-31.a): the key box
+        grew to 2.5 times the marker so that Bokeh, which draws a legend
+        marker at 0.4 of the box, drew it at the plot's size; the
+        maintainer ruled the key size twoway's always."""
+        rec = TRUTH["default_geometry"]
         _fig, lg, _ = _fig_legend(mode, TWO)
-        size = max(float(r.glyph.size) for it in lg.items
-                   for r in it.renderers)
-        assert lg.glyph_height * 0.4 >= size - 1e-9
-        assert lg.glyph_width == lg.glyph_height == max(
-            13, math.ceil(size / 0.4))
+        assert (lg.glyph_width, lg.glyph_height) == (
+            _px(rec["key_xsize"]), _px(rec["key_ysize"])) == (50, 13)
+
+    def test_a_large_marker_does_not_grow_the_key(self, mode):
+        """msize(huge) leaves the key box at twoway's size (D-31.a)."""
+        _fig, lg, _ = _fig_legend(mode, [_sc(msize="huge"),
+                                         _sc("price", msize="huge")])
+        assert (lg.glyph_width, lg.glyph_height) == (50, 13)
 
     def test_forcesize_forces_the_key_box(self, mode):
         _fig, lg, _ = _fig_legend(mode, TWO, "forcesize symysize(2)")

@@ -551,7 +551,10 @@ _SAVED_DIGEST = (
     # 00a009f6... -> 91a241f7...: WP-31 H6, the filter code bins a default
     # histogram again over the kept rows (code only: the page has no
     # histogram); the same under both Pythons.
-    "91a241f72f66d7d4b0fb788ed48adb6f1604b338e67bbcc3053ab273613bfbef")
+    # 91a241f7... -> af35a89d...: WP-32 D-31.a the legend key box is
+    # symxsize() by symysize() (glyph_width/height 50 x 13, was 15 x 15;
+    # masked model diff), the same under both Pythons.
+    "af35a89d64e1983f163fb65bd01439f54f06844e36be5317411b81a8483a659c")
 
 
 # ===========================================================================
