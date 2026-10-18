@@ -99,10 +99,16 @@ if _rc {
 // for the scripts.  Unset, or with WP31_ONLY set
 // (which keeps its precedence), every block runs.  A block runs when its
 // gate finds its id in w31_run.
-// Seconds: S61 writes each block's measured seconds from the closeout
-// certification log's start/end lines; until then only S01 is listed.
+// Seconds: each block's start/end lines in the three-session closeout
+// certification run of 18oct2026 (WP-31 S61), summed over a section's
+// blocks and rounded up, at least 1.
 local w31_secs ///
-    S01 1
+    S01 1 S02 8 S03 6 S05 9 S06 5 S07 7 S08 1 S09 4 S10 3 S11 7 ///
+    S12 6 S13 3 S14 5 S15 9 S16 1 S17 5 S18 5 S19 1 S20 12 S21 10 ///
+    S22 2 S23 2 S24 4 S25 5 S26 33 S27 4 S28 4 S29 13 S30 16 S31 27 ///
+    S32 10 S33 8 S34 11 S35 28 S36 12 S37 17 S38 5 S39 7 S40 45 S41 23 ///
+    S42 23 S43 6 S44 12 S45 3 S46 8 S47 6 S48 1 S49 1 S50 1 S51 1 ///
+    S53 1 S54 1 S55 1 S60 9
 local w31_sh : environment DASH_CERT_SHARD
 mata: st_local("w31_ok", strofreal(st_local("w31_sh") == "" | ustrregexm(st_local("w31_sh"), "^[1-4]/[1-4]$")))
 if !`w31_ok' {

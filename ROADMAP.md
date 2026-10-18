@@ -5094,6 +5094,52 @@ The technical requirements of each entry are its section's TR-NN.k in .ultraplan
 - **Excluded from the message check.** Commit 8a874b1 ("Updated CLAUDE.md to try to deal with the test suite issues.") is the maintainer's own commit on wp30-p1; it stages CLAUDE.md and names it, and the maintainer accepted it, so the E13 check excludes it. History is not rewritten.
 - **Merge.** `git checkout main && git merge --no-ff wp30-p1` -- reported, not run.
 
+## WP-31 · Close the GAPS3 drop-in gaps — DONE
+
+**GAPS3 closed:** A1, A2, A3, A4, A5, A6, A7, A8, B1, B2, B3, B4, B5, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C18, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, F1, F2, F3, F4, F5, G1, G2, G4, G5, G6, G7, H1, H2, H4, H7, I2, I4, I5, I6, I7, J1, J2, J3, J4, J5, J6, K6; partly: G3, H3, H6, I3, K2, K3, K4 · **Severity:** S1 (3), S2 (27), S3 (64) · **Effort:** XL · **Depends on:** WP-30
+
+As a Stata user who pastes a twoway command or do-file into dash, I want every twoway plot type, option and default the drop-in audit of 10oct2026 (GAPS3.md) found missing or different to draw as twoway draws it, or be refused or noted in twoway's words, in the saved page and the served app and after any filter move, and the package to install, document and test itself as a release, so that a dashboard reads as the Stata graph it came from (.ultraplan/sections/index.md).
+
+### Business requirements
+
+Summarised from the decision record of .ultraplan/sections/index.md (M1-M25) and .ultraplan/review/DECISIONS.md (D1-D38, A11-A34), which hold them in full.
+
+- **Scope (M1, M2).** Every twoway-facing GAPS3 row, the documents, the tests, packaging basics, accessibility (K6) and the dashboard extensions (H2); the platform package stays deferred and the renderer is not split. Done means every in-scope row is closed with a BUGS.md entry and a pinning test, and the full pytest suite, `make cert` and `make gate` are green at the closeout.
+- **contour and contourline (M3, D4, D26, D27).** twoway's interpolation and grid rule, exact up to 1,000 unique points with a live refit in both modes; above the cap a seeded 1,000-point subsample on a 100x100 grid with the stale cue and a note.
+- **Refusals (M4, M5, D5, D13, D23).** sunflower and matamatrix() refused by name; options on types that do not take them, the abbreviation superset and misplaced date literals refused with twoway's return code and words, measured; `dash twoway ...` refused as `twoway twoway` is; each newly refused form has a CHANGELOG Changed behaviour line.
+- **Tests and truth (M6, M9, M13, M24, M25).** Pinned pictures are flipped with the reason, never deleted; one truth script with a block per section; Stata truth only from committed extract scripts; both twins for computed work against one fixture, with a parity entry.
+- **Modes (M8, M14, M16).** A difference the saved page cannot avoid shows a visible cue; new drawing code lives in the shared glyph layer the server copies; all eleven estimators have a JavaScript twin pinned to Python.
+- **Cost and security (M10, M11, M22).** New computed layers under 2 s for 100,000 rows (lowess measured at 10,000, D11); no security guard weakened, new HTML and JS through the nonce and hash paths; no new Python dependency.
+- **Fidelity (M7, M15, M17, M21).** Scheme files in RGB and Stata's RGBA syntax; a drawn option leaves the pending list, the help's Unsupported section and TWOWAY_COVERAGE_AUDIT.md in the same commit; what Bokeh cannot express is documented with a measured example; minor-tick labels drawn.
+- **Release (M18, D8, D38).** Version 0.1.0 dated at the closeout is the release; distribution from GitHub (`net install` from https://wbuchanan.github.io/dash), with Author, Support and KW lines in dash.pkg.
+- **Accessibility and extensions (M19, M20).** Keyboard-reachable widgets, ARIA names on every filter, KPI card, tab and figure, scheme contrast checks, axe-core over the pages; per-graph data tables, KPI weights and statistics, multi-select, "(missing)", slider direction, reset, link groups, brush-as-filter, a print stylesheet.
+- **Tracking (M12, M23).** GAPS3.md section 9 carries one Tracked line per entry; GAPS2.md and DROPIN-REMAINING.md stay read-only; a residual is an open BUGS.md entry, a GAPS3 Tracked line in the Partly form and a hand-back note.
+
+### Measurements
+
+Measured at the closeout, 18oct2026, on s3-bugs (StataNow 19.5 MP, macOS arm64).
+
+- **Entries.** 143 WP-31 entries (110 at the plan, A12, and 33 added by D14-D36); 87 GAPS3 rows closed and 7 partly closed; `WP31_OPEN = {}` behind `TestWp31Tracking::test_no_wp31_entry_remains_open` and `::test_no_gaps3_line_is_open`. BUGS.md holds 10 open entries, none S1 or S2: the 8 WP-31 residuals below and 2 older S3 entries.
+- **Full pytest suite** (`python3 -m pytest test/ -q`, 8 workers, the development interpreter): 27,473 passed, 8 skipped, 5 xfailed, 0 failed, 2,469 subtests, 898 s (15 min 7 s wall).
+- **Certification** (`make cert`, three sessions): 69 of 69 registered scripts passed, no SKIP, verdict PASS, 804 s wall (13 min 24 s); the shards' scripts summed 802 s, 640 s and 685 s (test_wp30_truth's parts 200-203 s each, test_wp31_truth's 126 s, 156 s and 174 s). The shard table and test_wp31_truth's block seconds (`w31_secs`, 54 blocks, 458 s) are written from this run.
+- **Release gate** (`make gate`): 14 of 14 examples and 26 of 26 scheme pages clean, the venv-linked sessions clean, verdict PASS, 105 s.
+- **Accessibility.** axe-core 4.12.1 reports 0 violations on the 14 example pages the gate built (`DASH_STRICT=1 DASH_TEST_TIER=release python3 -m pytest test/test_accessibility_axe.py -k examples`: 14 passed), after S61.4 fixed the fetch race the first run hit (12 passed, 2 errors, no violation).
+- **Contour at the cap** (S23, S29): 1,000 unique points solve in 0.01 s and evaluate on a 100x100 grid in 0.04 s; the exact grid of up to 10^6 nodes takes about 4 s at worst; a saved-page move at the cap takes about 13 s (D26).
+- **Whole batch-end run.** 1,807 s for the full suite, `make cert` and the gate in turn (batch 20: 957 s and 802 s, 1,769 s); CLAUDE.md rule 11's five minutes is a residual below.
+
+### Residuals
+
+- **The axes of degenerate or emptied layers after a move** (GAPS3 H6; BUGS.md "Found by the move-parity extension: axes of degenerate or emptied layers after a move").
+- **The parity guard's uncompared surfaces** (H6; "Parity guard: the surfaces it does not compare"): multi-move, bs under 992 px, runtime notes, PNG/SVG/CSV bytes, ado-path schemes, launched-process behaviour.
+- **A renderer without its source file** (K2; "A renderer without its source file cannot write a served app").
+- **Truth fixtures awaiting regeneration** (K3): 50 PENDING_META fixtures and the scheme visual truth.
+- **Harness guards** (K4): the dispatch count, the scheme-key enumeration, the CSS guard's served arm, the tracking counts and two strict xfails.
+- **Served build on the event loop** (H3).
+- **The binary data file** (G3b, past WP-31 by D36; "The data file embeds numbers as JSON text (about 0.5 GB per million values)").
+- **Hash-pinned installs** (I3, D38; "dash_setup installs by version, not by hash").
+- **The suite's five-minute target** (CLAUDE.md rule 11): pytest's critical path is a few served-mode probes that each run alone on one worker -- test_size_units.py's TestStataRatios label offsets and sizes (212 s and 192 s), test_bare_intensity.py (93 s), test_by_text.py's three served probes (66-67 s each), test_added_text.py (62 s), test_intensity_blend.py (59 s), test_by_axes_keys.py (40 s each); the certification run is bound by test_wp30_truth.cscript (567 s over three parts) and test_wp31_truth.cscript (456 s); splitting the served probes per case and trimming the truth scripts' repeated renders are the candidates.
+- **Expected by the index.** Legend text before its symbol (M17); contour above the cap (subsample, D4); the platform package (I1); the module split (K5); the served-key and private-file design residuals (H5).
+
 ---
 
 ## Traceability matrix

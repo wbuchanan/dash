@@ -80,81 +80,81 @@ if `"`macval(_dash_pyx)'"' != "" {
 // that they never serve at once; * when a script runs in every shard
 // and splits itself (it reads DASH_CERT_SHARD), its seconds shared
 // out over them.  Unset, the run is every script, in this session.
-// Seconds: the three-session run of 08oct2026 (its [ TIME] lines;
-// test_mata_autoload, which prints none, 0.5 s as before);
-// test_wp30_truth's 317 s is shared out over the sessions, each running
-// its part of the blocks; test_wp31_truth's 1 s (S01's scaffold only,
-// section-01 D-01.g) likewise
+// Seconds: the closeout certification run of 18oct2026, three sessions
+// (its [ TIME] lines; test_mata_autoload, which prints none, 0.5 s as
+// before); test_wp30_truth's and test_wp31_truth's seconds are their
+// three parts' sum, shared out over the sessions, each running its part
+// of the blocks
 local _cert_shards ///
-    test_abbreviations.cscript           18.2 0  1 3 4 ///
-    test_ado_loads.cscript                0.1 0  1 3 1 ///
-    test_adversarial.cscript             17.5 0  1 2 3 ///
-    test_alias_semantics.cscript         10.6 0  2 2 4 ///
-    test_bug_regressions.cscript          8.4 1  1 1 1 ///
-    test_by_suboptions.cscript            2.0 0  2 1 1 ///
-    test_caller_version.cscript           0.5 0  2 2 3 ///
-    test_ci_band_options.cscript          6.4 0  2 2 3 ///
-    test_clear_registry.cscript           0.1 0  2 1 3 ///
-    test_conformance.cscript              6.9 0  1 2 4 ///
-    test_custom_scheme.cscript            5.1 0  1 3 2 ///
-    test_e2e_filters.cscript              8.8 0  2 2 4 ///
-    test_e2e_kpi.cscript                  0.6 0  2 3 2 ///
-    test_e2e_multi.cscript                4.5 0  2 3 3 ///
-    test_e2e_serve.cscript                3.7 1  1 1 1 ///
-    test_e2e_single.cscript               4.7 0  2 1 1 ///
-    test_echo_text.cscript                0.3 0  1 3 4 ///
-    test_env_guards.cscript              21.6 1  1 1 1 ///
-    test_examples_run.cscript             9.0 0  1 1 3 ///
-    test_export.cscript                   3.2 0  1 2 4 ///
-    test_filter_label.cscript             0.5 0  1 3 2 ///
-    test_gaps2_truth.cscript             13.0 0  1 3 4 ///
-    test_graph_option_scope.cscript       0.4 0  1 1 4 ///
-    test_help_claims_1.cscript           13.8 0  1 3 4 ///
-    test_help_claims_2.cscript           11.6 0  1 2 4 ///
-    test_help_claims_3.cscript            4.6 0  1 1 2 ///
-    test_help_claims_4.cscript           10.4 1  1 1 1 ///
-    test_help_claims_5.cscript           12.5 0  2 1 3 ///
-    test_help_claims_6.cscript            5.5 0  2 3 3 ///
-    test_help_claims_7.cscript           10.9 0  1 3 2 ///
-    test_help_claims_8.cscript            6.7 0  1 1 4 ///
-    test_help_examples.cscript           14.0 0  2 2 3 ///
-    test_json_escaping.cscript           20.5 0  2 3 3 ///
-    test_mata_autoload.cscript            0.5 0  2 2 1 ///
-    test_mata_library_guard.cscript      10.1 0  1 3 2 ///
-    test_nodraw_honoured.cscript          0.4 0  2 3 3 ///
-    test_option_report_paren.cscript      0.2 0  1 1 3 ///
-    test_option_surface.cscript           6.9 0  2 3 2 ///
-    test_option_validation.cscript        5.2 0  1 1 4 ///
-    test_parser.cscript                  22.2 0  2 3 4 ///
-    test_parser_integrity.cscript         1.1 0  1 3 1 ///
-    test_path_validation.cscript          8.0 0  1 3 2 ///
-    test_program_coverage.cscript         8.0 0  2 1 3 ///
-    test_qualifier_in_stata.cscript     112.4 0  2 2 2 ///
-    test_qualifier_literals.cscript      21.8 0  1 3 4 ///
-    test_registry_collision.cscript       3.3 0  2 3 2 ///
-    test_render_locate.cscript            2.6 1  1 1 1 ///
-    test_render_log_clean.cscript         1.5 0  2 2 3 ///
-    test_resource_limits.cscript          2.2 0  1 1 3 ///
-    test_serve_browser.cscript            1.8 1  1 1 1 ///
-    test_serve_launch.cscript            13.1 1  1 1 1 ///
-    test_serve_options.cscript            0.4 0  1 1 2 ///
-    test_server_build.cscript             1.0 0  1 1 4 ///
-    test_setup_honesty.cscript           10.7 0  2 1 3 ///
-    test_setup_injection.cscript          0.0 0  2 2 2 ///
-    test_setup_python_gate.cscript        0.0 0  2 2 2 ///
-    test_setup_version_gate.cscript       0.1 0  1 2 1 ///
-    test_statistical_options.cscript      4.5 0  1 2 1 ///
-    test_string_values.cscript           14.6 0  2 3 4 ///
-    test_suboption_reporting.cscript     13.6 0  2 2 3 ///
-    test_textbox_multiline.cscript        0.2 0  2 2 2 ///
-    test_theme_escaping.cscript           0.4 0  2 2 1 ///
+    test_abbreviations.cscript           36.7 0  1 3 4 ///
+    test_ado_loads.cscript                0.1 0  1 3 2 ///
+    test_adversarial.cscript             26.0 0  1 2 3 ///
+    test_alias_semantics.cscript         13.5 0  1 2 3 ///
+    test_bug_regressions.cscript         15.0 1  1 1 1 ///
+    test_by_suboptions.cscript           47.1 0  1 3 4 ///
+    test_caller_version.cscript           1.0 0  2 2 2 ///
+    test_ci_band_options.cscript          7.0 0  2 3 4 ///
+    test_clear_registry.cscript           0.2 0  1 1 2 ///
+    test_conformance.cscript             10.0 0  1 2 2 ///
+    test_custom_scheme.cscript            8.7 0  1 3 4 ///
+    test_e2e_filters.cscript             15.8 0  1 3 4 ///
+    test_e2e_kpi.cscript                  0.9 0  1 3 3 ///
+    test_e2e_multi.cscript                1.4 0  1 3 1 ///
+    test_e2e_serve.cscript                6.1 1  1 1 1 ///
+    test_e2e_single.cscript               6.6 0  1 1 1 ///
+    test_echo_text.cscript                2.1 0  1 3 4 ///
+    test_env_guards.cscript              53.0 1  1 1 1 ///
+    test_examples_run.cscript            21.0 0  1 2 2 ///
+    test_export.cscript                   5.4 0  2 2 3 ///
+    test_filter_label.cscript             0.8 0  2 3 2 ///
+    test_gaps2_truth.cscript             18.5 0  1 1 4 ///
+    test_graph_option_scope.cscript       0.6 0  2 2 4 ///
+    test_help_claims_1.cscript           14.3 0  2 2 3 ///
+    test_help_claims_2.cscript           13.8 0  1 1 2 ///
+    test_help_claims_3.cscript            7.3 0  1 3 2 ///
+    test_help_claims_4.cscript           11.3 1  1 1 1 ///
+    test_help_claims_5.cscript           13.6 0  2 3 4 ///
+    test_help_claims_6.cscript            9.5 0  2 1 3 ///
+    test_help_claims_7.cscript           12.3 0  2 2 4 ///
+    test_help_claims_8.cscript            7.7 0  2 1 2 ///
+    test_help_examples.cscript           21.1 0  2 1 3 ///
+    test_json_escaping.cscript           32.0 0  1 2 3 ///
+    test_mata_autoload.cscript            0.5 0  2 3 4 ///
+    test_mata_library_guard.cscript      25.7 0  2 1 2 ///
+    test_nodraw_honoured.cscript          0.8 0  1 1 3 ///
+    test_option_report_paren.cscript      0.2 0  2 2 3 ///
+    test_option_surface.cscript          11.6 0  1 1 3 ///
+    test_option_validation.cscript       54.8 0  2 3 4 ///
+    test_parser.cscript                  45.7 0  2 2 3 ///
+    test_parser_integrity.cscript         1.2 0  2 1 4 ///
+    test_path_validation.cscript         13.4 0  2 1 2 ///
+    test_program_coverage.cscript        12.5 0  1 3 1 ///
+    test_qualifier_in_stata.cscript     153.7 0  2 2 2 ///
+    test_qualifier_literals.cscript      31.7 0  2 3 4 ///
+    test_registry_collision.cscript       5.4 0  1 2 3 ///
+    test_render_locate.cscript            4.3 1  1 1 1 ///
+    test_render_log_clean.cscript         2.3 0  1 3 1 ///
+    test_resource_limits.cscript          4.3 0  2 1 2 ///
+    test_serve_browser.cscript            2.5 1  1 1 1 ///
+    test_serve_launch.cscript            15.7 1  1 1 1 ///
+    test_serve_options.cscript            1.5 0  1 1 1 ///
+    test_server_build.cscript             1.8 0  2 2 4 ///
+    test_setup_honesty.cscript           16.9 0  2 2 2 ///
+    test_setup_injection.cscript          0.0 0  2 2 1 ///
+    test_setup_python_gate.cscript        0.0 0  2 2 1 ///
+    test_setup_version_gate.cscript       0.1 0  1 1 1 ///
+    test_statistical_options.cscript     11.6 0  2 3 1 ///
+    test_string_values.cscript           23.5 0  1 3 4 ///
+    test_suboption_reporting.cscript     20.8 0  2 3 3 ///
+    test_textbox_multiline.cscript        0.3 0  1 1 1 ///
+    test_theme_escaping.cscript           0.6 0  1 2 1 ///
     test_tokenizer.cscript                0.1 0  2 3 3 ///
-    test_twoway_option_parity.cscript    35.9 0  2 3 3 ///
-    test_utf8_validation.cscript          0.1 0  1 1 4 ///
-    test_varlist_expansion.cscript        4.7 0  2 2 4 ///
-    test_wp29_truth.cscript              88.1 1  1 1 1 ///
-    test_wp30_truth.cscript             316.9 0  * * * ///
-    test_wp31_truth.cscript               1.0 0  * * *
+    test_twoway_option_parity.cscript    68.6 0  2 3 3 ///
+    test_utf8_validation.cscript          0.1 0  1 1 2 ///
+    test_varlist_expansion.cscript        7.5 0  2 2 1 ///
+    test_wp29_truth.cscript             123.6 1  1 1 1 ///
+    test_wp30_truth.cscript             566.6 0  * * * ///
+    test_wp31_truth.cscript             456.4 0  * * *
 // ---- shards: end ----
 local _cert_sh : environment DASH_CERT_SHARD
 mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-4]/[1-4]$")))
