@@ -7575,6 +7575,10 @@ program define _dash_xm_load
     // echoes its value into the log.  The module is kept only once it has
     // loaded.
     python: _dash_ok = _dash_xm is not None and getattr(_dash_xm, "_dash_export_key", None) == _dash_key
+    // WP-31 I7: no bytecode is written for the renderer -- an installed
+    // PLUS/py would keep a __pycache__ that ado uninstall leaves behind --
+    // as for dash_setup_lib below; the flag is put back on every path.
+    python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
     python: _dash_xs = None if _dash_ok else importlib.util.spec_from_file_location("_dash_render_export", _dash_rp)
     python: _dash_xm = _dash_xm if _dash_ok else importlib.util.module_from_spec(_dash_xs)
     // WP-30 P1.32: the renderer's import guard puts its one line in
@@ -7588,12 +7592,19 @@ program define _dash_xm_load
         local _dd_n : length local _dd_err
         if `_dd_n' > 0 {
             mata: _dash_say("err", "", st_local("_dd_err"), "")
+            python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
             exit 198
         }
-        python: _dash_xr = _dash_xs.loader.exec_module(_dash_xm)
+        capture noisily python: _dash_xr = _dash_xs.loader.exec_module(_dash_xm)
+        local _dd_rc = _rc
+        if `_dd_rc' {
+            python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
+            exit `_dd_rc'
+        }
     }
     python: _dash_xm._dash_export_key = _dash_key
     python: sys.modules["_dash_render_export"] = _dash_xm
+    python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
     // numpy or pandas below dash_setup's minimum: a note once per fresh
     // load (A121); the refusal slot is bokeh's window (S41).
     python: _dash_dv = _dash_xm._dash_dep_versions()

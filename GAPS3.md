@@ -550,7 +550,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **I4 Tracked:** Open (WP-31 section 59).
 - **I5 Tracked:** Closed in WP-31, BUGS.md "Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines", commit pending.
 - **I6 Tracked:** Open (WP-31 section 60).
-- **I7 Tracked:** Open (WP-31 section 59).
+- **I7 Tracked:** Closed in WP-31, BUGS.md "The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind", commit pending.
 - **J1 Tracked:** Closed in WP-31, BUGS.md "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note", commit 220d95f.
 - **J2 Tracked:** Closed in WP-31, BUGS.md "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs", commit afaa4c1.
 - **J3 Tracked:** Closed in WP-31, BUGS.md "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists", commit 7f61481.

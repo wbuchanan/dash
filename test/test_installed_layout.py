@@ -575,3 +575,108 @@ def test_the_help_never_offers_set_scheme_dash():
         text = " ".join(fh.read().split())
     assert "set scheme dash-" not in text
     assert "{cmd:set scheme dash-}" not in text
+
+
+# ==========================================================================
+# WP-31 I7 -- loading the renderer from an install writes no bytecode
+# ==========================================================================
+
+def _ado_program(path, name):
+    """The lines of program *name* in the ado file *path*."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    start = next(i for i, l in enumerate(lines)
+                 if l == "program define %s" % name
+                 or l.startswith("program define %s," % name))
+    end = lines.index("end", start)
+    return lines[start:end]
+
+
+_DWB_SAVE = ('python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if '
+             'sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True')
+_DWB_RESTORE = ('python: import sys, sfi; sys.dont_write_bytecode = '
+                'sfi.Macro.getLocal("_dwb") == "1"')
+
+#: Replays dash.ado's guarded load of the staged renderer, the guard's own
+#: lines (argv[2], argv[3]) run as written against a stand-in for sfi's
+#: Macro, the load as _dash_xm_load writes it.  Prints whether
+#: dont_write_bytecode was restored.
+_REPLAY = r"""
+import sys, types, importlib.util
+sys.dont_write_bytecode = False
+_locals = {}
+sfi = types.ModuleType("sfi")
+sfi.Macro = types.SimpleNamespace(
+    setLocal=lambda k, v: _locals.__setitem__(k, v),
+    getLocal=lambda k: _locals.get(k, ""))
+sys.modules["sfi"] = sfi
+save, restore = sys.argv[2], sys.argv[3]
+exec(save.split(":", 1)[1].strip())
+s = importlib.util.spec_from_file_location("_dash_render_export", sys.argv[1])
+m = importlib.util.module_from_spec(s)
+s.loader.exec_module(m)
+sys.modules["_dash_render_export"] = m
+exec(restore.split(":", 1)[1].strip())
+print("restored", sys.dont_write_bytecode is False)
+"""
+
+
+class TestNoBytecodeIsWritten:
+    """GAPS3 I7: the dash_setup_lib load was guarded with
+    ``sys.dont_write_bytecode``, the renderer load in _dash_xm_load was
+    not, so the first dash command wrote dash_render's 1.2 MB bytecode
+    under PLUS/py/__pycache__ and ``ado uninstall`` left it behind.
+    test_setup_honesty.cscript U59-1 renders from a staged install in
+    Stata."""
+
+    def test_the_renderer_load_is_guarded(self):
+        body = _ado_program(os.path.join(REPO_ROOT, "dash.ado"),
+                            "_dash_xm_load")
+        strip = [l.strip() for l in body]
+        assert strip.count(_DWB_SAVE) == 1 and strip.count(_DWB_RESTORE) == 3
+        save = strip.index(_DWB_SAVE)
+        load = [i for i, l in enumerate(strip) if "exec_module" in l]
+        stored = strip.index(
+            'python: sys.modules["_dash_render_export"] = _dash_xm')
+        restores = [i for i, l in enumerate(strip) if l == _DWB_RESTORE]
+        exits = [i for i, l in enumerate(strip)
+                 if l in ("exit 198", "exit `_dd_rc'")]
+        assert save < min(load)
+        # one restore after the module is stored, before the version note
+        assert stored < restores[-1] < strip.index(
+            "python: _dash_dv = _dash_xm._dash_dep_versions()")
+        # each failure's exit (a dependency's, then any other load error's)
+        # restores first
+        exits = [e for e in exits if e < stored]
+        assert len(exits) == 2
+        for r, e in zip(restores, exits):
+            assert save < r == e - 1 < stored
+
+    def test_the_setup_probe_of_the_renderer_is_guarded(self):
+        body = [l.strip() for l in _ado_program(
+            os.path.join(REPO_ROOT, "dash_setup.ado"), "_dash_setup_check_files")]
+        probe = [i for i, l in enumerate(body)
+                 if '"_dash_setup_probe"' in l]
+        assert len(probe) == 1, probe
+        saves = [i for i, l in enumerate(body) if l == _DWB_SAVE]
+        restores = [i for i, l in enumerate(body) if l == _DWB_RESTORE]
+        assert [i for i in saves if i < probe[0]]
+        assert [i for i in restores if i > probe[0]]
+
+    def test_a_render_from_the_install_leaves_no_pycache(self, tmp_path):
+        import subprocess
+        # the guard lines as _dash_xm_load holds them; none, a no-op
+        body = [l.strip() for l in _ado_program(
+            os.path.join(REPO_ROOT, "dash.ado"), "_dash_xm_load")]
+        save = next((l for l in body if l == _DWB_SAVE), "python: pass")
+        restore = next((l for l in body if l == _DWB_RESTORE), "python: pass")
+        root = _build_installed_tree(str(tmp_path / "plus"))
+        plus_py = os.path.join(root, "py")
+        out = subprocess.run(
+            [sys.executable, "-I", "-c", _REPLAY,
+             os.path.join(plus_py, "dash_render.py"), save, restore],
+            capture_output=True, text=True, timeout=300,
+            cwd=str(tmp_path))
+        assert out.returncode == 0, out.stderr[-2000:]
+        assert "restored True" in out.stdout
+        assert not os.path.isdir(os.path.join(plus_py, "__pycache__"))

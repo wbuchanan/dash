@@ -3826,11 +3826,11 @@
   - Suggested fix: WP-31 section 59 (readme package versions): renumber every header and extend the pin to every file and header.
   - Resolution: Fixed 18oct2026 (WP-31, I5). Every version header reads 0.1.0: dash_render.py's docstring Version line (1.0.0  25mar2026) is 0.1.0  09oct2026, dash.ado's first line, Architecture note and _dash_plot comment and dash_parse.mata's first line (v2.0) are v0.1.0 or (0.1.0); test_pkg_metadata.py's VERSION_SOURCES gains the renderer's Version line and HEADER_SOURCES the v-headers. Pinned by test/test_pkg_metadata.py::TestEveryShippedFileAgreesOnTheVersion::test_every_header_states_the_declared_version, test/test_pkg_metadata.py::TestEveryShippedFileAgreesOnTheVersion::test_all_shipped_files_state_the_same_version. Closes GAPS3 I5 (WP-31, I5).
 
-- [ ] Title: The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind
+- [x] Title: The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind
   - File Names and Line Numbers: dash.ado:6118-6133 unguarded vs :6296-6299
   - Description: GAPS3.md I7, re-verified at 6370ca4: The renderer bytecode is still cached under PLUS/py: the guard added for dash_setup_lib does not cover the renderer load, and `ado uninstall` leaves `__pycache__` behind.
   - Suggested fix: WP-31 section 59 (readme package versions): wrap the renderer load in the dont_write_bytecode guard and pin with test_installed_layout.py.
-  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 18oct2026 (WP-31, I7). _dash_xm_load (dash.ado) saves sys.dont_write_bytecode, sets it before the renderer's spec_from_file_location/exec_module load and puts it back after the module is stored and before each failure's exit (the dependency refusal, and any other load error, which now runs under capture noisily so the flag is restored before it exits with its own code), as the dash_setup_lib load already did; dash_setup's scheme probe of the installed renderer (_dash_setup_check_files) is guarded the same way. Pinned by test/test_installed_layout.py::TestNoBytecodeIsWritten::test_a_render_from_the_install_leaves_no_pycache, ::test_the_renderer_load_is_guarded, ::test_the_setup_probe_of_the_renderer_is_guarded, test/test_setup_honesty.cscript U59-1. Closes GAPS3 I7 (WP-31, I7).
 
 - [ ] Title: Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback
   - File Names and Line Numbers: test/

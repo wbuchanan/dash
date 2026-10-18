@@ -1174,6 +1174,38 @@ assert `h42rc' == 0 & `"`h42v'"' == "`h42want'" & `h42t' == 1
 display "HON-42 PASS: _dash_setup_pystart returns the version from one try"
 
 
+// ---- U59-1 (WP-31 I7): a render from an installed tree writes no bytecode ----
+// The renderer is loaded from a staged install -- dash.ado, dash_parse.mata
+// and dash_render.py copied into a scratch directory put first on the
+// ado-path, so _dash_xm_load finds the dash_render.py beside that dash.ado
+// -- and a render must leave no __pycache__ there, as an installed PLUS/py
+// must not get one (ado uninstall would leave it behind).
+local u59d "`c(tmpdir)'dash_u59_plus_`c(current_time)'"
+local u59d : subinstr local u59d ":" "", all
+capture mkdir "`u59d'"
+foreach f in dash.ado dash_parse.mata dash_render.py {
+    copy "../`f'" "`u59d'/`f'", replace
+}
+python: import sys; from sfi import Macro; Macro.setLocal("u59dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = False
+adopath ++ "`u59d'"
+capture findfile dash.ado
+local u59fn `"`r(fn)'"'
+sysuse auto, clear
+capture noisily dash scatter mpg weight, saving("`u59d'/u59.html") replace
+local u59rc = _rc
+python: import sys; from sfi import Macro; Macro.setLocal("u59after", "1" if sys.dont_write_bytecode else "0")
+adopath - "`u59d'"
+mata: st_local("u59pyc", strofreal(direxists(st_local("u59d") + "/__pycache__")))
+mata: st_local("u59page", strofreal(fileexists(st_local("u59d") + "/u59.html")))
+python: import sys; from sfi import Macro; sys.dont_write_bytecode = Macro.getLocal("u59dwb") == "1"
+display "U59-1 measured: rc `u59rc' page `u59page' pycache `u59pyc' flag-after `u59after' dash.ado `u59fn'"
+python: import shutil; from sfi import Macro; shutil.rmtree(Macro.getLocal("u59d"), ignore_errors=True)
+assert `u59rc' == 0 & `u59page' == 1
+assert `u59pyc' == 0
+assert "`u59after'" == "0"
+display "U59-1 PASS: a render from an installed tree writes no __pycache__ and leaves dont_write_bytecode as it was"
+
+
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
 
 capture erase "`c(tmpdir)'dash_hon_setup.log"

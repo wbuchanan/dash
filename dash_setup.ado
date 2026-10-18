@@ -1015,6 +1015,8 @@ program define _dash_setup_check_files, rclass
     // the true path -- backslashes and all, which is what `r"..."' was for --
     // as a value the interpreter never parses.
     local _sch_ok "0"
+    // WP-31 I7: the probe writes no bytecode beside the installed renderer.
+    python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
     capture python: ///
         import importlib.util as _iu, sfi, warnings; ///
         _sp = _iu.spec_from_file_location("_dash_setup_probe", sfi.Macro.getLocal("render_py")); ///
@@ -1025,7 +1027,9 @@ program define _dash_setup_check_files, rclass
         sfi.Macro.setLocal("_sch_ok", ///
             "0" if _m.SchemeParser.resolve_or_fallback("s2color", "dash_setup").is_fallback else "1"); ///
         warnings.filters[:] = _dash_setup_filters
-    if _rc != 0 | "`_sch_ok'" != "1" {
+    local _sch_rc = _rc
+    python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
+    if `_sch_rc' != 0 | "`_sch_ok'" != "1" {
         display as error "  schemes ............ {err}unreachable{txt}"
         display as error "    dash found its renderer but the renderer could" ///
             " not read a .scheme file,"
