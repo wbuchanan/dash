@@ -328,14 +328,19 @@ class TestTheHelpSaysWhatWasMeasured:
         # Flipped (WP-31 F1e, F1f): and lpolyci, mband and mspline.
         # Flipped (WP-31 F1g): and fpfit and fpfitci.
         # Flipped (WP-31 B4c): and contour and contourline within the cap.
+        # Flipped (WP-31 H6 follow-up): and a default-grid histogram's bins;
+        # bins set by bin(), width(), start() or discrete are kept.
         assert ("A saved dashboard recomputes those cards, its kernel density "
-                "curves, its histogram bar heights, its {cmd:lfit}, "
+                "curves, its histogram bar heights (and the bins of a "
+                "histogram on the default grid), its {cmd:lfit}, "
                 "{cmd:qfit}, {cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, "
                 "{cmd:mband} and {cmd:mspline} lines, its {cmd:lfitci}, "
                 "{cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines and "
                 "bands and, up to 1,000 distinct points, its {cmd:contour} "
-                "and {cmd:contourline} layers in the browser") \
-            in " ".join(s.split())
+                "and {cmd:contourline} layers in the browser, and keeps its "
+                "other computed layers, and the bins a histogram's {cmd:bin()}, "
+                "{cmd:width()}, {cmd:start()} or {cmd:discrete} set, as they "
+                "were built") in " ".join(s.split())
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""

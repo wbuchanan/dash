@@ -874,7 +874,8 @@ class TestTheHelp:
         with open(os.path.join(_HERE, "..", "dash.sthlp"),
                   encoding="utf-8") as fh:
             text = fh.read()
-        sec = text[text.index("Faceting with by()"):]
+        # The section, not its jump-list entry (WP-31 I2 lists every title).
+        sec = text[text.index("{title:Faceting with by()}"):]
         sec = sec[:sec.index("{marker", 10)] if "{marker" in sec[10:] \
             else sec[:20000]
         for word in ("iyaxes", "noedgelabel", "ilegends", "clegend(on)",

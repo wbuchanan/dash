@@ -370,7 +370,7 @@ class TestTheProbe:
                                                          tmp_path):
         f = tmp_path / "chrome"
         f.write_text("")
-        assert not rp._has_arm64_slice(str(f))
+        assert rp._native_slice(str(f)) is None
         monkeypatch.setattr(rp, "_NATIVE", {})
         monkeypatch.setattr(rp, "_host_is_apple_silicon", lambda: False)
         assert rp.chrome_argv(str(f)) == [str(f)]

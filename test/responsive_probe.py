@@ -147,14 +147,16 @@ def _host_is_apple_silicon():
     return out.stdout.strip() == "1"
 
 
-def _has_arm64_slice(binary):
-    """Whether *binary* (a Mach-O file) carries an arm64 slice."""
+def _native_slice(binary):
+    """The Apple-silicon slice *binary* (a Mach-O file) carries, read from
+    lipo, or None."""
     try:
         out = subprocess.run(["/usr/bin/lipo", "-archs", binary],
                              capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
-        return False
-    return "arm64" in out.stdout.split()
+        return None
+    return next((a for a in out.stdout.split() if a.startswith("arm64")),
+                None)
 
 
 _NATIVE = {}
@@ -171,14 +173,14 @@ def chrome_argv(chrome):
     Chromium on Arm" on its stderr).  Measured 18oct2026, M2 Max, Chrome
     155, the bs_cards host page of test_responsive_layout: 1-2 s native,
     57-98 s under Rosetta, past measure_many's 90 s deadline, so a width
-    "reported nothing".  ``arch -arm64`` starts the native slice whatever
-    the parent; elsewhere the binary runs as it is.
+    "reported nothing".  /usr/bin/arch with the binary's own native slice
+    (read from lipo) starts it natively whatever the parent; elsewhere the
+    binary runs as it is.
     """
     if chrome not in _NATIVE:
-        native = (_host_is_apple_silicon()
-                  and os.path.isfile("/usr/bin/arch")
-                  and _has_arm64_slice(chrome))
-        _NATIVE[chrome] = ["/usr/bin/arch", "-arm64"] if native else []
+        native = (_native_slice(chrome) if _host_is_apple_silicon()
+                  and os.path.isfile("/usr/bin/arch") else None)
+        _NATIVE[chrome] = ["/usr/bin/arch", "-" + native] if native else []
     return _NATIVE[chrome] + [chrome]
 
 

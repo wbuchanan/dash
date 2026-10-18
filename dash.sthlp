@@ -1404,7 +1404,8 @@ default grid), its {cmd:lfit}, {cmd:qfit},
 its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
 and bands and, up to 1,000 distinct points, its {cmd:contour} and
 {cmd:contourline} layers in the browser, and keeps its other computed
-layers, and its histogram bins, as they were built; both re-scale every
+layers, and the bins a histogram's {cmd:bin()}, {cmd:width()},
+{cmd:start()} or {cmd:discrete} set, as they were built; both re-scale every
 axis, the second axes' ranges included, over the rows kept; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see
