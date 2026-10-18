@@ -21458,6 +21458,14 @@ class GlyphMapper:
             cfg["datekind"] = _hk
             cfg["unit_edges"] = edges[i0:i1 + 1].tolist()
             cfg["bin_first"] = int(i0)
+        elif not discrete and not any(
+                str(options.get(k, "") or "").strip()
+                for k in ("width", "start", "bin")):
+            # WP-31 H6: a grid twoway derives from the data
+            # (_histogram_grid's default rule) is derived again from the
+            # kept rows on the page, as twoway and the served refit do; the
+            # layer is then not marked.
+            cfg["rebin"] = True
         _wk = (self.date_vars or {}).get(
             str(options.get("wexp", "")).strip()) if wtype is not None \
             else None
@@ -33345,6 +33353,26 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
 
     // WP-31 C16: a recast layer's source as it stood (its base columns).
     const _prev = ac.recast_cols ? src.data : null;
+    if (ac.type === 'histogram' && ac.rebin === true && vals.length) {
+        // WP-31 H6: twoway's default grid over the kept rows
+        // (_histogram_grid, _stata_bin_count of the frequency-weight sum):
+        // from the minimum, int(min(sqrt N, 10 log10 N)) bins, or one bar
+        // of width 1 when every value is equal.  Written into this run's
+        // parsed config, which the branch below reads.
+        let glo = Infinity, ghi = -Infinity;
+        for (const v of vals) { if (v < glo) glo = v; if (v > ghi) ghi = v; }
+        let nw = vals.length;
+        if (wts) { let t = 0; for (const x of wts) t += x; nw = Math.round(t); }
+        let nb = 1, gw = 1;
+        if (ghi !== glo) {
+            nb = nw < 1 ? 1 : Math.max(1, Math.trunc(Math.min(Math.sqrt(nw), 10 * Math.log(nw) / Math.log(10))));
+            nb = Math.min(nb, 1000);
+            gw = (ghi - glo) / nb;
+        }
+        const ge = [];
+        for (let k = 0; k <= nb; k++) ge.push(glo + gw * k);
+        ac.start = glo; ac.width = gw; ac.bin = nb; ac.bin_edges = ge;
+    }
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
@@ -59925,7 +59953,10 @@ class DashRenderer:
                                                _frozen_vars, kind=_fkind)
                 if _ftag is not None and _fkind is None and any(
                         (getattr(_fr, "_dash_agg_config", None) or {}).get(
-                            "regrid") is True for _fr in _layer_renderers):
+                            "regrid") is True
+                        or (getattr(_fr, "_dash_agg_config", None)
+                            or {}).get("rebin") is True
+                        for _fr in _layer_renderers):
                     # WP-31 H6: the page redraws this layer's grid over the
                     # kept rows, so nothing is left to mark.
                     _ftag = None

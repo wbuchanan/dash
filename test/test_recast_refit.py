@@ -54,9 +54,11 @@ def _plain_points(r, ptype):
     for g in r.figures["g1"].renderers:
         d = g.data_source.data
         if ptype == "histogram" and "top" in d:
-            ag = getattr(g, "_dash_agg_config")
-            e = np.asarray(ag["bin_edges"], dtype=float)
-            return (e[:-1] + e[1:]) / 2.0, np.asarray(d["top"], dtype=float)
+            # The bars drawn now (WP-31 H6: a default grid is binned again
+            # after a move, so the build's bin_edges are no longer them).
+            lo = np.asarray(d["left"], dtype=float)
+            hi = np.asarray(d["right"], dtype=float)
+            return (lo + hi) / 2.0, np.asarray(d["top"], dtype=float)
         if ptype == "kdensity" and hasattr(g, "_dash_agg_config"):
             return (np.asarray(d["x"], dtype=float),
                     np.asarray(d["y"], dtype=float))

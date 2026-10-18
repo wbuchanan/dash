@@ -354,6 +354,12 @@ class TestBinMembersTwin:
             first = ac.get("bin_first") or 0
             grid = [ac["start"] + k * ac["width"]
                     for k in range((ac.get("bin") or nb) + 1)]
+            if ac.get("rebin"):
+                # Flipped (WP-31 H6): a default grid is twoway's over the
+                # kept rows, and the members are counted on it.
+                grid = [float(e) for e in dr.GlyphMapper._histogram_grid(
+                    np.asarray(kept["mpg"], dtype=float), {})[0]]
+                nb, first = len(grid) - 1, 0
             want = _bar_members(grid, list(kept["mpg"]),
                                 ids)[first:first + nb]
             got = [[int(i) for i in b] for b in src.data["__dash_bin_rows"]]

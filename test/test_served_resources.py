@@ -548,7 +548,10 @@ _SAVED_DIGEST = (
     # 0322e5ad... -> 00a009f6...: WP-31 H6, the filter code draws a
     # kdensity on the kept rows' grid (code only: the page has no
     # kdensity); the same under both Pythons.
-    "00a009f6a58c7374f79c9a88e0e6dd9bb6fdf5ad48417925443d4afc70f7880c")
+    # 00a009f6... -> 91a241f7...: WP-31 H6, the filter code bins a default
+    # histogram again over the kept rows (code only: the page has no
+    # histogram); the same under both Pythons.
+    "91a241f72f66d7d4b0fb788ed48adb6f1604b338e67bbcc3053ab273613bfbef")
 
 
 # ===========================================================================

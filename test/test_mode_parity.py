@@ -3976,16 +3976,6 @@ _AXES_FOUND_AFTER_MOVE = frozenset({
     'rbar with its own if emptied, slider to 10000',
     'rspike with its own if emptied, slider to 10000',
 })
-#: Saved page's own script against the served app: a histogram keeps its
-#: build-time bin count (3 where the served refit draws 2); kdensity's
-#: line differs.  (The CI band's outline of lfitci, qfitci, fpfitci and
-#: lpolyci follows the refit since WP-31 H6: headless Chrome, like node,
-#: kept the build's outline before.)
-_JS_FOUND_AFTER_MOVE = frozenset({
-    'histogram, dropdown to Foreign',
-    'histogram, range to 4500-11385',
-    'histogram, slider to 4500',
-})
 
 
 @pytest.mark.parametrize("name,spec,action,oracle", MOVE_CORPUS)
@@ -4137,10 +4127,6 @@ class TestAFilterMoveAgrees:
         found = [(i, _diff(a, b["glyphs"]))
                  for i, (a, b) in enumerate(zip(js, srv))]
         found = [(i, d) for i, d in found if d]
-        if name in _JS_FOUND_AFTER_MOVE:
-            assert found, (f"{name}: the saved page's script now agrees; "
-                           f"delete it from _JS_FOUND_AFTER_MOVE")
-            return
         for i, diffs in found:
             assert not diffs, _explain(name, f"figure {i} glyphs, saved JS "
                                              f"against served", diffs)

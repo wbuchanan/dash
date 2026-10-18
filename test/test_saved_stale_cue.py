@@ -70,7 +70,10 @@ _FROZEN = ["histogram", "kdensity"]
 #: kdensity without range() is drawn on the kept rows' own grid by the
 #: saved page and is no longer marked; one drawn as dot (recast(dot),
 #: which the page does not recount) keeps the build's grid and the cue.
-_FROZEN_OPTS = {"histogram": {}, "kdensity": {"recast": "dot"}}
+#: Flipped (WP-31 H6): a histogram on twoway's default grid is binned
+#: again over the kept rows; one given bin() keeps the build's start and
+#: width, and the cue.
+_FROZEN_OPTS = {"histogram": {"bin": "3"}, "kdensity": {"recast": "dot"}}
 # DECISIONS A20 (WP-31 B4c): contour and contourline are no computed-only
 # type (their rows are embedded) and are refitted within the cap; a capped
 # one is marked (TestTheCueAppearsOnAMove::test_a_capped_contour_is_marked).
@@ -872,7 +875,9 @@ class TestTheFrozenTag:
 
     def test_the_tag_of_each_kind(self):
         r = _render(_spec([plot_for("scatter"), _stand_in(),
-                           plot_for("histogram"),
+                           # Flipped (WP-31 H6): bin(3), as a default
+                           # grid is binned again and not tagged.
+                           plot_for("histogram", {"bin": "3"}),
                            _stand_in(if_expr="price > 20000"),
                            # fpfitci [aw]: a weighted frozen layer
                            # ("positive"); lfitci is refitted since WP-31
@@ -1113,7 +1118,9 @@ class TestTheCueAgainstHostileInput:
     @requires_node
     def test_a_hostile_label_is_data_not_markup(self):
         # The legend key's text is the user's: legend(label(2 "...")).
-        spec = _spec([plot_for("scatter"), plot_for("histogram")],
+        # Flipped (WP-31 H6): bin(3), a grid the page keeps and marks.
+        spec = _spec([plot_for("scatter"), plot_for("histogram",
+                                                    {"bin": "3"})],
                      {"filter": "foreign, type(dropdown)"},
                      {"legend": 'label(2 "%s")' % _HOSTILE})
         r = _render(spec)

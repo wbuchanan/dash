@@ -1398,7 +1398,8 @@ server recomputes, from the rows the filters leave, every layer computed
 from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
-curves, its histogram bar heights, its {cmd:lfit}, {cmd:qfit},
+curves, its histogram bar heights (and the bins of a histogram on the
+default grid), its {cmd:lfit}, {cmd:qfit},
 {cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines,
 its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
 and bands and, up to 1,000 distinct points, its {cmd:contour} and
@@ -2356,7 +2357,7 @@ served app differ as follows:
 {col 5}Several link groups{col 38}Yes{col 59}Yes
 {col 5}brush(filter){col 38}Yes{col 59}Yes
 {col 5}Brush on histogram bars{col 38}until a move{col 59}Yes
-{col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
+{col 5}Histogram recompute on filter{col 38}heights and bins{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}grid recomputed{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}Yes{col 59}Yes
 {col 5}A slider recomputes{col 38}when released{col 59}when released
@@ -2430,6 +2431,10 @@ filters says the same in text a screen reader reads.  A density drawn over
 {cmd:range()} keeps the grid you gave and is not marked; one without it
 is drawn on the kept rows' grid, as {cmd:twoway} draws it, and is not
 marked unless its variable is a date or it is drawn as {cmd:dot}.  A
+{cmd:histogram} on {cmd:twoway}'s default grid is binned again over the
+kept rows, as {cmd:twoway} bins them; one given {cmd:bin()},
+{cmd:width()}, {cmd:start()} or {cmd:discrete}, or of a date, keeps its
+bins and is marked.  A
 {cmd:contour} or {cmd:contourline} is recomputed up to 1,000 distinct
 points; above that it is kept as built and marked "(grid unfiltered)",
 and the served app recomputes its surface.  The marks go when
