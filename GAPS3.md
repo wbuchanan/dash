@@ -509,7 +509,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E8 Tracked:** Closed in WP-31, BUGS.md "rarea and rbar outlines are not stroked where twoway strokes them from the scheme", commit 1a2c566.
 - **E9 Tracked:** Closed in WP-31, BUGS.md "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed", commit 7c630e7.
 - **E10 Tracked:** Closed in WP-31, BUGS.md "User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle", commit dda6868.
-- **E10b Tracked:** Closed in WP-31, BUGS.md "textboxstyle and color-*.style files on the ado-path are not read", commit pending.
+- **E10b Tracked:** Closed in WP-31, BUGS.md "textboxstyle and color-*.style files on the ado-path are not read", commit d066a7f.
 - **E11 Tracked:** Closed in WP-31, BUGS.md "Sizes are relative to a 4-inch reference and scale() is pending", commit 0d9af7a.
 - **E11b Tracked:** Closed in WP-31, BUGS.md "A scheme's #-pt gsizes convert at 4 inches when the scheme's smaller graphsize side is not 4 inches", commit dc4c0ec.
 - **E12 Tracked:** Closed in WP-31, BUGS.md "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive", commit 947c9ca.
@@ -551,12 +551,12 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **I5 Tracked:** Open (WP-31 section 59).
 - **I6 Tracked:** Open (WP-31 section 60).
 - **I7 Tracked:** Open (WP-31 section 59).
-- **J1 Tracked:** Closed in WP-31, BUGS.md "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note", commit pending.
-- **J2 Tracked:** Closed in WP-31, BUGS.md "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs", commit pending.
-- **J3 Tracked:** Closed in WP-31, BUGS.md "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists", commit pending.
-- **J4 Tracked:** Closed in WP-31, BUGS.md "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings", commit pending.
-- **J5 Tracked:** Closed in WP-31, BUGS.md "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted", commit pending.
-- **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit pending.
+- **J1 Tracked:** Closed in WP-31, BUGS.md "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note", commit 220d95f.
+- **J2 Tracked:** Closed in WP-31, BUGS.md "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs", commit afaa4c1.
+- **J3 Tracked:** Closed in WP-31, BUGS.md "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists", commit 7f61481.
+- **J4 Tracked:** Closed in WP-31, BUGS.md "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings", commit 7b282bd.
+- **J5 Tracked:** Closed in WP-31, BUGS.md "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted", commit d8fe429.
+- **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit 6ef3e05.
 - **K2 Tracked:** Open (WP-31 section 60).
 - **K3 Tracked:** Open (WP-31 section 60).
 - **K4 Tracked:** Open (WP-31 section 60).
