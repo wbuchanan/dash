@@ -7759,6 +7759,35 @@ end
 
 
 // ================================================================
+// _dash_maxvar_room n cmdname  -- room for the working columns (WP-31 G3d)
+// ================================================================
+program define _dash_maxvar_room
+    // WP-31 G3d: the working columns a dashboard makes in the user's data,
+    // counted against the room c(maxvar) leaves before any of them is
+    // generated.  Without room, generate stopped partway with Stata's "no
+    // room to add more variables", r(900); this says how many are needed
+    // and how many fit, before the data is touched, with the same code.
+    // The count is the most that exist at once: q qualifier columns
+    // (__dashq#, and one row index while a by() graph's ordered ones are
+    // made), s join-order columns (__dashs#, and their row index), t
+    // time-series columns (__dasht#, each beside the temporary tsrevar
+    // makes until the last is copied) and w weight columns (__dashw#).
+    // A by()-free qualifier is counted with the index too, so the count
+    // can exceed the true peak by one, never fall short of it.
+    version 19
+    args q s t w cmdname
+    local n = max(`q' + (`q' > 0), `q' + `s' + (`s' > 0), `q' + `s' + 2 * `t', `q' + `s' + `t' + `w')
+    if `n' <= 0 exit
+    local room = c(maxvar) - c(k)
+    if `n' <= `room' exit
+    local pl = cond(`n' == 1, "", "s")
+    display as error "`cmdname': the dashboard needs `n' working column`pl' beside the data's `c(k)' variables, and set maxvar allows `c(maxvar)', which leaves room for `room'."
+    display as error "      Raise the limit (set maxvar; see help memory) or drop variables the dashboard does not use, then run it again."
+    exit 900
+end
+
+
+// ================================================================
 // _dash_qual_gen <cmdname>  -- evaluate each distinct qualifier in Stata
 //
 // The table _dash_qual_rewrite and _dash_qual_take filled (dash_parse.mata)
@@ -11366,6 +11395,10 @@ program define _dash_render_immediate
         local _dash_sort_vars ""
         local _dash_tsop_vars ""
         local _dash_wexp_vars ""
+        // WP-31 G3d: every working column counted against c(maxvar)
+        // before the first is made, so a dataset without room is refused
+        // in dash's words and left as it was.
+        _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `_dwx_n' "dash"
         if `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
@@ -12791,6 +12824,10 @@ program define _dash_prepare_spec, rclass
         local _dash_sort_vars ""
         local _dash_tsop_vars ""
         local _dash_wexp_vars ""
+        // WP-31 G3d: every working column counted against c(maxvar)
+        // before the first is made, so a dataset without room is refused
+        // in dash's words and left as it was.
+        _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `_dwx_n' "`cmdname'"
         if `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok

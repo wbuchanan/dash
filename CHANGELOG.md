@@ -1117,7 +1117,7 @@ Changed behaviour.
 
 - The check that a strL variable holds no binary data is one pass over the column instead of one read per observation: 0.05 s where it took 0.74 s at a million rows (WP-31, G3c)
 
-<!-- WP-31 G3d -->
+- A dashboard whose working columns (if/in, sort(), time-series operators, weight expressions) do not fit under set maxvar is refused before any column is made, r(900), in a sentence naming how many columns it needs and how many fit; generate used to stop partway with "no room to add more variables" (WP-31, G3d)
 
 <!-- WP-31 E10b -->
 

@@ -1196,6 +1196,62 @@ capture erase "`p'.html"
 restore
 display "QS-21 PASS: a by() graph's ordered qualifiers stay linear"
 
+// ----------------------------------------------------------------
+// U55-7 (WP-31 G3d) -- the working columns are counted against
+// c(maxvar) before any is made: with no room left, dash refuses in its
+// own words, r(900) as generate's "no room to add more variables" is, and
+// the data is untouched.  maxvar is set for this session only and put back
+// (set maxvar needs Mata and matrices cleared; dash's library and the
+// helpers are run again after each).
+// ----------------------------------------------------------------
+local qs_maxvar0 = c(maxvar)
+clear
+clear matrix
+clear mata
+quietly set maxvar 2048
+quietly run "../dash_parse.mata"
+quietly run "cert_helpers.do"
+sysuse auto, clear
+local qs_k0 = c(k)
+forvalues i = `=c(k) + 1'/2047 {
+    quietly generate byte qsz`i' = 0
+}
+// One column of room: a graph with two qualifier columns needs three
+// (_dash_maxvar_room counts a row index beside them).
+local qs_k1 = c(k)
+assert c(maxvar) - `qs_k1' == 1
+tempfile p
+capture dash clear
+_qs_run `"dash scatter mpg weight if foreign || scatter mpg weight if !foreign, saving("`p'.html") replace"'
+local rc = r(rc)
+local qs_log "`r(log)'"
+cert_log_has "`qs_log'", needle("dash: the dashboard needs 3 working columns")
+local said = r(found)
+cert_log_has "`qs_log'", needle("no room to add more variables")
+local stata_said = r(found)
+local qs_k2 = c(k)
+capture unab qs_left : __dash*
+local qs_none = (_rc != 0)
+capture confirm file "`p'.html"
+local qs_nofile = (_rc != 0)
+// One qualifier column (and its row index) fits in two columns of room.
+drop qsz2047
+_qs_run `"dash scatter mpg weight if foreign, saving("`p'.html") replace"'
+local rc1 = r(rc)
+local qs_k3 = c(k)
+capture erase "`p'.html"
+capture dash clear
+clear
+clear matrix
+clear mata
+quietly set maxvar `qs_maxvar0'
+quietly run "../dash_parse.mata"
+quietly run "cert_helpers.do"
+assert `rc' == 900 & `said' == 1 & `stata_said' == 0
+assert `qs_k2' == `qs_k1' & `qs_none' & `qs_nofile'
+assert `rc1' == 0 & `qs_k3' == `qs_k1' - 1
+display "U55-7 PASS: two working columns with room for one are refused in dash's words, r(900), before the data is touched"
+
 capture dash clear
 macro drop QS_*
 display ""

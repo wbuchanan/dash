@@ -370,6 +370,8 @@ COVERAGE = {
         "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
+        # WP-31 G3d: the working columns counted against c(maxvar) first.
+        "_dash_maxvar_room": ("test_qualifier_in_stata.cscript:U55-7",),
         # WP-31 H7: the names a command put in Python's __main__, popped.
         "_dash_py_tidy": ("test_env_guards.cscript:U55-1",),
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
