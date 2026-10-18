@@ -7225,7 +7225,9 @@ end
 // served with a foreign dropdown filter) on one command; sets S30_OK,
 // S30_MSG, S30_SAME_AFTER, S30_RC, S30_TNOTE (twoway's log says "named
 // style"), S30_DNOTES (the (note: lines of dash's saved build) and
-// S30_DCOL (those naming "mcolor(").
+// S30_DCOL (those giving twoway's unknown-colour wording, "not found in
+// class color"; Flipped: dash's note named "mcolor(" until 74050cb, now in
+// twoway's words, naming the style, not the option).
 capture program drop _s30_case
 program define _s30_case
     version 19
@@ -7272,7 +7274,7 @@ program define _s30_case
     capture cert_log_has "`tlog'", needle("named style")
     global S30_TNOTE = cond(_rc, 0, r(found))
     mata: st_global("S30_DNOTES", strofreal(_s30_count(st_local("dlog"), "(note:", "")))
-    mata: st_global("S30_DCOL", strofreal(_s30_count(st_local("dlog"), "(note:", "mcolor(")))
+    mata: st_global("S30_DCOL", strofreal(_s30_count(st_local("dlog"), "(note:", "not found in class color")))
     capture dash clear
     foreach f in svg page app tlog dlog {
         capture erase "``f''"
@@ -7318,7 +7320,7 @@ if inlist("`only'", "", "S30") & `: list posof "S30" in w30_run' {
     foreach v in "bogus" "Navy" "grey" `""300 0 0""' {
         _s30_case m11 s2color marker `"scatter mpg weight, mcolor(`v')"' "`w30_work'"
         _w30_expect CG-11 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"mcolor(`v'): ${S30_MSG}"'
-        _w30_expect CG-11 "(${S30_TNOTE} == 1 & ${S30_DCOL} == 1)" `"mcolor(`v'): twoway note ${S30_TNOTE}, dash mcolor notes ${S30_DCOL}"'
+        _w30_expect CG-11 "(${S30_TNOTE} == 1 & ${S30_DCOL} == 1)" `"mcolor(`v'): twoway note ${S30_TNOTE}, dash colour notes ${S30_DCOL}"'
     }
     _w30_done CG-11 "bogus, Navy, grey and 300 0 0 are drawn black with one note, as twoway draws them"
 
@@ -10231,7 +10233,9 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w30_run' {
 
     // BI-06: bar color(bogus) is black at the bar's intensity, noted.
     _s43_case BI-06 s2color "twoway bar mpg rep78 if rep78<.," "dash bar mpg rep78 if rep78<.," "color(bogus)" "`w'"
-    _s36_count "`w'/s43.log" "color(bogus)"
+    // Flipped: dash's note named "color(bogus)" until 74050cb; it now gives
+    // twoway's words, naming the style, not the option.
+    _s36_count "`w'/s43.log" "named style bogus not found in class color"
     _w30_expect BI-06 "(${S43_RC} == 0 & ${S43_OK} == 1 & r(n) >= 1)" "rc ${S43_RC}, notes `r(n)': ${S43_GOT}"
     _w30_done BI-06 "an unknown colour at a bar draws black, with the note"
 

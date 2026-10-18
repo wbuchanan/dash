@@ -338,7 +338,10 @@ class TestStyle:
         g = _dots(f).glyph
         assert g.size == 1.0 and str(g.fill_color).lower() == "#000000"
         assert any("dsize(bogus)" in n for n in notes), notes
-        assert any("dcolor(bogus)" in n for n in notes), notes
+        # Flipped: an unknown colour is noted in twoway's words, naming the
+        # style, not the option (74050cb).
+        assert any("named style bogus not found in class color" in n
+                   for n in notes), notes
         assert not [n for n in notes if "msize(" in n or "mcolor(" in n]
 
 

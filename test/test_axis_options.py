@@ -923,7 +923,10 @@ class TestMarkerAndFillOptions:
                             "options": {"colorvar": "rep78",
                                         "colormissing": "notacolour"}}])
         assert fig is not None
-        assert any("colormissing" in str(w.message) for w in caught)
+        # Flipped: an unknown colour is noted in twoway's words, naming the
+        # style, not the option (74050cb).
+        assert any("named style notacolour not found in class color"
+                   in str(w.message) for w in caught)
 
 
 # ======================================================================

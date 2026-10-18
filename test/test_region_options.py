@@ -75,7 +75,10 @@ class TestTheSpec:
             s, _ = dr._dash_region_spec("fcolor(NONE)", "plotregion", _BASE,
                                         _S2, 4.0)
         assert s["fill"] == "#000000"
-        assert any("plotregion(fcolor(NONE))" in str(x.message) for x in w)
+        # Flipped: an unknown colour is noted in twoway's words, naming the
+        # style, not the option (74050cb).
+        assert any("named style NONE not found in class color"
+                   in str(x.message) for x in w)
 
     def test_a_bad_width_or_pattern_keeps_the_default_with_a_note(self):
         with warnings.catch_warnings(record=True) as w:
