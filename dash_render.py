@@ -16464,8 +16464,9 @@ class GlyphMapper:
         VBar, Rect or Quad both, as twoway colours a marker's or a bar's
         fill and outline alike.  A glyph that takes one colour for the
         whole of it (Bokeh's Line, which refuses a field) takes the colour
-        of its first drawn point's level (D-15f, ``_colorvar_scalar``);
-        twoway colours each segment by the level of its start.
+        of its first drawn point's level (``_colorvar_scalar``); map_line
+        and map_rline draw one line a level instead (D39 D-15f,
+        ``_colorvar_line_parts``), as twoway does.
 
         *fill_only* (colorfillonly, WP-31 C8b) colours the fill and leaves
         the outline in the series colour, as twoway does (D10); *opacity*
@@ -16484,6 +16485,159 @@ class GlyphMapper:
                 _sc = self._colorvar_scalar(source, glyph, color_spec)
                 if _sc is not None:
                     setattr(glyph, _p, _sc)
+
+    @staticmethod
+    def _colorvar_level_index(color_spec, values):
+        """Each value's level under colorvar()'s *color_spec* (D39 D-15f):
+        an int array, the position of the value's colour in the mapper --
+        a categorical mapper's factor, a linear (or log) mapper's palette
+        bin, as BokehJS's mapper bins it -- and -1 for a value drawn in the
+        mapper's ``nan_color`` (missing, no level, outside a log scale).
+        None for a spec of another kind."""
+        try:
+            mapper = color_spec["transform"]
+        except (KeyError, TypeError):
+            return None
+        vals = list(values)
+        n = len(vals)
+        kind = type(mapper).__name__
+        pal = list(getattr(mapper, "palette", None) or [])
+        if kind == "CategoricalColorMapper":
+            facs = {f: k for k, f in enumerate(list(mapper.factors or []))}
+            out = np.full(n, -1, dtype=np.int64)
+            for i, v in enumerate(vals):
+                try:
+                    k = facs.get(v, -1)
+                except TypeError:
+                    k = -1
+                out[i] = k if 0 <= k < len(pal) else -1
+            return out
+        if kind not in ("LinearColorMapper", "LogColorMapper") or not pal:
+            return None
+        try:
+            lo, hi = float(mapper.low), float(mapper.high)
+        except (TypeError, ValueError):
+            return np.full(n, -1, dtype=np.int64)
+        try:
+            v = _dash_float_values(vals) if n else np.asarray([], float)
+        except (TypeError, ValueError):
+            return np.full(n, -1, dtype=np.int64)
+        v = np.asarray(v, dtype=float)
+        out = np.full(n, -1, dtype=np.int64)
+        fin = np.isfinite(v)
+        npal = len(pal)
+        below = fin & (v < lo)
+        above = fin & (v > hi)
+        mid = fin & ~below & ~above
+        out[below] = 0
+        out[above] = npal - 1
+        lv, lo_t, hi_t = v, lo, hi
+        if kind == "LogColorMapper":
+            if lo <= 0 or hi <= 0:
+                out[mid] = -1
+                return out
+            with np.errstate(divide="ignore", invalid="ignore"):
+                lv = np.log(np.where(mid, v, 1.0))
+            lo_t, hi_t = math.log(lo), math.log(hi)
+        if hi_t <= lo_t:
+            out[mid] = npal - 1
+        else:
+            k = np.floor((lv[mid] - lo_t) / (hi_t - lo_t) * npal)
+            k = np.where(lv[mid] == hi_t, npal - 1, k)
+            out[mid] = np.clip(k, 0, npal - 1).astype(np.int64)
+        return out
+
+    @staticmethod
+    def _colorvar_level_colour(color_spec, level):
+        """The colour *color_spec* draws *level* in (``_colorvar_level_index``'s
+        numbering; -1 the mapper's ``nan_color``)."""
+        mapper = color_spec["transform"]
+        pal = list(getattr(mapper, "palette", None) or [])
+        if 0 <= level < len(pal):
+            return pal[level]
+        return getattr(mapper, "nan_color", None)
+
+    def _colorvar_line_parts(self, fig, source, xvar, yvar, options,
+                             add_key=True):
+        """colorvar() on a line (D39 D-15f): ``[(source, colour), ...]``,
+        one source a colour level holding that level's rows of *source* in
+        their join order, or None when the layer has no colorvar() (or
+        colorfillonly, which leaves a line its series colour).
+
+        twoway draws one path a level through that level's points
+        (measured 18oct2026: z 1 1 2 2 1 3 on x 1..6 is the paths x 1 2 5
+        and x 3 4, x 6 alone draws nothing; missing levels are one path in
+        the colormissing() colour, drawn first).  The colour key is added
+        here (*add_key*), through ``_apply_colorvar`` on a scatter that is
+        then taken off the figure.  The levels are every level of the
+        layer's colour rows (``colorvar_domain``, the build's on a served
+        redraw), the missing one first, each a source even when it is
+        empty, so the served redraw pairs the same sources by position."""
+        if not str((options or {}).get("colorvar", "") or "").strip() \
+                or (options or {}).get("colorfillonly"):
+            return None
+        probe = fig.scatter(x=xvar, y=yvar, source=source)
+        try:
+            self._apply_colorvar(fig, probe, source, options,
+                                 add_key=add_key)
+        finally:
+            fig.renderers = [x for x in fig.renderers if x is not probe]
+        f = probe.glyph.fill_color
+        field = getattr(f, "field", None)
+        mapper = getattr(f, "transform", None)
+        if not isinstance(field, str) or mapper is None \
+                or field not in source.data:
+            return []
+        spec = {"field": field, "transform": mapper}
+        idx = self._colorvar_level_index(spec, source.data[field])
+        if idx is None:
+            return []
+        if type(mapper).__name__ == "CategoricalColorMapper":
+            levels = list(range(min(len(mapper.factors or []),
+                                    len(mapper.palette or []))))
+        else:
+            dom = self.colorvar_domain
+            di = self._colorvar_level_index(
+                spec, source.data[field] if dom is None else dom)
+            levels = sorted({int(k) for k in (di if di is not None else [])
+                             if k >= 0})
+        alpha = probe.glyph.fill_alpha
+        out = []
+        for lev in [-1] + levels:
+            keep = np.asarray(idx == lev, dtype=bool)
+            sub = {}
+            for col, vals in source.data.items():
+                if len(vals) != len(keep):
+                    continue
+                if isinstance(vals, np.ndarray):
+                    sub[col] = vals[keep]
+                else:
+                    sub[col] = [v for v, k in zip(vals, keep) if k]
+            out.append((ColumnDataSource(sub),
+                        self._colorvar_level_colour(spec, lev),
+                        alpha if isinstance(alpha, (int, float))
+                        and alpha != 1.0 else None))
+        return out
+
+    def _colorvar_line_draw(self, fig, parts, options, line_kwargs, role):
+        """Draw ``_colorvar_line_parts``'s *parts*, one line each by
+        connect() and cmissing() (``_dash_join_glyph``) from *line_kwargs*
+        with the part's source and colour (over lcolor(): colorvar() wins,
+        as on every other glyph) and colorrule()'s opacity; no legend item
+        (the colour key replaces it) and no hover tool (the caller adds one
+        over them all).  Returns the renderers, in drawing order."""
+        kw = {k: v for k, v in line_kwargs.items()
+              if k not in ("legend_label", "view")}
+        out = []
+        for src, colour, alpha in parts:
+            r = _dash_join_glyph(self, fig, options,
+                                 dict(kw, source=src, line_color=colour),
+                                 role=role, hover=None)
+            r.glyph.line_color = colour
+            if alpha is not None:
+                r.glyph.line_alpha = max(0.0, min(1.0, float(alpha)))
+            out.append(r)
+        return out
 
     @staticmethod
     def _colorvar_scalar(source, glyph, color_spec):
@@ -17685,12 +17839,22 @@ class GlyphMapper:
         # which is drawn here) and draws none, without a note -- measured
         # 23sep2026 from its SVG.  dash labelled every point.  connected
         # and rconnected label their MARKERS, through map_scatter.
+        # colorvar() (D39 D-15f): one line a colour level, as twoway draws
+        # it, with the key unless the layer's markers carry it.
+        _cv_parts = self._colorvar_line_parts(fig, sorted_source, xvar,
+                                              yvar, options, colorvar_key)
+        if _cv_parts:
+            _rs = self._colorvar_line_draw(fig, _cv_parts, options,
+                                           _line_kwargs, role)
+            if _dash_join_spec(options)[0] != "none":
+                fig.add_tools(self._hover_tool(yvar, xvar, renderers=_rs))
+            return _rs[0]
         r = _dash_join_glyph(self, fig, options, _line_kwargs, role=role,
                              hover=(yvar, xvar))
-        # colorvar() (WP-31 C8a): the line in its first point's level
-        # (D-15f), the key unless the layer's markers carry it.
-        self._colorvar_layer(fig, [(r, sorted_source)], options,
-                             add_key=colorvar_key)
+        if _cv_parts is None:
+            # colorvar() that names no colour column draws as before.
+            self._colorvar_layer(fig, [(r, sorted_source)], options,
+                                 add_key=colorvar_key)
         return r
 
     def map_connected(
@@ -22555,13 +22719,26 @@ class GlyphMapper:
             _rl2_kwargs["view"] = view
         _rl1_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
         _rl2_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
+        # colorvar() (D39 D-15f): each bound one line a colour level, as
+        # twoway draws a line, with one key.
+        _cv1 = self._colorvar_line_parts(fig, _bound_src[y1var], xvar, y1var,
+                                         options, True)
+        if _cv1:
+            _cv2 = self._colorvar_line_parts(fig, _bound_src[y2var], xvar,
+                                             y2var, options, False) or []
+            r1 = self._colorvar_line_draw(fig, _cv1, options, _rl1_kwargs,
+                                          "aline")[0]
+            r2s = self._colorvar_line_draw(fig, _cv2, options, _rl2_kwargs,
+                                           "aline")
+            r2 = r2s[0] if r2s else _dash_join_glyph(
+                self, fig, options, _rl2_kwargs, role="aline")
+            return [r1, r2]
         # Each bound by connect() and cmissing() (WP-30 P1.8a).
         r1 = _dash_join_glyph(self, fig, options, _rl1_kwargs, role="aline")
         r2 = _dash_join_glyph(self, fig, options, _rl2_kwargs, role="aline")
-        # colorvar() (WP-31 C8a): each bound in its first point's level
-        # (D-15f), one key.
-        self._colorvar_layer(fig, [(r1, _bound_src[y1var]),
-                                   (r2, _bound_src[y2var])], options)
+        if _cv1 is None:
+            self._colorvar_layer(fig, [(r1, _bound_src[y1var]),
+                                       (r2, _bound_src[y2var])], options)
         # No marker labels: twoway draws none on rline or tsrline, which is
         # drawn here (measured).
         return [r1, r2]

@@ -485,8 +485,9 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "fixtures", "colorvar_types_truth.json"),
           encoding="utf-8") as _cvt:
     _CV_TYPES = set(json.load(_cvt)["coloured"])
-#: The coloured types drawn with Bokeh's Line glyph alone: one colour a
-#: line, its first point's level (D-15f), so no glyph reads a field.
+#: The coloured types drawn with Bokeh's Line glyph alone: one line a
+#: colour level, each in its level's colour (WP-32 D-15f), so no glyph
+#: reads a field.
 _CV_LINE_TYPES = {"line", "tsline", "rline", "tsrline"}
 
 

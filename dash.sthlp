@@ -5294,11 +5294,16 @@ third variable instead of by the scheme's series colour.  {cmd:dash} draws
 it on every plot type twoway colours -- markers, bars, spikes, drop lines,
 range bars and caps, and the shafts and heads of the paired-coordinate
 arrows, are coloured observation by observation, with one colour key a
-layer; a line ({cmd:line}, {cmd:rline}, {cmd:tsline}, {cmd:tsrline}, the
-connecting line of {cmd:connected} and {cmd:rconnected}) takes one colour,
-that of its first observation's level, where {cmd:twoway} colours each
-segment (measured: {cmd:twoway line mpg weight, colorvar(rep78) sort} draws
-5 colours along one line).  On {cmd:area}, {cmd:rarea}, the fits and
+layer; a line ({cmd:line}, {cmd:rline}'s bounds, {cmd:tsline},
+{cmd:tsrline}, the connecting line of {cmd:connected} and
+{cmd:rconnected}) is drawn as {cmd:twoway} draws it, one line a colour
+level joining that level's observations in the line's order, the
+observations missing the variable a line of their own in the
+{cmd:colormissing()} colour, before and after a filter move (a level of a
+continuous {cmd:colorvar()} is one colour of its key) (measured: on
+{it:x} 1 to 6 with levels 1 1 2 2 1 3, one line through the 1st, 2nd and
+5th points, one through the 3rd and 4th, and nothing for the 6th alone).
+On {cmd:area}, {cmd:rarea}, the fits and
 smooths, {cmd:kdensity}, {cmd:histogram}, {cmd:function}, {cmd:scatteri},
 {cmd:pci} and {cmd:pcarrowi}, {cmd:twoway} drops {cmd:colorvar()} without a
 word -- and without looking the variable up -- and so does {cmd:dash}.

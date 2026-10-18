@@ -19,9 +19,8 @@ test/fixtures/colorvar_types_truth.json (StataNow 19.5):
   combined with multiple y variables in a <view> plot" (tsline's view is a
   line).
 * ``line_L01``: ``twoway line mpg weight, colorvar(z) sort`` strokes its
-  line in 5 colours -- each segment the level of its start.  Bokeh's Line
-  glyph takes one colour, so dash draws the whole line in its first point's
-  level (D-15f; dash.sthlp says so).
+  line in 5 colours: one path a level through that level's points
+  (WP-32, D39 D-15f; test/test_colorvar_line_levels.py).
 * ``jitter``: jitter(5) jitterseed(1) moves every marker of rscatter,
   rcapsym, pcscatter and pccapsym (both ends), at most 2.5% of the axis
   range each way, and leaves the spines where they are.
@@ -64,7 +63,7 @@ with open(_FIX, encoding="utf-8") as _fh:
 COLOURED = sorted(TRUTH["coloured"])
 #: The types twoway takes colorvar() on and draws nothing for (measured).
 SILENT = sorted(TRUTH["cv_silent"])
-#: The coloured types drawn with Bokeh's Line glyph: one colour a line.
+#: The coloured types drawn with Bokeh's Line glyph: one line a level.
 LINE_TYPES = ["line", "tsline", "rline", "tsrline"]
 #: The four types whose markers twoway jitters and dash did not.
 JIT_TYPES = ["rscatter", "rcapsym", "pcscatter", "pccapsym"]
@@ -353,31 +352,49 @@ console.log(JSON.stringify(heads.data));
 
 
 # ---------------------------------------------------------------------------
-# A line takes one colour: its first point's level (D-15f)
+# A line is one line a colour level (WP-32, D39 D-15f)
 # ---------------------------------------------------------------------------
 
-class TestLineOneColour:
+def _level_lines(fig):
+    """{colour: [rep78 of each drawn row]} of the Line renderers."""
+    out = {}
+    for r in fig.renderers:
+        if type(r.glyph).__name__ != "Line":
+            continue
+        d = r.data_source.data
+        vals = [v for v in d.get("rep78", []) if v == v and v is not None]
+        if vals:
+            out.setdefault(r.glyph.line_color, []).extend(vals)
+    return out
+
+
+class TestLinePerLevel:
+    """Flipped (WP-32, D39 D-15f): the whole line took its first point's
+    level; it is one line a level, as twoway draws it
+    (test/test_colorvar_line_levels.py measures the paths)."""
 
     @pytest.mark.parametrize("mode", MODES)
     @pytest.mark.parametrize("ptype", ["line", "tsline"])
-    def test_first_row(self, tmp, mode, ptype):
-        assert TRUTH["line_L01"]["distinct_strokes"] == 5
+    def test_each_line_is_one_level(self, tmp, mode, ptype):
         fig = _fig(tmp, mode, ptype, {"colorvar": "rep78"})
-        [ln] = [r for r in fig.renderers if type(r.glyph).__name__ == "Line"]
-        want = _mapper_colour(_bar(fig).color_mapper, _DF["rep78"][0])
-        assert ln.glyph.line_color == want
+        mapper = _bar(fig).color_mapper
+        lines = _level_lines(fig)
+        assert len(lines) == len(set(_DF["rep78"]))
+        for colour, vals in lines.items():
+            assert {_mapper_colour(mapper, v) for v in vals} == {colour}
 
     @pytest.mark.parametrize("mode", MODES)
     def test_connected_line_and_markers(self, tmp, mode):
         fig = _fig(tmp, mode, "connected", {"colorvar": "rep78"})
-        [ln] = [r for r in fig.renderers if type(r.glyph).__name__ == "Line"]
+        mapper = _bar(fig).color_mapper
+        for colour, vals in _level_lines(fig).items():
+            assert {_mapper_colour(mapper, v) for v in vals} == {colour}
         [sc] = [r for r in _plot_renderers(fig)
                 if type(r.glyph).__name__ == "Scatter"]
-        assert ln.glyph.line_color == _mapper_colour(
-            _bar(fig).color_mapper, _DF["rep78"][0])
         assert _mapped(sc)
 
     def test_a_missing_first_level_is_the_missing_colour(self, tmp):
+        """_colorvar_scalar still reads a line drawn outside map_line."""
         gm = dr.GlyphMapper()
         from bokeh.models import ColumnDataSource
         from bokeh.plotting import figure
@@ -388,6 +405,29 @@ class TestLineOneColour:
         gm._apply_colorvar(fig, r, src, {"colorvar": "z",
                                          "colormissing": "red"})
         assert r.glyph.line_color == "#ff0000"
+
+    def test_the_level_index_reads_each_mapper_as_the_scalar_does(self):
+        from bokeh.models import (CategoricalColorMapper,
+                                  LinearColorMapper, LogColorMapper)
+        G = dr.GlyphMapper
+        pal = ["#000001", "#000002", "#000003", "#000004"]
+        cases = [
+            (LinearColorMapper(palette=pal, low=0, high=4),
+             [-1.0, 0.0, 0.99, 1.0, 3.99, 4.0, 9.0, float("nan")]),
+            (LogColorMapper(palette=pal, low=1, high=16),
+             [0.5, 1.0, 2.0, 7.9, 8.0, 16.0, 40.0]),
+            (CategoricalColorMapper(palette=pal[:2], factors=["a", "b", "c"]),
+             ["a", "b", "c", "d", None]),
+        ]
+        for mapper, vals in cases:
+            spec = {"field": "v", "transform": mapper}
+            idx = G._colorvar_level_index(spec, vals)
+            for v, k in zip(vals, idx):
+                from bokeh.models import ColumnDataSource
+                want = G._colorvar_scalar(ColumnDataSource({"v": [v]}),
+                                          None, spec)
+                assert G._colorvar_level_colour(spec, int(k)) == want, \
+                    (type(mapper).__name__, v, k)
 
 
 # ---------------------------------------------------------------------------
