@@ -187,3 +187,40 @@ class TestTheDateLogParagraph:
         assert ("dash: xscale(log) is meaningless for the date variable "
                 in src)
         assert "drawing a date axis instead." in src
+
+
+# ---------------------------------------------------------------------------
+# E10b (DECISIONS D36): the style files dash does not read
+# ---------------------------------------------------------------------------
+
+class TestTheUnreadStyleFiles:
+    def test_the_help_gives_the_measured_picture(self):
+        # Measured 18oct2026 with a color-zqred.style (set rgb "255 0 0")
+        # and a textboxstyle-zqbig.style (set size huge, set color red) on
+        # the ado-path: twoway draws red markers, and huge red marker labels
+        # and titles; dash draws black markers with "mcolor(zqred) is not a
+        # recognised colour; using black.", the body text style with
+        # "mlabtextstyle(zqbig) is not a recognised text style; using the
+        # body text style." and a title in the default style with "named
+        # style zqbig not found in class textboxstyle, default attributes
+        # used".
+        h = _flat(_help())
+        i = h.index("The {cmd:textboxstyle} and {cmd:color} style files are "
+                    "not read")
+        para = h[i:h.index("{phang2}", i)]
+        assert "{cmd:color-mine.style}" in para
+        assert "{cmd:textboxstyle-mine.style}" in para
+        assert "is not a recognised colour; using black." in para
+        assert "not found in class textboxstyle, default attributes used" \
+            in para
+        assert "using the body text style" in para
+
+    def test_the_reader_still_skips_both_classes(self):
+        # The day SchemeParser reads either class, this paragraph is wrong.
+        m = re.search(r'_STYLE_FILE_CLASSES: "tuple\[str, \.\.\.\]" = \('
+                      r'\s*([^)]*)\)', _render())
+        classes = re.findall(r'"(\w+)"', m.group(1))
+        assert classes == ["seriesstyle", "markerstyle", "areastyle",
+                           "linestyle", "shadestyle"]
+        assert ('f"{prefix}: {head} is not a recognised {what}; using '
+                '{using}.",') in _render()

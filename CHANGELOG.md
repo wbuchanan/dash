@@ -1119,7 +1119,7 @@ Changed behaviour.
 
 - A dashboard whose working columns (if/in, sort(), time-series operators, weight expressions) do not fit under set maxvar is refused before any column is made, r(900), in a sentence naming how many columns it needs and how many fit; generate used to stop partway with "no room to add more variables" (WP-31, G3d)
 
-<!-- WP-31 E10b -->
+- help dash says what a textboxstyle or color style file of your own draws: dash does not read either class, so mcolor(mine) draws black and tstyle(mine) or mlabtextstyle(mine) the default text style, each with a note, where twoway draws the file (WP-31, E10b)
 
 ### Fixed in WP-30
 

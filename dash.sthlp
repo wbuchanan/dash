@@ -5943,7 +5943,18 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     ado-path) a name Stata knows outside the lists above draws the same
     defaults, with
     {cmd:(note: dash: named style} {it:name} {cmd:of class} {it:class} {cmd:is not drawn by dash; default attributes used)}.
-    The {cmd:textboxstyle} and {cmd:color} style files are not read.
+    The {cmd:textboxstyle} and {cmd:color} style files are not read, so
+    one of your own draws the default where {cmd:twoway} draws the file.
+    With a {cmd:color-mine.style} on the ado-path, {cmd:twoway} draws
+    {cmd:mcolor(mine)} in its colour; {cmd:dash} draws black markers, with
+    {cmd:(note: dash: mcolor(mine) is not a recognised colour; using black.)}.
+    With a {cmd:textboxstyle-mine.style}, {cmd:twoway} draws
+    {cmd:title("T", tstyle(mine))} and {cmd:mlabtextstyle(mine)} in the
+    file's size and colour; {cmd:dash} draws the title in its default
+    style, with
+    {cmd:(note: dash: named style mine not found in class textboxstyle, default attributes used)},
+    and the labels in the body text style, with
+    {cmd:(note: dash: mlabtextstyle(mine) is not a recognised text style; using the body text style.)}.
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
