@@ -2589,10 +2589,12 @@ end
 // levels(0) and levels(1) draw the default cuts; lev() .. level() are
 // levels(), as twoway's minimum lev reads them); crule() a zyx2rule
 // name, else two notes and r(198), as colorrule() (_dash_colorrule_check).
-// Writes the sorted ccuts() back to s(ccuts) and a level() to s(levels).
+// Writes the sorted ccuts() back to s(ccuts), a level() to s(levels) and
+// an abbreviated crule() (lin) in full to s(crule).
 // Called by
 // _dash_process_segment before _dash_validate_opts, with the layer's own
-// type.  sclass: it touches only s(ccuts), s(levels) and s(level).
+// type.  sclass: it touches only s(ccuts), s(levels), s(level) and
+// s(crule).
 // ================================================================
 program define _dash_contour_check, sclass
     version 19
@@ -2661,6 +2663,8 @@ program define _dash_contour_check, sclass
     mata: st_local("_zr", strtrim(st_global("s(crule)")))
     if `: length local _zr' {
         mata: _dash_colorrule_check(st_local("_zr"))
+        // An abbreviated rule (lin) is drawn as the full one (CRA-01).
+        if "`_crc'" == "" & `: length local _crf' sreturn local crule : copy local _crf
         if "`_crc'" != "" {
             if "`_crn'" == "" local _crn : copy local _zr
             mata: _dash_note("named style ", st_local("_crn"), " not found in class zyx2rule, default attributes used")
@@ -2726,7 +2730,8 @@ end
 // there.  args: ptype (the type the segment is judged as), nser (its y
 // variables), vtype (twoway's view type, after recast()).
 // sclass: it appends to s(_pending), which the segment hands to
-// _dash_report_ignored, and touches nothing else in s().
+// _dash_report_ignored, writes an abbreviated colorrule() (lin) in full
+// to s(colorrule), and touches nothing else in s().
 // ================================================================
 program define _dash_fold_typed, sclass
     version 19
@@ -2769,6 +2774,9 @@ program define _dash_fold_typed, sclass
             mata: _dash_note("zyx2rule not found in scheme, default attributes used", "", "")
             exit 198
         }
+        // An abbreviated rule -- lin, inte, revlinea -- is drawn as the
+        // full one, as twoway's zyx2rule reads it (CRA-01).
+        if `: length local _crf' sreturn local colorrule : copy local _crf
     }
     local area_types "area rarea"
     local arrow_types "pcarrow pcbarrow pcarrowi"

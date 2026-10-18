@@ -1150,6 +1150,58 @@ if `u1506' {
 }
 else display as text "U15-06 PASS: j() ji() jit() jitt() jitte() and bare jit refused as twoway refuses them, in the plot and after the comma, jitter(5) taken"
 
+// CRA-01 (18oct2026): colorrule() and crule() names abbreviate as
+// zyx2rule.class's _unabbrev declares them -- HUE CHUE PHUE LINear
+// INTensity REVLINear -- so lin, inte and revlinea are linear, intensity
+// and revlinear to twoway (rc 0, the full rule's colours, measured from
+// its SVG), and li, in, revli, LIN and hsv are named styles it has not
+// (two notes, r(198) when it draws).  dash refused every abbreviation;
+// each spelling's rc is twoway's, and one twoway takes reaches the
+// renderer as the full name, its %# or *# kept (the served spec).
+local cra01 0
+local craspec "`c(tmpdir)'zcra01_s.json"
+local cradata "`c(tmpdir)'zcra01_d.json"
+sysuse auto, clear
+local i 0
+foreach o in "lin~linear" "linea~linear" "int~intensity" "intensi~intensity" "revlin~revlinear" "revlinea~revlinear" "lin %50~linear %50" "int *2~intensity *2" "li~" "in~" "revli~" "LIN~" "hsv~" "hue~hue" "C:lin~linear" "C:revlin~revlinear" "C:li~" {
+    local ++i
+    gettoken r want : o, parse("~")
+    local want = substr(`"`want'"', 2, .)
+    local cmd `"scatter mpg weight, colorvar(price) colorrule(`r')"'
+    local key "colorrule"
+    if substr(`"`r'"', 1, 2) == "C:" {
+        local r = substr(`"`r'"', 3, .)
+        local cmd `"contour mpg weight price, crule(`r')"'
+        local key "crule"
+    }
+    capture twoway `cmd' name(_zcra, replace)
+    local rc_twoway = _rc
+    capture graph drop _zcra
+    capture dash clear
+    capture noisily dash `cmd' name(zcra01)
+    local rc_dash = _rc
+    if `rc_twoway' != `rc_dash' {
+        display as error `"CRA-01 FAIL case `i' [`cmd']: twoway r(`rc_twoway'), dash r(`rc_dash')"'
+        local cra01 1
+    }
+    if `rc_dash' == 0 {
+        _dash_serve_spec, specpath("`craspec'") datapath("`cradata'")
+        python: import json as _craj; from sfi import Macro as _craM; _cras = open(_craM.getLocal("craspec"), encoding="utf-8").read().replace('":"', '": "'); _craM.setLocal("cra_ok", "1" if ('"%s": %s' % (_craM.getLocal("key"), _craj.dumps(_craM.getLocal("want")))) in _cras else "0")
+        if "`cra_ok'" != "1" {
+            display as error `"CRA-01 FAIL case `i' [`cmd']: the spec does not carry `key'(`want')"'
+            local cra01 1
+        }
+    }
+}
+capture erase "`craspec'"
+capture erase "`cradata'"
+capture dash clear
+if `cra01' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' CRA-01"'
+}
+else display as text "CRA-01 PASS: colorrule() and crule() abbreviate as twoway's zyx2rule names do, the full name drawn; the rest refused with twoway's rc"
+
 // U32-10 (WP-31 A3c): aspectratio()'s minimum is twoway's, aspect
 // (sizing_truth.json abbrev_as .. abbrev_aspectrati): each spelling dash
 // took that twoway refuses -- asp() aspe() aspec() and a bare asp --

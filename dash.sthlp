@@ -5342,7 +5342,13 @@ includes, with its own {cmd:zyx2rule contour}, {cmd:color contour_begin},
 colour's saturation and value, so green to orange is drawn at green's
 darkness); {it:k} levels of {cmd:colordiscrete} take the first {it:k}
 of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
-{cmd:colpalette()}, then the rule.  {cmd:colorkeysreverse} reverses a
+{cmd:colpalette()}, then the rule.  A rule's name abbreviates as
+{cmd:twoway}'s does: {cmd:colorrule(lin)} is {cmd:colorrule(linear)},
+{cmd:colorrule(int)} {cmd:colorrule(intensity)} and {cmd:colorrule(revlin)}
+{cmd:colorrule(revlinear)}, in {cmd:crule()} too; a name {cmd:twoway} has
+no rule for, such as {cmd:colorrule(hsv)}, is refused as {cmd:twoway}
+refuses it when it draws, after its two notes, {cmd:r(198)}.
+{cmd:colorkeysreverse} reverses a
 {cmd:colordiscrete} key; on any other key -- a colour bar, binned by
 {cmd:colorlevels()} or with {cmd:colorkeysrange} -- {cmd:twoway} draws the
 same key with it as without it, and so does {cmd:dash}, in silence; under

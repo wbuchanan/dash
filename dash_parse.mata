@@ -110,7 +110,8 @@
 *!   _dash_colorrule_check(t)
 *!       colorrule()'s text as twoway reads it: the caller's local _crc
 *!       "" (drawn), "spec" (an invalid % or * part) or "rule" (a rule twoway
-*!       has no style for, named in the local _crn).
+*!       has no style for, named in the local _crn); _crf the value with
+*!       an abbreviated rule written in full.
 *!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
@@ -1534,7 +1535,8 @@ real scalar _dash_pcycle_bad(string scalar plots, real scalar p)
 // specification".  A rule twoway has no zyx2rule style for (names are
 // case-sensitive: Hue is refused) is refused when the graph is drawn
 // (colorvar_options_truth.json R02, R02b, R02c, D04e).  Sets the
-// caller's locals _crc ("", "spec" or "rule") and _crn (the rule).  The
+// caller's locals _crc ("", "spec" or "rule"), _crn (the rule) and _crf
+// (the value with an abbreviated rule written in full, else "").  The
 // renderer's twin is dash_render.py's _dash_colorrule_parse.
 // ============================================================
 // _dash_opt_tokens(s)
@@ -1588,11 +1590,12 @@ string rowvector _dash_opt_tokens(string scalar s)
 
 void _dash_colorrule_check(string scalar t)
 {
-    string scalar rule, num, other, a, b, inten, opac
+    string scalar rule, num, other, a, b, inten, opac, full
     real scalar   p1, p2, cut
 
     st_local("_crc", "")
     st_local("_crn", "")
+    st_local("_crf", "")
     t  = strtrim(t)
     if (t == "") return
     p1 = strpos(t, "%")
@@ -1617,12 +1620,41 @@ void _dash_colorrule_check(string scalar t)
             }
         }
     }
-    if (rule == "" | anyof(("hue", "chue", "phue", "intensity", "linear",
-                            "revlinear"), rule)) return
+    if (rule == "") return
+    // The rule's name abbreviates as zyx2rule.class's _unabbrev declares
+    // it -- HUE CHUE PHUE LINear INTensity REVLINear, lower case -- so lin
+    // is linear and revlinea revlinear to twoway, drawn in the full rule's
+    // colours (test_abbreviations.cscript CRA-01); _crf is the value with
+    // the full name, the %# or *# part kept, for the caller to write back.
+    full = _dash_colorrule_full(rule)
+    if (full != "") {
+        st_local("_crf", full + substr(t, strlen(rule) + 1, .))
+        return
+    }
     // twoway's note names the rule's last word: colorrule(hue foo) is
     // "named style foo not found" (R02b).
     st_local("_crc", "rule")
     st_local("_crn", tokens(rule)[cols(tokens(rule))])
+}
+
+// _dash_colorrule_full(r) -- the zyx2rule name r spells, or "": hue, chue
+// and phue in full, lin .. linear, int .. intensity and revlin ..
+// revlinear, as twoway's -syntax- reads them (lower case only: LIN and
+// Hue are no spelling, measured 18oct2026).
+string scalar _dash_colorrule_full(string scalar r)
+{
+    string rowvector nm
+    real rowvector   mn
+    real scalar      i, L
+
+    nm = ("hue", "chue", "phue", "linear", "intensity", "revlinear")
+    mn = (3, 4, 4, 3, 3, 6)
+    L  = strlen(r)
+    for (i = 1; i <= cols(nm); i++) {
+        if (L >= mn[i] & L <= strlen(nm[i]) & substr(nm[i], 1, L) == r)
+            return(nm[i])
+    }
+    return("")
 }
 
 // ============================================================
