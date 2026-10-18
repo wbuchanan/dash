@@ -186,6 +186,32 @@ class TestFigureNames:
         assert d.html_attributes["aria-label"] == "two lines"
 
 
+class TestSidebarLabel:
+    """axe color-contrast on examples/comprehensive_demo.do's
+    ``db-sidebar-label`` ("Filters"): the label was a fixed #6c757d, 4.69:1
+    on white and below AA 4.5:1 on any darker page background a scheme
+    paints.  It is the scheme's text colour, which test_scheme_contrast.py
+    measures on the scheme's background for all 26 schemes."""
+
+    def test_the_label_is_the_schemes_text_colour(self):
+        for name in ("s2color", "s1mono", "economist"):
+            sp = dr.SchemeParser(name)
+            css = dr._dash_sidebar_label_css(sp)
+            assert re.search(r"\.db-sidebar-label\s*\{\s*color:\s*%s;"
+                             % re.escape(sp.text_color), css), (name, css)
+
+    def test_the_saved_left_sidebar_page_carries_it(self):
+        spec = _spec(graphs=[("g1", [_SCATTER], {})], build_options={
+            "layout": "bs", "filter_position": "left",
+            "filters": _filters({"varname": "foreign",
+                                 "type": "dropdown"})})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r, _w, page = _standalone_page(spec)
+        assert '<div class="db-sidebar-label">Filters</div>' in page
+        assert dr._dash_sidebar_label_css(r.scheme).strip() in page
+
+
 # ---------------------------------------------------------------------------
 # Widgets
 # ---------------------------------------------------------------------------

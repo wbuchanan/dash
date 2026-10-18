@@ -6845,6 +6845,15 @@ border-bottom:1px solid #dee2e6}
 """
 
 
+def _dash_sidebar_label_css(scheme):
+    """The layout(bs) left sidebar's "Filters" label in the scheme's text
+    colour (WP-31 K6): a fixed #6c757d was 4.69:1 on white and below WCAG
+    AA 4.5:1 on a darker page background, which axe reported as
+    color-contrast; ``color text`` on ``color background`` meets AA on
+    every shipped scheme (test_scheme_contrast.py)."""
+    return (f"  .db-sidebar-label {{ color: "
+            f"{html.escape(scheme.text_color)}; }}\n")
+
 
 # ===========================================================================
 # Region option helpers — parse plotregion() / graphregion() sub-options
@@ -60331,7 +60340,8 @@ class DashRenderer:
         ]
 
         # ---- Assemble page layout ----
-        scheme_css_block = self.scheme.css_block()
+        scheme_css_block = (self.scheme.css_block()
+                            + _dash_sidebar_label_css(self.scheme))
 
         if filter_position == "left" and filter_row_widgets:
             # Vertical sidebar: filters in a narrow left column, content on

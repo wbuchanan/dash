@@ -167,6 +167,7 @@ FUNCTIONS = {
  '_dash_aria': 'test/test_accessibility.py::TestFigureNames::test_aria_merges_and_keeps_other_attributes',
  '_dash_figure_name': 'test/test_accessibility.py::TestFigureNames::test_name_from_plots_without_a_title',
  '_dash_name_figure': 'test/test_accessibility.py::TestFigureNames::test_capped_at_120',
+ '_dash_sidebar_label_css': 'test/test_accessibility.py::TestSidebarLabel::test_the_label_is_the_schemes_text_colour',
  '_dash_slider_names_hook': 'test/test_accessibility.py::TestWidgetNames::test_the_slider_handles_are_named_once_both_modes',
  '_dash_tabs_keys_hook': 'test/test_accessibility.py::TestTabsAndHeader::test_the_hook_code_is_fixed_text',
  'GlyphMapper._apply_line_opts': 'test/test_glyphs.py::TestMapPcarrow::test_pcarrow_lwidth_applied',

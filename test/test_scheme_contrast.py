@@ -22,6 +22,7 @@ Stata's colours; M7/M17).
 """
 import glob
 import os
+import re
 import sys
 
 import pytest
@@ -40,7 +41,7 @@ SCHEMES = sorted(os.path.basename(p)[len("dash-"):-len(".scheme")]
                  for p in glob.glob(os.path.join(_ROOT, "dash-*.scheme")))
 
 PAIRS = ("text/background", "text/plotregion", "text/legend",
-         "tick/plotregion", "kpi/legend")
+         "tick/plotregion", "kpi/legend", "sidebar/background")
 
 #: Every (scheme, pair) below AA, with the ratio measured on the scheme
 #: files at this section's base (2c53468), rounded to 3 decimals.
@@ -79,6 +80,10 @@ def _pair_colours(name, pair):
     sp = _scheme(name)
     tick = (sp.tick_label_color if "color tick_label" in sp._props
             else sp.text_color)
+    if pair == "sidebar/background":
+        # The layout(bs) left sidebar's "Filters" label on the page
+        # (WP-31 K6 follow-up: axe color-contrast on comprehensive_demo).
+        return (_sidebar_colour(sp), sp.background_color)
     return {
         "text/background": (sp.text_color, sp.background_color),
         "text/plotregion": (sp.text_color, sp.plotregion_color),
@@ -86,6 +91,13 @@ def _pair_colours(name, pair):
         "tick/plotregion": (tick, sp.plotregion_color),
         "kpi/legend": (sp.text_color, sp.legend_bg_color),
     }[pair]
+
+
+def _sidebar_colour(sp):
+    m = re.search(r"\.db-sidebar-label\s*\{\s*color:\s*(#[0-9a-fA-F]{6})",
+                  dr._dash_sidebar_label_css(sp))
+    assert m, "no colour in _dash_sidebar_label_css"
+    return m.group(1)
 
 
 def _ratio(name, pair):
