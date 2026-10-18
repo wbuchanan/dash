@@ -993,7 +993,7 @@ def test_translator_can_express_scheme_symbols_and_patterns(name):
 # 7. Unknown scheme names are rejected by name
 # ===========================================================================
 
-# Was xfail pending section 11.  It now passes: _BUILTIN_NAMES lists all 20
+# Was xfail pending section 11.  It now passes: _BUILTIN_NAMES lists all 26
 # translated schemes, so the not-found message names the supported set.  The
 # marker is removed rather than left in place, because an xfail that passes is
 # itself a landmine -- it reports green while asserting nothing is expected.

@@ -237,7 +237,8 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 # change alters a one-y-variable dashboard in any way at all, this fails.
 
 # sha256 of normalise_bokeh_html(<single-y scatter render>), under the pinned
-# environment recorded in .ultraplan/BASELINE.md (python 3.14, bokeh 3.9).
+# environment recorded in test/conftest.py's _BASELINES (python 3.14, bokeh 3.9;
+# the .ultraplan/BASELINE.md it once cited is gone).
 # Re-baseline ONLY on a deliberate, reviewed change: run this test, read the
 # reported digest, and say in the commit message what changed and why.
 #
@@ -249,14 +250,14 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               one onto a one-key plot.  dash passed legend_label=<yvar>
 #               from every glyph, so every single-series graph carried a
 #               legend twoway would not draw.  This is the intended,
-#               documented behaviour change; see .ultraplan/CHANGELOG.md.
+#               documented behaviour change; see CHANGELOG.md.
 #   8cfdca74... S10.  Every figure now carries an aspect ratio.  There was
 #               previously no way at all -- option, scheme or data -- to
 #               influence a figure's proportions: all 67 Figure objects
 #               across 10 generated dashboards had no width, height,
 #               frame_width or aspect_ratio.  With none given the ratio now
 #               comes from the active scheme's graphsize, so every dashboard
-#               changes.  Also intended; see .ultraplan/CHANGELOG.md.  The
+#               changes.  Also intended; see CHANGELOG.md.  The
 #               same commit adds the viewport meta tag (without it a phone
 #               laid the page out at 980px and zoomed out) and the
 #               min/max height band the ratio is honoured within.
@@ -264,7 +265,7 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               column so the filter callback can mask by identity instead
 #               of by position, and single-series figures pick up the
 #               scheme-driven changes from the same batch.  Intended; see
-#               .ultraplan/CHANGELOG.md....
+#               CHANGELOG.md....
 #   f929e3d3  S11.  The renderer now CONSUMES the translated schemes instead
 #               of only parsing them.  A marker's symbol comes from the
 #               scheme's symbol cycle and its size from `symbolsize p'
@@ -277,7 +278,7 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               from the scheme.  _GSIZE_PT was also corrected against
 #               Stata's own style/gsize-*.style files, which disagreed with
 #               six of its fourteen entries.  Every dashboard changes.
-#               Intended; see .ultraplan/CHANGELOG.md.
+#               Intended; see CHANGELOG.md.
 #   98d50ff6  The scheme now decides WHICH grids are drawn, not just their
 #               colour.  The two grid-visibility flags were parsed and never
 #               read, and Bokeh draws both grids by default, so dash drew a
@@ -288,7 +289,7 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               every scheme; Stata's key is `draw_major_vgrid' and is `yes'
 #               for ten of them.  s2color, the baseline's scheme, therefore
 #               loses its vertical grid lines and keeps its horizontal ones.
-#               Intended; see .ultraplan/CHANGELOG.md.
+#               Intended; see CHANGELOG.md.
 #   2bf51dc0  WP-10.  A figure carried TWO HoverTools with identical
 #               tooltips: the mapper adds one for a scatter and the figure
 #               builder added a comprehensive one, which cleared the

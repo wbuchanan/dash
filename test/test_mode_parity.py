@@ -2766,7 +2766,7 @@ CORPUS = [
 #: line over a %td ``when`` drew a DatetimeAxis with ``@{when}{%F}`` saved
 #: and a LinearAxis over 15340, 15341, ... with ``@{when}`` served, and a
 #: date-valued KPI read the day number.  These entries were a hand-made
-#: strict xfail until WP-27 loaded the served frame through the saved
+#: strict xfail until WP-27 (24sep2026) loaded the served frame through the saved
 #: loader's column reader; every comparison now runs, as for CORPUS.
 _W = {"formats": {"when": "%td"}}
 DATE_CORPUS = [

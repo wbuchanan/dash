@@ -1631,31 +1631,30 @@ class TestFilterEdgeCases:
 # ================================================================
 # Filters must reach the source the FIGURE actually renders from
 # ================================================================
-# Found while verifying S08's date filter in a browser, and it is not
-# date-specific: dragging a range filter on a `dash build` dashboard of LINE
-# plots changes nothing on screen, while the same dashboard built from
-# `scatter` filters correctly.
+# Historical (fixed 24sep2026 by WP-27): found while verifying S08's date
+# filter in a browser, and not date-specific: dragging a range filter on a
+# `dash build` dashboard of LINE plots changed nothing on screen, while the
+# same dashboard built from `scatter` filtered correctly.
 #
-# Measured in the browser on a real sp500 build:
+# Measured in the browser on a real sp500 build (19sep2026):
 #
 #   line:    4 ColumnDataSources -- p1050 (index, volume, close) n=248 and
 #            p1101 (index, volume, high) n=248, which the figures render, plus
 #            p1009/p1012 n=5, which the callback filtered
 #   scatter: 2 ColumnDataSources -- p1009/p1012 n=5, filtered, and rendered
 #
-# map_line sorts by x and builds a NEW ColumnDataSource for the sorted data.
-# self.sources -- which is what render() passes to the callback as
-# all_graph_sources -- still holds the original, so the callback updates a
-# source no glyph is bound to.  Every plot type that derives its own source
-# has the same problem.
-#
-# Owned by S13 (linking, filters and KPI correctness).  The test is written
-# here, before the fix, per project rule 8.
+# map_line sorted by x and built a NEW ColumnDataSource for the sorted data.
+# self.sources -- what render() passed to the callback as all_graph_sources
+# -- still held the original, so the callback updated a source no glyph was
+# bound to, and every plot type that derives its own source had the same
+# problem.  The tests below were written before the fix (project rule 8);
+# since WP-27 the derived copies carry their row identity and the script
+# writes them as derived_sources, so the tests are plain assertions.
 
 
 class _TheLineFilterIsInert(AssertionError):
-    """The recorded defect and nothing else: only the one check the strict
-    xfail below expects to fail raises it."""
+    """The recorded defect and nothing else: only the one check that
+    failed before WP-27 (when the test below was a strict xfail) raises it."""
 
 
 class TestFilterReachesTheRenderedSource:

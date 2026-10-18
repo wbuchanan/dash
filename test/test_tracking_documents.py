@@ -62,6 +62,14 @@ file holds, mechanically:
    names, until their section lands; then the key is gone, the Tracked
    line reads Closed or Partly closed, no marker is left, each list holds a
    line ending "(WP-31, <id>)", and a closed Resolution holds it too.
+11. The counts and summaries the documents state are true or dated
+   (TestTheCountsAreTrue, WP-31 J4 and J6): no closed BUGS.md entry's
+   Resolution begins "Not fixed"; ROADMAP.md's open-entry count is dated;
+   GAPS.md's "Eight gaps" summary is marked historical;
+   TWOWAY_COVERAGE_AUDIT.md's known-inert list names only options dash.ado
+   still marks pending; no test file or BUGS.md entry cites a path that is
+   gone without saying so; REMAINING.md and phases/ are marked historical;
+   ROADMAP.md's WP-01 to WP-11 headings end with the "— DONE" suffix.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -1973,7 +1981,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "J4": "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings",
     "J5": "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted",
     "J6": "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix",
     "I2": "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short",
@@ -2608,3 +2615,108 @@ class TestWp31Tracking:
             m = _GAPS3_TRACKED.match(
                 "- **%s Tracked:** Open (WP-31 section 03)." % pid)
             assert m and m.group("id") == pid, pid
+
+
+# ===========================================================================
+# The counts and summaries the documents state (item 11; WP-31 J4, J6)
+# ===========================================================================
+
+#: Paths the documents once cited that are gone; a line may still name one
+#: when it says so ("gone", or "(then <path>)" for a record that moved).
+_GONE_PATHS = (".ultraplan/BASELINE.md", ".ultraplan/CHANGELOG.md",
+               ".ultraplan/phases/")
+
+
+def _pending_names():
+    """The option names dash.ado marks pending (named in the note, not
+    drawn), read as test_help_conformance._pending reads them."""
+    src = _read("dash.ado")
+    names = set()
+    for prog in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"):
+        i = src.index("program define " + prog)
+        j = src.index("local _dash_unknown", i)
+        names |= set(re.findall(r"_dash_pending' (\w+)\"", src[i:j]))
+    return names
+
+
+def _audit_inert_names(text):
+    """The backticked names of TWOWAY_COVERAGE_AUDIT.md's known-inert list
+    (the paragraph after "The tracked known-inert names are:", up to its
+    first bracketed note)."""
+    i = text.index("The tracked known-inert names are:")
+    para = text[i:].split("\n\n", 2)[1]
+    return re.findall(r"`(\w+)`", para.split("[", 1)[0])
+
+
+def _gone_path_citations(name, text):
+    """Lines of a file that cite a gone path without saying it is gone.  A
+    BUGS.md Description quoting GAPS3.md's evidence quotes, not cites."""
+    bad = []
+    for n, ln in enumerate(text.split("\n"), 1):
+        for path in _GONE_PATHS:
+            if path not in ln:
+                continue
+            if ("gone" in ln or "(then " + path in ln
+                    or ln.startswith("  - Description: GAPS3.md")):
+                continue
+            bad.append("%s:%d cites %s: %r" % (name, n, path, ln.strip()[:90]))
+    return bad
+
+
+class TestTheCountsAreTrue:
+    """GAPS3 J4 and J6 (WP-31 section 58): every count, summary and path the
+    tracking documents and test docstrings state says what is true at the
+    tree, or is marked historical with a date."""
+
+    def test_no_closed_entry_begins_not_fixed(self, bugs):
+        entries, _p = bugs
+        bad = ["line %d %r" % (e["line"], e["title"][:70]) for e in entries
+               if e["closed"] and e["fields"].get("Resolution", "")
+               .startswith("  - Resolution: Not fixed")]
+        assert not bad, ("%d closed entries begin 'Not fixed':\n" % len(bad)
+                         + "\n".join(bad))
+
+    def test_the_roadmap_open_count_is_dated(self):
+        text = _read("ROADMAP.md")
+        assert "19 remain open, all S3" not in text
+        assert re.search(r"19 remained open, all S3, at WP-27's closeout "
+                         r"\(3 at [0-9a-f]{7}", text), (
+            "ROADMAP.md's WP-27 open count is not dated")
+
+    def test_gaps_summary_is_marked_historical(self):
+        lines = _read("GAPS.md").split("\n")
+        i = lines.index("## Executive summary")
+        assert any(ln.startswith("*Historical (21sep2026)")
+                   for ln in lines[i + 1:i + 4]), lines[i:i + 4]
+
+    def test_the_audit_inert_list_names_no_drawn_option(self):
+        names = _audit_inert_names(_read("TWOWAY_COVERAGE_AUDIT.md"))
+        assert names, "the known-inert list was not found"
+        drawn = sorted(set(names) - _pending_names())
+        assert not drawn, ("TWOWAY_COVERAGE_AUDIT.md lists as inert options "
+                           "dash draws: %s" % drawn)
+        text = _read("TWOWAY_COVERAGE_AUDIT.md")
+        row = [ln for ln in text.split("\n") if ln.startswith(
+            "| Fits/smoothers | `lpolyci` |")]
+        assert len(row) == 1 and "bootstrap" not in row[0].split("[", 1)[0]
+
+    def test_no_test_file_cites_a_gone_path(self):
+        bad = _gone_path_citations("BUGS.md", _read("BUGS.md"))
+        own = os.path.basename(__file__)
+        for f in sorted(_test_files()):
+            if f.endswith((".py", ".md")) and f != own:
+                bad += _gone_path_citations("test/" + f,
+                                            _read(os.path.join("test", f)))
+        assert not bad, "\n".join(bad)
+
+    def test_the_count_readers(self):
+        audit = ("x\n\nThe tracked known-inert names are:\n\n`at`, `text`, and"
+                 " `sort`. [WP-30 x: `text` drawn]\n\nnext\n")
+        assert _audit_inert_names(audit) == ["at", "text", "sort"]
+        assert {"at", "sort"} <= _pending_names()
+        assert _gone_path_citations("f", "see .ultraplan/CHANGELOG.md") == [
+            "f:1 cites .ultraplan/CHANGELOG.md: 'see .ultraplan/CHANGELOG.md'"]
+        for ok in ("the .ultraplan/BASELINE.md it once cited is gone",
+                   "CHANGELOG.md (then .ultraplan/CHANGELOG.md)",
+                   "  - Description: GAPS3.md J4: `.ultraplan/phases/X`"):
+            assert _gone_path_citations("f", ok) == [], ok

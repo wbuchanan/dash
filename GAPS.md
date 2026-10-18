@@ -41,6 +41,8 @@ Severity:
 
 ## Executive summary
 
+*Historical (21sep2026): the eight gaps below were closed by WP-01 to WP-21; see each gap's heading for its closer and ROADMAP.md.*
+
 The structure is built and the standalone renderer is broadly faithful. Eight
 gaps stand between this tree and the product `dash.sthlp` describes:
 

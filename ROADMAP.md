@@ -4191,7 +4191,7 @@ commands, output and the resolved state of every `GAPS.md` finding — in
   tooltip, and the phone-width overflow TR-27.2 found.  Every open entry
   now carries "Graded S<n> (WP-27): <why>", and
   test/test_tracking_documents.py::TestNoOpenEntryBlocksARelease fails on
-  an open S1 or S2: 19 remain open, all S3.
+  an open S1 or S2: 19 remained open, all S3, at WP-27's closeout (3 at 6370ca4; see BUGS.md).
 - **AC-27.1.** `make check`: pytest under Stata's Python and under the
   development interpreter, both strict, 16,693 passed, 11 xfailed and the
   same 5 failed in each -- three stale expectations (a layer that now

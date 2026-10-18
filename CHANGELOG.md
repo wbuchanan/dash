@@ -1087,7 +1087,7 @@ Changed behaviour.
 
 - examples/plot_types_tour.do draws every plot type dash draws, a weighted layer and a csv build, and examples/serve_dashboard.do writes a server app; test/test_examples_cover.py pins that every drawn type has an example. (WP-31, J3)
 
-<!-- WP-31 J4 -->
+- The tracking documents say what is true: 62 closed BUGS.md entries that began "Not fixed" open with their closer, GAPS.md's summary and ROADMAP's open count are dated, TWOWAY_COVERAGE_AUDIT.md's inert list names only pending options, and eight stale test docstrings are rewritten. (WP-31, J4)
 
 <!-- WP-31 J5 -->
 

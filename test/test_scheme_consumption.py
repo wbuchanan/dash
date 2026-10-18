@@ -1112,7 +1112,8 @@ class TestDirectivesOnlyAUserSchemeCarries:
     An `#include s2color' there is Stata's own scheme-s2color.scheme; here it
     is dash's translation of it.  Each test asserts Stata's value; five were
     strict xfails, pinning the BUGS.md entries TR-26.7 drafted, until the S3
-    batch fixed them (controls fail through pytest.fail).
+    batch (24sep2026) fixed them; they are plain assertions now (controls
+    fail through pytest.fail).
 
     The last two tests are not about the four branches.  The measurements
     for (2) and (4) found them: after an `#include s2color', a user's

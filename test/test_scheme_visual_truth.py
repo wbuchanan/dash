@@ -67,7 +67,7 @@ WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
 WHERE THE PARSER DISAGREED WITH STATA (fixed in the S3 batch)
 ------------------------------------------------------------
 Two cases, measured 24sep2026, were pinned here as strict xfails until
-the S3 batch fixed them:
+the S3 batch (24sep2026) fixed them; they are plain assertions now:
 
 * economist's note.  Stata draws note() in the reverse_big text box
   (scheme-economist.scheme: ``textboxstyle note reverse_big``): medlarge,

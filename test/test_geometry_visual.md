@@ -9,11 +9,14 @@ not skipped.
 
 ## Build the dashboard
 
+Replace `<repo>` with the checkout's absolute path and `<scratch>` with a
+scratch directory of your own (not the checkout).
+
 ```bash
-mkdir -p /tmp/dash-visual && cd /tmp/dash-visual && cat > run.do <<'DO'
+mkdir -p <scratch>/dash-visual && cd <scratch>/dash-visual && cat > run.do <<'DO'
 clear all
 adopath ++ "<repo>"
-cd /tmp/dash-visual
+cd <scratch>/dash-visual
 do "<repo>/examples/geometry_responsive.do"
 exit, clear STATA
 DO
@@ -30,7 +33,7 @@ A browser will not load a `file://` dashboard with the CSP meta tag in place,
 so serve it:
 
 ```bash
-cd /tmp/dash-visual && python3 -m http.server 8771 --bind 127.0.0.1
+cd <scratch>/dash-visual && python3 -m http.server 8771 --bind 127.0.0.1
 ```
 
 ## Look at it at three widths

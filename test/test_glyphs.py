@@ -1424,7 +1424,7 @@ class TestMapRcapsymOptions:
 
 
 # ================================================================
-# Missing unit tests for plot types not yet in test_glyphs.py
+# Unit tests added (26mar2026) for the plot-type mappers that had none then
 # ================================================================
 
 @pytest.fixture
