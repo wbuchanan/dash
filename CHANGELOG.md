@@ -928,6 +928,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - A dash_render installed without its source file (a .pyc alone) writes a served app for dash build, server and dash serve, where the build failed with "OSError: source code not available"; the app runs under the Python that wrote it (WP-32, K2)
 - A served session's dashboard is drawn off the server's event loop under dash serve and python app.py, two at a time, so /health, other readers' moves and other new sessions are answered while one is drawn (1.6-4.6 s at 100-200k rows held them all) (WP-32, H3)
 - A served process (dash serve, python app.py, a bokeh serve session) holds every catch_warnings block -- pandas', numpy's and Bokeh's as well as dash's -- under one lock, so a block on a build or recompute thread can no longer interleave with one on the loop and leave a warning filter swapped (WP-32, H3)
+- A brush made on a served graph while a filter move waits for its recompute is kept, on the rows the move keeps, where drawing the move cleared it (WP-32, H3)
 
 ### Fixed in WP-31
 

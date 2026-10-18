@@ -120,3 +120,82 @@ class TestTheBuildOffTheLoopDrawsTheSameDocument:
 def test_the_launcher_serves_through_the_build_handler(app_src):
     assert "Application(_DashBuildHandler(make_document))" in app_src
     assert "Application(FunctionHandler(make_document))" not in app_src
+
+
+# ===========================================================================
+# A brush made while a move waits (WP-32, the third part of the entry)
+# ===========================================================================
+
+class TestTheSelectionHelpers:
+
+    def _src(self, labels):
+        from bokeh.models import ColumnDataSource
+        return ColumnDataSource({"index": list(labels),
+                                 "x": [float(i) for i in range(len(labels))]})
+
+    def test_an_unchanged_selection_is_not_held(self):
+        import dash_render as dr
+        a = self._src([10, 11, 12])
+        a.selected.indices = [1]
+        snap = dr._dash_sel_snapshot([a])
+        assert dr._dash_sel_held(snap, [a]) == {}
+
+    def test_a_brush_since_the_plan_is_held_by_label_and_restored(self):
+        import dash_render as dr
+        a, b = self._src([10, 11, 12, 13]), self._src([20, 21])
+        snap = dr._dash_sel_snapshot([a, b])
+        a.selected.indices = [1, 3]       # brushed while the move waits
+        b.selected.indices = []
+        held = dr._dash_sel_held(snap, [a, b])
+        assert set(held) == {id(a)}
+        assert held[id(a)][1] == frozenset({11, 13})
+        # the move writes new rows and clears the selection
+        a.data = {"index": [13, 12, 11], "x": [0.0, 1.0, 2.0]}
+        a.selected.indices = []
+        dr._dash_sel_restore(held)
+        assert sorted(a.selected.indices) == [0, 2]
+
+    def test_a_source_without_labels_is_not_held(self):
+        import dash_render as dr
+        from bokeh.models import ColumnDataSource
+        c = ColumnDataSource({"x": [1.0, 2.0]})
+        snap = dr._dash_sel_snapshot([c])
+        c.selected.indices = [0]
+        assert dr._dash_sel_held(snap, [c]) == {}
+        assert dr._dash_sel_snapshot(None) == {}
+        dr._dash_sel_restore({})
+
+
+@pytest.mark.serve
+class TestABrushMadeWhileAMoveWaitsIsKept:
+
+    def test_kept(self, ns, live):
+        from bokeh.models import ColumnDataSource
+        ss = live.session()
+        slot = tw._slot_of(live, ss)
+
+        def scatter_src():
+            return next(s for s in ss.document.select(
+                {"type": ColumnDataSource})
+                if "index" in s.data and "weight" in s.data)
+        stall = tw._Stall(ns)
+        try:
+            tw._move(live, ss, "1")      # Foreign: waits on the worker
+            assert stall.entered.wait(10)
+
+            def brush():
+                s = scatter_src()
+                s.selected.indices = list(range(len(s.data["index"])))
+                return list(s.data["index"])
+            brushed = live.locked(ss, brush)
+        finally:
+            stall.release.set()
+        live.wait_for(lambda: slot.applied == slot.gen)
+
+        def after():
+            s = scatter_src()
+            labels = list(s.data["index"])
+            return labels, [labels[i] for i in s.selected.indices]
+        labels, picked = live.on_loop(after)
+        assert labels and set(labels) <= set(brushed)
+        assert sorted(picked) == sorted(labels), (picked, labels)

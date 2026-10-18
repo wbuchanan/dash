@@ -47861,6 +47861,52 @@ def _dash_served_state():
     return st
 
 
+def _dash_sel_snapshot(sources) -> dict:
+    """``{id(src): (src, selected indices)}`` for *sources*: what a served
+    move's plan records, on the loop, before the move waits on the
+    recompute worker (WP-32)."""
+    out = {}
+    for src in sources or ():
+        sel = getattr(src, "selected", None)
+        if sel is not None:
+            out[id(src)] = (src, tuple(sel.indices or ()))
+    return out
+
+
+def _dash_sel_held(snapshot, sources) -> dict:
+    """The brushes made since *snapshot* (WP-32): ``{id(src): (src,
+    frozenset of row labels)}`` for each of *sources* whose selection is
+    not empty and not the one the plan recorded, read by its rows'
+    ``index`` labels before the move rewrites them.  A source without an
+    ``index`` column, or one the plan did not see, is not held."""
+    out = {}
+    for src in sources or ():
+        then = (snapshot or {}).get(id(src))
+        sel = getattr(src, "selected", None)
+        labels = (getattr(src, "data", None) or {}).get("index")
+        if then is None or sel is None or labels is None:
+            continue
+        now = tuple(sel.indices or ())
+        if not now or now == then[1]:
+            continue
+        labels = list(labels)
+        out[id(src)] = (src, frozenset(labels[i] for i in now
+                                       if 0 <= i < len(labels)))
+    return out
+
+
+def _dash_sel_restore(held) -> None:
+    """Select again, in each held source's rows after the move, the rows
+    whose ``index`` label the brush named (WP-32); a row the move dropped
+    stays unselected."""
+    for src, want in (held or {}).values():
+        labels = (getattr(src, "data", None) or {}).get("index")
+        if labels is None:
+            continue
+        src.selected.indices = [i for i, lab in enumerate(labels)
+                                if lab in want]
+
+
 def _dash_session_open(state, doc):
     """Take a slot for *doc*'s session; False when the slots are full
     (WP-30 P1.31a).  Only a document served to a session (one whose
@@ -64304,6 +64350,9 @@ class ServerAppBuilder:
                          "_dash_save_filename", "_dash_name_save",
                          # WP-31 H2x: the composite export and print.
                          "_dash_layout_walk", "_dash_add_composites",
+                         # WP-32: a brush made while a move waits.
+                         "_dash_sel_snapshot", "_dash_sel_held",
+                         "_dash_sel_restore",
                          "_dash_print_models",
                          # Every grid's fit to its width (TR-27.2).
                          "_dash_reflow",
@@ -67635,6 +67684,18 @@ class ServerAppBuilder:
             "            # and drawn on this page.",
             "            return (kpi.get('update', 'filter') in ('filter', 'both')",
             "                    and kpi.get('name', '') in _kpi_divs)",
+            "        def _dash_move_srcs():",
+            "            # Every source a move writes, once each (WP-32).",
+            "            _seen, _out = set(), []",
+            "            _groups = [(v if isinstance(v, list) else [v]) for v in _all_sources.values()]",
+            "            _groups.append(list(_shared or ()))",
+            "            _groups += [list(a.get('sources', ())) for a in _agg_srcs.values()]",
+            "            for _g in _groups:",
+            "                for _s in _g:",
+            "                    if _s is not None and id(_s) not in _seen:",
+            "                        _seen.add(id(_s))",
+            "                        _out.append(_s)",
+            "            return _out",
             "        def _dash_move_plan(worker=False):",
             "            \"\"\"Loop thread (WP-30 P1.31b): read every widget once.",
             "",
@@ -67658,7 +67719,10 @@ class ServerAppBuilder:
             "                    _tm[kpi.get('name', '')] = _mask_for(kpi.get('name', ''),",
             "                                                         _masks=_masks)",
             "            plan = {'masks': _tm, 'gen': None, 'loop': None,",
-            "                    'mapper': None, 'scheme': None}",
+            "                    'mapper': None, 'scheme': None,",
+            "                    # WP-32: each source's selection now, so a brush",
+            "                    # made while the move waits is told apart.",
+            "                    'sel': _dash_sel_snapshot(_dash_move_srcs())}",
             "            # The document's own mapper and scheme (WP-32): a build",
             "            # off the loop drew with a copy of its own.",
             "            if worker or _doc_mapper is not _DASH_MAPPER:",
@@ -67732,7 +67796,10 @@ class ServerAppBuilder:
             "            model write of a move, in the order the move always made",
             "            them.  With *res* None (a document with no server session,",
             "            or the worker's queue full) each redraw and statistic is",
-            "            computed here, at its step, as before.\"\"\"",
+            "            computed here, at its step, as before.  A brush made while",
+            "            the move waited (WP-32) is kept: its rows, by label, are",
+            "            selected again in the rows the move draws.\"\"\"",
+            "            _held_sel = _dash_sel_held(plan.get('sel'), _dash_move_srcs())",
             "            # 2. Replace raw source data (facet-aware); each target's",
             "            # own mask below (the download's rule, _dash_frame_filter_",
             "            # mask, is the same function, over that target's own",
@@ -67917,6 +67984,7 @@ class ServerAppBuilder:
             "                kcolor = kpi.get('color', '') or ''",
             "                kbg = kpi.get('bgcolor', '') or ''",
             "                _kpi_divs[kname].text = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
+            "            _dash_sel_restore(_held_sel)",
             "        def _dash_move_finish(plan, res, exc):",
             "            \"\"\"Loop thread, a next-tick callback under the document",
             "            lock: draw the session's latest result; drop one a newer",

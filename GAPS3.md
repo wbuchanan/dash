@@ -541,7 +541,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H2l Tracked:** Closed in WP-31, BUGS.md "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)", commit 01d9b3f.
 - **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
 - **H2x Tracked:** Closed in WP-31, BUGS.md "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)", commit b66caf9.
-- **H3 Tracked:** Partly closed in WP-31 (section 55, commit 58e10f6): the served bundle no longer ships the bokeh-mathjax component; open: the build on the event loop, catch_warnings swapping filters and a brush made during a move being cleared (BUGS.md "Served build on the event loop").
+- **H3 Tracked:** Closed in WP-32, BUGS.md "Served build on the event loop", commit pending.
 - **H4 Tracked:** Closed in WP-31, BUGS.md "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read", commit c479d32.
 - **H6 Tracked:** Closed in WP-32, BUGS.md "Parity guard: the surfaces it does not compare", commit 8f9690b.
 - **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit 47d113d.
