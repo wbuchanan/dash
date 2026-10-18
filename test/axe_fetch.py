@@ -69,8 +69,17 @@ def axe_source(timeout=30):
         raise AxeUnavailable("axe-core not fetched: %s" % exc) from exc
     check(data)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".part"
-    with open(tmp, "wb") as fh:
-        fh.write(data)
-    os.replace(tmp, path)
+    # A part file of this fetch's own: xdist workers fetch at once into
+    # the one folder, and a shared ".part" name was renamed away under the
+    # others (WP-31 closeout; test_axe_fetch.py).
+    fd, tmp = tempfile.mkstemp(prefix="axe.min.js.", suffix=".part",
+                               dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
     return data.decode("utf-8")
