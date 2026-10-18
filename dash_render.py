@@ -8355,8 +8355,23 @@ class OptionTranslator:
             return None, None
         if st == "unknown" and option:
             _dash_style_note(option, OptionTranslator._colour_commas(
-                str(value)), "colour", "black")
+                OptionTranslator._colour_unquote(str(value))), "colour",
+                "black")
         return hx, alpha
+
+    @staticmethod
+    def _colour_unquote(text: str) -> str:
+        """An option's colour without one enclosing pair of quotes, plain
+        ("...") or compound (`"..."'), as twoway reads it (measured
+        18oct2026: title("T", color("1 2 3")) draws #010203, color("bogus")
+        notes "named style bogus"); a quote with no partner is kept."""
+        t = text.strip()
+        if len(t) >= 2 and t[0] == '"' and t[-1] == '"' \
+                and '"' not in t[1:-1]:
+            return t[1:-1]
+        if len(t) >= 4 and t.startswith('`"') and t.endswith('"\''):
+            return t[2:-2]
+        return text
 
     @staticmethod
     def _colour_commas(text: str) -> str:
@@ -8546,7 +8561,7 @@ class OptionTranslator:
         if len(text) > T._COLOUR_TEXT_MAX:
             return "unknown", "#000000", None
         if not scheme:
-            text = T._colour_commas(text)
+            text = T._colour_commas(T._colour_unquote(text).strip())
         if not text:
             return keep
         base, mult, pct = T._colour_parts(text)

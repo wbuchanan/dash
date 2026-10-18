@@ -1181,6 +1181,7 @@ FUNCTIONS = {
  'OptionTranslator._colour_cmyk': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
  'OptionTranslator._colour_hsv': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
  'OptionTranslator._colour_commas': 'test/test_colour_grammar.py::TestTheParts::test_the_commas_twoway_draws',
+ 'OptionTranslator._colour_unquote': 'test/test_colour_grammar.py::TestTheParts::test_one_enclosing_quote_pair_is_removed',
  'OptionTranslator._colour_parts': 'test/test_colour_grammar.py::TestTheParts::test_either_order',
  'OptionTranslator.colour_context': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_a_graphs_own_scheme_is_read',
  'OptionTranslator.scheme_colour_context': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_the_context_of_a_scheme',

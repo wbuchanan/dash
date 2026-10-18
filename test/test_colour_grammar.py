@@ -215,6 +215,14 @@ class TestTheParts:
                  "255,0,0": "255,0,0", "red,": "red,"}
         assert {k: OT._colour_commas(k) for k in cases} == cases
 
+    def test_one_enclosing_quote_pair_is_removed(self):
+        """A plain or compound pair around the whole colour is removed; a
+        quote with no partner, or quotes inside, are kept."""
+        cases = {'"1 2 3"': "1 2 3", '`"1 2 3"\'': "1 2 3",
+                 '"255 0 0': '"255 0 0', 'navy': 'navy',
+                 '"a" "b"': '"a" "b"'}
+        assert {k: OT._colour_unquote(k) for k in cases} == cases
+
 
 class TestOutputIsAlwaysHex:
     HOSTILE = ["x" * 10000, "red*nan", "red*inf", "red*1e400", "*" * 500,
@@ -542,6 +550,32 @@ class TestBothModes:
         d = _draw(tp._spec([plot_for(*plot)], None, go), mode)
         got = {
             "marker": lambda: str(_glyphs(d, "Scatter")[0].fill_color),
+            "title": lambda: str(d.fig.title.text_color),
+            "xline": lambda: str([x.line_color for x in d.fig.center
+                                  if isinstance(x, Span)][0]),
+        }[read]().lower()
+        assert got == want
+        assert [m for m in d.warnings if "class color" in m] == (
+            ["dash: named style %s not found in class color, default "
+             "attributes used" % named] if named else []), d.warnings
+
+    @pytest.mark.parametrize("go,read,want,named", [
+        ({"title": '"T", color("1 2 3")'}, "title", "#010203", None),
+        ({"title": '"T", color(`"1 2 3"\')'}, "title", "#010203", None),
+        ({"xline": '3000, lcolor("1 2 3")'}, "xline", "#010203", None),
+        ({"title": '"T", color("1,,2")'}, "title", "#000000", "1 2"),
+        ({"title": '"T", color("bogus")'}, "title", "#000000", "bogus"),
+    ], ids=["title", "compound", "xline", "commas", "unknown"])
+    def test_a_quoted_sub_option_colour_is_its_text(self, mode, go, read,
+                                                    want, named):
+        """Measured 18oct2026 (StataNow 19.5, s2color, SVG export;
+        test/fixtures/colour_width_edges_truth.json sp.title.color):
+        title("T", color("1 2 3")), its compound-quoted form and
+        xline(3000, lcolor("1 2 3")) draw #010203; color("1,,2") notes
+        "named style 1 2" and color("bogus") "named style bogus", without
+        the quotes.  dash drew them black, noting the quoted text."""
+        d = _draw(tp._spec([plot_for("scatter")], None, go), mode)
+        got = {
             "title": lambda: str(d.fig.title.text_color),
             "xline": lambda: str([x.line_color for x in d.fig.center
                                   if isinstance(x, Span)][0]),
