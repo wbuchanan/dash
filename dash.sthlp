@@ -3594,7 +3594,7 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     else is refused in {cmd:twoway}'s words, r(198).  {cmd:pw()} is its
     shortest spelling ({cmd:p()} is {cmd:twoway}'s own {cmd:p()} option,
     the whole plot's style; see {help dash##namedstyles:Named styles}).
-    {cmd:pwidth(+800)} is read as 800, where {cmd:twoway} says
+    {cmd:pwidth(+800)} is refused as {cmd:twoway} refuses it,
     {cmd:expression invalid}, r(3000){p_end}
 {synopt:{opt var(#)}}{cmd:lpolyci}: a constant residual variance for the
     band, in place of the pilot fit's; the pilot window must still hold
