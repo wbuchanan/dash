@@ -3258,6 +3258,55 @@ def _saved_with_qualifier(spec, if_expr):
     return figs, [_kpi_card(d.text) for d in r.kpi_divs.values()]
 
 
+def _legends_of(fig_profile):
+    """The Legend annotations of a figure profile: items' labels and
+    visibility, location and orientation (WP-31 H6)."""
+    return [x for x in fig_profile["annotations"] if x["kind"] == "Legend"]
+
+
+def _move_widget_value(w, kind, want):
+    """The raw value a move sets on *w*: a Select's and a MultiChoice's
+    options are picked by their labels, as ``_served_after_move`` does."""
+    if kind == "Select":
+        opts = [o if isinstance(o, (list, tuple)) else (o, o)
+                for o in w.options]
+        raw = [v for v, lab in opts if lab == want]
+        assert raw, f"no option labelled {want!r}: {w.options}"
+        return raw[0]
+    if kind == "MultiChoice":
+        opts = [o if isinstance(o, (list, tuple)) else (o, o)
+                for o in w.options]
+        raw = [v for v, lab in opts if lab in want]
+        assert len(raw) == len(want), f"labels {want!r}: {w.options}"
+        return raw
+    if kind == "RangeSlider":
+        return tuple(want)
+    return want
+
+
+def _saved_js_after_move(spec, move):
+    """Glyph profiles of the SAVED page after one widget move made by the
+    page's own filter script: the standalone renderer's models, the
+    widget's CustomJS run under node through ``js_runner.JsSession``
+    (which writes what the script leaves in each source and view back into
+    the Python models), then ``_glyph_profile`` of every figure in layout
+    order (WP-31 H6, S60 D-60f)."""
+    import js_runner
+    r, _ = _standalone(spec)
+    kind, want = move
+    pairs = [(w, cb) for w, cb in zip(r.filter_widgets, r.filter_callbacks)
+             if type(w).__name__ == kind]
+    assert pairs, f"no {kind} widget on the saved page"
+    w, cb = pairs[0]
+    session = js_runner.JsSession(r.filter_callbacks)
+    value = _move_widget_value(w, kind, want)
+    session.set(w, list(value) if kind == "RangeSlider" else value)
+    session.run(cb)
+    figs = []
+    _layout_tree(r._last_layout_root, figs)
+    return [f["glyphs"] for f in figs]
+
+
 _MOVES = [
     ("dropdown to Foreign", "foreign, type(dropdown)", ("Select", "Foreign"),
      "foreign == 1"),
@@ -3859,6 +3908,88 @@ MOVE_CORPUS = [
                bo={"link": "g1 g2 || g3 g4"}),
 ]
 
+#: WP-31 H6 (S60 D-60f): a slider move with a layer on the second y axis,
+#: so the second axis's range after the move is compared (GAPS3 D9 was
+#: fixed by S35).  Kept out of _MOVES, which every layer type is crossed
+#: with, so it adds one entry rather than one per type.
+_SLIDER_Y2_MOVE = ("slider on yaxis(2) to 4500", "price, type(slider)",
+                   ("Slider", 4500.0), "price >= 4500")
+MOVE_CORPUS.append(_move_case(
+    "line yaxis(2), slider to 4500", _SLIDER_Y2_MOVE,
+    [plot_for("scatter"), plot_for("line", {"yaxis": "2"})]))
+
+_MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
+
+#: The entries whose saved page's own filter script is run under node and
+#: compared with the served app (WP-31 H6): every moved layer kind at the
+#: slider move, three kinds at the dropdown and the range, by(), the
+#: multi-select and the second axis -- one node run each.
+_JS_ORACLE_CASES = frozenset(
+    [f"{t}, slider to 4500" for t in _MOVED_LAYERS]
+    + [f"{t}, {m[0]}" for t in ("scatter", "lfit", "histogram")
+       for m in _MOVES[:2]]
+    + ["by(foreign) shared scale, price slider",
+       "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"])
+assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
+    _JS_ORACLE_CASES - _MOVE_CORPUS_NAMES)
+
+#: Differences the WP-31 H6 comparisons found (S60, 18oct2026), pinned so
+#: each test fails the day its entry agrees (delete the name then), and
+#: filed in BUGS.md "Found by the move-parity extension: axes of degenerate
+#: or emptied layers and the saved page's band outline and bins after a
+#: move".  Never ALLOWED (R8): they are differences, not design.
+#: Axes: after a move that leaves an lpoly/lpolyci layer one x value or a
+#: layer no rows, the served app sets a Range1d around what is left where
+#: the saved renderer given the kept rows draws an empty autorange.
+_AXES_FOUND_AFTER_MOVE = frozenset({
+    'bar with its own if emptied, slider to 10000',
+    'fpfit emptied, slider to 11385',
+    'fpfit with its own if emptied, slider to 10000',
+    'histogram with its own if emptied, slider to 10000',
+    'kdensity emptied, slider to 11385',
+    'kdensity with its own if emptied, slider to 10000',
+    'lfit emptied, slider to 11385',
+    'lfit with its own if emptied, slider to 10000',
+    'lowess emptied, slider to 10000',
+    'lowess emptied, slider to 11385',
+    'lowess with its own if emptied, slider to 10000',
+    'lpoly biweight degree 2, dropdown',
+    'lpoly biweight degree(3) [aw=weight], slider',
+    'lpoly emptied, slider to 10000',
+    'lpoly emptied, slider to 11385',
+    'lpoly gaussian [fw=rep], dropdown',
+    'lpoly, dropdown to Foreign',
+    'lpoly, range to 4500-11385',
+    'lpoly, slider to 4500',
+    'lpolyci cosine [fw=rep], dropdown',
+    'lpolyci var(4) [aw=weight], slider',
+    'lpolyci, dropdown to Foreign',
+    'lpolyci, range to 4500-11385',
+    'lpolyci, slider to 4500',
+    'mband with its own if emptied, slider to 10000',
+    'mspline with its own if emptied, slider to 10000',
+    'qfit emptied, slider to 11385',
+    'qfit with its own if emptied, slider to 10000',
+    'rarea with its own if emptied, slider to 10000',
+    'rbar with its own if emptied, slider to 10000',
+    'rspike with its own if emptied, slider to 10000',
+})
+#: Saved page's own script against the served app: the CI band's outline
+#: (x_/y_ci_outline) of lfitci, qfitci, fpfitci and lpolyci keeps other
+#: values than the served refit (its filled band agrees); a histogram keeps
+#: its build-time bin count (3 where the served refit draws 2); kdensity's
+#: line differs.
+_JS_FOUND_AFTER_MOVE = frozenset({
+    'fpfitci, slider to 4500',
+    'histogram, dropdown to Foreign',
+    'histogram, range to 4500-11385',
+    'histogram, slider to 4500',
+    'kdensity, slider to 4500',
+    'lfitci, slider to 4500',
+    'lpolyci, slider to 4500',
+    'qfitci, slider to 4500',
+})
+
 
 @pytest.mark.parametrize("name,spec,action,oracle", MOVE_CORPUS)
 class TestAFilterMoveAgrees:
@@ -3961,6 +4092,61 @@ class TestAFilterMoveAgrees:
             diffs = _diff(ea, eb)
             assert not diffs, _explain(name, f"figure {i} extra ranges "
                                              f"after the move", diffs)
+
+    def test_same_axes_after_the_move(self, name, spec, action, oracle):
+        """Every axis, its ticker, formatter, label and visibility, and every
+        range after the move are the saved renderer's from the kept rows
+        (WP-31 H6: the move profile compared glyphs, labels, arrowheads,
+        cards and extra ranges only)."""
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
+        assert len(std) == len(srv), f"{name}: figure counts differ"
+        found = [(i, _diff(a["axes"], b["axes"]))
+                 for i, (a, b) in enumerate(zip(std, srv))]
+        found = [(i, d) for i, d in found if d]
+        if name in _AXES_FOUND_AFTER_MOVE:
+            assert found, (f"{name}: the axes now agree after the move; "
+                           f"delete it from _AXES_FOUND_AFTER_MOVE")
+            return
+        for i, diffs in found:
+            assert not diffs, _explain(name, f"figure {i} axes after the "
+                                             f"move", diffs)
+
+    def test_same_chrome_after_the_move(self, name, spec, action, oracle):
+        """The frame, title and legend (its items' labels and visibility)
+        after the move are the saved renderer's (WP-31 H6)."""
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
+        assert len(std) == len(srv), f"{name}: figure counts differ"
+        for i, (a, b) in enumerate(zip(std, srv)):
+            ca = {"chrome": a["chrome"], "legends": _legends_of(a)}
+            cb = {"chrome": b["chrome"], "legends": _legends_of(b)}
+            diffs = _diff(ca, cb)
+            assert not diffs, _explain(name, f"figure {i} chrome after the "
+                                             f"move", diffs)
+
+    def test_saved_js_agrees_with_served_after_the_move(self, name, spec,
+                                                        action, oracle):
+        """The saved page's OWN filter script, run under node with the
+        widget at the move's value, draws the glyphs the served app draws
+        after the same move (WP-31 H6: the move oracle was the saved
+        renderer re-run with an ``if``, never the page's JS).  Glyph
+        coordinates only: the script writes sources, not axes.  Run on
+        the entries _JS_ORACLE_CASES names, one per moved layer kind."""
+        if name not in _JS_ORACLE_CASES:
+            assert name in _MOVE_CORPUS_NAMES
+            return
+        (srv, _), _ = self._moved(spec, action, oracle)
+        js = self._once(_saved_js_after_move, spec, action)
+        assert len(js) == len(srv), f"{name}: figure counts differ"
+        found = [(i, _diff(a, b["glyphs"]))
+                 for i, (a, b) in enumerate(zip(js, srv))]
+        found = [(i, d) for i, d in found if d]
+        if name in _JS_FOUND_AFTER_MOVE:
+            assert found, (f"{name}: the saved page's script now agrees; "
+                           f"delete it from _JS_FOUND_AFTER_MOVE")
+            return
+        for i, diffs in found:
+            assert not diffs, _explain(name, f"figure {i} glyphs, saved JS "
+                                             f"against served", diffs)
 
     def test_the_move_changed_something(self, name, spec, action, oracle):
         """Guards the guard: a move that selects every row proves nothing."""

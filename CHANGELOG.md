@@ -1109,7 +1109,7 @@ Changed behaviour.
 
 - The test suite's server fixtures stop the server they started when it never answers, rather than leaving it running, and a Stata run removes the temporary folder its Python left behind (WP-31, K4)
 
-<!-- WP-31 H6 -->
+- The two-mode parity guard compares axes, ranges, the legend and the frame after a filter move, covers a second y axis after a slider move, and runs the saved page's own filter script against the served app (WP-31, H6)
 
 - `make lint` runs ruff with the committed ruff.toml, a test scans the tree for secrets, a CI workflow runs `make test-dev` and `make lint` on Linux (macOS with Stata stays the certified platform), and *.log is in .gitignore (WP-31, I6)
 
