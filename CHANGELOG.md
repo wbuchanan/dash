@@ -917,6 +917,11 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-32
+
+- `by(..., style(rescale) noyrescale)` (or `noxrescale`, `norescale`, and the same beside `style(combine)`) keeps that axis shared across the panels, as twoway draws it; the style's rescale used to override the word. (WP-32, K4)
+- The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4)
+
 ### Fixed in WP-31
 
 Gaps the drop-in audit of 10oct2026 (GAPS3.md) recorded that WP-31 fixed
