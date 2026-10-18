@@ -13,7 +13,7 @@
       "probes": 293,
       "unverified": 34
     },
-    "dash_commit": "ce62fbb888aff9b222c3db4882f414c6560bb83d",
+    "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
     "datasets": [
       "sysuse auto, clear",
       "sysuse nlsw88, clear",
@@ -21,14 +21,15 @@
       "sysuse sp500, clear (m = mofd(date), %tm)",
       "sysuse sp500, clear"
     ],
-    "extracted": "30 Sep 2026",
+    "extracted": "18 Oct 2026",
     "generated_by": "scripts/extract_axis_truth.do",
     "legend_oracle": "Legend presence is a DIFFERENCE, never an inspection: every legend case is run twice, bare and with the legend off, and the anchorless <text> elements that disappear are the legend.  A second classifier (anchorless texts minus every mtextq() textbox string in the .gph) is recorded alongside, and is the one used where switching the legend off changed nothing.",
     "method": "Two oracles.  (1) The live-format .gph -- a plain-text graph-object script -- is authoritative for STRUCTURE: ring numbers, which side of the plotregion a textbox sits, and the verbatim editstyle directives an option produced.  It is NOT an oracle for tick positions: xlabel(#10) is stored as '.xaxis1.major.suggest_ticks 10' and the positions are computed at render time and never written to the file, drawn or not.  (2) Stata's own SVG writer gives the RENDERED result: the plotregion is the first solid-fill <rect> inside the graph region, tick marks are short black <line>s at a plotregion edge, tick labels are the row/column of <text> nearest that edge, gridlines are dashed multi-segment <line> groups, and legend keys are <text> elements with no text-anchor attribute.  Inverting the tick-pixel -> tick-value fit at the plotregion edges yields the axis range Stata actually used.",
     "oracle_selfcheck": "the same twoway command exported twice, more than a second apart, yields an identical text inventory: PASS",
-    "record_file": "/tmp/dash-s18/tmp//dash_axis_probe/axis_records.txt",
-    "run_date": "30 Sep 2026",
+    "record_file": "axis_records.txt",
+    "run_date": "18 Oct 2026",
     "scheme_in_force": "stcolor",
+    "source": "scripts/extract_axis_truth.do",
     "stata_born_date": "12 Aug 2026",
     "stata_edition": "MP",
     "stata_flavor": "IC",

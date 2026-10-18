@@ -68,6 +68,12 @@ set scheme stcolor
 global ZT_SVER = c(stata_version)
 global ZT_BORN = c(born_date)
 global ZT_DATE = "`c(current_date)' `c(current_time)'"
+// The ado-path dash.ado writes as build_options["scheme_dirs"] holds this
+// machine's directories; the fixture names each by its sysdir instead.
+foreach zt_d in base site personal plus oldplace {
+    global ZT_SYS_`zt_d' "`c(sysdir_`zt_d')'"
+}
+global ZT_PWD "`c(pwd)'"
 
 // Provenance stamp (D12): shell writes the commit into a file, read back.
 tempfile ztgitrev
@@ -417,6 +423,35 @@ def _json_file(name):
     return json.loads(s) if s.strip() else None
 
 
+def _dir(d):
+    return os.path.realpath(os.path.expanduser(d)).rstrip("/") if d else ""
+
+
+# No machine path reaches the fixture (S60): each scheme_dirs entry is
+# written as the placeholder of the directory it is -- "<sysdir_base>",
+# "<repo>", "<pwd>" -- and any other as "<adopath>".  A renderer drops a
+# placeholder (not an absolute path), so a probe draws as it does with no
+# style files found along the ado-path.
+_PLACE = [("<repo>", _dir(Macro.getGlobal("ZT_REPO")))]
+_PLACE += [("<sysdir_%s>" % k, _dir(Macro.getGlobal("ZT_SYS_" + k)))
+           for k in ("base", "site", "personal", "plus", "oldplace")]
+_PLACE += [("<pwd>", _dir(Macro.getGlobal("ZT_PWD")))]
+
+
+def _portable_spec(spec):
+    try:
+        raw = spec["build_options"]["scheme_dirs"]
+    except (KeyError, TypeError):
+        return spec
+    if isinstance(raw, list):
+        out = []
+        for d in raw:
+            r = _dir(d) if isinstance(d, str) else ""
+            out.append(next((n for n, v in _PLACE if v and v == r), "<adopath>"))
+        spec["build_options"]["scheme_dirs"] = out
+    return spec
+
+
 probes = {}
 for line in _read("probes.txt").splitlines():
     pid, ds, body, opts, fl = (line.split("\t") + [""] * 5)[:5]
@@ -437,7 +472,7 @@ for line in _read("probes.txt").splitlines():
     drc = _read(pid + "_dashrc.txt")
     if drc != "":
         rec["dash"] = {"rc": int(drc),
-                       "spec": _json_file(pid + "_spec.json"),
+                       "spec": _portable_spec(_json_file(pid + "_spec.json")),
                        "data": _json_file(pid + "_data.json")}
     probes[pid] = rec
 
@@ -448,6 +483,7 @@ doc = {
         "dash_commit": Macro.getGlobal("ZT_COMMIT"),
         "extracted": Macro.getGlobal("ZT_DATE"),
         "scheme": "stcolor",
+        "source": "scripts/extract_ts_operator_truth.do",
         "probes": len(probes),
         "method": ("rc and err are twoway's return code and the lines it "
                    "printed; titles are its axis objects "

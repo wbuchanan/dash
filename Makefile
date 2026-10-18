@@ -19,7 +19,7 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev test-batch test-release test-all test-floor cert gate release hooks lint
+.PHONY: help check test test-dev test-batch test-release test-all test-floor cert gate release hooks truth truth-check lint
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
@@ -34,6 +34,8 @@ help:
 	@echo "make release   make check, then make test-release, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
 	@echo "make lint      ruff over dash_render.py, dash_setup_lib.py, test/ and scripts/ with ruff.toml (RUFF=<command> names ruff; it is not a runtime dependency)"
+	@echo "make truth     regenerate every truth fixture: each scripts/extract_*.do through one Stata slot, one at a time, then the Python generators (hours; never part of make test)"
+	@echo "make truth-check  the fixture guard: every fixture names its generator, carries complete _meta and holds no absolute path"
 	@echo "STATA_BIN=<path> names the console Stata (default /usr/local/bin/stata-mp); STATA_ARCH=auto|none|arm64|x86_64"
 
 check: test test-dev cert
@@ -99,6 +101,33 @@ release: check test-batch test-release gate
 hooks:
 	git config core.hooksPath scripts/git-hooks
 	@echo "git push now runs 'make check' first; 'git push --no-verify' skips it."
+
+# WP-31 K3: every truth fixture from its committed generator.  Each
+# scripts/extract_*.do runs through scripts/stata_slot.sh, one at a time
+# (concurrent Stata sessions can unlink Python from Stata's settings),
+# from TRUTH_DIR with DASH_REPO naming this checkout; then the Python
+# generators that need no arguments.  pip_refusals.json and value_truth.json
+# take arguments (scripts/extract_pip_refusals.py --managed/--plain,
+# scripts/merge_value_truth.py <probe-dir> <note>) and are named, not run.
+TRUTH_DIR ?= $(or $(TMPDIR),/tmp)/dash_truth
+truth:
+	@mkdir -p "$(TRUTH_DIR)"; failed=0; \
+	for f in scripts/extract_*.do; do \
+	    echo "make truth: $$f"; \
+	    DASH_REPO='$(CURDIR)' sh scripts/stata_slot.sh "$(TRUTH_DIR)" "$(CURDIR)/$$f" >/dev/null 2>&1 || failed=1; \
+	    log="$(TRUTH_DIR)/$$(basename "$$f" .do).log"; \
+	    if grep -q '^r([0-9]*);' "$$log" 2>/dev/null; then echo "make truth: $$f failed, see $$log"; failed=1; fi; \
+	done; \
+	for py in scripts/extract_scheme_truth.py scripts/extract_color_truth.py scripts/gen_utf8_cases.py; do \
+	    echo "make truth: $$py"; $(PYTHON) "$$py" || failed=1; \
+	done; \
+	echo "make truth: run by hand: $(PYTHON) scripts/extract_pip_refusals.py --managed <python> --plain <python> --out test/fixtures/pip_refusals.json"; \
+	echo "make truth: run by hand: $(PYTHON) scripts/merge_value_truth.py <probe-dir> <note>"; \
+	git status --short -- test/fixtures; \
+	exit $$failed
+
+truth-check:
+	@$(PYTHON) -m pytest test/test_fixtures_are_committed.py -q -p no:cacheprovider
 
 # WP-31 I6: ruff with the committed ruff.toml.  ruff is a development tool,
 # not a dependency: RUFF names it, else $(PYTHON) -m ruff, else ruff on PATH.

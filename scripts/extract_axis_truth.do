@@ -1637,7 +1637,8 @@ for k in disagree:
 doc = {
     "_meta": {
         "generated_by": "scripts/extract_axis_truth.do",
-        "record_file": REC,
+        "source": "scripts/extract_axis_truth.do",
+        "record_file": os.path.basename(REC),
         "run_date": meta_rows.get("run_date"),
         "stata_version": meta_rows.get("stata_version"),
         "stata_flavor": meta_rows.get("stata_flavor"),

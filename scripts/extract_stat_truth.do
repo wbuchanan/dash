@@ -2236,6 +2236,8 @@ for key, ent in sections.get("histogram_resolved_cmd", {}).items():
             for opt in ("bin", "start", "width"):
                 mm = re.search(r"(?<![A-Za-z])" + opt + r"\(([^)]*)\)", line)
                 ent["resolved_" + opt] = num(mm.group(1)) if mm else None
+    if path:
+        ent["gph"] = os.path.basename(path)  # no machine path in the fixture
 
 # ------------------------------------------------------- mband band count
 def close(a, b, tol=1e-6):
@@ -2968,7 +2970,8 @@ RULES_WP18 = {
 doc = {
     "_meta": {
         "generated_by": "scripts/extract_stat_truth.do",
-        "record_file": REC,
+        "source": "scripts/extract_stat_truth.do",
+        "record_file": os.path.basename(REC),
         "run_date": meta.get("run_date"),
         "stata_version": meta.get("stata_version"),
         "stata_flavor": meta.get("stata_flavor"),

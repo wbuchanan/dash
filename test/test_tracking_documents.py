@@ -1982,7 +1982,6 @@ class TestWp30Tracking:
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
     "K2": "Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback",
-    "K3": "Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
 }
 

@@ -1,5 +1,6 @@
 {
   "_meta": {
+    "born_date": "12 Aug 2026",
     "counts": {
       "dataset_date_variables": 4,
       "dataset_variables_recorded": 22,
@@ -22,18 +23,20 @@
       "numeric_values_total": 150,
       "unverified": 0
     },
+    "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
+    "extracted": "18 Oct 2026 10:39:03",
     "generated_by": "scripts/extract_date_truth.do",
     "honesty": "Nothing here is recalled or inferred.  Anything that could not be derived empirically is marked \"source\": \"UNVERIFIED\" and listed under \"unverified\".",
     "method": "Every value in this fixture was produced by a Stata display and carries the exact command that produced it.  Each date value is recorded twice: \"display\", the verbatim locale-dependent string Stata prints, and \"iso\", the same instant re-displayed through an explicit ISO-8601 picture, which is the unambiguous target for a Python converter.  Calendar-period formats (%tw %tm %tq %th) record the period START and END, derived with Stata's own dofw/dofm/dofq/dofh, and %ty with dofy, which takes a YEAR rather than an offset.  Display strings are captured between \"<\" and \">\" sentinels so that leading and trailing blanks -- which are part of what a numeric format means -- survive macro assignment; the sentinels are stripped when the fixture is written.",
     "os": "Unix Mac (Apple Silicon)",
     "record_delimiter_note": "Records are pipe-delimited; variable labels had \"|\" replaced with \"/\" before writing.  No display format or date string contains a pipe.",
-    "record_file": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/date_records.txt",
-    "run_date": "19 Sep 2026",
+    "record_file": "date_records.txt",
+    "run_date": "18 Oct 2026",
+    "source": "scripts/extract_date_truth.do",
     "stata_born_date": "12 Aug 2026",
     "stata_edition": "MP",
     "stata_flavor": "IC",
-    "stata_version": "19.5",
-    "sysdir_base": "/Applications/StataNow/ado/base/"
+    "stata_version": "19.5"
   },
   "dataset_date_variables": [
     {
@@ -1611,19 +1614,19 @@
       "dashstyle": {
         "cmd": "jsonio out date close, what(all) filenm(<path>) metaprint(varnames varlabels vallabs labelnames)",
         "output_exists": true,
-        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_dashstyle.json",
+        "path": "jsonio_dashstyle.json",
         "rc": 0
       },
       "metaprint_no_filenm": {
         "cmd": "jsonio out date close, metaprint(varlabels)",
         "output_exists": true,
-        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_console.log",
+        "path": "jsonio_console.log",
         "rc": 0
       },
       "metaprint_with_filenm": {
         "cmd": "jsonio out date close, filenm(<path>) metaprint(varlabels)",
         "output_exists": true,
-        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_metafile.json",
+        "path": "jsonio_metafile.json",
         "rc": 0
       }
     },
@@ -1641,7 +1644,7 @@
       "public org.paces.Stata.Variables.VarDisplay getDisplayFmt();",
       "public java.lang.Boolean isDateTime(java.lang.String);"
     ],
-    "javap_cmd": "javap -cp /Users/billy/Desktop/Programs/Java/StataJSON/target/jsonio-jar-with-dependencies.jar org.paces.Stata.MetaData.Variables",
+    "javap_cmd": "javap -cp <STATAJSON_DIR>/target/jsonio-jar-with-dependencies.jar org.paces.Stata.MetaData.Variables",
     "javap_note": null,
     "metaprint_accepted_keys": [
       "varlabels",
@@ -1659,9 +1662,9 @@
     ],
     "note": "jsonio was read only.  Nothing in StataJSON was modified.",
     "source_files_read": {
-      "ado": "/Users/billy/Desktop/Programs/Java/StataJSON/jsonio.ado",
-      "jar": "/Users/billy/Desktop/Programs/Java/StataJSON/target/jsonio-jar-with-dependencies.jar",
-      "java": "/Users/billy/Desktop/Programs/Java/StataJSON/src/main/java/org/paces/Stata/JSON"
+      "ado": "<STATAJSON_DIR>/jsonio.ado",
+      "jar": "<STATAJSON_DIR>/target/jsonio-jar-with-dependencies.jar",
+      "java": "<STATAJSON_DIR>/src/main/java/org/paces/Stata/JSON"
     }
   },
   "jsonio_value_boundary": {

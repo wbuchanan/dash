@@ -42,6 +42,7 @@ than asking git, so they run on any copy:
 This file names fixtures only to guard them, so it is not one of the files
 that can name them.
 """
+import json
 import os
 import re
 import subprocess
@@ -238,3 +239,336 @@ def test_every_do_file_is_named_by_another_script_or_test(rel, readers):
         f"calls it, so it tests nothing (GAPS.md L8).  Wire it in or delete "
         f"it."
     )
+
+
+# ---------------------------------------------------------------------------
+# Every fixture names its generator, carries complete _meta and holds no
+# absolute path (WP-31 K3, S60 D-60a..D-60c)
+# ---------------------------------------------------------------------------
+
+#: A fixture written by hand: no generator regenerates it.  The two text
+#: corpora are read line by line by test_conformance.cscript (a header
+#: line would be registered as a command), so the exemption lives here.
+HAND_WRITTEN = None
+
+#: {top-level file in test/fixtures: the committed script that writes it}.
+#: data/ (datasets) and scheme_visual/ (scripts/svg_truth.py renders) are
+#: exempt by directory.  A fixture whose _meta names a source must agree.
+GENERATORS = {
+    "abbrev_truth.json": "scripts/extract_abbrev_truth.do",
+    "added_text_globals.json": "scripts/extract_added_text_globals.do",
+    "added_text_truth.json": "scripts/extract_added_text_truth.do",
+    "alias_spelling_truth.json": "scripts/extract_alias_spelling_truth.do",
+    "applicability_truth.json": "scripts/extract_applicability_truth.do",
+    "area_cmissing_truth.json": "scripts/extract_area_cmissing_truth.do",
+    "arrowhead_truth.json": "scripts/extract_arrowhead_truth.do",
+    "axes_n_truth.json": "scripts/extract_axes_n_truth.do",
+    "axis2_move_truth.json": "scripts/extract_axis2_move_truth.do",
+    "axis2_truth.json": "scripts/extract_axis2_truth.do",
+    "axis_add_truth.json": "scripts/extract_axis_add_truth.do",
+    "axis_format_truth.json": "scripts/extract_axis_format_truth.do",
+    "axis_look_truth.json": "scripts/extract_axis_look_truth.do",
+    "axis_subopt_truth.json": "scripts/extract_axis_subopt_truth.do",
+    "axis_truth.json": "scripts/extract_axis_truth.do",
+    "axisn_alt_truth.json": "scripts/extract_axisn_alt_truth.do",
+    "axisn_date_truth.json": "scripts/extract_axisn_date_truth.do",
+    "axisn_minor_truth.json": "scripts/extract_axisn_minor_truth.do",
+    "bar_geometry_truth.json": "scripts/extract_bar_geometry_truth.do",
+    "bare_intensity_truth.json": "scripts/extract_bare_intensity_truth.do",
+    "bare_prefix_truth.json": "scripts/extract_bare_prefix_truth.do",
+    "by_chrome_truth.json": "scripts/extract_by_chrome_truth.do",
+    "by_grid_truth.json": "scripts/extract_by_grid_truth.do",
+    "by_remainder_truth.json": "scripts/extract_by_remainder_truth.do",
+    "by_scales_truth.json": "scripts/extract_by_scales_truth.do",
+    "by_text_truth.json": "scripts/extract_by_text_truth.do",
+    "bystyle_truth.json": "scripts/extract_bystyle_truth.do",
+    "catchall_options_truth.json": "scripts/extract_catchall_options_truth.do",
+    "chrome_truth.json": "scripts/extract_chrome_truth.do",
+    "ci_band_style_truth.json": "scripts/extract_scheme_truth.py",
+    "ci_plot_index_truth.json": "scripts/extract_ci_plot_index_truth.do",
+    "color_truth.json": "scripts/extract_color_truth.py",
+    "colorvar_options_truth.json": "scripts/extract_colorvar_options_truth.do",
+    "colorvar_qualifier_truth.json": "scripts/extract_colorvar_qualifier_truth.do",
+    "colorvar_truth.json": "scripts/extract_colorvar_truth.do",
+    "colorvar_types_truth.json": "scripts/extract_colorvar_types_truth.do",
+    "colour_grammar_truth.json": "scripts/extract_colour_grammar_truth.do",
+    "colour_width_edges_truth.json": "scripts/extract_colour_width_edges_truth.do",
+    "conformance_corpus.txt": HAND_WRITTEN,
+    "connect_truth.json": "scripts/extract_connect_truth.do",
+    "contour_truth.json": "scripts/extract_contour_truth.do",
+    "data_locale_truth.json": "scripts/extract_data_locale_truth.do",
+    "date_axes_truth.json": "scripts/extract_date_axes_truth.do",
+    "date_axis_truth.json": "scripts/extract_date_axis_truth.do",
+    "date_truth.json": "scripts/extract_date_truth.do",
+    "date_units_truth.json": "scripts/extract_date_units_truth.do",
+    "default_axes_truth.json": "scripts/extract_default_axes_truth.do",
+    "default_base_truth.json": "scripts/extract_default_base_truth.do",
+    "dot_truth.json": "scripts/extract_dot_truth.do",
+    "edge_title_truth.json": "scripts/extract_edge_title_truth.do",
+    "embedded_rows_truth.json": "scripts/extract_embedded_rows_truth.do",
+    "emptied_layer_truth.json": "scripts/extract_emptied_layer_truth.do",
+    "estimator_edges_truth.json": "scripts/extract_estimator_edges_truth.do",
+    "filter_truth.json": "scripts/extract_filter_truth.do",
+    "fit_options_truth.json": "scripts/extract_fit_options_truth.do",
+    "format_truth.json": "scripts/extract_format_truth.do",
+    "fp_edge_truth.json": "scripts/extract_fp_edge_truth.do",
+    "function_expr_truth.json": "scripts/extract_function_truth.do",
+    "geometry_truth.json": "scripts/extract_geometry_truth.do",
+    "global_text_truth.json": "scripts/extract_global_text_truth.do",
+    "graph_export_truth.json": "scripts/extract_graph_export_truth.do",
+    "graph_text_truth.json": "scripts/extract_graph_text_truth.do",
+    "help_claims_6_truth.json": "scripts/extract_twoway_oracle_truth.do",
+    "help_examples.txt": HAND_WRITTEN,
+    "horizontal_truth.json": "scripts/extract_horizontal_truth.do",
+    "intensity_truth.json": "scripts/extract_intensity_truth.do",
+    "join_order_truth.json": "scripts/extract_join_order_truth.do",
+    "kde_hist_fn_truth.json": "scripts/extract_kde_hist_fn_truth.do",
+    "key_text_truth.json": "scripts/extract_key_text_truth.do",
+    "kpi_pctile_truth.json": "scripts/extract_kpi_pctile_truth.do",
+    "kpi_truth.json": "scripts/extract_kpi_truth.do",
+    "kpi_weights_truth.json": "scripts/extract_kpi_weights_truth.do",
+    "legend_geometry_truth.json": "scripts/extract_legend_geometry_truth.do",
+    "legend_remainder_truth.json": "scripts/extract_legend_remainder_truth.do",
+    "line_width_truth.json": "scripts/extract_line_width_truth.do",
+    "linewidth_chain_truth.json": "scripts/extract_linewidth_chain_truth.do",
+    "lpoly_rot_truth.json": "scripts/extract_lpoly_rot_truth.do",
+    "lpolyci_truth.json": "scripts/extract_lpolyci_truth.do",
+    "margin_truth.json": "scripts/extract_margin_truth.do",
+    "marker_linewidth_truth.json": "scripts/extract_marker_linewidth_truth.do",
+    "mband_band_edges.json": "scripts/extract_mband_band_edges.do",
+    "minor_tick_truth.json": "scripts/extract_minor_tick_truth.do",
+    "mlabtextstyle_truth.json": "scripts/extract_mlabtextstyle_truth.do",
+    "mlabvpos_truth.json": "scripts/extract_mlabvpos_truth.do",
+    "named_style_truth.json": "scripts/extract_named_style_truth.do",
+    "natscale_axes_truth.json": "scripts/extract_natscale_axes_truth.do",
+    "natscale_truth.json": "scripts/extract_natscale_truth.do",
+    "parsed_values_truth.json": "scripts/extract_parsed_values_truth.do",
+    "parser_twoway_truth.json": "scripts/extract_twoway_oracle_truth.do",
+    "pcycle_fraction_truth.json": "scripts/extract_pcycle_fraction_truth.do",
+    "pip_refusals.json": "scripts/extract_pip_refusals.py",
+    "qualified_stat_truth.json": "scripts/extract_qualified_stat_truth.do",  # pending
+    "rangept_truth.json": "scripts/extract_rangept_truth.do",
+    "rbar_dot_truth.json": "scripts/extract_rbar_dot_truth.do",
+    "recast_truth.json": "scripts/extract_recast_truth.do",
+    "refline_extent_truth.json": "scripts/extract_refline_extent_truth.do",
+    "refline_frame_truth.json": "scripts/extract_refline_frame_truth.do",
+    "refline_truth.json": "scripts/extract_refline_truth.do",
+    "region_remainder_truth.json": "scripts/extract_region_remainder_truth.do",
+    "region_truth.json": "scripts/extract_region_truth.do",
+    "rejected_options.json": "scripts/extract_rejected_options.do",
+    "saving_chars_truth.json": "scripts/extract_saving_chars_truth.do",
+    "scheme_layer_truth.json": "scripts/extract_scheme_layer_truth.do",
+    "scheme_lookup_truth.json": "scripts/extract_scheme_lookup_truth.do",
+    "scheme_ref_gsize_truth.json": "scripts/extract_scheme_ref_gsize_truth.do",
+    "scheme_truth.json": "scripts/extract_scheme_truth.py",
+    "series_label_truth.json": "scripts/extract_series_label_truth.do",
+    "size_units_truth.json": "scripts/extract_size_units_truth.do",
+    "sizing_truth.json": "scripts/extract_sizing_truth.do",
+    "smcl_more_truth.json": "scripts/extract_smcl_more_truth.do",
+    "smcl_text_truth.json": "scripts/extract_smcl_text_truth.do",
+    "stat_truth.json": "scripts/extract_stat_truth.do",
+    "stata_ticks_truth.json": "scripts/extract_stata_ticks_truth.do",
+    "style_files_truth.json": "scripts/extract_style_files_truth.do",
+    "style_name_truth.json": "scripts/extract_style_name_truth.do",
+    "stylelist_truth.json": "scripts/extract_stylelist_truth.do",
+    "subopt_abbrev_truth.json": "scripts/extract_subopt_abbrev_truth.do",
+    "svg_truth_smoke.json": "scripts/extract_svg_truth_smoke.do",
+    "svg_truth_smoke.svg": "scripts/extract_svg_truth_smoke.do",
+    "svg_truth_tiny.svg": HAND_WRITTEN,
+    "symbol_pattern_truth.json": "scripts/extract_symbol_pattern_truth.do",
+    "tabs_legend_edges_truth.json": "scripts/extract_tabs_legend_edges_truth.do",
+    "taxis_truth.json": "scripts/extract_taxis_truth.do",
+    "text_truth.json": "scripts/extract_text_truth.do",
+    "textbox_truth.json": "scripts/extract_textbox_truth.do",
+    "ts_operator_truth.json": "scripts/extract_ts_operator_truth.do",
+    "twoway_command_form_truth.json": "scripts/extract_twoway_command_form_truth.do",
+    "twoway_corpus.do": HAND_WRITTEN,
+    "twoway_option_parity_truth.json": "scripts/extract_twoway_oracle_truth.do",
+    "unlabelled_truth.json": "scripts/extract_unlabelled_truth.do",
+    "user_scheme_rule_truth.json": "scripts/extract_user_scheme_rule_truth.do",
+    "utf8_cases.txt": "scripts/gen_utf8_cases.py",
+    "value_bounds_truth.json": "scripts/extract_value_bounds_truth.do",
+    "value_list_truth.json": "scripts/extract_value_list_truth.do",
+    "value_truth.json": "scripts/merge_value_truth.py",
+    "varlabel_mlabel_truth.json": "scripts/extract_varlabel_mlabel_truth.do",
+    "weight_operator_truth.json": "scripts/extract_weight_operator_truth.do",
+    "weighted_markers_truth.json": "scripts/extract_weighted_markers_truth.do",
+}
+
+#: The five _meta keys every regenerated fixture carries.
+META_KEYS = ("stata_version", "born_date", "dash_commit", "extracted",
+             "source")
+
+#: Fixtures written before the five keys were required, each by a generator
+#: that predates them; `make truth' rewrites them with the five keys and the
+#: entry is then deleted (test_a_pending_fixture_is_still_pending fails
+#: until it is).  Nothing may join this list.
+PENDING_META = frozenset({
+    "added_text_truth.json",
+    "alias_spelling_truth.json",
+    "axis2_truth.json",
+    "axis_add_truth.json",
+    "axis_format_truth.json",
+    "axis_subopt_truth.json",
+    "bar_geometry_truth.json",
+    "by_chrome_truth.json",
+    "by_grid_truth.json",
+    "by_scales_truth.json",
+    "by_text_truth.json",
+    "chrome_truth.json",
+    "ci_band_style_truth.json",
+    "color_truth.json",
+    "colorvar_qualifier_truth.json",
+    "colorvar_truth.json",
+    "colour_grammar_truth.json",
+    "connect_truth.json",
+    "date_axis_truth.json",
+    "date_units_truth.json",
+    "format_truth.json",
+    "function_expr_truth.json",
+    "graph_text_truth.json",
+    "help_claims_6_truth.json",
+    "horizontal_truth.json",
+    "intensity_truth.json",
+    "join_order_truth.json",
+    "key_text_truth.json",
+    "lpoly_rot_truth.json",
+    "lpolyci_truth.json",
+    "mlabtextstyle_truth.json",
+    "mlabvpos_truth.json",
+    "named_style_truth.json",
+    "parser_twoway_truth.json",
+    "pip_refusals.json",
+    "recast_truth.json",
+    "refline_extent_truth.json",
+    "refline_truth.json",
+    "scheme_lookup_truth.json",
+    "scheme_truth.json",
+    "series_label_truth.json",
+    "stylelist_truth.json",
+    "subopt_abbrev_truth.json",
+    "svg_truth_smoke.json",
+    "taxis_truth.json",
+    "text_truth.json",
+    "twoway_option_parity_truth.json",
+    "unlabelled_truth.json",
+    "value_list_truth.json",
+    "value_truth.json",
+})
+
+#: The one fixture whose generator S60 did not finish (WP-31 K3 residual,
+#: BUGS.md "Truth fixtures awaiting regeneration"): GENERATORS names the
+#: script it is to have; until it exists the fixture keeps its old _meta
+#: and probe paths.  test_the_pending_generator_is_still_pending fails the
+#: day the script is committed, so the entry is deleted then.
+GENERATOR_PENDING = frozenset({"qualified_stat_truth.json"})
+
+#: A string that is a machine path: POSIX roots a probe writes under, or a
+#: Windows drive.
+_ABSOLUTE = re.compile(r"^/(Users|private|var|tmp|home)/|^[A-Z]:\\")
+
+
+def _top_fixtures():
+    return sorted(f for f in os.listdir(_FIXTURES)
+                  if os.path.isfile(os.path.join(_FIXTURES, f))
+                  and not f.startswith("."))
+
+
+def _json_fixtures():
+    return [f for f in _top_fixtures() if f.endswith(".json")]
+
+
+def _load(name):
+    with open(os.path.join(_FIXTURES, name), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _meta(doc):
+    m = doc.get("_meta") if isinstance(doc, dict) else None
+    return m if isinstance(m, dict) else {}
+
+
+def _strings(obj):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            yield k
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
+
+
+class TestEveryFixtureHasMeta:
+
+    def test_the_table_lists_every_fixture(self):
+        assert sorted(GENERATORS) == _top_fixtures()
+
+    @pytest.mark.parametrize("rel", _top_fixtures())
+    def test_every_fixture_names_a_generator(self, rel):
+        gen = GENERATORS[rel]
+        if gen is HAND_WRITTEN:
+            assert not rel.endswith(".json"), f"{rel}: a JSON fixture is generated"
+            return
+        if rel in GENERATOR_PENDING:
+            assert not os.path.isfile(os.path.join(_REPO, gen)), rel
+            return
+        assert os.path.isfile(os.path.join(_REPO, gen)), (rel, gen)
+        with open(os.path.join(_REPO, gen), encoding="utf-8",
+                  errors="replace") as fh:
+            assert _names(fh.read(), rel), f"{gen} does not name {rel}"
+        if rel.endswith(".json"):
+            src = _meta(_load(rel)).get("source")
+            assert src in (None, gen), (rel, src, gen)
+
+    @pytest.mark.parametrize(
+        "rel", [f for f in _json_fixtures()
+                if f not in PENDING_META | GENERATOR_PENDING])
+    def test_every_fixture_has_meta(self, rel):
+        missing = [k for k in META_KEYS if k not in _meta(_load(rel))]
+        assert not missing, f"{rel}: _meta lacks {missing}"
+        assert _meta(_load(rel))["source"] == GENERATORS[rel]
+
+    @pytest.mark.parametrize("rel", sorted(PENDING_META))
+    def test_a_pending_fixture_is_still_pending(self, rel):
+        missing = [k for k in META_KEYS if k not in _meta(_load(rel))]
+        assert missing, f"{rel} has the five keys: delete it from PENDING_META"
+
+    def test_the_pending_generator_is_still_pending(self):
+        for rel in GENERATOR_PENDING:
+            assert GENERATORS[rel]
+            assert not os.path.isfile(os.path.join(_REPO, GENERATORS[rel])), (
+                f"{GENERATORS[rel]} exists: regenerate {rel} and delete it "
+                f"from GENERATOR_PENDING")
+
+    @pytest.mark.parametrize(
+        "rel", [f for f in _json_fixtures() if f not in GENERATOR_PENDING])
+    def test_no_absolute_path(self, rel):
+        bad = sorted({s[:120] for s in _strings(_load(rel))
+                      if _ABSOLUTE.search(s)})
+        assert not bad, f"{rel} holds machine paths: {bad[:5]}"
+
+    def test_the_path_rule_catches_each_root(self):
+        # Built from fragments: no file in the tree holds a home path.
+        for s in ("/" + "Users/x/a.do", "/private/tmp/a", "/var/folders/a",
+                  "/tmp/a", "/" + "home/u/a", "C:\\tmp\\a"):
+            assert _ABSOLUTE.search(s), s
+        for s in ("scripts/extract_kpi_truth.do", "a/Users/b", "%td", "/"):
+            assert not _ABSOLUTE.search(s), s
+
+    def test_make_truth_lists_every_generator(self):
+        with open(os.path.join(_REPO, "Makefile"), encoding="utf-8") as fh:
+            mk = fh.read()
+        m = re.search(r"^truth:\n((?:\t.*\n)+)", mk, re.M)
+        assert m, "the Makefile has no truth: target"
+        recipe = m.group(1)
+        assert "for f in scripts/extract_*.do" in recipe
+        assert "scripts/stata_slot.sh" in recipe
+        assert re.search(r"^truth-check:\n\t.*test_fixtures_are_committed\.py",
+                         mk, re.M)
+        for gen in sorted({g for g in GENERATORS.values() if g}):
+            base = os.path.basename(gen)
+            if base.startswith("extract_") and base.endswith(".do"):
+                continue
+            assert gen in recipe, f"make truth does not run or name {gen}"

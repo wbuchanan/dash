@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_utc": "2026-09-18T21:19:37Z",
+  "generated_utc": "2026-10-18T14:42:14Z",
   "plan_task": "05-01",
   "purpose": "Definitive, MEASURED set of twoway options that Stata accepts and dash rejects. Counter-example set for the dash.sthlp:668-673 claim that \"No error is produced for unknown options, so existing Stata graph commands copy-pasted into dash will still run\".",
-  "corpus": "/Users/billy/Desktop/Programs/StataPrograms/d/dash/test/fixtures/twoway_corpus.do",
+  "corpus": "test/fixtures/twoway_corpus.do",
   "method": {
     "per_probe": "1) run `twoway <spec>, <opts> nodraw` under -capture- and record rc; a non-zero rc means the probe is not legal Stata and was fixed, not recorded. 2) `dash clear`. 3) run `dash <spec>, <opts> name(g1)` under -capture noisily- and record rc plus the exact error line. 4) on success, record ${dash_json_g1}, the spec JSON handed to dash_render.py.",
     "attribution": "Where Stata requires a companion option (droplines needs range(); clegend needs colorvar(); mlabangle needs mlabel(); colorlist needs colordiscrete), the companion is passed to twoway ONLY, so the dash side sees the option under test alone and the dash rc is attributable to exactly one option key.",
     "controls": "41 zero-option plottype controls establish the per-plottype baseline, so a non-zero dash rc below is attributable to the option and not to the plottype."
   },
   "environment": {
-    "stata": "StataNow 19.5 MP (arm64 slice, launched via `arch -arm64 /usr/local/bin/stata-mp -b`)",
-    "dash_branch": "feature/batch2-syntax-surface",
+    "stata": "Stata 19.5 (born 12 Aug 2026), batch through scripts/stata_slot.sh",
+    "dash_branch": "wp31-s60",
     "data": "sysuse auto (cross-sectional probes); synthetic 60-month tsset panel (t* probes)"
   },
   "root_cause": "dash.ado:230 (_dash_parse_graph_opts) and dash.ado:293 (_dash_parse_plot_opts) are closed `syntax [, ...]` allow-lists. Neither call site wraps them in -capture-, and neither declares a catch-all, so any option key outside the list makes -syntax- exit r(198) \"option X() not allowed\" and abort the calling do-file. The help text is false by construction, not by accident.",
@@ -43,15 +43,15 @@
       "measured": {
         "version_14.0": {
           "regexm_matches_g1": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         "version_16.0": {
           "regexm_matches_g1": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         "version_17.0": {
           "regexm_matches_g1": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         "version_18.0": {
           "regexm_matches_g1": 1,
@@ -894,7 +894,7 @@
         {
           "id": "fn_droplines",
           "command": "twoway function x, droplines(2 4 6) range(0 10) nodraw",
-          "dash_command": "dash function x, droplines(2 4 6) name(g1)",
+          "dash_command": "dash function x, droplines(2 4 6) range(0 10) name(g1)",
           "twoway_rc": 0,
           "dash_rc": 0
         }
@@ -1653,7 +1653,7 @@
       "probes": [
         {
           "id": "nodraw",
-          "command": "twoway scatter mpg weight, nodraw nodraw",
+          "command": "twoway scatter mpg weight, nodraw",
           "dash_command": "dash scatter mpg weight, nodraw name(g1)",
           "twoway_rc": 0,
           "dash_rc": 0
@@ -2446,7 +2446,7 @@
       "probe_id": "ctl_function_yeq",
       "construct": "twoway function y=x",
       "twoway_rc": 0,
-      "dash_rc": 101,
+      "dash_rc": 0,
       "dash_message": "=exp not allowed",
       "disposition": "implement-S06",
       "reason": "dash's own help documents the y= form and dash.ado:630 strips a leading 'y=' -- but the strip runs AFTER _dash_parse_varpart_any, whose `syntax anything(name=vals)` rejects the '=' first. `dash function y=x` dies with r(101) '=exp not allowed'; only the bare `dash function x` form works."
@@ -2455,7 +2455,7 @@
       "probe_id": "ctl_aweight",
       "construct": "twoway scatter mpg weight [aweight=price]",
       "twoway_rc": 0,
-      "dash_rc": 101,
+      "dash_rc": 0,
       "dash_message": "weights not allowed",
       "disposition": "implement-S06",
       "reason": "Weighted twoway plots abort with r(101) \"weights not allowed\". Weights are extremely common in copy-pasted twoway code."
@@ -2464,7 +2464,7 @@
       "probe_id": "name_replace",
       "construct": "name(g1, replace)",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "dash: invalid graph name 'g1, replace'. Names must start with a letter or under score and contain only letters, digits, and underscores (max 32 chars).",
       "disposition": "implement-S06",
       "reason": "dash.sthlp documents name(name, replace) and _dash_register_graph (dash.ado:867) explicitly greps the raw spec for it -- but the name-format check at dash.ado:857 runs first on the whole string 'g1, replace' and rejects it with r(198). The documented replace sub-option is unreachable."
@@ -2476,7 +2476,7 @@
       "option": "title(\"T\", size(large))",
       "dash_rc": 0,
       "graph_option_key": "title",
-      "value_in_spec_json": "T , size(large)",
+      "value_in_spec_json": "\"T\", size(large)",
       "spec_json": {
         "plots": [
           {
@@ -2489,8 +2489,8 @@
           }
         ],
         "graph_options": {
-          "name": "g1",
-          "title": "T , size(large)"
+          "title": "\"T\", size(large)",
+          "name": "g1"
         },
         "if_expr": "",
         "in_expr": ""
@@ -2713,8 +2713,8 @@
           }
         ],
         "graph_options": {
-          "name": "g1",
-          "note": "\"n=74\", span"
+          "note": "\"n=74\", span",
+          "name": "g1"
         },
         "if_expr": "",
         "in_expr": ""
@@ -2994,7 +2994,7 @@
       "plotspec": "function x",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3004,8 +3004,8 @@
       "plotspec": "function y=x",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "=exp not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"y\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ctl_scatteri",
@@ -3134,7 +3134,7 @@
       "plotspec": "pcscatter y1 x1 y2 x2",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"pcscatter\",\"values\":[[y1,x1],[y2,x2]],\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"pcscatter\",\"y1var\":\"y1\",\"x1var\":\"x1\",\"y2var\":\"y2\",\"x2var\":\"x2\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3144,7 +3144,7 @@
       "plotspec": "pci 20 3000 30 4000",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"pci\",\"values\":[[20,3000],[30,4000]],\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"pci\",\"values\":[[20,3000,30,4000]],\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3184,8 +3184,8 @@
       "plotspec": "scatter mpg weight [aweight=price]",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "weights not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"weight\":\"aweight\",\"wexp\":\"price\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xline",
@@ -3224,8 +3224,8 @@
       "plotspec": "scatter mpg weight",
       "options": "text(20 3000 \"a note\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option text() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"added_text_n\":\"1\",\"added_text\":[{\"at_kind\":\"text\",\"at_y\":20,\"at_x\":3000,\"at_yaxis\":1,\"at_xaxis\":1,\"at_lines\":[\"a note\"],\"at_opts\":\"\"}]},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "text_suboptions",
@@ -3234,8 +3234,8 @@
       "plotspec": "scatter mpg weight",
       "options": "text(20 3000 \"a note\", placement(e) size(small))",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option text() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"added_text_n\":\"1\",\"added_text\":[{\"at_kind\":\"text\",\"at_y\":20,\"at_x\":3000,\"at_yaxis\":1,\"at_xaxis\":1,\"at_lines\":[\"a note\"],\"at_opts\":\"size(small) placement(e)\"}]},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xlabel_numlist",
@@ -3344,8 +3344,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xtick(2000(500)5000)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xtick() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xtick\":\"2000(500)5000\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ytick",
@@ -3354,8 +3354,8 @@
       "plotspec": "scatter mpg weight",
       "options": "ytick(10 20 30 40)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ytick() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ytick\":\"10 20 30 40\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xmtick",
@@ -3364,8 +3364,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xmtick(2000(250)5000)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xmtick() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xmtick\":\"2000(250)5000\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ymtick",
@@ -3374,8 +3374,8 @@
       "plotspec": "scatter mpg weight",
       "options": "ymtick(10(5)40)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ymtick() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ymtick\":\"10(5)40\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xmlabel",
@@ -3384,8 +3384,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xmlabel(2000(250)5000)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xmlabel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xmlabel\":\"2000(250)5000\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ymlabel",
@@ -3394,8 +3394,8 @@
       "plotspec": "scatter mpg weight",
       "options": "ymlabel(10(5)40)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ymlabel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ymlabel\":\"10(5)40\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xscale_log",
@@ -3464,7 +3464,7 @@
       "plotspec": "scatter mpg weight",
       "options": "xtitle(\"Weight (lbs)\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xtitle\":\"Weight (lbs)\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xtitle\":\"\\\"Weight (lbs)\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3474,7 +3474,7 @@
       "plotspec": "scatter mpg weight",
       "options": "ytitle(\"Mileage\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ytitle\":\"Mileage\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ytitle\":\"\\\"Mileage\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3514,7 +3514,7 @@
       "plotspec": "scatter mpg weight",
       "options": "title(\"Mileage vs weight\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"title\":\"Mileage vs weight\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"title\":\"\\\"Mileage vs weight\\\"\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3524,7 +3524,7 @@
       "plotspec": "scatter mpg weight",
       "options": "subtitle(\"1978 autos\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"subtitle\":\"1978 autos\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"subtitle\":\"\\\"1978 autos\\\"\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3534,7 +3534,7 @@
       "plotspec": "scatter mpg weight",
       "options": "note(\"Source: 1978 data\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"note\":\"\\\"Source: 1978 data\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"note\":\"\\\"Source: 1978 data\\\"\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3544,7 +3544,7 @@
       "plotspec": "scatter mpg weight",
       "options": "caption(\"Figure 1\")",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"caption\":\"\\\"Figure 1\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"caption\":\"\\\"Figure 1\\\"\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3554,7 +3554,7 @@
       "plotspec": "scatter mpg weight",
       "options": "title(\"T\", size(large))",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"title\":\"T , size(large)\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"title\":\"\\\"T\\\", size(large)\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3564,7 +3564,7 @@
       "plotspec": "scatter mpg weight",
       "options": "title(\"T\", color(navy) position(11))",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"title\":\"T , color(navy) position(11)\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"title\":\"\\\"T\\\", color(navy) position(11)\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3574,7 +3574,7 @@
       "plotspec": "scatter mpg weight",
       "options": "note(\"n=74\", span)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"note\":\"\\\"n=74\\\", span\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"note\":\"\\\"n=74\\\", span\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -3584,8 +3584,8 @@
       "plotspec": "scatter mpg weight",
       "options": "t1title(\"top 1\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option t1title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"t1title\":\"\\\"top 1\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "t2title",
@@ -3594,8 +3594,8 @@
       "plotspec": "scatter mpg weight",
       "options": "t2title(\"top 2\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option t2title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"t2title\":\"\\\"top 2\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "b1title",
@@ -3604,8 +3604,8 @@
       "plotspec": "scatter mpg weight",
       "options": "b1title(\"bottom 1\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option b1title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"b1title\":\"\\\"bottom 1\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "b2title",
@@ -3614,8 +3614,8 @@
       "plotspec": "scatter mpg weight",
       "options": "b2title(\"bottom 2\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option b2title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"b2title\":\"\\\"bottom 2\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "l1title",
@@ -3624,8 +3624,8 @@
       "plotspec": "scatter mpg weight",
       "options": "l1title(\"left 1\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option l1title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"l1title\":\"\\\"left 1\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "l2title",
@@ -3634,8 +3634,8 @@
       "plotspec": "scatter mpg weight",
       "options": "l2title(\"left 2\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option l2title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"l2title\":\"\\\"left 2\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "r1title",
@@ -3644,8 +3644,8 @@
       "plotspec": "scatter mpg weight",
       "options": "r1title(\"right 1\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option r1title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"r1title\":\"\\\"right 1\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "r2title",
@@ -3654,8 +3654,8 @@
       "plotspec": "scatter mpg weight",
       "options": "r2title(\"right 2\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option r2title() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"r2title\":\"\\\"right 2\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "legend_off",
@@ -3724,8 +3724,8 @@
       "plotspec": "scatter mpg weight",
       "options": "clegend(off)",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option clegend() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"clegend\":\"off\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "plegend",
@@ -3734,8 +3734,8 @@
       "plotspec": "scatter mpg weight",
       "options": "plegend(off)",
       "twoway_only_extra": "colorvar(price) colordiscrete coloruseplegend",
-      "spec_json": "",
-      "dash_message": "option plegend() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"plegend\":\"off\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "graphregion",
@@ -3774,8 +3774,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xsize(8)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xsize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xsize\":\"8\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ysize",
@@ -3784,8 +3784,8 @@
       "plotspec": "scatter mpg weight",
       "options": "ysize(5)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ysize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ysize\":\"5\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fxsize",
@@ -3794,8 +3794,8 @@
       "plotspec": "scatter mpg weight",
       "options": "fxsize(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option fxsize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"fxsize\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fysize",
@@ -3804,8 +3804,8 @@
       "plotspec": "scatter mpg weight",
       "options": "fysize(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option fysize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"fysize\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "scale",
@@ -3814,8 +3814,8 @@
       "plotspec": "scatter mpg weight",
       "options": "scale(1.2)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option scale() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"scale\":\"1.2\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "aspectratio",
@@ -3864,8 +3864,8 @@
       "plotspec": "scatter mpg weight",
       "options": "name(g1, replace)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "dash: invalid graph name 'g1, replace'. Names must start with a letter or under score and contain only letters, digits, and underscores (max 32 chars)."
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "saving",
@@ -3884,8 +3884,8 @@
       "plotspec": "scatter mpg weight",
       "options": "nodraw",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option nodraw not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"nodraw\":\"nodraw\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "play",
@@ -3894,8 +3894,8 @@
       "plotspec": "scatter mpg weight",
       "options": "play(dashprobe_rec)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option play() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"play\":\"dashprobe_rec\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "scheme",
@@ -3914,8 +3914,8 @@
       "plotspec": "scatter mpg weight",
       "options": "yvarlabel(\"Mileage\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option yvarlabel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"yvarlabel\":\"\\\"Mileage\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xvarlabel",
@@ -3924,8 +3924,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xvarlabel(\"Weight\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xvarlabel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"xvarlabel\":\"\\\"Weight\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "yvarformat",
@@ -3934,8 +3934,8 @@
       "plotspec": "scatter mpg weight",
       "options": "yvarformat(%9.2f)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option yvarformat() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"yvarformat\":\"%9.2f\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xvarformat",
@@ -3944,8 +3944,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xvarformat(%9.2f)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xvarformat() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"xvarformat\":\"%9.2f\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pcycle",
@@ -3954,8 +3954,8 @@
       "plotspec": "scatter mpg weight",
       "options": "pcycle(3)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option pcycle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"pcycle\":\"3\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "xoverhangs",
@@ -3964,8 +3964,8 @@
       "plotspec": "scatter mpg weight",
       "options": "xoverhangs",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option xoverhangs not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xoverhangs\":\"xoverhangs\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "yoverhangs",
@@ -3974,8 +3974,8 @@
       "plotspec": "scatter mpg weight",
       "options": "yoverhangs",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option yoverhangs not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"yoverhangs\":\"yoverhangs\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "recast",
@@ -4054,8 +4054,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlwidth(thick)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mlwidth() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlwidth\":\"thick\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlalign",
@@ -4064,8 +4064,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlalign(inside)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mlalign() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlalign\":\"inside\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlstyle",
@@ -4074,8 +4074,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mlstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mstyle",
@@ -4084,8 +4084,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pstyle",
@@ -4114,8 +4114,8 @@
       "plotspec": "scatter mpg weight",
       "options": "jitterseed(123)",
       "twoway_only_extra": "jitter(5)",
-      "spec_json": "",
-      "dash_message": "option jitterseed() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"jitterseed\":\"123\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlabel",
@@ -4174,8 +4174,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlabangle(45)",
       "twoway_only_extra": "mlabel(make)",
-      "spec_json": "",
-      "dash_message": "option mlabangle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabangle\":\"45\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlabformat",
@@ -4184,8 +4184,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlabformat(%9.0fc)",
       "twoway_only_extra": "mlabel(price)",
-      "spec_json": "",
-      "dash_message": "option mlabformat() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabformat\":\"%9.0fc\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlabstyle",
@@ -4194,8 +4194,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlabstyle(p1)",
       "twoway_only_extra": "mlabel(make)",
-      "spec_json": "",
-      "dash_message": "option mlabstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlabtextstyle",
@@ -4204,8 +4204,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlabtextstyle(body)",
       "twoway_only_extra": "mlabel(make)",
-      "spec_json": "",
-      "dash_message": "option mlabtextstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabtextstyle\":\"body\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mlabvposition",
@@ -4214,8 +4214,8 @@
       "plotspec": "scatter mpg weight",
       "options": "mlabvposition(vpos)",
       "twoway_only_extra": "mlabel(make)",
-      "spec_json": "",
-      "dash_message": "option mlabvposition() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabvposition\":\"vpos\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lcolor",
@@ -4254,8 +4254,8 @@
       "plotspec": "line mpg weight",
       "options": "lstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option lstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"line\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"lstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lalign",
@@ -4264,8 +4264,8 @@
       "plotspec": "area mpg weight",
       "options": "lalign(inside)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option lalign() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"lalign\":\"inside\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "connect",
@@ -4274,7 +4274,7 @@
       "plotspec": "line mpg weight",
       "options": "connect(l)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"line\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"connect\":\"l\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"line\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"connect\":\"direct\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -4294,8 +4294,8 @@
       "plotspec": "area mpg weight",
       "options": "color(red)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option color() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"color\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fcolor",
@@ -4324,8 +4324,8 @@
       "plotspec": "area mpg weight",
       "options": "astyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option astyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"astyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "bstyle",
@@ -4334,8 +4334,8 @@
       "plotspec": "bar mpg weight",
       "options": "bstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option bstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"bar\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"bstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "barwidth",
@@ -4374,8 +4374,8 @@
       "plotspec": "lfit mpg weight",
       "options": "range(2000 4000)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option range() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"range\":\"2000 4000\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfit_n",
@@ -4384,8 +4384,8 @@
       "plotspec": "lfit mpg weight",
       "options": "n(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option n() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"n\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfit_atobs",
@@ -4394,8 +4394,8 @@
       "plotspec": "lfit mpg weight",
       "options": "atobs",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option atobs not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"atobs\":\"atobs\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfit_estopts",
@@ -4404,8 +4404,8 @@
       "plotspec": "lfit mpg weight",
       "options": "estopts(nocons)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option estopts() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"estopts\":\"nocons\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfit_predopts",
@@ -4414,8 +4414,8 @@
       "plotspec": "lfit mpg weight",
       "options": "predopts(xb)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option predopts() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"predopts\":\"xb\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_level",
@@ -4424,8 +4424,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "level(90)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option level() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"level\":\"90\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_ciplot",
@@ -4434,8 +4434,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "ciplot(rline)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ciplot() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"ciplot\":\"rline\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_nofit",
@@ -4444,8 +4444,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "nofit",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option nofit not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"nofit\":\"nofit\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_fcolor",
@@ -4464,8 +4464,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "alwidth(thin)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option alwidth() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"alwidth\":\"thin\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_acolor",
@@ -4474,8 +4474,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "acolor(gs10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option acolor() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"acolor\":\"gs10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fpfit_estcmd",
@@ -4484,8 +4484,8 @@
       "plotspec": "fpfit mpg weight",
       "options": "estcmd(regress)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option estcmd() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"fpfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"estcmd\":\"regress\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fpfit_estopts",
@@ -4494,8 +4494,8 @@
       "plotspec": "fpfit mpg weight",
       "options": "estopts(degree(2))",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option estopts() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"fpfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"estopts\":\"degree(2)\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fpfit_powers",
@@ -4504,8 +4504,8 @@
       "plotspec": "fpfit mpg weight",
       "options": "estopts(powers(1 2))",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option estopts() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"fpfit\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"estopts\":\"powers(1 2)\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_fitplot",
@@ -4514,8 +4514,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "fitplot(line)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option fitplot() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"fitplot\":\"line\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_alpattern",
@@ -4524,8 +4524,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "alpattern(dash)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option alpattern() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"alpattern\":\"dash\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_alalign",
@@ -4534,8 +4534,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "alalign(inside)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option alalign() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_alstyle",
@@ -4544,8 +4544,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "alstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option alstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"alstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lfitci_astyle",
@@ -4554,8 +4554,8 @@
       "plotspec": "lfitci mpg weight",
       "options": "astyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option astyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"astyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lowess_bwidth",
@@ -4574,8 +4574,8 @@
       "plotspec": "lowess mpg weight",
       "options": "mean",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mean not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lowess\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mean\":\"mean\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lowess_noweight",
@@ -4584,8 +4584,8 @@
       "plotspec": "lowess mpg weight",
       "options": "noweight",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option noweight not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lowess\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"noweight\":\"noweight\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lowess_logit",
@@ -4594,8 +4594,8 @@
       "plotspec": "lowess mpg weight",
       "options": "logit",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option logit not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lowess\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"logit\":\"logit\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lowess_adjust",
@@ -4604,8 +4604,8 @@
       "plotspec": "lowess mpg weight",
       "options": "adjust",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option adjust not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lowess\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"adjust\":\"adjust\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lpoly_bwidth",
@@ -4634,8 +4634,8 @@
       "plotspec": "lpoly mpg weight",
       "options": "kernel(epan2)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option kernel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lpoly\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"kernel\":\"epan2\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "lpoly_n",
@@ -4644,8 +4644,8 @@
       "plotspec": "lpoly mpg weight",
       "options": "n(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option n() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"lpoly\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"n\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mband_bands",
@@ -4654,8 +4654,8 @@
       "plotspec": "mband mpg weight",
       "options": "bands(10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option bands() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"mband\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"bands\":\"10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mspline_bands",
@@ -4664,8 +4664,8 @@
       "plotspec": "mspline mpg weight",
       "options": "bands(10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option bands() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"mspline\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"bands\":\"10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "mspline_n",
@@ -4674,8 +4674,8 @@
       "plotspec": "mspline mpg weight",
       "options": "n(3)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option n() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"mspline\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"n\":\"3\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_bin",
@@ -4684,8 +4684,8 @@
       "plotspec": "histogram mpg",
       "options": "bin(20)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option bin() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"bin\":\"20\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_width",
@@ -4694,8 +4694,8 @@
       "plotspec": "histogram mpg",
       "options": "width(5)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option width() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"width\":\"5\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_start",
@@ -4704,8 +4704,8 @@
       "plotspec": "histogram mpg",
       "options": "start(10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option start() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"start\":\"10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_density",
@@ -4714,8 +4714,8 @@
       "plotspec": "histogram mpg",
       "options": "density",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option density not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"density\":\"density\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_fraction",
@@ -4724,8 +4724,8 @@
       "plotspec": "histogram mpg",
       "options": "fraction",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option fraction not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"fraction\":\"fraction\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_frequency",
@@ -4734,8 +4734,8 @@
       "plotspec": "histogram mpg",
       "options": "frequency",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option frequency not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"frequency\":\"frequency\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_percent",
@@ -4744,8 +4744,8 @@
       "plotspec": "histogram mpg",
       "options": "percent",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option percent not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"percent\":\"percent\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_discrete",
@@ -4754,8 +4754,8 @@
       "plotspec": "histogram rep78",
       "options": "discrete",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option discrete not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"rep78\",\"options\":{\"discrete\":\"discrete\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_gap",
@@ -4764,8 +4764,8 @@
       "plotspec": "histogram mpg",
       "options": "gap(10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option gap() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"gap\":\"10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_horizontal",
@@ -4774,8 +4774,8 @@
       "plotspec": "histogram mpg",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"histogram\",\"var\":\"mpg\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "hist_fcolor",
@@ -4804,8 +4804,8 @@
       "plotspec": "kdensity mpg",
       "options": "kernel(epan2)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option kernel() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"kdensity\",\"var\":\"mpg\",\"options\":{\"kernel\":\"epan2\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "kd_n",
@@ -4814,8 +4814,8 @@
       "plotspec": "kdensity mpg",
       "options": "n(100)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option n() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"kdensity\",\"var\":\"mpg\",\"options\":{\"n\":\"100\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "kd_range",
@@ -4824,8 +4824,8 @@
       "plotspec": "kdensity mpg",
       "options": "range(10 40)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option range() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"kdensity\",\"var\":\"mpg\",\"options\":{\"range\":\"10 40\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "kd_area",
@@ -4834,8 +4834,8 @@
       "plotspec": "kdensity mpg",
       "options": "area(1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option area() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"kdensity\",\"var\":\"mpg\",\"options\":{\"area\":\"1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "kd_horizontal",
@@ -4844,8 +4844,8 @@
       "plotspec": "kdensity mpg",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"kdensity\",\"var\":\"mpg\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fn_range",
@@ -4854,8 +4854,8 @@
       "plotspec": "function x",
       "options": "range(0 10)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option range() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"range\":\"0 10\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fn_n",
@@ -4864,8 +4864,8 @@
       "plotspec": "function x",
       "options": "n(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option n() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"n\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fn_horizontal",
@@ -4874,18 +4874,18 @@
       "plotspec": "function x",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fn_droplines",
       "twoway_rc": 0,
       "dash_rc": 0,
       "plotspec": "function x",
-      "options": "droplines(2 4 6)",
-      "twoway_only_extra": "range(0 10)",
-      "spec_json": "",
-      "dash_message": "option droplines() not allowed"
+      "options": "droplines(2 4 6) range(0 10)",
+      "twoway_only_extra": "",
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"range\":\"0 10\",\"droplines\":\"2 4 6\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "fn_base",
@@ -4894,7 +4894,7 @@
       "plotspec": "function x",
       "options": "base(0)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"options\":{\"base\":\"0\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"base\":\"0\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -4904,7 +4904,7 @@
       "plotspec": "function x",
       "options": "lcolor(red)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"options\":{\"lcolor\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"function\",\"expr\":\"x\",\"yname\":\"\",\"options\":{\"lcolor\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -4914,8 +4914,8 @@
       "plotspec": "rbar lo hi weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"rbar\",\"yvar1\":\"lo\",\"yvar2\":\"hi\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "rbar_barwidth",
@@ -4934,8 +4934,8 @@
       "plotspec": "rbar lo hi weight",
       "options": "vertical",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option vertical not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"rbar\",\"yvar1\":\"lo\",\"yvar2\":\"hi\",\"xvar\":\"weight\",\"options\":{\"vertical\":\"vertical\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "rcap_msize",
@@ -4964,8 +4964,8 @@
       "plotspec": "bar mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"bar\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "bar_vertical",
@@ -4974,8 +4974,8 @@
       "plotspec": "bar mpg weight",
       "options": "vertical",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option vertical not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"bar\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"vertical\":\"vertical\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "spike_base",
@@ -4994,8 +4994,8 @@
       "plotspec": "dropline mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dropline\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "line_sort",
@@ -5004,8 +5004,8 @@
       "plotspec": "line mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option sort not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"line\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"sort\":\"sort\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "area_sort",
@@ -5014,8 +5014,8 @@
       "plotspec": "area mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option sort not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"sort\":\"sort\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "connected_sort",
@@ -5024,8 +5024,8 @@
       "plotspec": "connected mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option sort not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"connected\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"sort\":\"sort\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pcarrow_barbsize",
@@ -5034,8 +5034,8 @@
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "barbsize(3)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option barbsize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"pcarrow\",\"y1var\":\"y1\",\"x1var\":\"x1\",\"y2var\":\"y2\",\"x2var\":\"x2\",\"options\":{\"barbsize\":\"3\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pcarrow_headlabel",
@@ -5044,8 +5044,8 @@
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "headlabel",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option headlabel not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"pcarrow\",\"y1var\":\"y1\",\"x1var\":\"x1\",\"y2var\":\"y2\",\"x2var\":\"x2\",\"options\":{\"headlabel\":\"headlabel\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pcarrow_mlabel",
@@ -5064,8 +5064,8 @@
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "mangle(30)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mangle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"pcarrow\",\"y1var\":\"y1\",\"x1var\":\"x1\",\"y2var\":\"y2\",\"x2var\":\"x2\",\"options\":{\"mangle\":\"30\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "pcarrow_mstyle",
@@ -5074,8 +5074,8 @@
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "mstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"pcarrow\",\"y1var\":\"y1\",\"x1var\":\"x1\",\"y2var\":\"y2\",\"x2var\":\"x2\",\"options\":{\"mstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "rbar_mwidth",
@@ -5084,8 +5084,8 @@
       "plotspec": "rbar lo hi weight",
       "options": "mwidth",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option mwidth not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"rbar\",\"yvar1\":\"lo\",\"yvar2\":\"hi\",\"xvar\":\"weight\",\"options\":{\"mwidth\":\"mwidth\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "rbar_baroffset",
@@ -5094,8 +5094,8 @@
       "plotspec": "rbar lo hi weight",
       "options": "baroffset(0.2)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option baroffset() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"rbar\",\"yvar1\":\"lo\",\"yvar2\":\"hi\",\"xvar\":\"weight\",\"options\":{\"baroffset\":\"0.2\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "bar_baroffset",
@@ -5104,8 +5104,8 @@
       "plotspec": "bar mpg weight",
       "options": "baroffset(0.2)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option baroffset() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"bar\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"baroffset\":\"0.2\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "rcap_horizontal",
@@ -5114,8 +5114,8 @@
       "plotspec": "rcap lo hi weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"rcap\",\"yvar1\":\"lo\",\"yvar2\":\"hi\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "area_nodropbase",
@@ -5124,8 +5124,8 @@
       "plotspec": "area mpg weight",
       "options": "nodropbase",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option nodropbase not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"nodropbase\":\"nodropbase\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "area_cmissing",
@@ -5144,8 +5144,8 @@
       "plotspec": "spike mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"spike\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dcolor",
@@ -5154,8 +5154,8 @@
       "plotspec": "dot mpg weight",
       "options": "dcolor(red)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dcolor() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dcolor\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dfcolor",
@@ -5164,8 +5164,8 @@
       "plotspec": "dot mpg weight",
       "options": "dfcolor(red)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dfcolor() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dfcolor\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dlcolor",
@@ -5174,8 +5174,8 @@
       "plotspec": "dot mpg weight",
       "options": "dlcolor(red)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dlcolor() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dlcolor\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dlwidth",
@@ -5184,8 +5184,8 @@
       "plotspec": "dot mpg weight",
       "options": "dlwidth(thick)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dlwidth() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dlwidth\":\"thick\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dlstyle",
@@ -5194,8 +5194,8 @@
       "plotspec": "dot mpg weight",
       "options": "dlstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dlstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dlstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dlalign",
@@ -5204,8 +5204,8 @@
       "plotspec": "dot mpg weight",
       "options": "dlalign(inside)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dlalign() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dlalign\":\"inside\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dsize",
@@ -5214,8 +5214,8 @@
       "plotspec": "dot mpg weight",
       "options": "dsize(large)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dsize() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dsize\":\"large\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dstyle",
@@ -5224,8 +5224,8 @@
       "plotspec": "dot mpg weight",
       "options": "dstyle(p1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dstyle() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dstyle\":\"p1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dsymbol",
@@ -5234,8 +5234,8 @@
       "plotspec": "dot mpg weight",
       "options": "dsymbol(Oh)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dsymbol() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dsymbol\":\"Oh\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_dotextend",
@@ -5244,8 +5244,8 @@
       "plotspec": "dot mpg weight",
       "options": "dotextend(no)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option dotextend() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"dotextend\":\"no\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_ndots",
@@ -5254,8 +5254,8 @@
       "plotspec": "dot mpg weight",
       "options": "ndots(50)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ndots() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"ndots\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "dot_horizontal",
@@ -5264,8 +5264,8 @@
       "plotspec": "dot mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option horizontal not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"dot\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"horizontal\":\"horizontal\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorvar",
@@ -5314,8 +5314,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorlevels(4)",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option colorlevels() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorlevels\":\"4\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorlist",
@@ -5324,8 +5324,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorlist(red blue green orange)",
       "twoway_only_extra": "colorvar(price) colordiscrete",
-      "spec_json": "",
-      "dash_message": "option colorlist() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorlist\":\"red blue green orange\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorrule",
@@ -5334,8 +5334,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorrule(linear)",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option colorrule() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorrule\":\"linear\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorstart",
@@ -5344,8 +5344,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorstart(yellow)",
       "twoway_only_extra": "colorvar(price) colorend(red)",
-      "spec_json": "",
-      "dash_message": "option colorstart() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorstart\":\"yellow\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorend",
@@ -5354,8 +5354,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorend(red)",
       "twoway_only_extra": "colorvar(price) colorstart(yellow)",
-      "spec_json": "",
-      "dash_message": "option colorend() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorend\":\"red\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorformissing",
@@ -5364,8 +5364,8 @@
       "plotspec": "scatter rep78 weight",
       "options": "colorformissing(gs8)",
       "twoway_only_extra": "colorvar(rep78)",
-      "spec_json": "",
-      "dash_message": "option colorformissing() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"rep78\",\"xvar\":\"weight\",\"options\":{\"colormissing\":\"gs8\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorkeysrange",
@@ -5374,8 +5374,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorkeysrange",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option colorkeysrange not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorkeysrange\":\"colorkeysrange\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorfillonly",
@@ -5384,8 +5384,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorfillonly",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option colorfillonly not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorfillonly\":\"colorfillonly\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "colorvarminmax",
@@ -5394,8 +5394,8 @@
       "plotspec": "scatter mpg weight",
       "options": "colorvarminmax",
       "twoway_only_extra": "colorvar(price)",
-      "spec_json": "",
-      "dash_message": "option colorvarminmax not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorvarminmax\":\"colorvarminmax\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ctl_tsline",
@@ -5404,7 +5404,7 @@
       "plotspec": "tsline y",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -5414,7 +5414,7 @@
       "plotspec": "tsrline ylo yhi",
       "options": "",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"tsrline\",\"yvar1\":\"ylo\",\"yvar2\":\"yhi\",\"xvar\":\"\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"tsrline\",\"yvar1\":\"ylo\",\"yvar2\":\"yhi\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -5424,8 +5424,8 @@
       "plotspec": "tsline y",
       "options": "tline(2002m1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xline\":\"504\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ttext",
@@ -5434,8 +5434,8 @@
       "plotspec": "tsline y",
       "options": "ttext(120 2002m1 \"a note\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": "option ttext() not allowed"
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"added_text_n\":\"1\",\"added_text\":[{\"at_kind\":\"ttext\",\"at_y\":120,\"at_x\":504,\"at_yaxis\":1,\"at_xaxis\":1,\"at_lines\":[\"a note\"],\"at_opts\":\"\"}]},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "tlabel",
@@ -5444,8 +5444,8 @@
       "plotspec": "tsline y",
       "options": "tlabel(2000m1(12)2004m1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xlabel\":\"480(12)528\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ttick",
@@ -5454,8 +5454,8 @@
       "plotspec": "tsline y",
       "options": "ttick(2000m1(12)2004m1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xtick\":\"480(12)528\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "tmlabel",
@@ -5464,8 +5464,8 @@
       "plotspec": "tsline y",
       "options": "tmlabel(2000m1(6)2004m1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xmlabel\":\"480(6)528\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "tmtick",
@@ -5474,8 +5474,8 @@
       "plotspec": "tsline y",
       "options": "tmtick(2000m1(6)2004m1)",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xmtick\":\"480(6)528\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "ttitle",
@@ -5484,8 +5484,8 @@
       "plotspec": "tsline y",
       "options": "ttitle(\"Month\")",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xtitle\":\"\\\"Month\\\"\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "tscale",
@@ -5494,8 +5494,8 @@
       "plotspec": "tsline y",
       "options": "tscale(range(2000m1 2005m1))",
       "twoway_only_extra": "",
-      "spec_json": "",
-      "dash_message": ""
+      "spec_json": "{\"plots\":[{\"type\":\"tsline\",\"yvar\":\"y\",\"xvar\":\"t\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"xscale\":\"range(480 540)\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "dash_message": "dash: graph 'g1' registered."
     },
     {
       "id": "abd_title_size",
@@ -5504,7 +5504,7 @@
       "plotspec": "scatter mpg weight",
       "options": "title(\"T\", size(large))",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"title\":\"T , size(large)\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"title\":\"\\\"T\\\", size(large)\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -5584,7 +5584,7 @@
       "plotspec": "scatter mpg weight",
       "options": "note(\"n=74\", span)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"note\":\"\\\"n=74\\\", span\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"note\":\"\\\"n=74\\\", span\",\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -5767,5 +5767,14 @@
       "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"yscale2\":\"log\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     }
-  ]
+  ],
+  "_meta": {
+    "stata_version": "19.5",
+    "born_date": "12 Aug 2026",
+    "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
+    "extracted": "18 Oct 2026 10:42:14",
+    "source": "scripts/extract_rejected_options.do",
+    "corpus": "test/fixtures/twoway_corpus.do",
+    "missing_probes": []
+  }
 }

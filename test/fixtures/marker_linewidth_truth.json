@@ -1,5 +1,12 @@
 {
- "_about": "Measured 24sep2026 with StataNow 19.5 (console, batch) on sysuse auto: `twoway <type> ... || <type> ... || <type> ...' (three plots; dot on in 1/10; `ciscatter' is lfitci || scatter || scatter, whose band is plot 1 and line plot 2) under each scheme below, a file in the working directory (for 'economist', Stata's own economist); each value is the plot's marker outline width in Stata linewidth units, read from .Graph.plotregion1.plot<k>.style.marker.linestyle.width.setting.  markerstyle-p#.style: `set linestyle scheme p#mark'; linestyle-p#mark.style: `set width scheme p#mark', so the chain is linewidth p#mark -> pmark -> p# -> p; mk3's `p1dotmark' reaches no twoway dot.  'mlwidth' is `scatter, mlwidth(vthin) || scatter' under mk1.  The SVG of scheme_visual/truth.json agrees: every drawn marker outline is as wide as that scheme's lines (s2color 8.64 SVG units, economist 19.01).",
+ "_about": "twoway <type> ... || <type> ... || <type> ... (three plots; dot on in 1/10; 'ciscatter' is lfitci || scatter || scatter, whose band is plot 1 and line plot 2) on sysuse auto under each scheme (a file in the probe directory; for 'economist', Stata's own economist); each value is the plot's marker outline width in Stata linewidth units, read from .Graph.plotregion1.plot<k>.style.marker.linestyle.width.setting.  'mlwidth' is 'scatter, mlwidth(vthin) || scatter' under mk1.",
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "27a290a9bc9621ea1be2cda93dfe152b186d09e9",
+  "extracted": "18 Oct 2026 10:51:49",
+  "source": "scripts/extract_marker_linewidth_truth.do",
+  "stata_version": "19.5"
+ },
  "cases": {
   "economist": {
    "ciscatter": [

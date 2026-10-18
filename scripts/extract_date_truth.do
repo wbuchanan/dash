@@ -118,6 +118,8 @@ file write `rec' "META|stata_born_date|`c(born_date)'" _n
 file write `rec' "META|run_date|`c(current_date)'" _n
 file write `rec' "META|os|`c(os)' `c(machine_type)'" _n
 file write `rec' "META|workdir|${ZQ_WORK}" _n
+global ZQ_WHEN "`c(current_date)' `c(current_time)'"
+quietly shell git -C "${ZQ_REPO}" rev-parse HEAD > "${ZQ_WORK}/git_head.txt"
 
 * ===========================================================================
 * A.  The eight date epochs
@@ -1003,17 +1005,49 @@ if p1.get("output_exists") and p2.get("output_exists"):
         UNVERIFIED.append("metaprint/what(all) payload comparison")
 jsonio_block["gating_fallthrough"] = fallthrough
 
+def _zq_commit():
+    try:
+        with open(os.path.join(Macro.getGlobal("ZQ_WORK"), "git_head.txt")) as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
+# No machine path reaches the fixture: a probe file is written as its
+# basename, a StataJSON file under the placeholder <STATAJSON_DIR>.
+_ZQ_WORK = Macro.getGlobal("ZQ_WORK").rstrip("/") + "/"
+_ZQ_SJ = (JSONIO_ADO[:-len("/jsonio.ado")] + "/") if JSONIO_ADO else ""
+
+
+def _zq_portable(o):
+    if isinstance(o, dict):
+        return {k: _zq_portable(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_zq_portable(v) for v in o]
+    if isinstance(o, str):
+        if o.startswith(_ZQ_WORK):
+            return os.path.basename(o)
+        if _ZQ_SJ and _ZQ_SJ in o:
+            return o.replace(_ZQ_SJ, "<STATAJSON_DIR>/")
+    return o
+
+
+jsonio_block = _zq_portable(jsonio_block)
+
 doc = {
     "_meta": {
         "generated_by": "scripts/extract_date_truth.do",
-        "record_file": REC,
+        "source": "scripts/extract_date_truth.do",
+        "record_file": os.path.basename(REC),
+        "born_date": meta.get("stata_born_date"),
+        "dash_commit": _zq_commit(),
+        "extracted": Macro.getGlobal("ZQ_WHEN"),
         "run_date": meta.get("run_date"),
         "stata_version": meta.get("stata_version"),
         "stata_flavor": meta.get("stata_flavor"),
         "stata_edition": meta.get("stata_edition"),
         "stata_born_date": meta.get("stata_born_date"),
         "os": meta.get("os"),
-        "sysdir_base": meta.get("sysdir_base"),
         "method": (
             "Every value in this fixture was produced by a Stata display and "
             "carries the exact command that produced it.  Each date value is "

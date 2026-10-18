@@ -44,19 +44,19 @@
       "weighted_data_probes": 5,
       "weighted_probes": 55
     },
-    "dash_commit": "d13b53658a7227ce0aa4eb749ec01062fa878884",
+    "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
     "datasets": [
       "auto",
       "census",
       "nlsw88",
       "sp500"
     ],
-    "extracted": "17 Oct 2026",
+    "extracted": "18 Oct 2026",
     "generated_by": "scripts/extract_stat_truth.do",
     "method": "Three oracles, recorded side by side wherever two of them apply to the same number.  (1) r()/e() from Stata's own command, including twoway__histogram_gen, the subroutine histogram.ado itself calls. (2) THE PLOTTED POINTS: each twoway plot is saved to a live-format .gph,  makes its sersets addressable and  +  loads the exact drawn numbers back into memory; for mband this reaches the DERIVED serset (type median_bands) the graph engine computes at draw time.  (3) THE RESOLVED COMMAND LINE histogram rewrites itself into, read out of the .gph header by the python block.  Every value carries the command that produced it in its \"cmd\" field.",
     "precision": "Numbers were written with Stata's %20.17g, so doubles round-trip. Values that originate in a serset were stored by the graph engine as floats and are only float-accurate; compare those with a relative tolerance of about 1e-6, not for equality.",
-    "record_file": "/tmp/dash-s47/tmp//dash_stat_probe/stat_records.txt",
-    "run_date": "17 Oct 2026",
+    "record_file": "stat_records.txt",
+    "run_date": "18 Oct 2026",
     "sampling": "Curves of at most 41 points (64 for mband) are stored whole. Longer curves are stored at the 11 evenly spaced indices listed in sample_index, together with the full n_points and the min/max of every series.",
     "sampling_wp18": "mspline curves are stored whole up to 800 points, lowess_more curves up to 3000 (every dataset fits: nothing in lowess_more is sampled), weighted and fpfit curves up to 200, fitci_std up to 41 (11 samples of the 100-point grid, the same indices as ci_bands).",
     "self_checks": {
@@ -76,6 +76,7 @@
       "mspline_point_count_and_knots_reproduced": true,
       "weighted_fit_sersets_equal_weighted_regress": true
     },
+    "source": "scripts/extract_stat_truth.do",
     "stata_born_date": "12 Aug 2026",
     "stata_edition": "MP",
     "stata_flavor": "IC",
@@ -20563,7 +20564,7 @@
   "histogram_resolved_cmd": {
     "auto:mpg": {
       "cmd": "histogram mpg, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_auto_mpg.gph",
+      "gph": "hist_auto_mpg.gph",
       "rc": 0,
       "resolved_bin": 8,
       "resolved_command_line": "twoway (histogram mpg if __000000 [], ytitle(`\"Density\"') xtitle(`\"Mileage (mpg)\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(12) bin(8) nodraw )     ||  ||",
@@ -20574,7 +20575,7 @@
     },
     "auto:price": {
       "cmd": "histogram price, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_auto_price.gph",
+      "gph": "hist_auto_price.gph",
       "rc": 0,
       "resolved_bin": 8,
       "resolved_command_line": "twoway (histogram price if __000000 [], ytitle(`\"Density\"') xtitle(`\"Price\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(3291) bin(8) nodraw )     ||  ||",
@@ -20585,7 +20586,7 @@
     },
     "census:medage": {
       "cmd": "histogram medage, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_census_medage.gph",
+      "gph": "hist_census_medage.gph",
       "rc": 0,
       "resolved_bin": 7,
       "resolved_command_line": "twoway (histogram medage if __000000 [], ytitle(`\"Density\"') xtitle(`\"Median age\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(24.20000076293945) bin(7) nodraw )     ||  ||",
@@ -20596,7 +20597,7 @@
     },
     "census:pop": {
       "cmd": "histogram pop, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_census_pop.gph",
+      "gph": "hist_census_pop.gph",
       "rc": 0,
       "resolved_bin": 7,
       "resolved_command_line": "twoway (histogram pop if __000000 [], ytitle(`\"Density\"') xtitle(`\"Population\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(401851) bin(7) nodraw )     ||  ||",
@@ -20607,7 +20608,7 @@
     },
     "nlsw88:hours": {
       "cmd": "histogram hours, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_nlsw88_hours.gph",
+      "gph": "hist_nlsw88_hours.gph",
       "rc": 0,
       "resolved_bin": 33,
       "resolved_command_line": "twoway (histogram hours if __000000 [], ytitle(`\"Density\"') xtitle(`\"Usual hours worked\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(1) bin(33) nodraw )     ||  ||",
@@ -20618,7 +20619,7 @@
     },
     "nlsw88:wage": {
       "cmd": "histogram wage, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_nlsw88_wage.gph",
+      "gph": "hist_nlsw88_wage.gph",
       "rc": 0,
       "resolved_bin": 33,
       "resolved_command_line": "twoway (histogram wage if __000000 [], ytitle(`\"Density\"') xtitle(`\"Hourly wage\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(1.00495183467865) bin(33) nodraw )     ||  ||",
@@ -20629,7 +20630,7 @@
     },
     "sp500:close": {
       "cmd": "histogram close, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_sp500_close.gph",
+      "gph": "hist_sp500_close.gph",
       "rc": 0,
       "resolved_bin": 15,
       "resolved_command_line": "twoway (histogram close if __000000 [], ytitle(`\"Density\"') xtitle(`\"Closing price\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(965.7999877929688) bin(15) nodraw )     ||  ||",
@@ -20640,7 +20641,7 @@
     },
     "sp500:volume": {
       "cmd": "histogram volume, nodraw saving(<path>, replace)",
-      "gph": "/tmp/dash-s47/tmp//dash_stat_probe/hist_sp500_volume.gph",
+      "gph": "hist_sp500_volume.gph",
       "rc": 0,
       "resolved_bin": 15,
       "resolved_command_line": "twoway (histogram volume if __000000 [], ytitle(`\"Density\"') xtitle(`\"Volume (thousands)\"') legend(cols(1)) barwidth(-99) plotregion(margin(b=0))   legend(nodraw) density start(4103) bin(15) nodraw )     ||  ||",

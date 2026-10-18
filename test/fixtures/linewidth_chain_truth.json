@@ -1,5 +1,12 @@
 {
- "_about": "Measured 24sep2026 with StataNow 19.5 (console, batch): each scheme below is a file in the working directory; each command is `twoway <cmd> price weight || <cmd> p2 weight' (range plots `<cmd> lo hi weight', pc plots `<cmd> lo weight hi w2', ci fits draw two plots each) on sysuse auto; the values are Stata linewidth units read from `.Graph.plotregion1.plot<k>.style.line.width.setting' (line), `.style.area.linestyle.width.setting' (area_line) and `.style.marker.linestyle.width.setting' (marker_line).  Units: vvthin .01, vthin .15, thin .2, medthin .25, medium .3, medthick .45, thick .8, vthick 1.4, vvthick 2.6, vvvthick 4.2 (style/linewidth-*.style).",
+ "_about": "Each scheme is a file in the probe directory; each command is 'twoway <cmd> price weight || <cmd> p2 weight' (range plots '<cmd> lo hi weight', pc plots '<cmd> lo weight hi w2', ci fits draw two plots each) on sysuse auto; the values are Stata linewidth units read from '.Graph.plotregion1.plot<k>.style.line.width.setting' (line), '.style.area.linestyle.width.setting' (area_line) and '.style.marker.linestyle.width.setting' (marker_line); units are each name's lwidth(<name>) width.",
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "27a290a9bc9621ea1be2cda93dfe152b186d09e9",
+  "extracted": "18 Oct 2026 10:51:58",
+  "source": "scripts/extract_linewidth_chain_truth.do",
+  "stata_version": "19.5"
+ },
  "cases": {
   "lwt0": {
    "area": {

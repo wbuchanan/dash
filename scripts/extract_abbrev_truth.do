@@ -73,6 +73,8 @@ global ZQ_FLAV = c(flavor)
 global ZQ_EDIT = c(edition_real)
 global ZQ_BORN = c(born_date)
 global ZQ_DATE = c(current_date)
+global ZQ_WHEN "`c(current_date)' `c(current_time)'"
+quietly shell git -C "${ZQ_REPO}" rev-parse HEAD > "${ZQ_WORK}/git_head.txt"
 
 * ===========================================================================
 * Registration helpers
@@ -956,10 +958,21 @@ dash_rejects = sorted([n for n, e in options_out.items()
 dash_rejects_declared = sorted([n for n in dash_rejects if n in DASH_DECLARED])
 dash_rejects_undeclared = sorted([n for n in dash_rejects if n not in DASH_DECLARED])
 
+def _zq_commit():
+    try:
+        with open(os.path.join(Macro.getGlobal("ZQ_WORK"), "git_head.txt")) as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
 doc = {
     "_meta": {
         "generated_by": "scripts/extract_abbrev_truth.do",
-        "record_file": REC,
+        "source": "scripts/extract_abbrev_truth.do",
+        "record_file": os.path.basename(REC),
+        "born_date": meta_rows.get("stata_born_date"),
+        "dash_commit": _zq_commit(),
+        "extracted": Macro.getGlobal("ZQ_WHEN"),
         "run_date": meta_rows.get("run_date"),
         "stata_version": meta_rows.get("stata_version"),
         "stata_flavor": meta_rows.get("stata_flavor"),
