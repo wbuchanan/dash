@@ -563,8 +563,10 @@ class TestTheWiring:
         assert len(args["by_panel_figs"]) == 2
 
     def test_template_call(self):
+        # WP-32: the template is _generate_app_source_body's; the method
+        # of the old name wraps it (the sourceless renderer's stubs).
         src = "\n".join(l for l in dr.__dict__["ServerAppBuilder"]
-                        ._generate_app_source.__code__.co_consts
+                        ._generate_app_source_body.__code__.co_consts
                         if isinstance(l, str))
         assert "_dash_panel_visibility(_axis_figs, _axis_fmap)" in src
 

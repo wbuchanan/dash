@@ -2301,6 +2301,8 @@ _GAPS3_OPEN = re.compile(r"^Open \(WP-31 section (\d{2})\)\.$")
 #: both and the batch-end gate (G2) and S61.3 forbid "pending".
 #: WP-32 (DECISIONS D39 item 1) closes WP-31's partly closed rows in the
 #: same forms, naming its own package.
+#: WP-32 closes the rows WP-31 left partly open (DECISIONS D39) in the
+#: same form, naming its own package.
 _GAPS3_CLOSED = re.compile(
     r'^Closed in WP-3[12], BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
 _GAPS3_PARTLY = re.compile(

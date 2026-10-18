@@ -66,6 +66,7 @@ import argparse
 import base64
 import collections
 import contextlib
+import contextvars
 import datetime as _dt
 import errno
 import hashlib
@@ -63186,7 +63187,17 @@ def _dash_source_of(obj) -> str:
     except (OSError, TypeError):
         st = None
     if st is None:
-        return _inspect.getsource(obj)
+        try:
+            return _inspect.getsource(obj)
+        except OSError:
+            # WP-32 (BUGS.md "A renderer without its source file cannot
+            # write a served app"): inside an app build, an object of a
+            # renderer imported without its .py is written as a stub
+            # bound to its compiled code.
+            sink = _DASH_STUB_SINK.get()
+            if sink is None:
+                raise
+            return _dash_stub_source(obj, sink)
     stamp = (path, st.st_mtime_ns, st.st_size)
     hit = _DASH_SOURCE_CACHE.get(id(obj))
     if hit is not None and hit[0] is obj and hit[1] == stamp:
@@ -63194,6 +63205,148 @@ def _dash_source_of(obj) -> str:
     text = _inspect.getsource(obj)
     _DASH_SOURCE_CACHE[id(obj)] = (obj, stamp, text)
     return text
+
+
+#: The stubs' compiled code an app build collects while it is written from
+#: a renderer with no source file (``_dash_stub_source``); None outside a
+#: build, so ``_dash_source_of`` raises as ``inspect.getsource`` does.  A
+#: context variable: each build, in whatever thread, has its own.
+_DASH_STUB_SINK = contextvars.ContextVar("_DASH_STUB_SINK", default=None)
+
+
+def _dash_code_names(code) -> "set[str]":
+    """Every global name *code* and the code nested in it read."""
+    import types as _types
+    names = set(code.co_names)
+    for c in code.co_consts:
+        if isinstance(c, _types.CodeType):
+            names |= _dash_code_names(c)
+    return names
+
+
+def _dash_stub_source(obj, sink) -> str:
+    """The app text for *obj* when the renderer has no source file (WP-32).
+
+    *obj* is what the app builder copies: a function (a staticmethod's,
+    as read through its class), a class, or this module, from which the
+    builder slices ``_KERNELS``.  A function is written as ``name =
+    _dash_stub_fn(key)`` and a class as ``Name = _dash_stub_class(key)``,
+    each followed by a comment naming the globals its code reads (the
+    builder's scan for the constants a copy needs reads the text); the
+    module as ``_KERNELS``'s assignment of stubs.  *sink* collects, by
+    key, ``("fn", code, defaults, kwdefaults)`` or ``("class", body code,
+    base names)``: a class's body is the code object the module's own code
+    runs for its ``class`` statement, read from the compiled module.  A
+    key holds ``/`` where the qualified name holds ``.``, so the builder's
+    ``GlyphMapper._`` rewrite of a staticmethod's text leaves it whole.
+    ``_dash_stub_prelude`` writes the code the stubs bind.  Raises OSError
+    for an object that cannot be written so.
+    """
+    import types as _types
+
+    def names_of(code):
+        return " ".join(sorted(_dash_code_names(code)))
+
+    def fn_entry(f, key):
+        code = getattr(f, "__code__", None)
+        if code is None or getattr(f, "__wrapped__", None) is not None:
+            raise OSError("dash: %s has no source file and cannot be "
+                          "written into a served app" % key)
+        sink[key] = ("fn", code, f.__defaults__, f.__kwdefaults__)
+        return code
+
+    if isinstance(obj, _types.ModuleType):
+        lines = ["_KERNELS: dict = {"]
+        for k, (support, f) in obj._KERNELS.items():
+            key = "_KERNELS/%s" % k
+            code = fn_entry(f, key)
+            lines.append("    %r: (float(%r), _dash_stub_fn(%r)),  # names: %s"
+                         % (k, repr(float(support)), key, names_of(code)))
+        lines.append("}")
+        return "\n".join(lines) + "\n"
+    key = str(getattr(obj, "__qualname__", "")).replace(".", "/")
+    if isinstance(obj, type):
+        import sys as _sys
+        mod = _sys.modules.get(obj.__module__)
+        loader = getattr(mod, "__loader__", None)
+        top = loader.get_code(mod.__name__) if loader is not None else None
+        body = next((c for c in (top.co_consts if top is not None else ())
+                     if isinstance(c, _types.CodeType)
+                     and c.co_qualname == obj.__qualname__), None)
+        if body is None:
+            raise OSError("dash: class %s has no source file and its "
+                          "compiled body was not found" % obj.__qualname__)
+        sink[key] = ("class", body, tuple(b.__name__ for b in obj.__bases__))
+        return "%s = _dash_stub_class(%r)  # names: %s\n" % (
+            obj.__name__, key, names_of(body))
+    code = fn_entry(obj, key)
+    return "%s = _dash_stub_fn(%r)  # names: %s\n" % (
+        obj.__name__, key, names_of(code))
+
+
+def _dash_stub_prelude(sink) -> "list[str]":
+    """The app lines that define what ``_dash_stub_source``'s stubs bind
+    (WP-32): the collected code, marshalled, zlib-compressed and base64
+    encoded, and ``_dash_stub_fn`` and ``_dash_stub_class``, which make
+    each function and class anew with the app's own globals, as its copied
+    text would be.  Compiled code runs only on the Python version that
+    compiled it, so the app first checks that it is that one
+    (``_DASH_STUB_PYTHON``) and says so in one line when it is not."""
+    import base64 as _b64
+    import marshal as _marshal
+    import zlib as _zlib
+    try:
+        blob = _b64.b64encode(_zlib.compress(_marshal.dumps(dict(sink)), 9))
+    except ValueError as e:
+        raise OSError("dash: the renderer has no source file and a default "
+                      "value of a copied function cannot be written into "
+                      "the served app (%s)" % e) from None
+    import sys as _sys
+    blob = blob.decode("ascii")
+    ver = tuple(_sys.version_info[:2])
+    return [
+        "# ---- Compiled code (WP-32) ----",
+        "#",
+        "# This app was written by a dash_render installed without its",
+        "# source file, so each function and class copied from it is a",
+        "# stub bound to its compiled code, which runs only on the Python",
+        "# version that compiled it.",
+        "_DASH_STUB_PYTHON = %r" % (ver,),
+        "if tuple(__import__('sys').version_info[:2]) != _DASH_STUB_PYTHON:",
+        "    raise SystemExit('dash: this served app was written by a dash "
+        "installed without dash_render.py and runs only under Python "
+        "%d.%d; reinstall dash and write it again.' % _DASH_STUB_PYTHON)",
+        "import base64 as _dash_stub_b64",
+        "import builtins as _dash_stub_builtins",
+        "import marshal as _dash_stub_marshal",
+        "import types as _dash_stub_types",
+        "import zlib as _dash_stub_zlib",
+        "_DASH_STUBS = _dash_stub_marshal.loads(_dash_stub_zlib.decompress(",
+        "    _dash_stub_b64.b64decode(",
+    ] + ["        %r" % blob[i:i + 76] for i in range(0, len(blob), 76)] + [
+        "    )))",
+        "",
+        "",
+        "def _dash_stub_fn(key):",
+        "    _kind, code, defaults, kwdefaults = _DASH_STUBS[key]",
+        "    f = _dash_stub_types.FunctionType(code, globals(), code.co_name,",
+        "                                      defaults)",
+        "    if kwdefaults:",
+        "        f.__kwdefaults__ = dict(kwdefaults)",
+        "    f.__qualname__ = code.co_qualname",
+        "    return f",
+        "",
+        "",
+        "def _dash_stub_class(key):",
+        "    _kind, body, bases = _DASH_STUBS[key]",
+        "    g = globals()",
+        "    return _dash_stub_builtins.__build_class__(",
+        "        _dash_stub_types.FunctionType(body, g, body.co_name),",
+        "        body.co_name,",
+        "        *[g[b] if b in g else getattr(_dash_stub_builtins, b)",
+        "          for b in bases])",
+        "",
+    ]
 
 
 def _dash_trial_render(source):
@@ -64963,7 +65116,26 @@ class ServerAppBuilder:
         data_b64 = base64.b64encode(self._raw_data_str.encode("utf-8")).decode("ascii")
         return spec_b64, data_b64
 
-    def _generate_app_source(self, port: int) -> str:  # noqa: C901 (complexity OK for codegen)
+    def _generate_app_source(self, port: int) -> str:
+        """Return the full Python source string for the Bokeh Server app
+        (``_generate_app_source_body``).  From a renderer with no source
+        file (WP-32) every copied object is a stub, and the code the
+        stubs bind (``_dash_stub_prelude``) is written in before the first
+        of them."""
+        sink: dict = {}
+        tok = _DASH_STUB_SINK.set(sink)
+        try:
+            source = self._generate_app_source_body(port)
+        finally:
+            _DASH_STUB_SINK.reset(tok)
+        if not sink:
+            return source
+        lines = source.split("\n")
+        at = next(i for i, l in enumerate(lines) if "= _dash_stub_" in l)
+        return "\n".join(lines[:at] + _dash_stub_prelude(sink)
+                         + lines[at:])
+
+    def _generate_app_source_body(self, port: int) -> str:  # noqa: C901 (complexity OK for codegen)
         """Return the full Python source string for the Bokeh Server app.
 
         The generated file is structured as:

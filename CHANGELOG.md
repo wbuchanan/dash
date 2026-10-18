@@ -925,6 +925,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4)
 - Save as SVG and Save dashboard draw each open data table where it sits in the grid -- its column titles and the rows it shows -- where the image left it blank and said "Data tables are not included" (WP-32, D-53d)
 - Printing a dashboard with tabs() prints every tab, each on a page of its own scaled to fit the paper (the tab's graphs and open tables and the tab strip with it marked), where it printed only the tab that was showing (WP-32, D-53e)
+- A dash_render installed without its source file (a .pyc alone) writes a served app for dash build, server and dash serve, where the build failed with "OSError: source code not available"; the app runs under the Python that wrote it (WP-32, K2)
 
 ### Fixed in WP-31
 

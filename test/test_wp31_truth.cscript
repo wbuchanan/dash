@@ -14232,7 +14232,8 @@ def _u60_compare(sp, dp, app):
 
 def _u60_pyc_build(src_py, sp, dp, work):
     """The renderer imported from a .pyc with no .py beside it, then asked
-    to write a served app: inspect.getsource has no source file to read."""
+    to write a served app: inspect.getsource has no source file to read,
+    so the app is written from the compiled code (WP-32)."""
     import importlib.util, py_compile, shutil, warnings
     from sfi import Macro
     d = _u60_os.path.join(work, "pyc")
@@ -14244,6 +14245,8 @@ def _u60_pyc_build(src_py, sp, dp, work):
     _u60_os.remove(cp)
     spec = importlib.util.spec_from_file_location("dash_render_u60", pyc)
     mod = importlib.util.module_from_spec(spec)
+    import sys as _u60_sys
+    _u60_sys.modules["dash_render_u60"] = mod  # as an import enters it
     err, ok = "", 0
     try:
         with warnings.catch_warnings():
@@ -14254,6 +14257,8 @@ def _u60_pyc_build(src_py, sp, dp, work):
             ok = 1 if _u60_os.path.isfile(app) else 0
     except Exception as e:
         err = "%s: %s" % (type(e).__name__, str(e)[:200])
+    finally:
+        _u60_sys.modules.pop("dash_render_u60", None)
     Macro.setGlobal("u60_pyc_ok", str(ok))
     Macro.setGlobal("u60_pyc_err", err.replace('"', "'").replace("`", "'"))
 end
@@ -14380,20 +14385,18 @@ if inlist("`only'", "", "S60") & `: list posof "S60" in w31_run' {
     _w31_done U60-5 "by(foreign) draws twoway's two panels with the same glyphs in both modes, for histogram, kdensity, scatter, line and bar"
 
     // U60-6: the inspect.getsource path.  ServerAppBuilder copies the
-    // renderer's functions by inspect.getsource (_dash_source_of), which
-    // has no fallback: from a .pyc with no .py beside it the build fails
-    // and says why.  This case documents that refusal (GAPS3 K2's
-    // fallback does not exist; BUGS.md "Stata end-to-end gaps" residual).
+    // renderer's functions by inspect.getsource (_dash_source_of); from a
+    // .pyc with no .py beside it each copied object is written as a stub
+    // bound to its compiled code (WP-32), so the build writes the app.
+    // Flipped: WP-32 (BUGS.md "A renderer without its source file cannot
+    // write a served app"); this case pinned the refusal before.
     sysuse auto, clear
     dash clear
     quietly dash scatter mpg weight, name(g1)
     _dash_serve_spec, specpath("`u60d'/s6.json") datapath("`u60d'/d6.json")
     python: __import__("__main__")._u60_pyc_build("../dash_render.py", "`u60d'/s6.json", "`u60d'/d6.json", "`u60d'")
-    display as text `"U60-6 note: the .pyc-only build says: ${u60_pyc_err}"'
-    _w31_expect U60-6 "(${u60_pyc_ok} == 0)" "a .pyc-only renderer wrote a served app: a fallback now exists, flip this case"
-    mata: st_local("u60e", strofreal(strpos(st_global("u60_pyc_err"), "OSError") > 0 | strpos(st_global("u60_pyc_err"), "source") > 0))
-    _w31_expect U60-6 "(`u60e' == 1)" `"the refusal does not name the missing source: ${u60_pyc_err}"'
-    _w31_done U60-6 "a .pyc-only renderer refuses to write a served app, naming the missing source (no getsource fallback)"
+    _w31_expect U60-6 "(${u60_pyc_ok} == 1)" `"a .pyc-only renderer did not write a served app: ${u60_pyc_err}"'
+    _w31_done U60-6 "a .pyc-only renderer writes a served app from its compiled code"
 
     dash clear
     macro drop u60_*
