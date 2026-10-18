@@ -5315,8 +5315,11 @@ layer; a line ({cmd:line}, {cmd:rline}'s bounds, {cmd:tsline},
 {cmd:rconnected}) is drawn as {cmd:twoway} draws it, one line a colour
 level joining that level's observations in the line's order, the
 observations missing the variable a line of their own in the
-{cmd:colormissing()} colour, before and after a filter move (a level of a
-continuous {cmd:colorvar()} is one colour of its key) (measured: on
+{cmd:colormissing()} colour, before and after a filter move (a continuous
+{cmd:colorvar()} takes {cmd:twoway}'s levels: its cuts are the key's labels,
+a label below the variable's minimum dropped, and each level, up to and
+including a cut, one colour of the key, on the line and on the markers of
+{cmd:connected} and {cmd:rconnected}) (measured: on
 {it:x} 1 to 6 with levels 1 1 2 2 1 3, one line through the 1st, 2nd and
 5th points, one through the 3rd and 4th, and nothing for the 6th alone).
 On {cmd:area}, {cmd:rarea}, the fits and

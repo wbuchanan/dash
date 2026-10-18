@@ -186,3 +186,84 @@ class TestAfterAMove:
         assert n == before
         assert sorted(tuple(xs) for _c, xs in paths) == [(2.0, 5.0),
                                                           (4.0,)]
+
+
+# ---------------------------------------------------------------------------
+# A continuous colorvar(): twoway's levels, not the colour bar's 256 bins
+# (WP-32, BUGS.md "colorvar() on a line splits a continuous variable into
+# the colour bar's 256 bins where twoway draws its key's few levels")
+# ---------------------------------------------------------------------------
+
+def _continuous(z):
+    n = len(z)
+    return pd.DataFrame({"x": np.arange(1.0, n + 1), "y": np.arange(n) % 3.0,
+                         "z": np.asarray(z, dtype=float),
+                         "foreign": np.zeros(n)})
+
+
+#: Measured 18oct2026 (StataNow 19.5, default scheme, SVG export of
+#: ``twoway line y x, colorvar(z)`` on x = 1..101, y = mod(_n, 3), z a
+#: float): each path's first and last x and its stroke.  twoway's cuts
+#: are its colour key's labels (0 .2 .4 .6 .8 1; 0 20 40 60 80; 1,000
+#: 1,500 2,000 2,500), a cut below the variable's minimum dropped, and its
+#: levels the intervals (-inf, c0], (c0, c1], ..., (ck, +inf) in the
+#: colour rule's n + 1 colours; the minimum, on the first cut, is a level
+#: of one point, which draws nothing.  dash split the line by the colour
+#: bar's 256 bins: 101 lines for the first case.
+_TWOWAY_LEVELS = (
+    ("unit", np.float32(np.arange(101) / 100.0),
+     [((1, 1), "#0000ff"), ((2, 20), "#00aaff"), ((21, 40), "#00ffaa"),
+      ((41, 60), "#00ff00"), ((61, 80), "#aaff00"), ((81, 101), "#ffaa00")]),
+    ("by_0_73", np.float32(np.arange(101) * 0.73),
+     [((1, 1), "#0000ff"), ((2, 28), "#00cbff"), ((29, 55), "#00ff65"),
+      ((56, 83), "#65ff00"), ((84, 101), "#ffcc00")]),
+    ("from_1000", np.float32(1000 + np.arange(101) * 13.0),
+     [((1, 1), "#0000ff"), ((2, 39), "#00ffff"), ((40, 77), "#00ff00"),
+      ((78, 101), "#ffff00")]),
+)
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("name,z,want", _TWOWAY_LEVELS,
+                         ids=[c[0] for c in _TWOWAY_LEVELS])
+def test_a_continuous_colorvar_is_split_at_twoways_levels(mode, name, z,
+                                                          want):
+    spec = _spec([_pl(colorvar="z")])
+    df = _continuous(z)
+    if mode == "saved":
+        fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
+    else:
+        fig = _served_figs(_served(spec, df))[0]
+    got = sorted(((int(xs[0]), int(xs[-1])), str(c).lower())
+                 for c, xs in _paths(fig))
+    assert [g[0] for g in got] == [w[0] for w in sorted(want)], (name, got)
+    # The colours within 1/255 a channel, as _dash_colorrule_palette is
+    # matched to twoway's (dash 0xcc where twoway writes 0xcb).
+    for (_r, c), (_rw, cw) in zip(got, sorted(want)):
+        assert max(abs(int(c[j:j + 2], 16) - int(cw[j:j + 2], 16))
+                   for j in (1, 3, 5)) <= 1, (name, c, cw)
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_the_key_has_twoways_levels(mode):
+    """The key is twoway's: one colour a level, its bins the cuts."""
+    from bokeh.models import ColorBar
+    spec = _spec([_pl(colorvar="z")])
+    df = _continuous(np.float32(1000 + np.arange(101) * 13.0))
+    if mode == "saved":
+        fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
+    else:
+        fig = _served_figs(_served(spec, df))[0]
+    [bar] = [m for side in (fig.right, fig.left, fig.above, fig.below,
+                            fig.center) for m in side
+             if isinstance(m, ColorBar)]
+    m = bar.color_mapper
+    assert [str(c).lower() for c in m.palette] == [
+        "#0000ff", "#00ffff", "#00ff00", "#ffff00", "#ff0000"]
+    # Five bins of 500 from 500: (.., 1000], (1000, 1500], ... (2500, ..).
+    assert (m.low, m.high) == pytest.approx((500.0, 3000.0))
+    # A value on a cut takes the level below, as twoway's (c0, c1] does.
+    assert dr.GlyphMapper._colorvar_level_index(
+        {"field": "z", "transform": m}, [1000.0, 1000.5, 1500.0]).tolist() \
+        == [0, 1, 1]
+    assert list(bar.ticker.ticks) == [1000.0, 1500.0, 2000.0, 2500.0]

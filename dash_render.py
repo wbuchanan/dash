@@ -14038,6 +14038,22 @@ def _compute_secondary_range(
     return lo - padding_pct * span, hi + padding_pct * span
 
 
+def _dash_colorvar_step_index(cuts, values):
+    """Each value's level among twoway's intervals (-inf, c0], (c0, c1],
+    ..., (ck, +inf) over the sorted *cuts* (WP-32, a continuous colorvar()
+    on a line): an int array, -1 for a value that is missing or not a
+    number."""
+    try:
+        v = np.asarray(_dash_float_values(list(values)), dtype=float)
+    except (TypeError, ValueError):
+        return np.full(len(list(values)), -1, dtype=np.int64)
+    out = np.full(v.shape[0], -1, dtype=np.int64)
+    fin = np.isfinite(v)
+    out[fin] = np.searchsorted(np.asarray(cuts, dtype=float), v[fin],
+                               side="left")
+    return out
+
+
 def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
     """The effective, sorted, de-duplicated colorvar cut list (GAPS2 X2).
 
@@ -15997,6 +16013,7 @@ class GlyphMapper:
         source: "ColumnDataSource",
         options: dict[str, str],
         add_key: bool = True,
+        stepped: bool = False,
     ) -> None:
         """Map a CDS variable's values to glyph fill/line color.
 
@@ -16016,6 +16033,15 @@ class GlyphMapper:
         False builds the same mapper but adds no key: rconnected's second
         end, which twoway colours from the one key it draws.
 
+        *stepped* (a line's colorvar(), ``_colorvar_line_parts``) draws a
+        continuous variable in twoway's levels instead of the colour bar's
+        256 bins: the cuts are the key's ticks (natscale #5, or zlabel()),
+        a cut below the domain's minimum dropped, the levels the intervals
+        (-inf, c0], (c0, c1], ..., (ck, +inf) in n + 1 colours of the rule
+        (or colorlist()), and the bar's mapper one colour a level; the cuts
+        are left in ``self._colorvar_step_cuts`` for the caller (None when
+        the layer is not stepped).
+
         Supports Stata 18 colorvar_options:
             colorvar(varname)   — variable whose values drive the color mapping
             colordiscrete       — treat a numeric variable as discrete categories
@@ -16029,6 +16055,7 @@ class GlyphMapper:
         String columns, or numeric columns with colordiscrete / colornlevels /
         colorcuts, use a CategoricalColorMapper (category10 palette).
         """
+        self._colorvar_step_cuts = None
         varname = options.get("colorvar", "").strip()
         if not varname or varname not in source.data:
             return
@@ -16486,6 +16513,17 @@ class GlyphMapper:
                                                dp=getattr(self, "dp",
                                                           "period"))
                 _cbar.color_mapper = mapper
+                if stepped and type(mapper).__name__ == "LinearColorMapper":
+                    mapper = self._colorvar_stepped_mapper(
+                        _cbar, mapper, lo, hi,
+                        lambda n: (_c_list + [_c_list[-1]] * n)[:n]
+                        if _c_list else (
+                            [palette[int(round(k * (len(palette) - 1)
+                                               / max(n - 1, 1)))]
+                             for k in range(n)] if palette_key
+                            else _rule_palette(n)),
+                        missing_color)
+                    _cbar.color_mapper = mapper
 
             color_spec = {"field": varname, "transform": mapper}
             self._colorvar_paint(renderer.glyph, source, color_spec,
@@ -16656,6 +16694,43 @@ class GlyphMapper:
             out[mid] = np.clip(k, 0, npal - 1).astype(np.int64)
         return out
 
+    def _colorvar_stepped_mapper(self, cbar, mapper, lo, hi, colours_of,
+                                 missing_color):
+        """twoway's levels for a continuous colorvar() on a line (WP-32,
+        BUGS.md "colorvar() on a line splits a continuous variable into the
+        colour bar's 256 bins where twoway draws its key's few levels"):
+        the cuts are *cbar*'s ticks (the key's labels, natscale #5 or
+        zlabel()), those below the domain's minimum *lo* dropped (the
+        minimum itself when none is left), as twoway drops colorcuts()
+        below it; ``self._colorvar_step_cuts`` is set to them.  Returns a
+        LinearColorMapper of the n + 1 level colours (``colours_of(n + 1)``)
+        whose equal bins fall on the cuts, closed above, when they are
+        evenly spaced, as natscale's are; *mapper* unchanged when the bar
+        has no ticks."""
+        from bokeh.models import LinearColorMapper
+        try:
+            ticks = sorted(float(t) for t in (cbar.ticker.ticks or []))
+        except (AttributeError, TypeError, ValueError):
+            ticks = []
+        ticks = [t for t in ticks if math.isfinite(t)]
+        if not ticks:
+            return mapper
+        cuts = [t for t in ticks if t >= lo] or [float(lo)]
+        n = len(cuts) + 1
+        colours = list(colours_of(n))
+        if len(cuts) > 1:
+            step = (cuts[-1] - cuts[0]) / (len(cuts) - 1)
+        else:
+            step = max(abs(hi - cuts[0]), abs(cuts[0] - lo), 1.0)
+        self._colorvar_step_cuts = cuts
+        # BokehJS's bins are closed below and twoway's above: the bins are
+        # moved up by a billionth of a step, so a value on a cut takes the
+        # level below, as in twoway.
+        eps = step * 1e-9
+        return LinearColorMapper(palette=colours, low=cuts[0] - step + eps,
+                                 high=cuts[-1] + step + eps,
+                                 nan_color=missing_color)
+
     @staticmethod
     def _colorvar_level_colour(color_spec, level):
         """The colour *color_spec* draws *level* in (``_colorvar_level_index``'s
@@ -16688,9 +16763,11 @@ class GlyphMapper:
         probe = fig.scatter(x=xvar, y=yvar, source=source)
         try:
             self._apply_colorvar(fig, probe, source, options,
-                                 add_key=add_key)
+                                 add_key=add_key, stepped=True)
         finally:
             fig.renderers = [x for x in fig.renderers if x is not probe]
+        cuts = getattr(self, "_colorvar_step_cuts", None)
+        self._colorvar_step_cuts = None
         f = probe.glyph.fill_color
         field = getattr(f, "field", None)
         mapper = getattr(f, "transform", None)
@@ -16698,7 +16775,12 @@ class GlyphMapper:
                 or field not in source.data:
             return []
         spec = {"field": field, "transform": mapper}
-        idx = self._colorvar_level_index(spec, source.data[field])
+
+        def _index(values):
+            if cuts is None:
+                return self._colorvar_level_index(spec, values)
+            return _dash_colorvar_step_index(cuts, values)
+        idx = _index(source.data[field])
         if idx is None:
             return []
         if type(mapper).__name__ == "CategoricalColorMapper":
@@ -16706,8 +16788,7 @@ class GlyphMapper:
                                     len(mapper.palette or []))))
         else:
             dom = self.colorvar_domain
-            di = self._colorvar_level_index(
-                spec, source.data[field] if dom is None else dom)
+            di = _index(source.data[field] if dom is None else dom)
             levels = sorted({int(k) for k in (di if di is not None else [])
                              if k >= 0})
         alpha = probe.glyph.fill_alpha
@@ -17696,8 +17777,13 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
         colorvar_key: bool = True,
+        colorvar_stepped: bool = False,
     ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a scatter glyph to *fig*.
+
+        *colorvar_stepped*: the markers of connected and rconnected take a
+        continuous colorvar()'s levels, as their line does
+        (``_apply_colorvar``'s *stepped*).
 
         Args:
             fig:     Bokeh Figure object.
@@ -17796,7 +17882,7 @@ class GlyphMapper:
         self._weight_markers(r, options, "scatter")
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options,
-                             add_key=colorvar_key)
+                             add_key=colorvar_key, stepped=colorvar_stepped)
         # mlabel uses original column names (not jittered) for readable labels
         # A LabelSet takes no view, so under one -- a layer's own if/in, a
         # linked by() panel -- the labels are drawn from a copy of the rows
@@ -18006,7 +18092,7 @@ class GlyphMapper:
                           colorvar_key=False),
             self.map_scatter(fig, source, yvar, xvar, options,
                              view=view if marker_view is None else marker_view,
-                             color_idx=color_idx),
+                             color_idx=color_idx, colorvar_stepped=True),
         ]
         return renderers
 
@@ -22898,14 +22984,16 @@ class GlyphMapper:
             self.map_line(fig, source, y1var, xvar, options, view=view,
                           color_idx=color_idx, line_kind="", order=order,
                           role="aline", colorvar_key=False),
-            self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
+            self.map_scatter(fig, source, y1var, xvar, options, view=view,
+                             color_idx=color_idx, colorvar_stepped=True),
             self.map_line(fig, source, y2var, xvar, options, view=view,
                           color_idx=color_idx, line_kind="", order=order,
                           role="aline", colorvar_key=False),
             # twoway draws ONE colorvar() key for rconnected (measured:
             # "Price" once, E-16.2); the second end is coloured from it.
             self.map_scatter(fig, source, y2var, xvar, options, view=view,
-                             color_idx=color_idx, colorvar_key=False),
+                             color_idx=color_idx, colorvar_key=False,
+                             colorvar_stepped=True),
         ]
 
     def map_dot(
@@ -64624,6 +64712,7 @@ class ServerAppBuilder:
                          # (GAPS2 X2): the cut arithmetic, the binning and
                          # the colour-key applier -- one text, both modes.
                          "_dash_colorvar_cuts", "_dash_colorvar_bins",
+                         "_dash_colorvar_step_index",
                          "_dash_colorvar_domain", "_dash_colorvar_field",
                          # WP-30 P1.23b: the colour key's units and
                          # text, the computed tooltips' formats.
