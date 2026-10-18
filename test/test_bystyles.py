@@ -85,6 +85,27 @@ class TestTheExpansion:
         go = dr._dash_bystyle_route(spec)["graphs"][0]["graph_options"]
         assert go["xlabel"] == "#6" and go["ylabel"] == "#3"
 
+    @pytest.mark.parametrize("subs,want", [
+        # Measured 18oct2026 (StataNow 19.5, auto, scatter mpg weight,
+        # by(foreign, ...), .Graph.graphs[k] scales): style(rescale)
+        # noyrescale draws both panels' y 10-41 and x 1800-5000 and
+        # 1760-4000; noxrescale x 1760-5000 twice and y 10-34 and 10-41;
+        # norescale 1760-5000 and 10-41 twice; style(combine) noyrescale
+        # y 10-41 twice and x 1800-5000 and 1500-3500.
+        ("style(rescale) noyrescale", {"x"}),
+        ("style(rescale) noxrescale", {"y"}),
+        ("style(rescale) norescale", set()),
+        ("style(rescale)", {"x", "y"}),
+        ("style(combine) noyrescale", {"x"})])
+    def test_a_no_word_beside_the_style_still_wins(self, subs, want):
+        """BUGS.md "Harness guards" (WP-32): the expansion wrote the word
+        rescale for style(rescale), and rescale beats noyrescale, so the y
+        axis the user kept shared was rescaled per panel."""
+        spec = tk._spec([tk._graph("g", tk._TWO,
+                                   {"by": "foreign, " + subs})])
+        by = dr._dash_bystyle_route(spec)["graphs"][0]["graph_options"]["by"]
+        assert set(dr._dash_by_rescale(by)) == want, by
+
     def test_combine_and_others_untouched(self):
         for by in ("rep78", "rep78, style(compact)",
                    'rep78, title("style(econ)")'):

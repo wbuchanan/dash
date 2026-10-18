@@ -423,12 +423,11 @@ class TestRescaleGivesEachPanelItsOwn:
     @pytest.mark.parametrize("pid,sub,letters", [
         ("c02", "yrescale", "y"), ("c03", "xrescale", "x"),
         ("c04", "rescale", "xy"), ("c05", "r", "xy"),
-        pytest.param("e01", "style(rescale) noyrescale", "x", marks=(
-            pytest.mark.xfail(strict=True, reason=(
-                "WP-30 P1.3a: under style(rescale) noyrescale twoway draws "
-                "the Foreign panel's x 2000(1000)4000, three ticks, where "
-                "dash's #4 natscale gives 1500(500)3500 (c03's); the "
-                "panel's count under this style is not modelled"))))])
+        # Flipped (WP-32, BUGS.md "Harness guards"): a strict xfail.  Its
+        # x count was fixed by WP-31 D10c (style(rescale) draws #3); what
+        # still failed was y, rescaled per panel because the expansion
+        # wrote `rescale', which beats noyrescale.  twoway shares y here.
+        ("e01", "style(rescale) noyrescale", "x")])
     def test_yrescale_xrescale_rescale(self, mode, pid, sub, letters):
         figs, _ = _draw(mode, _spec(SC, {"by": "foreign, " + sub}))
         figs = _panels(figs)

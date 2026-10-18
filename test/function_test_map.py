@@ -1274,6 +1274,7 @@ FUNCTIONS = {
  '_dash_zyx2_derive': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_zyx2_derive.<locals>.colour': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_zyx2_derive.<locals>.get': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
+ '_dash_bystyle_rescale_words': 'test/test_bystyles.py::TestTheExpansion::test_a_no_word_beside_the_style_still_wins',
  '_dash_bystyle_route': 'test/test_bystyles.py::TestTheExpansion::test_measured',
  '_dash_by_label_box.<locals>._rs': 'test/test_bystyles.py::TestTheNamedPartsDrawn::test_econ_label_margin',
  'SchemeParser.stata_props_for_spec': 'test/test_style_files.py::TestStatasOwnKeysTravel::test_a_line_plot_keeps_its_line',

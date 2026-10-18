@@ -35436,6 +35436,32 @@ _DASH_BYSTYLE_EXPAND = {
 }
 
 
+def _dash_bystyle_rescale_words(words, toks):
+    """*words* (a style's expansion) with its ``rescale`` narrowed to the
+    axes no word of *toks* (the by() sub-options) keeps shared:
+    ``noxrescale``/``noyrescale`` drop one axis, ``norescale`` both
+    (``_DASH_BY_SUPPORTED``'s spellings).  twoway reads the style's
+    rescale as the default an explicit no-word overrides (measured
+    18oct2026: ``style(rescale) noyrescale`` shares y)."""
+    if "rescale" not in words:
+        return tuple(words)
+    kept = {"x", "y"}
+    for tok in toks:
+        name = tok.split("(", 1)[0].strip().lower()
+        if name in _DASH_BY_SUPPORTED["norescale"]:
+            kept.clear()
+        elif name in _DASH_BY_SUPPORTED["noxrescale"]:
+            kept.discard("x")
+        elif name in _DASH_BY_SUPPORTED["noyrescale"]:
+            kept.discard("y")
+    with_ = ("rescale",) if kept == {"x", "y"} else tuple(
+        d + "rescale" for d in ("x", "y") if d in kept)
+    out = []
+    for w in words:
+        out.extend(with_ if w == "rescale" else (w,))
+    return tuple(out)
+
+
 def _dash_bystyle_route(spec):
     """The spec with each graph's ``by(..., style(econ|stata7|rescale))``
     written as the by() words and graph options it draws as (WP-31 D10c,
@@ -35473,6 +35499,11 @@ def _dash_bystyle_route(spec):
                 _dash_warn_once(("bystyle", hit[1]),
                                 "dash: by() sub-option style(%s): %s"
                                 % (hit[1], left))
+            # The style's rescale is its default: a no-word the user gives
+            # beside it still keeps that axis shared, as twoway draws
+            # style(rescale) noyrescale (WP-32; the word rescale would beat
+            # it in _dash_by_rescale).
+            words = _dash_bystyle_rescale_words(words, toks)
             rest = toks[:hit[0]] + list(words) + toks[hit[0] + 1:]
             new_by = head.rstrip() + ((", " + " ".join(rest)) if rest else "")
             targets = [go] + ([g["options"]] if isinstance(
