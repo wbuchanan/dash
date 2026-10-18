@@ -682,10 +682,14 @@ _PLAIN_DIGESTS = {
     # WP-32 D-53d, the composite actions' toggle_ids arg is table_ids and
     # the composite code draws open tables (masked model diff: nothing
     # else differs); the same under both Pythons.
+    # ac6ee365... -> d68dfa44... saved, 0710df1c... -> 35cb03e3... served:
+    # the WP-32 merge of D-31.a, D-53d/e, the empty-axis finish and the fit
+    # extents (each confirmed by its masked model diff); the same under both
+    # Pythons.
     ("saved", "plain"):
-        "ac6ee365d6a3f2c1e8bd57d8649f7e1714a1ac3b0c8c83c03166787a7d83f096",
+        "d68dfa4483cbd5ceb422527e2d9bed679f527fba3da8f7fee2bf62c45bdbc0cd",
     ("saved", "yaxis2"):
-        "ac6ee365d6a3f2c1e8bd57d8649f7e1714a1ac3b0c8c83c03166787a7d83f096",
+        "d68dfa4483cbd5ceb422527e2d9bed679f527fba3da8f7fee2bf62c45bdbc0cd",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -700,9 +704,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "0710df1cdf375acd55f4dbff6259203cadf1e96dfece19dced952875aa772f6f",
+        "35cb03e37fcdd523d7330be8585d9aac8b7e514d6c4cf984258eb7e8e437952c",
     ("served", "yaxis2"):
-        "0710df1cdf375acd55f4dbff6259203cadf1e96dfece19dced952875aa772f6f",
+        "35cb03e37fcdd523d7330be8585d9aac8b7e514d6c4cf984258eb7e8e437952c",
 }
 
 

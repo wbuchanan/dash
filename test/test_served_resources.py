@@ -554,7 +554,10 @@ _SAVED_DIGEST = (
     # 91a241f7... -> af35a89d...: WP-32 D-31.a the legend key box is
     # symxsize() by symysize() (glyph_width/height 50 x 13, was 15 x 15;
     # masked model diff), the same under both Pythons.
-    "af35a89d64e1983f163fb65bd01439f54f06844e36be5317411b81a8483a659c")
+    # af35a89d... -> e22b95f9...: the WP-32 merge of D-31.a, D-53d/e, the empty-axis finish and the fit
+    # extents (each confirmed by its masked model diff); the same under both
+    # Pythons.
+    "e22b95f9de8f62d719a2597408912bc61a5802fd1e2342a2399e87a064123c5b")
 
 
 # ===========================================================================
