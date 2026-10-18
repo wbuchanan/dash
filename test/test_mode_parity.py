@@ -4156,6 +4156,105 @@ class TestAFilterMoveAgrees:
             f"{name}: the move left every figure unchanged")
 
 
+#: WP-31 H6 (S60 D-60f): S51's brush(filter) after a dropdown move.  Two
+#: linked scatters and an update(filter) card; the move keeps the five
+#: foreign cars, then a box selection on g1 keeps the first three of them.
+_BRUSH_MOVES = [
+    ("brush(filter) on g1 after dropdown to Foreign",
+     _spec(graphs=[("g1", [plot_for("scatter")]),
+                   ("g2", [plot_for("scatter")])],
+           build_options={"filter": "foreign, type(dropdown)",
+                          "link": "_all", "brush": "filter"},
+           kpis=[_kpi()]),
+     ("Select", "Foreign"), [0, 1, 2]),
+]
+
+
+def _saved_js_brush(spec, move, picked):
+    """The saved page after the move and then the selection, both run by
+    the page's own scripts under node: the filter callback through
+    ``js_runner.JsSession`` (which commits the sources it rewrites), then
+    g1's brush callback through test_link_groups_brush's runner, which
+    returns the brush views' indices and the cards.  Returns
+    ``({figure name: [observation, ...]}, [card value, ...])``."""
+    import js_runner
+    import test_link_groups_brush as lb
+    from bokeh.models import CDSView, IndexFilter
+    r, _ = _standalone(spec)
+    kind, want = move
+    [(w, cb)] = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind]
+    session = js_runner.JsSession(r.filter_callbacks)
+    session.set(w, _move_widget_value(w, kind, want))
+    session.run(cb)
+    src = r.sources["g1"]
+    out = lb._js_cb(lb._brush_callbacks(r)[id(src)], picked)
+    rows = {}
+    for name, fig in r.figures.items():
+        for g in fig.renderers:
+            if isinstance(getattr(g, "view", None), CDSView) and \
+                    isinstance(g.view.filter, IndexFilter):
+                ids = g.data_source.data[dr._ROW_ID_COLUMN]
+                kept = out["flt"].get(g.view.filter.id)
+                kept = range(len(ids)) if kept is None else kept
+                rows[name] = sorted(int(ids[i]) for i in kept)
+    return rows, [lb._card_value(t) for t in out["cards"]]
+
+
+def _served_brush(spec, move, picked):
+    """The served app after the same move and the same selection, made by
+    its own Python callbacks; the same shape as ``_saved_js_brush``."""
+    import test_link_groups_brush as lb
+    from bokeh.models import CDSView, IndexFilter
+    doc, _ = _served(spec)
+    kind, want = move
+    [w] = [w for w in _widgets_of(doc) if type(w).__name__ == kind]
+    _fire(w, _move_widget_value(w, kind, want))
+    # The served figures carry no name: they are paired with the graphs
+    # by layout order, the registry's (as every parity comparison pairs
+    # them).
+    from bokeh.models import Plot
+    plots = [m for m in _walk_models(doc) if isinstance(m, Plot)]
+    names = [g["name"] for g in spec["graphs"]]
+    assert len(plots) == len(names), (len(plots), names)
+    by_name = dict(zip(names, plots))
+    g1 = by_name["g1"]
+    [src] = {id(g.data_source): g.data_source for g in g1.renderers
+             if hasattr(g, "data_source")}.values()
+    src.selected.indices = list(picked)
+    rows = {}
+    for nm, f in by_name.items():
+        for g in f.renderers:
+            if isinstance(getattr(g, "view", None), CDSView) and \
+                    isinstance(g.view.filter, IndexFilter):
+                ids = g.data_source.data["index"]
+                kept = g.view.filter.indices
+                kept = range(len(ids)) if kept is None else kept
+                rows[nm] = sorted(int(ids[i]) for i in kept)
+    cards = [lb._card_value(m.text) for m in _walk_models(doc)
+             if isinstance(m, Div) and "kpi_val_k" in (m.text or "")]
+    return rows, cards
+
+
+@pytest.mark.parametrize("name,spec,move,picked", _BRUSH_MOVES,
+                         ids=[b[0] for b in _BRUSH_MOVES])
+class TestABrushAfterAMoveAgrees:
+    def test_saved_js_agrees_with_served(self, name, spec, move, picked):
+        """The rows each figure draws and the card's value after a move and
+        a brush are the same in the saved page's own scripts and the served
+        app (WP-31 H6: no brush entry before)."""
+        js_rows, js_cards = _saved_js_brush(spec, move, picked)
+        sv_rows, sv_cards = _served_brush(spec, move, picked)
+        foreign = sorted(int(i) for i in _DF.index[_DF["foreign"] == 1])
+        want = foreign[:len(picked)]
+        assert js_rows == {"g1": want, "g2": want}, js_rows
+        assert sv_rows == js_rows, (sv_rows, js_rows)
+        mean = float(_DF["mpg"].iloc[want].mean())
+        assert js_cards == pytest.approx([mean], abs=1e-3), js_cards
+        assert sv_cards == pytest.approx(js_cards, abs=1e-9), sv_cards
+
+
 def _assert_heads_on_shafts(name, fig):
     """Every arrow a figure's Arrow annotations draw heads a Segment it
     draws, and every Segment of a pcarrow/pcbarrow layer has its head."""
