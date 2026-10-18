@@ -8,7 +8,7 @@
 *!   * sort1(), the name -syntax- gives the argument form of sort();
 *!   * clcolor(), clpattern() and clwidth(), twoway options dash honours
 *!     that abbrev_truth.json predates, by their full names;
-*!   * every plot-type abbreviation dash's expander (_expand_plottype_str in
+*!   * every plot-type abbreviation dash's expander (_dash_expand_plottype_str in
 *!     dash_parse.mata) accepts below twoway's measured minimum, and every
 *!     prefix of tsrline, which abbrev_truth.json does not probe.
 *!

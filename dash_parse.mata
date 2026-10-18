@@ -22,7 +22,7 @@
 *! holds this list to `_needed', and test/test_no_orphans.py holds every
 *! function to a caller.
 *!
-*!   _json_escape(s)
+*!   _dash_json_escape(s)
 *!       s escaped for a JSON string: the backslash, the double quote and
 *!       every byte below 0x20, and the backtick, dollar sign and
 *!       apostrophe written as JSON escapes (backslash u 0060, 0024 and
@@ -714,7 +714,7 @@ string scalar _dash_dp_format(string scalar fmt)
     return(subinstr(fmt, ".", ",", 1))
 }
 
-string scalar _json_escape(string scalar s) {
+string scalar _dash_json_escape(string scalar s) {
     string scalar out, hex, bs
     real   scalar c
 
@@ -761,7 +761,7 @@ string scalar _json_escape(string scalar s) {
 //
 // Here the calling program's `0' is read as a value: its last word is the
 // name, and what comes before it is the text, less one pair of enclosing
-// quotes, compound or simple.  The text is escaped by _json_escape(), which
+// quotes, compound or simple.  The text is escaped by _dash_json_escape(), which
 // also writes the backtick, the dollar sign and the apostrophe as JSON
 // escapes (backslash u 0060, 0024 and 0027), so the result can be
 // expanded inside compound quotes -- every spec line is built that way --
@@ -788,7 +788,7 @@ void _dash_json_str_args()
     else if (n >= 2 & substr(t, 1, 1) == char(34) & substr(t, n, 1) == char(34)) {
         t = substr(t, 2, n - 2)
     }
-    st_local("_dash_jsv", _json_escape(t))
+    st_local("_dash_jsv", _dash_json_escape(t))
 }
 
 // _dash_scheme_dirs_json() -- the ado-path a scheme dash does not ship is
@@ -804,7 +804,7 @@ void _dash_json_str_args()
 // a dollar sign, a double quote or a control character is skipped: dash
 // never passes such a directory through a macro, a documented difference
 // beside the unfollowed link.  Returns the JSON array text; every entry is
-// escaped by _json_escape().
+// escaped by _dash_json_escape().
 string scalar _dash_scheme_dirs_json()
 {
     string rowvector d
@@ -824,7 +824,7 @@ string scalar _dash_scheme_dirs_json()
         if (bad) continue
         if (p == ".") p = c("pwd")
         else if (substr(p, 1, 1) != "~" & !pathisabs(p)) p = pathjoin(c("pwd"), p)
-        out = out + (n ? "," : "") + char(34) + _json_escape(p) + char(34)
+        out = out + (n ? "," : "") + char(34) + _dash_json_escape(p) + char(34)
         n++
     }
     return("[" + out + "]")
@@ -928,7 +928,7 @@ void _dash_text_args(real scalar nlead, real scalar ntail, real scalar optnum)
 }
 
 // UTF-8 byte validation
-real scalar _is_utf8(string scalar s) {
+real scalar _dash_is_utf8(string scalar s) {
     real scalar i, len, b, b2, expect, lo, hi, j
 
     /*
@@ -1190,7 +1190,7 @@ string rowvector _dash_saving_split(string scalar s)
     err  = ""
     rep  = 0
     asis = 0
-    p    = _first_comma_pos(s)
+    p    = _dash_first_comma_pos(s)
     f    = strtrim(p ? substr(s, 1, p - 1) : s)
 
     // The name.
@@ -1332,7 +1332,7 @@ string scalar _dash_seg_saving(string scalar seg)
     string scalar    v, out
     real scalar      pos, j
 
-    pos = _first_comma_pos(seg)
+    pos = _dash_first_comma_pos(seg)
     if (pos == 0) return("")
     toks = _dash_rep_toks(substr(seg, pos + 1, .), 0)
     out  = ""
@@ -1413,7 +1413,7 @@ string scalar _dash_graph_names(string scalar list, real scalar max)
 }
 
 void _dash_check_utf8(string scalar s) {
-    if (!_is_utf8(s)) {
+    if (!_dash_is_utf8(s)) {
         errprintf("dash: input contains non-UTF-8 bytes. Ensure your do-file is saved as UTF-8.\n")
         exit(198)
     }
@@ -2139,7 +2139,7 @@ real scalar _dash_axlabel_rule(string scalar t)
 // 2. PLOT-TYPE ABBREVIATION EXPANSION
 // ============================================================
 
-string scalar _expand_plottype_str(string scalar name) {
+string scalar _dash_expand_plottype_str(string scalar name) {
     string matrix tbl
     string scalar full, minab
     real scalar   i
@@ -2246,7 +2246,7 @@ string scalar _expand_plottype_str(string scalar name) {
 }
 
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
-    st_local(out_macro, _expand_plottype_str(strlower(strtrim(abbrev))))
+    st_local(out_macro, _dash_expand_plottype_str(strlower(strtrim(abbrev))))
 }
 
 
@@ -2838,7 +2838,7 @@ string scalar _dash_imm_records(string scalar vals, real scalar w,
         }
         if (lab != "" | clk != "") {
             if (clk == "") clk = "null"
-            rec = rec + "," + char(34) + _json_escape(lab) + char(34) + "," + clk
+            rec = rec + "," + char(34) + _dash_json_escape(lab) + char(34) + "," + clk
         }
         if (nrec == cap) {
             recs = recs, J(1, cap, "")
@@ -3021,7 +3021,7 @@ real scalar _dash_quote_step(string scalar s,
 
 // Return the character position (1-based) of the first comma at
 // depth 0 (outside parens and quotes), or 0 if none found.
-real scalar _first_comma_pos(string scalar input) {
+real scalar _dash_first_comma_pos(string scalar input) {
     real scalar i, len, depth, in_dq, in_cq, c_code, nxt
 
     len   = strlen(input)
@@ -3060,7 +3060,7 @@ real scalar _first_comma_pos(string scalar input) {
 }
 
 void _dash_comma_pos(string scalar input, string scalar out_macro) {
-    st_local(out_macro, strofreal(_first_comma_pos(input)))
+    st_local(out_macro, strofreal(_dash_first_comma_pos(input)))
 }
 
 
@@ -4712,7 +4712,7 @@ void _dash_tsop_export()
 // expression when the base has no label (a label of blanks is a label:
 // twoway draws "   , L"); read by value, never cut (an 80-character label
 // keeps all 80).  Every value is escaped by
-// _json_escape.  The weight columns __dashw<k> of _dash_wexp_rewrite
+// _dash_json_escape.  The weight columns __dashw<k> of _dash_wexp_rewrite
 // follow, {"expr":"price+1","label":"price+1"} (WP-31 A5).
 string scalar _dash_tsop_meta(string scalar fmtmacro)
 {
@@ -4735,11 +4735,11 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
         lab  = (_st_varindex(base, 0) < . ? st_varlabel(base) : "")
         lab  = (lab != "" ? lab + ", " + substr(e, 1, dot - 1) : e)
         out  = out + (k > 1 ? "," : "") + q + nm + q + ":{" + q + "expr" + q +
-               ":" + q + _json_escape(e) + q + "," + q + "label" + q + ":" +
-               q + _json_escape(lab) + q + "}"
+               ":" + q + _dash_json_escape(e) + q + "," + q + "label" + q + ":" +
+               q + _dash_json_escape(lab) + q + "}"
         if (_st_varindex(base, 0) < .) {
             fmt = fmt + (fmt != "" ? "," : "") + q + nm + q + ":" + q +
-                  _json_escape(st_varformat(base)) + q
+                  _dash_json_escape(st_varformat(base)) + q
         }
     }
     // The weight columns (WP-31 A5): the expression as typed, which is
@@ -4751,8 +4751,8 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
         e   = _dash_wexp_list[k]
         nm  = "__dashw" + strofreal(k)
         out = out + (out != "" ? "," : "") + q + nm + q + ":{" + q + "expr" +
-              q + ":" + q + _json_escape(e) + q + "," + q + "label" + q +
-              ":" + q + _json_escape(e) + q + "}"
+              q + ":" + q + _dash_json_escape(e) + q + "," + q + "label" + q +
+              ":" + q + _dash_json_escape(e) + q + "}"
     }
     if (fmt != "") {
         e = strtrim(st_local(fmtmacro))
@@ -5278,7 +5278,7 @@ string rowvector _dash_filter_items(string scalar group) {
     string rowvector words
     real scalar      c
 
-    c = _first_comma_pos(group)
+    c = _dash_first_comma_pos(group)
     if (c > 0) {
         return(_dash_blank_trim(substr(group, 1, c - 1)),
                _dash_filter_split(substr(group, c + 1, .), 0))
@@ -5442,7 +5442,7 @@ string scalar _dash_filter_setvars(string scalar filter, string scalar names) {
         if (g <= cols(full)) {
             items = _dash_filter_items(grp)
             v     = items[1]
-            c     = _first_comma_pos(grp)
+            c     = _dash_first_comma_pos(grp)
             if (c > 0) grp = full[g] + substr(grp, c, .)
             else       grp = full[g] + substr(grp, strlen(v) + 1, .)
         }
@@ -5840,7 +5840,7 @@ string scalar _dash_seg_by(string scalar seg)
     string scalar    v, out
     real scalar      pos, j
 
-    pos = _first_comma_pos(seg)
+    pos = _dash_first_comma_pos(seg)
     if (pos == 0) return("")
     toks = _dash_rep_toks(substr(seg, pos + 1, .), 0)
     out  = ""
@@ -7937,7 +7937,7 @@ real scalar _dash_rep_split(string scalar v, string scalar body,
 {
     real scalar p
 
-    p = _first_comma_pos(v)
+    p = _dash_first_comma_pos(v)
     if (!p) {
         body = v
         sub  = ""
@@ -8365,7 +8365,7 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
 // graph's "axisn" object, {"y3":{"label":"...","title":"..."},...}, one
 // entry per (letter, axis, family); copies merge, in the order they were
 // typed, as the axis-2 key's category merges them (_dash_rep_merge).
-// Values are the user's text, escaped by _json_escape; nothing here is run.
+// Values are the user's text, escaped by _dash_json_escape; nothing here is run.
 void _dash_axisn_clear()
 {
     external string matrix _dash_axisn
@@ -8469,7 +8469,7 @@ string scalar _dash_axisn_json()
             // marker-label variable to _dash_extract_vars.
             fams = fams + (fams == "" ? "" : ",") + char(34) +
                    (families[j] == "mlabel" ? "mlab" : families[j]) +
-                   char(34) + ":" + char(34) + _json_escape(v) + char(34)
+                   char(34) + ":" + char(34) + _dash_json_escape(v) + char(34)
         }
         out = out + (i > 1 ? "," : "") + char(34) + names[i] + char(34) +
               ":{" + fams + "}"
@@ -8741,7 +8741,7 @@ void _dash_tdate_lines(string scalar unit)
     msg   = ""
     first = 1
     while (rest != "" | first) {
-        p = _first_comma_pos(rest)
+        p = _dash_first_comma_pos(rest)
         if (p) {
             seg  = strtrim(substr(rest, 1, p - 1))
             rest = substr(rest, p + 1, .)
@@ -10721,11 +10721,11 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
                 }
                 // {ccl name} as twoway's graph text draws it (WP-31 E9).
                 line = _dash_gt_ccl(line)
-                // _json_escape() only where a byte needs it.
+                // _dash_json_escape() only where a byte needs it.
                 bb = ascii(line)
                 if (cols(bb)) {
                     if (any(bb :< 32 :| bb :== 34 :| bb :== 36 :| bb :== 39 :|
-                            bb :== 92 :| bb :== 96)) line = _json_escape(line)
+                            bb :== 92 :| bb :== 96)) line = _dash_json_escape(line)
                     any = 1
                 }
                 js = js + (js != "" ? "," : "") + char(34) + line + char(34)
@@ -10847,7 +10847,7 @@ string scalar _dash_at_orient(string scalar o)
 // in twoway's parse order (graph_g.class parse_and_log_titles: r1 r2 l1
 // l2 t1 t2 b1 b2).  Reads s(<pre><k>) by value -- each copy (char(30)
 // between copies), its sub-options after the first top-level comma
-// (_first_comma_pos), split by _dash_rep_toks -- and sets the caller's
+// (_dash_first_comma_pos), split by _dash_rep_toks -- and sets the caller's
 // local _es_msg to twoway's line, or "".
 void _dash_edge_span(string scalar pre)
 {
@@ -10865,7 +10865,7 @@ void _dash_edge_span(string scalar pre)
             p = strpos(v, char(30))
             cp = (p ? substr(v, 1, p - 1) : v)
             v = (p ? substr(v, p + 1, .) : "")
-            c = _first_comma_pos(cp)
+            c = _dash_first_comma_pos(cp)
             if (!c) continue
             t = _dash_rep_toks(substr(cp, c + 1, .), 1)
             for (j = 1; j <= cols(t); j++) {
@@ -11056,7 +11056,7 @@ string scalar _dash_gt_ccl(string scalar s)
 // _dash_at_json(kind, y, x, ya, xa, lines, opts) -- one added_text record:
 // {"at_kind":..,"at_y":..,"at_x":..,"at_yaxis":..,"at_xaxis":..,
 // "at_lines":[..],"at_opts":".."}.  Numbers in %21.0g; lines already a
-// JSON array and opts already _json_escape()d (_dash_at_opts), written as
+// JSON array and opts already _dash_json_escape()d (_dash_at_opts), written as
 // they come.  Every key starts at_, so no substring reader of the graph's
 // JSON (_dash_json_has_value, _dash_json_first_num) finds one.
 string scalar _dash_at_json(string scalar kind, real scalar y,
@@ -11105,7 +11105,7 @@ void _dash_at_records(string scalar kind)
 // size() color() tstyle() justification() orientation() box or nobox fcolor()
 // lcolor() lwidth() margin() placement(), bfcolor() blcolor() blwidth()
 // standing in for the plain ones when those are absent and bcolor() for
-// both colours when neither is given; _json_escape()d.  orientation()
+// both colours when neither is given; _dash_json_escape()d.  orientation()
 // and placement() are dash.ado's canonical names (_dash_at_orient,
 // _dash_at_place); a name twoway notes is left out.
 string scalar _dash_at_canon()
@@ -11145,7 +11145,7 @@ string scalar _dash_at_canon()
         p = _dash_at_place(p)
         out = out + " placement(" + (p != "" ? p : "e") + ")"
     }
-    return(_json_escape(strtrim(out)))
+    return(_dash_json_escape(strtrim(out)))
 }
 
 // _dash_rep_reduce(opts, ptype) -- the option list with one copy of each
@@ -11539,7 +11539,7 @@ real scalar _dash_reflines_positions(string scalar gjson)
         _dash_json_get_str(gjson, keys[i], "_drl_val")
         rest = st_local("_drl_val")
         while (rest != "") {
-            p = _first_comma_pos(rest)
+            p = _dash_first_comma_pos(rest)
             if (p) {
                 seg  = substr(rest, 1, p - 1)
                 rest = substr(rest, p + 1, .)

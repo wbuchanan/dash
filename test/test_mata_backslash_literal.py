@@ -5,7 +5,7 @@ binary: ``strlen("\\\\")`` is 2 and ``"\\\\" == char(92)`` is 0.  A test of a
 character against ``"\\\\"``, written to mean "one backslash", is therefore
 never true, and dash_parse.mata has shipped that mistake three times:
 
-* ``_json_escape`` wrote four backslashes for one;
+* ``_dash_json_escape`` wrote four backslashes for one;
 * ``_dash_json_get_str`` never decoded an escape;
 * ``_dash_extract_qual_vars`` never stepped over one, so the quote of ``\\"``
   ended the value and every variable an ``if`` named after its first string
@@ -144,7 +144,7 @@ class TestNoCharacterIsComparedWithABackslashLiteral:
         # read every one of them, and on to the file's LAST `end' -- so an
         # early `end', or a second Mata block, cannot leave code unread.
         code = "".join(t for kind, _l, t in segs if kind == "code")
-        for fn in ("string scalar _json_escape(",
+        for fn in ("string scalar _dash_json_escape(",
                    "void _dash_extract_qual_vars(",
                    "void _dash_json_get_str("):
             assert fn in code, f"the scan never read {fn}...)"

@@ -57004,7 +57004,7 @@ def _dash_glyph_dispatch(mapper):
 
     Every key is a full plot-type name.  The aliases ``sc``, ``li`` and
     ``hist`` stood here too, and nothing that runs reached them: dash.ado
-    expands a spelling to the full name (``_expand_plottype_str``) before
+    expands a spelling to the full name (``_dash_expand_plottype_str``) before
     it writes a spec, and no test or document named one.  Removed by WP-26
     (TR-26.5, 24sep2026), with every other place that accepted ``hist``
     (``_DASH_UNIVARIATE_TYPES``, the saved page's linked-source set, the

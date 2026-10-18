@@ -2014,7 +2014,10 @@ class TestTheAdoUsesThePrivateDir:
     def test_every_new_python_line_is_an_assignment_or_a_setlocal(self):
         progs = _programs()
         _need(progs, *_NEW_PROGRAMS)
+        # Flipped: del was not among the forms; WP-31 H7 deletes the
+        # names a line binds once read, and a del echoes nothing either.
         ok = re.compile(r"^python:\s+(import\s|from\s\S+\simport\s|"
+                        r"del\s+_dash_\w+$|"
                         r"[A-Za-z_][\w\.]*(\[[^\]]*\])?\s*=[^=]|"
                         r"_dash_\w*M\.setLocal\()")
         lines = []

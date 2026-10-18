@@ -1858,7 +1858,7 @@ forvalues i = 1/5 {
     // The registry route: the stored weight replaced by the text.
     capture dash clear
     quietly dash lfit mpg weight [aw=price+1], name(u078)
-    mata: st_global("dash_json_u078", subinstr(st_global("dash_json_u078"), char(34) + "wexp" + char(34) + ":" + char(34) + "price+1" + char(34), char(34) + "wexp" + char(34) + ":" + char(34) + _json_escape(_u07_t[`i']) + char(34)))
+    mata: st_global("dash_json_u078", subinstr(st_global("dash_json_u078"), char(34) + "wexp" + char(34) + ":" + char(34) + "price+1" + char(34), char(34) + "wexp" + char(34) + ":" + char(34) + _dash_json_escape(_u07_t[`i']) + char(34)))
     capture log close _ovlog
     capture erase "`logfile'"
     log using "`logfile'", name(_ovlog) text replace

@@ -588,14 +588,14 @@ assert(_dash_undrawn_plottype("contourl") == "")
 assert(_dash_undrawn_plottype("rpca") == "")
 assert(_dash_undrawn_plottype("scatter") == "")
 assert(_dash_undrawn_plottype("") == "")
-// _json_escape: the backslash first, the quote, the five short forms,
+// _dash_json_escape: the backslash first, the quote, the five short forms,
 // the rest of C0 as u00XX, and the three a macro could misread.
-assert(_json_escape("a" + bs + "b") == "a" + bs + bs + "b")
-assert(_json_escape(q) == bs + q)
-assert(_json_escape(char(8) + char(9) + char(10) + char(12) + char(13)) == bs + "b" + bs + "t" + bs + "n" + bs + "f" + bs + "r")
-assert(_json_escape(char(1) + char(27) + char(31)) == bs + "u0001" + bs + "u001b" + bs + "u001f")
-assert(_json_escape(char(96) + char(36) + char(39)) == bs + "u0060" + bs + "u0024" + bs + "u0027")
-assert(_json_escape("plain text 123") == "plain text 123")
+assert(_dash_json_escape("a" + bs + "b") == "a" + bs + bs + "b")
+assert(_dash_json_escape(q) == bs + q)
+assert(_dash_json_escape(char(8) + char(9) + char(10) + char(12) + char(13)) == bs + "b" + bs + "t" + bs + "n" + bs + "f" + bs + "r")
+assert(_dash_json_escape(char(1) + char(27) + char(31)) == bs + "u0001" + bs + "u001b" + bs + "u001f")
+assert(_dash_json_escape(char(96) + char(36) + char(39)) == bs + "u0060" + bs + "u0024" + bs + "u0027")
+assert(_dash_json_escape("plain text 123") == "plain text 123")
 // _dash_json_number: full precision, and a leading zero JSON requires.
 assert(_dash_json_number(.5) == "0.5")
 assert(_dash_json_number(-.25) == "-0.25")
@@ -1690,10 +1690,10 @@ display "P1A-75 PASS: _dash_spec_types_in matches whole types in linear time, _d
 
 // ================================================================
 // P1A-76 -- every prefix of every plot-type name, through the real
-// _expand_plottype_str: the one row it reaches, or "" when it reaches
+// _dash_expand_plottype_str: the one row it reaches, or "" when it reaches
 // none; and no prefix reaches two rows (WP-26 TR-26.6)
 // ================================================================
-// _expand_plottype_str counted the rows a name reached and refused one
+// _dash_expand_plottype_str counted the rows a name reached and refused one
 // that reached two, "an ambiguous prefix".  Nothing could: measured
 // 24sep2026 at 480159f, each of the 186 prefixes of the 40 names reached
 // at most one row, and twoway refuses every prefix of two of its plot-type
@@ -1710,7 +1710,7 @@ _p76L  = cat("../dash_parse.mata")
 _p76t  = J(0, 2, "")
 _p76in = 0
 for (_i = 1; _i <= rows(_p76L); _i++) {
-    if (strpos(_p76L[_i], "string scalar _expand_plottype_str(")) _p76in = 1
+    if (strpos(_p76L[_i], "string scalar _dash_expand_plottype_str(")) _p76in = 1
     else if (_p76in & substr(_p76L[_i], 1, 1) == "}") _p76in = 0
     if (_p76in & ustrregexm(_p76L[_i], _p76rx)) _p76t = _p76t \ (ustrregexs(1), ustrregexs(2))
 }
@@ -1732,8 +1732,8 @@ for (_r = 1; _r <= rows(_p76t); _r++) {
             _p76two = _p76two + 1
             _p76bad = _p76bad + " '" + _p + "' reaches " + invtokens(_hits') + ";"
         }
-        else if (_expand_plottype_str(_p) != _want) {
-            _p76bad = _p76bad + " '" + _p + "' gave '" + _expand_plottype_str(_p) + "', want '" + _want + "';"
+        else if (_dash_expand_plottype_str(_p) != _want) {
+            _p76bad = _p76bad + " '" + _p + "' gave '" + _dash_expand_plottype_str(_p) + "', want '" + _want + "';"
         }
     }
 }
@@ -1759,7 +1759,7 @@ if `"$P76_BAD"' != "" {
 }
 assert `p76two' == 0
 macro drop P76_BAD
-display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _expand_plottype_str returns the one each reaches, or nothing"
+display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _dash_expand_plottype_str returns the one each reaches, or nothing"
 
 // ================================================================
 // P1A-77 -- a function layer calling a function Stata does not have is

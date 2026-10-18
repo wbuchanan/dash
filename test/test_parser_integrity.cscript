@@ -5,7 +5,7 @@
 *! copy of a quote state machine.  Three of those copies were wrong, and each
 *! one silently changed what the user asked for:
 *!
-*!   A6  _dash_split_segs flat mode and _first_comma_pos gated their
+*!   A6  _dash_split_segs flat mode and _dash_first_comma_pos gated their
 *!       quote-ENTRY branches on `depth == 0'.  Paren mode did not.  So a '('
 *!       inside a quoted option value permanently unbalanced `depth' and every
 *!       later '||' stopped being a separator:
@@ -28,7 +28,7 @@
 *! 9c7dbf7 in a scratch copy of the tree and ran this script against it
 *! (24sep2026).  Three parts of the fix had no case that failed when they were
 *! taken out, because every earlier case put its quote where the old code
-*! handled it anyway: _first_comma_pos meets a quote only BEFORE the option
+*! handled it anyway: _dash_first_comma_pos meets a quote only BEFORE the option
 *! comma (P1B-31, P1B-32, P1B-38), _dash_extract_filters needs its quote
 *! tracking only when a ')' inside a quote would close the option around it
 *! (P1B-33), and its inner matcher only for an unbalanced '(' inside the
@@ -173,7 +173,7 @@ display "P1B-08 PASS: '(' inside a compound-quoted value is inert"
 
 
 // ================================================================
-// A6 — _first_comma_pos carries the identical defect
+// A6 — _dash_first_comma_pos carries the identical defect
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -503,11 +503,11 @@ display "P1B-30 PASS: a missing key returns empty"
 
 
 // ================================================================
-// A6 -- _first_comma_pos, with the quote INSIDE parentheses
+// A6 -- _dash_first_comma_pos, with the quote INSIDE parentheses
 // ================================================================
 // P1B-09 to P1B-12 all find the option comma before they reach any quote,
 // so they pass whether or not a quote is tracked at depth > 0 -- measured:
-// with 9c7dbf7's depth gate put back into _first_comma_pos they stay green.
+// with 9c7dbf7's depth gate put back into _dash_first_comma_pos they stay green.
 // The gate bites when a quoted value holding a parenthesis sits inside a
 // function call in the qualifier, before the option comma: the parenthesis
 // in the quote moves the depth, the closing quote is then read as opening
@@ -733,10 +733,10 @@ assert "`_n_segs'" == "2"
 assert `"`_seg_2'"' == "line mpg weight"
 display "P1B-40 PASS: a ')' inside a nested compound quote does not close its group"
 
-// P1B-41 -- _first_comma_pos: a comma inside a nested literal is not the
+// P1B-41 -- _dash_first_comma_pos: a comma inside a nested literal is not the
 // option comma.
 local p41 `"mpg weight if make == `"say `"hi"' , now"', title(x)"'
-mata: st_local("p41c", strofreal(_first_comma_pos(st_local("p41"))))
+mata: st_local("p41c", strofreal(_dash_first_comma_pos(st_local("p41"))))
 mata: st_local("p41w", strofreal(strpos(st_local("p41"), char(39) + ", title")))
 assert `p41c' == `p41w' + 1
 display "P1B-41 PASS: a comma inside a nested compound quote is not the option comma"
@@ -772,8 +772,8 @@ _p1b_run `"dash scatter mpg weight if make == `"say `"hi"' now"', name(pn1)"'
 local rc45a = r(rc)
 _p1b_run `"dash scatter mpg weight, title(`"a `"b"' c"') name(pn2)"'
 local rc45b = r(rc)
-mata: st_local("p45q", strofreal(strpos(st_global("dash_json_pn1"), _json_escape("make == " + _p1b_cq("say " + _p1b_cq("hi") + " now"))) > 0))
-mata: st_local("p45t", strofreal(strpos(st_global("dash_json_pn2"), _json_escape(_p1b_cq("a " + _p1b_cq("b") + " c"))) > 0))
+mata: st_local("p45q", strofreal(strpos(st_global("dash_json_pn1"), _dash_json_escape("make == " + _p1b_cq("say " + _p1b_cq("hi") + " now"))) > 0))
+mata: st_local("p45t", strofreal(strpos(st_global("dash_json_pn2"), _dash_json_escape(_p1b_cq("a " + _p1b_cq("b") + " c"))) > 0))
 display as text "  twoway rc `tw45a' `tw45b'  dash rc `rc45a' `rc45b'  stored `p45q' `p45t'  registry [${dash_graph_registry}]"
 assert `tw45a' == 0 & `tw45b' == 0
 assert `rc45a' == 0 & `rc45b' == 0
@@ -827,7 +827,7 @@ timer clear 47
 timer on 47
 mata: _dash_split_segs("scatter mpg weight, " + st_local("p47d") + " || line mpg weight")
 assert "`_n_segs'" == "2"
-mata: st_local("p47c", strofreal(_first_comma_pos("mpg weight, " + st_local("p47d"))))
+mata: st_local("p47c", strofreal(_dash_first_comma_pos("mpg weight, " + st_local("p47d"))))
 assert `p47c' == 11
 local 0 `", `macval(p47d)' filter(price)"'
 mata: _dash_extract_filters("_fp47", "_cmd47")
@@ -837,7 +837,7 @@ assert `"`_on47'"' == "title"
 dash clear
 capture noisily dash scatter mpg weight, `macval(p47d)' name(pn5)
 local rc47a = _rc
-mata: st_local("p47s", strofreal(strpos(st_global("dash_json_pn5"), _json_escape(substr(st_local("p47d"), 7, strlen(st_local("p47d")) - 7))) > 0))
+mata: st_local("p47s", strofreal(strpos(st_global("dash_json_pn5"), _dash_json_escape(substr(st_local("p47d"), 7, strlen(st_local("p47d")) - 7))) > 0))
 capture noisily dash scatter mpg weight, `macval(p47u)' name(pn6)
 local rc47b = _rc
 timer off 47

@@ -6,7 +6,7 @@ dash_parse.mata's header listed _dash_json_esc and _dash_html_esc as its
 _dash_pc_immediate and _dash_kpi_fields, which dash.ado does not call, and
 left out eight functions dash.ado does call -- _dash_extract_filters,
 _dash_extract_qual_vars, _dash_option_names, _dash_path_badchar,
-_dash_kpi_pctile, _json_escape, _dash_link_refusal and _dash_qual_expand.
+_dash_kpi_pctile, _dash_json_escape, _dash_link_refusal and _dash_qual_expand.
 It, and dash.ado's header, said Mata did "option-key abbreviation
 expansion", which it has not done since _expand_optkey was removed
 (measured 24sep2026 at 480159f).  This holds the rewrite:
@@ -93,7 +93,7 @@ class TestTheMataLibraryHeader:
         assert len(header) >= 60, len(header)
         api = _public_api(header)
         assert len(api) >= 20, api
-        assert "_dash_split_segs" in api and "_json_escape" in api
+        assert "_dash_split_segs" in api and "_dash_json_escape" in api
 
     def test_its_public_api_is_the_list_dash_ado_needs(self, sources):
         api = _public_api(_header(sources["mata"]))

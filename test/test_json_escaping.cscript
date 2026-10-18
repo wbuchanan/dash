@@ -136,13 +136,22 @@ if `nbad' > 0 display as error "raw control byte(s) survived escaping:`badlist'"
 assert `nbad' == 0
 display "JSE-01 PASS: no C0 byte 1-31 survives _dash_json_str raw"
 
+// U55-4 (WP-31 H7): the escaper is _dash_json_escape (_json_escape until
+// H7) and answers as it did: a quote, a backslash, a tab, byte 1 and the
+// three characters Stata would expand.
+mata: st_local("_u554", strofreal(_dash_json_escape(char(34) + char(92) + char(9) + char(1) + char(96) + char(36) + char(39)) == char(92) + char(34) + char(92) + char(92) + char(92) + "t" + char(92) + "u0001" + char(92) + "u0060" + char(92) + "u0024" + char(92) + "u0027"))
+assert `_u554' == 1
+capture mata: mata describe _json_escape()
+assert _rc != 0
+display "U55-4 PASS: _dash_json_escape escapes as _json_escape did, and the old name is gone"
+
 // And each leaves as its own escape.  The check above passes an escaper
 // that DELETES a byte, JSE-02 looks at five of the thirty-one, and JSE-03/04
 // compared with an empty needle (see there), so until 24sep2026 nothing
 // here would have seen bytes 1-7, 11 or 14-31 dropped.  The escape is
 // JSON's short form for the five that have one, else a backslash, u and
 // four lower-case hex digits -- the form test_parser.cscript holds
-// _json_escape to for 1, 27 and 31.  The digits come from Mata's inbase(),
+// _dash_json_escape to for 1, 27 and 31.  The digits come from Mata's inbase(),
 // not from the escaper's own table.
 mata:
 string scalar _jse_c0_want(real scalar c)

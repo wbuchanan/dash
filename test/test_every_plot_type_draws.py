@@ -24,7 +24,7 @@ word, under a ``>= 30`` floor that would not notice one or two going
 (GAPS.md L6).  The registry is held equal, both ways, to the two places
 dash.ado names plot types:
 
-  * the Mata table ``_expand_plottype_str`` (dash_parse.mata) -- every name
+  * the Mata table ``_dash_expand_plottype_str`` (dash_parse.mata) -- every name
     a user's spelling can become, so no type dash.ado accepts goes untested
     here, and none the registry lists is unreachable;
   * the family lists of ``_dash_plottype_families`` (dash.ado), which decide
@@ -89,14 +89,14 @@ def _ado_families():
 
 
 def _mata_expanded_types():
-    """The full names ``_expand_plottype_str`` can return: its table's first
+    """The full names ``_dash_expand_plottype_str`` can return: its table's first
     column, and the two spellings it maps outside the table."""
     with open(_MATA, encoding="utf-8") as fh:
         src = fh.read()
-    k = src.index("string scalar _expand_plottype_str(")
+    k = src.index("string scalar _dash_expand_plottype_str(")
     body = src[k:src.index("\n}\n", k)]
     table = re.search(r"tbl = (.*?)\n\s*\n", body, re.S)
-    assert table, "_expand_plottype_str has no tbl = ... table"
+    assert table, "_dash_expand_plottype_str has no tbl = ... table"
     names = set(re.findall(r'\("([a-z]+)","[a-z]+"\)', table.group(1)))
     names |= set(re.findall(r'return\("([a-z]+)"\)', body))
     return frozenset(names)
@@ -246,7 +246,7 @@ class TestTheListIsTheDispatchTable:
         registry type the table cannot produce is one no command reaches."""
         mata, code = _mata_expanded_types(), frozenset(_TYPES)
         assert mata == code, (
-            f"only in _expand_plottype_str: {sorted(mata - code)}; only in "
+            f"only in _dash_expand_plottype_str: {sorted(mata - code)}; only in "
             f"_dash_plot_type_names(): {sorted(code - mata)}")
 
     def test_every_family_member_is_in_the_list(self):

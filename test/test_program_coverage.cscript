@@ -46,7 +46,7 @@
 *!              with the jsonio step)
 *!   PEP-01..16 dash_setup on externally managed (PEP 668) Pythons and
 *!              dash_setup, venv(path), in the same sandbox (WP-29 P0.19)
-*!   PC-28      _json_escape, read back by JSON as the original.  PC-27
+*!   PC-28      _dash_json_escape, read back by JSON as the original.  PC-27
 *!              and PC-29 tested _html_escape, _dash_html_esc and
 *!              _dash_kv_json, and went with them (WP-26)
 *!   PC-30      the Mata library check names _dash_path_badchar, which
@@ -1259,7 +1259,7 @@ assert "`pc_sb_clean'" == "1"
 
 
 // ================================================================
-// PC-28 -- _json_escape: every byte below 0x20 and the three characters a
+// PC-28 -- _dash_json_escape: every byte below 0x20 and the three characters a
 //          macro could misread (backtick, dollar, apostrophe) escaped, and
 //          the text read back by JSON as the original.  It went through
 //          _dash_json_esc, which WP-26 deleted with _html_escape and
@@ -1270,8 +1270,8 @@ mata:
 _s = "a" + char(34) + "b" + char(92) + "c" + char(96) + char(36) + char(39)
 for (_c = 1; _c <= 31; _c++) _s = _s + char(_c)
 st_global("PC26_RAW", _s)
-st_global("PC26_ESC", _json_escape(_s))
-st_local("pc26empty", strofreal(_json_escape("") == ""))
+st_global("PC26_ESC", _dash_json_escape(_s))
+st_local("pc26empty", strofreal(_dash_json_escape("") == ""))
 end
 assert `pc26empty' == 1
 python: _pc_M.setLocal("pc26rt", str(int(_pc_json.loads(chr(34) + _pc_M.getGlobal("PC26_ESC") + chr(34)) == _pc_M.getGlobal("PC26_RAW"))))
@@ -1280,7 +1280,7 @@ assert "`pc26rt'" == "1"
 mata: st_local("pc26raw", strofreal(regexm(st_global("PC26_ESC"), "[" + char(1) + "-" + char(31) + char(96) + char(36) + char(39) + "]")))
 assert `pc26raw' == 0
 macro drop PC26_RAW PC26_ESC
-display "PC-28 PASS: _json_escape writes text JSON reads back as the original, with no raw control byte, backtick, dollar or apostrophe"
+display "PC-28 PASS: _dash_json_escape writes text JSON reads back as the original, with no raw control byte, backtick, dollar or apostrophe"
 
 
 // ================================================================
@@ -1351,6 +1351,31 @@ assert r(found) == 0
 capture confirm file "`pg'"
 assert _rc != 0
 display "PC-30 PASS: a library without _dash_path_badchar is refused by name, r(198), not r(3499) at the first saving()"
+
+// U55-3 (WP-31 H7) -- the repair over a library loaded in part, with no
+// hand list: _dash_json_escape (_json_escape until H7, dropped by name
+// then) is missing from memory, the rest is there; the wildcard drop and
+// the reload put it back and the command runs.
+tempfile u553
+capture noisily {
+    capture mata: mata drop _dash_json_escape()
+    capture mata: mata describe _dash_json_escape()
+    assert _rc != 0
+    dash scatter mpg weight, saving("`u553'.html") replace
+    capture mata: mata describe _dash_json_escape()
+    assert _rc == 0
+    capture mata: mata describe _json_escape()
+    assert _rc != 0
+}
+local u553rc = _rc
+capture mata: mata describe _dash_json_escape()
+if _rc {
+    capture mata: mata clear
+    quietly run "../dash_parse.mata"
+    quietly run "cert_helpers.do"
+}
+assert `u553rc' == 0
+display "U55-3 PASS: the repair restores a library loaded in part with its wildcard drop alone"
 
 
 // ================================================================

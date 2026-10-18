@@ -1079,7 +1079,7 @@ Changed behaviour.
 
 - A served dashboard no longer ships Bokeh's MathJax component (bokeh-mathjax.min.js, 1.79 MB per session), which dash never uses (WP-31, H3)
 
-<!-- WP-31 H7 -->
+- dash leaves sys.argv and the Python session's namespace as it found them (a build or a serve used to replace sys.argv for the rest of the session and leave _dash_xm, _dash_render_ns and _dash_priv_argv in __main__), and every Mata function of dash's library is prefixed _dash_ (WP-31, H7)
 
 <!-- WP-31 J1 -->
 

@@ -35,8 +35,9 @@
 *! The oracle is dash.ado itself: every function dash_parse.mata defines that
 *! is called on a `mata:' line (continuation lines joined, comment lines
 *! skipped), whatever its name.  It read only _dash_* names at first, so when
-*! dash.ado began calling _json_escape() from Mata the stub left it out and
-*! MLG-02 failed for a complete library.  A function called there and not
+*! dash.ado began calling _json_escape() (renamed _dash_json_escape in WP-31
+*! H7) from Mata the stub left it out and MLG-02 failed for a complete
+*! library.  A function called there and not
 *! checked by the guard fails MLG-03, whoever adds it.
 *!
 *! Mata is cleared here, which drops dash's library and this script's own
@@ -100,7 +101,7 @@ string rowvector _mlg_called(string scalar adofile, string scalar libfile,
     ndefined = cols(defined)
 
     // Every one of them that dash.ado calls on a `mata:' line, whatever its
-    // name: the guard must check _json_escape as surely as _dash_*.
+    // name: the guard must check every function it calls, prefixed or not.
     sl   = char(47)
     cont = sl + sl + sl + "[ \t]*$"
     call = "(^|[^A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)[ \t]*[(]"

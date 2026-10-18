@@ -33,7 +33,7 @@ one would be reported as a unit nothing calls -- a loud failure, never a
 silent pass.  The units are test_program_coverage_map.py's parse, which
 that file holds to scripts/measure_stata_coverage.py's.
 
-The ambiguity branch of _expand_plottype_str went too (TR-26.6): it
+The ambiguity branch of _dash_expand_plottype_str went too (TR-26.6): it
 refused a plot-type name that reached two rows of the table, and no name
 can.  TestNoPlotTypePrefixReachesTwoRows fails when one could.
 """
@@ -349,9 +349,9 @@ class TestTheReading:
                 ("_dash_process_segment", "_dash_expand_plottype"),
                 ("_dash_validate_path", "_dash_path_badchar"),
                 # Mata calling Mata
-                ("_dash_check_utf8", "_is_utf8"),
+                ("_dash_check_utf8", "_dash_is_utf8"),
                 ("_dash_item_globals", "_dash_kpi_fields"),
-                ("_dash_expand_plottype", "_expand_plottype_str"),
+                ("_dash_expand_plottype", "_dash_expand_plottype_str"),
                 ("_dash_imm_records", "_dash_imm_next"),
                 ("dash_setup", "_dash_pymin")):
             assert edge in edges, edge
@@ -520,12 +520,12 @@ class TestNothingIsOrphaned:
 
 
 # ---------------------------------------------------------------------------
-# No plot-type name reaches two rows of _expand_plottype_str's table
+# No plot-type name reaches two rows of _dash_expand_plottype_str's table
 # ---------------------------------------------------------------------------
 
 def _plottype_rows(mata_text):
-    """``[(full name, minimum)]`` of _expand_plottype_str's table."""
-    body = mata_text[mata_text.index("string scalar _expand_plottype_str("):]
+    """``[(full name, minimum)]`` of _dash_expand_plottype_str's table."""
+    body = mata_text[mata_text.index("string scalar _dash_expand_plottype_str("):]
     body = body[:body.index("\n}\n")]
     return re.findall(r'\("([a-z]+)","([a-z]+)"\)', body)
 
@@ -533,7 +533,7 @@ def _plottype_rows(mata_text):
 def _names_reaching_two(rows):
     """``{prefix: [rows it reaches]}`` for every prefix of a full name that
     reaches more than one row: at least as long as the row's minimum and a
-    prefix of its full name, the test _expand_plottype_str makes."""
+    prefix of its full name, the test _dash_expand_plottype_str makes."""
     out = {}
     for full, _mn in rows:
         for k in range(1, len(full) + 1):
@@ -545,7 +545,7 @@ def _names_reaching_two(rows):
 
 
 class TestNoPlotTypePrefixReachesTwoRows:
-    """_expand_plottype_str takes the first row a name reaches, which is
+    """_dash_expand_plottype_str takes the first row a name reaches, which is
     right only while no name reaches two.  It counted the rows and refused
     a name that reached two, "an ambiguous prefix", and nothing could reach
     that branch (measured 24sep2026 at 480159f, in Stata through the real
@@ -569,7 +569,7 @@ class TestNoPlotTypePrefixReachesTwoRows:
     def test_no_prefix_reaches_two_rows(self):
         two = _names_reaching_two(_plottype_rows(_read(_MATA_FILE)))
         assert not two, (
-            "these plot-type names reach two rows of _expand_plottype_str's "
+            "these plot-type names reach two rows of _dash_expand_plottype_str's "
             "table, and the first row would be taken without a word: %r.  "
             "Give one of the rows a longer minimum, as twoway does." % two)
 

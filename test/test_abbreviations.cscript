@@ -313,7 +313,7 @@ MATA_OPT_ALIAS = {
     "colpal": "colpalette", "bwid": "bwidth", "deg": "degree",
 }
 
-# dash's hard-coded plot-type table today (_expand_plottype_str).
+# dash's hard-coded plot-type table today (_dash_expand_plottype_str).
 # Flipped (WP-31 A2): the Mata table holds twoway's minimums only, and ar,
 # ba, sp, lfi, qfi, low, lpo, lpol, fp, fpf, kde, dr, tsl, tsrl and msp are
 # refused, "<word> is not a twoway plot type", r(198), as twoway refuses

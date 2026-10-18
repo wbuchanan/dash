@@ -22,7 +22,7 @@
 *!     plot type, UTF-8, layout(), link(), a KPI's percentile and a
 *!     saving() path.  Its header lists every function dash.ado calls.
 *!   - The spec is JSON assembled in Stata by string concatenation, every
-*!     text in it escaped in Mata (_dash_json_str, _json_escape); the
+*!     text in it escaped in Mata (_dash_json_str, _dash_json_escape); the
 *!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
@@ -128,6 +128,9 @@ program define dash, rclass
     // runs last: an rclass program that errors after its own return keeps
     // it (measured).
 
+    // WP-31 H7: after a build, a serve and the plot route, _dash_py_tidy
+    // pops the names they put in Python's __main__.
+
     // ----------------------------------------------------------------
     // Subcommand routing
     // ----------------------------------------------------------------
@@ -160,6 +163,7 @@ program define dash, rclass
     }
     if "`_subcmd'" == "build" {
         _dash_build `macval(_args)'
+        _dash_py_tidy
         _dash_result
         return add
         exit
@@ -170,6 +174,7 @@ program define dash, rclass
     }
     if "`_subcmd'" == "serve" {
         _dash_serve `macval(_args)'
+        _dash_py_tidy
         exit
     }
 
@@ -182,8 +187,28 @@ program define dash, rclass
     // P0.6).  Read here, where _caller() is the user's.
     global dash__uv = string(_caller())
     _dash_plot `macval(0)'
+    _dash_py_tidy
     _dash_result
     return add
+end
+
+
+// ================================================================
+// _dash_py_tidy  -- forget the names dash put in Python's __main__ (WP-31 H7)
+// ================================================================
+// Every program that reaches the renderer binds _dash_xm (and the render,
+// serve and dependency check their own names) in Stata's Python __main__,
+// where they stayed for the rest of the session.  The dispatcher calls this
+// after a build, a serve and the plot route.  A name never set is no error
+// (pop with a default), and .clear() makes the line's value None, which a
+// one-line python: does not echo.  The guards run first, as before every
+// python: line (test_env_guards.cscript ENV-12); by then they only confirm
+// what the command already checked.
+program define _dash_py_tidy
+    version 19
+    _dash_require_python
+    _dash_require_deps
+    capture python: [globals().pop(_n, None) for _n in ("_dash_saved_argv", "_dash_xm", "_dash_render_ns", "_dash_priv_argv", "_dash_dv", "_dash_serve_ns")].clear()
 end
 
 
@@ -440,7 +465,7 @@ program define _dash_require_mata
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
-        _dash_kpi_pctile _json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
+        _dash_kpi_pctile _dash_json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
         _dash_legend_first_refusal _dash_bare_string_refusal ///
         _dash_axlabel_refusal ///
@@ -513,14 +538,11 @@ program define _dash_require_mata
         // A function already defined stops `run' at its definition, r(3000),
         // so over a library in memory in part the file would define nothing
         // it lacks.  What is there is dropped first -- the library's own
-        // names only, which are _dash_* and the four below
-        // (test_program_coverage_map.py holds the list to dash_parse.mata),
+        // names only, every one of which is _dash_* (WP-31 H7: the last
+        // four unprefixed ones were renamed, so no hand list is kept;
+        // test_session_hygiene.py holds dash_parse.mata to the prefix),
         // and only when there is a file to load it back from.
         capture mata: mata drop _dash_*()
-        foreach f in _expand_plottype_str _first_comma_pos _is_utf8 ///
-                _json_escape {
-            capture mata: mata drop `f'()
-        }
         capture run `"`_src'"'
     }
 
@@ -657,6 +679,11 @@ program define _dash_do_render
     // prepends indentation to the stored block on ado-path loads).
     // Single-line python: statements do not have this issue.
     python: import sys
+    // WP-31 H7: the session's argv is saved here and put back after the
+    // run, before any exit -- the run line is `capture noisily', because a
+    // `python:' line that errors leaves the program at once (REVIEW-4
+    // R4-24) -- and the names this program puts in __main__ are popped.
+    python: _dash_saved_argv = list(sys.argv)
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
     // private: the one-line form's preview page, written 0600 as a new
     // file and never through a link (WP-29 P0.14; main(private_output)).
@@ -671,7 +698,11 @@ program define _dash_do_render
     // `dash scatter mpg weight, saving(x.html)' produced a 48 KB, 653-line
     // log, of which the dump began at line 91.  Contrary to project rule 14,
     // and it buries any message dash actually displays.
-    python: _dash_render_ns = _dash_xm._dash_run_renderer("`_py_renderpy'")
+    capture noisily python: _dash_render_ns = _dash_xm._dash_run_renderer("`_py_renderpy'")
+    local _rrc = _rc
+    python: sys.argv = _dash_saved_argv
+    python: [globals().pop(_n, None) for _n in ('_dash_render_ns', '_dash_priv_argv', '_dash_saved_argv', '_dash_xm')].clear()
+    if `_rrc' exit `_rrc'
 end
 
 
@@ -7188,7 +7219,7 @@ program define _dash_formats_json
         // Under set dp comma a numeric format's decimal point is a comma
         // (display %9.2f prints 3,14, as %9,2f does; WP-31 G2), so the
         // format the page writes with is the comma one.
-        mata: st_local("_fjv", _json_escape(_dash_dp_format(st_varformat(st_local("v")))))
+        mata: st_local("_fjv", _dash_json_escape(_dash_dp_format(st_varformat(st_local("v")))))
         // %t and %-t followed by one of the eight kind letters, case
         // sensitively: %tc and %tC are different formats.
         // %d is %td's old name (WP-31 G7).
@@ -7272,7 +7303,7 @@ program define _dash_graph_set_fonts
     if !_rc {
         foreach k in fontfacesans fontfaceserif fontfacemono {
             local _gf `"`r(`k')'"'
-            mata: st_local("_gfe", _json_escape(st_local("_gf")))
+            mata: st_local("_gfe", _dash_json_escape(st_local("_gf")))
             local json `"`json',"`k'":"`_gfe'""'
         }
     }
@@ -7558,6 +7589,7 @@ program define _dash_xm_load
     python: _dash_dv = _dash_xm._dash_dep_versions()
     python: _dash_M.setLocal("_dd_refuse", _dash_dv[0])
     python: _dash_M.setLocal("_dd_note", "" if _dash_ok else _dash_dv[1])
+    python: del _dash_dv
     local _dd_n : length local _dd_refuse
     if `_dd_n' > 0 {
         mata: _dash_say("err", "", st_local("_dd_refuse"), "")
@@ -9607,7 +9639,7 @@ end
 // axis pair, 3 a later one).  The options are read by value
 // (_dash_text_args) and reach syntax only through st_local("0"), never
 // a command line.  Returns by c_local only digits, option names and
-// _json_escape() output: _ao_y, _ao_x (the axis pair), _ao_canon (the
+// _dash_json_escape() output: _ao_y, _ao_x (the axis pair), _ao_canon (the
 // drawn sub-options, _dash_at_canon), _ao_noted (the names given that
 // dash does not draw).  An unknown placement() or orientation() is noted
 // here in twoway's words, so the name never crosses a program boundary.
@@ -12872,22 +12904,22 @@ program define _dash_prepare_spec, rclass
         // macros, so a title dash kpi had stored as written -- A$m B
         // `=1+1' C -- reached the spec expanded, and ran; so did a string
         // literal in the qualifier (measured 24sep2026;
-        // test_json_escaping.cscript JSE-58).  _json_escape writes ` $ and '
+        // test_json_escaping.cscript JSE-58).  _dash_json_escape writes ` $ and '
         // as \u escapes, so each can be expanded inside the compound quotes
         // of the line below.  The statistic, variable, value and update()
         // are dash's own words, and are escaped all the same.
-        mata: st_local("kstat",       _json_escape(st_global("dash_kpi_" + st_local("gname") + "__sta")))
-        mata: st_local("kvar",        _json_escape(st_global("dash_kpi_" + st_local("gname") + "__var")))
-        mata: st_local("kval",        _json_escape(st_global("dash_kpi_" + st_local("gname") + "__val")))
-        mata: st_local("_kdisp_esc",  _json_escape(st_global("dash_kpi_" + st_local("gname") + "__dsp")))
-        mata: st_local("_kfmt_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__fmt")))
-        mata: st_local("_ktitle_esc", _json_escape(st_global("dash_kpi_" + st_local("gname") + "__tit")))
-        mata: st_local("_ksub_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__sub")))
-        mata: st_local("_kcol_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__col")))
-        mata: st_local("_kbg_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__bg")))
-        mata: st_local("kupdate",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__upd")))
-        mata: st_local("kweight",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__wgt")))
-        mata: st_local("kwexp",       _json_escape(st_global("dash_kpi_" + st_local("gname") + "__wex")))
+        mata: st_local("kstat",       _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__sta")))
+        mata: st_local("kvar",        _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__var")))
+        mata: st_local("kval",        _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__val")))
+        mata: st_local("_kdisp_esc",  _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__dsp")))
+        mata: st_local("_kfmt_esc",   _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__fmt")))
+        mata: st_local("_ktitle_esc", _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__tit")))
+        mata: st_local("_ksub_esc",   _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__sub")))
+        mata: st_local("_kcol_esc",   _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__col")))
+        mata: st_local("_kbg_esc",    _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__bg")))
+        mata: st_local("kupdate",     _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__upd")))
+        mata: st_local("kweight",     _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__wgt")))
+        mata: st_local("kwexp",       _dash_json_escape(st_global("dash_kpi_" + st_local("gname") + "__wex")))
         // The KPI's if and in travel as the column that holds Stata's
         // answer (_dash_qual_take, above), and as no text.
         local _kqc : copy local _kqc_`k'
@@ -13459,6 +13491,9 @@ program define _dash_serve
     // renderer no longer starts one as a side effect of writing a file,
     // because `dash build, server' used that same entry point and was left
     // blocking forever with an orphaned server behind it.
+    // WP-31 H7: argv saved, and put back after the run before any exit, as
+    // _dash_do_render does.
+    python: _dash_saved_argv = list(sys.argv)
     python: sys.argv = ["dash_render.py", "--spec", "`_py_master'", "--data", "`_py_data'", "--output", "`_py_serve'", "--mode", "server", "--launch", "--port", "`port_int'", "--timeout", "`timeout'"]
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
@@ -13487,7 +13522,11 @@ program define _dash_serve
     // expression, and the run returns the module globals dict, so this
     // line used to dump dash_render.py's whole namespace into the Stata log
     // on every render -- roughly 10 KB of noise per command.
-    python: _dash_serve_ns = _dash_xm._dash_run_renderer("`_py_render'", {"_dash_launch_report": _dash_srv_rep})
+    capture noisily python: _dash_serve_ns = _dash_xm._dash_run_renderer("`_py_render'", {"_dash_launch_report": _dash_srv_rep})
+    local _rrc = _rc
+    python: sys.argv = _dash_saved_argv
+    python: [globals().pop(_n, None) for _n in ('_dash_serve_ns', '_dash_saved_argv', '_dash_xm')].clear()
+    if `_rrc' exit `_rrc'
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
     // WP-29 P0.13 F4: Break (or Ctrl+C) stopped the server; the launcher

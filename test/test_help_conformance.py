@@ -431,10 +431,10 @@ def _fold_aliases():
 
 def _plottype_minimums():
     """``{plot type: shortest spelling dash takes}``, from the table in
-    dash_parse.mata's _expand_plottype_str."""
+    dash_parse.mata's _dash_expand_plottype_str."""
     with open(_MATA, encoding="utf-8") as fh:
         src = fh.read()
-    i = src.index("string scalar _expand_plottype_str(")
+    i = src.index("string scalar _dash_expand_plottype_str(")
     j = src.index("\n}\n", i)
     return dict(re.findall(r'\("([a-z]+)",\s*"([a-z]+)"\)', src[i:j]))
 
@@ -869,7 +869,7 @@ class TestTheParsersFoundSomething:
         drawn = dr._dash_plot_type_names()
         assert set(mins) == drawn, (
             f"plot types dash draws with no row read from "
-            f"_expand_plottype_str: {sorted(drawn - set(mins))}; rows for "
+            f"_dash_expand_plottype_str: {sorted(drawn - set(mins))}; rows for "
             f"types it does not draw: {sorted(set(mins) - drawn)}")
 
     def test_the_spelling_fixture_was_found(self):

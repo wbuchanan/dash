@@ -373,7 +373,7 @@ class TestTheLivePin:
 
     def test_plot_type_minimums_match_the_table(self, truth):
         src = _read(MATA_PATH)
-        k = src.index("string scalar _expand_plottype_str")
+        k = src.index("string scalar _dash_expand_plottype_str")
         table = dict(re.findall(r'\("([a-z]+)","([a-z]+)"\)',
                                 src[k:src.index("\n}\n", k)]))
         bad = []

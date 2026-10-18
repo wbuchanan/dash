@@ -38,9 +38,9 @@ def _read(path):
 
 
 def _table():
-    """[(full, minimum), ...] of _expand_plottype_str, in order."""
+    """[(full, minimum), ...] of _dash_expand_plottype_str, in order."""
     src = _read(MATA)
-    k = src.index("string scalar _expand_plottype_str")
+    k = src.index("string scalar _dash_expand_plottype_str")
     block = src[k:src.index("\n}\n", k)]
     return re.findall(r'\("([a-z]+)","([a-z]+)"\)', block), block
 

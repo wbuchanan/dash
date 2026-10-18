@@ -1,7 +1,7 @@
 *! test_utf8_validation.cscript  v1.0
 *! Certification script for dash's UTF-8 gate.
 *!
-*! `_is_utf8' decided whether text was well-formed before it left Stata, and
+*! `_dash_is_utf8' decided whether text was well-formed before it left Stata, and
 *! it applied the wrong rule.  It checked that the LEAD byte was in range and
 *! that the bytes after it were 0x80-0xBF -- which is not what RFC 3629 says.
 *! The second byte's allowed range depends on the lead byte, and that is
@@ -93,7 +93,7 @@ real scalar _u8_diff(string scalar infile, string scalar outfile)
         parts = tokens(line)
         if (length(parts) < 2) continue
         want = strtoreal(parts[2])
-        got  = _is_utf8(_u8_bytes(parts[1]))
+        got  = _dash_is_utf8(_u8_bytes(parts[1]))
         ntot = ntot + 1
         if (got != want) {
             nbad = nbad + 1
@@ -113,7 +113,7 @@ end
 capture program drop _u8
 program define _u8, rclass
     args spec
-    mata: st_local("_u8_ok", strofreal(_is_utf8(_u8_bytes("`spec'"))))
+    mata: st_local("_u8_ok", strofreal(_dash_is_utf8(_u8_bytes("`spec'"))))
     return scalar ok = `_u8_ok'
 end
 

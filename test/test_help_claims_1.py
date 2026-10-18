@@ -315,9 +315,9 @@ def _twoway_spellings():
 
 
 def _mata_table():
-    """(full, minimum) rows of _expand_plottype_str's table."""
+    """(full, minimum) rows of _dash_expand_plottype_str's table."""
     mata = _read(_MATA)
-    body = mata[mata.index("string scalar _expand_plottype_str("):]
+    body = mata[mata.index("string scalar _dash_expand_plottype_str("):]
     body = body[:body.index("\n}\n")]
     return re.findall(r'\("([a-z]+)","([a-z]+)"\)', body)
 
@@ -336,7 +336,7 @@ def _dash_spellings():
             if hits:
                 out[p] = hits[0]
     mata = _read(_MATA)
-    body = mata[mata.index("string scalar _expand_plottype_str("):]
+    body = mata[mata.index("string scalar _dash_expand_plottype_str("):]
     body = body[:body.index("\n}\n")]
     for sp, ptype in re.findall(
             r'if \(name == "([a-z]+)"\) return\("([a-z]+)"\)', body):

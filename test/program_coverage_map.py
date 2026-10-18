@@ -370,6 +370,8 @@ COVERAGE = {
         "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
+        # WP-31 H7: the names a command put in Python's __main__, popped.
+        "_dash_py_tidy": ("test_env_guards.cscript:U55-1",),
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
         "_dash_pyfloor": ("test_env_guards.cscript:ENV-33",),
         "_dash_require_deps": ("test_env_guards.cscript:ENV-31", "test_env_guards.cscript:ENV-34", "test_env_guards.cscript:ENV-35"),
@@ -474,12 +476,14 @@ COVERAGE = {
         "_dash_fn_panel_count": ("test_wp31_truth.cscript:U46-04",),
         # WP-31 G7: a %tb format's business calendar, as JSON.
         "_dash_bcal_json": ("test_wp31_truth.cscript:U46-07",),
-        "_json_escape": ("test_json_escaping.cscript:JSE-01",
+        # Flipped: key _json_escape renamed _dash_json_escape (WP-31 H7: every library name is prefixed).
+        "_dash_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
         # e2e: _dash_json_str is this function's one caller.
         "_dash_json_str_args": ("test_json_escaping.cscript:JSE-01",
                                 "test_json_escaping.cscript:JSE-27"),
-        "_is_utf8": ("test_utf8_validation.cscript:UTF-01",
+        # Flipped: key _is_utf8 renamed _dash_is_utf8 (WP-31 H7: every library name is prefixed).
+        "_dash_is_utf8": ("test_utf8_validation.cscript:UTF-01",
                      "test_utf8_validation.cscript:UTF-10"),
         "_dash_path_badchar": ("test_path_validation.cscript:PV-03b",
                                "test_program_coverage.cscript:PC-30"),
@@ -529,7 +533,8 @@ COVERAGE = {
         "_dash_rep_has_alt": ("test_wp31_truth.cscript:U33-06",),
         # P1A-76: every prefix of every name, direct, and no prefix that
         # reaches two rows; e2e through _dash_expand_plottype.
-        "_expand_plottype_str": ("test_parser.cscript:P1A-76",
+        # Flipped: key _expand_plottype_str renamed _dash_expand_plottype_str (WP-31 H7: every library name is prefixed).
+        "_dash_expand_plottype_str": ("test_parser.cscript:P1A-76",
                                  "test_parser.cscript:P1A-40",
                                  "test_parser.cscript:P1A-57"),
         "_dash_expand_plottype": ("test_parser.cscript:P1A-40",
@@ -567,7 +572,8 @@ COVERAGE = {
         "_dash_quote_step": ("test_parser_integrity.cscript:P1B-02",
                              "test_parser_integrity.cscript:P1B-08",
                              "test_parser_integrity.cscript:P1B-14"),
-        "_first_comma_pos": ("test_tokenizer.cscript:P1A-26",
+        # Flipped: key _first_comma_pos renamed _dash_first_comma_pos (WP-31 H7: every library name is prefixed).
+        "_dash_first_comma_pos": ("test_tokenizer.cscript:P1A-26",
                              "test_parser_integrity.cscript:P1B-09"),
         "_dash_comma_pos": ("test_tokenizer.cscript:P1A-26",
                             "test_tokenizer.cscript:P1A-28"),

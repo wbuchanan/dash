@@ -4090,7 +4090,7 @@ def _mata_expanded_types():
     with open(os.path.join(_HERE, "..", "dash_parse.mata"),
               encoding="utf-8") as fh:
         src = fh.read()
-    k = src.index("string scalar _expand_plottype_str")
+    k = src.index("string scalar _dash_expand_plottype_str")
     # To the function's closing brace: the "nhits = 0" this stopped at went
     # with the unreachable ambiguity count (WP-26 TR-26.6, 24sep2026).
     block = src[k:src.index("\n}\n", k)]
@@ -4145,7 +4145,7 @@ class TestTheCorpusIsComplete:
         code, mata = dr._dash_plot_type_names(), _mata_expanded_types()
         assert code == mata, (
             f"only in dash_render.py: {sorted(code - mata)}; only in "
-            f"_expand_plottype_str: {sorted(mata - code)}")
+            f"_dash_expand_plottype_str: {sorted(mata - code)}")
 
     def test_the_literal_types_are_the_ones_dispatched_by_name(self):
         """scatteri, pci, pcarrowi and function are branched on by name in
@@ -4228,7 +4228,7 @@ class TestAnAliasIsNotAPlotType:
     The shared dispatch table carried the three as aliases of scatter, line
     and histogram, and the saved page's univariate set and the served app's
     two re-spellings accepted ``hist``.  dash.ado never writes one: it
-    expands a spelling to the full name (``_expand_plottype_str``) before it
+    expands a spelling to the full name (``_dash_expand_plottype_str``) before it
     writes a spec -- test_parser.cscript and test_abbreviations.cscript
     certify the expansion -- so only a spec written by hand names one, and
     no test or document did.  Measured on the code before WP-26

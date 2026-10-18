@@ -9,7 +9,7 @@ four varlist parsers (``_dash_parse_varpart_std/_1v/_3v/_4v``) now declare
 ``numeric`` too, so a string plot variable is refused the same way, before
 any count check runs.  This script writes ONE case per (plot type,
 variable position) of every type that takes variables -- read from
-dash_parse.mata's ``_expand_plottype_str`` table and dash.ado's
+dash_parse.mata's ``_dash_expand_plottype_str`` table and dash.ado's
 ``_dash_plottype_families`` -- into the marked region of
 test/test_adversarial.cscript.  It never types twoway's wording by hand:
 every case measures it live, in the same run, against dash's own output.
@@ -72,17 +72,17 @@ FILLERS = ["mpg", "weight", "price", "length"]
 
 
 def read_plottype_table(mata_text=None):
-    """[(full, min), ...] rows of _expand_plottype_str, in table order."""
+    """[(full, min), ...] rows of _dash_expand_plottype_str, in table order."""
     if mata_text is None:
         with open(MATA_PATH, encoding="utf-8") as fh:
             mata_text = fh.read()
     m = re.search(
-        r"string scalar _expand_plottype_str.*?tbl\s*=\s*(.*?)\n(?=\s*//)",
+        r"string scalar _dash_expand_plottype_str.*?tbl\s*=\s*(.*?)\n(?=\s*//)",
         mata_text, re.S)
     if not m:
         raise RuntimeError(
             "gen_string_varlists_cscript: could not find the plot-type "
-            "table in dash_parse.mata (_expand_plottype_str).")
+            "table in dash_parse.mata (_dash_expand_plottype_str).")
     rows = re.findall(r'\(\s*"([a-z0-9]+)"\s*,\s*"([a-z0-9]+)"\s*\)',
                        m.group(1))
     if len(rows) < 2:

@@ -368,27 +368,23 @@ class TestTheMataLibraryCheckNamesEveryFunctionDashCalls:
         """The repair drops what is in memory before it reloads the file: a
         function already defined stops `run' at its definition, r(3000), so
         over a library loaded in part the reload would define nothing it
-        lacks (test_env_guards.cscript ENV-23).  It drops ``_dash_*()`` and a
-        list of the library's other names, which must be exactly those."""
+        lacks (test_env_guards.cscript ENV-23).  It drops ``_dash_*()``,
+        which covers every function the library defines.
+
+        Flipped: this read a hand list of the library's other names, which
+        had to be exactly those; WP-31 H7 renamed the four (_json_escape,
+        _is_utf8, _expand_plottype_str, _first_comma_pos) with the prefix,
+        so there are none, and the list is gone."""
         ado = _read(os.path.join(_ROOT, "dash.ado"))
         funcs = set(_mata_functions(
             _read(os.path.join(_ROOT, "dash_parse.mata"))))
-        wild, drops = False, None
-        for _n, code in _logical_lines(ado):
-            if re.search(r"\bmata\s+drop\s+_dash_\*\(\)", code):
-                wild = True
-                continue
-            m = re.match(r"^foreach\s+f\s+in\s+(.*?)\s*\{$", code)
-            if wild and m and drops is None:
-                drops = set(m.group(1).split())
+        wild = any(re.search(r"\bmata\s+drop\s+_dash_\*\(\)", code)
+                   for _n, code in _logical_lines(ado))
         assert wild, "the repair no longer drops _dash_*() before it reloads"
-        assert drops is not None, (
-            "the list of the library's other function names is gone")
-        others = {f for f in funcs if not f.startswith("_dash_")}
-        assert others, "the parse found no function outside _dash_*"
-        assert drops == others, (
-            "the repair drops %s, where the library's functions outside "
-            "_dash_* are %s" % (sorted(drops), sorted(others)))
+        assert funcs
+        others = sorted(f for f in funcs if not f.startswith("_dash_"))
+        assert not others, (
+            "the wildcard drop misses the library's functions %s" % others)
 
 
 # ---------------------------------------------------------------------------
