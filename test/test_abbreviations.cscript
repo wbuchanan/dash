@@ -1211,14 +1211,18 @@ else display as text "CRA-01 PASS: colorrule() and crule() abbreviate as twoway'
 // opens with a quote is read to its closing quote -- empty, "option(s)
 // fontface(`') not allowed"; one word, r(198) with the word and a stray
 // quote; blanks in it, "option(s) fontface(`<first word> not found",
-// r(111) -- a bare mlabfontface is "option mlabfontface not allowed", and
-// after the paren-mode comma it is "option mlabfontface() not allowed".
+// r(111); compound-quoted with a double quote inside, an odd count of
+// them is r(132), twoway's line broken where its own display of the
+// value broke, and an even count the one-word refusal, a leading "..."
+// losing its quotes -- a bare mlabfontface is "option mlabfontface not
+// allowed", and after the paren-mode comma it is "option mlabfontface()
+// not allowed".
 // An empty mlabfontface() is taken in silence (rc 0, no note).  dash
 // named every one in its note.  Each spelling's rc and first error line
 // are twoway's, and where twoway is rc 0 dash's note does not name it.
 local mlf01 0
 local mlflog "`c(tmpdir)'zmlf01.log"
-python: from sfi import Macro as _mlfM; _mlfc = ["mlabfon(x)", "mlabfont(bold)", "mlabfontface(bold)", "mlabfontface( a  b )", "mlabfontface(Courier) mcolor(red)", "mlabfontface(x) mlabfontface(y)", "mlabfontface", "mlabfontface()", "mlabfontface( )", "mlabfontface(x) mlabfontface()", "mlabfontface() mlabfontface(x)", 'mlabfontface("a b")', 'mlabfontface("ab")', 'mlabfontface("")', 'mlabfontface( "ab cd" x)', 'mlabfontface(x "ab")', 'mlabfontface(`"ab cd"\')', 'mlabfontface(`"ab"\')', "L:mlabfontface(bold)", "P:mlabfontface(x)", "P:mlabfon(x)", "P:mlabfontface"]; [_mlfM.setLocal("mlf_c%d" % (k + 1), c) for k, c in enumerate(_mlfc)]; _mlfM.setLocal("mlf_n", str(len(_mlfc)))
+python: from sfi import Macro as _mlfM; _mlfc = ["mlabfon(x)", "mlabfont(bold)", "mlabfontface(bold)", "mlabfontface( a  b )", "mlabfontface(Courier) mcolor(red)", "mlabfontface(x) mlabfontface(y)", "mlabfontface", "mlabfontface()", "mlabfontface( )", "mlabfontface(x) mlabfontface()", "mlabfontface() mlabfontface(x)", 'mlabfontface("a b")', 'mlabfontface("ab")', 'mlabfontface("")', 'mlabfontface( "ab cd" x)', 'mlabfontface(x "ab")', 'mlabfontface(`"ab cd"\')', 'mlabfontface(`"ab"\')', 'mlabfontface(`"a"b"\')', 'mlabfontface(`"a"b c"\')', 'mlabfontface(`"a b"c"\')', 'mlabfontface(`""a"\')', 'mlabfontface(`""a b"\')', 'mlabfontface(`"""a"\')', 'mlabfontface(`""ab"c"\')', 'mlabfontface(`""a c"d"\')', 'mlabfontface(`""""\')', 'mlabfontface(`"a"b"c"\')', 'mlabfontface(`"""a""b"\')', 'mlabfontface(`"a"b"\') mlabfontface()', 'mlabfontface(`"a`"b"\'c"\')', "L:mlabfontface(bold)", "P:mlabfontface(x)", "P:mlabfon(x)", "P:mlabfontface"]; [_mlfM.setLocal("mlf_c%d" % (k + 1), c) for k, c in enumerate(_mlfc)]; _mlfM.setLocal("mlf_n", str(len(_mlfc)))
 forvalues i = 1/`mlf_n' {
     local o : copy local mlf_c`i'
     local pre "scatter mpg weight, mlabel(make)"

@@ -1678,15 +1678,17 @@ string scalar _dash_colorrule_full(string scalar r)
 // or compound, is read to its closing quote -- empty, "option(s)
 // fontface(`') not allowed"; one word, "option(s) fontface(`<word>"')
 // not allowed" invalid name"; with a blank, "option(s) fontface(`<first
-// word> not found", r(111) -- all r(198) but the last.  After the
+// word> not found", r(111) -- all r(198) but the last; a compound-quoted
+// one holding an odd number of double quotes is r(132), "option(s)
+// fontface(`...too many ')' or ']'", as twoway words it.  After the
 // paren-mode comma (graph 1) the first copy is "option <name>() not
 // allowed".  None, or only empty copies, which twoway takes: _mf_on 0.
 // ============================================================
 void _dash_mlabff_refusal(string scalar unk, real scalar graph)
 {
     string rowvector toks
-    string scalar    tok, nm, v, q, msg, cq
-    real scalar      i, p, k, rc
+    string scalar    tok, nm, v, q, msg, cq, w
+    real scalar      i, p, k, rc, cmp, d, nq
 
     st_local("_mf_on", "0")
     st_local("_mf_rc", "0")
@@ -1716,10 +1718,23 @@ void _dash_mlabff_refusal(string scalar unk, real scalar graph)
         v = strtrim(v)
         if (v == "") continue
         q = ""
+        cmp = 0
         if (substr(v, 1, 2) == char(96) + char(34)) {
+            // To the compound quote that closes it, nested ones kept.
+            cmp = 1
             q = substr(v, 3, .)
-            k = strpos(q, cq)
-            if (k) q = substr(q, 1, k - 1)
+            d = 1
+            for (k = 1; k < strlen(q); k++) {
+                if (substr(q, k, 2) == char(96) + char(34)) {
+                    d++
+                    k++
+                }
+                else if (substr(q, k, 2) == cq) {
+                    if (--d == 0) break
+                    k++
+                }
+            }
+            if (d == 0) q = substr(q, 1, k - 1)
         }
         else if (substr(v, 1, 1) == char(34)) {
             q = substr(v, 2, .)
@@ -1733,6 +1748,37 @@ void _dash_mlabff_refusal(string scalar unk, real scalar graph)
             continue
         }
         q = strtrim(q)
+        // A double quote inside a compound-quoted value (measured
+        // 18oct2026): with a blank before the first quote the blank rule
+        // below; else an odd count is r(132), twoway's line cut where its
+        // own display of the value broke, "option(s) fontface(`<text
+        // between a leading quote and the next>too many ')' or ']'"; an
+        // even count is the one-word refusal, a leading "..." losing its
+        // quotes ("ab"c is abc).
+        if (cmp & strpos(q, char(34))) {
+            k = strpos(q, char(34))
+            nq = strlen(q) - strlen(subinstr(q, char(34), ""))
+            if (k == 1 | !strpos(substr(q, 1, k - 1), " ")) {
+                if (mod(nq, 2)) {
+                    w = ""
+                    if (k == 1) {
+                        w = substr(q, 2, .)
+                        if (strpos(w, char(34))) w = substr(w, 1, strpos(w, char(34)) - 1)
+                    }
+                    msg = "option(s) fontface(" + char(96) + w + "too many ')' or ']'"
+                    rc = 132
+                    continue
+                }
+                if (k == 1) {
+                    w = substr(q, 2, .)
+                    q = substr(w, 1, strpos(w, char(34)) - 1) + substr(w, strpos(w, char(34)) + 1, .)
+                }
+                msg = (q == "" ? "option(s) fontface(" + char(96) + char(39) + ") not allowed" :
+                    "option(s) fontface(" + char(96) + q + cq + ") not allowed" + char(34) + " invalid name")
+                rc = 198
+                continue
+            }
+        }
         if (q == "") {
             msg = "option(s) fontface(" + char(96) + char(39) + ") not allowed"
             rc = 198

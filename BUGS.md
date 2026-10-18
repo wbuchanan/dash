@@ -4090,11 +4090,11 @@
   - Suggested fix: refuse a comma colour only when twoway does (measure which blank-and-comma forms twoway reads as a named style), and note the rest in twoway's words.
   - Resolution: Not fixed: it stays open because it was found after WP-31's sections landed, for S61's closeout or a later package. Graded S3 (WP-31): a refusal of a form twoway draws with a note.
 
-- [ ] Title: A quote inside a compound-quoted mlabfontface() value gives r(198) where twoway gives r(132)
+- [x] Title: A quote inside a compound-quoted mlabfontface() value gives r(198) where twoway gives r(132)
   - File Names and Line Numbers: dash_parse.mata _dash_mlabff_refusal
   - Description: Found by the 18oct2026 follow-up to WP-31 section 56. `mlabfontface(`"a"b"')` is r(132) in twoway; dash refuses it r(198). Every other measured mlabfontface() form matches (test_abbreviations.cscript MLF-01).
   - Suggested fix: give twoway's r(132) and words for a quote inside a compound-quoted value.
-  - Resolution: Not fixed: it stays open because it was found after WP-31's sections landed, for S61's closeout or a later package. Graded S3 (WP-31): which return code a refused value gets.
+  - Resolution: Fixed 18oct2026. Measured (StataNow 19.5): a compound-quoted mlabfontface() value is read to the compound quote that closes it, nested ones kept (mlabfontface(`"a`"b"'c"') is the one-word refusal of a`"b"'c); a double quote inside it, with no blank before the first, is r(132) when the count of them is odd, twoway's line broken where its own display of the value broke ("option(s) fontface(`too many ')' or ']'", the text between a leading quote and the next before "too many": `""a"' gives "fontface(`atoo many"), and the one-word refusal when it is even, a leading "..." losing its quotes (`""ab"c"' is fontface(`abc"'), `""""' the empty form); a blank before the first quote keeps the r(111) "not found" refusal. _dash_mlabff_refusal reads it so. Pinned by test/test_abbreviations.cscript MLF-01 (13 more quoted values, rc and first error line against twoway's).
 
 - [ ] Title: dash_setup installs by version, not by hash
   - File Names and Line Numbers: dash_setup.ado (_dash_setup_pip); dash_setup_lib.py pip_install_argv
