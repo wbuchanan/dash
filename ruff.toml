@@ -1,0 +1,27 @@
+# make lint (WP-31 I6, S60 D-60g): ruff over the renderer, the setup
+# library, test/ and scripts/.  ruff is not a runtime dependency: `make lint'
+# says how to install it when it is missing.
+#
+# The rule set is ruff's default -- pyflakes (F) and pycodestyle's E4, E7
+# and E9 errors.  E, W and B in full report about 3,800 style findings
+# (E501 alone 2,648), which no one fixes by hand; the plan's "51 findings"
+# were this default set over dash_render.py (55 at 0a0f69c).
+target-version = "py311"
+
+[lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    "E701",  # `if x: return y' on one line: the house style in test/
+    "E402",  # imports after sys.path.insert: every test module needs it
+    "E741",  # `l' and `I' name lines and indices throughout
+    "E731",  # a lambda bound to a name: short key functions, kept
+]
+
+[lint.per-file-ignores]
+# The baseline for the tests and the scripts (counts at 0a0f69c): unused
+# imports (F401, 195; some are re-exported to other test modules, which
+# import them from here, so they are not removed blindly), several imports
+# on one line (E401, 54), a pytest fixture parameter that shadows a
+# module-level name (F811, 5) and an unused local (F841, 21).
+"test/**" = ["F401", "E401", "F811", "F841"]
+"scripts/**" = ["F401", "E401", "F811", "F841"]

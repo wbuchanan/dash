@@ -8,3 +8,5 @@ scripts/__pycache__/*
 .gitnexus
 # Written by examples/serve_dashboard.do where it runs (test/ under certification)
 serve_dashboard_app.py
+# Stata and test-run logs (WP-31 I6; was only in .git/info/exclude)
+*.log

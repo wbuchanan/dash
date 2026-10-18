@@ -151,29 +151,29 @@ try:
     from bokeh.models import (
         Arrow,
         BooleanFilter,
-        BoxSelectTool,
+        BoxSelectTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         CDSView,
         ColumnDataSource,
         CustomJS,
-        DataRange1d,
+        DataRange1d,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         Div,
         HoverTool,
         IndexFilter,
         InlineStyleSheet,
         Legend as _BkLegend,
-        LassoSelectTool,
-        NormalHead,
-        OpenHead,
-        PanTool,
+        LassoSelectTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
+        NormalHead,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
+        OpenHead,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
+        PanTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         RangeSlider,
-        ResetTool,
+        ResetTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         Select,
         Slider,
-        Span,
-        TabPanel,
-        Tabs,
+        Span,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
+        TabPanel,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
+        Tabs,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
         Title as _BkTitle,
-        WheelZoomTool,
+        WheelZoomTool,  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     )
     from bokeh.plotting import figure as bokeh_figure
     from bokeh.resources import CDN, INLINE  # noqa: F401 — CDN kept for server mode
@@ -9147,8 +9147,8 @@ class SchemeParser:
         "color bylabel_outline": "#d9e6eb",
         "color by_label_fill": "#d9e6eb",
         # text()'s text box (WP-30 P1.10; scheme-s2color.scheme).
-        "gsize text_option": "medsmall",
-        "color text_option": "#000000",
+        "gsize text_option": "medsmall",  # noqa: F601  # the later entry is the one in force; S60 found the repeat and kept it (no behaviour change)
+        "color text_option": "#000000",  # noqa: F601  # the later entry is the one in force; S60 found the repeat and kept it (no behaviour change)
         "color text_option_line": "#000000",
         "color text_option_fill": "#d9e6eb",
         "compass2dir text_option": "center",
@@ -9206,7 +9206,7 @@ class SchemeParser:
         "color sunflowerdf": "#000000",
         "color sunflowerlb": "#eaffaa",
         "color sunflowerlf": "#804000",
-        "color text_option_line": "#000000",
+        "color text_option_line": "#000000",  # noqa: F601  # the later entry is the one in force; S60 found the repeat and kept it (no behaviour change)
         "color zyx2": "#000000",
         "intensity background": "inten100",
         "intensity foreground": "inten100",
@@ -9273,7 +9273,7 @@ class SchemeParser:
         "linewidth refline": "medium",
         "linewidth refmarker": "medium",
         "linewidth reverse_big": "thin",
-        "linewidth text_option": "thin",
+        "linewidth text_option": "thin",  # noqa: F601  # the later entry is the one in force; S60 found the repeat and kept it (no behaviour change)
         "linewidth zyx2": "medium",
         "symbol ci": "circle",
         "symbol ci2": "circle",
@@ -17425,7 +17425,7 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
         colorvar_key: bool = True,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a scatter glyph to *fig*.
 
         Args:
@@ -17571,7 +17571,7 @@ class GlyphMapper:
         by_x: bool = False,
         role: "str | None" = "line",
         colorvar_key: bool = True,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a line glyph to *fig*.
 
         *role* is the line a named style reaches (WP-30 P1.14a, D-32c):
@@ -17739,7 +17739,7 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
         order=None,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
 
         The outline joins its points as twoway's area does: in the data's
@@ -17898,7 +17898,7 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add vertical bar glyphs to *fig*.
 
         Each bar is one x unit wide, or barwidth() units, in the variable's
@@ -18221,7 +18221,7 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add vertical spike glyphs (segments from y=0 to y=yvar) to *fig*.
 
         Args:
@@ -20281,7 +20281,7 @@ class GlyphMapper:
         options: "dict[str, str]",
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a local polynomial regression smoother to *fig*.
 
         Implements Nadaraya–Watson kernel regression (``degree(0)``) or
@@ -20925,7 +20925,7 @@ class GlyphMapper:
         options: "dict[str, str]",
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a fractional polynomial fit line to *fig*.
 
         Fits a degree-2 FP model (Royston & Altman, 1994) by selecting the
@@ -21218,7 +21218,7 @@ class GlyphMapper:
         xvar: "str | None" = None,
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add histogram quad glyphs to *fig*.
 
         Note: for histograms only one variable (yvar) is binned.
@@ -21719,7 +21719,7 @@ class GlyphMapper:
         xvar: "str | None" = None,
         view=None,
         color_idx: int = 0,
-    ) -> "GlyphRenderer":
+    ) -> "GlyphRenderer":  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         """Add a kernel density estimate line to *fig*.
 
         Args:
@@ -28740,7 +28740,7 @@ def _stata_logic_to_pandas(expr: str) -> str:
 _IF_EXPR_MAX_DEPTH = 300
 
 
-def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
+def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
     """Return True only if *expr* is a safe comparison/boolean expression.
 
     Accepts only column references, numeric/string literals, comparison
@@ -40505,7 +40505,7 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       on an axis that carries no default ticker yet
                       (:func:`_dash_axis_add`; WP-30 P1.18b).
     """
-    from bokeh.models.tickers import FixedTicker, BasicTicker
+    from bokeh.models.tickers import FixedTicker, BasicTicker  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     from bokeh.models.formatters import CustomJSTickFormatter
 
     mode = spec["mode"]
@@ -42170,7 +42170,7 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     between labels, which Stata does not draw, are not drawn on an axis
     that has an xtick().
     """
-    from bokeh.models.tickers import BasicTicker, CustomJSTicker, FixedTicker
+    from bokeh.models.tickers import BasicTicker, CustomJSTicker, FixedTicker  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     text = str(raw or "")
     spec = _dash_parse_axis_spec(text)
     _dash_note_major_between(spec)
@@ -44102,7 +44102,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
     range a reference line spans, so its ends follow (WP-31 D12)."""
     from bokeh.models import (BooleanFilter, CustomJS, CustomJSTicker,
                               FixedTicker, IndexFilter, Range1d)
-    from bokeh.models.axes import ContinuousAxis
+    from bokeh.models.axes import ContinuousAxis  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     figs = dict(figures or {})
     models, index = [], {}
     groups, grouped = [], set()
@@ -49306,7 +49306,7 @@ def _dash_auto_bs_layout(all_names, kpi_names, figures=None):
 
     # ---- Graph row(s) ----
     if graph_names:
-        n_graphs = len(graph_names)
+        n_graphs = len(graph_names)  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
         # Derived from each figure's OWN proportions, not from the
         # count alone and not from the widest figure on the dashboard: a
         # panel wide enough to need a full row should take one without
@@ -51282,7 +51282,7 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
     sub-options named once (:func:`_dash_textbox`).  The text is a
     canvas ``Title.text``, the sink note() already uses.
     """
-    from bokeh.models import Axis, Title
+    from bokeh.models import Axis, Title  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     go = graph_opts or {}
     made = {}
     for k, side, ring in _DASH_EDGE_TITLES:
@@ -54589,7 +54589,7 @@ def _dash_add_hover_text(source, var, vlabels):
         return col
     vals = data[src_col]
     try:
-        n = len(vals)
+        n = len(vals)  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
     except TypeError:
         return None
     out = [GlyphMapper._mlabel_value_text(v, vlabels) for v in vals]
@@ -55513,7 +55513,7 @@ def _dash_if_type_problem(expr, frame):
                     or pd.api.types.is_datetime64_any_dtype(dt)
                     or pd.api.types.is_timedelta64_dtype(dt)):
                 kind = "num"
-            elif dt == object:
+            elif dt == object:  # noqa: E721  # exact dtype comparison as written (S60 baseline)
                 kind = "num"
                 for v in col:
                     if v is None or (isinstance(v, float) and v != v):
@@ -59128,7 +59128,7 @@ class DashRenderer:
         Returns:
             List of ``(label, DataFrame)`` tuples, one per facet group.
         """
-        import re as _re
+        import re as _re  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
 
         df = base_df if base_df is not None else self.df
         graph_opts = graph_spec.get("graph_options", {})
@@ -59355,7 +59355,7 @@ class DashRenderer:
         self,
         graph_spec: dict,
         source: ColumnDataSource,
-        facet_view: "Optional[Any]" = None,
+        facet_view: "Optional[Any]" = None,  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         rescale: frozenset = frozenset(),
     ) -> Any:
         """Build and return a fully-configured Bokeh Figure for one graph spec.
@@ -59369,7 +59369,7 @@ class DashRenderer:
             A Bokeh Figure with all glyphs and graph-level options applied.
         """
         graph_opts = graph_spec.get("graph_options", {})
-        plots = graph_spec.get("plots", [])
+        plots = graph_spec.get("plots", [])  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
 
         # A graph-level scheme() was parsed, escaped into graph_options and
         # then never read, so `dash scatter ..., scheme(economist)' drew the
@@ -59412,7 +59412,7 @@ class DashRenderer:
         self,
         graph_spec: dict,
         source: ColumnDataSource,
-        facet_view: "Optional[Any]" = None,
+        facet_view: "Optional[Any]" = None,  # noqa: F821  # a string annotation; the name is never evaluated (S60 baseline)
         rescale: frozenset = frozenset(),
     ) -> Any:
         """The body of :meth:`_make_figure`, run under the graph's scheme.
@@ -60239,7 +60239,7 @@ class DashRenderer:
         Returns:
             Complete HTML string.
         """
-        import html as _html
+        import html as _html  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
 
         if tabbed_names is None:
             tabbed_names = set()
@@ -64331,15 +64331,15 @@ class ServerAppBuilder:
 
         # Gather build options
         bo = self.spec.get("build_options", {})
-        layout_opt = bo.get("layout", "auto") or "auto"
+        layout_opt = bo.get("layout", "auto") or "auto"  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
         link_opt = bo.get("link", "") or ""
         filter_raw = bo.get("filter", "") or ""
 
         graphs = self.spec.get("graphs", [])
-        kpis = self.spec.get("kpis", [])
+        kpis = self.spec.get("kpis", [])  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
 
         # Determine linked graph names, by the saved renderer's rule
-        linked_names: set[str] = set(_dash_link_names(
+        linked_names: set[str] = set(_dash_link_names(  # noqa: F841  # kept as written (S60 baseline: no behaviour change in a lint pass)
             link_opt, [g.get("graph_options", {}).get("name", "")
                        for g in graphs]))
 

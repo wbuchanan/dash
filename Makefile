@@ -19,7 +19,7 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev test-batch test-release test-all test-floor cert gate release hooks
+.PHONY: help check test test-dev test-batch test-release test-all test-floor cert gate release hooks lint
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
@@ -33,6 +33,7 @@ help:
 	@echo "make gate      net install, then every example and scheme from the install"
 	@echo "make release   make check, then make test-release, then make gate"
 	@echo "make hooks     have 'git push' run 'make check' first"
+	@echo "make lint      ruff over dash_render.py, dash_setup_lib.py, test/ and scripts/ with ruff.toml (RUFF=<command> names ruff; it is not a runtime dependency)"
 	@echo "STATA_BIN=<path> names the console Stata (default /usr/local/bin/stata-mp); STATA_ARCH=auto|none|arm64|x86_64"
 
 check: test test-dev cert
@@ -46,9 +47,15 @@ test:
 	echo "pytest under Stata's Python: $$py"; \
 	DASH_STRICT=1 DASH_BASELINE=stata "$$py" -m pytest test/ $(PYTEST_ARGS)
 
+# DEV_STRICT and DEV_BASELINE (WP-31 I6): the CI workflow runs on a Linux
+# runner with no Stata, node or Chrome, so tests that need them skip, and
+# its Python 3.11 is the py311 baseline; it sets DEV_STRICT=0
+# DEV_BASELINE=py311.  On the certified machine both keep their defaults.
+DEV_STRICT   ?= 1
+DEV_BASELINE ?= dev
 test-dev:
 	@echo "pytest under the development interpreter: $(PYTHON)"
-	@DASH_STRICT=1 DASH_BASELINE=dev $(PYTHON) -m pytest test/ $(PYTEST_ARGS)
+	@DASH_STRICT=$(DEV_STRICT) DASH_BASELINE=$(DEV_BASELINE) $(PYTHON) -m pytest test/ $(PYTEST_ARGS)
 
 # The release tier (WP-30 test performance D): the tests marked release --
 # headless Chrome, nested pytest runs, the scipy/statsmodels-free subprocess
@@ -92,3 +99,18 @@ release: check test-batch test-release gate
 hooks:
 	git config core.hooksPath scripts/git-hooks
 	@echo "git push now runs 'make check' first; 'git push --no-verify' skips it."
+
+# WP-31 I6: ruff with the committed ruff.toml.  ruff is a development tool,
+# not a dependency: RUFF names it, else $(PYTHON) -m ruff, else ruff on PATH.
+LINT_PATHS = dash_render.py dash_setup_lib.py test scripts
+lint:
+	@r='$(RUFF)'; \
+	if [ -z "$$r" ]; then \
+	    if $(PYTHON) -m ruff --version >/dev/null 2>&1; then r='$(PYTHON) -m ruff'; \
+	    elif command -v ruff >/dev/null 2>&1; then r=ruff; fi; \
+	fi; \
+	if [ -z "$$r" ]; then \
+	    echo "make lint: ruff is not installed; install it with '$(PYTHON) -m pip install ruff' (a development tool, not a dependency of dash), or name it with RUFF=<command>"; \
+	    exit 2; \
+	fi; \
+	$$r check $(LINT_PATHS) --config ruff.toml

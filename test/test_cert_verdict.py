@@ -350,8 +350,16 @@ class TestMakeCheckIsWired:
         assert "-m pytest test/" in recipe
 
     def test_test_dev_is_strict_under_the_development_interpreter(self):
-        recipe = _recipe(_read("Makefile"), "test-dev")
-        assert "DASH_STRICT=1 DASH_BASELINE=dev" in recipe
+        # Flipped: WP-31 I6 (S60) -- the strictness and baseline are make
+        # variables so the Linux CI job (no Stata, node or Chrome; Python
+        # 3.11) can run it unstrict on py311; their defaults keep it strict
+        # on dev here.
+        mk = _read("Makefile")
+        recipe = _recipe(mk, "test-dev")
+        assert ("DASH_STRICT=$(DEV_STRICT) DASH_BASELINE=$(DEV_BASELINE)"
+                in recipe)
+        assert re.search(r"^DEV_STRICT\s*\?= 1$", mk, re.M)
+        assert re.search(r"^DEV_BASELINE \?= dev$", mk, re.M)
         assert "-m pytest test/" in recipe
 
     def test_cert_runs_the_suite_and_its_verdict(self):

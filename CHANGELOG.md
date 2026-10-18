@@ -1111,7 +1111,7 @@ Changed behaviour.
 
 <!-- WP-31 H6 -->
 
-<!-- WP-31 I6 -->
+- `make lint` runs ruff with the committed ruff.toml, a test scans the tree for secrets, a CI workflow runs `make test-dev` and `make lint` on Linux (macOS with Stata stays the certified platform), and *.log is in .gitignore (WP-31, I6)
 
 - `dash scatteri 1.0X+3ff 1` (or pci, pcarrowi): a hexadecimal coordinate whose exponent is +3ff is taken as a missing point, as twoway holds it; it was refused r(198) "is not a number" (WP-31, C18b)
 
