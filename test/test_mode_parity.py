@@ -148,6 +148,15 @@ ALLOWED = {
         "app draws it above sidebar and content -- a layout(bs) entry "
         "never sets filterposition(left)."
     ),
+    "a served session's recompute cue": (
+        "A served SESSION -- the launched app a browser connects to, never "
+        "a document built in process -- recomputes a move on its worker "
+        "thread and shows a hidden 'Updating...' status Div (named "
+        "dash_updating) in the filter row meanwhile (WP-30 P1.31b); the "
+        "saved page recomputes in its own script, at once, and has none.  "
+        "Hidden at rest, it draws nothing; the launched-process comparison "
+        "drops it and compares the rest (WP-32)."
+    ),
 }
 
 
@@ -6111,3 +6120,168 @@ class TestTheTwoModesAgreeOnAnAdoPathScheme(_Agree):
             assert len(said) == 1 and "'wp32none'" in said[0], said
         else:
             assert not said, said
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6): the launched process -- the generated app running
+# itself, as dash serve runs it (test_server_serves._Launched), read the
+# way a browser reads it, over its websocket.
+# ---------------------------------------------------------------------------
+
+def _wire_value(v):
+    """A property value as plain data: numbers through ``_num``, arrays as
+    lists, a ``Value`` spec as its value."""
+    import numpy as np
+    if hasattr(v, "value") and type(v).__name__ == "Value":
+        v = v.value
+    if isinstance(v, np.ndarray):
+        v = v.tolist()
+    if isinstance(v, (list, tuple)):
+        return [_wire_value(x) for x in v]
+    if isinstance(v, (np.floating, np.integer)):
+        v = v.item()
+    return _num(v)
+
+
+def _wire_profile(doc):
+    """What a launched app's document shows, as plain data a deserialised
+    document gives as well as a built one (the parity profile reads
+    property objects a document read off the wire spells differently):
+    for each figure in layout order, its title, ranges, axis labels and
+    each renderer's glyph type and the rows and columns it draws; every
+    filter widget's title and value; every Div's text and visibility."""
+    from bokeh.models import GlyphRenderer, Plot
+    out = {"figures": [], "widgets": [], "divs": []}
+    for m in _walk_models(doc):
+        if isinstance(m, Plot):
+            fig = {"title": getattr(m.title, "text", None),
+                   "x": [_wire_value(getattr(m.x_range, k, None))
+                         for k in ("start", "end")],
+                   "y": [_wire_value(getattr(m.y_range, k, None))
+                         for k in ("start", "end")],
+                   "axes": [a.axis_label for a in m.below + m.left
+                            if hasattr(a, "axis_label")],
+                   "glyphs": []}
+            for r in m.renderers:
+                if not isinstance(r, GlyphRenderer):
+                    continue
+                data, rows = _drawn(r)
+                fig["glyphs"].append(
+                    (type(r.glyph).__name__, rows,
+                     sorted((c, _wire_value(v)) for c, v in data.items()
+                            if c in _COORDS)))
+            out["figures"].append(fig)
+        elif isinstance(m, Div):
+            if m.name == "dash_updating":
+                _allowed("a served session's recompute cue")
+                continue
+            out["divs"].append((m.text, bool(m.visible)))
+        elif isinstance(m, Widget) and hasattr(m, "value"):
+            out["widgets"].append((type(m).__name__, getattr(m, "title", None),
+                                   _wire_value(m.value)))
+    return out
+
+
+#: (name, spec, moves): what the launched app is compared on.
+_LAUNCHED = [
+    ("scatter and lfit with a dropdown and a card",
+     _spec([_sc(), plot_for("lfit")],
+           {"filter": "foreign, type(dropdown)", "title": "Cars"},
+           kpis=[_kpi()]),
+     [("Select", "Foreign"), ("Select", "Domestic")]),
+]
+
+
+def _launched_profiles(spec, moves):
+    """``[profile at build, profile after each move]`` of the generated app
+    LAUNCHED in its own process (``python app.py --port``, no browser),
+    read through ``bokeh.client.pull_session`` -- the document its
+    websocket hands a browser -- with each move set on that client
+    document, so it reaches the app as a browser's would and the app's
+    patches come back the same way."""
+    import time
+    from bokeh.client import pull_session
+    import test_server_serves as ss
+    tag, sp, dp = _write(spec)
+    ap = os.path.join(_TMP, f"launched_{tag}.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    out = []
+    with ss._Launched(ap) as srv:
+        session = pull_session(url=srv.url("/", token=False),
+                               arguments={"token": srv.token})
+        try:
+            doc = session.document
+            out.append(_wire_profile(doc))
+            for step, (kind, want) in enumerate(moves):
+                [w] = [m for m in doc.models if type(m).__name__ == kind
+                       and "dash_filter_reset" not in (m.tags or [])]
+                # The drawing, not the widget: the widget's value changes
+                # here at once, the drawing when the app's patch arrives.
+                before = json.dumps(out[-1]["figures"], default=str)
+                w.value = _move_widget_value(w, kind, want)
+                deadline = time.time() + 30
+                last = {"seen": None, "at": time.time()}
+                conn = session._connection
+
+                def poll():
+                    # Settled: the drawing moved, the recompute cue is
+                    # down, and nothing has changed for a second.
+                    now = json.dumps(_wire_profile(doc), default=str)
+                    if now != last["seen"]:
+                        last["seen"], last["at"] = now, time.time()
+                    cue = [m for m in doc.models
+                           if getattr(m, "name", None) == "dash_updating"]
+                    moved = json.dumps(_wire_profile(doc)["figures"],
+                                       default=str) != before
+                    if time.time() > deadline or (
+                            moved and not (cue and cue[0].visible)
+                            and time.time() - last["at"] > 1.0):
+                        conn._loop.stop()
+                    else:
+                        conn._loop.call_later(0.2, poll)
+
+                # The client's own loop sends the patch and applies the
+                # app's replies (bokeh.client runs it only when asked).
+                # Its state machine is started once (_loop_until); a later
+                # move restarts the loop it is still waiting in.
+                conn._loop.call_later(0.2, poll)
+                if step == 0:
+                    conn._loop_until(lambda: False)
+                else:
+                    conn._loop.start()
+                assert time.time() <= deadline, (
+                    f"the launched app did not answer {kind} {want!r}")
+                out.append(_wire_profile(doc))
+        finally:
+            session.close()
+    return out
+
+
+@pytest.mark.serve
+@pytest.mark.parametrize("name,spec,moves", _LAUNCHED,
+                         ids=[x[0] for x in _LAUNCHED])
+class TestTheLaunchedAppAgrees:
+    def test_the_launched_document_is_the_built_one(self, name, spec, moves):
+        """The launched app's document, at build and after each move made
+        through its websocket, is the one ``make_document`` builds and its
+        callbacks move in process -- which TestTheTwoModesAgree and the
+        move entries compare with the saved page (WP-32: nothing compared
+        a launched process)."""
+        launched = _launched_profiles(spec, moves)
+        doc, _ = _served(spec)
+        local = [_wire_profile(doc)]
+        for kind, want in moves:
+            [w] = [m for m in _widgets_of(doc) if type(m).__name__ == kind]
+            _fire(w, _move_widget_value(w, kind, want))
+            local.append(_wire_profile(doc))
+        assert len(launched) == len(local) == len(moves) + 1
+        for step, (a, b) in enumerate(zip(local, launched)):
+            diffs = _diff(a, b)
+            assert not diffs, _explain(name, f"launched app, state {step}",
+                                       diffs)
+        for step in range(1, len(launched)):
+            assert _diff(launched[step - 1]["figures"],
+                         launched[step]["figures"]), (
+                f"{name}: move {step} changed nothing in the launched app")
