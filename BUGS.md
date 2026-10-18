@@ -3844,11 +3844,17 @@
   - Suggested fix: WP-31 section 60 (test harness fixtures): add generators, a target and a guard.
   - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails
+- [x] Title: The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails
   - File Names and Line Numbers: as cited
   - Description: GAPS3.md K4, re-verified at 6370ca4: Harness: the server fixture leaks a process when `__enter__` fails (test_server_serves.py:123-142); no AST count of the generated app's dispatch; scheme-key enumeration hand-written; no CSS-guard served arm; tracking-document counts unchecked; strict xfails test_natscale.py:76 and test_by_scales.py:426 (known divergences).
   - Suggested fix: WP-31 section 60 (test harness fixtures): fix the leak and add the guards.
-  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 18oct2026 (WP-31, K4), in part. _Served.__enter__ and _Launched.__enter__ (test/test_server_serves.py) wait through _wait_ready inside try/except BaseException that calls __exit__ before it re-raises, so a server or launched app that never answers (or any error while waiting) is terminated, not left running for the session (one such bokeh serve from test_data_table.py's served table test was still running a day later); both take a deadline (default 60 s). Python embedded in Stata never runs its exit handlers, so the dash_pytest_ folder test/conftest.py made when a cscript's python: block imported it stayed behind (about 140 MB a cert run); scripts/stata_batch.sh now gives each Stata run a dash_pytest_stata TMPDIR of its own and removes it when Stata ends, passing Stata's exit status on. Pinned by test/test_server_fixture.py::TestNoLeak (never-ready server, never-ready launched app, early exit, default deadline) and test/test_temp_cleanup.py::test_a_stata_run_gets_its_own_removed_python_temp. Residual (WP-31): the other guards K4 names stay open (BUGS.md "Harness guards"; GAPS3 K4 Tracked). Closes GAPS3 K4 in part (WP-31, K4).
+
+- [ ] Title: Harness guards
+  - File Names and Line Numbers: test/ (the generated app's dispatch, the scheme-key list, the CSS guard, the tracking counts); test/test_natscale.py:76, test/test_by_scales.py:426
+  - Description: GAPS3.md K4, the parts WP-31 section 60 left open: no AST count of the generated app's dispatch; the scheme-key enumeration is hand-written; no CSS-guard served arm; tracking-document counts unchecked; strict xfails test_natscale.py:76 and test_by_scales.py:426 (known divergences).
+  - Suggested fix: count the dispatch from the app's AST, derive the scheme keys from SchemeParser, add a served arm to the CSS guard, check the tracking counts, and close or re-file the two divergences.
+  - Resolution: Not fixed because WP-31 section 60 closed K4's process-leak clause only (its tasks name no other K4 clause). Graded S3 (WP-31): the row was graded S3 and its remainder keeps that grade.
 
 - [ ] Title: The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS
   - File Names and Line Numbers: test/test_mode_parity.py:111-155, :2802, :3247-3298

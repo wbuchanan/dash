@@ -50,4 +50,14 @@ if [ "${STATA_BATCH_PRINT:-}" = 1 ]; then
   printf '%s\n' "$out"
   exit 0
 fi
-exec "$@"
+# Python run inside Stata never runs its exit handlers, so the temporary
+# folder test/conftest.py makes when a cscript's python: block imports it
+# (filter_truth_check.py and others) was left behind, about 140 MB a run.
+# TMPDIR is a folder of this run's own, removed when Stata ends; its name
+# starts dash_pytest_, so conftest.py writes into it rather than making
+# another, and a folder a killed run leaves is swept once a day old.
+py_tmp="$(mktemp -d "${TMPDIR:-/tmp}/dash_pytest_stata.XXXXXX")" || exit 1
+TMPDIR="$py_tmp" "$@"
+rc=$?
+rm -rf "$py_tmp"
+exit $rc

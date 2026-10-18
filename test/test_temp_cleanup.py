@@ -37,3 +37,27 @@ def test_a_stale_folder_is_swept(tmp_path):
     os.utime(old, (t, t))
     conftest._sweep_stale_tmp(str(tmp_path))
     assert not old.exists() and new.exists() and other.exists()
+
+
+def test_a_stata_run_gets_its_own_removed_python_temp(tmp_path):
+    """WP-31 K4 (S60): Python embedded in Stata never runs atexit, so the
+    folder conftest.py made when a cscript imported it stayed behind.
+    scripts/stata_batch.sh gives each run a dash_pytest_ TMPDIR of its own,
+    removes it when Stata ends and passes Stata's exit status on."""
+    import subprocess
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    fake = tmp_path / "bin" / "stata-mp"
+    fake.parent.mkdir()
+    seen = tmp_path / "seen.txt"
+    fake.write_text('#!/bin/sh\nprintf "%%s" "$TMPDIR" > "%s"\n'
+                    'touch "$TMPDIR/left.txt"\nexit 3\n' % seen)
+    fake.chmod(0o755)
+    env = dict(os.environ, STATA_BIN=str(fake), STATA_ARCH="none",
+               TMPDIR=str(tmp_path))
+    rc = subprocess.run(["sh", os.path.join(root, "scripts", "stata_batch.sh"),
+                         "-b", "do", "x.do"], env=env, timeout=60).returncode
+    assert rc == 3
+    used = seen.read_text()
+    assert os.path.basename(used).startswith(conftest._TMP_PREFIX), used
+    assert os.path.dirname(used) == str(tmp_path)
+    assert not os.path.exists(used)

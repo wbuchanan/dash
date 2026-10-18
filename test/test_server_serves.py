@@ -99,8 +99,10 @@ class _Served:
     """
 
     def __init__(self, app_path, extra_args=(), token=TEST_TOKEN,
-                 allow_127=False, ready_path="/app"):
+                 allow_127=False, ready_path="/app", deadline=60):
         self.port = _free_port()
+        # Seconds __enter__ waits for an answer (WP-31 K4).
+        self.deadline = deadline
         self.app = app_path
         self.proc = None
         self.extra = list(extra_args)
@@ -128,7 +130,16 @@ class _Served:
             + self.extra,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             cwd=os.path.dirname(self.app) or ".", env=self._env())
-        deadline = time.time() + 60
+        # WP-31 K4: every failure path terminates the child before it
+        # raises, so a server that never answers is not left running.
+        try:
+            return self._wait_ready()
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
+
+    def _wait_ready(self):
+        deadline = time.time() + self.deadline
         while time.time() < deadline:
             if self.proc.poll() is not None:
                 out = self.proc.stdout.read() if self.proc.stdout else ""
@@ -148,6 +159,7 @@ class _Served:
                 self.proc.wait(timeout=15)
             except Exception:
                 self.proc.kill()
+                self.proc.wait(timeout=15)
         return False
 
     def url(self, path, token=True):
@@ -180,12 +192,14 @@ class _Launched:
     ``--show`` is never passed, so no browser opens.
     """
 
-    def __init__(self, app_path, extra_args=(), token=TEST_TOKEN):
+    def __init__(self, app_path, extra_args=(), token=TEST_TOKEN,
+                 deadline=60):
         self.port = _free_port()
         self.app = app_path
         self.proc = None
         self.extra = list(extra_args)
         self.token = token
+        self.deadline = deadline
 
     _env = _Served._env
 
@@ -194,7 +208,14 @@ class _Launched:
             [sys.executable, self.app, "--port", str(self.port)] + self.extra,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             cwd=os.path.dirname(self.app) or ".", env=self._env())
-        deadline = time.time() + 60
+        try:
+            return self._wait_ready()
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
+
+    def _wait_ready(self):
+        deadline = time.time() + self.deadline
         while time.time() < deadline:
             if self.proc.poll() is not None:
                 out = self.proc.stdout.read() if self.proc.stdout else ""

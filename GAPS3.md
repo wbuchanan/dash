@@ -559,5 +559,5 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit 6ef3e05.
 - **K2 Tracked:** Open (WP-31 section 60).
 - **K3 Tracked:** Open (WP-31 section 60).
-- **K4 Tracked:** Open (WP-31 section 60).
+- **K4 Tracked:** Partly closed in WP-31 (section 60, commit pending): the server fixture leak (and the temporary folder a Stata run left); open: the dispatch count, the scheme-key enumeration, the CSS-guard served arm, the tracking counts and the two strict xfails (BUGS.md "Harness guards").
 - **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit e826446.

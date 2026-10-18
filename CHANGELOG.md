@@ -1107,7 +1107,7 @@ Changed behaviour.
 
 <!-- WP-31 K3 -->
 
-<!-- WP-31 K4 -->
+- The test suite's server fixtures stop the server they started when it never answers, rather than leaving it running, and a Stata run removes the temporary folder its Python left behind (WP-31, K4)
 
 <!-- WP-31 H6 -->
 
