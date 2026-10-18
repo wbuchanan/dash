@@ -47712,12 +47712,14 @@ _DASH_COMPOSITE_JS = (
 const DASH_COMPOSITE_FONTS = ["bold 20px sans-serif", "14px sans-serif",
   "bold 14px sans-serif", "13px sans-serif", "bold 36px sans-serif",
   "11px sans-serif"];
-const DASH_COMPOSITE_ENTITIES = {"&amp;": "&", "&lt;": "<", "&gt;": ">",
-  "&quot;": "\"", "&#x27;": "'", "&#39;": "'", "&nbsp;": " "};
+// Keyed by the entity's name alone: an entity spelled out in this code
+// would reach the page's JSON escaped a second time.
+const DASH_COMPOSITE_ENTITIES = {"amp": "&", "lt": "<", "gt": ">",
+  "quot": "\"", "#x27": "'", "#39": "'", "nbsp": " "};
 function dash_text_of_html(s) {
   return String(s == null ? "" : s).replace(/<[^>]*>/g, "")
-    .replace(/&(?:amp|lt|gt|quot|#x27|#39|nbsp);/g,
-             (e) => DASH_COMPOSITE_ENTITIES[e])
+    .replace(/&(amp|lt|gt|quot|#x27|#39|nbsp);/g,
+             (e, name) => DASH_COMPOSITE_ENTITIES[name])
     .replace(/\s+/g, " ").trim();
 }
 function dash_text_of_div(d) {

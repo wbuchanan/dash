@@ -536,8 +536,10 @@ _SAVED_DIGEST = (
     # the same under both Pythons; b796859... -> 713839d1...: K6 the
     # figure's role="img" and name, the dropdown's and Reset filters'
     # role="group" and name (html_attributes), the same under both Pythons
-    # Merged batch 18 (H2x, K6, H3/H4): re-derived on the merged tree.
-    "8af16d2e61e2e8c9e0a37f9048593e27ced7ab4bda10f6437421d61736964ad3")
+    # Merged batch 18 (H2x, K6, H3/H4): re-derived on the merged tree;
+    # 8af16d2e... -> c2ebbb94...: the batch-18 gate, the composite code's
+    # entity table keyed by name, the same under both Pythons.
+    "c2ebbb944f7316eda1d2592839cbf2e57cfd0a207b09b4e841a1d92cffeb9006")
 
 
 # ===========================================================================

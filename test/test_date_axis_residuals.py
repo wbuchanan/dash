@@ -665,10 +665,13 @@ _PLAIN_DIGESTS = {
     # WP-31 K6 the figure's role="img" and aria-label html_attributes,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # Merged batch 18 (H2x, K6): e8b7082b... saved, 9b7c416f... served.
+    # e8b7082b... -> 758304bd... saved, 9b7c416f... -> e975974d... served:
+    # the batch-18 gate, the composite code's entity table keyed by name
+    # (finish JS text only); the same under both Pythons.
     ("saved", "plain"):
-        "e8b7082bf2e6c595b5c22299d3763715f99dcadeb05c3310d52780e20c1f77cd",
+        "758304bd61e1fcf88982addc45cac2a42819e125ee91d4b283b477b08f27271c",
     ("saved", "yaxis2"):
-        "e8b7082bf2e6c595b5c22299d3763715f99dcadeb05c3310d52780e20c1f77cd",
+        "758304bd61e1fcf88982addc45cac2a42819e125ee91d4b283b477b08f27271c",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -683,9 +686,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "9b7c416ff992ba81d5fe30b25894ead89dc8d2598079885df37329580b914760",
+        "e975974dfacf6d06212ec8dafc01aaa25cf32562fed60bb056fda87a2a6b4d09",
     ("served", "yaxis2"):
-        "9b7c416ff992ba81d5fe30b25894ead89dc8d2598079885df37329580b914760",
+        "e975974dfacf6d06212ec8dafc01aaa25cf32562fed60bb056fda87a2a6b4d09",
 }
 
 

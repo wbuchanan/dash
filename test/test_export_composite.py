@@ -366,6 +366,29 @@ console.log(JSON.stringify([m, none]));
 
 
 @js_runner.requires_node
+class TestTheTextOfHtml:
+
+    def test_each_entity_decodes_once_and_the_tags_go(self):
+        """dash_text_of_html decodes the seven entities a Div's text holds,
+        once each -- ``&amp;lt;`` stays the text ``&lt;`` -- and drops the
+        tags.  Its table is keyed by the entity's name (batch-18 gate): an
+        entity spelled out in the code reached the page's JSON escaped a
+        second time, which the title-escaping scans read as double escaping
+        (test_axis_options TestDashboardTitleEscaping)."""
+        out = js_runner.run_js(dr._DASH_COMPOSITE_JS + r"""
+console.log(JSON.stringify(dash_text_of_html(
+  "<b>R&amp;D &lt;x&gt; &quot;q&quot; Men&#x27;s &#39;a&#39;&nbsp;z</b> &amp;lt;")));
+""")
+        assert out == "R&D <x> \"q\" Men's 'a' z &lt;"
+        for ent in ("&amp;", "&lt;", "&gt;", "&quot;", "&#x27;", "&#39;",
+                    "&nbsp;"):
+            assert ent not in dr._DASH_COMPOSITE_JS.replace(
+                dr._DASH_FMT_JS[dr._DASH_FMT_JS.index(
+                    "function dash_html_escape("):dr._DASH_FMT_JS.index(
+                    "function dash_civil_from_days(")], ""), ent
+
+
+@js_runner.requires_node
 class TestTheLayoutArithmetic:
 
     def test_header_then_filters_then_tabs_then_cards_then_grid(self):
