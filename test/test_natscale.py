@@ -19,7 +19,8 @@ StataNow 19.5 --
 * ``natscale``: 3,000 random ranges through ``_natscale``.
 
 The model agrees with 261 of the 264 drawn axes (the three it does not are
-pinned below as strict xfails, so a better model has to remove them) and
+pinned below by name, filed as BUGS.md "The natscale model misses three of
+the 264 axes twoway drew", so a better model has to remove them) and
 with 98.3% of the random ranges.  Measured in Stata for the end-to-end
 cases here (sysuse auto): ``(scatter mpg weight) (line turn weight),
 ylabel(#6) xlabel(#4)`` draws y 10(10)50 and x 2000(1000)5000; ``ylabel(#1)``
@@ -69,18 +70,14 @@ def _same(a, b, step):
                                     for x, y in zip(a, b))
 
 
-def _drawn_cases():
+def _drawn_cases(known=False):
+    """The drawn axes the model reproduces, or with *known* the three it
+    does not."""
     out = []
     for r in _T["drawn"]:
         key = (r["dataset"], r["var"], r["n"])
-        marks = ([pytest.mark.xfail(strict=True, reason="natscale case the "
-                                    "model does not reproduce; at build the "
-                                    "drawn axis is Stata's own (WP-31 D15, "
-                                    "test_stata_ticks.py::"
-                                    "TestBuildTicksAreStatas::"
-                                    "test_auto_misses)")]
-                 if key in _KNOWN else [])
-        out.append(pytest.param(r, id="%s-%s-%d" % key, marks=marks))
+        if (key in _KNOWN) == known:
+            out.append(pytest.param(r, id="%s-%s-%d" % key))
     return out
 
 
@@ -90,6 +87,23 @@ class TestTheRuleAgainstStata:
         got = dr._dash_natscale_ticks(case["min"], case["max"], case["n"])
         step = case["natscale"][2]
         assert _same(got, case["ticks"], step), (got, case["ticks"])
+
+    # Flipped (WP-32, BUGS.md "Harness guards"): these were strict xfails
+    # of test_the_axes_twoway_drew.  The divergence is filed as BUGS.md
+    # "The natscale model misses three of the 264 axes twoway drew" and
+    # pinned here: the day the model draws one of them as twoway does,
+    # this fails -- take the case off _KNOWN and close the entry.  At
+    # build the drawn axis is Stata's own (WP-31 D15,
+    # test_stata_ticks.py::TestBuildTicksAreStatas::test_auto_misses).
+    @pytest.mark.parametrize("case", _drawn_cases(known=True))
+    def test_the_three_known_misses_are_still_missed(self, case):
+        got = dr._dash_natscale_ticks(case["min"], case["max"], case["n"])
+        step = case["natscale"][2]
+        assert not _same(got, case["ticks"], step), (got, case["ticks"])
+
+    def test_the_known_misses_are_in_the_fixture(self):
+        keys = {(r["dataset"], r["var"], r["n"]) for r in _T["drawn"]}
+        assert _KNOWN <= keys and len(_drawn_cases(known=True)) == 3
 
     def test_the_graph_uses_natscale_over_the_data(self):
         """The fixture's own claim: every drawn axis is natscale's answer
