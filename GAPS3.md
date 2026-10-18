@@ -529,8 +529,8 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
 - **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count, and in section 55 the strL loop (G3c) and the working-column room (G3d); open: the binary data file (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)").
-- **G3c Tracked:** Closed in WP-31, BUGS.md "The strL binary check reads every observation one at a time", commit pending.
-- **G3d Tracked:** Closed in WP-31, BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))", commit pending.
+- **G3c Tracked:** Closed in WP-31, BUGS.md "The strL binary check reads every observation one at a time", commit 1177bc3.
+- **G3d Tracked:** Closed in WP-31, BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))", commit 41af125.
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.
 - **G5 Tracked:** Closed in WP-31, BUGS.md "One format-writer model is emitted per distinct tick format and per tooltip kind", commit fb0d5ae.
 - **G6 Tracked:** Closed in WP-31, BUGS.md "Fractional %t values are floored on load and join-order edge cases differ", commit 8b367e7.
@@ -540,11 +540,11 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H2k Tracked:** Closed in WP-31, BUGS.md "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)", commit d1076a8.
 - **H2l Tracked:** Closed in WP-31, BUGS.md "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)", commit 01d9b3f.
 - **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
-- **H2x Tracked:** Closed in WP-31, BUGS.md "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)", commit pending.
-- **H3 Tracked:** Partly closed in WP-31 (section 55, commit pending): the served bundle no longer ships the bokeh-mathjax component; open: the build on the event loop, catch_warnings swapping filters and a brush made during a move being cleared (BUGS.md "Served build on the event loop").
-- **H4 Tracked:** Closed in WP-31, BUGS.md "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read", commit pending.
+- **H2x Tracked:** Closed in WP-31, BUGS.md "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)", commit b66caf9.
+- **H3 Tracked:** Partly closed in WP-31 (section 55, commit 58e10f6): the served bundle no longer ships the bokeh-mathjax component; open: the build on the event loop, catch_warnings swapping filters and a brush made during a move being cleared (BUGS.md "Served build on the event loop").
+- **H4 Tracked:** Closed in WP-31, BUGS.md "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read", commit c479d32.
 - **H6 Tracked:** Open (WP-31 section 60).
-- **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit pending.
+- **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit 47d113d.
 - **I2 Tracked:** Open (WP-31 section 59).
 - **I3 Tracked:** Open (WP-31 section 59).
 - **I4 Tracked:** Open (WP-31 section 59).
@@ -560,4 +560,4 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **K2 Tracked:** Open (WP-31 section 60).
 - **K3 Tracked:** Open (WP-31 section 60).
 - **K4 Tracked:** Open (WP-31 section 60).
-- **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit pending.
+- **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit e826446.
