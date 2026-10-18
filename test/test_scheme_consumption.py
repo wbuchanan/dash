@@ -97,6 +97,38 @@ def _render(plots=None, *, scheme="", theme="", layout="auto", kpis=None,
     return out, dr
 
 
+def _served(*, scheme="", layout="auto", kpis=None, title="",
+            subtitle=""):
+    """(document, app module): the served app built from the spec _render
+    builds, run through make_document as `bokeh serve' runs it."""
+    import warnings
+    from bokeh.document import Document
+    from conftest import load_app
+    spec = make_spec(_THREE_SERIES)
+    bo = spec["build_options"]
+    bo["layout"] = layout
+    for k, v in (("title", title), ("subtitle", subtitle),
+                 ("scheme", scheme)):
+        if v:
+            bo[k] = v
+    if kpis:
+        spec["kpis"] = kpis
+        bo["registry"] = "k1 g1"
+    d = tempfile.mkdtemp(prefix="dash_css_served_")
+    sp, dp, ap = (os.path.join(d, n) for n in ("s.json", "d.json", "app.py"))
+    with open(sp, "w") as f:
+        json.dump(spec, f)
+    with open(dp, "w") as f:
+        json.dump(make_data_json(_df()), f)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dash_render.ServerAppBuilder(sp, dp).build(ap)
+        mod = load_app(ap, "_css_served_%s_%s" % (layout, os.getpid()))
+        doc = Document()
+        mod.make_document(doc)
+    return doc, mod
+
+
 def _scatter_glyphs(dr):
     out = []
     for fig in dr.figures.values():
@@ -427,6 +459,43 @@ class TestSchemeCssActuallyApplies:
             f"layout({layout}): css_block() styles {missing}, which appear "
             f"nowhere in the emitted HTML"
         )
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_every_selector_matches_a_class_the_served_app_emits(
+            self, layout):
+        """The served arm of the check above (WP-32, BUGS.md "Harness
+        guards"): the served app has no page head of its own, and a Bokeh 3
+        Div renders in a shadow root, so a selector reaches its element
+        only through a stylesheet attached to the Div that carries the
+        class.  Every class selector css_block() emits must be a class of
+        some served Div, and every Div carrying it must carry the rule."""
+        from bokeh.models import Div
+        kpi = [{"name": "k1", "stat": "mean", "var": "mpg", "title": "T",
+                "fmt": "%9.1f"}]
+        doc, mod = _served(scheme="economist", layout=layout,
+                           title="A title", subtitle="A subtitle", kpis=kpi)
+        block = mod._DASH_SCHEME.css_block()
+        assert block == SchemeParser("economist").css_block()
+        selectors = set(re.findall(r"\.([A-Za-z][\w-]*)\s*\{", block))
+        assert selectors, "css_block() emits no class selectors at all"
+        divs = list(doc.select({"type": Div}))
+        carriers = {}
+        for d in divs:
+            for group in re.findall(r'class="([^"]*)"', d.text or ""):
+                for c in group.split():
+                    carriers.setdefault(c, []).append(d)
+        missing = sorted(sel for sel in selectors if sel not in carriers)
+        assert not missing, (
+            f"layout({layout}): css_block() styles {missing}, which no "
+            f"served Div carries")
+        bare = sorted(
+            sel for sel in selectors for d in carriers[sel]
+            if not any(re.search(r"\." + re.escape(sel) + r"\s*\{",
+                                 getattr(ss, "css", "") or "")
+                       for ss in (d.stylesheets or [])))
+        assert not bare, (
+            f"layout({layout}): served Divs carry {bare} with no stylesheet "
+            f"holding the rule, so the shadow root never applies it")
 
     def test_the_scheme_background_reaches_the_document(self):
         out, dr = _render(scheme="economist", layout="bs")
