@@ -38740,6 +38740,17 @@ def _dash_axis_too_many(head):
 #: 23sep2026, WP-20).  Two thousand labels on one axis is past legible.
 _MAX_AXIS_TICKS = 2000
 
+#: WP-32 (BUGS.md "Found by the move-parity extension: axes of degenerate or
+#: emptied layers after a move"): the extent of an axis whose layers draw
+#: nothing, by scale kind, in the build, the served re-finish and the saved
+#: page's finish (dash_axis_compute) alike, with no tick.  twoway draws such
+#: a scale empty (measured 18oct2026: `twoway (lfit mpg weight if foreign
+#: == 0) if price >= 10000' gives .xscale.curmin 1e300, curmax -1e300 and no
+#: tick), which no Bokeh range can hold; a Range1d is used because the
+#: saved page can write one in place after a move but cannot swap it for a
+#: DataRange1d.  Nothing is drawn on it, so the numbers are never seen.
+_DASH_EMPTY_SCALE = {"linear": (0.0, 1.0), "log": (1.0, 10.0)}
+
 #: twoway's #N rule, as dash reproduces it (_dash_natscale_ticks).  An
 #: uncovered stretch of data beyond the outermost tick costs twice a
 #: stretch of axis beyond the data; a tick fewer or more than N costs
@@ -41914,6 +41925,7 @@ function dash_axis_place(a, lo, hi, cur) {
     }
     return (t && t.length) ? t : cur;
 }
+const DASH_EMPTY_SCALE = @@DASH_EMPTY_SCALE@@;
 function dash_axis_compute(plan, models) {
     const tickers = {}, ranges = {}, tick_range = {}, fills = [], boxes = [];
     for (const grp of plan) {
@@ -41945,6 +41957,9 @@ function dash_axis_compute(plan, models) {
                 if (lo !== null && !s.shared) {
                     s.ticks = dash_axis_place(a, lo, hi, s.ticks);
                     dash_axis_every(a, lo, hi, tickers, tick_range);
+                } else if (lo === null && !s.shared && a.mode === "count" && !a.hold) {
+                    // WP-32: nothing drawn, no tick (_dash_empty_ticks).
+                    s.ticks = [];
                 }
                 row.push(s);
             }
@@ -41978,11 +41993,19 @@ function dash_axis_compute(plan, models) {
             }
             for (const es of Object.values(groups)) {
                 if (es.some((s) => s.shared)) continue;
-                if (es.every((s) => s.lo === null)) continue;
                 const hs = es.map((s) => dash_axis_hull(s.a, s.ticks, s.lo, s.hi, models, s.bases))
                     .filter((h) => h !== null);
-                if (!hs.length) continue;
                 const a0 = es[0].a;
+                if (!hs.length) {
+                    // WP-32: the empty form (_dash_empty_range).
+                    if (a0.range >= 0) {
+                        const ee = DASH_EMPTY_SCALE[a0.kind === "log" ? "log" : "linear"];
+                        const rr = models[a0.range];
+                        const rv = a0.reverse || (rr && rr.start > rr.end);
+                        ranges[a0.range] = rv ? [ee[1], ee[0]] : [ee[0], ee[1]];
+                    }
+                    continue;
+                }
                 const hlo = dash_axis_min(hs.map((h) => h[0]));
                 const hhi = dash_axis_max(hs.map((h) => h[1]));
                 for (const s of es) fills.push([s.a, hlo, hhi]);
@@ -42400,6 +42423,8 @@ for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
                    ("@@DASH_EPOCH@@", _STATA_EPOCH_UNIX_MS)):
     _DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(_tok, repr(_val))
 del _tok, _val
+_DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(
+    "@@DASH_EMPTY_SCALE@@", json.dumps(_DASH_EMPTY_SCALE))
 # WP-31 C11: lpoly's weight threshold, one Python constant for both twins.
 _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 # WP-30 P1.3a (TR-21.11): the saved page's filter callback ends by
@@ -45542,12 +45567,10 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
         else:
             if any(e.get("skip") for e in es):
                 continue
-            if any(e.get("refinish") for e in es) \
-                    and all(e.get("lo") is None for e in es):
-                continue
             hs = [h for h in (_dash_axis_hull(fig, e) for e in es)
                   if h is not None]
             if not hs:
+                _dash_empty_range(fig, name, letter, es)
                 continue
             lo, hi = min(h[0] for h in hs), max(h[1] for h in hs)
         if name == "default":
@@ -45602,6 +45625,77 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
         fig._dash_hull_entries = keep + done
     _dash_inner_box(fig)
     return done
+
+
+def _dash_empty_range(fig, name, letter, es):
+    """Give *fig*'s range *name* on *letter*, whose entries *es* draw
+    nothing, the empty form :data:`_DASH_EMPTY_SCALE` holds for its kind
+    (WP-32): a Range1d written IN PLACE (start, end and the Reset extent),
+    high to low when the range is reversed; a DataRange1d (the build's) is
+    replaced by one, and every axis tied to it follows.  A range of any
+    other type (a factor range) is left alone.  Each entry's ``rng``
+    follows the range.  The twin is the empty branch of the saved page's
+    ``dash_axis_compute``."""
+    from bokeh.models import DataRange1d, Range1d
+    if name == "default":
+        cur = getattr(fig, letter + "_range")
+        rev = bool((getattr(fig, "_dash_scale_reverse", None)
+                    or {}).get(letter))
+    else:
+        cur = getattr(fig, "extra_%s_ranges" % letter).get(name)
+        rev = bool((getattr(fig, "_dash_scale_reverse2", None)
+                    or {}).get(name))
+    if not isinstance(cur, (Range1d, DataRange1d)):
+        return None
+    rev = rev or _dash_range_reversed(cur)
+    lo, hi = _DASH_EMPTY_SCALE[
+        "log" if es and es[0].get("kind") == "log" else "linear"]
+    start, end = (hi, lo) if rev else (lo, hi)
+    if isinstance(cur, Range1d):
+        obj = cur
+        for k, v in (("reset_start", start), ("reset_end", end),
+                     ("start", start), ("end", end)):
+            if getattr(obj, k) != v:
+                setattr(obj, k, v)
+    else:
+        obj = Range1d(start=start, end=end, reset_start=start,
+                      reset_end=end)
+        extra = "extra_%s_ranges" % letter
+        tied = {k: obj for k, v in getattr(fig, extra).items() if v is cur}
+        if name == "default":
+            setattr(fig, letter + "_range", obj)
+        else:
+            tied[name] = obj
+        if tied:
+            setattr(fig, extra, {**getattr(fig, extra), **tied})
+    for e in es:
+        e["rng"] = obj
+    return obj
+
+
+def _dash_empty_ticks(e):
+    """Leave the counted axis of entry *e* with no tick, as twoway draws an
+    empty scale (WP-32): its FixedTicker placeholder is emptied in place, a
+    ``#N`` BasicTicker placeholder becomes an empty FixedTicker keeping its
+    tags (so a re-finish still counts it).  An entry marked ``hold`` keeps
+    its ticks.  The twin is ``dash_axis_compute``'s empty branch."""
+    from bokeh.models import FixedTicker
+    base = e.get("base")
+    if base is None or e.get("hold"):
+        return
+    if isinstance(base, FixedTicker):
+        if list(base.ticks or []):
+            base.ticks = []
+        return
+    fixed = FixedTicker(ticks=[], minor_ticks=[],
+                        tags=list(getattr(base, "tags", None) or []))
+    t = e["t"]
+    if base is t:
+        e["ax"].ticker = fixed
+        e["t"] = fixed
+    else:
+        t.args = dict(t.args, base=fixed)
+    e["base"] = fixed
 
 
 def _dash_finish_count_ticks(fig, refinish=False, skip=()):
@@ -45662,6 +45756,9 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
         e["tick_lo"], e["tick_hi"] = lo, hi
         if lo is not None and not e.get("skip"):
             _dash_place_count_ticks(e, lo, hi)
+        elif not e.get("skip"):
+            # WP-32: nothing drawn, no tick (twoway's empty scale).
+            _dash_empty_ticks(e)
     # WP-31 D1: xmtick(#N)/xmlabel(#N) positions widen the scale.
     _dash_place_minor_counts(entries)
     _dash_hull_ranges(fig, entries)
@@ -63365,6 +63462,8 @@ class ServerAppBuilder:
                       "_DASH_JOIN_TYPES",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
+                      # WP-32: the empty axis's extent.
+                      "_DASH_EMPTY_SCALE",
                       # WP-28 S14 (B1): _dash_parse_axis_spec's leading
                       # rule, and _dash_expand_numlist's three numlist
                       # forms.
@@ -63752,6 +63851,8 @@ class ServerAppBuilder:
                          "_dash_scale_name", "_dash_axis_hull",
                          "_dash_padded_range", "_dash_range_hull",
                          "_dash_range_reversed", "_dash_hull_ranges",
+                         # WP-32: an axis whose layers draw nothing.
+                         "_dash_empty_range", "_dash_empty_ticks",
                          "_dash_limit_ranges_to_primary",
                          # ... on log and date axes, and on one scale over
                          # a by() graph's panels.

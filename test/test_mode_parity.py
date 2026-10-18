@@ -3942,39 +3942,11 @@ assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
 #: Axes: after a move that leaves an lpoly/lpolyci layer one x value or a
 #: layer no rows, the served app sets a Range1d around what is left where
 #: the saved renderer given the kept rows draws an empty autorange.
-_AXES_FOUND_AFTER_MOVE = frozenset({
-    'bar with its own if emptied, slider to 10000',
-    'fpfit emptied, slider to 11385',
-    'fpfit with its own if emptied, slider to 10000',
-    'histogram with its own if emptied, slider to 10000',
-    'kdensity emptied, slider to 11385',
-    'kdensity with its own if emptied, slider to 10000',
-    'lfit emptied, slider to 11385',
-    'lfit with its own if emptied, slider to 10000',
-    'lowess emptied, slider to 10000',
-    'lowess emptied, slider to 11385',
-    'lowess with its own if emptied, slider to 10000',
-    'lpoly biweight degree 2, dropdown',
-    'lpoly biweight degree(3) [aw=weight], slider',
-    'lpoly emptied, slider to 10000',
-    'lpoly emptied, slider to 11385',
-    'lpoly gaussian [fw=rep], dropdown',
-    'lpoly, dropdown to Foreign',
-    'lpoly, range to 4500-11385',
-    'lpoly, slider to 4500',
-    'lpolyci cosine [fw=rep], dropdown',
-    'lpolyci var(4) [aw=weight], slider',
-    'lpolyci, dropdown to Foreign',
-    'lpolyci, range to 4500-11385',
-    'lpolyci, slider to 4500',
-    'mband with its own if emptied, slider to 10000',
-    'mspline with its own if emptied, slider to 10000',
-    'qfit emptied, slider to 11385',
-    'qfit with its own if emptied, slider to 10000',
-    'rarea with its own if emptied, slider to 10000',
-    'rbar with its own if emptied, slider to 10000',
-    'rspike with its own if emptied, slider to 10000',
-})
+# WP-32: every name agreed once an axis whose layers draw nothing took one
+# empty form in the build, the served re-finish and the saved page's
+# finish (no ticks, _DASH_EMPTY_SCALE written in place); emptied and
+# kept empty, as BUGS.md's form for such a list asks.
+_AXES_FOUND_AFTER_MOVE = frozenset()
 
 
 @pytest.mark.parametrize("name,spec,action,oracle", MOVE_CORPUS)

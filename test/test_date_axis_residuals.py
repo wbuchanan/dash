@@ -675,6 +675,9 @@ _PLAIN_DIGESTS = {
     # WP-32 D-31.a the (hidden) legend's key box is symxsize() by
     # symysize(), 50 x 13 (was 15 x 15); masked model diff, the same under
     # both Pythons.
+    # bbe2bc2f... -> fba98ea5... saved, 9935c1c8... -> 7f8f4187... served:
+    # WP-32, the finish code gives an axis whose layers draw nothing the
+    # empty form (DASH_EMPTY_SCALE; finish JS text only).
     ("saved", "plain"):
         "ac6ee365d6a3f2c1e8bd57d8649f7e1714a1ac3b0c8c83c03166787a7d83f096",
     ("saved", "yaxis2"):

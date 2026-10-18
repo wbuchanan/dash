@@ -642,11 +642,37 @@ class TestAfterAFilterMove:
 
 class TestAfterAMoveEdgeCases:
     @pytest.mark.parametrize("mode", _MODES)
-    def test_a_move_that_empties_holds(self, mode):
+    def test_a_move_that_empties_draws_an_empty_scale(self, mode):
+        """A move that leaves a layer no rows leaves its axes empty: no
+        ticks and the fixed empty extent, written in place (WP-32; BUGS.md
+        "Found by the move-parity extension: axes of degenerate or emptied
+        layers after a move").  Measured 18oct2026 on test_mode_parity's
+        ten rows: `twoway (lfit mpg weight if foreign == 0) if price >=
+        10000' (no rows; scatter, bar, kdensity, rarea alike) draws both
+        scales empty -- .xscale.curmin 1e300, curmax -1e300 -- with no
+        tick."""
+        # Flipped: before == after was wrong because twoway draws no tick
+        # and an empty scale where the axes held the build's.
         spec = _spec(_SC, filt="price, type(slider)")
-        before = _axes_of(_figs(mode, spec))
         after = _axes_of(_after(mode, spec, "Slider", 1e9))
-        assert _same_axes(before, after)
+        lo, hi = dr._DASH_EMPTY_SCALE["linear"]
+        assert after and all(a[2] == [] and (a[3], a[4]) == (lo, hi)
+                             for a in after), after
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_build_with_no_rows_draws_the_same_empty_scale(self, mode):
+        """The page built from no rows draws the form a move leaves, so the
+        two agree (test_mode_parity's oracle is the build from the kept
+        rows)."""
+        f = _figs(mode, _spec(_SC, if_expr="price > 1e9"))[0]
+        from bokeh.models import Range1d
+        lo, hi = dr._DASH_EMPTY_SCALE["linear"]
+        for letter in ("x", "y"):
+            rng = _range(f, letter)
+            assert isinstance(rng, Range1d), (letter, rng)
+            assert (rng.start, rng.end, rng.reset_start, rng.reset_end) \
+                == (lo, hi, lo, hi)
+            assert _ticks(f, letter) == []
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_one_row_left(self, mode):
@@ -666,12 +692,15 @@ class TestAfterAMoveEdgeCases:
         assert _ticks(f, "y") == [15.0, 20.0, 25.0, 30.0, 35.0, 40.0]
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_a_log_axis_with_nothing_positive_holds(self, mode):
+    def test_a_log_axis_with_nothing_positive_is_empty(self, mode):
+        # Flipped (WP-32): holding the build's axes was wrong because
+        # twoway draws an empty scale with no tick (see above); a log
+        # axis takes the empty extent above 0.
         spec = _spec([P("scatter", "price", "weight")], {"yscale": "log"},
                      filt="price, type(slider)")
-        before = _axes_of(_figs(mode, spec))
-        assert _same_axes(before, _axes_of(_after(mode, spec, "Slider",
-                                                  1e9)))
+        f = _after(mode, spec, "Slider", 1e9)[0]
+        assert _ticks(f, "y") == []
+        assert (f.y_range.start, f.y_range.end) == dr._DASH_EMPTY_SCALE["log"]
 
 
 class TestResetReturnsToTheCurrentExtent:

@@ -587,9 +587,12 @@ class TestTheHelpers:
         assert list(fig.x_range.renderers) == [ra, rb]
         assert list(fig.y_range.renderers) == [ra, rb]
 
-    def test_hull_ranges_leaves_an_axis_without_a_hull(self, tmp_path):
-        # WP-30 P1.3a: an axis with data now has a hull; one whose entries
-        # draw nothing finite keeps its range.
+    def test_hull_ranges_empties_an_axis_without_a_hull(self, tmp_path):
+        # WP-30 P1.3a: an axis with data now has a hull.  Flipped (WP-32):
+        # keeping the DataRange1d of an axis whose entries draw nothing
+        # finite was wrong because twoway draws an empty scale and the
+        # saved page cannot swap a range object after a move: the axis
+        # takes the fixed empty extent as a Range1d.
         from bokeh.models import DataRange1d
         fig = _one("saved", tmp_path, {})
         es = dr._dash_count_axes(fig, every_axis=True)
@@ -599,7 +602,9 @@ class TestTheHelpers:
         fig.y_range = DataRange1d()
         fig.x_range = DataRange1d()
         dr._dash_hull_ranges(fig, es)
-        assert _is(fig.y_range, "DataRange1d")
+        assert _is(fig.y_range, "Range1d")
+        assert (fig.y_range.start, fig.y_range.end) == \
+            dr._DASH_EMPTY_SCALE["linear"]
         assert fig._dash_hull_entries == []
 
 

@@ -527,7 +527,9 @@ FUNCTIONS = {
  '_dash_place_count_ticks': 'test/test_natscale.py::TestBothModesDrawTwowaysTicks::test_the_reported_case',
  # WP-28 B2: the extent after the layers.
  '_dash_axis_hull': 'test/test_axis_extents.py::TestTheHelpers::test_axis_hull_returns_none_without_an_explicit_value',
- '_dash_hull_ranges': 'test/test_axis_extents.py::TestTheHelpers::test_hull_ranges_leaves_an_axis_without_a_hull',
+ '_dash_hull_ranges': 'test/test_axis_extents.py::TestTheHelpers::test_hull_ranges_empties_an_axis_without_a_hull',
+ '_dash_empty_range': 'test/test_axis_extents.py::TestTheHelpers::test_hull_ranges_empties_an_axis_without_a_hull',
+ '_dash_empty_ticks': 'test/test_default_axes.py::TestAfterAMoveEdgeCases::test_a_build_with_no_rows_draws_the_same_empty_scale',
  '_dash_limit_ranges_to_primary': 'test/test_axis_extents.py::TestTheHelpers::test_limit_ranges_to_primary',
  '_dash_padded_range': 'test/test_axis_extents.py::TestTheHelpers::test_range_hull_inverts_padded_range',
  '_dash_range_hull': 'test/test_axis_extents.py::TestTheHelpers::test_range_hull_inverts_padded_range',

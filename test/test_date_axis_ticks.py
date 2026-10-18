@@ -266,14 +266,18 @@ class TestAfterAFilterMove:
         assert not bad, bad
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_empty_holds(self, tmp_path, mode):
-        """A move that keeps no row keeps the axis's last ticks."""
+    def test_empty_has_no_ticks(self, tmp_path, mode):
+        """A move that keeps no row leaves the date axis no tick (WP-32)."""
+        # Flipped: keeping the last ticks was wrong because twoway draws a
+        # scale with nothing on it empty, with no tick (BUGS.md "Found by
+        # the move-parity extension: axes of degenerate or emptied layers
+        # after a move").
         obj, figs = _build(tmp_path, mode, [_L("scatter", "close", "date")],
                            {}, "v")
-        before = _major_ticks(_axis(figs[0], "x"))
+        assert _major_ticks(_axis(figs[0], "x"))
         lo = _P["TD"]["data_lo"]
         figs = _move(mode, obj, (lo + 0.25, lo + 0.75))
-        assert _major_ticks(_axis(figs[0], "x")) == before
+        assert _major_ticks(_axis(figs[0], "x")) == []
 
 
 class TestZoom:
