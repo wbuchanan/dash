@@ -16601,15 +16601,54 @@ class GlyphMapper:
             setattr(key, _k, max(1, int(round(_pt * 96.0 / 72.0))))
         for _n in _named:
             _dash_style_note(which, _n, "sub-option", "not drawn")
-        side = "right"
+        # The scheme's `clockdir zyx2legend_position' and `gridringstyle
+        # zyx2legend_ring' (s2color 3 and 4) where clegend() gives no
+        # position() or ring() (WP-32, measured 18oct2026: a scheme's ring
+        # draws as the same clegend(ring()); ring 0 is inside the plot at
+        # the position, every other ring outside on the position's side).
         clock = place.get("position")
-        if clock is not None and place.get("ring") == 0 \
-                and clock in _DASH_CLOCK_INSIDE:
+        if clock is None:
+            clock = getattr(self.scheme, "zyx2_position", 3)
+        ring = place.get("ring")
+        if ring is None:
+            ring = getattr(self.scheme, "zyx2_ring", 4)
+        side = "right"
+        if ring == 0 and clock in _DASH_CLOCK_INSIDE:
             key.location = _DASH_CLOCK_INSIDE[clock]
             side = "center"
-        elif clock is not None and clock in _DASH_CLOCK_SIDE:
+        elif clock in _DASH_CLOCK_SIDE:
             side = _DASH_CLOCK_SIDE[clock]
-        fig.add_layout(key, side)
+        if side == "center":
+            fig.add_layout(key, side)
+            return
+        # Outside, its ring orders it among the side's keys and boxes:
+        # the series legend (ring 3, _dash_move_legend reads the tag) sits
+        # inside a ring 4 key and outside a ring 1 or 2 one, as twoway
+        # draws them; it goes after the axes, the edge titles and every
+        # box of a ring at or inside its own.
+        key.tags = list(key.tags or []) + [f"ring={int(ring)}"]
+        from bokeh.models import Axis, Legend
+        panel = list(getattr(fig, side))
+
+        def _inside(m):
+            if isinstance(m, Axis):
+                return True
+            tags = [str(t) for t in (getattr(m, "tags", None) or [])]
+            if "dash_edge_title" in tags:
+                return True
+            for t in tags:
+                if t.startswith("ring="):
+                    try:
+                        return int(t[5:]) <= ring
+                    except ValueError:
+                        return False
+            # A series legend already placed is ring 3.
+            return isinstance(m, Legend) and ring >= 3 \
+                and getattr(m, "name", None) != _COLORVAR_LEGEND_NAME
+        at = 1 + max((i for i, m in enumerate(panel) if _inside(m)),
+                     default=-1)
+        panel.insert(at, key)
+        setattr(fig, side, panel)
 
     def _colorvar_paint(self, glyph, source, color_spec, fill_only=False,
                         opacity=None) -> None:

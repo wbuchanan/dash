@@ -5387,8 +5387,11 @@ With more than one y variable, {cmd:colorvar()} is refused on
 The graph options {cmd:clegend()}, {cmd:plegend()} and {cmd:pcycle()} go
 with it.  {cmd:clegend(}{it:suboptions}{cmd:)} places the colour key:
 {cmd:off}, {cmd:position()} (the key stays upright, below the plot at 6
-o'clock, as in {cmd:twoway}), {cmd:ring(0)} (inside the plot),
-{cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}; its
+o'clock, as in {cmd:twoway}), {cmd:ring()} ({cmd:ring(0)} inside the
+plot at the position, the scheme's 3 o'clock unless {cmd:position()} is
+given; a ring inside the legend's 3 between the plot and the legend, as in
+{cmd:twoway}; the scheme's {cmd:gridringstyle zyx2legend_ring} where
+{cmd:ring()} is not given), {cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}; its
 other sub-options are named in the note.  {cmd:plegend()} does the same for
 the keys {cmd:coloruseplegend} puts in the plot legend, where
 {cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}
