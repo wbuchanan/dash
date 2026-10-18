@@ -331,13 +331,18 @@ COVERAGE = {
                         "test_serve_launch.cscript:TOK-01"),
         "_dash_serve_spec": ("test_serve_launch.cscript:SRV-01",
                              "test_export.cscript:EXP-04",
-                             "test_adversarial.cscript:P20-14"),
+                             "test_adversarial.cscript:P20-14",
+                             # WP-31 K2: saved against served layer output.
+                             "test_wp31_truth.cscript:U60-1",
+                             "test_wp31_truth.cscript:U60-5"),
         # e2e: a real dash serve, ended by timeout(1).
         # SRV-20: the renderer's path, holding a payload, reaches Python
         # as data (the serve-side twin of LOC-17).
         # SPU-01: a real launch against a held port turns the launcher's
         # RuntimeError into r(198) (WP-28 F1).
         "_dash_serve": ("test_help_claims_4.cscript:HC4-19",
+                        # WP-31 K2: the start line in the log.
+                        "test_wp31_truth.cscript:U60-3",
                         "test_serve_browser.cscript:SB-02",
                         "test_serve_launch.cscript:SRV-20",
                         "test_serve_launch.cscript:SPU-01",

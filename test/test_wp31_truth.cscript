@@ -14120,6 +14120,281 @@ if inlist("`only'", "", "S55") & `: list posof "S55" in w31_run' {
 }
 * ==== end S55 ====
 
+// S60 helpers (WP-31 K2).  _u60_docs: the saved renderer's figures and the
+// served document (the generated app's make_document) for one written
+// spec, as _u02_docs makes them.  _u60_glyphs: per figure in layout order,
+// the glyph renderers' (type, rows) pairs.  _u60_compare: both modes'
+// figures and glyphs into globals u60_<what>.
+python:
+import os as _u60_os, sys as _u60_sys
+for _u60_p in (_u60_os.path.abspath(".."), _u60_os.path.abspath(".")):
+    if _u60_p not in _u60_sys.path:
+        _u60_sys.path.insert(0, _u60_p)
+
+
+def _u60_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u60_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u60_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return r, doc
+
+
+def _u60_figs(roots):
+    from bokeh.models import Plot
+    out, seen = [], set()
+    for root in roots:
+        for m in root.references():
+            if isinstance(m, Plot) and m.id not in seen:
+                seen.add(m.id)
+                out.append(m)
+    return out
+
+
+def _u60_glyphs(fig):
+    from bokeh.models import GlyphRenderer
+    rows = []
+    for g in fig.renderers:
+        if isinstance(g, GlyphRenderer):
+            d = g.data_source.data
+            n = len(next(iter(d.values()))) if d else 0
+            rows.append((type(g.glyph).__name__, n))
+    return rows
+
+
+def _u60_quads(fig):
+    from bokeh.models import GlyphRenderer, Quad
+    for g in fig.renderers:
+        if isinstance(g, GlyphRenderer) and isinstance(g.glyph, Quad):
+            d = g.data_source.data
+            return [(round(float(a), 9), round(float(b), 9), round(float(c), 9))
+                    for a, b, c in zip(d[g.glyph.left], d[g.glyph.right],
+                                       d[g.glyph.top])]
+    return []
+
+
+def _u60_xs(fig, kind):
+    from bokeh.models import GlyphRenderer
+    for g in fig.renderers:
+        if isinstance(g, GlyphRenderer) and type(g.glyph).__name__ == kind:
+            xs = [float(v) for v in g.data_source.data[g.glyph.x]]
+            return (min(xs), max(xs)) if xs else (float("nan"),) * 2
+    return (float("nan"),) * 2
+
+
+def _u60_compare(sp, dp, app):
+    from sfi import Macro
+    r, doc = _u60_docs(sp, dp, app)
+    # Every Plot in each mode's layout (by() adds empty plots for its
+    # shared axis titles in both), walked the same way.
+    fs = _u60_figs([r._last_layout_root])
+    fv = _u60_figs(list(doc.roots))
+    Macro.setGlobal("u60_nfs", str(len(fs)))
+    Macro.setGlobal("u60_nfv", str(len(fv)))
+    # Panels are paired as multisets: model ids differ between the modes.
+    gs = sorted(_u60_glyphs(f) for f in fs)
+    gv = sorted(_u60_glyphs(f) for f in fv)
+    Macro.setGlobal("u60_gsame", "1" if gs == gv else "0")
+    # The panels that draw data: plots with a glyph renderer.
+    Macro.setGlobal("u60_nds", str(sum(1 for g in gs if g)))
+    Macro.setGlobal("u60_ndv", str(sum(1 for g in gv if g)))
+    Macro.setGlobal("u60_gs", str(gs)[:500])
+    Macro.setGlobal("u60_gv", str(gv)[:500])
+    qs = sorted(_u60_quads(f) for f in fs)
+    qv = sorted(_u60_quads(f) for f in fv)
+    Macro.setGlobal("u60_qsame", "1" if qs == qv else "0")
+    Macro.setGlobal("u60_nbins", str(len(qv[0]) if qv else -1))
+    for mode, figs in (("s", fs), ("v", fv)):
+        lo, hi = _u60_xs(figs[0], "Line") if figs else (float("nan"),) * 2
+        Macro.setGlobal("u60_lo_" + mode, repr(lo))
+        Macro.setGlobal("u60_hi_" + mode, repr(hi))
+
+
+def _u60_pyc_build(src_py, sp, dp, work):
+    """The renderer imported from a .pyc with no .py beside it, then asked
+    to write a served app: inspect.getsource has no source file to read."""
+    import importlib.util, py_compile, shutil, warnings
+    from sfi import Macro
+    d = _u60_os.path.join(work, "pyc")
+    _u60_os.makedirs(d, exist_ok=True)
+    cp = _u60_os.path.join(d, "dash_render_u60.py")
+    shutil.copyfile(src_py, cp)
+    pyc = _u60_os.path.join(d, "dash_render_u60.pyc")
+    py_compile.compile(cp, cfile=pyc, doraise=True)
+    _u60_os.remove(cp)
+    spec = importlib.util.spec_from_file_location("dash_render_u60", pyc)
+    mod = importlib.util.module_from_spec(spec)
+    err, ok = "", 0
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            spec.loader.exec_module(mod)
+            app = _u60_os.path.join(d, "app.py")
+            mod.ServerAppBuilder(sp, dp).build(app)
+            ok = 1 if _u60_os.path.isfile(app) else 0
+    except Exception as e:
+        err = "%s: %s" % (type(e).__name__, str(e)[:200])
+    Macro.setGlobal("u60_pyc_ok", str(ok))
+    Macro.setGlobal("u60_pyc_err", err.replace('"', "'").replace("`", "'"))
+end
+
+* ==== S60 K2: end-to-end gaps ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S60") & `: list posof "S60" in w31_run' {
+    display as text "S60 start " c(current_date) " " c(current_time)
+    local u60d "`w31_work'/s60"
+    capture mkdir "`u60d'"
+
+    // U60-1: a served histogram layer's output.  twoway's own bin rule
+    // (twoway__histogram_gen, the program twoway histogram calls) gives
+    // the bin count; the served document draws that many bars, with the
+    // saved page's edges and heights.
+    sysuse auto, clear
+    quietly twoway__histogram_gen mpg, gen(_u60h _u60x)
+    local tw_bins = r(bin)
+    drop _u60h _u60x
+    dash clear
+    quietly dash histogram mpg, name(g1)
+    _dash_serve_spec, specpath("`u60d'/s1.json") datapath("`u60d'/d1.json")
+    python: __import__("__main__")._u60_compare("`u60d'/s1.json", "`u60d'/d1.json", "`u60d'/a1.py")
+    _w31_expect U60-1 "(${u60_nbins} == `tw_bins')" "served bars ${u60_nbins}, twoway r(bin) `tw_bins'"
+    _w31_expect U60-1 "(${u60_qsame} == 1)" "the served bars' edges and heights differ from the saved page's"
+    _w31_done U60-1 "a served histogram draws twoway's `tw_bins' bins with the saved page's edges and heights"
+
+    // U60-2: a computed layer on a %td variable, served.  The lfit's line
+    // spans the date variable's range (summarize), saved and served.
+    sysuse auto, clear
+    generate double day = mdy(1, 1, 2000) + 10 * _n
+    format day %td
+    quietly summarize day
+    local dmin = r(min)
+    local dmax = r(max)
+    dash clear
+    quietly dash lfit mpg day, name(g1)
+    _dash_serve_spec, specpath("`u60d'/s2.json") datapath("`u60d'/d2.json")
+    python: __import__("__main__")._u60_compare("`u60d'/s2.json", "`u60d'/d2.json", "`u60d'/a2.py")
+    // Drawn on a datetime axis: milliseconds since 1jan1970 (day 3653).
+    local dlo = (`dmin' - 3653) * 86400000
+    local dhi = (`dmax' - 3653) * 86400000
+    foreach m in s v {
+        _w31_expect U60-2 "(abs(${u60_lo_`m'} - `dlo') < 1 & abs(${u60_hi_`m'} - `dhi') < 1)" "`m': lfit x ${u60_lo_`m'}..${u60_hi_`m'} ms, summarize `dmin'..`dmax' days"
+    }
+    _w31_done U60-2 "an lfit on a %td x spans the dates' range, saved and served"
+
+    // U60-3: the serve start line in the log.  A port another program
+    // holds makes the launched app fail fast, after the announcement.
+    sysuse auto, clear
+    dash clear
+    quietly dash scatter mpg weight, name(g1)
+    python: import socket as _u60_sk
+    python: _u60_hold = _u60_sk.socket(); _u60_hold.bind(("127.0.0.1", 0)); _u60_hold.listen(1)
+    python: from sfi import Macro as _u60_M; _u60_M.setLocal("u60port", str(_u60_hold.getsockname()[1]))
+    tempname u60lg
+    local u60log "`u60d'/serve.log"
+    quietly log using "`u60log'", replace text name(`u60lg')
+    capture noisily dash serve, port(`u60port') nobrowser
+    local rc3 = _rc
+    quietly log close `u60lg'
+    python: _u60_hold.close()
+    cert_file_has "`u60log'", needle("dash serve: starting Bokeh Server on port `u60port'.")
+    _w31_expect U60-3 "(r(found) == 1)" "the log lacks the start line for port `u60port'"
+    _w31_expect U60-3 "(`rc3' != 0)" "dash serve on a held port: r(`rc3')"
+    _w31_done U60-3 "dash serve logs its start line with the port, then the held port's refusal (r(`rc3'))"
+
+    // U60-4: a served build from an installed tree: net install into a
+    // scratch PLUS (test_render_locate.cscript LOC-13's way), only Stata's
+    // directories and that PLUS on the path, then dash build, server.
+    local u60plus0 "`c(sysdir_plus)'"
+    local u60sado "$S_ADO"
+    local u60plus "`u60d'/plus/"
+    capture mkdir "`u60d'/plus"
+    quietly cd ..
+    local u60src "`c(pwd)'"
+    quietly cd "`u60src'/test"
+    local rc4i = -1
+    local rc4b = -1
+    local u60fr ""
+    sysdir set PLUS "`u60plus'"
+    if "`c(sysdir_plus)'" == "`u60plus'" {
+        capture noisily net from "`u60src'"
+        if _rc == 0 capture noisily net install dash, replace
+        local rc4i = _rc
+        mata: st_global("S_ADO", "BASE;SITE;PLUS")
+        capture noisily _dash_find_render
+        local u60fr `"`r(fn)'"'
+        sysuse auto, clear
+        dash clear
+        quietly dash scatter mpg weight, name(g1)
+        capture noisily dash build, saving("`u60d'/inst.py") server replace nobrowser
+        local rc4b = _rc
+        dash clear
+        mata: st_global("S_ADO", st_local("u60sado"))
+    }
+    sysdir set PLUS "`u60plus0'"
+    _w31_expect U60-4 "(`rc4i' == 0)" "net install: r(`rc4i')"
+    mata: st_local("u60frok", strofreal(strpos(st_local("u60fr"), st_local("u60plus")) == 1))
+    _w31_expect U60-4 "(`u60frok' == 1)" `"the renderer found was `u60fr', not the installed one"'
+    _w31_expect U60-4 "(`rc4b' == 0)" "dash build, server from the install: r(`rc4b')"
+    if `rc4b' == 0 {
+        cert_file_has "`u60d'/inst.py", needle("def make_document")
+        _w31_expect U60-4 "(r(found) == 1)" "the installed build's app has no make_document"
+    }
+    _w31_done U60-4 "a served build from a net-installed tree writes the app through the installed renderer"
+
+    // U60-5: per-type by() parity.  twoway draws one panel per foreign
+    // level (2); both modes draw two panels with the same glyphs and rows.
+    foreach t in histogram kdensity scatter line bar {
+        sysuse auto, clear
+        dash clear
+        if inlist("`t'", "histogram", "kdensity") quietly dash `t' mpg, by(foreign) name(g1)
+        else if "`t'" == "line" quietly dash line mpg weight, sort by(foreign) name(g1)
+        else quietly dash `t' mpg weight, by(foreign) name(g1)
+        _dash_serve_spec, specpath("`u60d'/s5`t'.json") datapath("`u60d'/d5`t'.json")
+        python: __import__("__main__")._u60_compare("`u60d'/s5`t'.json", "`u60d'/d5`t'.json", "`u60d'/a5`t'.py")
+        quietly levelsof foreign
+        local npan : word count `r(levels)'
+        _w31_expect U60-5 "(${u60_nds} == `npan' & ${u60_ndv} == `npan')" "`t': drawn panels saved ${u60_nds} served ${u60_ndv}, twoway `npan'"
+        _w31_expect U60-5 "(${u60_nfs} == ${u60_nfv})" "`t': plots saved ${u60_nfs} served ${u60_nfv}"
+        _w31_expect U60-5 "(${u60_gsame} == 1)" "`t': glyphs saved ${u60_gs} served ${u60_gv}"
+    }
+    _w31_done U60-5 "by(foreign) draws twoway's two panels with the same glyphs in both modes, for histogram, kdensity, scatter, line and bar"
+
+    // U60-6: the inspect.getsource path.  ServerAppBuilder copies the
+    // renderer's functions by inspect.getsource (_dash_source_of), which
+    // has no fallback: from a .pyc with no .py beside it the build fails
+    // and says why.  This case documents that refusal (GAPS3 K2's
+    // fallback does not exist; BUGS.md "Stata end-to-end gaps" residual).
+    sysuse auto, clear
+    dash clear
+    quietly dash scatter mpg weight, name(g1)
+    _dash_serve_spec, specpath("`u60d'/s6.json") datapath("`u60d'/d6.json")
+    python: __import__("__main__")._u60_pyc_build("../dash_render.py", "`u60d'/s6.json", "`u60d'/d6.json", "`u60d'")
+    display as text `"U60-6 note: the .pyc-only build says: ${u60_pyc_err}"'
+    _w31_expect U60-6 "(${u60_pyc_ok} == 0)" "a .pyc-only renderer wrote a served app: a fallback now exists, flip this case"
+    mata: st_local("u60e", strofreal(strpos(st_global("u60_pyc_err"), "OSError") > 0 | strpos(st_global("u60_pyc_err"), "source") > 0))
+    _w31_expect U60-6 "(`u60e' == 1)" `"the refusal does not name the missing source: ${u60_pyc_err}"'
+    _w31_done U60-6 "a .pyc-only renderer refuses to write a served app, naming the missing source (no getsource fallback)"
+
+    dash clear
+    macro drop u60_*
+    display as text "S60 end " c(current_date) " " c(current_time)
+}
+* ==== end S60 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

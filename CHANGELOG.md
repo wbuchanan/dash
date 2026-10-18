@@ -1103,7 +1103,7 @@ Changed behaviour.
 
 - Loading the renderer no longer writes dash_render's bytecode under PLUS/py, so ado uninstall leaves no __pycache__ behind; the dash_setup_lib load was already guarded, and dash_setup's scheme probe of the renderer is guarded too. (WP-31, I7)
 
-<!-- WP-31 K2 -->
+- The certification suite checks served layer output against the saved page and twoway, dates served, the serve start line, a served build from an installed tree and by() in both modes (WP-31, K2)
 
 - Every truth fixture names a committed generator, `make truth` regenerates them through one Stata slot and `make truth-check` refuses a fixture without complete metadata or with an absolute path (WP-31, K3)
 
