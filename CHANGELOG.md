@@ -934,6 +934,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - A brush made on a served graph while a filter move waits for its recompute is kept, on the rows the move keeps, where drawing the move cleared it (WP-32, H3)
 - The scheme visual truth is generated: scripts/extract_scheme_visual_truth.do renders a scatter, line, connected and histogram graph under all 26 shipped schemes and records what twoway drew, and the test compares dash's scheme colours, symbols, patterns, sizes, opacities, regions, legend, text and histogram bars with it for every scheme (it held four schemes, measured by hand, and no histogram); meta's legend outline, which dash draws and twoway does not, is filed as an open BUGS.md entry. (WP-32, K3)
 - A scheme's `gridringstyle by_legend_ring` places by()'s legend as the same legend(ring()) does, and ring(1) is drawn as ring(0), as twoway draws them; the scheme's ring was read by nothing. (WP-32)
+- `dash line y x, colorvar(z) zscale(log)` with a continuous z was split into the log colour bar's 256 bins (101 lines for z = 1 to 101); it is cut at the levels twoway draws, the same as without zscale(log) (the key's labels, any below the minimum dropped), and the log key is drawn in those levels' colours. (WP-32)
 
 ### Fixed in WP-31
 

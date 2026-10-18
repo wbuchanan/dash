@@ -5320,7 +5320,9 @@ observations missing the variable a line of their own in the
 {cmd:colorvar()} takes {cmd:twoway}'s levels: its cuts are the key's labels,
 a label below the variable's minimum dropped, and each level, up to and
 including a cut, one colour of the key, on the line and on the markers of
-{cmd:connected} and {cmd:rconnected}) (measured: on
+{cmd:connected} and {cmd:rconnected}; under {cmd:zscale(log)} the levels are
+the same and the key is drawn on a log scale in their colours, as
+{cmd:twoway} draws it) (measured: on
 {it:x} 1 to 6 with levels 1 1 2 2 1 3, one line through the 1st, 2nd and
 5th points, one through the 3rd and 4th, and nothing for the 6th alone).
 On {cmd:area}, {cmd:rarea}, the fits and

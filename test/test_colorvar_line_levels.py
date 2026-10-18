@@ -267,3 +267,74 @@ def test_the_key_has_twoways_levels(mode):
         {"field": "z", "transform": m}, [1000.0, 1000.5, 1500.0]).tolist() \
         == [0, 1, 1]
     assert list(bar.ticker.ticks) == [1000.0, 1500.0, 2000.0, 2500.0]
+
+
+#: Measured 18oct2026 (StataNow 19.5, s2color, SVG export of ``twoway
+#: line y x, colorvar(z) zscale(log)`` on x = 1..101, y = mod(_n, 3), z a
+#: float): zscale(log) puts the key on a log axis but leaves the levels
+#: as they are on a linear one -- the cuts are the key's natscale labels
+#: (20 .. 100; 2,000 .. 10,000; 10 .. 50), a label below the minimum
+#: dropped, in n + 1 colours of the rule.  dash split the line by the log
+#: bar's 256 bins: 101 lines for each case.
+_TWOWAY_LOG_LEVELS = (
+    ("one_to_101", np.float32(np.arange(1, 102)),
+     [((1, 20), "#0000ff"), ((21, 40), "#00cbff"), ((41, 60), "#00ff65"),
+      ((61, 80), "#65ff00"), ((81, 100), "#ffcc00"), ((101, 101),
+                                                      "#ff0000")]),
+    ("decades", np.float32(10 ** (np.arange(101) / 25.0)),
+     [((1, 83), "#0000ff"), ((84, 91), "#00cbff"), ((92, 95), "#00ff65"),
+      ((96, 98), "#65ff00"), ((99, 101), "#ffcc00")]),
+    ("halves", np.float32(1 + np.arange(101) * 0.5),
+     [((1, 19), "#0000ff"), ((20, 39), "#00cbff"), ((40, 59), "#00ff65"),
+      ((60, 79), "#65ff00"), ((80, 99), "#ffcc00"), ((100, 101),
+                                                     "#ff0000")]),
+)
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("name,z,want", _TWOWAY_LOG_LEVELS,
+                         ids=[c[0] for c in _TWOWAY_LOG_LEVELS])
+def test_zscale_log_keeps_twoways_levels(mode, name, z, want):
+    spec = tp._spec(graphs=[("g1", [_pl(colorvar="z")], {"zscale": "log"},
+                             {})])
+    df = _continuous(z)
+    if mode == "saved":
+        fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
+    else:
+        fig = _served_figs(_served(spec, df))[0]
+    got = sorted(((int(xs[0]), int(xs[-1])), str(c).lower())
+                 for c, xs in _paths(fig))
+    # A level of one point draws nothing in twoway; dash keeps its source.
+    want = sorted(want)
+    assert [g[0] for g in got] == [w[0] for w in want], (name, got)
+    for (_r, c), (_rw, cw) in zip(got, want):
+        assert max(abs(int(c[j:j + 2], 16) - int(cw[j:j + 2], 16))
+                   for j in (1, 3, 5)) <= 1, (name, c, cw)
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_zscale_log_key_is_stepped_on_a_log_bar(mode):
+    """The key stays on a log axis, its colours the levels' (each bin the
+    colour of the level its centre falls in), ticked at the cuts."""
+    from bokeh.models import ColorBar, LogColorMapper
+    spec = tp._spec(graphs=[("g1", [_pl(colorvar="z")], {"zscale": "log"},
+                             {})])
+    df = _continuous(np.float32(10 ** (np.arange(101) / 25.0)))
+    if mode == "saved":
+        fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
+    else:
+        fig = _served_figs(_served(spec, df))[0]
+    [bar] = [m for side in (fig.right, fig.left, fig.above, fig.below,
+                            fig.center) for m in side
+             if isinstance(m, ColorBar)]
+    m = bar.color_mapper
+    assert isinstance(m, LogColorMapper)
+    lev = dr.GlyphMapper._colorvar_level_index(
+        {"field": "z", "transform": m}, [1.0, 2500.0, 4500.0, 9000.0])
+    pal = [str(c).lower() for c in m.palette]
+    assert len({pal[k] for k in lev}) == 4
+    # The bar holds the five levels the data reach (1 to 10,000), not the
+    # rule's 256 steps.
+    assert len(set(pal)) == 5
+    assert [t for t in bar.ticker.ticks if t > 0] == [
+        2000.0, 4000.0, 6000.0, 8000.0, 10000.0]

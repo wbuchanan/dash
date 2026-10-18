@@ -14038,6 +14038,12 @@ def _compute_secondary_range(
     return lo - padding_pct * span, hi + padding_pct * span
 
 
+#: The bins a zscale(log) line's stepped colour key is drawn in (WP-32):
+#: BokehJS bins a LogColorMapper equally in log space, so each of these
+#: takes the colour of the level its centre falls in.
+_DASH_LOG_STEP_BINS = 1024
+
+
 def _dash_colorvar_step_index(cuts, values):
     """Each value's level among twoway's intervals (-inf, c0], (c0, c1],
     ..., (ck, +inf) over the sorted *cuts* (WP-32, a continuous colorvar()
@@ -16056,6 +16062,7 @@ class GlyphMapper:
         colorcuts, use a CategoricalColorMapper (category10 palette).
         """
         self._colorvar_step_cuts = None
+        self._colorvar_step_colours = None
         varname = options.get("colorvar", "").strip()
         if not varname or varname not in source.data:
             return
@@ -16513,7 +16520,8 @@ class GlyphMapper:
                                                dp=getattr(self, "dp",
                                                           "period"))
                 _cbar.color_mapper = mapper
-                if stepped and type(mapper).__name__ == "LinearColorMapper":
+                if stepped and type(mapper).__name__ in (
+                        "LinearColorMapper", "LogColorMapper"):
                     mapper = self._colorvar_stepped_mapper(
                         _cbar, mapper, lo, hi,
                         lambda n: (_c_list + [_c_list[-1]] * n)[:n]
@@ -16718,6 +16726,29 @@ class GlyphMapper:
         cuts = [t for t in ticks if t >= lo] or [float(lo)]
         n = len(cuts) + 1
         colours = list(colours_of(n))
+        self._colorvar_step_colours = colours
+        if type(mapper).__name__ == "LogColorMapper":
+            # zscale(log) (measured 18oct2026, ``twoway line y x,
+            # colorvar(z) zscale(log)``): the key is on a log axis but the
+            # levels are the linear ones above.  BokehJS bins a log mapper
+            # equally in log space, so the bar is drawn in
+            # _DASH_LOG_STEP_BINS bins, each in the level its centre falls
+            # in; the line's split is the cuts' own (exact), a marker on
+            # the mapper within one bin of a cut.
+            from bokeh.models import LogColorMapper
+            lo_l, hi_l = float(mapper.low), float(mapper.high)
+            if not (lo_l > 0 and hi_l > lo_l):
+                return mapper
+            nb = _DASH_LOG_STEP_BINS
+            ratio = math.log(hi_l / lo_l)
+            centres = [lo_l * math.exp(ratio * (k + 0.5) / nb)
+                       for k in range(nb)]
+            lev = np.searchsorted(np.asarray(cuts, dtype=float), centres,
+                                  side="left")
+            self._colorvar_step_cuts = cuts
+            return LogColorMapper(palette=[colours[int(k)] for k in lev],
+                                  low=lo_l, high=hi_l,
+                                  nan_color=missing_color)
         if len(cuts) > 1:
             step = (cuts[-1] - cuts[0]) / (len(cuts) - 1)
         else:
@@ -16767,7 +16798,9 @@ class GlyphMapper:
         finally:
             fig.renderers = [x for x in fig.renderers if x is not probe]
         cuts = getattr(self, "_colorvar_step_cuts", None)
+        step_colours = getattr(self, "_colorvar_step_colours", None)
         self._colorvar_step_cuts = None
+        self._colorvar_step_colours = None
         f = probe.glyph.fill_color
         field = getattr(f, "field", None)
         mapper = getattr(f, "transform", None)
@@ -16803,8 +16836,12 @@ class GlyphMapper:
                     sub[col] = vals[keep]
                 else:
                     sub[col] = [v for v, k in zip(vals, keep) if k]
-            out.append((ColumnDataSource(sub),
-                        self._colorvar_level_colour(spec, lev),
+            if cuts is not None and step_colours and 0 <= lev \
+                    < len(step_colours):
+                colour = step_colours[lev]
+            else:
+                colour = self._colorvar_level_colour(spec, lev)
+            out.append((ColumnDataSource(sub), colour,
                         alpha if isinstance(alpha, (int, float))
                         and alpha != 1.0 else None))
         return out
@@ -63994,6 +64031,8 @@ class ServerAppBuilder:
                       # GlyphMapper._dot_fill's cap on a dot layer's dots
                       # (WP-31 B5b).
                       "_DASH_DOTS_MAX",
+                      # A zscale(log) line's stepped key bins (WP-32).
+                      "_DASH_LOG_STEP_BINS",
                       # The __dash-prefixed column names GlyphMapper reads
                       # (G1, WP-28): the pc row identity, the marker-label
                       # columns and the jitter columns, and the suffix the
