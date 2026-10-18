@@ -797,6 +797,8 @@ COVERAGE = {
         "_dash_colorrule_check": ("test_wp31_truth.cscript:U17-04",),
         "_dash_colorrule_full": ("test_abbreviations.cscript:CRA-01",),
         "_dash_mlabff_refusal": ("test_abbreviations.cscript:MLF-01",),
+        "_dash_mlabff_strip": ("test_abbreviations.cscript:MLF-01",),
+        "_dash_mlabff_name": ("test_abbreviations.cscript:MLF-01",),
         # WP-31 S32 (C8d): pcycle() fractions refused where twoway refuses them.
         "_dash_pcycle_bad": ("test_option_validation.cscript:U32-11",),
         # WP-31 B4b: the top-level options of an option text, as typed.

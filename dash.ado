@@ -474,7 +474,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -8164,6 +8164,8 @@ program define _dash_report_ignored
     // unnamed (test_json_escaping.cscript JSE-46).
     mata: _dash_text_args(0, 0, 0)
     local raw : copy local _dash_txt
+    // An empty mlabfontface() is taken by twoway in silence (MLF-01).
+    mata: st_local("raw", _dash_mlabff_strip(st_local("raw")))
 
     // `raw' mixes bare option names (pending, from the declared set) with the
     // verbatim text Stata could not match (unknown, from the trailing *).  Cut
@@ -10584,7 +10586,9 @@ end
 // on every plot type, the rightmost copy named (mlabf() and mlabfo() are
 // mlabformat(), which it reads first); a bare mlabfontface is "option
 // mlabfontface not allowed"; after the paren-mode comma a spelling is
-// "option mlabfontface() not allowed"; an empty mlabfontface() is taken
+// "option mlabfontface() not allowed"; a quoted value is read to its
+// closing quote, one with a blank r(111); an empty mlabfontface() is
+// taken in silence, and _dash_report_ignored leaves it out of the note
 // (measured 18oct2026, test_abbreviations.cscript MLF-01).  dash does not
 // declare it, so it reached the catch-all and the note named it.  Called
 // right after _dash_refuse_jit with the parser's s() in place: <graph> 0
@@ -10595,9 +10599,9 @@ program define _dash_refuse_mlabff
     version 19
     args graph
     mata: _dash_mlabff_refusal(st_global("s(_unknown)"), `graph')
-    if `"`macval(_mf_msg)'"' == "" exit
+    if !`_mf_on' exit
     mata: _dash_say("err", "", st_local("_mf_msg"), "")
-    exit 198
+    exit `_mf_rc'
 end
 
 // ================================================================

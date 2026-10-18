@@ -116,7 +116,10 @@
 *!   _dash_mlabff_refusal(unk, graph)
 *!       The error twoway gives for mlabfontface() among the catch-all
 *!       options unk (graph 1: after the paren-mode comma), in the
-*!       caller's local _mf_msg, or "" (MLF-01).
+*!       caller's locals _mf_on, _mf_rc and _mf_msg (MLF-01).
+*!
+*!   _dash_mlabff_strip(s)
+*!       The option text s without its empty mlabfontface() copies.
 *!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
@@ -1667,43 +1670,124 @@ string scalar _dash_colorrule_full(string scalar r)
 //
 // mlabfontface() as twoway refuses it (test_abbreviations.cscript MLF-01):
 // among the catch-all options unk, a spelling mlabfon .. mlabfontface
-// (lower case; mlabf and mlabfo are mlabformat) sets the caller's local
-// _mf_msg to twoway's error -- "option(s) fontface(<first word>) not
-// allowed" in a plot's options, the rightmost copy, "option <name> not
-// allowed" for a bare one, and "option <name>() not allowed" after the
-// paren-mode comma (graph 1), the first copy -- and to "" when there is
-// none or the rightmost copy is empty, which twoway takes.
+// (lower case; mlabf and mlabfo are mlabformat) sets the caller's locals
+// _mf_on (1), _mf_rc and _mf_msg to twoway's error.  In a plot's options
+// the rightmost copy that is not empty is read: a bare one is "option
+// <name> not allowed"; a value is cut at its first blank, "option(s)
+// fontface(<word>) not allowed"; a value that opens with a quote, plain
+// or compound, is read to its closing quote -- empty, "option(s)
+// fontface(`') not allowed"; one word, "option(s) fontface(`<word>"')
+// not allowed" invalid name"; with a blank, "option(s) fontface(`<first
+// word> not found", r(111) -- all r(198) but the last.  After the
+// paren-mode comma (graph 1) the first copy is "option <name>() not
+// allowed".  None, or only empty copies, which twoway takes: _mf_on 0.
 // ============================================================
 void _dash_mlabff_refusal(string scalar unk, real scalar graph)
 {
     string rowvector toks
-    string scalar    tok, nm, v, msg
-    real scalar      i, p, L
+    string scalar    tok, nm, v, q, msg, cq
+    real scalar      i, p, k, rc
 
+    st_local("_mf_on", "0")
+    st_local("_mf_rc", "0")
     st_local("_mf_msg", "")
     toks = _dash_opt_tokens(unk)
     msg = ""
+    rc = 0
+    cq = char(34) + char(39)
     for (i = 1; i <= cols(toks); i++) {
         tok = toks[i]
         p = strpos(tok, "(")
-        nm = strtrim(p ? substr(tok, 1, p - 1) : tok)
-        L = strlen(nm)
-        if (L < 7 | L > 12 | substr("mlabfontface", 1, L) != nm) continue
+        nm = _dash_mlabff_name(tok)
+        if (nm == "") continue
         if (graph) {
+            st_local("_mf_on", "1")
+            st_local("_mf_rc", "198")
             st_local("_mf_msg", "option " + nm + (p ? "()" : "") + " not allowed")
             return
         }
         if (!p) {
             msg = "option " + nm + " not allowed"
+            rc = 198
             continue
         }
         v = substr(tok, p + 1, .)
         if (substr(v, strlen(v), 1) == ")") v = substr(v, 1, strlen(v) - 1)
         v = strtrim(v)
-        if (strpos(v, " ")) v = substr(v, 1, strpos(v, " ") - 1)
-        msg = (v == "" ? "" : "option(s) fontface(" + v + ") not allowed")
+        if (v == "") continue
+        q = ""
+        if (substr(v, 1, 2) == char(96) + char(34)) {
+            q = substr(v, 3, .)
+            k = strpos(q, cq)
+            if (k) q = substr(q, 1, k - 1)
+        }
+        else if (substr(v, 1, 1) == char(34)) {
+            q = substr(v, 2, .)
+            k = strpos(q, char(34))
+            if (k) q = substr(q, 1, k - 1)
+        }
+        else {
+            if (strpos(v, " ")) v = substr(v, 1, strpos(v, " ") - 1)
+            msg = "option(s) fontface(" + v + ") not allowed"
+            rc = 198
+            continue
+        }
+        q = strtrim(q)
+        if (q == "") {
+            msg = "option(s) fontface(" + char(96) + char(39) + ") not allowed"
+            rc = 198
+        }
+        else if (strpos(q, " ")) {
+            msg = "option(s) fontface(" + char(96) + substr(q, 1, strpos(q, " ") - 1) + " not found"
+            rc = 111
+        }
+        else {
+            msg = "option(s) fontface(" + char(96) + q + cq + ") not allowed" + char(34) + " invalid name"
+            rc = 198
+        }
     }
+    if (msg == "") return
+    st_local("_mf_on", "1")
+    st_local("_mf_rc", strofreal(rc))
     st_local("_mf_msg", msg)
+}
+
+// _dash_mlabff_name(tok) -- the spelling of mlabfontface (mlabfon ..
+// mlabfontface, lower case) the option token tok is, or "".
+string scalar _dash_mlabff_name(string scalar tok)
+{
+    string scalar nm
+    real scalar   p, L
+
+    p = strpos(tok, "(")
+    nm = strtrim(p ? substr(tok, 1, p - 1) : tok)
+    L = strlen(nm)
+    if (L < 7 | L > 12 | substr("mlabfontface", 1, L) != nm) return("")
+    return(nm)
+}
+
+// _dash_mlabff_strip(s) -- the option text s without the empty
+// mlabfontface() copies twoway takes in silence (mlabfontface(),
+// mlabfontface( )), so the catch-all note does not name them (MLF-01).
+string scalar _dash_mlabff_strip(string scalar s)
+{
+    string rowvector toks
+    string scalar    out, v
+    real scalar      i, p
+
+    if (!strpos(s, "mlabfon")) return(s)
+    toks = _dash_opt_tokens(s)
+    out = ""
+    for (i = 1; i <= cols(toks); i++) {
+        p = strpos(toks[i], "(")
+        if (p & _dash_mlabff_name(toks[i]) != "") {
+            v = substr(toks[i], p + 1, .)
+            if (substr(v, strlen(v), 1) == ")") v = substr(v, 1, strlen(v) - 1)
+            if (strtrim(v) == "") continue
+        }
+        out = out + (out == "" ? "" : " ") + toks[i]
+    }
+    return(out)
 }
 
 // ============================================================
