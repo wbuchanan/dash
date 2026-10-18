@@ -150,7 +150,8 @@ class RangeProbe:
         port = _free_port()
         self._profile = tempfile.mkdtemp(prefix="dash_range_probe_")
         self._proc = subprocess.Popen(
-            [self.chrome, "--headless=new", "--no-first-run",
+            responsive_probe.chrome_argv(self.chrome) + [
+             "--headless=new", "--no-first-run",
              "--no-default-browser-check", "--disable-gpu",
              "--user-data-dir=" + self._profile,
              "--remote-debugging-port=%d" % port,

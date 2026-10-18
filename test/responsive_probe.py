@@ -35,6 +35,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -133,6 +134,54 @@ def find_chrome():
     return None
 
 
+def _host_is_apple_silicon():
+    """Whether this Mac has an Apple CPU -- true even in a process that
+    Rosetta translates, where platform.machine() says x86_64."""
+    if sys.platform != "darwin":
+        return False
+    try:
+        out = subprocess.run(["/usr/sbin/sysctl", "-n", "hw.optional.arm64"],
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return out.stdout.strip() == "1"
+
+
+def _has_arm64_slice(binary):
+    """Whether *binary* (a Mach-O file) carries an arm64 slice."""
+    try:
+        out = subprocess.run(["/usr/bin/lipo", "-archs", binary],
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return "arm64" in out.stdout.split()
+
+
+_NATIVE = {}
+
+
+def chrome_argv(chrome):
+    """The argv that starts *chrome* as a native process; the caller
+    appends Chrome's flags.
+
+    On an Apple-silicon Mac a universal binary inherits its parent's
+    architecture preference: started below any x86_64 process (the Intel
+    Homebrew bash or timeout in /usr/local/bin, say), it runs its x86_64
+    slice under Rosetta ("The use of Rosetta to run the x64 version of
+    Chromium on Arm" on its stderr).  Measured 18oct2026, M2 Max, Chrome
+    155, the bs_cards host page of test_responsive_layout: 1-2 s native,
+    57-98 s under Rosetta, past measure_many's 90 s deadline, so a width
+    "reported nothing".  ``arch -arm64`` starts the native slice whatever
+    the parent; elsewhere the binary runs as it is.
+    """
+    if chrome not in _NATIVE:
+        native = (_host_is_apple_silicon()
+                  and os.path.isfile("/usr/bin/arch")
+                  and _has_arm64_slice(chrome))
+        _NATIVE[chrome] = ["/usr/bin/arch", "-arm64"] if native else []
+    return _NATIVE[chrome] + [chrome]
+
+
 #: The page's CSP <meta>, in the form dash writes it.
 _CSP_META_RE = re.compile(
     r'(<meta\s+http-equiv="Content-Security-Policy"\s+content=")([^"]*)(")',
@@ -215,7 +264,8 @@ def measure_many(page_html, widths, chrome=None, timeout=90):
                      + "</body></html>")
         out = os.path.join(workdir, "out.html")
         prof = tempfile.mkdtemp(prefix="prof_", dir=workdir)
-        cmd = [chrome, "--headless=new", "--disable-gpu", "--no-first-run",
+        cmd = chrome_argv(chrome) + [
+               "--headless=new", "--disable-gpu", "--no-first-run",
                "--no-default-browser-check", "--allow-file-access-from-files",
                "--user-data-dir=" + prof,
                "--window-size=%d,1100" % max(1500, max(widths) + 60),

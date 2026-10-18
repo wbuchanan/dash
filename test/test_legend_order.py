@@ -379,9 +379,13 @@ class TestTheParser:
 
     def test_a_hundred_thousand_tokens_parse_in_under_a_second(self):
         arg = " ".join(["1", '"x"', "-", '"y"'] * 25000)
-        t0 = time.perf_counter()
+        # CPU time, not wall time (WP-31 S60): the parser is single-threaded
+        # pure Python, so the claim is about its own work; wall time also
+        # counted the time other xdist workers held the CPU, and failed
+        # under -n 8 while the parse itself took the same CPU.
+        t0 = time.process_time()
         out = dr._dash_parse_legend_order(arg)
-        assert time.perf_counter() - t0 < 1.0
+        assert time.process_time() - t0 < 1.0
         assert len(out) == 50000
 
 

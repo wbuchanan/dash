@@ -138,7 +138,8 @@ def _run_chrome(page, timeout=90):
             fh.write(page)
         out = os.path.join(work, "out.html")
         prof = tempfile.mkdtemp(prefix="prof_", dir=work)
-        cmd = [chrome, "--headless=new", "--disable-gpu", "--no-first-run",
+        cmd = responsive_probe.chrome_argv(chrome) + [
+               "--headless=new", "--disable-gpu", "--no-first-run",
                "--no-default-browser-check", "--allow-file-access-from-files",
                "--user-data-dir=" + prof, "--virtual-time-budget=9000",
                "--dump-dom", "file://" + path]

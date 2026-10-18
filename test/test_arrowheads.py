@@ -628,7 +628,8 @@ def chrome_heads(page_html, timeout=90):
             fh.write(rp.admit_script(page_html, _CHROME_PROBE))
         out = os.path.join(work, "out.html")
         prof = tempfile.mkdtemp(prefix="prof_", dir=work)
-        cmd = [chrome, "--headless=new", "--disable-gpu", "--no-first-run",
+        cmd = rp.chrome_argv(chrome) + [
+               "--headless=new", "--disable-gpu", "--no-first-run",
                "--no-default-browser-check", "--allow-file-access-from-files",
                "--user-data-dir=" + prof, "--window-size=1200,900",
                "--virtual-time-budget=9000", "--dump-dom", "file://" + page]

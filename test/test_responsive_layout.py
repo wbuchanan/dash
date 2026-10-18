@@ -34,6 +34,7 @@ import itertools
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import warnings
@@ -336,6 +337,43 @@ class TestTheProbe:
         f.chmod(0o644)
         monkeypatch.setenv("DASH_CHROME", str(f))
         assert rp.find_chrome() != str(f)
+
+    def test_chrome_starts_native_under_an_x86_64_parent(self, tmp_path):
+        """WP-31 S60: below an x86_64 process (Intel Homebrew's bash or
+        timeout in /usr/local/bin) a bare ``[chrome, ...]`` ran Chrome's
+        x86_64 slice under Rosetta, 30-50 times slower, and the family
+        probes passed their 90 s deadline with "the probe reported
+        nothing".  chrome_argv starts the native slice."""
+        chrome = _chrome()
+        argv = rp.chrome_argv(chrome)
+        if not rp._host_is_apple_silicon():
+            assert argv == [chrome]
+            return
+        assert argv == ["/usr/bin/arch", "-arm64", chrome]
+        if subprocess.run(["/usr/bin/arch", "-x86_64", "/usr/bin/true"],
+                          capture_output=True).returncode:
+            return   # no Rosetta: nothing can start the x86_64 slice
+        page = tmp_path / "p.html"
+        page.write_text("<html><body>native-probe</body></html>")
+        prof = tmp_path / "prof"
+        prof.mkdir()
+        p = subprocess.run(
+            ["/usr/bin/arch", "-x86_64", "/bin/sh", "-c", 'exec "$@"', "sh"]
+            + argv + ["--headless=new", "--disable-gpu", "--no-first-run",
+                      "--user-data-dir=%s" % prof, "--dump-dom",
+                      "file://%s" % page],
+            capture_output=True, text=True, timeout=180)
+        assert "native-probe" in p.stdout, p.stderr[-500:]
+        assert "Rosetta" not in p.stderr, p.stderr[:500]
+
+    def test_chrome_argv_is_the_binary_off_apple_silicon(self, monkeypatch,
+                                                         tmp_path):
+        f = tmp_path / "chrome"
+        f.write_text("")
+        assert not rp._has_arm64_slice(str(f))
+        monkeypatch.setattr(rp, "_NATIVE", {})
+        monkeypatch.setattr(rp, "_host_is_apple_silicon", lambda: False)
+        assert rp.chrome_argv(str(f)) == [str(f)]
 
     def test_cells_are_reported(self):
         """TR-10.12: a KPI card's cell is the nearest ancestor with a
