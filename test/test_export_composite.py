@@ -26,9 +26,10 @@ import warnings
 
 import pytest
 from bokeh.layouts import gridplot
-from bokeh.models import (AbstractSlider, CustomAction, CustomJS, Div,
+from bokeh.models import (AbstractSlider, CustomAction, CustomJS, DataTable,
+                          Div,
                           GridPlot, InlineStyleSheet,
-                          InputWidget, Plot, SaveTool, Select, Tabs, Toggle)
+                          InputWidget, Plot, SaveTool, Select, Tabs)
 from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,7 +47,7 @@ _PNG = "dash_composite_png"
 _SVG = "dash_svg_save"
 _CHROME = responsive_probe.find_chrome() is not None
 _ARG_KEYS = {"grid", "name", "header", "header_ids", "widget_ids", "tabs_id",
-             "kpi_ids", "toggle_ids"}
+             "kpi_ids", "table_ids"}
 
 
 def _docs_models(docs):
@@ -61,7 +62,7 @@ def _resolved(args, models):
             "widgets": [get(i) for i in args["widget_ids"]],
             "tabs": get(args["tabs_id"]) if args["tabs_id"] else None,
             "kpis": [get(i) for i in args["kpi_ids"]],
-            "toggles": [get(i) for i in args["toggle_ids"]]}
+            "tables": [get(i) for i in args["table_ids"]]}
 
 
 def _acts(model, tag):
@@ -155,7 +156,7 @@ class TestTheActions:
         d1, d2 = Div(text="a"), Div(text="b")
         comp = {"header": ["", ""], "header_ids": [d1.id, ""],
                 "widget_ids": [], "tabs_id": "", "kpi_ids": [],
-                "toggle_ids": []}
+                "table_ids": []}
         dr._dash_name_save(grid, None, composite=comp)
         dr._dash_name_save(grid, None,
                            composite=dict(comp, header_ids=[d2.id, ""]))
@@ -229,7 +230,7 @@ class TestTheActions:
                         flat = v if isinstance(v, list) else [v]
                         assert all(isinstance(x, str) for x in flat), k
                 assert all(i in models for k in ("header_ids", "widget_ids",
-                                                 "kpi_ids", "toggle_ids")
+                                                 "kpi_ids", "table_ids")
                            for i in raw[k] if i)
                 a = _resolved(raw, models)
                 assert isinstance(raw["name"], str)
@@ -239,7 +240,7 @@ class TestTheActions:
                            for w in a["widgets"])
                 assert a["tabs"] is None or isinstance(a["tabs"], Tabs)
                 assert all(isinstance(k, Div) for k in a["kpis"])
-                assert all(isinstance(t, Toggle) for t in a["toggles"])
+                assert all(isinstance(t, DataTable) for t in a["tables"])
 
 
 class TestTheHelpers:
@@ -336,7 +337,7 @@ def _models(**kw):
                     '<p class="db-subtitle">1978</p>'],
          "widgets": [_SEL, _RNG],
          "tabs": {"tabs": [{"title": "A"}, {"title": "B"}], "active": 1},
-         "kpis": [{"text": _card()}], "toggles": [{"active": False}]}
+         "kpis": [{"text": _card()}], "tables": []}
     m.update(kw)
     # a Div is a model with .text; a string stands for itself (layout(bs))
     m["header"] = [({"text": h} if h else "") for h in m["header"]]
@@ -349,7 +350,7 @@ class TestTheModelLookup:
     def test_ids_resolve_in_the_grids_document(self):
         out = js_runner.run_js(dr._DASH_COMPOSITE_JS + r"""
 const ms = {h1: {text: "T"}, w1: {title: "f"}, t1: {tabs: []}, k1: {text: "k"},
-            g1: {active: true}};
+            g1: {visible: true}};
 const grid = {document: {get_model_by_id: (i) => ms[i]}};
 const m = dash_composite_models(grid, ["", "raw sub"], ["h1", ""], ["w1", "zz"],
                                 "t1", ["k1"], ["g1"]);
@@ -360,9 +361,9 @@ console.log(JSON.stringify([m, none]));
         assert m["header"] == [{"text": "T"}, "raw sub"]
         assert m["widgets"] == [{"title": "f"}]  # an unknown id is dropped
         assert m["tabs"] == {"tabs": []} and m["kpis"] == [{"text": "k"}]
-        assert m["toggles"] == [{"active": True}]
+        assert m["tables"] == [{"visible": True}]
         assert none == {"header": ["A", ""], "widgets": [], "tabs": None,
-                        "kpis": [], "toggles": []}
+                        "kpis": [], "tables": []}
 
 
 @js_runner.requires_node
@@ -437,7 +438,7 @@ class TestTheLayoutArithmetic:
 
     def test_no_tabs_no_header_collapses(self):
         lay = _layout(_models(header=["", ""], widgets=[], tabs=None,
-                              kpis=[], toggles=[]), grid_w=1000,
+                              kpis=[], tables=[]), grid_w=1000,
                       grid_h=400)
         assert [i["kind"] for i in lay["items"]] == ["grid"]
         assert _grid_item(lay)["y"] == 16
@@ -455,17 +456,69 @@ class TestTheLayoutArithmetic:
         assert "rep78: Three, Five" in got
         assert "9.99" in got
 
-    def test_table_caption_when_a_table_is_open(self):
-        shut = _layout(_models(toggles=[{"active": False}]))
-        open_ = _layout(_models(toggles=[{"active": False},
-                                         {"active": True}]))
+    # Flipped: D39 (D-53d) -- an open data table is drawn over its place
+    # in the grid's image; the "Data tables are not included" caption is
+    # gone.
+    def test_open_tables_are_drawn_over_the_grid(self):
+        box = {"x": 100, "y": 300, "w": 400, "h": 103,
+               "titles": ["Mileage (mpg)", "w" * 80],
+               "rows": [["22", "2,930"], ["17", "3,350"], ["25", "2,200"],
+                        ["30", "1,800"]]}
+        none = _layout(_models(tables=[]))
+        lay = _layout(_models(tables=[box]))
         assert "Data tables are not included" not in [
-            s for s, *_r in _texts(shut)]
-        (cap,) = [i for i in open_["items"] if i["kind"] == "text"
-                  and i["text"] == "Data tables are not included"]
-        assert cap["font"] == "11px sans-serif"
-        assert cap["color"] == "#666666"
-        assert _grid_item(open_)["y"] == _grid_item(shut)["y"] + 18
+            s for s, *_r in _texts(lay)]
+        g = _grid_item(lay)
+        assert g["y"] == _grid_item(none)["y"]
+        assert (lay["W"], lay["H"]) == (none["W"], none["H"])
+        kinds = [i["kind"] for i in lay["items"]]
+        # painted after the grid's image, so over it
+        assert kinds.index("rect") > kinds.index("grid")
+        (rect,) = [i for i in lay["items"] if i["kind"] == "rect"]
+        assert (rect["x"], rect["y"], rect["w"], rect["h"]) == (
+            100, g["y"] + 300, 400, 103)
+        assert rect["fill"] == "#ffffff"
+        t = [x for x in _texts(lay) if x[2] > g["y"]]
+        y0 = g["y"] + 300
+        assert t[0] == ("Mileage (mpg)", 106, y0 + 19,
+                        "bold 13px sans-serif")
+        # a column is 200 px: the long title is cut to 188 px with "..."
+        assert t[1][0].endswith("...") and 7 * len(t[1][0]) <= 188, t[1]
+        assert t[1][1] == 306
+        # (103 - 28) // 25 = 3 rows fit; the fourth is not drawn
+        assert [x[0] for x in t[2:]] == ["22", "2,930", "17", "3,350",
+                                         "25", "2,200"]
+        assert [x[2] for x in t[2:]] == [y0 + 45] * 2 + [y0 + 70] * 2 + [
+            y0 + 95] * 2
+        assert {x[3] for x in t[2:]} == {"13px sans-serif"}
+
+    def test_the_table_boxes_come_from_the_views(self):
+        """dash_composite_tables reads each shown table's place against
+        the grid's and its rows from the table's own source and view
+        filter -- never from the page's DOM text."""
+        out = js_runner.run_js(dr._DASH_COMPOSITE_JS + r"""
+const rect = (l, t, w, h) => ({left: l, top: t, width: w, height: h,
+                               right: l + w, bottom: t + h});
+const views = new Map();
+const mk = (r) => ({el: {isConnected: true, getBoundingClientRect: () => r}});
+const src = {data: {a: ["x0", "x1", "x2"], b: [10, 11, 12]}};
+const cols = [{field: "a", title: "A"}, {field: "b", title: "B"}];
+const t1 = {visible: true, source: src, columns: cols,
+            view: {filter: {indices: [2, 0]}}};
+const t2 = {visible: false, source: src, columns: cols, view: null};
+const t3 = {visible: true, source: src, columns: cols, view: null};
+const t4 = {visible: true, source: src, columns: cols, view: null};
+views.set(t1, mk(rect(110, 220, 300, 400)));
+views.set(t2, mk(rect(110, 220, 300, 400)));
+views.set(t3, mk(rect(5000, 220, 300, 100)));
+views.set(t4, mk(rect(110, 220, 0, 0)));
+globalThis.Bokeh = {index: {find_one: (m) => views.get(m) || null}};
+const grid = mk(rect(10, 20, 1000, 800));
+console.log(JSON.stringify(dash_composite_tables(grid, [t1, t2, t3, t4, null])));
+""")
+        assert out == [{"x": 100, "y": 200, "w": 300, "h": 400,
+                        "titles": ["A", "B"],
+                        "rows": [["x2", "12"], ["x0", "10"]]}]
 
 
 # ---------------------------------------------------------------------------
@@ -534,7 +587,7 @@ class TestTheSvgWriter:
 
     def test_translate_of_the_grid(self):
         out = _svg(_models(header=["", ""], widgets=[], tabs=None, kpis=[],
-                           toggles=[]))
+                           tables=[]))
         assert out.startswith('<svg xmlns="http://www.w3.org/2000/svg" '
                               'width="1200" height="632"')
         assert ('<g transform="translate(0,16)"><svg xmlns="http://www.w3.org'
@@ -733,6 +786,25 @@ class TestInChrome:
                            "served.html")
         with cb._CspProbe(cb._url(page)) as p:
             _check_composite(p)
+            assert p.js_errors() == [], p.js_errors()
+
+    def test_an_open_table_is_drawn_in_the_composite(self):
+        """D39 (D-53d): Save as SVG and Save dashboard draw an open data
+        table's titles and rows where the table sits."""
+        import test_data_table as tdt
+        cb = _cb()
+        _t, sp, dp = tdt._write(tdt._table_spec({"table": "open"}))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            page = tsvg._write(dr.DashRenderer(sp, dp).render(), "table.html")
+        with cb._CspProbe(cb._url(page)) as p:
+            svg, _name = _run_action(p, _SVG)
+            texts = re.findall(r"<text\b[^>]*>([^<]*)</text>", svg["text"])
+            assert "Mileage (mpg)" in texts, texts
+            assert "22" in texts and "2,930" in texts, texts
+            assert "Data tables are not included" not in svg["text"]
+            png, _name = _run_action(p, _PNG)
+            assert png["type"] == "image/png" and png["h"] > 0, png
             assert p.js_errors() == [], p.js_errors()
 
     def test_print_media_fixes_the_width(self):

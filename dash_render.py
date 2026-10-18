@@ -48153,7 +48153,7 @@ _DASH_SAVE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,31}")
 _DASH_SVG_SAVE_JS = r"""
 if (typeof header !== "undefined" && header !== null) {
   dash_composite_save("svg", grid, name, dash_composite_models(grid, header,
-    header_ids, widget_ids, tabs_id, kpi_ids, toggle_ids));
+    header_ids, widget_ids, tabs_id, kpi_ids, table_ids));
   return;
 }
 const stem = (typeof name === "string"
@@ -48201,7 +48201,11 @@ _DASH_SVG_SAVE_ICON = "data:image/svg+xml;base64," + base64.b64encode(
 #: ``dash_composite_svg`` writes it as SVG, every text body and every
 #: attribute value through ``dash_html_escape`` and a colour held to
 #: ``#rrggbb[aa]`` or a colour word (``dash_svg_attr``).  A data table is
-#: a DOM widget and is not drawn; an open one adds a caption saying so.
+#: a DOM widget, blank in the grid's image, so each open one is drawn
+#: over its place there (D39, D-53d): ``dash_composite_tables`` reads its
+#: box against the grid's and its titles and rows from its own columns,
+#: source and view filter -- as many rows as its height shows, in the
+#: order of its view, not a reader's sort.
 #: The calls into BokehJS are on _DASH_BOKEH_INTERNALS.
 _DASH_COMPOSITE_JS = (
     _DASH_FMT_JS[_DASH_FMT_JS.index("function dash_html_escape("):
@@ -48209,7 +48213,7 @@ _DASH_COMPOSITE_JS = (
     + r"""
 const DASH_COMPOSITE_FONTS = ["bold 20px sans-serif", "14px sans-serif",
   "bold 14px sans-serif", "13px sans-serif", "bold 36px sans-serif",
-  "11px sans-serif"];
+  "11px sans-serif", "bold 13px sans-serif"];
 // Keyed by the entity's name alone: an entity spelled out in this code
 // would reach the page's JSON escaped a second time.
 const DASH_COMPOSITE_ENTITIES = {"amp": "&", "lt": "<", "gt": ">",
@@ -48291,14 +48295,44 @@ function dash_svg_attr(v, kind) {
   return dash_html_escape(v);
 }
 function dash_composite_models(grid, header, header_ids, widget_ids,
-                               tabs_id, kpi_ids, toggle_ids) {
+                               tabs_id, kpi_ids, table_ids) {
   const doc = grid == null ? null : grid.document;
   const get = (id) => (id && doc != null) ? (doc.get_model_by_id(id) || null) : null;
   const all = (ids) => (ids || []).map(get).filter((x) => x != null);
   const ht = header || [], hi = header_ids || [];
   return {header: [0, 1].map((i) => get(hi[i]) || String(ht[i] || "")),
           widgets: all(widget_ids), tabs: get(tabs_id), kpis: all(kpi_ids),
-          toggles: all(toggle_ids)};
+          tables: all(table_ids)};
+}
+function dash_composite_tables(view, tables) {
+  const out = [];
+  if (view == null || view.el == null) return out;
+  const g = view.el.getBoundingClientRect();
+  for (const dt of (tables || [])) {
+    if (dt == null || dt.visible === false) continue;
+    const tv = Bokeh.index.find_one(dt);
+    if (tv == null || tv.el == null || !tv.el.isConnected) continue;
+    const r = tv.el.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) continue;
+    if (r.left < g.left - 1 || r.top < g.top - 1
+        || r.left + r.width > g.left + g.width + 1
+        || r.top + r.height > g.top + g.height + 1) continue;
+    const cols = dt.columns || [];
+    const data = (dt.source && dt.source.data) || {};
+    const first = cols.length ? data[cols[0].field] : null;
+    const f = dt.view != null ? dt.view.filter : null;
+    const idx = (f != null && f.indices != null) ? Array.from(f.indices)
+      : Array.from({length: first ? first.length : 0}, (_x, i) => i);
+    const fit = Math.max(0, Math.floor((r.height - 28) / 25));
+    const rows = idx.slice(0, fit).map((i) => cols.map((c) => {
+      const v = (data[c.field] || [])[i];
+      return v == null ? "" : String(v);
+    }));
+    out.push({x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height,
+              titles: cols.map((c) => String(c.title == null ? "" : c.title)),
+              rows: rows});
+  }
+  return out;
 }
 function dash_composite_layout(m, gridW, gridH, measure) {
   const M = 16, W = Math.max(gridW, 960);
@@ -48355,11 +48389,31 @@ function dash_composite_layout(m, gridW, gridH, measure) {
     });
     y += Math.ceil(cards.length / n) * (ch + gap);
   }
-  if ((m.toggles || []).some((t) => t && t.active)) {
-    text("Data tables are not included", M, y + 11, DASH_COMPOSITE_FONTS[5], "#666666");
-    y += 18;
-  }
   items.push({kind: "grid", x: 0, y: y, w: gridW, h: gridH});
+  const fit = (t, font, room) => {
+    const s = String(t);
+    if (measure(s, font) <= room) return s;
+    let n = s.length;
+    while (n > 0 && measure(s.slice(0, n) + "...", font) > room) n--;
+    return s.slice(0, n) + "...";
+  };
+  for (const t of (m.tables || [])) {
+    if (t == null || !isFinite(Number(t.x)) || !isFinite(Number(t.y))) continue;
+    const tx = Number(t.x), ty = y + Number(t.y);
+    const tw = Number(t.w), th = Number(t.h);
+    const titles = t.titles || [];
+    const cw = tw / Math.max(1, titles.length);
+    items.push({kind: "rect", x: tx, y: ty, w: tw, h: th,
+                fill: "#ffffff", color: "#cccccc"});
+    titles.forEach((s, k) => text(fit(s, DASH_COMPOSITE_FONTS[6], cw - 12),
+                                  tx + k * cw + 6, ty + 19, DASH_COMPOSITE_FONTS[6]));
+    items.push({kind: "line", x1: tx, y1: ty + 28, x2: tx + tw, y2: ty + 28,
+                color: "#cccccc", width: 1});
+    (t.rows || []).slice(0, Math.max(0, Math.floor((th - 28) / 25)))
+      .forEach((row, j) => row.forEach((s, k) => text(
+      fit(s, DASH_COMPOSITE_FONTS[3], cw - 12), tx + k * cw + 6,
+      ty + 28 + 25 * j + 17, DASH_COMPOSITE_FONTS[3])));
+  }
   return {W: W, H: y + gridH + M, items: items};
 }
 function dash_composite_round_rect(ctx, x, y, w, h, r) {
@@ -48387,6 +48441,12 @@ function dash_composite_png(lay, gridCanvas, dpr) {
       ctx.strokeStyle = "#999999";
       ctx.lineWidth = 1;
       ctx.stroke();
+    } else if (it.kind === "rect") {
+      ctx.fillStyle = dash_svg_colour(it.fill, "#ffffff");
+      ctx.fillRect(it.x, it.y, it.w, it.h);
+      ctx.strokeStyle = dash_svg_colour(it.color, "#cccccc");
+      ctx.lineWidth = 1;
+      ctx.strokeRect(it.x, it.y, it.w, it.h);
     } else if (it.kind === "text") {
       ctx.font = DASH_COMPOSITE_FONTS.includes(it.font) ? it.font : "13px sans-serif";
       ctx.fillStyle = dash_svg_colour(it.color, "#000000");
@@ -48418,6 +48478,11 @@ function dash_composite_svg(lay, gridSvg) {
       out.push('<rect x="' + a(it.x, "number") + '" y="' + a(it.y, "number")
         + '" width="' + a(it.w, "number") + '" height="' + a(it.h, "number")
         + '" rx="8" ry="8" fill="' + a(it.fill, "fill") + '" stroke="#999999"/>');
+    } else if (it.kind === "rect") {
+      out.push('<rect x="' + a(it.x, "number") + '" y="' + a(it.y, "number")
+        + '" width="' + a(it.w, "number") + '" height="' + a(it.h, "number")
+        + '" fill="' + a(it.fill, "fill") + '" stroke="'
+        + a(it.color, "color") + '"/>');
     } else if (it.kind === "text") {
       const font = DASH_COMPOSITE_FONTS.includes(it.font) ? it.font : "13px sans-serif";
       const bold = font.startsWith("bold ");
@@ -48464,6 +48529,7 @@ function dash_composite_save(kind, grid, name, m) {
     const dpr = window.devicePixelRatio || 1;
     const scratch = document.createElement("canvas").getContext("2d");
     const measure = (t, font) => { scratch.font = font; return scratch.measureText(t).width; };
+    m = Object.assign({}, m, {tables: dash_composite_tables(view, m.tables)});
     if (kind === "png") {
       const gc = view.export("png").canvas;
       const lay = dash_composite_layout(m, gc.width / dpr, gc.height / dpr, measure);
@@ -48493,7 +48559,7 @@ function dash_composite_save(kind, grid, name, m) {
 #: PNG, ``<name>-full.png``, after ``_DASH_COMPOSITE_JS``.
 _DASH_COMPOSITE_SAVE_JS = r"""
 dash_composite_save("png", grid, name, dash_composite_models(grid, header,
-  header_ids, widget_ids, tabs_id, kpi_ids, toggle_ids));
+  header_ids, widget_ids, tabs_id, kpi_ids, table_ids));
 """
 
 #: The Save dashboard button's icon: a page outline holding a small
@@ -48571,7 +48637,7 @@ def _dash_name_save(model, name=None, composite=None):
 
     *composite* (WP-31 H2x, DECISIONS A30) is ``_dash_add_composites``'s
     dict -- the header's text and the ids of the header Divs, filters,
-    Tabs, KPI Divs and table toggles -- for a top-level grid.  With it the Save as SVG action
+    Tabs, KPI Divs and data tables -- for a top-level grid.  With it the Save as SVG action
     writes the whole dashboard (``_DASH_COMPOSITE_JS`` before its code)
     and ONE more action, "Save dashboard" (tag ``dash_composite_png``),
     writes it as a PNG: three controls.  A second call updates both
@@ -48658,15 +48724,15 @@ def _dash_add_composites(roots, header=None, kpis=True):
     markup; else the title and subtitle Divs found under *roots*), every
     filter control, the first ``Tabs``, the KPI cards (none when *kpis*
     is False: under layout(bs) a card is an item of its own, D-53f) and
-    the table toggles, which only say whether a caption is drawn.  The
+    the data tables, each drawn where it sits when it is open (D-53d).  The
     action is given their ids, which ``dash_composite_models`` looks up
     in the grid's document when it runs, so it reads their values then
     and only through their properties (BR-53.4); a by() sub-grid keeps
     the grid-alone SVG.
     """
-    from bokeh.models import (AbstractSlider, Div, GridPlot, InputWidget,
-                              Plot, SaveTool, Tabs, Toggle)
-    seen, grids, widgets, kpi_divs, toggles = set(), [], [], [], []
+    from bokeh.models import (AbstractSlider, DataTable, Div, GridPlot,
+                              InputWidget, Plot, SaveTool, Tabs)
+    seen, grids, widgets, kpi_divs, tables = set(), [], [], [], []
     heads, tabs = ["", ""], None
     for root in roots or ():
         for m, inside in _dash_layout_walk(root):
@@ -48681,8 +48747,8 @@ def _dash_add_composites(roots, header=None, kpis=True):
                     grids.append(m)
             elif isinstance(m, Tabs) and tabs is None:
                 tabs = m
-            elif isinstance(m, Toggle) and "dash_table_toggle" in m.tags:
-                toggles.append(m)
+            elif isinstance(m, DataTable) and "dash_table" in m.tags:
+                tables.append(m)
             elif isinstance(m, (InputWidget, AbstractSlider)) and not inside:
                 widgets.append(m)
             elif isinstance(m, Div):
@@ -48710,7 +48776,7 @@ def _dash_add_composites(roots, header=None, kpis=True):
             "widget_ids": [w.id for w in widgets],
             "tabs_id": tabs.id if tabs is not None else "",
             "kpi_ids": [k.id for k in kpi_divs],
-            "toggle_ids": [t.id for t in toggles]})
+            "table_ids": [t.id for t in tables]})
     return grids
 
 

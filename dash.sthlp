@@ -1992,8 +1992,10 @@ item {cmd:layout(bs)} places on its own; there each item's file holds the
 header, the filters and the tab strip above that item alone, and a KPI card,
 an item of its own, has no button.  On the panels of a {cmd:by()} graph in a
 grid, Save as SVG writes those panels alone, {cmd:dashboard.svg}.  A figure
-with more than 10,000 points makes a large SVG.  A data table is not drawn:
-when one is open the image says {cmd:Data tables are not included}.  The
+with more than 10,000 points makes a large SVG.  An open data table is drawn
+where it sits: its column titles and as many of its rows as it shows, in the
+order of the rows it lists (a sort you clicked is not kept); a folded table
+is not drawn.  The
 text is drawn in the browser's sans-serif font, which can differ from the
 page's.  Your browser decides where the file goes.
 

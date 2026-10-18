@@ -919,8 +919,11 @@ and now matches Stata.
 
 ### Fixed in WP-32
 
+Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
+
 - `by(..., style(rescale) noyrescale)` (or `noxrescale`, `norescale`, and the same beside `style(combine)`) keeps that axis shared across the panels, as twoway draws it; the style's rescale used to override the word. (WP-32, K4)
 - The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4)
+- Save as SVG and Save dashboard draw each open data table where it sits in the grid -- its column titles and the rows it shows -- where the image left it blank and said "Data tables are not included" (WP-32, D-53d)
 
 ### Fixed in WP-31
 
