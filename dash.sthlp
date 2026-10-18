@@ -6450,7 +6450,8 @@ of a contour plot's {cmd:clegend()}; {cmd:addplot()} belongs to commands
 outside {cmd:graph twoway}, such as {cmd:histogram}; and {cmd:lockaspect},
 {cmd:zoom()} and {cmd:ddensity} are options of no Stata graph command.
 {cmd:mlabfontface()} is refused by {cmd:twoway} on a marker label,
-"option(s) fontface() not allowed", r(198); {cmd:dash} names it.
+"option(s) fontface() not allowed", r(198), and {cmd:dash} refuses it in
+the same words.
 
 {pstd}
 {opt title2(string)} and {opt subtitle2(string)} are not {cmd:twoway}

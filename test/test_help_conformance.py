@@ -1189,6 +1189,18 @@ class TestTheUnsupportedSectionIsTrue:
             "scripts/extract_catchall_options_truth.do does not probe "
             f"{unprobed}; add them and run it again")
 
+    def test_every_probe_twoway_refuses_dash_refuses_in_its_words(self):
+        # MLF-01 (18oct2026): mlabfontface() reached the note although
+        # twoway refuses it; a probe twoway refuses is refused by dash
+        # with twoway's rc and first error line.
+        bad = sorted(
+            (k, p["twoway_rc"], p["twoway_message"], p["dash_rc"],
+             p["dash_message"])
+            for k, p in _catchall_truth()["probes"].items()
+            if p["twoway_rc"] and (p["dash_rc"] != p["twoway_rc"]
+                                   or p["dash_message"] != p["twoway_message"]))
+        assert not bad, bad
+
     def test_every_name_twoway_refuses_is_named(self):
         # A name dash notes that twoway refuses on that plot is no twoway
         # option there; the help says so in its prose.

@@ -1618,7 +1618,7 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
         # least three passed with half of them dropped.
         # 6 -> 8: J1 the opening's refusal rule ("r(198), option X() not
         # allowed") and mlabfontface(), which twoway refuses on a marker
-        # label (catchall_options_truth.json twoway_refuses).
+        # label and dash refuses in its words (MLF-01).
         assert s.count("r(198)") == 8, s.count("r(198)")
 
     def test_the_other_commands_named_are_statas(self):

@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "611094367db1d95004898aa900307ef91f820b88",
-  "extracted": "18 Oct 2026 06:51:29",
+  "dash_commit": "b9afd446fc895ba7a5ff8fcf0dc0d45f371dcc09",
+  "extracted": "18 Oct 2026 07:46:48",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
@@ -668,11 +668,9 @@
   },
   "mlabfontface": {
    "cmd": "scatter mpg weight, mlabel(make) mlabfontface(Courier)",
-   "dash_message": "",
-   "dash_rc": 0,
-   "noted": [
-    "mlabfontface"
-   ],
+   "dash_message": "option(s) fontface(Courier) not allowed",
+   "dash_rc": 198,
+   "noted": [],
    "twoway_message": "option(s) fontface(Courier) not allowed",
    "twoway_rc": 198
   },
@@ -1051,7 +1049,5 @@
    "twoway_rc": 0
   }
  },
- "twoway_refuses": [
-  "mlabfontface"
- ]
+ "twoway_refuses": []
 }

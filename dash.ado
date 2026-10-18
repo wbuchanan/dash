@@ -474,7 +474,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -6565,6 +6565,8 @@ program define _dash_process_segment, rclass
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
         // jitter() spelled shorter than twoway's minimum (WP-31 A3d).
         _dash_refuse_jit
+        // mlabfontface(), which twoway refuses (MLF-01).
+        _dash_refuse_mlabff 0
         // name() spelled shorter than twoway's minimum (WP-31 A3b).
         _dash_refuse_nam
         // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
@@ -8336,6 +8338,8 @@ program define _dash_plot
         // jitter() spelled shorter than twoway's minimum after the comma
         // (WP-31 A3d): refused there too, as twoway refuses it.
         _dash_refuse_jit
+        // mlabfontface() after the comma, as twoway refuses it (MLF-01).
+        _dash_refuse_mlabff 1
         // An option given twice after the comma, read as twoway reads it.
         _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
         // title2() and subtitle2(), which twoway has not (WP-31 D2).
@@ -10570,6 +10574,31 @@ program define _dash_refuse_unbound
     `parser' , `macval(opts)'
 end
 
+
+// ================================================================
+// _dash_refuse_mlabff <graph>  -- mlabfontface(), which twoway refuses
+// ================================================================
+// twoway_yxview_parse.class factors MLABFontface into the marker label's
+// textstyle, which has no fontface: mlabfon() .. mlabfontface() holding a
+// value are "option(s) fontface(<its first word>) not allowed", r(198),
+// on every plot type, the rightmost copy named (mlabf() and mlabfo() are
+// mlabformat(), which it reads first); a bare mlabfontface is "option
+// mlabfontface not allowed"; after the paren-mode comma a spelling is
+// "option mlabfontface() not allowed"; an empty mlabfontface() is taken
+// (measured 18oct2026, test_abbreviations.cscript MLF-01).  dash does not
+// declare it, so it reached the catch-all and the note named it.  Called
+// right after _dash_refuse_jit with the parser's s() in place: <graph> 0
+// for a plot's options, 1 after the paren-mode comma.  The words are
+// read by value (_dash_mlabff_refusal) and echoed through _dash_say.
+// ================================================================
+program define _dash_refuse_mlabff
+    version 19
+    args graph
+    mata: _dash_mlabff_refusal(st_global("s(_unknown)"), `graph')
+    if `"`macval(_mf_msg)'"' == "" exit
+    mata: _dash_say("err", "", st_local("_mf_msg"), "")
+    exit 198
+end
 
 // ================================================================
 // _dash_refuse_jit  -- jitter() spelled shorter than twoway's minimum

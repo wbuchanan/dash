@@ -113,6 +113,11 @@
 *!       has no style for, named in the local _crn); _crf the value with
 *!       an abbreviated rule written in full.
 *!
+*!   _dash_mlabff_refusal(unk, graph)
+*!       The error twoway gives for mlabfontface() among the catch-all
+*!       options unk (graph 1: after the paren-mode comma), in the
+*!       caller's local _mf_msg, or "" (MLF-01).
+*!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
 *!
@@ -1655,6 +1660,50 @@ string scalar _dash_colorrule_full(string scalar r)
             return(nm[i])
     }
     return("")
+}
+
+// ============================================================
+// _dash_mlabff_refusal(unk, graph)
+//
+// mlabfontface() as twoway refuses it (test_abbreviations.cscript MLF-01):
+// among the catch-all options unk, a spelling mlabfon .. mlabfontface
+// (lower case; mlabf and mlabfo are mlabformat) sets the caller's local
+// _mf_msg to twoway's error -- "option(s) fontface(<first word>) not
+// allowed" in a plot's options, the rightmost copy, "option <name> not
+// allowed" for a bare one, and "option <name>() not allowed" after the
+// paren-mode comma (graph 1), the first copy -- and to "" when there is
+// none or the rightmost copy is empty, which twoway takes.
+// ============================================================
+void _dash_mlabff_refusal(string scalar unk, real scalar graph)
+{
+    string rowvector toks
+    string scalar    tok, nm, v, msg
+    real scalar      i, p, L
+
+    st_local("_mf_msg", "")
+    toks = _dash_opt_tokens(unk)
+    msg = ""
+    for (i = 1; i <= cols(toks); i++) {
+        tok = toks[i]
+        p = strpos(tok, "(")
+        nm = strtrim(p ? substr(tok, 1, p - 1) : tok)
+        L = strlen(nm)
+        if (L < 7 | L > 12 | substr("mlabfontface", 1, L) != nm) continue
+        if (graph) {
+            st_local("_mf_msg", "option " + nm + (p ? "()" : "") + " not allowed")
+            return
+        }
+        if (!p) {
+            msg = "option " + nm + " not allowed"
+            continue
+        }
+        v = substr(tok, p + 1, .)
+        if (substr(v, strlen(v), 1) == ")") v = substr(v, 1, strlen(v) - 1)
+        v = strtrim(v)
+        if (strpos(v, " ")) v = substr(v, 1, strpos(v, " ") - 1)
+        msg = (v == "" ? "" : "option(s) fontface(" + v + ") not allowed")
+    }
+    st_local("_mf_msg", msg)
 }
 
 // ============================================================

@@ -1202,6 +1202,53 @@ if `cra01' {
 }
 else display as text "CRA-01 PASS: colorrule() and crule() abbreviate as twoway's zyx2rule names do, the full name drawn; the rest refused with twoway's rc"
 
+// MLF-01 (18oct2026): mlabfontface() is no option twoway draws:
+// twoway_yxview_parse.class factors MLABFontface into the label's
+// textstyle, which has no fontface, so mlabfon() .. mlabfontface()
+// holding a value are "option(s) fontface(<its first word>) not allowed",
+// r(198), on every plot type, the rightmost copy named (mlabf() and
+// mlabfo() are mlabformat(), declared first); a bare mlabfontface is
+// "option mlabfontface not allowed", and after the paren-mode comma it is
+// "option mlabfontface() not allowed".  An empty mlabfontface() is taken
+// (rc 0).  dash named every one in its note.  Each spelling's rc and
+// first error line are twoway's.
+local mlf01 0
+local mlflog "`c(tmpdir)'zmlf01.log"
+local i 0
+foreach o in "mlabfon(x)" "mlabfont(bold)" "mlabfontface(bold)" "mlabfontface( a  b )" "mlabfontface(Courier) mcolor(red)" "mlabfontface(x) mlabfontface(y)" "mlabfontface" "mlabfontface()" "L:mlabfontface(bold)" "P:mlabfontface(x)" "P:mlabfon(x)" "P:mlabfontface" {
+    local ++i
+    local pre "scatter mpg weight, mlabel(make)"
+    if substr(`"`o'"', 1, 2) == "P:" {
+        local o = substr(`"`o'"', 3, .)
+        local pre "(scatter mpg weight),"
+    }
+    else if substr(`"`o'"', 1, 2) == "L:" {
+        local o = substr(`"`o'"', 3, .)
+        local pre "line mpg weight,"
+    }
+    foreach who in twoway dash {
+        capture dash clear
+        capture log close _zmlf
+        quietly log using "`mlflog'", text replace name(_zmlf)
+        if "`who'" == "twoway" capture noisily twoway `pre' `o' nodraw
+        else capture noisily dash `pre' `o' name(zmlf01)
+        local rc_`who' = _rc
+        quietly log close _zmlf
+        python: from sfi import Macro as _mlfM; _mlfl = [l.rstrip() for l in open(_mlfM.getLocal("mlflog"), encoding="utf-8", errors="replace") if l.strip() and not l.lstrip().startswith((".", ">", "-")) and ":" not in l[:12] and "dash:" not in l]; _mlfM.setLocal("line_`who'", (_mlfl[0] if _mlfl else "")[:120])
+    }
+    if `rc_twoway' != `rc_dash' | `"`line_twoway'"' != `"`line_dash'"' {
+        display as error `"MLF-01 FAIL case `i' [`o']: twoway r(`rc_twoway') [`line_twoway'], dash r(`rc_dash') [`line_dash']"'
+        local mlf01 1
+    }
+}
+capture erase "`mlflog'"
+capture dash clear
+if `mlf01' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' MLF-01"'
+}
+else display as text "MLF-01 PASS: mlabfontface() refused as twoway refuses it, in its words, on a plot and after the comma; an empty one taken"
+
 // U32-10 (WP-31 A3c): aspectratio()'s minimum is twoway's, aspect
 // (sizing_truth.json abbrev_as .. abbrev_aspectrati): each spelling dash
 // took that twoway refuses -- asp() aspe() aspec() and a bare asp --

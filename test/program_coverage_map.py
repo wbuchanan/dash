@@ -117,6 +117,7 @@ COVERAGE = {
         # e2e: jit() and the other short jitter() spellings refused as
         # twoway refuses them (WP-31 A3d).
         "_dash_refuse_jit": ("test_abbreviations.cscript:U15-06",),
+        "_dash_refuse_mlabff": ("test_abbreviations.cscript:MLF-01",),
         # e2e: nam() and na() refused as twoway refuses them (WP-31 A3b).
         "_dash_refuse_nam": ("test_abbreviations.cscript:U27-10",),
         # e2e: title2() and subtitle2() refused as twoway refuses them
@@ -795,6 +796,7 @@ COVERAGE = {
         # WP-31 C8b: colorrule() read as twoway reads it.
         "_dash_colorrule_check": ("test_wp31_truth.cscript:U17-04",),
         "_dash_colorrule_full": ("test_abbreviations.cscript:CRA-01",),
+        "_dash_mlabff_refusal": ("test_abbreviations.cscript:MLF-01",),
         # WP-31 S32 (C8d): pcycle() fractions refused where twoway refuses them.
         "_dash_pcycle_bad": ("test_option_validation.cscript:U32-11",),
         # WP-31 B4b: the top-level options of an option text, as typed.
