@@ -541,9 +541,9 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H2l Tracked:** Closed in WP-31, BUGS.md "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)", commit 01d9b3f.
 - **H2t Tracked:** Closed in WP-31, BUGS.md "No per-graph data table shows the rows a graph draws (the data table)", commit 30edbb3.
 - **H2x Tracked:** Closed in WP-31, BUGS.md "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)", commit b66caf9.
-- **H3 Tracked:** Closed in WP-32, BUGS.md "Served build on the event loop", commit 1784be7.
+- **H3 Tracked:** Closed in WP-32, BUGS.md "Served build on the event loop", commit e47eb1d.
 - **H4 Tracked:** Closed in WP-31, BUGS.md "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read", commit c479d32.
-- **H6 Tracked:** Closed in WP-32, BUGS.md "Parity guard: the surfaces it does not compare", commit 8f9690b.
+- **H6 Tracked:** Closed in WP-32, BUGS.md "Parity guard: the surfaces it does not compare", commit 55fb1b8.
 - **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit 47d113d.
 - **I2 Tracked:** Closed in WP-31, BUGS.md "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short", commit 491f69b.
 - **I3 Tracked:** Partly closed in WP-31 (section 59, commit 953d290): the install record and undo line, Unmet apart from Warnings, the linked Python for the served child and the working directory off the import path; open: hash-pinned installs (BUGS.md "dash_setup installs by version, not by hash").
@@ -557,7 +557,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **J4 Tracked:** Closed in WP-31, BUGS.md "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings", commit 7b282bd.
 - **J5 Tracked:** Closed in WP-31, BUGS.md "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted", commit d8fe429.
 - **J6 Tracked:** Closed in WP-31, BUGS.md "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix", commit 6ef3e05.
-- **K2 Tracked:** Closed in WP-32, BUGS.md "A renderer without its source file cannot write a served app", commit 10269c5.
-- **K3 Tracked:** Partly closed in WP-31 (section 60, commit 1956dda): a committed generator for every fixture, make truth and truth-check, the _meta and path guard, and in WP-32 (commit 8ef92e8) the 50 older fixtures regenerated with the five _meta keys; open: the scheme visual truth (BUGS.md "The scheme visual truth covers 4 of 26 schemes and renders no histogram").
-- **K4 Tracked:** Closed in WP-32, BUGS.md "Harness guards", commit 43bbab8.
+- **K2 Tracked:** Closed in WP-32, BUGS.md "A renderer without its source file cannot write a served app", commit 625cea9.
+- **K3 Tracked:** Partly closed in WP-31 (section 60, commit 1956dda): a committed generator for every fixture, make truth and truth-check, the _meta and path guard, and in WP-32 (commit 6ddc08a) the 50 older fixtures regenerated with the five _meta keys; open: the scheme visual truth (BUGS.md "The scheme visual truth covers 4 of 26 schemes and renders no histogram").
+- **K4 Tracked:** Closed in WP-32, BUGS.md "Harness guards", commit a956e77.
 - **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit e826446.
