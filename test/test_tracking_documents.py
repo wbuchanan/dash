@@ -71,7 +71,11 @@ file holds, mechanically:
    TWOWAY_COVERAGE_AUDIT.md's known-inert list names only options dash.ado
    still marks pending; no test file or BUGS.md entry cites a path that is
    gone without saying so; REMAINING.md and phases/ are marked historical;
-   ROADMAP.md's WP-01 to WP-11 headings end with the "— DONE" suffix.
+   ROADMAP.md's WP-01 to WP-11 headings end with the "— DONE" suffix;
+   and the counts ROADMAP.md's WP-31 Measurements state (entries, GAPS3
+   rows closed and partly closed, open BUGS.md entries) are the ones the
+   documents held at the closeout commit, computed (WP-32, BUGS.md
+   "Harness guards").
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -2683,6 +2687,47 @@ def _gone_path_citations(name, text):
     return bad
 
 
+#: The commit that recorded WP-31's closeout measurements (S61.5); the
+#: counts its ROADMAP.md "Entries." line states are the documents' there.
+_WP31_CLOSEOUT = "4547107"
+_WP31_ENTRIES_LINE = re.compile(
+    r"^- \*\*Entries\.\*\* (?P<all>\d+) WP-31 entries \((?P<plan>\d+) at the "
+    r"plan, A12, and (?P<added>\d+) added by D14-D36\); (?P<closed>\d+) GAPS3 "
+    r"rows closed and (?P<partly>\d+) partly closed; .*BUGS\.md holds "
+    r"(?P<open>\d+) open entries, none S1 or S2: the (?P<residual>\d+) WP-31 "
+    r"residuals below and (?P<older>\d+) older S3 entries\.$", re.M)
+
+
+def _roadmap_wp31_counts(roadmap):
+    """The counts ROADMAP.md's WP-31 Measurements "Entries." line states,
+    as ints by name; {} when the line is not there."""
+    m = _WP31_ENTRIES_LINE.search(roadmap)
+    return {k: int(v) for k, v in m.groupdict().items()} if m else {}
+
+
+def _wp31_closeout_counts(bugs_text, gaps3_text):
+    """The same counts computed from BUGS.md and GAPS3.md: GAPS3 rows
+    (the id before any letter suffix) whose every Tracked line is Closed,
+    rows with a Partly line, open entries, and those graded at WP-31's
+    closeout ("Graded S<n> (WP-31)")."""
+    entries, _p = _parse_bugs(bugs_text)
+    opened = [e for e in entries if not e["closed"]]
+    residual = sum(1 for e in opened if re.search(
+        r"\bGraded S[1-3] \(WP-31\)", e["fields"].get("Resolution", "")))
+    rows = {}
+    for ln in gaps3_text.split("\n"):
+        m = _GAPS3_TRACKED.match(ln)
+        if m:
+            row = re.match(r"[A-K]\d{1,2}", m.group("id")).group()
+            rows.setdefault(row, []).append(m.group("text"))
+    closed = sum(1 for v in rows.values()
+                 if all(_GAPS3_CLOSED.match(t) for t in v))
+    partly = sum(1 for v in rows.values()
+                 if any(_GAPS3_PARTLY.match(t) for t in v))
+    return {"closed": closed, "partly": partly, "open": len(opened),
+            "residual": residual, "older": len(opened) - residual}
+
+
 class TestTheCountsAreTrue:
     """GAPS3 J4 and J6 (WP-31 section 58): every count, summary and path the
     tracking documents and test docstrings state says what is true at the
@@ -2729,6 +2774,26 @@ class TestTheCountsAreTrue:
                                             _read(os.path.join("test", f)))
         assert not bad, "\n".join(bad)
 
+    def test_the_wp31_closeout_counts_are_computed(self):
+        """ROADMAP.md's WP-31 "Entries." line states six counts; each is
+        the documents' at the closeout commit (WP-32, BUGS.md "Harness
+        guards": the counts were stated and checked by nothing)."""
+        said = _roadmap_wp31_counts(_read("ROADMAP.md"))
+        assert said, "ROADMAP.md's WP-31 Entries line was not found"
+        assert said["all"] == len(WP31_ALL) == said["plan"] + said["added"]
+        # Environmental: a copy with no .git has no closeout to read.
+        if _git("rev-parse", "--git-dir").returncode != 0:
+            pytest.skip("not a git working tree")
+        docs = {}
+        for name in ("BUGS.md", "GAPS3.md"):
+            r = _git("show", "%s:%s" % (_WP31_CLOSEOUT, name))
+            assert r.returncode == 0, (_WP31_CLOSEOUT, name, r.stderr)
+            docs[name] = r.stdout
+        got = _wp31_closeout_counts(docs["BUGS.md"], docs["GAPS3.md"])
+        want = {k: said[k] for k in got}
+        assert got == want, ("ROADMAP.md's WP-31 counts %s; the documents "
+                             "at %s hold %s" % (want, _WP31_CLOSEOUT, got))
+
     def test_the_count_readers(self):
         audit = ("x\n\nThe tracked known-inert names are:\n\n`at`, `text`, and"
                  " `sort`. [WP-30 x: `text` drawn]\n\nnext\n")
@@ -2736,6 +2801,26 @@ class TestTheCountsAreTrue:
         assert {"at", "sort"} <= _pending_names()
         assert _gone_path_citations("f", "see .ultraplan/CHANGELOG.md") == [
             "f:1 cites .ultraplan/CHANGELOG.md: 'see .ultraplan/CHANGELOG.md'"]
+        line = ("- **Entries.** 5 WP-31 entries (3 at the plan, A12, and 2 "
+                "added by D14-D36); 1 GAPS3 rows closed and 1 partly closed;"
+                " x. BUGS.md holds 2 open entries, none S1 or S2: the 1 "
+                "WP-31 residuals below and 1 older S3 entries.")
+        assert _roadmap_wp31_counts("a\n" + line + "\nb") == {
+            "all": 5, "plan": 3, "added": 2, "closed": 1, "partly": 1,
+            "open": 2, "residual": 1, "older": 1}
+        assert _roadmap_wp31_counts("no such line") == {}
+        bugs = ("- [ ] Title: a\n  - File Names and Line Numbers: f\n"
+                "  - Description: d\n  - Suggested fix: s\n"
+                "  - Resolution: Not fixed because x. Graded S3 (WP-31): y.\n"
+                "\n- [ ] Title: b\n  - File Names and Line Numbers: f\n"
+                "  - Description: d\n  - Suggested fix: s\n"
+                "  - Resolution: Not fixed because x. Graded S3 (WP-27): y.\n")
+        gaps = ('- **A1 Tracked:** Closed in WP-31, BUGS.md "t", commit '
+                'abc1234.\n- **B2a Tracked:** Closed in WP-31, BUGS.md "u", '
+                'commit pending.\n- **B2b Tracked:** Partly closed in WP-31 '
+                '(section 60, commit abc1234): p; open: q (BUGS.md "v").\n')
+        assert _wp31_closeout_counts(bugs, gaps) == {
+            "closed": 1, "partly": 1, "open": 2, "residual": 1, "older": 1}
         for ok in ("the .ultraplan/BASELINE.md it once cited is gone",
                    "CHANGELOG.md (then .ultraplan/CHANGELOG.md)",
                    "  - Description: GAPS3.md J4: `.ultraplan/phases/X`"):
