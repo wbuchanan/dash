@@ -75,9 +75,12 @@ class TestDashIsRclass:
         # Flipped (14oct2026): the twoway-prefix route ("strip") is gone --
         # dash replaces twoway, so `dash twoway ...' is refused r(198).
         assert "_dash_strip_prefix" not in body
+        # Flipped (WP-31 H7): the route straight to _dash_result was wrong
+        # because _dash_py_tidy now forgets dash's Python names after the
+        # build and the plot route; _dash_result still runs last.
         routes = {
-            "build": r'_dash_build `macval\(_args\)\'\n\s*_dash_result\n\s*return add\n\s*exit',
-            "plot": r'_dash_plot `macval\(0\)\'\n\s*_dash_result\n\s*return add\s*$',
+            "build": r'_dash_build `macval\(_args\)\'\n\s*_dash_py_tidy\n\s*_dash_result\n\s*return add\n\s*exit',
+            "plot": r'_dash_plot `macval\(0\)\'\n\s*_dash_py_tidy\n\s*_dash_result\n\s*return add\s*$',
         }
         missing = [k for k, pat in routes.items() if not re.search(pat, body)]
         assert not missing, "routes that do not post the result: %s" % missing
