@@ -9090,6 +9090,14 @@ class SchemeParser:
         "linewidth plotregion":   "thin",
         "linepattern plotregion": "solid",
         "textboxstyle note":      "small_body",
+        # A framed title's, subtitle's and caption's text box and the
+        # margins of the four (WP-32 D-30.c): s2color's.
+        "textboxstyle title":     "heading",
+        "textboxstyle subtitle":  "subheading",
+        "textboxstyle caption":   "body",
+        "margin heading":         "vsmall",
+        "margin body":            "vsmall",
+        "margin small_body":      "vsmall",
 
         # A ci fit's band and its ci line style, at s2color's values
         # (scheme-s2color.scheme 352-358, 560-561, 1208-1211, 1272).
@@ -50937,6 +50945,31 @@ def _dash_textbox_position(opts, default_clock, default_ring, just,
             "sy": None, "anchor": None, "ring": ring, "clock": clock}
 
 
+def _dash_textbox_margin_px(scheme, tstyle, option):
+    """The margin a framed textbox of *option* (title, subtitle, note,
+    caption) draws by default, ``[left, right, bottom, top]`` in whole px,
+    or None (D39 D-30.c).  The text box style is *tstyle* when given, else
+    the scheme's ``textboxstyle <option>``; its margin is the scheme's
+    ``margin <style's size key>`` (Stata's textboxstyle files read ``set
+    margin scheme <name>`` with the size's name), read through the
+    scheme's margin ladder at dash's 4-inch reference.  None for a style
+    or margin name the scheme does not table."""
+    props = getattr(scheme, "_props", None) or {}
+    name = str(tstyle or props.get("textboxstyle %s" % option, "")
+               or "").strip().strip('"')
+    row = SchemeParser._TEXTBOX_STYLES.get(name)
+    if row is None:
+        return None
+    mname = str(props.get("margin %s" % row[0], "") or "").strip()
+    sides = scheme.margin_sides(mname) if mname else None
+    if not sides:
+        return None
+    T = OptionTranslator
+    return [int(round(float(s[1]) * T.PX_PER_PT if isinstance(s, tuple)
+                      else float(s) * T.PT_PER_RS * T.PX_PER_PT))
+            for s in sides]
+
+
 def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                         base_color=None):
     """Draw a textbox's sub-options on its ``Title`` or ``Label`` (WP-31
@@ -51040,6 +51073,15 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                 for s in sides]
     if o.get("margin"):
         p = sides_px("margin")
+        if p is not None:
+            model.padding = {"left": p[0], "right": p[1], "bottom": p[2],
+                             "top": p[3]}
+    elif "box" in o and "nobox" not in o and scheme is not None:
+        # D39 D-30.c: a box is its text plus the text box style's margin
+        # (s2color's heading, subheading, body and small_body: vsmall, 0.6
+        # units, measured from twoway's SVG); Bokeh draws a Title's box
+        # round its text and padding, so the box is twoway's size.
+        p = _dash_textbox_margin_px(scheme, name, option)
         if p is not None:
             model.padding = {"left": p[0], "right": p[1], "bottom": p[2],
                              "top": p[3]}
@@ -63643,7 +63685,8 @@ class ServerAppBuilder:
                          "_dash_legend_unsupported", "_dash_textbox",
                          "_dash_textbox_or_default",
                          "_dash_textbox_place",
-                         "_dash_textbox_position", "_dash_textbox_style",
+                         "_dash_textbox_position", "_dash_textbox_margin_px",
+                         "_dash_textbox_style",
                          "_dash_textbox_insert", "_dash_textbox_draw",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",

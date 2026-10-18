@@ -1067,6 +1067,7 @@ FUNCTIONS = {
  'SchemeParser.axis_side': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axis_side_reads_the_alt_keys',
  '_dash_textbox_place': 'test/test_scheme_chrome.py::TestTextboxPlace::test_every_clock',
  '_dash_textbox_position': 'test/test_textbox_placement.py::TestPlacement::test_clock_table',
+ '_dash_textbox_margin_px': 'test/test_textbox_placement.py::TestBox::test_an_unspanned_box_is_its_text_and_margin',
  '_dash_textbox_style': 'test/test_textbox_placement.py::TestBox::test_box_props',
  '_dash_textbox_insert': 'test/test_textbox_placement.py::TestRingOrder::test_rings_on_one_side',
  '_dash_textbox_insert.<locals>.ring_of': 'test/test_textbox_placement.py::TestRingOrder::test_user_ring_moves_inside',

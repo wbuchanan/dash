@@ -306,6 +306,37 @@ class TestBox:
         assert not _named(caught, "box")
 
     @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("key", ["title", "subtitle", "note",
+                                     "caption"])
+    def test_an_unspanned_box_is_its_text_and_margin(self, mode, key):
+        """D39 D-30.c: a box drawn without span is sized to its text plus
+        the text box style's margin, as twoway draws it.  Measured 18oct2026
+        (StataNow 19.5, s2color, SVG at 720 px an inch, 28.8 px a unit):
+        title("Hello world", box justification(left)), subtitle("Sub", box
+        justification(left)), note("A note here", box) and caption("Cap",
+        box) each start their text 17.2-17.3 px, 0.6 units, inside the box
+        (s2color's ``margin heading/subheading/body/small_body vsmall``,
+        ``gsize vsmallmargin relative0p6``); span moves the box (centred on
+        the graph, not the plot region) and leaves its width; margin(medium)
+        pads 3.5 units.  A Bokeh Title draws its box round the text and its
+        padding, so the padding is the margin."""
+        f, _c = _fig(mode, {key: '"T", box'})
+        m = f.title if key == "title" else _one(f, key)[2]
+        T = dr.OptionTranslator
+        px = int(round(0.6 * T.PT_PER_RS * T.PX_PER_PT))
+        assert px == 2
+        assert m.padding == {"left": px, "right": px, "bottom": px,
+                             "top": px}
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_no_box_keeps_no_padding(self, mode):
+        """Without box nothing is framed and the text keeps its place."""
+        f, _c = _fig(mode, {"note": '"N"'})
+        _s, _i, m = _one(f, "note")
+        assert m.padding in (0, None, {"left": 0, "right": 0, "bottom": 0,
+                                       "top": 0})
+
+    @pytest.mark.parametrize("mode", MODES)
     def test_nobox(self, mode):
         f, _c = _fig(mode, {"note": '"N", nobox', "title": '"T"'},
                      scheme="economist")

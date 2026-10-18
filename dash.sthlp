@@ -5271,9 +5271,12 @@ region.  {cmd:tstyle()} is the base style -- {cmd:tstyle(heading)}
 draws the heading's size and colour -- and {cmd:size()} and
 {cmd:color()} still win; an unknown name draws the default with
 {cmd:twoway}'s note "named style ... not found in class textboxstyle,
-default attributes used".  {cmd:span} and {cmd:bexpand} need no drawing:
-a box above or below the plot already spans the graph, so an unspanned
-box is wider than {cmd:twoway}'s.  {cmd:orientation()}, {cmd:width()},
+default attributes used".  A box is its text and its text box style's
+margin, as {cmd:twoway} draws it ({cmd:vsmall}, 0.6 units, for the four
+under {cmd:s2color}), unless {cmd:margin()} gives another.  {cmd:span} and
+{cmd:bexpand} are taken: {cmd:twoway}'s {cmd:span} centres a box above or
+below the plot on the whole graph, where {cmd:dash} keeps it centred on
+the plot region.  {cmd:orientation()}, {cmd:width()},
 {cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
 sub-options are named in the note: a title box has no angle and no fixed
 size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},

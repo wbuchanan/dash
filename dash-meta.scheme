@@ -667,6 +667,24 @@ margin graph       medium
 shadestyle plotregion  plotregion
 
 * ---------------------------------------------------------------------------
+* Added 18oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> meta); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The text boxes of title(), subtitle(), caption() and note() and
+* their margins, the box round a framed text (WP-32, D-30.c).
+textboxstyle title       heading
+textboxstyle subtitle    subheading
+textboxstyle caption     body
+margin heading     vsmall
+margin body        vsmall
+margin small_body  vsmall
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -738,6 +756,12 @@ shadestyle plotregion  plotregion
 * provenance: margin twoway -- transcribed from scheme-s2color.scheme:719 `margin twoway medsmall'
 * provenance: margin graph -- transcribed from scheme-s2color.scheme:718 `margin graph medium'
 * provenance: shadestyle plotregion -- transcribed from scheme-s2color.scheme:801 `shadestyle plotregion plotregion'
+* provenance: textboxstyle title -- transcribed from scheme-s2color.scheme:1317 `textboxstyle title heading'
+* provenance: textboxstyle subtitle -- transcribed from scheme-s2color.scheme:1318 `textboxstyle subtitle subheading'
+* provenance: textboxstyle caption -- transcribed from scheme-s2color.scheme:1319 `textboxstyle caption body'
+* provenance: margin heading -- transcribed from scheme-s2color.scheme:735 `margin heading vsmall'
+* provenance: margin body -- transcribed from scheme-s2color.scheme:732 `margin body vsmall'
+* provenance: margin small_body -- transcribed from scheme-s2color.scheme:734 `margin small_body vsmall'
 * provenance: gsize sidemargin -- transcribed from scheme-s2color.scheme:195 `gsize sidemargin relative3'
 * provenance: gsize medmargin -- transcribed from scheme-s2color.scheme:196 `gsize medmargin relative3p5'
 * provenance: gsize medsmmargin -- transcribed from scheme-s2color.scheme:197 `gsize medsmmargin relative2p2'

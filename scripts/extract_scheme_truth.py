@@ -1551,6 +1551,17 @@ def extract(stata_base: str, scheme: str) -> dict:
         res["margin_subheading"] = scalar(
             "margin_subheading", "margin", ["subheading"], tok_name,
             class_default=False, required=False)
+        # WP-32 (D39 D-30.c): a framed title's, subtitle's, caption's and
+        # note's margin is its text box style's (textboxstyle-<name>.style:
+        # `set margin scheme <name>'), the box round the text.
+        for _k in ("heading", "body", "small_body"):
+            res["margin_" + _k] = scalar(
+                "margin_" + _k, "margin", [_k], tok_name,
+                class_default=False, required=False)
+        for _k in ("title", "subtitle", "caption"):
+            res["textboxstyle_" + _k] = scalar(
+                "textboxstyle_" + _k, "textboxstyle", [_k], tok_name,
+                class_default=False, required=False)
         res["bylabel_outline_color"] = color_of(
             "bylabel_outline_color", ["bylabel_outline"], required=False)
         # The label box's fill: the scheme's `textboxstyle subtitle' names a
@@ -2317,6 +2328,15 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
            "shadestyle plotregion none leaves the plot region unfilled."], [
         scalar("margin", "graph", "margin_graph"),
         scalar("shadestyle", "plotregion", "plotregion_shade"),
+    ])
+    group(["The text boxes of title(), subtitle(), caption() and note() and",
+           "their margins, the box round a framed text (WP-32, D-30.c)."], [
+        scalar("textboxstyle", "title", "textboxstyle_title"),
+        scalar("textboxstyle", "subtitle", "textboxstyle_subtitle"),
+        scalar("textboxstyle", "caption", "textboxstyle_caption"),
+        scalar("margin", "heading", "margin_heading"),
+        scalar("margin", "body", "margin_body"),
+        scalar("margin", "small_body", "margin_small_body"),
     ])
     group(["Stata's margin ladder, the sizes plotregion(margin()) names",
            "(WP-30 P1.20b)."],

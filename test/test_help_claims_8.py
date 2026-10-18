@@ -1230,8 +1230,10 @@ class TestTheShippedFiles:
             # margins, drawn as its padding and margin.
             # Flipped (WP-31 D11): `margin graph' is the graph region's
             # margin, drawn as the figure's borders (_dash_graph_margin).
+            # Flipped (WP-32 D-30.c): `margin heading', `margin body' and
+            # `margin small_body' pad a framed title, caption and note.
             r"margin(?! twoway| by_indiv| subheading| text_option| legend"
-            r"| graph)|"
+            r"| graph| heading| body| small_body)|"
             r"barlabel|"
             r"barstyle|bar_",
             k))
