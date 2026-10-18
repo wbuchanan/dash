@@ -433,6 +433,7 @@ _ROOT_ALSO = frozenset({
     "GAPS2.md", "GAPS3.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
     "PhilSchummSuggestion.md",
     "README.md",  # WP-31 I2: the repository's README
+    "ruff.toml",  # WP-31 I6: the lint configuration make lint reads
 })
 
 
