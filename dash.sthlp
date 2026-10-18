@@ -2579,6 +2579,23 @@ dashboard's key keeps another site's page out.  Unset it to have the app's
 own list apply.
 
 {pstd}
+Environment.  The app serves BokehJS from its own {cmd:/static}, so
+{cmd:BOKEH_RESOURCES} set to anything but {cmd:server} or {cmd:inline} --
+{cmd:cdn}, say, which the page's policy would not let load -- stops
+{cmd:python app.py} before it builds anything, with exit status 2 and one
+sentence naming the value; unset it and start again.  {cmd:BOKEH_MINIFIED}
+and {cmd:BOKEH_DEV} are honoured: when they choose Bokeh's unminified or
+development bundle, {cmd:dash build} (once a command) and the served app
+(once a process) say so, since the page is then larger than the shipped one;
+it behaves the same.  {cmd:/health} answers with JSON holding
+{cmd:status}, {cmd:timestamp}, {cmd:sessions} (the sessions open now),
+{cmd:max_sessions} (the limit), {cmd:bokeh} and {cmd:dash} (the two
+versions) and {cmd:uptime_s} (whole seconds since the app started), and
+nothing else: no data, no paths and nothing from the request.  When the
+browser command that opens a saved page fails, dash prints its return code
+and the page's path, so you can open it yourself.
+
+{pstd}
 The generated app embeds every observation of the variables the dashboard
 uses, and anyone who holds its link can read them.  The key is in the link,
 so it is wherever the link is: the browser's address bar and history, the

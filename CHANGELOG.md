@@ -931,7 +931,7 @@ and now matches Stata.
 
 - xvarformat(bogus) was noted in dash's words; the note is twoway's line, "bogus not found", and the graph draws as twoway's does, rc 0 (WP-31, G7)
 
-<!-- WP-31 H4 -->
+- python app.py (the served app dash serve starts) refuses BOKEH_RESOURCES set to any mode but server or inline, exit status 2, where cdn left the page blank with nothing said; BOKEH_MINIFIED and BOKEH_DEV are reported when they change the bundle; /health reports sessions, max_sessions, the bokeh and dash versions and uptime_s; a failed browser launch is reported with its return code and the page's path (WP-31, H4)
 
 - name() is declared with twoway's minimum, the full name: nam(), na() and a bare nam are refused, r(198), "option nam() not allowed", as twoway refuses them; dash took nam() as name(). dash kpi keeps nam(). b(), t(), l() and r() stay the 1 titles, as twoway reads them. (WP-31, A3b)
 

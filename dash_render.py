@@ -219,6 +219,11 @@ _DASH_BOKEH_FLOOR = (3, 8)
 _DASH_BOKEH_CEIL = (3, 10)
 _DASH_BOKEH_VERIFIED = ((3, 8), (3, 9))
 
+#: dash's version, as dash.ado's ``*! Version:`` line states it; the served
+#: app's /health reports it (WP-31 H4, D-55c).  test_served_env.py pins the
+#: two equal.
+_DASH_VERSION = "0.1.0"
+
 #: Every Bokeh internal dash depends on (WP-30 P1.30, A109), as
 #: (internal, guard, test): the guard fails closed when a Bokeh release
 #: changes the internal, and the test pins it.  S54 appends its Save as
@@ -5882,6 +5887,37 @@ def _dash_bokeh_shown():
     import sys
     v = getattr(sys.modules.get("bokeh"), "__version__", "")
     return "".join(c for c in str(v)[:40] if c.isprintable()) or "unknown"
+
+
+def _dash_env_bundle_note():
+    """The note both renderers print when Bokeh's environment variables
+    choose a bundle other than the shipped one, or None (WP-31 H4, D-55b).
+
+    ``BOKEH_MINIFIED`` and ``BOKEH_DEV`` change which BokehJS a page loads
+    (the saved page inlines it, the served page names it): measured, the
+    unminified bundle is 2.9 MB where the shipped one is 1.3 MB.  They are
+    not refused -- they are a debugging aid -- but said, so a larger page
+    is not a mystery.  Bokeh's own settings decide the effect: set to the
+    shipped value (``BOKEH_MINIFIED=yes``), nothing is said.  A value Bokeh
+    cannot read is left for Bokeh to refuse.
+    """
+    named = [n for n in ("BOKEH_DEV", "BOKEH_MINIFIED")
+             if os.environ.get(n, "").strip()]
+    if not named:
+        return None
+    try:
+        from bokeh.settings import settings
+        minified, dev = settings.minified(), bool(settings.dev)
+    except Exception:
+        return None
+    if minified:
+        return None
+    if dev and "BOKEH_DEV" in named:
+        name, what = "BOKEH_DEV", "development"
+    else:
+        name, what = "BOKEH_MINIFIED", "unminified"
+    return ("dash: %s is set, so Bokeh's %s bundle is used; the page is "
+            "larger than the shipped one but behaves the same" % (name, what))
 
 
 def _dash_unsigned_scripts(markup, nonce):
@@ -63403,6 +63439,8 @@ class ServerAppBuilder:
                          "_dash_slider_names_hook",
                          # WP-31 H3: the served bundle without MathJax.
                          "_dash_drop_mathjax",
+                         # WP-31 H4: the bundle note.
+                         "_dash_env_bundle_note",
                          # WP-31 H2t: a graph's data table.
                          "_dash_table_spec", "_dash_table_vars",
                          "_dash_table_text_frame", "_dash_data_table",
@@ -64675,6 +64713,12 @@ class ServerAppBuilder:
             "    except Exception:",
             "        return '0.0.0.0'",
             "",
+            "#: WP-31 H4: /health's uptime counts from the app's import, and",
+            "#: its dash is dash.ado's version line.",
+            "_DASH_START = _time.monotonic()",
+            "_DASH_VERSION = %r" % (_DASH_VERSION,),
+            "",
+            "",
             "class _HealthHandler(_RequestHandler):",
             "    '''Health check HTTP handler — returns 200 OK or 429 when rate-limited.",
             "    Uses _HEALTH_LIMITER (separate from _SESSION_LIMITER) so infrastructure",
@@ -64694,7 +64738,17 @@ class ServerAppBuilder:
             "        # same Z-suffixed UTC string.",
             "        ts = _dt.datetime.now(_dt.timezone.utc).strftime(",
             "            '%Y-%m-%dT%H:%M:%SZ')",
-            "        self.write('{\"status\": \"ok\", \"timestamp\": \"' + ts + '\"}')",
+            "        # WP-31 H4 (D-55c): liveness and load, nothing a probe without",
+            "        # the key should learn beyond them -- no rows (DECISIONS A30),",
+            "        # no paths, no host, nothing from the request.",
+            "        import bokeh as _bk",
+            "        self.write(json.dumps({",
+            "            'status': 'ok', 'timestamp': ts,",
+            "            'sessions': len(_DASH_STATE.open),",
+            "            'max_sessions': int(_DASH_STATE.cap),",
+            "            'bokeh': str(getattr(_bk, '__version__', '')),",
+            "            'dash': _DASH_VERSION,",
+            "            'uptime_s': int(_time.monotonic() - _DASH_START)}))",
             "",
             "",
             "# ---- Launcher command line ----",
@@ -65217,6 +65271,13 @@ class ServerAppBuilder:
             "    # The previous document's style notes, forgotten: one note per",
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",
+            "    # WP-31 H4: a bundle other than the shipped one, said once a",
+            "    # process (the holder remembers), not once a session.",
+            "    if not getattr(_DASH_STATE, 'bundle_noted', False):",
+            "        _DASH_STATE.bundle_noted = True",
+            "        _dash_bn = _dash_env_bundle_note()",
+            "        if _dash_bn:",
+            "            warnings.warn(_dash_bn, UserWarning)",
             "    # ---- The dashboard's key (WP-29 P0.12a) ----",
             "    # Before the limiter, so a client without the key spends no",
             "    # session budget, and before the data is decoded.  With no key",
@@ -67544,6 +67605,17 @@ class ServerAppBuilder:
             "    # this is the launcher dash points users at.",
             "    _p = _dash_arg_parser()",
             "    _a = _p.parse_args()",
+            "    # WP-31 H4 (D-55b): this app serves BokehJS from its own",
+            "    # /static (mode server); BOKEH_RESOURCES=cdn made the page ask a",
+            "    # CDN the policy refuses, and it was blank with nothing said.",
+            "    # Refused, not overridden, before anything is built.",
+            "    _dash_res = os.environ.get('BOKEH_RESOURCES', '')",
+            "    if _dash_res not in ('', 'server', 'inline'):",
+            "        print(\"dash: BOKEH_RESOURCES is set to '%s'; this app serves \"",
+            "              \"Bokeh from itself (mode server) and cannot run with \"",
+            "              \"another resource mode. Unset it and start again.\"",
+            "              % _dash_display(_dash_res, 40), flush=True)",
+            "        _sys.exit(2)",
             "    if _a.trust_xff:",
             "        _TRUST_FORWARDED_FOR = True",
             "    # WP-30 P1.31a: warm up before the server exists -- the data",
@@ -67960,6 +68032,10 @@ def main(
         raise RuntimeError(_bk_refuse)
     if _bk_note:
         warnings.warn(_bk_note, UserWarning, stacklevel=2)
+    # WP-31 H4: a bundle other than the shipped one, said once a command.
+    _env_note = _dash_env_bundle_note()
+    if _env_note:
+        warnings.warn(_env_note, UserWarning, stacklevel=2)
     run = _dash_private_run_of(output_path) if launch else None
 
     if mode == "server":

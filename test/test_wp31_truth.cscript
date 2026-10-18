@@ -14090,6 +14090,33 @@ if inlist("`only'", "", "S54") & `: list posof "S54" in w31_run' {
 }
 * ==== end S54 ====
 
+* ==== S55 H4: served environment and health ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S55") & `: list posof "S55" in w31_run' {
+    display as text "S55 start " c(current_date) " " c(current_time)
+    local u55d "`w31_work'/s55"
+    capture mkdir "`u55d'"
+    // dash's own served app (twoway has none): no twoway truth.  The app
+    // dash build writes holds the BOKEH_RESOURCES refusal and the /health
+    // fields; test/test_served_env.py runs them.
+    sysuse auto, clear
+    dash clear
+    quietly dash scatter mpg weight, name(g1)
+    capture noisily dash build, saving("`u55d'/app.py") server replace nobrowser
+    local rc5 = _rc
+    _w31_expect U55-5 "(`rc5' == 0)" "dash build, server: r(`rc5')"
+    if `rc5' == 0 {
+        foreach n in "uptime_s" "max_sessions" "BOKEH_RESOURCES is set to" "_dash_env_bundle_note()" {
+            cert_file_has "`u55d'/app.py", needle(`"`n'"')
+            _w31_expect U55-5 "(r(found) == 1)" `"the app lacks `n'"'
+        }
+    }
+    _w31_done U55-5 "the served app refuses BOKEH_RESOURCES, notes the bundle and reports uptime_s and max_sessions on /health"
+    dash clear
+    display as text "S55 end " c(current_date) " " c(current_time)
+}
+* ==== end S55 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -30,7 +30,7 @@
 *! run and runs nothing -- so Windows's command, which runs only where Stata
 *! reports Windows, is checked here on any machine (SB-13..20).
 *!
-*! Tests: SB-01 through SB-38
+*! Tests: SB-01 through SB-38, U55-2
 *!
 *! Usage:  do test/test_serve_browser.cscript
 *! Version: 1.1  24sep2026
@@ -679,6 +679,52 @@ capture noisily {
         display "SB-28 PASS: dash.sthlp's saving() paragraph names every character the opener declines and the validator refuses"
     }
     if _rc local sb_fail `sb_fail' SB-28
+
+    // ---- U55-2 -- the opener's exit status is read (WP-31 H4) ----
+    // Stata's shell returns 0 whatever ran, so the status is the shell's
+    // own: a stub open that exits 3 is reported with the path; dry, or
+    // under $dash_nobrowser, nothing runs, r(rc) is 0 and nothing is said.
+    capture noisily {
+        _dash_open_page, path(`"`sb_P'"') os(MacOSX) dryrun
+        assert r(rc) == 0
+        global dash_nobrowser 1
+        capture erase "`sbo'/u552.log"
+        quietly log using "`sbo'/u552.log", text replace name(_u552)
+        _dash_open_page, path(`"`sb_P'"') os(MacOSX)
+        local sb_rc = r(rc)
+        quietly log close _u552
+        macro drop dash_nobrowser
+        assert `sb_rc' == 0
+        cert_log_has "`sbo'/u552.log", needle("the browser command returned")
+        assert r(found) == 0
+        if `sb_stubs' {
+            tempname sh
+            file open `sh' using "`sbo'/open", write text replace
+            file write `sh' "#!/bin/sh" _n "exit 3" _n
+            file close `sh'
+            shell chmod 755 "`sbo'/open"
+            quietly log using "`sbo'/u552.log", text replace name(_u552)
+            _dash_open_page, path(`"`sb_P'"') os(MacOSX)
+            local sb_rc = r(rc)
+            local sb_op = r(opened)
+            quietly log close _u552
+            assert `sb_rc' == 3
+            assert `sb_op' == 1
+            cert_log_has "`sbo'/u552.log", needle("dash: the browser command returned 3; open")
+            assert r(found) == 1
+            cert_log_has "`sbo'/u552.log", needle(`"`sb_P'"')
+            assert r(found) == 1
+            // and a stub that succeeds is silent, r(rc) 0
+            capture erase "`sbo'/opened.log"
+            _dash_open_page, path(`"`sb_P'"') os(Unix)
+            assert r(rc) == 0
+        }
+        display "U55-2 PASS: the opener's exit status is r(rc), and a failure prints the path"
+    }
+    if _rc local sb_fail `sb_fail' U55-2
+    capture log close _u552
+    capture erase "`sbo'/u552.log"
+    macro drop dash_nobrowser
 }
 local rc_op = _rc
 

@@ -2283,7 +2283,11 @@ class TestHealthEndpoint:
                            "Host": hostile, "Referer": hostile}))
         assert status == 200
         doc = json.loads(body)
-        assert set(doc) == {"status", "timestamp"}
+        # Flipped: {"status", "timestamp"} was the whole answer until WP-31
+        # H4 (D-55c) added the load and version fields; none of them comes
+        # from the request, which is what this test holds.
+        assert set(doc) == {"status", "timestamp", "sessions",
+                            "max_sessions", "bokeh", "dash", "uptime_s"}
         assert doc["status"] == "ok"
         assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ",
                             doc["timestamp"])

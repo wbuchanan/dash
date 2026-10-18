@@ -9915,6 +9915,8 @@ end
 // runs nothing, and so does a set $dash_nobrowser, whichever caller asks.
 // r(why) is "metachar" when a Windows path holds a character cmd.exe would
 // read, so no command was built and the path was printed instead.
+// r(rc) is the opener's exit status (WP-31 H4): 0 when nothing ran, and
+// when it is not 0 the path is printed for the user to open.
 //
 // The two callers each carried their own three shell lines, and the
 // Windows line ran only where Stata reports Windows, so no test ran it;
@@ -9994,14 +9996,41 @@ program define _dash_open_page, rclass
         mata: st_local("cmd", st_local("_op_prog") + " " + char(39) + subinstr(st_local("path"), char(39), char(39) + char(92) + char(39) + char(39), .) + char(39))
     }
 
+    // WP-31 H4: the opener's own exit status.  Stata's shell returns 0
+    // whatever the command did (measured 18oct2026: shell false, shell
+    // exit 3 and a command not found each give 0), so on a Mac and on Unix
+    // the line run is the command, then the shell's $? written to a
+    // tempfile, read back below; cmd.exe's start has no such status, so on
+    // Windows it is what shell returns.  r(cmd) stays the command alone.
     local opened 0
+    local _op_rc 0
+    local _op_status 0
+    local _op_run : copy local cmd
+    if "`os'" != "Windows" {
+        tempfile _op_st
+        local _op_status 1
+        mata: st_local("_op_run", st_local("cmd") + " ; echo " + char(36) + "? > " + char(39) + subinstr(st_local("_op_st"), char(39), char(39) + char(92) + char(39) + char(39), .) + char(39))
+    }
     if "`dryrun'" == "" & "${dash_nobrowser}" == "" {
-        mata: st_local("_op_rc", strofreal(_stata("shell " + st_local("cmd"), 0, 1)))
+        mata: st_local("_op_rc", strofreal(_stata("shell " + st_local("_op_run"), 0, 1)))
+        if `_op_rc' == 0 & `_op_status' {
+            tempname _op_fh
+            capture file open `_op_fh' using "`_op_st'", read text
+            if _rc == 0 {
+                file read `_op_fh' _op_line
+                file close `_op_fh'
+                mata: st_local("_op_rc", strofreal(max((0, editmissing(strtoreal(strtrim(st_local("_op_line"))), 0)))))
+            }
+        }
         local opened 1
+        if `_op_rc' != 0 {
+            mata: _dash_say("txt", "dash: the browser command returned " + st_local("_op_rc") + "; open ", st_local("path"), " yourself.")
+        }
     }
     return local os "`os'"
     return local cmd : copy local cmd
     return scalar opened = `opened'
+    return scalar rc = `_op_rc'
 end
 
 // ================================================================
