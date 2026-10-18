@@ -3938,8 +3938,7 @@ assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
 #: Differences the WP-31 H6 comparisons found (S60, 18oct2026), pinned so
 #: each test fails the day its entry agrees (delete the name then), and
 #: filed in BUGS.md "Found by the move-parity extension: axes of degenerate
-#: or emptied layers and the saved page's band outline and bins after a
-#: move".  Never ALLOWED (R8): they are differences, not design.
+#: or emptied layers after a move".  Never ALLOWED (R8): they are differences, not design.
 #: Axes: after a move that leaves an lpoly/lpolyci layer one x value or a
 #: layer no rows, the served app sets a Range1d around what is left where
 #: the saved renderer given the kept rows draws an empty autorange.
