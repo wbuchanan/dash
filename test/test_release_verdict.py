@@ -81,7 +81,8 @@ class TestACleanRunPasses:
                                                     len(SCHEMES), len(SCHEMES)))
 
     def test_the_corpus_is_the_repositorys(self):
-        assert len(EXAMPLES) == 12 and len(SCHEMES) >= 14
+        # 12 -> 14: plot_types_tour.do, serve_dashboard.do (WP-31 J3)
+        assert len(EXAMPLES) == 14 and len(SCHEMES) >= 14
 
 
 class TestEachFailureFails:
@@ -207,11 +208,16 @@ class TestWhatCountsAsADiagnostic:
                               rv.allowed_in(src)) != []
 
     def test_no_shipped_example_declares_a_diagnostic(self):
-        """Today every example is meant to run silent; a declaration is a
+        """Every example but one is meant to run silent; a declaration is a
         decision to review, so adding one changes this test on purpose."""
+        # Flipped: plot_types_tour.do (WP-31 J3) draws contourline, whose
+        # build prints its level-keys note on every page (dash_render.py's
+        # "contourline-keys" warn_once), so it declares that note.
+        declared = {"plot_types_tour.do": (
+            "contourline: the legend's keys for its levels are not drawn",)}
         for f in EXAMPLES:
             with open(os.path.join(ROOT, "examples", f), encoding="utf-8") as fh:
-                assert rv.allowed_in(fh.read()) == (), f
+                assert rv.allowed_in(fh.read()) == declared.get(f, ()), f
 
     def test_a_gate_line_with_a_spaced_path_keeps_it_whole(self):
         (tag, kv), = rv.parse(

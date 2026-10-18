@@ -10,8 +10,9 @@
 *!
 *! Project rule 4 asks for end-to-end tests proving a user can use every
 *! feature without error.  examples/ is exactly that corpus -- between them
-*! the do-files (eleven then, twelve on 24sep2026) exercise every plot type,
-*! KPIs, filters, linking, tabs, faceting, both layouts, dates and the
+*! the do-files (twelve on 24sep2026, fourteen since WP-31 J3) exercise
+*! every plot type (test/test_examples_cover.py pins it), KPIs, filters,
+*! linking, tabs, faceting, both layouts, dates, weights, csv and the
 *! Bootstrap grid -- and nothing ran them.
 *!
 *! Measured on 2026-09-19, the first time they were run as a set:
@@ -67,7 +68,8 @@ local nfiles : word count `files'
 // examples go missing with the certificate still green, and EX-01 below
 // only holds for whatever files are left.  Adding or removing an example
 // changes this count on purpose.
-assert `nfiles' == 12
+// 12 -> 14: plot_types_tour.do, serve_dashboard.do (WP-31 J3)
+assert `nfiles' == 14
 display "EX-00 PASS: `nfiles' example do-files found"
 
 local n_ok  = 0

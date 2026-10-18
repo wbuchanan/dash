@@ -1085,7 +1085,7 @@ Changed behaviour.
 
 - help dash: the Syntax line brackets filter()'s type(), the period-slider sentence sits with the slider, legend(ring(0)), msangle(), dot and the not-drawn types are described as drawn, the refusal-log sentence says what the server logs, and the page's iframe rule, a link() qualifier example and the %tC paragraph are new. (WP-31, J2)
 
-<!-- WP-31 J3 -->
+- examples/plot_types_tour.do draws every plot type dash draws, a weighted layer and a csv build, and examples/serve_dashboard.do writes a server app; test/test_examples_cover.py pins that every drawn type has an example. (WP-31, J3)
 
 <!-- WP-31 J4 -->
 

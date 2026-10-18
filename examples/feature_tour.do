@@ -6,16 +6,17 @@
 *!   the other ten examples before this file was written: scheme() appeared
 *!   in two, tabs() in one, colorvar() in one, and bin(), level(), kernel(),
 *!   bwidth(), legend(), xline(), note(), mlabel(), xlabel(), yaxis(),
-*!   hover(), jitter(), function, a multi-variable varlist and `dash serve'
-*!   appeared in none.  Ten of dash's thirty-eight plot types appeared in no
-*!   example at all -- which is how `pci' and `pcscatter' came to draw an
-*!   empty plot region without anyone noticing.
+*!   hover(), jitter(), function and a multi-variable varlist appeared in
+*!   none.  Ten of dash's forty plot types appeared in no example at all
+*!   before examples/plot_types_tour.do, which now draws every type; this
+*!   file keeps the options tour.  `dash serve' is shown in
+*!   examples/serve_dashboard.do.
 *!
 *! Usage:  do examples/feature_tour.do
 *!         (run from the dash/ directory)
 *!
 *! Produces: feature_tour.html
-*! Version: 1.0.0  20sep2026
+*! Version: 0.1.0  18oct2026
 
 sysuse auto, clear
 dash clear

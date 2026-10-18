@@ -553,7 +553,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **I7 Tracked:** Open (WP-31 section 59).
 - **J1 Tracked:** Closed in WP-31, BUGS.md "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note", commit pending.
 - **J2 Tracked:** Closed in WP-31, BUGS.md "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs", commit pending.
-- **J3 Tracked:** Open (WP-31 section 57).
+- **J3 Tracked:** Closed in WP-31, BUGS.md "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists", commit pending.
 - **J4 Tracked:** Open (WP-31 section 58).
 - **J5 Tracked:** Open (WP-31 section 58).
 - **J6 Tracked:** Open (WP-31 section 58).

@@ -6,3 +6,5 @@ scripts/__pycache__/*
 .claude/
 *.html
 .gitnexus
+# Written by examples/serve_dashboard.do where it runs (test/ under certification)
+serve_dashboard_app.py

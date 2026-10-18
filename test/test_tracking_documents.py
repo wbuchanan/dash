@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "J3": "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists",
     "J4": "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings",
     "J5": "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted",
     "J6": "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix",
