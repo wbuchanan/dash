@@ -11382,7 +11382,9 @@ class TestTheServerDispatchesThroughTheSharedTable:
         # panels and the filter redraw call as well.  So: no per-type branch
         # for these six, and the shared dispatch functions are what is
         # called.
-        for t in ("dot", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci"):
-            assert ("elif ptype == '%s':" % t) not in src, t
-        assert src.count("def _dash_draw_layer(") == 1
+        # WP-32 (BUGS.md "Harness guards"): the hand count of the text that
+        # stood here -- no "elif ptype == '<type>':" for the six and one
+        # "def _dash_draw_layer(" -- is now counted from the app's syntax
+        # tree, every spelling and every type, by
+        # test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn.
         assert "_dash_add_glyph(" in src and "_dash_add_pc_glyph(" in src
