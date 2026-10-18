@@ -6216,17 +6216,23 @@ directory, and is refused when there is none.
 The options below are {it:accepted and not honoured}.  None of them given
 once is an error (given twice, one {cmd:twoway} takes once is refused as
 {cmd:twoway} refuses it, as {it:Differences from twoway} says), so a
-command copy-pasted from a do-file always runs -- and every one that is
-supplied is named in that command's note, so nothing is dropped in silence:
+command copy-pasted from a do-file always runs -- every one that is
+supplied and not drawn is named in that command's note, and an option
+{cmd:twoway} refuses on a plot type is refused as {cmd:twoway} refuses it
+({cmd:r(198)}, {cmd:option X() not allowed}):
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
 {p 12 12 2}{cmd:. dash scatter mpg weight, mlabwidth(2) play(x)}{p_end}
 {p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlabwidth() play())}{p_end}
 
 {pstd}
-The note is built from the declarations in {cmd:dash.ado}, and this list is
-checked against them: {cmd:test/test_help_conformance.py} fails if the two
-disagree in either direction.
+The note is built from the declarations in {cmd:dash.ado} and from what
+its parsers leave over, and this list is checked against both: the
+declarations, and the {cmd:twoway} options measured reaching the note
+({cmd:test/fixtures/catchall_options_truth.json}, written by
+{cmd:scripts/extract_catchall_options_truth.do});
+{cmd:test/test_help_conformance.py} fails if the list and either disagree
+in either direction.
 
 {phang2}{ul:A confidence band's outline, on other plots.}
     {opt acolor(color)}, {opt alcolor(color)}, {opt alwidth(linewidth)},
@@ -6235,6 +6241,72 @@ disagree in either direction.
     {cmd:lpolyci} and {cmd:fpfitci}, and does not name them there;
     {cmd:twoway} accepts them on every plot type, and on the others
     {cmd:dash} names them.
+
+{phang2}{ul:Area, bar and line edge styles.}
+    {opt afcolor(color)}, {opt afintensity(intensity)},
+    {opt alalign(linealignmentstyle)} -- the rest of {cmd:twoway}'s
+    area-style options; {opt bcolor(color)}, {opt bfintensity(intensity)},
+    {opt blalign(linealignmentstyle)}, {opt blpattern(linepattern)},
+    {opt blwidth(linewidth)} -- its bar-style options; and
+    {opt clalign(linealignmentstyle)}, a connecting line's alignment.
+    {cmd:twoway} takes them on every plot type; {cmd:dash} draws a fill and
+    an outline from {cmd:color()}, {cmd:fcolor()}, {cmd:lcolor()},
+    {cmd:lwidth()} and {cmd:lpattern()}, and names these.
+
+{phang2}{ul:Back markers.}
+    {opt bmcolor(color)}, {opt bmlalign(linealignmentstyle)},
+    {opt bmlcolor(color)}, {opt bmlpattern(linepattern)},
+    {opt bmlwidth(linewidth)}, {opt bmsize(markersizestyle)},
+    {opt bmsymbol(symbolstyle)} and its other spelling
+    {opt bsymbol(symbolstyle)} -- {cmd:twoway}'s back-marker style, taken
+    on every plot type; {cmd:dash} draws no back marker, and names them.
+
+{phang2}{ul:Older spellings.}
+    {opt symbol(symbolstyle)}, {opt msymangle(anglestyle)} and
+    {opt mlabels(varname)} -- spellings {cmd:twoway} also takes for
+    {cmd:msymbol()}, {cmd:msangle()} and {cmd:mlabel()}.  {cmd:dash} takes
+    the names in this file, draws the default for these, and names them.
+
+{phang2}{ul:Marker-label text layout.}
+    {opt mlabalignment(alignmentstyle)},
+    {opt mlabjustification(justificationstyle)} -- the vertical alignment
+    and the justification of a marker label's text box; {cmd:dash} draws
+    the label at its position, and names them.
+
+{phang2}{ul:Missing values and legend keys.}
+    {opt omitallmiss}, {opt omitanymiss}, {opt omitdupmiss},
+    {opt omitnothing} -- {cmd:twoway}'s rules for which observations with
+    missing values a plot omits; {cmd:dash} omits as its plot types say,
+    and names them.  {opt numkeys(#)} -- the number of legend keys a plot
+    contributes; {cmd:dash} draws one key per series, and names it.
+
+{phang2}{ul:Bar-family settings.}
+    {opt bartype(spanning)}, {opt bargap(#)}, {opt dropto(#)} on
+    {cmd:bar} and the other bar-derived types, and {opt baroffset(#)} on
+    {cmd:rbar}.  {cmd:bargap()} is an option of {cmd:graph bar}:
+    {cmd:twoway bar} accepts it and draws nothing different.  {cmd:dash}
+    names all four.
+
+{phang2}{ul:A dot plot's line pattern.}
+    {opt dlpattern(linepattern)} -- the pattern of the dots' outline on a
+    {cmd:dot} plot; {cmd:dash} draws it solid, and names it.
+
+{phang2}{ul:Type-specific options.}
+    {opt xlog} and {opt xtransform(exp)} on {cmd:lfit} and the other fits,
+    which fit against a transformed {it:x}; {opt subchar(name)} on
+    {cmd:function}; {opt weight} on {cmd:lowess};
+    {opt back} and {opt noback} on {cmd:mspline} and {cmd:mband};
+    {opt onepanel} on {cmd:tsline} and {cmd:tsrline}; and
+    {opt heatlabel}, {opt zvarlabel(string)}, {opt zvarformat(fmt)} on
+    {cmd:contour} and {cmd:contourline}.  {cmd:dash} draws each plot as it
+    draws it without them, and names them.
+
+{phang2}{ul:Graph-wide settings.}
+    {opt below}, {opt copyscheme}, {opt maxaxes(#)}, {opt logging},
+    {opt nologging}, {opt refscheme}, {opt norefscheme}, {opt rescaling},
+    {opt norescaling}, {opt titling} and {opt notitling} -- settings of
+    {cmd:twoway}'s graph object with nothing for {cmd:dash} to draw; it
+    names them.
 
 {phang2}{ul:Marker back-line style.}
     {opt bmlinestyle(linestyle)} -- a marker's back line; {cmd:dash}
@@ -6324,8 +6396,8 @@ and the title options, {cmd:region()} of {cmd:legend()}, and {cmd:altaxis}
 of a contour plot's {cmd:clegend()}; {cmd:addplot()} belongs to commands
 outside {cmd:graph twoway}, such as {cmd:histogram}; and {cmd:lockaspect},
 {cmd:zoom()} and {cmd:ddensity} are options of no Stata graph command.
-{cmd:bargap()} is an option of {cmd:graph bar}: {cmd:twoway bar} accepts it
-and draws nothing different, and {cmd:dash} names it.
+{cmd:mlabfontface()} is refused by {cmd:twoway} on a marker label,
+"option(s) fontface() not allowed", r(198); {cmd:dash} names it.
 
 {pstd}
 {opt title2(string)} and {opt subtitle2(string)} are not {cmd:twoway}

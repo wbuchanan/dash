@@ -61,6 +61,7 @@ _MATA = os.path.join(_HERE, "..", "dash_parse.mata")
 _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 _TRUTH = os.path.join(_HERE, "fixtures", "abbrev_truth.json")
 _SPELLINGS = os.path.join(_HERE, "fixtures", "alias_spelling_truth.json")
+_CATCHALL = os.path.join(_HERE, "fixtures", "catchall_options_truth.json")
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +379,37 @@ def _unsupported_section():
     return out
 
 
+def _undeclared_twoway_options():
+    """The spellings of `_dash_rep_und_tab`'s rows (dash_parse.mata) that no
+    syntax statement of dash.ado declares: twoway options dash leaves to the
+    catch-all, each of which test/fixtures/catchall_options_truth.json must
+    have probed.  The first two columns of each row are the option and the
+    spelling (noX for the no half of a pair); a pair is declared when either
+    half is."""
+    with open(_MATA, encoding="utf-8") as fh:
+        src = fh.read()
+    i = src.index("string matrix _dash_rep_und_tab()")
+    j = src.index("return(t)", i)
+    decl = _ado_declarations()
+    out = set()
+    for opt, full in re.findall(
+            r't = t \\ \("([a-z0-9_]+)",\s*"([a-z0-9_]+)"', src[i:j]):
+        if not ({opt, full, "no" + opt} & set(decl)):
+            out.add(full)
+    return out
+
+
+def _catchall_truth():
+    with open(_CATCHALL, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _catchall_options():
+    """twoway options dash takes once and names in its note without a
+    pending declaration (measured: scripts/extract_catchall_options_truth.do)."""
+    return set(_catchall_truth()["options"])
+
+
 def _twoway_options():
     """Options probed against real twoway, so covered by the help's redirect."""
     with open(_TRUTH, encoding="utf-8") as fh:
@@ -601,9 +633,11 @@ class TestTheParsersFoundSomething:
         # 216 -> 217: H2t the Data tables entry defines table; 217 -> 218:
         # H2f filter()'s direction() entry.
         # 218 -> 219: H2l the dash build syntax and synopt define brush().
-        assert len(found) == 219, (
-            f"{len(found)} options parsed out of dash.sthlp, 217 measured "
-            f"14oct2026: a reader of the parser lost a form, or the help "
+        # 219 -> 272: J1 the 53 twoway options that reach the catch-all
+        # (catchall_options_truth.json) are listed under Unsupported.
+        assert len(found) == 272, (
+            f"{len(found)} options parsed out of dash.sthlp, 272 measured "
+            f"18oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -750,7 +784,23 @@ class TestTheParsersFoundSomething:
         # 25 -> 20: D5 the "Sizing for graph combine" and "Room for long
         # end labels" entries go; 20 -> 19: E3 mlalign() leaves the
         # Unsupported entry.  19 -> 18: E2 mlpattern() leaves it.
-        assert len(_unsupported_section()) == 18
+        # 18 -> 71: J1 the 53 names that reach the catch-all join the 18
+        # pending ones (catchall_options_truth.json).
+        assert len(_unsupported_section()) == 71
+
+    def test_the_undeclared_table_was_found(self):
+        # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
+        # by no syntax statement (measured 18oct2026); fewer than 20 means
+        # the reader lost the table.
+        assert len(_undeclared_twoway_options()) >= 20
+
+    def test_the_catchall_fixture_was_found(self):
+        d = _catchall_truth()
+        assert sorted(d["_meta"]) == ["born_date", "dash_commit",
+                                      "extracted", "source", "stata_version"]
+        assert d["_meta"]["source"] == \
+            "scripts/extract_catchall_options_truth.do"
+        assert len(d["options"]) >= 20
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -836,8 +886,11 @@ class TestTheParsersFoundSomething:
         # 449 -> 450: H2l the brush() synopt entry.
         # 450 -> 452: H2k the weighted KPI example's two lines.
         # 452 -> 453: H2x the toolbar table's Save dashboard entry.
-        assert len(defs) == 453, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 453 "
+        # 453 -> 462: J1 nine Unsupported entries for the names that reach
+        # the catch-all (Area, bar and line edge styles .. Graph-wide
+        # settings).
+        assert len(defs) == 462, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 462 "
             f"measured 18oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -911,6 +964,9 @@ class TestEveryDocumentedOptionIsAccepted:
         # catch-all by value (_dash_lpolyci_opts), undeclared so that the
         # repeat check refuses either written twice, as twoway does.
         subopts |= {"pwidth", "var"}
+        # WP-31 J1: the twoway options measured reaching the catch-all are
+        # documented as accepted and named, never declared.
+        subopts |= _catchall_options()
         missing = sorted(set(documented) - set(declared) - subopts)
         assert not missing, (
             f"{len(missing)} options the help documents are not declared by "
@@ -1092,7 +1148,9 @@ class TestEverySynonymTheHelpStatesIsTaken:
 class TestTheUnsupportedSectionIsTrue:
     def test_nothing_listed_there_is_honoured(self):
         listed = _unsupported_section()
-        ignored = _ignored_options()
+        # WP-31 J1: what dash names is the pending blocks and the names
+        # that reach the catch-all (catchall_options_truth.json).
+        ignored = _ignored_options() | _catchall_options()
         honoured = sorted(listed - ignored)
         assert not honoured, (
             f"{len(honoured)} options are documented under \"Unsupported "
@@ -1108,6 +1166,37 @@ class TestTheUnsupportedSectionIsTrue:
             f"ignored, but the help's list of unsupported options does not "
             f"name them: {missing}"
         )
+
+
+    def test_every_accepted_undrawn_option_is_listed(self):
+        # WP-31 J1: a name that reaches the catch-all is named in the note
+        # as a pending one is, so the list names it too.
+        listed = _unsupported_section()
+        missing = sorted(_catchall_options() - listed)
+        assert not missing, (
+            f"dash takes {len(missing)} twoway options once and names them "
+            f"in its note, but the help's list of unsupported options does "
+            f"not name them: {missing}")
+
+    def test_every_undeclared_table_name_was_probed(self):
+        # The fixture must have measured each twoway option the duplicate
+        # table knows and dash.ado does not declare, or a name could reach
+        # the note unlisted.
+        probed = set(_catchall_truth()["probes"])
+        unprobed = sorted(_undeclared_twoway_options() - probed)
+        assert not unprobed, (
+            "scripts/extract_catchall_options_truth.do does not probe "
+            f"{unprobed}; add them and run it again")
+
+    def test_every_name_twoway_refuses_is_named(self):
+        # A name dash notes that twoway refuses on that plot is no twoway
+        # option there; the help says so in its prose.
+        h = _help_text()
+        i = h.index("{marker unsupported}")
+        j = h.index("{marker dependencies}", i)
+        absent = sorted(n for n in _catchall_truth()["twoway_refuses"]
+                        if "{cmd:" + n not in h[i:j])
+        assert not absent, absent
 
 
 # ---------------------------------------------------------------------------

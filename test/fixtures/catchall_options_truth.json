@@ -1,0 +1,1057 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "611094367db1d95004898aa900307ef91f820b88",
+  "extracted": "18 Oct 2026 06:51:29",
+  "source": "scripts/extract_catchall_options_truth.do",
+  "stata_version": "19.5"
+ },
+ "options": [
+  "afcolor",
+  "afintensity",
+  "alalign",
+  "back",
+  "bargap",
+  "baroffset",
+  "bartype",
+  "bcolor",
+  "below",
+  "bfintensity",
+  "blalign",
+  "blpattern",
+  "blwidth",
+  "bmcolor",
+  "bmlalign",
+  "bmlcolor",
+  "bmlpattern",
+  "bmlwidth",
+  "bmsize",
+  "bmsymbol",
+  "bsymbol",
+  "clalign",
+  "copyscheme",
+  "dlpattern",
+  "dropto",
+  "heatlabel",
+  "logging",
+  "maxaxes",
+  "mlabalignment",
+  "mlabels",
+  "mlabjustification",
+  "msymangle",
+  "noback",
+  "nologging",
+  "norefscheme",
+  "norescaling",
+  "notitling",
+  "numkeys",
+  "omitallmiss",
+  "omitanymiss",
+  "omitdupmiss",
+  "omitnothing",
+  "onepanel",
+  "refscheme",
+  "rescaling",
+  "subchar",
+  "symbol",
+  "titling",
+  "weight",
+  "xlog",
+  "xtransform",
+  "zvarformat",
+  "zvarlabel"
+ ],
+ "probes": {
+  "afcolor": {
+   "cmd": "scatter mpg weight, afcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "afcolor"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "afintensity": {
+   "cmd": "scatter mpg weight, afintensity(50)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "afintensity"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "alalign": {
+   "cmd": "scatter mpg weight, alalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "alalign"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "atobs": {
+   "cmd": "lfit mpg weight, atobs",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "back": {
+   "cmd": "mspline mpg weight, back",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "back"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "barbsize": {
+   "cmd": "pcarrow mpg weight trunk turn, barbsize(2)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bargap": {
+   "cmd": "bar mpg weight, bargap(10)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bargap"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "baroffset": {
+   "cmd": "rbar yl yh weight, baroffset(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "baroffset"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bartype": {
+   "cmd": "bar mpg weight, bartype(spanning)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bartype"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bcolor": {
+   "cmd": "scatter mpg weight, bcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bcolor"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "below": {
+   "cmd": "scatter mpg weight, below",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "below"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bfintensity": {
+   "cmd": "scatter mpg weight, bfintensity(50)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bfintensity"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "biweight": {
+   "cmd": "kdensity mpg, biweight",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "blalign": {
+   "cmd": "scatter mpg weight, blalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "blalign"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "blpattern": {
+   "cmd": "scatter mpg weight, blpattern(dash)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "blpattern"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "blwidth": {
+   "cmd": "scatter mpg weight, blwidth(thin)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "blwidth"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmcolor": {
+   "cmd": "scatter mpg weight, bmcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmcolor"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmlalign": {
+   "cmd": "scatter mpg weight, bmlalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmlalign"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmlcolor": {
+   "cmd": "scatter mpg weight, bmlcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmlcolor"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmlpattern": {
+   "cmd": "scatter mpg weight, bmlpattern(dash)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmlpattern"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmlwidth": {
+   "cmd": "scatter mpg weight, bmlwidth(thin)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmlwidth"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmsize": {
+   "cmd": "scatter mpg weight, bmsize(small)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmsize"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bmsymbol": {
+   "cmd": "scatter mpg weight, bmsymbol(O)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bmsymbol"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "boundary": {
+   "cmd": "kdensity mpg, boundary",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bsymbol": {
+   "cmd": "scatter mpg weight, bsymbol(O)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "bsymbol"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ciplot": {
+   "cmd": "lfitci mpg weight, ciplot(rline)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "clalign": {
+   "cmd": "line mpg weight, clalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "clalign"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "clegend": {
+   "cmd": "contour mpg weight length, clegend(off)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorallowmultiple": {
+   "cmd": "scatter mpg weight, colorvar(price) colorallowmultiple",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorend": {
+   "cmd": "scatter mpg weight, colorvar(price) colorend(blue)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorfillonly": {
+   "cmd": "scatter mpg weight, colorvar(price) colorfillonly",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorformissing": {
+   "cmd": "scatter mpg weight, colorvar(price) colorformissing(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorkeysrange": {
+   "cmd": "scatter mpg weight, colorvar(price) colorkeysrange",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorkeysreverse": {
+   "cmd": "scatter mpg weight, colorvar(price) colorkeysreverse",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorotherlabel": {
+   "cmd": "scatter mpg weight, colorvar(price) colorotherlabel(other)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorrule": {
+   "cmd": "scatter mpg weight, colorvar(price) colorrule(hue)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "colorstart": {
+   "cmd": "scatter mpg weight, colorvar(price) colorstart(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "copyscheme": {
+   "cmd": "scatter mpg weight, copyscheme",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "copyscheme"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "cosine": {
+   "cmd": "kdensity mpg, cosine",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dcolor": {
+   "cmd": "dot mpg weight, dcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dfcolor": {
+   "cmd": "dot mpg weight, dfcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dlcolor": {
+   "cmd": "dot mpg weight, dlcolor(red)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dlpattern": {
+   "cmd": "dot mpg weight, dlpattern(dash)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "dlpattern"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dlstyle": {
+   "cmd": "dot mpg weight, dlstyle(p1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dlwidth": {
+   "cmd": "dot mpg weight, dlwidth(thin)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dotextend": {
+   "cmd": "dot mpg weight, dotextend(no)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dropbase": {
+   "cmd": "scatter mpg weight, dropbase",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "droplines": {
+   "cmd": "function y = x, range(0 1) droplines(0.5)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dropto": {
+   "cmd": "bar mpg weight, dropto(0)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "dropto"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dsize": {
+   "cmd": "dot mpg weight, dsize(small)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dstyle": {
+   "cmd": "dot mpg weight, dstyle(p1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "dsymbol": {
+   "cmd": "dot mpg weight, dsymbol(O)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "epan2": {
+   "cmd": "kdensity mpg, epan2",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "epanechnikov": {
+   "cmd": "kdensity mpg, epanechnikov",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "estcmd": {
+   "cmd": "fpfit mpg weight, estcmd(fp)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "estopts": {
+   "cmd": "lfit mpg weight, estopts(noconstant)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "fit": {
+   "cmd": "lfitci mpg weight, fit",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "fitplot": {
+   "cmd": "lfitci mpg weight, fitplot(scatter)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "gap": {
+   "cmd": "histogram mpg, gap(10)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "gaussian": {
+   "cmd": "kdensity mpg, gaussian",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "headlabel": {
+   "cmd": "pcarrow mpg weight trunk turn, headlabel",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "heatlabel": {
+   "cmd": "contour mpg weight length, heatlabel",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "heatlabel"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "lalign": {
+   "cmd": "line mpg weight, lalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "logging": {
+   "cmd": "scatter mpg weight, logging",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "logging"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mangle": {
+   "cmd": "pcarrow mpg weight trunk turn, mangle(30)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "maxaxes": {
+   "cmd": "scatter mpg weight, maxaxes(2)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "maxaxes"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabalignment": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabalignment(top)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "mlabalignment"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabels": {
+   "cmd": "scatter mpg weight, mlabels(make)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "mlabels"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabfontface": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabfontface(Courier)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "mlabfontface"
+   ],
+   "twoway_message": "option(s) fontface(Courier) not allowed",
+   "twoway_rc": 198
+  },
+  "mlabjustification": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabjustification(left)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "mlabjustification"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabprefix": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabprefix(a)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabstyle": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabstyle(p1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlabsuffix": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabsuffix(a)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mlalign": {
+   "cmd": "scatter mpg weight, mlalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "msymangle": {
+   "cmd": "scatter mpg weight, msymangle(45)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "msymangle"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "mwidth": {
+   "cmd": "rbar yl yh weight, mwidth",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ndots": {
+   "cmd": "dot mpg weight, ndots(10)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "noback": {
+   "cmd": "mspline mpg weight, noback",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "noback"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "nodropbase": {
+   "cmd": "scatter mpg weight, nodropbase",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "nofit": {
+   "cmd": "lfitci mpg weight, nofit",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "nologging": {
+   "cmd": "scatter mpg weight, nologging",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "nologging"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "norefscheme": {
+   "cmd": "scatter mpg weight, norefscheme",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "norefscheme"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "norescaling": {
+   "cmd": "scatter mpg weight, norescaling",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "norescaling"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "notitling": {
+   "cmd": "scatter mpg weight, notitling",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "notitling"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "numkeys": {
+   "cmd": "scatter mpg weight, numkeys(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "numkeys"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "omitallmiss": {
+   "cmd": "scatter mpg weight, omitallmiss",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "omitallmiss"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "omitanymiss": {
+   "cmd": "scatter mpg weight, omitanymiss",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "omitanymiss"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "omitdupmiss": {
+   "cmd": "scatter mpg weight, omitdupmiss",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "omitdupmiss"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "omitnothing": {
+   "cmd": "scatter mpg weight, omitnothing",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "omitnothing"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "onepanel": {
+   "cmd": "tsline mpg, onepanel",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "onepanel"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "parzen": {
+   "cmd": "kdensity mpg, parzen",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "pcycle": {
+   "cmd": "scatter mpg weight, pcycle(3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "plegend": {
+   "cmd": "scatter mpg weight, plegend(off)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "predopts": {
+   "cmd": "lfit mpg weight, predopts(xb)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "pwidth": {
+   "cmd": "lpolyci mpg weight, pwidth(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "rectangle": {
+   "cmd": "kdensity mpg, rectangle",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "refscheme": {
+   "cmd": "scatter mpg weight, refscheme",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "refscheme"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "rescaling": {
+   "cmd": "scatter mpg weight, rescaling",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "rescaling"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "subchar": {
+   "cmd": "function y = x, range(0 1) subchar(x)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "subchar"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "symbol": {
+   "cmd": "scatter mpg weight, symbol(O)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "symbol"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "titling": {
+   "cmd": "scatter mpg weight, titling",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "titling"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "triangle": {
+   "cmd": "kdensity mpg, triangle",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "var": {
+   "cmd": "lpolyci mpg weight, var(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "weight": {
+   "cmd": "lowess mpg weight, weight",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "weight"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "xlog": {
+   "cmd": "lfit mpg weight, xlog",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "xlog"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "xtransform": {
+   "cmd": "lfit mpg weight, xtransform(ln(X))",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "xtransform"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "xvarlabel": {
+   "cmd": "scatter mpg weight, xvarlabel(a)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "yvarlabel": {
+   "cmd": "scatter mpg weight, yvarlabel(a)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zvarformat": {
+   "cmd": "contour mpg weight length, zvarformat(%9.2f)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "zvarformat"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zvarlabel": {
+   "cmd": "contour mpg weight length, zvarlabel(z)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [
+    "zvarlabel"
+   ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  }
+ },
+ "twoway_refuses": [
+  "mlabfontface"
+ ]
+}

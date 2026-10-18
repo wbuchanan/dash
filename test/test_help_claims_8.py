@@ -1616,7 +1616,10 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
         # -- title2()/subtitle2(), mlabwidth(), ciopts()/lineopts()/
         # fitopts(), blabel()/at(), link()/filter() -- and the note's.  At
         # least three passed with half of them dropped.
-        assert s.count("r(198)") == 6, s.count("r(198)")
+        # 6 -> 8: J1 the opening's refusal rule ("r(198), option X() not
+        # allowed") and mlabfontface(), which twoway refuses on a marker
+        # label (catchall_options_truth.json twoway_refuses).
+        assert s.count("r(198)") == 8, s.count("r(198)")
 
     def test_the_other_commands_named_are_statas(self):
         """ciopts() is marginsplot's and sts graph's, lineopts() the stcox
@@ -1640,7 +1643,11 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
 
     def test_every_listed_option_is_still_listed(self):
         """test_help_conformance.py's own check, restated so this file fails
-        first when the rewrite drops one."""
+        first when the rewrite drops one.
+
+        Flipped (WP-31 J1): the list was the pending blocks alone, which was
+        wrong because the twoway options that reach the catch-all are named
+        in the same note (test/fixtures/catchall_options_truth.json)."""
         h = _help_between("{marker unsupported}", "{marker dependencies}")
         listed = set()
         in_entry = False
@@ -1655,6 +1662,10 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
                     r"\{opth?[: ]\s*([A-Za-z_][A-Za-z0-9_]*)", st)}
         pending = (set(_pending_names("_dash_parse_plot_opts"))
                    | set(_pending_names("_dash_parse_graph_opts")))
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "fixtures", "catchall_options_truth.json"),
+                  encoding="utf-8") as fh:
+            pending |= set(json.load(fh)["options"])
         assert listed == pending, (sorted(listed - pending),
                                    sorted(pending - listed))
 

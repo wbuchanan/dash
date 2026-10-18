@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "J1": "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note",
     "J2": "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs",
     "J3": "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists",
     "J4": "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings",

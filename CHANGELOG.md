@@ -1081,7 +1081,7 @@ Changed behaviour.
 
 - dash leaves sys.argv and the Python session's namespace as it found them (a build or a serve used to replace sys.argv for the rest of the session and leave _dash_xm, _dash_render_ns and _dash_priv_argv in __main__), and every Mata function of dash's library is prefixed _dash_ (WP-31, H7)
 
-<!-- WP-31 J1 -->
+- The help's Unsupported list names every option dash accepts and does not draw -- the pending blocks, the undeclared twoway options and the names that reach the generic note -- and says that an option twoway refuses on a plot type is refused. (WP-31, J1)
 
 <!-- WP-31 J2 -->
 
