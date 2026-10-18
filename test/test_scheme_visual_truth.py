@@ -1,19 +1,29 @@
 """test_scheme_visual_truth.py -- the scheme parser against what Stata drew.
 
-``test/fixtures/scheme_visual/`` holds Stata's own renders of four schemes
-and a record of what they show.  For stcolor, s2color, economist and s1mono,
-``<scheme>.png`` is a three-series scatter and ``<scheme>_line.png`` three
-overlaid line plots, each at the scheme's graph size; ``truth.json`` is what
-StataNow 19.5 drew, measured from its SVG export of the same twoway
-commands: per scheme the graph size, the graph and plot region backgrounds,
-the plot region's border, the legend box, the text sizes and colours, the
-p1-p3 markers (symbol, fill, colour, size) and the p1-p3 lines of
-``twoway line`` and ``twoway connected`` (colour, pattern, width).
+``test/fixtures/scheme_visual/`` holds Stata's own renders of every one of
+the 26 schemes Stata ships and a record of what they show, all written by
+``scripts/extract_scheme_visual_truth.do`` (``make truth``; the SVGs are
+read by ``scripts/svg_scheme_visual.py``).  For each scheme
+``<scheme>.png`` is a three-series scatter, ``<scheme>_line.png`` three
+overlaid line plots and ``<scheme>_hist.png`` a histogram, each at the
+scheme's graph size and 400 pixels wide; ``truth.json`` is what twoway
+drew, measured from its SVG export of the same commands (and of three
+overlaid connected plots): per scheme the graph size, the graph and plot
+region backgrounds, the plot region's border, the legend box, the text
+sizes and colours, the p1-p3 markers (symbol, fill, colour, size), the
+p1-p3 lines of ``twoway line`` and ``twoway connected`` (colour, pattern,
+width) and the histogram's bars (fill, outline colour and width).
 
-Until 24sep2026 nothing read any of the nine files (GAPS.md L8, ROADMAP
-TR-25.4): ``test_fixtures_are_committed.py`` asked git to track them and
-said each "is read by the test suite", which was false for these.  This file
-holds ``dash_render.SchemeParser`` to the record and ties each PNG to it.
+Until 24sep2026 nothing read the record (GAPS.md L8, ROADMAP TR-25.4).  It
+covered four schemes measured by hand and no histogram until WP-32
+(18oct2026, BUGS.md "The scheme visual truth covers 4 of 26 schemes and
+renders no histogram"; GAPS3 K3), when the generator replaced it: on the
+four schemes the hand record held, the generator's reading agrees with it
+on every compared fact except economist's legend box, which the hand record
+called absent and the SVG draws in the graph region's own colour (the same
+look, so the comparison below is unchanged).  The record's hand-written
+``repo_scheme_disagreements`` list went with it: each entry is a fact the
+parametrised comparisons below now hold for all 26 schemes.
 
 WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
 --------------------------------------------------------------------------
@@ -34,7 +44,7 @@ WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
   equal: every line plot solid, s1mono's connected p2 and p3 dashed.
 * ``background_color`` with the graph region, ``plotregion_color`` with the
   plot region as drawn (``plot_region_background_effective``: economist
-  declares none and shows its graph region through), ``legend_bg_color``
+  draws none and shows its graph region through), ``legend_bg_color``
   and ``legend_border_color`` with the legend box.  Where Stata draws no
   legend box (economist) the parser's fill must be the graph region it
   would sit on, and where it draws no visible border (economist; stcolor,
@@ -48,21 +58,25 @@ WHAT IS COMPARED (each comparison measured 24sep2026 before it was written)
 * The text sizes on Stata's unit scale: a size is a relative unit, 100 =
   the graph's smaller dimension, 2.88pt per unit at the 4-inch reference the
   parser's pt strings are stated at, and the record's ``pct_of_height`` is
-  that unit, the height being the smaller or equal dimension of all four
-  graphs.  ``note_font_size`` (``gsize note``) is drawn by nothing; the
+  that unit, the height being the smaller or equal dimension of every
+  scheme's graph.  ``note_font_size`` (``gsize note``) is drawn by nothing; the
   note is ``note_text_font_size``, its text box's size, as
   ``_dash_text_annotations`` draws it.
 * ``graphsize_x``/``graphsize_y`` with ``graph_size_in``; ``symbolsize``
-  with the markers' symbolsize name; ``default_marker_size`` and
+  with the markers' symbolsize name (or, for a scheme that gives a number,
+  as s1manual's 2.2 does, the drawn size); ``default_marker_size`` and
   ``default_line_width`` in proportion to the drawn sizes, one constant
-  over all four schemes and three series: dash's pixel anchors are its own,
+  over all 26 schemes and three series: dash's pixel anchors are its own,
   the ratios are Stata's.
+* ``GlyphMapper.map_histogram``'s bars with the histogram's: the fill and
+  outline colours, and the outline's width in the same pixels per percent
+  of the height as the line plots'.
 * ``apply_to_figure`` on a Bokeh figure: the plot and border fills, and the
   figure's outline with ``plot_region_border``.
 * Each PNG: a valid PNG (signature, every chunk's CRC, IHDR first, IEND
   last, the image data inflating to exactly its scanlines), its aspect ratio
-  the scheme's graph size within a pixel of rounding (s2color and s1mono are
-  1200 x 872 for 872.7), and its top-left pixel the graph region colour.
+  the scheme's graph size within a pixel of rounding, and its top-left pixel
+  the graph region colour.
 
 WHERE THE PARSER DISAGREED WITH STATA (fixed in the S3 batch)
 ------------------------------------------------------------
@@ -88,7 +102,6 @@ the S3 batch (24sep2026) fixed them; they are plain assertions now:
 import functools
 import json
 import os
-import re
 import struct
 import sys
 import zlib
@@ -104,13 +117,51 @@ from dash_render import OptionTranslator, SchemeParser  # noqa: E402
 _DIR = os.path.join(_HERE, "fixtures", "scheme_visual")
 _TRUTH = os.path.join(_DIR, "truth.json")
 
-#: The four schemes the record measured.
-SCHEMES = ("stcolor", "s2color", "economist", "s1mono")
-#: Stata's two renders of each, named here so that the fixture guard in
+#: The 26 schemes Stata ships (test_scheme_fidelity.EXPECTED_SCHEMES).
+SCHEMES = (
+    "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
+    "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
+    "economist", "sj", "s2manual", "s1manual", "s2gmanual", "s2color8",
+    "sttrans", "stgcolor_alt", "meta", "stcolor_meta", "stcolor_mv",
+    "stcoloralias", "stgcolor_meta", "stgcolor_mv",
+)
+#: Stata's three renders of each, named here so that the fixture guard in
 #: test_fixtures_are_committed.py finds every file this test reads.
-PNGS = ("stcolor.png", "stcolor_line.png", "s2color.png", "s2color_line.png",
-        "economist.png", "economist_line.png", "s1mono.png",
-        "s1mono_line.png")
+PNGS = (
+    "stcolor.png", "stcolor_line.png", "stcolor_hist.png",
+    "stcolor_alt.png", "stcolor_alt_line.png", "stcolor_alt_hist.png",
+    "stgcolor.png", "stgcolor_line.png", "stgcolor_hist.png",
+    "stmono1.png", "stmono1_line.png", "stmono1_hist.png",
+    "stmono2.png", "stmono2_line.png", "stmono2_hist.png",
+    "stsj.png", "stsj_line.png", "stsj_hist.png",
+    "s2color.png", "s2color_line.png", "s2color_hist.png",
+    "s2mono.png", "s2mono_line.png", "s2mono_hist.png",
+    "s2gcolor.png", "s2gcolor_line.png", "s2gcolor_hist.png",
+    "s1color.png", "s1color_line.png", "s1color_hist.png",
+    "s1mono.png", "s1mono_line.png", "s1mono_hist.png",
+    "s1rcolor.png", "s1rcolor_line.png", "s1rcolor_hist.png",
+    "economist.png", "economist_line.png", "economist_hist.png",
+    "sj.png", "sj_line.png", "sj_hist.png",
+    "s2manual.png", "s2manual_line.png", "s2manual_hist.png",
+    "s1manual.png", "s1manual_line.png", "s1manual_hist.png",
+    "s2gmanual.png", "s2gmanual_line.png", "s2gmanual_hist.png",
+    "s2color8.png", "s2color8_line.png", "s2color8_hist.png",
+    "sttrans.png", "sttrans_line.png", "sttrans_hist.png",
+    "stgcolor_alt.png", "stgcolor_alt_line.png", "stgcolor_alt_hist.png",
+    "meta.png", "meta_line.png", "meta_hist.png",
+    "stcolor_meta.png", "stcolor_meta_line.png", "stcolor_meta_hist.png",
+    "stcolor_mv.png", "stcolor_mv_line.png", "stcolor_mv_hist.png",
+    "stcoloralias.png", "stcoloralias_line.png", "stcoloralias_hist.png",
+    "stgcolor_meta.png", "stgcolor_meta_line.png", "stgcolor_meta_hist.png",
+    "stgcolor_mv.png", "stgcolor_mv_line.png", "stgcolor_mv_hist.png",
+)
+#: The render suffixes.
+_SUFFIXES = ("_line", "_hist", "")
+#: The five _meta keys every generated fixture carries
+#: (test_fixtures_are_committed.META_KEYS).
+_META_KEYS = ("stata_version", "born_date", "dash_commit", "extracted",
+              "source")
+_GENERATOR = "scripts/extract_scheme_visual_truth.do"
 #: p1-p3, zero-based as the parser's methods take them.
 SERIES = (0, 1, 2)
 
@@ -157,22 +208,36 @@ def _pt(size):
 # The record itself
 # ---------------------------------------------------------------------------
 
-def test_the_record_holds_the_four_schemes_and_their_renders():
+def _scheme_of(png):
+    stem = png[:-4]
+    for suffix in _SUFFIXES:
+        if suffix and stem.endswith(suffix):
+            return stem[:-len(suffix)]
+    return stem
+
+
+def test_the_record_holds_every_scheme_and_its_renders():
     """Every comparison below is parametrised over SCHEMES and PNGS; the
     record and the directory must hold exactly those, so a scheme or a
     render cannot drop out of the checks without failing here."""
     truth = _truth()
     assert set(truth["schemes"]) == set(SCHEMES)
     assert set(PNGS) == {f"{s}{suffix}.png" for s in SCHEMES
-                         for suffix in ("", "_line")}
+                         for suffix in _SUFFIXES}
     on_disk = sorted(f for f in os.listdir(_DIR) if not f.startswith("."))
     assert on_disk == sorted(PNGS + ("truth.json",)), on_disk
-    assert truth["_stata"] == "StataNow 19.5 MP"
+    meta = truth["_meta"]
+    assert [k for k in _META_KEYS if not meta.get(k)] == [], meta
+    assert meta["source"] == _GENERATOR
+    assert os.path.isfile(os.path.join(_HERE, "..", _GENERATOR))
     for name in SCHEMES:
         s = truth["schemes"][name]
         for block in ("markers", "lines_twoway_line",
                       "lines_twoway_connected"):
             assert set(s[block]) == {"p1", "p2", "p3"}, (name, block)
+        # Every one of the 20 observations of each series was found.
+        assert {m["n_drawn"] for m in s["markers"].values()} == {20}, name
+        assert s["histogram"]["n_bars"] > 0, name
         # pct_of_height is the smaller dimension's unit only while the
         # height is not the larger dimension.
         gx, gy = s["graph_size_in"]
@@ -197,9 +262,11 @@ def test_marker_colour_is_what_stata_drew(name, i):
 @pytest.mark.parametrize("name", SCHEMES)
 @pytest.mark.parametrize("i", SERIES)
 def test_marker_opacity_is_what_stata_drew(name, i):
-    """twoway draws these markers opaque (GAPS2 D11 plan step 3, WP-30
-    P1.2b): the PNG record holds the unblended hexes, and dash drew each
-    marker at alpha 0.8, the scheme's `intensity p' read as an opacity."""
+    """twoway draws these markers opaque under every scheme but sttrans,
+    whose markers it draws at fill-opacity 0.20 (GAPS2 D11 plan step 3,
+    WP-30 P1.2b: dash once drew each marker at alpha 0.8, the scheme's
+    `intensity p' read as an opacity)."""
+    m = _scheme(name)["markers"][f"p{i + 1}"]
     from bokeh.models import ColumnDataSource
     from bokeh.plotting import figure
     import dash_render as _dr
@@ -207,8 +274,9 @@ def test_marker_opacity_is_what_stata_drew(name, i):
     r = _dr.GlyphMapper(scheme=_parser(name)).map_scatter(
         figure(), src, "y", "x", {}, color_idx=i)
     r = r[0] if isinstance(r, (list, tuple)) else r
-    assert (r.glyph.fill_alpha, r.glyph.line_alpha) == (1.0, 1.0), (
-        name, i, r.glyph.fill_alpha, r.glyph.line_alpha)
+    assert (r.glyph.fill_alpha, r.glyph.line_alpha) == pytest.approx(
+        (m["opacity"], m["outline_opacity"])), (
+        name, i, r.glyph.fill_alpha, r.glyph.line_alpha, m)
 
 
 @pytest.mark.parametrize("name", SCHEMES)
@@ -286,11 +354,25 @@ def test_legend_fill_is_what_stata_drew(name):
     assert _parser(name).legend_bg_color == _hex(want), (name, lg)
 
 
+#: Schemes whose legend outline dash draws differently, each with its open
+#: BUGS.md entry; test_legend_border_is_what_stata_drew asserts the
+#: difference is still there, so a fix is noticed.
+_LEGEND_BORDER_DIFFERS = {
+    "meta": "meta's legend has no outline in twoway and a black one in dash",
+}
+
+
 @pytest.mark.parametrize("name", SCHEMES)
 def test_legend_border_is_what_stata_drew(name):
     lg = _scheme(name)["legend"]
     sp = _parser(name)
-    if lg["has_border"]:
+    if name in _LEGEND_BORDER_DIFFERS:
+        # twoway: `linestyle legend none' (scheme-meta.scheme), drawn as a
+        # zero-opacity stroke; dash keeps s2color's black `legend_line'.
+        assert not lg["border_visible"], lg
+        assert sp.legend_border_color != sp.legend_bg_color, name
+        return
+    if lg["has_border"] and lg["border_visible"]:
         assert sp.legend_border_color == _hex(lg["border_color"]), (name, lg)
     # A border in the fill's own colour is not seen.
     seen = sp.legend_border_color != sp.legend_bg_color
@@ -350,9 +432,18 @@ def test_graph_size_is_what_stata_drew(name):
 
 @pytest.mark.parametrize("name", SCHEMES)
 def test_symbol_size_is_what_stata_drew(name):
-    names = {m["stata_symbolsize_name"]
-             for m in _scheme(name)["markers"].values()}
-    assert names == {_parser(name).symbolsize}, (name, names)
+    size = _parser(name).symbolsize
+    markers = _scheme(name)["markers"].values()
+    try:
+        # A number is a percentage of the height (s1manual's 2.2).
+        pct = float(size)
+    except ValueError:
+        names = {m["stata_symbolsize_name"] for m in markers}
+        assert names == {size}, (name, names)
+    else:
+        for m in markers:
+            assert m["nominal_size_pct_of_height"] == pytest.approx(
+                pct, rel=RATIO_TOL), (name, size, m)
 
 
 def _ratios(value, record_key, block):
@@ -431,57 +522,57 @@ def test_apply_to_figure_borders_the_plot_region_as_stata_does(name):
 
 
 # ---------------------------------------------------------------------------
-# The record's own list of disagreements
+# The histogram
 # ---------------------------------------------------------------------------
 
-#: Every entry of ``repo_scheme_disagreements``, and the test here that
-#: holds it.  A new entry fails test_every_recorded_disagreement_is_held
-#: until it is given one.
-_HELD = {
-    ("s1mono", ("color p1line", "color p2line", "color p3line")):
-        "test_the_high_severity_disagreements_are_fixed",
-    ("s1mono", ("linepattern p2line", "linepattern p3line")):
-        "test_the_high_severity_disagreements_are_fixed",
-    ("economist", ("gsize note",)):
-        "test_text_size_is_what_stata_drew[economist-note]",
-    ("economist", ("gsize heading",)):
-        "test_text_size_is_what_stata_drew[economist-title]",
-}
+def _histogram_glyph(name):
+    from bokeh.models import ColumnDataSource
+    import dash_render as _dr
+    src = ColumnDataSource({"v": [1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 5.0]})
+    r = _dr.GlyphMapper(scheme=_parser(name)).map_histogram(
+        figure(), src, "v", {}, color_idx=0)
+    r = r[0] if isinstance(r, (list, tuple)) else r
+    return r.glyph
 
 
-def test_every_recorded_disagreement_is_held():
-    got = {(e["scheme"], tuple(e["keys"]))
-           for e in _truth()["repo_scheme_disagreements"]}
-    assert got == set(_HELD), sorted(got ^ set(_HELD))
+@pytest.mark.parametrize("name", SCHEMES)
+def test_histogram_bars_are_the_colours_stata_drew(name):
+    h = _scheme(name)["histogram"]
+    g = _histogram_glyph(name)
+    assert _hex(g.fill_color) == _hex(h["fill"]), (name, g.fill_color, h)
+    assert g.fill_alpha == pytest.approx(h["fill_opacity"]), (
+        name, g.fill_alpha, h)
+    assert _hex(g.line_color) == _hex(h["outline_color"]), (
+        name, g.line_color, h)
 
 
-def test_the_high_severity_disagreements_are_fixed():
-    """The record's two high-severity entries: s1mono's `color p#line' and
-    `linepattern p#line' belong to the connecting line of twoway connected,
-    and a plain twoway line reads `color p#' and `linepattern p#lineplot'.
-    Checked against the values the entries themselves record."""
-    high = [e for e in _truth()["repo_scheme_disagreements"]
-            if e["severity"] == "high"]
-    assert len(high) == 2, high
-    checked = 0
-    for e in high:
-        sp = _parser(e["scheme"])
-        for key, line, conn in zip(e["keys"], e["stata_drew_twoway_line"],
-                                   e["stata_drew_twoway_connected"]):
-            m = re.fullmatch(r"(color|linepattern) p(\d+)line", key)
-            assert m, key
-            i = int(m.group(2)) - 1
-            if m.group(1) == "color":
-                assert sp.default_color(i, "line") == _hex(line), (key, line)
-                assert sp.default_color(i, "connected") == _hex(conn), (
-                    key, conn)
-            else:
-                assert (sp.default_line_pattern(i) == []) == (
-                    line == "solid"), (key, line)
-                assert (sp.default_connect_pattern(i) == []) == (
-                    conn == "solid"), (key, conn)
-            checked += 1
-    assert checked == 5
+#: Stata's SVG writer draws no stroke narrower than 3 units (1/240 inch):
+#: measured 18oct2026, lwidth(vvvthin) and lwidth(vvthin) are 3.00 units
+#: on square graphs of 1 to 16 inches, vthin 3.00 up to 2.392 inches and
+#: 0.15% of the side above it.  A drawn width at the floor says nothing of
+#: the scheme's own width (stcolor's `linewidth histogram vthin' on
+#: stgcolor's 2.392-inch height), so it is not compared.
+_SVG_MIN_STROKE = 3.0
+
+
+def test_histogram_outlines_keep_the_ratio_stata_drew():
+    """The bars' outline is drawn in the pixels per percent of the height
+    that the line plots are (test_line_widths_keep_the_ratios_stata_drew),
+    under every scheme whose drawn width is above the SVG writer's floor."""
+    floored = {name for name in SCHEMES
+               if _scheme(name)["histogram"]["outline_width_units"]
+               <= _SVG_MIN_STROKE}
+    assert floored == {"stgcolor", "stgcolor_alt", "stgcolor_meta",
+                       "stgcolor_mv"}, floored
+    r = {name: _histogram_glyph(name).line_width
+         / _scheme(name)["histogram"]["outline_width_pct_of_height"]
+         for name in SCHEMES if name not in floored}
+    lines = _ratios(lambda sp, i: sp.default_line_width,
+                    "width_pct_of_height", "lines_twoway_line")
+    ref = min(lines.values())
+    off = {k: round(v / ref, 3) for k, v in r.items()
+           if abs(v / ref - 1) > RATIO_TOL}
+    assert not off, off
 
 
 # ---------------------------------------------------------------------------
@@ -532,16 +623,16 @@ def test_each_render_is_a_valid_png(name):
 @pytest.mark.parametrize("name", PNGS)
 def test_each_render_has_its_scheme_s_aspect_ratio(name):
     width, height, _ctype, _raw, _chunks = _png(name)
-    gx, gy = _scheme(name[:-4].replace("_line", ""))["graph_size_in"]
-    # Stata rounds the height to a whole pixel: 1200 wide at 5.5 x 4 in
-    # is 872.7 pixels high, and the file is 872.
+    gx, gy = _scheme(_scheme_of(name))["graph_size_in"]
+    # Stata rounds the height to a whole pixel: 400 wide at 5.5 x 4 in
+    # is 290.9 pixels high.
     assert abs(height - width * gy / gx) < 1, (name, width, height, gx, gy)
 
 
 @pytest.mark.parametrize("name", PNGS)
 def test_each_render_s_corner_is_its_scheme_s_graph_region(name):
     width, _height, ctype, raw, _chunks = _png(name)
-    want = _scheme(name[:-4].replace("_line", ""))["graph_region_background"]
+    want = _scheme(_scheme_of(name))["graph_region_background"]
     # The first pixel of the first scanline is its bytes as stored, under
     # every filter type: its left, upper and upper-left neighbours are 0.
     bpp = _BPP[ctype]

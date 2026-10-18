@@ -1,698 +1,3797 @@
 {
-  "_generated_by": "test/fixtures/scheme_visual (Stata SVG+PNG render)",
-  "_stata": "StataNow 19.5 MP",
-  "_units": "SVG user units; 720 units = 1 inch; pt = units/10",
-  "schemes": {
-    "stcolor": {
-      "graph_size_in": [
-        7.5,
-        4.5
-      ],
-      "viewBox": [
-        5400.0,
-        3240.0
-      ],
-      "graph_region_background": "#FFFFFF",
-      "plot_region_background_declared": "#FFFFFF",
-      "plot_region_background_effective": "#FFFFFF",
-      "plot_region_border": {
-        "color": "#FFFFFF",
-        "width_units": 6.48,
-        "visible": false
-      },
-      "legend": {
-        "has_background": true,
-        "background": "#FFFFFF",
-        "has_border": true,
-        "border_color": "#FFFFFF",
-        "border_visible": false
-      },
-      "fonts": {
-        "title": {
-          "units": 157.44,
-          "pt": 15.74,
-          "pct_of_height": 4.8593,
-          "color": "#000000",
-          "stata_gsize_name": "large"
-        },
-        "subtitle": {
-          "units": 123.69,
-          "pt": 12.37,
-          "pct_of_height": 3.8176,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "axis_title": {
-          "units": 112.56,
-          "pt": 11.26,
-          "pct_of_height": 3.4741,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "tick_label": {
-          "units": 112.56,
-          "pt": 11.26,
-          "pct_of_height": 3.4741,
-          "stata_gsize_name": "medsmall"
-        },
-        "legend_label": {
-          "units": 112.56,
-          "pt": 11.26,
-          "pct_of_height": 3.4741,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "note": {
-          "units": 89.94,
-          "pt": 8.99,
-          "pct_of_height": 2.7759,
-          "color": "#000000",
-          "stata_gsize_name": "small"
-        }
-      },
-      "markers": {
-        "p1": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#1A85FF",
-          "outline_color": "#1A85FF",
-          "size_units": 43.48,
-          "size_pt": 4.35,
-          "size_pct_of_height": 1.342,
-          "outline_width_units": 9.72,
-          "nominal_size_pct_of_height": 1.042,
-          "stata_symbolsize_name": "small",
-          "note": "outer diameter incl. outline"
-        },
-        "p2": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#D41159",
-          "outline_color": "#D41159",
-          "size_units": 43.48,
-          "size_pt": 4.35,
-          "size_pct_of_height": 1.342,
-          "outline_width_units": 9.72,
-          "nominal_size_pct_of_height": 1.042,
-          "stata_symbolsize_name": "small",
-          "note": "outer diameter incl. outline"
-        },
-        "p3": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#00BF7F",
-          "outline_color": "#00BF7F",
-          "size_units": 43.48,
-          "size_pt": 4.35,
-          "size_pct_of_height": 1.342,
-          "outline_width_units": 9.72,
-          "nominal_size_pct_of_height": 1.042,
-          "stata_symbolsize_name": "small",
-          "note": "outer diameter incl. outline"
-        }
-      },
-      "lines_twoway_line": {
-        "p1": {
-          "pattern": "solid",
-          "color": "#1A85FF",
-          "width_units": 9.72,
-          "width_pt": 0.972,
-          "width_pct_of_height": 0.3
-        },
-        "p2": {
-          "pattern": "solid",
-          "color": "#D41159",
-          "width_units": 9.72,
-          "width_pt": 0.972,
-          "width_pct_of_height": 0.3
-        },
-        "p3": {
-          "pattern": "solid",
-          "color": "#00BF7F",
-          "width_units": 9.72,
-          "width_pt": 0.972,
-          "width_pct_of_height": 0.3
-        }
-      },
-      "lines_twoway_connected": {
-        "p1": {
-          "color": "#1A85FF",
-          "pattern": "solid",
-          "width_units": 9.72
-        },
-        "p2": {
-          "color": "#D41159",
-          "pattern": "solid",
-          "width_units": 9.72
-        },
-        "p3": {
-          "color": "#00BF7F",
-          "pattern": "solid",
-          "width_units": 9.72
-        }
-      }
+ "_meta": {
+  "stata_version": "19.5",
+  "born_date": "12 Aug 2026",
+  "extracted": "18 Oct 2026",
+  "source": "scripts/extract_scheme_visual_truth.do",
+  "dash_commit": "e2a869d499d549335f19f3fb6f3519b9b4d54871",
+  "units": "SVG user units, 720 per inch; pct_of_min_dim = units / min(viewBox W, H) * 100",
+  "method": "x = 1..20, y1 = 1 + 0.5*mod(_n,2) + 0.02*_n, y2 = y1 + 4, y3 = y1 + 8; scatter, line and connected of y1-y3 on x and twoway histogram mpg of auto, under each scheme, exported to SVG and read by scripts/svg_scheme_visual.py"
+ },
+ "symbolsize_ladder_pct_of_height": {
+  "vtiny": 0.1035,
+  "tiny": 0.3438,
+  "vsmall": 0.5243,
+  "small": 1.0396,
+  "medsmall": 1.2458,
+  "medium": 1.5299,
+  "medlarge": 1.9424,
+  "large": 2.4319,
+  "vlarge": 3.1285,
+  "huge": 4.8639,
+  "vhuge": 5.5514,
+  "ehuge": 11.1118
+ },
+ "schemes": {
+  "stcolor": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 6.48,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
     },
-    "s2color": {
-      "graph_size_in": [
-        5.5,
-        4.0
-      ],
-      "viewBox": [
-        3960.0,
-        2880.0
-      ],
-      "graph_region_background": "#EAF2F3",
-      "plot_region_background_declared": "#FFFFFF",
-      "plot_region_background_effective": "#FFFFFF",
-      "plot_region_border": {
-        "color": "#FFFFFF",
-        "width_units": 5.76,
-        "visible": false
-      },
-      "legend": {
-        "has_background": true,
-        "background": "#FFFFFF",
-        "has_border": true,
-        "border_color": "#000000",
-        "border_visible": true
-      },
-      "fonts": {
-        "title": {
-          "units": 139.96,
-          "pt": 14.0,
-          "pct_of_height": 4.8597,
-          "color": "#1E2D53",
-          "stata_gsize_name": "large"
-        },
-        "subtitle": {
-          "units": 110.01,
-          "pt": 11.0,
-          "pct_of_height": 3.8198,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "axis_title": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "tick_label": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "stata_gsize_name": "medsmall"
-        },
-        "legend_label": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "note": {
-          "units": 79.94,
-          "pt": 7.99,
-          "pct_of_height": 2.7757,
-          "color": "#000000",
-          "stata_gsize_name": "small"
-        }
-      },
-      "markers": {
-        "p1": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#1A476F",
-          "outline_color": "#1A476F",
-          "size_units": 52.7,
-          "size_pt": 5.27,
-          "size_pct_of_height": 1.8299,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5299,
-          "stata_symbolsize_name": "medium",
-          "note": "outer diameter incl. outline"
-        },
-        "p2": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#90353B",
-          "outline_color": "#90353B",
-          "size_units": 52.7,
-          "size_pt": 5.27,
-          "size_pct_of_height": 1.8299,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5299,
-          "stata_symbolsize_name": "medium",
-          "note": "outer diameter incl. outline"
-        },
-        "p3": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#55752F",
-          "outline_color": "#55752F",
-          "size_units": 52.7,
-          "size_pt": 5.27,
-          "size_pct_of_height": 1.8299,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5299,
-          "stata_symbolsize_name": "medium",
-          "note": "outer diameter incl. outline"
-        }
-      },
-      "lines_twoway_line": {
-        "p1": {
-          "pattern": "solid",
-          "color": "#1A476F",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        },
-        "p2": {
-          "pattern": "solid",
-          "color": "#90353B",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        },
-        "p3": {
-          "pattern": "solid",
-          "color": "#55752F",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        }
-      },
-      "lines_twoway_connected": {
-        "p1": {
-          "color": "#1A476F",
-          "pattern": "solid",
-          "width_units": 8.64
-        },
-        "p2": {
-          "color": "#90353B",
-          "pattern": "solid",
-          "width_units": 8.64
-        },
-        "p3": {
-          "color": "#55752F",
-          "pattern": "solid",
-          "width_units": 8.64
-        }
-      }
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
     },
-    "economist": {
-      "graph_size_in": [
-        2.2,
-        2.2
-      ],
-      "viewBox": [
-        1584.0,
-        1584.0
-      ],
-      "graph_region_background": "#C6D3DF",
-      "plot_region_background_declared": null,
-      "plot_region_background_effective": "#C6D3DF",
-      "plot_region_border": {
-        "color": null,
-        "width_units": null,
-        "visible": false
-      },
-      "legend": {
-        "has_background": false,
-        "background": null,
-        "has_border": false,
-        "border_color": null,
-        "border_visible": false
-      },
-      "fonts": {
-        "title": {
-          "units": 95.04,
-          "pt": 9.5,
-          "pct_of_height": 6.0,
-          "color": "#000000",
-          "stata_gsize_name": "6.0000"
-        },
-        "subtitle": {
-          "units": 60.49,
-          "pt": 6.05,
-          "pct_of_height": 3.8188,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "axis_title": {
-          "units": 60.49,
-          "pt": 6.05,
-          "pct_of_height": 3.8188,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "tick_label": {
-          "units": 60.49,
-          "pt": 6.05,
-          "pct_of_height": 3.8188,
-          "stata_gsize_name": "medium"
-        },
-        "legend_label": {
-          "units": 60.49,
-          "pt": 6.05,
-          "pct_of_height": 3.8188,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "note": {
-          "units": 65.99,
-          "pt": 6.6,
-          "pct_of_height": 4.166,
-          "color": "#FFFFFF",
-          "stata_gsize_name": "medlarge"
-        }
-      },
-      "markers": {
-        "p1": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#3E647D",
-          "outline_color": "#3E647D",
-          "size_units": 57.52,
-          "size_pt": 5.75,
-          "size_pct_of_height": 3.6313,
-          "outline_width_units": 19.01,
-          "nominal_size_pct_of_height": 2.4312,
-          "stata_symbolsize_name": "large",
-          "note": "outer diameter incl. outline"
-        },
-        "p2": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#7B92A8",
-          "outline_color": "#7B92A8",
-          "size_units": 57.52,
-          "size_pt": 5.75,
-          "size_pct_of_height": 3.6313,
-          "outline_width_units": 19.01,
-          "nominal_size_pct_of_height": 2.4312,
-          "stata_symbolsize_name": "large",
-          "note": "outer diameter incl. outline"
-        },
-        "p3": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#82C0E9",
-          "outline_color": "#82C0E9",
-          "size_units": 57.52,
-          "size_pt": 5.75,
-          "size_pct_of_height": 3.6313,
-          "outline_width_units": 19.01,
-          "nominal_size_pct_of_height": 2.4312,
-          "stata_symbolsize_name": "large",
-          "note": "outer diameter incl. outline"
-        }
-      },
-      "lines_twoway_line": {
-        "p1": {
-          "pattern": "solid",
-          "color": "#3E647D",
-          "width_units": 19.01,
-          "width_pt": 1.901,
-          "width_pct_of_height": 1.2001
-        },
-        "p2": {
-          "pattern": "solid",
-          "color": "#7B92A8",
-          "width_units": 19.01,
-          "width_pt": 1.901,
-          "width_pct_of_height": 1.2001
-        },
-        "p3": {
-          "pattern": "solid",
-          "color": "#82C0E9",
-          "width_units": 19.01,
-          "width_pt": 1.901,
-          "width_pct_of_height": 1.2001
-        }
-      },
-      "lines_twoway_connected": {
-        "p1": {
-          "color": "#3E647D",
-          "pattern": "solid",
-          "width_units": 19.01
-        },
-        "p2": {
-          "color": "#7B92A8",
-          "pattern": "solid",
-          "width_units": 19.01
-        },
-        "p3": {
-          "color": "#82C0E9",
-          "pattern": "solid",
-          "width_units": 19.01
-        }
-      }
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
     },
-    "s1mono": {
-      "graph_size_in": [
-        5.5,
-        4.0
-      ],
-      "viewBox": [
-        3960.0,
-        2880.0
-      ],
-      "graph_region_background": "#FFFFFF",
-      "plot_region_background_declared": "NONE",
-      "plot_region_background_effective": "#FFFFFF",
-      "plot_region_border": {
-        "color": "#000000",
-        "width_units": 5.76,
-        "visible": true
-      },
-      "legend": {
-        "has_background": true,
-        "background": "#FFFFFF",
-        "has_border": true,
-        "border_color": "#000000",
-        "border_visible": true
-      },
-      "fonts": {
-        "title": {
-          "units": 139.96,
-          "pt": 14.0,
-          "pct_of_height": 4.8597,
-          "color": "#000000",
-          "stata_gsize_name": "large"
-        },
-        "subtitle": {
-          "units": 110.01,
-          "pt": 11.0,
-          "pct_of_height": 3.8198,
-          "color": "#000000",
-          "stata_gsize_name": "medium"
-        },
-        "axis_title": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "tick_label": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "stata_gsize_name": "medsmall"
-        },
-        "legend_label": {
-          "units": 99.99,
-          "pt": 10.0,
-          "pct_of_height": 3.4719,
-          "color": "#000000",
-          "stata_gsize_name": "medsmall"
-        },
-        "note": {
-          "units": 79.94,
-          "pt": 7.99,
-          "pct_of_height": 2.7757,
-          "color": "#000000",
-          "stata_gsize_name": "small"
-        }
-      },
-      "markers": {
-        "p1": {
-          "symbol": "circle",
-          "solid": true,
-          "color": "#606060",
-          "outline_color": "#606060",
-          "size_units": 52.7,
-          "size_pt": 5.27,
-          "size_pct_of_height": 1.8299,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5299,
-          "stata_symbolsize_name": "medium",
-          "note": "outer diameter incl. outline"
-        },
-        "p2": {
-          "symbol": "diamond",
-          "solid": true,
-          "color": "#A0A0A0",
-          "outline_color": "#A0A0A0",
-          "size_units": 74.59,
-          "size_pt": 7.46,
-          "size_pct_of_height": 2.5899,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5314,
-          "stata_symbolsize_name": "medium",
-          "note": "bounding box 74.59 units; diamond SIDE = 44.10 units = same side as the square marker"
-        },
-        "p3": {
-          "symbol": "square",
-          "solid": true,
-          "color": "#808080",
-          "outline_color": "#808080",
-          "size_units": 52.7,
-          "size_pt": 5.27,
-          "size_pct_of_height": 1.8299,
-          "outline_width_units": 8.64,
-          "nominal_size_pct_of_height": 1.5299,
-          "stata_symbolsize_name": "medium",
-          "note": "outer diameter incl. outline"
-        }
-      },
-      "lines_twoway_line": {
-        "p1": {
-          "pattern": "solid",
-          "color": "#606060",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        },
-        "p2": {
-          "pattern": "solid",
-          "color": "#A0A0A0",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        },
-        "p3": {
-          "pattern": "solid",
-          "color": "#808080",
-          "width_units": 8.64,
-          "width_pt": 0.864,
-          "width_pct_of_height": 0.3
-        }
-      },
-      "lines_twoway_connected": {
-        "p1": {
-          "color": "#000000",
-          "pattern": "solid",
-          "width_units": 8.64
-        },
-        "p2": {
-          "color": "#000000",
-          "pattern": "dashed",
-          "width_units": 8.64
-        },
-        "p3": {
-          "color": "#000000",
-          "pattern": "dashed",
-          "width_units": 8.64
-        }
-      }
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
     }
-  },
-  "_how_measured": {
-    "render": "Stata 19.5 SVG export of the same twoway commands used for the PNGs",
-    "solid_vs_dashed": "Stata emits a solid line as one <path> with a single moveto; a dashed line is exploded into many <line> segments. dasharray is never used.",
-    "gsize_ladder_pct_of_graph_height": {
-      "vsmall": 2.0833,
-      "small": 2.777,
-      "medsmall": 3.4722,
-      "medium": 3.8194,
-      "medlarge": 4.1667,
-      "large": 4.8611,
-      "vlarge": 5.5556,
-      "huge": 6.9444
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
     },
-    "symbolsize_ladder_pct_of_graph_height": {
-      "vsmall": 0.520833,
-      "small": 1.04166,
-      "medsmall": 1.25,
-      "medium": 1.52778,
-      "medlarge": 1.94444,
-      "large": 2.4306,
-      "vlarge": 3.125
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
     },
-    "marker_size_rule": "drawn outer diameter = symbolsize%*height + marker outline width",
-    "diamond_rule": "Stata's diamond is the square marker rotated 45 degrees: same side length, so its bounding box is sqrt(2) x wider than the square's.",
-    "line_plot_vs_connected": "twoway line takes its colour from 'color p#' and its pattern from 'linepattern p#lineplot'. twoway connected takes them from 'color p#line'/'color pline' and 'linepattern p#line'. The p#line keys do NOT drive a plain line chart."
-  },
-  "repo_scheme_disagreements": [
-    {
-      "scheme": "s1mono",
-      "keys": [
-        "color p1line",
-        "color p2line",
-        "color p3line"
-      ],
-      "repo_says": "#000000 (all three)",
-      "stata_drew_twoway_line": [
-        "#606060",
-        "#A0A0A0",
-        "#808080"
-      ],
-      "stata_drew_twoway_connected": [
-        "#000000",
-        "#000000",
-        "#000000"
-      ],
-      "explanation": "Stata's s1mono declares 'color pline black', which the repo correctly expanded to p1line..p15line. But a plain 'twoway line' does NOT read p#line - it reads 'color p#' (gs6/gs10/gs8). p#line only governs the connecting line of a 'twoway connected' plot. Applying p#line to a line chart paints all three black.",
-      "severity": "high"
-    },
-    {
-      "scheme": "s1mono",
-      "keys": [
-        "linepattern p2line",
-        "linepattern p3line"
-      ],
-      "repo_says": [
-        "dash",
-        "vshortdash"
-      ],
-      "stata_drew_twoway_line": [
-        "solid",
-        "solid"
-      ],
-      "stata_drew_twoway_connected": [
-        "dashed",
-        "dashed"
-      ],
-      "explanation": "Same key-routing issue. A line chart's pattern comes from 'linepattern p#lineplot', which s1mono never declares, so every series is solid. s2mono/sj DO declare p#lineplot and do render dashed - so the key, not the scheme family, is what decides.",
-      "severity": "high"
-    },
-    {
-      "scheme": "economist",
-      "keys": [
-        "gsize note"
-      ],
-      "repo_says": "large (4.8611% of graph height)",
-      "stata_drew": "4.1660% of graph height (= medlarge)",
-      "explanation": "Measured, not explained: economist's scheme file does say 'gsize note large', yet the note renders at medlarge and in white (#FFFFFF), suggesting the note goes through a filled-textbox style. Low impact.",
-      "severity": "low"
-    },
-    {
-      "scheme": "economist",
-      "keys": [
-        "gsize heading"
-      ],
-      "repo_says": "6.0",
-      "stata_drew": "6.0000% of graph height",
-      "explanation": "String-formatting artifact only; the values agree.",
-      "severity": "none"
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
     }
-  ],
-  "_verdict": {
-    "checks_run": 92,
-    "real_disagreements": 6,
-    "symbols_verdict": "The per-series SYMBOL values in all four repo .scheme files match what Stata drew exactly (stcolor/s2color/economist = circle,circle,circle; s1mono = circle,diamond,square). If dash renders a circle for every series, the fault is in the renderer's consumption of 'symbol p#', not in these scheme files."
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 4.86,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stcolor_alt": {
+   "graph_size_in": [
+    6.0,
+    4.0
+   ],
+   "viewBox": [
+    4320.0,
+    2880.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 140.0,
+     "pct_of_height": 4.8611,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 110.03,
+     "pct_of_height": 3.8205,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.92,
+     "pct_of_height": 2.775,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 4.32,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stgcolor": {
+   "graph_size_in": [
+    3.987,
+    2.392
+   ],
+   "viewBox": [
+    2871.0,
+    1722.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 83.71,
+     "pct_of_height": 4.8612,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.76,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.82,
+     "pct_of_height": 2.777,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 3.0,
+    "outline_width_pct_of_height": 0.1742
+   }
+  },
+  "stmono1": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#000000",
+    "width_units": 6.48,
+    "visible": true
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.65,
+     "nominal_size_pct_of_height": 1.0386,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.75,
+     "nominal_size_pct_of_height": 1.0417,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#606060",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#a0a0a0",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#808080",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#8d8d8d",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 4.86,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stmono2": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 6.48,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.65,
+     "nominal_size_pct_of_height": 1.0386,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.75,
+     "nominal_size_pct_of_height": 1.0417,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#8d8d8d",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 4.86,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stsj": {
+   "graph_size_in": [
+    3.575,
+    2.6
+   ],
+   "viewBox": [
+    2574.0,
+    1872.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.74,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 90.97,
+     "pct_of_height": 4.8595,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 71.51,
+     "pct_of_height": 3.82,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 51.96,
+     "pct_of_height": 2.7756,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.64,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.67,
+     "nominal_size_pct_of_height": 1.5313,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.64,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 5.62,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s2color": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#eaf2f3",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#1e2d53"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a476f",
+     "opacity": 1.0,
+     "outline_color": "#1a476f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#90353b",
+     "opacity": 1.0,
+     "outline_color": "#90353b",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#55752f",
+     "opacity": 1.0,
+     "outline_color": "#55752f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "s2mono": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#f0f0f0",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.1,
+     "nominal_size_pct_of_height": 1.5313,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "s2gcolor": {
+   "graph_size_in": [
+    3.12,
+    2.392
+   ],
+   "viewBox": [
+    2246.0,
+    1722.0
+   ],
+   "graph_region_background": "#eaf2f3",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 83.73,
+     "pct_of_height": 4.8624,
+     "color": "#1e2d53"
+    },
+    "subtitle": {
+     "units": 65.77,
+     "pct_of_height": 3.8194,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.8,
+     "pct_of_height": 2.7758,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a476f",
+     "opacity": 1.0,
+     "outline_color": "#1a476f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.26,
+     "nominal_size_pct_of_height": 1.525,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#90353b",
+     "opacity": 1.0,
+     "outline_color": "#90353b",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.26,
+     "nominal_size_pct_of_height": 1.525,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#55752f",
+     "opacity": 1.0,
+     "outline_color": "#55752f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.26,
+     "nominal_size_pct_of_height": 1.525,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 5.17,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s1color": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#000000",
+    "width_units": 5.76,
+    "visible": true
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#006000",
+     "opacity": 1.0,
+     "outline_color": "#006000",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#ff4500",
+     "opacity": 1.0,
+     "outline_color": "#ff4500",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a476f",
+     "opacity": 1.0,
+     "outline_color": "#1a476f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#006000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#ff4500",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#006000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#ff4500",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "s1mono": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#000000",
+    "width_units": 5.76,
+    "visible": true
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.1,
+     "nominal_size_pct_of_height": 1.5313,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#606060",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#a0a0a0",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#808080",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "s1rcolor": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#000000",
+   "plot_region_background_effective": "#000000",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": true
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#000000",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#ffffff"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#ffffff"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#ffffff"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#ffffff"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#ffffff"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#ffffff"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#ffff00",
+     "opacity": 1.0,
+     "outline_color": "#ffff00",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00ff00",
+     "opacity": 1.0,
+     "outline_color": "#00ff00",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#0080ff",
+     "opacity": 1.0,
+     "outline_color": "#0080ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#ffff00",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#00ff00",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#0080ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#ffff00",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#00ff00",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#0080ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "economist": {
+   "graph_size_in": [
+    2.2,
+    2.2
+   ],
+   "viewBox": [
+    1584.0,
+    1584.0
+   ],
+   "graph_region_background": "#c6d3df",
+   "plot_region_background_effective": "#c6d3df",
+   "plot_region_border": {
+    "color": null,
+    "width_units": null,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#c6d3df",
+    "has_border": true,
+    "border_color": "#c6d3df",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 95.04,
+     "pct_of_height": 6.0,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 60.49,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 60.49,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 60.49,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 65.99,
+     "pct_of_height": 4.166,
+     "color": "#ffffff"
+    },
+    "tick_label": {
+     "units": 60.49,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#3e647d",
+     "opacity": 1.0,
+     "outline_color": "#3e647d",
+     "outline_opacity": 1.0,
+     "outline_width_units": 19.01,
+     "nominal_size_units": 38.52,
+     "nominal_size_pct_of_height": 2.4318,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "large"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#7b92a8",
+     "opacity": 1.0,
+     "outline_color": "#7b92a8",
+     "outline_opacity": 1.0,
+     "outline_width_units": 19.01,
+     "nominal_size_units": 38.52,
+     "nominal_size_pct_of_height": 2.4318,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "large"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#82c0e9",
+     "opacity": 1.0,
+     "outline_color": "#82c0e9",
+     "outline_opacity": 1.0,
+     "outline_width_units": 19.01,
+     "nominal_size_units": 38.52,
+     "nominal_size_pct_of_height": 2.4318,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "large"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#3e647d",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    },
+    "p2": {
+     "color": "#7b92a8",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    },
+    "p3": {
+     "color": "#82c0e9",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#3e647d",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    },
+    "p2": {
+     "color": "#7b92a8",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    },
+    "p3": {
+     "color": "#82c0e9",
+     "pattern": "solid",
+     "width_units": 19.01,
+     "width_pct_of_height": 1.2001
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 4.75,
+    "outline_width_pct_of_height": 0.2999
+   }
+  },
+  "sj": {
+   "graph_size_in": [
+    3.575,
+    2.6
+   ],
+   "viewBox": [
+    2574.0,
+    1872.0
+   ],
+   "graph_region_background": "#f0f0f0",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.74,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 90.97,
+     "pct_of_height": 4.8595,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 71.51,
+     "pct_of_height": 3.82,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 51.96,
+     "pct_of_height": 2.7756,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 64.99,
+     "pct_of_height": 3.4717,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.64,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.67,
+     "nominal_size_pct_of_height": 1.5313,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.62,
+     "nominal_size_units": 28.64,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.62,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 5.62,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s2manual": {
+   "graph_size_in": [
+    3.12,
+    2.392
+   ],
+   "viewBox": [
+    2246.0,
+    1722.0
+   ],
+   "graph_region_background": "#f0f0f0",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 83.73,
+     "pct_of_height": 4.8624,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.77,
+     "pct_of_height": 3.8194,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.8,
+     "pct_of_height": 2.7758,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.26,
+     "nominal_size_pct_of_height": 1.525,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.21,
+     "nominal_size_pct_of_height": 1.5218,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.25,
+     "nominal_size_pct_of_height": 1.5244,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 5.17,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s1manual": {
+   "graph_size_in": [
+    3.12,
+    2.392
+   ],
+   "viewBox": [
+    2246.0,
+    1722.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#000000",
+    "width_units": 3.44,
+    "visible": true
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 75.73,
+     "pct_of_height": 4.3978,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 67.17,
+     "pct_of_height": 3.9007,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 67.17,
+     "pct_of_height": 3.9007,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 56.85,
+     "pct_of_height": 3.3014,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 56.85,
+     "pct_of_height": 3.3014,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 56.85,
+     "pct_of_height": 3.3014,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 37.9,
+     "nominal_size_pct_of_height": 2.2009,
+     "n_drawn": 20,
+     "stata_symbolsize_name": null
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 37.92,
+     "nominal_size_pct_of_height": 2.2018,
+     "n_drawn": 20,
+     "stata_symbolsize_name": null
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 37.9,
+     "nominal_size_pct_of_height": 2.2009,
+     "n_drawn": 20,
+     "stata_symbolsize_name": null
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#606060",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#a0a0a0",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#808080",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#000000",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#000000",
+     "pattern": "dashed",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 5.17,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s2gmanual": {
+   "graph_size_in": [
+    3.12,
+    2.392
+   ],
+   "viewBox": [
+    2246.0,
+    1722.0
+   ],
+   "graph_region_background": "#f0f0f0",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 83.73,
+     "pct_of_height": 4.8624,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.77,
+     "pct_of_height": 3.8194,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.8,
+     "pct_of_height": 2.7758,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.8,
+     "pct_of_height": 3.4727,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#606060",
+     "opacity": 1.0,
+     "outline_color": "#606060",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.26,
+     "nominal_size_pct_of_height": 1.525,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "diamond",
+     "solid": true,
+     "color": "#a0a0a0",
+     "opacity": 1.0,
+     "outline_color": "#a0a0a0",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.21,
+     "nominal_size_pct_of_height": 1.5218,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "square",
+     "solid": true,
+     "color": "#808080",
+     "opacity": 1.0,
+     "outline_color": "#808080",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 26.25,
+     "nominal_size_pct_of_height": 1.5244,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#606060",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#a0a0a0",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#808080",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#606060",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#a0a0a0",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#808080",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#808080",
+    "fill_opacity": 1.0,
+    "outline_color": "#000000",
+    "outline_width_units": 5.17,
+    "outline_width_pct_of_height": 0.3002
+   }
+  },
+  "s2color8": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#e1e6f0",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 139.96,
+     "pct_of_height": 4.8597,
+     "color": "#1e2d53"
+    },
+    "subtitle": {
+     "units": 110.01,
+     "pct_of_height": 3.8198,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#273f6f",
+     "opacity": 1.0,
+     "outline_color": "#273f6f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#90353b",
+     "opacity": 1.0,
+     "outline_color": "#90353b",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#55752f",
+     "opacity": 1.0,
+     "outline_color": "#55752f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#273f6f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#273f6f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "sttrans": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 6.48,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#000000",
+    "border_visible": true
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a476f",
+     "opacity": 0.2,
+     "outline_color": "#1a476f",
+     "outline_opacity": 0.2,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#cc6677",
+     "opacity": 0.2,
+     "outline_color": "#cc6677",
+     "outline_opacity": 0.2,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#ddcc77",
+     "opacity": 0.2,
+     "outline_color": "#ddcc77",
+     "outline_opacity": 0.2,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#cc6677",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#ddcc77",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#cc6677",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#ddcc77",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#1a476f",
+    "fill_opacity": 0.2,
+    "outline_color": "#1a476f",
+    "outline_width_units": 9.72,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "stgcolor_alt": {
+   "graph_size_in": [
+    3.588,
+    2.392
+   ],
+   "viewBox": [
+    2583.0,
+    1722.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 83.71,
+     "pct_of_height": 4.8612,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.79,
+     "pct_of_height": 3.8206,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.79,
+     "pct_of_height": 2.7753,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 3.0,
+    "outline_width_pct_of_height": 0.1742
+   }
+  },
+  "meta": {
+   "graph_size_in": [
+    5.5,
+    4.0
+   ],
+   "viewBox": [
+    3960.0,
+    2880.0
+   ],
+   "graph_region_background": "#eaf2f3",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#eaf2f3",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#1e2d53"
+    },
+    "subtitle": {
+     "units": 99.99,
+     "pct_of_height": 3.4719,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 60.02,
+     "pct_of_height": 2.084,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 79.94,
+     "pct_of_height": 2.7757,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a476f",
+     "opacity": 1.0,
+     "outline_color": "#1a476f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.76,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#90353b",
+     "opacity": 1.0,
+     "outline_color": "#90353b",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.76,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#55752f",
+     "opacity": 1.0,
+     "outline_color": "#55752f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.76,
+     "nominal_size_units": 44.06,
+     "nominal_size_pct_of_height": 1.5299,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "medium"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a476f",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    },
+    "p2": {
+     "color": "#90353b",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    },
+    "p3": {
+     "color": "#55752f",
+     "pattern": "solid",
+     "width_units": 5.76,
+     "width_pct_of_height": 0.2
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#cac27e",
+    "fill_opacity": 1.0,
+    "outline_color": "#d7d29e",
+    "outline_width_units": 8.64,
+    "outline_width_pct_of_height": 0.3
+   }
+  },
+  "stcolor_meta": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 6.48,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 4.86,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stcolor_mv": {
+   "graph_size_in": [
+    6.0,
+    4.0
+   ],
+   "viewBox": [
+    4320.0,
+    2880.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 5.76,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 140.0,
+     "pct_of_height": 4.8611,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 110.03,
+     "pct_of_height": 3.8205,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 79.92,
+     "pct_of_height": 2.775,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 100.04,
+     "pct_of_height": 3.4736,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 8.64,
+     "nominal_size_units": 29.98,
+     "nominal_size_pct_of_height": 1.041,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 8.64,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 4.32,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stcoloralias": {
+   "graph_size_in": [
+    7.5,
+    4.5
+   ],
+   "viewBox": [
+    5400.0,
+    3240.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 6.48,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 157.44,
+     "pct_of_height": 4.8593,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 123.69,
+     "pct_of_height": 3.8176,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 89.94,
+     "pct_of_height": 2.7759,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 112.56,
+     "pct_of_height": 3.4741,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 9.72,
+     "nominal_size_units": 33.76,
+     "nominal_size_pct_of_height": 1.042,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 9.72,
+     "width_pct_of_height": 0.3
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 4.86,
+    "outline_width_pct_of_height": 0.15
+   }
+  },
+  "stgcolor_meta": {
+   "graph_size_in": [
+    3.987,
+    2.392
+   ],
+   "viewBox": [
+    2871.0,
+    1722.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 83.71,
+     "pct_of_height": 4.8612,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.76,
+     "pct_of_height": 3.8188,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.82,
+     "pct_of_height": 2.777,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.84,
+     "pct_of_height": 3.475,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.94,
+     "nominal_size_pct_of_height": 1.0418,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 3.0,
+    "outline_width_pct_of_height": 0.1742
+   }
+  },
+  "stgcolor_mv": {
+   "graph_size_in": [
+    3.588,
+    2.392
+   ],
+   "viewBox": [
+    2583.0,
+    1722.0
+   ],
+   "graph_region_background": "#ffffff",
+   "plot_region_background_effective": "#ffffff",
+   "plot_region_border": {
+    "color": "#ffffff",
+    "width_units": 3.44,
+    "visible": false
+   },
+   "legend": {
+    "has_background": true,
+    "background": "#ffffff",
+    "has_border": true,
+    "border_color": "#ffffff",
+    "border_visible": false
+   },
+   "fonts": {
+    "title": {
+     "units": 83.71,
+     "pct_of_height": 4.8612,
+     "color": "#000000"
+    },
+    "subtitle": {
+     "units": 65.79,
+     "pct_of_height": 3.8206,
+     "color": "#000000"
+    },
+    "axis_title": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    },
+    "legend_label": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    },
+    "note": {
+     "units": 47.79,
+     "pct_of_height": 2.7753,
+     "color": "#000000"
+    },
+    "tick_label": {
+     "units": 59.81,
+     "pct_of_height": 3.4733,
+     "color": "#000000"
+    }
+   },
+   "markers": {
+    "p1": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#1a85ff",
+     "opacity": 1.0,
+     "outline_color": "#1a85ff",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p2": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#d41159",
+     "opacity": 1.0,
+     "outline_color": "#d41159",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    },
+    "p3": {
+     "symbol": "circle",
+     "solid": true,
+     "color": "#00bf7f",
+     "opacity": 1.0,
+     "outline_color": "#00bf7f",
+     "outline_opacity": 1.0,
+     "outline_width_units": 5.17,
+     "nominal_size_units": 17.92,
+     "nominal_size_pct_of_height": 1.0407,
+     "n_drawn": 20,
+     "stata_symbolsize_name": "small"
+    }
+   },
+   "lines_twoway_line": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "lines_twoway_connected": {
+    "p1": {
+     "color": "#1a85ff",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p2": {
+     "color": "#d41159",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    },
+    "p3": {
+     "color": "#00bf7f",
+     "pattern": "solid",
+     "width_units": 5.17,
+     "width_pct_of_height": 0.3002
+    }
+   },
+   "histogram": {
+    "n_bars": 8,
+    "fill": "#3191ff",
+    "fill_opacity": 1.0,
+    "outline_color": "#5faaff",
+    "outline_width_units": 3.0,
+    "outline_width_pct_of_height": 0.1742
+   }
   }
+ }
 }

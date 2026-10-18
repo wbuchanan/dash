@@ -560,4 +560,5 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **K2 Tracked:** Closed in WP-32, BUGS.md "A renderer without its source file cannot write a served app", commit 625cea9.
 - **K3 Tracked:** Partly closed in WP-31 (section 60, commit 1956dda): a committed generator for every fixture, make truth and truth-check, the _meta and path guard, and in WP-32 (commit 6ddc08a) the 50 older fixtures regenerated with the five _meta keys; open: the scheme visual truth (BUGS.md "The scheme visual truth covers 4 of 26 schemes and renders no histogram").
 - **K4 Tracked:** Closed in WP-32, BUGS.md "Harness guards", commit a956e77.
+- **K3 Tracked:** Closed in WP-32, BUGS.md "The scheme visual truth covers 4 of 26 schemes and renders no histogram", commit pending.
 - **K6 Tracked:** Closed in WP-31, BUGS.md "One aria-live region, no alt text and English-only interface", commit e826446.
