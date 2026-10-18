@@ -1097,7 +1097,7 @@ Changed behaviour.
 
 <!-- WP-31 I3 -->
 
-<!-- WP-31 I4 -->
+- python dash_render.py and a served app run by hand print the same numpy and pandas version note Stata prints, and the first line of each carries the comment that a SyntaxError there means a Python older than 3.11. (WP-31, I4)
 
 - Every version header reads 0.1.0: dash_render.py said 1.0.0 25mar2026 and dash.ado and dash_parse.mata said v2.0; test_pkg_metadata.py pins the renderer's Version line and the v-headers with the six Version lines. (WP-31, I5)
 

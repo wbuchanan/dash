@@ -674,6 +674,54 @@ class TestTheVersionNote:
         monkeypatch.setattr(dr.np, "__version__", text)
         assert dr._dash_dep_versions() == ("", "")
 
+    # WP-31 I4: the note was printed only through dash.ado's
+    # _dash_xm_load, so `python dash_render.py' and `python app.py' with a
+    # numpy or pandas below the floor said nothing.  The SyntaxError leg of
+    # GAPS3 I4 is TestTheRendererRefusesWithTheRemedy's
+    # test_the_old_interpreters_here_get_the_remedy (WP-30).
+
+    def test_a_hand_run_renderer_prints_the_note(self, monkeypatch, capsys):
+        import runpy
+        monkeypatch.delitem(sys.modules, "sfi", raising=False)
+        monkeypatch.setattr(np, "__version__", "2.1.3")
+        monkeypatch.setattr(sys, "argv", ["dash_render.py"])
+        with pytest.raises(SystemExit):   # argparse: --spec is required
+            runpy.run_path(_RENDER, run_name="__main__")
+        err = capsys.readouterr().err
+        assert err.count("dash: numpy 2.1.3 is older than 2.3") == 1, err
+
+    def test_under_stata_the_note_is_left_to_dash_ado(self, monkeypatch, capsys):
+        """_dash_xm_load prints it once per fresh load; the renderer run
+        through _dash_run_renderer must not print it again."""
+        import types
+        import dash_render as dr
+        monkeypatch.setitem(sys.modules, "sfi", types.ModuleType("sfi"))
+        monkeypatch.setattr(dr.np, "__version__", "2.1.3")
+        assert dr._dash_hand_run_note() == ""
+        assert capsys.readouterr().err == ""
+
+    def test_the_hand_run_note_is_silent_when_the_versions_are_met(self, monkeypatch, capsys):
+        import dash_render as dr
+        monkeypatch.delitem(sys.modules, "sfi", raising=False)
+        assert dr._dash_hand_run_note() == ""
+        assert capsys.readouterr().err == ""
+
+    def test_the_app_prints_the_note(self, tmp_path, monkeypatch, capsys):
+        app, src = _build_app(tmp_path)
+        main = src[src.index("\nif __name__ == '__main__':\n"):]
+        head = main[:main.index("_dash_res = os.environ.get(")]
+        # after the arguments are read, and not in dash serve's child,
+        # whose parent (Stata) printed it
+        assert ("    if not _a.parent_watch:\n"
+                "        _dash_hand_run_note()\n") in head, head
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from conftest import exec_app
+        ns = exec_app(src, app, {"__name__": "dash_app_i4"})
+        monkeypatch.delitem(sys.modules, "sfi", raising=False)
+        monkeypatch.setattr(ns["pd"], "__version__", "2.2.0")
+        assert "pandas 2.2.0" in ns["_dash_hand_run_note"]()
+        assert capsys.readouterr().err.count("dash: pandas 2.2.0") == 1
+
 
 class TestTheGuardOrder:
     def test_the_dependency_guard_follows_the_mata_guard_and_spares_clear(self):

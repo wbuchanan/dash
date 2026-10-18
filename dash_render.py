@@ -208,6 +208,23 @@ def _dash_dep_versions():
     return _dash_bokeh_check()[0], note
 
 
+def _dash_hand_run_note(stream=None):
+    """Print ``_dash_dep_versions()``'s note to stderr (or *stream*) when
+    dash_render.py or a served app is run by hand; return it, or "".
+
+    Under Stata (``sfi`` loaded) nothing is printed: _dash_xm_load prints
+    the note once per fresh load, and the renderer run through
+    _dash_run_renderer would print it again (WP-31 I4).
+    """
+    import sys
+    if sys.modules.get("sfi") is not None:
+        return ""
+    note = _dash_dep_versions()[1]
+    if note:
+        print(note, file=stream or sys.stderr, flush=True)
+    return note
+
+
 #: The verified bokeh window (WP-30 P1.30, M9).  dash runs with bokeh from
 #: the floor up; it was verified -- the test suite, and the label, legend
 #: and tooltip text sinks in a browser (test_label_sinks.py VERIFIED_ON) --
@@ -62907,6 +62924,8 @@ class ServerAppBuilder:
                       "_DASH_LINK_UNWRITTEN",
                       # WP-30 P1.30: the verified bokeh window.
                       "_DASH_BOKEH_FLOOR", "_DASH_BOKEH_CEIL", "_DASH_BOKEH_VERIFIED",
+                      # WP-31 I4: _dash_dep_versions' floors.
+                      "_DASH_MIN_PACKAGES",
                       "_DASH_BOKEH_INTERNALS",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
@@ -63374,6 +63393,8 @@ class ServerAppBuilder:
                          "_dash_strict_match_host",
                          "_dash_harden_origin_check",
                          "_dash_bokeh_window", "_dash_bokeh_check",
+                         # WP-31 I4: the version note of a hand-run app.
+                         "_dash_dep_versions", "_dash_hand_run_note",
                          "_dash_bokeh_shown", "_dash_unsigned_scripts",
                          "_dash_check_served_template", "_dash_check_auth_internals",
                          # The resource limits, read from the spec and
@@ -67672,6 +67693,11 @@ class ServerAppBuilder:
             "    # this is the launcher dash points users at.",
             "    _p = _dash_arg_parser()",
             "    _a = _p.parse_args()",
+            "    # WP-31 I4: numpy or pandas below dash_setup's minimum, said",
+            "    # once; dash serve's child (--parent-watch) leaves it to Stata,",
+            "    # which said it when it loaded the renderer.",
+            "    if not _a.parent_watch:",
+            "        _dash_hand_run_note()",
             "    # WP-31 H4 (D-55b): this app serves BokehJS from its own",
             "    # /static (mode server); BOKEH_RESOURCES=cdn made the page ask a",
             "    # CDN the policy refuses, and it was blank with nothing said.",
@@ -68871,6 +68897,9 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
 
 
 if __name__ == "__main__":
+    # WP-31 I4: numpy or pandas below dash_setup's minimum, said once, as
+    # Stata says it (silent under Stata, which has said it already).
+    _dash_hand_run_note()
     parser = argparse.ArgumentParser(
         description="dash_render.py — Bokeh dashboard renderer for the Stata dash command"
     )

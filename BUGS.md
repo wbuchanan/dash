@@ -3814,11 +3814,11 @@
   - Suggested fix: WP-31 section 59 (readme package versions): record installs, offer the uninstall line, and fix the four reporting and path defects.
   - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: _dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser
+- [x] Title: _dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser
   - File Names and Line Numbers: dash_render.py:189-210, :51346; dash.ado:6139
   - Description: GAPS3.md I4, re-verified at 6370ca4: `_dash_dep_versions()` (dash_render.py:189) is computed and returned but printed nowhere except through Stata's call at dash.ado:6139, so a hand-run renderer or app with a sub-floor numpy/pandas is silent; Python below 3.7 dies at the parser.
   - Suggested fix: WP-31 section 59 (readme package versions): print the note from the renderer's and the app's main and accept the SyntaxError.
-  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 18oct2026 (WP-31, I4). New _dash_hand_run_note (dash_render.py) prints _dash_dep_versions()'s numpy and pandas note to stderr unless sfi is loaded (under Stata _dash_xm_load prints it once per fresh load); the renderer's __main__ calls it first, and the served app's __main__ calls it after reading its arguments unless --parent-watch says dash serve started it (Stata said it already); _dash_dep_versions, _dash_hand_run_note and _DASH_MIN_PACKAGES join the served copy lists. The Python-below-3.7 leg was already met: both files' first statement, from __future__ import annotations, carries the comment naming the floor and dash_setup, which an old Python's SyntaxError shows (WP-30, pinned by test/test_dependency_guards.py::TestTheRendererRefusesWithTheRemedy::test_the_old_interpreters_here_get_the_remedy). Pinned by test/test_dependency_guards.py::TestTheVersionNote::test_a_hand_run_renderer_prints_the_note, ::test_the_app_prints_the_note, ::test_under_stata_the_note_is_left_to_dash_ado, ::test_the_hand_run_note_is_silent_when_the_versions_are_met. Closes GAPS3 I4 (WP-31, I4).
 
 - [x] Title: Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines
   - File Names and Line Numbers: dash_render.py:60; dash.ado:1, :13, :6638; test/test_pkg_metadata.py:50-57
