@@ -14,7 +14,7 @@
 *! Usage: dash_setup [, venv(path)]
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  09oct2026
+*! Version: 0.1.0  18oct2026
 
 program define dash_setup, rclass
     // WP-30 P1.35: the Stata floor first, before `version', so an older

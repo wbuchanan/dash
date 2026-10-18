@@ -232,6 +232,18 @@ class TestEveryShippedFileAgreesOnTheVersion:
                     re.finditer(r"\(v2\.0\)|\bv2\.0\b|\b1\.0\.0\b", text)]
         assert not bad, "; ".join(bad)
 
+    def test_the_date_is_not_older_than_the_changelog_release(self):
+        """WP-31 S61.1: CHANGELOG.md's release line (its first ``## ``
+        heading) names the version and the date every shipped file
+        declares, and is not marked a release candidate (DECISIONS D8).
+        PKG-03 already ties the Distribution-Date to that date."""
+        version, date = _declared_version("dash.pkg")
+        head = [ln for ln in _read(os.path.join(REPO_ROOT, "CHANGELOG.md"))
+                .splitlines() if ln.startswith("## ")][0]
+        assert head == "## %s, %s" % (version, date), (
+            "CHANGELOG.md's release line %r does not state %s, %s"
+            % (head, version, date))
+
     def test_the_manifest_version_is_the_code_version(self):
         """PKG-08. The manifest's is what `ado describe` shows the user."""
         assert _declared_version("dash.pkg") == _declared_version("dash.ado"), (

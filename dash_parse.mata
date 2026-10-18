@@ -693,7 +693,7 @@
 *!       the caller's locals _af_n, _af_raw<i>, _af_nw<i>, _af_w<i>_<j> and
 *!       _af_ok<i> (WP-30 P1.5).
 *!
-*! Version: 0.1.0  09oct2026
+*! Version: 0.1.0  18oct2026
 
 // ============================================================
 // Compile into memory

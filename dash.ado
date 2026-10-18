@@ -26,7 +26,7 @@
 *!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  09oct2026
+*! Version: 0.1.0  18oct2026
 
 // ================================================================
 // Load Mata library (dash_parse.mata)
