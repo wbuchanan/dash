@@ -1083,7 +1083,7 @@ Changed behaviour.
 
 - The help's Unsupported list names every option dash accepts and does not draw -- the pending blocks, the undeclared twoway options and the names that reach the generic note -- and says that an option twoway refuses on a plot type is refused. (WP-31, J1)
 
-<!-- WP-31 J2 -->
+- help dash: the Syntax line brackets filter()'s type(), the period-slider sentence sits with the slider, legend(ring(0)), msangle(), dot and the not-drawn types are described as drawn, the refusal-log sentence says what the server logs, and the page's iframe rule, a link() qualifier example and the %tC paragraph are new. (WP-31, J2)
 
 <!-- WP-31 J3 -->
 

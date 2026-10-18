@@ -889,8 +889,9 @@ class TestTheParsersFoundSomething:
         # 453 -> 462: J1 nine Unsupported entries for the names that reach
         # the catch-all (Area, bar and line edge styles .. Graph-wide
         # settings).
-        assert len(defs) == 462, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 462 "
+        # 462 -> 466: J2 the Linking section's four example lines.
+        assert len(defs) == 466, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 466 "
             f"measured 18oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

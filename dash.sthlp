@@ -82,7 +82,7 @@
 {cmdab:lay:out}{cmd:(}{it:layout_spec}{cmd:)}
 {cmd:link(}{it:namelist} | {cmd:_all}{cmd:)}
 {cmdab:br:ush}{cmd:(highlight}|{cmd:filter)}
-{cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)} {cmd:label(}{it:string}{cmd:)}]{cmd:)}
+{cmd:filter(}{it:varname} [{cmd:, type(}{it:filter_type}{cmd:)} {cmd:exclude(}{it:namelist}{cmd:)} {cmd:label(}{it:string}{cmd:)}]{cmd:)}
 {cmd:tabs(}{it:tab_spec}{cmd:)}
 {cmdab:filterpos:ition}{cmd:(top}|{cmd:left)}
 {cmd:theme(}{it:theme_name}{cmd:)}
@@ -1864,6 +1864,19 @@ follows a brush counts the observations every current selection holds, and
 clearing one selection leaves the others' effect.
 
 {pstd}
+Each graph of a group keeps its own {it:if} and {it:in}, applied before the
+link: the group's source holds the rows any of its graphs draws, and each
+graph draws only its own.  Below, {cmd:g2} draws the 22 foreign cars and
+{cmd:g1} all 74; a selection of domestic cars in {cmd:g1} highlights
+nothing in {cmd:g2}, and a selection in {cmd:g2} highlights those foreign
+cars in {cmd:g1}:
+
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, name(g1)}{p_end}
+{phang2}{cmd:. dash scatter mpg price if foreign == 1, name(g2)}{p_end}
+{phang2}{cmd:. dash build, saving(linked.html) link(g1 g2) replace}{p_end}
+
+{pstd}
 Graphs not in the link group receive their own independent data source
 and are unaffected by selection in linked graphs.
 
@@ -2012,8 +2025,7 @@ hidden, its cell left blank, and shown again when rows return.
     {cmd:"01"} and {cmd:"1"} are two values -- in the saved page and the
     served app alike.  A listed value is written in the variable's display
     format, or its value label; values that share one display text are one
-    entry that selects them all; and a %tw, %tm, %tq, %th or %ty variable's
-    range slider moves over Stata's period numbers in steps of one.
+    entry that selects them all.
     An "All" option removes the filter.  A dropdown lists at most 1,000
     values: over that, a numeric or date variable is drawn as
     {cmd:type(range)} instead, and a string variable lists its first 1,000
@@ -2035,6 +2047,8 @@ hidden, its cell left blank, and shown again when rows return.
 
 {phang2}{cmd:type(range)} -- range slider that keeps observations where
     {it:varname} is between the low and high slider values, both included.
+    A %tw, %tm, %tq, %th or %ty variable's range slider moves over Stata's
+    period numbers in steps of one.
 
 {pmore2}
     A slider at its minimum, like a range at its full extent, restricts
@@ -2650,6 +2664,14 @@ policies, and the page's own refuses an injected script.
 the policy but can be framed.
 
 {pstd}
+A saved page can be shown inside another page with an {cmd:<iframe>}: its
+policy, carried in the page itself, has no {cmd:frame-ancestors} directive
+(a browser ignores that directive in a page's own policy), so any page may
+frame it.  A dashboard served by {cmd:python app.py} cannot be framed: its
+headers send {cmd:frame-ancestors 'none'} and
+{cmd:X-Frame-Options: DENY}.
+
+{pstd}
 Session creation and {cmd:/health} are rate limited, each separately, so a
 health probe never spends the dashboard's budget.  The client is identified
 by the peer address, not by {cmd:X-Forwarded-For}, because that header is set
@@ -2676,9 +2698,10 @@ Each takes a whole number from 1 to 1,000,000.  A session over a limit is
 served a page that reads {cmd:429 Too Many Requests} in place of the
 dashboard -- the page itself arrives with HTTP status 200, as Bokeh sends
 every page -- and a {cmd:/health} request over its own limit is answered
-with status 429.  The server logs each refusal -- once a minute per limit,
-so a flood cannot flood the log -- naming the limit and, for a session
-limit, its flag.  No client that is still active is ever forgotten to make
+with status 429.  The server logs a limit's refusals at most once a
+minute, so a flood cannot flood the log: each line names the limit and,
+for a session limit, its flag, and counts the ones refused since its
+last line.  No client that is still active is ever forgotten to make
 room for new ones, so a flood of addresses cannot reset a real client's
 count.
 
@@ -4559,6 +4582,17 @@ reads {cmd:2001m1 2001m4}, a {cmd:%td} axis {cmd:02jan2001}, a custom
 picture as written.
 
 {pstd}
+{ul:Log scales on date axes.}  On an axis drawn in a date format --
+{cmd:%tc} and {cmd:%tC} as well as {cmd:%td} to {cmd:%ty} -- the date axis
+wins over {cmd:xscale(log)} or {cmd:yscale(log)}: {cmd:dash} draws the
+dates on a linear axis, read as the paragraphs above say ({cmd:%tC} with
+Stata's leap seconds), and notes "xscale(log) is meaningless for the date
+variable '{it:t}'; drawing a date axis instead".  {cmd:twoway} draws a log
+scale there, labelled in the date format; measured on twenty monthly
+{cmd:%tC} times in 2017-2018, its tick labels sit up to 0.3% of the plot's
+width from where a linear axis puts them.
+
+{pstd}
 {cmd:format()} writes the axis's stored value in any display format, as
 {cmd:twoway} does: on {cmd:sp500}'s {cmd:%td} axis {cmd:format(%9.0fc)}
 writes the day numbers {cmd:14,976 15,066}, {cmd:format(%tdDD/NN/CCYY)}
@@ -5568,7 +5602,9 @@ name them there.
     {cmd:jseed()} wins{p_end}
 {synopt:{cmdab:msa:ngle(}{it:#}{cmd:)}}rotate every marker in the layer
     {it:#} degrees counter-clockwise, as {cmd:twoway} does; {it:#} must lie
-    between -360 and 360, as in {cmd:twoway}.  Drawn on every plot type
+    between -360 and 360, as in {cmd:twoway}, or be one of Stata's
+    anglestyles ({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical},
+    {cmd:rhorizontal}, {cmd:forty_five}, ...).  Drawn on every plot type
     that draws markers: {cmd:scatter}, {cmd:connected}, {cmd:rconnected},
     {cmd:dot}, {cmd:dropline}, {cmd:scatteri}, {cmd:rscatter},
     {cmd:rcapsym}, {cmd:rpcap}, {cmd:rpspike}, {cmd:pcscatter} and

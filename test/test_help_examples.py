@@ -79,20 +79,24 @@ class TestTheShapeOfTheExamples:
     P1.11b's Text in graphs example makes 33, 100 and 104; WP-30 P1.7's
     Time-series operators example (sp500, tsset, dash line D.close date)
     makes 34, 103 and 107; WP-31 H2k's weighted KPI example makes 35,
-    106 and 110."""
+    106 and 110; WP-31 J2's Linking example 36, 110 and 114."""
 
     # 6 -> 7 (the Tabs group): WP-31 D14 the per-tab layout() build.
     # New group of 2 at index 9: WP-31 H2k, the weighted KPI example.
-    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 2, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4,
-                   2, 2, 5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
+    # New group of 4 at index 8: WP-31 J2, the Linking section's example
+    # of a linked graph with its own if.
+    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 4, 2, 2, 1, 2, 2, 5, 4, 5, 2, 6,
+                   4, 2, 2, 5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
         # 34 -> 35: WP-31 H2k, the weighted KPI example group.
-        assert len(groups) == 35
+        # 35 -> 36: WP-31 J2, the Linking section's qualifier example.
+        assert len(groups) == 36
         # 103 -> 104, 107 -> 108: WP-31 D14 the per-tab layout() build.
         # 104 -> 106, 108 -> 110: WP-31 H2k, the weighted KPI example.
-        assert len(_commands(groups)) == 106
-        assert sum(len(c.lines) for c in _commands(groups)) == 110
+        # 106 -> 110, 110 -> 114: WP-31 J2, its four lines.
+        assert len(_commands(groups)) == 110
+        assert sum(len(c.lines) for c in _commands(groups)) == 114
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES

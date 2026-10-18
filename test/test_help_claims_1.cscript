@@ -103,6 +103,13 @@
 *!           from the Title to the Option values item holds no brace.
 *!           MEASURED FALSE: the Description's `{it:if}/{in}' printed
 *!           "if/{in}", {in} being no SMCL directive.
+*!   U56-1   (WP-31 J2) Each type the Plot types' "Not drawn" paragraph
+*!           names is refused by name, r(198), with the advice it gives:
+*!           sunflower (Stata's own sunflower command) and matamatrix()
+*!           (getmata into variables); twoway draws both, rc 0.
+*!   U56-2   (WP-31 J2; DECISIONS D13) A twoway prefix is refused as twoway
+*!           refuses twoway twoway: dash twoway scatter mpg weight is
+*!           r(198) "twoway is not a twoway plot type", as twoway's is.
 *!
 *! Usage:  from test/, with the dash directory on the ado-path:
 *!         do "test_help_claims_1.cscript"
@@ -1365,6 +1372,49 @@ if _rc {
     local faillist `"`faillist' HC1-24"'
 }
 else display as text "HC1-24 PASS: the Title to Differences sections render with no directive left as text (`_hc_rn' lines)"
+
+// ================================================================
+// U56-1 -- the Not-drawn paragraph's types are refused with its advice
+// U56-2 -- a twoway prefix is refused as twoway refuses it (D13)
+// ================================================================
+// Measured 18oct2026: twoway sunflower mpg weight and twoway scatter
+// matamatrix(M) draw (rc 0); dash refuses each by name, r(198).
+mata: _u56_M = (1, 2 \ 3, 4)
+local bad561 ""
+graph drop _all
+capture twoway sunflower mpg weight, nodraw
+local tw1 = _rc
+_hc_logged 561a dash sunflower mpg weight
+local d1 = r(rc)
+cert_log_has "`r(logfile)'", needle("Use Stata's own sunflower command")
+if `tw1' != 0 | `d1' != 198 | !r(found) local bad561 `"`bad561' [sunflower: twoway `tw1' dash `d1']"'
+capture twoway scatter matamatrix(_u56_M), nodraw
+local tw2 = _rc
+_hc_logged 561b dash scatter matamatrix(_u56_M)
+local d2 = r(rc)
+cert_log_has "`r(logfile)'", needle("getmata the columns into variables")
+if `tw2' != 0 | `d2' != 198 | !r(found) local bad561 `"`bad561' [matamatrix: twoway `tw2' dash `d2']"'
+capture mata: mata drop _u56_M
+if `"`bad561'"' != "" {
+    display as error `"U56-1 FAIL:`bad561'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' U56-1"'
+}
+else display as text "U56-1 PASS: sunflower and matamatrix() are refused by name, r(198), with the help's advice; twoway draws both"
+dash clear
+
+capture twoway twoway scatter mpg weight, nodraw
+local tw3 = _rc
+_hc_logged 562 dash twoway scatter mpg weight
+local d3 = r(rc)
+cert_log_has "`r(logfile)'", needle("twoway is not a twoway plot type")
+if `tw3' != 198 | `d3' != 198 | !r(found) {
+    display as error "U56-2 FAIL: twoway twoway `tw3', dash twoway `d3', message found " r(found)
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' U56-2"'
+}
+else display as text "U56-2 PASS: dash twoway ... is r(198) twoway is not a twoway plot type, as twoway twoway ... is"
+dash clear
 
 // ----------------------------------------------------------------
 // Summary
