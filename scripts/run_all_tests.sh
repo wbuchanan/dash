@@ -36,6 +36,10 @@ if [ "${DRY_RUN:-}" = 1 ]; then
     echo "cert:   $cert_cmd"
     exit 0
 fi
+# Earlier runs' logs (and the cert suite's working folders, about 1.4 GB
+# each) are kept for reading, then swept once they are a day old.
+find "${TMPDIR:-/tmp}" -maxdepth 1 \( -name 'dash_all_tests.*' -o -name 'dash_cert.*' \) \
+    -type d -mtime +0 -exec rm -rf {} + 2>/dev/null
 out="$(mktemp -d "${TMPDIR:-/tmp}/dash_all_tests.XXXXXX")" || exit 1
 cd "$REPO" || exit 2
 start=$(date +%s)

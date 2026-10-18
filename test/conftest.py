@@ -29,6 +29,51 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# Every temporary file the suite makes goes to one folder per test process
+# (each xdist worker and the controller), removed when the process ends.
+# Dozens of modules call tempfile.mkdtemp at import or per test and never
+# remove the folder; before this, each full run left 15-20 GB in the
+# system temporary directory and filled the disk (18oct2026).  TMPDIR is
+# set too, so served apps, Stata-free subprocesses and headless Chrome
+# write there as well.  A folder an interrupted run left behind is swept
+# once it is a day old.
+_TMP_PREFIX = "dash_pytest_"
+
+
+def _remove_tmp(path):
+    import shutil
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def _sweep_stale_tmp(root, age=86400):
+    now = time.time()
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return
+    for name in names:
+        p = os.path.join(root, name)
+        try:
+            if (name.startswith(_TMP_PREFIX) and os.path.isdir(p)
+                    and now - os.stat(p).st_mtime > age):
+                _remove_tmp(p)
+        except OSError:
+            pass
+
+
+def _use_process_tmp():
+    import atexit
+    root = tempfile.gettempdir()
+    _sweep_stale_tmp(root)
+    d = tempfile.mkdtemp(prefix=_TMP_PREFIX, dir=root)
+    os.environ["TMPDIR"] = d
+    tempfile.tempdir = d
+    atexit.register(_remove_tmp, d)
+
+
+if not os.path.basename(tempfile.gettempdir()).startswith(_TMP_PREFIX):
+    _use_process_tmp()
+
 from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 
