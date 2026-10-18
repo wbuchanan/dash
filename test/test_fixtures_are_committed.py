@@ -346,7 +346,7 @@ GENERATORS = {
     "parser_twoway_truth.json": "scripts/extract_twoway_oracle_truth.do",
     "pcycle_fraction_truth.json": "scripts/extract_pcycle_fraction_truth.do",
     "pip_refusals.json": "scripts/extract_pip_refusals.py",
-    "qualified_stat_truth.json": "scripts/extract_qualified_stat_truth.do",  # pending
+    "qualified_stat_truth.json": "scripts/extract_qualified_stat_truth.do",
     "rangept_truth.json": "scripts/extract_rangept_truth.do",
     "rbar_dot_truth.json": "scripts/extract_rbar_dot_truth.do",
     "recast_truth.json": "scripts/extract_recast_truth.do",
@@ -456,12 +456,12 @@ PENDING_META = frozenset({
     "value_truth.json",
 })
 
-#: The one fixture whose generator S60 did not finish (WP-31 K3 residual,
-#: BUGS.md "Truth fixtures awaiting regeneration"): GENERATORS names the
-#: script it is to have; until it exists the fixture keeps its old _meta
-#: and probe paths.  test_the_pending_generator_is_still_pending fails the
-#: day the script is committed, so the entry is deleted then.
-GENERATOR_PENDING = frozenset({"qualified_stat_truth.json"})
+#: Fixtures whose generator GENERATORS names but which is not yet written:
+#: such a fixture keeps its old _meta and probe paths, and
+#: test_the_pending_generator_is_still_pending fails the day the script is
+#: committed, so the entry is deleted then.  Empty since S60 wrote
+#: scripts/extract_qualified_stat_truth.do (WP-31 K3); nothing may join it.
+GENERATOR_PENDING = frozenset()
 
 #: A string that is a machine path: POSIX roots a probe writes under, or a
 #: Windows drive.
