@@ -101,3 +101,66 @@ def test_the_ring_orders_the_key_beside_the_legend(mode):
     # Bokeh draws a side's first model nearest the plot.
     assert order({}) == ["Legend", "ColorBar"]
     assert order({"clegend": "ring(2)"}) == ["ColorBar", "Legend"]
+
+
+# ---------------------------------------------------------------------------
+# `vertical_text text_option': text()'s vertical alignment
+# ---------------------------------------------------------------------------
+#
+# Measured 18oct2026 (s2color, SVG, ``twoway scatter mpg weight, text(30
+# 3000 "TXT")``): a user scheme's `vertical_text text_option top', `bottom'
+# and `baseline' draw byte for byte as text()'s alignment(top), (bottom)
+# and (baseline), at the default size and at size(huge).  The baseline is
+# below the point by 0.35 of the text size at middle, 0.20 at top and
+# bottom (alike) and 0.50 at baseline; two lines shift together.  dash
+# drew every alignment at middle and named alignment().
+
+#: The text's shift from middle's place, up, in units of its size.
+_VALIGN_SHIFT = {"middle": 0.0, "top": 0.15, "bottom": 0.15,
+                 "baseline": -0.15}
+
+
+def _text_labels(go, bo, mode, opts=""):
+    import test_added_text as tat
+    spec = tat._spec([tat._at(30, 3000, ["TXT"], opts)], go=go, bo=bo)
+    return tat._all_labels(spec, "saved" if mode == "standalone" else
+                           "served")
+
+
+def _shift_px(lab):
+    import test_added_text as tat
+    return tat._pt(lab.text_font_size) * 96.0 / 72.0
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestTextVerticalAlignment:
+
+    @pytest.mark.parametrize("valign", sorted(_VALIGN_SHIFT))
+    @pytest.mark.parametrize("size", ["", " size(huge)"])
+    def test_alignment_shifts_the_text(self, mode, valign, size):
+        (lab,) = _text_labels({}, {"scheme": "s2color"}, mode,
+                              f"alignment({valign}){size}")
+        want = _VALIGN_SHIFT[valign] * _shift_px(lab)
+        assert lab.y_offset == pytest.approx(want, abs=0.01)
+        assert lab.x_offset == pytest.approx(0.0, abs=0.01)
+
+    def test_the_schemes_alignment_is_the_default(self, mode, tmp_path,
+                                                  monkeypatch):
+        _user_scheme(tmp_path, monkeypatch, "wtvb.scheme",
+                     ["#include s2color", "vertical_text text_option "
+                      "baseline"])
+        (lab,) = _text_labels({}, {"scheme": "wtvb"}, mode)
+        assert lab.y_offset == pytest.approx(-0.15 * _shift_px(lab),
+                                             abs=0.01)
+        (lab,) = _text_labels({}, {"scheme": "wtvb"}, mode,
+                              "alignment(middle)")
+        assert lab.y_offset == pytest.approx(0.0, abs=0.01)
+
+    def test_a_vertical_text_shifts_across(self, mode):
+        """orientation(vertical): the shift is along the text's own up,
+        which is screen left."""
+        (lab,) = _text_labels({}, {"scheme": "s2color"}, mode,
+                              "alignment(top) orientation(vertical)")
+        assert lab.x_offset == pytest.approx(-0.15 * _shift_px(lab),
+                                             abs=0.01)
+        assert lab.y_offset == pytest.approx(0.0, abs=0.01)

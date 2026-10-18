@@ -52062,7 +52062,16 @@ _DASH_ADDED_TEXT_ORIENT = {
 _DASH_ADDED_TEXT_HONOURED = frozenset({
     "size", "color", "justification", "orientation", "box", "nobox",
     "fcolor", "lcolor", "lwidth", "margin", "placement", "tstyle",
+    "alignment",
 })
+
+#: text()'s vertical alignment as a shift from middle's place, up, in
+#: units of the text's size (WP-32, measured 18oct2026, s2color SVG of
+#: ``text(30 3000 "TXT", alignment())`` at the default size and huge): the
+#: baseline is below the point by 0.35 of the size at middle, 0.20 at top
+#: and bottom alike and 0.50 at baseline; lines shift together.
+_DASH_ADDED_TEXT_VSHIFT = {"middle": 0.0, "top": 0.15, "bottom": 0.15,
+                           "baseline": -0.15}
 
 
 def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
@@ -52307,7 +52316,7 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
     T = OptionTranslator
     _text, o = _parse_textbox_opt('"", ' + str(opts or ""))
     out = dict.fromkeys(("anchor", "angle", "align", "px", "color", "box",
-                         "fill", "line", "lwidth", "padding"))
+                         "fill", "line", "lwidth", "padding", "valign"))
     bad = [k if v == k else f"{k}({v})" for k, v in o.items()
            if k not in _DASH_ADDED_TEXT_HONOURED]
     _dash_report_suboptions("text", bad, seen, key)
@@ -52334,6 +52343,10 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
         out["angle"] = _DASH_ADDED_TEXT_ORIENT.get(o["orientation"])
     if o.get("justification") in ("left", "center", "right"):
         out["align"] = o["justification"]
+    if o.get("alignment") in _DASH_ADDED_TEXT_VSHIFT:
+        out["valign"] = o["alignment"]
+    elif o.get("alignment"):
+        _dash_style_note("text(alignment)", o["alignment"], "alignment")
     out["px"] = _textbox_size(o, base_pt, ref_in, "text(size)")
     out["color"] = _textbox_color(o, None, base=base_color)
     if styled is not None:
@@ -52462,6 +52475,19 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
             kw["x_range_name"] = names["x"]
         if names["y"]:
             kw["y_range_name"] = names["y"]
+        # alignment(), else the scheme's `vertical_text text_option'
+        # (WP-32): a shift from middle's place along the text's own up.
+        font = o["px"] or base_pt
+        angle = o["angle"] or 0.0
+        try:
+            _shift = _DASH_ADDED_TEXT_VSHIFT.get(
+                o["valign"] or scheme.text_option_vertical, 0.0) \
+                * float(OptionTranslator.css_to_pt(font)) \
+                * OptionTranslator.PX_PER_PT
+        except (TypeError, ValueError):
+            _shift = 0.0
+        kw["x_offset"] = round(-math.sin(angle) * _shift, 4) + 0.0
+        kw["y_offset"] = round(math.cos(angle) * _shift, 4) + 0.0
         # C0 controls and DEL are not drawn (A34): a char(30) a line holds
         # is its own, never the copies' separator.
         fig.add_layout(Label(
@@ -52470,9 +52496,9 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
                            for s in lines),
             anchor=o["anchor"] or _DASH_ADDED_TEXT_PLACE.get(
                 scheme.text_option_placement, "center"),
-            angle=o["angle"] or 0.0,
+            angle=angle,
             text_align=o["align"] or scheme.text_option_justification,
-            text_font_size=o["px"] or base_pt,
+            text_font_size=font,
             text_color=o["color"] or base_color,
             background_fill_color=(o["fill"] or scheme.text_option_fill_color)
             if boxed else None,
@@ -64130,6 +64156,7 @@ class ServerAppBuilder:
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
+                      "_DASH_ADDED_TEXT_VSHIFT",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
                       "_DASH_SCALE_SUBOPTS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",

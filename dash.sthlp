@@ -741,13 +741,17 @@ size.  Drawn: {opt placement()} (every compass name and clock position
 ({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}),
 {opt size()}, {opt color()}, {opt box} and {opt nobox}, {opt fcolor()}
 and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
-{opt lwidth()} and {opt blwidth()}, {opt margin()} and {opt tstyle()}
+{opt lwidth()} and {opt blwidth()}, {opt margin()}, {opt alignment()}
+({cmd:top} and {cmd:bottom} draw the text 0.15 of its size above
+{cmd:middle}'s place and {cmd:baseline} 0.15 below it, as {cmd:twoway}
+does) and {opt tstyle()}
 (the base size and colour, {cmd:tstyle(heading)} the heading's, which
 {opt size()} and {opt color()} still override; an unknown name draws the
 default with {cmd:twoway}'s note); the scheme's {cmd:text_option} box
-otherwise.  Every other textbox sub-option {cmd:twoway} takes
-({opt width()}, {opt height()}, {opt linegap()}, {opt angle()},
-{opt alignment()} ...) is named once in a note and not drawn.  A
+otherwise, its {cmd:vertical_text text_option} the default
+{opt alignment()}.  Every other textbox sub-option {cmd:twoway} takes
+({opt width()}, {opt height()}, {opt linegap()}, {opt angle()} ...) is
+named once in a note and not drawn.  A
 {cmd:$}{it:name}, with or without braces around {it:name}, that reaches
 {cmd:dash} in a line -- written {cmd:\$name} in a do-file, or passed
 through {cmd:macval()} -- is replaced by the global's value when the graph
