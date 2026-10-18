@@ -107,49 +107,119 @@ def _scatter_glyphs(dr):
     return out
 
 
-def _scheme_attr_reads(attr):
-    """Line numbers in dash_render.py that READ the scheme attribute *attr*.
+_DASH_RENDER_PATH = os.path.join(_HERE, "..", "dash_render.py")
+_SCHEME_TREE = []
+
+
+def _scheme_tree():
+    """dash_render.py's syntax tree, parsed once per process."""
+    if not _SCHEME_TREE:
+        import ast
+        with open(_DASH_RENDER_PATH, encoding="utf-8") as fh:
+            _SCHEME_TREE.append(ast.parse(fh.read()))
+    return _SCHEME_TREE[0]
+
+
+_SCHEME_READS = {}
+
+
+def _scheme_reads():
+    """{attribute: [line, ...]}: every read of a SCHEME's attribute in
+    dash_render.py, from one walk of its syntax tree.
 
     A read is a load of ``self.<attr>`` inside class SchemeParser, of
     ``scheme.<attr>`` or ``<anything>.scheme.<attr>`` (``self.scheme``,
-    ``self.mapper.scheme``) elsewhere, or ``getattr(<same>, "<attr>")``.
-    Assignments are stores and do not count, and neither does a Bokeh
-    property that shares the name (``glyph.fill_alpha = ...``,
+    ``self.mapper.scheme``) elsewhere, or ``getattr(<x>, "<attr>")`` where
+    *x* is one of those or an expression naming a scheme (``getattr(
+    getattr(fig, "_dash_scheme", None) or SchemeParser.fallback(), ...)``,
+    WP-32).  Assignments are stores and do not count, and neither does a
+    Bokeh property that shares the name (``glyph.fill_alpha = ...``,
     ``fig.title.text_font_size = ...``): its base is no scheme.
     """
+    if _SCHEME_READS:
+        return _SCHEME_READS
     import ast
-    with open(os.path.join(_HERE, "..", "dash_render.py"),
-              encoding="utf-8") as fh:
-        tree = ast.parse(fh.read())
 
     def _is_scheme(node, in_parser):
         if isinstance(node, ast.Name):
             return node.id == "scheme" or (in_parser and node.id == "self")
         return isinstance(node, ast.Attribute) and node.attr == "scheme"
 
-    reads = []
+    def _names_a_scheme(node, in_parser):
+        for n in ast.walk(node):
+            if _is_scheme(n, in_parser):
+                return True
+            if isinstance(n, ast.Name) and n.id == "SchemeParser":
+                return True
+            if (isinstance(n, ast.Constant) and n.value == "_dash_scheme"):
+                return True
+        return False
+
+    reads = {}
 
     def _walk(node, in_parser):
         for child in ast.iter_child_nodes(node):
             inside = in_parser
             if isinstance(child, ast.ClassDef):
                 inside = child.name == "SchemeParser"
-            if (isinstance(child, ast.Attribute) and child.attr == attr
+            if (isinstance(child, ast.Attribute)
                     and isinstance(child.ctx, ast.Load)
                     and _is_scheme(child.value, inside)):
-                reads.append(child.lineno)
+                reads.setdefault(child.attr, []).append(child.lineno)
             if (isinstance(child, ast.Call)
                     and isinstance(child.func, ast.Name)
                     and child.func.id == "getattr"
                     and len(child.args) >= 2
                     and isinstance(child.args[1], ast.Constant)
-                    and child.args[1].value == attr
-                    and _is_scheme(child.args[0], inside)):
-                reads.append(child.lineno)
+                    and isinstance(child.args[1].value, str)
+                    and _names_a_scheme(child.args[0], inside)):
+                reads.setdefault(child.args[1].value, []).append(
+                    child.lineno)
             _walk(child, inside)
 
-    _walk(tree, False)
-    return reads
+    _walk(_scheme_tree(), False)
+    _SCHEME_READS.update(reads)
+    return _SCHEME_READS
+
+
+def _scheme_attr_reads(attr):
+    """Line numbers in dash_render.py that READ the scheme attribute *attr*
+    (:func:`_scheme_reads`)."""
+    return list(_scheme_reads().get(attr, []))
+
+
+def _parsed_scheme_keys():
+    """Every public attribute SchemeParser._init_properties assigns
+    (``self.<name> = ...`` or ``self.<name>: T = ...``), in source order:
+    the keys the scheme is parsed into, read from the code rather than
+    listed by hand (WP-32, BUGS.md "Harness guards")."""
+    import ast
+    cls = next(n for n in _scheme_tree().body
+               if isinstance(n, ast.ClassDef) and n.name == "SchemeParser")
+    fn = next(n for n in cls.body if isinstance(n, ast.FunctionDef)
+              and n.name == "_init_properties")
+    out = []
+    for n in ast.walk(fn):
+        if (isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Store)
+                and isinstance(n.value, ast.Name) and n.value.id == "self"
+                and not n.attr.startswith("_") and n.attr not in out):
+            out.append(n.attr)
+    return out
+
+
+#: Parsed keys nothing reads, each with why, measured 18oct2026 (WP-32)
+#: when the enumeration replaced the hand-written list of 22.  A key that
+#: gains a reader fails test_an_unread_key_is_still_unread: delete it here.
+_UNREAD_KEYS = {
+    # By design: Stata's note textbox reads `gsize small_body', not this.
+    "note_font_size": "gsize note: Stata's note() box does not read it",
+    # BUGS.md "Five scheme keys are parsed and read by nothing".
+    "by_legend_ring": "BUGS.md: a by() legend's ring",
+    "zyx2_ring": "BUGS.md: the contour legend's ring",
+    "text_option_vertical": "BUGS.md: text()'s vertical alignment",
+    "numticks_minor": "BUGS.md: the scheme's default minor tick counts",
+    "legend_span": "BUGS.md: whether the legend spans the graph",
+}
 
 
 # ======================================================================
@@ -602,21 +672,7 @@ class TestNoParsedKeyIsDiscarded:
             assert [g.minor_grid_line_color for g in fig.ygrid] == [None], mode
 
     @pytest.mark.parametrize("attr", [
-        "fill_alpha", "minor_grid_color",
-        "title_color", "heading_font_size",
-        # The S3 batch's keys: the reference line's, the plot region
-        # border's and note()'s text box.
-        "xyline_color", "xyline_dash", "xyline_width",
-        "plotregion_line_color", "plotregion_line_width",
-        "note_text_font_size", "note_text_color", "note_box_fill_color",
-        # WP-30 P1.4a: the histogram style, the symbol traits and the
-        # marker outline cycle.
-        "histogram_color", "histogram_line_color", "histogram_intensity",
-        "histogram_line_width", "p_symbol_hollow", "p_symbol_factor",
-        "p_markline_colors",
-        # WP-30 P1.4b: the marker-label style.
-        "p_label_colors", "p_label_alphas", "p_label_sizes",
-    ])
+        a for a in _parsed_scheme_keys() if a not in _UNREAD_KEYS])
     def test_the_key_is_read_somewhere(self, attr):
         """A parsed key with no consumer is a key that does nothing.
 
@@ -628,13 +684,14 @@ class TestNoParsedKeyIsDiscarded:
         text_font_size (`gsize text') was parsed and read by nothing, and
         passed the old count only because `.text_font_size' is also Bokeh's
         own name (WP-24, 24sep2026).  It is retired, not given a consumer:
-        see test_gsize_text_is_retired_because_stata_draws_nothing_with_it."""
+        see test_gsize_text_is_retired_because_stata_draws_nothing_with_it.
+
+        WP-32 (BUGS.md "Harness guards"): the keys are every attribute
+        _init_properties assigns, read from its syntax tree; the
+        hand-written list named 22 of them."""
         sp = SchemeParser("s2color")
-        # A rename used to skip here, silently dropping the attribute from
-        # the check; the list names what SchemeParser must parse.
         assert hasattr(sp, attr), (
-            f"SchemeParser no longer parses {attr}; update this list"
-        )
+            f"SchemeParser assigns {attr} but s2color does not carry it")
         # The reads of the SCHEME's attribute, not of any attribute that
         # happens to share its name: `.fill_alpha' occurs in eleven
         # glyph.fill_alpha writes and `.text_font_size' in Bokeh's
@@ -643,6 +700,30 @@ class TestNoParsedKeyIsDiscarded:
         # (measured 24sep2026).
         reads = _scheme_attr_reads(attr)
         assert reads, f"scheme.{attr} is parsed and never read"
+
+    @pytest.mark.parametrize("attr", sorted(_UNREAD_KEYS))
+    def test_an_unread_key_is_still_unread(self, attr):
+        """Each exemption is a parsed key nothing reads; the day one gains
+        a reader, it is taken off _UNREAD_KEYS (and its BUGS.md entry
+        closed)."""
+        assert attr in _parsed_scheme_keys(), attr
+        assert hasattr(SchemeParser("s2color"), attr), attr
+        assert _scheme_attr_reads(attr) == [], (attr,
+                                                _scheme_attr_reads(attr))
+
+    def test_the_enumeration_reads_the_code(self):
+        keys = _parsed_scheme_keys()
+        # Measured 18oct2026: 140 public attributes.
+        assert len(keys) >= 140, len(keys)
+        for a in ("fill_alpha", "minor_grid_color", "legend_ring",
+                  "axis_title_gap_px", "note_font_size"):
+            assert a in keys, a
+        assert not [a for a in keys if a.startswith("_")]
+        assert len(set(keys)) == len(keys)
+        # The widened getattr reader: axis_title_gap_px is read only as
+        # getattr(getattr(fig, "_dash_scheme", None) or
+        # SchemeParser.fallback(), "axis_title_gap_px", None).
+        assert _scheme_attr_reads("axis_title_gap_px")
 
 
     def test_gsize_text_is_retired_because_stata_draws_nothing_with_it(self):
