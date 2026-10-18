@@ -483,6 +483,20 @@ class TestBothModesReadTheSameFile:
         assert _red_line(tsn._one(rs, "Line")) == RED
         assert not [n for n in notes if "named style" in n], notes
 
+    def test_the_walk_notes_nothing_itself(self, tmp_path):
+        """The served build walks the style rows after resolving its
+        schemes itself; an unknown scheme was noted once by that and again
+        by this walk (WP-32, found by test_mode_parity.py's ado-path
+        entries)."""
+        d = _user_dir(tmp_path, {"style/linestyle-mine.style": U44B})
+        spec = tp._spec([plot_for("line", {"lstyle": "mine"})],
+                        {"scheme": "wp32none"},
+                        {"scheme": "wp32nograph"})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            SP.style_rows_for_spec(spec, (d,))
+        assert [str(w.message) for w in caught] == []
+
     def test_the_spec_text_gains_the_rows(self, tmp_path):
         """dash.ado's writers hand the spec text (its last } still to
         come) through _dash_embed_style_rows."""

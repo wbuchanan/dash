@@ -6043,3 +6043,71 @@ class TestTheExportsAgree:
         built = _saved_exports(_EXPORT_SPEC, [])
         moved = _saved_exports(_EXPORT_SPEC, moves)
         assert built[0] != moved[0] and built[1] != moved[1]
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6): a scheme found on the ado-path, not shipped.
+# ---------------------------------------------------------------------------
+
+#: An ado-path of this process's own, as dash.ado hands it over
+#: (build_options["scheme_dirs"], Stata's order): a PLUS directory whose
+#: letter subdirectory holds a prefixed scheme file, and a PERSONAL one
+#: holding an unprefixed file that includes the first (test_scheme_lookup
+#: measures the walk itself).
+_ADO = {k: os.path.join(_TMP, "ado", k) for k in ("personal", "plus")}
+os.makedirs(os.path.join(_ADO["plus"], "s"), exist_ok=True)
+os.makedirs(_ADO["personal"], exist_ok=True)
+with open(os.path.join(_ADO["plus"], "s", "scheme-wp32ado.scheme"), "w",
+          encoding="utf-8") as _fh:
+    _fh.write('#include s2color\ncolor background "255 240 220"\n'
+              'color p1 "200 30 30"\ncolor p2 green\n'
+              'color plotregion "240 240 255"\nsymbol p1 diamond\n'
+              'gsize heading large\n')
+with open(os.path.join(_ADO["personal"], "wp32own.scheme"), "w",
+          encoding="utf-8") as _fh:
+    _fh.write('#include wp32ado\ncolor background "220 255 220"\n'
+              'color p1 navy\n')
+_ADO_DIRS = [_ADO["personal"], _ADO["plus"]]
+#: Each scheme's background; wp32none is on no path, so s2color's.
+_ADO_BACKGROUND = {"wp32ado": "#fff0dc", "wp32own": "#dcffdc",
+                   "wp32none": "#eaf2f3"}
+
+_ADO_PLOTS = [_sc(), plot_for("line"), plot_for("lfit")]
+ADO_SCHEME_CORPUS = [
+    _case("ado-path scheme(wp32ado)", _ADO_PLOTS,
+          {"scheme": "wp32ado", "scheme_dirs": _ADO_DIRS}),
+    _case("ado-path set scheme wp32own", _ADO_PLOTS,
+          {"session_scheme": "wp32own", "scheme_dirs": _ADO_DIRS}),
+    _case("ado-path graph-level scheme(wp32own) beside scheme(wp32ado)",
+          bo={"scheme": "wp32ado", "scheme_dirs": _ADO_DIRS,
+              "filter": "foreign, type(dropdown)"},
+          graphs=[("g1", _ADO_PLOTS, {"scheme": "wp32own"}),
+                  ("g2", [plot_for("histogram")])]),
+    # Looked for along the ado-path and found nowhere: one note in each
+    # mode.  The served build gave it twice (WP-32): the style-row walk
+    # resolved the dashboard's scheme name a second time outside its
+    # warning guard (SchemeParser.style_rows_for_spec).
+    _case("ado-path scheme(wp32none), found nowhere", _ADO_PLOTS,
+          {"scheme": "wp32none", "scheme_dirs": _ADO_DIRS}),
+]
+
+
+@pytest.mark.parametrize("name,spec", ADO_SCHEME_CORPUS)
+class TestTheTwoModesAgreeOnAnAdoPathScheme(_Agree):
+    """Every comparison of TestTheTwoModesAgree, for a scheme read from the
+    ado-path (WP-32: the corpus drew shipped schemes only)."""
+
+    def test_the_scheme_was_read(self, name, spec):
+        """Guards the guard: two modes falling back to s2color agree."""
+        pair = _render_pair(name, spec)
+        bo = spec["build_options"]
+        names = [(g["graph_options"].get("scheme") or bo.get("scheme")
+                  or bo.get("session_scheme")) for g in spec["graphs"]]
+        got = [f["chrome"]["border_fill_color"].lower()
+               for f in pair["std"]["figures"]]
+        assert got == [_ADO_BACKGROUND[n] for n in names], (name, got)
+        said = [w for w in pair["std"]["warnings"] if "scheme" in w]
+        if names == ["wp32none"]:
+            assert len(said) == 1 and "'wp32none'" in said[0], said
+        else:
+            assert not said, said

@@ -12947,14 +12947,22 @@ class SchemeParser:
         bo = bo if isinstance(bo, dict) else {}
         dirs = tuple(ado_dirs or ())
         names: list = []
-        schemes = [_resolve_scheme_name(spec, dirs)]
+
+        # The build resolves these names itself and says what it finds
+        # once; resolved again here outside a guard, an unknown scheme was
+        # noted twice by the served build (WP-32, test_mode_parity.py).
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            schemes = [_resolve_scheme_name(spec, dirs)]
+            for g in spec.get("graphs") or []:
+                go = g.get("graph_options") if isinstance(g, dict) else None
+                if isinstance(go, dict) and str(go.get("scheme")
+                                                or "").strip():
+                    schemes.append(_dash_scheme_choice(
+                        str(go.get("scheme")).strip(), "graph", dirs))
         for g in spec.get("graphs") or []:
             if not isinstance(g, dict):
                 continue
-            go = g.get("graph_options")
-            if isinstance(go, dict) and str(go.get("scheme") or "").strip():
-                schemes.append(_dash_scheme_choice(
-                    str(go.get("scheme")).strip(), "graph", dirs))
             for pl in g.get("plots") or []:
                 opts = pl.get("options") if isinstance(pl, dict) else None
                 if not isinstance(opts, dict):
