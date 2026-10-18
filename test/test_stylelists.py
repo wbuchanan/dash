@@ -362,7 +362,8 @@ class TestBothModesDrawTwowaysSeries:
     def test_no_unrecognised_note(self):
         for c in ("T01", "T10", "T11", "T09"):
             for mode, (_f, w) in _both(c).items():
-                assert not [m for m in w if "not a recognised" in m], (
+                assert not [m for m in w if "not a recognised" in m
+                            or "not found in class color" in m], (
                     c, mode, w)
 
 

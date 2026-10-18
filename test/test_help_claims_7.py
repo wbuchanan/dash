@@ -1192,7 +1192,10 @@ class TestAnUnknownLineStyleIsNamedWithoutALine:
                                          ("lwidth", "notawidth")])
     def test_the_note(self, mode, opt, val):
         _, caught = _render(mode, [plot_for("scatter", {opt: val})])
-        assert any(val in w and opt in w for w in caught), caught
+        # Flipped (18oct2026): an unknown colour is noted in twoway's
+        # words, which name the colour and not the option.
+        assert any(val in w and (opt in w or "class color" in w)
+                   for w in caught), caught
 
 
 class TestColourPalettes:
@@ -1411,7 +1414,11 @@ class TestAdversarialLegendAxesRegions:
                                    "graphregion": payload})
             assert fig.background_fill_color == "#000000"
             assert fig.border_fill_color == "#000000"
-            assert any("javascript" in w for w in caught), caught
+            # Flipped (18oct2026): named in twoway's words, its first
+            # word: the payload after it is never echoed.
+            assert any("named style red; not found in class color" in w
+                       for w in caught), caught
+            assert not any("javascript" in w for w in caught), caught
 
     def test_quotes_that_are_not_a_pair_are_not_stripped(self):
         """Bypass: compound quotes are a pair and are read; a quote with no
@@ -1429,8 +1436,9 @@ class TestAdversarialLegendAxesRegions:
             # Any warning passed `assert caught'.  The note that names the
             # colour is knowable (measured 24sep2026, both modes, the only
             # warning this render raises).
-            assert any('plotregion(color("255 0 0)) is not a recognised '
-                       'colour' in w for w in caught), caught
+            # Flipped (18oct2026): twoway's words, naming the first word.
+            assert any('named style "255 not found in class color' in w
+                       for w in caught), caught
 
     def test_a_hundred_thousand_character_colour_is_named_quickly(self):
         """Exhaustion: an enormous colour name is judged and named in
@@ -1445,9 +1453,10 @@ class TestAdversarialLegendAxesRegions:
             # Named means this note, not any warning (measured 24sep2026,
             # both modes: the only one, 161 characters -- the name shown
             # cut short, never all 100,000 of it).
+            # Flipped (18oct2026): twoway's words, naming the colour.
             notes = [w for w in caught
-                     if "plotregion(color(aaaa" in w
-                     and "is not a recognised colour" in w]
+                     if "named style aaaa" in w
+                     and "not found in class color" in w]
             assert len(notes) == 1, caught
             assert len(notes[0]) < 1000, len(notes[0])
 

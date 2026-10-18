@@ -463,8 +463,10 @@ class TestAColourWrittenWithCommasIsRefusedInStata:
             g = fig.renderers[0].glyph
             assert str(g.fill_color).lower() == "#000000", g.fill_color
         assert sw == vw
-        assert [w for w in sw if "mcolor(" in w] == [
-            "dash: mcolor(255,0,0) is not a recognised colour; using black."]
+        # Flipped (18oct2026): twoway's words, naming the colour.
+        assert [w for w in sw if "class color" in w] == [
+            "dash: named style 255,0,0 not found in class color, default "
+            "attributes used"]
 
 
 #: An unknown style inside a structured option, and the property it would
@@ -512,7 +514,11 @@ class TestAnUnknownStyleInsideAStructuredOption:
         r0, _, _, d0, _, _ = _both(_sub(tmp_path, "plain"), plain)
         r1, _, sw, d1, _, vw = _both(_sub(tmp_path, "bogus"), bogus)
         assert sw == vw
-        assert len([w for w in sw if sub in w]) == 1, sw
+        # Flipped (18oct2026): an unknown colour's note is twoway's, which
+        # names the colour, not the sub-option.
+        assert len([w for w in sw if sub in w or (
+            sub == "color(bogus)" and "named style bogus not found in "
+            "class color" in w)]) == 1, sw
         if sub.startswith("size"):
             # WP-30 P1.12a: twoway draws an unknown size as medium, 11 pt
             # (it was the plain figure's size).

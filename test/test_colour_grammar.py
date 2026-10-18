@@ -248,8 +248,10 @@ class TestTheTranslatorsDelegate:
     def test_parse_color_alpha_draws_an_unknown_colour_black(self):
         out, msgs = _noted(OT.parse_color_alpha, "bogus", "mcolor")
         assert out == ("#000000", None)
-        assert msgs == ["dash: mcolor(bogus) is not a recognised colour; "
-                        "using black."], msgs
+        # Flipped (18oct2026): dash's own wording was wrong because twoway
+        # notes an unknown colour in its words, naming the colour alone.
+        assert msgs == ["dash: named style bogus not found in class color, "
+                        "default attributes used"], msgs
         out, msgs = _noted(OT.parse_color_alpha, "Red%50")
         assert out == ("#000000", 0.5) and msgs == []
 
@@ -359,8 +361,10 @@ class TestSchemeFiles:
 class TestModuleReaders:
     def test_textbox_colour(self):
         out, msgs = _noted(dr._textbox_color, {"color": "bogus"}, None)
+        # Flipped (18oct2026): twoway's wording, not dash's.
         assert out == "#000000" and msgs == [
-            "dash: color(bogus) is not a recognised colour; using black."]
+            "dash: named style bogus not found in class color, default attributes "
+            "used"]
         assert _noted(dr._textbox_color, {"color": "#F00"}, None) == (None, [])
         assert dr._textbox_color({"color": "navy*.5"}, None) == "#8da3b7"
 
@@ -375,9 +379,11 @@ class TestModuleReaders:
                            {"xline": "3000, lcolor(bogus)"}), mode)
         spans = [x for x in d.fig.center if isinstance(x, Span)]
         assert [s.line_color for s in spans] == ["#000000"]
-        assert [m for m in d.warnings if "xline(" in m] == [
-            "dash: xline(lcolor(bogus)) is not a recognised colour; "
-            "using black."]
+        # Flipped (18oct2026): twoway's wording, which names the colour
+        # and not the option.
+        assert [m for m in d.warnings if "class color" in m] == [
+            "dash: named style bogus not found in class color, default attributes "
+            "used"]
         d = _draw(tp._spec([plot_for("scatter")], {"scheme": "s1rcolor"},
                            {"xline": "3000, lcolor(fg)"}), mode)
         spans = [x for x in d.fig.center if isinstance(x, Span)]
@@ -424,8 +430,10 @@ class TestBothModes:
         p2 = d.scheme.p_colors[2]
         assert got == [("#8da3b7", 1.0), ("#000000", 1.0), (p2, 1.0),
                        ("#8da3b7", 0.5)], got
-        assert [m for m in d.warnings if "mcolor(" in m] == [
-            "dash: mcolor(bogus) is not a recognised colour; using black."]
+        # Flipped (18oct2026): twoway's wording, not dash's.
+        assert [m for m in d.warnings if "class color" in m] == [
+            "dash: named style bogus not found in class color, default attributes "
+            "used"]
 
     def test_s1rcolor(self, mode):
         d = _draw(tp._spec([plot_for("scatter", {"mcolor": "fg"}),
@@ -440,6 +448,53 @@ class TestBothModes:
         d = _draw(tp._spec([plot_for("scatter")], {"scheme": name}, {}), mode)
         assert str(_glyphs(d, "Scatter")[0].fill_color).lower() == "#8da3b7"
         assert d.fig.border_fill_color == "#000000"
+
+    @pytest.mark.parametrize("plot,go,read,want", [
+        (("scatter", {"mcolor": "nosuchcolour"}), {},
+         lambda d: [(str(g.fill_color).lower(), str(g.line_color).lower())
+                    for g in _glyphs(d, "Scatter")],
+         [("#000000", "#000000")]),
+        (("line", {"lcolor": "nosuchcolour"}), {},
+         lambda d: [str(g.line_color).lower() for g in _glyphs(d, "Line")],
+         ["#000000"]),
+        # Black at the area's fill intensity, as twoway's SVG has it.
+        (("area", {"fcolor": "nosuchcolour"}), {},
+         lambda d: [str(g.fill_color).lower() for g in _glyphs(d, "VArea")
+                    + _glyphs(d, "Patch")][:1],
+         ["#333333"]),
+        (("scatter", {}), {"title": '"T", color(nosuchcolour)'},
+         lambda d: str(d.fig.title.text_color).lower(), "#000000"),
+    ], ids=["mcolor", "lcolor", "fcolor", "title_color"])
+    def test_an_unknown_colour_is_noted_in_twoways_words(self, mode, plot,
+                                                         go, read, want):
+        """Measured 18oct2026 (StataNow 19.5, s2color): twoway draws an
+        unknown colour name black -- marker fill and outline #000000, a
+        line #000000, an area fill #333333 (black at the area's
+        intensity), a title #000000 -- and notes "named style nosuchcolour
+        not found in class color, default attributes used".  dash drew the
+        same colours and noted "dash: mcolor(nosuchcolour) is not a
+        recognised colour; using black." instead; it notes twoway's words
+        after "dash: ", its note channel's mark."""
+        d = _draw(tp._spec([plot_for(*plot)], None, go), mode)
+        assert read(d) == want
+        assert [m for m in d.warnings if "nosuchcolour" in m] == [
+            "dash: named style nosuchcolour not found in class color, "
+            "default attributes used"], d.warnings
+
+    @pytest.mark.parametrize("value,named", [
+        ("bogus%50", "bogus"), ("bogus*2", "bogus"), ("RED", "RED"),
+        ("300 0 0", "300"), ("hsv 400 2 2", "hsv"), ("bogus foo", "bogus"),
+    ])
+    def test_the_note_names_what_twoway_names(self, mode, value, named):
+        """twoway names the colour's first word, its %# and *# left off
+        (measured 18oct2026: mcolor(bogus%50) notes "named style bogus",
+        mcolor(300 0 0) "named style 300", mcolor(hsv 400 2 2) "named
+        style hsv")."""
+        d = _draw(tp._spec([plot_for("scatter", {"mcolor": value})], None,
+                           {}), mode)
+        assert [m for m in d.warnings if "class color" in m] == [
+            "dash: named style %s not found in class color, default "
+            "attributes used" % named], d.warnings
 
     def test_the_site_probes(self, mode):
         """The fixture's site probes dash owns: lines, bars, titles,

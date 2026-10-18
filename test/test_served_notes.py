@@ -98,7 +98,9 @@ class TestTheTrial:
             before = snap()
             got, _ = _built(tmp_path, _SPEC, True)
             after = snap()
-        assert [w for w in got if "mcolor" in w], got
+        # Flipped (18oct2026): mcolor(notacolor) is noted in twoway's
+        # words, which name the colour.
+        assert [w for w in got if "named style notacolor" in w], got
         assert after == before
         assert before[4] is False
 
@@ -119,7 +121,8 @@ class TestTheTrial:
             with dr._dash_note_scope(sfi=_Sfi):
                 dr.ServerAppBuilder(sp, dp).build(
                     str(tmp_path / "a.py"), trial=True)
-        assert len([s for s in said if "mcolor(notacolor)" in s]) == 1, said
+        # Flipped (18oct2026): twoway's words, naming the colour.
+        assert len([s for s in said if "named style notacolor" in s]) == 1, said
         assert len([s for s in said if "msymbol(weird)" in s]) == 1, said
 
     def test_a_trial_that_raises_is_one_note_and_the_app_is_written(
@@ -209,7 +212,8 @@ class TestTheGeneratedApp:
             capture_output=True, text=True, timeout=180)
         err = r.stderr.splitlines()
         assert r.returncode == 0, r.stderr[-2000:]
-        assert len([l for l in err if l.startswith("(note:  dash: mcolor(notacolor)")]) == 1, err
+        # Flipped (18oct2026): twoway's words, naming the colour.
+        assert len([l for l in err if l.startswith("(note:  dash: named style notacolor")]) == 1, err
         assert len([l for l in err if l.startswith("(note:  dash: msymbol(weird)")]) == 1, err
         assert err.count("dash: graph 'g1' plot 2 (lfit): "
                          "(note:  regress could not fit model)") == 1, err

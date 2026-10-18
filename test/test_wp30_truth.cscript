@@ -2326,7 +2326,10 @@ program define _s11_case
     if !`drc' capture noisily python: __import__("__main__")._s11_page()
     if !`drc' capture noisily python: __import__("__main__")._s11_app()
     cert_log_has "`work'/s11_`id'.log", needle("not a recognised")
-    global S11_NOTE = (r(count) > 0)
+    local s11_nr = r(count)
+    // An unknown colour is noted in twoway's words since 18oct2026.
+    cert_log_has "`work'/s11_`id'.log", needle("dash: named style")
+    global S11_NOTE = (`s11_nr' + r(count) > 0)
     global S11_OK = (`trc' == 0 & `drc' == 0 & `"${S11_TW}"' != "" & `"${S11_PG}"' == `"${S11_TW}"' & `"${S11_AP}"' == `"${S11_TW}"')
     global S11_WHY `"`id': twoway rc `trc' [${S11_TW}]; dash rc `drc' saved [${S11_PG}] served [${S11_AP}]"'
     capture dash clear

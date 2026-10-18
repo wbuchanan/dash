@@ -210,7 +210,9 @@ class TestTheUnreadStyleFiles:
         para = h[i:h.index("{phang2}", i)]
         assert "{cmd:color-mine.style}" in para
         assert "{cmd:textboxstyle-mine.style}" in para
-        assert "is not a recognised colour; using black." in para
+        # Flipped (18oct2026): the note is twoway's, naming the colour.
+        assert ("named style mine not found in class color, default "
+                "attributes used") in para
         assert "not found in class textboxstyle, default attributes used" \
             in para
         assert "using the body text style" in para

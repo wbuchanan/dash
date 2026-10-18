@@ -132,8 +132,11 @@ class TestColorReachesTheCommonPlotTypes:
                                     {"color": "not_a_colour"})
         glyph = (r[0] if isinstance(r, list) else r).glyph
         assert getattr(glyph, prop) == "#000000"
-        assert ("dash: color(not_a_colour) is not a recognised colour; "
-                "using black.") in \
+        # Flipped (18oct2026): dash's "color(not_a_colour) is not a
+        # recognised colour; using black." was wrong because twoway notes
+        # the colour in its own words.
+        assert ("dash: named style not_a_colour not found in class color, "
+                "default attributes used") in \
             [str(c.message) for c in caught]
 
 

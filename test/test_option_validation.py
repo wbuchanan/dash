@@ -632,8 +632,20 @@ def _both(plots, go=None, kpis=None):
     return r, doc, std_w, srv_w
 
 
+#: twoway's note for an unknown colour, which names the colour and not
+#: the option (measured 18oct2026; test_colour_grammar.py
+#: TestBothModes::test_an_unknown_colour_is_noted_in_twoways_words).
+_TW_COLOUR = ("dash: named style notacolour not found in class color, "
+              "default attributes used")
+
+
 def _naming(warnings_, option):
-    return [w for w in warnings_ if f"{option}(" in w]
+    # Flipped (18oct2026): a colour option's note named the option, which
+    # was dash's wording; twoway's names the colour alone, so a colour
+    # option's note is twoway's note for notacolour.
+    colour = "color" in option
+    return [w for w in warnings_
+            if f"{option}(" in w or (colour and w == _TW_COLOUR)]
 
 
 def _the_one(std_w, srv_w, option):
@@ -688,6 +700,11 @@ class TestAnUnknownStyleNameIsNamedOnceInBothModes:
     def test_one_note_naming_the_option(self, ptype, opts, option):
         r, doc, std_w, srv_w = _both([plot_for(ptype, opts)])
         line = _the_one(std_w, srv_w, option)
+        # Flipped (18oct2026): an unknown colour is noted in twoway's
+        # words, naming the colour; every other style in dash's.
+        if line == _TW_COLOUR:
+            assert "color" in option, line
+            return
         assert line.startswith(f"dash: {option}({opts[option]}) is not a "
                                f"recognised "), line
         assert "; using " in line, line
@@ -758,6 +775,7 @@ class TestAGoodValueIsSilent:
         assert std_w == srv_w
         noisy = [w for w in std_w
                  if "is not a recognised" in w or "must be" in w
+                 or "not found in class color" in w
                  or "is not a number" in w]
         assert not noisy, noisy
 
@@ -920,9 +938,9 @@ class TestTheNoteHelper:
             warnings.simplefilter("always")
             assert dr.OptionTranslator.parse_color_alpha(
                 "notacolour%40", "fcolor") == ("#000000", 0.4)
-        assert [str(w.message) for w in caught] == [
-            "dash: fcolor(notacolour%40) is not a recognised colour; using "
-            "black."]
+        # Flipped (18oct2026): twoway's words, naming the colour without
+        # its %40.
+        assert [str(w.message) for w in caught] == [_TW_COLOUR]
 
     def test_the_translators_still_raise(self):
         """test_options.py pins these; the notes are raised by the callers."""
@@ -962,7 +980,10 @@ class TestTheNoteHelper:
 def _the_one_reading(std_w, srv_w, text):
     """The single warning containing *text*, identical in both modes."""
     assert std_w == srv_w, (text, std_w, srv_w)
-    hits = [w for w in std_w if text in w]
+    # Flipped (18oct2026): an unknown colour is noted in twoway's words,
+    # which name the colour and not the option (_naming).
+    colour = "color(notacolour)" in text and not text.startswith("color(")
+    hits = [w for w in std_w if text in w or (colour and w == _TW_COLOUR)]
     assert len(hits) == 1, f"expected exactly one warning reading {text!r}, got {hits} in {std_w}"
     return hits[0]
 
@@ -985,7 +1006,8 @@ class TestOneNotePerOptionPerRender:
         _, _, std_w, srv_w = _both(
             [plot_for("connected", {"lcolor": "notacolour"})], go)
         line = _the_one(std_w, srv_w, "lcolor")
-        assert line.startswith("dash: lcolor(notacolour) is not a recognised colour")
+        # Flipped (18oct2026): twoway's words, not dash's.
+        assert line == _TW_COLOUR
 
     @pytest.mark.parametrize("opts,option", [
         ({"lwidth": "abc"}, "lwidth"), ({"color": "notacolour"}, "color"),
@@ -993,7 +1015,9 @@ class TestOneNotePerOptionPerRender:
     def test_connected_line_options(self, opts, option):
         _, _, std_w, srv_w = _both([plot_for("connected", opts)])
         line = _the_one(std_w, srv_w, option)
-        assert line.startswith(f"dash: {option}({opts[option]}) is not a recognised")
+        # Flipped (18oct2026): an unknown colour in twoway's words.
+        assert (line == _TW_COLOUR if option == "color" else
+                line.startswith(f"dash: {option}({opts[option]}) is not a recognised"))
 
     def test_scatter_mcolor_under_by(self):
         _, _, std_w, srv_w = _both(
@@ -1115,7 +1139,8 @@ class TestTheRemainingSilentSites:
     def test_area_color(self):
         r, doc, std_w, srv_w = _both([plot_for("area", {"color": "notacolour"})])
         line = _the_one(std_w, srv_w, "color")
-        assert line.startswith("dash: color(notacolour) is not a recognised colour")
+        # Flipped (18oct2026): twoway's words, not dash's.
+        assert line == _TW_COLOUR
         std, srv = _figures(r, doc)
         # Flipped (WP-30 P1.13b): the scheme's #486c8c was wrong because
         # twoway draws an unknown area colour black at the area's
@@ -1129,7 +1154,8 @@ class TestTheRemainingSilentSites:
         _, _, std_w, srv_w = _both(
             [plot_for(ptype, {"color": "notacolour", "blcolor": "red"})])
         line = _the_one(std_w, srv_w, "color")
-        assert line.startswith("dash: color(notacolour) is not a recognised colour")
+        # Flipped (18oct2026): twoway's words, not dash's.
+        assert line == _TW_COLOUR
 
     @pytest.mark.parametrize("go,text,prop", [
         # Flipped (WP-30 P1.20a): bgcolor() on the border was wrong because
@@ -1150,7 +1176,9 @@ class TestTheRemainingSilentSites:
         line = _the_one_reading(std_w, srv_w, text)
         # Flipped (WP-30 P1.13a): twoway draws graphregion(color(bogus))
         # black (colour_grammar_truth.json site_08); dash kept the scheme's.
-        assert line == f"dash: {text} is not a recognised colour; using black.", line
+        # Flipped (18oct2026): "dash: <text> is not a recognised colour;
+        # using black." was dash's wording; twoway notes the colour.
+        assert line == _TW_COLOUR, line
         std, srv = _figures(r, doc)
         assert getattr(std, prop) == getattr(srv, prop) == "#000000", prop
         assert std.background_fill_color == srv.background_fill_color
@@ -1162,7 +1190,8 @@ class TestTheRemainingSilentSites:
             "bgcolor": "ltblue", "plotregion": "lcolor(navy%50)",
             "graphregion": "color(gs14)"})
         assert std_w == srv_w
-        assert not [w for w in std_w if "recognised colour" in w], std_w
+        assert not [w for w in std_w if "recognised colour" in w
+                    or "not found in class color" in w], std_w
         std, srv = _figures(r, doc)
         # Flipped (WP-30 P1.20a): "graphregion(color()) is applied after
         # bgcolor(), so it wins" was wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29):
@@ -1186,7 +1215,10 @@ class TestTheRemainingSilentSites:
         r, doc, std_w, srv_w = _both([plot_for("scatter")],
                                      {"xline": f"3000, {sub}"})
         line = _the_one_reading(std_w, srv_w, f"xline({sub})")
-        assert line == f"dash: xline({sub}) is not a recognised {what}; using {using}.", line
+        # Flipped (18oct2026): an unknown colour in twoway's words.
+        assert line == (_TW_COLOUR if what == "colour" else
+                        f"dash: xline({sub}) is not a recognised {what}; "
+                        f"using {using}."), line
         from bokeh.models import Span
         std, srv = _figures(r, doc)
         for fig in (std, srv):

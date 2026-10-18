@@ -432,7 +432,10 @@ else {
     cert_file_has "`htmlfile'", needle(`""border_fill_color":"#0000ff""')
     local gr = r(found)
     _zh7_logged "`logfile'" "not a recognised"
-    if `pr' != 1 | `gr' != 1 | r(found) != 0 {
+    local nr = r(found)
+    // An unknown colour is noted in twoway's words since 18oct2026.
+    _zh7_logged "`logfile'" "not found in class color"
+    if `pr' != 1 | `gr' != 1 | `nr' != 0 | r(found) != 0 {
         display as error "HC7-04 FAIL: the page's plot region `pr', graph region `gr', unknown-colour note `r(found)'"
         local bad = 1
     }

@@ -517,7 +517,11 @@ class TestReflineAbbreviations:
     def test_the_note_names_the_typed_spelling(self, mode, tmp_path):
         msgs = []
         _figure(mode, tmp_path, {"xline": "3000, lc(bogus)"}, record=msgs)
-        assert any("xline(lc(bogus))" in m for m in msgs), msgs
+        # Flipped (18oct2026): an unknown colour is noted in twoway's
+        # words, which name the colour and no spelling of the option; the
+        # typed spelling is still read as lcolor() (it is noted at all).
+        assert any(m == "dash: named style bogus not found in class color, "
+                   "default attributes used" for m in msgs), msgs
 
 
 @pytest.mark.parametrize("mode", _MODES)

@@ -137,6 +137,9 @@ class TestLegendTitleStyle:
         assert _TRUTH["nested"][key]["rc"] == 0
         assert "bogus" in _TRUTH["nested"][key]["lines"][0]
         _, msgs = T._root("saved", _two_layer({"legend": probe}))
+        # Flipped (18oct2026): an unknown colour is noted in twoway's
+        # words, "named style bogus not found in class color".
+        word = "class color" if word == "colour" else word
         assert any("bogus" in m and word in m for m in msgs), msgs
 
 
@@ -173,8 +176,12 @@ class TestNestedNote:
     ])
     def test_named_as_typed(self, opt, head):
         _, msgs = T._root("saved", _two_layer({"legend": opt}))
-        assert any(m.startswith("dash: %s is not a recognised colour"
-                                % head) for m in msgs), msgs
+        # Flipped (18oct2026): an unknown colour two levels down is noted
+        # in twoway's words, which name the colour and not the option.
+        assert any(m == "dash: named style bogus not found in class color, "
+                   "default attributes used" for m in msgs), msgs
+        assert not any(m.startswith("dash: %s is not a recognised colour"
+                                    % head) for m in msgs), msgs
 
     def test_one_level_unchanged(self):
         dr._dash_reset_notes()
@@ -182,9 +189,14 @@ class TestNestedNote:
         with _w.catch_warnings(record=True) as caught:
             _w.simplefilter("always")
             dr._dash_style_note("plotregion(lcolor)", "x", "colour", "black")
+            dr._dash_style_note("plotregion(lwidth)", "x", "line width")
+        # Flipped (18oct2026): an unknown colour drawn black is noted in
+        # twoway's words; every other style keeps dash's nested name.
         assert [str(c.message) for c in caught] == [
-            "dash: plotregion(lcolor(x)) is not a recognised colour; "
-            "using black."]
+            "dash: named style x not found in class color, default "
+            "attributes used",
+            "dash: plotregion(lwidth(x)) is not a recognised line width; "
+            "using the scheme's default."]
 
 
 class TestQuoteApostrophe:

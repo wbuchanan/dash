@@ -189,7 +189,10 @@ class TestLabelColourAndTicks:
         assert not _notes(caught, "labcolor"), caught
         _, ax, caught = _y(mode, {"ylabel": ", labcolor(bogus)"})
         assert ax.major_label_text_color == "#000000"
-        assert len(_notes(caught, "labcolor(bogus)")) == 1, caught
+        # Flipped (18oct2026): an unknown colour is noted in twoway's
+        # words, which name the colour and not the sub-option.
+        assert len(_notes(caught, "named style bogus not found in class "
+                          "color")) == 1, caught
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_tlength_in_stata_units(self, mode):

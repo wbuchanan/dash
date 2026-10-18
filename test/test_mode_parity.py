@@ -2864,10 +2864,13 @@ DATE_CORPUS = [
 _MUST_WARN = {
     "an unknown named style":
         "dash: named style bogus not found in class areastyle",
+    # Flipped (18oct2026): an unknown colour is noted in twoway's words,
+    # which name the colour, not the option.
     "line, an unknown colour drawn black":
-        "dash: lcolor(bogus) is not a recognised colour; using black",
+        "dash: named style bogus not found in class color, default "
+        "attributes used",
     "line, a colour clcolor() cannot name":
-        "dash: clcolor(notacolour) is not a recognised colour",
+        "dash: named style notacolour not found in class color",
     "a format mlabformat() cannot reproduce":
         "dash: mlabformat(%12s) is not a display format dash reproduces",
     "scatteri with labels, clock positions and a missing point":

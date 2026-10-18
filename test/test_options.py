@@ -262,8 +262,11 @@ class TestColorEdgeCases:
             warnings.simplefilter("always")
             got = OptionTranslator.parse_color_alpha("RED", "mcolor")
         assert got == ("#000000", None)
+        # Flipped (18oct2026): twoway's words, "named style RED"
+        # (measured: twoway names the wrong-case colour as typed).
         assert [str(c.message) for c in caught] == [
-            "dash: mcolor(RED) is not a recognised colour; using black."]
+            "dash: named style RED not found in class color, default "
+            "attributes used"]
 
     def test_lcolor_delegates_to_mcolor_map(self):
         """translate_lcolor should produce same hex as translate_mcolor."""
@@ -316,5 +319,7 @@ class TestColorEdgeCases:
             r = gm.map_scatter(figure(), src, "y", "x", {"mcolor": "300 0 0"})
         glyph = (r[0] if isinstance(r, list) else r).glyph
         assert glyph.fill_color == "#000000"
-        assert "dash: mcolor(300 0 0) is not a recognised colour; using " \
-               "black." in [str(c.message) for c in caught]
+        # Flipped (18oct2026): twoway's words; it names the first word,
+        # "named style 300" (measured).
+        assert "dash: named style 300 not found in class color, default " \
+               "attributes used" in [str(c.message) for c in caught]

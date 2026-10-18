@@ -1446,9 +1446,11 @@ class TestAdversarialPlotOptions:
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"mcolor": "'; import os; os.system('id')"},
         )
+        # Flipped (18oct2026): noted in twoway's words, which name the
+        # colour's first word.
         with pytest.warns(UserWarning, match=re.escape(
-                "mcolor('; import os; os.system('id')) is not a recognised "
-                "colour; using black")):
+                "dash: named style '; not found in class color, default "
+                "attributes used")):
             html = _render_to_html(spec, data)
         # Black, fill and outline.
         pts = _only_layer(html, "Scatter")
@@ -1464,9 +1466,10 @@ class TestAdversarialPlotOptions:
             "line", {"yvar": "y", "xvar": "x"},
             options={"lcolor": "__import__('os').system('id')"},
         )
+        # Flipped (18oct2026): noted in twoway's words, naming the colour.
         with pytest.warns(UserWarning, match=re.escape(
-                "lcolor(__import__('os').system('id')) is not a recognised "
-                "colour; using black")):
+                "dash: named style __import__('os').system('id') not found "
+                "in class color, default attributes used")):
             html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Line"), "line_color") \
             == ["#000000"] * 20

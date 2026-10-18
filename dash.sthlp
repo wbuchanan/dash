@@ -1068,8 +1068,9 @@ there, is an invalid point.  The literal is read as data and never run.
     intensity) is reported once per render and the scheme's default drawn
     (for a fill intensity, full intensity), as {cmd:twoway} does with its
     own "named style not found" note.  An unknown or wrong-case colour is
-    reported the same way and drawn black, as {cmd:twoway} draws it (see
-    {help dash##colours:Colours}).  A
+    drawn black and reported in {cmd:twoway}'s own words, "dash: named
+    style {it:name} not found in class color, default attributes used", as
+    {cmd:twoway} draws and reports it (see {help dash##colours:Colours}).  A
     refusal is one line naming the option and the value, printed before
     any Python runs, with r(198), or r(111) for a variable that does not
     exist:
@@ -5571,8 +5572,10 @@ foreground colours, when the scheme names them.  {it:colour}{cmd:*}{it:#}
 sets the intensity, lighter below 1 and darker above it (multiplied under
 a scheme's {cmd:system naturally_white 0}), and {it:colour}{cmd:%}{it:#}
 the opacity, from 0 to 100; the two may be given in either order.  An
-unknown colour, or a number out of range, is drawn black with a note (a
-bar at its intensity), as {cmd:twoway} draws it; a malformed hex code,
+unknown colour, or a number out of range, is drawn black (a bar or an
+area at its intensity), as {cmd:twoway} draws it, with {cmd:twoway}'s note,
+{cmd:(note:  dash: named style }{it:name}{cmd: not found in class color, default attributes used)},
+{it:name} the colour's first word; a malformed hex code,
 multiplier or opacity keeps the default in silence; a colour written with
 commas is refused (see {help dash##validation:Option values}).  A bare
 {cmd:*}{it:#}, {cmd:%}{it:#} or both, with no colour of its own, adjusts
@@ -5953,7 +5956,7 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     one of your own draws the default where {cmd:twoway} draws the file.
     With a {cmd:color-mine.style} on the ado-path, {cmd:twoway} draws
     {cmd:mcolor(mine)} in its colour; {cmd:dash} draws black markers, with
-    {cmd:(note: dash: mcolor(mine) is not a recognised colour; using black.)}.
+    {cmd:(note:  dash: named style mine not found in class color, default attributes used)}.
     With a {cmd:textboxstyle-mine.style}, {cmd:twoway} draws
     {cmd:title("T", tstyle(mine))} and {cmd:mlabtextstyle(mine)} in the
     file's size and colour; {cmd:dash} draws the title in its default

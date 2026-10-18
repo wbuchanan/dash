@@ -410,8 +410,9 @@ class TestTheConnectingLineOptions:
         black, not lcolor()'s colour.  Flipped (WP-30 P1.13a): the note
         said the scheme's default; twoway draws an unknown colour black."""
         g, notes = _line_with({"lcolor": "red", "clcolor": "notacolour"})
-        assert notes == ["dash: clcolor(notacolour) is not a recognised "
-                         "colour; using black."], notes
+        # Flipped (18oct2026): in twoway's words, as the docstring has it.
+        assert notes == ["dash: named style notacolour not found in class "
+                         "color, default attributes used"], notes
         assert g.line_color.lower() != _hex("red")
 
     def test_a_bad_clwidth_and_clpattern_are_named_as_written(self):
@@ -496,7 +497,9 @@ def test_precedence_in_both_modes(options, want):
 def test_a_bad_clcolor_is_named_once_in_both_modes():
     _, _, std_w, srv_w = _both([plot_for("line", {"clcolor": "notacolour"})])
     assert std_w == srv_w
-    hits = [w for w in std_w if "clcolor(notacolour)" in w]
+    # Flipped (18oct2026): the note is twoway's, naming the colour.
+    hits = [w for w in std_w if "named style notacolour not found in class "
+            "color" in w]
     assert len(hits) == 1, std_w
 
 
@@ -744,7 +747,9 @@ class TestAdversarialTwowayOptions:
 
     def test_a_colour_that_is_code_is_refused_by_the_colour_reader(self):
         _, notes = _line_with({"clcolor": "red\"; alert(1); \""})
-        assert len(notes) == 1 and notes[0].startswith("dash: clcolor(")
+        # Flipped (18oct2026): named in twoway's words, its first word.
+        assert len(notes) == 1 and notes[0].startswith(
+            'dash: named style red"; not found in class color'), notes
 
     # ---- exhaustion: a value built to cost time or memory -------------------
     def test_a_megabyte_angle_is_judged_at_once(self):

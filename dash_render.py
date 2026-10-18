@@ -8322,8 +8322,9 @@ class OptionTranslator:
         draws them: a colour; a malformed hex, multiplier or opacity gives
         ``(None, None)`` in silence, so the site keeps its default; an
         unknown or wrong-case colour is black, its own ``*#`` and ``%#``
-        applied, and is noted ``dash: <option>(<value>) is not a recognised
-        colour; using black.`` when *option* is given.
+        applied, and is noted in twoway's words, ``dash: named style <name>
+        not found in class color, default attributes used``, when *option*
+        is given.
 
         Args:
             value:  The option's text, e.g. ``"navy%80"``, ``"%50"``.
@@ -26154,8 +26155,10 @@ def _dash_style_note(option, value, what, using="the scheme's default",
 
     twoway never rejects a bad style name: ``mcolor(notacolour)`` draws with
     ``(note: named style notacolour not found in class color, default
-    attributes used)``.  dash does the same, in one wording, from one place,
-    once per render.  Before this helper existed the same mistake was
+    attributes used)``.  dash does the same, from one place, once per
+    render: an unknown colour drawn black (``what`` colour, ``using``
+    black) in twoway's words after ``dash: ``, every other value in
+    dash's.  Before this helper existed the same mistake was
     silently dropped in the option appliers, worded three different ways
     in three others, and an abort of the whole render in ``map_scatteri``.
 
@@ -26175,6 +26178,24 @@ def _dash_style_note(option, value, what, using="the scheme's default",
         using:  What is drawn instead.
         prefix: ``dash``, or ``dash kpi`` for a KPI's colour.
     """
+    if what == "colour" and using == "black" and prefix == "dash":
+        # An unknown colour, drawn black: noted in twoway's words after
+        # dash's "dash: " (the note channel's mark, as the other named
+        # style notes have it), naming its first word with the *# and %#
+        # left off, as twoway names it (measured 18oct2026: mcolor(bogus%50)
+        # is "named style bogus", mcolor(300 0 0) "named style 300"), once
+        # per name and render -- the note names no option, so a second
+        # option with the same name would only repeat the line.
+        text = str(value)
+        cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
+        words = (text[:min(cut)] if cut else text).split()
+        named = _dash_display(words[0] if words else text.strip())
+        _dash_warn_once(
+            ("colour-unknown", named),
+            f"dash: named style {named} not found in class color, default "
+            "attributes used",
+        )
+        return
     shown = _dash_display(value)
     # The value goes inside the innermost option, however deep:
     # legend(region(lcolor)) and bogus read legend(region(lcolor)(bogus))
