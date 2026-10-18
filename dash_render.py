@@ -8354,8 +8354,26 @@ class OptionTranslator:
         if st == "keep":
             return None, None
         if st == "unknown" and option:
-            _dash_style_note(option, value, "colour", "black")
+            _dash_style_note(option, OptionTranslator._colour_commas(
+                str(value)), "colour", "black")
         return hx, alpha
+
+    @staticmethod
+    def _colour_commas(text: str) -> str:
+        """An option's colour written with commas as twoway reads it: its
+        first, third, fifth ... comma-separated parts joined by blanks
+        (measured 18oct2026, StataNow 19.5: mcolor(255,,0,,0) is red,
+        mcolor(,,red) red, mcolor(1,,2) "named style 1 2", black).  A form
+        twoway refuses -- a second, fourth ... part not blank, or an even
+        count of parts, the last before twoway's own editcopy -- is
+        dash.ado's to refuse (_dash_colour_comma) and is kept as written,
+        as is text without a comma."""
+        if "," not in text:
+            return text
+        parts = text.split(",")
+        if len(parts) % 2 == 0 or any(p.strip() for p in parts[1::2]):
+            return text
+        return " ".join(" ".join(parts[::2]).split())
 
     # Stata's colour token meaning "draw nothing".  Its own
     # color-none.style sets rgb "0 0 0" and then says `* values should not
@@ -8527,6 +8545,8 @@ class OptionTranslator:
         text = str(value).strip()
         if len(text) > T._COLOUR_TEXT_MAX:
             return "unknown", "#000000", None
+        if not scheme:
+            text = T._colour_commas(text)
         if not text:
             return keep
         base, mult, pct = T._colour_parts(text)
@@ -26198,15 +26218,17 @@ def _dash_style_note(option, value, what, using="the scheme's default",
     if what == "colour" and using == "black" and prefix == "dash":
         # An unknown colour, drawn black: noted in twoway's words after
         # dash's "dash: " (the note channel's mark, as the other named
-        # style notes have it), naming its first word with the *# and %#
+        # style notes have it), naming the colour whole with the *# and %#
         # left off, as twoway names it (measured 18oct2026: mcolor(bogus%50)
-        # is "named style bogus", mcolor(300 0 0) "named style 300"), once
-        # per name and render -- the note names no option, so a second
-        # option with the same name would only repeat the line.
+        # is "named style bogus", mcolor("300 0 0") "named style 300 0 0",
+        # title("T", color(red blue)) "named style red blue"; dash.ado hands
+        # each y its own stylelist element, so mcolor(300 0 0) arrives as
+        # "300"), once per name and render -- the note names no option, so
+        # a second option with the same name would only repeat the line.
         text = str(value)
         cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
         words = (text[:min(cut)] if cut else text).split()
-        named = _dash_display(words[0] if words else text.strip())
+        named = _dash_display(" ".join(words) if words else text.strip())
         _dash_warn_once(
             ("colour-unknown", named),
             f"dash: named style {named} not found in class color, default "

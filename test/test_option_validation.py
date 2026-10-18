@@ -434,6 +434,10 @@ class TestTheNewProgramsKeepTheirConstraints:
         # WP-31 D5: _dash_note is _dash_say's twin for twoway's notes
         # (scale(word)'s "named style ... not found").
         "_dash_note",
+        # 18oct2026: _dash_colour_comma compares a colour's text between
+        # commas (BUGS.md "mcolor(255 0,0) is refused where twoway notes
+        # the named style and draws").
+        "_dash_colour_comma",
     })
 
     @staticmethod

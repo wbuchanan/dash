@@ -487,7 +487,7 @@ program define _dash_require_mata
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
@@ -3978,28 +3978,26 @@ program define _dash_validate_value, rclass
     }
     else if "`kind'" == "colour" {
         // WP-30 P1.13a: twoway refuses a comma-written plot colour,
-        // mcolor("255,0,128"), with invalid '<word>', r(198): the first
-        // word after the first comma, words split at blanks and commas,
-        // unless the text after that comma starts with one (mcolor("1,,2")
-        // draws); `editcopy' when there is no word.  One enclosing pair of
-        // double quotes is stripped; a value holding any other " is left
-        // alone (twoway accepts mcolor("red",blue)).  Everything else in a
-        // colour is the renderer's to read.
+        // mcolor("255,0,128"), with invalid '<word>', r(198).  It reads
+        // the colour and its own " editcopy" as parts between commas,
+        // every second of which must be blank: the first that is not names
+        // its first word (mcolor(red,) is 'editcopy', mcolor(1,,2,3) '3');
+        // the rest it draws (mcolor(1,,2) as "1 2"; measured 18oct2026),
+        // Mata _dash_colour_comma.  This is one stylelist element, from
+        // _dash_stylelist_check (the whole value is not read: mcolor(255
+        // 0,0) on one y is the element 255, which twoway draws with its
+        // note).  One enclosing pair of double quotes is stripped.
+        // Everything else in a colour is the renderer's to read.
         tempname W
         scalar `W' = scalar(`T')
         if ustrlen(scalar(`W')) >= 2 & usubstr(scalar(`W'), 1, 1) == char(34) & usubstr(scalar(`W'), -1, 1) == char(34) {
             scalar `W' = usubstr(scalar(`W'), 2, ustrlen(scalar(`W')) - 2)
         }
-        local _cg_p = ustrpos(scalar(`W'), ",")
-        if `_cg_p' > 0 & ustrpos(scalar(`W'), char(34)) == 0 {
-            scalar `W' = usubstr(scalar(`W'), `_cg_p' + 1, .)
-            if usubstr(scalar(`W'), 1, 1) != "," {
-                scalar `W' = ustrtrim(usubinstr(scalar(`W'), ",", " ", .))
-                scalar `W' = usubstr(word(scalar(`W'), 1), 1, 80)
-                if scalar(`W') == "" scalar `W' = "editcopy"
-                mata: _dash_say("err", "invalid '", st_strscalar(st_local("W")), "' ")
-                exit 198
-            }
+        mata: st_strscalar(st_local("W"), _dash_colour_comma(st_strscalar(st_local("W"))))
+        scalar `W' = usubstr(scalar(`W'), 1, 80)
+        if scalar(`W') != "" {
+            mata: _dash_say("err", "invalid '", st_strscalar(st_local("W")), "' ")
+            exit 198
         }
         local bad ""
     }
@@ -4863,6 +4861,10 @@ program define _dash_validate_opts, sclass
         local o    = substr("`body'", 1, `eq' - 1)
         local spec = substr("`body'", `eq' + 1, .)
         if !`at' & `: list o in typed' continue
+        // A colour is held to its rule element by element, for the y's
+        // that use one, by _dash_stylelist_check (18oct2026): the whole
+        // value is no colour of its own.
+        if "`spec'" == "colour" continue
         mata: st_local("v", st_global("s(" + st_local("o") + ")"))
         // The tests read the values by value: in the quotes they were
         // compared in, a title holding "' beside an option with a rule --

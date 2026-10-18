@@ -319,7 +319,9 @@ class TestColorEdgeCases:
             r = gm.map_scatter(figure(), src, "y", "x", {"mcolor": "300 0 0"})
         glyph = (r[0] if isinstance(r, list) else r).glyph
         assert glyph.fill_color == "#000000"
-        # Flipped (18oct2026): twoway's words; it names the first word,
-        # "named style 300" (measured).
-        assert "dash: named style 300 not found in class color, default " \
+        # Flipped (18oct2026): twoway's words.  Flipped again (18oct2026,
+        # BUGS.md "mcolor(255 0,0) is refused where twoway notes the named style and draws"): twoway names a colour holding blanks whole,
+        # mcolor("300 0 0") "named style 300 0 0" (measured); dash.ado
+        # hands an unquoted mcolor(300 0 0) over as its element "300".
+        assert "dash: named style 300 0 0 not found in class color, default " \
                "attributes used" in [str(c.message) for c in caught]

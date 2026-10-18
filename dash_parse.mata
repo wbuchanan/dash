@@ -259,6 +259,10 @@
 *!       twoway's "invalid '<w>'" for a comma colour inside a structured
 *!       option's value, or "".
 *!
+*!   _dash_colour_comma(v)
+*!       The word of twoway's "invalid '<w>'" for one colour written
+*!       with commas, or "" when twoway draws it.
+*!
 *!   _dash_stylelist_blank(raw, n)
 *!       The first quoted blank element among the n used ones, or 0.
 *!
@@ -6448,21 +6452,23 @@ string scalar _dash_stylelist_keys()
 // quoted ("..." or `"..."', one level of quotes removed) and "0" when
 // bare.  A bare word ending in "..." or ".." (red..., red..) is cut into
 // its stem and the repeat, as twoway cuts it (red.... is red. then ...);
-// a word of ... alone is the repeat.
+// a word of ... alone is the repeat.  A quoted string with a comma glued
+// after it ("red",blue) is the string, then the rest from the comma.
 // Nothing else is split: ..blue, red...blue, red=blue and (red) stay one
 // element each, as twoway reads them.  Linear in the length of raw.
 string matrix _dash_stylelist_elems(string scalar raw)
 {
     string rowvector toks
     string matrix    out
-    string scalar    t, stem, rep
+    string scalar    t, stem, rep, glued
     real scalar      i, n, k, len, p, in_dq, in_cq, q
 
     toks = _dash_rep_toks(raw, 0)
     n    = cols(toks)
-    out  = J(2, 2 * n, "")
+    out  = J(2, 3 * n, "")
     k    = 0
     for (i = 1; i <= n; i++) {
+        glued = ""
         t    = toks[i]
         len  = strlen(t)
         stem = t
@@ -6500,6 +6506,11 @@ string matrix _dash_stylelist_elems(string scalar raw)
             // (WP-31 E5, test/fixtures/colour_width_edges_truth.json
             // sl.quoted_comma).
             else if (!in_dq & !in_cq & p <= len & substr(stem, p, 1) == ",") {
+                // The rest, from the comma, is the next element, as
+                // twoway reads it: mcolor("red",blue) on two y is
+                // "invalid 'blue'", the second y's ",blue" (measured
+                // 18oct2026).
+                glued = substr(stem, p, .)
                 if (substr(stem, 1, 1) == char(34)) {
                     stem = substr(stem, 2, p - 3)
                 }
@@ -6512,6 +6523,11 @@ string matrix _dash_stylelist_elems(string scalar raw)
         k++
         out[1, k] = stem
         out[2, k] = (q ? "1" : "0")
+        if (glued != "") {
+            k++
+            out[1, k] = glued
+            out[2, k] = "0"
+        }
         if (rep != "") {
             k++
             out[1, k] = rep
@@ -6650,14 +6666,16 @@ string scalar _dash_stylelist_eqlead(string scalar raw)
 // top-level sub-options, split at blanks and commas outside quotes and
 // parentheses, whose name is color, lcolor, labcolor or fcolor (as
 // twoway abbreviates them: col, lc, labc, fc) and whose value, one pair
-// of enclosing quotes removed, holds a comma: "invalid '<second part>'",
-// as twoway words it (title("T", color("1,2,3")) is "invalid '2'",
-// r(198); WP-31 E5, test/fixtures/colour_width_edges_truth.json sc.*).
-// "" when none does.  Text is compared, never run.
+// of enclosing quotes (plain or compound) removed, twoway refuses as
+// _dash_colour_comma reads it: "invalid '<word>'", as twoway words it
+// (title("T", color("1,2,3")) is "invalid '2'", r(198); WP-31 E5,
+// test/fixtures/colour_width_edges_truth.json sc.*; the quotes inside
+// count as text, title("T", color("255 0" ,0)) is "invalid '0'",
+// measured 18oct2026).  "" when none does.  Text is compared, never run.
 string scalar _dash_subopt_colour_comma(string scalar value)
 {
-    string rowvector toks, parts
-    string scalar    nm, v
+    string rowvector toks
+    string scalar    nm, v, w
     real scalar      j, p, ok
 
     toks = _dash_rep_toks(value, 1)
@@ -6674,12 +6692,44 @@ string scalar _dash_subopt_colour_comma(string scalar value)
         if (strlen(v) >= 2 & substr(v, 1, 1) == char(34) & substr(v, -1, 1) == char(34)) {
             v = substr(v, 2, strlen(v) - 2)
         }
-        if (!strpos(v, ",") | strpos(v, char(34))) continue
-        parts = tokens(v, ",")
-        // tokens() keeps the commas as words: the part after the first.
-        p = 1
-        while (p <= cols(parts) & parts[p] != ",") p++
-        return("invalid '" + (p < cols(parts) ? strtrim(parts[p + 1]) : "") + "'")
+        else if (strlen(v) >= 4 & substr(v, 1, 2) == char(96) + char(34) & substr(v, -2, 2) == char(34) + char(39)) {
+            v = substr(v, 3, strlen(v) - 4)
+        }
+        w = _dash_colour_comma(v)
+        if (w != "") return("invalid '" + w + "'")
+    }
+    return("")
+}
+
+// _dash_colour_comma(v) -- the word twoway's "invalid '<word>'" names
+// for one colour v written with commas, or "" when twoway takes it
+// (measured 18oct2026, StataNow 19.5, on five plot options and the
+// thirteen structured sub-options of WP-31 E5).  twoway reads v and its
+// own " editcopy" after it as parts between commas, every second of
+// which must be blank: the first that is not names its first word, a
+// closing double quote left off (255,0,0 is '0', red, is 'editcopy',
+// 1,,2,3 is '3', red,"blue" is '"blue').  The rest is drawn as its other
+// parts joined by blanks (1,,2 is "1 2", noted; the renderer's
+// OptionTranslator._colour_commas).  Text is compared, never run.
+string scalar _dash_colour_comma(string scalar v)
+{
+    string scalar t, part, w
+    real scalar   k, j
+
+    if (!strpos(v, ",")) return("")
+    t = v + " editcopy"
+    j = 1
+    while (1) {
+        k = strpos(t, ",")
+        part = strtrim(k ? substr(t, 1, k - 1) : t)
+        if (!mod(j, 2) & part != "") {
+            w = strpos(part, " ") ? substr(part, 1, strpos(part, " ") - 1) : part
+            if (strlen(w) > 1 & substr(w, -1, 1) == char(34)) w = substr(w, 1, strlen(w) - 1)
+            return(w)
+        }
+        if (!k) break
+        t = substr(t, k + 1, .)
+        j++
     }
     return("")
 }

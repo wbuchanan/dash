@@ -747,9 +747,11 @@ class TestAdversarialTwowayOptions:
 
     def test_a_colour_that_is_code_is_refused_by_the_colour_reader(self):
         _, notes = _line_with({"clcolor": "red\"; alert(1); \""})
-        # Flipped (18oct2026): named in twoway's words, its first word.
+        # Flipped (18oct2026): named in twoway's words.  Flipped again
+        # (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway notes the named style and draws"): twoway names the colour whole.
         assert len(notes) == 1 and notes[0].startswith(
-            'dash: named style red"; not found in class color'), notes
+            'dash: named style red"; alert(1); " not found in class color'), \
+            notes
 
     # ---- exhaustion: a value built to cost time or memory -------------------
     def test_a_megabyte_angle_is_judged_at_once(self):

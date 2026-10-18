@@ -205,6 +205,16 @@ class TestTheParts:
         got = {k: OT._colour_parts(k) for k in cases}
         assert got == cases
 
+    def test_the_commas_twoway_draws(self):
+        """Every other comma-separated part, joined by blanks (measured
+        18oct2026: 1,,2 is "1 2", 1, ,2 "1 2", 255,,0,,0 red)."""
+        cases = {"1,,2": "1 2", "1, ,2": "1 2", "255,,0,,0": "255 0 0",
+                 ",,red": "red", "red*2,,blue": "red*2 blue",
+                 "navy": "navy", "255 0 0": "255 0 0",
+                 # Forms twoway refuses, kept as written for dash.ado.
+                 "255,0,0": "255,0,0", "red,": "red,"}
+        assert {k: OT._colour_commas(k) for k in cases} == cases
+
 
 class TestOutputIsAlwaysHex:
     HOSTILE = ["x" * 10000, "red*nan", "red*inf", "red*1e400", "*" * 500,
@@ -481,20 +491,65 @@ class TestBothModes:
             "dash: named style nosuchcolour not found in class color, "
             "default attributes used"], d.warnings
 
+    # Flipped (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway
+    # notes the named style and draws"): the renderer is handed one colour
+    # -- dash.ado gives each y its own stylelist element, so mcolor(300 0 0)
+    # reaches it as "300" -- and a colour holding blanks came quoted or as
+    # a sub-option, which twoway names whole: mcolor("300 0 0") notes
+    # "named style 300 0 0", title("T", color(red blue)) "named style red
+    # blue", mcolor("red blue%50") "named style red blue".
     @pytest.mark.parametrize("value,named", [
         ("bogus%50", "bogus"), ("bogus*2", "bogus"), ("RED", "RED"),
-        ("300 0 0", "300"), ("hsv 400 2 2", "hsv"), ("bogus foo", "bogus"),
+        ("300 0 0", "300 0 0"), ("hsv 400 2 2", "hsv 400 2 2"),
+        ("bogus foo", "bogus foo"), ("red blue%50", "red blue"),
+        ("1 2*2", "1 2"),
     ])
     def test_the_note_names_what_twoway_names(self, mode, value, named):
-        """twoway names the colour's first word, its %# and *# left off
-        (measured 18oct2026: mcolor(bogus%50) notes "named style bogus",
-        mcolor(300 0 0) "named style 300", mcolor(hsv 400 2 2) "named
-        style hsv")."""
+        """twoway names the whole colour, its %# and *# left off (measured
+        18oct2026: mcolor(bogus%50) notes "named style bogus",
+        mcolor("hsv 400 2 2") "named style hsv 400 2 2")."""
         d = _draw(tp._spec([plot_for("scatter", {"mcolor": value})], None,
                            {}), mode)
         assert [m for m in d.warnings if "class color" in m] == [
             "dash: named style %s not found in class color, default "
             "attributes used" % named], d.warnings
+
+    @pytest.mark.parametrize("plot,go,read,want,named", [
+        (("scatter", {"mcolor": "1,,2"}), {}, "marker", "#000000", "1 2"),
+        (("scatter", {"mcolor": "255,,0,,0"}), {}, "marker", "#ff0000", None),
+        (("scatter", {"mcolor": ",,red"}), {}, "marker", "#ff0000", None),
+        (("scatter", {"mcolor": "red,,blue"}), {}, "marker", "#000000",
+         "red blue"),
+        (("scatter", {"mcolor": "red*2,,blue"}), {}, "marker", "#1a476f",
+         None),
+        (("scatter", {}), {"title": '"T", color(1,,2)'}, "title", "#000000",
+         "1 2"),
+        (("scatter", {}), {"title": '"T", color(255,,0,,0)'}, "title",
+         "#ff0000", None),
+        (("scatter", {}), {"xline": "3000, lcolor(red,,blue)"}, "xline",
+         "#000000", "red blue"),
+    ], ids=["one_two", "rgb", "lead", "two_names", "keep", "title",
+            "title_rgb", "xline"])
+    def test_a_comma_colour_twoway_draws_is_its_blank_form(
+            self, mode, plot, go, read, want, named):
+        """Measured 18oct2026 (StataNow 19.5, s2color, SVG export): a
+        colour written with commas that twoway does not refuse -- every
+        second comma-separated part blank -- is drawn as its other parts
+        joined by blanks: mcolor(255,,0,,0) and mcolor(,,red) red,
+        mcolor(1,,2) black with "named style 1 2 not found",
+        mcolor(red*2,,blue) as mcolor(red*2 blue), the scheme's #1a476f
+        without a note; on a title and an xline alike."""
+        d = _draw(tp._spec([plot_for(*plot)], None, go), mode)
+        got = {
+            "marker": lambda: str(_glyphs(d, "Scatter")[0].fill_color),
+            "title": lambda: str(d.fig.title.text_color),
+            "xline": lambda: str([x.line_color for x in d.fig.center
+                                  if isinstance(x, Span)][0]),
+        }[read]().lower()
+        assert got == want
+        assert [m for m in d.warnings if "class color" in m] == (
+            ["dash: named style %s not found in class color, default "
+             "attributes used" % named] if named else []), d.warnings
 
     def test_the_site_probes(self, mode):
         """The fixture's site probes dash owns: lines, bars, titles,

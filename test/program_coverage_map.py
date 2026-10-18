@@ -823,6 +823,7 @@ COVERAGE = {
         "_dash_stylelist_paren": ("test_option_validation.cscript:U41-11",),
         "_dash_stylelist_eqlead": ("test_option_validation.cscript:U41-12",),
         "_dash_subopt_colour_comma": ("test_option_validation.cscript:U41-13", "test_wp31_truth.cscript:U41-10"),
+        "_dash_colour_comma": ("test_option_validation.cscript:CG-09",),
         "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
         "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
         "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),

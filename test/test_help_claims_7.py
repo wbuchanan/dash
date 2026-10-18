@@ -1414,11 +1414,14 @@ class TestAdversarialLegendAxesRegions:
                                    "graphregion": payload})
             assert fig.background_fill_color == "#000000"
             assert fig.border_fill_color == "#000000"
-            # Flipped (18oct2026): named in twoway's words, its first
-            # word: the payload after it is never echoed.
-            assert any("named style red; not found in class color" in w
+            # Flipped (18oct2026): named in twoway's words.  Flipped again
+            # (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway notes the named style and draws"): twoway names the colour whole (title("T",
+            # color(red blue)) is "named style red blue", measured); the
+            # note echoes it through _dash_display, printable and at most
+            # 80 characters, to the Stata session only.
+            assert any("named style red; background:url(javascript:alert(1)) "
+                       "not found in class color" in w
                        for w in caught), caught
-            assert not any("javascript" in w for w in caught), caught
 
     def test_quotes_that_are_not_a_pair_are_not_stripped(self):
         """Bypass: compound quotes are a pair and are read; a quote with no
@@ -1436,8 +1439,9 @@ class TestAdversarialLegendAxesRegions:
             # Any warning passed `assert caught'.  The note that names the
             # colour is knowable (measured 24sep2026, both modes, the only
             # warning this render raises).
-            # Flipped (18oct2026): twoway's words, naming the first word.
-            assert any('named style "255 not found in class color' in w
+            # Flipped (18oct2026): twoway's words.  Flipped again
+            # (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway notes the named style and draws"): twoway names the colour whole.
+            assert any('named style "255 0 0 not found in class color' in w
                        for w in caught), caught
 
     def test_a_hundred_thousand_character_colour_is_named_quickly(self):

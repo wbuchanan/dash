@@ -1252,16 +1252,26 @@ there, is an invalid point.  The literal is read as data and never run.
     and so is one of {cmd:xscale()} or {cmd:yscale()}
     ({cmd:xscale(bogus)}, {cmd:yscale(OFF)}: {cmd:option bogus not allowed}).  A colour written with commas in a plot colour option,
     {cmd:mcolor(255,0,0)}, is refused as {cmd:twoway} refuses it,
-    {cmd:invalid '0'}, r(198); a triplet is written with blanks and quoted,
+    {cmd:invalid '0'}, r(198).  {cmd:twoway} reads such a colour as its
+    parts between commas, every second of which must be blank
+    ({cmd:mcolor(red,)} is {cmd:invalid 'editcopy'}, {cmd:mcolor(1,,2,3)}
+    {cmd:invalid '3'}), in each style-list element a y uses:
+    {cmd:mcolor(255 0,0)} on one y is the element {cmd:255}, drawn black
+    with the note, and on two y {cmd:invalid '0'}; a form it takes is drawn
+    as its other parts joined by blanks, {cmd:mcolor(1,,2)} as {cmd:1 2}
+    and {cmd:mcolor(255,,0,,0)} red, and so it is in {cmd:dash}.  A triplet
+    is written with blanks and quoted,
     {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
     {help dash##stylelists:Style lists}).  Inside a colour sub-option of
     {cmd:title()}, {cmd:subtitle()}, {cmd:note()}, {cmd:caption()},
     {cmd:xline()}, {cmd:yline()}, {cmd:xlabel()}, {cmd:ylabel()},
     {cmd:plotregion()}, {cmd:graphregion()} and {cmd:legend()}
-    ({cmd:title(T, color("1,2,3"))}) such a colour is refused as
-    {cmd:twoway} refuses it, {cmd:invalid '2'}, r(198).  A quoted colour
-    with a comma glued after it, {cmd:mcolor("red",blue)}, is drawn as
-    the quoted colour, as {cmd:twoway} draws it.  An intensity past the
+    ({cmd:title(T, color("1,2,3"))}) such a colour is read the same way,
+    the whole value at once, and refused as {cmd:twoway} refuses it,
+    {cmd:invalid '2'}, r(198).  A quoted colour with a comma glued after
+    it, {cmd:mcolor("red",blue)}, is the quoted colour and then
+    {cmd:,blue}, as {cmd:twoway} reads it: drawn red on one y, and
+    {cmd:invalid 'blue'} on two.  An intensity past the
     darkest a colour can go is drawn by a rule {cmd:twoway} does not
     always follow: {cmd:mcolor(navy*52)} is #010304 in {cmd:twoway} and
     #010102 in {cmd:dash}.
@@ -5605,9 +5615,10 @@ the opacity, from 0 to 100; the two may be given in either order.  An
 unknown colour, or a number out of range, is drawn black (a bar or an
 area at its intensity), as {cmd:twoway} draws it, with {cmd:twoway}'s note,
 {cmd:(note:  dash: named style }{it:name}{cmd: not found in class color, default attributes used)},
-{it:name} the colour's first word; a malformed hex code,
-multiplier or opacity keeps the default in silence; a colour written with
-commas is refused (see {help dash##validation:Option values}).  A bare
+{it:name} the colour as written, its {cmd:*}{it:#} and {cmd:%}{it:#} left
+off; a malformed hex code, multiplier or opacity keeps the default in
+silence; a colour written with commas is read as {cmd:twoway} reads it
+(see {help dash##validation:Option values}).  A bare
 {cmd:*}{it:#}, {cmd:%}{it:#} or both, with no colour of its own, adjusts
 the colour the element would draw without the option, as {cmd:twoway}
 does, at every colour option: {cmd:mcolor(*.5)} lightens the marker's

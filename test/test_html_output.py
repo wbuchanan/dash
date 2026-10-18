@@ -1446,11 +1446,11 @@ class TestAdversarialPlotOptions:
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"mcolor": "'; import os; os.system('id')"},
         )
-        # Flipped (18oct2026): noted in twoway's words, which name the
-        # colour's first word.
+        # Flipped (18oct2026): noted in twoway's words.  Flipped again
+        # (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway notes the named style and draws"): twoway names the colour whole.
         with pytest.warns(UserWarning, match=re.escape(
-                "dash: named style '; not found in class color, default "
-                "attributes used")):
+                "dash: named style '; import os; os.system('id') not found "
+                "in class color, default attributes used")):
             html = _render_to_html(spec, data)
         # Black, fill and outline.
         pts = _only_layer(html, "Scatter")

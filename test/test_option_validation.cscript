@@ -296,6 +296,11 @@
 *!   CG-06  mcolor("1,,2")             rc 0, registered (the renderer notes it)
 *!   CG-07  bgcolor("1,2,3")           rc 0 (twoway accepts it)
 *!   CG-08  mcolor(navy*.5)            rc 0, the spec carries "mcolor":"navy*.5"
+*!   CG-09  fourteen blank-and-comma colour forms on five plot options and
+*!          thirteen structured sub-options, each against twoway live: the
+*!          rc and the refusal line twoway gives (18oct2026: twoway refuses
+*!          a colour whose second, fourth ... comma-separated part is not
+*!          blank, in each stylelist element a y uses, and draws the rest)
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -1295,6 +1300,47 @@ _cg_case CG-05 `"dash scatter mpg turn weight, mcolor(red "255,0,0") name(cg05)"
 _cg_case CG-06 `"dash scatter mpg weight, mcolor("1,,2") name(cg06)"' 0 ""
 _cg_case CG-07 `"dash scatter mpg weight, bgcolor("1,2,3") name(cg07)"' 0 ""
 _cg_case CG-08 `"dash scatter mpg weight, mcolor(navy*.5) name(cg08)"' 0 "" `""mcolor":"navy*.5""'
+
+// CG-09 (18oct2026, BUGS.md "mcolor(255 0,0) is refused where twoway notes
+// the named style and draws"): twoway reads a colour written with commas
+// as its parts between commas, every second one of which must be blank
+// (the last with twoway's own editcopy after it): mcolor(255,0,0) is
+// "invalid '0'", mcolor(red,) "invalid 'editcopy'", mcolor(1,,2,3)
+// "invalid '3'", and mcolor(1,,2) draws "1 2" with a note.  On a plot
+// option the rule holds for each stylelist element a y uses --
+// mcolor(255 0,0) on one y is the element 255, noted and drawn, and on two
+// y "invalid '0'" -- and on a sub-option for the whole value.  Each form's
+// rc and refusal line are twoway's, run live beside dash's.
+local cg09 0
+local cg09log "`c(tmpdir)'zcg09.log"
+python: from sfi import Macro as _cgM; _cgv = ['255 0,0', '255,0 0', '"255 0,0"', '255, 0, 0', '255 ,0,0', '255 0 0,', 'red,blue green', 'red blue,green', '1,,2', '1,,2,3', '"255 0" ,0', 'red,"blue"', '"red",blue', '255,,0,,0']; _cgh = ['scatter mpg weight, mcolor(@)', 'scatter mpg weight turn, mcolor(@)', 'line mpg weight, lcolor(@)', 'area mpg weight, fcolor(@)', 'scatter mpg weight, mlabel(make) mlabcolor(@)', 'scatter mpg weight, title("T", color(@))', 'scatter mpg weight, subtitle("T", color(@))', 'scatter mpg weight, note("T", color(@))', 'scatter mpg weight, caption("T", color(@))', 'scatter mpg weight, xline(3000, lcolor(@))', 'scatter mpg weight, yline(20, lcolor(@))', 'scatter mpg weight, xlabel(, labcolor(@))', 'scatter mpg weight, ylabel(, labcolor(@))', 'scatter mpg weight, plotregion(color(@))', 'scatter mpg weight, plotregion(lcolor(@))', 'scatter mpg weight, graphregion(color(@))', 'scatter mpg weight, graphregion(lcolor(@))', 'scatter mpg weight turn, legend(color(@))']; _cgc = [h.replace('@', v) for v in _cgv for h in _cgh]; [_cgM.setLocal("cg09_c%d" % (k + 1), c) for k, c in enumerate(_cgc)]; _cgM.setLocal("cg09_n", str(len(_cgc)))
+forvalues i = 1/`cg09_n' {
+    local o : copy local cg09_c`i'
+    foreach who in twoway dash {
+        capture dash clear
+        graph drop _all
+        capture log close _zcg09
+        quietly log using "`cg09log'", text replace name(_zcg09)
+        if "`who'" == "twoway" capture noisily twoway `macval(o)' name(zcg09, replace)
+        else capture noisily dash `macval(o)' name(zcg09)
+        local rc_`who' = _rc
+        quietly log close _zcg09
+        python: from sfi import Macro as _cgM; _cga = [l.rstrip() for l in open(_cgM.getLocal("cg09log"), encoding="utf-8", errors="replace")]; _cgl = [l.strip() for l in _cga if l.strip().startswith("invalid '")]; _cgM.setLocal("line_`who'", (_cgl[-1] if _cgl else "")[:120])
+    }
+    mata: st_local("_cg_same", strofreal(st_local("line_twoway") == st_local("line_dash")))
+    if `rc_twoway' != `rc_dash' | !`_cg_same' {
+        mata: printf("{err}CG-09 FAIL case %s [%s]: twoway r(%s) [%s], dash r(%s) [%s]\n", st_local("i"), st_local("o"), st_local("rc_twoway"), st_local("line_twoway"), st_local("rc_dash"), st_local("line_dash"))
+        local cg09 1
+    }
+}
+capture erase "`cg09log'"
+capture dash clear
+graph drop _all
+if `cg09' {
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} CG-09"
+}
+else display as text "CG-09 PASS: blank-and-comma colours refused where twoway refuses them, in its words, and taken where it draws them"
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must
