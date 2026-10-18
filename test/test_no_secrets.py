@@ -7,7 +7,8 @@ in DASH_SERVE_TOKEN=<value> form.  The suite's own dashboard key
 (test/serve_token_probe.py TEST_TOKEN) is a published test value and the
 one DASH_SERVE_TOKEN value allowed.  The maintainer's e-mail address
 (read from `git config user.email', never written here) may appear only in
-the planning records under .ultraplan/, which are not shipped.
+the planning records under .ultraplan/ and where ruling D38 publishes it
+as the support contact (dash.pkg, dash.sthlp, README.md).
 
 This file holds the patterns, so it is the one file not scanned; the
 planted samples below are built from fragments at run time, so the
@@ -36,8 +37,13 @@ PATTERNS = (
     ("dashboard key", re.compile(r"DASH_SERVE_TOKEN=([A-Za-z0-9_-]{20,})")),
 )
 
-#: Where the maintainer's address may appear: the planning records.
+#: Where the maintainer's address may appear: the planning records, and
+#: the three places the maintainer's ruling D38 (18oct2026) publishes it
+#: as the package's support contact -- dash.pkg's `d Support:' line,
+#: dash.sthlp's Author section and README.md.  It is a contact, not a
+#: secret; every key pattern above is still refused in these files.
 _EMAIL_ALLOWED = (".ultraplan/",)
+_EMAIL_ALLOWED_FILES = frozenset({"dash.pkg", "dash.sthlp", "README.md"})
 
 
 def _tracked():
@@ -89,7 +95,8 @@ def test_no_pattern_matches():
             continue
         bad += ["%s: %s" % (rel, n) for n in _findings(text)]
         if (email and email in text
-                and not rel.startswith(_EMAIL_ALLOWED)):
+                and not rel.startswith(_EMAIL_ALLOWED)
+                and rel not in _EMAIL_ALLOWED_FILES):
             bad.append("%s: the maintainer's e-mail address" % rel)
     assert not bad, bad
 
@@ -108,3 +115,14 @@ def test_the_patterns_catch_a_planted_sample():
 
 def test_the_suites_own_key_is_allowed():
     assert _findings("DASH_SERVE" + "_TOKEN=" + TEST_TOKEN) == []
+
+
+def test_the_contact_files_still_refuse_keys():
+    """D38's three files are exempt from the address check only."""
+    assert _EMAIL_ALLOWED_FILES == {"dash.pkg", "dash.sthlp", "README.md"}
+    # README.md arrives with S59 (batch 20); the two shipped files exist.
+    assert _text("dash.pkg") is not None and _text("dash.sthlp") is not None
+    for rel in sorted(_EMAIL_ALLOWED_FILES):
+        text = _text(rel)
+        if text is not None:
+            assert _findings(text) == [], rel
