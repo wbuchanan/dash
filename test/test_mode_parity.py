@@ -5781,3 +5781,116 @@ class TestTheRuntimeNotesAgree:
         assert (std, []) == (srv, srv_said), (
             f"{name}: the notes after the move differ\n  saved  {std}\n"
             f"  served {srv}\n  served callbacks said {srv_said}")
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (GAPS3 H6): the layout(bs) grid below 992 px.
+# ---------------------------------------------------------------------------
+
+#: The two narrow widths: the md band (768-991 px), where a cell takes its
+#: md span, and a phone, under 768 px, where every cell takes a line.
+_BS_NARROW = {"md": 800, "phone": 375}
+
+
+def _with_figures(tree, figures):
+    """*tree* with each ``("figure", i)`` replaced by the figure's profile,
+    so two trees whose figures were visited in different orders compare
+    by what each figure draws."""
+    if isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "figure" \
+            and isinstance(tree[1], int):
+        return ("figure", figures[tree[1]])
+    if isinstance(tree, (list, tuple)):
+        return type(tree)(_with_figures(t, figures) for t in tree)
+    return tree
+
+
+def _reflow(cells):
+    """``[(line, column, span, content), ...]``: *cells* -- ``(starts_row,
+    span, content)`` in reading order -- placed as a 12-column flex-wrap row
+    places them, which is what both the saved markup (a db-row is a flex
+    row, each starting a line) and the served grid's md stylesheet (each
+    cell ``grid-column: auto / span N``, the first of a row
+    ``grid-column-start: 1``, dense placement off) do."""
+    out, line, used = [], -1, 12
+    for starts_row, span, content in cells:
+        if starts_row or used + span > 12:
+            line, used = line + 1, 0
+        out.append((line, used, span, content))
+        used += span
+    return out
+
+
+def _bs_saved_narrow(page, embedded, width):
+    """Where the saved ``layout(bs)`` page puts each grid cell at *width*
+    px, read from its markup and its stylesheet: under 768 every cell is
+    ``db-col-12`` (one per line), from 768 to 991 it takes its
+    ``db-col-md-N`` span, a db-row starting a line."""
+    assert ".db-col-12{flex:0 0 100%;max-width:100%}" in page
+    assert "@media(min-width:768px){" in page
+    body = page[page.index('<div class="db-container">'):]
+    figures, cells = [], []
+    for chunk in body.split(_BS_ROW)[1:]:
+        first = True
+        for cls, root in _BS_GRID_CELL_RE.findall(chunk):
+            md = int(re.search(r"db-col-md-(\d+)", cls).group(1))
+            assert ".db-col-md-%d{flex:0 0 " % md in page, md
+            span = md if width >= dr._DASH_BS_STACK_BELOW_PX else 12
+            cells.append((first, span, _layout_tree(embedded[root],
+                                                    figures)))
+            first = False
+    return [c[:3] + (_with_figures(c[3], figures),) for c in _reflow(cells)]
+
+
+def _bs_served_narrow(doc, width):
+    """Where the served ``layout(bs)`` GridBox puts each child at *width*
+    px, read from its children's classes and its own stylesheets: under
+    768 the stack rule (_dash_reflow) makes it one flex column in children
+    order; from 768 to 991 ``_dash_bs_grid_css`` gives each child its md
+    span, ``db-bs-first`` starting a line."""
+    boxes = list(doc.select({"type": GridBox}))
+    assert boxes, "no served GridBox"
+    grid = boxes[0]
+    css = " ".join(getattr(s, "css", "") for s in grid.stylesheets
+                   if not isinstance(s, str))
+    assert dr._dash_bs_grid_css() in css, css
+    assert ("@media (max-width: %.2fpx) { :host { display: flex !important;"
+            " flex-direction: column !important; } }"
+            % (dr._DASH_BS_STACK_BELOW_PX - 0.02)) in css, css
+    figures, cells = [], []
+    for m, _r, _c, _rs, _cs in grid.children:
+        md = int(next(c for c in m.css_classes
+                      if c.startswith("db-col-md-"))[len("db-col-md-"):])
+        span = md if width >= dr._DASH_BS_STACK_BELOW_PX else 12
+        cells.append(("db-bs-first" in m.css_classes or
+                      width < dr._DASH_BS_STACK_BELOW_PX, span,
+                      _layout_tree(m, figures)))
+    return [c[:3] + (_with_figures(c[3], figures),) for c in _reflow(cells)]
+
+
+@pytest.mark.parametrize("width", sorted(_BS_NARROW))
+@pytest.mark.parametrize(
+    "name,spec", [c for c in CORPUS if c.id.startswith("layout(bs")])
+class TestTheBsGridBelow992Agrees:
+    def test_same_cells_at_the_narrow_width(self, name, spec, width):
+        """Below 992 px each grid cell is on the same line, at the same
+        column and span, holding the same content, on both pages (WP-32:
+        ALLOWED's "layout(bs) is standalone markup" compared the large
+        breakpoint only).  Read from what each page carries -- the saved
+        markup's db-col-md-N classes and _DASH_GRID_CSS, the served
+        GridBox's children's classes and its stylesheets -- and placed by
+        one flex-wrap rule, which both stylesheets are asserted to say;
+        no browser is run."""
+        with mock.patch.object(dr, "components",
+                               wraps=dr.components) as handed:
+            r, _w, page = _standalone_page(spec)
+        embedded = {m.id: m for call in handed.call_args_list
+                    for m in call.args[0]}
+        doc, _ = _served(spec)
+        px = _BS_NARROW[width]
+        std = _bs_saved_narrow(page, embedded, px)
+        srv = _bs_served_narrow(doc, px)
+        assert std, f"{name}: no grid cell read from the saved page"
+        diffs = _diff(std, srv)
+        assert not diffs, _explain(name, f"bs grid at {px} px", diffs)
+        if width == "phone":
+            assert [c[1] for c in std] == [0] * len(std), std
