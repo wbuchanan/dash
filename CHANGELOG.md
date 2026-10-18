@@ -921,6 +921,7 @@ and now matches Stata.
 
 Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 
+- A lowess, qfit, fpfit, lpoly or lpolyci that draws no point (one or two observations, or a smooth missing over its grid) scales its x axis over the observations it evaluates, and a histogram of no observations runs its y axis from -1 to 1, as twoway draws them, in the saved page and the served app and after a filter move; dash drew both axes empty, or an lpoly's x over the one point it drew. (WP-32)
 - A fit drawn from Stata's own points (lfit, lfitci and the other fits with estopts(), predopts() or estcmd()) shows the saved page's stale cue in `dash serve` after a filter move that removes observations: its legend key reads "(unfiltered)", the graph shows "Marked layers were computed before the filter" and a status line under the filters says it is not recomputed; the served page showed nothing and wrote a note only to the server's log. (WP-32)
 - `by(..., style(rescale) noyrescale)` (or `noxrescale`, `norescale`, and the same beside `style(combine)`) keeps that axis shared across the panels, as twoway draws it; the style's rescale used to override the word. (WP-32, K4)
 - The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4)

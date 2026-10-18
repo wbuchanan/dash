@@ -404,6 +404,8 @@ FUNCTIONS = {
  '_dash_stale_cue_title': 'test/test_fit_options.py::TestTheServedStaleCue::test_the_caption_is_the_saved_pages',
  '_dash_points_stale_models': 'test/test_fit_options.py::TestTheServedStaleCue::test_models_give_one_caption_per_figure_and_one_status',
  '_dash_points_stale_follow': 'test/test_fit_options.py::TestTheServedStaleCue::test_follow_marks_a_stale_layer_and_clears_it',
+ '_dash_tag_eval_extent': 'test/test_eval_extent_axes.py::TestTheHelpers::test_tag_takes_the_samples_x_range',
+ '_dash_eval_values': 'test/test_eval_extent_axes.py::TestTheHelpers::test_values_read_one_letter',
  '_dash_stale_glyph': 'test/test_saved_stale_cue.py::TestTheStaleGlyph::test_colour_width_and_dash_are_kept_and_every_alpha_scaled',
  '_dash_stale_kind': 'test/test_saved_stale_cue.py::TestTheStaleKind::test_each_type',
  '_dash_units_to_axis': 'test/test_date_units.py::TestTheUnitHelpers::test_units_to_axis_places_whole_and_fractional_periods',

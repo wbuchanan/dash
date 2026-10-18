@@ -33605,6 +33605,21 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     if (!ac.varname) {
         if (!(ac.xvar && ac.yvar)) continue;
         const _fr = dash_fit_rows(ac, _ac_data, _pick);
+        // WP-32: the x range the fit evaluates over, drawn or not, for the
+        // axis finish (dash_axis_compute reads it through the axis plan).
+        if (typeof ac.evalext === "number" && typeof fit_extents !== "undefined"
+                && fit_extents && fit_extents[ac.evalext]) {
+            let _elo = Infinity, _ehi = -Infinity;
+            const _ex = (_fr === null) ? [] : _fr.x;
+            const _ey = (_fr === null) ? [] : _fr.y;
+            for (let i = 0; i < _ex.length; i++) {
+                if (Number.isFinite(_ex[i]) && Number.isFinite(_ey[i])) {
+                    _elo = Math.min(_elo, _ex[i]); _ehi = Math.max(_ehi, _ex[i]);
+                }
+            }
+            fit_extents[ac.evalext].data = {v: _elo <= _ehi ? [_elo, _ehi] : []};
+            fit_extents[ac.evalext].change.emit();
+        }
         if (_fr === null) continue;
         fx = _fr.x; fy = _fr.y; fw = _fr.w;
     }
@@ -44099,6 +44114,8 @@ def _dash_secondary_values(fig, range_attr, name):
         if isinstance(inc, (int, float)) and not isinstance(inc, bool) \
                 and math.isfinite(float(inc)) and n:
             consts.append(float(inc))
+        # WP-32: what the layer evaluates, drawn or not.
+        cols.extend(_dash_eval_values(r, range_attr[0]))
     return cols, cols + consts
 
 
@@ -44325,6 +44342,13 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
             a, b = float(col.min()), float(col.max())
             lo = a if lo is None else min(lo, a)
             hi = b if hi is None else max(hi, b)
+        # WP-32: what the layer evaluates, drawn or not.
+        if role != "base":
+            ev = [v for v in _dash_eval_values(r, range_attr[0])
+                  if kind != "log" or v > 0]
+            if ev:
+                lo = min(ev) if lo is None else min(lo, min(ev))
+                hi = max(ev) if hi is None else max(hi, max(ev))
         # WP-31 C2: the columns a glyph draws between without naming them
         # as a coordinate -- an mwidth rbar's y1 and y2, its Rect naming
         # the centre -- in the variable's own units, through the view.
@@ -44756,6 +44780,19 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                        "fields": lf, "consts": lc,
                                        "bfields": bf, "bconsts": bc,
                                        "units": units})
+                    # WP-32: what the layer evaluates, drawn or not, on a
+                    # source of its own the page's refit writes.
+                    _ev = getattr(r, "_dash_eval_extent", None)
+                    if isinstance(_ev, dict) and _ev.get("letter") == letter:
+                        _es = _ev["source"]
+                        ei = index.get(id(_es))
+                        if ei is None:
+                            ei = index[id(_es)] = len(models)
+                            models.append(_es)
+                        layers.append({"src": ei, "filt": -1, "fk": "",
+                                       "fields": ["v"], "consts": [],
+                                       "bfields": [], "bconsts": [],
+                                       "units": []})
                 ok = (lambda v: isinstance(v, (int, float))
                       and not isinstance(v, bool)
                       and math.isfinite(float(v)))
@@ -58762,15 +58799,94 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
 
         # histogram and kdensity are univariate -- no xvar positional argument.
         if pt in _DASH_UNIVARIATE_TYPES:
-            return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
-        return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx,
-                  **_jkw)
+            out = fn(fig, source, yvar, options, view=view,
+                     color_idx=color_idx)
+        else:
+            out = fn(fig, source, yvar, xvar, options, view=view,
+                     color_idx=color_idx, **_jkw)
+        # WP-32: what the layer evaluates is on its scale, drawn or not.
+        _dash_tag_eval_extent(mapper, fig, _before, pt, source, view,
+                              options, yvar, xvar)
+        return out
     finally:
         # Bokeh made the layer's nonselection and muted copies when
         # each renderer was created, before the appliers ran; give
         # them the glyph's drawn values (WP-30 P1.12a, ratification
         # row 27, Evidence E10).
         GlyphMapper._sync_brushed_copies(fig, _before)
+
+
+#: WP-32 (BUGS.md "Axes of a layer that draws no point: twoway keeps the
+#: scale of what it evaluates"): the fits whose x scale is their estimation
+#: sample's x range whether or not a point is drawn (lowess at the data,
+#: qfit, fpfit, lpoly and lpolyci over it), measured 18oct2026.
+_DASH_EVAL_X_TYPES = frozenset({"lowess", "qfit", "fpfit", "lpoly",
+                                "lpolyci"})
+
+
+def _dash_tag_eval_extent(mapper, fig, before, pt, source, view, options,
+                          yvar, xvar):
+    """Stamp the layer just drawn on *fig* (its renderers not in *before*)
+    with what it evaluates on its scale, ``_dash_eval_extent`` ``{"letter",
+    "source"}`` on its first renderer, the source a ``ColumnDataSource``
+    ``{"v": [...]}`` (WP-32).
+
+    twoway scales the axis a layer evaluates on even where it draws no
+    point (measured 18oct2026, test_mode_parity._DF): a fit of
+    ``_DASH_EVAL_X_TYPES`` takes the x range of its rows with a finite x
+    and y (``[lo, hi]``; ``[]`` with none), and a histogram its density
+    axis's 0, so one of no rows runs -1 to 1.  The axis hull reads the
+    values (:func:`_dash_layer_extent`, :func:`_dash_secondary_values`,
+    the saved page's axis plan); the saved page's refit and the served
+    redraw write them again after a move.  A recast(), a range(), or a
+    date variable leaves the layer unstamped.  Python attribute only."""
+    try:
+        if str((options or {}).get("recast", "") or "").strip():
+            return
+        new = [r for r in getattr(fig, "renderers", None) or ()
+               if id(r) not in before and getattr(r, "glyph", None)
+               is not None and not _dash_is_swatch(r)]
+        if not new:
+            return
+        if pt == "histogram":
+            letter = "x" if _dash_is_horizontal_opts(options) else "y"
+            vals = [0.0]
+        elif pt in _DASH_EVAL_X_TYPES:
+            if str((options or {}).get("range", "") or "").strip():
+                return
+            dates = getattr(mapper, "date_vars", None) or {}
+            if xvar in dates or yvar in dates:
+                return
+            data = getattr(source, "data", None) or {}
+            if xvar not in data or yvar not in data:
+                return
+            xs = _dash_float_values(data[xvar], coerce=True)
+            ys = _dash_float_values(data[yvar], coerce=True)
+            mask = GlyphMapper._view_mask(view, len(xs))
+            ok = np.isfinite(xs) & np.isfinite(ys)
+            if mask is not None and len(mask) == len(ok):
+                ok = ok & np.asarray(mask, dtype=bool)
+            xs = xs[ok]
+            letter = "x"
+            vals = ([float(xs.min()), float(xs.max())] if xs.size else [])
+        else:
+            return
+        cfgd = [r for r in new if hasattr(r, "_dash_agg_config")]
+        (cfgd or new)[0]._dash_eval_extent = {
+            "letter": letter, "source": ColumnDataSource({"v": vals})}
+    except Exception:  # noqa: BLE001 -- the layer is drawn either way
+        return
+
+
+def _dash_eval_values(r, letter):
+    """The finite values renderer *r*'s ``_dash_eval_extent`` puts on axis
+    *letter* (WP-32, :func:`_dash_tag_eval_extent`), or ``[]``."""
+    ev = getattr(r, "_dash_eval_extent", None)
+    if not isinstance(ev, dict) or ev.get("letter") != letter:
+        return []
+    data = getattr(ev.get("source"), "data", None) or {}
+    col = _dash_float_values(data.get("v", []), coerce=True)
+    return [float(v) for v in col if np.isfinite(v)]
 
 
 def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
@@ -62580,6 +62696,9 @@ class DashRenderer:
         # its own by position (``outline``).
         _outlines_all: list = []
         _outl = getattr(self, "_ci_outlines", {})
+        # WP-32: the fits' evaluation extents, by position (``evalext``).
+        _fext_all: list = []
+        _fext = getattr(self, "_fit_extents", {})
         for _gname, _agg_list in self.agg_source_registry.items():
             _use_i = _use_for(_gname)
             if not _use_i:
@@ -62596,6 +62715,9 @@ class DashRenderer:
                 if id(_agg_cds) in _outl:
                     _agg_cfgs_all[-1]["outline"] = len(_outlines_all)
                     _outlines_all.append(_outl[id(_agg_cds)])
+                if id(_agg_cds) in _fext:
+                    _agg_cfgs_all[-1]["evalext"] = len(_fext_all)
+                    _fext_all.append(_fext[id(_agg_cds)])
 
         # The copies of rows a mapper built, each with its own snapshot,
         # and its own "use".
@@ -62704,6 +62826,8 @@ class DashRenderer:
                 _cb.args["contour_keys"] = _contour_keys_all
             if _outlines_all:
                 _cb.args["ci_outlines"] = _outlines_all
+            if _fext_all:
+                _cb.args["fit_extents"] = _fext_all
             _cb.args["derived_sources"]   = _der_srcs_all
             _cb.args["derived_sources_orig"] = _der_srcs_orig_all
             _cb.args["derived_use_json"]  = _der_use_json_all
@@ -63185,6 +63309,7 @@ class DashRenderer:
         _n_rows = int(self._embed["rows"].sum())
         self._contour_bars = {}
         self._ci_outlines = {}
+        self._fit_extents = {}
         for _gname, _fig in self.figures.items():
             # WP-31 H6: a CI band's outline Patch has a source of its own
             # (_ci_band_glyphs); the page's refit redraws it from the band
@@ -63211,6 +63336,13 @@ class DashRenderer:
                 _rows = getattr(_r, "_dash_agg_rows", None)
                 if _rows is not None and len(_rows) < _n_rows:
                     _cfg["member_ids"] = _rows
+                # WP-32: the fit's evaluation extent, which the page's
+                # refit writes over the kept rows (dash_axis_compute reads
+                # it through the axis plan).
+                _ev = getattr(_r, "_dash_eval_extent", None)
+                if isinstance(_ev, dict) and _ev.get("letter") == "x" \
+                        and _cfg.get("type") in _DASH_EVAL_X_TYPES:
+                    self._fit_extents[id(_r._dash_agg_source)] = _ev["source"]
                 if id(_r._dash_agg_source) in _outl:
                     _osrc, _ocols = _outl[id(_r._dash_agg_source)]
                     _cfg["outline_cols"] = [str(c) for c in _ocols]
@@ -63938,6 +64070,8 @@ class ServerAppBuilder:
                       # WP-32: the served stale cue's texts.
                       "_DASH_STALE_CUE_TEXT", "_DASH_STALE_SUFFIX",
                       "_DASH_STALE_SERVED_HTML",
+                      # WP-32: the fits scaled by their evaluation x.
+                      "_DASH_EVAL_X_TYPES",
                       # WP-28 S14 (B1): _dash_parse_axis_spec's leading
                       # rule, and _dash_expand_numlist's three numlist
                       # forms.
@@ -64907,6 +65041,8 @@ class ServerAppBuilder:
                     # points, built and followed on the served page.
                     _dash_stale_cue_title, _dash_points_stale_models,
                     _dash_points_stale_follow,
+                    # WP-32: what a layer evaluates, on its scale.
+                    _dash_tag_eval_extent, _dash_eval_values,
                     _dash_contour_colours, _dash_contour_line_style,
                     _dash_contour_fill_levels, _dash_is_horizontal_opts,
                     # qfit's and qfitci's shared design (the WP-18 review).
@@ -66939,6 +67075,12 @@ class ServerAppBuilder:
             "                _out[0]._dash_points_stale = any(",
             "                    getattr(_rr, '_dash_points_stale', False)",
             "                    for _rr in _tfig.renderers)",
+            "                # WP-32: what the layer evaluates, for the live hull.",
+            "                _evs = [getattr(_rr, '_dash_eval_extent', None)",
+            "                        for _rr in _tfig.renderers]",
+            "                _evs = [_e for _e in _evs if isinstance(_e, dict)]",
+            "                _out[0]._dash_eval_v = (list(_evs[0]['source'].data.get('v', []))",
+            "                                        if _evs else [])",
             "            return _out",
             "        return lambda frame: _dash_under_graph_scheme(g, _redraw, frame)",
             "",
@@ -67240,6 +67382,13 @@ class ServerAppBuilder:
             "                       if getattr(_rr, '_dash_points_frozen', False)]",
             "                if _pf:",
             "                    agg_sources[(gname, pi)].update(frozen=_pf, fig=fig)",
+            "                # WP-32: the layer's evaluation extent, rewritten by",
+            "                # each redraw before the axes are finished again.",
+            "                _evl = [getattr(_rr, '_dash_eval_extent', None)",
+            "                        for _rr in fig.renderers[_r_before:]]",
+            "                _evl = [_e for _e in _evl if isinstance(_e, dict)]",
+            "                if _evl:",
+            "                    agg_sources[(gname, pi)]['evalext'] = _evl[0]['source']",
             "                # WP-31 B4d: the contour's colour key, moved with it.",
             "                for _side in ('right', 'left', 'above', 'below', 'center'):",
             "                    for _km in getattr(fig, _side, None) or []:",
@@ -68075,6 +68224,9 @@ class ServerAppBuilder:
             "                _ck = getattr(_fresh[0], '_dash_ckey', None) if _fresh else None",
             "                if _ck is not None and agg.get('ckey') is not None:",
             "                    _dash_contour_bar_follow(agg['ckey'], *_ck)",
+            "                if agg.get('evalext') is not None:",
+            "                    agg['evalext'].data = {'v': list(getattr(",
+            "                        _fresh[0], '_dash_eval_v', []) if _fresh else [])}",
             "                if agg.get('frozen'):",
             "                    agg['stale'] = bool(_fresh) and getattr(",
             "                        _fresh[0], '_dash_points_stale', False)",
