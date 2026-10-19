@@ -38169,6 +38169,20 @@ const region = (ref) => {
       ax = ax == null ? ab.x0 : Math.min(ax, ab.x0);
     }
     const lx = ax != null ? ax - 1.5 * v : (fb != null ? fb.x0 : 0);
+    // A first panel whose y labels sit at its canvas's edge has no room
+    // for the box twoway starts 1.5 units left of them: the panel's left
+    // border grows by what is missing (BUGS.md "A first panel's spanned
+    // note started at its canvas's edge, not 1 unit left of its y
+    // labels"), and the box is placed on the next layout.
+    if (lx < -0.5 && fb != null) {
+      const want = Math.ceil(fb.x0 - lx);
+      const cur = pv.model.min_border_left != null
+        ? pv.model.min_border_left : (pv.model.min_border || 0);
+      if (want > cur) {
+        pv.model.min_border_left = want;
+        try { pv.invalidate_layout(); } catch (e) { /* next layout */ }
+      }
+    }
     return {L: lx, R: fx + (+sd[1] || 0) * v, T: 0, B: H, u: v};
   }
   let x0 = 0, y0 = 0, gw = W, gh = H, a = null, c = null;

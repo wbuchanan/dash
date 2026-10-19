@@ -773,9 +773,12 @@ class TestByPanelBoxMargin:
             for n in notes:
                 f = n["frame"]
                 left = f[0] if n["yaxis"] is None else n["yaxis"] - 1.5 * u
-                # Never left of its canvas, where it would be cut off.
-                want = max(left + mg, n["canvas"][0])
-                assert abs(n["box"][0] - want) <= 1.0, (n, mg)
+                # Flipped (WP-32, BUGS.md "A first panel's spanned note
+                # started at its canvas's edge, not 1 unit left of its y
+                # labels"): 1.49 units left of the labels plus its margin,
+                # the panel making room for it inside its canvas.
+                assert abs(n["box"][0] - (left + mg)) <= 1.0, (n, mg)
+                assert n["box"][0] >= n["canvas"][0] - 0.5, n
             for c in caps:
                 f = c["frame"]
                 assert abs(c["box"][2] - (f[1] + 3.5 * u - mg)) <= 1.0, \
