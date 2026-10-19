@@ -5546,10 +5546,12 @@ observations kept, as {cmd:twoway} levels the observations it draws: the
 levels left take the first colours, each panel its own and
 {cmd:by()}'s key the first panel's, in both the saved page and the served
 app; a continuous key's colours span the observations kept and its labels
-are ticked over them, and a line's colour levels are cut at those labels,
-as in {cmd:twoway}, while a key labelled by {cmd:zlabel()} or a date's
-rule and the bins of {cmd:colorcuts()} and {cmd:colorlevels()} keep those
-of the build.
+are ticked over them -- by {cmd:zlabel(#}{it:N}{cmd:)} or
+{cmd:zlabel(minmax)} when given, and over a date's values in its Stata
+units -- and a line's colour levels are cut at those labels, under
+{cmd:zscale(log)} too, as in {cmd:twoway}; labels {cmd:zlabel()} lists or
+steps keep their values, and the bins of {cmd:colorcuts()} and
+{cmd:colorlevels()} keep those of the build.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
 one whose observations are all missing on the variable draws a

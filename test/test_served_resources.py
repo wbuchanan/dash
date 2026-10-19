@@ -573,7 +573,11 @@ _SAVED_DIGEST = (
     # line's levels (code only: the new tree with the relevel stripped from
     # the filter callback's code gives b475c9c7...), the same under both
     # Pythons
-    "63134ba5f76f3d32f594efbb1c632effe7f61b090412fc2f1288ba24a1a1a0cc")
+    # 63134ba5... -> 83fce28d...: WP-32, the relevel's zlabel(), date and
+    # zscale(log) ticks (code only: the base and the new tree give one
+    # digest, 5596ecb6..., with the relevel stripped from the filter
+    # callback's code), the same under both Pythons
+    "83fce28d4ce16ff530ac2409c5bd8293b4c0ca329348afdb7310e4f217ab304a")
 
 
 # ===========================================================================

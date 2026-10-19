@@ -1445,7 +1445,7 @@ FUNCTIONS = {
  'GlyphMapper._apply_colorvar.<locals>._cof': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
  '_dash_cvar_key_ticks': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
  '_dash_cvar_relevel_steps': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
- '_dash_cvar_relevel_steps.<locals>._num': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
+ '_dash_cvar_tick_spec': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
  '_dash_cvar_ticks': 'test/test_mode_parity.py::test_the_colour_keys_ticks_over_a_range',
  '_dash_cvar_plans': 'test/test_mode_parity.py::TestTheByColourKeyAfterAMove::test_the_key_follows_the_first_panel',
  '_dash_cvar_relevel.<locals>._none': 'test/test_mode_parity.py::TestTheByColourKeyAfterAMove::test_the_key_follows_the_first_panel',

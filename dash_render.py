@@ -16710,15 +16710,19 @@ class GlyphMapper:
                     # filter move"): what map_line's plan needs, for a
                     # linear key ticked by natscale (not a date's, nor
                     # zlabel()'s).
-                    if (type(mapper).__name__ == "LinearColorMapper"
-                            and not _cv_kind and not str(
-                                (self.z_options or {}).get("zlabel", "")
-                                or "").strip()):
+                    if type(mapper).__name__ in (
+                            "LinearColorMapper", "LogColorMapper") \
+                            and type(getattr(_cbar, "ticker", None)
+                                     ).__name__ == "FixedTicker":
                         self._colorvar_step_plan = {
                             "cbar": _cbar, "mapper": mapper,
                             "fmt": _key_fmt,
                             "dp": getattr(self, "dp", "period"),
-                            "minmax": bool(minmax),
+                            "tick": _dash_cvar_tick_spec(
+                                self.z_options, _cv_kind, minmax),
+                            "log": type(mapper).__name__
+                            == "LogColorMapper",
+                            "bins": _DASH_LOG_STEP_BINS,
                             "missing": missing_color,
                             "cols": {str(n): [str(c) for c in _cof(n)]
                                      for n in range(2, 13)}}
@@ -16742,15 +16746,14 @@ class GlyphMapper:
                 # format (BUGS.md "A continuous colour key's labels and a
                 # line's colour levels keep the build's after a filter
                 # move"), for a key no date or zlabel() ticks.
-                if (_cbar is not None and not _cv_kind
+                if (_cbar is not None
                         and type(getattr(_cbar, "ticker", None)).__name__
-                        == "FixedTicker"
-                        and not str((self.z_options or {}).get("zlabel", "")
-                                    or "").strip()):
+                        == "FixedTicker"):
                     renderer._dash_cvar.update(
                         cbar=_cbar, fmt=_key_fmt,
                         dp=getattr(self, "dp", "period"),
-                        minmax=bool(minmax))
+                        tick=_dash_cvar_tick_spec(self.z_options, _cv_kind,
+                                                  minmax))
 
             # colorkeysreverse on a key that is not discrete: twoway draws
             # the same key with it as without it (measured, WP-31 C8e:
@@ -43560,31 +43563,60 @@ _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 #: The saved page's twin of :func:`_dash_cvar_relevel`, run at the end of
 #: every filter callback over its ``cvar_plans``.
 _DASH_CVAR_RELEVEL_JS = r"""
-function dash_cvar_ticks(lo, hi, minmax) {
-  // _dash_cvar_ticks: natscale #5 (the minimum alone when it gives none),
-  // the minimum and maximum too under colorvarminmax.
+function dash_cvar_ticks(lo, hi, ts) {
+  // _dash_cvar_ticks: by the tick spec, in the variable's Stata units.
+  ts = ts || {mode: "auto"};
+  const uniq = (a) => Array.from(new Set(a)).sort((x, y) => x - y);
+  if (ts.mode === "minmax") return [lo, hi];
+  if (ts.mode === "count") {
+    return uniq((dash_natscale(lo, hi, ts.n) || []).concat(ts.extra || []));
+  }
   let t = dash_natscale(lo, hi, 5) || [lo];
   if (!t.length) t = [lo];
-  if (minmax) {
-    t = Array.from(new Set(t.concat([lo, hi]))).sort((a, b) => a - b);
-  }
+  if (ts.minmax) t = uniq(t.concat([lo, hi]));
   return t;
 }
+function dash_cvar_to_ms(u, kind) {
+  // _dash_units_to_axis, one value: a date kind's Stata units as epoch ms.
+  const E = dash_ts_unit_to_ms(0, "td");
+  if (kind === "td") return u * 86400000 + E;
+  if (kind === "tc" || kind === "tC") return u + E;
+  const f = Math.floor(u);
+  const a = dash_ts_unit_to_ms(f, kind), b = dash_ts_unit_to_ms(f + 1, kind);
+  return u === f ? a : a + (u - f) * (b - a);
+}
 function dash_cvar_key_ticks(pl, lo, hi) {
-  // _dash_cvar_key_ticks: the bar ticked over lo .. hi in its format.
-  const t = dash_cvar_ticks(lo, hi, pl.minmax);
+  // _dash_cvar_key_ticks: the bar ticked over lo .. hi (column units).
   const bar = pl.cbar;
-  if (!bar) return t;
-  const pos = Array.from(new Set(t.filter((v) => isFinite(v))))
+  if (!bar) return [];
+  const ts = pl.tick;
+  const own = () => Array.from(bar.ticker.ticks || []).map(Number)
     .sort((a, b) => a - b);
-  const ovr = {};
-  for (const v of pos) {
-    ovr[String(v)] = dash_fmt_text(v, pl.fmt || "%8.0gc", null,
-                                   pl.dp || "period", null);
+  if (!ts) return own();
+  const kind = ts.kind || "";
+  let ulo = lo, uhi = hi;
+  if (kind) {
+    ulo = dash_date_units(lo, kind); uhi = dash_date_units(hi, kind);
+    if (!isFinite(ulo) || !isFinite(uhi)) return own();
   }
+  const t = dash_cvar_ticks(ulo, uhi, ts);
+  const lab = ts.labels || {};
+  const pykey = (u) => Number.isInteger(u) ? u.toFixed(1) : String(u);
+  const out = new Map();
+  for (const u of t) {
+    if (!isFinite(u)) continue;
+    const pos = kind ? dash_cvar_to_ms(u, kind) : u;
+    if (!isFinite(pos) || out.has(pos)) continue;
+    const k = pykey(u);
+    out.set(pos, (k in lab) ? String(lab[k])
+      : dash_fmt_text(u, pl.fmt || "%8.0gc", null, pl.dp || "period", null));
+  }
+  const pos = Array.from(out.keys()).sort((a, b) => a - b);
+  const ovr = {};
+  for (const p of pos) ovr[String(p)] = out.get(p);
   bar.ticker.ticks = pos;
   bar.major_label_overrides = ovr;
-  return t;
+  return pos;
 }
 function dash_cvar_relevel_steps(pl) {
   // _dash_cvar_relevel_steps: a continuous colorvar() line's levels cut
@@ -43615,7 +43647,7 @@ function dash_cvar_relevel_steps(pl) {
   const fin = vals.filter((v) => v !== null);
   if (!fin.length) return;
   const lo = Math.min(...fin), hi = Math.max(...fin);
-  const ticks = dash_cvar_key_ticks(pl, lo, hi).slice().sort((a, b) => a - b);
+  const ticks = dash_cvar_key_ticks(pl, lo, hi);
   let cuts = ticks.filter((t) => t >= lo);
   if (!cuts.length) cuts = [lo];
   const colours = (pl.cols || {})[String(cuts.length + 1)];
@@ -43650,7 +43682,21 @@ function dash_cvar_relevel_steps(pl) {
                                              rest.slice(at));
   }
   const m = pl.mapper;
-  if (m) {
+  if (m && pl.log) {
+    // zscale(log): the bar in its bins, each in its centre's level.
+    const lo_l = lo, hi_l = hi > lo ? hi : lo + 1;
+    if (lo_l > 0 && hi_l > lo_l) {
+      const nb = pl.bins || 1024, ratio = Math.log(hi_l / lo_l);
+      const pal = [];
+      for (let k = 0; k < nb; k++) {
+        const c = lo_l * Math.exp(ratio * (k + 0.5) / nb);
+        pal.push(colours[cuts.filter((x) => x < c).length]);
+      }
+      m.palette = pal;
+      m.low = lo_l;
+      m.high = hi_l;
+    }
+  } else if (m) {
     const step = cuts.length > 1
       ? (cuts[cuts.length - 1] - cuts[0]) / (cuts.length - 1)
       : Math.max(Math.abs(hi - cuts[0]), Math.abs(cuts[0] - lo), 1.0);
@@ -51633,14 +51679,8 @@ def _dash_cvar_relevel(plan):
     if plan.get("kind") == "range":
         # A continuous key: the kept rows' range, as the build takes its
         # rows' (a range of one value widened by 1).
-        vals = []
-        for v in col:
-            try:
-                f = float(v)
-            except (TypeError, ValueError):
-                continue
-            if f == f and f not in (float("inf"), float("-inf")):
-                vals.append(f)
+        vals = [float(v) for v in _dash_float_values(col, coerce=True)
+                if math.isfinite(v)]
         m = plan.get("mapper")
         if not vals or m is None:
             return
@@ -51709,30 +51749,84 @@ def _dash_cvar_relevel(plan):
 _DASH_CVAR_LINE_POOL = 8
 
 
-def _dash_cvar_ticks(lo, hi, minmax):
-    """The colour key's ticks over *lo* .. *hi*, as the build ticks it:
-    natscale #5 (the minimum alone when it gives none), with the minimum
-    and maximum under colorvarminmax."""
+def _dash_cvar_tick_spec(zopts, kind, minmax):
+    """How a continuous colour key is ticked after a filter move (BUGS.md
+    "A colour key ticked by zlabel() or a date, and a zscale(log) line,
+    keep the build's ticks or levels after a filter move"): ``{"mode":
+    "auto"}`` (natscale #5, the minimum and maximum too under
+    colorvarminmax), ``"count"`` (zlabel(#N): natscale #N with its listed
+    values), ``"minmax"`` (zlabel(minmax)), each with zlabel()'s own
+    labels and the variable's date *kind*; None for ticks that do not move
+    (a zlabel() list or rule, or none)."""
+    raw = str((zopts or {}).get("zlabel", "") or "").strip()
+    spec = _dash_parse_axis_spec(raw) if raw else {"mode": "default"}
+    mode = spec.get("mode") or "default"
+    labels = {str(k): str(v) for k, v in (spec.get("labels") or {}).items()}
+    if mode == "count" and spec.get("count"):
+        try:
+            n = int(spec["count"])
+        except (TypeError, ValueError):
+            return None
+        return {"mode": "count", "n": n,
+                "extra": [float(t) for t in spec.get("ticks") or []],
+                "labels": labels, "kind": kind or ""}
+    if mode == "minmax":
+        return {"mode": "minmax", "labels": labels, "kind": kind or ""}
+    if mode in ("explicit", "none"):
+        return None
+    return {"mode": "auto", "minmax": bool(minmax), "labels": labels,
+            "kind": kind or ""}
+
+
+def _dash_cvar_ticks(lo, hi, spec):
+    """The colour key's ticks over *lo* .. *hi* (the variable's Stata
+    units) by *spec* (:func:`_dash_cvar_tick_spec`), as the build ticks
+    it: natscale #5 (the minimum alone when it gives none) with the
+    minimum and maximum under colorvarminmax; zlabel(#N)'s natscale #N
+    with its listed values; zlabel(minmax)'s ends."""
+    spec = spec or {"mode": "auto"}
+    mode = spec.get("mode")
+    if mode == "minmax":
+        return [lo, hi]
+    if mode == "count":
+        return sorted(set(_dash_axis_count_ticks(lo, hi, spec["n"], None)
+                          or []) | set(spec.get("extra") or []))
     t = list(_dash_axis_count_ticks(lo, hi, 5, None) or [lo])
-    if minmax:
+    if spec.get("minmax"):
         t = sorted(set(t) | {lo, hi})
     return t
 
 
 def _dash_cvar_key_ticks(plan, lo, hi):
-    """Tick *plan*'s colour bar over *lo* .. *hi* (the kept rows' range) in
-    its format, as the build does (:func:`_dash_key_ticks`); the ticks."""
-    t = _dash_cvar_ticks(lo, hi, plan.get("minmax"))
+    """Tick *plan*'s colour bar over *lo* .. *hi* (the kept rows' range, in
+    the colour column's units) as the build does: in the variable's Stata
+    units for a date, by the plan's tick spec, written in its format or
+    zlabel()'s labels (:func:`_dash_key_ticks`).  Returns the ticks'
+    positions on the bar, sorted; the bar's own where its ticks do not
+    move."""
     bar = plan.get("cbar")
+    ts = plan.get("tick")
     if bar is None:
-        return t
-    pos, ovr = _dash_key_ticks(t, "", plan.get("fmt") or "%8.0gc",
+        return []
+    if ts is None:
+        return sorted(float(t) for t in (bar.ticker.ticks or []))
+    kind = ts.get("kind") or ""
+    if kind:
+        u = _dash_date_units([lo, hi], kind)
+        ulo, uhi = float(u[0]), float(u[1])
+        if not (math.isfinite(ulo) and math.isfinite(uhi)):
+            return sorted(float(t) for t in (bar.ticker.ticks or []))
+    else:
+        ulo, uhi = lo, hi
+    t = _dash_cvar_ticks(ulo, uhi, ts)
+    pos, ovr = _dash_key_ticks(t, kind, plan.get("fmt") or "%8.0gc",
+                               ts.get("labels") or None,
                                dp=plan.get("dp") or "period")
     if list(bar.ticker.ticks or []) != list(pos):
         bar.ticker.ticks = list(pos)
     if dict(bar.major_label_overrides or {}) != dict(ovr):
         bar.major_label_overrides = dict(ovr)
-    return t
+    return sorted(pos)
 
 
 def _dash_cvar_relevel_steps(plan):
@@ -51765,19 +51859,14 @@ def _dash_cvar_relevel_steps(plan):
     seen = set(order)
     order += [rid for rid in rows if rid not in seen]
 
-    def _num(v):
-        try:
-            f = float(v)
-        except (TypeError, ValueError):
-            return None
-        return f if f == f and f not in (float("inf"), float("-inf")) \
-            else None
-    vals = [_num(rows[rid].get(field)) for rid in order]
+    vals = [float(v) if math.isfinite(v) else None for v in
+            _dash_float_values([rows[rid].get(field) for rid in order],
+                               coerce=True)]
     fin = [v for v in vals if v is not None]
     if not fin:
         return
     lo, hi = min(fin), max(fin)
-    ticks = sorted(_dash_cvar_key_ticks(plan, lo, hi))
+    ticks = _dash_cvar_key_ticks(plan, lo, hi)
     cuts = [t for t in ticks if t >= lo] or [lo]
     colours = (plan.get("cols") or {}).get(str(len(cuts) + 1))
     pool = list(plan.get("pool") or [])
@@ -51805,7 +51894,22 @@ def _dash_cvar_relevel_steps(plan):
         if [id(x) for x in new] != [id(x) for x in cur]:
             fig.renderers = new
     m = plan.get("mapper")
-    if m is not None:
+    if m is not None and plan.get("log"):
+        # zscale(log): the bar drawn in its bins, each in the level its
+        # centre falls in (_colorvar_stepped_mapper), over the kept range.
+        lo_l, hi_l = lo, (hi if hi > lo else lo + 1.0)
+        if lo_l > 0 and hi_l > lo_l:
+            nb = int(plan.get("bins") or _DASH_LOG_STEP_BINS)
+            ratio = math.log(hi_l / lo_l)
+            pal = [colours[sum(1 for c in cuts
+                               if c < lo_l * math.exp(ratio * (k + 0.5)
+                                                      / nb))]
+                   for k in range(nb)]
+            if list(m.palette) != pal:
+                m.palette = pal
+            m.low = lo_l
+            m.high = hi_l
+    elif m is not None:
         if len(cuts) > 1:
             step = (cuts[-1] - cuts[0]) / (len(cuts) - 1)
         else:
@@ -66634,6 +66738,7 @@ class ServerAppBuilder:
                          "_dash_by_key_share", "_dash_by_indiv_sides",
                          "_dash_cvar_relevel", "_dash_cvar_plans",
                          "_dash_cvar_ticks", "_dash_cvar_key_ticks",
+                         "_dash_cvar_tick_spec",
                          "_dash_cvar_relevel_steps",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",

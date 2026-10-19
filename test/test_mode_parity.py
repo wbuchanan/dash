@@ -61,6 +61,7 @@ import tempfile
 import warnings
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -476,6 +477,11 @@ def _colour_of(g, data, idx):
     vals = []
     for i in (idx or []):
         x = col[i] if i < len(col) else None
+        # A date column the served app holds as datetime64 and the saved
+        # page's script writes back as epoch ms (WP-32): one form.
+        if isinstance(x, np.datetime64):
+            x = None if np.isnat(x) else int(
+                x.astype("datetime64[ms]").astype("int64"))
         if isinstance(x, float):
             x = None if math.isnan(x) else _num(x)
         vals.append(x)
@@ -4016,6 +4022,22 @@ _CVAR_MOVES = [
     _move_case("line colorvar levels (D-15f), rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("line", {"colorvar": "mpg"})]),
+    # zlabel(#N), a date key and a zscale(log) line, ticked and cut over
+    # the rows kept too (measured 19oct2026: zlabel(#3) over mpg 12-24 is
+    # 10(5)25; a %td key is natscale over the days kept, written as
+    # numbers; a log line's levels are cut at the linear ticks).
+    _move_case("scatter colorvar zlabel(#3), rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "mpg"})],
+               {"zlabel": "#3"}),
+    _move_case("scatter colorvar date, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "when"})],
+               bo={"formats": {"when": "%td"}}),
+    _move_case("line colorvar zscale(log), rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("line", {"colorvar": "mpg"})],
+               {"zscale": "log"}),
     # Each panel and by()'s key keep the one level a move leaves.
     _move_case("by(foreign) colordiscrete clegend, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
@@ -6466,7 +6488,10 @@ def _key_ticks_of(models):
 
 @pytest.mark.parametrize("name", [
     "scatter colorvar continuous, rep dropdown to 3",
-    "line colorvar levels (D-15f), rep dropdown to 3"])
+    "line colorvar levels (D-15f), rep dropdown to 3",
+    "scatter colorvar zlabel(#3), rep dropdown to 3",
+    "scatter colorvar date, rep dropdown to 3",
+    "line colorvar zscale(log), rep dropdown to 3"])
 class TestTheColourKeyTicksAfterAMove:
     """BUGS.md "A continuous colour key's labels and a line's colour levels
     keep the build's after a filter move": twoway ticks the key by natscale
@@ -6508,7 +6533,14 @@ def test_the_colour_keys_ticks_over_a_range():
     """_dash_cvar_ticks: natscale #5 over the range, as the build ticks the
     key (mpg 16-25: 16(2)26), with the minimum and maximum added under
     colorvarminmax."""
-    assert dr._dash_cvar_ticks(16.0, 25.0, False) == [16.0, 18.0, 20.0,
-                                                      22.0, 24.0, 26.0]
-    assert dr._dash_cvar_ticks(16.0, 25.0, True) == [16.0, 18.0, 20.0,
-                                                     22.0, 24.0, 25.0, 26.0]
+    assert dr._dash_cvar_ticks(16.0, 25.0, {"mode": "auto"}) == [
+        16.0, 18.0, 20.0, 22.0, 24.0, 26.0]
+    assert dr._dash_cvar_ticks(16.0, 25.0, {"mode": "auto",
+                                            "minmax": True}) == [
+        16.0, 18.0, 20.0, 22.0, 24.0, 25.0, 26.0]
+    # zlabel(#3) and zlabel(minmax) (measured 19oct2026: #3 over mpg 12-24
+    # is 10(5)25; minmax 12 24).
+    assert dr._dash_cvar_ticks(12.0, 24.0, {"mode": "count", "n": 3}) == [
+        10.0, 15.0, 20.0, 25.0]
+    assert dr._dash_cvar_ticks(12.0, 24.0, {"mode": "minmax"}) == [12.0,
+                                                                   24.0]

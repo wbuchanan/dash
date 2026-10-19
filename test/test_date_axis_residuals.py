@@ -30,6 +30,7 @@ import base64
 import gzip
 import hashlib
 import json
+import math
 import os
 import sys
 import warnings
@@ -240,7 +241,7 @@ class TestADateColourKeyIsInStataUnits:
         assert len(texts) == 5 and set(texts) == {"1.3e+12"}
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_the_key_is_unchanged_after_a_filter_move(self, tmp_path, mode):
+    def test_the_key_is_ticked_over_the_kept_days(self, tmp_path, mode):
         filt = [_filter("range", "lo")]
         root, _w, obj = _build(tmp_path, mode, [_sc("date")], _KEY,
                                filters=filt)
@@ -268,9 +269,20 @@ class TestADateColourKeyIsInStataUnits:
                       if isinstance(w, RangeSlider)][0]
                 _fire(sl, (2, 9))
         after = _state()
-        assert _bar_texts(root) == ["15,000", "15,100", "15,200", "15,300",
-                                    "15,400"]
-        assert after[0] == before[0]
+        # Flipped (WP-32, BUGS.md "A colour key ticked by zlabel() or a
+        # date, and a zscale(log) line, keep the build's ticks or levels
+        # after a filter move"): twoway ticks a date key by natscale over
+        # the days it draws, written as numbers (measured 19oct2026:
+        # 16,200 ... 16,800 over the foreign cars, 14,500 ... 17,000 over
+        # every car), so after the move the bar is ticked over the days
+        # its layer keeps; colorlevels()' bins keep the build's.
+        (rend,) = cb.colour_renderers(root)
+        days = [float(v) for v in dr._dash_date_units(
+            cb.colour_values(rend), "td") if math.isfinite(v)]
+        want = [dr._dash_fmt_text(t, "%8.0gc") for t in dr._dash_cvar_ticks(
+            min(days), max(days), {"mode": "auto"})]
+        assert _bar_texts(root) == want
+        assert want != ["15,000", "15,100", "15,200", "15,300", "15,400"]
         assert after[1] == before[1]
         # The drawn rows' labels are each still one of the key's factors.
         assert set(after[2]) <= set(before[1])
