@@ -38137,9 +38137,9 @@ const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
 // "panels": the by() grid's panels plus their axes (the union of its
 // children not named dash_by_*) within that graph region, where twoway
 // places by()'s legend and boxes without span.
-// "panel": a by() panel's canvas, which starts at its axis labels, reaching
-// the graph's right margin (of the by() grid's size) past its frame, as
-// twoway's panel graph reaches past its plot region.
+// "panel": a by() panel's graph, as twoway draws it: from just left of its
+// y labels to the graph's right margin (of the by() grid's size) past its
+// frame.
 const region = (ref) => {
   if (ref === "panel") {
     let b = pv.parent;
@@ -38153,9 +38153,23 @@ const region = (ref) => {
         v = Math.min(q.width, q.height) / 100;
       }
     }
-    const fx = (pv.frame != null && pv.frame.bbox != null)
-      ? pv.frame.bbox.x1 : W;
-    return {L: 0, R: fx + (+sd[1] || 0) * v, T: 0, B: H, u: v};
+    const fb = (pv.frame != null && pv.frame.bbox != null)
+      ? pv.frame.bbox : null;
+    const fx = fb != null ? fb.x1 : W;
+    // Its left: 1.5 units left of its visible left axes' outer edge (the
+    // y labels; twoway measured 48.2 of 3240, 42.9 of 2880, whatever the
+    // labels' width), or the frame's left on a panel with no y axis.
+    let ax = null;
+    for (const [am, av] of (pv.renderer_views || [])) {
+      if (am == null || !am.visible
+          || !(pv.model.left || []).includes(am)
+          || !String(am.type || "").endsWith("Axis")) { continue; }
+      const ab = av != null ? av.bbox : null;
+      if (ab == null || !(ab.width > 0)) { continue; }
+      ax = ax == null ? ab.x0 : Math.min(ax, ab.x0);
+    }
+    const lx = ax != null ? ax - 1.5 * v : (fb != null ? fb.x0 : 0);
+    return {L: lx, R: fx + (+sd[1] || 0) * v, T: 0, B: H, u: v};
   }
   let x0 = 0, y0 = 0, gw = W, gh = H, a = null, c = null;
   if (ref === "grid" || ref === "panels") {

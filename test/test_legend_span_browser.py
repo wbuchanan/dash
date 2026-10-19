@@ -243,7 +243,16 @@ function state() {
                             Math.max(...xs), Math.max(...ys)],
                       canvas: [cr.left, cr.top, cr.right, cr.bottom],
                       frame: [cr.left + v.frame.bbox.x0,
-                              cr.left + v.frame.bbox.x1]});
+                              cr.left + v.frame.bbox.x1],
+                      // The outer edge of the panel's visible left axes.
+                      yaxis: (() => { let x = null;
+                        for (const [am, av] of v.renderer_views) {
+                          if (!am.visible || !(v.model.left || []).includes(am)
+                              || !(am.type || '').endsWith('Axis')) continue;
+                          const b = av.bbox; if (!b || !(b.width > 0)) continue;
+                          x = x == null ? b.x0 : Math.min(x, b.x0);
+                        }
+                        return x == null ? null : cr.left + x; })()});
         }
       }
     }
@@ -377,9 +386,18 @@ class TestByTitlesSpan:
                 # 19oct2026: panel 1's title at 1346.8 of 5400, centred
                 # on 226.8 .. 2353.4 + 113.4; panel 2's at 3428.5 on
                 # 2580.2 .. 4163.4 + 113.4).
-                c, f = t["canvas"], t["frame"]
+                # Flipped again (WP-32, BUGS.md "A spanned panel title's
+                # box started at the panel's canvas, not left of its y
+                # labels"): twoway's panel graph starts 1.5 units of the
+                # graph's smaller side left of the y labels (measured
+                # 19oct2026: 48.2 of 3240 and 42.9 of 2880, whatever the
+                # labels' width), and at the plot region on a panel with
+                # no y axis.
+                f = t["frame"]
+                left = f[0] if t["yaxis"] is None else \
+                    t["yaxis"] - 0.015 * min(g[2] - g[0], g[3] - g[1])
                 assert abs(_centre(t["box"])[0]
-                           - (c[0] + f[1] + e) / 2.0) <= 1.5, t
+                           - (left + f[1] + e) / 2.0) <= 1.5, t
             # Flipped (WP-32): panel 1's y labels and the margin past its
             # frame nearly cancel here, so the move is read on panel 2,
             # which has no y axis: at full width its title moves right of
