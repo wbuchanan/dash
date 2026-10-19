@@ -214,7 +214,7 @@
 *!     LB-17 level() not a number             r(7) / r(198)
 *!     LB-18 the order of the checks; D7 pinned
 *!     LB-19 p(800) is p(), never pwidth()
-*!     LB-20 pwidth()/var() on lpoly scatter lfitci kdensity: noted (D9)
+*!     LB-20 pwidth()/var() on lpoly scatter lfitci kdensity: refused (WP-32)
 *!
 *! Every refusal and note is read back out of a captured log with Stata's
 *! wrapped lines re-joined, as test_option_validation.cscript does.
@@ -1083,7 +1083,11 @@ if `bad' display as error `"LB-19 FAIL: p(800) became pwidth or no "p":"800": `m
 _so_tally LB-19 `bad' "p(800) on lpolyci is p(), not pwidth()"
 
 // LB-20: pwidth() and var() on other types: twoway refuses (recorded),
-// dash names each in its note, rc 0 (D9).
+// and so does dash, naming pwidth(), the first.  Flipped: WP-32 -- dash
+// named each in its note, rc 0 (WP-29 section 11's divergence D9, which
+// no DECISIONS.md row keeps; BUGS.md "In a few mixed lists dash names
+// another word than twoway names first, and an unknown lower-case word is
+// noted where twoway refuses it").
 local bad = 0
 foreach t in lpoly scatter lfitci kdensity {
     local v = cond("`t'" == "kdensity", "mpg", "mpg weight")
@@ -1091,15 +1095,15 @@ foreach t in lpoly scatter lfitci kdensity {
     _lb_run tw twoway `t' `v', pwidth(800) var(2) nodraw
     display as text `"LB-20 twoway `t': rc `r(rc)' `r(msg)'"'
     capture dash clear
-    _so_probe LB-20 `"dash `t' `v', pwidth(800) var(2) name(lb20)"' 0 "pwidth"
+    _so_probe LB-20 `"dash `t' `v', pwidth(800) var(2) name(lb20)"' 198 "pwidth"
     local bad = `bad' | r(bad)
-    _so_count "`c(tmpdir)'dash_so.log" "var("
+    _so_count "`c(tmpdir)'dash_so.log" "option pwidth() not allowed"
     if r(n) == 0 {
-        display as error "LB-20 FAIL: `t': the note does not name var()"
+        display as error "LB-20 FAIL: `t': not refused in twoway's words"
         local bad = 1
     }
 }
-_so_tally LB-20 `bad' "pwidth() and var() on lpoly, scatter, lfitci and kdensity are named in the note, rc 0 (D9)"
+_so_tally LB-20 `bad' "pwidth() and var() on lpoly, scatter, lfitci and kdensity are refused as twoway refuses them"
 capture dash clear
 macro drop lb_*
 

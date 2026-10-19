@@ -83,14 +83,18 @@ display as result "  [2/4] paren mode names it: PASS"
 // ---------------------------------------------------------------
 // 3. an undeclared option with a multi-word argument is ONE name
 // ---------------------------------------------------------------
+// Flipped: WP-32 -- the option was addplot(), which twoway refuses on
+// scatter and dash now refuses as twoway does (BUGS.md "In a few mixed
+// lists dash names another word than twoway names first ..."); p1(),
+// which twoway takes and dash names, carries a several-word argument.
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(m1) addplot(line price weight)"' "`logfile'"
-cert_file_has "`logfile'", needle("addplot()")
+_dash_note_for `"dash scatter mpg weight, name(m1) p1(mcolor(red) msize(small))"' "`logfile'"
+cert_file_has "`logfile'", needle("p1()")
 assert r(found) == 1
 // the argument's words must NOT appear as option names
-cert_file_has "`logfile'", needle("price()")
+cert_file_has "`logfile'", needle("msize()")
 assert r(found) == 0
-cert_file_has "`logfile'", needle("weight)()")
+cert_file_has "`logfile'", needle("small))()")
 assert r(found) == 0
 
 display as result "  [3/4] an argument is not reported as options: PASS"
@@ -99,8 +103,8 @@ display as result "  [3/4] an argument is not reported as options: PASS"
 // 4. a quoted argument containing a paren cannot unbalance the scan
 // ---------------------------------------------------------------
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(q1) addplot(line price weight) play(x)"' "`logfile'"
-cert_file_has "`logfile'", needle("addplot()")
+_dash_note_for `"dash scatter mpg weight, name(q1) p1(mcolor(red) msize(small)) play(x)"' "`logfile'"
+cert_file_has "`logfile'", needle("p1()")
 assert r(found) == 1
 cert_file_has "`logfile'", needle("play()")
 assert r(found) == 1

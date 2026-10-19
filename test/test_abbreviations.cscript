@@ -989,7 +989,9 @@ if ${ZQA_A7_NBAD} != 0 {
 // NP-30..NP-33 (WP-30 P1.14a): the named styles' minimum abbreviations,
 // twoway's (test/fixtures/named_style_truth.json A01-A13).  NP-30 each
 // lands on its key; NP-31 none is named; NP-32 pst(), ps() and as(), which
-// twoway refuses, are named as typed, rc 0 (P2.21); NP-33 ml(p3) is
+// twoway refuses, are refused as typed, r(198) (Flipped: WP-32 -- they
+// were named in the note, rc 0, P2.21; BUGS.md "In a few mixed lists dash
+// names another word than twoway names first ..."); NP-33 ml(p3) is
 // mlabel(p3), r(111) as in twoway.
 // ----------------------------------------------------------------
 capture mata: mata drop _znp_logn()
@@ -1051,9 +1053,9 @@ foreach c in "scatter mpg weight, pst(p3)|pst()" "scatter mpg weight, ps(p3)|ps(
     capture noisily dash `cmd' name(znp32)
     local rc = _rc
     quietly log close _znp
-    mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "`nm'")))
-    if `rc' | !`nn' {
-        display as error "NP-32 FAIL: `cmd': rc `rc', `nm' named `nn'"
+    mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "option `nm' not allowed")))
+    if `rc' != 198 | !`nn' {
+        display as error "NP-32 FAIL: `cmd': rc `rc', `nm' refused `nn'"
         local np32 1
     }
 }
@@ -1061,7 +1063,7 @@ if `np32' {
     local nfail = `nfail' + 1
     local faillist `"`faillist' NP-32"'
 }
-else display as text "NP-32 PASS: pst(), ps() and as() are named as typed, rc 0"
+else display as text "NP-32 PASS: pst(), ps() and as() are refused as typed, r(198), as twoway refuses them"
 capture dash clear
 capture noisily dash scatter mpg weight, ml(p3) name(znp33)
 local rc = _rc

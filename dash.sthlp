@@ -3505,12 +3505,10 @@ The following plot-level options belong to the statistical layers, and
 {cmd:base()} to the bar plots.  Each entry names the plot types that take
 it, its default and its bounds -- {cmd:twoway}'s, measured against
 {cmd:twoway} itself, and {cmd:dash}'s where they differ.  An option that
-changes an estimate is honoured or refused; the one {cmd:dash} cannot
-compute -- a kernel written as an option of its own (a bare
-{cmd:gaussian}) -- is named in the note as ignored.  {cmd:pwidth()} and {cmd:var()} are
+changes an estimate is honoured or refused.  {cmd:pwidth()} and {cmd:var()} are
 honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
-{cmd:kdensity} and the other types, where {cmd:twoway} refuses them with
-r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
+{cmd:kdensity} and the other types {cmd:twoway} refuses them, r(198),
+{cmd:option pwidth() not allowed}, and so does {cmd:dash}.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
 {phang}{ul:Fit options.}  {opt atobs} evaluates {cmd:lfit}, {cmd:qfit},

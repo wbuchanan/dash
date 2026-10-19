@@ -1888,7 +1888,11 @@ capture noisily dash scatter mpg weight, xla2(3000 "'3k") name(jg46f)
 local jg_r6 = _rc
 local jg_l46 "`c(tmpdir)'dash_jse46.log"
 _jg_log_on "`jg_l46'"
-capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") at(1 "'x") foo("'90s fp") bar(1) name(jg46g)
+* Flipped: WP-32 -- foo() and bar(), options twoway refuses, are refused
+* by dash now as twoway refuses them (BUGS.md "In a few mixed lists dash
+* names another word than twoway names first ..."); afcolor() and
+* afintensity(), which twoway takes and dash names, carry the same text.
+capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") at(1 "'x") afcolor("'90s fp") afintensity(1) name(jg46g)
 local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
 local jg_r8 = _rc
@@ -1896,7 +1900,7 @@ _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
 * bar() and no note names text(); it was "at() text() foo() bar()" and
 * "text()" once each.
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() foo() bar()")
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() afcolor() afintensity()")
 local jg_m1 = r(count)
 cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
