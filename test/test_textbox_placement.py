@@ -569,8 +569,49 @@ class TestSpan:
         assert m in list(fig.above) and m.text == "T"
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_by_places_nothing(self, mode):
+    def test_by_spans_each_panels_box_on_its_panel(self, mode):
+        """Flipped (WP-32 follow-up): by() dropped the span, where twoway
+        draws title() and note() given outside by() on every panel, each
+        spanned on its own panel's graph (measured 19oct2026, stcolor:
+        panel 1's title at x 1431.2 of 5400 against 1646.2 without, its
+        note at 355.9 against 899.3, the panel's graph starting at its y
+        axis's labels).  Each panel's span is placed on the panel's canvas,
+        with no margin in."""
         figs, _c = _figs(mode, {"by": "foreign", "note": '"N", span',
                                 "title": '"T", span'})
+        assert len(figs) == 2
         for f in figs:
-            assert _spanned(f) == []
+            assert sorted(_spanned(f)) == [
+                ("Title", "title", "above", "center"),
+                ("Title", "title", "below", "left")]
+            cb = [c for c in f.js_property_callbacks["change:inner_width"]
+                  if c.code == dr._DASH_SPAN_JS][0]
+            assert cb.args["sides"] == [0.0, 0.0, 0.0, 0.0]
+            assert [it[5] for it in cb.args["items"]] == ["", ""]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_bys_own_boxes_are_placed_on_the_by_grid(self, mode):
+        """by(, title("T", span) note("N", span)): twoway places by()'s own
+        boxes on the whole graph (measured 19oct2026, stcolor: the title at
+        2700 of 5400 against 2251.3 without, the note at 132.8 against
+        245.4, caption(, pos(5) span) ending at 5267.2 against 4257.4);
+        dash's head and foot cells place them on the by() grid."""
+        import test_by_axes_keys as bk
+        from bokeh.models import Plot
+        spec = bk._spec([bk._graph("g1", bk._TWO, {
+            "by": 'foreign, title("T", span) note("N", span) '
+                  'caption("C", span pos(5))'})])
+        roots, _n, _o = bk._build(
+            "saved" if mode == "saved" else "served", spec)
+        got = {}
+        for m in {id(m): m for r in roots for m in r.references()
+                  if isinstance(m, Plot)}.values():
+            if m.name not in ("dash_by_head", "dash_by_foot"):
+                continue
+            for c in m.js_property_callbacks.get("change:inner_width", []):
+                if c.code == dr._DASH_SPAN_JS:
+                    got[m.name] = sorted((it[0].text, it[3], it[5])
+                                         for it in c.args["items"])
+        assert got == {"dash_by_head": [("T", "center", "grid")],
+                       "dash_by_foot": [("C", "right", "grid"),
+                                        ("N", "left", "grid")]}

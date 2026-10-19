@@ -38277,6 +38277,29 @@ def _dash_span_sides(fig, sides=None):
         return [0.0, 0.0, 0.0, 0.0]
 
 
+def _dash_span_keep(fig, kinds=None, ref=None, sides=None):
+    """Keep only *fig*'s span items of *kinds* (all when None), placing
+    each on *ref* when given (``"grid"``: the by() grid that holds *fig*)
+    and against margin graph *sides* when given; the hook goes with its
+    last item.  by() calls this on its panels and chrome cells."""
+    cb = next((c for c in fig.js_property_callbacks.get(
+        "change:" + _DASH_SPAN_KEYS[0], [])
+        if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+    if cb is None:
+        return
+    items = [list(it) for it in cb.args.get("items", [])
+             if kinds is None or it[1] in kinds]
+    if ref is not None:
+        for it in items:
+            it[5:] = [str(ref)]
+    if not items:
+        _dash_span(fig, None)
+        return
+    cb.args = dict(cb.args, items=items)
+    if sides is not None:
+        _dash_span_sides(fig, sides)
+
+
 def _dash_span_move(fig, old, new):
     """Hand *old*'s span item, if it has one, to *new*: the model that
     replaces it in the figure (a title moved into its panel)."""
@@ -53132,6 +53155,11 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
     foot = _dash_by_text_cell(scheme, "dash_by_foot")
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
                            sides=("below",))
+    # WP-32: by()'s own spanned boxes are placed on the whole by() graph,
+    # as twoway places them (measured 19oct2026: the title at 2700 of
+    # 5400, 2251.3 without; the note at 132.8, 245.4 without).
+    for cell in (head, foot):
+        _dash_span_keep(cell, ref="grid")
     out = {}
     for part, cell in (("head", head), ("foot", foot)):
         # A cell that holds no text is None.
@@ -53600,10 +53628,14 @@ def _dash_by_keys(figs, opts, scheme):
     ilegends = bool(fl.get("indiv_legends"))
     # WP-32: a by() graph is unchanged by the scheme's legend_span
     # (measured 18oct2026; bygraphstyle reads its own), so no panel
-    # legend is placed on the graph (_dash_span).
-    # Nor a spanned title (not measured on by()).
+    # legend is placed on the graph (_dash_span).  A spanned title() or
+    # note() given outside by() is drawn on every panel, spanned on that
+    # panel's graph, which starts at its axis labels (measured 19oct2026:
+    # stcolor panel 1's title at 1431.2 of 5400, 1646.2 without; its note
+    # at 355.9, the y labels' edge, 899.3 without): the panel's canvas,
+    # no margin in.
     for f in figs:
-        _dash_span(f, None)
+        _dash_span_keep(f, kinds=("title",), sides=[0.0, 0.0, 0.0, 0.0])
 
     def series_legends(fig):
         return [m for m in (getattr(fig, "legend", None) or ())
@@ -65006,7 +65038,7 @@ class ServerAppBuilder:
                          # and the scheme's chrome for it.
                          "_dash_move_legend", "_dash_span",
                          "_dash_span_move", "_dash_textbox_span",
-                         "_dash_span_sides",
+                         "_dash_span_sides", "_dash_span_keep",
                          "_dash_scheme_chrome",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",

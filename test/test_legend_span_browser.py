@@ -232,7 +232,10 @@ function state() {
           const x0 = r.sx - r.anchor.x * r.width + cr.left;
           const y0 = r.sy - r.anchor.y * r.height + cr.top;
           boxes.push({type: t, cell: v.model.name || '', text: m.text,
-                      box: [x0, y0, x0 + r.width, y0 + r.height]});
+                      box: [x0, y0, x0 + r.width, y0 + r.height],
+                      canvas: [cr.left, cr.top, cr.right, cr.bottom],
+                      frame: [cr.left + v.frame.bbox.x0,
+                              cr.left + v.frame.bbox.x1]});
         }
       }
     }
@@ -292,3 +295,52 @@ class TestByLegendSpans:
             g, lg = st["grid"], _by_legend(st)
             edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
             assert abs(lg[0] - (g[0] + edge + 5)) <= 1.5, st
+
+
+def _by_titles(state, text):
+    return [b for b in state["boxes"] if b["type"] == "Title"
+            and b["text"] == text]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByTitlesSpan:
+    """Measured 19oct2026 (StataNow 19.5, stcolor, the same graph with
+    by(foreign)): by()'s own spanned title, note and caption are placed on
+    the whole graph (title 2700 of 5400, 2251.3 without; note 132.8, 245.4
+    without; caption(, pos(5)) ending 5267.2, 4257.4 without), and a
+    title() or note() given outside by() is drawn on every panel, spanned
+    on that panel's graph (panel 1's title 1431.2, 1646.2 without; its
+    note 355.9, its y labels' edge, 899.3 without)."""
+
+    def test_bys_own_boxes_are_placed_on_the_graph(self, mode):
+        by = ('foreign, title("A by title", span) note("A by note", span) '
+              'caption("A by caption", span pos(5))')
+        plain = _by(mode, {"by": by.replace(" span", "").replace(
+            ",)", ")")})[0]
+        (pn,) = _by_titles(plain, "A by note")
+        (pc,) = _by_titles(plain, "A by caption")
+        gap = (pn["box"][0] - pn["frame"][0], pc["frame"][1] - pc["box"][2])
+        for st in _by(mode, {"by": by}):
+            g = st["grid"]
+            edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
+            (t,) = _by_titles(st, "A by title")
+            assert abs(_centre(t["box"])[0] - (g[0] + g[2]) / 2.0) <= 1.5
+            (n,) = _by_titles(st, "A by note")
+            assert abs(n["box"][0] - (g[0] + edge + gap[0])) <= 1.5, st
+            (c,) = _by_titles(st, "A by caption")
+            assert abs(c["box"][2] - (g[2] - edge - gap[1])) <= 1.5, st
+
+    def test_a_title_outside_by_is_spanned_on_each_panel(self, mode):
+        for st in _by(mode, {"by": "foreign",
+                             "title": '"A panel title", span'}):
+            ts = _by_titles(st, "A panel title")
+            assert len(ts) == 2, st
+            for t in ts:
+                c = t["canvas"]
+                assert abs(_centre(t["box"])[0] - (c[0] + c[2]) / 2.0) \
+                    <= 1.5, t
+            # Panel 1's y axis is in its canvas: its title moves left of
+            # the frame's centre.
+            first = min(ts, key=lambda t: t["canvas"][0])
+            assert (first["frame"][0] + first["frame"][1]) / 2.0 \
+                - _centre(first["box"])[0] > 5, first

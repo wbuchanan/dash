@@ -5326,8 +5326,12 @@ plot region, as {cmd:twoway} draws it -- centred on the graph region's
 width, or against its left or right edge by the gap the box keeps from
 the plot region without {cmd:span} -- in the saved page and the served app and
 after a resize; a box {cmd:twoway} draws beside the plot (2-4 or 8-10
-o'clock, which {cmd:dash} draws above or below it) and a box on a
-{cmd:by()} graph keep their place.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},
+o'clock, which {cmd:dash} draws above or below it) keeps its place.  On
+a {cmd:by()} graph, {cmd:by()}'s own spanned {cmd:title()}, {cmd:note()}
+and {cmd:caption()} are placed on the whole {cmd:by()} graph, and a
+spanned {cmd:title()} or {cmd:note()} given outside {cmd:by()}, which is
+drawn on every panel, on that panel (its axis labels included), as
+{cmd:twoway} draws them.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},
 {cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
 sub-options are named in the note: a title box has no angle and no fixed
 size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},
