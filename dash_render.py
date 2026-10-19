@@ -53950,6 +53950,11 @@ def _dash_by_keys(figs, opts, scheme):
                 cell = _dash_by_legend_cell(scheme, "dash_by_clegend",
                                             side if not at else "right", key,
                                             list(key.items), "c")
+            # Not aligned with the panels' frames (BUGS.md "by()'s colour
+            # key ran past the panels' foot"): the key is centred on the
+            # panels' height, as twoway centres it (measured 19oct2026:
+            # its title at y 1499.34 of 3240, the y title's).
+            cell.frame_align = False
             out["clegend"] = cell
             out["clegend_side"], out["clegend_at"] = side, at
     return out

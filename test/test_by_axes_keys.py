@@ -1128,3 +1128,15 @@ def test_a_legend_in_a_hole_sits_at_its_compass(mode):
         assert lg.location == want, pos
         assert cell.frame_align is False
         assert cell.width_policy == "max" and cell.frame_width is None
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_colour_key_is_not_aligned_with_the_frames(mode):
+    """BUGS.md "by()'s colour key ran past the panels' foot": the key's
+    cell does not align its frame with the panels' frames, so the key is
+    centred on the panels' height, as twoway centres it."""
+    spec = _spec([_graph("g1", [_p("scatter", colorvar="headroom")],
+                         {"by": "foreign, clegend(on)"})])
+    roots, _n, _o = _build(mode, spec)
+    (grid,) = _grids(roots).values()
+    assert _cell(grid, "dash_by_clegend")[0].frame_align is False

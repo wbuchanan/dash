@@ -604,3 +604,25 @@ class TestByLegendRing0:
         for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(9))"}):
             p, lg = _panels(st), _by_legend(st)
             assert abs(_centre(lg)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByColourKey:
+    """BUGS.md "by()'s colour key ran past the panels' foot".  Measured
+    19oct2026 (StataNow 19.5, stcolor, SVG of ``twoway scatter price
+    weight, colorvar(mpg) by(foreign, clegend(on))``): at its default 3
+    o'clock the key is centred on the panels' height, its title at y
+    1499.34 of 3240 as the y title.  dash's key cell aligned its frame
+    with the panels' frames, so the key started at their plot regions'
+    top and ran 17 px past the panels' foot."""
+
+    def test_the_key_is_centred_on_the_panels_height(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, clegend(on)",
+                                  "ytitle": '"Price"'},
+                           plots=[bk._p("scatter", colorvar="mpg")]):
+            p = st["panels"]
+            (key,) = [b for b in st["boxes"] if b["type"] == "ColorBar"
+                      and b["cell"] == "dash_by_clegend"]
+            k = key["box"]
+            assert abs(_centre(k)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
+            assert k[3] <= p[3] + 0.5, st
