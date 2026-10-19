@@ -251,7 +251,7 @@ _UNREAD_KEYS = {
     # (WP-32).
     # text_option_vertical gained its reader in _dash_added_text (WP-32).
     # numticks_minor gained its reader in _dash_apply_axis_options (WP-32).
-    "legend_span": "BUGS.md: whether the legend spans the graph",
+    # legend_span gained its reader in _dash_apply_legend (WP-32).
 }
 
 

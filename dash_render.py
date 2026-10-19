@@ -37964,6 +37964,119 @@ def _dash_move_legend(fig, legend, side, location="center", ring=3):
     legend.location = location
 
 
+#: span (WP-32; BUGS.md "Five scheme keys are parsed and read by nothing"):
+#: twoway places a spanned legend or title along its side on the whole
+#: graph (measured 19oct2026: centred on the graph's width at 6 and 12, on
+#: its height at 3 and 9, at the graph's end at a corner clock), where a
+#: Bokeh side panel runs only the frame's length.  Where the frame sits in
+#: the canvas only BokehJS knows once the axes are laid out, so this runs
+#: on the figure's laid-out size (inner_width .. outer_height, which BokehJS
+#: sets after every layout: load, a resize, a filter move that changes the
+#: tick labels).  Each item is ``[model, kind, side, place, offset]``: a
+#: Legend at its panel location *place* is given the numeric location that
+#: puts its box at that place on the canvas along the side (BokehJS reads
+#: a numeric location as px from the panel's left and bottom, anchored at
+#: the box's bottom-left); a Title at its align *place* on a panel above or
+#: below is given the align and offset that put it there on the canvas
+#: (BokehJS offsets a left or right Title only, so a centred one is drawn
+#: from its left edge).
+_DASH_SPAN_JS = """
+let pv = null;
+try { pv = Bokeh.index.find_one(fig); } catch (e) { pv = null; }
+if (pv == null || pv.bbox == null) { return; }
+const W = pv.bbox.width, H = pv.bbox.height;
+if (!(W > 0) || !(H > 0)) { return; }
+const at = (key, lo, len, size, mg) =>
+  (key === "left" || key === "top") ? lo + mg
+  : (key === "right" || key === "bottom") ? lo + len - mg - size
+  : lo + (len - size) / 2;
+for (const it of items) {
+  const m = it[0], kind = it[1], side = it[2], place = it[3];
+  let v = null;
+  try { v = Bokeh.index.find_one(m); } catch (e) { v = null; }
+  const pb = (v != null && v.layout != null) ? v.layout.bbox : null;
+  if (pb == null || !(pb.width > 0) || !(pb.height > 0)) { continue; }
+  const across = side === "above" || side === "below";
+  if (kind === "legend") {
+    if (!m.visible || v.bbox == null || !(v.bbox.width > 0)) { continue; }
+    // The keyword's own place first: across the side the box stays
+    // where BokehJS puts it without span.
+    if (m.location !== place) { m.location = place; }
+    const b0 = v.bbox, lw = b0.width, lh = b0.height, mg = m.margin || 0;
+    const norm = {top: "top_center", bottom: "bottom_center",
+                  left: "center_left", right: "center_right",
+                  center: "center_center"}[place] || place;
+    const vy = norm.split("_")[0], hx = norm.split("_")[1];
+    const left = across ? at(hx, 0, W, lw, mg) : b0.left;
+    const top = across ? b0.top : at(vy, 0, H, lh, mg);
+    // A numeric location is px from the panel's left and bottom, at the
+    // box's bottom-left; the browser's own offsets are read back from
+    // the box once and taken out.
+    let want = [Math.round(left - pb.left), Math.round(pb.bottom - top - lh)];
+    m.location = want;
+    const b1 = v.bbox;
+    if (b1 != null && b1.width > 0) {
+      want = [Math.round(want[0] + left - b1.left),
+              Math.round(want[1] - (top - b1.top))];
+      m.location = want;
+    }
+  } else if (kind === "title" && across) {
+    const off = it[4] || 0;
+    let align = place, offset = off;
+    if (place === "left") {
+      offset = off - pb.left;
+    } else if (place === "right") {
+      offset = off - (W - pb.right);
+    } else {
+      const tw = (v.bbox != null && v.bbox.width > 0) ? v.bbox.width : 0;
+      if (!(tw > 0)) { continue; }
+      align = "left";
+      offset = (W - tw) / 2 - pb.left;
+    }
+    offset = Math.round(offset);
+    if (m.align !== align) { m.align = align; }
+    if (m.offset !== offset) { m.offset = offset; }
+  }
+}
+"""
+
+#: The laid-out sizes BokehJS sets on a figure after each layout.
+_DASH_SPAN_KEYS = ("inner_width", "inner_height", "outer_width",
+                   "outer_height")
+
+
+def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
+    """Place *model* along its side on the whole graph, as twoway's span
+    places it (``_DASH_SPAN_JS``), or stop placing it (*kind* None).
+
+    One callback per figure, on its laid-out size, holding ``[model,
+    kind, side, place, offset]`` per model; a later call for the same
+    model replaces its item.  *kind* is ``"legend"`` (*place* its panel
+    location) or ``"title"`` (*place* its align, *offset* its own
+    offset).  Both modes come through here."""
+    from bokeh.models import CustomJS
+    key0 = "change:" + _DASH_SPAN_KEYS[0]
+    cb = next((c for c in fig.js_property_callbacks.get(key0, [])
+               if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+    items = [] if cb is None else [it for it in cb.args.get("items", [])
+                                   if it[0] is not model]
+    if kind is not None:
+        items.append([model, kind, side, place, float(offset or 0.0)])
+    if cb is None:
+        if items:
+            cb = CustomJS(args={"fig": fig, "items": items},
+                          code=_DASH_SPAN_JS)
+            for k in _DASH_SPAN_KEYS:
+                fig.js_on_change(k, cb)
+        return
+    if items:
+        cb.args = dict(cb.args, items=items)
+        return
+    fig.js_property_callbacks = {
+        k: [c for c in v if c is not cb]
+        for k, v in fig.js_property_callbacks.items()}
+
+
 def _dash_scheme_chrome(scheme):
     """The legend's chrome and default placement from *scheme*, for both
     modes: the saved renderer's ``_rebuild_legend`` and the served app
@@ -37998,6 +38111,8 @@ def _dash_scheme_chrome(scheme):
         "legend_boxmargin": getattr(scheme, "legend_boxmargin", 5),
         "legend_ring": getattr(scheme, "legend_ring", 3),
         "legend_col_first": getattr(scheme, "legend_col_first", False),
+        # WP-32: `yesno legend_span', legend(span)'s default.
+        "legend_span": bool(getattr(scheme, "legend_span", False)),
     }
 
 
@@ -38608,11 +38723,28 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     # 7b. The box and its text (WP-31 D4): region(lcolor() fcolor()
     #     color() lwidth() lpattern() margin()), nobox/box, bmargin(),
     #     color(), textwidth() and title() on the series legend
-    #     (legend_geometry_truth.json region, nobox, title).  span,
+    #     (legend_geometry_truth.json region, nobox, title).
     #     forcesize's partner noforcesize, bexpand and their no-forms are
-    #     taken in silence: a side-panel legend already spans its side.
+    #     taken in silence.
     if legend is not None:
         _dash_legend_box(legend, _calls, _words)
+
+    # 7c. span (WP-32): legend(span), else the scheme's `yesno
+    #     legend_span', and legend(nospan) undoes either.  A side-panel
+    #     legend is placed along its side on the whole graph instead of
+    #     the plot region (_DASH_SPAN_JS; measured 19oct2026: 6 and 12
+    #     centred on the graph's width, 3 and 9 on its height, a corner at
+    #     the graph's end); inside the plot (ring(0), position(0)) span
+    #     changes nothing, as in twoway.  by() drops it (_dash_by_keys).
+    if legend is not None:
+        _side = next((s for s in ("below", "above", "left", "right")
+                      if legend in list(getattr(fig, s))), None)
+        _span = ("nospan" not in _words
+                 and ("span" in _words or bool(chrome.get("legend_span"))))
+        if _span and _side is not None and isinstance(legend.location, str):
+            _dash_span(fig, legend, "legend", _side, legend.location)
+        else:
+            _dash_span(fig, legend)
 
     # 8. Stata's rule governs the SERIES key; `off' is a bare word, so
     #    legend(pos(6) off) hides it and label(1 "Turned off") does not.
@@ -53227,6 +53359,12 @@ def _dash_by_keys(figs, opts, scheme):
         return out
     fl = (opts or {}).get("flags") or {}
     ilegends = bool(fl.get("indiv_legends"))
+    # WP-32: a by() graph is unchanged by the scheme's legend_span
+    # (measured 18oct2026; bygraphstyle reads its own), so no panel
+    # legend is placed on the graph (_dash_span).
+    for f in figs:
+        for lg in list(getattr(f, "legend", None) or []):
+            _dash_span(f, lg)
 
     def series_legends(fig):
         return [m for m in (getattr(fig, "legend", None) or ())
@@ -64177,6 +64315,7 @@ class ServerAppBuilder:
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_GRAPH_MARGIN_JS",
+                      "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",
@@ -64605,7 +64744,8 @@ class ServerAppBuilder:
                          # in the app called its copy (WP-26, 24sep2026).
                          # The legend, whole: keys, rule, every sub-option,
                          # and the scheme's chrome for it.
-                         "_dash_move_legend", "_dash_scheme_chrome",
+                         "_dash_move_legend", "_dash_span",
+                         "_dash_scheme_chrome",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_apply_legend",

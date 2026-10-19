@@ -242,3 +242,121 @@ def test_metas_legend_and_kpi_cards_have_no_outline(mode):
                for m in getattr(f, side) if isinstance(m, Legend)]
     assert legends and all(str(lg.border_line_color).lower() == "#000000"
                            for lg in legends)
+
+
+# ---------------------------------------------------------------------------
+# `yesno legend_span' and legend(span): the legend placed on the graph
+# ---------------------------------------------------------------------------
+#
+# Measured 19oct2026 (StataNow 19.5, stcolor and s2color, SVG of ``twoway
+# (scatter price weight) (scatter mpg weight), ylabel(, format(%15.2fc))``
+# with legend(pos(#) [span])): span places the legend along its side on the
+# whole graph where twoway otherwise places it on the plot region -- 6 and
+# 12 centred on the graph's width (stcolor's box at x 2700 of 5400, the plot
+# region's centre 3098), 3 and 9 on its height (y 1620 of 3240, the plot
+# region's 1440), 7 and 11 at the graph's left end, 4 and 8 at its bottom;
+# 1, 2, 5 and 10 sit where they did, the plot region reaching that end.
+# ring(0) is unchanged.  A user scheme's `yesno legend_span yes' draws as
+# legend(span) and legend(nospan) undoes it (BUGS.md "Five scheme keys are
+# parsed and read by nothing").  Only BokehJS knows the frame's place in
+# the canvas, so the figure carries _DASH_SPAN_JS on its laid-out size.
+
+def _span_items(fig):
+    """[(model type, kind, side, location), ...] the span hook places."""
+    import dash_render as dr
+    cbs = {id(cb): cb for k in ("inner_width", "inner_height",
+                                "outer_width", "outer_height")
+           for cb in fig.js_property_callbacks.get("change:" + k, [])
+           if getattr(cb, "code", None) == dr._DASH_SPAN_JS}
+    assert len(cbs) <= 1
+    out = []
+    for cb in cbs.values():
+        assert cb.args["fig"] is fig
+        out += [(type(it[0]).__name__, it[1], it[2], it[3])
+                for it in cb.args["items"]]
+    return out
+
+
+def _two_keys():
+    plots = [plot_for("scatter"), plot_for("scatter", {})]
+    plots[1]["yvar"] = "price"
+    return plots
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestTheLegendSpans:
+
+    def _items(self, mode, legend, bo=None):
+        spec = tp._spec(_two_keys(), bo or {"scheme": "s2color"},
+                        {"legend": legend} if legend else {})
+        return _span_items(_draw(spec, mode).figures[0])
+
+    def test_span_places_the_legend_on_the_graph(self, mode):
+        assert self._items(mode, "pos(6) span") == [
+            ("Legend", "legend", "below", "center")]
+        assert self._items(mode, "pos(3) span") == [
+            ("Legend", "legend", "right", "center")]
+        assert self._items(mode, "pos(7) span") == [
+            ("Legend", "legend", "below", "bottom_left")]
+        assert self._items(mode, "span") == [
+            ("Legend", "legend", "below", "center")]
+
+    def test_no_span_and_ring_0_place_nothing(self, mode):
+        assert self._items(mode, "") == []
+        assert self._items(mode, "pos(6)") == []
+        assert self._items(mode, "pos(6) ring(0) span") == []
+        assert self._items(mode, "pos(0) span") == []
+
+    def test_the_schemes_span_is_the_default(self, mode, tmp_path,
+                                            monkeypatch):
+        _user_scheme(tmp_path, monkeypatch, "wls1.scheme",
+                     ["#include s2color", "yesno legend_span yes"])
+        bo = {"scheme": "wls1"}
+        assert self._items(mode, "", bo) == [
+            ("Legend", "legend", "below", "center")]
+        assert self._items(mode, "pos(9)", bo) == [
+            ("Legend", "legend", "left", "center")]
+        # legend(nospan) undoes it.
+        assert self._items(mode, "nospan", bo) == []
+
+    def test_by_is_unchanged_by_the_schemes_span(self, mode, tmp_path,
+                                                monkeypatch):
+        _user_scheme(tmp_path, monkeypatch, "wls2.scheme",
+                     ["#include s2color", "yesno legend_span yes"])
+        spec = tp._spec(_two_keys(), {"scheme": "wls2"},
+                        {"by": "foreign"})
+        for fig in _draw(spec, mode).figures:
+            assert _span_items(fig) == []
+
+
+def test_the_span_hook_adds_replaces_and_drops():
+    """_dash_span: one callback per figure on its four laid-out sizes; a
+    second call for a model replaces its item; kind None drops it, and the
+    callback with its last item."""
+    import dash_render as dr
+    from bokeh.models import Legend, Title
+    from bokeh.plotting import figure
+    f = figure(width=400, height=300)
+    lg, t = Legend(), Title(text="T")
+    dr._dash_span(f, lg)
+    assert _span_items(f) == []
+    dr._dash_span(f, lg, "legend", "below", "center")
+    dr._dash_span(f, t, "title", "above", "left", 4)
+    dr._dash_span(f, lg, "legend", "below", "bottom_left")
+    assert _span_items(f) == [("Title", "title", "above", "left"),
+                              ("Legend", "legend", "below", "bottom_left")]
+    for k in dr._DASH_SPAN_KEYS:
+        assert len(f.js_property_callbacks["change:" + k]) == 1
+    dr._dash_span(f, lg)
+    assert _span_items(f) == [("Title", "title", "above", "left")]
+    dr._dash_span(f, t)
+    assert _span_items(f) == []
+    assert not any(f.js_property_callbacks.values())
+
+
+def test_the_span_hook_is_in_the_served_app():
+    with open(os.path.join(_HERE, "..", "dash_render.py"),
+              encoding="utf-8") as fh:
+        src = fh.read()
+    assert src.count('"_dash_span",') == 1
+    assert src.count('"_DASH_SPAN_JS", "_DASH_SPAN_KEYS",') == 1

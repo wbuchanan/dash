@@ -4427,8 +4427,15 @@ and {cmd:title()} a line above the keys, with the legend's own
 {cmd:subtitle()} a line under it; {cmd:colgap()} is the gap between keys
 in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
 rows (a legend of several rows and columns has one gap, the row gap);
-{cmd:span}, {cmd:bexpand} and their {cmd:no} forms are taken: a legend
-beside the plot already spans its side.  {cmd:textfirst}, {cmd:stacked},
+{cmd:span} places a legend beside the plot along its side on the whole
+graph instead of the plot region, as {cmd:twoway} draws it -- at 6 or 12
+o'clock centred on the graph's width, at 3 or 9 on its height, at a
+corner clock at the graph's end -- in the saved page and the served app
+and after a resize; {cmd:nospan} undoes the scheme's
+{cmd:yesno legend_span}, and a legend inside the plot is placed as
+without it, as is a {cmd:by()} graph's under the scheme's
+{cmd:legend_span}.  {cmd:bexpand} and its
+{cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},
 {cmd:symplacement()} and the legend's own {cmd:note()} and
 {cmd:caption()} are named in the note: a {cmd:dash} legend draws each key
 and then its text in one row, centred in the key's height, with nothing
@@ -6133,8 +6140,9 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     geometry ({cmd:gsize legend_key_xsize}, {cmd:legend_key_ysize},
     {cmd:legend_key_gap}, {cmd:legend_row_gap}), its inner and outer
     margins ({cmd:margin legend}, {cmd:margin legend_boxmargin}) and
-    {cmd:yesno legend_col_first}; {cmd:gsize legend_col_gap} and
-    {cmd:yesno legend_span} are carried and read, not drawn.{p_end}
+    {cmd:yesno legend_col_first}; {cmd:yesno legend_span} is
+    {cmd:legend(span)}'s default; {cmd:gsize legend_col_gap} is carried
+    and read, not drawn.{p_end}
 
 {phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
     background is {cmd:color legend}, its border {cmd:color legend_line}
