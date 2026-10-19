@@ -577,7 +577,11 @@ _SAVED_DIGEST = (
     # zscale(log) ticks (code only: the base and the new tree give one
     # digest, 5596ecb6..., with the relevel stripped from the filter
     # callback's code), the same under both Pythons
-    "83fce28d4ce16ff530ac2409c5bd8293b4c0ca329348afdb7310e4f217ab304a")
+    # 83fce28d... -> 04d45c84...: the WP-32 merge of the sort copies, the
+    # contour parts, the bins relevel and the kept colour rows (each
+    # agent's masked model diff showed code strings only); the same under
+    # both Pythons.
+    "04d45c84eca1dd9b95976a41797c399067f515810c423ca383e9b01d5d6ba30d")
 
 
 # ===========================================================================

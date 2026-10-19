@@ -341,6 +341,14 @@ class TestAfterAFilterMove:
             {}))
         for f in r.figures.values():
             texts += [m.code for m in f.document.select({"type": CustomJS})]
+        # WP-32 (maintainer ruling over WP-29 BR-07.4): a colorvar() key's
+        # level lines are recoloured over the kept rows after a move, as
+        # twoway colours them -- a colour level, not a named style.
+        relevel = dr._DASH_CVAR_RELEVEL_JS
+        assert {m.group(1) for m in pat.finditer(relevel)} == {"line_color"}
+        lvl = "r.glyph.line_color = colour;"
+        assert relevel.count(lvl) == len(list(pat.finditer(relevel)))
+        texts = [t.replace(lvl, "") for t in texts]
         assert texts and not [t for t in texts if pat.search(t)]
 
 

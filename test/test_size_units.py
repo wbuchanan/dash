@@ -736,8 +736,10 @@ class TestBothModesAfterAMove:
     def test_no_saved_script_writes_a_size(self):
         """Guard (E3): no module-level JavaScript of dash_render writes a
         size, so a saved filter move cannot change one."""
-        pat = re.compile(r"\.size\s*=|font_size\s*=|x_offset\s*=|"
-                         r"y_offset\s*=")
+        # An assignment, not a comparison: a Set's .size === n is a read
+        # (WP-32 _DASH_BY_FIT_JS).
+        pat = re.compile(r"\.size\s*=(?!=)|font_size\s*=(?!=)|"
+                         r"x_offset\s*=(?!=)|y_offset\s*=(?!=)")
         scripts = {k: v for k, v in vars(dr).items()
                    if isinstance(v, str) and len(v) > 200
                    and (k.endswith("_JS") or "_JS_" in k or "cb_obj" in v

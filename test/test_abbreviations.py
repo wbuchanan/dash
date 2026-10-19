@@ -832,8 +832,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # plot parser, two in the graph parser).
     # 163 -> 167: WP-32 the note on the refused pending lines (five) for
     # the filter() line's (one).
-    assert comments == {"_dash_parse_plot_opts": 167,
-                        "_dash_parse_graph_opts": 75}, comments
+    # 167 -> 172 and 75 -> 77: WP-32 the notes on the silent, play() and
+    # replace refusals (c2's later commits).
+    assert comments == {"_dash_parse_plot_opts": 172,
+                        "_dash_parse_graph_opts": 77}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below

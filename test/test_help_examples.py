@@ -131,7 +131,9 @@ class TestTheShapeOfTheExamples:
         # Flipped (WP-30 P1.10): text() is drawn, so the Differences
         # example names play() alone; it was play(x) text(20 3000 "hi").
         assert shown_out == {
-            'dash scatter mpg weight, play(x)': 1,
+            # Flipped (WP-32): play() of a missing recording is refused
+            # and the named control is afcolor(), which dash names.
+            'dash scatter mpg weight, afcolor(red)': 1,
             # Flipped (WP-31 C10c): yaxis(3) is drawn; the help's
             # refusal example was degree(8), dash's own bound.
             # Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it;
@@ -147,7 +149,8 @@ class TestTheShapeOfTheExamples:
             # WP-31 D5: scale(1.2) -> play(x), scale() is drawn.
             # Flipped (WP-31 E2): mlpattern() -> mlabwidth(2), which is
             # still named; mlpattern() is taken as twoway takes it.
-            'dash scatter mpg weight, mlabwidth(2) play(x)': 1,
+            # Flipped (WP-32): mlabwidth() is refused as twoway refuses it.
+            'dash scatter mpg weight, afcolor(red) afintensity(50)': 1,
         }
 
 

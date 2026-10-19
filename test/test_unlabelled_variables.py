@@ -510,6 +510,17 @@ class TestAfterAFilterMove:
         # is a layout change, not a filter move: it writes each axis's
         # build-time label back from its JSON data, and nothing else.
         stack_write = "axes[i].axis_label = stacked ? r[2] : r[1];"
+        # WP-32 (maintainer ruling over WP-29 BR-07.4): a colour key is
+        # levelled again over the kept rows after a move, as twoway draws
+        # it; its one label write is a key item's level text.  No title,
+        # axis label or tooltip.
+        relevel = dr._DASH_CVAR_RELEVEL_JS
+        assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(relevel)] \
+            == [".label ="], relevel
+        key_write = "it.label = {value: labels[j]};"
+        assert key_write in relevel
+        codes = [c.replace(key_write, "") for c in codes]
+        module_js = [c.replace(key_write, "") for c in module_js]
         for code in codes + module_js:
             if code.strip() == dr._DASH_BY_STACK_JS.strip():
                 assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(code)] \
