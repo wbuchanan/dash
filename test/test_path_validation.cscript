@@ -426,24 +426,26 @@ assert r(user) == 0
 display "PV-24 PASS: saving(name, replace) overwrites the file"
 
 // PV-25: replace with nothing to replace -- no saving(), or a named graph,
-// which writes nothing -- is named in the note, never silently taken.
+// which writes nothing -- is never silently taken.
+// Flipped: WP-32 -- it was named in the note, which was wrong because
+// twoway refuses a bare replace in every position, "option replace not
+// allowed", r(198) (noted_option_truth.json graph_level; BUGS.md "A bare
+// replace with nothing to replace is named in the note, where twoway
+// refuses it"); dash refuses it as twoway does.
 foreach form in "scatter mpg weight, replace" "scatter mpg weight, name(pv25) saving(`pvu') replace" {
     capture log close _pv25
     quietly log using "`pvl'", text replace name(_pv25)
     capture noisily dash `form'
     local rc25 = _rc
     quietly log close _pv25
-    // Flipped: WP-32 -- the note named it replace(); a word typed
-    // without a value is named as typed (BUGS.md "The "ignoring
-    // unsupported" note writes a word typed without a value as name()").
-    cert_file_has "`pvl'", needle(" replace)")
-    if `rc25' != 0 | r(found) != 1 {
-        display as error "PV-25: `form': rc `rc25', replace named `r(found)'"
+    cert_file_has "`pvl'", needle("option replace not allowed")
+    if `rc25' != 198 | r(found) != 1 {
+        display as error "PV-25: `form': rc `rc25', refusal said `r(found)'"
         exit 9
     }
 }
 capture dash clear
-display "PV-25 PASS: replace with nothing to replace is named in the note"
+display "PV-25 PASS: replace with nothing to replace is refused as twoway refuses it"
 
 // PV-26 (adversarial): a directory in saving()'s place is never written
 // over -- refused as an existing file without replace, and with replace

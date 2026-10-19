@@ -69,6 +69,9 @@
 *!   _dash_seg_saving(seg)
 *!       The value of the last saving() an option list gives, as typed.
 *!
+*!   _dash_seg_named(seg)
+*!       1 when a plot segment's options hold a name() option.
+*!
 *!   _dash_launch_quote(path, os)
 *!       path quoted for the To launch: line: single quotes on a Mac and
 *!       Unix, double quotes on Windows.
@@ -1369,6 +1372,20 @@ string scalar _dash_seg_saving(string scalar seg)
         if (v != "") out = v
     }
     return(out)
+}
+
+// _dash_seg_named(seg) -- 1 when a plot segment's options (the text after
+// its first comma outside quotes and parentheses) hold a name() option
+// (_dash_has_name_opt).  WP-32: with _dash_seg_saving it tells _dash_plot
+// whether the command is the one-line form with a saving(), the one place
+// dash takes a bare replace.
+real scalar _dash_seg_named(string scalar seg)
+{
+    real scalar pos
+
+    pos = _dash_first_comma_pos(seg)
+    if (pos == 0) return(0)
+    return(_dash_has_name_opt(substr(seg, pos + 1, .)))
 }
 
 // _dash_launch_quote(path, os) -- path quoted for the To launch: line of
@@ -8177,7 +8194,8 @@ string matrix _dash_tw_refuses_tab()
 // _dash_tw_refuses(tok, ptype, graph) -- 1 when the option word tok is a
 // spelling of a row of _dash_tw_refuses_tab that twoway refuses on plot
 // type ptype (graph 1: after the plot groups' comma), with a value or
-// without: twoway refuses both forms, naming the word as typed.
+// without: twoway refuses both forms, naming the word as typed; or a bare
+// replace where dash has no saving() for it (dash__rep_ok).
 real scalar _dash_tw_refuses(string scalar tok, string scalar ptype,
                              real scalar graph)
 {
@@ -8187,6 +8205,13 @@ real scalar _dash_tw_refuses(string scalar tok, string scalar ptype,
 
     nm = _dash_rep_optname(tok)
     if (nm == "") return(0)
+    // A bare replace: twoway refuses it in every position, "option replace
+    // not allowed", r(198) (noted_option_truth.json graph_level); dash
+    // takes it only on the one-line form beside a saving(), where it
+    // writes over the file as dash build's replace does (dash.sthlp), which
+    // _dash_plot marks in the global dash__rep_ok.
+    if (nm == "replace" & !strpos(tok, "("))
+        return(st_global("dash__rep_ok") != "1")
     L = strlen(nm)
     t = _dash_tw_refuses_tab()
     for (r = 1; r <= rows(t); r++) {

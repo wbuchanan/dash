@@ -502,7 +502,7 @@ program define _dash_require_mata
         _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
-        _dash_prefix_word _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
+        _dash_prefix_word _dash_seg_saving _dash_seg_named _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -8255,6 +8255,8 @@ program define _dash_plot
     // WP-32: no earlier command's held refusal (_dash_pend).
     global dash__pend ""
     global dash__pend_msg ""
+    // WP-32: no earlier command's leave to take a bare replace.
+    global dash__rep_ok ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -8294,6 +8296,24 @@ program define _dash_plot
     // again.
     local n_segs   = `_n_segs'
     local gopts_raw : copy local _graph_opts_raw
+
+    // ---- A bare replace (WP-32) ----
+    // twoway refuses replace in every position, "option replace not
+    // allowed", r(198) (test/fixtures/noted_option_truth.json graph_level).
+    // dash takes it only on the one-line form beside a saving() -- no
+    // name() anywhere -- where it writes over the file saving() names, as
+    // dash build's replace does (dash.sthlp, "saving() keeps a file that is
+    // already there"); the registry needs none, since name(g, replace) is
+    // its replace.  Read here, by value, before any list's options are
+    // judged: _dash_refuse_unknown refuses replace in the list's order
+    // unless dash__rep_ok is 1 (_dash_tw_refuses).
+    mata: st_local("_rp_sv", strofreal(_dash_seg_saving("," + st_local("gopts_raw")) != ""))
+    mata: st_local("_rp_nm", strofreal(_dash_has_name_opt(st_local("gopts_raw"))))
+    forvalues k = 1/`n_segs' {
+        mata: st_local("_rp_sv", _dash_seg_saving(st_local("_seg_`k'")) != "" ? "1" : st_local("_rp_sv"))
+        mata: st_local("_rp_nm", _dash_seg_named(st_local("_seg_`k'")) ? "1" : st_local("_rp_nm"))
+    }
+    if `_rp_sv' & !`_rp_nm' global dash__rep_ok 1
 
     // ---- The qualifier written between or after the plot groups ----
     // `dash (scatter y x) (line y x) if foreign==1': twoway applies it to
@@ -8813,6 +8833,9 @@ program define _dash_plot
         _dash_gopts_checks `"`macval(gopts_raw)'"'
         exit `_gac_rc'
     }
+    // Every list's options are judged: the leave to take a bare replace
+    // (WP-32) is read by nothing after this.
+    macro drop dash__rep_ok
     foreach _vrule of local _dash_rules_graph {
         local _veq   = strpos("`_vrule'", "=")
         local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
@@ -9049,8 +9072,8 @@ program define _dash_plot
     // folded into saving() as twoway's own saving(name, replace), which
     // _dash_render_immediate reads, and never written to the spec.  With no
     // saving(), or on a named graph, which writes nothing, it has nothing
-    // to replace and is named in the note.  The text is joined in Mata, by
-    // value.
+    // to replace and is refused as twoway refuses it (WP-32; it was named
+    // in the note).  The text is joined in Mata, by value.
     if `: length local g_replace' {
         if `: length local g_saving' & !`: length local g_name' {
             // Read by the grammar above: replace already given adds
@@ -9060,7 +9083,10 @@ program define _dash_plot
                 (st_local("_sv_comma") == "1" ? " replace" : ", replace")))
         }
         else {
-            mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " replace")
+            // Refused before this, in the list's order (dash__rep_ok);
+            // never named in the note (WP-32).
+            display as error "option replace not allowed"
+            exit 198
         }
         local g_replace ""
     }

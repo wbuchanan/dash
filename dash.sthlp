@@ -816,7 +816,9 @@ there, is an invalid point.  The literal is read as data and never run.
     never written: with {cmd:replace} it is refused with {cmd:r(608)}, as
     {cmd:twoway} refuses it, on the one-line form and {cmd:dash build}
     alike.  {cmd:replace} with no {cmd:saving()}, or on a named graph,
-    has nothing to replace and is named in the note.
+    has nothing to replace and is refused as {cmd:twoway} refuses it in
+    every position, "option replace not allowed", {cmd:r(198)}; a named
+    graph is replaced by {cmd:name(}{it:name}{cmd:, replace)}.
     {cmd:saving()}'s sub-options are {cmd:twoway}'s, {cmd:replace} and
     {cmd:asis}, in full, in lower case and once each, on the one-line form
     and {cmd:dash build} alike; {cmd:asis} is accepted and changes nothing,

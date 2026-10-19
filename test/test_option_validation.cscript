@@ -3027,6 +3027,56 @@ _ov_assert U52-20 "(`_u52rc' == 0)" "pcspike, headlabel: rc `_u52rc' (expected 0
 _ov_said U52-20 "ignoring unsupported option(s): headlabel"
 capture dash clear
 
+// U53 (WP-32): a bare replace with nothing to replace -- no saving(), or a
+// named graph, which writes nothing -- is refused as twoway refuses it in
+// every position, "option replace not allowed", r(198), where dash named
+// it in its note; twoway refuses it beside saving() too, and in the
+// list's order (measured 19oct2026, test/fixtures/noted_option_truth.json
+// graph_level; BUGS.md "A bare replace with nothing to replace is named
+// in the note, where twoway refuses it").  dash's one-line saving()
+// keeps its documented replace (U53-0b).
+// U53-1 .. U53-7, one case each; each prints its verdict, the first as
+// "U53-1 PASS".
+local _u53n 0
+foreach _u53p in "scatter mpg weight, replace@option replace not allowed" ///
+    "(scatter mpg weight), replace@option replace not allowed" ///
+    "scatter mpg weight || line mpg weight, replace@option replace not allowed" ///
+    "scatter mpg weight, name(ovu53) replace@option replace not allowed" ///
+    "(scatter mpg weight), name(ovu53) replace@option replace not allowed" ///
+    "scatter mpg weight, name(ovu53) saving(ovu53) replace@option replace not allowed" ///
+    "scatter mpg weight, name(ovu53) replace bogus@option replace not allowed" {
+    local ++_u53n
+    gettoken _u53x _u53m : _u53p, parse("@")
+    local _u53m = substr(`"`_u53m'"', 2, .)
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u53x'
+    local _u53rc = _rc
+    log close _ovlog
+    _ov_assert U53-`_u53n' "(`_u53rc' == 198)" `"`_u53x': rc `_u53rc' (expected 198, as twoway)"'
+    _ov_said U53-`_u53n' `"`_u53m'"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U53-`_u53n' "(r(n) == 0)" `"`_u53x': not named in the note"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "registered"
+    _ov_assert U53-`_u53n' "(r(n) == 0)" `"`_u53x': nothing registered"'
+}
+_ov_assert U53-0 "(`_u53n' == 7)" "the 7 U53 cases ran"
+// U53-0b: the one-line form's saving() takes a bare replace, as dash.sthlp
+// documents (as dash build takes it), and names nothing.
+capture erase "`c(tmpdir)'ovu53b.html"
+capture dash clear
+capture log close _ovlog
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily dash scatter mpg weight, saving("`c(tmpdir)'ovu53b.html") replace
+local _u53rc = _rc
+log close _ovlog
+_ov_assert U53-0b "(`_u53rc' == 0)" "one-line saving() replace: rc `_u53rc' (expected 0)"
+_ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+_ov_assert U53-0b "(r(n) == 0)" "one-line saving() replace: nothing named"
+capture erase "`c(tmpdir)'ovu53b.html"
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}
