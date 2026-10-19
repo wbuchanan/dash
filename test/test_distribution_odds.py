@@ -445,9 +445,14 @@ class TestTheAdoText:
             assert re.search(r"sreturn local %s +: copy local" % key, ado), key
 
     def test_no_und_rows_for_the_declared(self):
+        # Flipped (WP-32): read in _dash_rep_und_tab() alone; the whole file
+        # holds a ("baroffset", ...) row of _dash_tw_silent_tab, the types
+        # twoway draws nothing different with it on, which is no und row.
         m = _mata()
-        assert '("baroffset",' not in m
-        assert '("boundary",' not in m
+        i = m.index("string matrix _dash_rep_und_tab()")
+        und = m[i:m.index("return(t)", i)]
+        assert '("baroffset",' not in und
+        assert '("boundary",' not in und
 
     def test_twoways_words(self):
         ado = _ado()
