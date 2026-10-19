@@ -38134,22 +38134,40 @@ const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
 // the cell, in canvas px.  The graph region is the graph less the margin
 // graph sides (l, r, b, t, relative units of min(width, height)), which
 // a spanned box is placed against.
+// "panels": the by() grid's panels plus their axes (the union of its
+// children not named dash_by_*) within that graph region, where twoway
+// places by()'s legend and boxes without span.
 const region = (ref) => {
-  let x0 = 0, y0 = 0, gw = W, gh = H;
-  if (ref === "grid") {
-    let a = pv.parent;
+  let x0 = 0, y0 = 0, gw = W, gh = H, a = null, c = null;
+  if (ref === "grid" || ref === "panels") {
+    a = pv.parent;
     while (a != null && !(a.model != null && a.model.type === "GridBox")) {
       a = a.parent;
     }
     if (a == null || a.el == null || pv.canvas_view == null) { return null; }
     const g = a.el.getBoundingClientRect();
-    const c = pv.canvas_view.el.getBoundingClientRect();
+    c = pv.canvas_view.el.getBoundingClientRect();
     x0 = g.left - c.left; y0 = g.top - c.top; gw = g.width; gh = g.height;
     if (!(gw > 0) || !(gh > 0)) { return null; }
   }
   const u = Math.min(gw, gh) / 100;
-  return {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
-          T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u};
+  const r = {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
+             T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u};
+  if (ref !== "panels") { return r; }
+  let p = null;
+  for (const k of (a.child_views || [])) {
+    const nm = (k.model != null && k.model.name) || "";
+    if (nm.startsWith("dash_by_") || k.el == null) { continue; }
+    const b = k.el.getBoundingClientRect();
+    if (!(b.width > 0) || !(b.height > 0)) { continue; }
+    p = p == null ? {L: b.left, R: b.right, T: b.top, B: b.bottom}
+      : {L: Math.min(p.L, b.left), R: Math.max(p.R, b.right),
+         T: Math.min(p.T, b.top), B: Math.max(p.B, b.bottom)};
+  }
+  if (p == null) { return null; }
+  const q = {L: Math.max(r.L, p.L - c.left), R: Math.min(r.R, p.R - c.left),
+             T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top)};
+  return (q.R > q.L && q.B > q.T) ? q : null;
 };
 const at = (key, lo, len, size, mg) =>
   (key === "left" || key === "top") ? lo + mg
@@ -53728,12 +53746,19 @@ def _dash_by_keys(figs, opts, scheme):
             _keys = [m for m in (list(_cell.above) + list(_cell.below)
                                  + list(_cell.left) + list(_cell.right))
                      if isinstance(m, Legend)]
-            if "span" in words and not at and _keys:
+            # Without span (BUGS.md "Without span by()'s legend was
+            # placed on its cell, not on the panels"), on the panels plus
+            # their axes (measured 19oct2026: pos(6) at the shared x
+            # title's centre, 2756.3 of 5400; pos(3) at the shared y
+            # title's, y 1499.3 of 3240), not on its cell.  Not in a hole
+            # nor inside the array (ring(0)).
+            if not at and _keys and ("span" in words or not out["ring0"]):
                 _kside = next(sd for sd in ("above", "below", "left",
                                             "right")
                               if _keys[0] in list(getattr(_cell, sd)))
                 _dash_span(_cell, _keys[0], "legend", _kside,
-                           _keys[0].location, ref="grid")
+                           _keys[0].location,
+                           ref="grid" if "span" in words else "panels")
             out["legend_side"], out["legend_at"] = side, at
     if not ilegends and keys1:
         words, at, side, _ring = place(opts.get("clegend", ""),

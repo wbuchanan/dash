@@ -242,7 +242,26 @@ function state() {
     for (const c of (v.child_views || [])) visit(c, box);
   };
   for (const v of Object.values(Bokeh.index)) visit(v, null);
-  return {grid, boxes};
+  // The panels plus their axes: the union of the grid's panel figures
+  // (every child not named dash_by_*).
+  let panels = null;
+  const gv = (() => { let f = null; const look = (v) => { if (!v || f) return;
+    if (v.model && v.model.type === 'GridBox' && (v.child_views || []).some(
+      (k) => k.model && k.model.name === 'dash_by_legend')) { f = v; return; }
+    for (const c of (v.child_views || [])) look(c); };
+    for (const v of Object.values(Bokeh.index)) look(v); return f; })();
+  if (gv) {
+    for (const k of gv.child_views || []) {
+      const nm = (k.model && k.model.name) || '';
+      if (nm.startsWith('dash_by_')) continue;
+      const r = rect(k.el);
+      if (!(r[2] > r[0])) continue;
+      panels = panels == null ? r : [Math.min(panels[0], r[0]),
+        Math.min(panels[1], r[1]), Math.max(panels[2], r[2]),
+        Math.max(panels[3], r[3])];
+    }
+  }
+  return {grid, boxes, panels};
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
@@ -344,3 +363,45 @@ class TestByTitlesSpan:
             first = min(ts, key=lambda t: t["canvas"][0])
             assert (first["frame"][0] + first["frame"][1]) / 2.0 \
                 - _centre(first["box"])[0] > 5, first
+
+
+def _panels(st):
+    """The panels plus their axes, within the graph region: the panels'
+    union less nothing past the grid's margin graph sides (stcolor 3.5% of
+    min(width, height))."""
+    g, p = st["grid"], st["panels"]
+    e = 0.035 * min(g[2] - g[0], g[3] - g[1])
+    return [max(p[0], g[0] + e), max(p[1], g[1] + e),
+            min(p[2], g[2] - e), min(p[3], g[3] - e)]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByLegendWithoutSpan:
+    """BUGS.md "Without span by()'s legend was placed on its cell, not on
+    the panels".  Measured 19oct2026 (StataNow 19.5, stcolor, SVG of
+    ``twoway (scatter price weight) (scatter mpg weight), ylabel(,
+    format(%15.2fc)) ytitle("Price") by(foreign, legend(pos(#)))``):
+    without span twoway places by()'s legend on the panels plus their axes
+    -- pos(6) centred at x 2756.3 of 5400, the shared x title's centre
+    (2700 without the y title), pos(3) at y 1499.3, the shared y title's
+    centre, pos(7) at 264.8, the panels' left (226.0) plus 38.8, pos(2)
+    and pos(4) at their top and bottom less 38.8."""
+
+    def test_6_oclock_is_centred_on_the_panels(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(6))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(_centre(lg)[0] - (p[0] + p[2]) / 2.0) <= 1.5, st
+
+    def test_3_oclock_is_centred_on_the_panels_height(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(3))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(_centre(lg)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
+            assert lg[0] >= p[2], st
+
+    def test_a_corner_is_at_the_panels_end(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(7))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(lg[0] - (p[0] + 5)) <= 1.5, st
+        for st in _by(mode, {"by": "foreign, legend(pos(4))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(lg[3] - (p[3] - 5)) <= 1.5, st

@@ -354,6 +354,17 @@ class TestTheLegendSpans:
         spec = tp._spec(_two_keys(), {"scheme": "wls2"},
                         {"by": "foreign"})
         for fig in _draw(spec, mode).figures:
+            # Flipped (WP-32, BUGS.md "Without span by()'s legend was
+            # placed on its cell, not on the panels"): the served app's
+            # figures include by()'s legend cell, whose legend is now
+            # placed on the panels as twoway places it without span; the
+            # scheme's span still places nothing on the grid.
+            if getattr(fig, "name", None) == "dash_by_legend":
+                import dash_render as dr
+                (cb,) = [c for c in fig.js_property_callbacks[
+                    "change:inner_width"] if c.code == dr._DASH_SPAN_JS]
+                assert [it[5] for it in cb.args["items"]] == ["panels"]
+                continue
             assert _span_items(fig) == []
 
 
@@ -411,4 +422,16 @@ def test_by_legend_span_places_the_cells_legend_on_the_grid(mode):
                 for it in c.args["items"]]
     assert cell_items("foreign, legend(pos(6) span)") == [
         ("legend", "above", "center", "grid")]
-    assert cell_items("foreign, legend(pos(6))") == []
+    # Flipped (WP-32, BUGS.md "Without span by()'s legend was placed on
+    # its cell, not on the panels"): without span twoway places by()'s
+    # legend on the panels plus their axes (measured 19oct2026: pos(6)
+    # centred at 2756.3 of 5400, the shared x title's centre; pos(3) at y
+    # 1499.3, the shared y title's), so the cell's legend is placed on the
+    # panels ("panels"); in a hole, at(), it stays in its cell.
+    assert cell_items("foreign, legend(pos(6))") == [
+        ("legend", "above", "center", "panels")]
+    assert cell_items("foreign, legend(pos(3))") == [
+        ("legend", "left", "center", "panels")]
+    assert cell_items("foreign, legend(pos(7))") == [
+        ("legend", "above", "left", "panels")]
+    assert cell_items("foreign, total legend(at(4) pos(0))") == []

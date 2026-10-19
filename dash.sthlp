@@ -3166,7 +3166,10 @@ included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
 {synopt:{opt by(varlist, noytitles noxtitles)}}leave out the axis titles
     drawn beside and below the panels{p_end}
 {synopt:{opt by(varlist, legend())}}place the one legend:
-    {cmd:position()}, {cmd:at()}, {cmd:on}, {cmd:off}{p_end}
+    {cmd:position()}, {cmd:at()}, {cmd:on}, {cmd:off}; beside the panels
+    it is placed along its side on the panels and their axes, as in
+    {cmd:twoway} (at 6 o'clock centred under them, at 3 beside their
+    middle), and with {cmd:span} on the whole graph{p_end}
 {synopt:{opt by(varlist, ilegends)}}a legend on each panel instead{p_end}
 {synopt:{opt by(varlist, clegend(on))}}one colour key, the first
     panel's; {cmd:position()}, {cmd:at()}{p_end}
