@@ -3987,6 +3987,18 @@ _CVAR_MOVES = [
     # rows kept: twoway draws the kept rows' range.
     _move_case("scatter colorvar continuous, dropdown to Foreign",
                _MOVES[0], [plot_for("scatter", {"colorvar": "mpg"})]),
+    # A line's colour levels (D-15f) are cut at the key's ticks over the
+    # rows kept (measured 19oct2026: twoway re-ticks the key 15(5)40 over
+    # the foreign cars and draws their line in those levels).
+    _move_case("line colorvar levels (D-15f), dropdown to Foreign",
+               _MOVES[0], [plot_for("line", {"colorvar": "mpg"})]),
+    # A move whose kept rows (mpg 16-25) tick the key otherwise.
+    _move_case("scatter colorvar continuous, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "mpg"})]),
+    _move_case("line colorvar levels (D-15f), rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("line", {"colorvar": "mpg"})]),
     # Each panel and by()'s key keep the one level a move leaves.
     _move_case("by(foreign) colordiscrete clegend, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
@@ -6418,3 +6430,68 @@ class TestTheByColourKeyAfterAMove:
         session.set(w, _move_widget_value(w, "Select", "3"))
         session.run(cb)
         assert _by_keys_of(r._last_layout_root.references()) == want
+
+
+
+def _key_ticks_of(models):
+    """Every colour bar's (ticks, labels) among *models*, sorted: a by()
+    panel's label box excluded."""
+    out = []
+    for m in models:
+        if type(m).__name__ != "ColorBar" or m.name == "dash_by_label_box":
+            continue
+        t = list(getattr(m.ticker, "ticks", None) or [])
+        out.append(([_num(v) for v in t],
+                    sorted((str(_num(float(k))), str(v)) for k, v in
+                           dict(m.major_label_overrides or {}).items())))
+    return sorted(out, key=repr)
+
+
+@pytest.mark.parametrize("name", [
+    "scatter colorvar continuous, rep dropdown to 3",
+    "line colorvar levels (D-15f), rep dropdown to 3"])
+class TestTheColourKeyTicksAfterAMove:
+    """BUGS.md "A continuous colour key's labels and a line's colour levels
+    keep the build's after a filter move": twoway ticks the key by natscale
+    over the rows it draws, written in %8.0gc (measured 19oct2026: 10 20
+    30 40 over every car, 15 20 25 30 35 40 over the foreign ones).  The
+    served app, the saved page's own script under node and the saved
+    renderer over the kept rows draw the same key."""
+
+    def test_the_key_is_ticked_over_the_kept_rows(self, name):
+        import js_runner
+        case = [c for c in MOVE_CORPUS if c.values[0] == name][0]
+        _name, spec, action, oracle = case.values
+        q = json.loads(json.dumps(spec))
+        q["build_options"]["filter"] = ""
+        for g in q["graphs"]:
+            g["if_expr"] = oracle
+        r0, _ = _standalone(q)
+        want = _key_ticks_of(r0._last_layout_root.references())
+        before, _ = _standalone(spec)
+        assert want and want != _key_ticks_of(
+            before._last_layout_root.references())
+        doc, _ = _served(spec)
+        kind, label = action
+        w = [x for x in _widgets_of(doc) if type(x).__name__ == kind][0]
+        _fire(w, _move_widget_value(w, kind, label))
+        assert _key_ticks_of([m for root in doc.roots
+                              for m in root.references()]) == want
+        r, _ = _standalone(spec)
+        w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind][0]
+        session = js_runner.JsSession(r.filter_callbacks)
+        session.set(w, _move_widget_value(w, kind, label))
+        session.run(cb)
+        assert _key_ticks_of(r._last_layout_root.references()) == want
+
+
+def test_the_colour_keys_ticks_over_a_range():
+    """_dash_cvar_ticks: natscale #5 over the range, as the build ticks the
+    key (mpg 16-25: 16(2)26), with the minimum and maximum added under
+    colorvarminmax."""
+    assert dr._dash_cvar_ticks(16.0, 25.0, False) == [16.0, 18.0, 20.0,
+                                                      22.0, 24.0, 26.0]
+    assert dr._dash_cvar_ticks(16.0, 25.0, True) == [16.0, 18.0, 20.0,
+                                                     22.0, 24.0, 25.0, 26.0]

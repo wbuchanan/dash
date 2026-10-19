@@ -195,7 +195,15 @@ def stand_in(m, models, objs):
                 "items": encode(list(m.items), models, objs)}
     if type(m).__name__ in ("LinearColorMapper", "LogColorMapper"):
         return {"__type__": "ContinuousColorMapper",
-                "low": plain(m.low), "high": plain(m.high)}
+                "low": plain(m.low), "high": plain(m.high),
+                "palette": [str(c) for c in (m.palette or [])]}
+    # WP-32: a colour key's ticker and labels, which the relevel writes.
+    if type(m).__name__ == "ColorBar":
+        return {"__type__": "ColorBar",
+                "ticker": encode(m.ticker, models, objs),
+                "major_label_overrides": {
+                    str(k): v for k, v in
+                    dict(m.major_label_overrides or {}).items()}}
     if type(m).__name__ == "CategoricalColorMapper":
         return {"__type__": "CategoricalColorMapper",
                 "factors": [str(f) for f in (m.factors or [])],
@@ -206,6 +214,10 @@ def stand_in(m, models, objs):
                 "fill_color": m.fill_color,
                 "line_color": m.line_color
                 if isinstance(m.line_color, str) else None}
+    if "line_color" in m.properties() and "fill_color" not in \
+            m.properties() and isinstance(getattr(m, "line_color"), str):
+        return {"__type__": type(m).__name__, "__glyph__": True,
+                "fill_color": None, "line_color": m.line_color}
     # WP-30 P1.3a: a Range1d's Reset extent and a FixedTicker's ticks, the
     # two models the axis re-finish writes (and reads back, below).
     if isinstance(m, Range1d):
@@ -304,7 +316,8 @@ for (const o of Object.values(REG)) {
 // items, a plot's renderers; WP-32) point at the shared stand-ins too.
 for (const o of Object.values(REG)) {
   for (const k of Object.keys(o)) {
-    if (k === "data" || k === "__id__" || k === "ticker") continue;
+    if (k === "data" || k === "__id__"
+        || (k === "ticker" && o.__type__ === "ContourColorBar")) continue;
     const v = o[k];
     if (v && typeof v === "object") o[k] = resolve(v);
   }
@@ -343,7 +356,14 @@ for (const [id, o] of Object.entries(REG)) {
   else if (o.__type__ === "Legend")
     out[id] = {legend_items: (o.items || []).map((x) => x.__id__)};
   else if (o.__type__ === "ContinuousColorMapper")
-    out[id] = {span: {low: o.low, high: o.high}};
+    out[id] = {span: {low: o.low, high: o.high,
+                      palette: Array.from(o.palette || [])}};
+  else if (o.__type__ === "ColorBar") {
+    const ov = o.major_label_overrides instanceof Map
+      ? Array.from(o.major_label_overrides.entries())
+      : Object.entries(o.major_label_overrides || {}).map(([k, v]) => [Number(k), v]);
+    out[id] = {barlabels: ov};
+  }
   else if (o.__type__ === "CategoricalColorMapper")
     out[id] = {mapper: {factors: Array.from(o.factors || []),
                         palette: Array.from(o.palette || [])}};
@@ -487,7 +507,15 @@ class JsSession:
                     m.ticks = [float(v) for v in state["ticks"]]
                 elif "legend_items" in state:
                     m.items = [objs[i] for i in state["legend_items"]]
+                elif "barlabels" in state:
+                    new = {float(k): v for k, v in state["barlabels"]}
+                    if dict(m.major_label_overrides or {}) != new:
+                        m.major_label_overrides = new
                 elif "span" in state:
+                    pal = state["span"].get("palette")
+                    if isinstance(pal, list) and pal \
+                            and list(m.palette) != pal:
+                        m.palette = list(pal)
                     for k in ("low", "high"):
                         v = state["span"].get(k)
                         if isinstance(v, (int, float)) \

@@ -569,7 +569,11 @@ _SAVED_DIGEST = (
     # branch (code only: the new tree with the relevel stripped from the
     # filter callback's code gives b475c9c7...), the same under both
     # Pythons
-    "fe4f0d95b4f816c626a8f5cd32e2e41172d0db6da0b190b7386c0dd032b12bf3")
+    # fe4f0d95... -> 63134ba5...: WP-32, the relevel's key ticks and a
+    # line's levels (code only: the new tree with the relevel stripped from
+    # the filter callback's code gives b475c9c7...), the same under both
+    # Pythons
+    "63134ba5f76f3d32f594efbb1c632effe7f61b090412fc2f1288ba24a1a1a0cc")
 
 
 # ===========================================================================

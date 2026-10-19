@@ -16200,6 +16200,7 @@ class GlyphMapper:
         """
         self._colorvar_step_cuts = None
         self._colorvar_step_colours = None
+        self._colorvar_step_plan = None
         varname = options.get("colorvar", "").strip()
         if not varname or varname not in source.data:
             return
@@ -16692,16 +16693,35 @@ class GlyphMapper:
                 _cbar.color_mapper = mapper
                 if stepped and type(mapper).__name__ in (
                         "LinearColorMapper", "LogColorMapper"):
+                    def _cof(n):
+                        if _c_list:
+                            return (_c_list + [_c_list[-1]] * n)[:n]
+                        if palette_key:
+                            return [palette[int(round(
+                                k * (len(palette) - 1) / max(n - 1, 1)))]
+                                for k in range(n)]
+                        return _rule_palette(n)
                     mapper = self._colorvar_stepped_mapper(
-                        _cbar, mapper, lo, hi,
-                        lambda n: (_c_list + [_c_list[-1]] * n)[:n]
-                        if _c_list else (
-                            [palette[int(round(k * (len(palette) - 1)
-                                               / max(n - 1, 1)))]
-                             for k in range(n)] if palette_key
-                            else _rule_palette(n)),
-                        missing_color)
+                        _cbar, mapper, lo, hi, _cof, missing_color)
                     _cbar.color_mapper = mapper
+                    # The line's levels are cut again over the rows a move
+                    # keeps (BUGS.md "A continuous colour key's labels and
+                    # a line's colour levels keep the build's after a
+                    # filter move"): what map_line's plan needs, for a
+                    # linear key ticked by natscale (not a date's, nor
+                    # zlabel()'s).
+                    if (type(mapper).__name__ == "LinearColorMapper"
+                            and not _cv_kind and not str(
+                                (self.z_options or {}).get("zlabel", "")
+                                or "").strip()):
+                        self._colorvar_step_plan = {
+                            "cbar": _cbar, "mapper": mapper,
+                            "fmt": _key_fmt,
+                            "dp": getattr(self, "dp", "period"),
+                            "minmax": bool(minmax),
+                            "missing": missing_color,
+                            "cols": {str(n): [str(c) for c in _cof(n)]
+                                     for n in range(2, 13)}}
 
             color_spec = {"field": varname, "transform": mapper}
             self._colorvar_paint(renderer.glyph, source, color_spec,
@@ -16718,6 +16738,19 @@ class GlyphMapper:
                 renderer._dash_cvar = {"renderer": renderer,
                                        "field": varname, "kind": "range",
                                        "mapper": mapper}
+                # Its labels too, natscale over the rows kept in the key's
+                # format (BUGS.md "A continuous colour key's labels and a
+                # line's colour levels keep the build's after a filter
+                # move"), for a key no date or zlabel() ticks.
+                if (_cbar is not None and not _cv_kind
+                        and type(getattr(_cbar, "ticker", None)).__name__
+                        == "FixedTicker"
+                        and not str((self.z_options or {}).get("zlabel", "")
+                                    or "").strip()):
+                    renderer._dash_cvar.update(
+                        cbar=_cbar, fmt=_key_fmt,
+                        dp=getattr(self, "dp", "period"),
+                        minmax=bool(minmax))
 
             # colorkeysreverse on a key that is not discrete: twoway draws
             # the same key with it as without it (measured, WP-31 C8e:
@@ -18302,9 +18335,38 @@ class GlyphMapper:
         # it, with the key unless the layer's markers carry it.
         _cv_parts = self._colorvar_line_parts(fig, sorted_source, xvar,
                                               yvar, options, colorvar_key)
+        _sp = getattr(self, "_colorvar_step_plan", None)
+        self._colorvar_step_plan = None
         if _cv_parts:
             _rs = self._colorvar_line_draw(fig, _cv_parts, options,
                                            _line_kwargs, role)
+            _cvn = str(options.get("colorvar", "") or "").strip()
+            # Each row's identity: the frame's index, which both modes'
+            # level lines carry (the served app's carry no __dash_row__).
+            _rkey = next((k for k in ("index", _ROW_ID_COLUMN)
+                          if k in sorted_source.data), None)
+            if _sp and _rs and _rkey and _cvn in sorted_source.data:
+                # The levels a move may leave, up to natscale's 6 cuts and
+                # the missing level: a pool of lines, the ones not drawn
+                # kept off the figure (BUGS.md "A continuous colour key's
+                # labels and a line's colour levels keep the build's after
+                # a filter move").
+                _cols = list(_cv_parts[0][0].data.keys())
+                _need = max(0, _DASH_CVAR_LINE_POOL - len(_rs))
+                _extra = self._colorvar_line_draw(
+                    fig, [(ColumnDataSource({c: [] for c in _cols}),
+                           _sp["missing"], None) for _ in range(_need)],
+                    options, _line_kwargs, role) if _need else []
+                _ex = {id(x) for x in _extra}
+                fig.renderers = [x for x in fig.renderers
+                                 if id(x) not in _ex]
+                _rs[0]._dash_cvar = dict(
+                    _sp, renderer=_rs[0], kind="steps", field=_cvn,
+                    pool=list(_rs) + list(_extra),
+                    inputs=[x.data_source for x in _rs],
+                    key=_rkey,
+                    order=[str(v) for v in sorted_source.data[_rkey]],
+                    fig=fig)
             if _dash_join_spec(options)[0] != "none":
                 fig.add_tools(self._hover_tool(yvar, xvar, renderers=_rs))
             return _rs[0]
@@ -43475,10 +43537,111 @@ _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 #: The saved page's twin of :func:`_dash_cvar_relevel`, run at the end of
 #: every filter callback over its ``cvar_plans``.
 _DASH_CVAR_RELEVEL_JS = r"""
+function dash_cvar_ticks(lo, hi, minmax) {
+  // _dash_cvar_ticks: natscale #5 (the minimum alone when it gives none),
+  // the minimum and maximum too under colorvarminmax.
+  let t = dash_natscale(lo, hi, 5) || [lo];
+  if (!t.length) t = [lo];
+  if (minmax) {
+    t = Array.from(new Set(t.concat([lo, hi]))).sort((a, b) => a - b);
+  }
+  return t;
+}
+function dash_cvar_key_ticks(pl, lo, hi) {
+  // _dash_cvar_key_ticks: the bar ticked over lo .. hi in its format.
+  const t = dash_cvar_ticks(lo, hi, pl.minmax);
+  const bar = pl.cbar;
+  if (!bar) return t;
+  const pos = Array.from(new Set(t.filter((v) => isFinite(v))))
+    .sort((a, b) => a - b);
+  const ovr = {};
+  for (const v of pos) {
+    ovr[String(v)] = dash_fmt_text(v, pl.fmt || "%8.0gc", null,
+                                   pl.dp || "period", null);
+  }
+  bar.ticker.ticks = pos;
+  bar.major_label_overrides = ovr;
+  return t;
+}
+function dash_cvar_relevel_steps(pl) {
+  // _dash_cvar_relevel_steps: a continuous colorvar() line's levels cut
+  // again at the key's ticks over the rows the move kept.
+  const inputs = pl.inputs || [];
+  if (!inputs.length) return;
+  const cols = Object.keys(inputs[0].data);
+  const key = pl.key || "__dash_row__";
+  const rows = new Map();
+  for (const src of inputs) {
+    const d = src.data;
+    const ids = d[key] || [];
+    for (let i = 0; i < ids.length; i++) {
+      const row = {};
+      for (const c of cols) if (c in d && i < d[c].length) row[c] = d[c][i];
+      rows.set(String(ids[i]), row);
+    }
+  }
+  const order = (pl.order || []).filter((rid) => rows.has(rid));
+  const seen = new Set(order);
+  for (const rid of rows.keys()) if (!seen.has(rid)) order.push(rid);
+  const num = (v) => {
+    if (v === null || v === undefined) return null;
+    const f = Number(v);
+    return Number.isFinite(f) ? f : null;
+  };
+  const vals = order.map((rid) => num(rows.get(rid)[pl.field]));
+  const fin = vals.filter((v) => v !== null);
+  if (!fin.length) return;
+  const lo = Math.min(...fin), hi = Math.max(...fin);
+  const ticks = dash_cvar_key_ticks(pl, lo, hi).slice().sort((a, b) => a - b);
+  let cuts = ticks.filter((t) => t >= lo);
+  if (!cuts.length) cuts = [lo];
+  const colours = (pl.cols || {})[String(cuts.length + 1)];
+  const pool = pl.pool || [];
+  if (!colours) return;
+  const idx = vals.map((v) => v === null ? -1
+    : cuts.filter((c) => c < v).length);
+  const levels = [-1].concat(Array.from(new Set(idx.filter((k) => k >= 0)))
+    .sort((a, b) => a - b));
+  if (levels.length > pool.length) return;
+  levels.forEach((lev, j) => {
+    const r = pool[j];
+    const data = {};
+    for (const c of cols) {
+      data[c] = [];
+      order.forEach((rid, i) => { if (idx[i] === lev) data[c].push(rows.get(rid)[c]); });
+    }
+    r.data_source.data = data;
+    const colour = lev >= 0 ? colours[lev] : pl.missing;
+    if (r.glyph.line_color !== colour) {
+      if (typeof r.glyph.setv === "function") r.glyph.setv({line_color: colour});
+      else r.glyph.line_color = colour;
+    }
+  });
+  const fig = pl.fig;
+  if (fig) {
+    const cur = fig.renderers || [];
+    let at = cur.findIndex((x) => pool.includes(x));
+    const rest = cur.filter((x) => !pool.includes(x));
+    at = at < 0 ? rest.length : Math.min(at, rest.length);
+    fig.renderers = rest.slice(0, at).concat(pool.slice(0, levels.length),
+                                             rest.slice(at));
+  }
+  const m = pl.mapper;
+  if (m) {
+    const step = cuts.length > 1
+      ? (cuts[cuts.length - 1] - cuts[0]) / (cuts.length - 1)
+      : Math.max(Math.abs(hi - cuts[0]), Math.abs(cuts[0] - lo), 1.0);
+    const eps = step * 1e-9;
+    m.palette = colours.slice();
+    m.low = cuts[0] - step + eps;
+    m.high = cuts[cuts.length - 1] + step + eps;
+  }
+}
 function dash_cvar_relevel(plans) {
   const none = (v) => v === null || v === undefined
     || (typeof v === "number" && isNaN(v));
   for (const pl of plans || []) {
+    if (pl.kind === "steps") { dash_cvar_relevel_steps(pl); continue; }
     const r = pl.renderer;
     const col = (r && r.data_source && r.data_source.data)
       ? (r.data_source.data[pl.field] || []) : [];
@@ -43494,6 +43657,7 @@ function dash_cvar_relevel(plans) {
       }
       const m = pl.mapper;
       if (!m || !(lo <= hi)) continue;
+      dash_cvar_key_ticks(pl, lo, hi);
       if (lo === hi) hi = lo + 1;
       if (m.low !== lo) m.low = lo;
       if (m.high !== hi) m.high = hi;
@@ -51458,12 +51622,16 @@ def _dash_cvar_relevel(plan):
         if not vals or m is None:
             return
         lo, hi = min(vals), max(vals)
+        _dash_cvar_key_ticks(plan, lo, hi)
         if lo == hi:
             hi = lo + 1.0
         if m.low != lo:
             m.low = lo
         if m.high != hi:
             m.high = hi
+        return
+    if plan.get("kind") == "steps":
+        _dash_cvar_relevel_steps(plan)
         return
     present = {str(v) for v in col if not _none(v)}
     levels = list(plan.get("levels") or [])
@@ -51511,6 +51679,119 @@ def _dash_cvar_relevel(plan):
         new = rest[:at] + sw_keep + rest[at:]
         if [id(x) for x in fig.renderers] != [id(x) for x in new]:
             fig.renderers = new
+
+
+#: The lines a continuous colorvar() line keeps for its levels after a
+#: move: natscale #5 gives at most 6 cuts, so 7 levels, and the missing one.
+_DASH_CVAR_LINE_POOL = 8
+
+
+def _dash_cvar_ticks(lo, hi, minmax):
+    """The colour key's ticks over *lo* .. *hi*, as the build ticks it:
+    natscale #5 (the minimum alone when it gives none), with the minimum
+    and maximum under colorvarminmax."""
+    t = list(_dash_axis_count_ticks(lo, hi, 5, None) or [lo])
+    if minmax:
+        t = sorted(set(t) | {lo, hi})
+    return t
+
+
+def _dash_cvar_key_ticks(plan, lo, hi):
+    """Tick *plan*'s colour bar over *lo* .. *hi* (the kept rows' range) in
+    its format, as the build does (:func:`_dash_key_ticks`); the ticks."""
+    t = _dash_cvar_ticks(lo, hi, plan.get("minmax"))
+    bar = plan.get("cbar")
+    if bar is None:
+        return t
+    pos, ovr = _dash_key_ticks(t, "", plan.get("fmt") or "%8.0gc",
+                               dp=plan.get("dp") or "period")
+    if list(bar.ticker.ticks or []) != list(pos):
+        bar.ticker.ticks = list(pos)
+    if dict(bar.major_label_overrides or {}) != dict(ovr):
+        bar.major_label_overrides = dict(ovr)
+    return t
+
+
+def _dash_cvar_relevel_steps(plan):
+    """A continuous colorvar() line's levels cut again over the rows a
+    move keeps (BUGS.md "A continuous colour key's labels and a line's
+    colour levels keep the build's after a filter move"; measured
+    19oct2026: twoway ticks the key 15(5)40 over the foreign cars and
+    draws their line in those levels).  The kept rows are the union of the
+    build's level lines (each rewritten by the move), in the line's join
+    order; the key is ticked over their range, the cuts are its ticks from
+    the minimum up, each row's level is the number of cuts below it (-1
+    missing), and the pool's first lines take the missing level and every
+    level present, in order, in their colours; the bar's stepped mapper
+    takes the new colours and bins.  Never raises."""
+    try:
+        inputs = list(plan["inputs"])
+        cols = list(inputs[0].data.keys())
+        field = plan["field"]
+    except (KeyError, IndexError, AttributeError, TypeError):
+        return
+    rows = {}
+    key = plan.get("key") or _ROW_ID_COLUMN
+    for src in inputs:
+        d = {c: list(v) for c, v in src.data.items()}
+        ids = d.get(key, [])
+        for i, rid in enumerate(ids):
+            rows[str(rid)] = {c: d[c][i] for c in cols
+                              if c in d and i < len(d[c])}
+    order = [rid for rid in plan.get("order") or [] if rid in rows]
+    seen = set(order)
+    order += [rid for rid in rows if rid not in seen]
+
+    def _num(v):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if f == f and f not in (float("inf"), float("-inf")) \
+            else None
+    vals = [_num(rows[rid].get(field)) for rid in order]
+    fin = [v for v in vals if v is not None]
+    if not fin:
+        return
+    lo, hi = min(fin), max(fin)
+    ticks = sorted(_dash_cvar_key_ticks(plan, lo, hi))
+    cuts = [t for t in ticks if t >= lo] or [lo]
+    colours = (plan.get("cols") or {}).get(str(len(cuts) + 1))
+    pool = list(plan.get("pool") or [])
+    if not colours:
+        return
+    idx = [-1 if v is None else sum(1 for c in cuts if c < v) for v in vals]
+    levels = [-1] + sorted({k for k in idx if k >= 0})
+    if len(levels) > len(pool):
+        return
+    for j, lev in enumerate(levels):
+        r = pool[j]
+        r.data_source.data = {c: [rows[rid].get(c) for rid, k in
+                                  zip(order, idx) if k == lev] for c in cols}
+        colour = colours[lev] if lev >= 0 else plan.get("missing")
+        if r.glyph.line_color != colour:
+            r.glyph.line_color = colour
+    fig = plan.get("fig")
+    if fig is not None:
+        ids = {id(x) for x in pool}
+        cur = list(fig.renderers)
+        at = next((i for i, x in enumerate(cur) if id(x) in ids), len(cur))
+        rest = [x for x in cur if id(x) not in ids]
+        at = min(at, len(rest))
+        new = rest[:at] + pool[:len(levels)] + rest[at:]
+        if [id(x) for x in new] != [id(x) for x in cur]:
+            fig.renderers = new
+    m = plan.get("mapper")
+    if m is not None:
+        if len(cuts) > 1:
+            step = (cuts[-1] - cuts[0]) / (len(cuts) - 1)
+        else:
+            step = max(abs(hi - cuts[0]), abs(cuts[0] - lo), 1.0)
+        eps = step * 1e-9
+        if list(m.palette) != list(colours):
+            m.palette = list(colours)
+        m.low = cuts[0] - step + eps
+        m.high = cuts[-1] + step + eps
 
 
 def _dash_cvar_plans(models):
@@ -65583,6 +65864,7 @@ class ServerAppBuilder:
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_BY_HOLE_PLACE", "_DASH_BY_FIT_JS",
+                      "_DASH_CVAR_LINE_POOL",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",
@@ -66235,6 +66517,8 @@ class ServerAppBuilder:
                          "_dash_by_clock_side", "_dash_by_legend_cell",
                          "_dash_by_key_share", "_dash_by_indiv_sides",
                          "_dash_cvar_relevel", "_dash_cvar_plans",
+                         "_dash_cvar_ticks", "_dash_cvar_key_ticks",
+                         "_dash_cvar_relevel_steps",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
