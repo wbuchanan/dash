@@ -41,6 +41,8 @@ _ALLOWED_DUNDER_PREFIXES = (
     "__DASH_LPOLY_ROT_CONSTANTS__", "__DASH_LPOLY_SUPPORT__",
     # Bokeh's session-JWT member _dash_ws_payload bounds (WP-29 P0.12a).
     "__bk__zlib_",
+    # Python's own dunders the sourceless-renderer stubs read (WP-32 K2).
+    "__code__", "__loader__", "__wrapped__", "__qualname__",
 )
 
 

@@ -89,7 +89,9 @@ class TestTheLegendRing:
         assert "inside the plot region" in row
         assert "scheme's clock" in row
         src = _render()
-        assert 'place.get("ring") == 0' in src
+        # Flipped: WP-32 reads the ring from clegend() or the scheme
+        # (zyx2legend_ring) before the test.
+        assert "ring == 0 and clock in _DASH_CLOCK_INSIDE" in src
         assert "_DASH_CLOCK_INSIDE[clock]" in src
 
 

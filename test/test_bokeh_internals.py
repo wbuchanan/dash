@@ -336,6 +336,11 @@ class TestTheInternalsList:
             "if __name__ != '__main__':\n"
             "    _dash_check_served_template()\n"
             "    _dash_harden_origin_check()\n\n"
+            # WP-32 H3: a bokeh serve session locks the library warnings.
+            "# A bokeh serve session: the process serves (WP-32).\n"
+            "if __name__ != '__main__' and not _DASH_TRIAL and \\\n"
+            "        getattr(curdoc(), 'session_context', None) is not None:\n"
+            "    _dash_lock_library_warnings()\n"
             "if __name__ != '__main__':\n    ")
         try:
             mod = load_app(app, "dash_bki_app")

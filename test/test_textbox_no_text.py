@@ -520,7 +520,8 @@ class TestTheServedCopy:
         assert _re.search(r"_dash_add_secondary_axes\(fig, plots, go, g_df,"
                           r"\s*_reported_subopts, gname,\s*var_labels, "
                           # WP-30 P1.23a: date_axes and more may follow.
-                          r"_DASH_SCHEME[,)]", src)
+                          # WP-32 H3: a session's own scheme copy.
+                          r"(?:_DASH_SCHEME|_dash_cur_scheme\(\))[,)]", src)
 
 
 # ---------------------------------------------------------------------------
