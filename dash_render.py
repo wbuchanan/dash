@@ -38028,7 +38028,9 @@ for (const it of items) {
     } else if (place === "right") {
       offset = off - (W - pb.right);
     } else {
-      const tw = (v.bbox != null && v.bbox.width > 0) ? v.bbox.width : 0;
+      // The text's box: a Title's own bbox is its whole panel.
+      let tw = 0;
+      try { tw = v._get_size().width; } catch (e) { tw = 0; }
       if (!(tw > 0)) { continue; }
       align = "left";
       offset = (W - tw) / 2 - pb.left;
@@ -38053,13 +38055,14 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
     kind, side, place, offset]`` per model; a later call for the same
     model replaces its item.  *kind* is ``"legend"`` (*place* its panel
     location) or ``"title"`` (*place* its align, *offset* its own
-    offset).  Both modes come through here."""
+    offset); *model* None drops every item.  Both modes come through
+    here."""
     from bokeh.models import CustomJS
     key0 = "change:" + _DASH_SPAN_KEYS[0]
     cb = next((c for c in fig.js_property_callbacks.get(key0, [])
                if getattr(c, "code", None) == _DASH_SPAN_JS), None)
-    items = [] if cb is None else [it for it in cb.args.get("items", [])
-                                   if it[0] is not model]
+    items = [] if cb is None or model is None else [
+        it for it in cb.args.get("items", []) if it[0] is not model]
     if kind is not None:
         items.append([model, kind, side, place, float(offset or 0.0)])
     if cb is None:
@@ -38075,6 +38078,35 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
     fig.js_property_callbacks = {
         k: [c for c in v if c is not cb]
         for k, v in fig.js_property_callbacks.items()}
+
+
+def _dash_span_move(fig, old, new):
+    """Hand *old*'s span item, if it has one, to *new*: the model that
+    replaces it in the figure (a title moved into its panel)."""
+    cb = next((c for c in fig.js_property_callbacks.get(
+        "change:" + _DASH_SPAN_KEYS[0], [])
+        if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+    if cb is None:
+        return
+    items = [[new] + list(it[1:]) if it[0] is old else it
+             for it in cb.args.get("items", [])]
+    cb.args = dict(cb.args, items=items)
+
+
+def _dash_textbox_span(fig, model, opts, side, clock=12):
+    """title(), subtitle(), note() and caption() with span (WP-32): a box
+    above or below the plot is placed on the whole graph, as twoway places
+    it, through :func:`_dash_span`; without span, or with nospan, nothing.
+    A box twoway draws beside the plot (*clock* 2-4 or 8-10), which dash
+    draws on the nearer horizontal side (:func:`_dash_textbox_place`),
+    keeps its place: twoway's span moves it along the plot's height only
+    (BUGS.md "A spanned title is placed on the plot region")."""
+    o = opts or {}
+    if ("span" in o and "nospan" not in o and side in ("above", "below")
+            and clock not in (2, 3, 4, 8, 9, 10)):
+        _dash_span(fig, model, "title", side,
+                   str(getattr(model, "align", "") or "left"),
+                   getattr(model, "offset", 0.0) or 0.0)
 
 
 def _dash_scheme_chrome(scheme):
@@ -51672,9 +51704,9 @@ _DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
 
 #: The further sub-options title(), subtitle(), note() and caption() draw
 #: (WP-31 D3; :func:`_dash_textbox_position`, :func:`_dash_textbox_style`).
-#: span and bexpand are drawn as they are (a side-panel Title spans the
-#: figure already), and box colours without box draw nothing, as in
-#: twoway.  orientation(), width(), height(), angle(), lstyle() and the
+#: span places a box above or below the plot on the whole graph
+#: (:func:`_dash_textbox_span`, WP-32); bexpand is taken; box colours
+#: without box draw nothing, as in twoway.  orientation(), width(), height(), angle(), lstyle() and the
 #: bl* family stay named: a Bokeh Title has no angle and no fixed box.
 _DASH_TEXTBOX_BOX_HONOURED = frozenset({
     "position", "ring", "span", "nospan", "justification", "alignment",
@@ -51798,6 +51830,8 @@ def _dash_figure_title(fig, graph_opts, seen=None, key="", scheme=None):
     # (and named)": the scheme's heading, set before this runs, stays.
     _dash_textbox_style(t, _t_opts, fig, scheme, "title",
                         base_size=t.text_font_size, base_color=t.text_color)
+    _dash_textbox_span(fig, t, _t_opts,
+                       getattr(fig, "title_location", None) or "above")
 
 
 def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
@@ -52117,7 +52151,9 @@ def _dash_textbox_insert(fig, side, model, ring, tag=True):
         props = t.properties_with_values(include_defaults=False)
         props["tags"] = ["dash_textbox", "title", "ring=%d" % t_ring]
         fig.title = None
-        _dash_textbox_insert(fig, side, Title(**props), t_ring)
+        moved = Title(**props)
+        _dash_span_move(fig, t, moved)
+        _dash_textbox_insert(fig, side, moved, t_ring)
 
     def ring_of(m):
         tg = [str(t) for t in (getattr(m, "tags", None) or [])]
@@ -52173,6 +52209,8 @@ def _dash_textbox_draw(fig, key, text, opts, scheme, place, *,
         _dash_textbox_style(m, opts, fig, scheme, key, base_size=base_size,
                             base_color=base_color)
         _dash_textbox_insert(fig, place["side"], m, place["ring"])
+        _dash_textbox_span(fig, m, opts, place["side"],
+                           place.get("clock", 12))
     return m
 
 
@@ -53362,9 +53400,9 @@ def _dash_by_keys(figs, opts, scheme):
     # WP-32: a by() graph is unchanged by the scheme's legend_span
     # (measured 18oct2026; bygraphstyle reads its own), so no panel
     # legend is placed on the graph (_dash_span).
+    # Nor a spanned title (not measured on by()).
     for f in figs:
-        for lg in list(getattr(f, "legend", None) or []):
-            _dash_span(f, lg)
+        _dash_span(f, None)
 
     def series_legends(fig):
         return [m for m in (getattr(fig, "legend", None) or ())
@@ -64745,6 +64783,7 @@ class ServerAppBuilder:
                          # The legend, whole: keys, rule, every sub-option,
                          # and the scheme's chrome for it.
                          "_dash_move_legend", "_dash_span",
+                         "_dash_span_move", "_dash_textbox_span",
                          "_dash_scheme_chrome",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",

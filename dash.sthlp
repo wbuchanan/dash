@@ -5311,10 +5311,13 @@ draws the heading's size and colour -- and {cmd:size()} and
 {cmd:twoway}'s note "named style ... not found in class textboxstyle,
 default attributes used".  A box is its text and its text box style's
 margin, as {cmd:twoway} draws it ({cmd:vsmall}, 0.6 units, for the four
-under {cmd:s2color}), unless {cmd:margin()} gives another.  {cmd:span} and
-{cmd:bexpand} are taken: {cmd:twoway}'s {cmd:span} centres a box above or
-below the plot on the whole graph, where {cmd:dash} keeps it centred on
-the plot region.  {cmd:orientation()}, {cmd:width()},
+under {cmd:s2color}), unless {cmd:margin()} gives another.  {cmd:span}
+places a box above or below the plot on the whole graph instead of the
+plot region, as {cmd:twoway} draws it -- centred on the graph's width,
+or at its left or right end -- in the saved page and the served app and
+after a resize; a box {cmd:twoway} draws beside the plot (2-4 or 8-10
+o'clock, which {cmd:dash} draws above or below it) and a box on a
+{cmd:by()} graph keep their place.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},
 {cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
 sub-options are named in the note: a title box has no angle and no fixed
 size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},

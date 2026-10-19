@@ -493,3 +493,75 @@ class TestHostile:
         assert "<img src=x>" not in page
         assert "lcolor(</script>)" not in page
         assert re.search(r"</script>\s*\)", page) is None
+
+
+# ============================================================
+# span: the box placed on the whole graph (WP-32, BUGS.md "A spanned
+# title is placed on the plot region")
+# ============================================================
+#
+# Measured 19oct2026 (StataNow 19.5, stcolor, SVG of ``twoway (scatter
+# price weight) (scatter mpg weight), ylabel(, format(%15.2fc))``): span
+# places title(), subtitle(), note() and caption() above or below the plot
+# on the whole graph where twoway otherwise places them on the plot region:
+# a centred title at x 2700 of 5400 (2593.5 without, the plot region's
+# centre), a note at the graph's left (132.8, 929.6 without, the plot
+# region's left plus the margin), title(, pos(1)) and caption(, pos(5)) at
+# its right (5267.2, 4257.4 without).  ring(0) is unchanged.
+
+def _spanned(fig):
+    from test_scheme_key_readers import _span_items
+    return [it for it in _span_items(fig) if it[1] == "title"]
+
+
+class TestSpan:
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_each_box_is_placed_on_the_graph(self, mode):
+        fig, _c = _fig(mode, {"title": '"T", span',
+                              "subtitle": '"S", span',
+                              "note": '"N", span',
+                              "caption": '"C", span pos(5)'})
+        assert sorted(_spanned(fig)) == sorted([
+            ("Title", "title", "above", "center"),
+            ("Title", "title", "above", "center"),
+            ("Title", "title", "below", "left"),
+            ("Title", "title", "below", "right")])
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_placed_title_too(self, mode):
+        fig, _c = _fig(mode, {"title": '"T", span pos(1)'})
+        assert _spanned(fig) == [("Title", "title", "above", "right")]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_no_span_nospan_and_inside_place_nothing(self, mode):
+        for go in ({"title": '"T"', "note": '"N"'},
+                   {"title": '"T", nospan'},
+                   {"title": '"T", span ring(0)'},
+                   {"note": '"N", span position(0)'},
+                   # Beside the plot in twoway, which span moves along
+                   # the plot's height only (measured: pos(3) at x 5033.1
+                   # with and without span).
+                   {"title": '"T", span position(3)'}):
+            fig, _c = _fig(mode, go)
+            assert _spanned(fig) == [], go
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_title_moved_outside_a_larger_ring_keeps_its_span(self, mode):
+        """t1title("E", ring(8)) moves the title into the panel as a new
+        Title; the span follows it."""
+        fig, _c = _fig(mode, {"title": '"T", span',
+                              "t1title": '"E", ring(8)'})
+        (item,) = _spanned(fig)
+        from test_scheme_key_readers import _span_items  # noqa: F401
+        cb = [c for c in fig.js_property_callbacks["change:inner_width"]
+              if c.code == dr._DASH_SPAN_JS][0]
+        (m,) = [it[0] for it in cb.args["items"]]
+        assert m in list(fig.above) and m.text == "T"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_places_nothing(self, mode):
+        figs, _c = _figs(mode, {"by": "foreign", "note": '"N", span',
+                                "title": '"T", span'})
+        for f in figs:
+            assert _spanned(f) == []

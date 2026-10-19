@@ -50,7 +50,18 @@ function state() {
         const t = m.type || '';
         if (!(t === 'Legend' || t === 'Title') || !m.visible) continue;
         if (t === 'Title' && !m.text) continue;
-        const b = rv.bbox;
+        let b = rv.bbox;
+        if (t === 'Title') {
+          // A Title's bbox is its panel; its text box is what it paints,
+          // computed as the next paint computes it (virtual time paints
+          // no frames).
+          rv.compute_geometry();
+          const r = rv._rect;
+          if (!r) continue;
+          const x0 = r.sx - r.anchor.x * r.width;
+          const y0 = r.sy - r.anchor.y * r.height;
+          b = {x0, y0, x1: x0 + r.width, y1: y0 + r.height, width: r.width};
+        }
         if (!b || !(b.width > 0)) continue;
         boxes.push({type: t, text: t === 'Title' ? m.text : '',
                     box: [b.x0, b.y0, b.x1, b.y1]});
@@ -148,3 +159,32 @@ class TestTheLegendSpans:
                 (lb,) = [x for x in b[0]["boxes"] if x["type"] == "Legend"]
                 i = 0 if pos == "9" else 1
                 assert abs(la["box"][i] - lb["box"][i]) <= 1, (la, lb)
+
+
+def _title(fig, text):
+    (b,) = [x for x in fig["boxes"] if x["type"] == "Title"
+            and x["text"] == text]
+    return b["box"]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestTheTitlesSpan:
+
+    def test_each_box_is_placed_on_the_graph(self, mode):
+        go = {"title": '"A spanned title", span',
+              "subtitle": '"A plain subtitle"',
+              "note": '"A spanned note", span',
+              "caption": '"A spanned caption", span position(5)'}
+        for figs in _figs(mode, go):
+            (fig,) = figs
+            W, f = fig["canvas"][0], fig["frame"]
+            assert abs((f[0] + f[2]) / 2.0 - W / 2.0) > 30
+            t = _title(fig, "A spanned title")
+            assert abs(_centre(t)[0] - W / 2.0) <= 1.5, fig
+            # Without span: centred on the plot region.
+            s = _title(fig, "A plain subtitle")
+            assert abs(_centre(s)[0] - (f[0] + f[2]) / 2.0) <= 1.5, fig
+            # The note at the graph's left, the caption at its right.
+            assert _title(fig, "A spanned note")[0] < f[0] - 30, fig
+            assert _title(fig, "A spanned note")[0] <= 15, fig
+            assert _title(fig, "A spanned caption")[2] >= W - 15, fig

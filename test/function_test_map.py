@@ -703,6 +703,8 @@ FUNCTIONS = {
  '_dash_mlabel_names': 'test/test_pipeline_integration.py::TestCollectGraphVarsConsistency::test_collect_plot_vars_returns_correct_vars',
  '_dash_move_legend': 'test/test_graph_options.py::TestLegendLabels::test_legend_label_override_with_position',
  '_dash_span': 'test/test_scheme_key_readers.py::test_the_span_hook_adds_replaces_and_drops',
+ '_dash_span_move': 'test/test_textbox_placement.py::TestSpan::test_a_title_moved_outside_a_larger_ring_keeps_its_span',
+ '_dash_textbox_span': 'test/test_textbox_placement.py::TestSpan::test_each_box_is_placed_on_the_graph',
  '_dash_name_save': 'test/test_toolbar.py::TestNameSave::test_a_figure_is_named_and_returned',
  '_dash_reflow': 'test/test_responsive_layout.py::TestReflowModel::test_a_gridplot_stacks_below_ncols_times_the_minimum',
  '_dash_named_once': 'test/test_adversarial_matrix.py::TestALayoutThatCannotBeReadIsReported::test_a_readable_layout_is_kept_without_a_word',
