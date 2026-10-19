@@ -1634,4 +1634,5 @@ SETUP_FUNCTIONS = {
     "installed_dists": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_an_unreadable_package_list_installs_nothing",
     "pip_lock_argv": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_stata_pip_installs_from_the_lock",
     "lock_install": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_without_a_lock_nothing_is_installed",
+    "window_requirement": "test/test_requirements_lock.py::TestTheWindowRequirement::test_numpy_and_pandas_are_installed_below_their_ceiling",
 }

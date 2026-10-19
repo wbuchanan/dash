@@ -501,6 +501,29 @@ def bokeh_requirement(installed, floor, ceil):
     return "bokeh>=%s,<%s" % (floor, ceil)
 
 
+def window_requirement(name, installed, floor, ceil):
+    """The requirement dash_setup installs *name* by (WP-32, I3): numpy's
+    and pandas' window, as bokeh_requirement is bokeh's.
+
+    ``<name>>=<floor>,<<ceil>`` unless the installed version is at or
+    above the ceiling, when it is ``<name>>=<floor>``: what someone
+    installed is never downgraded.  An empty *ceil* is no ceiling.
+
+    Raises:
+        ValueError: if name is not a package name, or floor or a ceil
+            given is not a dotted number.
+    """
+    if not isinstance(name, str) or not _NAME_RE.fullmatch(name):
+        raise ValueError("dash_setup: refusing the package name %r" % (name,))
+    for v in (floor, ceil or "0"):
+        if not isinstance(v, str) or not re.fullmatch(r"[0-9]+(\.[0-9]+)*", v):
+            raise ValueError("dash_setup: refusing the bound %r" % (v,))
+    m = re.match(r"(\d+)\.(\d+)", str(installed or "")[:40])
+    if not ceil or (m and (int(m.group(1)), int(m.group(2))) >= version_tuple(ceil)[:2]):
+        return "%s>=%s" % (name, floor)
+    return "%s>=%s,<%s" % (name, floor, ceil)
+
+
 def classify_failure(rc, err):
     """What a child's exit status and stderr mean (the measured texts)."""
     err = err or ""
@@ -1011,7 +1034,9 @@ def stata_venv():
         mins = {"python": pymin_text, "packaging": "",
                 "bokeh": sfi.Macro.getLocal("minb"), "numpy": sfi.Macro.getLocal("minn"),
                 "pandas": sfi.Macro.getLocal("minp"),
-                "bokeh_ceil": sfi.Macro.getLocal("maxb")}
+                "bokeh_ceil": sfi.Macro.getLocal("maxb"),
+                "numpy_ceil": sfi.Macro.getLocal("maxn"),
+                "pandas_ceil": sfi.Macro.getLocal("maxp")}
         pend = _PENDING.pop("venv", None)
         exe, raw = _linked()
         res["venv_base"] = exe or raw
@@ -1052,16 +1077,20 @@ def stata_venv():
                     # WP-30 P1.30 (A107): a reused environment is probed
                     # first, so a bokeh at or above the ceiling in it is
                     # never downgraded.
-                    have = ""
+                    have, pre = "", {}
                     if state == "venv":
                         pre = verify_in(vpy, render_py, mins, d["version"])
                         have = (pre.get("packages") or {}).get("bokeh", "")
+                    had = pre.get("packages") or {}
                     print("  installing packaging, bokeh, numpy and pandas into it...")
                     # From the hash-pinned lock (WP-32, I3).
                     rc, out, err = lock_install(
                         vpy, ["packaging",
                               bokeh_requirement(have, mins["bokeh"], mins["bokeh_ceil"]),
-                              "numpy>=" + mins["numpy"], "pandas>=" + mins["pandas"]],
+                              window_requirement("numpy", had.get("numpy", ""),
+                                                 mins["numpy"], mins["numpy_ceil"]),
+                              window_requirement("pandas", had.get("pandas", ""),
+                                                 mins["pandas"], mins["pandas_ceil"])],
                         d["version"])
                     print(out[-500:])
                     print(err[-200:])

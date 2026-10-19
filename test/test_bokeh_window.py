@@ -128,6 +128,26 @@ class TestTheWindowVerdict:
 
 class TestTheWindowIsDeclaredOnce:
 
+    def test_every_tested_pin_lies_inside_dash_setups_windows(self):
+        """WP-32 (I3, the maintainer's ruling): dash_setup installs numpy
+        and pandas below a ceiling too, the minor after the newest the
+        suites run under, so the lock it installs from pins what was
+        tested; every pin of test/requirements-*.txt lies inside."""
+        ado = _read("dash_setup.ado")
+        for pkg in ("bokeh", "numpy", "pandas"):
+            lo = re.search(r'local\s+min_%s\s+"([0-9.]+)"' % pkg, ado).group(1)
+            hi = re.search(r'local\s+max_%s\s+"([0-9.]+)"' % pkg, ado).group(1)
+            pins = []
+            for name in ("requirements-stata.txt", "requirements-dev.txt"):
+                pins += [tuple(int(x) for x in l.split("==")[1].split("."))
+                         for l in _read(os.path.join("test", name)).splitlines()
+                         if l.startswith(pkg + "==")]
+            lo, hi = (tuple(int(x) for x in v.split(".")) for v in (lo, hi))
+            assert pins and all(lo <= p[:2] < hi for p in pins), (pkg, pins)
+            # The ceiling is the minor after the newest tested one.
+            newest = max(pins)
+            assert hi == (newest[0], newest[1] + 1), (pkg, hi, newest)
+
     def test_every_declaration_names_the_window(self):
         """dash.pkg and dash.sthlp's Dependencies line are held by
         test_version_floor.py; the rest here."""

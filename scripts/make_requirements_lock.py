@@ -7,13 +7,18 @@ Usage (from the repository root; needs network access to PyPI):
 
     python3 scripts/make_requirements_lock.py [--out dash_requirements.txt]
 
-Regenerate it at each release, and whenever dash_setup.ado's minimums
-(min_bokeh, max_bokeh, min_numpy, min_pandas) or _dash_pymin change; commit
-the file it writes.  Nothing is installed.
+Regenerate it at each release, and whenever dash_setup.ado's windows
+(min_bokeh, max_bokeh, min_numpy, max_numpy, min_pandas, max_pandas),
+_dash_pymin or the suites' pins (test/requirements-dev.txt,
+test/requirements-stata.txt) change; commit the file it writes.  Nothing
+is installed.
 
 1. The requirements are read from dash_setup.ado -- packaging,
-   bokeh>=min_bokeh,<max_bokeh, numpy>=min_numpy, pandas>=min_pandas -- and
-   the Pythons from _dash_pymin up to PYTHONS' last.
+   bokeh>=min_bokeh,<max_bokeh, numpy>=min_numpy,<max_numpy,
+   pandas>=min_pandas,<max_pandas -- and the Pythons from _dash_pymin up to
+   PYTHONS' last.  Each of the four is pinned to the newest version the
+   suites run under (:func:`tested_pins`; the maintainer's ruling of
+   19oct2026: the lock pins what was tested).
 2. For each target (a Python of PYTHONS and a platform of PLATFORMS) pip
    resolves them as that target would: ``pip install --dry-run
    --ignore-installed --only-binary=:all: --platform ... --python-version
@@ -103,7 +108,8 @@ def ado_requirements(ado_text):
         ValueError: if a constant is missing.
     """
     got = {}
-    for key in ("min_bokeh", "max_bokeh", "min_numpy", "min_pandas"):
+    for key in ("min_bokeh", "max_bokeh", "min_numpy", "max_numpy",
+                "min_pandas", "max_pandas"):
         m = re.search(r'^\s*local %s\s+"([0-9.]+)"' % key, ado_text, re.M)
         if not m:
             raise ValueError("dash_setup.ado sets no %s" % key)
@@ -113,8 +119,34 @@ def ado_requirements(ado_text):
     if not m:
         raise ValueError("dash_setup.ado's _dash_pymin returns no pymin")
     return (["packaging", "bokeh>=%s,<%s" % (got["min_bokeh"], got["max_bokeh"]),
-             "numpy>=%s" % got["min_numpy"], "pandas>=%s" % got["min_pandas"]],
+             "numpy>=%s,<%s" % (got["min_numpy"], got["max_numpy"]),
+             "pandas>=%s,<%s" % (got["min_pandas"], got["max_pandas"])],
             m.group(1))
+
+
+#: The packages whose tested version the lock pins.
+TESTED = ("packaging", "bokeh", "numpy", "pandas")
+
+#: The suites' pin files, read by :func:`tested_pins`.
+PIN_FILES = ("test/requirements-stata.txt", "test/requirements-dev.txt")
+
+
+def _vt(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+
+
+def tested_pins(texts):
+    """{name: version}: for each of TESTED, the newest ``name==version``
+    the pin files' *texts* hold."""
+    out = {}
+    for text in texts:
+        for ln in text.splitlines():
+            m = re.match(r"^([A-Za-z0-9._-]+)==([0-9][0-9.]*)\s*$", ln.strip())
+            if m and normalize(m.group(1)) in TESTED:
+                n = normalize(m.group(1))
+                if n not in out or _vt(m.group(2)) > _vt(out[n]):
+                    out[n] = m.group(2)
+    return out
 
 
 def target_env(python, platform_env):
@@ -203,7 +235,7 @@ def wheel_hashes(release_json):
                    and re.fullmatch(r"[0-9a-f]{64}", u.get("digests", {}).get("sha256", ""))})
 
 
-def render(entries, hashes, requirements, today):
+def render(entries, hashes, requirements, today, tested=None):
     """The lock's text: a header, then each entry as pip reads it."""
     out = [
         "# dash_requirements.txt -- the Python packages dash_setup installs, pinned by",
@@ -214,6 +246,8 @@ def render(entries, hashes, requirements, today):
         "# pythons: " + " ".join(PYTHONS),
         "# platforms: " + " ".join(n for n, _t, _e in PLATFORMS),
     ]
+    if tested:
+        out.append("# tested: " + " ".join("%s==%s" % kv for kv in sorted(tested.items())))
     for name, version, marker in entries:
         hs = hashes[(name, version)]
         if not hs:
@@ -257,11 +291,17 @@ def main(argv=None):
         requirements, pymin = ado_requirements(fh.read())
     if PYTHONS[0] != pymin:
         raise SystemExit("PYTHONS starts at %s but _dash_pymin is %s" % (PYTHONS[0], pymin))
+    texts = []
+    for rel in PIN_FILES:
+        with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+            texts.append(fh.read())
+    tested = tested_pins(texts)
+    pinned = ["%s==%s" % kv for kv in sorted(tested.items())]
     per_target, names = {}, {}
     for python in PYTHONS:
         for pname, tags, penv in PLATFORMS:
             env = target_env(python, penv)
-            roots = list(requirements)
+            roots = list(requirements) + pinned
             for _round in range(5):
                 report = resolve(a.python, python, tags, roots)
                 pins = {normalize(i["metadata"]["name"]): i["metadata"]["version"]
@@ -272,7 +312,7 @@ def main(argv=None):
                 extra = sorted(want - set(pins))
                 if not extra:
                     break
-                roots = list(requirements) + extra
+                roots = list(requirements) + pinned + extra
             else:
                 raise SystemExit("%s %s did not settle" % (python, pname))
             per_target[(python, pname)] = {n: pins[n] for n in sorted(want)}
@@ -282,7 +322,8 @@ def main(argv=None):
               for n, v, _m in entries}
     text = render([(names.get(n, n), v, m) for n, v, m in entries],
                   {(names.get(n, n), v): h for (n, v), h in hashes.items()},
-                  requirements, datetime.date.today().strftime("%d%b%Y").lower())
+                  requirements, datetime.date.today().strftime("%d%b%Y").lower(),
+                  tested)
     with open(a.out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
     print("wrote %s: %d entries" % (a.out, len(entries)))

@@ -534,7 +534,8 @@ class TestTheShownCommands:
         # 11 -> 12: WP-31 H2k, the weights sentence's dash kpi mean(mpg)
         # [aw=weight], which the example below it runs.
         assert forms.count(("dash.sthlp", "inline")) == 12
-        assert forms.count(("dash_setup.sthlp", "line")) == 7
+        # 7 -> 8: WP-32 I3, the hash-checked pip line naming the lock.
+        assert forms.count(("dash_setup.sthlp", "line")) == 8
         # dash_setup.sthlp once also named `python set exec` inline, in the
         # prose; WP-23 rewrote that paragraph, and the command is shown
         # once, as a command line.
@@ -547,17 +548,20 @@ class TestTheShownCommands:
         # 17 -> 16: WP-31 B4b, the contour refusal's dash scatter is gone.
         # 16 -> 17: WP-31 H2k, the weighted KPI sentence.
         # 17 -> 19: WP-31 I2, the Installation section's two lines.
-        assert len({s.text for s in shown}) == 19
+        # 19 -> 20: WP-32 I3, the hash-checked pip line.
+        assert len({s.text for s in shown}) == 20
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
         # the linked Python and quote each requirement.
         pip = [s for s in shown if "pip" in s.text]
-        assert [len(s.lines) for s in pip] == [1, 1, 1, 1]
+        # [1] * 4 -> [1] * 5: WP-32 I3, the hash-checked line.
+        assert [len(s.lines) for s in pip] == [1, 1, 1, 1, 1]
         # Flipped (WP-30 P1.30): the help installs bokeh inside the
-        # verified window.
+        # verified window.  Flipped (WP-32 I3): numpy and pandas carry
+        # their ceilings too.
         assert pip[0].text == ('"/path/to/python3" -m pip install '
-                               '"bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"')
+                               '"bokeh>=3.8,<3.10" "numpy>=2.3,<2.5" "pandas>=2.3,<3.1"')
 
     def test_each_passes_the_check_its_pin_names(self, shown, pins, groups):
         kind = {text: value for k, value, text in pins if k == "shown"}
@@ -657,12 +661,14 @@ class TestThePinnedLists:
         # the contour refusal sentence that showed it.
         # 24 -> 25: WP-31 H2k -- the weighted KPI sentence's described pin.
         # 25 -> 27: WP-31 I2 -- the Installation section's two install pins.
-        assert len(lines) == len(pins) == 27
+        # 27 -> 28: WP-32 I3, the hash-checked pip line's pin.
+        assert len(lines) == len(pins) == 28
         kinds = [k for k, _v, _t in pins]
         # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
         # shown 16 -> 17: WP-31 H2k, as above.  17 -> 19: WP-31 I2.
+        # 19 -> 20: WP-32 I3, the hash-checked pip line.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 19)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 20)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]

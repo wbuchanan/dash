@@ -90,8 +90,8 @@ own {cmd:pip} settings -- an index, a proxy -- still apply.
 {ul:The hash-pinned lock.}  Every install {cmd:dash_setup} runs, the
 {cmd:venv()} one included, is {cmd:pip install --require-hashes -r} over
 lines of {cmd:dash_requirements.txt}, shipped beside {cmd:dash_setup.ado}:
-each package {cmd:dash} needs and each of their dependencies, pinned with
-{cmd:==} to one release and to the sha256 hash of every wheel of it, for
+each package {cmd:dash} needs, at the newest version its test suites run
+under, and each of their dependencies, pinned with {cmd:==} to one release and to the sha256 hash of every wheel of it, for
 Python 3.11 to 3.14 on macOS (arm64 and x86_64), Linux (x86_64 and
 aarch64) and Windows (x86_64).  {cmd:pip} refuses a file whose hash is not
 listed, so the index cannot hand {cmd:dash_setup} anything else.  The
@@ -203,7 +203,14 @@ text.  A patch release of either is covered.  {cmd:dash_setup} installs
 reported as outside the verified range, a warning, and is never changed:
 something else in that Python may need it.  On an externally managed
 Python the way to set up a private environment is printed instead of a
-{cmd:pip} line.  Only bokeh has a ceiling.
+{cmd:pip} line.
+
+{pstd}{ul:numpy's and pandas' ceilings.}  {cmd:dash_setup} installs
+{cmd:numpy>=2.3,<2.5} and {cmd:pandas>=2.3,<3.1}: each ceiling is the minor
+after the newest version {cmd:dash}'s test suites run under (numpy 2.4.3
+and pandas 3.0.1), and the hash-pinned lock pins those versions, with
+bokeh 3.9.0.  A numpy or pandas at or above its ceiling that you already
+have is left as it is and not reported; only bokeh's ceiling is reported.
 
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
@@ -211,7 +218,7 @@ manually.  The command {cmd:dash_setup} prints names the Python Stata is
 linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
 reads like this, with that path in place of {it:/path/to/python3}:
 
-{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"}
+{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3,<2.5" "pandas>=2.3,<3.1"}
 
 {pstd}That line installs by version, not by hash.  For the hash-checked
 install {cmd:dash_setup} runs, name the lock instead (it installs every

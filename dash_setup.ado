@@ -57,10 +57,18 @@ program define dash_setup, rclass
     // the first minor dash was not verified on.  dash_render.py's
     // _DASH_BOKEH_CEIL holds the same.  It reaches pip only where dash
     // installs bokeh; a bokeh at or above it is reported, never changed.
+    //
+    // numpy and pandas have a ceiling for what dash_setup installs (WP-32,
+    // I3, the maintainer's ruling of 19oct2026): the minor after the
+    // newest the suites run under (test/requirements-dev.txt), so the lock
+    // dash_setup installs from pins what was tested.  An installed numpy
+    // or pandas at or above it is left as it is and not reported.
     local min_bokeh       "3.8"
     local max_bokeh       "3.10"
     local min_numpy       "2.3"
+    local max_numpy       "2.5"
     local min_pandas      "2.3"
+    local max_pandas      "3.1"
 
     // ----------------------------------------------------------------
     // 1. Check Python availability
@@ -188,7 +196,7 @@ program define dash_setup, rclass
                 items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
                 installed(`"`installed_now'"')
         }
-        _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'" "`max_bokeh'"
+        _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'" "`max_bokeh'" "`max_numpy'" "`max_pandas'"
         local v_step "`r(step)'"
         local v_linked "`r(linked)'"
         local v_py `"`r(venv_python)'"'
@@ -345,9 +353,10 @@ program define dash_setup, rclass
             // install could land below the minimum dash requires and then
             // be reported as being below it.
             local _spec "`pkg'>=`min_`pkg''"
-            // WP-30 P1.30: only bokeh has a ceiling.  This runs only when
-            // the import failed, so nothing installed is replaced.
-            if "`pkg'" == "bokeh" local _spec "`_spec',<`max_bokeh'"
+            // WP-30 P1.30: bokeh's ceiling, and since WP-32 (I3) numpy's
+            // and pandas'.  This runs only when the import failed, so
+            // nothing installed is replaced.
+            local _spec "`_spec',<`max_`pkg''"
             if "`det_managed'" == "1" | "`det_pip'" == "0" {
                 display as text "  `pkg' ............. {err}missing{txt}"
                 if `guide_shown' == 0 {
@@ -405,8 +414,7 @@ program define dash_setup, rclass
                 }
                 else {
                     display as error "  Failed to install `pkg'. Please install manually:"
-                    local _maxv ""
-                    if "`pkg'" == "bokeh" local _maxv "`max_bokeh'"
+                    local _maxv "`max_`pkg''"
                     _dash_pip_command "`pkg'" "`min_`pkg''" manual "`_maxv'"
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
@@ -1227,8 +1235,9 @@ end
 // _dash_setup_venv  — create or reuse, install into and verify the venv
 //                     stata_venv_check held (WP-29 P0.19)
 // ================================================================
-// Syntax: _dash_setup_venv pymin minb minn minp maxb
-// (maxb: bokeh's exclusive ceiling, WP-30 P1.30)
+// Syntax: _dash_setup_venv pymin minb minn minp maxb maxn maxp
+// (maxb: bokeh's exclusive ceiling, WP-30 P1.30; maxn, maxp: numpy's and
+// pandas', WP-32 I3)
 // Returns r(step) ("" on success, else the step that failed: internal,
 // create, inspect, python, pip, verify), r(linked) ("1" when Stata is
 // already linked to it), r(venv_python), r(link_cmd) (the python set exec
@@ -1236,7 +1245,7 @@ end
 // ================================================================
 program define _dash_setup_venv, rclass
     version 19
-    args pymin minb minn minp maxb
+    args pymin minb minn minp maxb maxn maxp
     local venv_step "internal"
     python: import sys; sys.modules["_dash_setup_lib"].stata_venv()
     return local step "`venv_step'"

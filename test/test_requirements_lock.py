@@ -57,7 +57,8 @@ def _entry(name, version, marker="", n=1):
         "    --hash=sha256:" + ("%x" % (i + 1)) * 64 for i in range(n)) + "\n"
 
 
-_SPECS = ["packaging", "bokeh>=3.8,<3.10", "numpy>=2.3", "pandas>=2.3"]
+# Flipped (WP-32, I3 follow-up): numpy and pandas carry a ceiling too.
+_SPECS = ["packaging", "bokeh>=3.8,<3.10", "numpy>=2.3,<2.5", "pandas>=2.3,<3.1"]
 
 
 # ===========================================================================
@@ -94,6 +95,21 @@ class TestTheCommittedLock:
         # Raises when a requirement is missing or pinned outside its window.
         lines = lib.lock_lines(entries, reqs, {})
         assert len(lines) == len(entries)
+
+    def test_it_pins_the_tested_versions(self, lib, gen):
+        """The maintainer's ruling (19oct2026): the lock pins the newest
+        version the suites run under (test/requirements-dev.txt and
+        requirements-stata.txt) of each package dash_setup installs."""
+        tested = gen.tested_pins([_read(os.path.join(ROOT, "test", n)) for n in
+                                  ("requirements-stata.txt", "requirements-dev.txt")])
+        assert tested == {"bokeh": "3.9.0", "numpy": "2.4.3",
+                          "pandas": "3.0.1", "packaging": "26.3"}
+        entries = lib.read_lock(_read(LOCK))
+        for name, version in tested.items():
+            got = {e["version"] for e in entries if e["name"] == name}
+            assert got == {version}, (name, got)
+        assert "# tested: " + " ".join(
+            "%s==%s" % kv for kv in sorted(tested.items())) + "\n" in _read(LOCK)
 
     def test_the_package_ships_it(self):
         assert "f dash_requirements.txt" in _read(os.path.join(ROOT, "dash.pkg"))
@@ -134,6 +150,21 @@ class TestReadLock:
     def test_anything_else_is_refused(self, lib, text):
         with pytest.raises(ValueError):
             lib.read_lock(text)
+
+
+class TestTheWindowRequirement:
+
+    def test_numpy_and_pandas_are_installed_below_their_ceiling(self, lib):
+        assert lib.window_requirement("numpy", "", "2.3", "2.5") == "numpy>=2.3,<2.5"
+        assert lib.window_requirement("pandas", "3.0.1", "2.3", "3.1") == \
+            "pandas>=2.3,<3.1"
+        # One at or above the ceiling is never downgraded.
+        assert lib.window_requirement("numpy", "2.5.0", "2.3", "2.5") == "numpy>=2.3"
+        assert lib.window_requirement("numpy", "", "2.3", "") == "numpy>=2.3"
+        for bad in (("numpy x", "", "2.3", "2.5"), ("numpy", "", "2.3;", "2.5"),
+                    ("numpy", "", "2.3", "<2.5")):
+            with pytest.raises(ValueError):
+                lib.window_requirement(*bad)
 
 
 class TestLockLines:
@@ -290,10 +321,12 @@ class TestTheGenerator:
 
     def test_the_requirements_come_from_dash_setup(self, gen):
         text = ('    local min_bokeh       "3.8"\n    local max_bokeh  "3.10"\n'
-                '    local min_numpy "2.3"\n    local min_pandas "2.4"\n'
+                '    local min_numpy "2.3"\n    local max_numpy "2.5"\n'
+                '    local min_pandas "2.4"\n    local max_pandas "3.1"\n'
                 'program define _dash_pymin, rclass\n    return local pymin "3.11"\nend\n')
         assert gen.ado_requirements(text) == (
-            ["packaging", "bokeh>=3.8,<3.10", "numpy>=2.3", "pandas>=2.4"], "3.11")
+            ["packaging", "bokeh>=3.8,<3.10", "numpy>=2.3,<2.5", "pandas>=2.4,<3.1"],
+            "3.11")
         with pytest.raises(ValueError):
             gen.ado_requirements(text.replace("min_numpy", "min_nump"))
 
@@ -339,6 +372,12 @@ class TestTheGenerator:
         assert all(e["hashes"] == [_H, "f" * 64] for e in got)
         with pytest.raises(ValueError):
             gen.render(entries, {k: [] for k in hashes}, ["numpy>=2.3"], "x")
+
+    def test_the_tested_pins_are_the_newest_of_each_file(self, gen):
+        a = "# c\nbokeh==3.8.0\nnumpy==2.3.5\npytest==8.4.2\npackaging==25.0\n"
+        b = "bokeh==3.9.0\nnumpy==2.4.3\npandas==3.0.1\nscipy==1.17.1\n"
+        assert gen.tested_pins([a, b]) == {"bokeh": "3.9.0", "numpy": "2.4.3",
+                                           "pandas": "3.0.1", "packaging": "25.0"}
 
     def test_wheel_hashes_are_the_wheels_only(self, gen):
         rel = {"urls": [

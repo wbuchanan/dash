@@ -1023,7 +1023,7 @@ capture noisily {
     // Flipped (WP-32, I3): every package the lock names is installed, so
     // lock_install runs no pip (pip had said "Requirement already
     // satisfied") and says so.
-    _hon_has "`lg'" "already installed: packaging bokeh>=3.8,<3.10 numpy>=2.3 pandas>=2.3" h18sat
+    _hon_has "`lg'" "already installed: packaging bokeh>=3.8,<3.10 numpy>=2.3,<2.5 pandas>=2.3,<3.1" h18sat
     display as text "  PEP-18: rc `rc', satisfied `h18sat', linked `vl'"
     assert `rc' == 0
     assert `h18sat' == 1
