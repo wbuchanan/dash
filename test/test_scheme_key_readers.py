@@ -209,3 +209,36 @@ class TestTheSchemesMinorTickset:
         # xmlabel() still wins.
         assert _minor(mode, {"xmlabel": "#2"}, {"scheme": "wnh4"}) == \
             _minor(mode, {"xmlabel": "#2"}, s2)
+
+
+# ---------------------------------------------------------------------------
+# meta's legend: no outline (BUGS.md "meta's legend has no outline in
+# twoway and a black one in dash")
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("mode", MODES)
+def test_metas_legend_and_kpi_cards_have_no_outline(mode):
+    """twoway draws meta's legend with `linestyle legend none' (measured
+    18oct2026: a zero-opacity stroke); dash drew it, and the KPI cards, in
+    s2color's black."""
+    from bokeh.models import Legend
+    plots = [plot_for("scatter"), plot_for("scatter", {})]
+    plots[1]["yvar"] = "price"
+    d = _draw(tp._spec(plots, {"scheme": "meta"}, {},
+                       kpis=[tp._kpi()]), mode)
+    legends = [m for f in d.figures for side in ("right", "below", "center",
+                                                 "left", "above")
+               for m in getattr(f, side) if isinstance(m, Legend)]
+    assert legends and all(lg.border_line_color is None for lg in legends)
+    css = d.css + " ".join(d.div_css)
+    card = css.split(".db-kpi-card", 1)[1].split("}")[0]
+    assert "solid #000000" not in card and "solid #ffffff" in card, card
+    assert "solid none" not in css
+    # s2color keeps its black outline.
+    d = _draw(tp._spec(plots, {"scheme": "s2color"}, {},
+                       kpis=[tp._kpi()]), mode)
+    legends = [m for f in d.figures for side in ("right", "below", "center",
+                                                 "left", "above")
+               for m in getattr(f, side) if isinstance(m, Legend)]
+    assert legends and all(str(lg.border_line_color).lower() == "#000000"
+                           for lg in legends)

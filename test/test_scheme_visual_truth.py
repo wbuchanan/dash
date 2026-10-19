@@ -354,28 +354,21 @@ def test_legend_fill_is_what_stata_drew(name):
     assert _parser(name).legend_bg_color == _hex(want), (name, lg)
 
 
-#: Schemes whose legend outline dash draws differently, each with its open
-#: BUGS.md entry; test_legend_border_is_what_stata_drew asserts the
-#: difference is still there, so a fix is noticed.
-_LEGEND_BORDER_DIFFERS = {
-    "meta": "meta's legend has no outline in twoway and a black one in dash",
-}
-
-
 @pytest.mark.parametrize("name", SCHEMES)
 def test_legend_border_is_what_stata_drew(name):
+    # Flipped (WP-32): meta was pinned as drawing a black outline where
+    # twoway draws none (`linestyle legend none', a zero-opacity stroke);
+    # scripts/extract_scheme_truth.py now resolves the legend's linestyle
+    # and dash-meta.scheme carries `linestyle legend none', which
+    # SchemeParser reads as no outline (legend_outline False).
     lg = _scheme(name)["legend"]
     sp = _parser(name)
-    if name in _LEGEND_BORDER_DIFFERS:
-        # twoway: `linestyle legend none' (scheme-meta.scheme), drawn as a
-        # zero-opacity stroke; dash keeps s2color's black `legend_line'.
-        assert not lg["border_visible"], lg
-        assert sp.legend_border_color != sp.legend_bg_color, name
-        return
     if lg["has_border"] and lg["border_visible"]:
+        assert sp.legend_outline, name
         assert sp.legend_border_color == _hex(lg["border_color"]), (name, lg)
-    # A border in the fill's own colour is not seen.
-    seen = sp.legend_border_color != sp.legend_bg_color
+    # A border in the fill's own colour is not seen, nor is none.
+    seen = sp.legend_outline \
+        and sp.legend_border_color != sp.legend_bg_color
     assert seen == (lg["has_border"] and lg["border_visible"]), (
         name, sp.legend_border_color, sp.legend_bg_color, lg)
 

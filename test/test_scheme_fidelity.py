@@ -1580,9 +1580,14 @@ def test_the_style_name_hops_are_identity():
         # no identity hop (s1color says none, an unfilled plot region,
         # which no chain step gives) and SchemeParser.plotregion_shade
         # reads it as a word; the generator writes it from Stata's files.
+        # Flipped (WP-32): `linestyle legend' is carried where it is none
+        # (meta) -- no identity hop either: the legend box draws no outline,
+        # which no chain step gives, and SchemeParser.legend_outline reads
+        # it as a word.
         if [k for k in sp._props if k.split(" ", 1)[0] in (
                 "markerstyle", "linestyle", "areastyle", "shadestyle",
-                "seriesstyle") and k != "shadestyle plotregion"]:
+                "seriesstyle") and k not in ("shadestyle plotregion",
+                                             "linestyle legend")]:
             bad.append((name, "carries a hop key"))
         for k, v in TRUTH["_meta"]["style_hops"][name].items():
             cls, key = k.split(" ", 1)

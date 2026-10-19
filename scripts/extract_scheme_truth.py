@@ -1438,6 +1438,48 @@ def extract(stata_base: str, scheme: str) -> dict:
                     f"{chain}: Stata draws no border"))
         return out_
 
+    # The legend box's outline (WP-32, BUGS.md "meta's legend has no
+    # outline in twoway and a black one in dash").  twoway draws its
+    # legend in `legendstyle default', whose style file sets `boxstyle
+    # scheme legend'; that areastyle's file sets `linestyle scheme legend',
+    # and `linestyle legend' names the line -- `none' where Stata draws no
+    # outline (meta; measured 18oct2026, StataNow 19.5: a zero-opacity
+    # stroke) -- else the linestyle file that reads `color legend_line'.
+    def legend_line_truth():
+        lgs = (r.get("legendstyle", "default", class_default=False)
+               or "default").strip()
+        lst = r.style("legendstyle", lgs.lower()) or {}
+        chain = (f"legendstyle default {lgs} -> "
+                 f"style/legendstyle-{lgs.lower()}.style")
+        ref = style_ref(lst.get("boxstyle"))
+        area = None
+        if ref is not None and ref[0] == "scheme":
+            area = r.get("areastyle", ref[1], class_default=True)
+            chain += f" -> areastyle {ref[1]} {area}"
+        elif ref is not None:
+            area = ref[1]
+        ast = r.style("areastyle", (area or "").strip().lower()) or {}
+        chain += f" -> style/areastyle-{(area or '').strip().lower()}.style"
+        ref = style_ref(ast.get("linestyle"))
+        if ref is not None and ref[0] == "scheme":
+            ls = r.get("linestyle", ref[1], class_default=True)
+            chain += f" -> linestyle {ref[1]} {ls}"
+        else:
+            ls = ref[1] if ref else None
+        if not ls:
+            unresolvable.append(f"legend_line: {chain} names no linestyle")
+            return {"legend_line_drawn": True}
+        drawn = ls.strip().lower() != "none"
+        if not drawn:
+            # `color legend_line' stays as it is (lstyle(legend) still
+            # reads it); the box names no line.
+            sources["legend_linestyle"] = "linestyle legend"
+            provenance["legend_linestyle"] = prov_entry(
+                "inferred", "linestyle", "legend", rule=(
+                    f"{chain}: Stata draws no legend outline"))
+        return {"legend_line_drawn": drawn,
+                "legend_linestyle": None if drawn else "none"}
+
     # note().  Stata draws it in `textboxstyle note' (small_body in
     # s2color; economist reverse_big, s1manual key_label), whose style
     # file names the size, colour, box and fill keys.
@@ -2048,6 +2090,7 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(by_chrome_truth())
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
+    out.update(legend_line_truth())
     out.update(note_truth())
     out.update(edge_title_truth())
     out.update(chrome_truth())
@@ -2197,6 +2240,12 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("color", "minor_grid", "minor_grid_color"),
         scalar("color", "heading", "title_color"),
         scalar("color", "axisline", "axis_line_color"),
+    ])
+    group(["The legend box's outline, EFFECTIVE: legendstyle default ->",
+           "areastyle legend -> its `linestyle legend'.  Carried only where",
+           "Stata draws no outline (`none', meta); `color legend_line' is",
+           "still the colour lstyle(legend) draws."], [
+        scalar("linestyle", "legend", "legend_linestyle"),
     ])
     group(["Generic grid colour (Stata: color grid), the parser's fallback when",
            "color major_grid is absent.  Checked where a file carries it, never",

@@ -938,6 +938,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - `clegend(ring(0))` without position() drew the colour key outside the plot, and a scheme's `gridringstyle zyx2legend_ring` was read by nothing; ring(0) draws the key inside the plot at the scheme's position (3 o'clock), the scheme's ring is the default, and a ring inside the legend's 3 draws the key between the plot and the legend, as twoway draws them. (WP-32)
 - `text(30 3000 "T", alignment(top))` (and bottom and baseline) was named and drawn at middle, and a scheme's `vertical_text text_option` was read by nothing; alignment() moves the text 0.15 of its size up (top, bottom) or down (baseline) from middle's place, as twoway draws it, and the scheme's value is the default. (WP-32)
 - A scheme's `numticks_g horizontal_minor N` and `vertical_minor N` were read by nothing; they draw as xmlabel(#N) and ymlabel(#N) where no xmlabel() or ymlabel() is given, a labelled minor tickset, as twoway draws them. (WP-32)
+- scheme(meta) drew a black outline round the legend and the KPI cards, where twoway draws none (`linestyle legend none`); dash-meta.scheme is regenerated with that directive and the legend and the cards are drawn without an outline, as twoway draws them; a scheme of your own with `linestyle legend none` draws the same. (WP-32)
 
 ### Fixed in WP-31
 

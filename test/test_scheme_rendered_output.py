@@ -781,8 +781,14 @@ class TestTheLegend:
         lg = _legend(_page(scheme, "titles", mode).fig)
         assert _hex(lg.background_fill_color) == \
             _hex(_truth(scheme, "legend_bg_color"))
-        assert _hex(lg.border_line_color) == \
-            _hex(_truth(scheme, "legend_border_color"))
+        # Flipped (WP-32): where Stata draws no outline (the fixture's
+        # legend_line_drawn false: meta's `linestyle legend none') the box
+        # has none, where it was drawn in `color legend_line'.
+        if _truth(scheme, "legend_line_drawn") is False:
+            assert lg.border_line_color is None, scheme
+        else:
+            assert _hex(lg.border_line_color) == \
+                _hex(_truth(scheme, "legend_border_color"))
 
     @_every_scheme("legend_pos9")
     def test_an_explicit_position_and_cols_still_win(self, scheme, mode):
@@ -841,7 +847,9 @@ class TestTheKpiCard:
         rule = _rule(card["css"], ".db-kpi-card")
         assert rule, f"{scheme}/{mode}: no .db-kpi-card rule on the Div"
         lbg = _hex(_truth(scheme, "legend_bg_color"))
-        lbc = _hex(_truth(scheme, "legend_border_color"))
+        # Flipped (WP-32): no outline (meta) is a border in the fill.
+        lbc = (lbg if _truth(scheme, "legend_line_drawn") is False
+               else _hex(_truth(scheme, "legend_border_color")))
         assert re.search(r"background-color:\s*" + re.escape(lbg), rule), rule
         assert re.search(r"border:\s*1px solid " + re.escape(lbc), rule), rule
 

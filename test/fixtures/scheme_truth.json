@@ -2,10 +2,10 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-18T21:43:22Z",
+    "generated_utc": "2026-10-19T00:05:01Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "born_date": "12 Aug 2026",
-    "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
+    "dash_commit": "82556fad2f91352a63c0212d2d53cf5d6007539e",
     "extracted": "18 Oct 2026",
     "source": "scripts/extract_scheme_truth.py",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
@@ -11439,6 +11439,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -17813,6 +17815,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -24187,6 +24191,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -30639,6 +30645,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -37189,6 +37197,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -43880,6 +43890,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -50489,6 +50501,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -56936,6 +56950,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -63546,6 +63562,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -69916,6 +69934,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -76367,6 +76387,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -82837,6 +82859,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -89214,6 +89238,8 @@
     "plotregion_line_color": null,
     "plotregion_line_line_width": null,
     "plotregion_line_pattern": null,
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "reverse_big",
       "size_key": "reverse_big",
@@ -95838,6 +95864,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -102526,6 +102554,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -109215,6 +109245,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "key_label",
       "size_key": "key_label",
@@ -115757,6 +115789,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -122463,6 +122497,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -128833,6 +128869,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -135208,6 +135246,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -141581,6 +141621,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": false,
+    "legend_linestyle": "none",
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -142541,6 +142583,7 @@
       "plotregion_line_color": "color plotregion_line",
       "plotregion_line_line_width": "linewidth plotregion",
       "plotregion_line_pattern": "linepattern plotregion",
+      "legend_linestyle": "linestyle legend",
       "note_textbox": "textboxstyle note",
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
@@ -145416,6 +145459,14 @@
         "file": "scheme-s2color.scheme",
         "line": 584
       },
+      "legend_linestyle": {
+        "kind": "inferred",
+        "directive": "linestyle legend",
+        "value": "none",
+        "file": "scheme-meta.scheme",
+        "line": 48,
+        "rule": "legendstyle default default -> style/legendstyle-default.style -> areastyle legend legend -> style/areastyle-legend.style -> linestyle legend none: Stata draws no legend outline"
+      },
       "note_textbox": {
         "kind": "transcribed",
         "directive": "textboxstyle note",
@@ -147952,6 +148003,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -154327,6 +154380,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -160701,6 +160756,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -167076,6 +167133,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",
@@ -173452,6 +173511,8 @@
       "pt_at_4in": 0.576
     },
     "plotregion_line_pattern": "solid",
+    "legend_line_drawn": true,
+    "legend_linestyle": null,
     "note_textbox": {
       "name": "small_body",
       "size_key": "small_body",

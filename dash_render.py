@@ -11640,6 +11640,13 @@ class SchemeParser:
         self.plotregion_color: str = self._color("color plotregion", "#ffffff")
         self.legend_bg_color: str = self._color("color legend", "#ffffff")
         self.legend_border_color: str = self._color("color legend_line", "#000000")
+        # Whether the legend box has an outline (WP-32): not where the
+        # scheme's `linestyle legend' is none (meta; twoway draws a
+        # zero-opacity stroke), which scripts/extract_scheme_truth.py
+        # carries into dash-meta.scheme.  `color legend_line' is still the
+        # colour lstyle(legend) draws.
+        self.legend_outline: bool = str(
+            self._props.get("linestyle legend", "")).strip().lower() != "none"
         self.grid_color: str = self._color(
             "color major_grid",
             self._color("color grid", "#d9e8f0"),
@@ -13768,7 +13775,9 @@ class SchemeParser:
         # `border:1px solid #dee2e6' and a `border-color' alone never won
         # against it.
         lbg = html.escape(self.legend_bg_color)
-        lbc = html.escape(self.legend_border_color)
+        # No outline (meta): the border in the card's own fill.
+        lbc = html.escape(self.legend_border_color if self.legend_outline
+                          else self.legend_bg_color)
         txt = html.escape(self.text_color)
         return (
             f"  body {{ background-color: {bg}; }}\n"
@@ -37969,7 +37978,10 @@ def _dash_scheme_chrome(scheme):
     """
     return {
         "legend_bg_color": scheme.legend_bg_color,
-        "legend_border_color": scheme.legend_border_color,
+        # None: the scheme draws no outline (meta, WP-32).
+        "legend_border_color": (scheme.legend_border_color
+                                if getattr(scheme, "legend_outline", True)
+                                else None),
         "label_text_font_size": scheme.key_label_font_size,
         "label_text_color": scheme.key_label_color,
         "legend_position": getattr(scheme, "legend_position", None),
@@ -38364,7 +38376,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     for lg in fig.legend:
         if chrome.get("legend_bg_color"):
             lg.background_fill_color = chrome["legend_bg_color"]
-        if chrome.get("legend_border_color"):
+        if "legend_border_color" in chrome:
+            # None: the scheme draws no outline (meta, WP-32).
             lg.border_line_color = chrome["legend_border_color"]
         # The key_label textbox's size and colour ("text_font_size" is the
         # older name of the same slot, kept for a caller-built dict).

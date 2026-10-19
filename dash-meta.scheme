@@ -685,6 +685,21 @@ margin body        vsmall
 margin small_body  vsmall
 
 * ---------------------------------------------------------------------------
+* Added 18oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> meta); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The legend box's outline, EFFECTIVE: legendstyle default ->
+* areastyle legend -> its `linestyle legend'.  Carried only where
+* Stata draws no outline (`none', meta); `color legend_line' is
+* still the colour lstyle(legend) draws.
+linestyle legend  none
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -706,6 +721,7 @@ margin small_body  vsmall
 * provenance: color minor_grid -- transcribed from scheme-s2color.scheme:346 `color minor_grid gs5'
 * provenance: color heading -- transcribed from scheme-s2color.scheme:316 `color heading dknavy'
 * provenance: color axisline -- transcribed from scheme-s2color.scheme:348 `color axisline black'
+* provenance: linestyle legend -- transcribed from scheme-meta.scheme:48 `linestyle legend none'
 * provenance: color p1 -- transcribed from scheme-s2color.scheme:430 `color p1 navy'
 * provenance: color p2 -- transcribed from scheme-s2color.scheme:431 `color p2 maroon'
 * provenance: color p3 -- transcribed from scheme-s2color.scheme:432 `color p3 forest_green'
