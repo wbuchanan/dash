@@ -678,3 +678,47 @@ class TestByColourKeyUpright:
             assert b[3] - b[1] > b[2] - b[0], st
             assert c[1] - 0.5 <= b[1] and b[3] <= c[3] + 0.5, st
             assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByColourKeyInAHole:
+    """BUGS.md "by()'s colour key in an at() hole filled its cell's left
+    edge".  Measured 19oct2026 (StataNow 19.5, stcolor, SVG of
+    ``twoway scatter price weight, colorvar(mpg) by(rep78, clegend(on
+    at(6) [pos(#)]))`` at 7.5x4.5, 5x5, 8x4, 4x6 and cols(2)): twoway draws
+    the key upright in the hole, from 1.455 units (of the graph's smaller
+    side) above its row's plot regions to 2.44 below them (default 1621.2
+    .. 2763.4 for plot regions 1668.3 .. 2684.3), centred across the hole
+    at pos(0), at its left at pos(9), at its right at the default pos(3)
+    and at pos(2), whose height is the same."""
+
+    @pytest.mark.parametrize("pos,where", (("pos(0)", "c"), ("", "r"),
+                                           ("pos(2)", "r"), ("pos(9)", "l")))
+    def test_the_key_spans_its_rows_plot_regions(self, mode, pos, where):
+        wide, narrow = _by_spec(mode,
+                                {"by": "rep78, clegend(on at(6) %s)" % pos},
+                                plots=[bk._p("scatter", colorvar="mpg")])
+        # Stacked (one column at 700 px), the key keeps a cell of its own
+        # and stays inside it.
+        key = _key(narrow)
+        assert key["canvas"][3] - key["canvas"][1] >= 150, narrow
+        assert key["canvas"][1] - 0.5 <= key["bar"][1] \
+            and key["bar"][3] <= key["canvas"][3] + 0.5, narrow
+        for st in (wide,):
+            key = _key(st)
+            b, c, bar = key["key"], key["canvas"], key["bar"]
+            g = st["grid"]
+            u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+            (row,) = {tuple(r) for r in st["prows"]
+                      if c[1] - 1 <= r[0] <= c[3]}
+            assert key["orient"] == "vertical", st
+            assert abs(key["len"] - (row[1] - row[0] + 3.895 * u)) <= 1.5, \
+                (key, row, u)
+            assert abs(bar[1] - (row[0] - 1.455 * u)) <= 1.5, (bar, row, u)
+            assert abs(bar[3] - (row[1] + 2.44 * u)) <= 1.5, (bar, row, u)
+            if where == "c":
+                assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, st
+            elif where == "r":
+                assert abs(b[2] - (c[2] - 5)) <= 1.5, st
+            else:
+                assert abs(b[0] - (c[0] + 5)) <= 1.5, st

@@ -1179,3 +1179,27 @@ def test_the_colour_key_is_upright_below_the_panels(mode):
         assert (it[1], it[5], it[7]) == ("key", "grid", "row")
         # stcolor's 7.5 x 4.5: twoway's 1081.4 of 5400.
         assert abs(it[4] - 1081.4 / 5400) < 2e-4
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_colour_key_in_a_hole_is_placed_by_its_row(mode):
+    """BUGS.md "by()'s colour key in an at() hole filled its cell's left
+    edge": in an at() hole the key is an upright ColorBar in its cell's
+    centre, placed on its row's plot regions (_DASH_SPAN_JS "key", mode
+    "hole") at its position across the hole: left at 9, centred at 0,
+    right at the default 3 and at 2."""
+    from bokeh.models import ColorBar
+    for pos, across in (("pos(0)", "center"), ("", "right"),
+                        ("pos(2)", "right"), ("pos(9)", "left")):
+        spec = _spec([_graph("g1", [_p("scatter", colorvar="headroom")],
+                             {"by": "rep78, clegend(on at(6) %s)" % pos})])
+        roots, _n, _o = _build(mode, spec)
+        (grid,) = _grids(roots).values()
+        cell = _cell(grid, "dash_by_clegend")[0]
+        (bar,) = [m for m in cell.center if isinstance(m, ColorBar)]
+        assert bar.orientation == "vertical"
+        (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
+                 if c.code == dr._DASH_SPAN_JS]
+        (it,) = cb.args["items"]
+        assert (it[1], it[3], it[7]) == ("key", across, "hole"), pos
+        assert cell.frame_align is False and cell.height_policy == "max"

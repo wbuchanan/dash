@@ -54051,12 +54051,14 @@ def _dash_by_keys(figs, opts, scheme):
         if words & {"on", "draw"} and not words & {"off", "nodraw"}:
             _kside, key = keys1[0]
             vertical = (side if not at else "right") in ("left", "right")
-            if isinstance(key, ColorBar) and not at and not vertical:
-                # Upright at 6 and 12 o'clock, as twoway draws it (BUGS.md
-                # "by(, clegend(pos(6))) drew the colour key across the
-                # graph, where twoway draws it upright"; measured
-                # 19oct2026): its length is set as the grid is laid out
-                # (_DASH_SPAN_JS "key").
+            if isinstance(key, ColorBar) and (at or not vertical):
+                # Upright at 6 and 12 o'clock and in an at() hole, as
+                # twoway draws it (BUGS.md "by(, clegend(pos(6))) drew the
+                # colour key across the graph, where twoway draws it
+                # upright" and "by()'s colour key in an at() hole filled
+                # its cell's left edge"; measured 19oct2026): its length
+                # and place are set as the grid is laid out (_DASH_SPAN_JS
+                # "key").
                 cell = _dash_by_cell(scheme, "dash_by_clegend", (None, None))
                 kw = key.properties_with_values(include_defaults=False)
                 kw.pop("name", None)
@@ -54066,12 +54068,31 @@ def _dash_by_keys(figs, opts, scheme):
                                   if k != "location"})
                 setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
                 cell.add_layout(bar, "center")
-                cell.frame_height = None
-                cell.height_policy = "fixed"
-                cell.height = 200
-                _dash_span(cell, bar, "key", side, "center",
-                           _dash_by_key_share(figs[0]), ref="grid",
-                           mode="row")
+                if at:
+                    cell.frame_height = None
+                    cell.height_policy = "max"
+                    # Its own height in the stacked view, where no panel
+                    # sits beside it.
+                    cell.min_height = 160
+                    _w, _calls = _dash_legend_parts(opts.get("clegend", ""))
+                    _pos = _dash_legend_arg(_calls, ("position",))
+                    try:
+                        _clock = int(str(_pos if _pos is not None else
+                                         getattr(scheme, "zyx2_position",
+                                                 3)).strip())
+                    except (TypeError, ValueError):
+                        _clock = 3
+                    _across = ("left" if _clock in (7, 8, 9, 10, 11) else
+                               "center" if _clock in (0, 6, 12) else "right")
+                    _dash_span(cell, bar, "key", "center", _across,
+                               ref="grid", mode="hole")
+                else:
+                    cell.frame_height = None
+                    cell.height_policy = "fixed"
+                    cell.height = 200
+                    _dash_span(cell, bar, "key", side, "center",
+                               _dash_by_key_share(figs[0]), ref="grid",
+                               mode="row")
             elif isinstance(key, ColorBar):
                 cell = _dash_by_cell(scheme, "dash_by_clegend",
                                      (1, None) if vertical else (None, 1))
