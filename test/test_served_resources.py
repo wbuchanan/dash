@@ -561,7 +561,11 @@ _SAVED_DIGEST = (
     # kdensity subset's grid at a density of 0 (code only: the base's
     # _FILTER_JS gives the old digest on the new tree), the same under
     # both Pythons.
-    "b475c9c70a6bb17a1db953c3ddd572dcb4398d4b5facb8249a19cf645d617062")
+    # b475c9c7... -> def70e14...: WP-32, the filter code relevels a colour
+    # layer of its own levels after a move (code only: the new tree with
+    # the relevel stripped from the filter callback's code gives the old
+    # digest), the same under both Pythons
+    "def70e14ce01dd5048d693daa4da69302b9de714a31ba607c2f41acd13e5e72d")
 
 
 # ===========================================================================

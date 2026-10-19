@@ -171,16 +171,38 @@ def stand_in(m, models, objs):
     if isinstance(m, Div):
         return {"__type__": "Div", "text": m.text, "visible": bool(m.visible)}
     if isinstance(m, GlyphRenderer):
+        # Its source and glyph too (WP-32): the colour relevel reads the
+        # source's colour column and recolours a key's swatch glyph.
         return {"__type__": "GlyphRenderer", "muted": bool(m.muted),
-                "visible": bool(m.visible)}
+                "visible": bool(m.visible),
+                "data_source": encode(m.data_source, models, objs),
+                "glyph": encode(m.glyph, models, objs)}
     if isinstance(m, Title):
         return {"__type__": "Title", "visible": bool(m.visible)}
-    # WP-31 D10: a by() panel the move hides or shows again.
+    # WP-31 D10: a by() panel the move hides or shows again; its
+    # renderers, which the colour relevel rewrites (WP-32).
     if isinstance(m, Plot):
-        return {"__type__": "Plot", "visible": bool(m.visible)}
+        return {"__type__": "Plot", "visible": bool(m.visible),
+                "renderers": encode(list(m.renderers), models, objs)}
     if isinstance(m, LegendItem):
         return {"__type__": "LegendItem",
-                "label": {"value": _label_text(m.label)}}
+                "label": {"value": _label_text(m.label)},
+                "renderers": encode(list(m.renderers or []), models, objs)}
+    # WP-32: a key's items and a discrete mapper's levels and colours,
+    # which the colour relevel writes.
+    if type(m).__name__ == "Legend":
+        return {"__type__": "Legend",
+                "items": encode(list(m.items), models, objs)}
+    if type(m).__name__ == "CategoricalColorMapper":
+        return {"__type__": "CategoricalColorMapper",
+                "factors": [str(f) for f in (m.factors or [])],
+                "palette": [str(c) for c in (m.palette or [])]}
+    if "fill_color" in m.properties() and "line_color" in m.properties() \
+            and isinstance(getattr(m, "fill_color"), str):
+        return {"__type__": type(m).__name__, "__glyph__": True,
+                "fill_color": m.fill_color,
+                "line_color": m.line_color
+                if isinstance(m.line_color, str) else None}
     # WP-30 P1.3a: a Range1d's Reset extent and a FixedTicker's ticks, the
     # two models the axis re-finish writes (and reads back, below).
     if isinstance(m, Range1d):
@@ -244,7 +266,7 @@ RUNNER = r"""
 "use strict";
 const REG = {};
 for (const [id, lit] of Object.entries(RAW.models))
-    REG[id] = Object.assign({}, lit);
+    REG[id] = Object.assign({__id__: id}, lit);
 const resolve = (x) => {
   if (Array.isArray(x)) return x.map(resolve);
   if (x && typeof x === "object") {
@@ -273,6 +295,15 @@ for (const o of Object.values(REG)) {
   } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow"
              || o.__type__ === "Label") {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
+  }
+}
+// A model's own references (a renderer's source and glyph, a legend's
+// items, a plot's renderers; WP-32) point at the shared stand-ins too.
+for (const o of Object.values(REG)) {
+  for (const k of Object.keys(o)) {
+    if (k === "data" || k === "__id__" || k === "ticker") continue;
+    const v = o[k];
+    if (v && typeof v === "object") o[k] = resolve(v);
   }
 }
 const args = resolve(RAW.args);
@@ -306,10 +337,19 @@ for (const [id, o] of Object.entries(REG)) {
   else if (o.__type__ === "Arrow")
     out[id] = {arrow: {x_start: o.x_start, x_end: o.x_end, y_start: o.y_start,
                        y_end: o.y_end}};
+  else if (o.__type__ === "Legend")
+    out[id] = {legend_items: (o.items || []).map((x) => x.__id__)};
+  else if (o.__type__ === "CategoricalColorMapper")
+    out[id] = {mapper: {factors: Array.from(o.factors || []),
+                        palette: Array.from(o.palette || [])}};
+  else if (o.__glyph__)
+    out[id] = {colors: {fill_color: o.fill_color, line_color: o.line_color}};
   else {
     const e = {};
     for (const k of ["text", "width", "visible", "muted", "label"])
       if (k in o) e[k] = o[k];
+    if (o.__type__ === "Plot" && Array.isArray(o.renderers))
+      e.renderers = o.renderers.map((x) => x && x.__id__);
     if (Object.keys(e).length) out[id] = e;
   }
 }
@@ -440,6 +480,15 @@ class JsSession:
                         m.visible = lp["visible"]
                 elif "ticks" in state:
                     m.ticks = [float(v) for v in state["ticks"]]
+                elif "legend_items" in state:
+                    m.items = [objs[i] for i in state["legend_items"]]
+                elif "mapper" in state:
+                    m.factors = list(state["mapper"]["factors"])
+                    m.palette = list(state["mapper"]["palette"])
+                elif "colors" in state:
+                    for k, v in state["colors"].items():
+                        if isinstance(v, str) and getattr(m, k) != v:
+                            setattr(m, k, v)
                 elif "colorbar" in state:
                     m.levels = [float(v) for v in state["colorbar"]["levels"]]
                     m.major_label_overrides = {
@@ -460,6 +509,10 @@ class JsSession:
                     lab = state.get("label")
                     if isinstance(lab, dict) and "value" in lab:
                         m.label = _bk_value(lab["value"])
+                    rs = state.get("renderers")
+                    if isinstance(rs, list) and all(i in objs for i in rs) \
+                            and [x.id for x in m.renderers] != rs:
+                        m.renderers = [objs[i] for i in rs]
             self._seen.update(objs)
         self.runs.append(out)
         return out

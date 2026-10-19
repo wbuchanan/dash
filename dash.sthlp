@@ -5532,8 +5532,12 @@ scatter of {cmd:mpg} on {cmd:weight} with its own {cmd:if foreign==1} and
 3,748 to 12,990, the prices of the foreign cars.  Under {cmd:by()}
 each panel colours its own observations, as {cmd:twoway} does, and, as in
 {cmd:twoway}, no panel draws a key: {cmd:by(, clegend(on))} draws one,
-the first panel's.  A filter move keeps the colours and the key chosen when
-the dashboard was built, in both the saved page and the served app.
+the first panel's.  After a filter move a key of the variable's own levels
+({cmd:colordiscrete}, a string variable) is levelled again over the
+observations kept, as {cmd:twoway} levels the observations it draws: the
+levels left take the first colours, each panel its own and
+{cmd:by()}'s key the first panel's, in both the saved page and the served
+app; other keys keep the colours chosen when the dashboard was built.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
 one whose observations are all missing on the variable draws a

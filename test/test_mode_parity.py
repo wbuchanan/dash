@@ -3956,6 +3956,34 @@ MOVE_CORPUS.append(_move_case(
     "line yaxis(2), slider to 4500", _SLIDER_Y2_MOVE,
     [plot_for("scatter"), plot_for("line", {"yaxis": "2"})]))
 
+# BUGS.md "A colordiscrete key and its colours keep the build's levels
+# after a filter move": twoway levels the rows it draws (measured
+# 19oct2026: `if rep78==3' draws one level in the first colour, `if
+# rep78>=4' the levels 4 and 5 in the first two), each by() panel its own,
+# by()'s key the first panel's.  The oracle is the saved renderer over the
+# kept rows; the served app and the saved page's script relevel.
+_CVAR_MOVES = [
+    _move_case("scatter colordiscrete, dropdown to Foreign", _MOVES[0],
+               [plot_for("scatter", {"colorvar": "rep",
+                                     "colordiscrete": "colordiscrete"})]),
+    _move_case("scatter colordiscrete, range to 4500-11385", _MOVES[1],
+               [plot_for("scatter", {"colorvar": "rep",
+                                     "colordiscrete": "colordiscrete"})]),
+    _move_case("by(foreign) colordiscrete clegend, range to 4500-11385",
+               _MOVES[1],
+               [plot_for("scatter", {"colorvar": "rep",
+                                     "colordiscrete": "colordiscrete"})],
+               {"by": "foreign, clegend(on)"}),
+    # Each panel and by()'s key keep the one level a move leaves.
+    _move_case("by(foreign) colordiscrete clegend, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"),
+               [plot_for("scatter", {"colorvar": "rep",
+                                     "colordiscrete": "colordiscrete"})],
+               {"by": "foreign, clegend(on)"}),
+]
+MOVE_CORPUS.extend(_CVAR_MOVES)
+
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 
 #: The entries whose saved page's own filter script is run under node and
@@ -3969,7 +3997,8 @@ _JS_ORACLE_CASES = frozenset(
     # WP-31 H6: a move that narrows a density's span (17-30 of 14-30).
     + ["kdensity, dropdown to Foreign"]
     + ["by(foreign) shared scale, price slider",
-       "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"])
+       "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"]
+    + [p.values[0] for p in _CVAR_MOVES])
 assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
     _JS_ORACLE_CASES - _MOVE_CORPUS_NAMES)
 
@@ -5697,6 +5726,17 @@ def _shown_notes(models):
     a visible legend item's label.  KPI cards are compared by the move
     entries (TestAFilterMoveAgrees), hidden models show nothing."""
     out = []
+    models = list(models)
+    # A legend item the page shows is one a legend on a plot holds (WP-32):
+    # the saved page's colour relevel keeps every level's item, and by()'s
+    # panels their detached keys, in its callback's plan, where a model
+    # walk reaches them.
+    placed = {id(a) for p in models if hasattr(p, "renderers")
+              and hasattr(p, "above")
+              for sd in ("center", "left", "right", "above", "below")
+              for a in (getattr(p, sd, None) or [])}
+    held = {id(it) for lg in models if type(lg).__name__ == "Legend"
+            and id(lg) in placed for it in (lg.items or [])}
     for m in models:
         if isinstance(m, Title) and m.text and m.visible:
             out.append(("Title", m.text))
@@ -5706,7 +5746,8 @@ def _shown_notes(models):
         elif (isinstance(m, Div) and m.text and m.visible
               and not _kpi_card(m)):
             out.append(("Div", m.text))
-        elif type(m).__name__ == "LegendItem" and m.visible:
+        elif type(m).__name__ == "LegendItem" and m.visible \
+                and id(m) in held:
             out.append(("Legend", str(_label_of(m))))
     return sorted(out, key=repr)
 
@@ -6321,3 +6362,46 @@ class TestTheLaunchedAppAgrees:
             assert _diff(launched[step - 1]["figures"],
                          launched[step]["figures"]), (
                 f"{name}: move {step} changed nothing in the launched app")
+
+
+def _by_keys_of(models):
+    """by()'s discrete colour key's labels among *models*."""
+    from bokeh.models import Legend
+    return [[_label_of(i) for i in m.items] for m in models
+            if isinstance(m, Legend) and m.name == "dash_by_clegend_key"]
+
+
+class TestTheByColourKeyAfterAMove:
+    """BUGS.md "A colordiscrete key and its colours keep the build's levels
+    after a filter move": by()'s key holds the first panel's levels over
+    the rows a move keeps -- the served app's, the saved page's own script
+    under node, and the saved renderer given the kept rows (measured
+    19oct2026: twoway's `if rep78==3' key holds the one level)."""
+
+    def test_the_key_follows_the_first_panel(self):
+        import js_runner
+        case = [c for c in MOVE_CORPUS if c.values[0]
+                == "by(foreign) colordiscrete clegend, rep dropdown to 3"][0]
+        _name, spec, action, oracle = case.values
+        q = json.loads(json.dumps(spec))
+        q["build_options"]["filter"] = ""
+        for g in q["graphs"]:
+            g["if_expr"] = oracle
+        r0, _ = _standalone(q)
+        want = _by_keys_of(r0._last_layout_root.references())
+        assert want == [["3"]]
+        doc, _ = _served(spec)
+        w = [x for x in _widgets_of(doc) if type(x).__name__ == "Select"][0]
+        _fire(w, _move_widget_value(w, "Select", "3"))
+        assert _by_keys_of(doc.select({"type": dr.Legend})
+                           if hasattr(dr, "Legend") else
+                           [m for root in doc.roots
+                            for m in root.references()]) == want
+        r, _ = _standalone(spec)
+        w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == "Select"][0]
+        session = js_runner.JsSession(r.filter_callbacks)
+        session.set(w, _move_widget_value(w, "Select", "3"))
+        session.run(cb)
+        assert _by_keys_of(r._last_layout_root.references()) == want

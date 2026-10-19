@@ -16559,12 +16559,42 @@ class GlyphMapper:
             # last; twoway's plot legend keeps its order (D13r).
             if _keys_rev and not _use_plegend:
                 legend_items.reverse()
+            _miss_item = None
             if has_missing and add_key:
                 # A model name, never a factor.
                 _rm = _swatch(missing_color,
                               f"{_DASH_SWATCH_PREFIX}__missing__")
-                legend_items.append(LegendItem(
-                    label=_other_label or "(missing)", renderers=[_rm]))
+                _miss_item = LegendItem(
+                    label=_other_label or "(missing)", renderers=[_rm])
+                legend_items.append(_miss_item)
+            # A layer of its own levels (colordiscrete, a string) is
+            # levelled again over the rows a filter move keeps, as twoway
+            # levels the rows it draws (BUGS.md "A colordiscrete key and its
+            # colours keep the build's levels after a filter move"): the
+            # plan both modes' relevel reads (_dash_cvar_relevel).
+            if (not is_numeric) or (force_discrete and cuts is None
+                                    and nlevels is None):
+                _lv_items = [it for it in legend_items
+                             if it is not _miss_item]
+                if _keys_rev and not _use_plegend:
+                    _lv_items = list(reversed(_lv_items))
+                _pals = {}
+                for _k in range(1, len(non_missing_factors) + 1):
+                    if _c_list:
+                        _pk = (_c_list + [_c_list[-1]] * _k)[:_k]
+                    elif palette_key:
+                        _pk = list(pal_list)[:_k]
+                    else:
+                        _pk = list(_rule_palette(_k + 1))[:_k]
+                    _pals[str(_k)] = [str(c) for c in _pk]
+                renderer._dash_cvar = {
+                    "renderer": renderer, "field": color_field,
+                    "levels": [str(f) for f in non_missing_factors],
+                    "pals": _pals, "mapper": mapper,
+                    "rev": bool(_keys_rev and not _use_plegend),
+                    "keys": [{"legend": None, "items": _lv_items,
+                              "miss": _miss_item, "fig": fig,
+                              "anchor": renderer}] if add_key else []}
             # Tagged, so _rebuild_legend can tell a colour key from a plot
             # legend.  Inspecting the items instead does not survive the
             # rewrite it has to survive, and gets the mixed case (a colorvar
@@ -16573,6 +16603,9 @@ class GlyphMapper:
             # factor labels above are too, so escaping only showed entities.
             _legend = Legend(items=legend_items, title=var_display,
                              name=_COLORVAR_LEGEND_NAME)
+            for _ks in (getattr(renderer, "_dash_cvar", None)
+                        or {}).get("keys", []):
+                _ks["legend"] = _legend
             # zlabel()/ztitle()/zscale() (GAPS2 X2): ztitle() titles a
             # discrete key too; zlabel()/zscale() have nothing to draw on
             # a Legend (no ticks, no mapper range) and are named once.
@@ -43355,6 +43388,68 @@ _DASH_AXIS_FINISH_JS = _DASH_AXIS_FINISH_JS.replace(
     "@@DASH_EMPTY_SCALE@@", json.dumps(_DASH_EMPTY_SCALE))
 # WP-31 C11: lpoly's weight threshold, one Python constant for both twins.
 _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
+#: The saved page's twin of :func:`_dash_cvar_relevel`, run at the end of
+#: every filter callback over its ``cvar_plans``.
+_DASH_CVAR_RELEVEL_JS = r"""
+function dash_cvar_relevel(plans) {
+  const none = (v) => v === null || v === undefined
+    || (typeof v === "number" && isNaN(v));
+  for (const pl of plans || []) {
+    const r = pl.renderer;
+    const col = (r && r.data_source && r.data_source.data)
+      ? (r.data_source.data[pl.field] || []) : [];
+    const present = new Set();
+    let missing = false;
+    for (const v of col) {
+      if (none(v)) { missing = true; } else { present.add(String(v)); }
+    }
+    const levels = pl.levels || [];
+    const kept = levels.filter((lv) => present.has(lv));
+    const pal = (pl.pals || {})[String(kept.length)] || [];
+    const m = pl.mapper;
+    if (m) {
+      if (JSON.stringify(Array.from(m.factors || [])) !== JSON.stringify(kept))
+        m.factors = kept;
+      if (JSON.stringify(Array.from(m.palette || [])) !== JSON.stringify(pal))
+        m.palette = pal;
+    }
+    for (const ks of pl.keys || []) {
+      const items = ks.items || [];
+      if (items.length !== levels.length) continue;
+      const keep = kept.map((lv) => items[levels.indexOf(lv)]);
+      keep.forEach((it, j) => {
+        const rr = (it.renderers || [])[0];
+        const g = rr ? rr.glyph : null;
+        if (!g) return;
+        for (const prop of ["fill_color", "line_color"]) {
+          if (prop in g && g[prop] !== pal[j]) {
+            if (typeof g.setv === "function") {
+              g.setv({[prop]: pal[j]});
+            } else { g[prop] = pal[j]; }
+          }
+        }
+      });
+      const order = pl.rev ? keep.slice().reverse() : keep.slice();
+      const miss = ks.miss || null;
+      if (miss && missing) order.push(miss);
+      const lg = ks.legend;
+      if (lg) lg.items = order;
+      const fig = ks.fig;
+      if (!fig) continue;
+      const first = (it) => (it && it.renderers ? it.renderers[0] : null);
+      const swAll = items.concat(miss ? [miss] : []).map(first)
+        .filter((x) => x);
+      const swKeep = keep.concat(miss && missing ? [miss] : []).map(first)
+        .filter((x) => x);
+      const rest = (fig.renderers || []).filter((x) => !swAll.includes(x));
+      let at = rest.indexOf(ks.anchor);
+      at = at < 0 ? rest.length : at + 1;
+      fig.renderers = rest.slice(0, at).concat(swKeep, rest.slice(at));
+    }
+  }
+}
+"""
+
 # WP-30 P1.3a (TR-21.11): the saved page's filter callback ends by
 # re-finishing every planned axis over the rows the move kept.  Appended
 # here, not in _FILTER_JS's literal: that is defined before the constants
@@ -43376,6 +43471,12 @@ _FILTER_JS = (_DASH_FILTER_MASK_JS + "try {\n"
               "{ const _jn = _djoin[_di]; "
               'if (_jn && _jn.kind === "area") '
               "dash_fill_repin(_dsrcs[_di], _jn, ROW_ID); }\n"
+              # A colour layer of its own levels is levelled again over
+              # the rows kept (BUGS.md "A colordiscrete key and its
+              # colours keep the build's levels after a filter move").
+              + _DASH_CVAR_RELEVEL_JS
+              + 'if (typeof cvar_plans !== "undefined" && cvar_plans) '
+              "{ dash_cvar_relevel(cvar_plans); }\n"
               + "} catch (e) { dash_report_js_error(e); throw e; }\n")
 
 
@@ -51218,6 +51319,93 @@ _DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
 _DASH_SWATCH_PREFIX = "_clegend_"
 
 
+def _dash_cvar_relevel(plan):
+    """Level a colour layer of its own levels (colordiscrete, a string)
+    again over the rows its source now holds, as twoway levels the rows it
+    draws (BUGS.md "A colordiscrete key and its colours keep the build's
+    levels after a filter move"; measured 19oct2026: ``if rep78==3`` draws
+    one level in the first colour, ``if rep78>=4`` the levels 4 and 5 in
+    the first two, each by() panel its own, by()'s key the first
+    panel's).  *plan* is the layer's ``_dash_cvar``: the build's levels
+    in order, the palette of each count of levels, the mapper, and each
+    key it draws -- its legend, one item a level, the missing entry and
+    the plot whose renderers hold the items' swatches.  The kept levels
+    are the build's levels the colour column still holds; the mapper takes
+    them and the first k colours; each key keeps their items (reversed
+    under colorkeysreverse), recoloured, its missing entry while a row is
+    missing, and only their swatches.  The served app's twin of
+    ``dash_cvar_relevel`` in :data:`_DASH_CVAR_RELEVEL_JS`; never raises."""
+    try:
+        r = plan["renderer"]
+        col = list((r.data_source.data or {}).get(plan["field"], []))
+    except (KeyError, AttributeError, TypeError):
+        return
+    def _none(v):
+        return v is None or (isinstance(v, float) and v != v)
+    present = {str(v) for v in col if not _none(v)}
+    levels = list(plan.get("levels") or [])
+    kept = [lv for lv in levels if lv in present]
+    pal = list((plan.get("pals") or {}).get(str(len(kept)), []))
+    m = plan.get("mapper")
+    if m is not None:
+        if list(m.factors) != kept:
+            m.factors = kept
+        if list(m.palette) != pal:
+            m.palette = pal
+    missing = any(_none(v) for v in col)
+    for ks in plan.get("keys") or []:
+        items = list(ks.get("items") or [])
+        if len(items) != len(levels):
+            continue
+        keep = [items[levels.index(lv)] for lv in kept]
+        for j, it in enumerate(keep):
+            for rr in list(it.renderers or [])[:1]:
+                g = getattr(rr, "glyph", None)
+                for prop in ("fill_color", "line_color"):
+                    if g is not None and prop in g.properties() \
+                            and getattr(g, prop) != pal[j]:
+                        setattr(g, prop, pal[j])
+        order = list(reversed(keep)) if plan.get("rev") else list(keep)
+        miss = ks.get("miss")
+        if miss is not None and missing:
+            order.append(miss)
+        lg = ks.get("legend")
+        if lg is not None and list(lg.items) != order:
+            lg.items = order
+        fig = ks.get("fig")
+        if fig is None:
+            continue
+        sw_all = [rr for it in items + ([miss] if miss is not None else [])
+                  for rr in list(it.renderers or [])[:1]]
+        sw_keep = [rr for it in keep + ([miss] if miss is not None
+                                        and missing else [])
+                   for rr in list(it.renderers or [])[:1]]
+        ids = {id(x) for x in sw_all}
+        rest = [x for x in fig.renderers if id(x) not in ids]
+        anchor = ks.get("anchor")
+        at = next((i + 1 for i, x in enumerate(rest) if x is anchor),
+                  len(rest))
+        new = rest[:at] + sw_keep + rest[at:]
+        if [id(x) for x in fig.renderers] != [id(x) for x in new]:
+            fig.renderers = new
+
+
+def _dash_cvar_plans(models):
+    """The relevel plans (``_dash_cvar``) of every renderer among *models*
+    and the models they reach, once each."""
+    out, seen = [], set()
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else [root]
+        for m in refs:
+            p = getattr(m, "_dash_cvar", None)
+            if isinstance(p, dict) and id(m) not in seen:
+                seen.add(id(m))
+                out.append(p)
+    return out
+
+
+
+
 def _dash_mlabel_names(options):
     """``(first, extras)`` from a layer's mlabel() option.
 
@@ -54312,6 +54500,29 @@ def _dash_by_keys(figs, opts, scheme):
                         _lg.location = "center"
                         _dash_span(cell, _lg, "key", side, "center",
                                    ref="grid", mode="side")
+                    # The key follows the first panel's levels after a
+                    # move (BUGS.md "A colordiscrete key and its colours
+                    # keep the build's levels after a filter move"): a
+                    # key of the first panel's relevel plan.
+                    _plan = next((getattr(_r, "_dash_cvar", None)
+                                  for _r in figs[0].renderers
+                                  if any(_ks.get("legend") is key for _ks in
+                                         (getattr(_r, "_dash_cvar", None)
+                                          or {}).get("keys", []))), None)
+                    if _plan is not None:
+                        _by_lab = {str(getattr(it.label, "value", it.label)):
+                                   it for it in _lg.items}
+                        _own = next(_ks for _ks in _plan["keys"]
+                                    if _ks.get("legend") is key)
+                        _its = [_by_lab.get(lv) for lv in _plan["levels"]]
+                        _mi = _own.get("miss")
+                        _mlab = (str(getattr(_mi.label, "value", _mi.label))
+                                 if _mi is not None else None)
+                        if all(_its):
+                            _plan["keys"].append({
+                                "legend": _lg, "items": _its,
+                                "miss": _by_lab.get(_mlab) if _mlab else None,
+                                "fig": cell, "anchor": None})
             # Not aligned with the panels' frames (BUGS.md "by()'s colour
             # key ran past the panels' foot"): the key is centred on the
             # panels' height, as twoway centres it (measured 19oct2026:
@@ -64654,9 +64865,15 @@ class DashRenderer:
         _plan, _models = _dash_axis_plan(self.figures,
                                          getattr(self, "_facet_map", {}),
                                          zoom=True)
+        # The colour layers of their own levels, levelled again after each
+        # move (BUGS.md "A colordiscrete key and its colours keep the
+        # build's levels after a filter move").
+        _cvar_plans = _dash_cvar_plans(list(self.figures.values()))
         for _cb in self.filter_callbacks:
             _cb.args["axis_plans_json"] = _plan
             _cb.args["axis_models"] = _models
+            if _cvar_plans:
+                _cb.args["cvar_plans"] = _cvar_plans
 
         # A brush KPI recomputes on a SELECTION change, which is independent
         # of the filter widgets -- a dashboard with no filters at all can
@@ -65894,6 +66111,7 @@ class ServerAppBuilder:
                          "_dash_by_glyph_fields", "_dash_by_clone_renderers",
                          "_dash_by_clock_side", "_dash_by_legend_cell",
                          "_dash_by_key_share", "_dash_by_indiv_sides",
+                         "_dash_cvar_relevel", "_dash_cvar_plans",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
@@ -69550,6 +69768,10 @@ class ServerAppBuilder:
             "            # 3a. The stale cue of a fit drawn from Stata's points",
             "            # (WP-32), as the saved page shows its own.",
             "            _dash_points_stale_follow(_agg_srcs)",
+            "            # 3c. A colour layer of its own levels, levelled again",
+            "            # over the rows kept, as twoway levels them (WP-32).",
+            "            for _cvp in _dash_cvar_plans(_doc.roots):",
+            "                _dash_cvar_relevel(_cvp)",
             "            # 3b. Tick and range the axes again over the rows kept,",
             "            # as twoway does under the same `if' (WP-30 P1.3a).",
             "            if _axis_figs is not None:",
