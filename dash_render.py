@@ -38338,7 +38338,11 @@ for (const it of items) {
     const mg = (+it[6] || 0) * g.u;
     let align = place, offset = off;
     if (place === "left") {
-      offset = off + g.L - pb.left + mg;
+      // Never left of its canvas, where it would be cut off (a panel's
+      // box starts left of its y labels, BUGS.md "A spanned note or
+      // caption on a by() panel sat at the panel box's end without its
+      // margin").
+      offset = Math.max(off + g.L - pb.left + mg, -pb.left);
     } else if (place === "right") {
       offset = off + pb.right - g.R + mg;
     } else {
@@ -54658,6 +54662,30 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
     m = _dash_by_size_mult(go.get("by"), extra["full_n"])
     for fig in figs:
         _dash_by_label_box(fig, scheme, m)
+        # A spanned note or caption on a panel keeps its text box's margin
+        # at by()'s size multiplier inside the panel's box (BUGS.md "A
+        # spanned note or caption on a by() panel sat at the panel box's
+        # end without its margin"; measured 19oct2026: 16.5 of 3240 with
+        # two panels, 15.5 with five, stcolor's 0.6 units at .85 and .8).
+        _cb = next((c for c in fig.js_property_callbacks.get(
+            "change:" + _DASH_SPAN_KEYS[0], [])
+            if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+        if _cb is not None:
+            _items = []
+            for _it in _cb.args.get("items", []):
+                _it = list(_it) + [0.0] * (7 - len(_it))
+                _tags = [str(t) for t in (getattr(_it[0], "tags", None)
+                                          or [])]
+                _opt = _tags[1] if len(_tags) > 1 and _tags[0] == \
+                    "dash_textbox" else "title"
+                if _it[1] == "title" and _it[3] in ("left", "right") and \
+                        not getattr(_it[0], "padding", 0):
+                    _rel = _dash_textbox_margin_rel(scheme, _opt)
+                    if _rel is not None:
+                        _it[6] = float(_rel[0 if _it[3] == "left" else 1]) \
+                            * float(m)
+                _items.append(_it)
+            _cb.args = dict(_cb.args, items=_items)
     if nc > 1:
         ruler = _dash_by_cell(scheme, "dash_by_ruler", (None, 1))
         ruler.min_width = 1

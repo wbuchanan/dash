@@ -213,12 +213,15 @@ _BY_JS = r"""
 <script>
 function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
 function state() {
-  const boxes = [], pframes = [], prows = []; let grid = null;
+  const boxes = [], pframes = [], prows = []; let grid = null, pgrid = null;
   const visit = (v, box) => {
     if (!v) return;
     if (v.model && v.model.type === 'GridBox') box = v;
     if (v.model && (v.model.name === 'dash_by_legend'
         || v.model.name === 'dash_by_clegend') && box) grid = rect(box.el);
+    if (v.frame && v.model && !v.model.name && box && !pgrid) {
+      pgrid = rect(box.el);
+    }
     if (v.frame && v.model && !v.model.name && box) {
       pframes.push(v.frame.bbox.width);
       const cr0 = v.canvas_view.el.getBoundingClientRect();
@@ -285,6 +288,7 @@ function state() {
     for (const c of (v.child_views || [])) visit(c, box);
   };
   for (const v of Object.values(Bokeh.index)) visit(v, null);
+  if (!grid) grid = pgrid;
   // The panels plus their axes: the union of the grid's panel figures
   // (every child not named dash_by_*).
   let panels = null;
@@ -722,3 +726,36 @@ class TestByColourKeyInAHole:
                 assert abs(b[2] - (c[2] - 5)) <= 1.5, st
             else:
                 assert abs(b[0] - (c[0] + 5)) <= 1.5, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByPanelBoxMargin:
+    """BUGS.md "A spanned note or caption on a by() panel sat at the panel
+    box's end without its margin".  Measured 19oct2026 (StataNow 19.5,
+    stcolor, SVG of ``twoway (scatter price weight) (scatter mpg weight),
+    by(foreign|rep78, legend(off)) note("Panel N", span) caption("Panel C",
+    span pos(5))``): each panel's spanned note starts, and its caption
+    ends, its text box's margin inside the panel's box -- 16.5 of 3240 with
+    two panels, 15.5 with five: stcolor's 0.6 units at by()'s size
+    multiplier (.85, .8)."""
+
+    def test_the_note_and_caption_keep_their_margin(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, legend(off)",
+                                  "note": '"Panel N", span',
+                                  "caption": '"Panel C", span pos(5)'}):
+            g = st["grid"]
+            u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+            mg = 0.6 * 0.85 * u
+            notes = _by_titles(st, "Panel N")
+            caps = _by_titles(st, "Panel C")
+            assert len(notes) == 2 and len(caps) == 2, st
+            for n in notes:
+                f = n["frame"]
+                left = f[0] if n["yaxis"] is None else n["yaxis"] - 1.5 * u
+                # Never left of its canvas, where it would be cut off.
+                want = max(left + mg, n["canvas"][0])
+                assert abs(n["box"][0] - want) <= 1.0, (n, mg)
+            for c in caps:
+                f = c["frame"]
+                assert abs(c["box"][2] - (f[1] + 3.5 * u - mg)) <= 1.0, \
+                    (c, mg)

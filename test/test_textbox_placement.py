@@ -638,6 +638,35 @@ class TestSpan:
             "dash_by_foot": [("N", "below", "left", "panels")]}
 
     @pytest.mark.parametrize("mode", MODES)
+    def test_a_panels_end_boxes_keep_their_margin_at_bys_size(self, mode):
+        """BUGS.md "A spanned note or caption on a by() panel sat at the
+        panel box's end without its margin": a panel's spanned note and
+        caption keep their text box's margin at by()'s size multiplier
+        (measured 19oct2026, stcolor: 16.5 of 3240 with two panels, 15.5
+        with five: 0.6 units at .85 and .8); a centred title takes none."""
+        import test_by_axes_keys as bk
+        for by, mult in (("foreign", 0.85), ("rep78", 0.8)):
+            spec = bk._spec([bk._graph("g1", bk._TWO, {
+                "by": by, "note": '"N", span',
+                "caption": '"C", span pos(5)', "title": '"T", span'},
+                title=False)])
+            roots, _n, _o = bk._build(mode, spec)
+            figs = {id(m): m for r in roots for m in r.references()
+                    if getattr(m, "_dash_by_panel", False)
+                    or (type(m).__name__ == "figure" and not m.name)}
+            assert figs
+            for f in figs.values():
+                cbs = [c for c in f.js_property_callbacks.get(
+                    "change:inner_width", []) if c.code == dr._DASH_SPAN_JS]
+                if not cbs:
+                    continue
+                got = sorted((it[0].text, round(it[6], 4))
+                             for it in cbs[0].args["items"])
+                assert got == [("C", round(0.6 * mult, 4)),
+                               ("N", round(0.6 * mult, 4)),
+                               ("T", 0.0)], (by, got)
+
+    @pytest.mark.parametrize("mode", MODES)
     def test_bys_end_boxes_keep_their_text_box_margin(self, mode):
         """BUGS.md "A by() note or caption sat at the panels' end without
         its margin": twoway keeps the text box's margin inside the end
