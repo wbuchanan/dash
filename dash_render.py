@@ -50536,6 +50536,12 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
                     css=":host { max-height: %dpx !important; }" % int(mh))]
         grid = gridplot([figs], sizing_mode="stretch_width")
         grid.children = [(f, r, c) for f, (r, c) in zip(figs, cells)]
+        # The graph keeps its size: a legend, key or text row shortens the
+        # panels, as twoway's does (BUGS.md "A by() legend, key or text
+        # row was added under panels that kept their proportion, where
+        # twoway shortens the panels"), set as the grid is laid out.
+        if not own_ar and figs[0]._dash_array_ar:
+            _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar), nr, nc)
         grid.spacing = _dash_by_spacing(figs[0], opts)
         # The axis titles, legend and colour key beside the panels (WP-30
         # P1.15c); the overall text then spans every column.
@@ -53844,6 +53850,68 @@ def _dash_by_compass_location(clock, side):
         if c in (4, 5, 7, 8):
             return "bottom"
     return "center"
+
+
+#: A by() graph keeps its size (BUGS.md "A by() legend, key or text row
+#: was added under panels that kept their proportion, where twoway shortens
+#: the panels"; measured 19oct2026, 5400 x 3240: plot regions 2383.6 tall
+#: with no row, 1938.8 with a legend at 6, 2036.0 with a title, note and
+#: caption, 1591.2 with both, 997.8 with the colour key at 6): on each
+#: layout the panels' proportion is set so the by() grid -- panels, axis
+#: titles, legend, key and text rows -- is as tall as its width over the
+#: graph's width/height ratio *r*, the *nr* panel rows sharing what the
+#: other rows leave.  Stacked into one column, the panels take back their
+#: own proportion (*base*).
+_DASH_BY_FIT_JS = """
+const vs = [];
+for (const p of panels) {
+  let v = null;
+  try { v = Bokeh.index.find_one(p); } catch (e) { v = null; }
+  if (v != null && v.el != null) { vs.push([p, v]); }
+}
+if (vs.length === 0) { return; }
+let a = vs[0][1].parent;
+while (a != null && !(a.model != null && a.model.type === "GridBox")) {
+  a = a.parent;
+}
+if (a == null || a.el == null) { return; }
+const g = a.el.getBoundingClientRect();
+if (!(g.width > 0) || !(g.height > 0)) { return; }
+const rects = vs.map(([p, v]) => v.el.getBoundingClientRect());
+const lefts = new Set(rects.map((q) => Math.round(q.left)));
+if (vs.length > 1 && lefts.size === 1 && ncols > 1) {
+  vs.forEach(([p, v], i) => {
+    if (p.aspect_ratio !== base[i]) { p.aspect_ratio = base[i]; }
+  });
+  return;
+}
+const ph = rects[0].height, pw = rects[0].width;
+if (!(ph > 0) || !(pw > 0)) { return; }
+const want = g.width / ratio;
+const ph2 = Math.max(40, ph + (want - g.height) / Math.max(1, nr));
+const ar = pw / ph2;
+for (const [p, v] of vs) {
+  if (!(Math.abs((p.aspect_ratio || 0) - ar) < 0.002)) { p.aspect_ratio = ar; }
+}
+"""
+
+
+def _dash_by_fit_hook(figs, ratio, nr, nc):
+    """Keep a by() graph's size as twoway does (:data:`_DASH_BY_FIT_JS`):
+    one ``CustomJS`` on the first panel's laid-out size holding every
+    panel, the graph's width/height *ratio*, the *nr* panel rows and *nc*
+    columns and each panel's own proportion (restored when the panels
+    stack); returns it, or None for no panel or no ratio."""
+    from bokeh.models import CustomJS
+    if not figs or not ratio or ratio <= 0:
+        return None
+    cb = CustomJS(args={"panels": list(figs), "ratio": float(ratio),
+                        "nr": max(1, int(nr)), "ncols": max(1, int(nc)),
+                        "base": [float(f.aspect_ratio or 0.0) for f in figs]},
+                  code=_DASH_BY_FIT_JS)
+    for k in _DASH_SPAN_KEYS:
+        figs[0].js_on_change(k, cb)
+    return cb
 
 
 def _dash_by_indiv_sides(scheme):
@@ -65174,7 +65242,7 @@ class ServerAppBuilder:
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
-                      "_DASH_BY_HOLE_PLACE",
+                      "_DASH_BY_HOLE_PLACE", "_DASH_BY_FIT_JS",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",
@@ -65826,6 +65894,7 @@ class ServerAppBuilder:
                          "_dash_by_glyph_fields", "_dash_by_clone_renderers",
                          "_dash_by_clock_side", "_dash_by_legend_cell",
                          "_dash_by_key_share", "_dash_by_indiv_sides",
+                         "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
                          "_dash_by_region_options", "_dash_by_apply_regions",

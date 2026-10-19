@@ -382,19 +382,17 @@ class TestByTitlesSpan:
     def test_bys_own_boxes_are_placed_on_the_graph(self, mode):
         by = ('foreign, title("A by title", span) note("A by note", span) '
               'caption("A by caption", span pos(5))')
-        plain = _by(mode, {"by": by.replace(" span", "").replace(
-            ",)", ")")})[0]
-        (pn,) = _by_titles(plain, "A by note")
-        (pc,) = _by_titles(plain, "A by caption")
-        # Flipped (WP-32, BUGS.md "Without span by()'s title, note and
-        # caption were placed on their cell, not on the panels"): without
-        # span the note and caption sit on the panels, not the cell's frame,
-        # so the gap each keeps is read from the panels.
-        pp = _panels(plain)
-        gap = (pn["box"][0] - pp[0], pp[2] - pc["box"][2])
+        # Flipped (WP-32, BUGS.md "A by() legend, key or text row was
+        # added under panels that kept their proportion, where twoway
+        # shortens the panels"): the gap each end box keeps is its text
+        # box's margin (stcolor 0.6 units, BUGS.md "A by() note or caption
+        # sat at the panels' end without its margin"), read directly, as
+        # the plain graph's grid is no longer the spanned graph's size.
         for st in _by(mode, {"by": by}):
             g = st["grid"]
             edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
+            m6 = 0.006 * min(g[2] - g[0], g[3] - g[1])
+            gap = (m6, m6)
             (t,) = _by_titles(st, "A by title")
             assert abs(_centre(t["box"])[0] - (g[0] + g[2]) / 2.0) <= 1.5
             (n,) = _by_titles(st, "A by note")
@@ -875,3 +873,33 @@ class TestByDiscreteColourKey:
         assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, (b, c)
         f = st["pframes"]
         assert max(f) - min(f) <= 20, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByGraphKeepsItsSize:
+    """BUGS.md "A by() legend, key or text row was added under panels that
+    kept their proportion, where twoway shortens the panels".  Measured
+    19oct2026 (StataNow 19.5, stcolor, SVG of ``twoway (scatter price
+    weight) (scatter mpg weight), ylabel(, format(%15.2fc)) by(foreign,
+    ...)`` and ``twoway scatter price weight, colorvar(mpg) by(foreign,
+    clegend(on ...))``, 5400 x 3240 throughout): the graph keeps its size
+    and the panels give up what a row takes -- plot regions 2383.6 tall
+    with no row (legend(off), or a legend or key at 3), 1938.8 with the
+    legend at 6 or 12 (ring(0) too), 2036.0 with a title, note and
+    caption, 1591.2 with both, 997.8 with the colour key at 6 or 12."""
+
+    @pytest.mark.parametrize("width", (1000, 760))
+    @pytest.mark.parametrize("go,plots", (
+        ({"by": "foreign, legend(off)"}, None),
+        ({"by": "foreign, legend(pos(6))"}, None),
+        ({"by": 'foreign, legend(pos(6)) title("T") note("N") '
+                'caption("C", pos(5))'}, None),
+        ({"by": "foreign, clegend(on pos(6))"}, "key")))
+    def test_the_grid_keeps_the_graphs_ratio(self, mode, width, go, plots):
+        plots = [bk._p("scatter", colorvar="mpg")] if plots else bk._TWO
+        spec = bk._spec([bk._graph("g1", plots, go, title=False)],
+                        scheme="stcolor")
+        st = kb._measure(mode, spec, _BY_JS, (width,))[width]["wide"]
+        g = st["grid"]
+        assert abs((g[3] - g[1]) - (g[2] - g[0]) * 4.5 / 7.5) <= 2.5, \
+            (go, g, st["panels"])

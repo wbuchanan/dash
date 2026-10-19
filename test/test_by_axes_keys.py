@@ -1251,3 +1251,30 @@ def test_the_discrete_colour_key_is_placed_as_twoways_key(mode):
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
         assert (it[1], it[7]) == ("key", want), by
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_graph_keeps_its_size(mode):
+    """BUGS.md "A by() legend, key or text row was added under panels that
+    kept their proportion, where twoway shortens the panels": the first
+    panel carries _DASH_BY_FIT_JS with every panel, the graph's
+    width/height ratio (stcolor 7.5/4.5), its rows and columns and each
+    panel's own proportion; aspectratio() keeps the panels' own."""
+    spec = _spec([_graph("g1", _TWO, {"by": "rep78, legend(pos(6))"})])
+    roots, _n, _o = _build(mode, spec)
+    (grid,) = _grids(roots).values()
+    panels = _panels(grid)
+    cbs = [c for c in panels[0].js_property_callbacks.get(
+        "change:inner_width", []) if c.code == dr._DASH_BY_FIT_JS]
+    assert len(cbs) == 1
+    a = cbs[0].args
+    assert abs(a["ratio"] - 7.5 / 4.5) < 1e-9
+    assert (a["nr"], a["ncols"]) == (2, 3)
+    assert {id(p) for p in a["panels"]} == {id(p) for p in panels}
+    assert a["base"] == [p.aspect_ratio for p in a["panels"]]
+    spec = _spec([_graph("g1", _TWO, {"by": "foreign",
+                                      "aspectratio": "1"})])
+    roots, _n, _o = _build(mode, spec)
+    (grid,) = _grids(roots).values()
+    assert not [c for c in _panels(grid)[0].js_property_callbacks.get(
+        "change:inner_width", []) if c.code == dr._DASH_BY_FIT_JS]

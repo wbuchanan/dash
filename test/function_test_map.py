@@ -1439,6 +1439,7 @@ FUNCTIONS = {
  '_dash_by_legend_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_legend_cell',
  '_dash_by_key_share': 'test/test_by_axes_keys.py::test_the_colour_keys_share_of_the_width',
  '_dash_by_indiv_sides': 'test/test_textbox_placement.py::TestSpan::test_bys_panel_margin_is_read_from_the_scheme',
+ '_dash_by_fit_hook': 'test/test_by_axes_keys.py::test_the_graph_keeps_its_size',
  '_dash_by_apply_regions': 'test/test_by_remainder.py::TestRegions::test_each_panel',
  '_dash_by_label_inside': 'test/test_by_label_position.py::TestThePlace::test_ring0',
  '_dash_by_compass_location': 'test/test_by_remainder.py::test_compass_unit',

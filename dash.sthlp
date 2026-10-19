@@ -5626,8 +5626,10 @@ The precedence, highest first:
 
 {pstd}
 Under {cmd:by()}, as in {helpb twoway}, {cmd:xsize()} and {cmd:ysize()}
-size the whole array of panels, not each panel; {cmd:layout(bs)} places a
-faceted graph by that ratio.
+size the whole graph, not each panel: the axis titles, a legend or colour
+key at 6 or 12 o'clock and {cmd:by()}'s title, note and caption take their
+rows from the panels, which grow shorter, so the graph keeps its ratio;
+{cmd:layout(bs)} places a faceted graph by that ratio.
 
 {phang2}{opt aspectratio(#)} shapes the {bf:plot region}, as in
 {helpb twoway}, and takes {helpb twoway}'s sub-option {it:placement}
