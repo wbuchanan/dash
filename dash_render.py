@@ -38200,7 +38200,8 @@ const region = (ref) => {
   }
   if (p == null) { return null; }
   const q = {L: Math.max(r.L, p.L - c.left), R: Math.min(r.R, p.R - c.left),
-             T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top), u};
+             T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top), u,
+             pT: p.T - c.top, pB: p.B - c.top};
   return (q.R > q.L && q.B > q.T) ? q : null;
 };
 const at = (key, lo, len, size, mg) =>
@@ -38285,6 +38286,14 @@ for (const it of items) {
         top = (+m.padding || 0) + lp;
         len = H - 2 * top;
       }
+    } else if (mode === "side") {
+      // 3 or 9 o'clock beside the panels: their box less 0.094 of the
+      // graph's smaller side, centred on it (BUGS.md "by()'s colour key
+      // at 3 o'clock ran the panels' whole height"; measured 19oct2026:
+      // 2467.3 of a 2771.9 box at 3240, 2741.4 of 3079.8 at 3600).
+      const pp = region("panels");
+      if (pp == null) { continue; }
+      len = (pp.pB - pp.pT) - 9.4 * un;
     } else {
       len = (+it[4] || 0) * gg.gw;
     }
@@ -38299,6 +38308,12 @@ for (const it of items) {
     const extra = 2 * pad + pxOf(m.major_label_text_font_size)
       + (m.title ? 1.3 * pxOf(m.title_text_font_size)
          + (+m.title_standoff || 0) : 0);
+    if (mode === "side") {
+      if (moved) {
+        try { pv.invalidate_layout(); } catch (e) { /* next time */ }
+      }
+      continue;
+    }
     if (mode !== "hole") {
       // The cell's height (a fixed height lays the grid out again, where
       // a frame height does not).
@@ -54131,9 +54146,15 @@ def _dash_by_keys(figs, opts, scheme):
                 kw = key.properties_with_values(include_defaults=False)
                 kw.pop("name", None)
                 kw["orientation"] = "vertical" if vertical else "horizontal"
+                kw["location"] = "center"
                 bar = ColorBar(name="dash_by_clegend_key", **kw)
                 setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
                 cell.add_layout(bar, "left" if vertical else "above")
+                # Beside the panels: their box less 0.094 units, centred
+                # (BUGS.md "by()'s colour key at 3 o'clock ran the panels'
+                # whole height").
+                _dash_span(cell, bar, "key", side, "center", ref="grid",
+                           mode="side")
             else:
                 cell = _dash_by_legend_cell(scheme, "dash_by_clegend",
                                             side if not at else "right", key,

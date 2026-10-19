@@ -1203,3 +1203,24 @@ def test_the_colour_key_in_a_hole_is_placed_by_its_row(mode):
         (it,) = cb.args["items"]
         assert (it[1], it[3], it[7]) == ("key", across, "hole"), pos
         assert cell.frame_align is False and cell.height_policy == "max"
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_colour_key_beside_the_panels_is_their_box_less_a_gap(mode):
+    """BUGS.md "by()'s colour key at 3 o'clock ran the panels' whole
+    height": at 3 or 9 o'clock the key is placed by _DASH_SPAN_JS "key",
+    mode "side" (the panels' box less 0.094 units), centred."""
+    from bokeh.models import ColorBar
+    for pos in ("", " pos(9)"):
+        spec = _spec([_graph("g1", [_p("scatter", colorvar="headroom")],
+                             {"by": "foreign, clegend(on%s)" % pos})])
+        roots, _n, _o = _build(mode, spec)
+        (grid,) = _grids(roots).values()
+        cell = _cell(grid, "dash_by_clegend")[0]
+        (bar,) = [m for m in cell.left + cell.right
+                  if isinstance(m, ColorBar)]
+        assert bar.location == "center"
+        (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
+                 if c.code == dr._DASH_SPAN_JS]
+        (it,) = cb.args["items"]
+        assert (it[1], it[7]) == ("key", "side"), pos

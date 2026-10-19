@@ -645,6 +645,27 @@ class TestByColourKey:
             assert abs(_centre(k)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
             assert k[3] <= p[3] + 0.5, st
 
+    @pytest.mark.parametrize("go", ({}, {"xsize": "5", "ysize": "5"},
+                                    {"xsize": "4", "ysize": "6"}))
+    def test_the_key_is_the_panels_box_less_its_gap(self, mode, go):
+        """BUGS.md "by()'s colour key at 3 o'clock ran the panels' whole
+        height".  Measured 19oct2026 (StataNow 19.5, stcolor, SVG of the
+        same graph with ytitle("Price") at 7.5x4.5, 5x5, 8x4 and 4x6): at
+        3 o'clock twoway's key is the panels' box less 0.094 of the
+        graph's smaller side (2467.3 of a 2771.9 box at 3240; 2741.4 of
+        3079.8 at 3600; 2193.1 of 2463.8 and 3633.2 of 3904.0 at 2880),
+        centred on it."""
+        for st in _by_spec(mode, dict(go, by="foreign, clegend(on)",
+                                      ytitle='"Price"'),
+                           plots=[bk._p("scatter", colorvar="mpg")]):
+            p, g = st["panels"], st["grid"]
+            u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+            bar = _key(st)["bar"]
+            assert abs((bar[3] - bar[1]) - (p[3] - p[1] - 9.4 * u)) <= 1.5, \
+                (bar, p, u)
+            assert abs(_centre(bar)[1] - (p[1] + p[3]) / 2.0) <= 1.5, \
+                (bar, p)
+
 
 
 def _key(st):
