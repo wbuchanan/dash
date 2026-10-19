@@ -21803,7 +21803,32 @@ class GlyphMapper:
             c = (L + R) / 2.0 + float(offset) * bw
             return c - bw / 2.0, c + bw / 2.0
 
-    def _histogram_quads(self, fig, source, options, color_idx, yvar):
+    def _hist_mwidth_px(self, options: dict, bin_width: float):
+        """The screen width of a histogram bar under ``mwidth``, or None
+        (WP-32): twoway draws each bar a marker wide, the marker's size
+        barwidth() -- the bin width by default -- and msize() not read
+        (measured 19oct2026: eight bins of 3.625 drawn 3.625% of the
+        graph's shorter side, barwidth(1) 1%, under msize(small) and
+        msize(vlarge) alike).  Horizontal bars are not measured with it:
+        None there, and dash.ado names mwidth."""
+        if not str(options.get("mwidth", "") or "").strip():
+            return None
+        if str(options.get("horizontal", "") or "").strip():
+            return None
+        o = {k: v for k, v in options.items() if k != "msize"}
+        if not any(str(o.get(k, "") or "").strip()
+                   for k in ("barwidth", "width")):
+            try:
+                bw = float(bin_width)
+            except (TypeError, ValueError):
+                return None
+            if not math.isfinite(bw) or bw <= 0:
+                return None
+            o["barwidth"] = "%.17g" % bw
+        return self._rbar_mwidth_px(o, 0)
+
+    def _histogram_quads(self, fig, source, options, color_idx, yvar,
+                         mwidth_px=None):
         """A histogram's bars over *source* (``top``/``left``/``right``) in
         the scheme's histogram style -- `color histogram' at `intensity
         histogram', outlined in `color histogram_line' at `linewidth
@@ -21829,7 +21854,19 @@ class GlyphMapper:
                 _oa["color"], "color", base=_fill_base)
             if _c:
                 _fill_base = _c
-        r = fig.quad(top="top", bottom=0, left="left", right="right",
+        # mwidth (WP-32): each bar a marker wide, centred on the bin's
+        # start, its left edge, which the saved page's recount rewrites as
+        # it rewrites the quads' (_hist_mwidth_px).
+        if mwidth_px is not None:
+            _n = len(source.data.get("top", []))
+            source.data["__dash_mw"] = [float(mwidth_px)] * _n
+            source.data["right"] = list(source.data.get("left", []))
+        _shape = (dict(x="left", top="top", bottom=0,
+                       width="__dash_mw", width_units="screen")
+                  if mwidth_px is not None else
+                  dict(top="top", bottom=0, left="left", right="right"))
+        _glyph = fig.vbar if mwidth_px is not None else fig.quad
+        r = _glyph(**_shape,
                      source=source,
                      fill_color=self._blend_intensity(
                          _fill_base, _f, scheme.naturally_white),
@@ -22032,8 +22069,9 @@ class GlyphMapper:
             return _first
         if _bin_rows is not None:
             hist_source.data["__dash_bin_rows"] = _bin_rows
-        r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
-                                       yvar))
+        r = _tag(self._histogram_quads(
+            fig, hist_source, options, color_idx, yvar,
+            mwidth_px=self._hist_mwidth_px(options, h)))
         if "__dash_bin_rows" in hist_source.data:
             r._dash_bin_raw = source
         if i1 <= i0:
@@ -22087,6 +22125,15 @@ class GlyphMapper:
             "gap":       _hgap,
             "baroffset": _hoff,
         }
+        # WP-32: mwidth's bar width, fixed by barwidth() or the bin width's
+        # pixels a unit, which the page applies to a rebinned grid.
+        _mwp = self._hist_mwidth_px(options, h)
+        if _mwp is not None:
+            if any(str(options.get(k, "") or "").strip()
+                   for k in ("barwidth", "width")):
+                cfg["mwidth_px"] = float(_mwp)
+            elif h and math.isfinite(float(h)) and float(h) > 0:
+                cfg["mwidth_k"] = float(_mwp) / float(h)
         # WP-29 P0.8: a date variable (and a date weight) is recounted in
         # its Stata units: the page converts each value with
         # dash_stata_value_of(v, datekind), counts on the full unit grid
@@ -22807,9 +22854,15 @@ class GlyphMapper:
                 if _bw is not None:
                     bar_width = _bw
                 break
+        # baroffset(#): each bar moved # bar widths, as on bar (WP-32;
+        # measured 19oct2026: twoway's rbar rects stand where bar's do for
+        # baroffset(1), (-1), (.5) and (5), yxview__barlike_draw), from the
+        # reserved centre column on every axis kind.
+        _rb_off = _stat_option_float(options, "baroffset", 0.0, "rbar") \
+            if "baroffset" in options else 0.0
         x_field, width_spec, _rb_ext = self._bar_extent(
             xvar, source.data[xvar], bar_width, fig=fig,
-            options=options)
+            options=options, offset=_rb_off or 0.0)
         if _rb_ext:
             source.data.update(_rb_ext)
         _fill_base, _f = self._rbar_fill_base(options, color_idx)
@@ -34069,6 +34122,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // baroffset bar widths.  Without them the bars are the edges.
         const _gap = ac.gap || 0, _off = ac.baroffset || 0;
         let _hl = edges.slice(0, n_bins), _hr = edges.slice(1);
+        // WP-32: mwidth draws each bar a marker wide at its bin's start, as
+        // wide as barwidth() or the (rebinned) bin width (ac.mwidth_k, the
+        // pixels a unit); the bars have no data width.
+        const _mw = (typeof ac.mwidth_k === 'number' || typeof ac.mwidth_px === 'number');
+        const _mw_px = () => new Array(n_bins).fill(typeof ac.mwidth_px === 'number' ? ac.mwidth_px : (n_bins > 0 ? (edges[1] - edges[0]) * ac.mwidth_k : 0));
         if (_gap || _off) {
             _hl = []; _hr = [];
             for (let k = 0; k < n_bins; k++) {
@@ -34109,8 +34167,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             src.data = {
                 top:   new Array(n_bins).fill(0),
                 left:  _hl,
-                right: _hr,
+                right: _mw ? _hl.slice() : _hr,
             };
+            if (_mw) src.data.__dash_mw = _mw_px();
             if (ac.recast_cols) {
                 // WP-31 C16: the recast layer's midpoints and heights.
                 const _mx = [];
@@ -34149,8 +34208,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         src.data = {
             top:   dash_scale(counts),
             left:  _hl,
-            right: _hr,
+            right: _mw ? _hl.slice() : _hr,
         };
+        if (_mw) src.data.__dash_mw = _mw_px();
         if (ac.recast_cols) {
             // WP-31 C16: midpoints and heights, as the recast target
             // reads them (map_histogram's recast source).

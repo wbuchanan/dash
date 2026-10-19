@@ -170,8 +170,9 @@
 *!   NP-20  p(p3) p(p4) writes "p":"p3" (the first copy); under p() no
 *!          mcolor/lcolor/mlabcolor is written and mlabel() is kept.
 *!   NP-21  pstyle(p4) p(p3) writes p only.
-*!   NP-22  area/rarea: lstyle() alstyle() blstyle() named, astyle() not.
-*!   NP-23  pcarrow: mstyle() and mlstyle() named.
+*!   NP-22  area/rarea: lstyle() alstyle() blstyle() astyle() not named
+*!          (flipped, WP-32: drawn).
+*!   NP-23  pcarrow: mstyle() and mlstyle() not named (flipped, WP-32).
 *!   NP-24  spike, clstyle(p3) writes no clstyle.
 *!   NP-25  scatter, astyle(p3) is silent, rc 0 (WP-30 P1.14a, NP-20..25).
 *!   TA-01..TA-10, TA-15, TA-16  the t-options (tlabel() .. tline())
@@ -2124,6 +2125,9 @@ local s36 1
 local s37 1
 local f38 `"rbar mpg price weight, baroffset(1)"'
 local g38 "baroffset()"
+// Flipped (WP-32): row 38's baroffset() named on rbar was wrong, because
+// twoway moves rbar's bars as bar's and dash now draws them so (BUGS.md "Options twoway draws that dash still names...").
+local s38 1
 forvalues k = 33/38 {
     local x`k' 0
 }
@@ -3506,11 +3510,14 @@ else display as text "NP-21 PASS: pstyle(p4) p(p3) writes p only"
 local bad = 0
 foreach t in area rarea {
     local v = cond("`t'" == "area", "mpg weight", "mpg turn weight")
+    // Flipped (WP-32): lstyle() alstyle() blstyle() named was wrong,
+    // because twoway strokes the outline in the named style and dash now
+    // does (BUGS.md "Options twoway draws that dash still names...").
     _ztp_run `"dash `t' `v', sort lstyle(p3) alstyle(p3) blstyle(p3) astyle(p3) name(np22)"' "`logfile'"
-    if r(rc) != 0 | !r(note) local bad = 1
+    if r(rc) != 0 | r(note) local bad = 1
     foreach nm in lstyle() alstyle() blstyle() {
         _ztp_logged "`logfile'" "`nm'"
-        if !r(found) local bad = 1
+        if r(found) local bad = 1
     }
     _ztp_logged "`logfile'" " astyle()"
     if r(found) local bad = 1
@@ -3520,21 +3527,23 @@ if `bad' {
     local faillist "`faillist' NP-22"
     display as error "NP-22 FAIL: area/rarea outline styles"
 }
-else display as text "NP-22 PASS: on area and rarea lstyle() alstyle() blstyle() are named, astyle() is not"
+else display as text "NP-22 PASS: on area and rarea lstyle() alstyle() blstyle() and astyle() are drawn, named by nothing"
 
 local bad = 0
+// Flipped (WP-32): mstyle() and mlstyle() named on pcarrow was wrong,
+// because twoway strokes the heads in the named style and dash now does.
 _ztp_run `"dash pcarrow mpg weight turn length, mstyle(p3) mlstyle(p3) name(np23)"' "`logfile'"
-if r(rc) != 0 | !r(note) local bad = 1
+if r(rc) != 0 | r(note) local bad = 1
 foreach nm in mstyle() mlstyle() {
     _ztp_logged "`logfile'" "`nm'"
-    if !r(found) local bad = 1
+    if r(found) local bad = 1
 }
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' NP-23"
     display as error "NP-23 FAIL: pcarrow marker styles"
 }
-else display as text "NP-23 PASS: on pcarrow mstyle() and mlstyle() are named"
+else display as text "NP-23 PASS: on pcarrow mstyle() and mlstyle() are drawn, named by nothing"
 
 _ztp_run `"dash spike mpg weight, clstyle(p3) name(np24)"' "`logfile'"
 local rc = r(rc)

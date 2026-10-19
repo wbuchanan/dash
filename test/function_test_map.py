@@ -1509,6 +1509,7 @@ FUNCTIONS = {
  'GlyphMapper._rbar_finish': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
  'GlyphMapper._rbar_fill_base': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
  'GlyphMapper._rbar_mwidth_px': 'test/test_rbar_mwidth.py::TestMwidth::test_msize_scales_the_width',
+ 'GlyphMapper._hist_mwidth_px': 'test/test_noted_drawn.py::TestHistogramMwidth::test_barwidth_is_the_marker_size',
  # WP-31 S24 (D1)
  '_dash_apply_minor_ticks': 'test/test_minor_ticks.py::TestMinorTicksAreDrawn::test_explicit_positions',
  '_dash_note_major_between': 'test/test_minor_ticks.py::TestMajorBetweenIsIgnored::test_noted_and_default',

@@ -2564,6 +2564,10 @@ CORPUS = [
     _case("area nodropbase",
           [plot_for("area", {"nodropbase": "nodropbase"})]),
     _case("bar baroffset(.5)", [plot_for("bar", {"baroffset": ".5"})]),
+    # WP-32: rbar's bars moved as bar's.
+    _case("rbar baroffset(.5)", [plot_for("rbar", {"baroffset": ".5"})]),
+    # WP-32: histogram's bars a marker wide.
+    _case("histogram mwidth", [plot_for("histogram", {"mwidth": "mwidth"})]),
     # WP-31 C6: cmissing(n) on area and connect() on rarea, drawn alike.
     _case("area cmissing(n)", [plot_for("area", {"cmissing": "n"})]),
     _case("rarea connect(stairstep) cmissing(n)",
@@ -3763,6 +3767,11 @@ MOVE_CORPUS = [
     # WP-31 C5
     _move_case("bar baroffset after a move", _MOVES[0],
                [plot_for("bar", {"baroffset": ".5"})]),
+    # WP-32
+    _move_case("rbar baroffset after a move", _MOVES[0],
+               [plot_for("rbar", {"baroffset": ".5"})]),
+    _move_case("histogram mwidth after a move", _MOVES[0],
+               [plot_for("histogram", {"mwidth": "mwidth"})]),
     # WP-31 C10b: the tied axes follow the move together.
     _move_case("line yaxis(1 2), dropdown to Foreign (WP-31 C10b)",
                _MOVES[0], [plot_for("line", {"yaxis": "1 2"}),

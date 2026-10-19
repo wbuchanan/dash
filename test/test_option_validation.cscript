@@ -3214,7 +3214,9 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     "histogram mpg, sort(price)@0" ///
     "contour mpg weight length, heatmap@1" ///
     "area mpg weight, lstyle(p3)@0" ///
-    "pcarrow mpg weight trunk turn, mstyle(p3) mlstyle(p4)@0" {
+    "pcarrow mpg weight trunk turn, mstyle(p3) mlstyle(p4)@0" ///
+    "rbar mpg trunk weight, baroffset(1)@0" ///
+    "histogram mpg, mwidth@0" {
     local ++_u55n
     gettoken _u55x _u55w : _u55p, parse("@")
     local _u55w = substr("`_u55w'", 2, .)
@@ -3229,7 +3231,9 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     _ov_assert U55-`_u55n' "(r(n) == `_u55w')" `"`_u55x': `r(n)' note(s) (expected `_u55w')"'
 }
 // 12 -> 13: WP-32 mstyle()/mlstyle() on pcarrow drawn, not named.
-_ov_assert U55-0 "(`_u55n' == 13)" "the 13 U55 cases ran"
+// 13 -> 14: WP-32 baroffset() on rbar drawn, not named.
+// 14 -> 15: WP-32 mwidth on histogram drawn, not named.
+_ov_assert U55-0 "(`_u55n' == 15)" "the 15 U55 cases ran"
 capture dash clear
 
 // U56 (WP-32): off the ci types twoway draws acolor(), alcolor(),

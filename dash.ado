@@ -2878,7 +2878,11 @@ program define _dash_fold_typed, sclass
         display as error "option mwidth not allowed"
         exit 198
     }
-    if "`ptype'" == "histogram" & `_ft' local named "`named' mwidth"
+    // WP-32: map_histogram draws mwidth's bars a marker wide, as twoway
+    // does (_hist_mwidth_px); named only beside horizontal, whose bars
+    // were not measured with it.
+    mata: st_local("_ft_hz", strofreal(st_global("s(horizontal)") != ""))
+    if "`ptype'" == "histogram" & `_ft' & `_ft_hz' local named "`named' mwidth"
     // WP-31 C5: baroffset() moves rbar's bars in twoway
     // (yxview__barlike_draw draw_fixed), which map_rbar does not draw
     // yet: named there.  On bar and histogram it is drawn; on area, spike,
@@ -2886,8 +2890,12 @@ program define _dash_fold_typed, sclass
     // (WP-31 B5b: dot's rows and markers stay where they were under
     // baroffset(.5) and baroffset(5), test/fixtures/dot_truth.json D28,
     // D29).
+    // WP-32: map_rbar moves the bars as map_bar does (measured 19oct2026:
+    // twoway's rbar rects stand where bar's do), so baroffset() is named on
+    // rbar only beside mwidth, whose marker-wide view was not measured
+    // with it.
     local bo_named "rbar"
-    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != ""))
+    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != "" & st_global("s(mwidth)") != ""))
     if `_ft' & `: list ptype in bo_named' local named "`named' baroffset"
     mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
     if "`ptype'" == "rbar" & `_ft' local named "`named' msize"

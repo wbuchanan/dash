@@ -647,7 +647,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
 
     // ------------------------------------------------------------
     // U03-03: msize(large) without mwidth: the VBar is one x unit wide, as
-    // before, and the note names msize() once.
+    // before, and nothing is named (flipped, WP-32).
     // ------------------------------------------------------------
     local lf "`u3d'/n3.log"
     dash clear
@@ -659,9 +659,12 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
     _u03_all 1 ${u03_bs} ${u03_bv}
     _w31_expect U03-03 "(r(ok))" "VBar width saved ${u03_bs} served ${u03_bv}"
     _w31_expect U03-03 `"("${u03_ks} ${u03_kv}" == "VBar VBar")"' "glyphs ${u03_ks} / ${u03_kv}"
-    cert_log_has "`lf'", needle("msize()")
-    _w31_expect U03-03 "(r(count) == 1)" "the log names msize() `r(count)' times"
-    _w31_done U03-03 "rbar msize(large) without mwidth draws the one-unit VBar and names msize() once"
+    // Flipped (WP-32): msize() was named once, which was wrong because
+    // twoway draws rbar the same with it (noted_option_truth.json): taken
+    // in silence.
+    cert_log_has "`lf'", needle("ignoring unsupported")
+    _w31_expect U03-03 "(r(count) == 0)" "the log names msize() `r(count)' times"
+    _w31_done U03-03 "rbar msize(large) without mwidth draws the one-unit VBar in silence"
 
     capture erase "`lf'"
     foreach f in t1.svg t2weight.svg t2turn.svg {

@@ -608,7 +608,12 @@ With {cmd:mwidth}, {cmd:rbar} draws each bar as wide as a marker of its
 {cmd:msize()} (the scheme's symbol size by default), in screen units,
 as {cmd:twoway}'s {cmd:rbar} {cmd:mwidth} draws, whatever the spacing
 of {it:x}; {cmd:barwidth()} beside it is read as that marker size, as in
-{cmd:twoway}.  Without {cmd:mwidth}, {cmd:msize()} is accepted and named.
+{cmd:twoway}.  Without {cmd:mwidth}, {cmd:msize()} is taken in silence,
+as {cmd:twoway} draws nothing of it.  {cmd:histogram} with {cmd:mwidth}
+draws each bar as wide as a marker of size {cmd:barwidth()} -- the bin
+width by default -- centred on the bin's start, as {cmd:twoway} draws it
+({cmd:msize()} is not read); beside {cmd:horizontal} {cmd:mwidth} is
+named.
 {cmd:rcap} draws its caps as long as a marker of its {cmd:msize()} is wide,
 the scheme's symbol size by default, in screen units.  {cmd:rcapsym} draws
 no caps, only its spike and a marker at each end, at the scheme's symbol
@@ -3750,11 +3755,12 @@ a graph of histograms alone are still drawn by {cmd:dash}.
 {synopt:{opt gap(#)}}{cmd:histogram} only: each bar is {it:#} percent
     narrower than its bin, about the bin's centre; 0 to 100, 100
     excluded ({cmd:option gap() must be between 0 and 100}, r(198)){p_end}
-{synopt:{opt baroffset(#)}}{cmd:bar} and {cmd:histogram}: each bar moved
-    {it:#} bar widths, negative to the left.  {cmd:twoway} also takes it on
-    {cmd:area}, {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws
-    nothing different, and on {cmd:rbar}, where {cmd:dash} names it in the
-    note{p_end}
+{synopt:{opt baroffset(#)}}{cmd:bar}, {cmd:rbar} and {cmd:histogram}:
+    each bar moved {it:#} bar widths, negative to the left, {cmd:rbar}'s
+    as {cmd:bar}'s.  {cmd:twoway} also takes it on {cmd:area},
+    {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws nothing
+    different; beside {cmd:rbar}'s {cmd:mwidth} {cmd:dash} names it in
+    the note{p_end}
 {synopt:{opt dotextend(yes|no)}}{cmd:dot}: {cmd:dash} draws {cmd:dot} as
     {cmd:twoway} does, a row of dots through each observation and then
     its marker; the rows run up and down from the y axis's base (0 when
@@ -6508,7 +6514,7 @@ in either direction.
 {phang2}{ul:Bar-family settings.}
     {opt bartype(spanning)}, {opt bargap(#)}, {opt dropto(#)} on
     {cmd:bar} and the other bar-derived types, and {opt baroffset(#)} on
-    {cmd:rbar}.  {cmd:bargap()} is an option of {cmd:graph bar}:
+    {cmd:rbar} beside {cmd:mwidth}.  {cmd:bargap()} is an option of {cmd:graph bar}:
     {cmd:twoway bar} accepts it and draws nothing different.  {cmd:dash}
     names all four.
 
@@ -6563,8 +6569,8 @@ in either direction.
     the heatmap's cells or the bands' outlines.
 
 {phang2}{ul:Not drawn.}
-    {cmd:mwidth} on {cmd:histogram}, where {cmd:twoway} draws each bar a
-    marker wide.  {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},
+    {cmd:mwidth} on a {cmd:horizontal} {cmd:histogram}, not measured.
+    {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},
     {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
     {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, {cmd:mangle()} and
     {cmd:barbsize()} off the arrow types, {cmd:recast()} on {cmd:dot}
