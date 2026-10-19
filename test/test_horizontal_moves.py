@@ -58,7 +58,9 @@ _FALLBACK_CLASSES = ("VBar", "HBar", "VArea", "HArea", "Quad", "Segment",
 _MIRROR = {"x": "y", "y": "x", "x0": "y0", "y0": "x0", "x1": "y1",
            "y1": "x1", "x2": "y2", "y2": "x2", "left": "bottom",
            "bottom": "left", "right": "top", "top": "right",
-           "width": "height", "height": "width"}
+           "width": "height", "height": "width",
+           # WP-32: a marker-wide bar's units turn with it (mwidth).
+           "width_units": "height_units", "height_units": "width_units"}
 
 
 def _opts(t, extra=None):

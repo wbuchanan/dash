@@ -6334,6 +6334,7 @@ if inlist("`only'", "", "S28") & `: list posof "S28" in w31_run' {
 // unchanged by the move) and u29_xr (the fill polygons' x range).
 python:
 def _u29_move(sp, dp, kind, value, sq, dq):
+    import json
     import os
     import sys
     import warnings
@@ -6358,7 +6359,21 @@ def _u29_move(sp, dp, kind, value, sq, dq):
     lsrc = cr.line_renderer.data_source
     part = "line" if len(lsrc.data.get("xs", [])) else "fill"
     src = lsrc if part == "line" else cr.fill_renderer.data_source
-    before = repr(dict(src.data))
+    # Compared as values: the node harness writes every source it was
+    # handed back as plain lists (WP-32), which is no rewrite by the page.
+    def _vals(d):
+        def one(v):
+            if hasattr(v, "tolist"):
+                v = v.tolist()
+            if isinstance(v, (list, tuple)):
+                return [one(x) for x in v]
+            if v is None or isinstance(v, (int, float)):
+                f = float("nan") if v is None else float(v)
+                return "nan" if f != f else repr(f)
+            return str(v)
+        return json.dumps({k: one(v) for k, v in dict(d).items()},
+                          sort_keys=True)
+    before = _vals(src.data)
     w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
     if kind == "Select":
         w.value = [v for v, lab in w.options if lab == value][0]
@@ -6408,7 +6423,7 @@ def _u29_move(sp, dp, kind, value, sq, dq):
     Macro.setGlobal("u29_cue", str(int(any(x.muted for x in lay)
                                        or any(bool(t.visible) for t in cue)
                                        or bool(st is not None and st.visible))))
-    Macro.setGlobal("u29_same", str(int(repr(dict(src.data)) == before)))
+    Macro.setGlobal("u29_same", str(int(_vals(src.data) == before)))
     Macro.setGlobal("u29_xr", xr)
 end
 

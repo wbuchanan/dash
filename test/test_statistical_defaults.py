@@ -900,8 +900,13 @@ class TestKdensityRange:
         # yoverhangs drawn (scale was the second control; play is now).
         # 20 -> 19: E3 mlalign() read by the renderer.  19 -> 18: E2
         # mlpattern() taken as twoway takes it.
-        assert len(pending) == 18, (len(pending), pending)
-        for really_pending in ("sort", "play"):
+        # 18 -> 7: WP-32 refuses what twoway refuses (at(), blabel(),
+        # ciopts(), fitopts(), lineopts(), mlabwidth(), filter(), link()),
+        # checks play() as twoway does, and draws the fitarea and other
+        # options twoway draws; the seven left are dropped from the note
+        # by type where twoway is silent (_dash_silent_drop).
+        assert len(pending) == 7, (len(pending), pending)
+        for really_pending in ("sort",):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (
             "range() sets a function plot's domain and a kdensity's "

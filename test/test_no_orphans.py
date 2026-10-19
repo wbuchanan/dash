@@ -253,7 +253,14 @@ def _statement_calls(stmt, programs, funcs):
     if not m:
         return set()
     if m.group(0) in programs:
-        return {m.group(0)}
+        out = {m.group(0)}
+        # WP-32: _dash_pend <program> <args> holds a refusal that runs
+        # once every segment is read, so it calls that program.
+        if m.group(0) == "_dash_pend":
+            w = re.match(r"\s*([A-Za-z_][A-Za-z0-9_]*)", cmd[m.end():])
+            if w and w.group(1) in programs:
+                out.add(w.group(1))
+        return out
     if m.group(0) != "mata":
         return set()
     code = cmd[m.end():].lstrip()
@@ -293,6 +300,13 @@ def _call_graph(ado_texts, mata_text):
             for callee in _statement_calls(stmt, programs, funcs):
                 if callee != who:
                     edges.add((who, callee))
+    # WP-32: global dash__pend "<program> ..." holds a refusal run once
+    # every segment is read (its text is a string, so read it raw).
+    for f, text in ado_texts.items():
+        for g in re.finditer(r'global\s+dash__pend\s+"([A-Za-z_]\w*)', text):
+            who = owner(f, text.count("\n", 0, g.start()) + 1)
+            if g.group(1) in programs and g.group(1) != who:
+                edges.add((who, g.group(1)))
     for line, code in _mata_code(mata_text):
         who = owner(_MATA_FILE, line)
         for callee in _mata_calls(code, funcs):

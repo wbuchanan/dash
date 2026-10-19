@@ -395,7 +395,13 @@ class TestAfterAFilterMove:
         codes = [m.code for m in r._last_layout_root.references()
                  if isinstance(m, CustomJS)]
         assert codes
-        for code in codes:
+        # WP-32 (maintainer ruling over WP-29 BR-07.4): a colorvar()
+        # line's level colours follow the kept rows, as twoway draws them;
+        # that one statement is a colour level, not a series style.
+        lvl = "r.glyph.line_color = colour;"
+        import dash_render as dr
+        assert lvl in dr._DASH_CVAR_RELEVEL_JS
+        for code in (c.replace(lvl, "") for c in codes):
             for needle in (".fill_color =", ".line_color =", ".marker =",
                            ".line_dash ="):
                 assert needle not in code
