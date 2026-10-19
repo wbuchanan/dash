@@ -1855,7 +1855,7 @@ capture dash clear
 // ----------------------------------------------------------------
 // JSE-46 -- the other texts a title shares its path with: subtitle(),
 // note(), caption() and a legend label, in comma mode and after a paren
-// command's comma; by()'s title(); text(), at() and options dash does not
+// command's comma; by()'s title(); text(), dlalign() and options dash does not
 // know, which it keeps and names; an alias folded onto its option; and the
 // axis and side titles, xtitle() .. ytitle2() and t1title() .. r2title()
 // ----------------------------------------------------------------
@@ -1892,7 +1892,11 @@ _jg_log_on "`jg_l46'"
 * by dash now as twoway refuses them (BUGS.md "In a few mixed lists dash
 * names another word than twoway names first ..."); afcolor() and
 * afintensity(), which twoway takes and dash names, carry the same text.
-capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") at(1 "'x") afcolor("'90s fp") afintensity(1) name(jg46g)
+* Flipped: WP-32 -- at() is refused by dash now as twoway refuses it on
+* every type (BUGS.md "dash names in its note, as not drawn, options
+* twoway refuses on that plot type"); dlalign(), which twoway takes and
+* dash names, carries its text.
+capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") dlalign(1 "'x") afcolor("'90s fp") afintensity(1) name(jg46g)
 local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
 local jg_r8 = _rc
@@ -1900,7 +1904,7 @@ _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
 * bar() and no note names text(); it was "at() text() foo() bar()" and
 * "text()" once each.
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() afcolor() afintensity()")
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): dlalign() afcolor() afintensity()")
 local jg_m1 = r(count)
 cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
@@ -1945,7 +1949,7 @@ mata: st_global("JG_WANT", char(39) + "90s tp")
 _jg_stored jg46g "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "1 " + _jg_pq(char(39) + "x"))
-_jg_stored jg46g "plots 0 options at"
+_jg_stored jg46g "plots 0 options dlalign"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", char(39) + "90s tq")
 _jg_stored jg46h "graph_options added_text 0 at_lines 0"

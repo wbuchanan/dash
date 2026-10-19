@@ -167,15 +167,19 @@ local faillist ""
 // until 24sep2026 nothing in this file required r(note) == 1: had
 // dash.ado's note stopped saying "ignoring unsupported", every one of
 // those checks would have passed without looking.  The same helper, the
-// same needle, on options the note must name: mlabwidth(), which twoway
-// refuses and dash names (colorrule(), the control until WP-31 C8b, is
+// same needle, on options the note must name: bmlinestyle(), which twoway
+// takes and dash does not draw (colorrule(), the control until WP-31 C8b, is
 // drawn now), and an option no plot type has.
 local bad = 0
 // Flipped: WP-32 -- the option was one twoway refuses, r(198), which dash
 // now refuses as twoway does (BUGS.md "In a few mixed lists dash names
 // another word than twoway names first, and an unknown lower-case word is
 // noted where twoway refuses it"); afcolor() twoway takes on every type.
-foreach cmd in "scatter mpg weight, mlabwidth(thick)" "scatter mpg weight, afcolor(red)" {
+// Flipped: WP-32 -- mlabwidth() twoway refuses on every type, r(198),
+// and dash now refuses it as twoway does (BUGS.md "dash names in its note,
+// as not drawn, options twoway refuses on that plot type");
+// bmlinestyle(), which twoway takes and dash does not draw, is named.
+foreach cmd in "scatter mpg weight, bmlinestyle(p3)" "scatter mpg weight, afcolor(red)" {
     _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
     if r(rc) != 0 | r(note) != 1 {
         display as error "HC7-00 FAIL `cmd': rc `r(rc)', the ignoring note seen `r(note)' (want 1)"

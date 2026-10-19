@@ -257,10 +257,14 @@ META = D["_meta"]["counts"]
 # this test was written.  It is pinned here on purpose: a regression guard
 # that re-derived the list from the code it guards could not notice an option
 # being dropped.
+# Flipped (WP-32): mlabwidth, link and filter left the lists: twoway
+# refuses each on every type, r(198), and dash now refuses them as twoway
+# does (test/fixtures/noted_option_truth.json; BUGS.md "dash names in its
+# note, as not drawn, options twoway refuses on that plot type").
 DASH_PLOT_KEYS = [
     "mcolor", "msymbol", "msize", "msangle", "mfcolor", "mlcolor",
     "mlabel", "mlabcolor", "mlabsize", "mlabposition", "mlabgap",
-    "mlabwidth", "malpha", "marker",
+    "malpha", "marker",
     "lcolor", "lwidth", "lpattern", "lalpha",
     "fcolor", "fintensity", "falpha",
     "barwidth", "base", "blcolor", "bfcolor",
@@ -274,7 +278,6 @@ DASH_GRAPH_KEYS = [
     "xtitle", "ytitle", "xlabel", "ylabel", "xline", "yline",
     "legend", "by", "xscale", "yscale", "aspectratio", "scheme",
     "plotregion", "graphregion", "bgcolor", "plotbgcolor",
-    "link", "filter",
     "ytitle2", "xtitle2", "ylabel2", "xlabel2", "yscale2", "xscale2",
 ]
 DASH_FLAGS = {"colordiscrete", "coloruseplegend",

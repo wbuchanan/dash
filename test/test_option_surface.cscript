@@ -75,7 +75,8 @@
 *!                     BOTH reported, in that one note.
 *!   O2-07             a command whose options are all supported emits NO note.
 *!   O2-08             link() and filter() written on a graph belong to
-*!                     dash build; each is named in the note, once.
+*!                     dash build; twoway refuses both, r(198), and so
+*!                     does dash (WP-32).
 *!   O2-09             saving() on a NAMED graph is named once and writes
 *!                     nothing (dash build writes a named graph).
 *!   O2-10             the immediate render still honours saving() and is
@@ -430,7 +431,19 @@ while r(eof) == 0 {
             gettoken pid : rest
 
             // ---- O2-01: dash must not abort ----
-            if `prc' != 0 {
+            // Flipped: WP-32 -- mlabwidth(), link() and filter() twoway
+            // refuses on every type, r(198), and dash now refuses them as
+            // twoway does (BUGS.md "dash names in its note, as not drawn,
+            // options twoway refuses on that plot type"); these three
+            // dash-only probes are held to twoway's r(198).
+            local o2_tw198 0
+            if inlist("`pid'", "only_mlabwidth", "only_link", "only_filter") local o2_tw198 1
+            if `o2_tw198' & `prc' != 198 {
+                local nrcfail = `nrcfail' + 1
+                local rcfailids `"`rcfailids' `pid'(`prc')"'
+                display as error `"O2-01 FAIL `pid': rc=`prc' from  `macval(pcmd)' (twoway refuses it, r(198))"'
+            }
+            else if !`o2_tw198' & `prc' != 0 {
                 local nrcfail = `nrcfail' + 1
                 local rcfailids `"`rcfailids' `pid'(`prc')"'
                 display as error `"O2-01 FAIL `pid': rc=`prc' from  `macval(pcmd)'"'
@@ -844,54 +857,36 @@ if `bad' == 1 {
 else display as text "O2-07 PASS: a fully supported command emits no note"
 
 // ================================================================
-// O2-08 -- link() and filter() written on a graph are named, once each.
+// O2-08 -- link() and filter() written on a graph are refused, as twoway
+// refuses them.
 //
 // ROADMAP WP-13 TR-13.1 / GAPS.md E2.  Both belong to dash build; written
 // on a graph they were stored in graph_options and read by nothing, and
-// the note did not name them.  Measured 22sep2026: rc 0, no note.
+// the note did not name them (measured 22sep2026: rc 0, no note); WP-13
+// named them.  Flipped: WP-32 -- twoway refuses both on every type and
+// after the plot groups' comma, "option link() not allowed", r(198)
+// (test/fixtures/noted_option_truth.json), and dash now refuses them as
+// twoway does, naming the first; the note names nothing.
 // ================================================================
 display as text ""
 _dsp_probe "gl_link_filter" "scatter mpg weight" `"mcolor(red) link(g1) filter(foreign, type(dropdown))"'
 local prc    = r(rc)
 local pnotes = r(nnotes)
-local pnote  `"`r(note)'"'
 local pcmd   `"`r(cmd)'"'
 local bad = 0
-if `prc' != 0 {
-    display as error `"O2-08 FAIL: rc=`prc' from  `macval(pcmd)'"'
+if `prc' != 198 {
+    display as error `"O2-08 FAIL: rc=`prc' from  `macval(pcmd)' (twoway: r(198))"'
     local bad = 1
 }
-else if `pnotes' != 1 {
-    display as error `"O2-08 FAIL: expected exactly 1 note, got `pnotes'"'
+else if `pnotes' != 0 {
+    display as error `"O2-08 FAIL: expected no note, got `pnotes'"'
     local bad = 1
-}
-else {
-    foreach k in link filter {
-        _dsp_names `"`macval(pnote)'"' "`k'"
-        if r(found) != 1 {
-            display as error `"O2-08 FAIL: the note does not name `k'(): `macval(pnote)'"'
-            local bad = 1
-        }
-        local once = subinstr(`"`macval(pnote)'"', "`k'()", "", 1)
-        _dsp_names `"`macval(once)'"' "`k'"
-        if r(found) != 0 {
-            display as error `"O2-08 FAIL: `k'() is named more than once: `macval(pnote)'"'
-            local bad = 1
-        }
-    }
-    foreach k in mcolor name {
-        _dsp_names `"`macval(pnote)'"' "`k'"
-        if r(found) != 0 {
-            display as error `"O2-08 FAIL: the note names the supported option `k'(): `macval(pnote)'"'
-            local bad = 1
-        }
-    }
 }
 if `bad' == 1 {
     local nfail = `nfail' + 1
     local faillist `"`faillist' O2-08"'
 }
-else display as text "O2-08 PASS: graph-level link() and filter() are each named once"
+else display as text "O2-08 PASS: link() and filter() written on a graph are refused, r(198), as twoway refuses them"
 
 // ================================================================
 // O2-09 -- saving() on a NAMED graph is named, once, and writes nothing.

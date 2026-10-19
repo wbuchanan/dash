@@ -85,30 +85,22 @@ PLOT_VALUES = {
     "alcolor": ("red", "blue", "scatter"),
     "alwidth": ("thick", "vthin", "scatter"),
     "alpattern": ("dash", "dot", "scatter"),
-    "at": ("mpg", "weight", "bar"),
+    # Flipped (WP-32): at(), blabel(), ciopts(), fitopts(), lineopts(),
+    # mlabwidth(), filter() and link() -- named and inert -- left this
+    # table: twoway refuses each on every type, r(198), and dash now does
+    # (REFUSED; test/fixtures/noted_option_truth.json).
     # Flipped (WP-31 C3): ("20", "55", "kdensity") was wrong because twoway
     # refuses bands() on kdensity, r(198) "option bands() not allowed", and
     # dash now refuses it there (test_option_applicability.py).
     "bin": ("5", "9", "histogram"),
-    "blabel": ("total", "bar", "bar"),
-    "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
     "color": ("maroon", "navy", "scatter"),
     "density": ("density", "frequency", "histogram"),
     "falpha": ("30", "80", "area"),
-    "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
     "fraction": ("fraction", "frequency", "histogram"),
     "frequency": ("frequency", "percent", "histogram"),
-    # link() and filter() belong to dash build; written on a graph they
-    # are stored, read by nothing, and named in the note (WP-13 TR-13.1).
-    "filter": ("foreign, type(dropdown)", "weight, type(range)", "scatter"),
-    "link": ("g1", "g2", "scatter"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
     "level": ("80", "99", "lfitci"),
-    "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
-    # WP-22 TR-22.3: twoway options that used to land in the note as
-    # unknown, now declared -- named by their full names -- and not drawn.
-    "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     # Flipped (WP-31 E2): mlpattern ("dash", "dot", "scatter") -- named
     # and inert -- left this table: twoway draws a marker's outline solid
@@ -298,8 +290,10 @@ class TestTheListIsCoveredAndHonest:
         # 25 -> 20 and 8 -> 3: D5 fxsize fysize scale xoverhangs
         # yoverhangs drawn; 20 -> 19: E3 mlalign() read by the renderer
         # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
-        assert len(_plot_pending()) == 18, sorted(_plot_pending())
-        assert len(_graph_pending()) == 3, sorted(_graph_pending())
+        # 18 -> 10 and 3 -> 1: WP-32 at blabel ciopts filter fitopts link
+        # lineopts mlabwidth refused, as twoway refuses them
+        assert len(_plot_pending()) == 10, sorted(_plot_pending())
+        assert len(_graph_pending()) == 1, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -476,6 +470,13 @@ REFUSED = {
     "subtitle2": "refused r(198), \"option subtitle2() not allowed\", as "
                  "twoway refuses it (WP-31 D2)",
 }
+# WP-32: options dash declares that twoway refuses on every type, r(198),
+# "option at() not allowed" (test/fixtures/noted_option_truth.json;
+# test_option_validation.cscript U52).
+for _nm in ("at", "blabel", "ciopts", "fitopts", "lineopts", "mlabwidth",
+            "filter", "link"):
+    REFUSED[_nm] = ("refused r(198), \"option %s() not allowed\", as twoway "
+                    "refuses it on every type (WP-32)" % _nm)
 
 NOT_IN_FILE = {
     "name": "routes the spec to the registry instead of the renderer",

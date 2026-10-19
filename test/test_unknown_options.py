@@ -60,3 +60,55 @@ class TestTheTableIsTheFixture:
         assert rows["afcolor"][1] == "afc"
         assert rows["bargap"][3] == "area bar spike dropline dot"
         assert rows["below"][4] == "1" and rows["afcolor"][4] == "0"
+
+
+_NOTED = os.path.join(_ROOT, "test", "fixtures", "noted_option_truth.json")
+_ADO = os.path.join(_ROOT, "dash.ado")
+
+
+def _noted():
+    with open(_NOTED, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+class TestTheRefusedTableIsTheNotedFixture:
+    """WP-32 (BUGS.md "dash names in its note, as not drawn, options twoway
+    refuses on that plot type"): _dash_tw_refuses_tab holds the options
+    dash declares that twoway refuses, on the types it refuses them, from
+    test/fixtures/noted_option_truth.json; test_option_validation.cscript
+    U52 certifies the refusals."""
+
+    def test_each_shortest_spelling_is_the_one_dash_declares(self):
+        import re
+        with open(_ADO, encoding="utf-8") as fh:
+            src = fh.read()
+        i = src.index("program define _dash_parse_plot_opts")
+        body = src[i:src.index("\nend", i)]
+        for full, short in gen.DECLARED.items():
+            caps = [m.group(1) for m in re.finditer(
+                r"\b([A-Za-z0-9]+)(?:\(string(?: asis)?\))?(?=[\s/])", body)
+                if m.group(1).lower() == full]
+            assert caps, full
+            mn = "".join(ch for ch in caps[0] if ch.isupper() or ch.isdigit())
+            assert (mn.lower() or full) == short, (full, caps[0])
+
+    def test_each_row_is_what_twoway_refused(self):
+        nx = _noted()
+        types = nx["types"]
+        rows = gen.refused_rows(nx)
+        assert {r[0] for r in rows} == set(gen.DECLARED)
+        for full, short, ts, after in rows:
+            opt = [o for o in nx["probes"] if o.split("(", 1)[0] == full][0]
+            ref = [t for t in types
+                   if nx["probes"][opt][t]["twoway_rc"] == 198]
+            assert ts == ("*" if len(ref) == len(types) else " ".join(ref))
+            for t in ref:
+                assert (nx["probes"][opt][t]["twoway_message"]
+                        == "option %s not allowed"
+                        % (full + ("()" if "(" in opt else "")))
+        by = {r[0]: r for r in rows}
+        assert by["filter"][3] == "1" and by["link"][3] == "1"
+        assert by["at"][3] == "0"
+        kept = set(types) - set(by["headlabel"][2].split())
+        assert kept == {"rpcap", "rpspike", "pcspike", "pccapsym", "pcarrow",
+                        "pcbarrow", "pcscatter", "pci", "pcarrowi"}

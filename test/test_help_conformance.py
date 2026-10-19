@@ -635,9 +635,12 @@ class TestTheParsersFoundSomething:
         # 218 -> 219: H2l the dash build syntax and synopt define brush().
         # 219 -> 272: J1 the 53 twoway options that reach the catch-all
         # (catchall_options_truth.json) are listed under Unsupported.
-        assert len(found) == 272, (
-            f"{len(found)} options parsed out of dash.sthlp, 272 measured "
-            f"18oct2026: a reader of the parser lost a form, or the help "
+        # 272 -> 266: WP-32 at() blabel() ciopts() fitopts() lineopts()
+        # mlabwidth() leave the Unsupported entries: refused, as twoway
+        # refuses them (noted_option_truth.json).
+        assert len(found) == 266, (
+            f"{len(found)} options parsed out of dash.sthlp, 266 measured "
+            f"19oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -755,7 +758,9 @@ class TestTheParsersFoundSomething:
         # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn;
         # 20 -> 19: E3 mlalign() read by the renderer
         # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
-        assert len(_ignored_options()) == 18
+        # 18 -> 10: WP-32 at blabel ciopts filter fitopts link lineopts
+        # mlabwidth refused, as twoway refuses them
+        assert len(_ignored_options()) == 10
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -786,7 +791,9 @@ class TestTheParsersFoundSomething:
         # Unsupported entry.  19 -> 18: E2 mlpattern() leaves it.
         # 18 -> 71: J1 the 53 names that reach the catch-all join the 18
         # pending ones (catchall_options_truth.json).
-        assert len(_unsupported_section()) == 71
+        # 71 -> 63: WP-32 the eight options twoway refuses on every type
+        # leave it (at blabel ciopts filter fitopts link lineopts mlabwidth).
+        assert len(_unsupported_section()) == 63
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -892,9 +899,11 @@ class TestTheParsersFoundSomething:
         # 462 -> 466: J2 the Linking section's four example lines.
         # 466 -> 468: I2 the Installation section's net install and
         # dash_setup lines.
-        assert len(defs) == 468, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 468 "
-            f"measured 18oct2026")
+        # 468 -> 465: WP-32 the Options of other commands, Bar labels and
+        # Build-time options entries go (refused, as twoway refuses them).
+        assert len(defs) == 465, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 465 "
+            f"measured 19oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -1032,6 +1041,12 @@ class TestEveryDashOnlyOptionIsDocumented:
         # them, so there is nothing to define -- the Unsupported section's
         # prose says they are refused.
         refused = {"title2", "subtitle2"}
+        # Flipped (WP-32): blabel(), ciopts(), fitopts(), lineopts() and
+        # mlabwidth() were defined by Unsupported entries that said dash
+        # named them; twoway refuses each on every type, r(198), and dash
+        # now does (noted_option_truth.json), so the section's prose says
+        # they are refused, as for title2().
+        refused |= {"blabel", "ciopts", "fitopts", "lineopts", "mlabwidth"}
         # WP-31 H2t: table2() is the second declaration of table, its
         # argument form -- the user types table(rows(#) open), which the
         # Data tables entry defines; no command is written as table2().
@@ -1040,7 +1055,7 @@ class TestEveryDashOnlyOptionIsDocumented:
         assert "{opt table(rows(#) open)}" in h
         sec = h[h.index("{marker unsupported}"):h.index("{marker dependencies}")]
         for name in refused:
-            assert "{opt %s(string)}" % name in sec and "r(198)" in sec, name
+            assert ("{opt %s(" % name) in sec and "r(198)" in sec, name
         undocumented = sorted(name for name in _ado_declarations()
                               if not _twoway_spelling(name)
                               and name not in documented

@@ -830,7 +830,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # note becomes three lines.
     # 162 -> 163 and 73 -> 75: H2t the notes on table's fold (one in the
     # plot parser, two in the graph parser).
-    assert comments == {"_dash_parse_plot_opts": 163,
+    # 163 -> 167: WP-32 the note on the refused pending lines (five) for
+    # the filter() line's (one).
+    assert comments == {"_dash_parse_plot_opts": 167,
                         "_dash_parse_graph_opts": 75}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

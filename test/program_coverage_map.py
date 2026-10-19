@@ -773,6 +773,8 @@ COVERAGE = {
         "_dash_foreign_scan": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_tw_takes_tab": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_tw_takes": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_tw_refuses_tab": ("test_option_validation.cscript:U52-0",),
+        "_dash_tw_refuses": ("test_option_validation.cscript:U52-0",),
         "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_rep_prefix": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_pending_note": ("test_option_validation.cscript:U51-0",),

@@ -6419,8 +6419,8 @@ supplied and not drawn is named in that command's note, and an option
 ({cmd:r(198)}, {cmd:option X() not allowed}):
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, mlabwidth(2) play(x)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlabwidth() play())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, bmlinestyle(p3) play(x)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmlinestyle() play())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado} and from what
@@ -6511,25 +6511,10 @@ in either direction.
     lines.  A name {cmd:twoway} does not know is noted as {cmd:twoway}
     notes it.
 
-{phang2}{ul:A dot's alignment, and a label width.}
+{phang2}{ul:A dot's alignment.}
     {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
     of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
     {cmd:dash} draws it centred.
-    {opt mlabwidth(size)} is not a {cmd:twoway} option: {cmd:twoway}
-    refuses it, r(198), and {cmd:dash} names it.
-
-{phang2}{ul:Options of other commands.}
-    {opt ciopts(...)}, {opt lineopts(...)}, {opt fitopts(...)} --
-    {cmd:twoway} refuses all three, r(198): {cmd:ciopts()} belongs to
-    commands such as {cmd:marginsplot} and {cmd:sts graph},
-    {cmd:lineopts()} to others such as {cmd:stcox}'s diagnostic plots, and
-    {cmd:fitopts()} to none of Stata's own.  {cmd:dash} names them and does
-    not read their contents; the confidence band, the density line and the
-    fitted line keep their default styling.
-
-{phang2}{ul:Bar labels and positions.}
-    {opt blabel(...)} is {cmd:graph bar}'s and {opt at(varname)} no
-    {cmd:twoway} plot's: {cmd:twoway} refuses both, r(198).
 
 {phang2}{ul:Connection order.}
     {opt sort} and {opt sort(varlist)} on every plot type other than
@@ -6545,23 +6530,18 @@ in either direction.
     {opt heatmap}, {opt outlines} -- {cmd:contour} draws its bands without
     the heatmap's cells or the bands' outlines.
 
-{phang2}{ul:Build-time options written on a graph.}
-    {opt link(namelist)}, {opt filter(varname, ...)} -- these belong to
-    {cmd:dash build} and {cmd:dash serve}, where the link group and the
-    filter widgets are made; {cmd:twoway} has neither and refuses both,
-    r(198).  Written on a graph they are stored and read by nothing, so
-    they are named in the note; give them to {cmd:dash build}.  Stata's
-    {cmd:nodraw} is not in this list: written on a graph it is honoured,
-    on an immediate render and, once the graph is registered, on
-    {cmd:dash build} and {cmd:dash serve} alike, by keeping the browser
-    window shut.  {cmd:dash build}'s own option for that is
-    {cmd:nobrowser}.
-
 {phang2}{ul:Not drawn.}
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth}, where {cmd:twoway}
     draws nothing of it either, and {cmd:mwidth} on {cmd:histogram},
     where {cmd:twoway} draws each bar a marker wide.
     {opt play(recordingname)} -- there is no graph editor to replay.
+    {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
+    {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, which {cmd:twoway} takes
+    there; it is drawn on the arrow types.  Stata's {cmd:nodraw} is not in
+    this list: written on a graph it is honoured, on an immediate render
+    and, once the graph is registered, on {cmd:dash build} and
+    {cmd:dash serve} alike, by keeping the browser window shut.
+    {cmd:dash build}'s own option for that is {cmd:nobrowser}.
 
 {pstd}
 Not in this list, because {cmd:dash} honours them: {cmd:twoway}'s
@@ -6604,6 +6584,21 @@ and so does {cmd:dash}, after the comma, inside a plot's parentheses and
 after a {cmd:||} segment's comma alike.  A second {cmd:title()} is not one
 of them: {cmd:title("A") title("B")} draws {cmd:B}, the last copy, as
 {cmd:twoway} draws it.
+
+{pstd}
+Nor are {opt at(varname)}, {opt blabel(...)}, {opt ciopts(...)},
+{opt fitopts(...)}, {opt lineopts(...)}, {opt mlabwidth(size)},
+{opt filter(varname, ...)} and {opt link(namelist)}:
+{cmd:twoway} refuses each on every plot type, "option at() not allowed",
+r(198) -- {cmd:blabel()} is {cmd:graph bar}'s, {cmd:ciopts()} belongs to
+commands such as {cmd:marginsplot} and {cmd:sts graph}, {cmd:lineopts()}
+to others such as {cmd:stcox}'s diagnostic plots, and {cmd:filter()} and
+{cmd:link()} to {cmd:dash build} and {cmd:dash serve} -- and so does
+{cmd:dash}, naming the word as typed ({cmd:mlabw()}, {cmd:filt()}), and
+{cmd:filter()} and {cmd:link()} after the plot groups' comma too; give
+those two to {cmd:dash build}.  {cmd:headlabel} is refused the same way
+on every plot type but the paired-coordinate ones, {cmd:rpcap} and
+{cmd:rpspike}, as {cmd:twoway} refuses it.
 
 {pstd}
 Two further notes on the note itself.  It names option {it:names}, never the

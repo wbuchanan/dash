@@ -1061,11 +1061,9 @@ program define _dash_parse_graph_opts, sclass
     local _dash_pending ""
     // link() and filter() belong to `dash build' and `dash serve', where
     // the link group and the filter widgets are made.  Written on a graph
-    // they were stored in graph_options and read by nothing -- measured
-    // 22sep2026: name(g1) link(g1) registered, built one source, said
-    // nothing.  Named here, so nothing is dropped in silence.
-    if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
-    if `: length local link' local _dash_pending `"`_dash_pending' link"'
+    // they were named here as not drawn; twoway refuses both, "option
+    // filter() not allowed", r(198), and so does dash (WP-32,
+    // _dash_tw_refuses_tab), so neither reaches this list.
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown : copy local options
@@ -1435,15 +1433,11 @@ program define _dash_parse_plot_opts, sclass
     // output does not change.  Implement one and forget to remove it
     // here, and that test fails.
     local _dash_pending ""
-    if `: length local at' local _dash_pending `"`_dash_pending' at"'
-    if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
-    if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
-    // As in the graph-level block: build-time options written on a graph.
-    if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
-    if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
-    if `: length local link' local _dash_pending `"`_dash_pending' link"'
-    if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
-    if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
+    // at(), blabel(), ciopts(), filter(), fitopts(), link(), lineopts()
+    // and mlabwidth() were named here as not drawn; twoway refuses each on
+    // every type, "option at() not allowed", r(198), and so does dash, in
+    // the list's order (WP-32, _dash_tw_refuses_tab), so none reaches this
+    // list.
     // WP-31 A4: mlalign(), twoway's mlal() .. mlalign() (mla() is mlabel(),
     // as in twoway).  WP-31 E3: read by the renderer, which names only
     // what it cannot draw (outside, or a word that is no alignment).
@@ -2835,7 +2829,10 @@ program define _dash_fold_typed, sclass
     // pccapsym, pcscatter and pci until section 34 draws headlabel there)
     // they are named.  twoway takes any number for the two sizes
     // (measured 13oct2026: barbsize(-1), barbsize(20000), mangle(400) rc
-    // 0; test/fixtures/arrowhead_truth.json refusals).
+    // 0; test/fixtures/arrowhead_truth.json refusals).  headlabel twoway
+    // takes on the paired-coordinate types and rpcap and rpspike alone;
+    // elsewhere it is refused before this, as twoway refuses it (WP-32,
+    // _dash_tw_refuses_tab), so it is named only there.
     local _hl_named "mangle barbsize headlabel"
     if !`: list ptype in arrow_types' {
         foreach o of local _hl_named {

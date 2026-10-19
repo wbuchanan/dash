@@ -2963,6 +2963,63 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
 _ov_assert U51-0 "(`_u51n' == 5)" "the 5 U51 cases ran"
 capture dash clear
 
+// U52 (WP-32): an option dash declares and named in its note as not
+// drawn, which twoway refuses on that plot type, is refused as twoway
+// refuses it, r(198), naming the word as typed, in the list's order:
+// at(), blabel(), ciopts(), fitopts(), lineopts(), mlabwidth(), filter()
+// and link() on all forty-four types, filter() and link() after the plot
+// groups' comma, headlabel off the paired-coordinate types (measured
+// 19oct2026, test/fixtures/noted_option_truth.json; BUGS.md "dash names
+// in its note, as not drawn, options twoway refuses on that plot type").
+// U52-1 .. U52-19, one case each; each prints its verdict, the first as
+// "U52-1 PASS".
+local _u52n 0
+foreach _u52p in "scatter mpg weight, at(mpg)@option at() not allowed" ///
+    "bar mpg weight, blabel(total)@option blabel() not allowed" ///
+    "lfitci mpg weight, ciopts(lcolor(red))@option ciopts() not allowed" ///
+    "lfitci mpg weight, fitopts(lcolor(red))@option fitopts() not allowed" ///
+    "kdensity mpg, lineopts(lcolor(red))@option lineopts() not allowed" ///
+    "scatter mpg weight, mlabel(make) mlabwidth(thick)@option mlabwidth() not allowed" ///
+    "scatter mpg weight, mlabw(thick)@option mlabw() not allowed" ///
+    "scatter mpg weight, filter(foreign)@option filter() not allowed" ///
+    "scatter mpg weight, filt(foreign)@option filt() not allowed" ///
+    "scatter mpg weight, link(g1)@option link() not allowed" ///
+    "scatter mpg weight, headlabel@option headlabel not allowed" ///
+    "lfit mpg weight, head@option head not allowed" ///
+    "(scatter mpg weight), filter(foreign)@option filter() not allowed" ///
+    "(scatter mpg weight), link(g1)@option link() not allowed" ///
+    "scatter mpg weight, at(1) bogus@option at() not allowed" ///
+    "scatter mpg weight, bogus at(1)@option bogus not allowed" ///
+    "function y = x, range(0 1) at(1)@option at() not allowed" ///
+    "scatter mpg weight, afcolor(red) mlabwidth(1)@option mlabwidth() not allowed" ///
+    "scatter mpg weight || line mpg weight, blabel(total)@option blabel() not allowed" {
+    local ++_u52n
+    gettoken _u52x _u52m : _u52p, parse("@")
+    local _u52m = substr(`"`_u52m'"', 2, .)
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u52x' name(ovu52)
+    local _u52rc = _rc
+    log close _ovlog
+    _ov_assert U52-`_u52n' "(`_u52rc' == 198)" `"`_u52x': rc `_u52rc' (expected 198, as twoway)"'
+    _ov_said U52-`_u52n' `"`_u52m'"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U52-`_u52n' "(r(n) == 0)" `"`_u52x': not named in the note"'
+}
+_ov_assert U52-0 "(`_u52n' == 19)" "the 19 U52 cases ran"
+// U52-20: where twoway takes headlabel (pcspike) it stays named, as dash
+// does not draw it there.
+capture dash clear
+capture log close _ovlog
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily dash pcspike mpg weight trunk turn, headlabel name(ovu52)
+local _u52rc = _rc
+log close _ovlog
+_ov_assert U52-20 "(`_u52rc' == 0)" "pcspike, headlabel: rc `_u52rc' (expected 0)"
+_ov_said U52-20 "ignoring unsupported option(s): headlabel"
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

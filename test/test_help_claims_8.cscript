@@ -11,8 +11,8 @@
 *! DRAWS is read from `graph export' SVG.
 *!
 *!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           mlabwidth(2) play(x)' is, word for word, "dash:
-*!           ignoring unsupported option(s): mlabwidth() play()".
+*!           bmlinestyle(p3) play(x)' is, word for word, "dash:
+*!           ignoring unsupported option(s): bmlinestyle() play()".
 *!           (Flipped, WP-30 P1.14a: pstyle() is drawn now; flipped,
 *!           WP-31 D2: t1title() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
@@ -396,11 +396,14 @@ generate pos = mod(_n, 12) + 1
 // Flipped (WP-31 E2): mlpattern() -> mlabwidth(), which is still named;
 // twoway draws a marker's outline solid whatever mlpattern() says
 // (symbol_pattern_truth.json mlp.*), so dash takes it silently.
-_hc_run "" `"dash scatter mpg weight, mlabwidth(2) play(x)"'
+// Flipped (WP-32): mlabwidth() -> bmlinestyle(), which is still named;
+// twoway refuses mlabwidth() on every type, r(198), and dash now does
+// (noted_option_truth.json).
+_hc_run "" `"dash scatter mpg weight, bmlinestyle(p3) play(x)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() play())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): bmlinestyle() play())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -423,7 +426,12 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // are drawn and left the list; the
 // four fitarea options among them, named on scatter: _dash_fold_typed takes
 // them off only on the ci types).
-local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) bmlinestyle(p3) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) play(x) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+// Flipped (WP-32): at(), blabel(), ciopts(), filter(), fitopts(),
+// link(), lineopts() and mlabwidth() named in the note was wrong, because
+// twoway refuses each on every type, r(198), and dash now does
+// (noted_option_truth.json); not given (24 -> 16 named, and after the
+// comma filter() and link() likewise, 3 -> 1).
+local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) play(x) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-30 P1.10): text() named in the note was wrong, because dash
 // draws it as twoway does (added_text_truth.json); it is given and not
 // named, here and after the comma (39 -> 38 and 23 -> 22).
@@ -445,7 +453,7 @@ local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b
 // 8 -> 3).
 // Flipped (WP-31 E2): mlpattern() named in the note was wrong, because
 // twoway draws the outline solid whatever it says; given and not named.
-local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts filter fitopts link lineopts mlabwidth play"
+local p_names "acolor alcolor alpattern alwidth bmlinestyle play"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -481,12 +489,12 @@ foreach nm of local p_honoured {
 }
 _hc_expect "HC8-02" "(`nnamed' == 0)" "`nnamed' honoured plot-level option(s) named"
 // Graph level, after the paren-mode comma: the 22 of _dash_parse_graph_opts.
-local g_opts `"b1title(b) b2title(b) filter(foreign) fxsize(50) fysize(50) l1title(l) l2title(l) link(g9) play(x) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l) play(x) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-31 D1): the four minor options are drawn, given and not
 // named (see the plot level).
 // Flipped (WP-31 D2): the eight edge titles are drawn, given and not
 // named; title2() and subtitle2() refused, not given (see the plot level).
-local g_names "filter link play"
+local g_names "play"
 _hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -510,7 +518,7 @@ foreach nm in xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1ti
     mata: st_local("gmin", strofreal(strpos(" " + st_local("note") + " ", " `nm'() ") > 0))
     _hc_expect "HC8-02" "(`gmin' == 0)" "graph-level `nm'() is drawn and named in the note"
 }
-_hc_done "HC8-02" "all 24 named plot-level and 8 graph-level options accepted and named; mlabvposition(), mlabtextstyle(), connect(), cmissing(), sort, text(), the minor ticks and labels and the edge titles honoured"
+_hc_done "HC8-02" "every named plot-level and graph-level option accepted and named; mlabvposition(), mlabtextstyle(), connect(), cmissing(), sort, text(), the minor ticks and labels and the edge titles honoured"
 // HC8-02r (WP-30 P1.8b): recast() is drawn, so a scatter given it names
 // nothing.  Flipped (WP-31 C7): on pci it was named, which was wrong
 // because twoway draws pci recast(pcarrow) as arrows and dash now does.
@@ -618,10 +626,12 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is refused as twoway ref
 // carries it.
 // Flipped: WP-32 -- the second value rode on nosuchopt(), which twoway
 // refuses and dash now refuses; afcolor() twoway takes on every type.
-_hc_run "" "dash scatter mpg weight, mlabwidth(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
+// Flipped (WP-32): mlabwidth() -> bmlinestyle(); twoway refuses
+// mlabwidth() on every type, r(198), and dash now does.
+_hc_run "" "dash scatter mpg weight, bmlinestyle(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() afcolor())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): bmlinestyle() afcolor())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"
