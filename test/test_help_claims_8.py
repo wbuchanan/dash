@@ -1880,7 +1880,10 @@ class TestDashSetupHelpMatchesTheAdo:
         holders = sorted(n.name for n in ast.walk(tree)
                          if isinstance(n, ast.FunctionDef)
                          and '"-m", "pip", "install"' in ast.get_source_segment(lib, n))
-        assert holders == ["pip_install_argv"], holders
+        # Flipped (WP-32, I3): pip_lock_argv is the vector every install
+        # runs (--require-hashes, -r the lock's lines); pip_install_argv is
+        # left to the line a user types.
+        assert holders == ["pip_install_argv", "pip_lock_argv"], holders
 
     def test_the_help_explains_externally_managed_pythons(self):
         """WP-29 P0.19: dash_setup.sthlp documents PEP 668, venv(path), the

@@ -440,3 +440,31 @@ class TestTheStataWrappers:
         sb.stata_verdict()
         assert macro["local"]["pc_sb_match"] == "0"
         assert "pip install y" in macro["local"]["pc_sb_mwhy"]
+
+
+class TestTheHashCheckedInstall:
+    """WP-32 (I3): dash_setup_lib asks the interpreter what it has
+    installed, then runs pip over a requirement file it removes after the
+    call."""
+
+    def test_the_installed_probe_and_the_requirement_file(self, tmp_path):
+        sb.install(python_exec="/opt/x/bin/python3")
+        code = "print('DASH_INSTALLED_V1')"
+        r = subprocess.run(["/opt/x/bin/python3", "-P", "-c", code],
+                           capture_output=True, text=True)
+        d = json.loads(r.stdout)
+        assert d["tag"] == "DASH_INSTALLED_V1" and "pytest" in d["dists"]
+        r = subprocess.run(["/v/bin/python", "-P", "-c", code],
+                           capture_output=True, text=True)
+        assert json.loads(r.stdout)["dists"] == {}
+        req = tmp_path / "requirements.txt"
+        req.write_text("Bokeh==3.9.2 --hash=sha256:%s\nnumpy==2.4.6 "
+                       "--hash=sha256:%s\n" % ("a" * 64, "b" * 64))
+        subprocess.run(["/opt/x/bin/python3", "-m", "pip", "install",
+                        "--require-hashes", "-r", str(req)])
+        req.unlink()
+        assert sb.calls()[-1]["argv"] == [
+            "PYTHON_EXEC", "-m", "pip", "install", "--require-hashes", "-r",
+            "REQ bokeh"]
+        assert sb._names(["pip", "install", "-r", str(tmp_path / "gone")],
+                         "bokeh") is False

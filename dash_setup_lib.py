@@ -275,6 +275,211 @@ def pip_uninstall_argv(exe, names):
     return [exe, "-m", "pip", "uninstall"] + list(names)
 
 
+#: The hash-pinned lock dash_setup installs from (WP-32, I3), shipped
+#: beside this file; written by scripts/make_requirements_lock.py, never by
+#: hand.
+LOCK_NAME = "dash_requirements.txt"
+
+#: One lock entry, its continuation lines joined: a pinned name, an optional
+#: environment marker, and one or more sha256 hashes.
+_LOCK_ENTRY_RE = re.compile(
+    r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)==(?P<version>[0-9][0-9A-Za-z.!+_-]*)"
+    r"(?: ?; ?(?P<marker>[^\\]+?))?(?P<hashes>(?: --hash=sha256:[0-9a-f]{64})+)$")
+
+#: A marker is these variables compared with quoted words, nothing else.
+_LOCK_MARKER_RE = re.compile(
+    r"^(?:[() ]|and|or|python_version|sys_platform|platform_machine|"
+    r"==|!=|\"[A-Za-z0-9_.]+\")+$")
+
+#: Run as [exe, "-c", INSTALLED_CODE]: every installed distribution, its
+#: name normalised as pip compares it, and its version, as one JSON line.
+INSTALLED_CODE = (
+    "import json, re\n"
+    "try:\n"
+    "    import importlib.metadata as m\n"
+    "    ds = list(m.distributions())\n"
+    "except Exception:\n"
+    "    ds = []\n"
+    "out = {}\n"
+    "for d in ds:\n"
+    "    n = d.metadata['Name'] or ''\n"
+    "    if n:\n"
+    "        out[re.sub(r'[-_.]+', '-', n).lower()] = str(d.version)\n"
+    "print(json.dumps({'tag': 'DASH_INSTALLED_V1', 'dists': out}))\n")
+
+
+def normalize_name(name):
+    """A distribution name as pip compares it (PEP 503)."""
+    return re.sub(r"[-_.]+", "-", str(name)).lower()
+
+
+def read_lock(text):
+    """The entries of a lock file's text (WP-32, I3): a list of dicts with
+    name (normalised), version, marker ("" when none), hashes and line (the
+    entry as one requirement line pip reads).  Comments and blank lines are
+    skipped; a line ending in a backslash continues on the next.
+
+    Raises:
+        ValueError: if an entry is not ``name==version [; marker]`` followed
+            by sha256 hashes, a marker uses anything but python_version,
+            sys_platform and platform_machine, or the file has no entry.
+    """
+    entries, cur = [], ""
+    for raw in str(text).splitlines() + [""]:
+        ln = raw.strip()
+        if not cur and (not ln or ln.startswith("#")):
+            continue
+        cur = (cur + " " + ln).strip() if cur else ln
+        if cur.endswith("\\"):
+            cur = cur[:-1].rstrip()
+            continue
+        if not cur:
+            continue
+        m = _LOCK_ENTRY_RE.fullmatch(re.sub(r"\s+", " ", cur))
+        if not m:
+            raise ValueError("dash_setup: the lock entry %r is not a pinned, "
+                             "hashed requirement" % cur[:80])
+        marker = (m.group("marker") or "").strip()
+        if marker and not _LOCK_MARKER_RE.fullmatch(marker):
+            raise ValueError("dash_setup: the lock marker %r is not one "
+                             "dash_setup reads" % marker[:80])
+        hashes = m.group("hashes").split()
+        entries.append({
+            "name": normalize_name(m.group("name")),
+            "version": m.group("version"), "marker": marker,
+            "hashes": [h[len("--hash=sha256:"):] for h in hashes],
+            "line": "%s==%s%s %s" % (m.group("name"), m.group("version"),
+                                     " ; " + marker if marker else "",
+                                     " ".join(hashes))})
+        cur = ""
+    if not entries:
+        raise ValueError("dash_setup: the lock holds no requirement")
+    return entries
+
+
+def _spec_window(spec):
+    """(name, minimum tuple, ceiling tuple or None) of a _SPEC_RE spec."""
+    if not isinstance(spec, str) or not _SPEC_RE.fullmatch(spec):
+        raise ValueError("dash_setup: refusing the requirement %r" % (spec,))
+    m = re.match(r"^([A-Za-z0-9._-]+)(?:>=([0-9.]+))?(?:,<([0-9.]+))?$", spec)
+    lo = version_tuple(m.group(2)) if m.group(2) else ()
+    hi = version_tuple(m.group(3)) if m.group(3) else None
+    return normalize_name(m.group(1)), lo, hi
+
+
+def _in_window(version, lo, hi):
+    v = version_tuple(version)
+    return bool(v) and v >= lo and (hi is None or v < hi)
+
+
+def lock_lines(entries, specs, installed):
+    """The lock lines one install needs (WP-32, I3).
+
+    For each requirement in *specs* (``bokeh>=3.8,<3.10``): its lock
+    entries, unless the version in *installed* (``{normalised name:
+    version}``) is already inside the requirement's window, and each locked
+    version must be inside it.  Then every other entry whose package is not
+    installed -- the dependencies -- so an installed package is never
+    replaced: pip, with --require-hashes, refuses a dependency that is
+    missing from the lines and not installed, and leaves one that is.
+
+    Raises:
+        ValueError: if a requirement has no entry, or a locked version is
+            outside its window (the lock is older than dash_setup).
+    """
+    out, wanted = [], set()
+    for spec in specs:
+        name, lo, hi = _spec_window(spec)
+        wanted.add(name)
+        mine = [e for e in entries if e["name"] == name]
+        if not mine:
+            raise ValueError("dash_setup: %s has no %s; regenerate it with "
+                             "scripts/make_requirements_lock.py" % (LOCK_NAME, name))
+        for e in mine:
+            if not _in_window(e["version"], lo, hi):
+                raise ValueError("dash_setup: %s pins %s %s, outside %s; "
+                                 "regenerate it with "
+                                 "scripts/make_requirements_lock.py"
+                                 % (LOCK_NAME, name, e["version"], spec))
+        have = installed.get(name)
+        if not (have and _in_window(have, lo, hi)):
+            out += [e["line"] for e in mine]
+    out += [e["line"] for e in entries
+            if e["name"] not in wanted and e["name"] not in installed]
+    return out
+
+
+def lock_path():
+    """The lock shipped beside this file."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), LOCK_NAME)
+
+
+def installed_dists(exe, version=()):
+    """{normalised name: version} of what interpreter *exe* has installed,
+    read in a child (INSTALLED_CODE), or None when it cannot be read."""
+    rc, out, _err = run_child([exe] + safe_flags(version) + ["-c", INSTALLED_CODE])
+    lines = [l for l in str(out or "").splitlines() if l.strip()]
+    try:
+        d = json.loads(lines[-1]) if (rc == 0 and lines) else None
+    except ValueError:
+        d = None
+    if not isinstance(d, dict) or d.get("tag") != "DASH_INSTALLED_V1" or \
+            not isinstance(d.get("dists"), dict):
+        return None
+    return {normalize_name(k): str(v) for k, v in d["dists"].items()}
+
+
+def pip_lock_argv(exe, req_path, version, user=False):
+    """The hash-checked pip vector (WP-32, I3): pip_install_argv's, with
+    --require-hashes and ``-r`` the lines lock_lines chose."""
+    return ([exe] + safe_flags(version) + ["-m", "pip", "install"] + _PIP_FIXED +
+            ["--require-hashes"] + (["--user"] if user else []) +
+            ["-r", str(req_path)])
+
+
+def lock_install(exe, specs, version, user=False, lock=None, run=None):
+    """Install *specs* into *exe* from the hash-pinned lock (WP-32, I3).
+
+    Reads the lock (*lock*, else :func:`lock_path`), what *exe* has
+    installed (:func:`installed_dists`), and runs :func:`pip_lock_argv`
+    over the lines :func:`lock_lines` chose, written 0600 to a private
+    folder removed afterwards.  Nothing is installed by version range.
+
+    Returns:
+        (rc, out, err) as run_child gives them; (0, ..., "") without running
+        pip when everything is installed; (1, "", reason) when the lock is
+        missing or malformed or the installed packages cannot be read.
+    """
+    run = run_child if run is None else run
+    path = lock_path() if lock is None else lock
+    try:
+        with open(path, encoding="utf-8") as fh:
+            entries = read_lock(fh.read())
+    except OSError as exc:
+        return (1, "", "dash_setup: cannot read %s: %s" % (path, exc.strerror or exc))
+    except ValueError as exc:
+        return (1, "", str(exc))
+    installed = installed_dists(exe, version)
+    if installed is None:
+        return (1, "", "dash_setup: could not list the packages %s has installed"
+                % exe)
+    try:
+        lines = lock_lines(entries, specs, installed)
+    except ValueError as exc:
+        return (1, "", str(exc))
+    if not lines:
+        return (0, "  already installed: " + " ".join(specs), "")
+    work = tempfile.mkdtemp(prefix="dash_setup_req_")
+    try:
+        req = os.path.join(work, "requirements.txt")
+        fd = os.open(req, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+        return run(pip_lock_argv(exe, req, version, user=user))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def bokeh_requirement(installed, floor, ceil):
     """The bokeh requirement dash_setup installs (WP-30 P1.30, M9, A107).
 
@@ -641,9 +846,10 @@ def stata_detect():
 
 
 def stata_pip():
-    """pip install the local `spec' with the linked Python; one --user retry
-    when `user' is "1" and the failure was an ordinary one.  Sets
-    pip_outcome and pip_user."""
+    """pip install the local `spec' with the linked Python from the
+    hash-pinned lock (WP-32, I3; lock_install); one --user retry when `user'
+    is "1" and the failure was an ordinary one.  Sets pip_outcome and
+    pip_user."""
     import sfi
     outcome, user_ran = "other", "0"
     try:
@@ -656,12 +862,13 @@ def stata_pip():
             outcome = "missing-interpreter"
         else:
             try:
-                argv = pip_install_argv(exe, [spec], ver)
+                _spec_window(spec)
+                ok = True
             except ValueError as exc:
                 print("  " + str(exc))
-                argv = None
-            if argv is not None:
-                rc, out, err = run_child(argv)
+                ok = False
+            if ok:
+                rc, out, err = lock_install(exe, [spec], ver)
                 outcome = classify_failure(rc, err)
                 if outcome == "externally-managed":
                     print((err.splitlines() or [""])[0])
@@ -671,7 +878,7 @@ def stata_pip():
                 if outcome == "other" and allow_user:
                     print("      retrying with --user...")
                     user_ran = "1"
-                    rc, out, err = run_child(pip_install_argv(exe, [spec], ver, user=True))
+                    rc, out, err = lock_install(exe, [spec], ver, user=True)
                     outcome = classify_failure(rc, err)
                     print(out[-500:])
                     print(err[-200:])
@@ -850,11 +1057,12 @@ def stata_venv():
                         pre = verify_in(vpy, render_py, mins, d["version"])
                         have = (pre.get("packages") or {}).get("bokeh", "")
                     print("  installing packaging, bokeh, numpy and pandas into it...")
-                    rc, out, err = run_child(pip_install_argv(
+                    # From the hash-pinned lock (WP-32, I3).
+                    rc, out, err = lock_install(
                         vpy, ["packaging",
                               bokeh_requirement(have, mins["bokeh"], mins["bokeh_ceil"]),
                               "numpy>=" + mins["numpy"], "pandas>=" + mins["pandas"]],
-                        d["version"]))
+                        d["version"])
                     print(out[-500:])
                     print(err[-200:])
                     if rc != 0:

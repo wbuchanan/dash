@@ -49,6 +49,12 @@ spec instead of starting anything:
   "no pip" are answers, and no real stdlib is touched;
 * ``-m venv <path>`` creates ``<path>/pyvenv.cfg`` and ``<path>/bin/python``;
 * the VERIFY probe gets ``verify``'s JSON line;
+* the installed-packages probe (``DASH_INSTALLED_V1``, WP-32 I3) gets the
+  distributions this Python has, a blocked package left out, so the lock's
+  lines for it are written;
+* a hash-checked install (``-r <file>``, WP-32 I3) names the package of its
+  file's first line -- the one asked for -- and ``calls()`` writes the file
+  as ``REQ <that name>``;
 * a pip install gets the ``pip`` response, its stderr one of the measured
   refusals in test/fixtures/pip_refusals.json;
 * ``user_site_gate`` keeps a package blocked until ``site.addsitedir`` is
@@ -161,6 +167,9 @@ class _Sandbox:
                            "env": dict(env) if env is not None else None,
                            "umask": kw.get("umask")})
         lifted = False
+        # The requirement file of a hash-checked install (WP-32, I3), read
+        # while it exists: dash_setup_lib removes it after the call.
+        self.calls[-1]["req"] = _req_first(argv)
         # A recorded `pip install X' lifts X's block when the case asked for
         # that: the install "succeeded".
         if "install" in argv:
@@ -208,6 +217,18 @@ class _Sandbox:
         d.update(self.verify)
         return json.dumps(d)
 
+    def installed_answer(self, exe):
+        """The installed-packages probe's line (WP-32, I3): for the linked
+        interpreter this Python's distributions, each blocked package left
+        out; for any other (a venv's) none, as a new venv has."""
+        dists = {}
+        for d in (importlib.metadata.distributions()
+                  if self.is_python_exec(exe) else ()):
+            n = (d.metadata["Name"] or "").replace("_", "-").replace(".", "-").lower()
+            if n and sys.modules.get(n.replace("-", "_"), 1) is not None:
+                dists[n] = str(d.version)
+        return json.dumps({"tag": "DASH_INSTALLED_V1", "dists": dists})
+
     def answer(self, args, lifted, text):
         """What a recorded process start hands back."""
         argv = _argv(args)
@@ -217,6 +238,8 @@ class _Sandbox:
                 return _Recorded(args, text, 0, self.detect_answer(argv[0]) + "\n")
             if "DASH_VERIFY_V1" in code:
                 return _Recorded(args, text, 0, self.verify_answer() + "\n")
+            if "DASH_INSTALLED_V1" in code:
+                return _Recorded(args, text, 0, self.installed_answer(argv[0]) + "\n")
         if _module(argv) == "venv":
             path = argv[-1]
             os.makedirs(os.path.join(path, "bin"), exist_ok=True)
@@ -427,11 +450,26 @@ class _Sandbox:
 PREIMPORT = ("packaging", "packaging.version", "numpy", "pandas", "bokeh")
 
 
+def _req_first(argv):
+    """The package of the first line of a ``-r`` requirement file in an
+    argument vector, lower case, or None (WP-32, I3)."""
+    if "-r" not in argv[:-1]:
+        return None
+    try:
+        with open(argv[argv.index("-r") + 1], encoding="utf-8") as fh:
+            first = (fh.read().splitlines() or [""])[0]
+    except OSError:
+        return None
+    return first.split("==")[0].strip().lower() or None
+
+
 def _names(argv, name):
-    """Does an argument vector name the package `name' as a requirement?"""
-    return any(a == name or a.startswith(name + ">") or
-               a.startswith(name + "=") or a.startswith(name + ",")
-               for a in argv)
+    """Does an argument vector name the package `name' as a requirement --
+    in its arguments, or as the first line of its ``-r`` file?"""
+    return _req_first(argv) == name or any(
+        a == name or a.startswith(name + ">") or
+        a.startswith(name + "=") or a.startswith(name + ",")
+        for a in argv)
 
 
 def _module(argv):
@@ -542,6 +580,8 @@ def calls():
         argv = ["PYTHON" if a == stub else
                 "PYTHON_EXEC" if _state.is_python_exec(a) else a
                 for a in c["argv"]]
+        if c.get("req") and "-r" in argv[:-1]:
+            argv[argv.index("-r") + 1] = "REQ " + c["req"]
         out.append({"via": c["via"], "argv": argv})
     return out
 

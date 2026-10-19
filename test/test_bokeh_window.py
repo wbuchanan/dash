@@ -137,7 +137,10 @@ class TestTheWindowIsDeclaredOnce:
         assert re.search(r'local\s+max_bokeh\s+"%s"' % CEIL, ado)
         sh = _read("dash_setup.sthlp")
         assert "{opt bokeh}}%s or later, before %s" % (floor, CEIL) in sh
-        pips = [l for l in sh.splitlines() if "-m pip install" in l]
+        # Flipped (WP-32, I3): the hash-checked line names the lock, whose
+        # bokeh pin test_requirements_lock.py holds to the window.
+        pips = [l for l in sh.splitlines() if "-m pip install" in l
+                and "--require-hashes -r" not in l]
         assert len(pips) == 3 and all('"%s"' % SPEC in l for l in pips), pips
         assert '"%s"' % SPEC in _read("scripts/floor_matrix.sh")
         import test_label_sinks

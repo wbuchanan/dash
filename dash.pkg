@@ -39,6 +39,7 @@ f dash_setup.sthlp
 f dash_parse.mata
 f dash_render.py
 f dash_setup_lib.py
+f dash_requirements.txt
 f dash-economist.scheme
 f dash-s1color.scheme
 f dash-s1manual.scheme

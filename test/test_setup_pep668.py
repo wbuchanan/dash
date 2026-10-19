@@ -22,6 +22,7 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import site
 import stat
@@ -648,6 +649,14 @@ class TestMessages:
         assert lib.default_venv_path(True, {}).endswith("AppData\\Local\\dash\\venv")
 
 
+_INSTALLED_NONE = json.dumps({"tag": "DASH_INSTALLED_V1", "dists": {}})
+
+
+def _installed_child(argv):
+    """True for dash_setup_lib's installed-packages child (WP-32, I3)."""
+    return "-c" in argv and "DASH_INSTALLED_V1" in argv[list(argv).index("-c") + 1]
+
+
 @pytest.fixture
 def fake_sfi(monkeypatch, tmp_path):
     store = {"local": {}, "exec": "/opt/x/bin/python3", "pwd": str(tmp_path)}
@@ -697,16 +706,24 @@ class TestStataEntryPoints:
         fake_sfi["exec"] = os.path.join("vnp", "bin", "python")
         fake_sfi["local"].update(spec="bokeh>=3.8", user="0", ver="3.13.9")
         seen = []
-        monkeypatch.setattr(lib, "run_child", lambda argv, **k: (seen.append(argv), (0, "", ""))[1])
+        # Flipped (WP-32, I3): the installed-packages child answers first.
+        monkeypatch.setattr(lib, "run_child", lambda argv, **k: (
+            seen.append(argv), (0, _INSTALLED_NONE, "") if _installed_child(argv)
+            else (0, "", ""))[1])
         lib.stata_pip()
         assert seen[0][0] == str(tmp_path / "vnp" / "bin" / "python")
+        assert seen[-1][0] == str(tmp_path / "vnp" / "bin" / "python")
         assert fake_sfi["local"]["pip_outcome"] == "ok"
 
     def test_stata_pip_retries_with_user_only_when_allowed_and_adds_the_user_site(
             self, lib, fake_sfi, monkeypatch, capsys):
         seen, added = [], []
         answers = []
-        monkeypatch.setattr(lib, "run_child", lambda argv, **k: (seen.append(argv), answers.pop(0))[1])
+        # Flipped (WP-32, I3): pip's vectors are recorded; the
+        # installed-packages child before each is answered apart.
+        monkeypatch.setattr(lib, "run_child", lambda argv, **k: (
+            (0, _INSTALLED_NONE, "") if _installed_child(argv)
+            else (seen.append(argv), answers.pop(0))[1]))
         monkeypatch.setattr(lib, "add_user_site", lambda: added.append(1) or True)
         loc = fake_sfi["local"]
         loc.update(spec="bokeh>=3.8", user="1", ver="3.13.9")
@@ -820,6 +837,8 @@ class TestStataEntryPoints:
             if "DASH_VERIFY_V1" in code:
                 return 0, json.dumps({"tag": "DASH_VERIFY_V1", "ok": True, "version": [3, 13, 9],
                                       "packages": {}, "schemes": True, "why": ""}), ""
+            if "DASH_INSTALLED_V1" in code:
+                return 0, _INSTALLED_NONE, ""
             return 0, "Successfully installed", ""
         monkeypatch.setattr(lib, "run_child", run)
         loc = fake_sfi["local"]
@@ -836,7 +855,9 @@ class TestStataEntryPoints:
         assert loc["venv_linked"] == "0"
         assert loc["venv_python"] == vpy
         assert loc["venv_base"] == "/opt/x/bin/python3"
-        assert [a[0] for a in seen] == ["/opt/x/bin/python3", vpy, vpy, vpy]
+        # Flipped (WP-32, I3): the installed-packages child runs before pip.
+        assert [a[0] for a in seen] == ["/opt/x/bin/python3", vpy, vpy, vpy, vpy]
+        assert "--require-hashes" in seen[3]
         assert "Restart Stata" in capsys.readouterr().out
         loc["venv"] = 'a"b'
         lib.stata_venv_check()
@@ -923,7 +944,7 @@ class TestTheBokehWindow:
     def test_the_venv_route_downgrades_nothing(self, lib, fake_sfi, tmp_path,
                                                monkeypatch, capsys):
         def run_with(have, state):
-            seen = []
+            seen, reqs = [], []
 
             def run(argv, **k):
                 seen.append(list(argv))
@@ -938,6 +959,12 @@ class TestTheBokehWindow:
                         "tag": "DASH_VERIFY_V1", "ok": True,
                         "version": [3, 13, 9], "packages": {"bokeh": have},
                         "schemes": True, "why": "", "above": above}), ""
+                if "DASH_INSTALLED_V1" in code:
+                    return 0, json.dumps({"tag": "DASH_INSTALLED_V1",
+                                          "dists": {"bokeh": have} if have else {}}), ""
+                if "-r" in argv:
+                    with open(argv[argv.index("-r") + 1], encoding="utf-8") as fh:
+                        reqs.append(fh.read())
                 return 0, "Successfully installed", ""
             monkeypatch.setattr(lib, "run_child", run)
             absp = str(tmp_path / ("env_%s_%s" % (state, have)))
@@ -950,15 +977,20 @@ class TestTheBokehWindow:
             assert fake_sfi["local"]["venv_step"] == "", capsys.readouterr()
             pip = [a for a in seen if "pip" in a]
             assert len(pip) == 1, seen
-            return [a for a in pip[0] if a.startswith("bokeh")], \
-                capsys.readouterr().out
+            # Flipped (WP-32, I3): pip reads the lock's lines, hash-checked;
+            # an installed bokeh inside the requirement's window has none.
+            assert "--require-hashes" in pip[0]
+            assert not [a for a in pip[0] if a.startswith("bokeh")]
+            return [ln.split(" ")[0] for ln in reqs[0].splitlines()
+                    if ln.startswith("bokeh==")], capsys.readouterr().out
 
-        rows = [("", "new", "bokeh>=3.8,<3.10", False),
-                ("3.10.0", "venv", "bokeh>=3.8", True),
-                ("3.9.0", "venv", "bokeh>=3.8,<3.10", False)]
-        for have, state, want, left in rows:
+        rows = [("", "new", True, False),
+                ("3.10.0", "venv", False, True),
+                ("3.9.0", "venv", False, False)]
+        for have, state, listed, left in rows:
             spec, out = run_with(have, state)
-            assert spec == [want], (have, state, spec)
+            assert bool(spec) is listed, (have, state, spec)
+            assert all(re.fullmatch(r"bokeh==3\.(8|9)\.\d+", s) for s in spec), spec
             assert ("it was left as it is" in out) is left, (have, out)
 
     def test_verify_reports_above_without_failing(self, lib):

@@ -54,7 +54,9 @@ present but older than {cmd:dash} needs is reported, not upgraded.
     versions are compared approximately and the run ends with a warning.
 
 {phang2}3.  The required Python packages.  Each missing one is installed
-    with {cmd:pip}, asking for at least its minimum version.  If that fails
+    with {cmd:pip} from {cmd:dash_requirements.txt}, at the version and
+    hash it pins (see {help dash_setup##lock:The hash-pinned lock}),
+    which is at least its minimum version.  If that fails
     for any reason but the two below, it is tried once more with
     {cmd:--user}, except in a virtual environment or where the user site is
     disabled, and a package installed there is found in the same run.  A
@@ -82,6 +84,27 @@ working directory; without Stata's {cmd:PYTHONPATH}; in Python's safe-path
 mode (3.11 and later); from wheels only, so no package's build script runs;
 without prompting; and with a time limit of 30 minutes per command.  Your
 own {cmd:pip} settings -- an index, a proxy -- still apply.
+
+{marker lock}{...}
+{pstd}
+{ul:The hash-pinned lock.}  Every install {cmd:dash_setup} runs, the
+{cmd:venv()} one included, is {cmd:pip install --require-hashes -r} over
+lines of {cmd:dash_requirements.txt}, shipped beside {cmd:dash_setup.ado}:
+each package {cmd:dash} needs and each of their dependencies, pinned with
+{cmd:==} to one release and to the sha256 hash of every wheel of it, for
+Python 3.11 to 3.14 on macOS (arm64 and x86_64), Linux (x86_64 and
+aarch64) and Windows (x86_64).  {cmd:pip} refuses a file whose hash is not
+listed, so the index cannot hand {cmd:dash_setup} anything else.  The
+lines are the missing package's and those of each dependency that is not
+installed: a package already installed is left as it is, and one whose
+installed version does not meet a missing package's needs makes {cmd:pip}
+stop, naming it, rather than replace it.  On another platform or Python
+there is no wheel to match and {cmd:pip} stops; install by hand as below.
+The lock is written by {cmd:scripts/make_requirements_lock.py} in
+{cmd:dash}'s source repository, never by hand; to regenerate it after the
+minimums change, or for a release, run
+{cmd:python3 scripts/make_requirements_lock.py} there (it reads PyPI, and
+installs nothing) and commit {cmd:dash_requirements.txt}.
 
 {pstd}
 The run ends with a summary.  It says {cmd:dash_setup complete} only when
@@ -189,6 +212,12 @@ linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
 reads like this, with that path in place of {it:/path/to/python3}:
 
 {phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"}
+
+{pstd}That line installs by version, not by hash.  For the hash-checked
+install {cmd:dash_setup} runs, name the lock instead (it installs every
+package in it, replacing any installed at another version):
+
+{phang2}{cmd:"/path/to/python3" -m pip install --only-binary=:all: --require-hashes -r "/path/to/dash_requirements.txt"}
 
 {pstd}The double quotes matter: without them a shell reads {cmd:>} as a
 redirection, installs bokeh unpinned and writes a file named {cmd:=3.8}.

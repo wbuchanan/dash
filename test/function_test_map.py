@@ -1621,4 +1621,14 @@ SETUP_FUNCTIONS = {
     "stdlib_entry": "test/test_private_files.py::TestDashClearPrunesWithoutThePackages::test_the_slice_prunes_as_the_renderer_does",
     # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
     "bokeh_requirement": _P + "TestTheBokehWindow::test_the_requirement_never_downgrades",
+    # WP-32 (I3): the hash-pinned lock.
+    "normalize_name": "test/test_requirements_lock.py::TestReadLock::test_entries_markers_and_continuations",
+    "read_lock": "test/test_requirements_lock.py::TestReadLock::test_anything_else_is_refused",
+    "_spec_window": "test/test_requirements_lock.py::TestLockLines::test_a_lock_older_than_dash_setup_is_refused",
+    "_in_window": "test/test_requirements_lock.py::TestLockLines::test_an_installed_requirement_inside_its_window_is_left",
+    "lock_lines": "test/test_requirements_lock.py::TestLockLines::test_the_requirement_and_each_missing_dependency",
+    "lock_path": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_stata_pip_installs_from_the_lock",
+    "installed_dists": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_an_unreadable_package_list_installs_nothing",
+    "pip_lock_argv": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_stata_pip_installs_from_the_lock",
+    "lock_install": "test/test_requirements_lock.py::TestDashSetupRequiresHashes::test_without_a_lock_nothing_is_installed",
 }

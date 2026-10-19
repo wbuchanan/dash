@@ -6592,8 +6592,10 @@ rejected: {cmd:titl(x)} abbreviates {cmd:title()} and works, while
 
 {pstd}
 Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
-below and installs what it can -- the Python packages; a Python you install
-and link yourself:
+below and installs what it can -- the Python packages, each at the version
+and sha256 hash {cmd:dash_requirements.txt} pins
+({help dash_setup##lock:The hash-pinned lock}); a Python you install and
+link yourself:
 
 {phang2}{ul:Stata} -- Stata 19 or later; tested on StataNow 19.5 (MP), macOS
     arm64.  Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are

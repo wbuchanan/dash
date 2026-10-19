@@ -546,7 +546,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **H6 Tracked:** Closed in WP-32, BUGS.md "Parity guard: the surfaces it does not compare", commit 55fb1b8.
 - **H7 Tracked:** Closed in WP-31, BUGS.md "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__", commit 47d113d.
 - **I2 Tracked:** Closed in WP-31, BUGS.md "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short", commit 491f69b.
-- **I3 Tracked:** Partly closed in WP-31 (section 59, commit 953d290): the install record and undo line, Unmet apart from Warnings, the linked Python for the served child and the working directory off the import path; open: hash-pinned installs (BUGS.md "dash_setup installs by version, not by hash").
+- **I3 Tracked:** Closed in WP-32, BUGS.md "dash_setup installs by version, not by hash", commit pending.
 - **I4 Tracked:** Closed in WP-31, BUGS.md "_dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser", commit b06d0b2.
 - **I5 Tracked:** Closed in WP-31, BUGS.md "Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines", commit f7aa6f1.
 - **I6 Tracked:** Closed in WP-31, BUGS.md "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally", commit 1d03edf.

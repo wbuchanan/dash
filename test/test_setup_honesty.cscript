@@ -446,7 +446,9 @@ program define _hon_run_setup, rclass
     local lg "`c(tmpdir)'dash_hon_setup.log"
     capture erase "`lg'"
     python: import subprocess as _hon_sp; _hon_real_run = _hon_sp.run; _hon_calls = []
-    python: import subprocess as _hon_sp; _hon_sp.run = lambda args, **kw: (_hon_calls.append([str(a) for a in args]), type("_HonPip", (), {"returncode": 1, "stdout": "HONPIPOUT", "stderr": "HONPIPERR"})())[1]
+    // WP-32 (I3): the installed-packages probe is answered "nothing
+    // installed", so the lock's lines reach the recorded pip.
+    python: import subprocess as _hon_sp; _hon_sp.run = lambda args, **kw: (_hon_calls.append([str(a) for a in args]), type("_HonPip", (), {"returncode": 0, "stdout": '{"tag": "DASH_INSTALLED_V1", "dists": {}}', "stderr": ""})() if "DASH_INSTALLED_V1" in " ".join(map(str, args)) else type("_HonPip", (), {"returncode": 1, "stdout": "HONPIPOUT", "stderr": "HONPIPERR"})())[1]
     if "`block'" != "" {
         python: import sys, sfi; _hon_b = sfi.Macro.getLocal("block"); _hon_saved = sys.modules.get(_hon_b); sys.modules[_hon_b] = None
     }
@@ -458,7 +460,7 @@ program define _hon_run_setup, rclass
     if "`block'" != "" {
         python: import sys; (sys.modules.__setitem__(_hon_b, _hon_saved) if _hon_saved is not None else sys.modules.pop(_hon_b, None))
     }
-    python: import subprocess as _hon_sp, sfi; _hon_sp.run = _hon_real_run; sfi.Macro.setLocal("calls", " | ".join(("-c <code>" if c[1:2] == ["-c"] else " ".join(c[1:])) for c in _hon_calls))
+    python: import subprocess as _hon_sp, sfi; _hon_sp.run = _hon_real_run; sfi.Macro.setLocal("calls", " | ".join(("-c <code>" if c[1:2] == ["-c"] else "-P -c <code>" if c[1:3] == ["-P", "-c"] else " ".join("<req>" if c[i - 1] == "-r" else c[i] for i in range(1, len(c)))) for c in _hon_calls))
     return scalar rc = `rc'
     return local log "`lg'"
     return local calls `"`calls'"'
@@ -557,7 +559,9 @@ _hon_has "`h21log'" "numpy ............. OK" h21k2
 _hon_has "`h21log'" "pandas ............. OK" h21k3
 assert `h21rc' == 0
 // WP-29 P0.19: the probe first, then pip with -P and its fixed flags.
-assert `"`h21calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: packaging"
+// Flipped (WP-32, I3): the installed-packages probe, then pip over the
+// lock's lines (-r <req>), hash-checked.
+assert `"`h21calls'"' == "-c <code> | -P -c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --require-hashes -r <req>"
 assert `h21out' == 1
 assert `h21warn' == 1
 assert `h21ok' == 0
@@ -577,7 +581,9 @@ assert `h22rc' == 198
 // detection fails and the run goes on as for an ordinary Python), then pip
 // with -P and its fixed flags, and the --user retry.
 // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
-assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8,<3.10 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8,<3.10"
+// Flipped (WP-32, I3): each try is the installed-packages probe, then pip
+// over the lock's lines (-r <req>), hash-checked.
+assert `"`h22calls'"' == "-c <code> | -P -c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --require-hashes -r <req> | -P -c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --require-hashes --user -r <req>"
 assert `h22unmet' == 1
 assert `h22ok' == 0
 display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
@@ -721,7 +727,9 @@ end
 // WP-29 P0.19: the linked Python is inspected first, and pip runs it
 // (PYTHON_EXEC, not sys.executable) with -P and its fixed flags.
 global HON_SB_SPEC `"{"block": ["packaging", "packaging.version"]}"'
-python: import json, sfi; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "--disable-pip-version-check", "--no-input", "--only-binary=:all:", "packaging"]]))
+// Flipped (WP-32, I3): the installed-packages probe, then pip over the
+// lock's lines, hash-checked (the sandbox writes the file REQ packaging).
+python: import json, sfi; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install", "--disable-pip-version-check", "--no-input", "--only-binary=:all:", "--require-hashes", "-r", "REQ packaging"]]))
 _hon_sb_setup
 local h26rc = r(rc)
 local h26m = r(match)
@@ -757,7 +765,9 @@ display "HON-26 PASS: without packaging, pip is asked for it once, no version is
 // WP-29 P0.19: the probe first; pip runs PYTHON_EXEC with its flags.
 global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
 // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
-python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8,<3.10"]]))
+// Flipped (WP-32, I3): each install is the installed-packages probe, then
+// pip over the lock's lines, hash-checked, the package asked for first.
+python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:", "--require-hashes", "-r"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["REQ packaging"], ["PYTHON_EXEC", "-P", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["REQ bokeh"]]))
 _hon_sb_setup
 local h27rc = r(rc)
 local h27m = r(match)
@@ -1010,7 +1020,10 @@ capture noisily {
     mata: st_local("vpy", st_global("r(venv_python)"))
     local vl "`r(venv_linked)'"
     quietly log close _pep18
-    _hon_has "`lg'" "Requirement already satisfied" h18sat
+    // Flipped (WP-32, I3): every package the lock names is installed, so
+    // lock_install runs no pip (pip had said "Requirement already
+    // satisfied") and says so.
+    _hon_has "`lg'" "already installed: packaging bokeh>=3.8,<3.10 numpy>=2.3 pandas>=2.3" h18sat
     display as text "  PEP-18: rc `rc', satisfied `h18sat', linked `vl'"
     assert `rc' == 0
     assert `h18sat' == 1

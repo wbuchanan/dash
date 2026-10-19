@@ -150,6 +150,19 @@ def _pep_vec(vecs):
     flags = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]
     out = []
     for v in vecs:
+        if "pip" in v and "install" in v:
+            # Flipped (WP-32, I3): an install is the installed-packages
+            # probe, then pip over the lock's lines, hash-checked; the
+            # sandbox writes the file as REQ and the package asked for first.
+            pre = v[1:v.index("-m")]
+            rest = v[v.index("install") + 1:]
+            user = ["--user"] if "--user" in rest else []
+            specs = [a for a in rest if a not in ("F", "--user")]
+            out.append([v[0]] + pre + ["-c", "<ANY>"])
+            out.append([v[0]] + pre + ["-m", "pip", "install"] + flags +
+                       ["--require-hashes"] + user +
+                       ["-r", "REQ " + specs[0].split(">")[0].split("=")[0].split(",")[0].lower()])
+            continue
         w = []
         for a in v:
             if a == "F":
