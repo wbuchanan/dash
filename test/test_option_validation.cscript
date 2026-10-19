@@ -3228,6 +3228,49 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
 _ov_assert U55-0 "(`_u55n' == 12)" "the 12 U55 cases ran"
 capture dash clear
 
+// U56 (WP-32): off the ci types twoway draws acolor(), alcolor(),
+// alwidth() and alpattern() as color(), lcolor(), lwidth() and
+// lpattern(), each over the plain option whatever their order: on the
+// fill types acolor() is color() (fcolor() still fills), on the line and
+// paired types the line's colour alone (measured 19oct2026, graph export
+// SVG; BUGS.md "The fitarea options are named on the fill, line and
+// paired types, where twoway draws them").  dash writes the plain
+// options to the spec, so both renderers draw them, and names none.
+// U56-1 .. U56-8, one case each; each prints its verdict, the first as
+// "U56-1 PASS".
+local _u56n 0
+foreach _u56p in `"bar mpg weight, acolor(red)@"color":"red"@"lcolor":"red""' ///
+    `"bar mpg weight, color(blue) acolor(red)@"color":"red"@"lcolor":"red""' ///
+    `"bar mpg weight, fcolor(blue) acolor(red)@"fcolor":"blue"@"color":"red""' ///
+    `"spike mpg weight, acolor(red) lcolor(blue)@"lcolor":"red"@"lcolor":"red""' ///
+    `"dropline mpg weight, color(blue) acolor(red)@"color":"blue"@"lcolor":"red""' ///
+    `"histogram mpg, alwidth(thick) lwidth(thin)@"lwidth":"thick"@"lwidth":"thick""' ///
+    `"rcap mpg trunk weight, alpattern(dash)@"lpattern":"dash"@"lpattern":"dash""' ///
+    `"pcarrow mpg weight trunk turn, acolor(blue) alcolor(red)@"lcolor":"red"@"lcolor":"red""' {
+    local ++_u56n
+    gettoken _u56x _u56r : _u56p, parse("@")
+    gettoken _u56a _u56r : _u56r, parse("@")
+    gettoken _u56k1 _u56r : _u56r, parse("@")
+    gettoken _u56a _u56k2 : _u56r, parse("@")
+    mata: st_local("_u56k1", subinstr(st_local("_u56k1"), "@", "", .))
+    mata: st_local("_u56k2", subinstr(st_local("_u56k2"), "@", "", .))
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u56x' name(ovu56)
+    local _u56rc = _rc
+    log close _ovlog
+    _ov_assert U56-`_u56n' "(`_u56rc' == 0)" `"`_u56x': rc `_u56rc' (expected 0)"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U56-`_u56n' "(r(n) == 0)" `"`_u56x': not named in the note"'
+    _ov_has "ovu56" `"`_u56k1'"'
+    _ov_assert U56-`_u56n' "(r(found) == 1)" `"`_u56x': the spec has `_u56k1'"'
+    _ov_has "ovu56" `"`_u56k2'"'
+    _ov_assert U56-`_u56n' "(r(found) == 1)" `"`_u56x': the spec has `_u56k2'"'
+}
+_ov_assert U56-0 "(`_u56n' == 8)" "the 8 U56 cases ran"
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

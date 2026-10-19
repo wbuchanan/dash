@@ -2809,6 +2809,40 @@ program define _dash_fold_typed, sclass
         local _ftk : list _ftp - ci_drawn
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
     }
+    // WP-32 (BUGS.md "The fitarea options are named on the fill, line and
+    // paired types, where twoway draws them"): off the ci types twoway
+    // draws acolor(), alcolor(), alwidth() and alpattern() as color(),
+    // lcolor(), lwidth() and lpattern(), each over the plain option
+    // whatever their order (measured 19oct2026, graph export SVG;
+    // test/fixtures/noted_option_truth.json and the equivalence probes in
+    // scripts/extract_noted_option_truth.do's BUGS entry).  On the fill
+    // types acolor() is color(): the fill, which fcolor() still sets, and
+    // the outline; on the line types and the paired types with markers it
+    // is the line's colour alone, the markers keeping color().  alcolor()
+    // is the line's or outline's colour over acolor().  Folded here, so
+    // both renderers draw them as the plain options, read by value.
+    local af_fill "area bar rarea rbar histogram"
+    local af_line "spike tsrline rspike rcap rline pcspike pci dropline rconnected rcapsym rpcap rpspike pccapsym pcarrow pcbarrow pcarrowi"
+    if `: list ptype in af_fill' | `: list ptype in af_line' {
+        mata: st_local("_fa_ac", strofreal(st_global("s(acolor)") != ""))
+        if `_fa_ac' & `: list ptype in af_fill' {
+            mata: st_global("s(color)", st_global("s(acolor)"))
+        }
+        mata: st_local("_fa_lc", strofreal(st_global("s(alcolor)") != "" | st_global("s(acolor)") != ""))
+        if `_fa_lc' {
+            mata: st_global("s(lcolor)", st_global("s(alcolor)") != "" ? st_global("s(alcolor)") : st_global("s(acolor)"))
+        }
+        foreach _fa_p in "alwidth lwidth" "alpattern lpattern" {
+            gettoken _fa_a _fa_b : _fa_p
+            local _fa_b = strtrim("`_fa_b'")
+            mata: st_local("_fa_g", strofreal(st_global("s(`_fa_a')") != ""))
+            if `_fa_g' mata: st_global("s(`_fa_b')", st_global("s(`_fa_a')"))
+        }
+        local ci_drawn "acolor alcolor alwidth alpattern"
+        mata: st_local("_ftp", st_global("s(_pending)"))
+        local _ftk : list _ftp - ci_drawn
+        if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
+    }
     // WP-30 P1.14a (P2.12): a named style's outline is not drawn on area
     // and rarea (measured 03oct2026), so lstyle(), alstyle() and blstyle()
     // are named there.

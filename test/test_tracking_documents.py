@@ -2799,10 +2799,12 @@ class TestTheCountsAreTrue:
                              "at %s hold %s" % (want, _WP31_CLOSEOUT, got))
 
     def test_the_count_readers(self):
-        audit = ("x\n\nThe tracked known-inert names are:\n\n`at`, `text`, and"
+        # Flipped (WP-32): at() left the pending list (refused, as twoway
+        # refuses it); acolor() is the example of a pending name.
+        audit = ("x\n\nThe tracked known-inert names are:\n\n`acolor`, `text`, and"
                  " `sort`. [WP-30 x: `text` drawn]\n\nnext\n")
-        assert _audit_inert_names(audit) == ["at", "text", "sort"]
-        assert {"at", "sort"} <= _pending_names()
+        assert _audit_inert_names(audit) == ["acolor", "text", "sort"]
+        assert {"acolor", "sort"} <= _pending_names()
         assert _gone_path_citations("f", "see .ultraplan/CHANGELOG.md") == [
             "f:1 cites .ultraplan/CHANGELOG.md: 'see .ultraplan/CHANGELOG.md'"]
         line = ("- **Entries.** 5 WP-31 entries (3 at the plan, A12, and 2 "

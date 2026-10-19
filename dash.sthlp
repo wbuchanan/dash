@@ -6443,10 +6443,20 @@ in either direction.
     {opt alpattern(linepattern)} -- {cmd:twoway}'s fitarea options.
     {cmd:dash} draws them on the band of {cmd:lfitci}, {cmd:qfitci},
     {cmd:lpolyci} and {cmd:fpfitci}, and does not name them there;
-    {cmd:twoway} accepts them on every plot type; on {cmd:scatter},
-    {cmd:line}, the fits without a band and the other types where it
-    draws nothing different with them, {cmd:dash} takes them in silence,
-    and on the others it names them.
+    {cmd:twoway} accepts them on every plot type.  On {cmd:area},
+    {cmd:bar}, {cmd:rarea}, {cmd:rbar} and {cmd:histogram} it draws
+    {cmd:acolor()} as {cmd:color()} -- the fill, which {cmd:fcolor()}
+    still sets, and the outline -- and on the line and paired types
+    ({cmd:spike}, {cmd:dropline}, {cmd:tsrline}, {cmd:rspike},
+    {cmd:rcap}, {cmd:rline}, {cmd:rconnected}, {cmd:rcapsym},
+    {cmd:rpcap}, {cmd:rpspike} and the {cmd:pc} types) as the line's
+    colour; {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()} as
+    {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()}; each over the
+    plain option, whatever the order they are typed in, and {cmd:dash}
+    draws them so.  On {cmd:scatter}, {cmd:line}, the fits without a band
+    and the other types where {cmd:twoway} draws nothing different with
+    them, {cmd:dash} takes them in silence; on {cmd:contour} and
+    {cmd:contourline} it names them.
 
 {phang2}{ul:Area, bar and line edge styles.}
     {opt afcolor(color)}, {opt afintensity(intensity)},
