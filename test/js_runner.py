@@ -193,6 +193,9 @@ def stand_in(m, models, objs):
     if type(m).__name__ == "Legend":
         return {"__type__": "Legend",
                 "items": encode(list(m.items), models, objs)}
+    if type(m).__name__ in ("LinearColorMapper", "LogColorMapper"):
+        return {"__type__": "ContinuousColorMapper",
+                "low": plain(m.low), "high": plain(m.high)}
     if type(m).__name__ == "CategoricalColorMapper":
         return {"__type__": "CategoricalColorMapper",
                 "factors": [str(f) for f in (m.factors or [])],
@@ -339,6 +342,8 @@ for (const [id, o] of Object.entries(REG)) {
                        y_end: o.y_end}};
   else if (o.__type__ === "Legend")
     out[id] = {legend_items: (o.items || []).map((x) => x.__id__)};
+  else if (o.__type__ === "ContinuousColorMapper")
+    out[id] = {span: {low: o.low, high: o.high}};
   else if (o.__type__ === "CategoricalColorMapper")
     out[id] = {mapper: {factors: Array.from(o.factors || []),
                         palette: Array.from(o.palette || [])}};
@@ -482,6 +487,13 @@ class JsSession:
                     m.ticks = [float(v) for v in state["ticks"]]
                 elif "legend_items" in state:
                     m.items = [objs[i] for i in state["legend_items"]]
+                elif "span" in state:
+                    for k in ("low", "high"):
+                        v = state["span"].get(k)
+                        if isinstance(v, (int, float)) \
+                                and not isinstance(v, bool) \
+                                and getattr(m, k) != v:
+                            setattr(m, k, float(v))
                 elif "mapper" in state:
                     m.factors = list(state["mapper"]["factors"])
                     m.palette = list(state["mapper"]["palette"])

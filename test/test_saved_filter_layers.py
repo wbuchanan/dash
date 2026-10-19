@@ -1340,8 +1340,9 @@ def _after_move_root(spec, mode):
 
 
 class TestTheColourKeyHoldsThroughAMove:
-    """The colours and the key are fixed at build time, in both modes, and
-    a filter move never re-bins or re-ranges them (BR-07.4)."""
+    """Every colour a move leaves is a key level, and a continuous key
+    spans the rows kept (WP-32 overrides BR-07.4's fixed range: twoway
+    draws the key over the rows it draws)."""
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     @pytest.mark.parametrize("spec", _KEY_CASES)
@@ -1359,8 +1360,25 @@ class TestTheColourKeyHoldsThroughAMove:
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     @pytest.mark.parametrize("spec", _BAR_CASES)
-    def test_the_colour_bar_keeps_its_range(self, spec, mode):
+    def test_the_colour_bar_spans_the_kept_rows(self, spec, mode):
+        """Flipped (WP-32, BUGS.md "A continuous colour key keeps the
+        build's range after a filter move"; it was test_the_colour_bar_
+        keeps_its_range, BR-07.4): twoway draws the key over the rows it
+        draws (measured 19oct2026: 10-40 over every car, 15-40 over the
+        foreign ones), so after a move each continuous mapper spans the
+        rows its layer still draws."""
         import colour_bins as cb
         before, after = _after_move_root(spec, mode)
-        assert cb.colour_bars(before)
-        assert cb.colour_bars(after) == cb.colour_bars(before)
+        assert cb.colour_bars(before) and cb.colour_bars(after)
+        rends = [r for r in cb.colour_renderers(after)
+                 if hasattr(cb.colour_mapper(r), "low")]
+        assert rends
+        for r in rends:
+            vals = [float(v) for v in cb.colour_values(r)
+                    if v is not None and math.isfinite(float(v))]
+            if not vals:
+                continue
+            m = cb.colour_mapper(r)
+            lo, hi = min(vals), max(vals)
+            assert (m.low, m.high) == (lo, hi if hi > lo else lo + 1.0), (
+                (m.low, m.high), (lo, hi))

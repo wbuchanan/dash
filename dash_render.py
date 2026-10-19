@@ -16706,6 +16706,18 @@ class GlyphMapper:
             color_spec = {"field": varname, "transform": mapper}
             self._colorvar_paint(renderer.glyph, source, color_spec,
                                  fill_only=_fill_only, opacity=_copac)
+            # The bar's range follows the rows a filter move keeps, as
+            # twoway draws the kept rows' range (BUGS.md "A continuous
+            # colour key keeps the build's range after a filter move"):
+            # the plan _dash_cvar_relevel reads, unless zscale() or the
+            # stepped line levels set the range themselves.
+            if (not stepped and type(mapper).__name__ in (
+                    "LinearColorMapper", "LogColorMapper")
+                    and getattr(mapper, "low", None) == lo
+                    and getattr(mapper, "high", None) == hi):
+                renderer._dash_cvar = {"renderer": renderer,
+                                       "field": varname, "kind": "range",
+                                       "mapper": mapper}
 
             # colorkeysreverse on a key that is not discrete: twoway draws
             # the same key with it as without it (measured, WP-31 C8e:
@@ -43398,6 +43410,23 @@ function dash_cvar_relevel(plans) {
     const r = pl.renderer;
     const col = (r && r.data_source && r.data_source.data)
       ? (r.data_source.data[pl.field] || []) : [];
+    if (pl.kind === "range") {
+      // A continuous key: the kept rows' range (a range of one value
+      // widened by 1), as the build takes its rows'.
+      let lo = Infinity, hi = -Infinity;
+      for (const v of col) {
+        const f = Number(v);
+        if (v === null || v === undefined || !Number.isFinite(f)) continue;
+        if (f < lo) lo = f;
+        if (f > hi) hi = f;
+      }
+      const m = pl.mapper;
+      if (!m || !(lo <= hi)) continue;
+      if (lo === hi) hi = lo + 1;
+      if (m.low !== lo) m.low = lo;
+      if (m.high !== hi) m.high = hi;
+      continue;
+    }
     const present = new Set();
     let missing = false;
     for (const v of col) {
@@ -51342,6 +51371,28 @@ def _dash_cvar_relevel(plan):
         return
     def _none(v):
         return v is None or (isinstance(v, float) and v != v)
+    if plan.get("kind") == "range":
+        # A continuous key: the kept rows' range, as the build takes its
+        # rows' (a range of one value widened by 1).
+        vals = []
+        for v in col:
+            try:
+                f = float(v)
+            except (TypeError, ValueError):
+                continue
+            if f == f and f not in (float("inf"), float("-inf")):
+                vals.append(f)
+        m = plan.get("mapper")
+        if not vals or m is None:
+            return
+        lo, hi = min(vals), max(vals)
+        if lo == hi:
+            hi = lo + 1.0
+        if m.low != lo:
+            m.low = lo
+        if m.high != hi:
+            m.high = hi
+        return
     present = {str(v) for v in col if not _none(v)}
     levels = list(plan.get("levels") or [])
     kept = [lv for lv in levels if lv in present]

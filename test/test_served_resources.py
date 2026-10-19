@@ -565,7 +565,11 @@ _SAVED_DIGEST = (
     # layer of its own levels after a move (code only: the new tree with
     # the relevel stripped from the filter callback's code gives the old
     # digest), the same under both Pythons
-    "def70e14ce01dd5048d693daa4da69302b9de714a31ba607c2f41acd13e5e72d")
+    # def70e14... -> fe4f0d95...: WP-32, the relevel's continuous range
+    # branch (code only: the new tree with the relevel stripped from the
+    # filter callback's code gives b475c9c7...), the same under both
+    # Pythons
+    "fe4f0d95b4f816c626a8f5cd32e2e41172d0db6da0b190b7386c0dd032b12bf3")
 
 
 # ===========================================================================

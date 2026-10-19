@@ -5537,7 +5537,9 @@ the first panel's.  After a filter move a key of the variable's own levels
 observations kept, as {cmd:twoway} levels the observations it draws: the
 levels left take the first colours, each panel its own and
 {cmd:by()}'s key the first panel's, in both the saved page and the served
-app; other keys keep the colours chosen when the dashboard was built.
+app; a continuous key's colours span the observations kept, as in
+{cmd:twoway}, while its labels, a line's colour levels and the bins of
+{cmd:colorcuts()} and {cmd:colorlevels()} keep those of the build.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
 one whose observations are all missing on the variable draws a

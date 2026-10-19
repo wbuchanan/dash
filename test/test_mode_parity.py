@@ -3974,6 +3974,10 @@ _CVAR_MOVES = [
                [plot_for("scatter", {"colorvar": "rep",
                                      "colordiscrete": "colordiscrete"})],
                {"by": "foreign, clegend(on)"}),
+    # The continuous key's range and its line levels (D-15f) over the
+    # rows kept: twoway draws the kept rows' range.
+    _move_case("scatter colorvar continuous, dropdown to Foreign",
+               _MOVES[0], [plot_for("scatter", {"colorvar": "mpg"})]),
     # Each panel and by()'s key keep the one level a move leaves.
     _move_case("by(foreign) colordiscrete clegend, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
