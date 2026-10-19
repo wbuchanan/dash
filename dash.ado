@@ -2781,7 +2781,6 @@ program define _dash_fold_typed, sclass
         // full one, as twoway's zyx2rule reads it (CRA-01).
         if `: length local _crf' sreturn local colorrule : copy local _crf
     }
-    local area_types "area rarea"
     local arrow_types "pcarrow pcbarrow pcarrowi"
     // A bare sort: twoway joins a connected type's points in the data's
     // order, or in x order under sort (WP-29 P0.1); dash does the same
@@ -2843,23 +2842,14 @@ program define _dash_fold_typed, sclass
         local _ftk : list _ftp - ci_drawn
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
     }
-    // WP-30 P1.14a (P2.12): a named style's outline is not drawn on area
-    // and rarea (measured 03oct2026), so lstyle(), alstyle() and blstyle()
-    // are named there.
-    if `: list ptype in area_types' {
-        foreach o in lstyle alstyle blstyle {
-            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
-            if `_ft' local named "`named' `o'"
-        }
-    }
-    // WP-30 P1.14a (P2.8): the pc arrowheads are not styled by a named
-    // style, so mstyle() and mlstyle() are named on the arrow types.
-    if `: list ptype in arrow_types' {
-        foreach o in mstyle mlstyle {
-            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
-            if `_ft' local named "`named' `o'"
-        }
-    }
+    // WP-30 P1.14a (P2.12): lstyle(), alstyle() and blstyle() were named
+    // on area and rarea.  WP-32: twoway strokes the outline in the named
+    // line style (noted_option_truth.json), and map_area and map_rarea
+    // draw it so, in the aline role: they are not named.
+    // WP-30 P1.14a (P2.8): mstyle() and mlstyle() were named on the arrow
+    // types.  WP-32: twoway strokes the heads in the named style
+    // (noted_option_truth.json), and _arrow_head_line and _arrow_head_fill
+    // draw them so: they are not named.
     // WP-31 C1: mangle(), barbsize() and headlabel draw the arrowhead and
     // its labels on the arrow types only; on every other type (pcspike,
     // pccapsym, pcscatter and pci until section 34 draws headlabel there)

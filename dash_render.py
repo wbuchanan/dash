@@ -18498,7 +18498,13 @@ class GlyphMapper:
         # Add an optional border line on top of the area when line options are given.
         # VArea has no native border; a separate Line renderer is required.
         _LINE_KEYS = ("lcolor", "lwidth", "lpattern")
-        if any(k in options for k in _LINE_KEYS):
+        # WP-32: lstyle(), alstyle() and blstyle() stroke the outline in
+        # that named line style, as twoway draws it (noted_option_truth.json:
+        # the outline's colour the style's, lcolor() still over it in
+        # either order), so the border is drawn in the aline role then.
+        _named_ol = any(str(options.get(k, "") or "").strip()
+                        for k in ("lstyle", "alstyle", "blstyle"))
+        if any(k in options for k in _LINE_KEYS) or _named_ol:
             # Default border color = the fill's resolved colour, unblended
             border_color = _fill_base or "#aec7e8"
             _border_data = {xvar: x_arr, yvar: y_arr}
@@ -18507,7 +18513,8 @@ class GlyphMapper:
             border_source = ColumnDataSource(_border_data)
             # Through the join, so cmissing(n) breaks the outline where it
             # breaks the fill (WP-31 C6); area ignores connect().  A named
-            # style's outline is not drawn here (P2.12).
+            # line style (lstyle(), alstyle(), blstyle()) styles it in the
+            # aline role (WP-32); otherwise no named style reaches it.
             _dash_join_glyph(
                 self, fig, {k: v for k, v in options.items()
                             if k != "connect"},
@@ -18515,7 +18522,7 @@ class GlyphMapper:
                      line_color=border_color,
                      line_width=self.scheme.plot_line_width(color_idx,
                                                             "area")),
-                role=None)
+                role="aline" if _named_ol else None)
 
         # No marker labels: twoway draws none on an area (measured).
         return r
@@ -24795,8 +24802,10 @@ class GlyphMapper:
         p#arrow``; measured: ``mcolor(red)`` strokes the heads red and
         leaves the shaft, ``lcolor(red)`` reddens the shaft only);
         ``mlwidth()``, else the scheme's arrow line width, else
-        *line_width*."""
-        stroke = color
+        *line_width*.  WP-32: a named marker style -- ``mstyle()`` or
+        ``mlstyle()`` -- strokes the heads in its line colour, under the
+        explicit options in either order (noted_option_truth.json)."""
+        stroke = self._style_value(options, "mline", "line", None) or color
         for k in ("mlcolor", "mcolor"):
             v = str(options.get(k, "") or "").strip()
             if v and not OptionTranslator._means_no_color(v):
@@ -24820,7 +24829,10 @@ class GlyphMapper:
         """A filled head's colour (WP-31 C1): ``mfcolor()``, else
         ``mcolor()``, else the series colour ``color p#`` (``p#arrowfill``;
         measured: green under ``mfcolor(green)``, the series blue
-        otherwise) -- never Bokeh's black."""
+        otherwise) -- never Bokeh's black.  WP-32: ``mstyle()`` fills it
+        in its marker colour, under the explicit options."""
+        series_color = self._style_value(options, "marker", "fill",
+                                         None) or series_color
         for k in ("mfcolor", "mcolor"):
             v = str(options.get(k, "") or "").strip()
             if v and not OptionTranslator._means_no_color(v):

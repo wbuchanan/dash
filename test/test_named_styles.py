@@ -583,13 +583,14 @@ class TestStyleBundle:
 
 
 #: R-grid rows dash does not draw as twoway does, each for a filed reason.
-_ROLE_EXCLUDED = {
-    **{(t, o): "P2.12: a named style's outline on area and rarea"
-       for t in ("area", "rarea") for o in ("lstyle", "alstyle", "blstyle")},
-    **{(t, o): "P2.8: the pc arrowheads"
-       for t in ("pcarrow", "pcbarrow", "pcarrowi")
-       for o in ("mstyle", "mlstyle")},
-}
+# Flipped (WP-32): area and rarea's lstyle(), alstyle() and blstyle()
+# were excluded (P2.12), which was wrong: twoway draws the area's outline
+# in the named line style (test/fixtures/noted_option_truth.json), and
+# dash now does (BUGS.md "Options twoway draws that dash still names").
+# Flipped (WP-32): the pc arrowheads' mstyle() and mlstyle() were
+# excluded (P2.8), which was wrong: twoway strokes the heads in the named
+# style (noted_option_truth.json), and dash now does.
+_ROLE_EXCLUDED: dict = {}
 _CL_TYPES = set("line connected lfit qfit fpfit lpoly lowess mspline mband "
                 "kdensity function tsline lfitci qfitci lpolyci "
                 "fpfitci".split())

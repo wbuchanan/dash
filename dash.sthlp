@@ -5904,11 +5904,12 @@ the scheme: every line style ({cmd:lstyle(refline)}, {cmd:lstyle(grid)},
 know draws its default attributes, with its note.
 
 {pstd}
-Not drawn yet: the outline half of a named style
-on {cmd:area} and {cmd:rarea} ({cmd:lstyle()}, {cmd:alstyle()} and
-{cmd:blstyle()} are named there); and the arrowheads of {cmd:pcarrow},
-{cmd:pcbarrow} and {cmd:pcarrowi} ({cmd:mstyle()} and {cmd:mlstyle()} are
-named there).
+The outline of {cmd:area} and {cmd:rarea} takes {cmd:lstyle()},
+{cmd:alstyle()} and {cmd:blstyle()}'s line style, and the arrowheads of
+{cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi} take {cmd:mstyle()}
+and {cmd:mlstyle()}'s, as {cmd:twoway} draws them; an explicit
+{cmd:lcolor()}, {cmd:mcolor()} or {cmd:mlcolor()} is drawn over the
+style, in either order.
 
 
 {marker scheme}

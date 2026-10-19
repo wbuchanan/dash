@@ -161,7 +161,9 @@ def _plot_pending():
     fxsize() was, until it was drawn.)
     """
     pending = _pending("_dash_parse_plot_opts")
-    assert {"at", "play"} <= set(pending), (
+    # Flipped (WP-32): at() and play() left the pending list (refused, as
+    # twoway refuses them); acolor() and sort still name it.
+    assert {"acolor", "sort"} <= set(pending), (
         f"the pending-list reader no longer finds options that are pending: "
         f"{pending}"
     )

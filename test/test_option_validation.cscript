@@ -3196,7 +3196,9 @@ capture dash clear
 // twoway takes it, without a note (measured 19oct2026, graph export SVG,
 // test/fixtures/noted_option_truth.json; BUGS.md "dash names options
 // twoway takes and draws nothing of, where twoway is silent").  Where
-// twoway does draw something different, the note stays (U55-11, U55-12).
+// twoway does draw something different, the note stays (U55-11).
+// Flipped (WP-32): U55-12, lstyle() on area, was named; it is drawn now,
+// the outline in the named line style, as twoway draws it.
 // U55-1 .. U55-12, one case each; each prints its verdict, the first as
 // "U55-1 PASS".
 local _u55n 0
@@ -3211,7 +3213,8 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     "lfit mpg weight, sort@0" ///
     "histogram mpg, sort(price)@0" ///
     "contour mpg weight length, heatmap@1" ///
-    "area mpg weight, lstyle(p3)@1" {
+    "area mpg weight, lstyle(p3)@0" ///
+    "pcarrow mpg weight trunk turn, mstyle(p3) mlstyle(p4)@0" {
     local ++_u55n
     gettoken _u55x _u55w : _u55p, parse("@")
     local _u55w = substr("`_u55w'", 2, .)
@@ -3225,7 +3228,8 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
     _ov_assert U55-`_u55n' "(r(n) == `_u55w')" `"`_u55x': `r(n)' note(s) (expected `_u55w')"'
 }
-_ov_assert U55-0 "(`_u55n' == 12)" "the 12 U55 cases ran"
+// 12 -> 13: WP-32 mstyle()/mlstyle() on pcarrow drawn, not named.
+_ov_assert U55-0 "(`_u55n' == 13)" "the 13 U55 cases ran"
 capture dash clear
 
 // U56 (WP-32): off the ci types twoway draws acolor(), alcolor(),
