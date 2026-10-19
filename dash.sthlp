@@ -6470,8 +6470,9 @@ in either direction.
     plain option, whatever the order they are typed in, and {cmd:dash}
     draws them so.  On {cmd:scatter}, {cmd:line}, the fits without a band
     and the other types where {cmd:twoway} draws nothing different with
-    them, {cmd:dash} takes them in silence; on {cmd:contour} and
-    {cmd:contourline} it names them.
+    them, {cmd:contour} and {cmd:contourline} among them, {cmd:dash} takes
+    them in silence; {cmd:alpattern()} on {cmd:contour}, which
+    {cmd:twoway} draws, it names.
 
 {phang2}{ul:Area, bar and line edge styles.}
     {opt afcolor(color)}, {opt afintensity(intensity)},
@@ -6543,16 +6544,14 @@ in either direction.
     {opt bmlinestyle(linestyle)} -- a marker's back line; {cmd:dash}
     keeps it, for each y, and does not draw marker back lines; nor does
     {cmd:twoway} draw anything different with it, so it is taken in
-    silence, and named only on {cmd:contour} and {cmd:contourline}, where
-    that was not measured.  A name {cmd:twoway} does not know is noted
+    silence.  A name {cmd:twoway} does not know is noted
     as {cmd:twoway} notes it.
 
 {phang2}{ul:A dot's alignment.}
     {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
     of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
     {cmd:dash} draws it centred, and {cmd:twoway} draws the same picture
-    with it, so it is taken in silence (named only on {cmd:contour} and
-    {cmd:contourline}).
+    with it, so it is taken in silence.
 
 {phang2}{ul:Connection order.}
     {opt sort} and {opt sort(varlist)} on every plot type other than

@@ -136,7 +136,11 @@ class TestTheSilentTableIsTheNotedFixture:
         rows = dict(gen.silent_rows(_noted()))
         assert "bar" not in rows["acolor"].split()
         assert "scatter" in rows["acolor"].split()
-        assert "contour" not in rows["bmlinestyle"].split()
+        # Flipped (WP-32): contour was unmeasured (its plain picture
+        # differed between two exports); on a grid with the seed set it is
+        # measured, and twoway draws it the same with bmlinestyle().
+        assert "contour" in rows["bmlinestyle"].split()
+        assert "contour" not in rows["alpattern"].split()
         assert "scatter" not in rows["sort"].split()
         assert "lfit" in rows["sort"].split()
         assert "pcspike" in rows["headlabel"].split()

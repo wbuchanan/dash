@@ -71,6 +71,13 @@ gen yl = mpg - 1
 gen yh = mpg + 1
 gen t = _n
 tsset t
+* contour and contourline on a grid (9 by 8, z = x*y + y): on auto's
+* scattered points twoway interpolates, and two exports of the same
+* contour differ in their band vertices; on a grid, with the seed set
+* before each graph, two exports are the same (measured 19oct2026).
+gen gx = mod(_n - 1, 9) + 1 if _n <= 72
+gen gy = floor((_n - 1) / 9) + 1 if _n <= 72
+gen gz = gx * gy + gy
 
 * The forty-four types and the command each is asked with
 * (extract_unknown_option_truth.do's).
@@ -89,7 +96,7 @@ foreach t of local types {
     else if "`t'" == "tsrline" local a "tsrline yl yh,"
     else if inlist("`t'", "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym", "rscatter") local a "`t' yl yh weight,"
     else if inlist("`t'", "rpcap", "rpspike") local a "`t' yl yh mpg weight,"
-    else if inlist("`t'", "contour", "contourline") local a "`t' mpg weight length,"
+    else if inlist("`t'", "contour", "contourline") local a "`t' gz gy gx,"
     else if inlist("`t'", "pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter") local a "`t' mpg weight trunk turn,"
     else if inlist("`t'", "pci", "pcarrowi") local a "`t' 20 2000 30 4000,"
     else if "`t'" == "scatteri" local a "scatteri 20 2000,"
@@ -99,11 +106,13 @@ foreach t of local types {
     local base_`t' "`a'"
     * The picture without the option, once per type.
     capture graph drop _all
+    set seed 12345
     capture twoway `a' name(zo, replace)
     if !_rc capture graph export "${ZN_WORK}/b`k'.svg", name(zo) replace as(svg)
     capture graph drop _all
     * The same picture again: a type whose two exports differ (an id
     * numbered per session) is one where "draws" is not read.
+    set seed 12345
     capture twoway `a' name(zo, replace)
     if !_rc capture graph export "${ZN_WORK}/c`k'.svg", name(zo) replace as(svg)
     capture graph drop _all
@@ -128,6 +137,7 @@ foreach one of local probes {
     foreach t of local types {
         local ++j
         quietly log using "${ZN_WORK}/t`k'_`j'.log", replace text name(zn)
+        set seed 12345
         capture noisily twoway `base_`t'' `one' name(zo, replace)
         local rc = _rc
         quietly log close zn
