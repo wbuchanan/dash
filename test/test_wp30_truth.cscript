@@ -11998,15 +11998,19 @@ if inlist("`only'", "", "S55") & `: list posof "S55" in w30_run' {
     _w30_expect HM-02 "`ok'" `"rc `rc1'/`rc2', turned `hz', upright `up'"'
     _w30_done HM-02 "dash kdensity mpg, horizontal: the first tooltip row names the grid column, as upright"
     // HM-03 (guard): no filter callback reaches the turned bar's glyph.
-    _s36_run `"dash bar mpg weight, horizontal filter(foreign) saving("`hmpg'", replace)"' "`hmlog'"
-    local rc1 = r(rc)
+    // WP-32: filter() on a graph is refused as twoway refuses it, so the
+    // filter is given to dash build, where the widgets are made.
+    capture dash clear
+    quietly dash bar mpg weight, horizontal name(hm03)
+    capture noisily dash build, filter(foreign) saving("`hmpg'") replace nobrowser
+    local rc1 = _rc
     local hm_out ""
     if `rc1' == 0 {
         python: _hm_reach(r"`hmpg'")
     }
     local ok = `rc1' == 0 & "`hm_out'" == "0"
     _w30_expect HM-03 "`ok'" "rc `rc1', CustomJS args reaching a glyph: `hm_out'"
-    _w30_done HM-03 "dash bar mpg weight, horizontal filter(foreign): an HBar no CustomJS args reach"
+    _w30_done HM-03 "a horizontal dash bar built with filter(foreign): an HBar no CustomJS args reach"
     capture dash clear
     capture graph drop _all
     capture erase "`hmlog'"
