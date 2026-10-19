@@ -31,7 +31,8 @@
 *!   HC8-05  bargap(): twoway bar draws the same picture with it, and dash
 *!           names it; xscale(alt) is drawn, not named (flipped, WP-30
 *!           P1.18a); xscale(reverse) is honoured, not named.
-*!   HC8-06  titl(x) abbreviates title() and is honoured; titel(x) is named.
+*!   HC8-06  titl(x) abbreviates title() and is honoured; titel(x) is
+*!           refused as twoway refuses it.
 *!   HC8-07  the note names option names, never the values supplied.
 *!   HC8-08  the scheme() and theme() refusals are r(198) with the help's
 *!           exact wording.
@@ -599,10 +600,14 @@ _hc_expect "HC8-06" "(`r(rc)' == 0)" "titl(): rc `r(rc)'"
 _hc_log "HC8-06" "`r(logfile)'" "ignoring unsupported" 0
 mata: st_local("ok", strofreal(strpos(st_global("dash_json_hc06"), char(34) + "title" + char(34) + ":" + char(34) + "HCTITLE" + char(34)) > 0))
 _hc_expect "HC8-06" "(`ok' == 1)" "titl(HCTITLE) did not reach the spec as title"
+// Flipped: WP-32 -- titel(x) was named in the note, rc 0; twoway refuses
+// it, "option titel() not allowed", r(198), and so does dash now (BUGS.md
+// "In a few mixed lists dash names another word than twoway names first
+// ...").
 _hc_run "" "dash scatter mpg weight, titel(HCTITLE) name(hc06b, replace)"
-_hc_expect "HC8-06" "(`r(rc)' == 0)" "titel(): rc `r(rc)'"
-_hc_log "HC8-06" "`r(logfile)'" "(note:  dash: ignoring unsupported option(s): titel())" 1 1
-_hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
+_hc_expect "HC8-06" "(`r(rc)' == 198)" "titel(): rc `r(rc)'"
+_hc_log "HC8-06" "`r(logfile)'" "option titel() not allowed" 1 1
+_hc_done "HC8-06" "an abbreviation works; a misspelling is refused as twoway refuses it"
 
 // ================================================================
 // HC8-07 -- names, never values
@@ -611,10 +616,12 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
 // the value.  Flipped (WP-31 E2): mlpattern() is taken as twoway takes it
 // (an unknown pattern gets twoway's note, value and all), so mlabwidth()
 // carries it.
-_hc_run "" "dash scatter mpg weight, mlabwidth(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
+// Flipped: WP-32 -- the second value rode on nosuchopt(), which twoway
+// refuses and dash now refuses; afcolor() twoway takes on every type.
+_hc_run "" "dash scatter mpg weight, mlabwidth(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() nosuchopt())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): mlabwidth() afcolor())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

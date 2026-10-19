@@ -307,6 +307,10 @@ COVERAGE = {
         "_dash_refuse_kernel": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_refuse_foreign": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_refuse_unknown": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_gopts_checks": ("test_option_validation.cscript:U50-0",),
+        "_dash_pend": ("test_option_validation.cscript:U50-0",),
+        "_dash_refuse_pendmsg": ("test_option_validation.cscript:U50-0",),
+        "_dash_refuse_gunique": ("test_option_validation.cscript:U50-0",),
         "_dash_register_graph": ("test_varlist_expansion.cscript:V2-08",
                                  "test_registry_collision.cscript:REG-01"),
         # QL-14/15: each layer's own if and in select its rows, and the

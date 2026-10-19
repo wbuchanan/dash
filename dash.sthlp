@@ -967,8 +967,9 @@ there, is an invalid point.  The literal is read as data and never run.
     list it does not take, before two kernels, {cmd:mlabfontface()} and a
     graph option given twice ({cmd:gaussian epan2 bogus} is
     {cmd:option bogus not allowed}), and after a plot's option given twice
-    before it; across {cmd:||} segments {cmd:twoway} reads every plot's
-    options before any kernel, where {cmd:dash} answers segment by segment.
+    before it -- across {cmd:||} segments and plot groups too, every plot's
+    own options before any kernel, and the options after the groups' comma
+    last.
     So a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
     names the two {cmd:twoway} plot types it refuses -- and can draw the
@@ -1580,8 +1581,9 @@ nothing; and {cmd:dash serve} starts its server
 without opening a browser.  Only whether it holds a value counts, so
 {cmd:global dash_nobrowser 0} keeps windows shut too.  {cmd:dash clear}
 leaves it set; {cmd:macro drop dash_nobrowser} lets windows open again.
-The one-line form has no {cmd:nobrowser} option: written there, it is named
-in the note and the window opens; the global, the graph's {cmd:nodraw} or
+The one-line form has no {cmd:nobrowser} option: written there, it is
+refused as {cmd:twoway} refuses it, {cmd:option nobrowser not allowed},
+{cmd:r(198)}, and nothing opens; the global, the graph's {cmd:nodraw} or
 {cmd:saving()} keeps that window shut.  The global is meant for
 interactive sessions and test suites that should open no window.
 

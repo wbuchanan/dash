@@ -528,14 +528,17 @@ program define _cf_help_register
 end
 
 // The control, registered under the same log: an option twoway has and
-// dash does not draw, so the note must name it.  It proves on every run
+// dash does not draw, so the note must name it.  Flipped: WP-32 -- it was
+// addplot(), which twoway refuses on scatter, r(198), and dash now refuses
+// as twoway does (BUGS.md "In a few mixed lists dash names another word
+// than twoway names first ..."); afcolor() twoway takes on every type.  It proves on every run
 // that the note reaches this log in the words read below -- the check used
 // to pass whenever no line held "ignoring unsupported", so a reworded note
 // passed every example unread.
 capture program drop _cf_help_control
 program define _cf_help_control
     version 16.0
-    capture noisily dash scatter mpg weight, addplot(line mpg weight) name(hctl)
+    capture noisily dash scatter mpg weight, afcolor(red) name(hctl)
     c_local n_hctl_rc = _rc
 end
 
@@ -563,7 +566,7 @@ assert `n_hbad' == 0
 assert `n_hctl_rc' == 0
 cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s):")
 local n_noted = r(count)
-cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): addplot()")
+cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): afcolor()")
 local n_ctl = r(count)
 if `n_noted' != 1 | `n_ctl' != 1 {
     display as error "C-05 FAIL: `n_noted' unsupported-option note(s), `n_ctl' of them the control's; the log:"

@@ -6594,11 +6594,13 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
-        // mlabfontface(), which twoway refuses (MLF-01), after the plot's
-        // other options and its kernel, and before a graph option given
-        // twice (WP-32: _rp_gref).
-        _dash_refuse_mlabff 0
-        if `: length local _rp_gref' _dash_refuse_repeat `_rp_gref'
+        // Two kernels, mlabfontface() (MLF-01) and a graph option given
+        // twice, in that order, which twoway refuses only once every
+        // plot's own options are read: each is held as the graph's pending
+        // refusal (_dash_pend), raised after the last segment (WP-32).
+        if `: length local _rp_kref' _dash_pend _dash_refuse_kernel `_rp_kref'
+        _dash_refuse_mlabff 0 pend
+        if `: length local _rp_gref' _dash_pend _dash_refuse_repeat `_rp_gref'
         // title2() and subtitle2(), which twoway has not (WP-31 D2).
         _dash_refuse_title2 g_ `"`macval(opts_raw)'"'
         // recast(), recastas() and type() as twoway reads them (WP-30
@@ -8247,6 +8249,9 @@ program define _dash_plot
     capture macro drop dash__rfile
     // WP-30 P1.6: no earlier command's t-option units reach this graph.
     capture macro drop dash__tunit
+    // WP-32: no earlier command's held refusal (_dash_pend).
+    global dash__pend ""
+    global dash__pend_msg ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -8354,34 +8359,18 @@ program define _dash_plot
     if `: length local gopts_raw' {
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
-        _dash_refuse_unbound _dash_parse_graph_opts `"`macval(gopts_raw)'"'
-        // The first word twoway does not take after the comma, in the
-        // list's order (WP-32): an unknown word, a plot's option, one in
-        // upper case, a spelling short of twoway's minimum.
-        _dash_refuse_unknown _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
-        // name() spelled shorter than twoway's minimum (WP-31 A3b), before
-        // the second-name() check would read nam() as a second name().
-        _dash_refuse_nam
-        // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
-        _dash_refuse_asp
-        // A second name() in the options after the comma, and whether they
-        // gave one at all: a group's name() is then a second one too.
-        mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
-        if `_g_name2' _dash_refuse_second_name
-        // A plot option after the comma -- (lfit mpg weight), atobs -- or
-        // an option in upper case: refused as twoway refuses it, even once,
-        // naming the first word it does not take (_dash_refuse_foreign).
-        _dash_refuse_foreign _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
-        // jitter() spelled shorter than twoway's minimum after the comma
-        // (WP-31 A3d): refused there too, as twoway refuses it.
-        _dash_refuse_jit
-        // mlabfontface() after the comma, as twoway refuses it (MLF-01).
-        _dash_refuse_mlabff 1
-        // An option given twice after the comma, read as twoway reads it.
-        _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
-        if `: length local _rp_gref' _dash_refuse_repeat `_rp_gref'
-        // title2() and subtitle2(), which twoway has not (WP-31 D2).
-        _dash_refuse_title2 - `"`macval(gopts_raw)'"'
+        // The refusals of the options after the comma (_dash_gopts_checks)
+        // come after every plot group's, as twoway reads them (WP-32): run
+        // quietly here, and when one refuses, the list is parsed again and
+        // the refusal given after the segment loop, once no group's is.
+        local _rp_gund_out ""
+        capture _dash_gopts_checks `"`macval(gopts_raw)'"'
+        local _gac_rc = _rc
+        if `_gac_rc' {
+            sreturn clear
+            _dash_parse_graph_opts , `macval(gopts_raw)'
+            local _rp_gund_out ""
+        }
         local _gund_acc : copy local _rp_gund_out
         mata: st_local("_g_names_n", strofreal(st_global("s(name)") != ""))
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -8471,6 +8460,10 @@ program define _dash_plot
     foreach gk of local _g_unique {
         local _gseen_`gk' = `: length local _gafter_`gk'' > 0
     }
+    // WP-32: the random-number state before the first segment, put back
+    // before a held refusal is given (_dash_pend), as twoway refuses
+    // before it evaluates a function plot.
+    local _pend_rng = c(rngstate)
     forvalues k = 1/`n_segs' {
         local seg : copy local _seg_`k'
 
@@ -8567,7 +8560,7 @@ program define _dash_plot
         // "option notitling not allowed", r(198) (measured 24sep2026).
         if `: length local _seg_gund_out' {
             mata: _dash_rep_und_cross("_gund_acc", "_seg_gund_out")
-            if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'
+            if `: length local _rp_refuse' _dash_pend _dash_refuse_repeat `_rp_refuse'
         }
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
@@ -8616,12 +8609,7 @@ program define _dash_plot
               zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
-                if `_gseen_`gk'' {
-                    display as error "option `gk'() not allowed"
-                    if "`gk'" == "table" display as error "      A graph takes one table; this command gives it more than once."
-                    else display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
-                    exit 198
-                }
+                if `_gseen_`gk'' _dash_pend _dash_refuse_gunique `gk'
                 local _gseen_`gk' 1
             }
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_sg_`gk'", "g_`gk'")
@@ -8629,6 +8617,20 @@ program define _dash_plot
 
         if `k' > 1 local plots_json `"`plots_json',"'
         local plots_json `"`plots_json'`_json_k'"'
+    }
+
+    // WP-32: the refusals twoway gives only once every plot's options are
+    // read -- held by _dash_pend -- before any function layer is evaluated;
+    // the options after the plot groups' comma, which twoway reads last,
+    // below (test/fixtures/
+    // unknown_option_truth.json orders: (kdensity mpg, gaussian epan2),
+    // bogus is the kernel's refusal, (scatter mpg weight, bogus), xsize(3)
+    // xsize(4) names bogus).
+    if `"${dash__pend}"' != "" {
+        local _pend_cmd `"${dash__pend}"'
+        global dash__pend ""
+        if `: length local _pend_rng' set rngstate `_pend_rng'
+        `_pend_cmd'
     }
 
     macro drop dash__gq_if dash__gq_in dash__g_by
@@ -8798,6 +8800,16 @@ program define _dash_plot
     global dash__ftsc ""
     mata: st_strscalar(st_local("_fp_sc"), (st_strscalar(st_local("_fp_sc")) == "" ? "" : "{" + st_strscalar(st_local("_fp_sc")) + "}"))
     macro drop dash__uv
+    // WP-32: the options after the plot groups' comma refused here, after
+    // every plot's and after the function layers are evaluated, as twoway
+    // refuses a graph option (test_parser.cscript FX-02: a runiform()
+    // layer advances the random-number state).
+    if 0`_gac_rc' {
+        sreturn clear
+        _dash_parse_graph_opts , `macval(gopts_raw)'
+        _dash_gopts_checks `"`macval(gopts_raw)'"'
+        exit `_gac_rc'
+    }
     foreach _vrule of local _dash_rules_graph {
         local _veq   = strpos("`_vrule'", "=")
         local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
@@ -10633,11 +10645,51 @@ end
 // ================================================================
 program define _dash_refuse_mlabff
     version 19
-    args graph
+    args graph pend
     mata: _dash_mlabff_refusal(st_global("s(_unknown)"), `graph')
     if !`_mf_on' exit
+    // pend (WP-32): held as the graph's pending refusal, its words kept
+    // by value in $dash__pend_msg, and raised after the last segment.
+    if "`pend'" == "pend" {
+        if "${dash__pend}" == "" {
+            mata: st_global("dash__pend_msg", st_local("_mf_msg"))
+            global dash__pend "_dash_refuse_pendmsg `_mf_rc'"
+        }
+        exit
+    }
     mata: _dash_say("err", "", st_local("_mf_msg"), "")
     exit `_mf_rc'
+end
+
+// _dash_pend <command>  -- hold a refusal twoway gives only after every
+// plot's own options are read (WP-32): two kernels, mlabfontface(), an
+// option given twice that the graph takes once.  The first held stands;
+// _dash_plot clears it before the first segment and raises it after the
+// last one.  <command> is a refusal program and Stata names only.
+program define _dash_pend
+    version 19
+    if "${dash__pend}" == "" global dash__pend `"`0'"'
+end
+
+// _dash_refuse_pendmsg <rc>  -- the held mlabfontface() refusal: its words,
+// kept by value in $dash__pend_msg, echoed as text, and twoway's code.
+program define _dash_refuse_pendmsg
+    version 19
+    args rc
+    mata: _dash_say("err", "", st_global("dash__pend_msg"), "")
+    exit `rc'
+end
+
+// _dash_refuse_gunique <name>  -- a graph option twoway takes once from
+// the whole command, given in a second plot group, || segment or after
+// the comma: "option xsize() not allowed", r(198).
+program define _dash_refuse_gunique
+    version 19
+    args gk
+    display as error "option `gk'() not allowed"
+    if "`gk'" == "table" display as error "      A graph takes one table; this command gives it more than once."
+    else display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
+    exit 198
 end
 
 // ================================================================
@@ -10803,10 +10855,14 @@ program define _dash_opts_repeats
     // which twoway refuses only after the plots' own options, their
     // kernel and mlabfontface() (test/fixtures/unknown_option_truth.json
     // orders: kdensity mpg, gaussian epan2 xsize(3) xsize(4) is "only one
-    // kernel may be specified"); _rp_why says what this list was refused
-    // for ("rep" a plot's option given twice, "kern" two kernels).
+    // kernel may be specified"), and _rp_kref two kernels ("<kind>
+    // <ptype>" for _dash_refuse_kernel), which twoway refuses only after
+    // every plot's own options are read (kdensity mpg, gaussian epan2 ||
+    // scatter mpg weight, bogus names bogus); _rp_why is "rep" when this
+    // list was refused for a plot's option given twice.
     c_local _rp_gref ""
     c_local _rp_why ""
+    c_local _rp_kref ""
     local _rp_gref ""
     mata: _dash_rep_und_scan(st_local("opts"), st_local("ptype"))
     c_local _rp_gund_out : copy local _rp_gund
@@ -10824,10 +10880,7 @@ program define _dash_opts_repeats
     mata: st_local("_rp_kern", _dash_kernel_clash(st_local("opts"), st_local("ptype")))
     mata: _dash_rep_scan(st_local("opts"), strtrim(st_global("s(_unknown)")) != "", 100)
     if !`_rp_go' {
-        if `: length local _rp_kern' {
-            c_local _rp_why "kern"
-            _dash_refuse_kernel `_rp_kern' `ptype'
-        }
+        if `: length local _rp_kern' c_local _rp_kref "`_rp_kern' `ptype'"
         c_local _rp_gref : copy local _rp_gref
         exit
     }
@@ -10865,10 +10918,7 @@ program define _dash_opts_repeats
             _dash_refuse_repeat `_rp_refuse'
         }
     }
-    if `: length local _rp_kern' {
-        c_local _rp_why "kern"
-        _dash_refuse_kernel `_rp_kern' `ptype'
-    }
+    if `: length local _rp_kern' c_local _rp_kref "`_rp_kern' `ptype'"
     c_local _rp_gref : copy local _rp_gref
     sreturn clear
     // A graph-wide option given twice is left in the list: the caller
@@ -10978,6 +11028,48 @@ program define _dash_refuse_foreign
     }
     sreturn clear
     `parser' , `macval(opts)'
+end
+
+
+// _dash_gopts_checks `"<options>"'  -- the refusals of the options after
+// the plot groups' comma, in twoway's order, with the graph parser's s()
+// for <options> in place; s() is left as the parser leaves the list
+// twoway reads, and the caller's _rp_gund_out holds its graph-wide
+// options dash does not declare.  WP-32: _dash_plot runs it quietly
+// before the segments and again, to refuse, after them.
+program define _dash_gopts_checks
+    version 19
+    mata: _dash_text_args(0, 0, 0)
+    local gopts_raw : copy local _dash_txt
+    _dash_refuse_unbound _dash_parse_graph_opts `"`macval(gopts_raw)'"'
+    // The first word twoway does not take after the comma, in the
+    // list's order (WP-32): an unknown word, a plot's option, one in
+    // upper case, a spelling short of twoway's minimum.
+    _dash_refuse_unknown _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+    // name() spelled shorter than twoway's minimum (WP-31 A3b), before
+    // the second-name() check would read nam() as a second name().
+    _dash_refuse_nam
+    // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
+    _dash_refuse_asp
+    // A second name() in the options after the comma, and whether they
+    // gave one at all: a group's name() is then a second one too.
+    mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
+    if `_g_name2' _dash_refuse_second_name
+    // A plot option after the comma -- (lfit mpg weight), atobs -- or
+    // an option in upper case: refused as twoway refuses it, even once,
+    // naming the first word it does not take (_dash_refuse_foreign).
+    _dash_refuse_foreign _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+    // jitter() spelled shorter than twoway's minimum after the comma
+    // (WP-31 A3d): refused there too, as twoway refuses it.
+    _dash_refuse_jit
+    // mlabfontface() after the comma, as twoway refuses it (MLF-01).
+    _dash_refuse_mlabff 1
+    // An option given twice after the comma, read as twoway reads it.
+    _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+    if `: length local _rp_gref' _dash_refuse_repeat `_rp_gref'
+    // title2() and subtitle2(), which twoway has not (WP-31 D2).
+    _dash_refuse_title2 - `"`macval(gopts_raw)'"'
+    c_local _rp_gund_out : copy local _rp_gund_out
 end
 
 

@@ -65,8 +65,8 @@
 *!           .py file and returning.
 *!   HC1-12  name() leaves Stata's graph memory alone; twoway's name()
 *!           stores a graph there.
-*!   HC1-13  An unknown option is accepted and named without its value.
-*!   HC1-14  titl() is title(); titel() is named in the note.
+*!   HC1-13  An option dash does not draw is accepted and named without its value.
+*!   HC1-14  titl() is title(); titel() is refused as twoway refuses it.
 *!   HC1-15  twoway refuses legend(garbage) and xscale(bogus), r(198); dash
 *!           refuses legend(garbage) as twoway does (WP-30 P1.19) and
 *!           xscale(bogus) too (flipped, WP-30 P1.18a).
@@ -827,10 +827,15 @@ dash clear
 // ================================================================
 // HC1-13 -- an unknown option is named without its value
 // ================================================================
-_hc_logged 13 dash scatter mpg weight, zqunknownopt(zq_secret_value_13) name(hc13)
+// Flipped: WP-32 -- the option was one twoway refuses, r(198), which dash
+// now refuses as twoway does (BUGS.md "In a few mixed lists dash names
+// another word than twoway names first, and an unknown lower-case word is
+// noted where twoway refuses it"); afcolor(), which twoway takes and dash does
+// not draw, carries the value.
+_hc_logged 13 dash scatter mpg weight, afcolor(zq_secret_value_13) name(hc13)
 local rc = r(rc)
 local lf "`r(logfile)'"
-cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): zqunknownopt()")
+cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): afcolor()")
 local named = r(found)
 cert_log_has "`lf'", needle("zq_secret_value_13)")
 local echoed_cmd = r(found)
@@ -854,7 +859,7 @@ if _rc {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-13"'
 }
-else display as text "HC1-13 PASS: an unknown option is accepted and named in the note, without its value"
+else display as text "HC1-13 PASS: an option dash does not draw is accepted and named in the note, without its value"
 dash clear
 
 // ================================================================
@@ -867,20 +872,22 @@ _hc_key hc14a title
 local t14 `"`r(value)'"'
 _hc_logged 14 dash scatter mpg weight, titel(zqT14) name(hc14b)
 local rcb = r(rc)
-cert_log_has "`r(logfile)'", needle("dash: ignoring unsupported option(s): titel()")
+// Flipped: WP-32 -- titel() was named in the note, rc 0; twoway refuses
+// it, "option titel() not allowed", r(198), and so does dash now.
+cert_log_has "`r(logfile)'", needle("option titel() not allowed")
 local named = r(found)
 _hc_key hc14b title
 local t14b `"`r(value)'"'
 capture {
     assert `rca' == 0 & `"`t14'"' == "zqT14"
-    assert `rcb' == 0 & `named' == 1 & `"`t14b'"' == ""
+    assert `rcb' == 198 & `named' == 1 & `"`t14b'"' == ""
 }
 if _rc {
     display as error `"HC1-14 FAIL: titl rc=`rca' title=[`t14']; titel rc=`rcb' named=`named' title=[`t14b']"'
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-14"'
 }
-else display as text "HC1-14 PASS: titl() abbreviates title(); titel() is not an option and is named in the note"
+else display as text "HC1-14 PASS: titl() abbreviates title(); titel() is not an option and is refused as twoway refuses it"
 dash clear
 
 // ================================================================

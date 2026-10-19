@@ -943,8 +943,11 @@ else {
             _hc2_run `"_hc2_b_plot ", nobrowser""'
             _hc2_b_opened "`stubdir'"
             local n34 = r(n)
-            _hc2_said "ignoring unsupported option(s): nobrowser()"
-            _hc2_ok "HC2-34e" `=`n34' == 1 & r(n) == 1' "the one-line form has no nobrowser option: it is named in the note and the window opens"
+            // Flipped: WP-32 -- nobrowser was named in the note and the
+            // window opened; twoway refuses it, "option nobrowser not
+            // allowed", r(198), and so does dash now: nothing is drawn.
+            _hc2_said "option nobrowser not allowed"
+            _hc2_ok "HC2-34e" `=`n34' == 0 & r(n) == 1' "the one-line form has no nobrowser option: it is refused as twoway refuses it and no window opens"
 
             // HC2-35 -- dash clear leaves the global in force.
             global dash_nobrowser 1

@@ -100,7 +100,7 @@
 *!                 r(198), although dash.sthlp:157-160 promises a warning for
 *!                 the first two.
 *!   O2-04  FAIL   r(198).
-*!   O2-05  FAIL   r(198) on notarealoption(3).
+*!   O2-05  FAIL   r(198) on afcolor(red).
 *!   O2-06  FAIL   r(198) on the two-segment command.
 *!   O2-07  PASS   vacuously, as O2-02.
 *!
@@ -741,10 +741,14 @@ if `dsp_ar_n' > 0 {
 }
 
 // ================================================================
-// O2-05 -- a genuinely unknown option is accepted and reported.
+// O2-05 -- an option twoway takes and dash does not draw is accepted and
+// reported.  Flipped: WP-32 -- the option was one twoway refuses, r(198), which dash
+// now refuses as twoway does (BUGS.md "In a few mixed lists dash names
+// another word than twoway names first, and an unknown lower-case word is
+// noted where twoway refuses it"); afcolor() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "unknown" "scatter mpg weight" "notarealoption(3)"
+_dsp_probe "unknown" "scatter mpg weight" "afcolor(red)"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -760,9 +764,9 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    _dsp_names `"`macval(pnote)'"' "notarealoption"
+    _dsp_names `"`macval(pnote)'"' "afcolor"
     if r(found) == 0 {
-        display as error `"O2-05 FAIL: the note does not name notarealoption(): `macval(pnote)'"'
+        display as error `"O2-05 FAIL: the note does not name afcolor(): `macval(pnote)'"'
         local bad = 1
     }
 }
@@ -770,15 +774,19 @@ if `bad' == 1 {
     local nfail = `nfail' + 1
     local faillist `"`faillist' O2-05"'
 }
-else display as text "O2-05 PASS: an unknown option is accepted and reported"
+else display as text "O2-05 PASS: an option dash does not draw is accepted and reported"
 
 // ================================================================
 // O2-06 -- unsupported options in TWO different plot segments are BOTH
-// reported, in the single per-command note.
+// reported, in the single per-command note.  Flipped: WP-32 -- the option was one twoway refuses, r(198), which dash
+// now refuses as twoway does (BUGS.md "In a few mixed lists dash names
+// another word than twoway names first, and an unknown lower-case word is
+// noted where twoway refuses it"); afcolor() and
+// afintensity() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "twoseg" "scatter mpg weight, notarealoption(3) || line mpg weight" ///
-    "alsonotreal(4)"
+_dsp_probe "twoseg" "scatter mpg weight, afcolor(red) || line mpg weight" ///
+    "afintensity(50)"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -795,7 +803,7 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    foreach key in notarealoption alsonotreal {
+    foreach key in afcolor afintensity {
         _dsp_names `"`macval(pnote)'"' "`key'"
         if r(found) == 0 {
             display as error `"O2-06 FAIL: the note omits segment option `key': `macval(pnote)'"'
