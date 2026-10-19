@@ -1001,7 +1001,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:quietly} hides.
 
 {phang2}
-    The note names option {it:names}, never the values supplied.  A typo
+    The note names option {it:names}, never the values supplied, each as
+    {cmd:twoway} names it: {cmd:afcolor()} for one that takes a value,
+    {cmd:titling} for one typed without.  A typo
     is refused as {cmd:twoway} refuses it: {cmd:titl(x)} is abbreviated
     {cmd:title()} and works, but {cmd:titel(x)} is
     {cmd:option titel() not allowed}, {cmd:r(198)}.  The full list is in

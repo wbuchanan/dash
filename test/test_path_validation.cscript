@@ -433,7 +433,10 @@ foreach form in "scatter mpg weight, replace" "scatter mpg weight, name(pv25) sa
     capture noisily dash `form'
     local rc25 = _rc
     quietly log close _pv25
-    cert_file_has "`pvl'", needle(" replace()")
+    // Flipped: WP-32 -- the note named it replace(); a word typed
+    // without a value is named as typed (BUGS.md "The "ignoring
+    // unsupported" note writes a word typed without a value as name()").
+    cert_file_has "`pvl'", needle(" replace)")
     if `rc25' != 0 | r(found) != 1 {
         display as error "PV-25: `form': rc `rc25', replace named `r(found)'"
         exit 9

@@ -310,6 +310,12 @@
 *!   _dash_rep_prefix(opts, n)
 *!       The first n option words of opts, as typed.
 *!
+*!   _dash_pending_note(p)
+*!       The pending names as the note writes them, "()" after a valued one.
+*!
+*!   _dash_valued_names(raw)
+*!       The option names of raw typed with a value.
+*!
 *!   _dash_kernel_clash(opts, ptype)
 *!       "one" for two kernel options, "old" for one beside kernel(), as
 *!       twoway refuses them on lpoly, lpolyci and kdensity; else "".
@@ -8204,6 +8210,44 @@ string scalar _dash_rep_prefix(string scalar opts, real scalar n)
         k++
     }
     return(out)
+}
+
+// _dash_pending_note(p) -- the pending names p (s(_pending): options dash
+// declares and does not draw, bare names) as the note writes them: "()"
+// after each that takes a value, none after heatmap, outlines and mwidth,
+// which take none (WP-32).
+string scalar _dash_pending_note(string scalar p)
+{
+    string rowvector w
+    string scalar    out
+    real scalar      i
+
+    w = tokens(p)
+    out = ""
+    for (i = 1; i <= cols(w); i++) {
+        out = out + " " + w[i] +
+              (anyof(("heatmap", "outlines", "mwidth"), w[i]) ? "" : "()")
+    }
+    return(strtrim(out))
+}
+
+// _dash_valued_names(raw) -- the option names of raw typed with a value,
+// one blank between them (WP-32: _dash_report_ignored writes "()" after
+// these alone).  Read by value; the words are the user's.
+string scalar _dash_valued_names(string scalar raw)
+{
+    string rowvector toks
+    string scalar    out, nm
+    real scalar      i
+
+    toks = _dash_rep_toks(raw, 0)
+    out = ""
+    for (i = 1; i <= cols(toks); i++) {
+        if (!strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (nm != "") out = out + " " + nm
+    }
+    return(strtrim(out))
 }
 
 // _dash_kernel_clash(opts, ptype) -- how twoway answers two kernels in

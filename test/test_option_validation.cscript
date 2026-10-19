@@ -2919,9 +2919,7 @@ forvalues _u50k = 1/`_u50n' {
     local _u50sep ","
     if strpos(`"`_u50x'"', ",") local _u50sep ""
     if substr(`"`_u50x'"', 1, 1) == "(" & !strpos(`"`_u50x'"', "),") local _u50sep ","
-    // U50-0: every case above ran (62), so none was skipped by a typo.
-_ov_assert U50-0 "(`_u50n' == 62)" "the 62 U50 cases ran"
-capture dash clear
+    capture dash clear
     capture log close _ovlog
     log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
     capture noisily dash `_u50x'`_u50sep' name(ovu50)
@@ -2932,6 +2930,37 @@ capture dash clear
     _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
     _ov_assert U50-`_u50k' "(r(n) == 0)" `"`_u50x': not named in the note"'
 }
+// U50-0: every case above ran (62), so none was skipped by a typo.
+_ov_assert U50-0 "(`_u50n' == 62)" "the 62 U50 cases ran"
+capture dash clear
+
+// U51 (WP-32): the ignoring note names each word as twoway names it -- "()"
+// after one typed with a value or that takes one, none after one typed
+// bare (titling, below, logging ...), where it wrote titling() (BUGS.md
+// "The "ignoring unsupported" note writes a word typed without a value as
+// name(), where twoway's own messages name it as typed").  Each case: the
+// command and the names the note must end with.
+// U51-1 .. U51-5, one case each; each prints its verdict, the first as
+// "U51-1 PASS".
+local _u51n 0
+foreach _u51p in "scatter mpg weight, titling|titling)" ///
+    "scatter mpg weight, afcolor(red) below|afcolor() below)" ///
+    "scatter mpg weight, logging afintensity(50)|logging afintensity())" ///
+    "scatter mpg weight, sort(mpg)|sort())" ///
+    "(scatter mpg weight), titling below|titling below)" {
+    local ++_u51n
+    gettoken _u51x _u51m : _u51p, parse("|")
+    local _u51m = substr(`"`_u51m'"', 2, .)
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u51x' name(ovu51)
+    local _u51rc = _rc
+    log close _ovlog
+    _ov_assert U51-`_u51n' "(`_u51rc' == 0)" `"`_u51x': rc `_u51rc' (expected 0)"'
+    _ov_said U51-`_u51n' `"ignoring unsupported option(s): `_u51m'"'
+}
+_ov_assert U51-0 "(`_u51n' == 5)" "the 5 U51 cases ran"
 capture dash clear
 
 // Summary

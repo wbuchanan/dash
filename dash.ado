@@ -492,7 +492,7 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
-        _dash_unknown_scan _dash_rep_prefix ///
+        _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_valued_names ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in _dash_json_has_value ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
@@ -6930,7 +6930,9 @@ program define _dash_process_segment, rclass
     // A weight is never named (WP-31 C9): a type that honours it
     // (`_wt_honoured') has it in the spec, and on any other twoway accepts
     // it, draws nothing different and says nothing.
-    mata: st_local("_seg_ign", st_global("s(_pending)") + " " + st_global("s(_unknown)"))
+    // WP-32: a pending name is written with "()" when it takes a value
+    // (_dash_pending_note), so the note names each word as twoway does.
+    mata: st_local("_seg_ign", _dash_pending_note(st_global("s(_pending)")) + " " + st_global("s(_unknown)"))
     c_local _seg_ignored_out : copy local _seg_ign
     // The graph-wide options dash does not declare that this segment gave
     // (clegend(), pcycle(), notitling, ...): twoway takes each once from
@@ -8211,6 +8213,10 @@ program define _dash_report_ignored
     //     dash scatter y x, addplot(line y2 x)
     //     dash: ignoring unsupported option(s): addplot() y2() x)()
     // naming two options that do not exist.
+    // WP-32: the names typed with a value, which alone are written with
+    // "()": twoway names a word as typed -- "option titling not allowed",
+    // "option xsize() not allowed" -- where the note wrote titling().
+    mata: st_local("_dash_valued", _dash_valued_names(st_local("raw")))
     mata: _dash_option_names("raw", "_dash_optnames")
     local raw : copy local _dash_optnames
 
@@ -8231,7 +8237,7 @@ program define _dash_report_ignored
         // A weight is not an option and takes no argument: [aweight], not
         // aweight().
         mata: st_local("out", st_local("out") + " " + st_local("tok") + ///
-            (substr(st_local("tok"), 1, 1) == "[" ? "" : "()"))
+            (anyof(tokens(st_local("_dash_valued")), st_local("tok")) ? "()" : ""))
     }
     if !`: length local out' exit
 
@@ -8402,7 +8408,7 @@ program define _dash_plot
         // an unsupported graph-level option was dropped in complete
         // silence, which is the one thing the reporter exists to prevent,
         // while the identical option in comma mode was named correctly.
-        mata: st_local("_dash_gopt_ignored", st_global("s(_pending)") + " " + st_global("s(_unknown)"))
+        mata: st_local("_dash_gopt_ignored", _dash_pending_note(st_global("s(_pending)")) + " " + st_global("s(_unknown)"))
     }
 
     local _dash_ignored_acc : copy local _dash_gopt_ignored
@@ -9039,7 +9045,7 @@ program define _dash_plot
     // here rather than on a pending list, because the immediate route
     // honours it and the note must not say otherwise there.
     if `: length local g_name' & `: length local g_saving' {
-        mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " saving")
+        mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " saving()")
     }
     // replace after the comma, as dash build takes it, lets the one-line
     // form write over the file saving() names (_dash_saving_clobber).  It is

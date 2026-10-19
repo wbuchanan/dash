@@ -775,6 +775,8 @@ COVERAGE = {
         "_dash_tw_takes": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_rep_prefix": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_pending_note": ("test_option_validation.cscript:U51-0",),
+        "_dash_valued_names": ("test_option_validation.cscript:U51-0",),
         "_dash_kernel_clash": ("test_twoway_option_parity.cscript:TP-15",),
         # direct and e2e: TP-16 calls it on its own, and holds the kernel a
         # flag registers to twoway's serset of kernel(<name>), in the run.
