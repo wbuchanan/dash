@@ -50353,6 +50353,18 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
             _dash_by_scale_panel(f, m)
             if not own_ar and f._dash_array_ar:
                 f.aspect_ratio = float(f._dash_array_ar) * nr / nc
+        # A panel held to its height bound fills its row (BUGS.md "A by()
+        # panel row was taller than its panels"): BokehJS writes the bound
+        # as max-height: min(<n>px, 100%), whose percentage a grid row of
+        # auto height cannot resolve while it is sized, so the row took
+        # the panel's proportion's height (1.2 times its width) and the
+        # panel stopped at the bound, leaving the row's rest empty.
+        from bokeh.models import InlineStyleSheet
+        for f in figs:
+            mh = getattr(f, "max_height", None)
+            if isinstance(mh, (int, float)) and mh > 0:
+                f.stylesheets = list(f.stylesheets) + [InlineStyleSheet(
+                    css=":host { max-height: %dpx !important; }" % int(mh))]
         grid = gridplot([figs], sizing_mode="stretch_width")
         grid.children = [(f, r, c) for f, (r, c) in zip(figs, cells)]
         grid.spacing = _dash_by_spacing(figs[0], opts)
@@ -53511,6 +53523,12 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
     title = Title(text=str(text), align="center", name=name + "_text", **kw)
     setattr(title, _DASH_GRAPH_TEXT_DONE, True)
     cell.add_layout(title, side)
+    # Centred on the panels, as twoway centres its shared axis titles
+    # (BUGS.md "A by() panel row was taller than its panels"; measured
+    # 19oct2026: the y title at 1499.34 of 3240 on the panels' box 113.4
+    # .. 2885.3), not on their plot regions: BokehJS aligns a grid
+    # child's frame with its neighbours' frames unless told not to.
+    cell.frame_align = False
     return cell
 
 

@@ -229,10 +229,18 @@ function state() {
         } else if (t === 'Title' && m.text) {
           rv.compute_geometry();
           const r = rv._rect; if (!r) continue;
-          const x0 = r.sx - r.anchor.x * r.width + cr.left;
-          const y0 = r.sy - r.anchor.y * r.height + cr.top;
+          // The text's box about its anchor, turned by its angle (a y
+          // title is turned a quarter).
+          const a = r.angle || 0, ca = Math.cos(a), sa = Math.sin(a);
+          const xs = [], ys = [];
+          for (const lx of [-r.anchor.x * r.width, (1 - r.anchor.x) * r.width])
+            for (const ly of [-r.anchor.y * r.height, (1 - r.anchor.y) * r.height]) {
+              xs.push(r.sx + lx * ca - ly * sa + cr.left);
+              ys.push(r.sy + lx * sa + ly * ca + cr.top);
+            }
           boxes.push({type: t, cell: v.model.name || '', text: m.text,
-                      box: [x0, y0, x0 + r.width, y0 + r.height],
+                      box: [Math.min(...xs), Math.min(...ys),
+                            Math.max(...xs), Math.max(...ys)],
                       canvas: [cr.left, cr.top, cr.right, cr.bottom],
                       frame: [cr.left + v.frame.bbox.x0,
                               cr.left + v.frame.bbox.x1]});
@@ -452,3 +460,35 @@ class TestByTitlesWithoutSpan:
             assert abs(n["box"][0] - p[0]) <= 1.5, st
             (c,) = _by_titles(st, "A by caption")
             assert abs(c["box"][2] - p[2]) <= 1.5, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByPanelsFillTheirRow:
+    """BUGS.md "A by() panel row was taller than its panels".  twoway
+    centres the shared y title on the panels (measured 19oct2026, stcolor,
+    ``ytitle("Price") by(foreign, legend(pos(3)))``: the y title at y
+    1499.34 of 3240, the panels' box 113.4 .. 2885.3), the x title right
+    under them.  dash's panel kept its proportion's height in the grid's
+    row (1.2 times its width, 807 px at 1400) while the panel itself was
+    held to 560 px, so the row ran 247 px past the panels; and the title
+    cells' frames were aligned with the panels' frames, so each title was
+    centred on the panels' plot regions, not on the panels."""
+
+    @pytest.mark.parametrize("width", (1400, 1000, 760))
+    def test_the_y_title_is_centred_on_the_panels(self, mode, width):
+        spec = bk._spec([bk._graph("g1", bk._TWO, {
+            "by": "foreign, legend(pos(3))", "ytitle": '"Price"'},
+            title=False)], scheme="stcolor")
+        got = kb._measure(mode, spec, _BY_JS, (width,))[width]
+        st = got["wide"]
+        p = st["panels"]
+        (yt,) = [b for b in st["boxes"] if b["type"] == "Title"
+                 and b["cell"] == "dash_by_ytitle"]
+        assert abs(_centre(yt["box"])[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
+        (xt,) = [b for b in st["boxes"] if b["type"] == "Title"
+                 and b["cell"] == "dash_by_xtitle"]
+        # The x title's row starts right under the panels (the grid's
+        # spacing apart), its text centred on them as twoway's is (2251.29
+        # of 5400, the panels' box 226.0 .. 4276.8).
+        assert 0 <= xt["canvas"][1] - p[3] <= 30, st
+        assert abs(_centre(xt["box"])[0] - (p[0] + p[2]) / 2.0) <= 1.5, st

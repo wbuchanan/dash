@@ -1085,3 +1085,21 @@ class TestTheSchemesByLegendRing:
         assert self._out(0, "legend(ring(3))")["ring0"] is False
         assert self._out(3, "legend(ring(0))")["ring0"] is True
         assert self._out(3, "legend(ring(1))")["ring0"] is True
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_panels_fill_their_row(mode):
+    """BUGS.md "A by() panel row was taller than its panels": each panel
+    carries its height bound as a plain max-height, which a grid row can
+    size by, and the axis title cells are not aligned with the panels'
+    frames, so their titles are centred on the panels, as twoway's are."""
+    spec = _spec([_graph("g1", _TWO, {"by": "foreign",
+                                      "ytitle": '"Price"'})])
+    roots, _n, _o = _build(mode, spec)
+    (grid,) = _grids(roots).values()
+    for f in _panels(grid):
+        css = " ".join(getattr(s, "css", "") for s in f.stylesheets)
+        assert ":host { max-height: %dpx !important; }" % f.max_height \
+            in css
+    for name in ("dash_by_ytitle", "dash_by_xtitle"):
+        assert _cell(grid, name)[0].frame_align is False
