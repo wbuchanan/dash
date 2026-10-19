@@ -38128,18 +38128,37 @@ try { pv = Bokeh.index.find_one(fig); } catch (e) { pv = null; }
 if (pv == null || pv.bbox == null) { return; }
 const W = pv.bbox.width, H = pv.bbox.height;
 if (!(W > 0) || !(H > 0)) { return; }
-// The graph region: the canvas less the margin graph sides (l, r, b, t,
-// relative units of min(W, H)), which a spanned box is placed against.
 const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
-const u = Math.min(W, H) / 100;
-const gl = (+sd[0] || 0) * u, gr = (+sd[1] || 0) * u;
-const gb = (+sd[2] || 0) * u, gt = (+sd[3] || 0) * u;
+// The graph: the figure's canvas, or for a by() chrome cell (an item's
+// sixth entry "grid") the by() grid's own box, the nearest GridBox above
+// the cell, in canvas px.  The graph region is the graph less the margin
+// graph sides (l, r, b, t, relative units of min(width, height)), which
+// a spanned box is placed against.
+const region = (ref) => {
+  let x0 = 0, y0 = 0, gw = W, gh = H;
+  if (ref === "grid") {
+    let a = pv.parent;
+    while (a != null && !(a.model != null && a.model.type === "GridBox")) {
+      a = a.parent;
+    }
+    if (a == null || a.el == null || pv.canvas_view == null) { return null; }
+    const g = a.el.getBoundingClientRect();
+    const c = pv.canvas_view.el.getBoundingClientRect();
+    x0 = g.left - c.left; y0 = g.top - c.top; gw = g.width; gh = g.height;
+    if (!(gw > 0) || !(gh > 0)) { return null; }
+  }
+  const u = Math.min(gw, gh) / 100;
+  return {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
+          T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u};
+};
 const at = (key, lo, len, size, mg) =>
   (key === "left" || key === "top") ? lo + mg
   : (key === "right" || key === "bottom") ? lo + len - mg - size
   : lo + (len - size) / 2;
 for (const it of items) {
   const m = it[0], kind = it[1], side = it[2], place = it[3];
+  const g = region(it[5] || "");
+  if (g == null) { continue; }
   let v = null;
   try { v = Bokeh.index.find_one(m); } catch (e) { v = null; }
   const pb = (v != null && v.layout != null) ? v.layout.bbox : null;
@@ -38155,8 +38174,8 @@ for (const it of items) {
                   left: "center_left", right: "center_right",
                   center: "center_center"}[place] || place;
     const vy = norm.split("_")[0], hx = norm.split("_")[1];
-    const left = across ? at(hx, gl, W - gl - gr, lw, mg) : b0.left;
-    const top = across ? b0.top : at(vy, gt, H - gt - gb, lh, mg);
+    const left = across ? at(hx, g.L, g.R - g.L, lw, mg) : b0.left;
+    const top = across ? b0.top : at(vy, g.T, g.B - g.T, lh, mg);
     // A numeric location is px from the panel's left and bottom, at the
     // box's bottom-left; the browser's own offsets are read back from
     // the box once and taken out.
@@ -38172,16 +38191,16 @@ for (const it of items) {
     const off = it[4] || 0;
     let align = place, offset = off;
     if (place === "left") {
-      offset = off + gl - pb.left;
+      offset = off + g.L - pb.left;
     } else if (place === "right") {
-      offset = off + gr - (W - pb.right);
+      offset = off + pb.right - g.R;
     } else {
       // The text's box: a Title's own bbox is its whole panel.
       let tw = 0;
       try { tw = v._get_size().width; } catch (e) { tw = 0; }
       if (!(tw > 0)) { continue; }
       align = "left";
-      offset = (gl + W - gr - tw) / 2 - pb.left;
+      offset = (g.L + g.R - tw) / 2 - pb.left;
     }
     offset = Math.round(offset);
     if (m.align !== align) { m.align = align; }
@@ -38195,7 +38214,8 @@ _DASH_SPAN_KEYS = ("inner_width", "inner_height", "outer_width",
                    "outer_height")
 
 
-def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
+def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
+               ref=""):
     """Place *model* along its side on the whole graph, as twoway's span
     places it (``_DASH_SPAN_JS``), or stop placing it (*kind* None).
 
@@ -38203,8 +38223,9 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
     kind, side, place, offset]`` per model; a later call for the same
     model replaces its item.  *kind* is ``"legend"`` (*place* its panel
     location) or ``"title"`` (*place* its align, *offset* its own
-    offset); *model* None drops every item.  Both modes come through
-    here."""
+    offset); *ref* ``"grid"`` places it on the by() grid that holds
+    *fig* (a by() chrome cell) instead of *fig*'s canvas; *model* None
+    drops every item.  Both modes come through here."""
     from bokeh.models import CustomJS
     key0 = "change:" + _DASH_SPAN_KEYS[0]
     cb = next((c for c in fig.js_property_callbacks.get(key0, [])
@@ -38212,7 +38233,8 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
     items = [] if cb is None or model is None else [
         it for it in cb.args.get("items", []) if it[0] is not model]
     if kind is not None:
-        items.append([model, kind, side, place, float(offset or 0.0)])
+        items.append([model, kind, side, place, float(offset or 0.0),
+                      str(ref or "")])
     if cb is None:
         if items:
             cb = CustomJS(args={"fig": fig, "items": items,
@@ -53667,6 +53689,19 @@ def _dash_by_keys(figs, opts, scheme):
             out["legend"] = _dash_by_legend_cell(
                 scheme, "dash_by_legend", side if not at else "right",
                 first[0], items, "l", panels=figs, location=loc)
+            # by(, legend(span)) (WP-32): on the whole by() graph, as
+            # twoway places it (measured 19oct2026; the scheme's
+            # legend_span changes nothing on by()).  Not in a hole.
+            _cell = out["legend"]
+            _keys = [m for m in (list(_cell.above) + list(_cell.below)
+                                 + list(_cell.left) + list(_cell.right))
+                     if isinstance(m, Legend)]
+            if "span" in words and not at and _keys:
+                _kside = next(sd for sd in ("above", "below", "left",
+                                            "right")
+                              if _keys[0] in list(getattr(_cell, sd)))
+                _dash_span(_cell, _keys[0], "legend", _kside,
+                           _keys[0].location, ref="grid")
             out["legend_side"], out["legend_at"] = side, at
     if not ilegends and keys1:
         words, at, side, _ring = place(opts.get("clegend", ""),

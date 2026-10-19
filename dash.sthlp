@@ -4442,7 +4442,8 @@ and after a resize; {cmd:nospan} undoes the scheme's
 {cmd:yesno legend_span} ({cmd:span} beside {cmd:nospan} spans, in either
 order, as in {cmd:twoway}), and a legend inside the plot is placed as
 without it, as is a {cmd:by()} graph's under the scheme's
-{cmd:legend_span}.  {cmd:bexpand} and its
+{cmd:legend_span}; {cmd:by(}...{cmd:, legend(span))} places {cmd:by()}'s
+legend on the whole {cmd:by()} graph the same way.  {cmd:bexpand} and its
 {cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},
 {cmd:symplacement()} and the legend's own {cmd:note()} and
 {cmd:caption()} are named in the note: a {cmd:dash} legend draws each key

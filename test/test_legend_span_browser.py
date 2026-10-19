@@ -204,3 +204,91 @@ class TestTheTitlesSpan:
             assert n[0] < f[0] - 30, fig
             assert abs(n[0] - (edge + gap[0])) <= 1.5, fig
             assert abs(c[2] - (W - edge - gap[1])) <= 1.5, fig
+
+
+#: by(): every legend and titled box (page px) and the by() grid's own box:
+#: the GridBox nearest above the by() legend cell (inside the GridPlot,
+#: without its toolbar).
+_BY_JS = r"""
+<script>
+function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
+function state() {
+  const boxes = []; let grid = null;
+  const visit = (v, box) => {
+    if (!v) return;
+    if (v.model && v.model.type === 'GridBox') box = v;
+    if (v.model && v.model.name === 'dash_by_legend' && box) grid = rect(box.el);
+    if (v.frame && v.renderer_views) {
+      const cr = v.canvas_view.el.getBoundingClientRect();
+      for (const [m, rv] of v.renderer_views) {
+        const t = m.type || '';
+        if (!m.visible) continue;
+        if (t === 'Legend' && rv.bbox && rv.bbox.width > 0) {
+          boxes.push({type: t, cell: v.model.name || '', text: '',
+                      box: rect(rv.el)});
+        } else if (t === 'Title' && m.text) {
+          rv.compute_geometry();
+          const r = rv._rect; if (!r) continue;
+          const x0 = r.sx - r.anchor.x * r.width + cr.left;
+          const y0 = r.sy - r.anchor.y * r.height + cr.top;
+          boxes.push({type: t, cell: v.model.name || '', text: m.text,
+                      box: [x0, y0, x0 + r.width, y0 + r.height]});
+        }
+      }
+    }
+    for (const c of (v.child_views || [])) visit(c, box);
+  };
+  for (const v of Object.values(Bokeh.index)) visit(v, null);
+  return {grid, boxes};
+}
+addEventListener('load', () => setTimeout(() => {
+  const wide = state();
+  document.body.style.width = '700px';
+  for (const v of Object.values(Bokeh.index)) v.after_resize();
+  dispatchEvent(new Event('resize'));
+  setTimeout(() => {
+    parent.postMessage('DASHPROBE' + JSON.stringify(
+      {W: innerWidth, wide, narrow: state()}), '*');
+  }, 2500);
+}, 3000));
+</script>
+"""
+
+
+def _by(mode, go):
+    spec = bk._spec([bk._graph("g1", bk._TWO, dict(go, ytitle='"Price"'),
+                               title=False)], scheme="stcolor")
+    got = kb._measure(mode, spec, _BY_JS)[1400]
+    return got["wide"], got["narrow"]
+
+
+def _by_legend(state):
+    (lg,) = [b for b in state["boxes"] if b["type"] == "Legend"
+             and b["cell"] == "dash_by_legend"]
+    return lg["box"]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByLegendSpans:
+    """Measured 19oct2026 (StataNow 19.5, stcolor, SVG of ``twoway (scatter
+    price weight) (scatter mpg weight), ylabel(, format(%15.2fc))
+    by(foreign, legend(pos(#) [span]))``): span places by()'s legend on the
+    whole graph -- pos(6) centred at x 2700 of 5400 (2756.3 without), pos(3)
+    at y 1620 of 3240 (1499.3 without), pos(7) at 152.2 (264.8 without),
+    the graph region's edge 113.4 plus 38.8, as without by()."""
+
+    def test_6_oclock_is_centred_on_the_graph(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(6) span)"}):
+            g, lg = st["grid"], _by_legend(st)
+            assert abs(_centre(lg)[0] - (g[0] + g[2]) / 2.0) <= 1.5, st
+
+    def test_3_oclock_is_centred_on_the_graphs_height(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(3) span)"}):
+            g, lg = st["grid"], _by_legend(st)
+            assert abs(_centre(lg)[1] - (g[1] + g[3]) / 2.0) <= 1.5, st
+
+    def test_7_oclock_is_at_the_graph_regions_edge(self, mode):
+        for st in _by(mode, {"by": "foreign, legend(pos(7) span)"}):
+            g, lg = st["grid"], _by_legend(st)
+            edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
+            assert abs(lg[0] - (g[0] + edge + 5)) <= 1.5, st

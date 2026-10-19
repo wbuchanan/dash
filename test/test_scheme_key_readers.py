@@ -388,3 +388,27 @@ def test_the_span_hook_is_in_the_served_app():
         src = fh.read()
     assert src.count('"_dash_span",') == 1
     assert src.count('"_DASH_SPAN_JS", "_DASH_SPAN_KEYS",') == 1
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_by_legend_span_places_the_cells_legend_on_the_grid(mode):
+    """by(, legend(span)) (measured 19oct2026: twoway centres by()'s legend
+    on the whole graph, 2700 of 5400 against 2756.3 without): the legend
+    cell carries the span hook, placed on the by() grid ("grid")."""
+    import dash_render as dr
+    import test_by_axes_keys as bk
+    from bokeh.models import Plot
+
+    def cell_items(by):
+        spec = bk._spec([bk._graph("g1", bk._TWO, {"by": by})])
+        roots, _n, _o = bk._build(mode, spec)
+        (cell,) = {id(m): m for r in roots for m in r.references()
+                   if isinstance(m, Plot)
+                   and m.name == "dash_by_legend"}.values()
+        cbs = [c for c in cell.js_property_callbacks.get(
+            "change:inner_width", []) if c.code == dr._DASH_SPAN_JS]
+        return [(it[1], it[2], it[3], it[5]) for c in cbs
+                for it in c.args["items"]]
+    assert cell_items("foreign, legend(pos(6) span)") == [
+        ("legend", "above", "center", "grid")]
+    assert cell_items("foreign, legend(pos(6))") == []
