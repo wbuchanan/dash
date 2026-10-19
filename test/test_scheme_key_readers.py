@@ -438,3 +438,9 @@ def test_by_legend_span_places_the_cells_legend_on_the_grid(mode):
     assert cell_items("foreign, legend(pos(7))") == [
         ("legend", "above", "left", "panels")]
     assert cell_items("foreign, total legend(at(4) pos(0))") == []
+    # ring(0) (BUGS.md "by()'s legend(ring(0)) was placed on its cell, not
+    # on the panels"): on the panels too, as twoway places it.
+    assert cell_items("foreign, legend(ring(0) pos(6))") == [
+        ("legend", "above", "center", "panels")]
+    assert cell_items("foreign, legend(ring(0) pos(9))") == [
+        ("legend", "right", "center", "panels")]

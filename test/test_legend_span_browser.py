@@ -578,3 +578,29 @@ class TestByLegendInAHole:
             assert c[2] - c[0] > 300, st
             f = st["pframes"]
             assert max(f) - min(f) <= 20, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByLegendRing0:
+    """BUGS.md "by()'s legend(ring(0)) was placed on its cell, not on the
+    panels".  Measured 19oct2026 (StataNow 19.5, stcolor, SVG of the same
+    graph with ``by(foreign, legend(ring(0) pos(#)))``): ring(0) puts the
+    legend between the panels and the x title (5, 6, 1) or beside them
+    (9, 3), along its side exactly where it sits without ring(0) -- pos(6)
+    centred at 2700 of 5400, pos(5) ending at 5247.8 (the panels' right
+    5286.6 less 38.8), pos(9) at y 1499.3 of 3240, the panels' middle."""
+
+    def test_6_oclock_is_centred_on_the_panels(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(6))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(_centre(lg)[0] - (p[0] + p[2]) / 2.0) <= 1.5, st
+
+    def test_5_oclock_ends_at_the_panels_right(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(5))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(lg[2] - (p[2] - 5)) <= 1.5, st
+
+    def test_9_oclock_is_centred_on_the_panels_height(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(9))"}):
+            p, lg = _panels(st), _by_legend(st)
+            assert abs(_centre(lg)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st

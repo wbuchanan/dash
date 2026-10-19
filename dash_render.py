@@ -53891,9 +53891,12 @@ def _dash_by_keys(figs, opts, scheme):
             # placed on its cell, not on the panels"), on the panels plus
             # their axes (measured 19oct2026: pos(6) at the shared x
             # title's centre, 2756.3 of 5400; pos(3) at the shared y
-            # title's, y 1499.3 of 3240), not on its cell.  Not in a hole
-            # nor inside the array (ring(0)).
-            if not at and _keys and ("span" in words or not out["ring0"]):
+            # title's, y 1499.3 of 3240), not on its cell.  Not in a hole.
+            # ring(0) too (BUGS.md "by()'s legend(ring(0)) was placed on
+            # its cell, not on the panels"): twoway draws it between the
+            # panels and the x title, or beside the panels, along its side
+            # where it sits without ring(0) (measured 19oct2026).
+            if not at and _keys:
                 _kside = next(sd for sd in ("above", "below", "left",
                                             "right")
                               if _keys[0] in list(getattr(_cell, sd)))
