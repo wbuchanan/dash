@@ -5991,8 +5991,11 @@ def _composite_plain(models, args):
         "tabs": ({"tabs": [{"title": p.title} for p in tabs.tabs],
                   "active": tabs.active} if tabs is not None else None),
         "kpis": [div(models[i]) for i in args["kpi_ids"]],
-        "toggles": [{"active": bool(models[i].active)}
-                    for i in args["toggle_ids"]]}
+        # Flipped: WP-32 D-53d replaced toggle_ids with table_ids; a
+        # table's drawn rows are measured from its view (a browser), so
+        # both modes get none here, as the grid image is a stand-in.
+        "tables": [] if all(i in models for i in args["table_ids"])
+        else None}
 
 
 #: The grid's own image in the composite: BokehJS's export, which needs a
