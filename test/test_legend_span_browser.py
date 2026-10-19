@@ -816,3 +816,62 @@ class TestByPanelBoxUnderOtherSchemes:
                 assert abs(_centre(t["box"])[0]
                            - (left + f[1] + right * u) / 2.0) <= 1.5, \
                     (scheme, t, u)
+
+
+def _dkey(st):
+    (k,) = [b for b in st["boxes"] if b["type"] == "Legend"
+            and b["cell"] == "dash_by_clegend"]
+    return k
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByDiscreteColourKey:
+    """BUGS.md "by()'s discrete colour key was as long as its keys, not
+    twoway's key".  Measured 19oct2026 (StataNow 19.5, stcolor, SVG of
+    ``twoway scatter price weight, colorvar(rep78) colordiscrete
+    ytitle("Price") by(foreign|rep78, clegend(on [pos(6)|at(6) pos(0)]))``
+    at 7.5x4.5 and 5x5): twoway draws the discrete key as the continuous
+    one -- the same upright strip, its levels' labels spaced along it --
+    2467.3 of 3240 beside the panels, 1081.4 at 6 o'clock (1201.5 at 5x5),
+    1142.2 in the hole, centred."""
+
+    def test_beside_the_panels(self, mode):
+        for st in _by_spec(mode, {"by": "foreign, clegend(on)",
+                                  "ytitle": '"Price"'},
+                           plots=[bk._p("scatter", colorvar="rep78",
+                                        colordiscrete="yes")]):
+            p, g = st["panels"], st["grid"]
+            u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+            b = _dkey(st)["box"]
+            assert abs((b[3] - b[1]) - (p[3] - p[1] - 9.4 * u)) <= 2.5, \
+                (b, p, u)
+            assert abs(_centre(b)[1] - (p[1] + p[3]) / 2.0) <= 1.5, (b, p)
+
+    def test_under_the_panels(self, mode):
+        wide, narrow = _by_spec(mode, {"by": "foreign, clegend(on pos(6))",
+                                       "ytitle": '"Price"'},
+                                plots=[bk._p("scatter", colorvar="rep78",
+                                             colordiscrete="yes")])
+        k = (0.5 - 0.1662) * 4.5 / 7.5
+        g, b = wide["grid"], _dkey(wide)["box"]
+        # Whole px of spacing between five keys: within 2.5 px.
+        assert abs((b[3] - b[1]) - k * (g[2] - g[0])) <= 2.5, (b, g)
+        # Narrowed, the keys cannot close up further than touching.
+        g, b = narrow["grid"], _dkey(narrow)["box"]
+        assert b[3] - b[1] >= k * (g[2] - g[0]) - 2.5, (b, g)
+
+    def test_in_a_hole(self, mode):
+        # Panel 1 (rep78 1) holds one level: its key takes the length up
+        # in its padding.
+        st = _by_spec(mode, {"by": "rep78, clegend(on at(6) pos(0))"},
+                      plots=[bk._p("scatter", colorvar="rep78",
+                                   colordiscrete="yes")])[0]
+        lg = _dkey(st)
+        b, c, g = lg["box"], lg["canvas"], st["grid"]
+        u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+        (row,) = {tuple(r) for r in st["prows"] if c[1] - 1 <= r[0] <= c[3]}
+        assert abs((b[3] - b[1]) - (row[1] - row[0] + 3.895 * u)) <= 2.5, \
+            (b, row, u)
+        assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, (b, c)
+        f = st["pframes"]
+        assert max(f) - min(f) <= 20, st

@@ -1224,3 +1224,30 @@ def test_the_colour_key_beside_the_panels_is_their_box_less_a_gap(mode):
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
         assert (it[1], it[7]) == ("key", "side"), pos
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_discrete_colour_key_is_placed_as_twoways_key(mode):
+    """BUGS.md "by()'s discrete colour key was as long as its keys, not
+    twoway's key": the discrete key is an upright legend placed by
+    _DASH_SPAN_JS "key" -- "side" at 3, "row" at 6, "hole" in an at()
+    hole (inside its cell, at its position across the hole)."""
+    from bokeh.models import Legend
+    for by, want, loc in (("foreign, clegend(on)", "side", "center"),
+                          ("foreign, clegend(on pos(6))", "row", "center"),
+                          ("rep78, clegend(on at(6) pos(0))", "hole",
+                           "center"),
+                          ("rep78, clegend(on at(6))", "hole",
+                           "center_right")):
+        spec = _spec([_graph("g1", [_p("scatter", colorvar="rep78",
+                                       colordiscrete="yes")], {"by": by})])
+        roots, _n, _o = _build(mode, spec)
+        (grid,) = _grids(roots).values()
+        cell = _cell(grid, "dash_by_clegend")[0]
+        (lg,) = [m for sd in ("left", "right", "above", "below", "center")
+                 for m in getattr(cell, sd) if isinstance(m, Legend)]
+        assert lg.orientation == "vertical" and lg.location == loc, by
+        (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
+                 if c.code == dr._DASH_SPAN_JS]
+        (it,) = cb.args["items"]
+        assert (it[1], it[7]) == ("key", want), by

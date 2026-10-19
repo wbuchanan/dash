@@ -38312,6 +38312,28 @@ for (const it of items) {
       len = (+it[4] || 0) * gg.gw;
     }
     len = Math.max(20, Math.round(len));
+    if (m.type === "Legend") {
+      // A discrete key (BUGS.md "by()'s discrete colour key was as long
+      // as its keys, not twoway's key"): its box is the key's length, its
+      // keys spread along it by their spacing, read back from the box.
+      // One key: its padding takes the length up instead.
+      const lb = v.bbox, n = (m.items || []).length;
+      if (lb == null || !(lb.height > 0) || n < 1) { continue; }
+      let changed = false;
+      if (n > 1) {
+        const sp0 = +m.spacing || 0;
+        const sp = Math.max(0, Math.round(sp0 + (len - lb.height) / (n - 1)));
+        if (sp !== sp0) { m.spacing = sp; changed = true; }
+      } else {
+        const pd0 = +m.padding || 0;
+        const pd = Math.max(0, Math.round(pd0 + (len - lb.height) / 2));
+        if (pd !== pd0) { m.padding = pd; changed = true; }
+      }
+      if (changed) {
+        try { pv.invalidate_layout(); } catch (e) { /* next layout */ }
+      }
+      continue;
+    }
     // BokehJS lays a colour bar out again only with its plot.
     let moved = false;
     if (m.height !== len) { m.height = len; moved = true; }
@@ -54173,6 +54195,55 @@ def _dash_by_keys(figs, opts, scheme):
                 cell = _dash_by_legend_cell(scheme, "dash_by_clegend",
                                             side if not at else "right", key,
                                             list(key.items), "c")
+                # A discrete key is drawn as twoway draws the continuous
+                # one (BUGS.md "by()'s discrete colour key was as long as
+                # its keys, not twoway's key"; measured 19oct2026): upright,
+                # its keys spread over the key's length (_DASH_SPAN_JS
+                # "key"), in an at() hole at its position across the hole.
+                _lgs = [x for sd in ("above", "below", "left", "right")
+                        for x in getattr(cell, sd) if isinstance(x, Legend)]
+                if _lgs:
+                    _lg = _lgs[0]
+                    _lg.orientation = "vertical"
+                    if "ncols" in _lg.properties():
+                        _lg.ncols = "auto"
+                    if "nrows" in _lg.properties():
+                        _lg.nrows = "auto"
+                    _ksd = next(sd for sd in ("above", "below", "left",
+                                              "right")
+                                if _lg in list(getattr(cell, sd)))
+                    if at:
+                        _w, _calls = _dash_legend_parts(
+                            opts.get("clegend", ""))
+                        _pos = _dash_legend_arg(_calls, ("position",))
+                        try:
+                            _clock = int(str(_pos if _pos is not None else
+                                             getattr(scheme, "zyx2_position",
+                                                     3)).strip())
+                        except (TypeError, ValueError):
+                            _clock = 3
+                        setattr(cell, _ksd, [x for x in getattr(cell, _ksd)
+                                             if x is not _lg])
+                        cell.center = list(cell.center) + [_lg]
+                        _lg.location = ("center_left" if _clock in
+                                        (7, 8, 9, 10, 11) else "center"
+                                        if _clock in (0, 6, 12)
+                                        else "center_right")
+                        cell.frame_width = None
+                        cell.frame_height = None
+                        cell.width_policy = "max"
+                        cell.height_policy = "max"
+                        _dash_span(cell, _lg, "key", "center", "center",
+                                   ref="grid", mode="hole")
+                    elif side in ("above", "below"):
+                        _lg.location = "center"
+                        _dash_span(cell, _lg, "key", side, "center",
+                                   _dash_by_key_share(figs[0]), ref="grid",
+                                   mode="row")
+                    else:
+                        _lg.location = "center"
+                        _dash_span(cell, _lg, "key", side, "center",
+                                   ref="grid", mode="side")
             # Not aligned with the panels' frames (BUGS.md "by()'s colour
             # key ran past the panels' foot"): the key is centred on the
             # panels' height, as twoway centres it (measured 19oct2026:
