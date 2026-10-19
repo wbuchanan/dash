@@ -120,9 +120,10 @@ PLOT_VALUES = {
     "percent": ("percent", "frequency", "histogram"),
     "range": ("10 30", "12 28", "kdensity"),
     "scheme": ("economist", "s1mono", "scatter"),
-    # WP-31 B4b: contour's heatmap cells and band outlines, named.
-    "heatmap": ("heatmap", "", "contour"),
-    "outlines": ("outlines", "", "contour"),
+    # Flipped (WP-32): heatmap and outlines -- named and inert -- left
+    # this table: dash draws them on contour as twoway does
+    # (test_noted_drawn.py TestContourParts); _dash_contour_split reads
+    # them, so no syntax block declares them.
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
     # line in x order under it -- so the inert case is on scatter, where it
     # is still named and draws nothing.
@@ -295,7 +296,8 @@ class TestTheListIsCoveredAndHonest:
         # lineopts mlabwidth refused, as twoway refuses them
         # 10 -> 9 and 1 -> 0: WP-32 play() refused, as twoway refuses a
         # recording it cannot find or read
-        assert len(_plot_pending()) == 9, sorted(_plot_pending())
+        # 9 -> 7: WP-32 heatmap and outlines drawn on contour
+        assert len(_plot_pending()) == 7, sorted(_plot_pending())
         assert len(_graph_pending()) == 0, sorted(_graph_pending())
 
 

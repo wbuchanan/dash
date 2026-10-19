@@ -23106,26 +23106,31 @@ class GlyphMapper:
         # left, in screen units (measured 19oct2026: baroffset(1) by one
         # bar width left, (-1) right, (5) five), drawn from a column a
         # script keeps at x - off * width in data units, read from the x
-        # range and the frame's width whenever either changes.  Turned bars
-        # are not measured with it: dash.ado names baroffset() there.
+        # range and the frame's width whenever either changes.  Turned, each
+        # bar moves as many of its heights down, toward the lower values
+        # (measured 19oct2026): the column becomes the y the layer's
+        # transpose turns it to, read from the y range and the frame's
+        # height.
         _off = (_stat_option_float(options, "baroffset", 0.0, "rbar")
                 if "baroffset" in options else 0.0) or 0.0
         _turned = bool(str(options.get("horizontal", "") or "").strip())
-        if _off and not _turned:
+        if _off:
             source.data[self._RBAR_XOFF] = list(source.data[xvar])
             kw["x"] = self._RBAR_XOFF
         r = fig.rect(**kw)
         r.tags = ["dash_rbar_mwidth"]
         r._dash_hull_fields = {"y": (y1var, y2var)}
-        if _off and not _turned:
+        if _off:
             from bokeh.models import CustomJS as _CJS
-            _cb = _CJS(args=dict(src=source, rng=fig.x_range, plot=fig,
-                                     off=float(_off), px=float(kw["width"]),
-                                     xcol=xvar, col=self._RBAR_XOFF),
-                           code=_DASH_RBO_JS)
-            fig.x_range.js_on_change("start", _cb)
-            fig.x_range.js_on_change("end", _cb)
-            fig.js_on_change("inner_width", _cb)
+            _rng = fig.y_range if _turned else fig.x_range
+            _dim = "inner_height" if _turned else "inner_width"
+            _cb = _CJS(args=dict(src=source, rng=_rng, plot=fig,
+                                 off=float(_off), px=float(kw["width"]),
+                                 xcol=xvar, col=self._RBAR_XOFF, dim=_dim),
+                       code=_DASH_RBO_JS)
+            _rng.js_on_change("start", _cb)
+            _rng.js_on_change("end", _cb)
+            fig.js_on_change(_dim, _cb)
             r._dash_rbo_callbacks = [_cb]
         self._rbar_finish(r, options, _fill_base, _f)
         # colorvar() (WP-31 C8a): each bar.
@@ -24228,6 +24233,9 @@ class GlyphMapper:
         drawable = (surf["note"] != "degenerate" and gx.size >= 2
                     and gy.size >= 2 and np.isfinite(gz).any()
                     and math.isfinite(zmin))
+        # The upright grid, for heatmap's cells, which the layer's
+        # transpose turns with the layer (WP-32).
+        _ugx, _ugy, _ugz = gx, gy, np.asarray(gz)
         if horizontal:
             gx, gy, gz = gy, gx, np.asarray(gz).T
         colours = _dash_contour_colours(
@@ -24268,6 +24276,7 @@ class GlyphMapper:
                 fl[-1] = max(fl[-1], float(fin.max()) + 1e-9 * (hi - lo))
             cr = fig.contour(x=gx, y=gy, z=gz, levels=fl,
                              fill_color=list(colours))
+            _parts = _dash_contour_parts(options)
         cr._dash_contour_sources = [cr.fill_renderer.data_source,
                                     cr.line_renderer.data_source]
         # For the saved page's twin (WP-31 B4c): what it needs to cut the
@@ -24307,6 +24316,11 @@ class GlyphMapper:
                 **self._contour_refit_rule(options, lines_only, len(cuts)))
             cr._dash_agg_rows = self._agg_member_ids(source, view)
         cr.tags = list(cr.tags or []) + ["dash_contour"]
+        _extra = []
+        if not lines_only:
+            _extra = self._contour_parts(
+                fig, cr, options, _parts, colours, cuts,
+                (gx, gy, gz), (_ugx, _ugy, _ugz), fl, drawable, source, view)
         # The layer's extent, upright (the transposer turns it with the
         # layer): the data's corners, drawn invisibly.
         ex = [float(np.min(x)), float(np.max(x))] if x.size else [np.nan] * 2
@@ -24315,7 +24329,103 @@ class GlyphMapper:
                            tags=["dash_contour_extent"])
         if not lines_only and drawable:
             self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
-        return [cr, hull]
+        return [cr] + _extra + [hull]
+
+    def _contour_parts(self, fig, cr, options, parts, colours, cuts, grid,
+                       upright, levels, drawable, source, view) -> list:
+        """contour's heatmap and boundary lines (WP-32), as twoway draws
+        them (measured 19oct2026 on a grid, graph export SVG):
+
+        - ``heatmap``: each node's cell -- to the midpoints between nodes,
+          the grid's ends at its edge -- filled in its level's colour in
+          place of the bands (the bands drawn transparent, kept for the
+          key and the refit), a Quad over the upright grid that the
+          layer's transpose turns (:func:`_dash_contour_heat_cells`);
+        - ``outlines``: the bands' boundaries black at twice a medium line;
+        - ``alpattern()`` and ``sort``: the boundaries' hairline (twoway's
+          .001 line, a third of a medium one in its SVG) in their levels'
+          colours, dashed in alpattern()'s pattern, sort as
+          ``alpattern(dash)``.
+
+        Each part's source is refitted by the saved page after a move
+        (``_dash_agg_config`` part "heat" or "line") and redrawn by the
+        served app, which pairs the layer's sources by position."""
+        out = []
+        T = OptionTranslator
+        rule = self._contour_refit_rule(options, False, len(cuts))
+        base_cfg = dict(cr._dash_contour_config, rule=rule["rule"],
+                        kfmt=rule["kfmt"])
+        if parts["heat"]:
+            cr.fill_renderer.glyph.fill_alpha = 0.0
+            cells = (_dash_contour_heat_cells(*upright, levels, colours)
+                     if drawable else
+                     {"left": [], "right": [], "bottom": [], "top": [],
+                      "fill_color": []})
+            hsrc = ColumnDataSource(cells)
+            hr = fig.quad(left="left", right="right", bottom="bottom",
+                          top="top", fill_color="fill_color", source=hsrc,
+                          line_alpha=0.0)
+            hr.tags = ["dash_contour_heat"]
+            if drawable and not cr._dash_contour_capped:
+                hr._dash_agg_source = hsrc
+                hr._dash_agg_config = dict(
+                    base_cfg, part="heat", extra={},
+                    styles=rule["styles"],
+                    upright_gx=bool(cr._dash_contour_config.get(
+                        "horizontal")))
+                hr._dash_agg_rows = self._agg_member_ids(source, view)
+            out.append(hr)
+        if parts["lines"]:
+            gx, gy, gz = grid
+            med = float(T.translate_lwidth("medium"))
+            n = len(cuts)
+
+            def _style(k):
+                if parts["outlines"]:
+                    return ["#000000"] * k, [2.0 * med] * k
+                cols = _dash_contour_colours(
+                    options, k + 1, self.scheme,
+                    parse=lambda t: self.tr.parse_color_alpha(
+                        t, "ccolors")[0])
+                return ([cols[min(i, len(cols) - 1)] for i in range(k)],
+                        [med * _DASH_CONTOUR_HAIRLINE] * k)
+            lcol, lwid = _style(n)
+            kw = dict(x=gx, y=gy, z=gz if drawable else gz,
+                      levels=[float(c) for c in cuts] or [0.0],
+                      line_color=lcol or ["#000000"],
+                      line_width=lwid or [med])
+            if parts["dash"] is not None:
+                # One pattern a level: Bokeh's contour reads a list of
+                # numbers as a pattern per level.
+                kw["line_dash"] = [list(parts["dash"])] * max(len(
+                    kw["levels"]), 1)
+            lr = fig.contour(**kw)
+            lr._dash_contour_sources = [lr.fill_renderer.data_source,
+                                        lr.line_renderer.data_source]
+            lr.tags = ["dash_contour_lines"]
+            if drawable and not cr._dash_contour_capped:
+                lsrc = lr.line_renderer.data_source
+                geo = ("xs", "ys", "levels", "lower_levels", "upper_levels")
+                styles = {}
+                for k in range(1, max(int(n), 1) + 1):
+                    _c, _w = _style(k)
+                    styles[str(k)] = {"line_color": list(_c),
+                                      "line_width": [float(w) for w in _w]}
+                for k in rule["styles"]:
+                    if k not in styles:
+                        _c, _w = _style(int(k))
+                        styles[k] = {"line_color": list(_c),
+                                     "line_width": [float(w) for w in _w]}
+                lr._dash_agg_source = lsrc
+                lr._dash_agg_config = dict(
+                    base_cfg, type="contour", part="line",
+                    extra={k: [v.item() if hasattr(v, "item") else v
+                               for v in col]
+                           for k, col in lsrc.data.items() if k not in geo},
+                    styles=styles)
+                lr._dash_agg_rows = self._agg_member_ids(source, view)
+            out.append(lr)
+        return out
 
     def _contour_refit_rule(self, options, lines_only, n_cuts) -> dict:
         """What the saved page needs to cut a contour again after a filter
@@ -29112,6 +29222,74 @@ def _dash_contour_colours(options, n_levels, scheme, parse=None):
         rule, start, end, k,
         scheme_p=list(getattr(scheme, "p_colors", None) or []),
         sv=_dash_colorrule_sv(scheme))
+
+
+#: WP-32: twoway's .001 contour boundary against a medium line in its SVG
+#: (3.00 of the SVG's units dashed, 9.72 for medium).
+_DASH_CONTOUR_HAIRLINE = 3.0 / 9.72
+
+
+def _dash_contour_parts(options):
+    """What contour draws besides its bands (WP-32): ``{"heat", "lines",
+    "outlines", "dash"}`` -- heatmap's cells; boundary lines under
+    outlines, alpattern() or sort; outlines' black; the boundary's Bokeh
+    dash list (alpattern()'s pattern, sort's that of ``dash``), or None
+    for a solid one."""
+    o = options or {}
+    on = lambda k: bool(str(o.get(k, "") or "").strip())  # noqa: E731
+    alp = str(o.get("alpattern", "") or "").strip()
+    dash = None
+    if alp:
+        try:
+            dash = OptionTranslator.translate_lpattern(alp)
+        except (ValueError, TypeError):
+            dash = None
+    elif on("sort"):
+        dash = OptionTranslator.translate_lpattern("dash")
+    if dash is not None and not list(dash):
+        dash = None
+    return {"heat": on("heatmap"),
+            "lines": on("outlines") or bool(alp) or on("sort"),
+            "outlines": on("outlines"), "dash": dash}
+
+
+def _dash_contour_heat_cells(gx, gy, gz, levels, colours):
+    """heatmap's cells (WP-32): one per finite node of the grid *gx* (nx)
+    by *gy* (ny), *gz* ``[iy, ix]``, from the midpoints between its
+    neighbours -- the grid's ends at its edge -- filled in the colour of
+    the band of *levels* (``colours[k]`` between ``levels[k]`` and
+    ``levels[k + 1]``) its z falls in, as twoway's heatmap fills its grid
+    (measured 19oct2026: a 3 by 3 grid's cells end half way between its
+    nodes)."""
+    gx = np.asarray(gx, dtype=float)
+    gy = np.asarray(gy, dtype=float)
+    z = np.asarray(gz, dtype=float).reshape(len(gy), len(gx))
+
+    def _edges(g):
+        if g.size == 0:
+            return g, g
+        m = (g[:-1] + g[1:]) / 2.0
+        return (np.concatenate([[g[0]], m]), np.concatenate([m, [g[-1]]]))
+
+    xl, xr = _edges(gx)
+    yb, yt = _edges(gy)
+    lv = [float(v) for v in levels]
+    out = {"left": [], "right": [], "bottom": [], "top": [],
+           "fill_color": []}
+    for iy in range(len(gy)):
+        for ix in range(len(gx)):
+            v = z[iy, ix]
+            if not math.isfinite(v) or not colours:
+                continue
+            k = 0
+            while k + 1 < len(lv) - 1 and v >= lv[k + 1]:
+                k += 1
+            out["left"].append(float(xl[ix]))
+            out["right"].append(float(xr[ix]))
+            out["bottom"].append(float(yb[iy]))
+            out["top"].append(float(yt[iy]))
+            out["fill_color"].append(colours[min(k, len(colours) - 1)])
+    return out
 
 
 def _dash_contour_line_style(options, colours, n_cuts):
@@ -33985,6 +34163,31 @@ function dash_contour_rings(S, c) {
 }
 // MultiLine data as Bokeh's contour_data writes it: one entry per level,
 // its lines joined with a NaN between them.
+// WP-32: heatmap's cells (_dash_contour_heat_cells' twin): one per finite
+// node, to the midpoints between nodes, the grid's ends at its edge, in
+// the colour of the band of lv its z falls in.
+function dash_contour_heat(S, lv, cols) {
+    const out = {left: [], right: [], bottom: [], top: [], fill_color: []};
+    const edges = (g) => {
+        const lo = [], hi = [];
+        for (let i = 0; i < g.length; i++) {
+            lo.push(i === 0 ? g[0] : (g[i - 1] + g[i]) / 2);
+            hi.push(i === g.length - 1 ? g[g.length - 1] : (g[i] + g[i + 1]) / 2);
+        }
+        return [lo, hi];
+    };
+    const [xl, xr] = edges(Array.from(S.gx)), [yb, yt] = edges(Array.from(S.gy));
+    for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) {
+        const v = S.gz[iy * S.nx + ix];
+        if (!Number.isFinite(v) || !cols.length) continue;
+        let k = 0;
+        while (k + 1 < lv.length - 1 && v >= lv[k + 1]) k++;
+        out.left.push(xl[ix]); out.right.push(xr[ix]);
+        out.bottom.push(yb[iy]); out.top.push(yt[iy]);
+        out.fill_color.push(cols[Math.min(k, cols.length - 1)]);
+    }
+    return out;
+}
 function dash_contour_lines(S, levels) {
     const xs = [], ys = [];
     for (const c of levels) {
@@ -34714,6 +34917,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         if (S === null) continue;
         if (ac.xaxiskind) S.gx = S.gx.map(v => dash_axis_value_of(v, ac.xaxiskind));
         if (ac.yaxiskind) S.gy = S.gy.map(v => dash_axis_value_of(v, ac.yaxiskind));
+        // WP-32: heatmap's cells are drawn upright, turned with the layer.
+        const _S_up = S;
         if (ac.horizontal) {
             // drawn turned, as map_contour turns it: x and y swap
             const tz = new Float64Array(S.nx * S.ny);
@@ -34739,6 +34944,14 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const _st = (ac.styles || {})[String(_cuts.length)];
         const _cd = Object.assign({}, ac.extra || {}, _st || {});
+        if (ac.part === 'heat') {
+            // WP-32: heatmap's cells over the kept rows' surface, each in
+            // its level's colour (_dash_contour_heat_cells).
+            const lv = [_lo].concat(_cuts, [_hi]);
+            src.data = dash_contour_heat(_S_up, lv, (_st && _st.fill_color) || []);
+            src.change.emit();
+            continue;
+        }
         if (ac.part === 'line') {
             const L = dash_contour_lines(S, _cuts);
             _cd.xs = L.xs; _cd.ys = L.ys; _cd.levels = L.levels;
@@ -58373,9 +58586,10 @@ _DASH_SORT_NAME_RE = re.compile(r"__dashs[1-9][0-9]{0,4}\Z")
 #: sort(varlist)'s order: the types a join key is handed to.
 #: WP-32: rbar mwidth's baroffset(), in screen units: each bar's x, the
 #: variable's value less off bar widths of px pixels at the x range's data
-#: units a pixel.  Args: src, rng, plot, off, px, xcol, col.
+#: units a pixel; turned (horizontal), the y range and the frame's height.
+#: Args: src, rng, plot, off, px, xcol, col, dim.
 _DASH_RBO_JS = """
-const w = plot.inner_width;
+const w = plot[dim];
 const span = rng.end - rng.start;
 if (!(w > 0) || !Number.isFinite(span)) return;
 const k = span / w;
@@ -67119,6 +67333,7 @@ class ServerAppBuilder:
                 # helpers whose defaults read them.
                 "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,
                 "_DASH_CONTOUR_FALLBACK_N = %d" % _DASH_CONTOUR_FALLBACK_N,
+                "_DASH_CONTOUR_HAIRLINE = %r" % (_DASH_CONTOUR_HAIRLINE,),
                 "_DASH_CONTOUR_INTERPS = %r" % (_DASH_CONTOUR_INTERPS,),
                 # WP-31 B4b: the note a contour above the cap prints.
                 "_DASH_CONTOUR_CAP_NOTE = %r" % (_DASH_CONTOUR_CAP_NOTE,),
@@ -67191,6 +67406,8 @@ class ServerAppBuilder:
                     _dash_tag_eval_extent, _dash_eval_values,
                     _dash_contour_colours, _dash_contour_line_style,
                     _dash_contour_fill_levels, _dash_is_horizontal_opts,
+                    # WP-32: contour's heatmap cells and boundary lines.
+                    _dash_contour_parts, _dash_contour_heat_cells,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
                     # Stata's `if' grammar and its arithmetic operators.  The

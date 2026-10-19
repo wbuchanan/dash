@@ -639,6 +639,8 @@ class TestTheParsersFoundSomething:
         # mlabwidth() leave the Unsupported entries: refused, as twoway
         # refuses them (noted_option_truth.json).
         # 266 -> 265: WP-32 play() leaves the Not drawn entry.
+        # 265 -> 265: WP-32 heatmap and outlines leave the Unsupported
+        # entries for two entries of the contour paragraph.
         assert len(found) == 265, (
             f"{len(found)} options parsed out of dash.sthlp, 265 measured "
             f"19oct2026: a reader of the parser lost a form, or the help "
@@ -763,7 +765,8 @@ class TestTheParsersFoundSomething:
         # mlabwidth refused, as twoway refuses them
         # 10 -> 9: WP-32 play() refused, as twoway refuses a recording it
         # cannot find or read
-        assert len(_ignored_options()) == 9
+        # 9 -> 7: WP-32 heatmap and outlines drawn on contour
+        assert len(_ignored_options()) == 7
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -797,7 +800,11 @@ class TestTheParsersFoundSomething:
         # 71 -> 63: WP-32 the eight options twoway refuses on every type
         # leave it (at blabel ciopts filter fitopts link lineopts mlabwidth).
         # 63 -> 62: WP-32 play() leaves it (refused; prose says so).
-        assert len(_unsupported_section()) == 62
+        # 62 -> 60: WP-32 the Contour options entry goes (heatmap and
+        # outlines drawn).
+        # 60 -> 59: WP-32 baroffset() on rbar beside mwidth drawn
+        # (catchall_options_truth.json re-extracted).
+        assert len(_unsupported_section()) == 59
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -905,8 +912,10 @@ class TestTheParsersFoundSomething:
         # dash_setup lines.
         # 468 -> 465: WP-32 the Options of other commands, Bar labels and
         # Build-time options entries go (refused, as twoway refuses them).
-        assert len(defs) == 465, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 465 "
+        # 465 -> 466: WP-32 the Contour options entry goes, the contour
+        # paragraph's heatmap and outlines entries come.
+        assert len(defs) == 466, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 466 "
             f"measured 19oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

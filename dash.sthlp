@@ -582,8 +582,15 @@ was first drawn with, where {cmd:twoway} would draw the key over the kept
 rows' z range.  The saved page
 cuts the polygons with dash's own routine, so their vertices differ from
 {cmd:twoway}'s while the level sets agree, and a node exactly on a cut may
-join rings differently from the served app's.  {opt heatmap} and {opt outlines} are named in a note
-and not drawn, and so are {cmd:contourline}'s legend keys, which
+join rings differently from the served app's.  {opt heatmap} draws
+each node's cell -- to the midpoints between nodes, the grid's ends at
+its edge -- in its level's colour in place of the bands;
+{opt outlines} strokes the bands' boundaries black at twice a medium
+line; {opt alpattern()} dashes the boundaries' hairline in their
+levels' colours, and {opt sort} draws what {cmd:alpattern(dash)} draws,
+as {cmd:twoway} draws each; all four are redrawn after a move.
+{cmd:contourline}'s legend keys are named in a note and not drawn,
+which
 {opt clabels()} and {opt format()} label.  {opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
 {opt le()} is refused, as {cmd:twoway} refuses it, and {opt levels()} above
@@ -592,6 +599,11 @@ integer);
 {opt interp()}, {opt clwidths()}, {opt clpatterns()} and {opt colorlines}
 are typed in full, as {cmd:dash} reads their shorter spellings as other
 options.
+
+{phang2}{opt heatmap} -- {cmd:contour}: the surface's cells in their
+levels' colours in place of the bands, as {cmd:twoway} draws them.{p_end}
+{phang2}{opt outlines} -- {cmd:contour}: the bands' boundaries black at
+twice a medium line, as {cmd:twoway} draws them.{p_end}
 
 {pstd}
 {ul:Bars and range caps.}  {cmd:bar} and {cmd:rbar} draw each bar one unit
@@ -3761,8 +3773,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws nothing
     different.  Beside {cmd:rbar}'s {cmd:mwidth} each marker-wide bar is
     moved {it:#} of its own widths to the {it:left} on the screen, as
-    {cmd:twoway} moves it, whatever the zoom; beside {cmd:mwidth} and
-    {cmd:horizontal} together {cmd:dash} names it in the note{p_end}
+    {cmd:twoway} moves it, whatever the zoom, and turned by
+    {cmd:horizontal} {it:#} of its heights down{p_end}
 {synopt:{opt dotextend(yes|no)}}{cmd:dot}: {cmd:dash} draws {cmd:dot} as
     {cmd:twoway} does, a row of dots through each observation and then
     its marker; the rows run up and down from the y axis's base (0 when
@@ -6520,10 +6532,9 @@ in either direction.
 
 {phang2}{ul:Bar-family settings.}
     {opt bartype(spanning)}, {opt bargap(#)}, {opt dropto(#)} on
-    {cmd:bar} and the other bar-derived types, and {opt baroffset(#)} on
-    {cmd:rbar} beside {cmd:mwidth} and {cmd:horizontal}.  {cmd:bargap()} is an option of {cmd:graph bar}:
+    {cmd:bar} and the other bar-derived types.  {cmd:bargap()} is an option of {cmd:graph bar}:
     {cmd:twoway bar} accepts it and draws nothing different.  {cmd:dash}
-    names all four.
+    names all three.
 
 {phang2}{ul:A dot plot's line pattern.}
     {opt dlpattern(linepattern)} -- the pattern of the dots' outline on a
@@ -6573,10 +6584,6 @@ in either direction.
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
-
-{phang2}{ul:Contour options.}
-    {opt heatmap}, {opt outlines} -- {cmd:contour} draws its bands without
-    the heatmap's cells or the bands' outlines.
 
 {phang2}{ul:Not drawn.}
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},

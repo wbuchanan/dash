@@ -2953,7 +2953,7 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, logging|logging)" ///
     "bar mpg weight, omitallmiss|omitallmiss)" ///
-    "contour mpg weight length, heatmap|heatmap)" {
+    "scatter mpg weight, nologging|nologging)" {
     local ++_u51n
     gettoken _u51x _u51m : _u51p, parse("|")
     local _u51m = substr(`"`_u51m'"', 2, .)
@@ -2971,6 +2971,8 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
 // maxaxes(), logging and omitallmiss, which twoway takes and dash names,
 // carry the cases.
 // Flipped (WP-32): U51-8's bare headlabel on pcspike is taken in silence,
+// Flipped (WP-32): the bare heatmap on contour is drawn now (U55-11), so a
+// bare nologging carries U51-8.
 // as twoway draws nothing of it there (U55-6); a bare heatmap on contour
 // carries the case.
 // U51-6 .. U51-8 (WP-32): a bare sort, which dash does not draw on
@@ -3216,7 +3218,7 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     "dot mpg weight, recast(line)@0" ///
     "lfit mpg weight, sort@0" ///
     "histogram mpg, sort(price)@0" ///
-    "contour mpg weight length, heatmap@1" ///
+    "contour mpg weight length, heatmap@0" ///
     "area mpg weight, lstyle(p3)@0" ///
     "pcarrow mpg weight trunk turn, mstyle(p3) mlstyle(p4)@0" ///
     "rbar mpg trunk weight, baroffset(1)@0" ///
@@ -3225,7 +3227,10 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
     "contourline mpg weight length, sort dlalign(inside)@0" ///
     "scatter mpg weight, sort@0" ///
     "scatter mpg weight, sort(price)@0" ///
-    "pcspike mpg weight trunk turn, sort@0" {
+    "pcspike mpg weight trunk turn, sort@0" ///
+    "contour mpg weight length, outlines@0" ///
+    "contour mpg weight length, alpattern(dash)@0" ///
+    "contour mpg weight length, sort@0" {
     local ++_u55n
     gettoken _u55x _u55w : _u55p, parse("@")
     local _u55w = substr("`_u55w'", 2, .)
@@ -3246,7 +3251,9 @@ foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) al
 // silence where twoway draws the same.
 // 17 -> 20: WP-32 sort and sort(varlist) on the marker types drawn in
 // sort order, not named.
-_ov_assert U55-0 "(`_u55n' == 20)" "the 20 U55 cases ran"
+// 20 -> 23: WP-32 contour's outlines, alpattern() and sort drawn, not
+// named (U55-11, heatmap, flipped: drawn).
+_ov_assert U55-0 "(`_u55n' == 23)" "the 23 U55 cases ran"
 // U55-0s (WP-32): sort(price) on scatter writes its rank list, which
 // both renderers draw the layer in.
 capture dash clear

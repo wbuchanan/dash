@@ -1473,8 +1473,9 @@ program define _dash_parse_plot_opts, sclass
     // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
     // WP-31 B4b: contour's heatmap drawing and its band outlines.
-    if `: length local heatmap' local _dash_pending `"`_dash_pending' heatmap"'
-    if `: length local outlines' local _dash_pending `"`_dash_pending' outlines"'
+    // WP-32: heatmap and outlines are drawn on contour as twoway draws
+    // them (map_contour's _contour_parts) and change nothing on
+    // contourline: not named.
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -2893,13 +2894,19 @@ program define _dash_fold_typed, sclass
     // twoway's rbar rects stand where bar's do), so baroffset() is named on
     // rbar only beside mwidth, whose marker-wide view was not measured
     // with it.
-    local bo_named "rbar"
-    // WP-32: beside mwidth too, moved in screen units (_DASH_RBO_JS),
-    // upright only; turned it was not measured.
-    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != "" & st_global("s(mwidth)") != "" & st_global("s(horizontal)") != ""))
-    if `_ft' & `: list ptype in bo_named' local named "`named' baroffset"
+    // WP-32: beside mwidth too, upright and turned, moved in screen units
+    // (_DASH_RBO_JS): never named.
     mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
     if "`ptype'" == "rbar" & `_ft' local named "`named' msize"
+    // WP-32: on contour, alpattern() and sort dash the bands' hairline
+    // boundaries, as twoway draws them (_contour_parts): not named.
+    if "`ptype'" == "contour" {
+        local _ct_drawn "alpattern sort"
+        mata: st_local("_ftp", st_global("s(_pending)"))
+        local _ftk : list _ftp - _ct_drawn
+        if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
+        local named : list named - _ct_drawn
+    }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
 end
 

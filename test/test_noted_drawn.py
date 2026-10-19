@@ -229,7 +229,7 @@ class TestRbarMwidthBaroffset:
         xs = list(map(float, a["src"].data[a["xcol"]][:3]))
         prog = ("const src={data:{%s:%s}, change:{emit(){}}};"
                 "const rng={start:0,end:10}; const plot={inner_width:100};"
-                "const off=%r, px=%r, xcol=%s, col=%s;"
+                "const off=%r, px=%r, xcol=%s, col=%s, dim='inner_width';"
                 "(function(){%s})();"
                 "console.log(JSON.stringify(src.data[col]));") % (
             json.dumps(a["xcol"]), json.dumps(xs), a["off"], a["px"],
@@ -245,3 +245,104 @@ class TestRbarMwidthBaroffset:
         r, _ = self._rect(mode, {"mwidth": "mwidth"})
         f = r.glyph.x if isinstance(r.glyph.x, str) else r.glyph.x.field
         assert f == "weight"
+
+
+def _contours(rs):
+    return [r for r in rs if type(r).__name__ == "ContourRenderer"]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestContourParts:
+    """contour's heatmap, outlines, alpattern() and sort, as twoway draws
+    them on a grid (measured 19oct2026, graph export SVG): heatmap fills
+    each node's cell -- to the midpoints between nodes, the grid's ends at
+    its edge -- in its level's colour in place of the bands; outlines
+    strokes the bands' boundaries black at twice a medium line; alpattern()
+    dashes their hairline boundaries (twoway's .001 line, a third of a
+    medium one in its SVG), and sort draws what alpattern(dash) draws."""
+
+    def _figs(self, mode, opts):
+        if isinstance(opts, dict):
+            opts = [opts]
+        d = tsr._draw(tp._spec([plot_for("contour", o) for o in opts],
+                               {"scheme": "stcolor"}, {}), mode)
+        rs = [r for f in d.figures for r in f.renderers]
+        return rs, [m for m in d.warnings if m.startswith("dash")]
+
+    def test_heatmap_draws_cells(self, mode):
+        rs, notes = self._figs(mode, {"heatmap": "heatmap"})
+        heat = [r for r in rs if isinstance(r, GlyphRenderer)
+                and type(r.glyph).__name__ == "Quad"
+                and "dash_contour_heat" in (r.tags or [])]
+        assert heat, "no heatmap cells"
+        d = heat[0].data_source.data
+        assert len(d["left"]) > 4
+        L, R = np.asarray(d["left"]), np.asarray(d["right"])
+        assert np.all(R > L)
+        assert not [n for n in notes if "heatmap" in n]
+
+    def test_outlines_are_black_and_twice_medium(self, mode):
+        rs, notes = self._figs(mode, {"outlines": "outlines"})
+        cs = _contours(rs)
+        assert len(cs) == 2, cs
+        lines = cs[1].line_renderer
+        cols = lines.data_source.data.get("line_color") or [
+            lines.glyph.line_color]
+        assert set(map(str.lower, map(str, cols))) == {"#000000"}
+        import dash_render as dr
+        med = dr.OptionTranslator.translate_lwidth("medium")
+        ws = lines.data_source.data.get("line_width") or [
+            lines.glyph.line_width]
+        assert all(abs(float(w) - 2 * med) < 1e-6 for w in ws)
+        assert not [n for n in notes if "outlines" in n]
+
+    @pytest.mark.parametrize("o", [{"alpattern": "dash"}, {"sort": "sort"}])
+    def test_alpattern_and_sort_dash_a_hairline(self, mode, o):
+        rs, notes = self._figs(mode, o)
+        cs = _contours(rs)
+        assert len(cs) == 2, cs
+        lr = cs[1].line_renderer
+        d = lr.data_source.data.get("line_dash")
+        dash = list(d[0]) if d else list(lr.glyph.line_dash)
+        assert dash not in ([], ["solid"])
+        assert not [n for n in notes if "alpattern" in n or "sort" in n]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestRbarMwidthBaroffsetTurned:
+    """rbar mwidth horizontal baroffset(#): each marker-tall bar moved #
+    of its own heights down the screen, toward the lower values -- (1) by
+    +33.75 of the SVG's y, (-1) by -33.75, (5) by +168.75 (measured
+    19oct2026) -- as upright it moves left."""
+
+    def test_the_turned_bars_move_along_y(self, mode):
+        rs, notes = _renderers(plot_for("rbar", {
+            "mwidth": "mwidth", "baroffset": "1",
+            "horizontal": "horizontal"}), mode)
+        [r] = [r for r in rs if type(r.glyph).__name__ == "Rect"]
+        cbs = getattr(r, "_dash_rbo_callbacks", [])
+        assert cbs, "no screen-offset callback"
+        a = cbs[0].args
+        assert a["dim"] == "inner_height"
+        f = r.glyph.y if isinstance(r.glyph.y, str) else r.glyph.y.field
+        assert f == a["col"]
+        assert not [n for n in notes if "baroffset" in n]
+
+
+class TestContourHeatCells:
+    """The heatmap's cells end half way between consecutive nodes and at
+    the grid's ends, as twoway's heatmap rectangles do (U23-1 in
+    test_wp31_truth.cscript measures the same edges); a missing node draws
+    no cell (interp(none), U23-4)."""
+
+    def test_cells_end_half_way_between_nodes(self):
+        import dash_render as dr
+        c = dr._dash_contour_heat_cells(
+            [1.0, 2.0, 4.0], [10.0, 20.0],
+            [[1.0, 2.0, float("nan")], [3.0, 4.0, 5.0]],
+            [0.0, 2.5, 6.0], ["#a", "#b"])
+        assert c["left"] == [1.0, 1.5, 1.0, 1.5, 3.0]
+        assert c["right"] == [1.5, 3.0, 1.5, 3.0, 4.0]
+        assert c["bottom"] == [10.0, 10.0, 15.0, 15.0, 15.0]
+        assert c["top"] == [15.0, 15.0, 20.0, 20.0, 20.0]
+        assert c["fill_color"] == ["#a", "#a", "#b", "#b", "#b"]

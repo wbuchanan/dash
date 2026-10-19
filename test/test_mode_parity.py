@@ -2576,8 +2576,16 @@ CORPUS = [
     _case("histogram mwidth", [plot_for("histogram", {"mwidth": "mwidth"})]),
     # WP-32: marker layers drawn in sort order.
     _case("scatter sort", [plot_for("scatter", {"sort": "sort"})]),
+    # WP-32: contour's heatmap cells and boundary lines.
+    _case("contour heatmap", [plot_for("contour", {"heatmap": "heatmap"})]),
+    _case("contour outlines", [plot_for("contour", {"outlines": "outlines"})]),
+    _case("contour alpattern(dash)", [plot_for("contour", {"alpattern": "dash"})]),
+    _case("contour sort", [plot_for("contour", {"sort": "sort"})]),
     _case("rbar mwidth baroffset(1)", [plot_for(
         "rbar", {"mwidth": "mwidth", "baroffset": "1"})]),
+    _case("rbar mwidth horizontal baroffset(1)", [plot_for(
+        "rbar", {"mwidth": "mwidth", "baroffset": "1",
+                 "horizontal": "horizontal"})]),
     _case("histogram horizontal mwidth", [plot_for(
         "histogram", {"mwidth": "mwidth", "horizontal": "horizontal"})]),
     _case("dropline sort", [plot_for("dropline", {"sort": "sort"})]),
@@ -3788,6 +3796,12 @@ MOVE_CORPUS = [
                [plot_for("histogram", {"mwidth": "mwidth"})]),
     _move_case("scatter sort after a move", _MOVES[0],
                [plot_for("scatter", {"sort": "sort"})]),
+    _move_case("contour heatmap after a move", _MOVES[0],
+               [plot_for("contour", {"heatmap": "heatmap"})]),
+    _move_case("contour outlines after a move", _MOVES[0],
+               [plot_for("contour", {"outlines": "outlines"})]),
+    _move_case("contour alpattern after a move", _MOVES[0],
+               [plot_for("contour", {"alpattern": "dash"})]),
     _move_case("rbar mwidth baroffset after a move", _MOVES[0],
                [plot_for("rbar", {"mwidth": "mwidth", "baroffset": "1"})]),
     _move_case("histogram horizontal mwidth after a move", _MOVES[0],

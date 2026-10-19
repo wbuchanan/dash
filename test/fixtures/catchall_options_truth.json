@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "b9afd446fc895ba7a5ff8fcf0dc0d45f371dcc09",
-  "extracted": "18 Oct 2026 07:46:48",
+  "dash_commit": "37c96b5efbbf4bdafa91f335ac04b6731da8bd54",
+  "extracted": "19 Oct 2026 07:04:08",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
@@ -12,7 +12,6 @@
   "alalign",
   "back",
   "bargap",
-  "baroffset",
   "bartype",
   "bcolor",
   "below",
@@ -132,9 +131,7 @@
    "cmd": "rbar yl yh weight, baroffset(1)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "baroffset"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
