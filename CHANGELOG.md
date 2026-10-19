@@ -943,6 +943,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - `title("T", span)` (and subtitle(), note() and caption()) kept the box on the plot region; a spanned box above or below the plot is placed on the whole graph, as twoway draws it: centred on the graph's width, or at its left or right end at a corner clock, in the saved page and the served app and after a resize. (WP-32)
 - An all-missing scatter and a lowess on an x that does not vary draw nothing in silence, and a kdensity of a variable that does not vary draws twoway's n() points at that value at a density of 0 (the kernel's height with bwidth()), in the saved page, the served app and after a filter move, as twoway draws them; dash said "drew nothing" for each and drew no kdensity point. (WP-32)
 - scheme(meta) drew a black outline round the legend and the KPI cards, where twoway draws none (`linestyle legend none`); dash-meta.scheme is regenerated with that directive and the legend and the cards are drawn without an outline, as twoway draws them; a scheme of your own with `linestyle legend none` draws the same. (WP-32)
+- The data file dash writes for each dashboard holds its numbers as binary columns (little-endian float64, or float32 where every value is exactly one), each missing value, .a to .z included, read back as missing with its letter kept: a million values take 8.0 MB and load in 0.03 s, where one JSON object per observation took 19.8 MB and 0.43 s (measured 19oct2026); a data file in the old layout is still read. (WP-32, G3b)
 
 ### Fixed in WP-31
 

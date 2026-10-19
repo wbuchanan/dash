@@ -311,7 +311,9 @@ class TestTheWriter:
         path, msg = _write(tmp_path, _fake_auto(), "rowid y g s")
         assert msg == ""
         d = _load(path)
-        assert set(d) == {"values", "firstRecordId", "lastRecordId",
+        # Flipped (WP-32, G3b): the values are written by column.
+        assert set(d) == {"dataFormat", "columns", "firstRecordId",
+                          "lastRecordId",
                           "variableIndices", "variableIsString",
                           "storageTypes", "variableNames", "variableLabels",
                           "valueLabelNames", "valueLabels",
@@ -324,11 +326,12 @@ class TestTheWriter:
         assert d["variableIndices"] == [1, 2, 3, 4]
         assert d["variableIsString"] == {"rowid": False, "y": False,
                                          "g": False, "s": True}
-        assert list(d["values"][0]) == ["rowid", "y", "g", "s"]
+        assert list(d["columns"]) == ["rowid", "y", "g", "s"]
 
     def test_every_string_is_written_exactly(self, tmp_path):
         path, _ = _write(tmp_path, _fake_auto(), "s")
-        got = [r["s"] for r in _load(path)["values"]]
+        # Flipped (WP-32, G3b): the values are written by column.
+        got = _load(path)["columns"]["s"]
         assert got == ADVERSARIAL
 
     def test_the_file_is_utf8_and_never_holds_a_raw_script_end(self, tmp_path):
@@ -342,10 +345,12 @@ class TestTheWriter:
 
     def test_numbers_are_doubles_and_missing_is_jsonios_null(self, tmp_path):
         path, _ = _write(tmp_path, _fake_auto(), "rowid g")
-        vals = _load(path)["values"]
-        assert vals[0]["rowid"] == 1.0 and isinstance(vals[0]["rowid"], float)
-        assert vals[1]["g"] == "null" and vals[2]["g"] == "null"
-        assert vals[3]["g"] == 0.0
+        # Flipped (WP-32, G3b): a binary array, a missing value a NaN.
+        with open(path, encoding="utf-8") as fh:
+            cols = dr._dash_read_data_json(fh.read())["columns"]
+        assert cols["rowid"][0] == 1.0 and cols["rowid"].dtype == float
+        assert cols["g"][1] != cols["g"][1] and cols["g"][2] != cols["g"][2]
+        assert cols["g"][3] == 0.0
 
     def test_labels_are_written_as_stata_holds_them(self, tmp_path):
         path, _ = _write(tmp_path, _fake_auto(), "g s")
@@ -361,7 +366,8 @@ class TestTheWriter:
         path, _ = _write(tmp_path, _fake_auto(strl=True), "s")
         d = _load(path)
         assert d["variableIsString"] == {"s": True}
-        assert [r["s"] for r in d["values"]] == ADVERSARIAL
+        # Flipped (WP-32, G3b): the values are written by column.
+        assert d["columns"]["s"] == ADVERSARIAL
 
     def test_a_name_given_twice_is_written_once(self, tmp_path):
         path, _ = _write(tmp_path, _fake_auto(), "s y s y")
@@ -371,7 +377,9 @@ class TestTheWriter:
         fake = FakeSfi({"y": [], "s": []}, {"y": "double", "s": "str"})
         path, msg = _write(tmp_path, fake, "y s")
         d = _load(path)
-        assert msg == "" and d["values"] == [] and d["numberOfRecords"] == 0
+        # Flipped (WP-32, G3b): the values are written by column.
+        assert msg == "" and d["columns"]["s"] == []
+        assert d["numberOfRecords"] == 0
 
     def test_text_that_is_not_utf8_is_read_through_ustrfix(self, tmp_path):
         """jsonio wrote each invalid byte as U+FFFD and the page was drawn
@@ -384,7 +392,8 @@ class TestTheWriter:
         fake.bad = {("s", 4)}
         path, msg = _write(tmp_path, fake, "y s")
         assert msg == ""
-        assert [r["s"] for r in _load(path)["values"]] == values
+        # Flipped (WP-32, G3b): the values are written by column.
+        assert _load(path)["columns"]["s"] == values
         assert list(fake.columns) == ["rowid", "y", "g", "s"]   # dropped
         made = [c for c in fake.commands if c.startswith("quietly generate")]
         assert len(made) == 1 and re.fullmatch(
@@ -478,7 +487,8 @@ class TestTheWriter:
         big = "<" + "x" * (1 << 20) + "`\">"
         fake = _fake_auto([big, "a", "b"], strl=True)
         path, _ = _write(tmp_path, fake, "s")
-        assert _load(path)["values"][0]["s"] == big
+        # Flipped (WP-32, G3b): the values are written by column.
+        assert _load(path)["columns"]["s"][0] == big
 
 
 # ===========================================================================

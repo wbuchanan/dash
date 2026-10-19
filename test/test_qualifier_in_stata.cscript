@@ -293,8 +293,8 @@ def _qs_spec_facts():
     with open(_qs_M.getGlobal("QS_DATA"), encoding="utf-8") as fh:
         data = _qs_json.load(fh)
     data = data.get("StataJSON", data)
-    vals = data.get("values", [])
-    cols = sorted(vals[0].keys()) if vals else []
+    # The column layout (WP-32, G3b): one entry a variable.
+    cols = sorted(data.get("columns", {})) if data.get("numberOfRecords") else []
     texts, quals = [], []
     for g in spec.get("graphs", []):
         for o in [g] + list(g.get("plots", [])):
@@ -533,8 +533,13 @@ python:
 with open(_qs_M.getGlobal("QS_DATA"), encoding="utf-8") as fh:
     _qs_d = _qs_json.load(fh)
 _qs_d = _qs_d.get("StataJSON", _qs_d)
-_qs_M.setGlobal("QS_Q1", " ".join(str(int(r["__dashq1"])) for r in _qs_d["values"]))
-_qs_M.setGlobal("QS_Q2", " ".join(str(int(r["__dashq2"])) for r in _qs_d["values"]))
+# Each column one base64 array (WP-32, G3b).
+import base64 as _qs_b64, numpy as _qs_np
+def _qs_dcol(v):
+    c = _qs_d["columns"][v]
+    return _qs_np.frombuffer(_qs_b64.b64decode(c["base64"]), dtype=c["dtype"])
+_qs_M.setGlobal("QS_Q1", " ".join(str(int(x)) for x in _qs_dcol("__dashq1")))
+_qs_M.setGlobal("QS_Q2", " ".join(str(int(x)) for x in _qs_dcol("__dashq2")))
 end
 local truth1 ""
 local truth2 ""

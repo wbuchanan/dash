@@ -96,8 +96,10 @@
 *!           with: line feeds, .5, 1.00000000000e-07, .a, display-format
 *!           dates, labels, RFC 4180 quoting, no byte-order mark
 *!   HC2-38  dash's writer (_dash_write_data; jsonio until 24sep2026)
-*!           writes every missing value, extended ones included, as null --
-*!           so the CSV's field for .a is empty
+*!           writes every missing value, extended ones included, as a
+*!           missing number (a NaN in its binary column since WP-32, null
+*!           before), an extended one's letter apart -- so the CSV's field
+*!           for .a is empty
 *!   HC2-39  the columns dash exports: every variable the dashboard uses,
 *!           a KPI card's included, in the order the dashboard names them
 *!   HC2-40  import delimited reads through a byte-order mark and CR LF
@@ -1058,9 +1060,13 @@ else display as text "HC2-37k SKIP: the help's line-feed claim is Stata for Mac'
 mata: st_local("_bom", strofreal(_hc2_rawhas(st_local("ed"), char(239) + char(187) + char(191))))
 _hc2_ok "HC2-37l" `=`_bom' == 0' "export delimited writes no byte-order mark"
 
-// HC2-38 -- dash's writer writes every missing value as null.  This ran
-// `jsonio out' itself until 24sep2026, after dash stopped using jsonio: it
-// certified a package dash does not call.
+// HC2-38 -- dash's writer writes every missing value as a missing number,
+// an extended one's letter apart in extendedMissing.  This ran `jsonio out'
+// itself until 24sep2026, after dash stopped using jsonio: it certified a
+// package dash does not call.
+// Flipped (WP-32, G3b): the numbers are binary columns, so a missing value
+// is a NaN in x's column, not the text "null"; the letters were already
+// apart (WP-31 G1).
 preserve
 clear
 input double x double y
@@ -1071,10 +1077,12 @@ end
 local jj "`hc2f'_38.json"
 quietly _dash_write_data "`jj'" x y
 restore
-cert_file_has "`jj'", needle(`""x":"null""')
-local n_null = r(found)
+cert_file_has "`jj'", needle(`""extendedMissing":{"x":{"1":"a","2":"z"}}"')
+local n_ext = r(found)
+cert_file_has "`jj'", needle(`""x":{"dtype":"<f4","base64":"')
+local n_bin = r(found)
 cert_file_has "`jj'", needle(".a")
-_hc2_ok "HC2-38" `=`n_null' == 1 & r(found) == 0' "dash writes an extended missing value as null, never as .a"
+_hc2_ok "HC2-38" `=`n_ext' == 1 & `n_bin' == 1 & r(found) == 0' "dash writes an extended missing value as a missing number with its letter apart, never as .a"
 
 // HC2-39 -- the columns: every variable the dashboard uses, a KPI card's
 // included, in the order the dashboard names them.

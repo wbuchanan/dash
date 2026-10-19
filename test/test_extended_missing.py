@@ -184,8 +184,11 @@ class TestTheDataPath:
         assert dr._dash_write_stata_data(str(path), "rep78",
                                          sfi=_Sfi(raw)) == ""
         doc = json.loads(path.read_text())
-        assert [r["rep78"] for r in doc["values"]] == [
-            1.0, "null", "null", "null", 3.0]
+        # Flipped (WP-32, G3b): the values are a binary column, each
+        # missing one a NaN.
+        got = dr._dash_read_data_json(path.read_text())["columns"]["rep78"]
+        assert np.array_equal(got, [1.0, np.nan, np.nan, np.nan, 3.0],
+                              equal_nan=True)
         assert doc["extendedMissing"] == {"rep78": {"1": "a", "3": "b"}}
 
     def test_writer_omits_the_key_without_codes(self, tmp_path):

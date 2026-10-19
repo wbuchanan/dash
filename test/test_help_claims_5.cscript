@@ -660,10 +660,13 @@ label values em hc5eml
 dash scatter mpg weight, mlabel(em) name(hc16)
 tempfile hc16s hc16d
 _dash_serve_spec, specpath("`hc16s'") datapath("`hc16d'")
-// dash's writer puts no blank around the colon; jsonio, which wrote this
-// file until 24sep2026, put one on each side.
-_hc5_count "`hc16d'" `""em":"null""'
-assert r(n) == 3
+// Flipped (WP-32, G3b): the data file's numbers are binary columns, so
+// the three missing values are three NaNs in em's column, where they were
+// three "em":"null"; each extended one's letter is apart (WP-31 G1).
+python: import base64 as _h16b, json as _h16j, numpy as _h16n; from sfi import Macro as _h16M; _h16c = _h16j.load(open(_h16M.getLocal("hc16d"), encoding="utf-8"))["columns"]["em"]; _h16M.setLocal("hc16nan", str(int(_h16n.isnan(_h16n.frombuffer(_h16b.b64decode(_h16c["base64"]), dtype=_h16c["dtype"])).sum())))
+assert "`hc16nan'" == "3"
+_hc5_count "`hc16d'" `""extendedMissing":{"em":{"0":"a","1":"b"}}"'
+assert r(n) == 1
 _hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
 _hc5_count "`svg'" ">REFUSED<"
 assert r(n) == 1
@@ -674,7 +677,7 @@ _hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
 _hc5_count "`svg'" ">.a<"
 assert r(n) == 1
 capture dash clear
-display "HC5-16 PASS: dash writes ., .a and .b as the same null; twoway draws .a as REFUSED or .a and .b as .b"
+display "HC5-16 PASS: dash writes ., .a and .b as missing numbers, the letters apart; twoway draws .a as REFUSED or .a and .b as .b"
 
 // ================================================================
 // HC5-17 -- the help's example global

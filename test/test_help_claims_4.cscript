@@ -430,7 +430,8 @@ _m = re.search(r'^_DATA_B64 = "([A-Za-z0-9+/=]*)"$', _src, re.M)
 _doc = json.loads(base64.b64decode(_m.group(1)).decode("utf-8")) if _m else {}
 _sj = _doc.get("StataJSON", _doc)
 _vars = sorted(_sj.get("variableNames", []))
-_nobs = len(_sj.get("values", []))
+# The column layout (WP-32, G3b) counts its rows; the row layout lists them.
+_nobs = _sj.get("numberOfRecords", len(_sj.get("values", [])))
 Macro.setGlobal("hc415_vars", " ".join(_vars))
 Macro.setGlobal("hc415_nobs", str(_nobs))
 end

@@ -1194,9 +1194,122 @@ def _dash_read_data_json(text):
                 return v
         return _double(s)
 
-    return _dash_attach_missing_codes(
-        json.loads(text, parse_int=_integer, parse_float=_double,
-                   parse_constant=lambda _name: None))
+    doc = json.loads(text, parse_int=_integer, parse_float=_double,
+                     parse_constant=lambda _name: None)
+    # The column layout's binary numbers decoded first (WP-32, G3b), so
+    # the extended missing letters join columns of the file's length.
+    _dash_decode_columns(doc.get("StataJSON", doc)
+                         if isinstance(doc, dict) else None)
+    return _dash_attach_missing_codes(doc)
+
+
+#: The data file's column layout (WP-32, GAPS3 G3b): the writer's
+#: ``dataFormat``.  A file without the key is the row layout jsonio wrote
+#: (``values``, one object per observation), still read; any other value is
+#: refused.
+_DASH_DATA_FORMAT = "dash-columns-1"
+
+#: The binary column types a column-layout file may hold: little-endian
+#: float64, and float32 for a column every value of which is exactly one.
+_DASH_COLUMN_DTYPES = ("<f8", "<f4")
+
+
+def _dash_pack_column(values):
+    """One numeric variable as the column layout writes it (WP-32, G3b).
+
+    *values* is the column, ``None`` for each missing value (``.`` and
+    ``.a`` to ``.z`` alike; the letters travel in ``extendedMissing``).
+    Returns ``{"dtype": "<f4" | "<f8", "base64": text}``: the values as
+    little-endian float64, each missing one a NaN (Stata holds none), or as
+    float32 when every value is exactly a float32 -- a byte, int or float
+    variable always is -- so the column reads back bit for bit as Stata
+    holds it either way.
+    """
+    arr = np.array(values, dtype=np.float64)
+    with np.errstate(over="ignore", invalid="ignore"):
+        small = arr.astype("<f4")
+    out = (small if np.array_equal(small.astype(np.float64), arr,
+                                   equal_nan=True) else arr.astype("<f8"))
+    return {"dtype": out.dtype.str,
+            "base64": base64.b64encode(out.tobytes()).decode("ascii")}
+
+
+def _dash_decode_columns(sj):
+    """Decode a column-layout data file's ``columns`` in place (WP-32, G3b).
+
+    Nothing is done for a file without ``dataFormat`` (the row layout).
+    Otherwise every name in ``variableNames`` must have its column -- a
+    string variable a list of ``numberOfRecords`` texts, any other a
+    ``{"dtype", "base64"}`` pair of a type in :data:`_DASH_COLUMN_DTYPES`
+    holding exactly ``numberOfRecords`` values -- or ``ValueError`` is
+    raised, as for a file that is not JSON.  A numeric column becomes a
+    float64 array of its own (writable), each value no double holds
+    (NaN, an infinity) missing, as the row reader reads them; a column
+    already decoded is kept.  Columns no variable names are dropped.
+    """
+    if not isinstance(sj, dict) or "dataFormat" not in sj:
+        return
+    if sj["dataFormat"] != _DASH_DATA_FORMAT:
+        raise ValueError("dash: the data file's layout is not one this "
+                         "renderer reads.")
+    n = sj.get("numberOfRecords")
+    names = sj.get("variableNames")
+    cols = sj.get("columns")
+    if (type(n) is not int or n < 0 or not isinstance(names, list)
+            or not all(isinstance(v, str) for v in names)
+            or len(set(names)) != len(names) or not isinstance(cols, dict)):
+        raise ValueError("dash: the data file's columns are malformed.")
+    flags = dict(sj.get("variableTypeIsString") or {})
+    flags.update(sj.get("variableIsString") or {})
+    out = {}
+    for v in names:
+        c = cols.get(v)
+        if flags.get(v):
+            if (not isinstance(c, list) or len(c) != n
+                    or not all(isinstance(x, str) for x in c)):
+                raise ValueError(f"dash: the data file's column {v!r} is "
+                                 f"malformed.")
+            out[v] = c
+            continue
+        if (isinstance(c, np.ndarray) and c.dtype == np.float64
+                and c.shape == (n,)):
+            out[v] = c
+            continue
+        if (not isinstance(c, dict) or c.get("dtype") not in
+                _DASH_COLUMN_DTYPES or not isinstance(c.get("base64"), str)):
+            raise ValueError(f"dash: the data file's column {v!r} is "
+                             f"malformed.")
+        dt = np.dtype(c["dtype"])
+        # binascii.Error, a bad character or length, is a ValueError.
+        raw = base64.b64decode(c["base64"], validate=True)
+        if len(raw) != n * dt.itemsize:
+            raise ValueError(f"dash: the data file's column {v!r} does not "
+                             f"hold {n} values.")
+        a = np.frombuffer(raw, dtype=dt).astype(np.float64)
+        a[~np.isfinite(a)] = np.nan
+        out[v] = a
+    sj["columns"] = out
+
+
+def _dash_columns_frame(sj):
+    """The frame of a column-layout data file (WP-32, G3b), or ``None`` for
+    the row layout, which each loader reads as before.
+
+    One column per name in ``variableNames``, in their order: a numeric
+    variable float64 (NaN missing), a string one its text.  A file of no
+    observations is :func:`_dash_empty_frame`'s, as in the row layout.
+    *sj* is decoded first if it has not been (:func:`_dash_decode_columns`).
+    """
+    if not isinstance(sj, dict) or "dataFormat" not in sj:
+        return None
+    _dash_decode_columns(sj)
+    names = list(sj["variableNames"])
+    if not sj["numberOfRecords"]:
+        flags = dict(sj.get("variableTypeIsString") or {})
+        flags.update(sj.get("variableIsString") or {})
+        return _dash_empty_frame(names, {k for k, v in flags.items() if v})
+    cols = sj["columns"]
+    return pd.DataFrame({v: cols[v] for v in names}, columns=names)
 
 
 #: The text column an extended missing value's letter travels in beside its
@@ -1214,14 +1327,15 @@ _DASH_CODE_LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 
 
 def _dash_attach_missing_codes(doc):
-    """Move the data file's ``extendedMissing`` key into the rows (WP-31 G1).
+    """Move the data file's ``extendedMissing`` key into the rows (WP-31 G1),
+    or into the columns of the column layout (WP-32, G3b).
 
-    The writer keeps jsonio's layout -- an extended missing value ``.a`` is
-    the text ``"null"`` like ``.`` -- and records each letter in
-    ``extendedMissing``: ``{var: {row index: letter}}``.  Each such
-    variable gains a text column ``__dashm_<var>`` holding ``""`` or the
-    letter, listed as a string variable, so both loaders read it as they
-    read any other column.  A letter that is not ``a``-``z``, a row index
+    The writer writes an extended missing value ``.a`` as missing like
+    ``.`` (the text ``"null"`` in the row layout, a NaN in the column
+    layout) and records each letter in ``extendedMissing``: ``{var: {row
+    index: letter}}``.  Each such variable gains a text column
+    ``__dashm_<var>`` holding ``""`` or the letter, listed as a string
+    variable, so both loaders read it as they read any other column.  A letter that is not ``a``-``z``, a row index
     out of range, a string variable and a variable not in the file are
     ignored.  Returns *doc*, changed in place.
     """
@@ -1233,14 +1347,18 @@ def _dash_attach_missing_codes(doc):
         return doc
     names = sj.get("variableNames")
     values = sj.get("values")
-    if not isinstance(names, list) or not isinstance(values, list):
+    # The column layout (WP-32, G3b): decoded columns, no rows.
+    columns = (sj.get("columns") if "dataFormat" in sj
+               and isinstance(sj.get("columns"), dict) else None)
+    if not isinstance(names, list) or (
+            columns is None and not isinstance(values, list)):
         return doc
     flags = [sj[k] for k in ("variableIsString", "variableTypeIsString")
              if isinstance(sj.get(k), dict)]
     if not flags:
         sj["variableIsString"] = {}
         flags = [sj["variableIsString"]]
-    n = len(values)
+    n = len(values) if columns is None else int(sj["numberOfRecords"])
     for var, codes in ext.items():
         col = _DASH_CODE_PREFIX + str(var)
         if (var not in names or col in names or not isinstance(codes, dict)
@@ -1256,7 +1374,9 @@ def _dash_attach_missing_codes(doc):
                 good[i] = c
         if not good:
             continue
-        for i, row in enumerate(values):
+        if columns is not None:
+            columns[col] = [good.get(i, "") for i in range(n)]
+        for i, row in enumerate(values if columns is None else ()):
             if isinstance(row, dict):
                 row[col] = good.get(i, "")
             elif isinstance(row, list):
@@ -3163,9 +3283,16 @@ def _dash_write_stata_data(path, varnames, sfi=None):
     quotes, backticks, dollar signs, backslashes, control bytes, any UTF-8
     -- arrives as Stata holds it.
 
-    The layout is jsonio's, key for key: ``values`` (one object per
-    observation, a missing number the text ``"null"``, every other number
-    a double), ``variableIsString`` (a strL too), ``variableNames``,
+    The layout is jsonio's metadata, key for key, with the values by
+    column (WP-32, GAPS3 G3b): ``dataFormat`` (:data:`_DASH_DATA_FORMAT`)
+    and ``columns``, one entry a variable -- a string variable the list of
+    its texts, any other its values as one base64 string of little-endian
+    float64 or, where every value is exactly one, float32, each missing
+    value a NaN (:func:`_dash_pack_column`).  jsonio's ``values``, one
+    object per observation repeating every name, took 19.8 MB for a
+    million values where the columns take 8.0 MB (measured 19oct2026);
+    both loaders still read it.  Then ``variableIsString`` (a strL too),
+    ``variableNames``,
     ``variableLabels``, ``valueLabelNames``, ``valueLabels`` (keyed by
     variable, each label keyed by its value as text, an extended missing
     value by jsonio's code, :func:`_dash_label_key`), ``numberOfRecords``,
@@ -3230,9 +3357,10 @@ def _dash_write_stata_data(path, varnames, sfi=None):
         # widens a float to the double Stata holds it as (WP-28 S04).
         storage_types[v] = str(data.getVarType(v))
         if not is_str[v]:
-            # Every missing value, . and .a to .z, as None: jsonio's "null".
+            # Every missing value, . and .a to .z, as None, then a NaN in
+            # the column's binary array (WP-32, G3b; _dash_pack_column).
             _vals = _column(v, missingval=None)
-            cols[v] = ["null" if x is None else float(x) for x in _vals]
+            cols[v] = _dash_pack_column(_vals)
             # An extended missing value keeps its letter in a parallel
             # key, extendedMissing (WP-31 G1): each missing row's text read
             # once, so the cost is the missing rows'.
@@ -3319,10 +3447,10 @@ def _dash_write_stata_data(path, varnames, sfi=None):
                 out[k] = _dash_label_ccl(str(text), sfi)
         value_labels[v] = out
 
-    ordered = [cols[v] for v in names]
     doc = {
-        "values": ([dict(zip(names, row)) for row in zip(*ordered)]
-                   if names else []),
+        # The column layout (WP-32, GAPS3 G3b): one entry a variable.
+        "dataFormat": _DASH_DATA_FORMAT,
+        "columns": {v: cols[v] for v in names},
         "firstRecordId": 1,
         "lastRecordId": nobs,
         "variableIndices": [int(data.getVarIndex(v)) + 1 for v in names],
@@ -59652,7 +59780,11 @@ class DashRenderer:
         # a frame built from no records has no columns, and every layer said
         # its variables were "not found in data source" (BUGS.md, S3).
         records = stata_json.get("values", [])
-        if records:
+        # The column layout (WP-32, G3b) is one frame column per variable.
+        _cf = _dash_columns_frame(stata_json)
+        if _cf is not None:
+            self.df = _cf
+        elif records:
             self.df = pd.DataFrame(records)
         else:
             _ts = dict(stata_json.get("variableTypeIsString", {}) or {})
@@ -64464,6 +64596,8 @@ class ServerAppBuilder:
                       "_DASH_CODE_PREFIX", "_DASH_CODE_TEXT_PREFIX",
                       "_DASH_USER_ALIAS_PREFIX",
                       "_DASH_CODE_LETTERS", "_DASH_MISSING_LABEL_KEY",
+                      # The data file's column layout (WP-32, G3b).
+                      "_DASH_DATA_FORMAT", "_DASH_COLUMN_DTYPES",
                       # Stata's leap seconds for %tC (WP-31 G2).
                       "_STATA_LEAP_SECONDS_TC_MS",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
@@ -64634,6 +64768,8 @@ class ServerAppBuilder:
                          # An empty dataset's columns, and the data file
                          # read as Stata holds its numbers (S3 batch).
                          "_dash_empty_frame", "_dash_read_data_json",
+                         # The column layout's readers (WP-32, G3b).
+                         "_dash_decode_columns", "_dash_columns_frame",
                          "_dash_finite_numeric",
                          "_dash_figure_date_kind", "_dash_mark_date_axes",
                          "_dash_axis_date_kind", "_dash_axis_positions",
@@ -65636,11 +65772,13 @@ class ServerAppBuilder:
         # ServerAppBuilder holds the data as a JSON string, not a frame.
         # Parsing a large one costs about a second, so it is only parsed when
         # it COULD reach a threshold -- the large-dataset report or the cell
-        # limit, whichever is lower: the smallest plausible cell is about
-        # six bytes of JSON (`"a":1,'), so a shorter string cannot hold that
-        # many cells and needs no parse.
+        # limit, whichever is lower: the smallest plausible cell is three
+        # bytes of JSON -- an empty text in the column layout's list
+        # (`"",'; WP-32, G3b), where a float32 is 5 1/3 bytes of base64 and
+        # the row layout's cell six (`"a":1,') -- so a shorter string cannot
+        # hold that many cells and needs no parse.
         _floor = min(_LARGE_DATASET_CELLS, int(self.limits["cells"]))
-        if len(self._raw_data_str) >= _floor * 6:
+        if len(self._raw_data_str) >= _floor * 3:
             _shape = None
             try:
                 _d = self._data()
@@ -65650,6 +65788,9 @@ class ServerAppBuilder:
                 _cols = _d.get("variableNames") or (
                     list(_vals[0]) if _vals else [])
                 _shape = (len(_vals), len(_cols))
+                if "dataFormat" in _d:
+                    # The column layout: its count, no rows.
+                    _shape = (int(_d["numberOfRecords"]), len(_cols))
             except (ValueError, TypeError, KeyError, IndexError,
                     AttributeError):
                 pass
@@ -66584,7 +66725,12 @@ class ServerAppBuilder:
             "    # nothing and by() on a string grouped nothing, silently.",
             "    type_is_str = data_json.get('variableIsString') \\",
             "                  or data_json.get('variableTypeIsString', {})",
-            "    if values and var_names:",
+            "    # The column layout (WP-32, G3b): one frame column per",
+            "    # variable, the saved loader's reader.",
+            "    df = _dash_columns_frame(data_json)",
+            "    if df is not None:",
+            "        pass",
+            "    elif values and var_names:",
             "        rows = []",
             "        for obs in values:",
             "            if isinstance(obs, dict):",

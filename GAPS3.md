@@ -528,7 +528,7 @@ F1 (all parts): closed in WP-31 sections 10, 13, 16, 19, 22, 25, 28; residual: t
 - **F5 Tracked:** Closed in WP-31, BUGS.md "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists", commit 1918fc4.
 - **G1 Tracked:** Closed in WP-31, BUGS.md "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips", commit 17d01bc.
 - **G2 Tracked:** Closed in WP-31, BUGS.md "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read", commit becb59c.
-- **G3 Tracked:** Partly closed in WP-31 (section 43, commit 1a2df3d): shadowing and the planned count, and in section 55 the strL loop (G3c) and the working-column room (G3d); open: the binary data file (BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)").
+- **G3 Tracked:** Closed in WP-32, BUGS.md "The data file embeds numbers as JSON text (about 0.5 GB per million values)", commit pending.
 - **G3c Tracked:** Closed in WP-31, BUGS.md "The strL binary check reads every observation one at a time", commit 1177bc3.
 - **G3d Tracked:** Closed in WP-31, BUGS.md "Qualifier and working columns are generated in the user's data (r(900) possible at c(maxvar))", commit 41af125.
 - **G4 Tracked:** Closed in WP-31, BUGS.md "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists", commit fb6bdad.

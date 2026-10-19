@@ -6628,8 +6628,13 @@ and link yourself:
     web page cannot carry, is shown as Stata's ustrfix function shows it, each invalid
     byte as the replacement character, with a note naming the variable or
     label; {cmd:unicode translate} converts such text first.  A binary strL
-    is refused, r(198), naming the variable.  {helpb dash_setup} neither
-    checks nor installs it.
+    is refused, r(198), naming the variable.  Numbers are written column by
+    column as binary arrays (little-endian float64, or float32 where every
+    value is exactly one), each missing value, {cmd:.a} to {cmd:.z}
+    included, read back as missing with its letter kept: a million values
+    take about 8 MB, where one JSON object per observation took about 20 MB.
+    A data file written by an earlier {cmd:dash} is still read.
+    {helpb dash_setup} neither checks nor installs it.
 
 {pstd}
 Before it starts, every {cmd:dash} command but {cmd:dash clear} checks that
