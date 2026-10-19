@@ -593,7 +593,11 @@ class TestSpan:
             # spanned title at 1346.8, its caption ending at 2450.3, the
             # plot region's right 2353.4 plus 113.4 less 16.5); the panel
             # is placed as "panel", the scheme's margin graph sides kept.
-            assert cb.args["sides"] == [3.5, 3.5, 3.5, 3.5]
+            # Flipped again (WP-32, BUGS.md "A spanned panel title's box
+            # reached the graph margin past the panel, where twoway
+            # reaches by()'s panel margin"): s2color's margin by_indiv
+            # small, 1.2 units (twoway: 34.6 of 2880).
+            assert cb.args["sides"] == [1.2, 1.2, 1.2, 1.2]
             assert [it[5] for it in cb.args["items"]] == ["panel", "panel"]
 
     @pytest.mark.parametrize("mode", MODES)
@@ -695,6 +699,18 @@ class TestSpan:
             == [("C", 0.6), ("N", 0.6), ("T", 0.0)]
         assert items('foreign, note("N", span) caption("C", pos(5) box)') \
             == [("C", 0.0), ("N", 0.6)]
+
+    def test_bys_panel_margin_is_read_from_the_scheme(self):
+        """_dash_by_indiv_sides: the scheme's ``margin by_indiv`` as sides
+        (s2color small, 1.2; stcolor allsides-ms 3.5 3.5 1.2 1.2;
+        economist medium, 3.5); None without a scheme."""
+        assert dr._dash_by_indiv_sides(dr.SchemeParser("s2color")) == \
+            [1.2] * 4
+        assert dr._dash_by_indiv_sides(dr.SchemeParser("stcolor")) == \
+            [3.5, 3.5, 1.2, 1.2]
+        assert dr._dash_by_indiv_sides(dr.SchemeParser("economist")) == \
+            [3.5] * 4
+        assert dr._dash_by_indiv_sides(None) is None
 
     def test_the_text_box_margin_is_read_relative(self):
         """_dash_textbox_margin_rel: the scheme's margin of a box's text

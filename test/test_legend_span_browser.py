@@ -759,3 +759,36 @@ class TestByPanelBoxMargin:
                 f = c["frame"]
                 assert abs(c["box"][2] - (f[1] + 3.5 * u - mg)) <= 1.0, \
                     (c, mg)
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByPanelBoxUnderOtherSchemes:
+    """BUGS.md "A spanned panel title's box reached the graph margin past
+    the panel, where twoway reaches by()'s panel margin".  Measured
+    19oct2026 (StataNow 19.5, SVG of the panel-title graph with y labels
+    "0" and "00000000" under s2color, s1color, s1mono and economist):
+    twoway's panel box reaches its plot region's right plus the scheme's
+    ``margin by_indiv`` (s2 and s1 families small, 1.2 units: 34.6 of 2880;
+    stcolor's allsides-ms 3.5 on the right: 113.4 of 3240), and starts 1.49
+    units left of the y labels in every family (42.9 of 2880, 48.2 of
+    3240); economist, with no y labels left of the plot, starts at it."""
+
+    @pytest.mark.parametrize("scheme,right", (("s2color", 1.2),
+                                              ("s1mono", 1.2),
+                                              ("stcolor", 3.5)))
+    def test_the_box_reaches_bys_panel_margin(self, mode, scheme, right):
+        spec = bk._spec([bk._graph("g1", bk._TWO, {
+            "by": "foreign, legend(off)", "title": '"A panel title", span'},
+            title=False)], scheme=scheme)
+        got = kb._measure(mode, spec, _BY_JS)[1400]
+        for st in (got["wide"], got["narrow"]):
+            g = st["grid"]
+            u = min(g[2] - g[0], g[3] - g[1]) / 100.0
+            ts = _by_titles(st, "A panel title")
+            assert len(ts) == 2, st
+            for t in ts:
+                f = t["frame"]
+                left = f[0] if t["yaxis"] is None else t["yaxis"] - 1.5 * u
+                assert abs(_centre(t["box"])[0]
+                           - (left + f[1] + right * u) / 2.0) <= 1.5, \
+                    (scheme, t, u)

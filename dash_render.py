@@ -53795,6 +53795,28 @@ def _dash_by_compass_location(clock, side):
     return "center"
 
 
+def _dash_by_indiv_sides(scheme):
+    """The scheme's ``margin by_indiv`` as margin graph sides ``[l, r, b,
+    t]`` (relative units), the margin twoway gives each by() panel's graph
+    (s2color small, 1.2; stcolor allsides-ms, 3.5 3.5 1.2 1.2), or None for
+    no scheme or a margin it does not table (the panel then keeps the
+    graph's own)."""
+    props = getattr(scheme, "_props", None) or {}
+    name = str(props.get("margin by_indiv", "") or "").strip()
+    if not name or scheme is None:
+        return None
+    try:
+        sides = scheme.margin_sides(name)
+    except Exception:  # noqa: BLE001 -- a scheme's own reader
+        return None
+    if not sides or any(isinstance(v, tuple) for v in sides):
+        return None
+    try:
+        return [float(v) for v in sides]
+    except (TypeError, ValueError):
+        return None
+
+
 def _dash_by_key_share(fig):
     """The length of by()'s colour key at 6 or 12 o'clock as a share of
     the graph's width (BUGS.md "by(, clegend(pos(6))) drew the colour key
@@ -53911,8 +53933,14 @@ def _dash_by_keys(figs, opts, scheme):
     # ("panel"; BUGS.md "A spanned panel title sat left of twoway's: dash's
     # panel ended at its frame"; measured 19oct2026: the panel graph runs
     # to its plot region's right plus 113.4 of 5400).
+    # The right end is the scheme's `margin by_indiv' past the frame, not
+    # the graph margin (BUGS.md "A spanned panel title's box reached the
+    # graph margin past the panel, where twoway reaches by()'s panel
+    # margin"; measured 19oct2026: s2color, s1color and s1mono small, 1.2
+    # units, 34.6 of 2880; stcolor allsides-ms, 3.5 on the right).
+    _ind = _dash_by_indiv_sides(scheme)
     for f in figs:
-        _dash_span_keep(f, kinds=("title",), ref="panel")
+        _dash_span_keep(f, kinds=("title",), ref="panel", sides=_ind)
 
     def series_legends(fig):
         return [m for m in (getattr(fig, "legend", None) or ())
@@ -65691,7 +65719,7 @@ class ServerAppBuilder:
                          "_dash_by_cell", "_dash_by_title_cell",
                          "_dash_by_glyph_fields", "_dash_by_clone_renderers",
                          "_dash_by_clock_side", "_dash_by_legend_cell",
-                         "_dash_by_key_share",
+                         "_dash_by_key_share", "_dash_by_indiv_sides",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
                          "_dash_by_region_options", "_dash_by_apply_regions",
