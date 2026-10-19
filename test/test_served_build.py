@@ -123,6 +123,58 @@ def test_the_launcher_serves_through_the_build_handler(app_src):
 
 
 # ===========================================================================
+# bokeh serve (WP-32, BUGS.md "Under bokeh serve a session's dashboard is
+# still drawn on the event loop")
+# ===========================================================================
+
+class TestBokehServeAwaitsNoHook:
+    """Why bokeh serve still draws on the loop, measured 19oct2026 under
+    bokeh 3.8 and 3.9 by `bokeh serve <dir>` on a directory app: a script
+    app has no session hook (ScriptHandler keeps Handler's no-op) and runs
+    the whole app script for each session in initialize_document, on the
+    loop; a directory app's server_lifecycle.py on_session_created is
+    called but its result is not awaited (LifecycleHandler returns it from
+    an async method), so an async hook never runs ("coroutine ... was never
+    awaited") and a plain one runs on the loop.  `bokeh serve` builds only
+    these handlers.  dash serve and python app.py are the supported path;
+    the day Bokeh awaits a directory app's hook, these fail."""
+
+    def test_a_script_app_has_no_session_hook(self):
+        from bokeh.application.handlers.handler import Handler
+        from bokeh.application.handlers.script import ScriptHandler
+        assert (ScriptHandler.on_session_created
+                is Handler.on_session_created)
+
+    def test_a_directory_apps_async_hook_is_never_run(self, tmp_path):
+        import asyncio
+        import inspect
+        from bokeh.application.handlers.directory import DirectoryHandler
+        (tmp_path / "main.py").write_text("x = 1\n", encoding="utf-8")
+        (tmp_path / "server_lifecycle.py").write_text(
+            "RAN = []\n"
+            "async def on_session_created(session_context):\n"
+            "    RAN.append(session_context)\n", encoding="utf-8")
+        h = DirectoryHandler(filename=str(tmp_path))
+        got = asyncio.run(h.on_session_created(object()))
+        # What Bokeh's Application awaits hands back the hook's coroutine,
+        # unrun: the hook's body never executes.
+        assert inspect.iscoroutine(got)
+        got.close()
+        mod = h._lifecycle_handler._module
+        assert mod.RAN == []
+
+    def test_the_help_names_dash_serve_as_the_supported_path(self):
+        import re
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            text = re.sub(r"\s+", " ", fh.read())
+        assert ("{cmd:dash serve} and {cmd:python app.py} are the supported "
+                "way to serve the dashboard" in text)
+        assert ("under {cmd:bokeh serve} each session's dashboard is drawn "
+                "on the loop" in text)
+
+
+# ===========================================================================
 # A brush made while a move waits (WP-32, the third part of the entry)
 # ===========================================================================
 

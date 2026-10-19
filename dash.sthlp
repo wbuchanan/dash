@@ -2571,7 +2571,8 @@ to the nearest port.
 {pstd}
 {cmd:bokeh serve app.py} also serves the dashboard, but as {cmd:bokeh serve}'s
 own application, and so without what the app's own server adds: there is no
-{cmd:/health}, none of the headers below is sent, the session limits below
+{cmd:/health}, a session's dashboard is drawn on the server's event loop
+(see below), none of the headers below is sent, the session limits below
 do not apply ({cmd:bokeh serve} runs the script afresh for each session, so
 every session starts a new count), and the app's flags above are not read.
 The session cap, the idle close, the data decoded once and the memo of the
@@ -3036,8 +3037,13 @@ prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
 draws the dashboard once, so a long start is not a failure and no reader
 pays for the first drawing.  Under {cmd:dash serve} and {cmd:python app.py}
 a new session's dashboard is drawn off the server's event loop, two at a
-time, so the server answers other readers meanwhile; under {cmd:bokeh serve},
-which gives an app no such hook, it is drawn on the loop.
+time, so the server answers other readers meanwhile.
+{cmd:dash serve} and {cmd:python app.py} are the supported way to serve the
+dashboard; under {cmd:bokeh serve} each session's dashboard is drawn on the
+loop, and other readers wait while it is drawn: Bokeh (3.8 and 3.9) runs a
+script app afresh for each session on its loop and gives it no hook to run
+first, and it never runs an async {cmd:on_session_created} of a directory
+app's {cmd:server_lifecycle.py} (a plain one runs on the loop).
 
 
 {marker examples}
