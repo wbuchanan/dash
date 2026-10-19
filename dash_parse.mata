@@ -8269,8 +8269,10 @@ string scalar _dash_rep_prefix(string scalar opts, real scalar n)
 
 // _dash_pending_note(p) -- the pending names p (s(_pending): options dash
 // declares and does not draw, bare names) as the note writes them: "()"
-// after each that takes a value, none after heatmap, outlines and mwidth,
-// which take none (WP-32).
+// after each that takes a value, none after heatmap, outlines, mwidth and
+// headlabel, which take none, and none after sort unless sort(varlist) was
+// given (s(sort1), the plot parser's), as twoway names a word as typed
+// (WP-32).
 string scalar _dash_pending_note(string scalar p)
 {
     string rowvector w
@@ -8280,8 +8282,12 @@ string scalar _dash_pending_note(string scalar p)
     w = tokens(p)
     out = ""
     for (i = 1; i <= cols(w); i++) {
+        // headlabel takes no value, and sort is named as typed: sort()
+        // when sort(varlist) was given (s(sort1)), else sort (WP-32).
         out = out + " " + w[i] +
-              (anyof(("heatmap", "outlines", "mwidth"), w[i]) ? "" : "()")
+              (anyof(("heatmap", "outlines", "mwidth", "headlabel"), w[i]) |
+               (w[i] == "sort" & strtrim(st_global("s(sort1)")) == "") ?
+               "" : "()")
     }
     return(strtrim(out))
 }

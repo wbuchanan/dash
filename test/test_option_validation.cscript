@@ -2940,14 +2940,17 @@ capture dash clear
 // "The "ignoring unsupported" note writes a word typed without a value as
 // name(), where twoway's own messages name it as typed").  Each case: the
 // command and the names the note must end with.
-// U51-1 .. U51-5, one case each; each prints its verdict, the first as
+// U51-1 .. U51-8, one case each; each prints its verdict, the first as
 // "U51-1 PASS".
 local _u51n 0
 foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "scatter mpg weight, afcolor(red) below|afcolor() below)" ///
     "scatter mpg weight, logging afintensity(50)|logging afintensity())" ///
     "scatter mpg weight, sort(mpg)|sort())" ///
-    "(scatter mpg weight), titling below|titling below)" {
+    "(scatter mpg weight), titling below|titling below)" ///
+    "scatter mpg weight, sort|sort)" ///
+    "bar mpg weight, sort|sort)" ///
+    "pcspike mpg weight trunk turn, headlabel|headlabel)" {
     local ++_u51n
     gettoken _u51x _u51m : _u51p, parse("|")
     local _u51m = substr(`"`_u51m'"', 2, .)
@@ -2960,7 +2963,11 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
     _ov_assert U51-`_u51n' "(`_u51rc' == 0)" `"`_u51x': rc `_u51rc' (expected 0)"'
     _ov_said U51-`_u51n' `"ignoring unsupported option(s): `_u51m'"'
 }
-_ov_assert U51-0 "(`_u51n' == 5)" "the 5 U51 cases ran"
+// U51-6 .. U51-8 (WP-32): a bare sort, which dash does not draw on
+// scatter or bar, and a bare headlabel on pcspike are named as typed, as
+// twoway names them, where the note wrote sort() and headlabel() (BUGS.md
+// "A bare sort or headlabel is named sort() or headlabel() in the note").
+_ov_assert U51-0 "(`_u51n' == 8)" "the 8 U51 cases ran"
 capture dash clear
 
 // U52 (WP-32): an option dash declares and named in its note as not

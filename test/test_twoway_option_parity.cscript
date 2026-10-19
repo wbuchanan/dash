@@ -731,9 +731,12 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     local tw_rc = _rc
     _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
     local drc = r(rc)
-    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
+    // Flipped: WP-32 -- a bare sort was named sort(), which was wrong
+    // because twoway names a word as typed (BUGS.md "A bare sort or
+    // headlabel is named sort() or headlabel() in the note").
+    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort)")
     if `tw_rc' != 0 | `drc' != 0 | r(found) != 1 {
-        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort() named `r(found)' (want 1)"
+        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort named `r(found)' (want 1)"
         local nfail = `nfail' + 1
         local faillist "`faillist' TP-06b(`c')"
     }
