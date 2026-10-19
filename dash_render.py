@@ -38137,7 +38137,26 @@ const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
 // "panels": the by() grid's panels plus their axes (the union of its
 // children not named dash_by_*) within that graph region, where twoway
 // places by()'s legend and boxes without span.
+// "panel": a by() panel's canvas, which starts at its axis labels, reaching
+// the graph's right margin (of the by() grid's size) past its frame, as
+// twoway's panel graph reaches past its plot region.
 const region = (ref) => {
+  if (ref === "panel") {
+    let b = pv.parent;
+    while (b != null && !(b.model != null && b.model.type === "GridBox")) {
+      b = b.parent;
+    }
+    let v = Math.min(W, H) / 100;
+    if (b != null && b.el != null) {
+      const q = b.el.getBoundingClientRect();
+      if (q.width > 0 && q.height > 0) {
+        v = Math.min(q.width, q.height) / 100;
+      }
+    }
+    const fx = (pv.frame != null && pv.frame.bbox != null)
+      ? pv.frame.bbox.x1 : W;
+    return {L: 0, R: fx + (+sd[1] || 0) * v, T: 0, B: H};
+  }
   let x0 = 0, y0 = 0, gw = W, gh = H, a = null, c = null;
   if (ref === "grid" || ref === "panels") {
     a = pv.parent;
@@ -53673,9 +53692,12 @@ def _dash_by_keys(figs, opts, scheme):
     # panel's graph, which starts at its axis labels (measured 19oct2026:
     # stcolor panel 1's title at 1431.2 of 5400, 1646.2 without; its note
     # at 355.9, the y labels' edge, 899.3 without): the panel's canvas,
-    # no margin in.
+    # no margin in, reaching the graph margin past its frame on the right
+    # ("panel"; BUGS.md "A spanned panel title sat left of twoway's: dash's
+    # panel ended at its frame"; measured 19oct2026: the panel graph runs
+    # to its plot region's right plus 113.4 of 5400).
     for f in figs:
-        _dash_span_keep(f, kinds=("title",), sides=[0.0, 0.0, 0.0, 0.0])
+        _dash_span_keep(f, kinds=("title",), ref="panel")
 
     def series_legends(fig):
         return [m for m in (getattr(fig, "legend", None) or ())

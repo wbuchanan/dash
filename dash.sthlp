@@ -5347,7 +5347,8 @@ o'clock, which {cmd:dash} draws above or below it) keeps its place.  On
 a {cmd:by()} graph, {cmd:by()}'s own spanned {cmd:title()}, {cmd:note()}
 and {cmd:caption()} are placed on the whole {cmd:by()} graph, and a
 spanned {cmd:title()} or {cmd:note()} given outside {cmd:by()}, which is
-drawn on every panel, on that panel (its axis labels included), as
+drawn on every panel, on that panel (its axis labels included, and the
+graph's margin past its plot region on the right), as
 {cmd:twoway} draws them.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},
 {cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
 sub-options are named in the note: a title box has no angle and no fixed

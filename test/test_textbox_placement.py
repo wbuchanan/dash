@@ -586,8 +586,15 @@ class TestSpan:
                 ("Title", "title", "below", "left")]
             cb = [c for c in f.js_property_callbacks["change:inner_width"]
                   if c.code == dr._DASH_SPAN_JS][0]
-            assert cb.args["sides"] == [0.0, 0.0, 0.0, 0.0]
-            assert [it[5] for it in cb.args["items"]] == ["", ""]
+            # Flipped (WP-32, BUGS.md "A spanned panel title sat left of
+            # twoway's: dash's panel ended at its frame"): twoway's panel
+            # graph reaches the graph margin (113.4 of 5400) past the
+            # plot region on the right (measured 19oct2026: panel 1's
+            # spanned title at 1346.8, its caption ending at 2450.3, the
+            # plot region's right 2353.4 plus 113.4 less 16.5); the panel
+            # is placed as "panel", the scheme's margin graph sides kept.
+            assert cb.args["sides"] == [3.5, 3.5, 3.5, 3.5]
+            assert [it[5] for it in cb.args["items"]] == ["panel", "panel"]
 
     @pytest.mark.parametrize("mode", MODES)
     def test_bys_own_boxes_without_span_are_placed_on_the_panels(self, mode):

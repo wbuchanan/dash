@@ -355,19 +355,32 @@ class TestByTitlesSpan:
             assert abs(c["box"][2] - (g[2] - edge - gap[1])) <= 1.5, st
 
     def test_a_title_outside_by_is_spanned_on_each_panel(self, mode):
-        for st in _by(mode, {"by": "foreign",
-                             "title": '"A panel title", span'}):
+        for i, st in enumerate(_by(mode, {"by": "foreign",
+                                          "title": '"A panel title", span'})):
             ts = _by_titles(st, "A panel title")
             assert len(ts) == 2, st
+            g = st["grid"]
+            e = 0.035 * min(g[2] - g[0], g[3] - g[1])
             for t in ts:
-                c = t["canvas"]
-                assert abs(_centre(t["box"])[0] - (c[0] + c[2]) / 2.0) \
-                    <= 1.5, t
-            # Panel 1's y axis is in its canvas: its title moves left of
-            # the frame's centre.
-            first = min(ts, key=lambda t: t["canvas"][0])
-            assert (first["frame"][0] + first["frame"][1]) / 2.0 \
-                - _centre(first["box"])[0] > 5, first
+                # Flipped (WP-32, BUGS.md "A spanned panel title sat left
+                # of twoway's: dash's panel ended at its frame"): twoway's
+                # panel graph runs from its axis labels to the graph
+                # margin past its plot region on the right (measured
+                # 19oct2026: panel 1's title at 1346.8 of 5400, centred
+                # on 226.8 .. 2353.4 + 113.4; panel 2's at 3428.5 on
+                # 2580.2 .. 4163.4 + 113.4).
+                c, f = t["canvas"], t["frame"]
+                assert abs(_centre(t["box"])[0]
+                           - (c[0] + f[1] + e) / 2.0) <= 1.5, t
+            # Flipped (WP-32): panel 1's y labels and the margin past its
+            # frame nearly cancel here, so the move is read on panel 2,
+            # which has no y axis: at full width its title moves right of
+            # its frame's centre, as twoway's does (3428.5 against 3371.8).
+            second = max(ts, key=lambda t: t["canvas"][0])
+            if i == 0:
+                assert _centre(second["box"])[0] - (
+                    second["frame"][0] + second["frame"][1]) / 2.0 > 5, \
+                    second
 
 
 def _panels(st):
