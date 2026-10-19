@@ -128,3 +128,120 @@ class TestHistogramMwidth:
         [a] = [r for r in rs if type(r.glyph).__name__ == "VBar"]
         [b] = [r for r in rs2 if type(r.glyph).__name__ == "VBar"]
         assert _width(a) == _width(b)
+
+
+#: The marker types twoway draws in sort order under sort (WP-32;
+#: noted_option_truth.json twoway_draws "order": the same marks, SVG
+#: circles in x order under sort).
+_ORDER_TYPES = ("scatter", "bar", "spike", "dropline", "dot", "rbar",
+                "rspike", "rcap", "rcapsym", "rscatter", "rpcap", "rpspike",
+                "pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter")
+
+
+def _xfield(r, fields=("x", "x0", "left")):
+    g = r.glyph
+    for f in fields:
+        spec = getattr(g, f, None)
+        name = spec if isinstance(spec, str) else getattr(spec, "field", None)
+        if isinstance(spec, dict):
+            name = spec.get("field")
+        if name and name in r.data_source.data:
+            return np.asarray(r.data_source.data[name], dtype=float)
+    return None
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestSortOrder:
+    """twoway draws a marker layer's points in sort order under sort, the
+    later on top (measured 19oct2026: scatter's 74 circles in x order under
+    sort, in price order under sort(price))."""
+
+    @pytest.mark.parametrize("ptype", ["scatter", "dropline", "spike",
+                                       "rcap", "pcspike"])
+    def test_drawn_in_x_order(self, mode, ptype):
+        rs, notes = _renderers(plot_for(ptype, {"sort": "sort"}), mode)
+        # A pc layer in x2's order (twoway's SVG: the segments' second
+        # x ascending), the others in x's.
+        f = ("x1",) if ptype.startswith("pc") else ("x", "x0", "left")
+        xs = [x for x in (_xfield(r, f) for r in rs) if x is not None
+              and len(x) > 3]
+        assert xs, "nothing with an x drawn"
+        for x in xs:
+            ok = x[~np.isnan(x)]
+            assert np.all(np.diff(ok) >= 0), (ptype, ok[:10])
+
+    def test_the_data_order_without_sort(self, mode):
+        rs, _ = _renderers(plot_for("scatter"), mode)
+        [x] = [x for x in (_xfield(r) for r in rs) if x is not None][:1]
+        ok = x[~np.isnan(x)]
+        assert not np.all(np.diff(ok) >= 0)
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestHistogramMwidthHorizontal:
+    """histogram horizontal mwidth: each bar a marker of barwidth() tall
+    -- the bin width by default, 3.625% of the shorter side, barwidth(1)
+    1% -- centred on the bin's start, as upright (measured 19oct2026)."""
+
+    def test_turned_bars_are_a_marker_tall(self, mode):
+        rs, notes = _renderers(plot_for("histogram", {
+            "mwidth": "mwidth", "horizontal": "horizontal"}), mode)
+        [hb] = [r for r in rs if type(r.glyph).__name__ == "HBar"]
+        up, _ = _renderers(plot_for("histogram", {"mwidth": "mwidth"}), mode)
+        [vb] = [r for r in up if type(r.glyph).__name__ == "VBar"]
+        assert hb.glyph.height_units == "screen"
+        h = hb.glyph.height
+        f = h if isinstance(h, str) else getattr(h, "field", None)
+        assert list(hb.data_source.data[f]) == list(
+            vb.data_source.data[vb.glyph.width if isinstance(
+                vb.glyph.width, str) else vb.glyph.width.field])
+        assert not [n for n in notes if "mwidth" in n]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestRbarMwidthBaroffset:
+    """rbar mwidth baroffset(#): each marker-wide bar moved # bar widths
+    to the LEFT in screen units -- baroffset(1) by -33.75, (-1) by +33.75,
+    (5) by -168.75 of the SVG's units for a 33.75-wide bar, barwidth(2)'s
+    64.8-wide bars by -64.8 (measured 19oct2026) -- whatever the x
+    spacing, as the bar's own width is."""
+
+    def _rect(self, mode, opts):
+        rs, notes = _renderers(plot_for("rbar", opts), mode)
+        [r] = [r for r in rs if type(r.glyph).__name__ == "Rect"]
+        return r, notes
+
+    def test_the_bars_move_by_screen_widths(self, mode):
+        import json
+        import shutil
+        import subprocess
+        r, notes = self._rect(mode, {"mwidth": "mwidth", "baroffset": "1"})
+        assert not [n for n in notes if "baroffset" in n]
+        f = r.glyph.x if isinstance(r.glyph.x, str) else r.glyph.x.field
+        cbs = [cb for fig_r in [r] for cb in
+               getattr(r, "_dash_rbo_callbacks", [])]
+        assert cbs, "no screen-offset callback"
+        cb = cbs[0]
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not found")
+        a = cb.args
+        xs = list(map(float, a["src"].data[a["xcol"]][:3]))
+        prog = ("const src={data:{%s:%s}, change:{emit(){}}};"
+                "const rng={start:0,end:10}; const plot={inner_width:100};"
+                "const off=%r, px=%r, xcol=%s, col=%s;"
+                "(function(){%s})();"
+                "console.log(JSON.stringify(src.data[col]));") % (
+            json.dumps(a["xcol"]), json.dumps(xs), a["off"], a["px"],
+            json.dumps(a["xcol"]), json.dumps(a["col"]), cb.code)
+        out = json.loads(subprocess.run([node, "-e", prog],
+                                        capture_output=True, text=True,
+                                        check=True).stdout)
+        want = [x - 1.0 * a["px"] * 10 / 100 for x in xs]
+        assert out == pytest.approx(want)
+        assert f == a["col"]
+
+    def test_without_offset_the_x_is_the_variable(self, mode):
+        r, _ = self._rect(mode, {"mwidth": "mwidth"})
+        f = r.glyph.x if isinstance(r.glyph.x, str) else r.glyph.x.field
+        assert f == "weight"

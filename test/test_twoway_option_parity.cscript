@@ -589,7 +589,9 @@ local ++n6
 // that pins its note is on scatter, where dash still does not join.
 local c6_`n6' `"dash scatter mpg weight, sort(mpg) name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
-local w6_`n6' "sort()"
+// Flipped (WP-32): sort(mpg) named on scatter was wrong, because twoway
+// draws the marks in mpg's order and dash now does: the spec's sortvars.
+local w6_`n6' "sortvars()"
 // Flipped (WP-30 P1.24): mlabv(pos) named in the note was wrong, because
 // dash draws mlabvposition() per row as twoway does; it is TP-06h's row.
 // Flipped (WP-30 P1.24, part 2): mlabt(heading) named in the note was
@@ -625,7 +627,7 @@ forvalues i = 1/`n6' {
     local dnote = r(note)
     _ztp_logged "`logfile'" "`w6_`i''"
     local named = r(found)
-    if inlist("`w6_`i''", "xoverhangs()", "yoverhangs()") {
+    if inlist("`w6_`i''", "xoverhangs()", "yoverhangs()", "sortvars()") {
         local k6 = subinstr("`w6_`i''", "()", "", 1)
         _ztp_has zqtp `k6'
         if `tw_rc' != 0 | `drc' != 0 | `named' != 0 | r(found) != 1 {
@@ -735,9 +737,11 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     // Flipped: WP-32 -- a bare sort was named sort(), which was wrong
     // because twoway names a word as typed (BUGS.md "A bare sort or
     // headlabel is named sort() or headlabel() in the note").
-    cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort)")
-    if `tw_rc' != 0 | `drc' != 0 | r(found) != 1 {
-        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort named `r(found)' (want 1)"
+    // Flipped (WP-32): named at all was wrong, because twoway draws the
+    // marks in x order and dash now does (BUGS.md "sort on marker types and contour, and heatmap, outlines and alpattern() on contour, are named where twoway draws them").
+    cert_log_has "`logfile'", needle("ignoring unsupported")
+    if `tw_rc' != 0 | `drc' != 0 | r(found) != 0 {
+        display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort named `r(found)' (want 0)"
         local nfail = `nfail' + 1
         local faillist "`faillist' TP-06b(`c')"
     }
@@ -757,7 +761,7 @@ foreach c in "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (sca
         local faillist "`faillist' TP-06b(`c')"
     }
 }
-display as text "TP-06b: a bare sort, and sort(varlist), on a connected type are not named; a bare sort on scatter and bar is"
+display as text "TP-06b: a bare sort, and sort(varlist), are not named on a connected type, nor on scatter and bar"
 
 // ----------------------------------------------------------------
 // JO -- sort() as twoway checks it (WP-29 S02)
@@ -997,12 +1001,14 @@ foreach tt in tsline tsrline {
 }
 // Flipped (WP-32): lfit left the list: twoway draws a fit the same with
 // sort(z), and dash takes it in silence (BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent").
+// Flipped (WP-32): scatter and bar named sort(z), which was wrong because
+// twoway draws their marks in z's order and dash now does (BUGS.md "sort on marker types and contour, and heatmap, outlines and alpattern() on contour, are named where twoway draws them").
 foreach tt in scatter bar {
     _ztp_run `"dash `tt' mpg weight, sort(z) name(zqtp)"' "`logfile'"
     local drc = r(rc)
     cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
-    if `drc' != 0 | r(count) != 1 {
-        display as error "JO-26 FAIL: `tt', sort(z) -- rc `drc', `r(count)' note line(s) naming sort() (want 1)"
+    if `drc' != 0 | r(count) != 0 {
+        display as error "JO-26 FAIL: `tt', sort(z) -- rc `drc', `r(count)' note line(s) naming sort() (want 0)"
         local bad = 1
     }
 }
@@ -1465,7 +1471,7 @@ local bad = 0
 local n13 = 0
 cert_truth_ctx "TP-13a"
 foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
-               "sort(mpg) sor(mpg) note sort()" ///
+               "sort(mpg) sor(mpg) key sortvars" ///
                "xoverhang xoverhan key xoverhangs" ///
                "yoverhang yoverhan key yoverhangs" {
     // Flipped (WP-31 D5): the overhangs' minimum was seen by its name in

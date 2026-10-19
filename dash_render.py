@@ -21871,11 +21871,10 @@ class GlyphMapper:
         barwidth() -- the bin width by default -- and msize() not read
         (measured 19oct2026: eight bins of 3.625 drawn 3.625% of the
         graph's shorter side, barwidth(1) 1%, under msize(small) and
-        msize(vlarge) alike).  Horizontal bars are not measured with it:
-        None there, and dash.ado names mwidth."""
+        msize(vlarge) alike).  Turned (horizontal), each bar is as tall,
+        centred on its bin's start, the layer's transpose turning the
+        screen-unit width into a height (measured 19oct2026)."""
         if not str(options.get("mwidth", "") or "").strip():
-            return None
-        if str(options.get("horizontal", "") or "").strip():
             return None
         o = {k: v for k, v in options.items() if k != "msize"}
         if not any(str(o.get(k, "") or "").strip()
@@ -23037,6 +23036,8 @@ class GlyphMapper:
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
         self._apply_line_opts(r, options, role="aline")
 
+    #: WP-32: the mwidth form's x moved by baroffset() in screen units.
+    _RBAR_XOFF = "__dash_rbo_x"
     #: The mwidth form's centre and height columns (WP-31 C2).
     _RBAR_MID = "__dash_rbar_mid"
     _RBAR_H = "__dash_rbar_h"
@@ -23098,9 +23099,31 @@ class GlyphMapper:
         _lw = self.scheme.plot_line_width(color_idx, "bar")
         if _lw is not None:
             kw["line_width"] = _lw
+        # WP-32: baroffset(#) moves each marker-wide bar # bar widths to the
+        # left, in screen units (measured 19oct2026: baroffset(1) by one
+        # bar width left, (-1) right, (5) five), drawn from a column a
+        # script keeps at x - off * width in data units, read from the x
+        # range and the frame's width whenever either changes.  Turned bars
+        # are not measured with it: dash.ado names baroffset() there.
+        _off = (_stat_option_float(options, "baroffset", 0.0, "rbar")
+                if "baroffset" in options else 0.0) or 0.0
+        _turned = bool(str(options.get("horizontal", "") or "").strip())
+        if _off and not _turned:
+            source.data[self._RBAR_XOFF] = list(source.data[xvar])
+            kw["x"] = self._RBAR_XOFF
         r = fig.rect(**kw)
         r.tags = ["dash_rbar_mwidth"]
         r._dash_hull_fields = {"y": (y1var, y2var)}
+        if _off and not _turned:
+            from bokeh.models import CustomJS as _CJS
+            _cb = _CJS(args=dict(src=source, rng=fig.x_range, plot=fig,
+                                     off=float(_off), px=float(kw["width"]),
+                                     xcol=xvar, col=self._RBAR_XOFF),
+                           code=_DASH_RBO_JS)
+            fig.x_range.js_on_change("start", _cb)
+            fig.x_range.js_on_change("end", _cb)
+            fig.js_on_change("inner_width", _cb)
+            r._dash_rbo_callbacks = [_cb]
         self._rbar_finish(r, options, _fill_base, _f)
         # colorvar() (WP-31 C8a): each bar.
         self._colorvar_layer(fig, [(r, source)], options)
@@ -45031,9 +45054,9 @@ _DASH_DERIVED_ORIENT_TYPES = (
 #: property name is read from user input.
 _DASH_TRANSPOSE = {
     "VBar": ("HBar", (("x", "y"), ("top", "right"), ("bottom", "left"),
-                      ("width", "height"))),
+                      ("width", "height"), ("width_units", "height_units"))),
     "HBar": ("VBar", (("y", "x"), ("right", "top"), ("left", "bottom"),
-                      ("height", "width"))),
+                      ("height", "width"), ("height_units", "width_units"))),
     "VArea": ("HArea", (("x", "y"), ("y1", "x1"), ("y2", "x2"))),
     "HArea": ("VArea", (("y", "x"), ("x1", "y1"), ("x2", "y2"))),
     "Quad": ("Quad", (("left", "bottom"), ("right", "top"))),
@@ -58244,6 +58267,71 @@ _DASH_SORT_PREFIX = "__dashs"
 _DASH_SORT_NAME_RE = re.compile(r"__dashs[1-9][0-9]{0,4}\Z")
 #: The plot types twoway joins in the data's order, x order under sort and
 #: sort(varlist)'s order: the types a join key is handed to.
+#: WP-32: rbar mwidth's baroffset(), in screen units: each bar's x, the
+#: variable's value less off bar widths of px pixels at the x range's data
+#: units a pixel.  Args: src, rng, plot, off, px, xcol, col.
+_DASH_RBO_JS = """
+const w = plot.inner_width;
+const span = rng.end - rng.start;
+if (!(w > 0) || !Number.isFinite(span)) return;
+const k = span / w;
+const xs = src.data[xcol];
+if (!xs) return;
+const out = Array.from(xs, (v) => (v === null || v === undefined) ? NaN
+                                   : Number(v) - off * px * k);
+const old = src.data[col];
+let same = !!old && old.length === out.length;
+for (let i = 0; same && i < out.length; i++) {
+    if (!(old[i] === out[i] || (Number.isNaN(old[i]) && Number.isNaN(out[i])))) same = false;
+}
+if (same) return;
+src.data[col] = out;
+src.change.emit();
+"""
+
+
+#: WP-32: the marker types twoway draws in sort order under sort and
+#: sort(varlist) -- the same marks, the later on top (noted_option_truth.json
+#: twoway_draws "order"; measured 19oct2026: scatter's circles in x order
+#: under sort, price's under sort(price); a pc layer in x2's order).
+_DASH_ORDER_TYPES = frozenset({
+    "scatter", "bar", "spike", "dropline", "dot", "rbar", "rspike", "rcap",
+    "rcapsym", "rscatter", "rpcap", "rpspike", "pcspike", "pccapsym",
+    "pcarrow", "pcbarrow", "pcscatter"})
+
+
+def _dash_sorted_copy(source, view, key):
+    """A copy of *source*'s rows that *view* selects, in the order of
+    *key* (one value per row of *source*), missing keys last, ties in the
+    data's order; returned with no view (WP-32, ``_DASH_ORDER_TYPES``).
+    Bokeh draws a layer's rows in its source's order, and a view keeps no
+    order of its own, so a sorted layer draws from this copy: it carries
+    every row's identity, and the saved page's filter keeps the rows a
+    move keeps in the copy's order (``_collect_derived_sources``); the
+    served redraw sorts its rows again.  *source* and *view* come back
+    unchanged when the key cannot be read."""
+    try:
+        data = source.data
+        n = len(next(iter(data.values()), []))
+        k = np.asarray(_dash_float_values(key, coerce=True), dtype=float)
+        if k.shape[0] != n:
+            return source, view
+        mask = GlyphMapper._view_mask(view, n)
+        idx = np.arange(n) if mask is None else np.flatnonzero(mask)
+        kk = k[idx]
+        o = idx[np.argsort(np.where(np.isnan(kk), np.inf, kk), kind="stable")]
+        out = {}
+        for col, vals in data.items():
+            if isinstance(vals, np.ndarray):
+                out[col] = vals[o]
+            else:
+                lv = list(vals)
+                out[col] = [lv[i] for i in o]
+        return ColumnDataSource(out), None
+    except Exception:  # noqa: BLE001 -- the data's order, as before
+        return source, view
+
+
 _DASH_JOIN_TYPES = frozenset({"line", "connected", "area", "rline", "rarea",
                               "rconnected"})
 
@@ -60655,6 +60743,15 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
             if _vars_needed and not mapper._check_vars(source, *_vars_needed):
                 return None
 
+        # WP-32: a marker layer under sort or sort(varlist) draws from a
+        # copy of its rows in that order (_dash_sorted_copy): sort(varlist)'s
+        # rank (*order*), else x.
+        if pt in _DASH_ORDER_TYPES and (
+                order is not None
+                or str((options or {}).get("sort", "") or "").strip()):
+            _key = order if order is not None else source.data.get(xvar)
+            if _key is not None:
+                source, view = _dash_sorted_copy(source, view, _key)
         # Range plots take (fig, source, y1var, y2var, xvar, options).
         _jkw = ({"order": order}
                 if pt in _DASH_JOIN_TYPES and order is not None else {})
@@ -60780,8 +60877,12 @@ def _dash_eval_values(r, letter):
 
 
 def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
-                       x2var, options, view=None, color_idx=0):
-    """Dispatch one paired-coordinate layer to its GlyphMapper method."""
+                       x2var, options, view=None, color_idx=0, order=None):
+    """Dispatch one paired-coordinate layer to its GlyphMapper method.
+
+    *order* is sort(varlist)'s rank, one value per row (WP-32): the layer
+    draws in that order, or in x2's under sort, as twoway draws a pc layer
+    (``_dash_sorted_copy``)."""
     _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
     try:
         fn = _dash_pc_dispatch(mapper).get((plot_type or "").lower())
@@ -60796,6 +60897,13 @@ def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
         _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
         if _pc_needed and not mapper._check_vars(source, *_pc_needed):
             return None
+        _pt = (plot_type or "").lower()
+        if _pt in _DASH_ORDER_TYPES and (
+                order is not None
+                or str((options or {}).get("sort", "") or "").strip()):
+            _key = order if order is not None else source.data.get(x2var)
+            if _key is not None:
+                source, view = _dash_sorted_copy(source, view, _key)
         return fn(fig, source, y1var, x1var, y2var, x2var, options,
                   view=view, color_idx=color_idx)
     finally:
@@ -62525,7 +62633,8 @@ class DashRenderer:
             _jo = (_dash_join_key(source_for_plot,
                                   getattr(self, "_page_sort_keys", None) or {},
                                   _dash_sort_col_of(plot, self.master_spec))
-                   if ptype.lower() in _DASH_JOIN_TYPES else None)
+                   if ptype.lower() in _DASH_JOIN_TYPES
+                   or ptype.lower() in _DASH_ORDER_TYPES else None)
 
             if ptype.lower() == "scatteri":
                 # An immediate list, one record per point -- [y, x] or
@@ -62550,7 +62659,8 @@ class DashRenderer:
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
-                                   view=_plot_view, color_idx=_pstyle_idx[pi])
+                                   view=_plot_view, color_idx=_pstyle_idx[pi],
+                                   order=_jo)
             elif ptype.lower() in _DASH_CONTOUR_TYPES:
                 # WP-31 B4b: contour and contourline, z cut over the
                 # (x, y) plane; frozen on the saved page (grid kind)
@@ -62875,6 +62985,7 @@ class DashRenderer:
         options: dict,
         view=None,
         color_idx: int = 0,
+        order=None,
     ) -> None:
         """Dispatch a paired-coordinate plot layer to the correct GlyphMapper method.
 
@@ -62892,7 +63003,7 @@ class DashRenderer:
         """
         _dash_add_pc_glyph(self.mapper, fig, source, plot_type, y1var, x1var,
                            y2var, x2var, options, view=view,
-                           color_idx=color_idx)
+                           color_idx=color_idx, order=order)
 
     # ------------------------------------------------------------------
     # KPI card construction
@@ -65975,6 +66086,10 @@ class ServerAppBuilder:
                       # (WP-29 P0.1).
                       "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
                       "_DASH_JOIN_TYPES",
+                      # WP-32: the marker types drawn in sort order.
+                      "_DASH_ORDER_TYPES",
+                      # WP-32: rbar mwidth's baroffset() script.
+                      "_DASH_RBO_JS",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
                       # WP-32: the empty axis's extent.
@@ -66123,6 +66238,7 @@ class ServerAppBuilder:
                          # sort(varlist)'s join key (WP-29 P0.1): the load
                          # takes the rank columns out, each layer reads its.
                          "_dash_join_key", "_dash_sort_col_of",
+                         "_dash_sorted_copy",
                          "_dash_sort_cols_named", "_dash_take_sort_columns",
                          "_dash_join_glyph", "_dash_join_vertices",
                          "_dash_join_spec", "_dash_join_hide",
@@ -68804,11 +68920,13 @@ class ServerAppBuilder:
             "                    _dash_mlabel_names(opts)[0],",
             "                    extra_cols=_hv + _dash_option_columns(opts, g_df.columns))",
             "                if _ok:",
+            "                    # sort(varlist)'s rank, by frame label (WP-32).",
+            "                    _jo = _dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
             "                    _dash_add_pc_glyph(",
             "                        _m, fig, _ly_src, ptype,",
             "                        plot.get('y1var', ''), plot.get('x1var', ''),",
             "                        plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                        opts, color_idx=_sidx)",
+            "                        opts, color_idx=_sidx, order=_jo)",
             "            elif ptype in _DASH_CONTOUR_TYPES:",
             "                # WP-31 B4b: z cut over the (x, y) plane; the mapper",
             "                # builds its own sources from the layer's rows.",
@@ -68840,7 +68958,7 @@ class ServerAppBuilder:
             "                    shared_source=_shared, shared_pos=_shared_pos_of.get(id(_shared)))",
             "                # A joining layer's join key, read by frame label.",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
-            "                       if ptype in _DASH_JOIN_TYPES and _ok else None)",
+            "                       if (ptype in _DASH_JOIN_TYPES or ptype in _DASH_ORDER_TYPES) and _ok else None)",
             "                if _ok:",
             "                    # WP-28 E14: a linked rspike/rconnected draws _shared",
             "                    # through _ly_view, as an ordinary linked layer does",
@@ -68859,7 +68977,7 @@ class ServerAppBuilder:
             "                    keep_missing=(_dash_join_spec(opts)[1] == 'n'",
             "                                  or ptype in ('mband', 'mspline')))",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
-            "                       if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
+            "                       if (ptype in _DASH_JOIN_TYPES or ptype in _DASH_ORDER_TYPES) and _ly_src is not None else None)",
             "                if _ly_src is not None:",
             "                    _dash_add_glyph(",
             "                        _m, fig, _ly_src, ptype, yvar, xvar, opts,",

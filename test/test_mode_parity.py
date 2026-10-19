@@ -2568,6 +2568,14 @@ CORPUS = [
     _case("rbar baroffset(.5)", [plot_for("rbar", {"baroffset": ".5"})]),
     # WP-32: histogram's bars a marker wide.
     _case("histogram mwidth", [plot_for("histogram", {"mwidth": "mwidth"})]),
+    # WP-32: marker layers drawn in sort order.
+    _case("scatter sort", [plot_for("scatter", {"sort": "sort"})]),
+    _case("rbar mwidth baroffset(1)", [plot_for(
+        "rbar", {"mwidth": "mwidth", "baroffset": "1"})]),
+    _case("histogram horizontal mwidth", [plot_for(
+        "histogram", {"mwidth": "mwidth", "horizontal": "horizontal"})]),
+    _case("dropline sort", [plot_for("dropline", {"sort": "sort"})]),
+    _case("pcspike sort", [plot_for("pcspike", {"sort": "sort"})]),
     # WP-31 C6: cmissing(n) on area and connect() on rarea, drawn alike.
     _case("area cmissing(n)", [plot_for("area", {"cmissing": "n"})]),
     _case("rarea connect(stairstep) cmissing(n)",
@@ -3772,6 +3780,15 @@ MOVE_CORPUS = [
                [plot_for("rbar", {"baroffset": ".5"})]),
     _move_case("histogram mwidth after a move", _MOVES[0],
                [plot_for("histogram", {"mwidth": "mwidth"})]),
+    _move_case("scatter sort after a move", _MOVES[0],
+               [plot_for("scatter", {"sort": "sort"})]),
+    _move_case("rbar mwidth baroffset after a move", _MOVES[0],
+               [plot_for("rbar", {"mwidth": "mwidth", "baroffset": "1"})]),
+    _move_case("histogram horizontal mwidth after a move", _MOVES[0],
+               [plot_for("histogram", {"mwidth": "mwidth",
+                                       "horizontal": "horizontal"})]),
+    _move_case("rcap sort after a move", _MOVES[0],
+               [plot_for("rcap", {"sort": "sort"})]),
     # WP-31 C10b: the tied axes follow the move together.
     _move_case("line yaxis(1 2), dropdown to Foreign (WP-31 C10b)",
                _MOVES[0], [plot_for("line", {"yaxis": "1 2"}),

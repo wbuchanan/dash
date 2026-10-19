@@ -517,6 +517,7 @@ FUNCTIONS = {
  '_dash_is_swatch': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_colorvar_swatch_is_not_a_series_key',
  '_dash_item_name': 'test/test_adversarial_matrix.py::TestALayoutThatCannotBeReadIsReported::test_a_readable_layout_is_kept_without_a_word',
  '_dash_join_key': 'test/test_join_order.py::TestTheJoinKey::test_saved_source_by_row_id',
+ '_dash_sorted_copy': 'test/test_noted_drawn.py::TestSortOrder::test_drawn_in_x_order',
  '_dash_json_value': 'test/test_export.py::TestTheHelpers::test_json_value',
  '_dash_lone_second_axes': 'test/test_dual_axis.py::TestTheLoneAxisRewrite::test_the_callers_spec_is_not_modified',
  # WP-31 S35 (D9)

@@ -2788,7 +2788,9 @@ program define _dash_fold_typed, sclass
     // them), so a bare sort on sort_types is drawn and not named.  On every
     // other type it is named, as it was.  sort(varlist) is named by
     // _dash_parse_plot_opts on every type.
-    local sort_types "line connected area tsline rline rarea rconnected tsrline"
+    // WP-32: and the marker types, drawn in x order under sort
+    // (_dash_sorted_copy).
+    local sort_types "line connected area tsline rline rarea rconnected tsrline scatter bar spike dropline dot rbar rspike rcap rcapsym rscatter rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter"
     mata: st_local("_ft", strofreal(st_global("s(sort)") != ""))
     if `_ft' & !`: list ptype in sort_types' {
         mata: st_local("_ft", strofreal(strpos(" " + st_global("s(_pending)") + " ", " sort ") > 0))
@@ -2878,11 +2880,8 @@ program define _dash_fold_typed, sclass
         display as error "option mwidth not allowed"
         exit 198
     }
-    // WP-32: map_histogram draws mwidth's bars a marker wide, as twoway
-    // does (_hist_mwidth_px); named only beside horizontal, whose bars
-    // were not measured with it.
-    mata: st_local("_ft_hz", strofreal(st_global("s(horizontal)") != ""))
-    if "`ptype'" == "histogram" & `_ft' & `_ft_hz' local named "`named' mwidth"
+    // WP-32: map_histogram draws mwidth's bars a marker wide, upright and
+    // turned, as twoway does (_hist_mwidth_px): not named.
     // WP-31 C5: baroffset() moves rbar's bars in twoway
     // (yxview__barlike_draw draw_fixed), which map_rbar does not draw
     // yet: named there.  On bar and histogram it is drawn; on area, spike,
@@ -2895,7 +2894,9 @@ program define _dash_fold_typed, sclass
     // rbar only beside mwidth, whose marker-wide view was not measured
     // with it.
     local bo_named "rbar"
-    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != "" & st_global("s(mwidth)") != ""))
+    // WP-32: beside mwidth too, moved in screen units (_DASH_RBO_JS),
+    // upright only; turned it was not measured.
+    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != "" & st_global("s(mwidth)") != "" & st_global("s(horizontal)") != ""))
     if `_ft' & `: list ptype in bo_named' local named "`named' baroffset"
     mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
     if "`ptype'" == "rbar" & `_ft' local named "`named' msize"
@@ -3131,6 +3132,11 @@ program define _dash_sort_opt, sclass
     capture noisily _dash_sort_names , sort1(`macval(_so_v)')
     if _rc exit 198
     local _so_six "line connected area rline rarea rconnected"
+    // WP-32: the marker types twoway draws in sort(varlist)'s order, as
+    // the renderers draw them (_dash_sorted_copy): their rank is written
+    // and sort comes off the pending list, as on the six.
+    local _so_ord "scatter bar spike dropline dot rbar rspike rcap rcapsym rscatter rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter"
+    local _so_six `_so_six' `_so_ord'
     local _so_ts "tsline tsrline"
     local _so_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
     if `: list ptype in _so_ser' {

@@ -126,7 +126,9 @@ PLOT_VALUES = {
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
     # line in x order under it -- so the inert case is on scatter, where it
     # is still named and draws nothing.
-    "sort": ("sort", "", "scatter"),
+    # Flipped (WP-32): scatter was wrong, because twoway draws a scatter's
+    # marks in sort order and dash now does; on lfit sort changes nothing.
+    "sort": ("sort", "", "lfit"),
     "start": ("8", "11", "histogram"),
     "width": ("2", "4", "histogram"),
     # Flipped (WP-31 D2): b1title .. t2title ("b1", "bA", "scatter") and

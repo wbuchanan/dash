@@ -612,8 +612,8 @@ of {it:x}; {cmd:barwidth()} beside it is read as that marker size, as in
 as {cmd:twoway} draws nothing of it.  {cmd:histogram} with {cmd:mwidth}
 draws each bar as wide as a marker of size {cmd:barwidth()} -- the bin
 width by default -- centred on the bin's start, as {cmd:twoway} draws it
-({cmd:msize()} is not read); beside {cmd:horizontal} {cmd:mwidth} is
-named.
+({cmd:msize()} is not read), and turned by {cmd:horizontal} each bar
+is as tall, centred on its bin's start.
 {cmd:rcap} draws its caps as long as a marker of its {cmd:msize()} is wide,
 the scheme's symbol size by default, in screen units.  {cmd:rcapsym} draws
 no caps, only its spike and a marker at each end, at the scheme's symbol
@@ -3759,8 +3759,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     each bar moved {it:#} bar widths, negative to the left, {cmd:rbar}'s
     as {cmd:bar}'s.  {cmd:twoway} also takes it on {cmd:area},
     {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws nothing
-    different; beside {cmd:rbar}'s {cmd:mwidth} {cmd:dash} names it in
-    the note{p_end}
+    different.  Beside {cmd:rbar}'s {cmd:mwidth} each marker-wide bar is
+    moved {it:#} of its own widths to the {it:left} on the screen, as
+    {cmd:twoway} moves it, whatever the zoom; beside {cmd:mwidth} and
+    {cmd:horizontal} together {cmd:dash} names it in the note{p_end}
 {synopt:{opt dotextend(yes|no)}}{cmd:dot}: {cmd:dash} draws {cmd:dot} as
     {cmd:twoway} does, a row of dots through each observation and then
     its marker; the rows run up and down from the y axis's base (0 when
@@ -6517,7 +6519,7 @@ in either direction.
 {phang2}{ul:Bar-family settings.}
     {opt bartype(spanning)}, {opt bargap(#)}, {opt dropto(#)} on
     {cmd:bar} and the other bar-derived types, and {opt baroffset(#)} on
-    {cmd:rbar} beside {cmd:mwidth}.  {cmd:bargap()} is an option of {cmd:graph bar}:
+    {cmd:rbar} beside {cmd:mwidth} and {cmd:horizontal}.  {cmd:bargap()} is an option of {cmd:graph bar}:
     {cmd:twoway bar} accepts it and draws nothing different.  {cmd:dash}
     names all four.
 
@@ -6556,10 +6558,15 @@ in either direction.
     with it, so it is taken in silence.
 
 {phang2}{ul:Connection order.}
-    {opt sort} and {opt sort(varlist)} on every plot type other than
-    {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline}, {cmd:rarea},
-    {cmd:rconnected}, {cmd:tsline} and {cmd:tsrline} -- {cmd:dash} joins no
-    points there, and names them in the note.  On the first six, and on a
+    {opt sort} and {opt sort(varlist)} on {cmd:scatter}, {cmd:bar},
+    {cmd:spike}, {cmd:dropline}, {cmd:dot}, the range types and the
+    {cmd:pc} types draw the marks in that order -- the later on top, in
+    {it:x}'s order under {cmd:sort} ({it:x2}'s on a {cmd:pc} type), in the
+    saved page, the served app and after a move -- as {cmd:twoway} draws
+    them, and are not named; on the fits, {cmd:kdensity},
+    {cmd:histogram} and {cmd:function} they change nothing and are taken
+    in silence.  On {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline},
+    {cmd:rarea} and {cmd:rconnected}, and on a
     {cmd:scatter} given {cmd:connect()}, they are honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
@@ -6570,7 +6577,6 @@ in either direction.
     the heatmap's cells or the bands' outlines.
 
 {phang2}{ul:Not drawn.}
-    {cmd:mwidth} on a {cmd:horizontal} {cmd:histogram}, not measured.
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},
     {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
     {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, {cmd:mangle()} and
