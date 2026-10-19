@@ -1374,7 +1374,7 @@ capture noisily {
     capture mata: mata drop _dash_json_escape()
     capture mata: mata describe _dash_json_escape()
     assert _rc != 0
-    dash scatter mpg weight, saving("`u553'.html") replace
+    dash scatter mpg weight, saving("`u553'.html", replace)
     capture mata: mata describe _dash_json_escape()
     assert _rc == 0
     capture mata: mata describe _json_escape()
@@ -1422,7 +1422,7 @@ foreach q in `"dis > 100"' `"make != "d""' `"tda > 0"' {
     local pg "`c(tmpdir)'pc31_`pc31n'.html"
     capture erase "`pg'"
     dash clear
-    capture noisily dash scatter mpg weight if `q', saving("`pg'") replace
+    capture noisily dash scatter mpg weight if `q', saving("`pg'", replace)
     local rci = _rc
     capture confirm file "`pg'"
     local wrote_i = (_rc == 0)

@@ -1645,7 +1645,7 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
         if "${u08_mb`i'}" == "mlalign" {
             dash clear
             quietly log using "`lf'", text replace name(u08m)
-            capture noisily dash scatter mpg weight, `opt' saving("`u8d'/m.html") replace
+            capture noisily dash scatter mpg weight, `opt' saving("`u8d'/m.html", replace)
             local rc = _rc
             quietly log close u08m
             _w31_expect U08-4 "(`rc' == 0)" "dash scatter mpg weight, `opt' saving() rc `rc'"

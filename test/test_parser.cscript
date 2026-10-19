@@ -3310,7 +3310,7 @@ assert "${dash_graph_registry}" == "`reg07'"
 assert `"${dash_fpts_fx07}"' == ""
 local h07 "`c(tmpdir)'dash_fx07.html"
 capture erase "`h07'"
-_p1a_logrun `"dash `l07' `l07' `l07' `l07', saving("`h07'") replace"'
+_p1a_logrun `"dash `l07' `l07' `l07' `l07', saving("`h07'", replace)"'
 assert r(rc) == 0
 capture erase "`h07'"
 _p1a_logrun `"dash function y = sin(x)/x, range(-100 100) n(10000) name(fx07b)"'
@@ -3755,7 +3755,7 @@ if `"`c(python_exec)'"' != "" {
         gettoken bar rest : rest, parse("|")
         gettoken ds rest : rest, parse("|")
         local body = substr(`"`rest'"', 2, .)
-        _tso_vs TSO-0`k' `pid' `ds' `"dash `body', saving("`tsopg'") replace"'
+        _tso_vs TSO-0`k' `pid' `ds' `"dash `body', saving("`tsopg'", replace)"'
         display "TSO-0`k' PASS: dash `body' draws, as twoway does"
     }
     _tso_data spd
@@ -3886,7 +3886,7 @@ if `"`c(python_exec)'"' != "" {
     foreach body in "scatter D.close LD.close" "lfit D.close L.close" {
         _tso_data sp
         dash clear
-        _p1a_logrun `"dash `body', saving("`tsopg'") replace"'
+        _p1a_logrun `"dash `body', saving("`tsopg'", replace)"'
         assert r(rc) == 0
         dash `body', name(tso13)
         _p1a_logrun `"dash build, saving("`tsopg'") replace"'
@@ -3960,7 +3960,7 @@ if `"`c(python_exec)'"' != "" {
     _tso_data sp
     quietly gen __dasht1 = 1
     dash clear
-    _p1a_logrun `"dash scatter D.close t, saving("`tsopg'") replace"'
+    _p1a_logrun `"dash scatter D.close t, saving("`tsopg'", replace)"'
     assert r(rc) == 110
     cert_file_has "`r(log)'", needle("its time-series columns __dasht#")
     assert r(found)

@@ -316,7 +316,7 @@ forvalues j = 1/`nq' {
     // The immediate route: dash <plot> if ..., saving().
     tempfile p`j'
     global QL_PAGE "`p`j''.html"
-    _ql_run `"dash scatter mpg rowid if `q`j'', saving("`p`j''.html") replace"'
+    _ql_run `"dash scatter mpg rowid if `q`j'', saving("`p`j''.html", replace)"'
     local rc = r(rc)
     cert_file_has "`r(log)'", needle("skipped")
     local sk = r(found)
@@ -357,7 +357,7 @@ quietly levelsof rowid if `q8', local(want11)
 local want11 : list retokenize want11
 tempfile p11
 global QL_PAGE "`p11'.html"
-_ql_run `"dash scatter mpg rowid if `q8', by(foreign) saving("`p11'.html") replace"'
+_ql_run `"dash scatter mpg rowid if `q8', by(foreign) saving("`p11'.html", replace)"'
 assert r(rc) == 0
 python: _ql_page()
 display as text "  QL-10 immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
@@ -430,7 +430,7 @@ capture erase "`ql_sent'"
 local q13 `"make == "x\" | @os.system("touch `ql_sent'") | "y""'
 tempfile p13
 capture erase "`p13'.html"
-_ql_run `"dash scatter mpg rowid if `q13', saving("`p13'.html") replace"'
+_ql_run `"dash scatter mpg rowid if `q13', saving("`p13'.html", replace)"'
 local rc13 = r(rc)
 display as text "  QL-13 rc `rc13'"
 assert `rc13' != 0
@@ -457,7 +457,7 @@ quietly levelsof rowid if `q14b', local(w14b)
 local w14b : list retokenize w14b
 tempfile p14
 global QL_PAGE "`p14'.html"
-_ql_run `"dash (scatter mpg rowid if `q8') (scatter mpg rowid if `q14b'), saving("`p14'.html") replace"'
+_ql_run `"dash (scatter mpg rowid if `q8') (scatter mpg rowid if `q14b'), saving("`p14'.html", replace)"'
 assert r(rc) == 0
 python: _ql_page()
 display as text "  QL-14 layers: $QL_PAGE_NLAYERS; layer 2 drew [$QL_PAGE_LAYER2]"
@@ -494,7 +494,7 @@ global QL_PAGE "`p15'.html"
 // earlier script may have left a page under it: cleared, so a command that
 // wrote nothing cannot be read through a stale page.
 capture erase "`p15'.html"
-_ql_run `"dash (scatter mpg rowid in 3/20) (scatter mpg rowid in 41/60) (scatter mpg rowid in -15/L), saving("`p15'.html") replace"'
+_ql_run `"dash (scatter mpg rowid in 3/20) (scatter mpg rowid in 41/60) (scatter mpg rowid in -15/L), saving("`p15'.html", replace)"'
 assert r(rc) == 0
 confirm file "`p15'.html"
 python: _ql_page()
@@ -554,7 +554,7 @@ forvalues j = 1/`nl' {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `l`j'', saving("`p'.html") replace"'
+    _ql_run `"dash scatter mpg rowid if `l`j'', saving("`p'.html", replace)"'
     local rc = r(rc)
     local lg `"`r(log)'"'
     cert_log_has "`lg'", needle("filter skipped")
@@ -618,7 +618,7 @@ foreach j of numlist 1 5 {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `l`j'', by(foreign) saving("`p'.html") replace"'
+    _ql_run `"dash scatter mpg rowid if `l`j'', by(foreign) saving("`p'.html", replace)"'
     assert r(rc) == 0
     python: _ql_page()
     display as text "  QL-18 [" `"`l`j''"' "] immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
@@ -734,7 +734,7 @@ forvalues j = 1/`nb' {
     tempfile p20
     capture erase "`p20'.html"
     local tw4 `"twoway scatter mpg rowid `b`j'', nodraw"'
-    local da4 `"dash scatter mpg rowid `b`j'', saving("`p20'.html") replace"'
+    local da4 `"dash scatter mpg rowid `b`j'', saving("`p20'.html", replace)"'
     local tw5 `"twoway function y = x `b`j'', range(0 1) nodraw"'
     local da5 `"dash function y = x `b`j'', range(0 1) name(ql20f)"'
     local tw6 `"summarize price `b`j''"'
@@ -849,7 +849,7 @@ capture erase "`h21'.html"
 _ql_run `"dash build, saving("`h21'.html") replace nobrowser"'
 local rc21a = r(rc)
 capture erase "`h21'.html"
-_ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html") replace"'
+_ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html", replace)"'
 local rc21b = r(rc)
 capture erase "`h21'.html"
 global dash_max_cells ""
@@ -879,7 +879,7 @@ forvalues j = 1/2 {
     tempfile p
     global QL_PAGE "`p'.html"
     capture erase "`p'.html"
-    _ql_run `"dash scatter mpg rowid if `a`j'', saving("`p'.html") replace"'
+    _ql_run `"dash scatter mpg rowid if `a`j'', saving("`p'.html", replace)"'
     local rc = r(rc)
     cert_log_has "`r(log)'", needle("filter skipped")
     local sk = r(found)

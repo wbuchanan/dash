@@ -2378,7 +2378,7 @@ end
     label values rep78 alrep
     dash clear
     capture erase "`d'/hx1.html"
-    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/hx1.html") replace
+    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/hx1.html", replace)
     local hx_rc = _rc
     capture drop _hx_lab
     quietly generate str244 _hx_lab = ""
@@ -2519,7 +2519,7 @@ end
     dash clear
     capture erase "`d'/hx6.html"
     capture erase "`d'/hx6.py"
-    capture noisily dash scatter close open, hover(date volume) saving("`d'/hx6.html") replace
+    capture noisily dash scatter close open, hover(date volume) saving("`d'/hx6.html", replace)
     local hx_rc = _rc
     quietly dash scatter close open, hover(date volume) name(g1)
     capture noisily dash build, server saving("`d'/hx6.py") replace nobrowser
@@ -2560,7 +2560,7 @@ end
     dash clear
     capture erase "`d'/hx7.html"
     capture erase "`d'/hx7.py"
-    capture noisily dash scatter mpg weight, hover(make größe) saving("`d'/hx7.html") replace
+    capture noisily dash scatter mpg weight, hover(make größe) saving("`d'/hx7.html", replace)
     local hx_rc = _rc
     quietly dash scatter mpg weight, hover(make größe) name(g1)
     capture noisily dash build, server saving("`d'/hx7.py") replace nobrowser
@@ -4724,7 +4724,7 @@ end
     local n1 = r(N)
     quietly count if foreign | price>10000
     local nu = r(N)
-    capture noisily dash (scatter mpg weight if foreign) (scatter mpg weight if price>10000), saving("`s14d'/er01.html") replace
+    capture noisily dash (scatter mpg weight if foreign) (scatter mpg weight if price>10000), saving("`s14d'/er01.html", replace)
     local rc = _rc
     python: _er_page(_er_M.getLocal("s14d") + "/er01.html")
     _w29_expect ER-01 "(`rc' == 0 & ${er_rows} == `nu' & `nu' == 30)" "page rows ${er_rows}, count `nu' (rc `rc')"
@@ -4743,7 +4743,7 @@ end
     python: _er_subtitles(_er_M.getLocal("s14d") + "/er02.svg", {_er_M.getLocal("l0"), _er_M.getLocal("l1")})
     quietly count if foreign==0 | price>15000
     local nu = r(N)
-    capture noisily dash (scatter mpg weight if foreign==0) (scatter mpg weight if price>15000), by(foreign) saving("`s14d'/er02.html") replace
+    capture noisily dash (scatter mpg weight if foreign==0) (scatter mpg weight if price>15000), by(foreign) saving("`s14d'/er02.html", replace)
     local rc = _rc
     python: _er_page(_er_M.getLocal("s14d") + "/er02.html")
     local okp = 1
@@ -4859,7 +4859,7 @@ end
     local tw_mean = r(mean)
     local tw_n = r(N)
     sysuse auto, clear
-    capture noisily dash lowess mpg weight if foreign, adjust saving("`s14d'/er08.html") replace
+    capture noisily dash lowess mpg weight if foreign, adjust saving("`s14d'/er08.html", replace)
     local rc = _rc
     python: _er_curve(_er_M.getLocal("s14d") + "/er08.html")
     _w29_expect ER-08 "(`rc' == 0 & ${er_curve_n} == `tw_n' & abs(${er_curve_mean} - `tw_mean') < 1e-6)" "dash n ${er_curve_n} mean ${er_curve_mean}, twoway n `tw_n' mean `tw_mean' (rc `rc')"

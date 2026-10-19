@@ -985,7 +985,7 @@ if inlist("`only'", "", "S14") {
         cert_svg_has_text, file("`dir'/`id'.svg") text("`svgtext'")
         _gt_expect `id' "(r(found) == 1)" "twoway did not draw `svgtext' for `opt'"
         dash clear
-        capture noisily dash `plot', `opt' saving("`dir'/`id'.html") replace
+        capture noisily dash `plot', `opt' saving("`dir'/`id'.html", replace)
         _gt_expect `id' "(_rc == 0)" "dash `opt' rc `_rc'"
         local nd = char(34) + "ticks" + char(34) + ":[" + "`ticks'" + "]"
         cert_file_has "`dir'/`id'.html", needle(`"`nd'"')
@@ -1017,7 +1017,7 @@ if inlist("`only'", "", "S14") {
 
     // AL-03
     dash clear
-    capture noisily dash scatter mpg rep78, xlabel(1(2)10) saving("`d'/al3.html") replace
+    capture noisily dash scatter mpg rep78, xlabel(1(2)10) saving("`d'/al3.html", replace)
     _gt_expect AL-03 "(_rc == 0)" "rc `_rc'"
     local nd = char(34) + "ticks" + char(34) + ":[1.0,3.0,5.0,7.0,9.0]"
     cert_file_has "`d'/al3.html", needle(`"`nd'"')
@@ -1026,10 +1026,10 @@ if inlist("`only'", "", "S14") {
 
     // AL-04
     dash clear
-    capture noisily dash scatter mpg weight, xlabel(0(0.000001)1000000) saving("`d'/al4a.html") replace
+    capture noisily dash scatter mpg weight, xlabel(0(0.000001)1000000) saving("`d'/al4a.html", replace)
     _gt_expect AL-04 "(_rc == 0)" "0(0.000001)1000000 rc `_rc'"
     dash clear
-    capture noisily dash scatter mpg weight, xlabel(1/1800) saving("`d'/al4b.html") replace
+    capture noisily dash scatter mpg weight, xlabel(1/1800) saving("`d'/al4b.html", replace)
     _gt_expect AL-04 "(_rc == 0)" "1/1800 rc `_rc'"
     _gt_done AL-04 "oversized lists register and build, never refused"
 
@@ -1041,7 +1041,7 @@ if inlist("`only'", "", "S14") {
         _gt_expect AL-05 "(r(found) == 1)" "twoway did not draw `t'"
     }
     dash clear
-    capture noisily dash scatter mpg rep78, xlabel(1 "2019" 2 "2020" 3 "2021") saving("`d'/al5.html") replace
+    capture noisily dash scatter mpg rep78, xlabel(1 "2019" 2 "2020" 3 "2021") saving("`d'/al5.html", replace)
     _gt_expect AL-05 "(_rc == 0)" "rc `_rc'"
     local nd = char(34) + "ticks" + char(34) + ":[1.0,2.0,3.0]"
     cert_file_has "`d'/al5.html", needle(`"`nd'"')
@@ -1056,7 +1056,7 @@ if inlist("`only'", "", "S14") {
     cert_svg_has_text, file("`d'/al6.svg") text("high")
     _gt_expect AL-06 "(r(found) == 1)" "twoway did not draw high"
     dash clear
-    capture noisily dash scatter mpg weight, xlabel(2000 `"c "q" d"' 4000 "high") saving("`d'/al6.html") replace
+    capture noisily dash scatter mpg weight, xlabel(2000 `"c "q" d"' 4000 "high") saving("`d'/al6.html", replace)
     _gt_expect AL-06 "(_rc == 0)" "rc `_rc'"
     local nd = char(34) + "ticks" + char(34) + ":[2000.0,4000.0]"
     cert_file_has "`d'/al6.html", needle(`"`nd'"')
@@ -1083,7 +1083,7 @@ if inlist("`only'", "", "S14") {
     cert_svg_has_text, file("`d'/al17.svg") text("Excellent")
     _gt_expect AL-17 "(r(found) == 1)" "twoway did not draw Excellent"
     dash clear
-    capture noisily dash scatter mpg rep78, xlabel(1/5, valuelabel) saving("`d'/al17.html") replace
+    capture noisily dash scatter mpg rep78, xlabel(1/5, valuelabel) saving("`d'/al17.html", replace)
     _gt_expect AL-17 "(_rc == 0)" "dash rc"
     foreach t in Poor Fair Average Good Excellent {
         cert_file_has "`d'/al17.html", needle("`t'")
@@ -1096,7 +1096,7 @@ if inlist("`only'", "", "S14") {
     cert_svg_has_text, file("`d'/al18.svg") text("Excellent")
     _gt_expect AL-18 "(r(found) == 0)" "twoway drew a label without valuelabel"
     dash clear
-    capture noisily dash scatter mpg rep78, xlabel(1/5) saving("`d'/al18.html") replace
+    capture noisily dash scatter mpg rep78, xlabel(1/5) saving("`d'/al18.html", replace)
     _gt_expect AL-18 "(_rc == 0)" "dash rc"
     cert_file_has "`d'/al18.html", needle("Excellent")
     _gt_expect AL-18 "(r(found) == 0)" "dash drew a label without valuelabel"
@@ -1104,7 +1104,7 @@ if inlist("`only'", "", "S14") {
 
     dash clear
     // WP-29 P0.10: rep78 is named only in hover(); it is exported.
-    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/al19.html") replace
+    capture noisily dash scatter mpg weight, hover(rep78) saving("`d'/al19.html", replace)
     _gt_expect AL-19 "(_rc == 0)" "dash rc"
     cert_file_has "`d'/al19.html", needle("__dash_hover_rep78")
     _gt_expect AL-19 "(r(found) == 1)" "the tooltip does not read __dash_hover_rep78"
@@ -1252,7 +1252,7 @@ end
         }
         c_local ae_vals "`vals'"
         dash clear
-        capture noisily dash scatter mpg weight, `opt' saving("`dir'/ae`id'.html") replace
+        capture noisily dash scatter mpg weight, `opt' saving("`dir'/ae`id'.html", replace)
         c_local ae_rc = _rc
         c_local ae_page "`dir'/ae`id'.html"
         c_local ae_pid "`pid'"

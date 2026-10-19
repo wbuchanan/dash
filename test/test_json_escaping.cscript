@@ -24,7 +24,7 @@
 *! slicing the raw document at the first quote after "saving":" -- so it got
 *! the ESCAPED text and used it as a filesystem path.  Measured:
 *!
-*!     dash scatter mpg weight, saving("<dir>a\b.html") replace
+*!     dash scatter mpg weight, saving("<dir>a\b.html", replace)
 *!         rc 0, and the file written was "<dir>a\\b.html"
 *!         confirm file "<dir>a\b.html"  -> r(601), it is not there
 *!
@@ -243,7 +243,7 @@ display "JSE-07 PASS: a control byte in title() builds cleanly"
 dash clear
 tempfile jout2
 capture noisily dash scatter mpg weight, title(`"`badtitle'"') ///
-    saving("`jout2'.html") replace
+    saving("`jout2'.html", replace)
 assert _rc == 0
 display "JSE-08 PASS: and on the immediate route too"
 
@@ -256,7 +256,7 @@ display "JSE-08 PASS: and on the immediate route too"
 tempfile jbase
 local jdir = substr("`jbase'", 1, strlen("`jbase'") - 9)
 dash clear
-capture noisily dash scatter mpg weight, saving(`"`jdir'js_a\b.html"') replace
+capture noisily dash scatter mpg weight, saving(`"`jdir'js_a\b.html"', replace)
 assert _rc == 0
 capture confirm file `"`jdir'js_a\b.html"'
 assert _rc == 0
@@ -1312,7 +1312,7 @@ python: import os, sfi; os.environ["HOME"] = sfi.Macro.getLocal("jse_fh")
 local jse_hnow : environment HOME
 qui sysuse auto, clear
 capture dash clear
-capture noisily dash scatter mpg weight, saving("~/jse39.html") replace
+capture noisily dash scatter mpg weight, saving("~/jse39.html", replace)
 local jse39rc = _rc
 capture noisily dash scatter mpg weight, name(jse40)
 capture noisily dash build, saving("~/jse40.html") replace nobrowser

@@ -3033,8 +3033,8 @@ capture dash clear
 // it in its note; twoway refuses it beside saving() too, and in the
 // list's order (measured 19oct2026, test/fixtures/noted_option_truth.json
 // graph_level; BUGS.md "A bare replace with nothing to replace is named
-// in the note, where twoway refuses it").  dash's one-line saving()
-// keeps its documented replace (U53-0b).
+// in the note, where twoway refuses it"); beside the one-line form's
+// saving() too (U53-0b), where saving(f, replace) writes over (U53-0c).
 // U53-1 .. U53-7, one case each; each prints its verdict, the first as
 // "U53-1 PASS".
 local _u53n 0
@@ -3062,8 +3062,11 @@ foreach _u53p in "scatter mpg weight, replace@option replace not allowed" ///
     _ov_assert U53-`_u53n' "(r(n) == 0)" `"`_u53x': nothing registered"'
 }
 _ov_assert U53-0 "(`_u53n' == 7)" "the 7 U53 cases ran"
-// U53-0b: the one-line form's saving() takes a bare replace, as dash.sthlp
-// documents (as dash build takes it), and names nothing.
+// U53-0b: Flipped (WP-32, maintainer ruling 19oct2026): the one-line
+// form's saving() took a bare replace, as dash build takes it, which was
+// wrong because twoway refuses a bare replace beside saving() too, r(198)
+// (noted_option_truth.json graph_level).  It is refused, the file kept;
+// twoway's saving(f, replace) writes over it.
 capture erase "`c(tmpdir)'ovu53b.html"
 capture dash clear
 capture log close _ovlog
@@ -3071,9 +3074,20 @@ log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
 capture noisily dash scatter mpg weight, saving("`c(tmpdir)'ovu53b.html") replace
 local _u53rc = _rc
 log close _ovlog
-_ov_assert U53-0b "(`_u53rc' == 0)" "one-line saving() replace: rc `_u53rc' (expected 0)"
-_ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
-_ov_assert U53-0b "(r(n) == 0)" "one-line saving() replace: nothing named"
+_ov_assert U53-0b "(`_u53rc' == 198)" "one-line saving() replace: rc `_u53rc' (expected 198, as twoway)"
+_ov_said U53-0b "option replace not allowed"
+capture confirm file "`c(tmpdir)'ovu53b.html"
+_ov_assert U53-0b "(_rc != 0)" "one-line saving() replace: no page written"
+// U53-0c: saving(f, replace) writes over a file there, as twoway's does.
+capture file close _u53fh
+file open _u53fh using "`c(tmpdir)'ovu53b.html", write replace text
+file write _u53fh "users file" _n
+file close _u53fh
+capture noisily dash scatter mpg weight, saving("`c(tmpdir)'ovu53b.html", replace)
+local _u53rc = _rc
+_ov_assert U53-0c "(`_u53rc' == 0)" "saving(f, replace): rc `_u53rc' (expected 0)"
+mata: st_local("_u53w", strofreal(strpos(invtokens(cat(c("tmpdir") + "ovu53b.html")'), "users file") == 0))
+_ov_assert U53-0c "(`_u53w' == 1)" "saving(f, replace): the file was written over"
 capture erase "`c(tmpdir)'ovu53b.html"
 capture dash clear
 

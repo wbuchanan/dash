@@ -86,7 +86,7 @@ program define _bys_render, rclass
     capture log close _byslog
     log using "`logfile'", name(_byslog) text replace
     dash clear
-    capture noisily dash scatter mpg weight, by(`byspec') saving("`out'.html") replace
+    capture noisily dash scatter mpg weight, by(`byspec') saving("`out'.html", replace)
     local rc = _rc
     log close _byslog
     if `rc' != 0 {
@@ -180,7 +180,7 @@ display "BYS-04 PASS: cols(2) and shrink are not reported alongside bgcolor(red)
 // A warning, not an error: the user asked for facets and gets them.
 tempfile out5
 dash clear
-dash scatter mpg weight, by(foreign, shrink) saving("`out5'.html") replace
+dash scatter mpg weight, by(foreign, shrink) saving("`out5'.html", replace)
 confirm file "`out5'.html"
 display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 
@@ -280,7 +280,7 @@ display "BSC-08 PASS: yrescale, xrescale, rescale, r, norescale and noyrescale a
 // BSC-09: the saved build says once that range() is not applied.
 tempfile out9
 dash clear
-_bsc_logrun `"dash scatter mpg weight, by(foreign, yrescale) yscale(range(0)) saving("`out9'.html") replace"'
+_bsc_logrun `"dash scatter mpg weight, by(foreign, yrescale) yscale(range(0)) saving("`out9'.html", replace)"'
 assert r(n) == 1
 display "BSC-09 PASS: by(foreign, yrescale) yscale(range(0)) says once that range() is not applied (saved)"
 

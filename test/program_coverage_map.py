@@ -777,7 +777,6 @@ COVERAGE = {
         "_dash_tw_takes": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_tw_refuses_tab": ("test_option_validation.cscript:U52-0",),
         "_dash_tw_refuses": ("test_option_validation.cscript:U52-0",),
-        "_dash_seg_named": ("test_option_validation.cscript:U53-0",),
         "_dash_play_find": ("test_option_validation.cscript:U54-0",),
         "_dash_grec_ok": ("test_option_validation.cscript:U54-0",),
         "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),

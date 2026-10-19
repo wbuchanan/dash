@@ -254,7 +254,7 @@ local inject_path = "`inject_out'.html"
 capture erase "`inject_path'"
 // Use as a mcolor value — the renderer receives it, html-escapes it
 capture dash scatter mpg weight, ///
-    mc(`"`inject_val'"') saving("`inject_path'") replace
+    mc(`"`inject_val'"') saving("`inject_path'", replace)
 local p281_rc = _rc
 // Either the command succeeds (injection treated as bad color → default)
 // or it errors gracefully — either way, no OS execution should occur.
@@ -2598,7 +2598,7 @@ foreach p2035k in `"scatteri .5 3000"' `"pci 0 0 0 1 (3) "A" 0 0 1 0"' ///
     `"scatteri 1 2 (9) "A" 3 4 (3.5) "B""' `"pci . 0 0 1 1 1 2 2"' ///
     `"pcarrowi -1e400 0 0 1 1 1 2 2"' {
     capture erase "`p2035o'"
-    _adv_p19_run `"dash `p2035k', saving("`p2035o'") replace"'
+    _adv_p19_run `"dash `p2035k', saving("`p2035o'", replace)"'
     local p2035rc = r(rc)
     local p2035lg "`r(log)'"
     if `p2035rc' != 0 {
@@ -3390,7 +3390,7 @@ dash clear
 tempfile hx15
 local hx15f "`hx15'.html"
 capture erase "`hx15f'"
-_adv_p19_run `"dash scatter mpg weight, hover(rep78 headroom trunk) saving("`hx15f'") replace"'
+_adv_p19_run `"dash scatter mpg weight, hover(rep78 headroom trunk) saving("`hx15f'", replace)"'
 assert r(rc) == 134
 local lg "`r(log)'"
 cert_file_has "`lg'", needle("370 values (74 observations x 5 variables)")
@@ -3408,7 +3408,7 @@ local hxs = strtrim("`hxs'")
 tempfile hx16
 local hx16f "`hx16'.html"
 capture erase "`hx16f'"
-_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx16f'") replace"'
+_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx16f'", replace)"'
 assert r(rc) == 134
 local lg "`r(log)'"
 cert_file_has "`lg'", needle("dash: this dashboard would embed `hxs' bytes of text (in 1 string variable), more than the 100 dash embeds.")
@@ -3425,7 +3425,7 @@ tempfile hx17
 local hx17f "`hx17'.html"
 local hx17p "`hx17'.py"
 capture erase "`hx17f'"
-_adv_p19_run `"dash histogram price, bin(10) hover(make) saving("`hx17f'") replace"'
+_adv_p19_run `"dash histogram price, bin(10) hover(make) saving("`hx17f'", replace)"'
 assert r(rc) == 0
 confirm file "`hx17f'"
 dash histogram price, bin(10) hover(make) name(h1)
@@ -3470,7 +3470,7 @@ global dash_max_cells 30
 tempfile hx18
 local hx18f "`hx18'.html"
 capture erase "`hx18f'"
-_adv_p19_run `"dash scatteri 1 2 3 4, hover(mpg) saving("`hx18f'") replace"'
+_adv_p19_run `"dash scatteri 1 2 3 4, hover(mpg) saving("`hx18f'", replace)"'
 assert r(rc) == 0
 local lg "`r(log)'"
 confirm file "`hx18f'"
@@ -3489,7 +3489,7 @@ local hx19f "`hx19'.html"
 local hx19p "`hx19'.py"
 capture erase "`hx19f'"
 capture erase "`hx19p'"
-_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx19f'") replace"'
+_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx19f'", replace)"'
 assert r(rc) == 0
 dash scatter mpg weight, hover(make) name(g1)
 _adv_p19_run `"dash build, server saving("`hx19p'") replace nobrowser"'

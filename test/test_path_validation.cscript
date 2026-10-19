@@ -384,33 +384,27 @@ _pv_is_user "`pvu'"
 assert r(user) == 1
 display "PV-22 PASS: an existing file is refused without replace, r(198), and left as it was"
 
-// PV-23: replace after the comma overwrites it, and is not named as
-// unsupported.
-capture log close _pv23
-quietly log using "`pvl'", text replace name(_pv23)
-capture noisily dash scatter mpg weight, saving("`pvu'") replace
-local rc23 = _rc
-quietly log close _pv23
-cert_file_has "`pvl'", needle("ignoring unsupported")
-local found23 = r(found)
-_pv_is_user "`pvu'"
-if `rc23' != 0 | `found23' != 0 | r(user) != 0 {
-    display as error "PV-23: rc `rc23'; note found `found23'; the user's file kept `r(user)'"
-    exit 9
+// PV-23: Flipped (WP-32, maintainer ruling 19oct2026): replace after the
+// comma overwrote the file, in both forms, which was wrong because twoway
+// refuses a bare replace beside saving(), "option replace not allowed",
+// r(198); dash refuses it and the user's file is kept (twoway's
+// saving(name, replace) is PV-24).
+foreach form in `"scatter mpg weight, saving("`pvu'") replace"' `"(scatter mpg weight) (lfit mpg weight), saving("`pvu'") replace"' `"(scatter mpg weight, saving("`pvu'")) (lfit mpg weight), replace"' {
+    _pv_userfile "`pvu'"
+    capture log close _pv23
+    quietly log using "`pvl'", text replace name(_pv23)
+    capture noisily dash `form'
+    local rc23 = _rc
+    quietly log close _pv23
+    cert_file_has "`pvl'", needle("option replace not allowed")
+    local found23 = r(found)
+    _pv_is_user "`pvu'"
+    if `rc23' != 198 | `found23' != 1 | r(user) != 1 {
+        display as error `"PV-23: `form': rc `rc23'; refusal said `found23'; the user's file kept `r(user)'"'
+        exit 9
+    }
 }
-cert_file_has "`pvu'", needle("bokeh")
-assert r(found) == 1
-_pv_userfile "`pvu'"
-capture noisily dash (scatter mpg weight) (lfit mpg weight), saving("`pvu'") replace
-assert _rc == 0
-_pv_is_user "`pvu'"
-assert r(user) == 0
-_pv_userfile "`pvu'"
-capture noisily dash (scatter mpg weight, saving("`pvu'")) (lfit mpg weight), replace
-assert _rc == 0
-_pv_is_user "`pvu'"
-assert r(user) == 0
-display "PV-23 PASS: replace after the comma overwrites the file, in both forms, and is not reported"
+display "PV-23 PASS: a bare replace beside saving() is refused as twoway refuses it, and the file is kept"
 
 // PV-24: twoway's own form, saving(name, replace).
 _pv_userfile "`pvu'"
@@ -455,7 +449,7 @@ local pvdir "`pvd'/dd.html"
 mkdir "`pvdir'"
 capture noisily dash scatter mpg weight, saving("`pvdir'")
 assert _rc == 198
-capture noisily dash scatter mpg weight, saving("`pvdir'") replace
+capture noisily dash scatter mpg weight, saving("`pvdir'", replace)
 assert _rc == 608
 mata: st_local("pvdok", strofreal(direxists(st_local("pvdir"))))
 assert `pvdok' == 1
@@ -473,7 +467,7 @@ foreach c of numlist 34 36 96 {
     local bad = "`pvd'/u" + char(`c') + ".html"
     capture log close _pv27
     quietly log using "`pvl'", text replace name(_pv27)
-    capture noisily dash scatter mpg weight, saving(`"`bad'"') replace
+    capture noisily dash scatter mpg weight, saving(`"`bad'"', replace)
     local rc27 = _rc
     quietly log close _pv27
     // A backtick reaches the command line as the start of a compound
@@ -619,7 +613,7 @@ capture noisily {
     dash scatter mpg weight, saving(n2, replace asis)
     confirm file "n2.html"
     dash scatter mpg weight, saving(k1, asis)
-    dash scatter mpg weight, saving(k1, asis) replace
+    dash scatter mpg weight, saving(k1, asis replace)
     confirm file "k1.html"
     capture dash scatter mpg weight, saving(n3, bogus)
     assert _rc == 198
@@ -633,7 +627,7 @@ capture noisily {
     assert _rc == 198
     dash scatter mpg weight, saving(, replace)
     confirm file "Graph.html"
-    dash scatter mpg weight, saving(   ) replace
+    dash scatter mpg weight, saving(   , replace)
     confirm file "Graph.html"
     capture dash scatter mpg weight, saving(n4, bogus) name(cfn)
     assert _rc == 198

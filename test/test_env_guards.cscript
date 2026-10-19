@@ -460,7 +460,7 @@ capture noisily dash serve, port(5098) timeout(1) nobrowser
 local e17s = _rc
 capture noisily dash build, saving("`e17out'.html") replace nobrowser
 local e17b = _rc
-capture noisily dash scatter mpg weight, saving("`e17out'_i.html") replace
+capture noisily dash scatter mpg weight, saving("`e17out'_i.html", replace)
 local e17i = _rc
 mata: st_global("S_ADO", st_local("_env_sado"))
 quietly log close `lf17'
@@ -949,7 +949,7 @@ capture dash clear
 local f27 "`c(tmpdir)'dash_env27"
 capture erase "`f27'_v16.html"
 capture erase "`f27'_v16.py"
-capture noisily version 16: dash scatter mpg weight, saving("`f27'_v16.html") replace
+capture noisily version 16: dash scatter mpg weight, saving("`f27'_v16.html", replace)
 local e27a = _rc
 capture confirm file "`f27'_v16.html"
 local e27af = (_rc == 0)
@@ -987,7 +987,7 @@ end
 local lg28 "`c(tmpdir)'dash_env28.log"
 capture erase "`lg28'"
 quietly log using "`lg28'", replace text name(_e2x)
-capture noisily dash scatter mpg weight, saving("`f28'i.html") replace
+capture noisily dash scatter mpg weight, saving("`f28'i.html", replace)
 local e28_1 = _rc
 capture noisily dash scatter mpg weight, name(e28)
 local e28_2 = _rc
@@ -1122,7 +1122,7 @@ foreach pkg in numpy pandas bokeh {
     local lg "`c(tmpdir)'dash_env31_`pkg'.log"
     capture erase "`lg'"
     quietly log using "`lg'", replace text name(e31l)
-    capture noisily dash scatter mpg weight, saving("`e31'_`pkg'_i.html") replace
+    capture noisily dash scatter mpg weight, saving("`e31'_`pkg'_i.html", replace)
     local e31i_`pkg' = _rc
     capture noisily dash scatter mpg weight, name(e31r)
     local e31r_`pkg' = _rc
@@ -1157,7 +1157,7 @@ python: dep_block.block("numpy", "broken")
 local lg32 "`c(tmpdir)'dash_env32.log"
 capture erase "`lg32'"
 quietly log using "`lg32'", replace text name(e32l)
-capture noisily dash scatter mpg weight, saving("`e32'.html") replace
+capture noisily dash scatter mpg weight, saving("`e32'.html", replace)
 local e32rc = _rc
 quietly log close e32l
 python: dep_block.stata_restored()
@@ -1180,7 +1180,7 @@ python: dep_block.fake_version((3, 6, 15, "final", 0))
 local lg33 "`c(tmpdir)'dash_env33.log"
 capture erase "`lg33'"
 quietly log using "`lg33'", replace text name(e33l)
-capture noisily dash scatter mpg weight, saving("`e33'.html") replace
+capture noisily dash scatter mpg weight, saving("`e33'.html", replace)
 local e33rc = _rc
 quietly log close e33l
 python: dep_block.stata_restored()
@@ -1203,7 +1203,7 @@ python: dep_block.block("sfi", "missing")
 local lg34 "`c(tmpdir)'dash_env34.log"
 capture erase "`lg34'"
 quietly log using "`lg34'", replace text name(e34l)
-capture noisily dash scatter mpg weight, saving("`e34'.html") replace
+capture noisily dash scatter mpg weight, saving("`e34'.html", replace)
 local e34rc = _rc
 quietly log close e34l
 python: dep_block.stata_restored()
@@ -1241,11 +1241,11 @@ local lg36b "`c(tmpdir)'dash_env36b.log"
 capture erase "`lg36'"
 capture erase "`lg36b'"
 quietly log using "`lg36'", replace text name(e36l)
-capture noisily dash scatter mpg weight, saving("`e36'a.html") replace
+capture noisily dash scatter mpg weight, saving("`e36'a.html", replace)
 local e36rc = _rc
 quietly log close e36l
 quietly log using "`lg36b'", replace text name(e36l)
-capture noisily dash scatter mpg weight, saving("`e36'b.html") replace
+capture noisily dash scatter mpg weight, saving("`e36'b.html", replace)
 local e36rc2 = _rc
 quietly log close e36l
 python: dep_block.stata_restored()
@@ -1266,7 +1266,7 @@ display "ENV-36 measured: rc `e36rc' `e36rc2' written `e36w' note `e36note' firs
 
 // ENV-37: dash clear prunes with numpy missing.
 tempfile e37
-quietly dash scatter mpg weight, saving("`e37'.html") replace
+quietly dash scatter mpg weight, saving("`e37'.html", replace)
 capture erase "`e37'.html"
 local tmp "`c(tmpdir)'"
 python: dep_block.stata_plant_run()
@@ -1371,7 +1371,7 @@ python: import sys as _u551s
 python: _u551s.argv = ["u551-probe", "x"]
 python: _u551_argv = list(_u551s.argv)
 python: _u551_names = ("_dash_saved_argv", "_dash_xm", "_dash_render_ns", "_dash_priv_argv", "_dash_dv", "_dash_serve_ns")
-dash scatter mpg weight, saving("`u551'.html") replace
+dash scatter mpg weight, saving("`u551'.html", replace)
 python: assert _u551s.argv == _u551_argv, _u551s.argv
 python: assert not [n for n in _u551_names if n in globals()], [n for n in _u551_names if n in globals()]
 dash scatter mpg weight

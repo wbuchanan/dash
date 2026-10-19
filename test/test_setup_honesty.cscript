@@ -1204,7 +1204,7 @@ adopath ++ "`u59d'"
 capture findfile dash.ado
 local u59fn `"`r(fn)'"'
 sysuse auto, clear
-capture noisily dash scatter mpg weight, saving("`u59d'/u59.html") replace
+capture noisily dash scatter mpg weight, saving("`u59d'/u59.html", replace)
 local u59rc = _rc
 python: import sys; from sfi import Macro; Macro.setLocal("u59after", "1" if sys.dont_write_bytecode else "0")
 adopath - "`u59d'"

@@ -66,8 +66,7 @@
 
 {p 8 17 2}
 {cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
-{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}
-{cmd:replace}]
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}]
 
 {pstd}{ul:Named graph (accumulate for multi-graph dashboard)}{p_end}
 
@@ -810,15 +809,16 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:dash build} does, the one-line form refuses a file
     {cmd:saving()} names that exists, "file '...' already exists. Use
     replace option to overwrite.", {cmd:r(198)} ({cmd:twoway} says
-    {cmd:r(602)}).  Write {cmd:replace} after the comma, as for
-    {cmd:dash build}, or {cmd:saving(}{it:filepath}{cmd:, replace)}, as for
-    {cmd:twoway}, to write over it.  A directory in the file's place is
+    {cmd:r(602)}).  Write {cmd:saving(}{it:filepath}{cmd:, replace)}, as
+    for {cmd:twoway}, to write over it; a bare {cmd:replace} after the
+    comma is {cmd:dash build}'s option only, and on a graph it is refused
+    as {cmd:twoway} refuses it, "option replace not allowed",
+    {cmd:r(198)}.  A directory in the file's place is
     never written: with {cmd:replace} it is refused with {cmd:r(608)}, as
     {cmd:twoway} refuses it, on the one-line form and {cmd:dash build}
-    alike.  {cmd:replace} with no {cmd:saving()}, or on a named graph,
-    has nothing to replace and is refused as {cmd:twoway} refuses it in
-    every position, "option replace not allowed", {cmd:r(198)}; a named
-    graph is replaced by {cmd:name(}{it:name}{cmd:, replace)}.
+    alike.  A bare {cmd:replace} is refused in every position, beside
+    {cmd:saving()} or not; a named graph is replaced by
+    {cmd:name(}{it:name}{cmd:, replace)}.
     {cmd:saving()}'s sub-options are {cmd:twoway}'s, {cmd:replace} and
     {cmd:asis}, in full, in lower case and once each, on the one-line form
     and {cmd:dash build} alike; {cmd:asis} is accepted and changes nothing,

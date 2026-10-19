@@ -26,7 +26,7 @@ dash scatter mpg weight, ///
     title("Fuel Efficiency vs. Weight") ///
     xtitle("Weight (lbs.)")             ///
     ytitle("Mileage (mpg)")             ///
-    saving("scatter.html") replace
+    saving("scatter.html", replace)
 
 // With saving(), the page is written to scatter.html and not opened; without
 // it, the page is opened in your browser.  replace lets the example be run

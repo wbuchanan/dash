@@ -825,7 +825,7 @@ _qs_run `"dash scatter y x, saving("`p'.html")"'
 timer off 1
 assert r(rc) == 0
 timer on 2
-_qs_run `"dash scatter y x if x > y[_n-1] & !missing(z), saving("`p'.html") replace"'
+_qs_run `"dash scatter y x if x > y[_n-1] & !missing(z), saving("`p'.html", replace)"'
 timer off 2
 assert r(rc) == 0
 quietly timer list
@@ -1189,7 +1189,7 @@ _qs_run `"dash scatter y x, by(g, total) saving("`p'.html")"'
 timer off 1
 assert r(rc) == 0
 timer on 2
-_qs_run `"dash (scatter y x if x > x[_n-1]) (scatter y x in 1/5000), by(g, total) saving("`p'.html") replace"'
+_qs_run `"dash (scatter y x if x > x[_n-1]) (scatter y x in 1/5000), by(g, total) saving("`p'.html", replace)"'
 timer off 2
 assert r(rc) == 0
 quietly timer list
@@ -1227,7 +1227,7 @@ local qs_k1 = c(k)
 assert c(maxvar) - `qs_k1' == 1
 tempfile p
 capture dash clear
-_qs_run `"dash scatter mpg weight if foreign || scatter mpg weight if !foreign, saving("`p'.html") replace"'
+_qs_run `"dash scatter mpg weight if foreign || scatter mpg weight if !foreign, saving("`p'.html", replace)"'
 local rc = r(rc)
 local qs_log "`r(log)'"
 cert_log_has "`qs_log'", needle("dash: the dashboard needs 3 working columns")
@@ -1241,7 +1241,7 @@ capture confirm file "`p'.html"
 local qs_nofile = (_rc != 0)
 // One qualifier column (and its row index) fits in two columns of room.
 drop qsz2047
-_qs_run `"dash scatter mpg weight if foreign, saving("`p'.html") replace"'
+_qs_run `"dash scatter mpg weight if foreign, saving("`p'.html", replace)"'
 local rc1 = r(rc)
 local qs_k3 = c(k)
 capture erase "`p'.html"

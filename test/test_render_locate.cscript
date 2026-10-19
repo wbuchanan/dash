@@ -524,7 +524,7 @@ capture noisily dash build, saving("`l12out'.html") replace nobrowser
 local lrc12b = _rc
 capture noisily dash serve
 local lrc12s = _rc
-capture noisily dash scatter mpg weight, saving("`l12out'_i.html") replace
+capture noisily dash scatter mpg weight, saving("`l12out'_i.html", replace)
 local lrc12i = _rc
 quietly log close `llf12'
 capture confirm file "`l12out'.html"
