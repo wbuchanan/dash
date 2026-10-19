@@ -319,6 +319,14 @@ class TestTheLegendSpans:
         # legend(nospan) undoes it.
         assert self._items(mode, "nospan", bo) == []
 
+    def test_span_beside_nospan_spans(self, mode):
+        """Measured 19oct2026 (stcolor and s2color): legend(pos(6) span
+        nospan) and legend(pos(6) nospan span) both draw as legend(pos(6)
+        span), whatever the order."""
+        for opt in ("pos(6) span nospan", "pos(6) nospan span"):
+            assert self._items(mode, opt) == [
+                ("Legend", "legend", "below", "center")], opt
+
     def test_by_is_unchanged_by_the_schemes_span(self, mode, tmp_path,
                                                 monkeypatch):
         _user_scheme(tmp_path, monkeypatch, "wls2.scheme",

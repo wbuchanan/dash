@@ -38236,13 +38236,14 @@ def _dash_span_move(fig, old, new):
 def _dash_textbox_span(fig, model, opts, side, clock=12):
     """title(), subtitle(), note() and caption() with span (WP-32): a box
     above or below the plot is placed on the whole graph, as twoway places
-    it, through :func:`_dash_span`; without span, or with nospan, nothing.
+    it, through :func:`_dash_span`; without span nothing.  span beside
+    nospan spans, in either order (measured 19oct2026).
     A box twoway draws beside the plot (*clock* 2-4 or 8-10), which dash
     draws on the nearer horizontal side (:func:`_dash_textbox_place`),
     keeps its place: twoway's span moves it along the plot's height only
     (BUGS.md "A spanned title is placed on the plot region")."""
     o = opts or {}
-    if ("span" in o and "nospan" not in o and side in ("above", "below")
+    if ("span" in o and side in ("above", "below")
             and clock not in (2, 3, 4, 8, 9, 10)):
         _dash_span(fig, model, "title", side,
                    str(getattr(model, "align", "") or "left"),
@@ -38902,7 +38903,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         _dash_legend_box(legend, _calls, _words)
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
-    #     legend_span', and legend(nospan) undoes either.  A side-panel
+    #     legend_span' unless legend(nospan) undoes it; span beside
+    #     nospan spans, in either order (measured 19oct2026).  A side-panel
     #     legend is placed along its side on the whole graph instead of
     #     the plot region (_DASH_SPAN_JS; measured 19oct2026: 6 and 12
     #     centred on the graph's width, 3 and 9 on its height, a corner at
@@ -38911,8 +38913,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     if legend is not None:
         _side = next((s for s in ("below", "above", "left", "right")
                       if legend in list(getattr(fig, s))), None)
-        _span = ("nospan" not in _words
-                 and ("span" in _words or bool(chrome.get("legend_span"))))
+        _span = ("span" in _words
+                 or ("nospan" not in _words
+                     and bool(chrome.get("legend_span"))))
         if _span and _side is not None and isinstance(legend.location, str):
             _dash_span(fig, legend, "legend", _side, legend.location)
         else:

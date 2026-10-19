@@ -4437,7 +4437,8 @@ graph instead of the plot region, as {cmd:twoway} draws it -- at 6 or 12
 o'clock centred on the graph's width, at 3 or 9 on its height, at a
 corner clock at the graph's end -- in the saved page and the served app
 and after a resize; {cmd:nospan} undoes the scheme's
-{cmd:yesno legend_span}, and a legend inside the plot is placed as
+{cmd:yesno legend_span} ({cmd:span} beside {cmd:nospan} spans, in either
+order, as in {cmd:twoway}), and a legend inside the plot is placed as
 without it, as is a {cmd:by()} graph's under the scheme's
 {cmd:legend_span}.  {cmd:bexpand} and its
 {cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},

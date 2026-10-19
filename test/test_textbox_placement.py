@@ -534,6 +534,15 @@ class TestSpan:
         assert _spanned(fig) == [("Title", "title", "above", "right")]
 
     @pytest.mark.parametrize("mode", MODES)
+    def test_span_beside_nospan_spans(self, mode):
+        """Measured 19oct2026 (stcolor and s2color): title("T", span
+        nospan) and title("T", nospan span) both draw as title("T",
+        span)."""
+        for opt in ('"T", span nospan', '"T", nospan span'):
+            fig, _c = _fig(mode, {"title": opt})
+            assert _spanned(fig) == [("Title", "title", "above", "center")]
+
+    @pytest.mark.parametrize("mode", MODES)
     def test_no_span_nospan_and_inside_place_nothing(self, mode):
         for go in ({"title": '"T"', "note": '"N"'},
                    {"title": '"T", nospan'},
