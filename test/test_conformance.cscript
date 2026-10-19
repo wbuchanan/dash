@@ -228,11 +228,14 @@ file close `fh'
 //         draws twoway's points, and an empty function layer is made from
 //         its points instead.  Before that it was nosuchfunction(x), which
 //         dash refuses at registration, r(133), as twoway does.)
-//   ctl2  a scatter of a variable missing on every observation -- twoway
-//         draws it, empty and silent (rc 0, measured 24sep2026) -- which
-//         the renderer reports with the rows it had:
-//           dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74
+//   ctl2  a line of a variable missing on every observation, which the
+//         renderer reports with the rows it had:
+//           dash: graph 'ctl2' plot 1 (line) drew nothing from 74
 //           observations.
+//         Flipped: WP-32 -- it was a scatter, which dash now draws in
+//         silence as twoway does (BUGS.md "An all-missing scatter, a
+//         constant-x lowess and a constant kdensity keep dash's "drew
+//         nothing" note").
 // C-03 requires these to be the only figures with nothing on them and the
 // only layers reported: that proves, on every run, that the page check can
 // see an empty figure and that each form of the report reaches this log in
@@ -241,7 +244,7 @@ quietly generate double allmiss = .
 capture noisily dash function y = x, range(0 10) name(ctl)
 local ctl_rc = _rc
 mata: st_global("dash_fpts_ctl", `"{"1":{"x0":0,"dx":1,"y":[]}}"')
-capture noisily dash scatter allmiss weight, name(ctl2)
+capture noisily dash line allmiss weight, name(ctl2)
 local ctl_rc = max(`ctl_rc', _rc)
 
 // Every command was read: the loop ran once per line the fixture holds,
@@ -441,7 +444,7 @@ cert_log_has "`buildlog'", needle(") drew nothing")
 local c3_nrep = r(count)
 cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing: it needs the points Stata computes for it when dash registers the graph, and the points this spec carries for it cannot be read.")
 local c3_nctl = r(count)
-cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74 observations.")
+cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (line) drew nothing from 74 observations.")
 local c3_nctl2 = r(count)
 display "C-03: `c3_nbad' figure(s) drew less than they should; `c3_nrep' empty-layer report(s), `c3_nctl' + `c3_nctl2' of them the controls'"
 if `c3_nbad' > 0 | `c3_nrep' != 2 | `c3_nctl' != 1 | `c3_nctl2' != 1 {

@@ -557,7 +557,11 @@ _SAVED_DIGEST = (
     # af35a89d... -> e22b95f9...: the WP-32 merge of D-31.a, D-53d/e, the empty-axis finish and the fit
     # extents (each confirmed by its masked model diff); the same under both
     # Pythons.
-    "e22b95f9de8f62d719a2597408912bc61a5802fd1e2342a2399e87a064123c5b")
+    # e22b95f9... -> b475c9c7...: WP-32, the filter code draws a constant
+    # kdensity subset's grid at a density of 0 (code only: the base's
+    # _FILTER_JS gives the old digest on the new tree), the same under
+    # both Pythons.
+    "b475c9c70a6bb17a1db953c3ddd572dcb4398d4b5facb8249a19cf645d617062")
 
 
 # ===========================================================================

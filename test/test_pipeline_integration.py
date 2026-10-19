@@ -783,14 +783,19 @@ class TestEdgeCaseData:
 
     @pytest.mark.parametrize("ptype,glyph", [("scatter", "Scatter"),
                                              ("histogram", "Quad")])
-    def test_ec03_an_all_missing_column_draws_nothing_and_says_so(
+    def test_ec03_an_all_missing_column_draws_nothing_in_silence(
             self, ptype, glyph):
         """EC-03: all-NaN renders and draws nothing.
 
-        twoway scatter and twoway histogram both draw nothing here (rc 0).
-        dash names the scatter layer; the histogram it draws in silence, as
-        twoway does (BUGS.md, S3 batch: a histogram with no observation in
-        its sample, or in a by() panel, is twoway's silent empty layer).
+        twoway scatter and twoway histogram both draw nothing here, rc 0,
+        and say nothing (BUGS.md, S3 batch: a histogram with no observation
+        in its sample is twoway's silent empty layer; the scatter measured
+        19oct2026, WP-32).
+
+        Flipped: WP-32 -- dash named the scatter layer, "drew nothing from
+        5 observations", where twoway draws it in silence (BUGS.md "An
+        all-missing scatter, a constant-x lowess and a constant kdensity
+        keep dash's "drew nothing" note").
         """
         plot = {"type": ptype, "yvar": "mpg", "options": {}}
         values = [{"mpg": None} for _ in range(5)]
@@ -802,11 +807,7 @@ class TestEdgeCaseData:
         dr, notes = self._render_noted(plots=[plot], values=values,
                                        varnames=varnames)
         assert self._drawn(dr) == [(glyph, 0)]
-        if ptype == "histogram":
-            assert notes == []
-        else:
-            assert notes == ["dash: graph 'g1' plot 1 (%s) drew nothing "
-                             "from 5 observations." % ptype]
+        assert notes == []
 
     _CONST_X = [{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)]
 
@@ -902,31 +903,37 @@ class TestEdgeCaseData:
         assert xs[0] == 1000.0 and xs[-1] == 6000.0
         assert np.allclose(ys, 24.5)
 
-    def test_ec04_constant_x_lowess_draws_nothing_and_says_so(self):
+    def test_ec04_constant_x_lowess_draws_nothing_in_silence(self):
         """EC-04: constant-x lowess draws nothing, as twoway lowess does
-        (``lowess, generate()`` gives all missing and the serset is empty),
-        and dash says so."""
+        (its serset's smooth is missing on every row, rc 0, no message;
+        measured 19oct2026).
+
+        Flipped: WP-32 -- dash said "drew nothing from 10 observations",
+        where twoway is silent (BUGS.md, the all-missing scatter entry)."""
         dr, notes = self._render_noted(
             plots=[{"type": "lowess", "yvar": "mpg", "xvar": "weight", "options": {}}],
             values=self._CONST_X, varnames=["mpg", "weight"])
         assert self._drawn(dr) == [("Line", 0)]
-        assert notes == ["dash: graph 'g1' plot 1 (lowess) drew nothing from "
-                         "10 observations."]
+        assert notes == []
 
-    def test_ec05_constant_y_kdensity_draws_nothing_and_says_so(self):
-        """EC-05: constant y (std==0) kdensity draws nothing and says so.
+    def test_ec05_constant_y_kdensity_draws_twoways_points(self):
+        """EC-05: constant y (std==0) kdensity draws what twoway draws:
+        all 300 of its points at (22, 0), rc 0, no message (measured
+        19oct2026) -- a line of no length and no height, on axes that
+        hold it.
 
-        twoway kdensity puts all 300 of its points at (22, 0) -- a line of
-        no length and no height, so nothing shows either way.
+        Flipped: WP-32 -- dash drew no points and said "drew nothing from
+        10 observations" (BUGS.md, the all-missing scatter entry).
         """
         dr, notes = self._render_noted(
             plots=[{"type": "kdensity", "yvar": "mpg", "options": {}}],
             values=[{"mpg": 22.0} for _ in range(10)],
             varnames=["mpg"],
         )
-        assert self._drawn(dr) == [("Line", 0)]
-        assert notes == ["dash: graph 'g1' plot 1 (kdensity) drew nothing "
-                         "from 10 observations."]
+        assert self._drawn(dr) == [("Line", 300)]
+        data = dr.figures["g1"].renderers[0].data_source.data
+        assert set(data["x"]) == {22.0} and set(data["y"]) == {0.0}
+        assert notes == []
 
     def test_ec06_missing_yvar_column_warns_no_keyerror(self):
         """EC-06: missing yvar emits warning and does not raise KeyError."""

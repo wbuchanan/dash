@@ -688,13 +688,17 @@ class TestASmootherTwowayDrawsInSilenceIsSilent:
         for _drawn, notes in _both(tmp_path, spec, rows, "miss_" + ptype):
             assert notes == [], notes
 
-    def test_a_constant_x_lowess_still_says_so(self, tmp_path):
-        """The boundary kept: a constant x, not a small sample, keeps
-        dash's note (test_pipeline_integration.py EC-04)."""
+    def test_a_constant_x_lowess_is_silent_too(self, tmp_path):
+        """A constant x: twoway's smooth is missing on every row, drawn in
+        silence (test_pipeline_integration.py EC-04; measured 19oct2026).
+
+        Flipped: WP-32 -- dash kept its note here (BUGS.md "An all-missing
+        scatter, a constant-x lowess and a constant kdensity keep dash's
+        "drew nothing" note")."""
         spec = make_spec([_layer("lowess")])
         _r, notes = _saved(tmp_path, spec,
                            _payload(["y", "x"], _xy_rows([5] * 6, range(6))))
-        assert [n for n in notes if _NOTHING in n], notes
+        assert not [n for n in notes if _NOTHING in n], notes
 
     def test_mark_silent_marks_each_renderer(self):
         from bokeh.plotting import figure

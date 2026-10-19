@@ -827,8 +827,8 @@ def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
 # ---------------------------------------------------------------------------
 
 def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
-    """Regression: a served kdensity on constant data draws nothing, and
-    does not crash.
+    """Regression: a served kdensity on constant data draws twoway's flat
+    points at the constant, and does not crash.
 
     scipy.stats.gaussian_kde raised LinAlgError on zero-variance data, and
     the served app's own `_compute_kdensity' guarded against it.  That copy
@@ -867,9 +867,13 @@ def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
                 try: os.unlink(_p)
                 except OSError: pass
 
+    # Flipped: WP-32 -- a constant column is twoway's 300 points at
+    # (22, 0) (measured 19oct2026), where dash drew none (BUGS.md "An
+    # all-missing scatter, a constant-x lowess and a constant kdensity
+    # keep dash's "drew nothing" note").
     const_df = auto_df.copy()
     const_df["mpg"] = 22.0
-    assert _served_lengths(const_df, "_test_kde_const") == [0]
+    assert _served_lengths(const_df, "_test_kde_const") == [300]
     assert _served_lengths(auto_df.iloc[:1].copy(), "_test_kde_one") == [0]
     assert _served_lengths(auto_df, "_test_kde_ok") == [300]
 

@@ -416,12 +416,16 @@ class TestARejectedExpressionIsStillReported:
 class TestALayerThatDrewNothingIsNamedByWhatItHas:
     def test_a_graph_with_no_name_is_named_by_its_place(self, tmp_path,
                                                          mode):
-        spec = {"graphs": [_graph("", [{"type": "scatter", "yvar": "m",
+        # Flipped: WP-32 -- an all-missing scatter is drawn in silence, as
+        # twoway draws it (BUGS.md "An all-missing scatter, a constant-x
+        # lowess and a constant kdensity keep dash's "drew nothing"
+        # note"), so the layer that reports here is a line.
+        spec = {"graphs": [_graph("", [{"type": "line", "yvar": "m",
                                         "xvar": "x", "options": {}}])],
                 "build_options": {"layout": "1 1", "theme": ""}}
         _, warns = _draw(mode, tmp_path, spec, _DF)
         assert _empty_reports(warns) == [
-            "dash: plot 1 (scatter) drew nothing from 6 observations."], \
+            "dash: plot 1 (line) drew nothing from 6 observations."], \
             warns
 
     def test_a_named_graph_is_named(self, tmp_path, mode):

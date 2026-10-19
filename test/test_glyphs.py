@@ -719,11 +719,18 @@ class TestEdgeCasesEmptyData:
         assert np.allclose(np.asarray(data["y_fit"], float), 23.0)
 
     def test_kdensity_constant_data_returns_renderer(self, fig, gm):
-        """Regression: map_kdensity with constant data returns empty renderer."""
+        """Regression: map_kdensity with constant data returns a renderer
+        holding twoway's 300 points at (22, 0).
+
+        Flipped: WP-32 -- it held none, where `twoway kdensity' draws its
+        grid at a density of 0 (measured 19oct2026; BUGS.md "An
+        all-missing scatter, a constant-x lowess and a constant kdensity
+        keep dash's "drew nothing" note")."""
         const_cds = ColumnDataSource({"mpg": [22.0, 22.0, 22.0, 22.0, 22.0]})
         r = gm.map_kdensity(fig, const_cds, "mpg", {})
         assert r is not None
-        assert len(r.data_source.data["x"]) == 0
+        assert list(r.data_source.data["x"]) == [22.0] * 300
+        assert list(r.data_source.data["y"]) == [0.0] * 300
 
     def test_kdensity_single_point_returns_renderer(self, fig, gm):
         """Regression: map_kdensity with a single data point returns empty renderer."""

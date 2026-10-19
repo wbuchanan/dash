@@ -1574,19 +1574,22 @@ cert_file_has "`r(log)'", needle("drew nothing")
 assert r(found) == 0
 dash clear
 // A data layer that draws nothing is still named: by its graph when the
-// graph has a name, by its place alone when it has none.
+// graph has a name, by its place alone when it has none.  Flipped: WP-32
+// -- the layer was a scatter, which dash now draws in silence as twoway
+// does (BUGS.md "An all-missing scatter, a constant-x lowess and a
+// constant kdensity keep dash's "drew nothing" note"); a line still says.
 generate m73 = .
-_p1a_logrun `"dash scatter m73 weight, saving("`h73'h.html")"'
+_p1a_logrun `"dash line m73 weight, saving("`h73'h.html")"'
 assert r(rc) == 0
 local lg73 "`r(log)'"
-cert_file_has "`lg73'", needle("dash: plot 1 (scatter) drew nothing from 74 observations.")
+cert_file_has "`lg73'", needle("dash: plot 1 (line) drew nothing from 74 observations.")
 assert r(found) == 1
 cert_file_has "`lg73'", needle("'?'")
 assert r(found) == 0
-dash scatter m73 weight, name(p1a73c)
+dash line m73 weight, name(p1a73c)
 _p1a_logrun `"dash build, saving("`h73'i.html") replace"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: graph 'p1a73c' plot 1 (scatter) drew nothing from 74 observations.")
+cert_file_has "`r(log)'", needle("dash: graph 'p1a73c' plot 1 (line) drew nothing from 74 observations.")
 assert r(found) == 1
 drop m73
 dash clear

@@ -17981,6 +17981,12 @@ class GlyphMapper:
         self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
+        # Every row missing its y or its x: twoway draws nothing, rc 0, and
+        # says nothing (`twoway scatter m1 m2' on two all-missing
+        # variables, measured 19oct2026, WP-32), so no "drew nothing".
+        if (_linked_jit is None and view is None
+                and len(clean_source.data.get(xvar, ())) == 0):
+            self._mark_silent(r)
         return r
 
     @staticmethod
@@ -20314,10 +20320,10 @@ class GlyphMapper:
                                             color_idx, yvar)
             # Fewer than three observations: twoway draws the missing
             # smooth in silence, rc 0, on one, two or three (measured
-            # 24sep2026) -- in a by() panel too.  A constant x keeps
-            # dash's "drew nothing" (EC-04).
-            if len(x) < 3:
-                self._mark_silent(_r_empty)
+            # 24sep2026) -- in a by() panel too; and on a constant x, whose
+            # smooth is missing on every row, in silence too (EC-04,
+            # measured 19oct2026, WP-32).
+            self._mark_silent(_r_empty)
             if not options.get("recast"):
                 self._tag_fit(_r_empty, source, view, _cfg)
             return _r_empty
@@ -22223,13 +22229,18 @@ class GlyphMapper:
             # estimator_edges_truth.json kd.range_*).
             return self._mark_silent(self._empty_fit_line(
                 fig, "x", "y", options, color_idx, yvar))
-        if len(arr) < 2 or np.std(arr) == 0.0:
+        if len(arr) < 2:
             r = self._empty_fit_line(fig, "x", "y", options, color_idx, yvar)
             # None or one: dash.ado refuses one as twoway does, r(2001);
             # in a by() panel twoway draws none or one in silence, rc 0
-            # (measured 24sep2026).  A constant variable keeps dash's
-            # "drew nothing" (EC-05).
-            return self._mark_silent(r) if len(arr) < 2 else r
+            # (measured 24sep2026).
+            return self._mark_silent(r)
+        # A constant variable is drawn as any other (EC-05, WP-32): its
+        # grid runs from the minimum to the maximum, the one value, and the
+        # bandwidth rule gives 0, where twoway's density is 0 at every point
+        # -- `twoway kdensity c22' draws 300 points at (22, 0), range(10 30)
+        # its grid at y = 0, bwidth(1) the kernel's peak at 22 (measured
+        # 19oct2026), rc 0 and no message.
 
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
@@ -22256,9 +22267,11 @@ class GlyphMapper:
                     UserWarning, stacklevel=2,
                 )
             bw = default_bw
-        if bw <= 0.0:
-            return self._empty_fit_line(fig, "x", "y", options, color_idx,
-                                        yvar)
+        # bw is 0 only when every value is the same (_stata_kde_bandwidth
+        # falls back to the sd): twoway's density is then 0 everywhere.
+        _bw_none = not bw > 0.0
+        if _bw_none:
+            bw = 0.0
 
         # n(1) is twoway's: one point, at the low end (WP-31 C10a).
         n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=1.0,
@@ -22299,7 +22312,8 @@ class GlyphMapper:
                               int(n_pts))
         # WP-31 H6: the page redraws a grid the user did not give.
         _kgrid_n = int(n_pts) if _rng is None else None
-        density = _kde_curve(arr, x_range, bw, kernel, w) * float(_karea)
+        density = (np.zeros(len(x_range)) if _bw_none
+                   else _kde_curve(arr, x_range, bw, kernel, w) * float(_karea))
 
         # WP-29 P0.8: the grid, range() and the bandwidth are in the
         # variable's Stata units; the curve is drawn where the figure's x
@@ -34020,14 +34034,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             if (!(m > 0)) m = sd;
             h = 0.9 * m * Math.pow(n, -0.2);
         }
-        if (!(h > 0)) {
-            // Every surviving value equal: no bandwidth, no curve.  Python
-            // draws nothing on such data; `continue' alone left the
-            // previous curve on screen.
-            src.data = { x: [], y: [] };
-            src.change.emit();
-            continue;
-        }
+        // Every surviving value equal: the rule's bandwidth is 0, and
+        // twoway draws its grid at a density of 0 (map_kdensity, EC-05,
+        // WP-32), where the page cleared the curve.
+        const _hzero = !(h > 0);
+        if (_hzero) h = 0;
         const kfn = dash_kernel(ac.kernel || 'epanechnikov');
         let xs = ac.x_grid;
         if (ac.regrid === true && ac.n >= 1) {
@@ -34047,6 +34058,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // WP-29 P0.8: evaluated at the unit grid, drawn at x_grid.
         const xe = ac.x_eval || xs;
         const ys = xe.map(x => {
+            if (_hzero) return 0;
             let s = 0;
             if (wv) {
                 for (let i = 0; i < n; i++) s += wv[i] * kfn((x - vals[i]) / h);

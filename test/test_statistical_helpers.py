@@ -841,13 +841,17 @@ class TestFilterJavaScript:
         np.testing.assert_array_equal(got["top"], [1, 1, 5])
         np.testing.assert_array_equal(got["top"], tops)
 
-    def test_a_kdensity_on_a_constant_subset_is_cleared_not_left_stale(self):
-        # Python draws nothing on constant data; the JavaScript left the
-        # previous curve on screen (`continue' before touching the source).
+    def test_a_kdensity_on_a_constant_subset_is_redrawn_not_left_stale(self):
+        # The JavaScript left the previous curve on screen (`continue'
+        # before touching the source).  Flipped: WP-32 -- it then cleared
+        # the curve; a constant subset is twoway's grid at a density of 0,
+        # as Python draws constant data (BUGS.md "An all-missing scatter, a
+        # constant-x lowess and a constant kdensity keep dash's "drew
+        # nothing" note").
         r = GM().map_kdensity(figure(), ColumnDataSource({"v": [1.0, 2.0, 5.0, 7.0]}),
                               "v", {})
         got = _run_filter_js_block("kdensity", r._dash_agg_config, [3.0, 3.0, 3.0])
-        assert got == {"x": [], "y": []}
+        assert got == {"x": [3.0] * 300, "y": [0] * 300}
 
 
 class TestAStringWeightIsNotFatal:
