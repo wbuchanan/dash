@@ -502,7 +502,7 @@ program define _dash_require_mata
         _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
-        _dash_prefix_word _dash_seg_saving _dash_seg_named _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
+        _dash_prefix_word _dash_seg_saving _dash_seg_named _dash_play_find _dash_grec_ok _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -1064,7 +1064,8 @@ program define _dash_parse_graph_opts, sclass
     // they were named here as not drawn; twoway refuses both, "option
     // filter() not allowed", r(198), and so does dash (WP-32,
     // _dash_tw_refuses_tab), so neither reaches this list.
-    if `: length local play' local _dash_pending `"`_dash_pending' play"'
+    // play() is not named: _dash_play_check refuses it, as twoway refuses
+    // a recording it cannot find or read (WP-32).
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown : copy local options
 
@@ -1451,7 +1452,8 @@ program define _dash_parse_plot_opts, sclass
     // WP-31 B5b: dlalign() is accepted and named: a stroke cannot be
     // aligned in Bokeh (as mlalign()).
     if `: length local dlalign' local _dash_pending `"`_dash_pending' dlalign"'
-    if `: length local play' local _dash_pending `"`_dash_pending' play"'
+    // play() is not named: _dash_play_check refuses it, as twoway refuses
+    // a recording it cannot find or read (WP-32).
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),
     // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
     // Drawn on lfitci, qfitci, lpolyci and fpfitci (pstyle() and the other
@@ -8186,6 +8188,43 @@ program define _dash_wexp_gen
 end
 
 // ================================================================
+// _dash_play_check `"<play() text>"'  -- play() as twoway reads it
+// ================================================================
+// WP-32 (BUGS.md "play() is named in the note, where twoway refuses a
+// recording it cannot find or read").  twoway plays a Graph Editor
+// recording on the graph it has drawn (gr_play.ado; measured 19oct2026 in
+// StataNow 19.5): ".grec" is added to a name whose last part has no ".",
+// the name is looked for as given and then in PERSONAL's grec/ folder,
+// never elsewhere on the ado-path, and none found is "recording <name>
+// not found in either PERSONAL or working directory", r(601); a file
+// without the GREC header is "<file> is not a Graph Recorder file",
+// r(198) (_gs_rec_rdfilehdr.ado); play() empty plays nothing.  dash
+// refuses as twoway does, and a recording twoway can read is refused
+// too, r(198): its edits address twoway's graph objects, which a
+// dashboard does not have, and a page drawn without them would not be the
+// graph the command asks for.  The text is the user's, read by value and
+// echoed through _dash_say.
+program define _dash_play_check
+    version 19
+    mata: _dash_text_args(0, 0, 0)
+    local pl : copy local _dash_txt
+    mata: st_local("pl", strtrim(st_local("pl")))
+    if !`: length local pl' exit
+    mata: st_local("_pf", _dash_play_find(st_local("pl"), st_global("c(sysdir_personal)")))
+    if !`: length local _pf' {
+        mata: _dash_say("err", "recording ", st_local("pl"), " not found in either PERSONAL or working directory")
+        exit 601
+    }
+    mata: st_local("_pok", strofreal(_dash_grec_ok(st_local("_pf"))))
+    if !`_pok' {
+        mata: _dash_say("err", "", st_local("_pf"), " is not a Graph Recorder file")
+        exit 198
+    }
+    mata: _dash_say("err", "play(): ", st_local("_pf"), " is a Graph Editor recording, and dash cannot apply its Graph Editor edits to a dashboard; play it on the graph twoway draws")
+    exit 198
+end
+
+// ================================================================
 // _dash_report_ignored  — one note per command naming every option
 //                         dash accepted but did not honour
 // ================================================================
@@ -9090,6 +9129,9 @@ program define _dash_plot
         }
         local g_replace ""
     }
+    // play() last, as twoway plays a recording once the graph is drawn
+    // (WP-32): after every other refusal of the command.
+    if `: length local g_play' _dash_play_check `"`macval(g_play)'"'
     if `: length local _dash_ignored_acc' {
         _dash_report_ignored `"`macval(_dash_ignored_acc)'"'
     }

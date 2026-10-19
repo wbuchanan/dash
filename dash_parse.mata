@@ -72,6 +72,12 @@
 *!   _dash_seg_named(seg)
 *!       1 when a plot segment's options hold a name() option.
 *!
+*!   _dash_play_find(name, personal)
+*!       The recording file twoway's play() reads, or "".
+*!
+*!   _dash_grec_ok(path)
+*!       1 when a file starts with a Graph Recorder header.
+*!
 *!   _dash_launch_quote(path, os)
 *!       path quoted for the To launch: line: single quotes on a Mac and
 *!       Unix, double quotes on Windows.
@@ -1386,6 +1392,47 @@ real scalar _dash_seg_named(string scalar seg)
     pos = _dash_first_comma_pos(seg)
     if (pos == 0) return(0)
     return(_dash_has_name_opt(substr(seg, pos + 1, .)))
+}
+
+// _dash_play_find(name, personal) -- the file twoway's play() reads for
+// the recording name: gr_play.ado's rule (StataNow 19.5, measured
+// 19oct2026).  ".grec" is added when the last part of the path holds no
+// "."; the name as given (the working directory, or the path it holds) is
+// tried first, then PERSONAL's grec/ folder (personal is c(sysdir_personal)).
+// "" when neither exists: twoway looks nowhere else on the ado-path.
+string scalar _dash_play_find(string scalar name, string scalar personal)
+{
+    string rowvector toks
+    string scalar    f, last
+
+    toks = tokens(name, "/")
+    toks = tokens(toks[cols(toks)], char(92))
+    last = toks[cols(toks)]
+    f = strpos(last, ".") ? name : name + ".grec"
+    if (fileexists(f)) return(f)
+    if (fileexists(personal + "grec/" + f)) return(personal + "grec/" + f)
+    return("")
+}
+
+// _dash_grec_ok(path) -- 1 when the file's first line is a Graph Recorder
+// header, "StataFileTM:<version>:01100:GREC:", as _gs_rec_rdfilehdr.ado
+// reads it; else twoway says "<file> is not a Graph Recorder file".
+real scalar _dash_grec_ok(string scalar path)
+{
+    real scalar      fh
+    string matrix    ln
+    string rowvector t
+
+    fh = _fopen(path, "r")
+    if (fh < 0) return(0)
+    ln = fget(fh)
+    fclose(fh)
+    if (rows(ln) == 0) return(0)
+    t = tokens(ln, ":")
+    t = select(t, t :!= ":")
+    if (cols(t) < 4) return(0)
+    return(strtrim(t[1]) == "StataFileTM" & strtrim(t[3]) == "01100" &
+           strtrim(t[4]) == "GREC")
 }
 
 // _dash_launch_quote(path, os) -- path quoted for the To launch: line of

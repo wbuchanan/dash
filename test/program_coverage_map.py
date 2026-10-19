@@ -227,6 +227,8 @@ COVERAGE = {
         # e2e: the note names each unsupported option once, by name.
         "_dash_report_ignored": ("test_twoway_option_parity.cscript:TP-06",
                                  "test_twoway_option_parity.cscript:TP-07"),
+        # e2e: play() looked for and refused as twoway's gr_play (WP-32).
+        "_dash_play_check": ("test_option_validation.cscript:U54-0",),
         # e2e: paren mode keeps the last segment's title.
         "_dash_plot": ("test_graph_option_scope.cscript:GOS-01",
                        "test_adversarial.cscript:P20-33"),
@@ -776,6 +778,8 @@ COVERAGE = {
         "_dash_tw_refuses_tab": ("test_option_validation.cscript:U52-0",),
         "_dash_tw_refuses": ("test_option_validation.cscript:U52-0",),
         "_dash_seg_named": ("test_option_validation.cscript:U53-0",),
+        "_dash_play_find": ("test_option_validation.cscript:U54-0",),
+        "_dash_grec_ok": ("test_option_validation.cscript:U54-0",),
         "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_rep_prefix": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_pending_note": ("test_option_validation.cscript:U51-0",),

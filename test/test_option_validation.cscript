@@ -3077,6 +3077,98 @@ _ov_assert U53-0b "(r(n) == 0)" "one-line saving() replace: nothing named"
 capture erase "`c(tmpdir)'ovu53b.html"
 capture dash clear
 
+// U54 (WP-32): play() is looked for as twoway's gr_play looks for it --
+// ".grec" added when the file name has no extension, then the name as
+// given (the working directory, or a path), then PERSONAL's grec/
+// folder, never the rest of the ado-path -- and refused as twoway refuses
+// it: none found is "recording <name> not found in either PERSONAL or
+// working directory", r(601); a file without the GREC header is "<file>
+// is not a Graph Recorder file", r(198); each after every other refusal
+// of the command, as twoway plays a recording last; play() empty is
+// taken (measured 19oct2026, StataNow 19.5, gr_play.ado and
+// _gs_rec_rdfilehdr.ado; BUGS.md "play() is named in the note, where
+// twoway refuses a recording it cannot find or read").  A recording
+// twoway can read is refused too, r(198): dash cannot apply Graph Editor
+// edits to a dashboard.  PERSONAL is set for the session only and put
+// back.
+// U54-1 .. U54-10, one case each; each prints its verdict, the first as
+// "U54-1 PASS".
+local _u54d "`c(tmpdir)'ovu54"
+capture mkdir "`_u54d'"
+capture mkdir "`_u54d'/pers"
+capture mkdir "`_u54d'/pers/grec"
+capture mkdir "`_u54d'/adod"
+local _u54pers "`c(sysdir_personal)'"
+capture program drop _u54_rec
+program define _u54_rec
+    args f good
+    tempname fh
+    file open `fh' using `"`f'"', write replace text
+    if `good' {
+        file write `fh' "StataFileTM:00001:01100:GREC:                          :" _n
+        file write `fh' "00008:00008:00001:" _n
+        file write `fh' "*! classname: twowaygraph_g" _n
+        file write `fh' "*! end" _n
+    }
+    else file write `fh' "hello" _n
+    file close `fh'
+end
+_u54_rec "`_u54d'/bad.grec" 0
+_u54_rec "`_u54d'/ok.grec" 1
+_u54_rec "`_u54d'/ok.txt" 1
+_u54_rec "`_u54d'/pers/grec/pp.grec" 0
+_u54_rec "`_u54d'/pers/pq.grec" 1
+_u54_rec "`_u54d'/adod/pa.grec" 1
+sysdir set PERSONAL "`_u54d'/pers/"
+adopath ++ "`_u54d'/adod"
+local _u54n 0
+foreach _u54p in "scatter mpg weight, play(ovu54_none)@601@recording ovu54_none not found in either PERSONAL or working directory" ///
+    "scatter mpg weight, play(`_u54d'/bad)@198@`_u54d'/bad.grec is not a Graph Recorder file" ///
+    "scatter mpg weight, play(`_u54d'/ok)@198@dash cannot apply its Graph Editor edits" ///
+    "scatter mpg weight, play(`_u54d'/ok.txt)@198@dash cannot apply its Graph Editor edits" ///
+    "scatter mpg weight, play(`_u54d'/ok.txt.grec)@601@not found in either PERSONAL or working directory" ///
+    "scatter mpg weight, play(pp)@198@`_u54d'/pers/grec/pp.grec is not a Graph Recorder file" ///
+    "scatter mpg weight, play(pq)@601@recording pq not found in either PERSONAL or working directory" ///
+    "scatter mpg weight, play(pa)@601@recording pa not found in either PERSONAL or working directory" ///
+    "(scatter mpg weight), play(ovu54_none)@601@recording ovu54_none not found" ///
+    "scatter mpg weight, play(ovu54_none) bogus@198@option bogus not allowed" ///
+    "kdensity mpg, play(ovu54_none) gaussian epan2@198@only one kernel may be specified" ///
+    "scatter mpg weight, play(ovu54_none) xsize(3) xsize(4)@198@option xsize() not allowed" {
+    local ++_u54n
+    gettoken _u54x _u54r : _u54p, parse("@")
+    gettoken _u54a _u54r : _u54r, parse("@")
+    gettoken _u54w _u54r : _u54r, parse("@")
+    gettoken _u54a _u54m : _u54r, parse("@")
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u54x' name(ovu54)
+    local _u54rc = _rc
+    log close _ovlog
+    _ov_assert U54-`_u54n' "(`_u54rc' == `_u54w')" `"`_u54x': rc `_u54rc' (expected `_u54w', as twoway)"'
+    _ov_said U54-`_u54n' `"`_u54m'"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U54-`_u54n' "(r(n) == 0)" `"`_u54x': not named in the note"'
+}
+_ov_assert U54-0 "(`_u54n' == 12)" "the 12 U54 cases ran"
+// U54-0b: an empty play() is taken in silence, as twoway takes it.
+capture dash clear
+capture log close _ovlog
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily dash scatter mpg weight, play() name(ovu54)
+local _u54rc = _rc
+log close _ovlog
+_ov_assert U54-0b "(`_u54rc' == 0)" "play(): rc `_u54rc' (expected 0)"
+_ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+_ov_assert U54-0b "(r(n) == 0)" "play(): nothing named"
+sysdir set PERSONAL "`_u54pers'"
+adopath - "`_u54d'/adod"
+capture program drop _u54_rec
+foreach _u54f in bad.grec ok.grec ok.txt pers/grec/pp.grec pers/pq.grec adod/pa.grec {
+    capture erase "`_u54d'/`_u54f'"
+}
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

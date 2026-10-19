@@ -118,7 +118,6 @@ PLOT_VALUES = {
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
     "percent": ("percent", "frequency", "histogram"),
-    "play": ("x", "y", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
     "scheme": ("economist", "s1mono", "scatter"),
     # WP-31 B4b: contour's heatmap cells and band outlines, named.
@@ -292,8 +291,10 @@ class TestTheListIsCoveredAndHonest:
         # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
         # 18 -> 10 and 3 -> 1: WP-32 at blabel ciopts filter fitopts link
         # lineopts mlabwidth refused, as twoway refuses them
-        assert len(_plot_pending()) == 10, sorted(_plot_pending())
-        assert len(_graph_pending()) == 1, sorted(_graph_pending())
+        # 10 -> 9 and 1 -> 0: WP-32 play() refused, as twoway refuses a
+        # recording it cannot find or read
+        assert len(_plot_pending()) == 9, sorted(_plot_pending())
+        assert len(_graph_pending()) == 0, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -473,6 +474,10 @@ REFUSED = {
 # WP-32: options dash declares that twoway refuses on every type, r(198),
 # "option at() not allowed" (test/fixtures/noted_option_truth.json;
 # test_option_validation.cscript U52).
+# WP-32: play(), refused as twoway refuses a recording it cannot find,
+# r(601), or read, r(198) (test_option_validation.cscript U54).
+REFUSED["play"] = ("refused as twoway's gr_play refuses a recording it "
+                   "cannot find or read (WP-32)")
 for _nm in ("at", "blabel", "ciopts", "fitopts", "lineopts", "mlabwidth",
             "filter", "link"):
     REFUSED[_nm] = ("refused r(198), \"option %s() not allowed\", as twoway "

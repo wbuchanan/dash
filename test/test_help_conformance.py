@@ -638,8 +638,9 @@ class TestTheParsersFoundSomething:
         # 272 -> 266: WP-32 at() blabel() ciopts() fitopts() lineopts()
         # mlabwidth() leave the Unsupported entries: refused, as twoway
         # refuses them (noted_option_truth.json).
-        assert len(found) == 266, (
-            f"{len(found)} options parsed out of dash.sthlp, 266 measured "
+        # 266 -> 265: WP-32 play() leaves the Not drawn entry.
+        assert len(found) == 265, (
+            f"{len(found)} options parsed out of dash.sthlp, 265 measured "
             f"19oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -760,7 +761,9 @@ class TestTheParsersFoundSomething:
         # 19 -> 18: E2 mlpattern() taken as twoway draws it (solid)
         # 18 -> 10: WP-32 at blabel ciopts filter fitopts link lineopts
         # mlabwidth refused, as twoway refuses them
-        assert len(_ignored_options()) == 10
+        # 10 -> 9: WP-32 play() refused, as twoway refuses a recording it
+        # cannot find or read
+        assert len(_ignored_options()) == 9
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -793,7 +796,8 @@ class TestTheParsersFoundSomething:
         # pending ones (catchall_options_truth.json).
         # 71 -> 63: WP-32 the eight options twoway refuses on every type
         # leave it (at blabel ciopts filter fitopts link lineopts mlabwidth).
-        assert len(_unsupported_section()) == 63
+        # 63 -> 62: WP-32 play() leaves it (refused; prose says so).
+        assert len(_unsupported_section()) == 62
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -1047,6 +1051,9 @@ class TestEveryDashOnlyOptionIsDocumented:
         # now does (noted_option_truth.json), so the section's prose says
         # they are refused, as for title2().
         refused |= {"blabel", "ciopts", "fitopts", "lineopts", "mlabwidth"}
+        # WP-32: play() is refused as twoway refuses a recording it cannot
+        # find or read; the section's prose says how it is looked for.
+        refused |= {"play"}
         # WP-31 H2t: table2() is the second declaration of table, its
         # argument form -- the user types table(rows(#) open), which the
         # Data tables entry defines; no command is written as table2().

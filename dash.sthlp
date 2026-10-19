@@ -983,8 +983,8 @@ there, is an invalid point.  The literal is read as data and never run.
     cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, play(x)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): play())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, afcolor(red)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): afcolor())}{p_end}
 
 {phang2}
     {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
@@ -6426,8 +6426,8 @@ supplied and not drawn is named in that command's note, and an option
 ({cmd:r(198)}, {cmd:option X() not allowed}):
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, bmlinestyle(p3) play(x)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmlinestyle() play())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, afcolor(red) afintensity(50)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): afcolor() afintensity())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado} and from what
@@ -6541,7 +6541,6 @@ in either direction.
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth}, where {cmd:twoway}
     draws nothing of it either, and {cmd:mwidth} on {cmd:histogram},
     where {cmd:twoway} draws each bar a marker wide.
-    {opt play(recordingname)} -- there is no graph editor to replay.
     {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
     {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, which {cmd:twoway} takes
     there; it is drawn on the arrow types.  Stata's {cmd:nodraw} is not in
@@ -6606,6 +6605,20 @@ to others such as {cmd:stcox}'s diagnostic plots, and {cmd:filter()} and
 those two to {cmd:dash build}.  {cmd:headlabel} is refused the same way
 on every plot type but the paired-coordinate ones, {cmd:rpcap} and
 {cmd:rpspike}, as {cmd:twoway} refuses it.
+
+{pstd}
+{opt play(recordingname)} is looked for as {cmd:twoway} looks for it:
+{cmd:.grec} is added to a name whose last part has no {cmd:.}, and the
+file is read where the name says -- the working directory, or the path it
+gives -- and then in the {cmd:grec} folder of your PERSONAL directory,
+nowhere else on the ado-path.  None found is "recording {it:name} not
+found in either PERSONAL or working directory", {cmd:r(601)}, and a file
+that is not a Graph Recorder file is refused as {cmd:twoway} refuses it,
+{cmd:r(198)}, each after every other refusal of the command.  A recording
+{cmd:twoway} can read is refused too, {cmd:r(198)}: its Graph Editor
+edits are made to {cmd:twoway}'s graph, which a dashboard does not have,
+so play it on the graph {cmd:twoway} draws.  {cmd:play()} empty plays
+nothing, as in {cmd:twoway}.
 
 {pstd}
 Two further notes on the note itself.  It names option {it:names}, never the

@@ -62,10 +62,15 @@ end
 // 1. comma mode still names an unsupported graph-level option
 // ---------------------------------------------------------------
 // Flipped: WP-31 D5 draws fxsize(), so play() is the pending example.
+// // Flipped: WP-32 -- play() was named in the note, which was wrong because
+// twoway refuses a recording it cannot find, r(601), or read, r(198), and
+// dash now refuses it as twoway does (BUGS.md "play() is named in the
+// note, where twoway refuses a recording it cannot find or read"); maxaxes(), a graph option twoway takes and dash names, is
+// the example.
 sysuse auto, clear
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(c1) play(x)"' "`logfile'"
-cert_file_has "`logfile'", needle("play()")
+_dash_note_for `"dash scatter mpg weight, name(c1) maxaxes(2)"' "`logfile'"
+cert_file_has "`logfile'", needle("maxaxes()")
 assert r(found) == 1
 
 display as result "  [1/4] comma mode names it: PASS"
@@ -74,8 +79,8 @@ display as result "  [1/4] comma mode names it: PASS"
 // 2. paren mode names it too
 // ---------------------------------------------------------------
 dash clear
-_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) play(x)"' "`logfile'"
-cert_file_has "`logfile'", needle("play()")
+_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) maxaxes(2)"' "`logfile'"
+cert_file_has "`logfile'", needle("maxaxes()")
 assert r(found) == 1
 
 display as result "  [2/4] paren mode names it: PASS"
@@ -103,10 +108,10 @@ display as result "  [3/4] an argument is not reported as options: PASS"
 // 4. a quoted argument containing a paren cannot unbalance the scan
 // ---------------------------------------------------------------
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(q1) p1(mcolor(red) msize(small)) play(x)"' "`logfile'"
+_dash_note_for `"dash scatter mpg weight, name(q1) p1(mcolor(red) msize(small)) maxaxes(2)"' "`logfile'"
 cert_file_has "`logfile'", needle("p1()")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("play()")
+cert_file_has "`logfile'", needle("maxaxes()")
 assert r(found) == 1
 
 display as result "  [4/4] several unsupported options are all named: PASS"

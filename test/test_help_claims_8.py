@@ -1624,7 +1624,8 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
         # 8 -> 5: WP-32 the mlabwidth(), ciopts()/lineopts()/fitopts(),
         # blabel()/at() and link()/filter() entries go, and one paragraph
         # says dash refuses all eight as twoway does.
-        assert s.count("r(198)") == 5, s.count("r(198)")
+        # 5 -> 7: WP-32 the play() paragraph's two refusals.
+        assert s.count("r(198)") == 7, s.count("r(198)")
 
     def test_the_other_commands_named_are_statas(self):
         """ciopts() is marginsplot's and sts graph's, lineopts() the stcox

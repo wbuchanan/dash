@@ -436,12 +436,18 @@ while r(eof) == 0 {
             // twoway does (BUGS.md "dash names in its note, as not drawn,
             // options twoway refuses on that plot type"); these three
             // dash-only probes are held to twoway's r(198).
+            // Flipped: WP-32 -- play(dashprobe_rec) names no recording
+            // that exists, which twoway refuses, r(601), and dash now
+            // refuses as twoway does (BUGS.md "play() is named in the
+            // note, where twoway refuses a recording it cannot find or
+            // read").
             local o2_tw198 0
-            if inlist("`pid'", "only_mlabwidth", "only_link", "only_filter") local o2_tw198 1
-            if `o2_tw198' & `prc' != 198 {
+            if inlist("`pid'", "only_mlabwidth", "only_link", "only_filter") local o2_tw198 198
+            if "`pid'" == "play" local o2_tw198 601
+            if `o2_tw198' & `prc' != `o2_tw198' {
                 local nrcfail = `nrcfail' + 1
                 local rcfailids `"`rcfailids' `pid'(`prc')"'
-                display as error `"O2-01 FAIL `pid': rc=`prc' from  `macval(pcmd)' (twoway refuses it, r(198))"'
+                display as error `"O2-01 FAIL `pid': rc=`prc' from  `macval(pcmd)' (twoway refuses it, r(`o2_tw198'))"'
             }
             else if !`o2_tw198' & `prc' != 0 {
                 local nrcfail = `nrcfail' + 1
@@ -649,10 +655,15 @@ forvalues i = 1/`dsp_ar_n' {
     local opts  = trim(substr(`"`macval(body)'"', `cpos' + 1, .))
     local opts  = trim(subinstr(`"`macval(opts)'"', "name(g1)", "", 1))
 
-    local ar_optlist `"`macval(ar_optlist)' `macval(opts)'"'
+    // // Flipped: WP-32 -- play() was named in the note, which was wrong because
+    // twoway refuses a recording it cannot find, r(601), or read, r(198), and
+    // dash now refuses it as twoway does (BUGS.md "play() is named in the
+    // note, where twoway refuses a recording it cannot find or read"); play() is probed alone, for twoway's r(601), and left out of
+    // O2-04's one command.
+    if "`key'" != "play" local ar_optlist `"`macval(ar_optlist)' `macval(opts)'"'
     // Flipped (WP-31 D5): the drawn overhangs are given in O2-04's one
     // command but are not among the names its note must hold.
-    if !inlist("`key'", "xoverhangs", "yoverhangs") {
+    if !inlist("`key'", "xoverhangs", "yoverhangs", "play") {
         local ar_keylist `"`ar_keylist' `key'"'
     }
 
@@ -667,7 +678,14 @@ forvalues i = 1/`dsp_ar_n' {
     // wrong once dash drew them (sizing_truth.json overhang_x1): accepted,
     // and named by nothing.
     local honoured = inlist("`key'", "xoverhangs", "yoverhangs")
-    if `prc' != 0 {
+    if "`key'" == "play" {
+        // The fixture's recording, dashprobe_rec, does not exist.
+        if `prc' != 601 | `pnotes' != 0 {
+            display as error `"O2-03 FAIL `key': rc=`prc', `pnotes' note(s) from  `macval(pcmd)' (twoway: r(601), no note)"'
+            local bad = 1
+        }
+    }
+    else if `prc' != 0 {
         display as error `"O2-03 FAIL `key': rc=`prc' from  `macval(pcmd)'"'
         local bad = 1
     }
@@ -711,7 +729,13 @@ if `dsp_ar_n' > 0 {
 // ================================================================
 display as text ""
 if `dsp_ar_n' > 0 {
-    local combo `"mcolor(red)`macval(ar_optlist)'"'
+    // Flipped: WP-32 -- play(), the one option of the fixture's list still
+    // named, is refused as twoway refuses a recording it cannot find
+    // (BUGS.md "play() is named in the note, where twoway refuses a
+    // recording it cannot find or read"); afcolor() and afintensity(),
+    // which twoway takes and dash names, are the unsupported pair.
+    local combo `"mcolor(red)`macval(ar_optlist)' afcolor(red) afintensity(50)"'
+    local ar_keylist `"`ar_keylist' afcolor afintensity"'
     _dsp_probe "combo" "scatter mpg weight" `"`macval(combo)'"'
     local prc    = r(rc)
     local pnotes = r(nnotes)
