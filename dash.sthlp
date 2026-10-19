@@ -3268,7 +3268,10 @@ s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
 {cmd:fcolor()}, {cmd:lcolor()} and {cmd:nobox} do not restyle it in
 {cmd:dash} and are named in a note.
 {cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
-{cmd:caption()} are drawn once over the panels, and under them the note
+{cmd:caption()} are drawn once over the panels, placed on the panels and
+their axes as in {cmd:twoway} (a title centred over them, a note at
+their left, a caption at 5 o'clock ending at their right; with
+{cmd:span} on the whole graph), and under them the note
 "Graphs by" names the variables as {cmd:twoway} does: their labels,
 "A and B" for two, and for three or more the first by its name
 ("Graphs by foreign, Repair record 1978, and Headroom (in.)").

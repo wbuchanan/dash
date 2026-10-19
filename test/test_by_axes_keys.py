@@ -757,7 +757,12 @@ class TestAfterAFilterMove:
                             "dash_by_")}
             for root in roots:
                 for m in root.references():
-                    if isinstance(m, CustomJS) and m.name != "dash_by_stack":
+                    # Flipped (WP-32): the span hook (_DASH_SPAN_JS), which
+                    # places by()'s legend and boxes on the panels as the
+                    # cells are laid out, is a layout callback, not a
+                    # filter callback.
+                    if isinstance(m, CustomJS) and m.name != "dash_by_stack" \
+                            and m.code != dr._DASH_SPAN_JS:
                         for v in m.args.values():
                             vs = v if isinstance(v, (list, tuple)) else [v]
                             assert not any(id(x) in side_ids for x in vs)

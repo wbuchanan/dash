@@ -338,7 +338,12 @@ class TestByTitlesSpan:
             ",)", ")")})[0]
         (pn,) = _by_titles(plain, "A by note")
         (pc,) = _by_titles(plain, "A by caption")
-        gap = (pn["box"][0] - pn["frame"][0], pc["frame"][1] - pc["box"][2])
+        # Flipped (WP-32, BUGS.md "Without span by()'s title, note and
+        # caption were placed on their cell, not on the panels"): without
+        # span the note and caption sit on the panels, not the cell's frame,
+        # so the gap each keeps is read from the panels.
+        pp = _panels(plain)
+        gap = (pn["box"][0] - pp[0], pp[2] - pc["box"][2])
         for st in _by(mode, {"by": by}):
             g = st["grid"]
             edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
@@ -405,3 +410,32 @@ class TestByLegendWithoutSpan:
         for st in _by(mode, {"by": "foreign, legend(pos(4))"}):
             p, lg = _panels(st), _by_legend(st)
             assert abs(lg[3] - (p[3] - 5)) <= 1.5, st
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByTitlesWithoutSpan:
+    """BUGS.md "Without span by()'s title, note and caption were placed on
+    their cell, not on the panels".  Measured 19oct2026 (StataNow 19.5,
+    stcolor, the same graph with ``ytitle("Price") by(foreign,
+    legend(pos(3)) title("Title T") subtitle("Sub S") note("Note N")
+    caption("Cap C", pos(5)))``): without span by()'s own boxes are placed
+    on the panels plus their axes -- the title and subtitle centred at
+    2251.3 of 5400, the x title's centre, the note at 245.4, the panels'
+    left 226.0 plus 19.4, the caption ending at 4257.4, their right 4276.8
+    less 19.4, where the graph region runs from 113.4 to 5286.6."""
+
+    def test_each_box_is_placed_on_the_panels(self, mode):
+        by = ('foreign, legend(pos(3)) title("A by title") '
+              'note("A by note") caption("A by caption", pos(5))')
+        for st in _by(mode, {"by": by}):
+            p = _panels(st)
+            g = st["grid"]
+            # The panels are off the grid's centre: placing on the cell
+            # would show here.
+            assert abs((p[0] + p[2]) / 2.0 - (g[0] + g[2]) / 2.0) > 30
+            (t,) = _by_titles(st, "A by title")
+            assert abs(_centre(t["box"])[0] - (p[0] + p[2]) / 2.0) <= 1.5
+            (n,) = _by_titles(st, "A by note")
+            assert abs(n["box"][0] - p[0]) <= 1.5, st
+            (c,) = _by_titles(st, "A by caption")
+            assert abs(c["box"][2] - p[2]) <= 1.5, st

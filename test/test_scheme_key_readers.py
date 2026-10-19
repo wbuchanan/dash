@@ -355,15 +355,18 @@ class TestTheLegendSpans:
                         {"by": "foreign"})
         for fig in _draw(spec, mode).figures:
             # Flipped (WP-32, BUGS.md "Without span by()'s legend was
-            # placed on its cell, not on the panels"): the served app's
-            # figures include by()'s legend cell, whose legend is now
-            # placed on the panels as twoway places it without span; the
+            # placed on its cell, not on the panels" and "Without span
+            # by()'s title, note and caption were placed on their cell,
+            # not on the panels"): the served app's figures include by()'s
+            # legend and foot cells, whose legend and note are now placed
+            # on the panels as twoway places them without span; the
             # scheme's span still places nothing on the grid.
-            if getattr(fig, "name", None) == "dash_by_legend":
+            if str(getattr(fig, "name", None) or "").startswith("dash_by_"):
                 import dash_render as dr
-                (cb,) = [c for c in fig.js_property_callbacks[
-                    "change:inner_width"] if c.code == dr._DASH_SPAN_JS]
-                assert [it[5] for it in cb.args["items"]] == ["panels"]
+                for cb in [c for c in fig.js_property_callbacks.get(
+                        "change:inner_width", [])
+                        if c.code == dr._DASH_SPAN_JS]:
+                    assert {it[5] for it in cb.args["items"]} == {"panels"}
                 continue
             assert _span_items(fig) == []
 

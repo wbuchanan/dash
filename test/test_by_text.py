@@ -412,8 +412,12 @@ class TestAfterAFilterMove:
             from bokeh.models import CustomJS
             held = {id(panel_label_title(f)) for f in r.panels} | \
                 {id(r.head), id(r.foot)}
+            # Flipped (WP-32): the span hook (_DASH_SPAN_JS), which places
+            # by()'s boxes on the panels as the cells are laid out, is a
+            # layout callback, not a filter callback.
             for cb in [m for m in r.roots[0].references()
-                       if isinstance(m, CustomJS)]:
+                       if isinstance(m, CustomJS)
+                       and m.code != dr._DASH_SPAN_JS]:
                 assert "dash_by_" not in cb.code
                 for v in dict(cb.args).values():
                     vals = v if isinstance(v, (list, tuple)) else [v]

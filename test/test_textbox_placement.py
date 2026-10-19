@@ -590,6 +590,47 @@ class TestSpan:
             assert [it[5] for it in cb.args["items"]] == ["", ""]
 
     @pytest.mark.parametrize("mode", MODES)
+    def test_bys_own_boxes_without_span_are_placed_on_the_panels(self, mode):
+        """BUGS.md "Without span by()'s title, note and caption were placed
+        on their cell, not on the panels": twoway places by()'s own boxes
+        on the panels plus their axes (measured 19oct2026, stcolor with
+        ytitle("Price") and legend(pos(3)): the title at 2251.3 of 5400,
+        the shared x title's centre, the note at 245.4, the panels' left
+        226.0 plus 19.4, caption(, pos(5)) ending at 4257.4, their right
+        4276.8 less 19.4); dash's head and foot cells place them on the
+        panels ("panels"), the default note too."""
+        import test_by_axes_keys as bk
+        from bokeh.models import Plot
+
+        def items(by):
+            spec = bk._spec([bk._graph("g1", bk._TWO, {"by": by},
+                                       title=False)])
+            roots, _n, _o = bk._build(mode, spec)
+            got = {}
+            for m in {id(m): m for r in roots for m in r.references()
+                      if isinstance(m, Plot)}.values():
+                if m.name not in ("dash_by_head", "dash_by_foot"):
+                    continue
+                for c in m.js_property_callbacks.get("change:inner_width",
+                                                     []):
+                    if c.code == dr._DASH_SPAN_JS:
+                        got[m.name] = sorted((it[0].text, it[2], it[3],
+                                              it[5])
+                                             for it in c.args["items"])
+            return got
+        assert items('foreign, title("T") note("N") '
+                     'caption("C", pos(5))') == {
+            "dash_by_head": [("T", "above", "center", "panels")],
+            "dash_by_foot": [("C", "below", "right", "panels"),
+                             ("N", "below", "left", "panels")]}
+        assert items("foreign") == {"dash_by_foot": [
+            ("Graphs by Car origin", "below", "left", "panels")]}
+        # A spanned box stays on the grid beside one that is not.
+        assert items('foreign, title("T", span) note("N")') == {
+            "dash_by_head": [("T", "above", "center", "grid")],
+            "dash_by_foot": [("N", "below", "left", "panels")]}
+
+    @pytest.mark.parametrize("mode", MODES)
     def test_bys_own_boxes_are_placed_on_the_by_grid(self, mode):
         """by(, title("T", span) note("N", span)): twoway places by()'s own
         boxes on the whole graph (measured 19oct2026, stcolor: the title at

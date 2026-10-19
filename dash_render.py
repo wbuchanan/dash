@@ -53176,8 +53176,30 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
     # WP-32: by()'s own spanned boxes are placed on the whole by() graph,
     # as twoway places them (measured 19oct2026: the title at 2700 of
     # 5400, 2251.3 without; the note at 132.8, 245.4 without).
+    # Without span (BUGS.md "Without span by()'s title, note and caption
+    # were placed on their cell, not on the panels"), on the panels plus
+    # their axes (measured 19oct2026: the title at the x title's centre,
+    # 2251.3 of 5400; the note at the panels' left plus its margin, 245.4;
+    # caption(, pos(5)) ending at their right less it, 4257.4).
+    from bokeh.models import Title
     for cell in (head, foot):
         _dash_span_keep(cell, ref="grid")
+        cb = next((c for c in cell.js_property_callbacks.get(
+            "change:" + _DASH_SPAN_KEYS[0], [])
+            if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+        done = {id(it[0]) for it in (cb.args.get("items", [])
+                                     if cb is not None else [])}
+        for sd in ("above", "below"):
+            ms = list(getattr(cell, sd))
+            if sd == (cell.title_location or "above"):
+                ms.append(cell.title)
+            for m in ms:
+                if (isinstance(m, Title) and str(m.text or "")
+                        and id(m) not in done):
+                    done.add(id(m))
+                    _dash_span(cell, m, "title", sd,
+                               str(m.align or "left"), m.offset or 0.0,
+                               ref="panels")
     out = {}
     for part, cell in (("head", head), ("foot", foot)):
         # A cell that holds no text is None.
