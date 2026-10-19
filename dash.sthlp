@@ -3222,7 +3222,9 @@ scheme's {cmd:gridringstyle by_legend_ring} is read as one.  Clicking a key of
 the overall legend hides that series in every panel.
 Under {cmd:colorvar()} no colour key is drawn unless
 {cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
-{cmd:clegend(position() at())} else the scheme's position.  On a narrow
+{cmd:clegend(position() at())} else the scheme's position, upright at
+every position as in {cmd:twoway} (at 6 or 12 o'clock half the graph's
+height less a sixth of its smaller side long).  On a narrow
 screen, where the panels stack into one column, every panel shows its axes
 and titles again, and {cmd:twoway}'s layout returns when the page widens.
 

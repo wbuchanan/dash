@@ -38185,7 +38185,8 @@ const region = (ref) => {
   }
   const u = Math.min(gw, gh) / 100;
   const r = {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
-             T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u, u};
+             T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u, u,
+             gw, gh};
   if (ref !== "panels") { return r; }
   let p = null;
   for (const k of (a.child_views || [])) {
@@ -38213,7 +38214,10 @@ for (const it of items) {
   let v = null;
   try { v = Bokeh.index.find_one(m); } catch (e) { v = null; }
   const pb = (v != null && v.layout != null) ? v.layout.bbox : null;
-  if (pb == null || !(pb.width > 0) || !(pb.height > 0)) { continue; }
+  if (kind !== "key" && (pb == null || !(pb.width > 0) || !(pb.height > 0))) {
+    continue;
+  }
+  if (kind === "key" && v == null) { continue; }
   const across = side === "above" || side === "below";
   if (kind === "legend") {
     if (!m.visible || v.bbox == null || !(v.bbox.width > 0)) { continue; }
@@ -38237,6 +38241,95 @@ for (const it of items) {
       want = [Math.round(want[0] + left - b1.left),
               Math.round(want[1] - (top - b1.top))];
       m.location = want;
+    }
+  } else if (kind === "key") {
+    // by()'s colour key drawn upright (BUGS.md "by(, clegend(pos(6)))
+    // drew the colour key across the graph, where twoway draws it
+    // upright"; measured 19oct2026).  Its eighth entry: "row" (6 or 12
+    // o'clock: as long as the share it[4] of the by() grid's width, half
+    // the graph's height less 0.1662 of its smaller side) or "hole" (in
+    // an at() hole: from 1.455 units above its row's plot regions to
+    // 2.44 below them, at its place across the hole).
+    const gg = region("grid");
+    if (gg == null) { continue; }
+    const un = Math.min(gg.gw, gg.gh) / 100;
+    const mode = it[7] || "";
+    const pxOf = (fs) => {
+      const t = String(fs || ""), n = parseFloat(t);
+      return !(n > 0) ? 0 : /pt$/.test(t) ? n * 4 / 3 : n;
+    };
+    let len = 0, top = 0;
+    if (mode === "hole") {
+      let fr = null, a = pv.parent;
+      while (a != null && !(a.model != null && a.model.type === "GridBox")) {
+        a = a.parent;
+      }
+      const ct = pv.el.getBoundingClientRect().top;
+      for (const k of (a != null ? (a.child_views || []) : [])) {
+        const nm = (k.model != null && k.model.name) || "";
+        if (nm.startsWith("dash_by_") || k.frame == null || k.el == null) {
+          continue;
+        }
+        if (Math.abs(k.el.getBoundingClientRect().top - ct) > 1.5) {
+          continue;
+        }
+        fr = k.frame.bbox;
+        break;
+      }
+      if (fr != null) {
+        top = fr.y0 - 1.455 * un;
+        len = fr.y1 + 2.44 * un - top;
+      } else {
+        // No panel beside it (the stacked view): its own cell's height.
+        const lp = pxOf(m.major_label_text_font_size);
+        top = (+m.padding || 0) + lp;
+        len = H - 2 * top;
+      }
+    } else {
+      len = (+it[4] || 0) * gg.gw;
+    }
+    len = Math.max(20, Math.round(len));
+    // BokehJS lays a colour bar out again only with its plot.
+    let moved = false;
+    if (m.height !== len) { m.height = len; moved = true; }
+    // BokehJS gives a centre-panel colour bar no height of its own to
+    // read back (its bbox is the panel's), so its box is its length,
+    // padding, title and the half label each end reaches past the bar.
+    const pad = +m.padding || 0;
+    const extra = 2 * pad + pxOf(m.major_label_text_font_size)
+      + (m.title ? 1.3 * pxOf(m.title_text_font_size)
+         + (+m.title_standoff || 0) : 0);
+    if (mode !== "hole") {
+      // The cell's height (a fixed height lays the grid out again, where
+      // a frame height does not).
+      const fh = Math.ceil(len + extra);
+      if (fig.height !== fh) { fig.height = fh; }
+      continue;
+    }
+    const bb = v.bbox;
+    if (bb == null || !(bb.width > 0)) { continue; }
+    {
+      const mg = 5;
+      const x = place === "left" ? mg : place === "right"
+        ? W - mg - bb.width : (W - bb.width) / 2;
+      // Its strip's foot at top + len: read back from the strip once it
+      // is laid out (the box's padding and label overhang are below it).
+      let foot = pad;
+      const fv = v._frame_view;
+      const cur0 = m.location;
+      if (fv != null && fv.bbox != null && fv.bbox.height > 0
+          && Array.isArray(cur0)) {
+        foot = H - cur0[1] - fv.bbox.bottom;
+      }
+      const want = [Math.round(x), Math.round(H - (top + len) - foot)];
+      const cur = m.location;
+      if (!Array.isArray(cur) || cur[0] !== want[0] || cur[1] !== want[1]) {
+        m.location = want;
+        moved = true;
+      }
+    }
+    if (moved) {
+      try { pv.invalidate_layout(); } catch (e) { /* laid out next time */ }
     }
   } else if (kind === "title" && across) {
     const off = it[4] || 0;
@@ -38269,7 +38362,7 @@ _DASH_SPAN_KEYS = ("inner_width", "inner_height", "outer_width",
 
 
 def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
-               ref="", margin=0.0):
+               ref="", margin=0.0, mode=""):
     """Place *model* along its side on the whole graph, as twoway's span
     places it (``_DASH_SPAN_JS``), or stop placing it (*kind* None).
 
@@ -38280,7 +38373,10 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
     offset); *ref* ``"grid"`` places it on the by() grid that holds
     *fig* (a by() chrome cell) instead of *fig*'s canvas; *margin* (relative units of the graph's smaller
     side) is kept inside the end a left or right title is placed at;
-    *model* None drops every item.  Both modes come through here."""
+    *kind* ``"key"`` draws by()'s colour key upright at twoway's length
+    (*mode* ``"row"``, *offset* its share of the grid's width, or
+    ``"hole"``); *model* None drops every item.  Both modes come through
+    here."""
     from bokeh.models import CustomJS
     key0 = "change:" + _DASH_SPAN_KEYS[0]
     cb = next((c for c in fig.js_property_callbacks.get(key0, [])
@@ -38289,7 +38385,7 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
         it for it in cb.args.get("items", []) if it[0] is not model]
     if kind is not None:
         items.append([model, kind, side, place, float(offset or 0.0),
-                      str(ref or ""), float(margin or 0.0)])
+                      str(ref or ""), float(margin or 0.0), str(mode or "")])
     if cb is None:
         if items:
             cb = CustomJS(args={"fig": fig, "items": items,
@@ -53695,6 +53791,24 @@ def _dash_by_compass_location(clock, side):
     return "center"
 
 
+def _dash_by_key_share(fig):
+    """The length of by()'s colour key at 6 or 12 o'clock as a share of
+    the graph's width (BUGS.md "by(, clegend(pos(6))) drew the colour key
+    across the graph, where twoway draws it upright"): twoway draws it half
+    the graph's height less 0.1662 of its smaller side (measured 19oct2026,
+    stcolor: 1081.4 of 5400 x 3240, 1201.5 of 3600 x 3600, 961.2 of 5760 x
+    2880, 1681.2 of 2880 x 4320).  The graph's width/height is *fig*'s
+    aspect_ratio (a by() panel's, before the array is proportioned), else
+    stcolor's 7.5 x 4.5."""
+    try:
+        r = float(getattr(fig, "aspect_ratio", None) or 0.0)
+    except (TypeError, ValueError):
+        r = 0.0
+    if not r > 0:
+        r = 7.5 / 4.5
+    return max(0.0, 0.5 / r - 0.1662 * min(1.0, 1.0 / r))
+
+
 #: by()'s legend in an at() hole: its position's compass in the hole's
 #: cell (measured 19oct2026, stcolor: pos(0) centred, pos(3) right and
 #: centred on the height, pos(2) top right).
@@ -53937,7 +54051,28 @@ def _dash_by_keys(figs, opts, scheme):
         if words & {"on", "draw"} and not words & {"off", "nodraw"}:
             _kside, key = keys1[0]
             vertical = (side if not at else "right") in ("left", "right")
-            if isinstance(key, ColorBar):
+            if isinstance(key, ColorBar) and not at and not vertical:
+                # Upright at 6 and 12 o'clock, as twoway draws it (BUGS.md
+                # "by(, clegend(pos(6))) drew the colour key across the
+                # graph, where twoway draws it upright"; measured
+                # 19oct2026): its length is set as the grid is laid out
+                # (_DASH_SPAN_JS "key").
+                cell = _dash_by_cell(scheme, "dash_by_clegend", (None, None))
+                kw = key.properties_with_values(include_defaults=False)
+                kw.pop("name", None)
+                kw["orientation"] = "vertical"
+                bar = ColorBar(name="dash_by_clegend_key", location="center",
+                               **{k: v for k, v in kw.items()
+                                  if k != "location"})
+                setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
+                cell.add_layout(bar, "center")
+                cell.frame_height = None
+                cell.height_policy = "fixed"
+                cell.height = 200
+                _dash_span(cell, bar, "key", side, "center",
+                           _dash_by_key_share(figs[0]), ref="grid",
+                           mode="row")
+            elif isinstance(key, ColorBar):
                 cell = _dash_by_cell(scheme, "dash_by_clegend",
                                      (1, None) if vertical else (None, 1))
                 kw = key.properties_with_values(include_defaults=False)
@@ -65507,6 +65642,7 @@ class ServerAppBuilder:
                          "_dash_by_cell", "_dash_by_title_cell",
                          "_dash_by_glyph_fields", "_dash_by_clone_renderers",
                          "_dash_by_clock_side", "_dash_by_legend_cell",
+                         "_dash_by_key_share",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
                          "_dash_by_region_options", "_dash_by_apply_regions",

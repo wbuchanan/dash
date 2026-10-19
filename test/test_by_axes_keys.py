@@ -704,7 +704,11 @@ class TestColourKeyUnderBy:
                 continue
             if _cell_side(grid, c) != _SIDE[p["clegend"]["side"]]:
                 bad.append((pid, "side", _cell_side(grid, c)))
-            bars = [m for s in ("left", "right", "above", "below")
+            # Flipped (WP-32, BUGS.md "by(, clegend(pos(6))) drew the
+            # colour key across the graph, where twoway draws it upright"):
+            # an upright key below or above the panels, or in a hole, is
+            # in its cell's centre.
+            bars = [m for s in ("left", "right", "above", "below", "center")
                     for m in getattr(c[0], s) if isinstance(m, ColorBar)]
             legs = [m for s in ("left", "right", "above", "below")
                     for m in getattr(c[0], s) if isinstance(m, Legend)]
@@ -1140,3 +1144,38 @@ def test_the_colour_key_is_not_aligned_with_the_frames(mode):
     roots, _n, _o = _build(mode, spec)
     (grid,) = _grids(roots).values()
     assert _cell(grid, "dash_by_clegend")[0].frame_align is False
+
+
+def test_the_colour_keys_share_of_the_width():
+    """_dash_by_key_share: twoway's upright key at 6 or 12 o'clock is half
+    the graph's height less 0.1662 of its smaller side (measured: 1081.4
+    of 5400 x 3240, 1201.5 of 3600 x 3600, 1681.2 of 2880 x 4320), as a
+    share of its width; stcolor's 7.5 x 4.5 when the panel has no ratio."""
+    from types import SimpleNamespace as NS
+    for r, want in ((7.5 / 4.5, 1081.4 / 5400), (1.0, 1201.5 / 3600),
+                    (4 / 6, 1681.2 / 2880), (None, 1081.4 / 5400)):
+        got = dr._dash_by_key_share(NS(aspect_ratio=r))
+        assert abs(got - want) < 2e-4, (r, got, want)
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_colour_key_is_upright_below_the_panels(mode):
+    """BUGS.md "by(, clegend(pos(6))) drew the colour key across the
+    graph, where twoway draws it upright": at 6 and 12 o'clock the key is
+    an upright ColorBar in its cell's centre, its length set on the grid's
+    width (_DASH_SPAN_JS "key", mode "row")."""
+    from bokeh.models import ColorBar
+    for pos in ("6", "12"):
+        spec = _spec([_graph("g1", [_p("scatter", colorvar="headroom")],
+                             {"by": "foreign, clegend(on pos(%s))" % pos})])
+        roots, _n, _o = _build(mode, spec)
+        (grid,) = _grids(roots).values()
+        cell = _cell(grid, "dash_by_clegend")[0]
+        (bar,) = [m for m in cell.center if isinstance(m, ColorBar)]
+        assert bar.orientation == "vertical"
+        (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
+                 if c.code == dr._DASH_SPAN_JS]
+        (it,) = cb.args["items"]
+        assert (it[1], it[5], it[7]) == ("key", "grid", "row")
+        # stcolor's 7.5 x 4.5: twoway's 1081.4 of 5400.
+        assert abs(it[4] - 1081.4 / 5400) < 2e-4

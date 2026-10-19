@@ -213,14 +213,17 @@ _BY_JS = r"""
 <script>
 function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
 function state() {
-  const boxes = [], pframes = []; let grid = null;
+  const boxes = [], pframes = [], prows = []; let grid = null;
   const visit = (v, box) => {
     if (!v) return;
     if (v.model && v.model.type === 'GridBox') box = v;
     if (v.model && (v.model.name === 'dash_by_legend'
         || v.model.name === 'dash_by_clegend') && box) grid = rect(box.el);
-    if (v.frame && v.model && !v.model.name && box) pframes.push(
-      v.frame.bbox.width);
+    if (v.frame && v.model && !v.model.name && box) {
+      pframes.push(v.frame.bbox.width);
+      const cr0 = v.canvas_view.el.getBoundingClientRect();
+      prows.push([cr0.top + v.frame.bbox.y0, cr0.top + v.frame.bbox.y1]);
+    }
     if (v.frame && v.renderer_views) {
       const cr = v.canvas_view.el.getBoundingClientRect();
       for (const [m, rv] of v.renderer_views) {
@@ -237,7 +240,18 @@ function state() {
                       canvas: [cr.left, cr.top, cr.left + v.bbox.width,
                                cr.top + v.bbox.height],
                       frame: [cr.left + v.frame.bbox.x0,
-                              cr.left + v.frame.bbox.x1]});
+                              cr.left + v.frame.bbox.x1],
+                      len: t === 'ColorBar' ? m.height : null,
+                      // A colour key's box and its colour strip.
+                      key: (t === 'ColorBar' && rv._inner_layout) ? (() => {
+                        const b = rv._inner_layout.bbox;
+                        return [cr.left + b.x0, cr.top + b.y0, cr.left + b.x1,
+                                cr.top + b.y1]; })() : null,
+                      bar: (t === 'ColorBar' && rv._frame_view) ? (() => {
+                        const b = rv._frame_view.bbox;
+                        return [cr.left + b.x0, cr.top + b.y0, cr.left + b.x1,
+                                cr.top + b.y1]; })() : null,
+                      orient: t === 'ColorBar' ? m.orientation : null});
         } else if (t === 'Title' && m.text) {
           rv.compute_geometry();
           const r = rv._rect; if (!r) continue;
@@ -291,7 +305,7 @@ function state() {
         Math.max(panels[3], r[3])];
     }
   }
-  return {grid, boxes, panels, pframes};
+  return {grid, boxes, panels, pframes, prows};
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
@@ -626,3 +640,41 @@ class TestByColourKey:
             k = key["box"]
             assert abs(_centre(k)[1] - (p[1] + p[3]) / 2.0) <= 1.5, st
             assert k[3] <= p[3] + 0.5, st
+
+
+
+def _key(st):
+    (k,) = [b for b in st["boxes"] if b["type"] == "ColorBar"
+            and b["cell"] == "dash_by_clegend"]
+    return k
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByColourKeyUpright:
+    """BUGS.md "by(, clegend(pos(6))) drew the colour key across the graph,
+    where twoway draws it upright".  Measured 19oct2026 (StataNow 19.5,
+    stcolor, SVG of ``twoway scatter price weight, colorvar(mpg)
+    by(foreign|rep78, clegend(on pos(6|12)))`` at xsize x ysize 7.5x4.5,
+    5x5, 8x4 and 4x6): twoway draws the key upright at 6 and 12 o'clock,
+    its axis 1081.4 of 3240 long (1201.5 of 3600, 961.2 of 2880, 1681.2 of
+    4320): half the graph's height less 0.1662 of its smaller side, the
+    same for two and five panels."""
+
+    @pytest.mark.parametrize("go,k", (
+        ({}, (0.5 - 0.1662) * 4.5 / 7.5),
+        ({"xsize": "5", "ysize": "5"}, 0.5 - 0.1662),
+        ({"xsize": "4", "ysize": "6"}, 0.5 * 6 / 4 - 0.1662)))
+    def test_the_key_is_upright_at_twoways_length(self, mode, go, k):
+        for st in _by_spec(mode, dict(go, by="foreign, clegend(on pos(6))"),
+                           plots=[bk._p("scatter", colorvar="mpg")]):
+            key = _key(st)
+            assert key["orient"] == "vertical", st
+            gw = st["grid"][2] - st["grid"][0]
+            assert abs(key["len"] - k * gw) <= 1.5, (key, k * gw)
+            bar = key["bar"]
+            assert abs(bar[3] - bar[1] - k * gw) <= 1.5, (key, k * gw)
+            b, c = key["key"], key["canvas"]
+            # Upright, inside its cell, centred on it.
+            assert b[3] - b[1] > b[2] - b[0], st
+            assert c[1] - 0.5 <= b[1] and b[3] <= c[3] + 0.5, st
+            assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, st
