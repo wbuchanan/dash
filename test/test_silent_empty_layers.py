@@ -51,6 +51,8 @@ _N = 10
 def _df():
     return pd.DataFrame({
         "mpg": [float(20 + i) for i in range(_N)],
+        "yl": [float(19 + i) for i in range(_N)],
+        "w": [float(2000 + 100 * i) for i in range(_N)],
         "c": [2500.0] * _N,
         "c22": [22.0] * _N,
         "m1": [float("nan")] * _N,
@@ -221,3 +223,52 @@ class TestAfterAMove:
                    if getattr(r, "_dash_agg_config", None))
         assert cfg["type"] == "kdensity"
         assert np.allclose(cfg["x_grid"], 22.0)
+
+
+#: BUGS.md "An all-missing line, area, bar or other plain layer says "drew
+#: nothing", where twoway draws it in silence": measured 19oct2026, every
+#: plain type below on an all-missing y (line, area, bar, spike, dropline
+#: and tsline on m; the range types on m yl; the paired-coordinate types on
+#: m w yl c) is rc 0 with no message and a serset whose y is missing on
+#: every row; `twoway line mpg m' and `spike mpg m', a missing x, the same.
+_PLAIN = [
+    {"type": "line", "yvar": "m1", "xvar": "w"},
+    {"type": "line", "yvar": "mpg", "xvar": "m1"},
+    {"type": "area", "yvar": "m1", "xvar": "w"},
+    {"type": "bar", "yvar": "m1", "xvar": "w"},
+    {"type": "spike", "yvar": "m1", "xvar": "w"},
+    {"type": "spike", "yvar": "mpg", "xvar": "m1"},
+    {"type": "dropline", "yvar": "m1", "xvar": "w"},
+    {"type": "tsline", "yvar": "m1", "xvar": "w"},
+    {"type": "rarea", "yvar1": "m1", "yvar2": "yl", "xvar": "w"},
+    {"type": "pcspike", "y1var": "m1", "x1var": "w", "y2var": "yl",
+     "x2var": "c"},
+    {"type": "pcarrow", "y1var": "m1", "x1var": "w", "y2var": "yl",
+     "x2var": "c"},
+    {"type": "pcscatter", "y1var": "m1", "x1var": "w", "y2var": "yl",
+     "x2var": "c"},
+]
+
+
+class TestAnAllMissingPlainLayer:
+    @_MODES
+    @pytest.mark.parametrize("plot", _PLAIN,
+                             ids=lambda p: p["type"] + "-" + "-".join(
+                                 v for k, v in p.items() if k != "type"))
+    def test_draws_nothing_in_silence(self, mode, plot, tmp_path):
+        p = dict(plot, options={})
+        rs, notes = _run(mode, tmp_path, p)
+        assert notes == [], notes
+        assert not dr._dash_layer_drew_anything(rs)
+
+    def test_a_layer_with_a_complete_row_is_not_silenced(self):
+        assert not dr._dash_layer_all_missing(
+            {"type": "line", "yvar": "y", "xvar": "x"},
+            {"y": [None, 2.0], "x": [1.0, 3.0]})
+        assert dr._dash_layer_all_missing(
+            {"type": "line", "yvar": "y", "xvar": "x"},
+            {"y": [None, 2.0], "x": [1.0, float("nan")]})
+        # A computed type is never decided here.
+        assert not dr._dash_layer_all_missing(
+            {"type": "lfit", "yvar": "y", "xvar": "x"},
+            {"y": [None], "x": [None]})

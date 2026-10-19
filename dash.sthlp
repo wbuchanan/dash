@@ -359,7 +359,9 @@ with two values {cmd:qfit} and {cmd:qfitci} fit the term {cmd:regress}
 keeps.  A smoother {cmd:twoway} draws empty in silence -- {cmd:lowess} on
 fewer than three observations or on an {it:x} that does not vary,
 {cmd:lpoly} and {cmd:lpolyci} whose smooth is missing everywhere -- and a
-{cmd:scatter} whose every observation misses its {it:y} or its {it:x},
+{cmd:scatter}, {cmd:line}, {cmd:area}, {cmd:bar} or other plot of the
+observations as they are whose every observation misses one of its
+variables,
 {cmd:dash} draws in silence too, and {cmd:mspline} and {cmd:mband} on one
 observation draw that point.  A {cmd:kdensity} of a variable that does not
 vary is drawn as {cmd:twoway} draws it: its {cmd:n()} points at that value

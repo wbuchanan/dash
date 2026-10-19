@@ -58336,8 +58336,52 @@ def _dash_report_empty_layer(gname, index, ptype, rows=None, why=""):
     )
 
 
+#: The plot types that draw their observations as they are, one mark or
+#: segment per row: a row missing any of the layer's variables draws
+#: nothing in twoway (_dash_layer_all_missing).
+_DASH_PLAIN_TYPES = frozenset((
+    "scatter", "line", "connected", "area", "bar", "spike", "dropline",
+    "dot", "tsline", "tsrline", "rarea", "rbar", "rspike", "rcap", "rline",
+    "rconnected", "rcapsym", "rscatter", "rpcap", "rpspike", "pcspike",
+    "pccapsym", "pcarrow", "pcbarrow", "pcscatter"))
+_DASH_LAYER_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
+                        "x1var", "y2var", "x2var")
+
+
+def _dash_layer_all_missing(plot, data):
+    """True when no row of *data* holds every variable of a plain layer.
+
+    twoway draws such a layer -- `twoway line m weight', `rarea m yl
+    weight', `pcspike m weight yl turn' on an all-missing m, or a missing x
+    -- as nothing, rc 0, and says nothing (measured 19oct2026, WP-32), so
+    ``_dash_note_empty_layer`` gives it no "drew nothing".  A computed
+    type, or a layer whose variables *data* does not hold, is never decided
+    here (False).
+
+    Args:
+        plot: The layer's spec (its type and variable keys).
+        data: A mapping of column name to values (a source's data or a
+              DataFrame).
+    """
+    try:
+        if str(plot.get("type", "") or "").lower() not in _DASH_PLAIN_TYPES:
+            return False
+        names = [str(plot.get(k) or "") for k in _DASH_LAYER_VAR_KEYS]
+        names = [n for n in dict.fromkeys(names) if n]
+        if not names or any(n not in data for n in names):
+            return False
+        cols = [pd.to_numeric(pd.Series(list(data[n])), errors="coerce")
+                for n in names]
+        ok = cols[0].notna()
+        for c in cols[1:]:
+            ok &= c.notna()
+        return not bool(ok.any())
+    except Exception:            # noqa: BLE001 -- a report, never a crash
+        return False
+
+
 def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
-                           layer_rows=None):
+                           layer_rows=None, all_missing=False):
     """Report layer *index* if it drew nothing -- the one rule both modes
     apply, after each layer is drawn.
 
@@ -58365,6 +58409,9 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
         layer_rows: The rows of the figure the layer's own ``if``/``in``
                    keeps, or None when it has none; 0 is drawn in silence,
                    as twoway draws it (M6, WP-30 P1.26b).
+        all_missing: True when no row holds every variable of a plain
+                   layer (``_dash_layer_all_missing``): drawn in silence,
+                   as twoway draws it (WP-32).
     """
     pt = str(ptype or "").lower()
     if pt in _DASH_LITERAL_TYPES and pt != "function":
@@ -58406,7 +58453,7 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
                 why = _w
                 break
         _dash_report_empty_layer(gname, index, ptype, why=why)
-    elif rows and layer_rows != 0:
+    elif rows and layer_rows != 0 and not all_missing:
         _dash_report_empty_layer(gname, index, ptype, rows)
 
 
@@ -61465,7 +61512,9 @@ class DashRenderer:
             _dash_note_empty_layer(
                 graph_opts.get("name", "") or graph_spec.get("name", ""),
                 pi + 1, ptype, _rows_here, _layer_renderers,
-                layer_rows=_layer_rows)
+                layer_rows=_layer_rows,
+                all_missing=_dash_layer_all_missing(
+                    plot, getattr(source_for_plot, "data", {}) or {}))
 
             # A horizontal layer, drawn upright, is turned once (WP-30
             # P1.9a); its yaxis(2)/xaxis(2) stay physical.
@@ -64528,6 +64577,8 @@ class ServerAppBuilder:
                       # _dash_route_axis_titles' axis-number rule (P0.5).
                       "_DASH_AXIS_NUM_RE",
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
+                      # _dash_layer_all_missing's plain types (WP-32).
+                      "_DASH_PLAIN_TYPES", "_DASH_LAYER_VAR_KEYS",
                       "_FP_GRID_MAX", "_MAX_MBANDS",
                       "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
@@ -64924,6 +64975,7 @@ class ServerAppBuilder:
                          "_dash_layer_drew_anything",
                          "_dash_report_empty_layer",
                          "_dash_note_empty_layer",
+                         "_dash_layer_all_missing",
                          # WP-30 P1.26b: the note channel and the hook that
                          # sends this process's notes through it.
                          "_dash_smcl_escape", "_dash_emit_note",
@@ -68087,7 +68139,8 @@ class ServerAppBuilder:
             "            _dash_note_empty_layer(gname.split('__by__')[0], pi + 1,",
             "                                   ptype, len(_g_df_graph),",
             "                                   list(fig.renderers[_r_before:]),",
-            "                                   layer_rows=len(g_df))",
+            "                                   layer_rows=len(g_df),",
+            "                                   all_missing=_dash_layer_all_missing(plot, g_df))",
             "",
             "        # z options apply to this graph's colour key only",
             "        # (GAPS2 X2); reset before the next figure builds.",

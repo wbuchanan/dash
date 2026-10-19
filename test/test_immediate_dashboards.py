@@ -416,11 +416,13 @@ class TestARejectedExpressionIsStillReported:
 class TestALayerThatDrewNothingIsNamedByWhatItHas:
     def test_a_graph_with_no_name_is_named_by_its_place(self, tmp_path,
                                                          mode):
-        # Flipped: WP-32 -- an all-missing scatter is drawn in silence, as
-        # twoway draws it (BUGS.md "An all-missing scatter, a constant-x
-        # lowess and a constant kdensity keep dash's "drew nothing"
-        # note"), so the layer that reports here is a line.
-        spec = {"graphs": [_graph("", [{"type": "line", "yvar": "m",
+        # Flipped: WP-32 -- an all-missing scatter, and then an all-missing
+        # line, is drawn in silence, as twoway draws it (BUGS.md "An
+        # all-missing scatter, a constant-x lowess and a constant kdensity
+        # keep dash's "drew nothing" note" and "An all-missing line, area,
+        # bar or other plain layer says "drew nothing""), so the layer that
+        # reports here names a column the data does not hold.
+        spec = {"graphs": [_graph("", [{"type": "line", "yvar": "nosuch",
                                         "xvar": "x", "options": {}}])],
                 "build_options": {"layout": "1 1", "theme": ""}}
         _, warns = _draw(mode, tmp_path, spec, _DF)
@@ -431,7 +433,9 @@ class TestALayerThatDrewNothingIsNamedByWhatItHas:
     def test_a_named_graph_is_named(self, tmp_path, mode):
         g = _graph("g1", [{"type": "scatter", "yvar": "y", "xvar": "x",
                            "options": {}},
-                          {"type": "line", "yvar": "m", "xvar": "x",
+                          # Flipped: WP-32 -- was the all-missing m, now
+                          # drawn in silence as twoway draws it.
+                          {"type": "line", "yvar": "nosuch", "xvar": "x",
                            "options": {}}])
         _, warns = _draw(mode, tmp_path, _spec([g]), _DF)
         assert _empty_reports(warns) == [

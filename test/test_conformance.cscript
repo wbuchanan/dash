@@ -228,14 +228,17 @@ file close `fh'
 //         draws twoway's points, and an empty function layer is made from
 //         its points instead.  Before that it was nosuchfunction(x), which
 //         dash refuses at registration, r(133), as twoway does.)
-//   ctl2  a line of a variable missing on every observation, which the
-//         renderer reports with the rows it had:
-//           dash: graph 'ctl2' plot 1 (line) drew nothing from 74
-//           observations.
-//         Flipped: WP-32 -- it was a scatter, which dash now draws in
-//         silence as twoway does (BUGS.md "An all-missing scatter, a
+//   ctl2  a line of a variable missing on every observation, which twoway
+//         draws empty and silent (rc 0, measured 19oct2026), and dash too:
+//         it draws nothing and is not reported.
+//         Flipped: WP-32 -- it was a scatter, then a line, each reported
+//         "drew nothing from 74 observations"; both are drawn in silence
+//         now, as twoway draws them (BUGS.md "An all-missing scatter, a
 //         constant-x lowess and a constant kdensity keep dash's "drew
-//         nothing" note").
+//         nothing" note" and "An all-missing line, area, bar or other
+//         plain layer says "drew nothing", where twoway draws it in
+//         silence"), so the report's "from N observations" form is
+//         certified by test_immediate_dashboards.py alone.
 // C-03 requires these to be the only figures with nothing on them and the
 // only layers reported: that proves, on every run, that the page check can
 // see an empty figure and that each form of the report reaches this log in
@@ -438,22 +441,22 @@ display "C-04 PASS: all `n_reg' registered graphs reached the page, each as a fi
 
 // C-03: what was drawn, then what the renderer said.  The report names an
 // empty layer by graph, plot number and type, "(<type>) drew nothing" in
-// both of its forms; the controls' must be the only two, each in exactly
-// its own words.
+// its function form; ctl's must be the only one, in exactly its own words,
+// and ctl2 is drawn in silence.
 cert_log_has "`buildlog'", needle(") drew nothing")
 local c3_nrep = r(count)
 cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing: it needs the points Stata computes for it when dash registers the graph, and the points this spec carries for it cannot be read.")
 local c3_nctl = r(count)
-cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (line) drew nothing from 74 observations.")
+cert_log_has "`buildlog'", needle("'ctl2'")
 local c3_nctl2 = r(count)
 display "C-03: `c3_nbad' figure(s) drew less than they should; `c3_nrep' empty-layer report(s), `c3_nctl' + `c3_nctl2' of them the controls'"
-if `c3_nbad' > 0 | `c3_nrep' != 2 | `c3_nctl' != 1 | `c3_nctl2' != 1 {
+if `c3_nbad' > 0 | `c3_nrep' != 1 | `c3_nctl' != 1 | `c3_nctl2' != 0 {
     display as error "C-03 FAIL: a corpus layer drew nothing, or a control was not seen; the build log:"
     type "`buildlog'"
 }
 assert `c3_nbad' == 0
-assert `c3_nrep' == 2 & `c3_nctl' == 1 & `c3_nctl2' == 1
-display "C-03 PASS: every corpus figure drew a glyph per layer; only the two controls drew nothing, and each was reported"
+assert `c3_nrep' == 1 & `c3_nctl' == 1 & `c3_nctl2' == 0
+display "C-03 PASS: every corpus figure drew a glyph per layer; only the two controls drew nothing, the function reported and the all-missing line in silence"
 
 // ----------------------------------------------------------------
 // C-05 — every documented example parses clean.

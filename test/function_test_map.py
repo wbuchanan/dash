@@ -713,6 +713,7 @@ FUNCTIONS = {
  '_dash_name_save': 'test/test_toolbar.py::TestNameSave::test_a_figure_is_named_and_returned',
  '_dash_reflow': 'test/test_responsive_layout.py::TestReflowModel::test_a_gridplot_stacks_below_ncols_times_the_minimum',
  '_dash_named_once': 'test/test_adversarial_matrix.py::TestALayoutThatCannotBeReadIsReported::test_a_readable_layout_is_kept_without_a_word',
+ '_dash_layer_all_missing': 'test/test_silent_empty_layers.py::TestAnAllMissingPlainLayer::test_a_layer_with_a_complete_row_is_not_silenced',
  '_dash_note_empty_layer': 'test/test_immediate_dashboards.py::TestTheReportHelpers::test_a_data_layer_is_reported_only_when_there_are_rows',
  '_dash_attach_missing_codes': 'test/test_extended_missing.py::TestTheDataPath::test_loader_builds_code_column',
  '_dash_code_text': 'test/test_extended_missing.py::TestHelpers::test_code_text',
