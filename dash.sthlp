@@ -957,11 +957,19 @@ there, is an invalid point.  The literal is read as data and never run.
     interactivity.
 
 {phang2}5.  {ul:Unsupported twoway options.}
-    {cmd:dash} accepts every {cmd:twoway} option by name.  An unknown option
-    is not an error -- unless it is written in upper case, or is a plot's
-    option after the plot groups' comma, which {cmd:twoway} refuses and so
-    does {cmd:dash} (see {it:Where a graph-level option may be written}
-    under 3. above) -- so a command copy-pasted from a do-file runs whenever
+    {cmd:dash} accepts every {cmd:twoway} option by name.  A word
+    {cmd:twoway} does not take is refused as {cmd:twoway} refuses it --
+    {cmd:bogus}, {cmd:xreverse}, {cmd:cl(red)} and {cmd:bargap()} on
+    {cmd:scatter} are {cmd:option bogus not allowed}, {cmd:r(198)} -- and so
+    is one written in upper case, or a plot's option after the plot groups'
+    comma (see {it:Where a graph-level option may be written} under 3.
+    above).  {cmd:dash} names the word {cmd:twoway} names: the first of the
+    list it does not take, before two kernels, {cmd:mlabfontface()} and a
+    graph option given twice ({cmd:gaussian epan2 bogus} is
+    {cmd:option bogus not allowed}), and after a plot's option given twice
+    before it; across {cmd:||} segments {cmd:twoway} reads every plot's
+    options before any kernel, where {cmd:dash} answers segment by segment.
+    So a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
     names the two {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
@@ -990,11 +998,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:quietly} hides.
 
 {phang2}
-    The note names option {it:names}, never the values supplied.  Because
-    an unknown option cannot be distinguished from a misspelled supported
-    one, a typo is reported as ignored rather than rejected: {cmd:titl(x)}
-    is abbreviated {cmd:title()} and works, but {cmd:titel(x)} appears in
-    the note.  The full list is in
+    The note names option {it:names}, never the values supplied.  A typo
+    is refused as {cmd:twoway} refuses it: {cmd:titl(x)} is abbreviated
+    {cmd:title()} and works, but {cmd:titel(x)} is
+    {cmd:option titel() not allowed}, {cmd:r(198)}.  The full list is in
     {help dash##unsupported:Unsupported Stata twoway options}.  An option
     {cmd:dash} honours on some plot types -- {cmd:kernel()}, {cmd:n()},
     {cmd:level()}, {cmd:bwidth()}, {cmd:bands()}, {cmd:range()},

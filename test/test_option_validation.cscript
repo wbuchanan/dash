@@ -283,7 +283,7 @@
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
 *!                                    no accepted case may print
-*!   OV-157 notarealoption(3)         rc 0, and OV-157m: the log says
+*!   OV-157 afcolor(red)              rc 0, and OV-157m: the log says
 *!                                    "unsupported option", which no
 *!                                    refusal may print ("not found" is
 *!                                    found at OV-134m)
@@ -1020,11 +1020,14 @@ _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"
 // ----------------------------------------------------------------
 // OV-157: the words of the ignoring note.  Every refusal above is searched
 // for "unsupported option" and must not hold it (_ov_probe, _ov_refused);
-// the note is found here, by the same scanner, for an option dash does not
-// know, so that search can fail.  "must be" is found at OV-09m and
-// "not found" at OV-134m.
+// the note is found here, by the same scanner, for an option twoway takes
+// and dash does not draw, so that search can fail.  "must be" is found at
+// OV-09m and "not found" at OV-134m.  Flipped: WP-32 -- the option was
+// notarealoption(3), which twoway refuses and dash now refuses as twoway
+// does (U50); afcolor() twoway takes on every type
+// (test/fixtures/unknown_option_truth.json).
 // ----------------------------------------------------------------
-_ov_case OV-157 `"dash scatter mpg weight, notarealoption(3) name(ov157)"' 0 ""
+_ov_case OV-157 `"dash scatter mpg weight, afcolor(red) name(ov157)"' 0 ""
 _ov_said OV-157m "unsupported option"
 
 // ----------------------------------------------------------------
@@ -2705,6 +2708,213 @@ foreach _u49f in "price, type(range) direction(UP)" "rep78, type(multi) directio
     if `_u49k' == 3 _ov_said U49-3 "dash build: filter(): direction() takes ltr or rtl; got 'up'"
     else            _ov_said U49-4 "dash build: filter(): direction() applies to type(slider) and type(range)"
     local ++_u49k
+}
+capture dash clear
+
+// U50 (WP-32): the first word twoway does not take is the one dash names,
+// with twoway's words and r(198), in a list's own order: an unknown
+// lower-case word is refused, as twoway refuses it, where dash named it in
+// its note (TP-07's rule, superseded), and named before two kernels,
+// mlabfontface() and a graph option given twice; a plot option given
+// twice before it, and after the plot groups' comma any option given
+// twice, is named first.  Measured 19oct2026, twoway asked of each
+// command (test/fixtures/unknown_option_truth.json orders; BUGS.md "In a
+// few mixed lists dash names another word than twoway names first, and an
+// unknown lower-case word is noted where twoway refuses it").  Left open
+// there: across || segments twoway reads every plot's options before any
+// kernel or graph option given twice -- kdensity mpg, gaussian epan2 ||
+// scatter mpg weight, bogus names bogus; dash names the kernel -- and
+// between a plot group and the options after the groups' comma:
+// (kdensity mpg, gaussian epan2), bogus is the kernel's refusal and
+// (scatter mpg weight, bogus), xsize(3) xsize(4) names bogus, where dash
+// reads the options after the comma first.
+// U50-1 .. U50-56, one case each, numbered in this order; each prints
+// its verdict, the first as "U50-1 PASS".
+local _u50n 0
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, gaussian epan2 bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, bogus gaussian epan2"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, gaussian epan2 xsize(3) xsize(4)"'
+local _u50m`_u50n' `"only one kernel may be specified"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, xsize(3) xsize(4) gaussian epan2"'
+local _u50m`_u50n' `"only one kernel may be specified"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, bwidth(1) bwidth(2) bogus"'
+local _u50m`_u50n' `"option bwidth() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, bogus bwidth(1) bwidth(2)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, gaussian kernel(epan2) bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, bogus gaussian kernel(epan2)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, gaussian gaussian bogus"'
+local _u50m`_u50n' `"option gaussian not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, xsize(3) xsize(4) bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, gaussian epan2 mlabfontface(x)"'
+local _u50m`_u50n' `"only one kernel may be specified"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, mlabfontface(x) gaussian epan2"'
+local _u50m`_u50n' `"only one kernel may be specified"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus(1)"'
+local _u50m`_u50n' `"option bogus() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus zork"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, xsize(3) xsize(4) bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus xsize(3) xsize(4)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus ATOBS"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, ATOBS bogus"'
+local _u50m`_u50n' `"option ATOBS not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, ATOBS jit(5)"'
+local _u50m`_u50n' `"option ATOBS not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, jit(5) ATOBS"'
+local _u50m`_u50n' `"option jit() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, title2(a) jit(5)"'
+local _u50m`_u50n' `"option title2() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, jit(5) title2(a)"'
+local _u50m`_u50n' `"option jit() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, xsize(3) xsize(4) mlabfontface(x)"'
+local _u50m`_u50n' `"option(s) fontface(x) not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, mlabfontface(x) xsize(3) xsize(4)"'
+local _u50m`_u50n' `"option(s) fontface(x) not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, mlabfontface(x) bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus mlabfontface(x)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus jit(5)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus title2(a)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus nam(zz)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus asp(1)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus below below"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus scheme(s1color) scheme(s2color)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus hover(make)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, xreverse"'
+local _u50m`_u50n' `"option xreverse not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bargap(10)"'
+local _u50m`_u50n' `"option bargap() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, cl(red)"'
+local _u50m`_u50n' `"option cl() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"lfit mpg weight, atobs atobs bogus"'
+local _u50m`_u50n' `"option atobs not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"lfit mpg weight, bogus atobs atobs"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"lowess mpg weight, bogus lo nolo"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"lowess mpg weight, lo nolo bogus"'
+local _u50m`_u50n' `"option nolo not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, epan2 bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"kdensity mpg, ep bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), xsize(3) xsize(4) bogus"'
+local _u50m`_u50n' `"option xsize() not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), bogus atobs"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), atobs bogus"'
+local _u50m`_u50n' `"option atobs not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), ATOBS bogus"'
+local _u50m`_u50n' `"option ATOBS not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight, bogus)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight || line mpg weight, bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, bogus || line mpg weight, zork"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, below || line mpg weight, below bogus"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), bogus xsize(3) xsize(4)"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), bogus below below"'
+local _u50m`_u50n' `"option bogus not allowed"'
+local ++_u50n
+local _u50c`_u50n' `"(scatter mpg weight), below below bogus"'
+local _u50m`_u50n' `"option below not allowed"'
+// dash.sthlp's claim: a typo of title() twoway refuses (measured 19oct2026).
+local ++_u50n
+local _u50c`_u50n' `"scatter mpg weight, titel(x)"'
+local _u50m`_u50n' `"option titel() not allowed"'
+forvalues _u50k = 1/`_u50n' {
+    local _u50x `"`_u50c`_u50k''"'
+    local _u50sep ","
+    if strpos(`"`_u50x'"', ",") local _u50sep ""
+    if substr(`"`_u50x'"', 1, 1) == "(" & !strpos(`"`_u50x'"', "),") local _u50sep ","
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u50x'`_u50sep' name(ovu50)
+    local _u50rc = _rc
+    log close _ovlog
+    _ov_assert U50-`_u50k' "(`_u50rc' == 198)" `"`_u50x': rc `_u50rc' (expected 198, as twoway)"'
+    _ov_said U50-`_u50k' `"`_u50m`_u50k''"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U50-`_u50k' "(r(n) == 0)" `"`_u50x': not named in the note"'
 }
 capture dash clear
 

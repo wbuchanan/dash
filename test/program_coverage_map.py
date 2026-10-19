@@ -306,6 +306,7 @@ COVERAGE = {
         # e2e: TP-15 reads twoway's words and code in the log for each.
         "_dash_refuse_kernel": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_refuse_foreign": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_refuse_unknown": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_register_graph": ("test_varlist_expansion.cscript:V2-08",
                                  "test_registry_collision.cscript:REG-01"),
         # QL-14/15: each layer's own if and in select its rows, and the
@@ -766,6 +767,10 @@ COVERAGE = {
         "_dash_log_split": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_logit_typed": ("test_twoway_option_parity.cscript:TP-15",),
         "_dash_foreign_scan": ("test_twoway_option_parity.cscript:TP-15",),
+        "_dash_tw_takes_tab": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_tw_takes": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_rep_prefix": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_kernel_clash": ("test_twoway_option_parity.cscript:TP-15",),
         # direct and e2e: TP-16 calls it on its own, and holds the kernel a
         # flag registers to twoway's serset of kernel(<name>), in the run.

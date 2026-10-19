@@ -1751,12 +1751,19 @@ assert _rc == 0
 capture noisily dash scatter mpg weight, jitter(1) jitter(2) name(p2018c)
 assert _rc == 0
 capture dash clear
+// Flipped: WP-32 -- an option twoway does not know, holding a quote, is
+// refused as twoway refuses it, r(198), naming it as typed, where dash
+// named it in the note (BUGS.md "In a few mixed lists dash names another
+// word than twoway names first, and an unknown lower-case word is noted
+// where twoway refuses it"); the quote is never run.
 capture noisily dash scatter mpg weight, name(p2018d) nosuchopt(`p18q'a`p18q')
-assert _rc == 0
+assert _rc == 198
+assert "${dash_graph_registry}" == ""
 capture dash clear
 // Resource exhaustion: 60 undeclared options each holding a quote (Stata's
-// -syntax- itself refuses a few more, "too many options") are named in the
-// note, only the first 50 put to the parser, and quickly.
+// -syntax- itself refuses a few more, "too many options"): refused at the
+// first, as twoway refuses it (Flipped: WP-32, they were named in the
+// note), and quickly.
 local p18many ""
 forvalues i = 1/60 {
     local p18many `"`p18many' zz`i'(`p18q'a`p18q')"'
@@ -1766,11 +1773,11 @@ timer on 18
 capture noisily dash scatter mpg weight, name(p2018e) `p18many'
 local rc = _rc
 timer off 18
-assert `rc' == 0
+assert `rc' == 198
 quietly timer list 18
 assert r(t18) < 10
 capture dash clear
-display "P20-18b PASS: an option dash declares whose value Stata cannot bind is refused with twoway's code wherever it stands; a repeat and an unknown option are not"
+display "P20-18b PASS: an option dash declares whose value Stata cannot bind is refused with twoway's code wherever it stands; a repeat is not, and an unknown option is refused as twoway refuses it"
 
 // P20-19 — timeout() of 400 digits.  Measured: accepted with rc 0; the
 // launcher multiplies it by 60 into a float and the app died with
