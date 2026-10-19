@@ -1278,3 +1278,37 @@ def test_the_graph_keeps_its_size(mode):
     (grid,) = _grids(roots).values()
     assert not [c for c in _panels(grid)[0].js_property_callbacks.get(
         "change:inner_width", []) if c.code == dr._DASH_BY_FIT_JS]
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_discrete_key_holds_panel_ones_levels_as_twoways_does(mode):
+    """Measured 19oct2026 (StataNow 19.5, stcolor, SVG of ``twoway scatter
+    price weight if !(foreign==0 & rep78>=4) & rep78<., colorvar(rep78)
+    colordiscrete by(foreign, clegend(on))``, with ilegends and without
+    colordiscrete too): twoway's by() colour key holds the first panel's
+    levels (1, 2, 3; Foreign's 4 and 5 are in no key), and each panel
+    colours its own levels on its own scale (rep78 3 is the third colour,
+    #AAFF00, in Domestic and the first, #0000FF, in Foreign).  dash draws
+    the same; this pins it."""
+    from bokeh.models import Legend
+    g = _graph("g1", [_p("scatter", colorvar="rep78", colordiscrete="yes")],
+               {"by": "foreign, clegend(on)"})
+    g["if_expr"] = "!(foreign==0 & rep78>=4) & rep78<."
+    roots, _n, _o = _build(mode, _spec([g]))
+    (grid,) = _grids(roots).values()
+    factors = []
+    for f in _panels(grid):
+        for r in f.renderers:
+            t = getattr(getattr(getattr(r, "glyph", None), "fill_color",
+                                None), "transform", None)
+            if t is not None and hasattr(t, "factors"):
+                factors.append((list(t.factors),
+                                [c.lower() for c in t.palette][:3]))
+    assert factors == [(["1", "2", "3"], ["#0000ff", "#00ffaa", "#aaff00"]),
+                       (["3", "4", "5"], ["#0000ff", "#00ffaa", "#aaff00"])]
+    cell = _cell(grid, "dash_by_clegend")[0]
+    labels = [getattr(i.label, "value", i.label)
+              for sd in ("left", "right", "above", "below", "center")
+              for m in getattr(cell, sd) if isinstance(m, Legend)
+              for i in m.items]
+    assert labels == ["1", "2", "3"]
