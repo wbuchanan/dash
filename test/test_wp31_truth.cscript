@@ -9881,7 +9881,6 @@ def _u39_array(sp, dp, app, svg0, svg1, svg2):
              ns)
         doc = Document()
         ns["make_document"](doc)
-    unit = dr.OptionTranslator.PT_PER_RS * dr.OptionTranslator.PX_PER_PT
     bad = []
     for mode, roots in (("saved", [r._last_layout_root]),
                         ("served", list(doc.roots))):
@@ -9905,8 +9904,14 @@ def _u39_array(sp, dp, app, svg0, svg1, svg2):
         if abs(ratio - want_ratio) > 0.01:
             bad.append("%s ratio %.4f twoway %.4f" % (mode, ratio, want_ratio))
         st = dict(grids["u39s"].styles or {})
-        px = int(round(want_inset * unit))
-        if st.get("padding") != "%dpx %dpx %dpx %dpx" % (px, px, px, px):
+        # WP-32 D-37.a: a CSS percentage of the width, a unit being 1%
+        # of the graph's smaller side, so the inset follows a resize.
+        pct = want_inset * 100.0 * dr._dash_short_side_share(
+            {}, dr.SchemeParser("s2color")) / 100.0
+        got = [float(v.rstrip("%")) if v.endswith("%") else None
+               for v in str(st.get("padding") or "").split()]
+        if len(got) != 4 or any(v is None or abs(v - pct) > 0.01
+                                for v in got):
             bad.append("%s padding %s twoway %.2f units" % (
                 mode, st.get("padding"), want_inset))
         if nred != 1 or "#ff0000" not in str(st.get("border", "")):
