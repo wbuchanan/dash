@@ -4052,6 +4052,47 @@ _CVAR_MOVES = [
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("line", {"colorvar": "mpg"})],
                {"zscale": "log"}),
+    # colorlevels(#) cuts the kept rows' range again (measured 19oct2026:
+    # colorlevels(4) over mpg 12-41 cuts at 19.25 26.5 33.75, over 12-24
+    # at 15 18 21); colorcuts() keeps its cuts at or above the kept minimum.
+    _move_case("scatter colorlevels(4), rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "mpg",
+                                                    "colorlevels": "4"})]),
+    _move_case("scatter colorlevels(4) colordiscrete, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {
+                    "colorvar": "mpg", "colorlevels": "4",
+                    "colordiscrete": "colordiscrete"})]),
+    _move_case("scatter colorcuts(), rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "mpg",
+                                                    "colorcuts": "15 18 21"})]),
+    # Each by() panel is cut over its own kept rows, by()'s key the first
+    # panel's (measured 19oct2026: `by(foreign, clegend(on))' colorlevels(4)
+    # cuts the domestic cars at 17.5 23 28.5 and the foreign at 20.75 27.5
+    # 34.25, and under `if rep78==3' at 16.25 20.5 24.75 and 22.25 23.5
+    # 24.75, the key the domestic panel's).
+    _move_case("by(foreign) colorlevels(4) clegend, range to 4500-11385",
+               _MOVES[1],
+               [plot_for("scatter", {"colorvar": "mpg",
+                                     "colorlevels": "4"})],
+               {"by": "foreign, clegend(on)"}),
+    _move_case("by(foreign) colorcuts() clegend, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"),
+               [plot_for("scatter", {"colorvar": "mpg",
+                                     "colorcuts": "15 18 21"})],
+               {"by": "foreign, clegend(on)"}),
+    # A joined layer's lines are split again at the kept rows' bins,
+    # rconnected's second end binned with its first, and a layer of
+    # several glyphs over one source (bar, rcap's spine and caps) binned
+    # once.
+    *[_move_case(f"{t} colorlevels(4), rep dropdown to 3",
+                 ("rep dropdown to 3", "rep, type(dropdown)",
+                  ("Select", "3"), "rep == 3"),
+                 [plot_for(t, {"colorvar": "mpg", "colorlevels": "4"})])
+      for t in ("line", "connected", "rconnected", "bar", "rcap")],
     # Each panel and by()'s key keep the one level a move leaves.
     _move_case("by(foreign) colordiscrete clegend, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),

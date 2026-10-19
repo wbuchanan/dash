@@ -14569,6 +14569,9 @@ class GlyphMapper:
         # (_dash_colorvar_domain), or None for every row of its source.
         # Callers set it per layer and reset it in a finally.
         self.colorvar_domain = None
+        # A colorlevels()/colorcuts() line probe's bins record, handed from
+        # _colorvar_line_parts to its caller.
+        self._colorvar_bins_rec = None
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -16596,6 +16599,46 @@ class GlyphMapper:
                     "keys": [{"legend": None, "items": _lv_items,
                               "miss": _miss_item, "fig": fig,
                               "anchor": renderer}] if add_key else []}
+            elif is_numeric and (cuts is not None or nlevels is not None):
+                # colorlevels()/colorcuts() binned again over the rows a
+                # move keeps, as twoway cuts the rows it draws (BUGS.md
+                # "colorlevels() and colorcuts() keep the build's bins
+                # after a filter move"; measured 19oct2026: colorlevels(4)
+                # over mpg 12-41 cuts at 19.25 26.5 33.75, over 12-24 at
+                # 15 18 21; each by() panel over its own rows).  A record
+                # on every binned renderer, the keyed one's with its key;
+                # _dash_cvar_bins_layer makes the layer's plan of them.
+                _lv_items = [it for it in legend_items
+                             if it is not _miss_item]
+                if _keys_rev and not _use_plegend:
+                    _lv_items = list(reversed(_lv_items))
+                _own = bool(force_discrete)
+                _pals = {}
+                for _k in range(1, len(non_missing_factors) + 4):
+                    if _c_list:
+                        _pk = (_c_list + [_c_list[-1]] * _k)[:_k]
+                    elif palette_key:
+                        _pk = (list(pal_list) * (_k + 1))[:_k]
+                    else:
+                        _pk = list(_rule_palette(_k + (1 if _own else 0)))[:_k]
+                    _pals[str(_k)] = [str(c) for c in _pk]
+                renderer._dash_cvar_bins = {
+                    "renderer": renderer, "source": source,
+                    "field": color_field,
+                    "kind": "bins", "var": varname, "date": _cv_kind or "",
+                    "cuts": None if cuts is None else [float(c) for c in cuts],
+                    "nlevels": nlevels, "minmax": bool(minmax),
+                    "discrete": bool(force_discrete),
+                    "closed": bool(cuts is None and not minmax),
+                    "fmt": _key_fmt, "dp": getattr(self, "dp", "period"),
+                    "vlabels": {str(k): str(v) for k, v in
+                                (vlabels or {}).items()},
+                    "pals": _pals, "mapper": mapper,
+                    "missing": str(missing_color),
+                    "rev": bool(_keys_rev and not _use_plegend),
+                    "keys": [{"legend": None, "items": _lv_items,
+                              "miss": _miss_item, "fig": fig,
+                              "anchor": renderer}] if add_key else []}
             # Tagged, so _rebuild_legend can tell a colour key from a plot
             # legend.  Inspecting the items instead does not survive the
             # rewrite it has to survive, and gets the mixed case (a colorvar
@@ -16604,8 +16647,10 @@ class GlyphMapper:
             # factor labels above are too, so escaping only showed entities.
             _legend = Legend(items=legend_items, title=var_display,
                              name=_COLORVAR_LEGEND_NAME)
-            for _ks in (getattr(renderer, "_dash_cvar", None)
-                        or {}).get("keys", []):
+            for _ks in ((getattr(renderer, "_dash_cvar", None)
+                         or {}).get("keys", [])
+                        + (getattr(renderer, "_dash_cvar_bins", None)
+                           or {}).get("keys", [])):
                 _ks["legend"] = _legend
             # zlabel()/ztitle()/zscale() (GAPS2 X2): ztitle() titles a
             # discrete key too; zlabel()/zscale() have nothing to draw on
@@ -17054,6 +17099,9 @@ class GlyphMapper:
                                  add_key=add_key, stepped=True)
         finally:
             fig.renderers = [x for x in fig.renderers if x is not probe]
+        # colorlevels()/colorcuts(): the probe's bins record, for the
+        # caller's _colorvar_bins_lines.
+        self._colorvar_bins_rec = getattr(probe, "_dash_cvar_bins", None)
         cuts = getattr(self, "_colorvar_step_cuts", None)
         step_colours = getattr(self, "_colorvar_step_colours", None)
         self._colorvar_step_cuts = None
@@ -17102,6 +17150,27 @@ class GlyphMapper:
                         alpha if isinstance(alpha, (int, float))
                         and alpha != 1.0 else None))
         return out
+
+    def _colorvar_bins_lines(self, fig, rs, source, rec):
+        """Tag a colorlevels()/colorcuts() line's level lines *rs* (drawn
+        from *source* by ``_colorvar_line_draw``; the missing level first,
+        then one a bin) with what a move needs to split them again in the
+        layer's new bins (``_dash_cvar_bins_layer``, BUGS.md "colorlevels()
+        and colorcuts() keep the build's bins after a filter move"): the
+        probe's bins record *rec*, the lines, their sources, each row's
+        identity and the join order.  Nothing when *rec* is None."""
+        if not isinstance(rec, dict) or not rs:
+            return
+        rkey = next((k for k in ("index", _ROW_ID_COLUMN)
+                     if k in source.data), None)
+        if rkey is None:
+            return
+        rs[0]._dash_cvar_lines = {
+            "rec": rec, "pool": list(rs),
+            "inputs": [x.data_source for x in rs], "key": rkey,
+            "order": [str(v) for v in source.data[rkey]], "fig": fig,
+            "field": rec["field"], "var": rec["var"],
+            "missing": rec.get("missing")}
 
     def _colorvar_line_draw(self, fig, parts, options, line_kwargs, role):
         """Draw ``_colorvar_line_parts``'s *parts*, one line each by
@@ -18336,13 +18405,16 @@ class GlyphMapper:
         # and rconnected label their MARKERS, through map_scatter.
         # colorvar() (D39 D-15f): one line a colour level, as twoway draws
         # it, with the key unless the layer's markers carry it.
+        self._colorvar_bins_rec = None
         _cv_parts = self._colorvar_line_parts(fig, sorted_source, xvar,
                                               yvar, options, colorvar_key)
         _sp = getattr(self, "_colorvar_step_plan", None)
         self._colorvar_step_plan = None
+        _brec, self._colorvar_bins_rec = self._colorvar_bins_rec, None
         if _cv_parts:
             _rs = self._colorvar_line_draw(fig, _cv_parts, options,
                                            _line_kwargs, role)
+            self._colorvar_bins_lines(fig, _rs, sorted_source, _brec)
             _cvn = str(options.get("colorvar", "") or "").strip()
             # Each row's identity: the frame's index, which both modes'
             # level lines carry (the served app's carry no __dash_row__).
@@ -23343,15 +23415,23 @@ class GlyphMapper:
         _rl2_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
         # colorvar() (D39 D-15f): each bound one line a colour level, as
         # twoway draws a line, with one key.
+        self._colorvar_bins_rec = None
         _cv1 = self._colorvar_line_parts(fig, _bound_src[y1var], xvar, y1var,
                                          options, True)
+        _brec1, self._colorvar_bins_rec = self._colorvar_bins_rec, None
         if _cv1:
             _cv2 = self._colorvar_line_parts(fig, _bound_src[y2var], xvar,
                                              y2var, options, False) or []
-            r1 = self._colorvar_line_draw(fig, _cv1, options, _rl1_kwargs,
-                                          "aline")[0]
+            _brec2, self._colorvar_bins_rec = self._colorvar_bins_rec, None
+            r1s = self._colorvar_line_draw(fig, _cv1, options, _rl1_kwargs,
+                                           "aline")
+            r1 = r1s[0]
             r2s = self._colorvar_line_draw(fig, _cv2, options, _rl2_kwargs,
                                            "aline")
+            # colorlevels()/colorcuts(): each bound's level lines split
+            # again with the layer's bins after a move.
+            self._colorvar_bins_lines(fig, r1s, _bound_src[y1var], _brec1)
+            self._colorvar_bins_lines(fig, r2s, _bound_src[y2var], _brec2)
             r2 = r2s[0] if r2s else _dash_join_glyph(
                 self, fig, options, _rl2_kwargs, role="aline")
             return [r1, r2]
@@ -43919,11 +43999,231 @@ function dash_cvar_relevel_steps(pl) {
     m.high = cuts[cuts.length - 1] + step + eps;
   }
 }
+function dash_cvar_pyg(v) {
+  // Python's "%g" of a number (six significant digits, no trailing zeros).
+  if (!isFinite(v)) return String(v);
+  if (v === 0) return "0";
+  const e = Math.floor(Math.log10(Math.abs(v)));
+  if (e < -4 || e >= 6) {
+    let m = (v / Math.pow(10, e)).toPrecision(6).replace(/\.?0+$/, "");
+    return m + "e" + (e < 0 ? "-" : "+") + String(Math.abs(e)).padStart(2, "0");
+  }
+  return String(Number(Number(v).toPrecision(6)));
+}
+function dash_cvar_bin_rows(inputs, key, order, cols) {
+  // _dash_cvar_bin_rows: a line's level lines' rows by identity, in the
+  // join order.
+  const rows = new Map();
+  for (const src of inputs) {
+    const d = src.data;
+    const ids = d[key] || [];
+    for (let i = 0; i < ids.length; i++) {
+      const row = {};
+      for (const c of cols) if (c in d && i < d[c].length) row[c] = d[c][i];
+      rows.set(String(ids[i]), row);
+    }
+  }
+  const ids = (order || []).filter((rid) => rows.has(rid));
+  const seen = new Set(ids);
+  for (const rid of rows.keys()) if (!seen.has(rid)) ids.push(rid);
+  return [ids, rows];
+}
+function dash_cvar_relevel_bins(pl) {
+  // _dash_cvar_relevel_bins: colorlevels()/colorcuts() binned again over
+  // the rows the layer holds (_dash_colorvar_cuts and _dash_colorvar_bins),
+  // its copies binned alike and its lines split again by bin.
+  const units = (raw) => Array.from(raw || []).map((v) => {
+    if (v === null || v === undefined || !isFinite(Number(v))) return NaN;
+    // A date in its Stata units, as the build bins it.
+    return pl.date ? dash_date_units(Number(v), pl.date) : Number(v);
+  });
+  const lines = [];
+  for (const ln of pl.lines || []) {
+    const inputs = ln.inputs || [];
+    if (!inputs.length) continue;
+    const cols = Object.keys(inputs[0].data);
+    const [ids, rows] = dash_cvar_bin_rows(inputs, ln.key || "__dash_row__",
+                                           ln.order, cols);
+    lines.push([ln, cols, ids, rows]);
+  }
+  let src = null, dom;
+  if (pl.dom === "lines") {
+    if (!lines.length) return;
+    const seen = new Set(), raw = [];
+    for (const [, , ids, rows] of lines) {
+      for (const rid of ids) {
+        if (!seen.has(rid)) { seen.add(rid); raw.push(rows.get(rid)[pl.var]); }
+      }
+    }
+    dom = units(raw);
+  } else {
+    const r = pl.renderer;
+    src = r ? r.data_source : null;
+    if (!src || !(pl.var in src.data)) return;
+    dom = units(src.data[pl.var]);
+  }
+  const fin = dom.filter((v) => !isNaN(v));
+  let eff = [];
+  if (fin.length) {
+    const lo = Math.min(...fin), hi = Math.max(...fin);
+    if (pl.nlevels !== null && pl.nlevels !== undefined) {
+      const top = hi !== lo ? hi : lo + 1;
+      const step = (top - lo) / pl.nlevels;
+      for (let i = 1; i < pl.nlevels; i++) eff.push(i * step + lo);
+    } else if (pl.cuts) {
+      eff = Array.from(new Set(pl.cuts.filter((c) => c >= lo)));
+      if (!eff.length) eff = [lo];
+    }
+    if (pl.minmax) eff = eff.concat([lo, hi]);
+    eff = Array.from(new Set(eff)).sort((a, b) => a - b);
+  }
+  const fmtv = (v) => dash_fmt_text(v, pl.fmt || "%8.0gc", null,
+                                    pl.dp || "period", null);
+  const vlab = (v) => {
+    const k = Number.isInteger(v) ? String(v) : dash_cvar_pyg(v);
+    return (pl.vlabels && k in pl.vlabels) ? pl.vlabels[k] : fmtv(v);
+  };
+  const lo_v = fin.length ? Math.min(...fin) : null;
+  const hi_v = fin.length ? Math.max(...fin) : null;
+  const outside = (v) => isNaN(v) || lo_v === null || v < lo_v || v > hi_v;
+  let labels = [], missing;
+  if (!eff.length) {
+    missing = dom.length > 0;
+  } else if (pl.discrete) {
+    labels = eff.map(vlab);
+    missing = dom.some((v) => isNaN(v)) || fin.some((v) => !eff.includes(v));
+  } else {
+    const nb = eff.length + 1;
+    const make = (nt) => {
+      const out = [];
+      for (let i = 0; i < nb; i++) {
+        let a = i > 0 ? eff[i - 1] : null, b = i < eff.length ? eff[i] : null;
+        if (pl.closed) {
+          a = a === null ? lo_v : a; b = b === null ? hi_v : b;
+          out.push(nt(a) + "–" + nt(b));
+        } else if (a === null) out.push("≤" + nt(b));
+        else if (b === null) out.push(">" + nt(a));
+        else out.push(nt(a) + "–" + nt(b));
+      }
+      return out;
+    };
+    labels = make(fmtv);
+    if (new Set(labels).size < labels.length) labels = make(dash_cvar_pyg);
+    missing = dom.some((v) => isNaN(v));
+  }
+  const bin = (vals) => vals.map((v) => {
+    if (!eff.length || outside(v)) return null;
+    if (pl.discrete) {
+      const i = eff.findIndex((c) => v === c);
+      return i < 0 ? null : labels[i];
+    }
+    const i = eff.filter((c) => c < v).length;
+    return labels[Math.min(i, labels.length - 1)];
+  });
+  const k = labels.length;
+  const pal = (pl.pals || {})[String(k)] || [];
+  if (k && pal.length !== k) return;
+  if (src) {
+    const d = Object.assign({}, src.data);
+    d[pl.field] = bin(dom);
+    src.data = d;
+  }
+  const mappers = [pl.mapper].concat((pl.copies || []).map((c) => c.mapper));
+  for (const m of mappers) {
+    if (m) { m.factors = labels.slice(); m.palette = pal.slice(); }
+  }
+  for (const c of pl.copies || []) {
+    const cs = c.source;
+    if (!cs || !(pl.var in cs.data)) continue;
+    const d = Object.assign({}, cs.data);
+    d[c.field] = bin(units(cs.data[pl.var]));
+    cs.data = d;
+  }
+  // A level line's colour columns (its own, and the ones its rows carry
+  // from the layer's other ends) take the new bins.
+  const binCols = new Set([pl.field].concat(
+    (pl.copies || []).map((c) => c.field), lines.map((l) => l[0].field)));
+  for (const [ln, cols, ids, rows] of lines) {
+    const pool = ln.pool || [];
+    if (k + 1 > pool.length) continue;
+    const labs = bin(units(ids.map((rid) => rows.get(rid)[pl.var])));
+    const lev = labs.map((lb) => lb === null ? -1 : labels.indexOf(lb));
+    for (let j = 0; j <= k; j++) {
+      const r = pool[j];
+      const data = {};
+      for (const c of cols) {
+        data[c] = [];
+        ids.forEach((rid, i) => {
+          if (lev[i] === j - 1) {
+            data[c].push(binCols.has(c) ? labs[i] : rows.get(rid)[c]);
+          }
+        });
+      }
+      r.data_source.data = data;
+      const colour = j > 0 ? pal[j - 1] : ln.missing;
+      if (colour !== null && colour !== undefined
+          && r.glyph.line_color !== colour) {
+        if (typeof r.glyph.setv === "function") r.glyph.setv({line_color: colour});
+        else r.glyph.line_color = colour;
+      }
+    }
+    const fig = ln.fig;
+    if (fig) {
+      const cur = fig.renderers || [];
+      let at = cur.findIndex((x) => pool.includes(x));
+      const rest = cur.filter((x) => !pool.includes(x));
+      at = at < 0 ? rest.length : Math.min(at, rest.length);
+      fig.renderers = rest.slice(0, at).concat(pool.slice(0, k + 1),
+                                               rest.slice(at));
+    }
+  }
+  for (const ks of pl.keys || []) {
+    const items = ks.items || [];
+    if (k > items.length) continue;
+    const keep = items.slice(0, k);
+    keep.forEach((it, j) => {
+      it.label = {value: labels[j]};
+      const rr = (it.renderers || [])[0];
+      const g = rr ? rr.glyph : null;
+      if (!g) return;
+      for (const prop of ["fill_color", "line_color"]) {
+        if (prop in g && g[prop] !== pal[j]) {
+          if (typeof g.setv === "function") g.setv({[prop]: pal[j]});
+          else g[prop] = pal[j];
+        }
+      }
+    });
+    const order = pl.rev ? keep.slice().reverse() : keep.slice();
+    const miss = ks.miss || null;
+    if (miss && missing) order.push(miss);
+    if (ks.legend) ks.legend.items = order;
+    const fig = ks.fig;
+    if (!fig) continue;
+    const first = (it) => (it && it.renderers ? it.renderers[0] : null);
+    const swAll = items.concat(miss ? [miss] : []).map(first).filter((x) => x);
+    const swKeep = keep.concat(miss && missing ? [miss] : []).map(first)
+      .filter((x) => x);
+    const cur = fig.renderers || [];
+    // The swatches where the key's first one is, else after the anchor,
+    // else last.
+    const f0 = cur.findIndex((x) => swAll.includes(x));
+    const rest = cur.filter((x) => !swAll.includes(x));
+    let at;
+    if (f0 >= 0) {
+      at = cur.slice(0, f0).filter((x) => !swAll.includes(x)).length;
+    } else {
+      at = rest.indexOf(ks.anchor);
+      at = at < 0 ? rest.length : at + 1;
+    }
+    fig.renderers = rest.slice(0, at).concat(swKeep, rest.slice(at));
+  }
+}
 function dash_cvar_relevel(plans) {
   const none = (v) => v === null || v === undefined
     || (typeof v === "number" && isNaN(v));
   for (const pl of plans || []) {
     if (pl.kind === "steps") { dash_cvar_relevel_steps(pl); continue; }
+    if (pl.kind === "bins") { dash_cvar_relevel_bins(pl); continue; }
     const r = pl.renderer;
     const col = (r && r.data_source && r.data_source.data)
       ? (r.data_source.data[pl.field] || []) : [];
@@ -51909,6 +52209,9 @@ def _dash_cvar_relevel(plan):
     if plan.get("kind") == "steps":
         _dash_cvar_relevel_steps(plan)
         return
+    if plan.get("kind") == "bins":
+        _dash_cvar_relevel_bins(plan)
+        return
     present = {str(v) for v in col if not _none(v)}
     levels = list(plan.get("levels") or [])
     kept = [lv for lv in levels if lv in present]
@@ -52132,6 +52435,253 @@ def _dash_cvar_relevel_steps(plan):
             m.palette = list(colours)
         m.low = cuts[0] - step + eps
         m.high = cuts[-1] + step + eps
+
+
+def _dash_cvar_bin_label(v, plan):
+    """A colordiscrete bin's text: the value's label, else the number in
+    the key's format (the build's ``_vlookup``)."""
+    key = str(int(v)) if float(v).is_integer() else f"{v:g}"
+    return (plan.get("vlabels") or {}).get(
+        key, _dash_fmt_text(v, plan.get("fmt") or "%8.0gc",
+                            dp=plan.get("dp") or "period"))
+
+
+def _dash_cvar_bins_layer(renderers):
+    """Make one layer's colorlevels()/colorcuts() relevel plan from the
+    bins records ``_apply_colorvar`` left on its *renderers* (BUGS.md
+    "colorlevels() and colorcuts() keep the build's bins after a filter
+    move").  The keyed record is the plan; every other binned renderer of
+    the layer is a copy binned with it (rconnected's second end, a second
+    glyph over its own source), and each line's level lines
+    (``_colorvar_bins_lines``) are split again in its bins.  The cuts are
+    taken over the keyed renderer's source when it is drawn, else over the
+    rows of the layer's lines (a line's key is on a probe).  The plan goes
+    on the keyed renderer as ``_dash_cvar`` (on the first level line when
+    the key is a line's), and only when the layer reads its own rows: a
+    renderer drawn through a view, or one over a binned source coloured by
+    a column no record holds, leaves the layer its build's bins.  Each by()
+    panel's layer is its own, cut over the panel's rows, as twoway cuts
+    them.  Never raises."""
+    try:
+        rends = [r for r in renderers if not _dash_is_swatch(r)]
+        recs, lines = [], []
+        for r in rends:
+            rec = getattr(r, "_dash_cvar_bins", None)
+            if isinstance(rec, dict) and all(rec is not x for x in recs):
+                recs.append(rec)
+            ln = getattr(r, "_dash_cvar_lines", None)
+            if isinstance(ln, dict):
+                lines.append(ln)
+        drawn = [x for x in recs if any(x["renderer"] is r for r in rends)]
+        keyed = next((x for x in drawn if x.get("keys")), None)
+        if keyed is None:
+            keyed = next((ln["rec"] for ln in lines
+                          if ln["rec"].get("keys")), None)
+        if keyed is None:
+            return
+        for x in drawn:
+            f = getattr(getattr(x["renderer"], "view", None), "filter", None)
+            if f is not None and type(f).__name__ != "AllIndices":
+                return
+        covered = {(id(x["source"]), x["field"]) for x in drawn}
+        srcs = {id(x["source"]) for x in drawn}
+        for r in rends:
+            g = getattr(r, "glyph", None)
+            if id(getattr(r, "data_source", None)) not in srcs or g is None:
+                continue
+            for prop in ("fill_color", "line_color"):
+                v = getattr(g, prop, None) if prop in g.properties() else None
+                fld = getattr(v, "field", None)
+                if fld is None and isinstance(v, dict):
+                    fld = v.get("field")
+                if isinstance(fld, str) and fld.startswith(_DASH_CVAR_PREFIX) \
+                        and (id(r.data_source), fld) not in covered:
+                    return
+        on_fig = any(keyed["renderer"] is r for r in rends)
+        host = keyed["renderer"] if on_fig else lines[0]["pool"][0]
+        plan = {k: v for k, v in keyed.items() if k != "source"}
+        plan["renderer"] = host
+        plan["dom"] = "source" if on_fig else "lines"
+        if not on_fig:
+            plan["keys"] = [dict(ks, anchor=None) for ks in plan["keys"]]
+        plan["copies"] = [{"source": x["source"], "field": x["field"],
+                           "mapper": x["mapper"]}
+                          for x in drawn if x is not keyed]
+        plan["lines"] = [{k: v for k, v in ln.items() if k != "rec"}
+                         for ln in lines]
+        host._dash_cvar = plan
+    except (KeyError, IndexError, AttributeError, TypeError):
+        return
+
+
+def _dash_cvar_bin_rows(inputs, key, order, cols):
+    """The rows of a line's level lines *inputs*, by identity *key*, in
+    the join *order* (rows *order* lacks after it): ``(ids, rows)``."""
+    rows = {}
+    for src in inputs:
+        d = {c: list(v) for c, v in src.data.items()}
+        ids = d.get(key, [])
+        for i, rid in enumerate(ids):
+            rows[str(rid)] = {c: d[c][i] for c in cols
+                              if c in d and i < len(d[c])}
+    ids = [rid for rid in order or [] if rid in rows]
+    seen = set(ids)
+    ids += [rid for rid in rows if rid not in seen]
+    return ids, rows
+
+
+def _dash_cvar_relevel_bins(plan):
+    """colorlevels()/colorcuts() binned again over the rows the layer
+    holds after a move (BUGS.md "colorlevels() and colorcuts() keep the
+    build's bins after a filter move"): the cuts of
+    :func:`_dash_colorvar_cuts` over the kept values (the keyed source's,
+    or the layer's lines' rows), the bins and labels of
+    :func:`_dash_colorvar_bins` written into the colour column of the
+    keyed source and of each copy, the mappers' factors and their colours,
+    each line's level lines split again by bin (the missing level first,
+    then one a bin, the rest taken off the figure), and each key's items
+    relabelled, recoloured and shown as many as there are bins.  The served
+    app's twin of ``dash_cvar_relevel_bins``; never raises."""
+    try:
+        var = plan["var"]
+        field = plan["field"]
+        lines = []
+        for ln in plan.get("lines") or []:
+            inputs = list(ln["inputs"])
+            cols = list(inputs[0].data.keys())
+            ids, rows = _dash_cvar_bin_rows(inputs, ln.get("key")
+                                            or _ROW_ID_COLUMN,
+                                            ln.get("order"), cols)
+            lines.append((ln, cols, ids, rows))
+
+        def _units(raw):
+            v = _dash_float_values(list(raw), coerce=True)
+            return _dash_date_units(v, plan["date"]) if plan.get("date") \
+                else v
+        if plan.get("dom") == "lines":
+            if not lines:
+                return
+            seen, dom = set(), []
+            for _ln, _c, ids, rows in lines:
+                for rid in ids:
+                    if rid not in seen:
+                        seen.add(rid)
+                        dom.append(rows[rid].get(var))
+            dom = _units(dom)
+            src = None
+        else:
+            src = plan["renderer"].data_source
+            dom = _units(src.data[var])
+    except (KeyError, IndexError, AttributeError, TypeError, ValueError):
+        return
+    eff = _dash_colorvar_cuts(dom, plan.get("cuts"), plan.get("nlevels"),
+                              plan.get("minmax"))
+
+    def _bins(values):
+        return _dash_colorvar_bins(
+            dom, eff, plan.get("discrete"),
+            lambda v: _dash_cvar_bin_label(v, plan),
+            closed_ends=plan.get("closed"),
+            number_text=lambda v: _dash_fmt_text(
+                v, plan.get("fmt") or "%8.0gc",
+                dp=plan.get("dp") or "period"),
+            bin_values=values)
+    labels, binned, has_missing = _bins(dom)
+    k = len(labels)
+    pal = list((plan.get("pals") or {}).get(str(k), []))
+    if k and len(pal) != k:
+        return
+    if src is not None:
+        src.data[field] = list(binned)
+    for m in [plan.get("mapper")] + [c.get("mapper")
+                                     for c in plan.get("copies") or []]:
+        if m is not None:
+            if list(m.factors) != labels:
+                m.factors = list(labels)
+            if list(m.palette) != pal:
+                m.palette = pal
+    for c in plan.get("copies") or []:
+        try:
+            c["source"].data[c["field"]] = list(
+                _bins(_units(c["source"].data[var]))[1])
+        except (KeyError, AttributeError, TypeError, ValueError):
+            continue
+    # A level line's colour columns (its own, and the ones its rows
+    # carry from the layer's other ends) take the new bins.
+    bin_cols = {field} | {c.get("field") for c in plan.get("copies") or []} \
+        | {ln.get("field") for ln, _c, _i, _r in lines}
+    for ln, cols, ids, rows in lines:
+        pool = list(ln.get("pool") or [])
+        if k + 1 > len(pool):
+            continue
+        labs = _bins(_units([rows[rid].get(var) for rid in ids]))[1]
+        lev = [labels.index(lb) if lb in labels else -1 for lb in labs]
+        for j in range(k + 1):
+            r = pool[j]
+            d = {c: [lb for lb, e in zip(labs, lev) if e == j - 1]
+                 if c in bin_cols else
+                 [rows[rid].get(c) for rid, e in zip(ids, lev) if e == j - 1]
+                 for c in cols}
+            r.data_source.data = d
+            colour = pal[j - 1] if j > 0 else ln.get("missing")
+            if colour is not None and r.glyph.line_color != colour:
+                r.glyph.line_color = colour
+        fig = ln.get("fig")
+        if fig is not None:
+            ids_p = {id(x) for x in pool}
+            cur = list(fig.renderers)
+            at = next((i for i, x in enumerate(cur) if id(x) in ids_p),
+                      len(cur))
+            rest = [x for x in cur if id(x) not in ids_p]
+            at = min(at, len(rest))
+            new = rest[:at] + pool[:k + 1] + rest[at:]
+            if [id(x) for x in new] != [id(x) for x in cur]:
+                fig.renderers = new
+    from bokeh.core.property.vectorization import value as _bkv
+    for ks in plan.get("keys") or []:
+        items = list(ks.get("items") or [])
+        if k > len(items):
+            continue
+        keep = items[:k]
+        for j, it in enumerate(keep):
+            if str(getattr(it.label, "value", it.label)) != labels[j]:
+                it.label = _bkv(labels[j])
+            for rr in list(it.renderers or [])[:1]:
+                g = getattr(rr, "glyph", None)
+                for prop in ("fill_color", "line_color"):
+                    if g is not None and prop in g.properties() \
+                            and getattr(g, prop) != pal[j]:
+                        setattr(g, prop, pal[j])
+        order = list(reversed(keep)) if plan.get("rev") else list(keep)
+        miss = ks.get("miss")
+        if miss is not None and has_missing:
+            order.append(miss)
+        lg = ks.get("legend")
+        if lg is not None and list(lg.items) != order:
+            lg.items = order
+        fig = ks.get("fig")
+        if fig is None:
+            continue
+        sw_all = [rr for it in items + ([miss] if miss is not None else [])
+                  for rr in list(it.renderers or [])[:1]]
+        sw_keep = [rr for it in keep + ([miss] if miss is not None
+                                        and has_missing else [])
+                   for rr in list(it.renderers or [])[:1]]
+        ids_s = {id(x) for x in sw_all}
+        cur = list(fig.renderers)
+        # The swatches where the key's first one is, else after the
+        # anchor, else last.
+        first = next((i for i, x in enumerate(cur) if id(x) in ids_s), None)
+        rest = [x for x in cur if id(x) not in ids_s]
+        if first is not None:
+            at = sum(1 for x in cur[:first] if id(x) not in ids_s)
+        else:
+            anchor = ks.get("anchor")
+            at = next((i + 1 for i, x in enumerate(rest) if x is anchor),
+                      len(rest))
+        new = rest[:at] + sw_keep + rest[at:]
+        if [id(x) for x in cur] != [id(x) for x in new]:
+            fig.renderers = new
 
 
 def _dash_cvar_plans(models):
@@ -55258,7 +55808,11 @@ def _dash_by_keys(figs, opts, scheme):
                                    it for it in _lg.items}
                         _own = next(_ks for _ks in _plan["keys"]
                                     if _ks.get("legend") is key)
-                        _its = [_by_lab.get(lv) for lv in _plan["levels"]]
+                        # In the order of the panel key's own items (a
+                        # levels plan's levels, a bins plan's bins).
+                        _its = [_by_lab.get(str(getattr(_it.label, "value",
+                                                        _it.label)))
+                                for _it in _own.get("items") or []]
                         _mi = _own.get("miss")
                         _mlab = (str(getattr(_mi.label, "value", _mi.label))
                                  if _mi is not None else None)
@@ -63044,6 +63598,8 @@ class DashRenderer:
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
+            # colorlevels()/colorcuts(): the layer's relevel plan.
+            _dash_cvar_bins_layer(_layer_renderers)
             # Each layer's role in the axis hull (WP-30 P1.3a, D-21g).
             _dash_tag_hull_roles(_layer_renderers, ptype, popts)
             # A layer the saved page computes at build and does not refit
@@ -66952,7 +67508,9 @@ class ServerAppBuilder:
                          "_dash_by_key_share", "_dash_by_indiv_sides",
                          "_dash_cvar_relevel", "_dash_cvar_plans",
                          "_dash_cvar_ticks", "_dash_cvar_key_ticks",
-                         "_dash_cvar_tick_spec",
+                         "_dash_cvar_tick_spec", "_dash_cvar_bin_label",
+                         "_dash_cvar_bins_layer", "_dash_cvar_bin_rows",
+                         "_dash_cvar_relevel_bins",
                          "_dash_cvar_relevel_steps",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
@@ -69306,6 +69864,8 @@ class ServerAppBuilder:
             "                        view=_ly_view, color_idx=_sidx, order=_jo)",
             "        finally:",
             "            _m.colorvar_domain = None",
+            "        # colorlevels()/colorcuts(): the layer's relevel plan.",
+            "        _dash_cvar_bins_layer(fig.renderers[_before:])",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
             "        # A horizontal layer, drawn upright, is turned once (WP-30 P1.9a).",

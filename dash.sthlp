@@ -5561,9 +5561,11 @@ app; a continuous key's colours span the observations kept and its labels
 are ticked over them -- by {cmd:zlabel(#}{it:N}{cmd:)} or
 {cmd:zlabel(minmax)} when given, and over a date's values in its Stata
 units -- and a line's colour levels are cut at those labels, under
-{cmd:zscale(log)} too, as in {cmd:twoway}; labels {cmd:zlabel()} lists or
-steps keep their values, and the bins of {cmd:colorcuts()} and
-{cmd:colorlevels()} keep those of the build.
+{cmd:zscale(log)} too, and {cmd:colorlevels()} cuts the observations
+kept again and {cmd:colorcuts()} keeps its cuts at or above their
+minimum, each {cmd:by()} panel over its own and a line's levels with
+them, as in {cmd:twoway}; labels {cmd:zlabel()} lists or steps keep
+their values.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
 one whose observations are all missing on the variable draws a

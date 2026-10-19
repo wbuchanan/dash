@@ -936,25 +936,113 @@ class TestOneKeyPerLayer:
         assert len(scat) >= 2
 
 
-class TestTheServedRedrawKeepsTheBuildDomain:
-    """A served redraw keeps the build's bins (amendment 6)."""
+class TestTheServedRedrawTakesTheKeptRowsBins:
+    """A served redraw's copies take the bins of the rows a move keeps."""
 
-    def test_a_redrawn_copy_keeps_the_build_bins(self):
+    def test_a_redrawn_copy_takes_the_kept_rows_bins(self):
+        """Flipped (WP-32, BUGS.md "colorlevels() and colorcuts() keep the
+        build's bins after a filter move"; it was
+        TestTheServedRedrawKeepsTheBuildDomain::test_a_redrawn_copy_keeps_
+        the_build_bins, amendment 6 / WP-29 BR-07.4, which the maintainer's
+        ruling overrides): twoway cuts colorlevels() over the rows it draws
+        (measured 19oct2026: colorlevels(4) over mpg 12-41 cuts at 19.25
+        26.5 33.75, over 12-24 at 15 18 21), so after a move both ends of
+        an rconnected layer, its markers and every level line, carry the
+        kept rows' bins, each one a factor of both ends' mappers."""
         spec = tp._spec([tp.plot_for("rconnected", {
             "colorvar": "price", "colorlevels": "3"})],
             {"filter": "price, type(range)"})
         doc, _ = tp._served(spec)
         rends = cb.colour_renderers(doc)
-        factors = set()
-        fields = set()
-        for r in rends:
-            factors |= set(cb.colour_mapper(r).factors)
-            fields.add(cb.colour_field(r))
+        before = {tuple(cb.colour_mapper(r).factors) for r in rends}
+        fields = {cb.colour_field(r) for r in rends}
         _fire_range(doc, (4500.0, 11385.0))
+        after = {tuple(cb.colour_mapper(r).factors) for r in rends}
+        assert len(after) == 1 and after != before, (before, after)
+        (factors,) = after
+        assert factors == ("4,749\u20136,961", "6,961\u20139,173",
+                           "9,173\u201311,385"), factors
         bad = {}
         for m in doc.select({"type": ColumnDataSource}):
             for f in fields:
                 for v in m.data.get(f, []):
                     if v is not None and v not in factors:
                         bad.setdefault(f, set()).add(v)
-        assert not bad, f"values outside the build's factors {factors}: {bad}"
+        assert not bad, f"values outside the kept rows' factors: {bad}"
+
+
+def _bins_plans(doc):
+    return [p for p in dr._dash_cvar_plans(list(doc.roots))
+            if p.get("kind") == "bins"]
+
+
+class TestTheBinsPlan:
+    """The colorlevels()/colorcuts() relevel plan each layer carries
+    (BUGS.md "colorlevels() and colorcuts() keep the build's bins after a
+    filter move")."""
+
+    @pytest.mark.parametrize("kind,dom,copies,lines", [
+        ("scatter", "source", 0, 0), ("line", "lines", 0, 1),
+        ("connected", "source", 0, 1), ("rconnected", "source", 1, 2)])
+    def test_one_plan_a_layer(self, kind, dom, copies, lines):
+        doc, _ = tp._served(tp._spec([tp.plot_for(kind, {
+            "colorvar": "price", "colorlevels": "3"})],
+            {"filter": "price, type(range)"}))
+        (plan,) = _bins_plans(doc)
+        assert plan["dom"] == dom
+        assert len(plan["copies"]) == copies
+        assert len(plan["lines"]) == lines
+        assert "source" not in plan
+        assert all("rec" not in ln for ln in plan["lines"])
+        # Its renderer is drawn: the plan adds no model to the page.
+        assert plan["renderer"] in list(doc.select({"type": type(
+            plan["renderer"])}))
+
+    def test_each_by_panel_has_its_own(self):
+        doc, _ = tp._served(tp._spec([tp.plot_for("scatter", {
+            "colorvar": "mpg", "colorlevels": "4"})],
+            {"filter": "price, type(range)"}, {"by": "foreign, clegend(on)"}))
+        plans = _bins_plans(doc)
+        assert len(plans) == 2
+        assert plans[0]["renderer"].data_source \
+            is not plans[1]["renderer"].data_source
+        # by()'s key follows one panel's plan, the first's.
+        assert sum(len(p["keys"]) for p in plans) == 3
+
+    def test_a_layer_through_a_view_keeps_its_bins(self):
+        from bokeh.models import CDSView, IndexFilter
+        fig = figure()
+        src = ColumnDataSource({"v": [1.0, 2.0], "__dash_cvar1_v": ["a", "b"]})
+        r = fig.scatter("v", "v", source=src,
+                        view=CDSView(filter=IndexFilter([0])))
+        r._dash_cvar_bins = {"renderer": r, "source": src,
+                             "field": "__dash_cvar1_v", "var": "v",
+                             "mapper": None, "keys": [{"legend": None}]}
+        dr._dash_cvar_bins_layer([r])
+        assert getattr(r, "_dash_cvar", None) is None
+        r.view = CDSView()
+        dr._dash_cvar_bins_layer([r])
+        assert r._dash_cvar["dom"] == "source"
+
+    def test_a_column_no_record_holds_keeps_its_bins(self):
+        fig = figure()
+        src = ColumnDataSource({"v": [1.0], "__dash_cvar1_v": ["a"],
+                                "__dash_cvar2_v": ["a"]})
+        r = fig.scatter("v", "v", source=src)
+        from bokeh.models import CategoricalColorMapper
+        r2 = fig.scatter("v", "v", source=src, fill_color={
+            "field": "__dash_cvar2_v", "transform": CategoricalColorMapper(
+                factors=["a"], palette=["#ff0000"])})
+        r._dash_cvar_bins = {"renderer": r, "source": src,
+                             "field": "__dash_cvar1_v", "var": "v",
+                             "mapper": None, "keys": [{"legend": None}]}
+        dr._dash_cvar_bins_layer([r, r2])
+        assert getattr(r, "_dash_cvar", None) is None
+
+    def test_the_rows_of_level_lines(self):
+        a = ColumnDataSource({"index": [2, 0], "v": [20.0, 0.0]})
+        b = ColumnDataSource({"index": [1], "v": [10.0]})
+        ids, rows = dr._dash_cvar_bin_rows([a, b], "index", ["0", "1", "9"],
+                                           ["index", "v"])
+        assert ids == ["0", "1", "2"]
+        assert rows["2"] == {"index": 2, "v": 20.0}

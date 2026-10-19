@@ -275,7 +275,7 @@ class TestADateColourKeyIsInStataUnits:
         # the days it draws, written as numbers (measured 19oct2026:
         # 16,200 ... 16,800 over the foreign cars, 14,500 ... 17,000 over
         # every car), so after the move the bar is ticked over the days
-        # its layer keeps; colorlevels()' bins keep the build's.
+        # its layer keeps.
         (rend,) = cb.colour_renderers(root)
         days = [float(v) for v in dr._dash_date_units(
             cb.colour_values(rend), "td") if math.isfinite(v)]
@@ -283,9 +283,26 @@ class TestADateColourKeyIsInStataUnits:
             min(days), max(days), {"mode": "auto"})]
         assert _bar_texts(root) == want
         assert want != ["15,000", "15,100", "15,200", "15,300", "15,400"]
-        assert after[1] == before[1]
-        # The drawn rows' labels are each still one of the key's factors.
-        assert set(after[2]) <= set(before[1])
+        # Flipped (WP-32, BUGS.md "colorlevels() and colorcuts() keep the
+        # build's bins after a filter move"; it pinned the build's bins,
+        # WP-29 BR-07.4, which the maintainer's ruling overrides): twoway
+        # cuts colorlevels() over the rows it draws (measured 19oct2026:
+        # colorlevels(4) over mpg 12-41 cuts at 19.25 26.5 33.75, over
+        # 12-24 at 15 18 21), so the three bins span the days kept, in
+        # Stata units, and each drawn row's label is one of them.
+        (rend2,) = cb.colour_renderers(root2)
+        kept = [float(v) for v in dr._dash_date_units(dr._dash_float_values(
+            list(rend2.data_source.data["date"]), coerce=True), "td")
+            if math.isfinite(v)]
+        lo, hi = min(kept), max(kept)
+        cuts = [lo + (hi - lo) * i / 3 for i in (1, 2)]
+        bounds = [lo] + cuts + [hi]
+        assert after[1] == [
+            f"{dr._dash_fmt_text(a, '%8.0gc')}\u2013"
+            f"{dr._dash_fmt_text(b, '%8.0gc')}"
+            for a, b in zip(bounds, bounds[1:])]
+        assert after[1] != before[1]
+        assert set(after[2]) <= set(after[1])
 
 
 class TestZlabelOnAColourKey:
