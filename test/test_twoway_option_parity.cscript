@@ -892,7 +892,12 @@ foreach tt of local jo_oth {
     local why `"`r(why)'"'
     cert_log_has "`logfile'", needle("sort()")
     local named = r(found)
-    if inlist("`tt'", "tsline", "tsrline") local want = (`note' == 0 & `named' == 0)
+    // Flipped (WP-32): on the fits, kdensity, histogram, function and the
+    // immediate types sort(nosuch) was named, which was wrong because
+    // twoway draws the same picture with it (noted_option_truth.json;
+    // BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent"): taken in silence there.
+    local jo_sil "tsline tsrline pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function"
+    if `: list tt in jo_sil' local want = (`note' == 0 & `named' == 0)
     else local want = (`note' == 1 & `named' >= 1)
     if !`ok' | !`want' {
         display as error `"JO-23 FAIL: `tt', sort(nosuch) -- `why', note `note', sort() named `named'"'
@@ -989,7 +994,9 @@ foreach tt in tsline tsrline {
         local bad = 1
     }
 }
-foreach tt in scatter bar lfit {
+// Flipped (WP-32): lfit left the list: twoway draws a fit the same with
+// sort(z), and dash takes it in silence (BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent").
+foreach tt in scatter bar {
     _ztp_run `"dash `tt' mpg weight, sort(z) name(zqtp)"' "`logfile'"
     local drc = r(rc)
     cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
@@ -2091,8 +2098,12 @@ forvalues k = 1/`n14f' {
 // Flipped (WP-31 B5b): row 33's dot baroffset() was wrong because twoway
 // draws nothing different with it on dot (dot_truth.json D28, D29), so
 // dash takes it in silence; dot's dlalign(), which dash names, stands in.
+// Flipped (WP-32): dlalign() is taken in silence on dot, as twoway draws
+// dot the same with it (BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent");
+// the row expects it drawn in silence.
 local f33 `"dot mpg weight, dlalign(inside) dlalign(outside)"'
 local g33 "dlalign()"
+local s33 1
 // Flipped (WP-31 C4): rows 34 and 35 expected atobs and nofit named in
 // the note, which was wrong once dash draws them; twoway's answer is the
 // same, and dash now draws both layers in silence (s34, s35).
@@ -4261,11 +4272,14 @@ else display as text "RC-06 PASS: twoway's spellings by class, case-sensitive"
 // reads recast() on dot and draws the dot graph unchanged (rc 0, the
 // same SVG; test/fixtures/rbar_dot_truth.json), so the option the user
 // gave is named rather than dropped in silence.
+// Flipped (WP-32): recast() on dot named was wrong, because twoway draws
+// the same picture and says nothing (noted_option_truth.json;
+// BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent"): taken in silence.
 local bad ""
 _ztp_run `"dash dot mpg weight, recast(line) name(zqtp)"' "`logfile'"
-if r(rc) | !r(note) local bad "`bad' dot"
+if r(rc) | r(note) local bad "`bad' dot"
 _ztp_logged "`logfile'" "recast()"
-if !r(found) local bad "`bad' dot/named"
+if r(found) local bad "`bad' dot/named"
 _zrc_spec `"{`q'type`q':`q'dot`q'"'
 if !r(found) local bad "`bad' dot/type"
 // Flipped (WP-31 C7): pci's and histogram's range targets named was
@@ -4285,7 +4299,7 @@ foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)|pcarrow" "histogram mpg, re
 if "`bad'" != "" local faillist "`faillist' RC-07"
 if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-07 FAIL:`bad'"
-else display as text "RC-07 PASS: recast() on dot is named; pci's and histogram's range targets are drawn and not named"
+else display as text "RC-07 PASS: recast() on dot is taken in silence; pci's and histogram's range targets are drawn and not named"
 
 // RC-08: one value for every y; a two-name value is an unknown name.
 local bad ""

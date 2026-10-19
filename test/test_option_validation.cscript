@@ -1622,13 +1622,16 @@ if `"`bad'"' != "" {
 else display as text "U03-06 PASS: mwidth twice, and on scatter and bar, refused as twoway refuses it; once on rbar and histogram taken"
 
 // U03-05: recast() on dot: twoway takes it (rc 0) and draws the dot graph
-// unchanged (rbar_dot_truth.json), so dash takes it and names recast()
-// once in the note; the spec keeps type dot and no recast key.
+// unchanged (rbar_dot_truth.json), so dash takes it; the spec keeps type
+// dot and no recast key.  Flipped: WP-32 -- recast() was named once in
+// the note, which was wrong because twoway draws the same picture and
+// says nothing (noted_option_truth.json; BUGS.md "dash names options
+// twoway takes and draws nothing of, where twoway is silent").
 sysuse auto, clear
 local bad ""
 foreach c in "dot mpg weight, recast(line)" "dot mpg weight, recast(scatter)" {
     _u03_rc `"`c'"' "recast()"
-    if r(trc) != 0 | r(drc) != 0 | r(named) != 1 {
+    if r(trc) != 0 | r(drc) != 0 | r(named) != 0 {
         local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', named `r(named)']"'
     }
 }
@@ -1644,7 +1647,7 @@ if `"`bad'"' != "" {
     global ov_nfail    = ${ov_nfail} + 1
     global ov_faillist "${ov_faillist} U03-05"
 }
-else display as text "U03-05 PASS: recast() on dot taken as twoway takes it and named once; dot drawn"
+else display as text "U03-05 PASS: recast() on dot taken as twoway takes it, in silence; dot drawn"
 
 // U12-08 (WP-31 C5): gap(), area(), boundary, droplines() and baroffset()
 // on a type twoway's parser does not declare them for are refused as
@@ -2950,7 +2953,7 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, sort|sort)" ///
     "bar mpg weight, sort|sort)" ///
-    "pcspike mpg weight trunk turn, headlabel|headlabel)" {
+    "contour mpg weight length, heatmap|heatmap)" {
     local ++_u51n
     gettoken _u51x _u51m : _u51p, parse("|")
     local _u51m = substr(`"`_u51m'"', 2, .)
@@ -2963,6 +2966,9 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
     _ov_assert U51-`_u51n' "(`_u51rc' == 0)" `"`_u51x': rc `_u51rc' (expected 0)"'
     _ov_said U51-`_u51n' `"ignoring unsupported option(s): `_u51m'"'
 }
+// Flipped (WP-32): U51-8's bare headlabel on pcspike is taken in silence,
+// as twoway draws nothing of it there (U55-6); a bare heatmap on contour
+// carries the case.
 // U51-6 .. U51-8 (WP-32): a bare sort, which dash does not draw on
 // scatter or bar, and a bare headlabel on pcspike are named as typed, as
 // twoway names them, where the note wrote sort() and headlabel() (BUGS.md
@@ -3015,8 +3021,9 @@ foreach _u52p in "scatter mpg weight, at(mpg)@option at() not allowed" ///
     _ov_assert U52-`_u52n' "(r(n) == 0)" `"`_u52x': not named in the note"'
 }
 _ov_assert U52-0 "(`_u52n' == 19)" "the 19 U52 cases ran"
-// U52-20: where twoway takes headlabel (pcspike) it stays named, as dash
-// does not draw it there.
+// U52-20: where twoway takes headlabel (pcspike) and draws nothing of it,
+// dash takes it in silence.  Flipped: WP-32 -- it was named, which was
+// wrong because twoway draws the same picture (U55).
 capture dash clear
 capture log close _ovlog
 log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
@@ -3024,7 +3031,8 @@ capture noisily dash pcspike mpg weight trunk turn, headlabel name(ovu52)
 local _u52rc = _rc
 log close _ovlog
 _ov_assert U52-20 "(`_u52rc' == 0)" "pcspike, headlabel: rc `_u52rc' (expected 0)"
-_ov_said U52-20 "ignoring unsupported option(s): headlabel"
+_ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+_ov_assert U52-20 "(r(n) == 0)" "pcspike, headlabel: not named"
 capture dash clear
 
 // U53 (WP-32): a bare replace with nothing to replace -- no saving(), or a
@@ -3181,6 +3189,43 @@ capture program drop _u54_rec
 foreach _u54f in bad.grec ok.grec ok.txt pers/grec/pp.grec pers/pq.grec adod/pa.grec {
     capture erase "`_u54d'/`_u54f'"
 }
+capture dash clear
+
+// U55 (WP-32): an option dash declares and does not draw, which twoway
+// takes and draws nothing different with on that plot type, is taken as
+// twoway takes it, without a note (measured 19oct2026, graph export SVG,
+// test/fixtures/noted_option_truth.json; BUGS.md "dash names options
+// twoway takes and draws nothing of, where twoway is silent").  Where
+// twoway does draw something different, the note stays (U55-11, U55-12).
+// U55-1 .. U55-12, one case each; each prints its verdict, the first as
+// "U55-1 PASS".
+local _u55n 0
+foreach _u55p in "scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) alpattern(dash)@0" ///
+    "line mpg weight, alwidth(thick)@0" ///
+    "scatter mpg weight, bmlinestyle(p3)@0" ///
+    "dot mpg weight, dlalign(inside)@0" ///
+    "scatter mpg weight, mangle(30) barbsize(2)@0" ///
+    "pcspike mpg weight trunk turn, headlabel@0" ///
+    "rbar mpg trunk weight, msize(small)@0" ///
+    "dot mpg weight, recast(line)@0" ///
+    "lfit mpg weight, sort@0" ///
+    "histogram mpg, sort(price)@0" ///
+    "contour mpg weight length, heatmap@1" ///
+    "area mpg weight, lstyle(p3)@1" {
+    local ++_u55n
+    gettoken _u55x _u55w : _u55p, parse("@")
+    local _u55w = substr("`_u55w'", 2, .)
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_u55x' name(ovu55)
+    local _u55rc = _rc
+    log close _ovlog
+    _ov_assert U55-`_u55n' "(`_u55rc' == 0)" `"`_u55x': rc `_u55rc' (expected 0)"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+    _ov_assert U55-`_u55n' "(r(n) == `_u55w')" `"`_u55x': `r(n)' note(s) (expected `_u55w')"'
+}
+_ov_assert U55-0 "(`_u55n' == 12)" "the 12 U55 cases ran"
 capture dash clear
 
 // Summary

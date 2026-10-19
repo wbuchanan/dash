@@ -435,7 +435,7 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // twoway refuses each on every type, r(198), and dash now does
 // (noted_option_truth.json); not given (24 -> 16 named, and after the
 // comma filter() and link() likewise, 3 -> 1).
-local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local p_opts `"afcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-30 P1.10): text() named in the note was wrong, because dash
 // draws it as twoway does (added_text_truth.json); it is given and not
 // named, here and after the comma (39 -> 38 and 23 -> 22).
@@ -459,7 +459,13 @@ local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b
 // twoway draws the outline solid whatever it says; given and not named.
 // Flipped (WP-32): play() left the list; it is refused as twoway refuses
 // a recording it cannot find (U54).
-local p_names "acolor alcolor alpattern alwidth bmlinestyle"
+// Flipped (WP-32): acolor() alcolor() alpattern() alwidth() and
+// bmlinestyle() on scatter named in the note was wrong, because twoway
+// draws nothing different with them there (noted_option_truth.json;
+// BUGS.md "dash names options twoway takes and draws nothing of, where
+// twoway is silent"): taken in silence, in p_honoured; afcolor(), which
+// twoway takes and dash names, is the named one.
+local p_names "afcolor"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -467,7 +473,7 @@ local p_names "acolor alcolor alpattern alwidth bmlinestyle"
 // Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
 // was wrong, because a scatter given connect() is drawn as twoway's
 // connected plot, its line joined in x order under sort.
-local p_honoured "mlpattern mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs"
+local p_honoured "acolor alcolor alpattern alwidth bmlinestyle mlpattern mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -636,10 +642,12 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is refused as twoway ref
 // refuses and dash now refuses; afcolor() twoway takes on every type.
 // Flipped (WP-32): mlabwidth() -> bmlinestyle(); twoway refuses
 // mlabwidth() on every type, r(198), and dash now does.
-_hc_run "" "dash scatter mpg weight, bmlinestyle(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
+// Flipped (WP-32): bmlinestyle() -> afintensity(); twoway draws nothing
+// of bmlinestyle(), and dash takes it in silence.
+_hc_run "" "dash scatter mpg weight, afintensity(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): bmlinestyle() afcolor())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): afintensity() afcolor())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

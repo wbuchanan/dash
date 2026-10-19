@@ -20,8 +20,9 @@
 *!          the same run.
 *!   CB-02  on each ci type the four options and pstyle(p3) reach the spec
 *!          and are not named in the note.
-*!   CB-03  on scatter they are named in the note, by their full names;
-*!          pstyle() is not (it is drawn on every type, WP-30 P1.14a).
+*!   CB-03  on scatter they are taken in silence, as twoway draws scatter
+*!          the same with them (flipped, WP-32); pstyle() is not named
+*!          (it is drawn on every type, WP-30 P1.14a).
 *!   CB-04  twoway's minimum abbreviations, ac() alc() alw() alp(), reach
 *!          the spec under the full names; al(), which twoway reads as
 *!          alstyle(), is alstyle(): not alcolor() and not named.
@@ -218,16 +219,19 @@ foreach tt in lfitci qfitci lpolyci fpfitci {
 // P1.14a): pstyle() was named here; it is drawn on every type, so it is
 // not named, and the four fitarea options still are.
 // ----------------------------------------------------------------
+// Flipped (WP-32): the four were named on scatter, which was wrong because
+// twoway draws scatter the same with them (noted_option_truth.json;
+// BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent"): taken in silence.
 _zcb_run `"dash (scatter mpg weight, acol(red) alc(navy) alw(thick) alp(dash) psty(p3)), name(zqcb)"' "`logfile'"
 local bad = 0
-if r(rc) != 0 | r(note) != 1 {
+if r(rc) != 0 | r(note) != 0 {
     display as error "CB-03 FAIL: rc `r(rc)', note `r(note)'"
     local bad = 1
 }
 foreach nm in acolor() alcolor() alwidth() alpattern() {
     _zcb_logged "`logfile'" "`nm'"
-    if r(found) != 1 {
-        display as error "CB-03 FAIL: `nm' not named on scatter"
+    if r(found) != 0 {
+        display as error "CB-03 FAIL: `nm' named on scatter"
         local bad = 1
     }
 }

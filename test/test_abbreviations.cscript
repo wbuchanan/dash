@@ -1101,7 +1101,10 @@ foreach c in "dst(p3)|dstyle" "dl(p3)|dlstyle" "dls(p3)|dlstyle" "bml(p3)|bmline
     quietly log close _znp
     mata: st_local("hit", strofreal(strpos(st_global("dash_json_zos`i'"), char(34) + "`key'" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
     mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "`key'()")))
-    if `rc' | !`hit' | (`nn' != ("`key'" == "bmlinestyle")) {
+    // Flipped (WP-32): bml() was named as bmlinestyle(), which was wrong
+    // because twoway draws scatter the same with it (noted_option_truth.json;
+    // BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent").
+    if `rc' | !`hit' | `nn' != 0 {
         display as error "OS-07 FAIL: `opt': rc `rc', key `hit', named `nn'"
         local os07 1
     }

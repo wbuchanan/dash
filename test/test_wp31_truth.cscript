@@ -3637,11 +3637,14 @@ if inlist("`only'", "", "S18") & `: list posof "S18" in w31_run' {
     local lf3 "`u18d'/n3.log"
     quietly log using "`lf3'", text replace name(u18n3)
     dash clear
-    dash dot mpg weight, dlalign(x) name(zu183)
+    // Flipped (WP-32): dlalign() was named, which was wrong because twoway
+    // draws dot the same with dlalign(inside) (noted_option_truth.json):
+    // taken in silence.
+    dash dot mpg weight, dlalign(inside) name(zu183)
     quietly log close u18n3
-    cert_log_has "`lf3'", needle("dlalign()")
-    _w31_expect U18-02 "(r(count) == 1)" "dlalign() named `r(count)' times"
-    _w31_done U18-02 "ndots() and dotextend() refused and taken as twoway does; ndots(1) draws no dot; dlalign() named"
+    cert_log_has "`lf3'", needle("ignoring unsupported")
+    _w31_expect U18-02 "(r(count) == 0)" "dlalign() named `r(count)' times"
+    _w31_done U18-02 "ndots() and dotextend() refused and taken as twoway does; ndots(1) draws no dot; dlalign() taken in silence"
 
     // ------------------------------------------------------------
     // U18-03: dcolor(red) dsize(medium): the dots are red and a medium

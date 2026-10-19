@@ -112,3 +112,31 @@ class TestTheRefusedTableIsTheNotedFixture:
         kept = set(types) - set(by["headlabel"][2].split())
         assert kept == {"rpcap", "rpspike", "pcspike", "pccapsym", "pcarrow",
                         "pcbarrow", "pcscatter", "pci", "pcarrowi"}
+
+
+class TestTheSilentTableIsTheNotedFixture:
+    """WP-32 (BUGS.md "dash names options twoway takes and draws nothing
+    of, where twoway is silent"): _dash_tw_silent_tab holds, for each
+    option on dash's pending lists, the types where twoway draws the same
+    picture with it; test_option_validation.cscript U55 certifies the
+    silence."""
+
+    def test_each_row_is_where_twoway_draws_the_same(self):
+        nx = _noted()
+        rows = dict(gen.silent_rows(nx))
+        for opt, by in nx["probes"].items():
+            name = opt.split("(", 1)[0]
+            if name not in rows:
+                continue
+            for t in rows[name].split():
+                assert by[t]["twoway_rc"] == 0, (opt, t)
+                assert by[t]["twoway_draws"] is False, (opt, t)
+
+    def test_a_drawn_or_unmeasured_type_has_no_row(self):
+        rows = dict(gen.silent_rows(_noted()))
+        assert "bar" not in rows["acolor"].split()
+        assert "scatter" in rows["acolor"].split()
+        assert "contour" not in rows["bmlinestyle"].split()
+        assert "scatter" not in rows["sort"].split()
+        assert "lfit" in rows["sort"].split()
+        assert "pcspike" in rows["headlabel"].split()

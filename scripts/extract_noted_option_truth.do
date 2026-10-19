@@ -7,8 +7,10 @@
 *! For each probe: twoway's rc and first error line for the option alone on
 *! each type, and -- where twoway takes it -- whether the graph twoway
 *! draws differs from the one it draws without it (graph export SVG, its
-*! <desc> lines aside; null where two exports of the plain graph already
-*! differ, or twoway refuses it); dash's rc, first error line and note on each type.
+*! <desc> lines and per-export ids aside): false for the same picture,
+*! "order" for the same marks drawn in another order, true for another
+*! picture, null where twoway refuses it or two exports of the plain graph
+*! already differ in what they draw); dash's rc, first error line and note on each type.
 *! Then twoway's and dash's answer to each graph-level probe after the plot
 *! groups' comma, and to bare replace in each position.
 *!
@@ -63,20 +65,6 @@ global ZN_VERSION "`c(stata_version)'"
 global ZN_BORN "`c(born_date)'"
 global ZN_WHEN "`c(current_date)' `c(current_time)'"
 
-* 1 when two SVG files differ, their <desc> lines aside.
-capture mata: mata drop _zn_differs()
-mata:
-real scalar _zn_differs(string scalar a, string scalar b)
-{
-    string colvector A, B
-    A = cat(a)
-    B = cat(b)
-    A = select(A, !strmatch(strtrim(A), "<desc>*"))
-    B = select(B, !strmatch(strtrim(B), "<desc>*"))
-    if (rows(A) != rows(B)) return(1)
-    return(!all(A :== B))
-}
-end
 
 sysuse auto, clear
 gen yl = mpg - 1
@@ -119,11 +107,6 @@ foreach t of local types {
     capture twoway `a' name(zo, replace)
     if !_rc capture graph export "${ZN_WORK}/c`k'.svg", name(zo) replace as(svg)
     capture graph drop _all
-    local stable_`t' 0
-    capture confirm file "${ZN_WORK}/c`k'.svg"
-    if !_rc {
-        mata: st_local("stable_`t'", strofreal(!_zn_differs("${ZN_WORK}/b`k'.svg", "${ZN_WORK}/c`k'.svg")))
-    }
 }
 
 * The options on dash.ado's pending lists (_dash_parse_plot_opts,
@@ -141,7 +124,6 @@ foreach one of local probes {
     global ZN_O_`k' `"`one'"'
     local tr ""
     local dr ""
-    local df ""
     local j 0
     foreach t of local types {
         local ++j
@@ -150,14 +132,7 @@ foreach one of local probes {
         local rc = _rc
         quietly log close zn
         local tr "`tr' `rc'"
-        local d = -1
-        if !`rc' & `stable_`t'' {
-            capture graph export "${ZN_WORK}/o.svg", name(zo) replace as(svg)
-            if !_rc {
-                mata: st_local("d", strofreal(_zn_differs("${ZN_WORK}/b`j'.svg", "${ZN_WORK}/o.svg")))
-            }
-        }
-        local df "`df' `d'"
+        if !`rc' capture graph export "${ZN_WORK}/o`k'_`j'.svg", name(zo) replace as(svg)
         capture graph drop _all
         quietly log using "${ZN_WORK}/d`k'_`j'.log", replace text name(zn)
         capture noisily dash `base_`t'' `one' name(zq)
@@ -167,7 +142,6 @@ foreach one of local probes {
     }
     global ZN_TR_`k' "`tr'"
     global ZN_DR_`k' "`dr'"
-    global ZN_DF_`k' "`df'"
 }
 global ZN_K "`k'"
 
@@ -239,12 +213,54 @@ def first_error(text):
 
 work = G("ZN_WORK")
 types = G("ZN_TYPES").split()
+
+_ID = re.compile(r"\b(path|clipPath|pattern|linearGradient|mask)_[A-Za-z]{8}\b")
+_D = re.compile(r'd="([^"]*)"')
+
+
+def svg_lines(path):
+    """The SVG's lines, its <desc> lines aside and the ids Stata draws at
+    random per export (path_XXXXXXXX, clipPath_XXXXXXXX) made one."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        return None
+    return [_ID.sub("ID", ln) for ln in text.splitlines()
+            if not ln.strip().startswith("<desc>")]
+
+
+def unordered(lines):
+    """The same lines as a multiset, each path's points sorted: what is
+    left when only the order things are drawn in is set aside."""
+    def one(ln):
+        return _D.sub(lambda m: 'd="%s"' % " ".join(sorted(
+            re.findall(r"[ML][^ML]*", m.group(1)))), ln)
+    return sorted(one(ln) for ln in lines)
+
+
+def draws(j, opath):
+    """What twoway draws with the option against without it: False for the
+    same picture, "order" for the same marks drawn in another order, True
+    for a different picture, None where the plain graph's two exports
+    already differ in what they draw."""
+    b = svg_lines(os.path.join(work, "b%d.svg" % j))
+    c = svg_lines(os.path.join(work, "c%d.svg" % j))
+    o = svg_lines(opath)
+    if b is None or c is None or o is None:
+        return None
+    if unordered(b) != unordered(c):
+        return None
+    if o == b:
+        return False
+    if unordered(o) == unordered(b):
+        return "order" if b == c else False
+    return True
 probes = {}
 for k in range(1, int(G("ZN_K")) + 1):
     opt = G("ZN_O_%d" % k)
     tr = [int(v) for v in G("ZN_TR_%d" % k).split()]
     dr = [int(v) for v in G("ZN_DR_%d" % k).split()]
-    df = [int(v) for v in G("ZN_DF_%d" % k).split()]
     rows = {}
     for j, t in enumerate(types, 1):
         tl = os.path.join(work, "t%d_%d.log" % (k, j))
@@ -252,7 +268,7 @@ for k in range(1, int(G("ZN_K")) + 1):
         tt, dt = read(tl), read(dl)
         rows[t] = {"twoway_rc": tr[j - 1],
                    "twoway_message": first_error(tt) if tr[j - 1] else "",
-                   "twoway_draws": None if df[j - 1] < 0 else bool(df[j - 1]),
+                   "twoway_draws": draws(j, os.path.join(work, "o%d_%d.svg" % (k, j))) if tr[j - 1] == 0 else None,
                    "dash_rc": dr[j - 1],
                    "dash_message": first_error(dt) if dr[j - 1] else "",
                    "dash_note": note(dt)}
@@ -289,7 +305,9 @@ out = {"_meta": {"stata_version": G("ZN_VERSION"), "born_date": G("ZN_BORN"),
 with open(G("ZN_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)
     fh.write("\n")
-for f in ["git_head.txt", "o.svg"] + ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)]:
+# ZN_KEEP=1 in the environment keeps the SVGs in c(tmpdir)dash_noted_probe
+# for reading what twoway draws.
+for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)]):
     try:
         os.remove(os.path.join(work, f))
     except OSError:

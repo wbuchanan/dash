@@ -492,7 +492,7 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
-        _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_valued_names ///
+        _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in _dash_json_has_value ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
@@ -6931,7 +6931,10 @@ program define _dash_process_segment, rclass
     // it, draws nothing different and says nothing.
     // WP-32: a pending name is written with "()" when it takes a value
     // (_dash_pending_note), so the note names each word as twoway does.
-    mata: st_local("_seg_ign", _dash_pending_note(st_global("s(_pending)")) + " " + st_global("s(_unknown)"))
+    // An option twoway takes and draws nothing different with on this
+    // type is taken as twoway takes it, without a note (WP-32,
+    // _dash_silent_drop).
+    mata: st_local("_seg_ign", _dash_pending_note(_dash_silent_drop(st_global("s(_pending)"), st_local("ptype"))) + " " + st_global("s(_unknown)"))
     c_local _seg_ignored_out : copy local _seg_ign
     // The graph-wide options dash does not declare that this segment gave
     // (clegend(), pcycle(), notitling, ...): twoway takes each once from

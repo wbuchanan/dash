@@ -6443,8 +6443,10 @@ in either direction.
     {opt alpattern(linepattern)} -- {cmd:twoway}'s fitarea options.
     {cmd:dash} draws them on the band of {cmd:lfitci}, {cmd:qfitci},
     {cmd:lpolyci} and {cmd:fpfitci}, and does not name them there;
-    {cmd:twoway} accepts them on every plot type, and on the others
-    {cmd:dash} names them.
+    {cmd:twoway} accepts them on every plot type; on {cmd:scatter},
+    {cmd:line}, the fits without a band and the other types where it
+    draws nothing different with them, {cmd:dash} takes them in silence,
+    and on the others it names them.
 
 {phang2}{ul:Area, bar and line edge styles.}
     {opt afcolor(color)}, {opt afintensity(intensity)},
@@ -6514,14 +6516,18 @@ in either direction.
 
 {phang2}{ul:Marker back-line style.}
     {opt bmlinestyle(linestyle)} -- a marker's back line; {cmd:dash}
-    keeps it, for each y, and names it, but does not draw marker back
-    lines.  A name {cmd:twoway} does not know is noted as {cmd:twoway}
-    notes it.
+    keeps it, for each y, and does not draw marker back lines; nor does
+    {cmd:twoway} draw anything different with it, so it is taken in
+    silence, and named only on {cmd:contour} and {cmd:contourline}, where
+    that was not measured.  A name {cmd:twoway} does not know is noted
+    as {cmd:twoway} notes it.
 
 {phang2}{ul:A dot's alignment.}
     {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
     of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
-    {cmd:dash} draws it centred.
+    {cmd:dash} draws it centred, and {cmd:twoway} draws the same picture
+    with it, so it is taken in silence (named only on {cmd:contour} and
+    {cmd:contourline}).
 
 {phang2}{ul:Connection order.}
     {opt sort} and {opt sort(varlist)} on every plot type other than
@@ -6538,12 +6544,18 @@ in either direction.
     the heatmap's cells or the bands' outlines.
 
 {phang2}{ul:Not drawn.}
-    {cmd:msize()} on {cmd:rbar} without {cmd:mwidth}, where {cmd:twoway}
-    draws nothing of it either, and {cmd:mwidth} on {cmd:histogram},
-    where {cmd:twoway} draws each bar a marker wide.
+    {cmd:mwidth} on {cmd:histogram}, where {cmd:twoway} draws each bar a
+    marker wide.  {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},
     {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
-    {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, which {cmd:twoway} takes
-    there; it is drawn on the arrow types.  Stata's {cmd:nodraw} is not in
+    {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, {cmd:mangle()} and
+    {cmd:barbsize()} off the arrow types, {cmd:recast()} on {cmd:dot}
+    and {cmd:sort} on the fits, {cmd:kdensity}, {cmd:histogram},
+    {cmd:function} and the immediate types are taken in silence, as
+    {cmd:twoway} draws nothing different with them.
+    Where {cmd:twoway} draws the same picture with an option of this
+    list as without it -- measured on every plot type, graph export
+    SVG -- {cmd:dash} takes it in silence, as {cmd:twoway} does; it is
+    named only where {cmd:twoway} draws something different.  Stata's {cmd:nodraw} is not in
     this list: written on a graph it is honoured, on an immediate render
     and, once the graph is registered, on {cmd:dash build} and
     {cmd:dash serve} alike, by keeping the browser window shut.

@@ -1894,8 +1894,10 @@ _jg_log_on "`jg_l46'"
 * afintensity(), which twoway takes and dash names, carry the same text.
 * Flipped: WP-32 -- at() is refused by dash now as twoway refuses it on
 * every type (BUGS.md "dash names in its note, as not drawn, options
-* twoway refuses on that plot type"); dlalign(), which twoway takes and
-* dash names, carries its text.
+* twoway refuses on that plot type"); dlalign(), which twoway takes,
+* carries its text.  Flipped (WP-32): dlalign() is not named, as twoway
+* draws nothing different with it (BUGS.md "dash names options twoway
+* takes and draws nothing of, where twoway is silent").
 capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") dlalign(1 "'x") afcolor("'90s fp") afintensity(1) name(jg46g)
 local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
@@ -1904,7 +1906,7 @@ _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
 * bar() and no note names text(); it was "at() text() foo() bar()" and
 * "text()" once each.
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): dlalign() afcolor() afintensity()")
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): afcolor() afintensity()")
 local jg_m1 = r(count)
 cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
