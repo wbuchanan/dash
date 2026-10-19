@@ -3817,9 +3817,14 @@ if `"`c(python_exec)'"' != "" {
     dash scatter D.close t, name(tso08)
     _tso_spec tso08b
     _dash_prepare_spec, cmdname("dash serve") specpath("`c(tmpdir)'tso08s_s.json") datapath("`c(tmpdir)'tso08s_d.json")
+    * WP-32 G3b: the data file holds binary columns; read one as values.
+    quietly findfile dash_render.py
+    python: import sys as _tsy, os as _tos; _tsy.path.insert(0, _tos.path.dirname(_tos.path.abspath(r"`r(fn)'")))
+    python: import dash_render as _tdr, math as _tm
+    python: _tso_col = lambda d, n: [None if (isinstance(v, float) and _tm.isnan(v)) else v for v in (_tdr._dash_decode_columns(d) or True) and (_tdr._dash_columns_frame(d)[n].tolist() if _tdr._dash_columns_frame(d) is not None else [r.get(n) for r in d["values"]])]
     python: _sb, _ss = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_s.json", "tso08s_s.json")]
     python: _db, _dv = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_d.json", "tso08s_d.json")]
-    python: _ok = _sb["build_options"]["ts_cols"] == _ss["build_options"]["ts_cols"] == {"__dasht1": {"expr": "D.close", "label": "Closing price, D"}} and [r.get("__dasht1") for r in _db["values"]] == [r.get("__dasht1") for r in _dv["values"]]
+    python: _ok = _sb["build_options"]["ts_cols"] == _ss["build_options"]["ts_cols"] == {"__dasht1": {"expr": "D.close", "label": "Closing price, D"}} and _tso_col(_db, "__dasht1") == _tso_col(_dv, "__dasht1")
     python: _ts.Macro.setLocal("tso_ok", "1" if _ok else "0")
     assert `tso_ok' == 1
     dash clear
@@ -3902,7 +3907,7 @@ if `"`c(python_exec)'"' != "" {
     _tso_spec tso14
     quietly count if L.close > 1300 & !missing(close, t)
     local want = r(N)
-    python: _dd = _tj.load(open(_tdir + "tso14_d.json", encoding="utf-8")); _ts.Macro.setLocal("tso_n", str(int(sum(r.get("__dashq1") or 0 for r in _dd["values"]))))
+    python: _dd = _tj.load(open(_tdir + "tso14_d.json", encoding="utf-8")); _ts.Macro.setLocal("tso_n", str(int(sum(v or 0 for v in _tso_col(_dd, "__dashq1")))))
     assert `tso_n' == `want' & `want' == 33
     dash clear
     display "TSO-14 PASS: if L.close > 1300 keeps twoway's 33 rows"
