@@ -53695,6 +53695,17 @@ def _dash_by_compass_location(clock, side):
     return "center"
 
 
+#: by()'s legend in an at() hole: its position's compass in the hole's
+#: cell (measured 19oct2026, stcolor: pos(0) centred, pos(3) right and
+#: centred on the height, pos(2) top right).
+_DASH_BY_HOLE_PLACE = {
+    0: "center", 12: "top_center", 1: "top_right", 2: "top_right",
+    3: "center_right", 4: "bottom_right", 5: "bottom_right",
+    6: "bottom_center", 7: "bottom_left", 8: "bottom_left",
+    9: "center_left", 10: "top_left", 11: "top_left",
+}
+
+
 def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
                          panels=None, location="center"):
     """A legend cell on *side* of the panels: clones of *items*' renderers
@@ -53889,6 +53900,33 @@ def _dash_by_keys(figs, opts, scheme):
                 _dash_span(_cell, _keys[0], "legend", _kside,
                            _keys[0].location,
                            ref="grid" if "span" in words else "panels")
+            if at and _keys:
+                # In an at() hole (BUGS.md "by()'s legend in an at() hole
+                # sat at its cell's top left and squeezed the panel above
+                # it"): twoway places it in the hole's cell at its
+                # position's compass, its margin in (measured 19oct2026:
+                # pos(0) centred, the default pos(3) at the right and
+                # centred on the height, pos(2) top right).  The cell
+                # fills its hole and is not aligned with the panels'
+                # frames, which it narrowed.
+                _wds, _calls = _dash_legend_parts(opts.get("legend", ""))
+                _pos = _dash_legend_arg(_calls, ("position",))
+                try:
+                    _clock = int(str(_pos if _pos is not None else getattr(
+                        scheme, "by_legend_position", 3)).strip())
+                except (TypeError, ValueError):
+                    _clock = 0
+                for _sd in ("above", "below", "left", "right"):
+                    setattr(_cell, _sd, [m for m in getattr(_cell, _sd)
+                                         if m is not _keys[0]])
+                _cell.center = list(_cell.center) + [_keys[0]]
+                _keys[0].location = _DASH_BY_HOLE_PLACE.get(_clock,
+                                                            "center")
+                _cell.frame_width = None
+                _cell.frame_height = None
+                _cell.width_policy = "max"
+                _cell.height_policy = "max"
+                _cell.frame_align = False
             out["legend_side"], out["legend_at"] = side, at
     if not ilegends and keys1:
         words, at, side, _ring = place(opts.get("clegend", ""),
@@ -64810,6 +64848,7 @@ class ServerAppBuilder:
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
+                      "_DASH_BY_HOLE_PLACE",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",

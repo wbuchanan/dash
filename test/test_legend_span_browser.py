@@ -213,19 +213,31 @@ _BY_JS = r"""
 <script>
 function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
 function state() {
-  const boxes = []; let grid = null;
+  const boxes = [], pframes = []; let grid = null;
   const visit = (v, box) => {
     if (!v) return;
     if (v.model && v.model.type === 'GridBox') box = v;
-    if (v.model && v.model.name === 'dash_by_legend' && box) grid = rect(box.el);
+    if (v.model && (v.model.name === 'dash_by_legend'
+        || v.model.name === 'dash_by_clegend') && box) grid = rect(box.el);
+    if (v.frame && v.model && !v.model.name && box) pframes.push(
+      v.frame.bbox.width);
     if (v.frame && v.renderer_views) {
       const cr = v.canvas_view.el.getBoundingClientRect();
       for (const [m, rv] of v.renderer_views) {
         const t = m.type || '';
         if (!m.visible) continue;
-        if (t === 'Legend' && rv.bbox && rv.bbox.width > 0) {
+        if ((t === 'Legend' || t === 'ColorBar') && rv.bbox
+            && rv.bbox.width > 0
+            && (t === 'Legend' || m.name !== 'dash_by_label_box')) {
+          const b = rv.bbox;
           boxes.push({type: t, cell: v.model.name || '', text: '',
-                      box: rect(rv.el)});
+                      box: t === 'Legend' ? rect(rv.el)
+                        : [cr.left + b.x0, cr.top + b.y0, cr.left + b.x1,
+                           cr.top + b.y1],
+                      canvas: [cr.left, cr.top, cr.left + v.bbox.width,
+                               cr.top + v.bbox.height],
+                      frame: [cr.left + v.frame.bbox.x0,
+                              cr.left + v.frame.bbox.x1]});
         } else if (t === 'Title' && m.text) {
           rv.compute_geometry();
           const r = rv._rect; if (!r) continue;
@@ -264,7 +276,8 @@ function state() {
   let panels = null;
   const gv = (() => { let f = null; const look = (v) => { if (!v || f) return;
     if (v.model && v.model.type === 'GridBox' && (v.child_views || []).some(
-      (k) => k.model && k.model.name === 'dash_by_legend')) { f = v; return; }
+      (k) => k.model && (k.model.name === 'dash_by_legend'
+        || k.model.name === 'dash_by_clegend'))) { f = v; return; }
     for (const c of (v.child_views || [])) look(c); };
     for (const v of Object.values(Bokeh.index)) look(v); return f; })();
   if (gv) {
@@ -278,7 +291,7 @@ function state() {
         Math.max(panels[3], r[3])];
     }
   }
-  return {grid, boxes, panels};
+  return {grid, boxes, panels, pframes};
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
@@ -516,3 +529,52 @@ class TestByPanelsFillTheirRow:
         # of 5400, the panels' box 226.0 .. 4276.8).
         assert 0 <= xt["canvas"][1] - p[3] <= 30, st
         assert abs(_centre(xt["box"])[0] - (p[0] + p[2]) / 2.0) <= 1.5, st
+
+
+def _by_spec(mode, go, plots=None):
+    spec = bk._spec([bk._graph("g1", plots or bk._TWO, go, title=False)],
+                    scheme="stcolor")
+    got = kb._measure(mode, spec, _BY_JS)[1400]
+    return got["wide"], got["narrow"]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByLegendInAHole:
+    """BUGS.md "by()'s legend in an at() hole sat at its cell's top left
+    and squeezed the panel above it".  Measured 19oct2026 (StataNow 19.5,
+    stcolor, SVG of ``twoway (scatter price weight) (scatter mpg weight),
+    ylabel(, format(%15.2fc)) by(rep78, legend(at(6) [pos(#)]))``): twoway
+    places the legend in the hole's cell at its position's compass --
+    pos(0) centred (x 4509.7, the column's plot region centre, on the cell
+    3732.8 .. 5286.6; y 2192.2 on 1499.4 .. 2885.3), the default pos(3) at
+    the cell's right less its margin (5255.6) and centred on its height,
+    pos(2) at its top right (1530.4) -- and the panel above the hole is as
+    wide as the others (1327.0 of 5400 each)."""
+
+    @pytest.mark.parametrize("pos,where", (("pos(0)", "c"), ("", "r"),
+                                           ("pos(2)", "tr")))
+    def test_the_legend_sits_at_its_compass_in_the_hole(self, mode, pos,
+                                                        where):
+        for st in _by_spec(mode, {"by": "rep78, legend(at(6) %s)" % pos}):
+            (lg,) = [b for b in st["boxes"] if b["type"] == "Legend"
+                     and b["cell"] == "dash_by_legend"]
+            box, c = lg["box"], lg["canvas"]
+            mg = 5
+            cx = (c[0] + c[2]) / 2.0
+            cy = (c[1] + c[3]) / 2.0
+            if where == "c":
+                assert abs(_centre(box)[0] - cx) <= 1.5, st
+                assert abs(_centre(box)[1] - cy) <= 1.5, st
+            if where == "r":
+                assert abs(box[2] - (c[2] - mg)) <= 1.5, st
+                assert abs(_centre(box)[1] - cy) <= 1.5, st
+            if where == "tr":
+                assert abs(box[2] - (c[2] - mg)) <= 1.5, st
+                assert abs(box[1] - (c[1] + mg)) <= 1.5, st
+            # The hole's cell is its column's width, and the panel above
+            # it keeps its frame (the first column's are narrower by their
+            # y axis).
+            assert abs(c[2] - st["panels"][2]) <= 1.5, st
+            assert c[2] - c[0] > 300, st
+            f = st["pframes"]
+            assert max(f) - min(f) <= 20, st

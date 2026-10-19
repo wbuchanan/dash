@@ -624,7 +624,11 @@ class TestOneLegend:
             if side != _SIDE[p["legend"]["side"]]:
                 bad.append((pid, "side", side, p["legend"]["side"]))
             from bokeh.models import Legend
-            (lg,) = [m for s in ("left", "right", "above", "below")
+            # Flipped (WP-32, BUGS.md "by()'s legend in an at() hole sat
+            # at its cell's top left and squeezed the panel above it"): in
+            # a hole the legend sits inside its cell, at its compass.
+            (lg,) = [m for s in ("left", "right", "above", "below",
+                                 "center")
                      for m in getattr(c[0], s) if isinstance(m, Legend)]
             first = _series_legends(_panels(grid)[0])[0]
             if [i.label for i in lg.items] != [i.label for i in first.items]:
@@ -1103,3 +1107,24 @@ def test_the_panels_fill_their_row(mode):
             in css
     for name in ("dash_by_ytitle", "dash_by_xtitle"):
         assert _cell(grid, name)[0].frame_align is False
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_a_legend_in_a_hole_sits_at_its_compass(mode):
+    """BUGS.md "by()'s legend in an at() hole sat at its cell's top left
+    and squeezed the panel above it": the legend goes inside its cell at
+    its position's compass (_DASH_BY_HOLE_PLACE; measured: pos(0)
+    centred, stcolor's default pos(3) right, pos(2) top right), and the
+    cell fills its hole without aligning its frame with the panels'."""
+    from bokeh.models import Legend
+    for pos, want in (("pos(0)", "center"), ("", "center_right"),
+                      ("pos(2)", "top_right"), ("pos(7)", "bottom_left")):
+        spec = _spec([_graph("g1", _TWO,
+                             {"by": "rep78, legend(at(6) %s)" % pos})])
+        roots, _n, _o = _build(mode, spec)
+        (grid,) = _grids(roots).values()
+        cell = _cell(grid, "dash_by_legend")[0]
+        (lg,) = [m for m in cell.center if isinstance(m, Legend)]
+        assert lg.location == want, pos
+        assert cell.frame_align is False
+        assert cell.width_policy == "max" and cell.frame_width is None
