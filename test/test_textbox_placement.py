@@ -638,6 +638,46 @@ class TestSpan:
             "dash_by_foot": [("N", "below", "left", "panels")]}
 
     @pytest.mark.parametrize("mode", MODES)
+    def test_bys_end_boxes_keep_their_text_box_margin(self, mode):
+        """BUGS.md "A by() note or caption sat at the panels' end without
+        its margin": twoway keeps the text box's margin inside the end
+        (measured 19oct2026, stcolor: the note at the panels' left 226.0
+        plus 19.4 of 3240, vsmall's 0.6 units; spanned, at the graph
+        region's 113.4 plus 19.4); a centred box takes none, nor one with
+        a box (its padding is its margin)."""
+        import test_by_axes_keys as bk
+        from bokeh.models import Plot
+
+        def items(by):
+            spec = bk._spec([bk._graph("g1", bk._TWO, {"by": by},
+                                       title=False)])
+            roots, _n, _o = bk._build(mode, spec)
+            got = []
+            for m in {id(m): m for r in roots for m in r.references()
+                      if isinstance(m, Plot)}.values():
+                if m.name not in ("dash_by_head", "dash_by_foot"):
+                    continue
+                for c in m.js_property_callbacks.get("change:inner_width",
+                                                     []):
+                    if c.code == dr._DASH_SPAN_JS:
+                        got += [(it[0].text, it[6]) for it in c.args["items"]]
+            return sorted(got)
+        assert items('foreign, title("T") note("N") caption("C", pos(5))') \
+            == [("C", 0.6), ("N", 0.6), ("T", 0.0)]
+        assert items('foreign, note("N", span) caption("C", pos(5) box)') \
+            == [("C", 0.0), ("N", 0.6)]
+
+    def test_the_text_box_margin_is_read_relative(self):
+        """_dash_textbox_margin_rel: the scheme's margin of a box's text
+        box style in relative units (stcolor and s2color vsmall, 0.6);
+        None without a scheme or for a style the scheme does not table."""
+        sch = dr.SchemeParser("stcolor")
+        for opt in ("title", "subtitle", "note", "caption"):
+            assert dr._dash_textbox_margin_rel(sch, opt) == [0.6] * 4
+        assert dr._dash_textbox_margin_rel(None, "note") is None
+        assert dr._dash_textbox_margin_rel(sch, "nosuchbox") is None
+
+    @pytest.mark.parametrize("mode", MODES)
     def test_bys_own_boxes_are_placed_on_the_by_grid(self, mode):
         """by(, title("T", span) note("N", span)): twoway places by()'s own
         boxes on the whole graph (measured 19oct2026, stcolor: the title at

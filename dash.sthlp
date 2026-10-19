@@ -3273,7 +3273,8 @@ s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
 {cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
 {cmd:caption()} are drawn once over the panels, placed on the panels and
 their axes as in {cmd:twoway} (a title centred over them, a note at
-their left, a caption at 5 o'clock ending at their right; with
+their left, a caption at 5 o'clock ending at their right, each its text
+box's margin in; with
 {cmd:span} on the whole graph), and under them the note
 "Graphs by" names the variables as {cmd:twoway} does: their labels,
 "A and B" for two, and for three or more the first by its name

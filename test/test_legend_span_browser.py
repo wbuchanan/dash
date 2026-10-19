@@ -456,10 +456,16 @@ class TestByTitlesWithoutSpan:
             assert abs((p[0] + p[2]) / 2.0 - (g[0] + g[2]) / 2.0) > 30
             (t,) = _by_titles(st, "A by title")
             assert abs(_centre(t["box"])[0] - (p[0] + p[2]) / 2.0) <= 1.5
+            # Flipped (WP-32, BUGS.md "A by() note or caption sat at the
+            # panels' end without its margin"): the note and caption keep
+            # their text box's margin (stcolor's vsmall, 0.6 of the
+            # graph's smaller side: twoway's 19.4 of 3240) inside the
+            # panels' ends, as twoway places them.
+            mg = 0.006 * min(g[2] - g[0], g[3] - g[1])
             (n,) = _by_titles(st, "A by note")
-            assert abs(n["box"][0] - p[0]) <= 1.5, st
+            assert abs(n["box"][0] - (p[0] + mg)) <= 1.0, st
             (c,) = _by_titles(st, "A by caption")
-            assert abs(c["box"][2] - p[2]) <= 1.5, st
+            assert abs(c["box"][2] - (p[2] - mg)) <= 1.0, st
 
 
 @pytest.mark.parametrize("mode", ("saved", "served"))

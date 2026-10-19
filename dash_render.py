@@ -38155,7 +38155,7 @@ const region = (ref) => {
     }
     const fx = (pv.frame != null && pv.frame.bbox != null)
       ? pv.frame.bbox.x1 : W;
-    return {L: 0, R: fx + (+sd[1] || 0) * v, T: 0, B: H};
+    return {L: 0, R: fx + (+sd[1] || 0) * v, T: 0, B: H, u: v};
   }
   let x0 = 0, y0 = 0, gw = W, gh = H, a = null, c = null;
   if (ref === "grid" || ref === "panels") {
@@ -38171,7 +38171,7 @@ const region = (ref) => {
   }
   const u = Math.min(gw, gh) / 100;
   const r = {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
-             T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u};
+             T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u, u};
   if (ref !== "panels") { return r; }
   let p = null;
   for (const k of (a.child_views || [])) {
@@ -38185,7 +38185,7 @@ const region = (ref) => {
   }
   if (p == null) { return null; }
   const q = {L: Math.max(r.L, p.L - c.left), R: Math.min(r.R, p.R - c.left),
-             T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top)};
+             T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top), u};
   return (q.R > q.L && q.B > q.T) ? q : null;
 };
 const at = (key, lo, len, size, mg) =>
@@ -38226,11 +38226,14 @@ for (const it of items) {
     }
   } else if (kind === "title" && across) {
     const off = it[4] || 0;
+    // An item's seventh entry: its text box's margin (relative units of
+    // the graph's smaller side), kept inside the end it is placed at.
+    const mg = (+it[6] || 0) * g.u;
     let align = place, offset = off;
     if (place === "left") {
-      offset = off + g.L - pb.left;
+      offset = off + g.L - pb.left + mg;
     } else if (place === "right") {
-      offset = off + pb.right - g.R;
+      offset = off + pb.right - g.R + mg;
     } else {
       // The text's box: a Title's own bbox is its whole panel.
       let tw = 0;
@@ -38252,7 +38255,7 @@ _DASH_SPAN_KEYS = ("inner_width", "inner_height", "outer_width",
 
 
 def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
-               ref=""):
+               ref="", margin=0.0):
     """Place *model* along its side on the whole graph, as twoway's span
     places it (``_DASH_SPAN_JS``), or stop placing it (*kind* None).
 
@@ -38261,8 +38264,9 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
     model replaces its item.  *kind* is ``"legend"`` (*place* its panel
     location) or ``"title"`` (*place* its align, *offset* its own
     offset); *ref* ``"grid"`` places it on the by() grid that holds
-    *fig* (a by() chrome cell) instead of *fig*'s canvas; *model* None
-    drops every item.  Both modes come through here."""
+    *fig* (a by() chrome cell) instead of *fig*'s canvas; *margin* (relative units of the graph's smaller
+    side) is kept inside the end a left or right title is placed at;
+    *model* None drops every item.  Both modes come through here."""
     from bokeh.models import CustomJS
     key0 = "change:" + _DASH_SPAN_KEYS[0]
     cb = next((c for c in fig.js_property_callbacks.get(key0, [])
@@ -38271,7 +38275,7 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
         it for it in cb.args.get("items", []) if it[0] is not model]
     if kind is not None:
         items.append([model, kind, side, place, float(offset or 0.0),
-                      str(ref or "")])
+                      str(ref or ""), float(margin or 0.0)])
     if cb is None:
         if items:
             cb = CustomJS(args={"fig": fig, "items": items,
@@ -38328,7 +38332,7 @@ def _dash_span_keep(fig, kinds=None, ref=None, sides=None):
              if kinds is None or it[1] in kinds]
     if ref is not None:
         for it in items:
-            it[5:] = [str(ref)]
+            it[5:6] = [str(ref)]
     if not items:
         _dash_span(fig, None)
         return
@@ -52262,6 +52266,31 @@ def _dash_textbox_margin_px(scheme, tstyle, option):
             for s in sides]
 
 
+def _dash_textbox_margin_rel(scheme, option):
+    """The margin of *option*'s text box (title, subtitle, note, caption)
+    in the scheme's relative units, ``[left, right, bottom, top]``, or
+    None: the scheme's ``textboxstyle <option>`` and ``margin <size>``,
+    as :func:`_dash_textbox_margin_px` reads them, kept relative (twoway's
+    unit is 1% of the graph's smaller side).  None for no scheme, a style
+    or margin the scheme does not table, or a side given in points."""
+    if scheme is None:
+        return None
+    props = getattr(scheme, "_props", None) or {}
+    name = str(props.get("textboxstyle %s" % option, "") or "").strip() \
+        .strip('"')
+    row = SchemeParser._TEXTBOX_STYLES.get(name)
+    if row is None:
+        return None
+    mname = str(props.get("margin %s" % row[0], "") or "").strip()
+    sides = scheme.margin_sides(mname) if mname else None
+    if not sides or any(isinstance(v, tuple) for v in sides):
+        return None
+    try:
+        return [float(v) for v in sides]
+    except (TypeError, ValueError):
+        return None
+
+
 def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                         base_color=None):
     """Draw a textbox's sub-options on its ``Title`` or ``Label`` (WP-31
@@ -53231,6 +53260,31 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
                     _dash_span(cell, m, "title", sd,
                                str(m.align or "left"), m.offset or 0.0,
                                ref="panels")
+        # A box at the panels' or the graph's end keeps its text box's
+        # margin inside that end, as twoway places it (BUGS.md "A by()
+        # note or caption sat at the panels' end without its margin";
+        # measured 19oct2026: the note at the panels' left 226.0 plus
+        # 19.4 of 3240, stcolor's vsmall 0.6; spanned, at the graph
+        # region's 113.4 plus 19.4).  A box with a padding of its own
+        # (margin(), box) keeps that instead.
+        cb = next((c for c in cell.js_property_callbacks.get(
+            "change:" + _DASH_SPAN_KEYS[0], [])
+            if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+        if cb is not None:
+            items = []
+            for it in cb.args.get("items", []):
+                it = list(it) + [0.0] * (7 - len(it))
+                m = it[0]
+                tags = [str(t) for t in (getattr(m, "tags", None) or [])]
+                opt = tags[1] if len(tags) > 1 and tags[0] == \
+                    "dash_textbox" else "title"
+                if it[1] == "title" and it[3] in ("left", "right") and \
+                        not getattr(m, "padding", 0):
+                    rel = _dash_textbox_margin_rel(scheme, opt)
+                    if rel is not None:
+                        it[6] = float(rel[0 if it[3] == "left" else 1])
+                items.append(it)
+            cb.args = dict(cb.args, items=items)
     out = {}
     for part, cell in (("head", head), ("foot", foot)):
         # A cell that holds no text is None.
@@ -65433,6 +65487,7 @@ class ServerAppBuilder:
                          "_dash_textbox_or_default",
                          "_dash_textbox_place",
                          "_dash_textbox_position", "_dash_textbox_margin_px",
+                         "_dash_textbox_margin_rel",
                          "_dash_textbox_style",
                          "_dash_textbox_insert", "_dash_textbox_draw",
                          "_textbox_canon", "_dash_route_axis_titles",

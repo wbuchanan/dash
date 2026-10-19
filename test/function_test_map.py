@@ -1104,6 +1104,7 @@ FUNCTIONS = {
  '_dash_short_side_share': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
  '_dash_short_side_share.<locals>._size': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
  '_dash_textbox_margin_px': 'test/test_textbox_placement.py::TestBox::test_an_unspanned_box_is_its_text_and_margin',
+ '_dash_textbox_margin_rel': 'test/test_textbox_placement.py::TestSpan::test_the_text_box_margin_is_read_relative',
  '_dash_textbox_style': 'test/test_textbox_placement.py::TestBox::test_box_props',
  '_dash_textbox_insert': 'test/test_textbox_placement.py::TestRingOrder::test_rings_on_one_side',
  '_dash_textbox_insert.<locals>.ring_of': 'test/test_textbox_placement.py::TestRingOrder::test_user_ring_moves_inside',
