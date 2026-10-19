@@ -706,6 +706,7 @@ FUNCTIONS = {
  '_dash_mlabel_names': 'test/test_pipeline_integration.py::TestCollectGraphVarsConsistency::test_collect_plot_vars_returns_correct_vars',
  '_dash_move_legend': 'test/test_graph_options.py::TestLegendLabels::test_legend_label_override_with_position',
  '_dash_span': 'test/test_scheme_key_readers.py::test_the_span_hook_adds_replaces_and_drops',
+ '_dash_span_sides': 'test/test_scheme_key_readers.py::TestTheLegendSpans::test_the_hook_holds_the_graph_regions_margins',
  '_dash_span_move': 'test/test_textbox_placement.py::TestSpan::test_a_title_moved_outside_a_larger_ring_keeps_its_span',
  '_dash_textbox_span': 'test/test_textbox_placement.py::TestSpan::test_each_box_is_placed_on_the_graph',
  '_dash_name_save': 'test/test_toolbar.py::TestNameSave::test_a_figure_is_named_and_returned',

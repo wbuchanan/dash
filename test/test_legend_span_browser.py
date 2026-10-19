@@ -144,7 +144,11 @@ class TestTheLegendSpans:
             (fig,) = figs
             (lg,) = [b for b in fig["boxes"] if b["type"] == "Legend"]
             assert lg["box"][0] < fig["frame"][0] - 30, fig
-            assert 0 <= lg["box"][0] <= 15, fig
+            # The graph region's edge (s2color's margin graph, 3.5% of
+            # min(W, H)) plus the gap the box keeps from the plot region
+            # without span (its own margin, 5 px), as twoway places it.
+            edge = 0.035 * min(fig["canvas"])
+            assert abs(lg["box"][0] - (edge + 5)) <= 1.5, fig
 
     @pytest.mark.parametrize("pos", ("6", "12", "9"))
     def test_across_its_side_it_stays_where_it_was(self, mode, pos):
@@ -175,6 +179,12 @@ class TestTheTitlesSpan:
               "subtitle": '"A plain subtitle"',
               "note": '"A spanned note", span',
               "caption": '"A spanned caption", span position(5)'}
+        # The gap each end box keeps from the plot region without span.
+        (plain,) = _figs(mode, {"note": '"A spanned note"',
+                                "caption": '"A spanned caption", '
+                                           'position(5)'})[0]
+        gap = (_title(plain, "A spanned note")[0] - plain["frame"][0],
+               plain["frame"][2] - _title(plain, "A spanned caption")[2])
         for figs in _figs(mode, go):
             (fig,) = figs
             W, f = fig["canvas"][0], fig["frame"]
@@ -185,6 +195,12 @@ class TestTheTitlesSpan:
             s = _title(fig, "A plain subtitle")
             assert abs(_centre(s)[0] - (f[0] + f[2]) / 2.0) <= 1.5, fig
             # The note at the graph's left, the caption at its right.
-            assert _title(fig, "A spanned note")[0] < f[0] - 30, fig
-            assert _title(fig, "A spanned note")[0] <= 15, fig
-            assert _title(fig, "A spanned caption")[2] >= W - 15, fig
+            # Against the graph region's edges, as twoway places them
+            # (measured: a spanned note at the region's left plus the gap
+            # it keeps from the plot region without span).
+            edge = 0.035 * min(fig["canvas"])
+            n, c = _title(fig, "A spanned note"), _title(
+                fig, "A spanned caption")
+            assert n[0] < f[0] - 30, fig
+            assert abs(n[0] - (edge + gap[0])) <= 1.5, fig
+            assert abs(c[2] - (W - edge - gap[1])) <= 1.5, fig

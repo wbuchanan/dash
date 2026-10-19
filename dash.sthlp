@@ -4434,8 +4434,10 @@ in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
 rows (a legend of several rows and columns has one gap, the row gap);
 {cmd:span} places a legend beside the plot along its side on the whole
 graph instead of the plot region, as {cmd:twoway} draws it -- at 6 or 12
-o'clock centred on the graph's width, at 3 or 9 on its height, at a
-corner clock at the graph's end -- in the saved page and the served app
+o'clock centred on the graph region's width, at 3 or 9 on its height,
+at a corner clock against the graph region's edge (the graph's margin
+in, {cmd:graphregion(margin())} included) by the gap it keeps from the
+plot region without {cmd:span} -- in the saved page and the served app
 and after a resize; {cmd:nospan} undoes the scheme's
 {cmd:yesno legend_span} ({cmd:span} beside {cmd:nospan} spans, in either
 order, as in {cmd:twoway}), and a legend inside the plot is placed as
@@ -5319,8 +5321,9 @@ default attributes used".  A box is its text and its text box style's
 margin, as {cmd:twoway} draws it ({cmd:vsmall}, 0.6 units, for the four
 under {cmd:s2color}), unless {cmd:margin()} gives another.  {cmd:span}
 places a box above or below the plot on the whole graph instead of the
-plot region, as {cmd:twoway} draws it -- centred on the graph's width,
-or at its left or right end -- in the saved page and the served app and
+plot region, as {cmd:twoway} draws it -- centred on the graph region's
+width, or against its left or right edge by the gap the box keeps from
+the plot region without {cmd:span} -- in the saved page and the served app and
 after a resize; a box {cmd:twoway} draws beside the plot (2-4 or 8-10
 o'clock, which {cmd:dash} draws above or below it) and a box on a
 {cmd:by()} graph keep their place.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},

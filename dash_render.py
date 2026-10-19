@@ -38106,8 +38106,10 @@ def _dash_move_legend(fig, legend, side, location="center", ring=3):
 
 #: span (WP-32; BUGS.md "Five scheme keys are parsed and read by nothing"):
 #: twoway places a spanned legend or title along its side on the whole
-#: graph (measured 19oct2026: centred on the graph's width at 6 and 12, on
-#: its height at 3 and 9, at the graph's end at a corner clock), where a
+#: graph region (measured 19oct2026: centred on its width at 6 and 12, on
+#: its height at 3 and 9, at a corner clock against its edge -- the
+#: graph's margin in -- by the gap the box keeps from the plot region
+#: without span; *sides* are the margin graph sides), where a
 #: Bokeh side panel runs only the frame's length.  Where the frame sits in
 #: the canvas only BokehJS knows once the axes are laid out, so this runs
 #: on the figure's laid-out size (inner_width .. outer_height, which BokehJS
@@ -38126,6 +38128,12 @@ try { pv = Bokeh.index.find_one(fig); } catch (e) { pv = null; }
 if (pv == null || pv.bbox == null) { return; }
 const W = pv.bbox.width, H = pv.bbox.height;
 if (!(W > 0) || !(H > 0)) { return; }
+// The graph region: the canvas less the margin graph sides (l, r, b, t,
+// relative units of min(W, H)), which a spanned box is placed against.
+const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
+const u = Math.min(W, H) / 100;
+const gl = (+sd[0] || 0) * u, gr = (+sd[1] || 0) * u;
+const gb = (+sd[2] || 0) * u, gt = (+sd[3] || 0) * u;
 const at = (key, lo, len, size, mg) =>
   (key === "left" || key === "top") ? lo + mg
   : (key === "right" || key === "bottom") ? lo + len - mg - size
@@ -38147,8 +38155,8 @@ for (const it of items) {
                   left: "center_left", right: "center_right",
                   center: "center_center"}[place] || place;
     const vy = norm.split("_")[0], hx = norm.split("_")[1];
-    const left = across ? at(hx, 0, W, lw, mg) : b0.left;
-    const top = across ? b0.top : at(vy, 0, H, lh, mg);
+    const left = across ? at(hx, gl, W - gl - gr, lw, mg) : b0.left;
+    const top = across ? b0.top : at(vy, gt, H - gt - gb, lh, mg);
     // A numeric location is px from the panel's left and bottom, at the
     // box's bottom-left; the browser's own offsets are read back from
     // the box once and taken out.
@@ -38164,16 +38172,16 @@ for (const it of items) {
     const off = it[4] || 0;
     let align = place, offset = off;
     if (place === "left") {
-      offset = off - pb.left;
+      offset = off + gl - pb.left;
     } else if (place === "right") {
-      offset = off - (W - pb.right);
+      offset = off + gr - (W - pb.right);
     } else {
       // The text's box: a Title's own bbox is its whole panel.
       let tw = 0;
       try { tw = v._get_size().width; } catch (e) { tw = 0; }
       if (!(tw > 0)) { continue; }
       align = "left";
-      offset = (W - tw) / 2 - pb.left;
+      offset = (gl + W - gr - tw) / 2 - pb.left;
     }
     offset = Math.round(offset);
     if (m.align !== align) { m.align = align; }
@@ -38207,7 +38215,8 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
         items.append([model, kind, side, place, float(offset or 0.0)])
     if cb is None:
         if items:
-            cb = CustomJS(args={"fig": fig, "items": items},
+            cb = CustomJS(args={"fig": fig, "items": items,
+                                "sides": _dash_span_sides(fig)},
                           code=_DASH_SPAN_JS)
             for k in _DASH_SPAN_KEYS:
                 fig.js_on_change(k, cb)
@@ -38218,6 +38227,32 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0):
     fig.js_property_callbacks = {
         k: [c for c in v if c is not cb]
         for k, v in fig.js_property_callbacks.items()}
+
+
+def _dash_span_sides(fig, sides=None):
+    """The margin graph sides ``[l, r, b, t]`` (relative units of min(W,
+    H)) a spanned box on *fig* is placed against: *sides* when given (and
+    then kept on the figure and handed to its span hook), else what
+    :func:`_dash_graph_margin` kept, else the scheme's own
+    (:attr:`SchemeParser.graph_margin_sides`)."""
+    if sides is not None:
+        fig._dash_graph_sides = [float(v) for v in sides]
+        cb = next((c for c in fig.js_property_callbacks.get(
+            "change:" + _DASH_SPAN_KEYS[0], [])
+            if getattr(c, "code", None) == _DASH_SPAN_JS), None)
+        if cb is not None:
+            cb.args = dict(cb.args, sides=list(fig._dash_graph_sides))
+        return list(fig._dash_graph_sides)
+    kept = getattr(fig, "_dash_graph_sides", None)
+    if kept is not None:
+        return list(kept)
+    sch = getattr(fig, "_dash_scheme", None)
+    try:
+        return [float(v) for v in (sch if sch is not None
+                                   else SchemeParser.fallback())
+                .graph_margin_sides]
+    except (AttributeError, TypeError, ValueError):
+        return [0.0, 0.0, 0.0, 0.0]
 
 
 def _dash_span_move(fig, old, new):
@@ -39789,6 +39824,7 @@ def _dash_graph_margin(fig, scheme, graph_opts):
             continue
         arg = _dash_unquoted(_dash_subopt_arg(tok))
         sides, noted = _dash_margin_sides(arg, sides, sch, short_in)
+        _dash_span_sides(fig, sides)
         if noted is not None:
             shown = _dash_display(noted)
             _dash_warn_once(
@@ -64935,6 +64971,7 @@ class ServerAppBuilder:
                          # and the scheme's chrome for it.
                          "_dash_move_legend", "_dash_span",
                          "_dash_span_move", "_dash_textbox_span",
+                         "_dash_span_sides",
                          "_dash_scheme_chrome",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",

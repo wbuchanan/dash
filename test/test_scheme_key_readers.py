@@ -319,6 +319,26 @@ class TestTheLegendSpans:
         # legend(nospan) undoes it.
         assert self._items(mode, "nospan", bo) == []
 
+    def test_the_hook_holds_the_graph_regions_margins(self, mode):
+        """twoway places a spanned box against the graph region's inner
+        edge, the graph's margin in (measured 19oct2026: stcolor's 7
+        o'clock box at 152.2 of 5400, the region's edge 113.4 (3.5% of
+        3240) plus the 38.8 it keeps from the plot region without span;
+        graphregion(margin(l+10)) moves it 324 = 10% of 3240), so the hook
+        carries the margin graph sides (l, r, b, t), the user's included."""
+        import dash_render as dr
+
+        def sides(go):
+            spec = tp._spec(_two_keys(), {"scheme": "s2color"},
+                            dict(go, legend="pos(7) span"))
+            fig = _draw(spec, mode).figures[0]
+            (cb,) = {id(c): c for c in fig.js_property_callbacks[
+                "change:inner_width"] if c.code == dr._DASH_SPAN_JS}.values()
+            return cb.args["sides"]
+        assert sides({}) == [3.5, 3.5, 3.5, 3.5]
+        assert sides({"graphregion": "margin(l+10 b+5)"}) == [
+            13.5, 3.5, 8.5, 3.5]
+
     def test_span_beside_nospan_spans(self, mode):
         """Measured 19oct2026 (stcolor and s2color): legend(pos(6) span
         nospan) and legend(pos(6) nospan span) both draw as legend(pos(6)
