@@ -1024,6 +1024,23 @@ class TestTheBinsPlan:
         dr._dash_cvar_bins_layer([r])
         assert r._dash_cvar["dom"] == "source"
 
+    def test_a_layer_through_a_view_with_colour_rows_is_planned(self):
+        """BUGS.md "After a filter move a colour key leaves out the kept
+        rows whose x or y is missing": a record carrying its colour rows
+        is cut over them, so a view no longer keeps the build's bins."""
+        from bokeh.models import CDSView, IndexFilter
+        fig = figure()
+        src = ColumnDataSource({"v": [1.0, 2.0], "__dash_cvar1_v": ["a", "b"]})
+        r = fig.scatter("v", "v", source=src,
+                        view=CDSView(filter=IndexFilter([0])))
+        rows = ColumnDataSource({"id": [0], "v": [1.0]})
+        r._dash_cvar_bins = {"renderer": r, "source": src,
+                             "field": "__dash_cvar1_v", "var": "v",
+                             "mapper": None, "keys": [{"legend": None}],
+                             "rows": rows}
+        dr._dash_cvar_bins_layer([r])
+        assert r._dash_cvar["rows"] is rows
+
     def test_a_column_no_record_holds_keeps_its_bins(self):
         fig = figure()
         src = ColumnDataSource({"v": [1.0], "__dash_cvar1_v": ["a"],
@@ -1046,3 +1063,69 @@ class TestTheBinsPlan:
                                            ["index", "v"])
         assert ids == ["0", "1", "2"]
         assert rows["2"] == {"index": 2, "v": 20.0}
+
+
+class TestTheKeptColourRows:
+    """BUGS.md "After a filter move a colour key leaves out the kept rows
+    whose x or y is missing": the colour rows' identities, the values of
+    the ones a move keeps, and the served app's kept identities."""
+
+    def test_the_identities_of_a_frame_and_a_source(self):
+        df = pd.DataFrame({"mpg": [1.0, 2.0, 3.0]}, index=[5, 6, 7])
+        assert dr._dash_colorvar_domain_ids(df) == [5, 6, 7]
+        assert dr._dash_colorvar_domain_ids(df, [True, False, True]) == [5, 7]
+        assert dr._dash_colorvar_domain_ids(
+            {dr._ROW_ID_COLUMN: [3, 4], "index": [0, 1]}) == [3, 4]
+        assert dr._dash_colorvar_domain_ids({"index": [0, 1]}) == [0, 1]
+        assert dr._dash_colorvar_domain_ids({"mpg": [1.0]}) is None
+        # A mask that does not align is no identity at all.
+        assert dr._dash_colorvar_domain_ids(df, [True]) is None
+
+    def test_the_values_of_the_rows_kept(self):
+        plan = {"rows": ColumnDataSource({"id": [1, 2, 3],
+                                          "v": [30.0, None, 14.0]})}
+        assert dr._dash_cvar_kept(plan, {1, 3}) == [30.0, 14.0]
+        assert dr._dash_cvar_kept(plan, None) is None
+        assert dr._dash_cvar_kept({}, {1}) is None
+
+    def test_the_served_kept_identities(self):
+        frame = pd.DataFrame({"mpg": [1.0, 2.0, 3.0]}, index=[5, 6, 7])
+        masks = {"g1": np.array([True, False, True])}
+        assert dr._dash_cvar_kept_ids({"graph": "g1"}, masks, frame) \
+            == {5, 7}
+        assert dr._dash_cvar_kept_ids({"graph": "g2"}, masks, frame) is None
+        assert dr._dash_cvar_kept_ids({}, masks, frame) is None
+
+    def test_a_continuous_key_reads_the_kept_rows(self):
+        """_dash_cvar_relevel given the kept identities ranges the key over
+        the colour rows kept, a row its source does not hold included."""
+        from bokeh.models import LinearColorMapper
+        fig = figure()
+        src = ColumnDataSource({"mpg": [17.0, 21.0]})
+        r = fig.scatter("mpg", "mpg", source=src)
+        m = LinearColorMapper(low=10.0, high=40.0)
+        plan = {"renderer": r, "field": "mpg", "kind": "range", "mapper": m,
+                "rows": ColumnDataSource({"id": [2, 4, 5, 7],
+                                          "v": [17.0, 30.0, 21.0, 14.0]})}
+        dr._dash_cvar_relevel(plan, {2, 4, 5, 7})
+        assert (m.low, m.high) == (14.0, 30.0)
+        dr._dash_cvar_relevel(plan)
+        assert (m.low, m.high) == (17.0, 21.0)
+
+    def test_a_plan_carries_its_colour_rows(self, monkeypatch):
+        """Each mode's plan holds every colour row with its identity and
+        value, the rows with no weight included, and the served plan its
+        graph's name."""
+        monkeypatch.setattr(tp, "_DF", tp._MISSING_X_DF)
+        spec = tp._spec([tp._sc(colorvar="mpg")],
+                        {"filter": "price, type(range)"})
+        r, _ = tp._standalone(spec)
+        plans = dr._dash_cvar_plans([r._last_layout_root])
+        assert len(plans) == 1
+        rows = plans[0]["rows"].data
+        assert len(rows["id"]) == 10 and plans[0]["graph"] is None
+        assert sorted(rows["v"]) == sorted(tp._MISSING_X_DF["mpg"])
+        doc, _ = tp._served(spec)
+        (plan,) = dr._dash_cvar_plans(doc.roots)
+        assert plan["graph"] == "g1"
+        assert sorted(plan["rows"].data["id"]) == list(range(10))

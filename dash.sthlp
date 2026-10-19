@@ -5565,7 +5565,11 @@ units -- and a line's colour levels are cut at those labels, under
 kept again and {cmd:colorcuts()} keeps its cuts at or above their
 minimum, each {cmd:by()} panel over its own and a line's levels with
 them, as in {cmd:twoway}; labels {cmd:zlabel()} lists or steps keep
-their values.
+their values.  The observations kept are those the plot colours, an
+observation whose y or x is missing included, a plot with its own
+{cmd:if} or {cmd:in} too, and under {cmd:colorvarminmax} a
+{cmd:colorcuts()} key can gain the bin a move leaves, as {cmd:twoway}'s
+does.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
 one whose observations are all missing on the variable draws a

@@ -1374,7 +1374,12 @@ class TestTheColourKeyHoldsThroughAMove:
                  if hasattr(cb.colour_mapper(r), "low")]
         assert rends
         for r in rends:
-            vals = [float(v) for v in cb.colour_values(r)
+            # Flipped (WP-32, BUGS.md "After a filter move a colour key
+            # leaves out the kept rows whose x or y is missing"): the rows
+            # the layer draws through its view, not every row of its
+            # source -- a linked by() panel's source holds the other
+            # panel's rows too, and twoway keys each panel over its own.
+            vals = [float(v) for v in cb.drawn_colour_values(r)
                     if v is not None and math.isfinite(float(v))]
             if not vals:
                 continue

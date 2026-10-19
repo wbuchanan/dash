@@ -6599,3 +6599,192 @@ def test_the_colour_keys_ticks_over_a_range():
         10.0, 15.0, 20.0, 25.0]
     assert dr._dash_cvar_ticks(12.0, 24.0, {"mode": "minmax"}) == [12.0,
                                                                    24.0]
+
+
+# ---------------------------------------------------------------------------
+# WP-32 (BUGS.md "After a filter move a colour key leaves out the kept rows
+# whose x or y is missing"): a colour key after a move counts the kept rows
+# whose x or y is missing, as twoway's key under the move's `if' does.
+# ---------------------------------------------------------------------------
+
+#: _DF with the weight of cars 4 (mpg 30, rep 5, foreign) and 7 (mpg 14,
+#: rep 5, domestic) missing: each is the only kept row of its colour value
+#: after the moves below, and neither is drawn.
+_MISSING_X_DF = _DF.assign(weight=[2930.0, 3350.0, 2200.0, None, 3000.0,
+                                   3100.0, None, 2010.0, 3600.0, 2650.0])
+_RANGE_MOVE = ("RangeSlider", (4500.0, 11385.0))
+_RANGE_IF = "price >= 4500 & price <= 11385"
+_REP3 = ("Select", "3")
+
+
+def _key_case(name, plots, filt, move, oracle, truth, go=None, df=None):
+    """One entry: ``truth`` is ``(kind, values)`` -- the colour bar's
+    ``ticks`` or the colour key's legend ``labels`` -- read from twoway's
+    SVG under the move's ``if``."""
+    spec = _spec(plots, {"filter": filt}, go, None, None, "")
+    return pytest.param(name, spec, move, oracle, truth,
+                        _MISSING_X_DF if df is None else df, id=name)
+
+
+#: Measured 19oct2026 (StataNow 19.5, the console binary, the SVG's texts
+#: right of the plot region) on _MISSING_X_DF under `if price>=4500 &
+#: price<=11385' (cars 2 4 5 7 8 10; 4 and 7 have no weight): colorvar(mpg)
+#: is ticked 15 20 25 30 (mpg 14-30), colorlevels(4) cut at 18 22 26 (17.5
+#: 21 24.5 would be 14-28), colorcuts(15 18 21) keeps 15 (the minimum is
+#: 14, car 7's), line colorlevels(4) cuts at 18 22 26 and line colorvar()
+#: is ticked 15 20 25 30; under `if foreign==1' colorvar(rep) colordiscrete
+#: keys rep 3 to 5 (car 4's 5 counted; 3 to 4 without it).  On _DF:
+#: colorcuts(20 30) colorvarminmax is cut at 14 20 30 over every car and at
+#: 16 20 25 30 under `if rep==3' (one bin more); a layer's own `if
+#: foreign==0' colorlevels(4) is cut at 16.75 19.5 22.25, and under `&
+#: rep==3' at 18.25 20.5 22.75.  by(foreign, clegend(on)) colorlevels(4)
+#: under the range keys the domestic panel (cars 5 and 7) at 15.75 17.5
+#: 19.25.
+_MISSING_X_KEYS = [
+    _key_case("scatter colorvar, missing x, range", [_sc(colorvar="mpg")],
+              "price, type(range)", _RANGE_MOVE, _RANGE_IF,
+              ("ticks", [15.0, 20.0, 25.0, 30.0])),
+    _key_case("scatter colorlevels(4), missing x, range",
+              [_sc(colorvar="mpg", colorlevels="4")], "price, type(range)",
+              _RANGE_MOVE, _RANGE_IF,
+              ("labels", ["14–18", "18–22", "22–26", "26–30"])),
+    _key_case("scatter colorcuts(), missing x, range",
+              [_sc(colorvar="mpg", colorcuts="15 18 21")],
+              "price, type(range)", _RANGE_MOVE, _RANGE_IF,
+              ("labels", ["≤15", "15–18", "18–21", ">21"])),
+    _key_case("scatter colordiscrete, missing x, dropdown",
+              [_sc(colorvar="rep", colordiscrete="colordiscrete")],
+              "foreign, type(dropdown)", ("Select", "Foreign"),
+              "foreign == 1", ("labels", ["3", "4", "5"])),
+    _key_case("line colorlevels(4), missing x, range",
+              [plot_for("line", {"colorvar": "mpg", "colorlevels": "4"})],
+              "price, type(range)", _RANGE_MOVE, _RANGE_IF,
+              ("labels", ["14–18", "18–22", "22–26", "26–30"])),
+    _key_case("line colorvar, missing x, range",
+              [plot_for("line", {"colorvar": "mpg"})],
+              "price, type(range)", _RANGE_MOVE, _RANGE_IF,
+              ("ticks", [15.0, 20.0, 25.0, 30.0])),
+    _key_case("scatter colorcuts(20 30) colorvarminmax, rep dropdown to 3",
+              [_sc(colorvar="mpg", colorcuts="20 30",
+                   colorvarminmax="colorvarminmax")],
+              "rep, type(dropdown)", _REP3, "rep == 3",
+              ("labels", ["≤16", "16–20", "20–25", "25–30", ">30"]),
+              df=_DF),
+    _key_case("line colorcuts(20 30) colorvarminmax, rep dropdown to 3",
+              [plot_for("line", {"colorvar": "mpg", "colorcuts": "20 30",
+                                 "colorvarminmax": "colorvarminmax"})],
+              "rep, type(dropdown)", _REP3, "rep == 3",
+              ("labels", ["≤16", "16–20", "20–25", "25–30", ">30"]),
+              df=_DF),
+    _key_case("rconnected colorcuts(20 30) colorvarminmax, rep dropdown "
+              "to 3",
+              [plot_for("rconnected", {"colorvar": "mpg",
+                                       "colorcuts": "20 30",
+                                       "colorvarminmax": "colorvarminmax"})],
+              "rep, type(dropdown)", _REP3, "rep == 3",
+              ("labels", ["≤16", "16–20", "20–25", "25–30", ">30"]),
+              df=_DF),
+    _key_case("by(foreign) colorlevels(4), missing x, range",
+              [_sc(colorvar="mpg", colorlevels="4")], "price, type(range)",
+              _RANGE_MOVE, _RANGE_IF,
+              ("labels", ["14–15.75", "15.75–17.5", "17.5–19.25",
+                          "19.25–21"]), go={"by": "foreign, clegend(on)"}),
+    _key_case("a layer's own if colorlevels(4), rep dropdown to 3",
+              [plot_for("scatter", {"colorvar": "mpg", "colorlevels": "4"},
+                        if_expr="foreign == 0"),
+               plot_for("scatter", if_expr="foreign == 1")],
+              "rep, type(dropdown)", _REP3, "rep == 3",
+              ("labels", ["16–18.25", "18.25–20.5", "20.5–22.75",
+                          "22.75–25"]), df=_DF),
+]
+
+
+def _colour_key_profile(figs, models):
+    """Each figure's glyphs, legends and colour bars, every colour bar's
+    ticks and labels, and by()'s key's labels."""
+    return ([{"glyphs": f["glyphs"], "legends": _legends_of(f),
+              "bars": [x for x in f["annotations"]
+                       if x["kind"] == "ColorBar"]} for f in figs],
+            _key_ticks_of(models), _by_keys_of(models))
+
+
+def _key_truth_of(profile, kind):
+    """The visible colour key's ticks (the first bar's) or legend labels
+    of *profile* (``_colour_key_profile``)."""
+    figs, ticks, by_keys = profile
+    if kind == "ticks":
+        return ticks[0][0] if ticks else None
+    if by_keys:
+        return by_keys[0]
+    for f in figs:
+        for leg in f["legends"]:
+            labs = [lab for lab, _k in leg["items"]]
+            if labs:
+                return labs
+    return None
+
+
+@pytest.mark.parametrize("name,spec,move,oracle,truth,df", _MISSING_X_KEYS)
+class TestAColourKeyCountsTheKeptRowsMissingXOrY:
+    """After a move the served app's and the saved page's colour key (its
+    range, ticks, levels and bins) are the saved renderer's over the kept
+    rows, which counts a kept row whose x or y is missing as twoway does;
+    a colorvarminmax key may draw one bin more than the build, and a layer
+    drawn through its own view is cut again too."""
+
+    _DONE = {}
+
+    def _three(self, monkeypatch, spec, move, oracle, df):
+        import js_runner
+        key = json.dumps([spec, move, oracle], sort_keys=True) + str(id(df))
+        if key in self._DONE:
+            return self._DONE[key]
+        monkeypatch.setattr(sys.modules[__name__], "_DF", df)
+        q = json.loads(json.dumps(spec))
+        q["build_options"]["filter"] = ""
+        for g in q["graphs"]:
+            g["if_expr"] = oracle
+        r0, _ = _standalone(q)
+        figs0 = []
+        _layout_tree(r0._last_layout_root, figs0)
+        want = _colour_key_profile(figs0,
+                                   r0._last_layout_root.references())
+        doc, _ = _served(spec)
+        kind, value = move
+        w = [x for x in _widgets_of(doc) if type(x).__name__ == kind][0]
+        _fire(w, _move_widget_value(w, kind, value))
+        figs1 = []
+        _layout_tree(doc.roots[0], figs1)
+        srv = _colour_key_profile(figs1, [m for root in doc.roots
+                                          for m in root.references()])
+        r, _ = _standalone(spec)
+        w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind][0]
+        session = js_runner.JsSession(r.filter_callbacks)
+        v = _move_widget_value(w, kind, value)
+        session.set(w, list(v) if kind == "RangeSlider" else v)
+        session.run(cb)
+        figs2 = []
+        _layout_tree(r._last_layout_root, figs2)
+        js = _colour_key_profile(figs2, r._last_layout_root.references())
+        self._DONE[key] = (want, srv, js)
+        return want, srv, js
+
+    def test_the_oracle_is_twoways_key(self, monkeypatch, name, spec, move,
+                                       oracle, truth, df):
+        want, _srv, _js = self._three(monkeypatch, spec, move, oracle, df)
+        assert _key_truth_of(want, truth[0]) == truth[1], name
+
+    def test_the_served_key_is_the_kept_rows(self, monkeypatch, name, spec,
+                                             move, oracle, truth, df):
+        want, srv, _js = self._three(monkeypatch, spec, move, oracle, df)
+        diffs = _diff(want, srv)
+        assert not diffs, _explain(name, "served colour key", diffs)
+
+    def test_the_saved_scripts_key_is_the_kept_rows(self, monkeypatch, name,
+                                                    spec, move, oracle,
+                                                    truth, df):
+        want, _srv, js = self._three(monkeypatch, spec, move, oracle, df)
+        diffs = _diff(want, js)
+        assert not diffs, _explain(name, "saved page's colour key", diffs)

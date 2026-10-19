@@ -14569,6 +14569,10 @@ class GlyphMapper:
         # (_dash_colorvar_domain), or None for every row of its source.
         # Callers set it per layer and reset it in a finally.
         self.colorvar_domain = None
+        # Its rows' identities and the graph whose move masks them
+        # (``{"ids", "graph"}``, _dash_colorvar_domain_ids), set and reset
+        # with it.
+        self.colorvar_rows = None
         # A colorlevels()/colorcuts() line probe's bins record, handed from
         # _colorvar_line_parts to its caller.
         self._colorvar_bins_rec = None
@@ -16222,6 +16226,28 @@ class GlyphMapper:
         dom = self.colorvar_domain
         if dom is not None and len(dom) == 0:
             return
+        # The colour rows' identities (colorvar_rows), so a filter move
+        # reads the colour values of the rows it keeps -- a row with a
+        # missing x or y included, which the drawn source has dropped
+        # (BUGS.md "After a filter move a colour key leaves out the kept
+        # rows whose x or y is missing").
+        _cvr = getattr(self, "colorvar_rows", None) or {}
+
+        def _cv_rows(vals):
+            ids = _cvr.get("ids")
+            if dom is None or ids is None or vals is None \
+                    or len(ids) != len(vals):
+                return {}
+            return {"rows": ColumnDataSource({
+                "id": [int(i) if isinstance(i, (int, np.integer)) else i
+                       for i in ids],
+                "v": [None if v is None or (isinstance(v, (float,
+                                                           np.floating))
+                                            and v != v)
+                      else (float(v) if isinstance(v, (int, float,
+                                                       np.number))
+                            else v) for v in vals]}),
+                "graph": _cvr.get("graph")}
 
         from bokeh.models import (
             LinearColorMapper, CategoricalColorMapper, ColorBar,
@@ -16413,6 +16439,7 @@ class GlyphMapper:
         # ------------------------------------------------------------------
         # DISCRETE path — CategoricalColorMapper
         # ------------------------------------------------------------------
+        _dom_labels = None
         if use_discrete:
             # A column of this layer's own under the reserved prefix: a
             # second colorvar layer on the same source, or a user variable
@@ -16471,6 +16498,10 @@ class GlyphMapper:
                         for v in col_units
                     ]
                     has_missing = bool(np.isnan(dom_units).any())
+                    if dom is not None:
+                        _dom_labels = [None if np.isnan(v)
+                                       else val_label.get(v)
+                                       for v in dom_units]
 
                 source.data[color_field] = binned
 
@@ -16496,6 +16527,9 @@ class GlyphMapper:
                 binned = [s if s in _levels_set else None for s in strs]
                 has_missing = "" in strs_dom
                 source.data[color_field] = binned
+                if dom is not None:
+                    _dom_labels = [s if s in _levels_set else None
+                                   for s in strs_dom]
 
             # The factors are the levels only: missing is the mapper's
             # nan_color, so no value or label text can be "missing".
@@ -16598,7 +16632,8 @@ class GlyphMapper:
                     "rev": bool(_keys_rev and not _use_plegend),
                     "keys": [{"legend": None, "items": _lv_items,
                               "miss": _miss_item, "fig": fig,
-                              "anchor": renderer}] if add_key else []}
+                              "anchor": renderer}] if add_key else [],
+                    **_cv_rows(_dom_labels)}
             elif is_numeric and (cuts is not None or nlevels is not None):
                 # colorlevels()/colorcuts() binned again over the rows a
                 # move keeps, as twoway cuts the rows it draws (BUGS.md
@@ -16613,6 +16648,20 @@ class GlyphMapper:
                 if _keys_rev and not _use_plegend:
                     _lv_items = list(reversed(_lv_items))
                 _own = bool(force_discrete)
+                # colorcuts() under colorvarminmax can cut the rows a move
+                # keeps into one bin more than the build's (measured
+                # 19oct2026: colorcuts(20 30) colorvarminmax is cut at 14
+                # 20 30 over _DF and at 16 20 25 30 under `if rep==3'):
+                # one spare item, off the key and the figure until a move
+                # needs it.
+                if add_key and minmax and cuts is not None:
+                    _sp_r = _swatch(pal_colors[-1] if pal_colors
+                                    else missing_color,
+                                    f"{_DASH_SWATCH_PREFIX}_spare")
+                    fig.renderers = [x for x in fig.renderers
+                                     if x is not _sp_r]
+                    _lv_items = _lv_items + [LegendItem(
+                        label="", renderers=[_sp_r])]
                 _pals = {}
                 for _k in range(1, len(non_missing_factors) + 4):
                     if _c_list:
@@ -16638,7 +16687,8 @@ class GlyphMapper:
                     "rev": bool(_keys_rev and not _use_plegend),
                     "keys": [{"legend": None, "items": _lv_items,
                               "miss": _miss_item, "fig": fig,
-                              "anchor": renderer}] if add_key else []}
+                              "anchor": renderer}] if add_key else [],
+                    **_cv_rows(dom_vals)}
             # Tagged, so _rebuild_legend can tell a colour key from a plot
             # legend.  Inspecting the items instead does not survive the
             # rewrite it has to survive, and gets the mixed case (a colorvar
@@ -16770,7 +16820,8 @@ class GlyphMapper:
                             "bins": _DASH_LOG_STEP_BINS,
                             "missing": missing_color,
                             "cols": {str(n): [str(c) for c in _cof(n)]
-                                     for n in range(2, 13)}}
+                                     for n in range(2, 13)},
+                            **_cv_rows(dom_vals)}
 
             color_spec = {"field": varname, "transform": mapper}
             self._colorvar_paint(renderer.glyph, source, color_spec,
@@ -16786,7 +16837,8 @@ class GlyphMapper:
                     and getattr(mapper, "high", None) == hi):
                 renderer._dash_cvar = {"renderer": renderer,
                                        "field": varname, "kind": "range",
-                                       "mapper": mapper}
+                                       "mapper": mapper,
+                                       **_cv_rows(dom_vals)}
                 # Its labels too, natscale over the rows kept in the key's
                 # format (BUGS.md "A continuous colour key's labels and a
                 # line's colour levels keep the build's after a filter
@@ -18414,7 +18466,22 @@ class GlyphMapper:
         if _cv_parts:
             _rs = self._colorvar_line_draw(fig, _cv_parts, options,
                                            _line_kwargs, role)
-            self._colorvar_bins_lines(fig, _rs, sorted_source, _brec)
+            # colorcuts() under colorvarminmax: one spare level line, off
+            # the figure, for the bin more a move can cut (the key's
+            # spare item, _apply_colorvar).
+            _bspare = []
+            if isinstance(_brec, dict) and _brec.get("minmax") \
+                    and _brec.get("cuts") is not None:
+                _bspare = self._colorvar_line_draw(
+                    fig, [(ColumnDataSource({c: [] for c in
+                                             _cv_parts[0][0].data}),
+                           _brec.get("missing"), None)],
+                    options, _line_kwargs, role)
+                _bx = {id(x) for x in _bspare}
+                fig.renderers = [x for x in fig.renderers
+                                 if id(x) not in _bx]
+            self._colorvar_bins_lines(fig, list(_rs) + list(_bspare),
+                                      sorted_source, _brec)
             _cvn = str(options.get("colorvar", "") or "").strip()
             # Each row's identity: the frame's index, which both modes'
             # level lines carry (the served app's carry no __dash_row__).
@@ -43911,9 +43978,10 @@ function dash_cvar_key_ticks(pl, lo, hi) {
   bar.major_label_overrides = ovr;
   return pos;
 }
-function dash_cvar_relevel_steps(pl) {
+function dash_cvar_relevel_steps(pl, dom) {
   // _dash_cvar_relevel_steps: a continuous colorvar() line's levels cut
-  // again at the key's ticks over the rows the move kept.
+  // again at the key's ticks over the rows the move kept (dom: the kept
+  // colour rows' values, a row with a missing x or y included).
   const inputs = pl.inputs || [];
   if (!inputs.length) return;
   const cols = Object.keys(inputs[0].data);
@@ -43937,7 +44005,8 @@ function dash_cvar_relevel_steps(pl) {
     return Number.isFinite(f) ? f : null;
   };
   const vals = order.map((rid) => num(rows.get(rid)[pl.field]));
-  const fin = vals.filter((v) => v !== null);
+  const fin = (dom ? Array.from(dom).map(num) : vals)
+    .filter((v) => v !== null);
   if (!fin.length) return;
   const lo = Math.min(...fin), hi = Math.max(...fin);
   const ticks = dash_cvar_key_ticks(pl, lo, hi);
@@ -43948,7 +44017,11 @@ function dash_cvar_relevel_steps(pl) {
   if (!colours) return;
   const idx = vals.map((v) => v === null ? -1
     : cuts.filter((c) => c < v).length);
-  const levels = [-1].concat(Array.from(new Set(idx.filter((k) => k >= 0)))
+  // The colour rows' levels (dom's when given, each a line even when no
+  // drawn row is in it, as the build draws them).
+  const lvset = dom ? fin.map((v) => cuts.filter((c) => c < v).length)
+    : idx.filter((k) => k >= 0);
+  const levels = [-1].concat(Array.from(new Set(lvset))
     .sort((a, b) => a - b));
   if (levels.length > pool.length) return;
   levels.forEach((lev, j) => {
@@ -44028,10 +44101,11 @@ function dash_cvar_bin_rows(inputs, key, order, cols) {
   for (const rid of rows.keys()) if (!seen.has(rid)) ids.push(rid);
   return [ids, rows];
 }
-function dash_cvar_relevel_bins(pl) {
+function dash_cvar_relevel_bins(pl, kv) {
   // _dash_cvar_relevel_bins: colorlevels()/colorcuts() binned again over
   // the rows the layer holds (_dash_colorvar_cuts and _dash_colorvar_bins),
-  // its copies binned alike and its lines split again by bin.
+  // its copies binned alike and its lines split again by bin; over kv, the
+  // kept colour rows' values, when the plan carries them.
   const units = (raw) => Array.from(raw || []).map((v) => {
     if (v === null || v === undefined || !isFinite(Number(v))) return NaN;
     // A date in its Stata units, as the build bins it.
@@ -44062,6 +44136,7 @@ function dash_cvar_relevel_bins(pl) {
     if (!src || !(pl.var in src.data)) return;
     dom = units(src.data[pl.var]);
   }
+  if (kv) dom = units(kv);
   const fin = dom.filter((v) => !isNaN(v));
   let eff = [];
   if (fin.length) {
@@ -44125,7 +44200,7 @@ function dash_cvar_relevel_bins(pl) {
   if (k && pal.length !== k) return;
   if (src) {
     const d = Object.assign({}, src.data);
-    d[pl.field] = bin(dom);
+    d[pl.field] = bin(kv ? units(src.data[pl.var]) : dom);
     src.data = d;
   }
   const mappers = [pl.mapper].concat((pl.copies || []).map((c) => c.mapper));
@@ -44218,14 +44293,42 @@ function dash_cvar_relevel_bins(pl) {
     fig.renderers = rest.slice(0, at).concat(swKeep, rest.slice(at));
   }
 }
+function dash_cvar_kept(pl) {
+  // _dash_cvar_kept: the colour values of the plan's colour rows (pl.rows,
+  // the build's domain, a row with a missing x or y included) whose
+  // identity the move keeps under the filters that apply to the layer's
+  // source (its derived copy's or its graph source's use); null without
+  // rows, or outside a filter callback.
+  const rw = pl.rows;
+  if (!rw || !rw.data || typeof dash_ids_for !== "function") return null;
+  const cands = [];
+  if (pl.renderer && pl.renderer.data_source) cands.push(pl.renderer.data_source);
+  for (const s of pl.inputs || []) cands.push(s);
+  for (const ln of pl.lines || []) for (const s of ln.inputs || []) cands.push(s);
+  const ds = (typeof _dsrcs !== "undefined") ? _dsrcs : [];
+  const gs = (typeof _srcs !== "undefined") ? _srcs : [];
+  let use = null;
+  for (const s of cands) {
+    const di = ds.indexOf(s);
+    if (di >= 0) { use = _derived_use[di]; break; }
+    const gi = gs.indexOf(s);
+    if (gi >= 0) { use = _graph_use[gi]; break; }
+  }
+  const keep = dash_ids_for(use);
+  const ids = rw.data.id || [], vs = rw.data.v || [];
+  const out = [];
+  for (let i = 0; i < ids.length; i++) if (keep.has(ids[i])) out.push(vs[i]);
+  return out;
+}
 function dash_cvar_relevel(plans) {
   const none = (v) => v === null || v === undefined
     || (typeof v === "number" && isNaN(v));
   for (const pl of plans || []) {
-    if (pl.kind === "steps") { dash_cvar_relevel_steps(pl); continue; }
-    if (pl.kind === "bins") { dash_cvar_relevel_bins(pl); continue; }
+    const kv = dash_cvar_kept(pl);
+    if (pl.kind === "steps") { dash_cvar_relevel_steps(pl, kv); continue; }
+    if (pl.kind === "bins") { dash_cvar_relevel_bins(pl, kv); continue; }
     const r = pl.renderer;
-    const col = (r && r.data_source && r.data_source.data)
+    const col = kv ? kv : (r && r.data_source && r.data_source.data)
       ? (r.data_source.data[pl.field] || []) : [];
     if (pl.kind === "range") {
       // A continuous key: the kept rows' range (a range of one value
@@ -52166,7 +52269,7 @@ _DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
 _DASH_SWATCH_PREFIX = "_clegend_"
 
 
-def _dash_cvar_relevel(plan):
+def _dash_cvar_relevel(plan, kept=None):
     """Level a colour layer of its own levels (colordiscrete, a string)
     again over the rows its source now holds, as twoway levels the rows it
     draws (BUGS.md "A colordiscrete key and its colours keep the build's
@@ -52181,10 +52284,19 @@ def _dash_cvar_relevel(plan):
     them and the first k colours; each key keeps their items (reversed
     under colorkeysreverse), recoloured, its missing entry while a row is
     missing, and only their swatches.  The served app's twin of
-    ``dash_cvar_relevel`` in :data:`_DASH_CVAR_RELEVEL_JS`; never raises."""
+    ``dash_cvar_relevel`` in :data:`_DASH_CVAR_RELEVEL_JS`; never raises.
+
+    *kept* is the set of row identities the move keeps for the layer
+    (:func:`_dash_cvar_kept_ids`): every kind then reads the colour values
+    of the plan's colour rows it keeps (``plan["rows"]``, the build's
+    domain, rows with a missing x or y included, as twoway counts them;
+    BUGS.md "After a filter move a colour key leaves out the kept rows
+    whose x or y is missing"), else the rows its source holds."""
+    kv = _dash_cvar_kept(plan, kept)
     try:
         r = plan["renderer"]
-        col = list((r.data_source.data or {}).get(plan["field"], []))
+        col = list((r.data_source.data or {}).get(plan["field"], [])) \
+            if kv is None else list(kv)
     except (KeyError, AttributeError, TypeError):
         return
     def _none(v):
@@ -52207,10 +52319,10 @@ def _dash_cvar_relevel(plan):
             m.high = hi
         return
     if plan.get("kind") == "steps":
-        _dash_cvar_relevel_steps(plan)
+        _dash_cvar_relevel_steps(plan, kv)
         return
     if plan.get("kind") == "bins":
-        _dash_cvar_relevel_bins(plan)
+        _dash_cvar_relevel_bins(plan, kv)
         return
     present = {str(v) for v in col if not _none(v)}
     levels = list(plan.get("levels") or [])
@@ -52345,7 +52457,7 @@ def _dash_cvar_key_ticks(plan, lo, hi):
     return sorted(pos)
 
 
-def _dash_cvar_relevel_steps(plan):
+def _dash_cvar_relevel_steps(plan, dom=None):
     """A continuous colorvar() line's levels cut again over the rows a
     move keeps (BUGS.md "A continuous colour key's labels and a line's
     colour levels keep the build's after a filter move"; measured
@@ -52356,7 +52468,10 @@ def _dash_cvar_relevel_steps(plan):
     the minimum up, each row's level is the number of cuts below it (-1
     missing), and the pool's first lines take the missing level and every
     level present, in order, in their colours; the bar's stepped mapper
-    takes the new colours and bins.  Never raises."""
+    takes the new colours and bins.  *dom* (the kept colour rows'
+    values, :func:`_dash_cvar_kept`) sets the range the key is ticked and
+    the levels cut over, rows with a missing x or y included; None reads
+    the lines' rows.  Never raises."""
     try:
         inputs = list(plan["inputs"])
         cols = list(inputs[0].data.keys())
@@ -52379,6 +52494,9 @@ def _dash_cvar_relevel_steps(plan):
             _dash_float_values([rows[rid].get(field) for rid in order],
                                coerce=True)]
     fin = [v for v in vals if v is not None]
+    if dom is not None:
+        fin = [float(v) for v in _dash_float_values(list(dom), coerce=True)
+               if math.isfinite(v)]
     if not fin:
         return
     lo, hi = min(fin), max(fin)
@@ -52389,7 +52507,10 @@ def _dash_cvar_relevel_steps(plan):
     if not colours:
         return
     idx = [-1 if v is None else sum(1 for c in cuts if c < v) for v in vals]
-    levels = [-1] + sorted({k for k in idx if k >= 0})
+    # The levels of the colour rows (the domain's when given, each a line
+    # even when no drawn row is in it, as the build draws them).
+    levels = [-1] + sorted({k for k in idx if k >= 0} if dom is None else
+                           {sum(1 for c in cuts if c < v) for v in fin})
     if len(levels) > len(pool):
         return
     for j, lev in enumerate(levels):
@@ -52454,12 +52575,14 @@ def _dash_cvar_bins_layer(renderers):
     the layer is a copy binned with it (rconnected's second end, a second
     glyph over its own source), and each line's level lines
     (``_colorvar_bins_lines``) are split again in its bins.  The cuts are
-    taken over the keyed renderer's source when it is drawn, else over the
-    rows of the layer's lines (a line's key is on a probe).  The plan goes
-    on the keyed renderer as ``_dash_cvar`` (on the first level line when
-    the key is a line's), and only when the layer reads its own rows: a
-    renderer drawn through a view, or one over a binned source coloured by
-    a column no record holds, leaves the layer its build's bins.  Each by()
+    taken over the keyed record's colour rows (``rows``, after a move the
+    kept ones) when it carries them, else over the keyed renderer's source
+    when it is drawn, else over the rows of the layer's lines (a line's key
+    is on a probe).  The plan goes on the keyed renderer as ``_dash_cvar``
+    (on the first level line when the key is a line's), and only when the
+    layer's rows can be read: a renderer drawn through a view whose record
+    carries no colour rows, or one over a binned source coloured by a
+    column no record holds, leaves the layer its build's bins.  Each by()
     panel's layer is its own, cut over the panel's rows, as twoway cuts
     them.  Never raises."""
     try:
@@ -52479,9 +52602,13 @@ def _dash_cvar_bins_layer(renderers):
                           if ln["rec"].get("keys")), None)
         if keyed is None:
             return
+        # A layer drawn through a view (its own if/in, a linked graph's
+        # rows) is cut over its colour rows (``rows``), which the view's
+        # source does not hold alone; without them it keeps its build's.
         for x in drawn:
             f = getattr(getattr(x["renderer"], "view", None), "filter", None)
-            if f is not None and type(f).__name__ != "AllIndices":
+            if f is not None and type(f).__name__ != "AllIndices" \
+                    and keyed.get("rows") is None:
                 return
         covered = {(id(x["source"]), x["field"]) for x in drawn}
         srcs = {id(x["source"]) for x in drawn}
@@ -52530,7 +52657,7 @@ def _dash_cvar_bin_rows(inputs, key, order, cols):
     return ids, rows
 
 
-def _dash_cvar_relevel_bins(plan):
+def _dash_cvar_relevel_bins(plan, kv=None):
     """colorlevels()/colorcuts() binned again over the rows the layer
     holds after a move (BUGS.md "colorlevels() and colorcuts() keep the
     build's bins after a filter move"): the cuts of
@@ -52540,8 +52667,12 @@ def _dash_cvar_relevel_bins(plan):
     keyed source and of each copy, the mappers' factors and their colours,
     each line's level lines split again by bin (the missing level first,
     then one a bin, the rest taken off the figure), and each key's items
-    relabelled, recoloured and shown as many as there are bins.  The served
-    app's twin of ``dash_cvar_relevel_bins``; never raises."""
+    relabelled, recoloured and shown as many as there are bins.  *kv* (the
+    kept colour rows' values, :func:`_dash_cvar_kept`) is the domain the
+    cuts and the key are made over, rows with a missing x or y and rows a
+    view hides from the source included; None reads the source or the
+    lines.  The served app's twin of ``dash_cvar_relevel_bins``; never
+    raises."""
     try:
         var = plan["var"]
         field = plan["field"]
@@ -52572,6 +52703,8 @@ def _dash_cvar_relevel_bins(plan):
         else:
             src = plan["renderer"].data_source
             dom = _units(src.data[var])
+        if kv is not None:
+            dom = _units(kv)
     except (KeyError, IndexError, AttributeError, TypeError, ValueError):
         return
     eff = _dash_colorvar_cuts(dom, plan.get("cuts"), plan.get("nlevels"),
@@ -52592,6 +52725,11 @@ def _dash_cvar_relevel_bins(plan):
     if k and len(pal) != k:
         return
     if src is not None:
+        if kv is not None:
+            try:
+                binned = _bins(_units(src.data[var]))[1]
+            except (KeyError, TypeError, ValueError):
+                return
         src.data[field] = list(binned)
     for m in [plan.get("mapper")] + [c.get("mapper")
                                      for c in plan.get("copies") or []]:
@@ -52807,6 +52945,62 @@ def _dash_colorvar_domain(columns, options, mask=None, where=""):
             return vals
         return [v for v, keep in zip(vals, sel) if keep]
     return vals if sel is None else vals[sel]
+
+
+def _dash_colorvar_domain_ids(columns, mask=None):
+    """The identities of a colorvar() layer's colour rows, in the order
+    :func:`_dash_colorvar_domain` gives their values (BUGS.md "After a
+    filter move a colour key leaves out the kept rows whose x or y is
+    missing"): a DataFrame's row labels (the served app's identity), else
+    a source's ``__dash_row__`` (the saved page's), else its ``index``;
+    restricted to *mask*.  None when *columns* carries none or *mask* does
+    not align."""
+    try:
+        if hasattr(columns, "index") and hasattr(columns, "columns"):
+            ids = list(columns.index)
+        elif _ROW_ID_COLUMN in columns:
+            ids = list(columns[_ROW_ID_COLUMN])
+        elif "index" in columns:
+            ids = list(columns["index"])
+        else:
+            return None
+    except (KeyError, TypeError, AttributeError):
+        return None
+    if mask is None:
+        return ids
+    sel = np.asarray(mask, dtype=bool)
+    if sel.shape != (len(ids),):
+        return None
+    return [i for i, keep in zip(ids, sel) if keep]
+
+
+def _dash_cvar_kept(plan, kept):
+    """The colour values of *plan*'s colour rows (its ``rows`` source,
+    ``{"id", "v"}``) whose identity is in *kept*, in their order; None when
+    the plan carries no rows or *kept* is None (the relevel then reads the
+    rows its source holds)."""
+    rows = plan.get("rows") if isinstance(plan, dict) else None
+    if rows is None or kept is None:
+        return None
+    try:
+        d = rows.data
+        return [v for i, v in zip(d["id"], d["v"]) if i in kept]
+    except (KeyError, AttributeError, TypeError):
+        return None
+
+
+def _dash_cvar_kept_ids(plan, masks, frame):
+    """The served app's kept identities for *plan*: the row labels of
+    *frame* its graph's mask (``plan["graph"]`` in *masks*) keeps, or None
+    when the plan names no graph the move masks."""
+    g = plan.get("graph") if isinstance(plan, dict) else None
+    try:
+        m = masks.get(g) if g is not None else None
+        if m is None:
+            return None
+        return set(frame.index[np.asarray(m, dtype=bool)])
+    except (AttributeError, TypeError, ValueError, IndexError):
+        return None
 
 
 def _dash_colorvar_field(data, varname):
@@ -63151,11 +63345,13 @@ class DashRenderer:
                 # WP-29 P0.16: no figure, render or exception inherits a
                 # layer's colour rows.
                 self.mapper.colorvar_domain = None
+                self.mapper.colorvar_rows = None
         try:
             return self._make_figure_body(graph_spec, source, facet_view,
                                           rescale)
         finally:
             self.mapper.colorvar_domain = None
+            self.mapper.colorvar_rows = None
 
     def _make_figure_body(
         self,
@@ -63485,6 +63681,11 @@ class DashRenderer:
                 source_for_plot.data, popts, _cv_mask,
                 where=f"graph {graph_opts.get('name', '') or '(unnamed)'} "
                       f"plot {pi + 1}")
+            self.mapper.colorvar_rows = ({
+                "ids": _dash_colorvar_domain_ids(source_for_plot.data,
+                                                 _cv_mask),
+                "graph": None} if str(popts.get("colorvar") or "").strip()
+                else None)
 
             # Snapshot renderer list so new glyphs can be identified -- and
             # the annotations, so a yaxis(2) layer's labels and arrowheads
@@ -67511,7 +67712,8 @@ class ServerAppBuilder:
                          "_dash_cvar_tick_spec", "_dash_cvar_bin_label",
                          "_dash_cvar_bins_layer", "_dash_cvar_bin_rows",
                          "_dash_cvar_relevel_bins",
-                         "_dash_cvar_relevel_steps",
+                         "_dash_cvar_relevel_steps", "_dash_cvar_kept",
+                         "_dash_cvar_kept_ids",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
                          # WP-31 D10: by()'s regions, legend, labels.
@@ -67541,7 +67743,8 @@ class ServerAppBuilder:
                          # the colour-key applier -- one text, both modes.
                          "_dash_colorvar_cuts", "_dash_colorvar_bins",
                          "_dash_colorvar_step_index",
-                         "_dash_colorvar_domain", "_dash_colorvar_field",
+                         "_dash_colorvar_domain", "_dash_colorvar_domain_ids",
+                         "_dash_colorvar_field",
                          # WP-30 P1.23b: the colour key's units and
                          # text, the computed tooltips' formats.
                          "_dash_key_format", "_dash_key_ticks",
@@ -69385,6 +69588,7 @@ class ServerAppBuilder:
             "    _m.z_options = {}",
             "    _m.z_context = (None, '')",
             "    _m.colorvar_domain = None",
+            "    _m.colorvar_rows = None",
             "    _m.scheme = scheme",
             "    if type(getattr(mapper, 'tr', None)) is OptionTranslator:",
             "        _m.tr = OptionTranslator(scheme_of=lambda: _m.scheme)",
@@ -69780,6 +69984,14 @@ class ServerAppBuilder:
             "        _m.colorvar_domain = (",
             "            cv_domain if cv_domain is not None",
             "            else _dash_colorvar_domain(g_df, opts))",
+            "        # The colour rows' identities and the graph whose mask a",
+            "        # move keeps them by (BUGS.md \"After a filter move a colour",
+            "        # key leaves out the kept rows whose x or y is missing\");",
+            "        # none on a redraw, whose plans are thrown away.",
+            "        _m.colorvar_rows = (",
+            "            {'ids': _dash_colorvar_domain_ids(g_df), 'graph': gname}",
+            "            if cv_domain is None and str(opts.get('colorvar') or '').strip()",
+            "            else None)",
             "        try:",
             "            if ptype == 'scatteri':",
             "                _m.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
@@ -69864,6 +70076,7 @@ class ServerAppBuilder:
             "                        view=_ly_view, color_idx=_sidx, order=_jo)",
             "        finally:",
             "            _m.colorvar_domain = None",
+            "            _m.colorvar_rows = None",
             "        # colorlevels()/colorcuts(): the layer's relevel plan.",
             "        _dash_cvar_bins_layer(fig.renderers[_before:])",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
@@ -71178,7 +71391,8 @@ class ServerAppBuilder:
             "            # 3c. A colour layer of its own levels, levelled again",
             "            # over the rows kept, as twoway levels them (WP-32).",
             "            for _cvp in _dash_cvar_plans(_doc.roots):",
-            "                _dash_cvar_relevel(_cvp)",
+            "                _dash_cvar_relevel(_cvp, _dash_cvar_kept_ids(",
+            "                    _cvp, plan['masks'], _df_ref))",
             "            # 3b. Tick and range the axes again over the rows kept,",
             "            # as twoway does under the same `if' (WP-30 P1.3a).",
             "            if _axis_figs is not None:",
