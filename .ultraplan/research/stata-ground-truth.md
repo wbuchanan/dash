@@ -1,171 +1,487 @@
-# Stata ground truth for the dash drop-in plan (read-only survey of /Applications/StataNow/ado/base)
+# Stata ground truth for WP-33..WP-49 (research phase)
 
-`B` = `/Applications/StataNow/ado/base`. Nothing was run; "needs measurement" marks answers that live in compiled code (`syntax`, Mata, gdi).
+> Measured 20oct2026 on this machine: StataNow 19.5, console batch
+> (`scripts/stata_slot.sh`, which runs `arch -arm64 /usr/local/bin/stata-mp -b do`),
+> repo at s3-bugs `090d928`. Default scheme `stcolor` (no scheme set in the
+> profile). Every do-file ran in its own folder under the session scratchpad
+> `.../scratchpad/r2/<run>/`; logs, SVGs, pages and the parsed JSON (`res.json`,
+> `svgsum.json`) stay there. No repository file other than this report was
+> written. No persistent preference was changed.
 
-## 0. How twoway parses a plot (applies to every section)
+Shared probe harness (all runs). `P id cmd` prints `##BEGIN id`, runs
+`capture noisily <cmd>`, prints `##RC id <rc>`, and (twoway runs) exports
+`svg/<id>.svg` when rc is 0. `parse_probe.py` collects each probe's rc and the
+lines printed between the markers ("first line" below = the first of them).
+dash runs have `global dash_nobrowser 1` and
+`adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash"`.
 
-- `twoway` is `graph twoway` (`B/t/twoway.ado:3`); the graph class dispatches each plot by `cutil which twoway_<type>_parse` (`B/t/twowaygraph_g.class:220-235`). Types with no parse class (`scatter line connected`) use `twoway_yxview_parse` directly (`:230`); a name with no parse class, no `yxtype-<name>.style` and no `yxview_<name>_draw` gives `"<cmd> is not a twoway plot type"` r(198) (`:222-228`). Abbreviations `sc li con hist rsc rli rcon mband fn/fun` are expanded by `_unab_cmd` (`:955-967`).
-- Every plot parser leaves unrecognised options in `.options` (`B/t/twoway_yxview_parse.class:515,529,536`). The graph class strips `xaxis() yaxis() serset()` (`ParseOpts`, `twowaygraph_g.class:612-651`) then runs `syntax [, FAKE_OPT_FOR_BETTER_MSG ]` on the remainder (`:268`). So any option a type does not declare is refused by Stata's compiled `syntax` with the standard `option X() not allowed` / `option X not allowed` r(198). Exact spelling of that message (parentheses, casing) needs measurement.
-- Scheme lookup of `scheme p#stub`: tries `p#stub`, `pstub`, `p#`, `p`, then the bare id (`B/s/scheme.class:40-52,84-123`).
+---
 
-## 1. Per-type option applicability
+## 1. Corpus inventory (twoway vs dash gallery)
 
-### 1.1 Parser inheritance (which class contributes what)
+### 1a. Help files
 
-| Parse class | Inherits | Types | Variables |
+Extraction (`corpus/extract_help.py`, `classify.py`, `final_help.py`):
+runnable examples are the `{stata "gr_example <ds>: <cmd>":...}` and
+`{stata "gr_example2 <name>":...}` links (also `{stata `"gr_example ..."'...}`
+with compound quotes, e.g. twoway_contour.sthlp:259). The `{cmd:. ...}` lines
+are display text: many are schematic (`{it:yvar}`), and the linked command
+can differ from the display (scatter.sthlp:502 shows `connect(l)`, the link
+runs `c(l)`). Use the link text, not the `{cmd:}` line.
+
+- `gr_example <ds>: <cmd>` (g/gr_example.ado): `preserve`, `sysuse <ds>,
+  clear`, run `<cmd>`, `restore`. Always sysuse, one line.
+- `gr_example2 <name>` (g/gr_example2.ado, 88 programs): each program sets up
+  its own data (`sysuse`, `webuse lifeexp2` once, or `input`/generated data),
+  may run `gen`/`replace` first, and writes the graph command under
+  `#delimit ;` across several lines. The command must be taken from the
+  program body (between `Xeq` and `;`), not the help file.
+- `tsline_ex <name>` (t/tsline_ex.ado, 5 programs: arma, calories,
+  calories2, calories3, rcalories): `sysuse tsline1`/`tsline2`, then tsline.
+- `gr_example3` exists (version 18 programs for graph bar etc.), no twoway use.
+- Dangling: addplot_option.sthlp links `gr_example2 plotop1..3`, which no ado
+  defines in this release.
+
+Counts (heatmap and sunflower help files excluded; non-twoway graphs —
+graph bar/hbar/box/hbox/pie/matrix/combine/dot, qnorm, graph editor — dropped):
+
+| Source | Links kept | Notes |
+|---|---|---|
+| twoway-family help (t/twoway_*.sthlp minus `__gen`, s/scatter, l/line, t/tsline, g/graph_twoway) | 122 | 95 `gr_example`, 22 `gr_example2`, 5 `tsline_ex` |
+| [G-3]/intro help reached from them (added_text_options, axis_label_options, axis_scale_options, by_option, clegend_option, legend_options, marker_label_options, region_options, scale_option, title_options, symbolstyle, graph_text, graph_intro, graph_display, gph_files, graph_editor, whatsnew7to8) | 98 | 82 `gr_example`, 16 `gr_example2` |
+| Total | 220 | 198 distinct (same named example linked from several files) |
+| Dropped as non-twoway | 41 | |
+
+Datasets (help corpus): all `sysuse` (shipped in ado/base) except one:
+auto (93 uses), lifeexp (24), sp500 (26), sandstone (20; shipped as
+s/sandstone.dta, so `gr_example sandstone:` works), uslifeexp (18),
+uslifeexp2 (9), tsline2 (4), gnp96 (3), nlswide1 (3), pop2000 (3), surface (3),
+autornd (2), network1 (2), network1a, nlsw88, tsline1; **webuse: lifeexp2**
+(gr_example2 grintro6).
+
+### 1b. g.pdf ([G-2] graph twoway entries and [G-3] option entries)
+
+Extraction (`corpus/gpdf.py`): `pdftotext -layout g.pdf` (2.8 s, 35,215
+lines). Pages split on form feed; each page's first line is the running
+header `<entry> — <title> <page>`, which assigns pages to entries; the
+Contents pages give each entry's section ([G-2]/[G-3]). Commands are lines
+`^\s*\. <cmd>`; a command continues on following lines indented 4+ columns
+deeper than its prompt, up to a blank line, a new prompt or an output line
+starting `(`. Whitespace is collapsed (layout mode pushes trailing words
+far right, e.g. `saving(yx)` at g.txt:888).
+
+Artifacts the harness must handle: g.pdf never uses `///` or `#delimit` in
+prompted examples (the 21 `///` hits are unprompted schematic syntax);
+quotes come out curly — `”` for both open and close double quotes (97
+graph commands contain one), `’`/`‘` for single quotes — map them back to
+`"`, `'` and `` ` ``; data is loaded as
+`use https://www.stata-press.com/data/r19/<name>` even for shipped datasets
+(map to `sysuse` when the .dta is in ado/base).
+
+| | Count |
+|---|---|
+| Entries scanned | 91 (43 [G-2] graph twoway*, 48 [G-3]); heatmap/sunflower excluded; [G-2] graph twoway tsline has 0 prompts (tsline lives in [TS]) |
+| Prompted commands in them | 805 |
+| Graph commands (first word twoway/tw/scatter/line/graph twoway/plot type) | 480 |
+| ... of which schematic (yvar, xvar, `...`, placeholders) | 135 |
+| ... runnable | 345 (305 distinct) |
+| ... spanning more than one line | 84 |
+| first words of runnable | twoway 164, scatter 155, line 20, graph 5, histogram 1 |
+
+Largest entries: graph twoway scatter 63 graph commands, graph twoway 35,
+by option 29, axis choice 28, legend 23, axis label 18, axis scale 17,
+colorvar 14, graph twoway line 12, clegend 10, region 10, marker label 10.
+
+Datasets (g.pdf): auto 35, sp500 17, lifeexp 11, uslifeexp 5, gnp96 3,
+pop2000 3, sandstone 3, uslifeexp2 3, nlsw88 2, nlswide1 2, network1 2,
+autornd, cancer, census, network1a, surface (all shipped, sysuse);
+**webuse: lbw** (colorvar options, g.txt:25061) **and nhanes2l** (colorvar
+options, g.txt:24865).
+
+### 1c. Repository `examples/`
+
+14 do-files (basic_scatter, bootstrap_equal_cols, bootstrap_kpi_hero,
+bootstrap_responsive, bootstrap_stacked, comprehensive_demo, feature_tour,
+full_dashboard, geometry_responsive, kelly22ex_categorical,
+multi_graph_dashboard, plot_types_tour, serve_dashboard, sp500_dates).
+They hold 195 `dash` lines: 120 graph commands (every plot type dash draws
+appears; plot_types_tour has one per type), 45 `dash kpi`, 14 `dash clear`,
+14 `dash build`; 13 files use `name()`, i.e. they are dashboards, and many
+graph lines carry dash-only options, so their twoway twin needs the dash
+words stripped. Data: sysuse auto, sysuse sp500 only.
+
+### 1d. Totals and webuse
+
+Help 198 distinct + g.pdf 305 distinct runnable + examples 120 graph lines
+(+ the audit's probe commands) ≈ 620 before cross-source de-duplication.
+Distinct datasets: 18 shipped (sysuse) + 3 webuse (lifeexp2, lbw, nhanes2l).
+
+webuse from console batch works here: `webuse query` → prefix
+`https://www.stata-press.com/data/r19`; `webuse lifeexp2` rc 0,
+`webuse sandstone` rc 0. Stata keeps no cache: webuse is a `use <URL>` each
+time (nothing left in STATATMP, no .dta under ~/Library); the planned
+git-ignored cache has to be written by the harness (`webuse x` + `save`).
+
+---
+
+## 2. twoway SVG export in console batch (`svg1/svg1.do`, `det/det.do`)
+
+```
+sysuse auto, clear
+twoway (scatter mpg weight if foreign==0) (scatter mpg weight if foreign==1) (lfit mpg weight), title("T") ytitle("Y") xtitle("X")
+graph export "sc_legend_a.svg", replace      // and again as _b; _c in a second session
+scatter mpg weight, by(foreign)
+graph export "by_foreign.svg", replace
+```
+
+- `graph export x.svg` works in batch, rc 0, message `file x.svg saved as SVG format`.
+- **Default size is 7.5 x 4.5 in, not 5.5 x 4** (scheme stcolor; `graph describe`
+  prints `size: 4.5 x 7.5`): `<svg width="7.500in" height="4.500in"
+  viewBox="0 0 5400 3240">`. Units: 720 viewBox units per inch (10 per
+  point). `xsize(8) ysize(4)` → `8.000in x 4.000in`, viewBox 5760 x 2880;
+  `width(1000)` → `width="1000px" height="600px"`, same viewBox. Q57's
+  "5.5 x 4" is s2color's size; the stcolor default here is 7.5 x 4.5.
+- **Deterministic**: the same command exported twice in one session and again
+  in a second session is byte-identical (cmp), scatter and by() alike. No
+  path, user or time in the file; `<desc>Stata Graph - <name></desc>` carries
+  the graph name.
+- Structure: flat list in paint order, no `<g>`, no clipPath, no
+  dasharray. Elements: `<rect>` (background, graph region, plot region —
+  each as a fill rect then a stroke rect inset by half the stroke; legend box;
+  by() panel rects and the shaded strip `#F0F0F0` behind panel titles),
+  `<line>` (axis lines, ticks, and grid lines — stcolor grid lines are written
+  as many short dash segments, e.g. 64.8 units on, 32.4 off, at
+  `stroke:#F0F0F0;stroke-width:9.72`; 252 of the 263 lines in the scatter are
+  grid segments, so the comparator must merge collinear segments), `<circle>`
+  (each marker is two circles: a fill disc `r=21.74 fill:#1A85FF` and a ring
+  `r=16.88 fill:none;stroke:#1A85FF;stroke-width:9.72`), `<path d=" M.. L..">`
+  for connected lines (the lfit), `<text>` for every label.
+- Text: axis tick labels, titles, legend keys and by() panel titles are all
+  `<text x y style="font-family:'Helvetica';font-size:112.56px;fill:#000000"
+  text-anchor="middle|end">label</text>`; y title has
+  `transform="rotate(-90 x,y)"`; title 157.44px. Tick labels sit next to
+  their tick `<line>` (same x for x ticks, y + 39.43 for y ticks), so ticks
+  and labels pair by coordinate. Numeric labels keep their display format
+  (`2,000`).
+- Colours are hex in `style` (`fill:` / `stroke:`); stroke widths scale with
+  graph size (6.48 at 7.5x4.5, 5.76 at 8x4, 7.20 at 5x5 for the axis line).
+- Scatter sample: 152 circles (74 markers x 2 + 2 legend keys x 2), 1 path
+  (lfit), 263 lines, 7 rects, 14 texts (4 y labels, 4 x labels, 2 axis
+  titles, 3 legend texts, title). The legend's line key is a `<line>`.
+- by() sample: 148 circles, 399 lines, 9 rects (2 panel plot regions,
+  2 panel-title strips), 17 texts (y labels once, x labels per panel,
+  `Domestic`, `Foreign`, axis titles once, `Graphs by Car origin`).
+- Samples kept: `scratchpad/r2/svg1/sc_legend_a.svg`, `by_foreign.svg`
+  (and `by_foreign.png`).
+
+---
+
+## 3. Zero observations (`zero_tw/zero_tw.do`, `zero_dash/zero_dash.do`, generated by `gen_zero.py`)
+
+Data: `sysuse auto`, `gen t=_n`, `tsset t`, `gen ymiss=.`, `gen ydom = mpg if !foreign`.
+Per type T with variables V (xy types `mpg weight`; range `mpg turn weight`;
+rpcap/rpspike `mpg turn trunk weight`; pc types `mpg weight turn length`;
+tsline `mpg`; tsrline `mpg turn`; kdensity/histogram `mpg`; contour(line)
+`mpg weight length`; `_h` = `, horizontal`), each run as `twoway ...` and
+`dash ...` (400 probes each):
+
+- a `T V if 0`
+- b1 `(T V if 0) (scatter mpg weight)`; b2 `(scatter mpg weight) (T V if 0)`
+- c `T V || scatter mpg weight || if 0` (graph-wide if)
+- d `T V in 1 if foreign` (in selects row 1, the if excludes it)
+- f `T` with every y missing (`ymiss`)
+- e1 `T` on `ydom`, `by(foreign)` (Foreign panel has no plottable row)
+- e2 `T V if 0, by(foreign)` (every panel empty)
+
+### twoway's answers
+
+| Types | a, b1, b2, c, d | f (all y missing) | e1 (one panel empty) | e2 (all empty, by) |
+|---|---|---|---|---|
+| scatter line connected area bar spike dropline dot lowess rarea rbar rspike rcap rcapsym rscatter rline rconnected rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter tsline tsrline kdensity histogram contour contourline; bar/area/spike/dropline/rbar/rarea/rcap/histogram horizontal | rc 0, draws | rc 0, draws | rc 0, both panels drawn | r(198) `nothing to graph` |
+| lfit qfit lfitci qfitci | rc 0, draws, after `(note:  regress could not fit model)` | same | same, 2 panels | r(198) `nothing to graph` |
+| fpfit fpfitci | r(198): `(note:  fracpoly could not fit model)` then `observation numbers out of range` | rc 0, draws, with the note | rc 0, 2 panels, note | r(198) `nothing to graph` |
+| lpoly lpolyci | r(2000) `no observations` | r(2000) `no observations` | rc 0, **1 panel** (the empty group's panel is dropped) | r(198) `nothing to graph` |
+| mband mspline | r(198) `bands must be between 1 and 200` | rc 0, draws | rc 0, 2 panels | r(198) `nothing to graph` |
+| function scatteri pci pcarrowi | `if 0` is ignored: a and b1 draw the function/points (scatteri 4 circles; function 1 path); c draws the function/points and an empty scatter | n/a | n/a | r(198) `nothing to graph` |
+
+What "draws" means (from the SVGs, `zero_tw/svgsum.json`):
+- a/c/d of scatter-like types: plot region, the two axis lines and both axis
+  titles; no ticks, no labels, no glyphs (scatter: 2 lines, 0 labels).
+- histogram `if 0`: y axis ticked `-1` and `1`, y title `Density`, x title
+  `x` (not the variable label), no x labels.
+- f (all y missing): the x axis is ticked and labelled from the x data
+  (2,000..5,000); the y axis has only its title (`ymiss`). kdensity f: no
+  labels at all, titles `kdensity ymiss` and `x`.
+- b1/b2: the non-empty plot is drawn and the empty plot keeps its legend key
+  (scatter b1: legend `Mileage (mpg)` twice). An empty first plot still
+  drives axis titles and label formats: b1 contour draws x labels `2000`
+  (not `2,000`) and no axis titles and no contour key; b1 histogram has y
+  title `Density`, no x title, x labels `2000`.
+- e1 by(): both panels drawn, the empty one with axes only (except
+  lpoly/lpolyci, 1 panel).
+
+### dash today (rc + first line)
+
+389 of 400 probes give twoway's rc and first message line (draws where
+twoway draws; the same r(2000)/r(198) words where it refuses). The 11 gaps:
+
+| Probe | twoway | dash |
+|---|---|---|
+| contour a, b1, b2, c, d, f, e1 | rc 0, draws | r(7102) Python traceback; last line `RuntimeError: dash_render: failed to build figure '': lower_level and upper_level cannot be NaN` |
+| e2 of function, scatteri, pci, pcarrowi (`if 0, by(foreign)`) | r(198) `nothing to graph` | rc 0, draws (function prints `(note:  dash: plot 1 (function) drew nothing: it needs the points Stata computes ...)`) |
+
+contourline draws in both (dash adds its `contourline: the legend's keys ... are not drawn` note).
+Wording differences on the drawn fits: twoway prints
+`(note:  regress could not fit model)`; dash prints
+`dash: plot 1 (lfit): (note:  regress could not fit model)` (P17 territory).
+Picture spot checks (`zpic/`, Bokeh model read from saved pages): `scatter
+mpg weight if 0` — dash axes with titles and no ticks (as twoway); f
+`scatter ymiss weight` — dash draws no x ticks where twoway labels x
+2,000..5,000; `histogram mpg if 0` — dash y ticks −1, 1 (as twoway) but x
+title `Mileage (mpg)` where twoway writes `x`; b1 scatter — 2 legend items
+(as twoway); e1 lpoly — 1 figure (as twoway), e1 scatter — 2 (as twoway).
+
+Bottom line for P12/Q21-Q22: twoway does **not** refuse zero observations
+for 34 of the 40 data types (horizontal variants and the immediates aside) — it draws an empty graph (rc 0), also for one
+empty plot among several, a graph-wide `|| if 0`, an `in`/`if` that selects
+nothing, and an all-missing y. It refuses only lpoly/lpolyci (r(2000) `no
+observations`), fpfit/fpfitci (r(198) `observation numbers out of range`,
+after a note) and mband/mspline (r(198) `bands must be between 1 and 200`);
+by() with every panel empty is r(198) `nothing to graph` for every type.
+An r(2000) refusal for every type (Q22) would therefore differ from twoway
+in most cases and need the help note D40 describes; copying twoway per case
+(Q21) means: draw the empty graph, refuse the six types and the all-empty
+by() exactly as above. dash already copies twoway's rc in 389/400 cases.
+
+---
+
+## 4. Time-series operators (`ts/ts.do`, generated from `test/fixtures/ts_operator_truth.json` plus 22 new probes)
+
+All 99 fixture probes were re-run in twoway and in dash with the fixture's
+datasets (`_zt_data`, copied from `scripts/extract_ts_operator_truth.do`:
+sp = sp500 tsset t; spd = tsset date; us = sorted by close; nt = no tsset;
+xt = xtset; au = auto), plus on `sysuse gnp96` (`tsset date`, %tq):
+
+```
+N01 line gnp96 date           N02 line D.gnp96 date        N03 area d.gnp96 date
+N04 line L.gnp96 date         N05 line L.gnp96 gnp96       N06 replace gnp96=. in 1; line gnp96 date
+N07 replace gnp96=. in L; line gnp96 date                   N08 replace gnp96=. in 1; area gnp96 date
+N09 scatter D.gnp96 date      N10 line D.gnp96 L.gnp96     N11 tsline D.gnp96
+N12 sort gnp96; line D.gnp96 date                           N13 tsset, clear; line D.gnp96 date
+N14 tsset, clear; line gnp96 date                           N15 line D.gnp96 date if date >= tq(1970q1)
+N16 line F.gnp96 date         N17 line S4.gnp96 date       N18 line D.gnp96 date, sort
+N19 rarea L.gnp96 gnp96 date  N20 bar D.gnp96 date
+S01 (sp500, tsset date) line D.close L.close                S02 line D.close date
+```
+
+Verdict: **twoway allows time-series operators in twoway graphs**, and the
+operator forms it accepts and refuses are exactly those dash accepts and
+refuses: 121 of 121 probes agree on rc and first line (twoway's answers
+also match the 18oct2026 fixture exactly: 64 rc 0, no drift).
+
+- Accepted (rc 0): operators on y and x of scatter line connected area bar
+  spike dropline dot lfit qfit lfitci qfitci mspline mband, the r-types, the
+  pc-types, tsline, tsrline; L. D. F. S#. L(1/2). DL. D2. L0. and
+  lower case; `line D.gnp96 date`, `area d.gnp96 date`, `line L.gnp96
+  gnp96`, `line D.close L.close`, `bar D.gnp96 date`, `rarea L.gnp96 gnp96
+  date` (N01-N11, N14-N20, S01-S02 all rc 0 in both).
+- Refused in both with the same words: fpfit fpfitci lowess lpoly lpolyci
+  histogram kdensity r(101) `factor-variable and time-series operators not
+  allowed`; an operated x with `sort` on scatter/line/connected/area/bar/
+  spike/dropline/dot/mspline/mband/r-types r(198) (same line, then `option
+  sort() incorrectly specified`) while lfit/qfit/lfitci/qfitci and the pc-types take it (tsline/tsrline
+  with `sort` draw); by() with an operated variable r(5) `not sorted`;
+  data not sorted by the time variable r(5) `not sorted` (N12); not tsset
+  r(111) `time variable not set` (N13; N14 without an operator draws); a
+  string r(109); `i.` r(101); `X.` r(198) `X:  operator invalid`.
+- Only difference: on B01-B03 and B05 (by() with an operator) dash prints a
+  second line after twoway's `not sorted`: `dash: twoway refuses by() with a
+  time-series operator in a plot variable; generate the variable first ...`
+  (kept under Q43).
+
+### P1(8): date-axis ticks with a missing y at an end row
+
+twoway's x tick labels from the SVG text; dash's from the saved page's
+Bokeh model (`DatetimeAxis` → `FixedTicker.ticks`, ms since 1970, converted
+to %tq; `pageticks.py`, `tscmp.py`):
+
+| Probe | twoway x labels | dash x ticks |
+|---|---|---|
+| N01 line gnp96 date | 1970q1 1980q1 1990q1 2000q1 | same |
+| N02 line D.gnp96 date | 1970q1 1980q1 1990q1 2000q1 | 1967q2 1976q1 1984q4 1993q3 2002q2 |
+| N03 area d.gnp96 date | 1970q1 ... 2000q1 | 1967q2 (35 quarters) 2002q2 |
+| N04 L., N09 scatter D., N11 tsline D., N18 D. with sort, N19 rarea L., N20 bar D. | 1970q1 ... 2000q1 | 1967q2 ... 2002q2 |
+| N06 plain `line gnp96 date`, first y missing; N08 area, first y missing | 1970q1 ... 2000q1 | 1967q2 ... 2002q2 |
+| N07 plain line, last y missing; N16 `line F.gnp96 date` | 1970q1 ... 2000q1 | 1965q1 1970q1 ... 2000q1 (8 ticks, 5-year step) |
+| N15 `D.` with `if date >= tq(1970q1)` | 1970q1 ... 2000q1 | same |
+| N17 `line S4.gnp96 date` (first 4 rows missing) | 1970q1 ... 2000q1 | same |
+| N14 no tsset, `line gnp96 date` | 1970q1 ... 2000q1 | same |
+| S02 sp500 `line D.close date` (daily) | 01jan2001 01apr2001 01jul2001 01oct2001 01jan2002 | same |
+| N05, N10, S01 numeric x | 4000..10000 / 1000..1400 | same values |
+
+So the audit's TR-4 cause is confirmed: a missing y in the first or last
+row, operator or not, moves dash off Stata's ticks (N06/N07/N08 have no
+operator). S4. (four missing rows) happens to
+land back on Stata's ticks.
+
+---
+
+## 5. dash-only words (`words/words.do`, 69 forms + title("'90s"))
+
+Each on `scatter mpg weight` (sysuse auto) unless named; twoway rc + first
+line vs dash rc + first line (dash's `dashboard saved` lines omitted).
+Class: **S** = dash-only synonym of a twoway spelling (twoway's form in
+brackets); **E** = dash extension with no twoway spelling; **V** = a value
+form, not a word; **=** = twoway's own word (control or found here).
+
+| Word (probe) | twoway | dash | Class |
 |---|---|---|---|
-| twoway_yxview_parse | parser_g | scatter, line, connected (no class file), bar, area, spike, dropline, dot (bar family: `twoway_bar_parse.class:12,19`, area `:12,18`, spike, dropline, dot `twoway_dot_parse.class:18-19`), tsline (`twoway_tsline_parse.class:11,16`) | `varlist(min=2 numeric ts)` (`yxview_parse:120`): y1..yk x |
-| twoway_y2xview_parse | yxview | rarea rbar rbarm rcap rcapsym rconnected rline rscatter rspike (dummy classes, e.g. `twoway_rcap_parse.class:9`), tsrline, histogram (via rbar `twoway_histogram_parse.class:16`) | exactly 3 vars else "`type' requires 3 variables: ..." r(103)/r(102) (`y2xview_parse:35-45`) |
-| twoway_y3xview_parse | yxview | rpcap, rpspike (`twoway_rpcap_parse.class:12`), rbspike | exactly 4 (`y3xview_parse:34-51`) |
-| twoway_yxyxview_parse | yxview | pcspike pcscatter pccapsym pcarrow pcbarrow (`twoway_pcarrow_parse.class:11`) | exactly 4 (`yxyxview_parse:34-46`) |
-| twoway_pci_parse / pcarrowi | yxyxview | pci, pcarrowi (`twoway_pcarrowi_parse.class:11,17`) | immediate points (`pci_parse:37-84`) |
-| twoway_zyx2view_parse | yxview | contour, contourline (`twoway_contour_parse.class:9`) | exactly 3 (`zyx2view_parse:68-85`) |
-| twoway_lfit_parse | yxview | lfit (viewtype line `lfit_parse:30`) | <=2 vars else r(103) `:34-40` |
-| twoway_qfit_parse | lfit | qfit (`qfit_parse:12`) | same |
-| twoway_lfitci_parse | lfit + y2xview | lfitci (`lfitci_parse:17`) | |
-| twoway_qfitci_parse | lfitci | qfitci | |
-| twoway_fpfit_parse | yxview | fpfit | |
-| twoway_fpfitci_parse | lfitci | fpfitci | |
-| twoway_lowess_parse | yxview | lowess (`lowess_parse:15`) | `varlist(numeric min=2 max=2)` `:30` |
-| twoway_lpoly_parse | yxview | lpoly | `varlist(numeric min=2 max=2) [fw aw]` `:34` |
-| twoway_lpolyci_parse | lpoly + y2xview | lpolyci | |
-| twoway_kdensity_parse | yxview | kdensity | `varname(numeric) [fw aw]` `:48` |
-| twoway_histogram_parse | rbar | histogram | `varname(numeric) [fw aw]` `:46` |
-| twoway_function_parse | yxview | function | expression (`function_parse:28-33`) |
-| twoway_mspline_parse | yxview | mspline; mbands inherits mspline (`mbands_parse:12`) | <=2 vars `:24-27` |
-| twoway_scatteri_parse | bar_parse | scatteri (`scatteri_parse:11,19`) | immediate |
-| twoway_sunflower_parse | yxview | sunflower | see section 4 |
+| ytitle2() yti2() ylabel2() yla2() yscale2() ysc2() xtitle2() xti2() xlabel2() xla2() xscale2() xsc2() ytick2() xtick2() ymlabel2() xmlabel2() ymtick2() xmtick2() yline2() xline2() | r(198) `option <word>() not allowed` (each) | rc 0, `(note:  dash: graph '': <word>() (<base>(..., axis(2))) is not drawn: no layer is on yaxis(2).` | S [`<base>(..., axis(2))`] |
+| tlabel2() ttick2() tline2() tscale2() ttitle2() | r(198) `option <word>() not allowed` | rc 0, note naming xlabel2()/xtick2()/xline2()/xscale2()/xtitle2() | S [`tlabel(..., axis(2))` etc.] |
+| tlabel() ttitle() (control) | rc 0 | rc 0 | = |
+| marker(S) | r(198) `option marker() not allowed` | rc 0 | S [msymbol()] |
+| malpha(50) | r(198) `option malpha() not allowed` | rc 0 | S-like [mcolor(%50)] |
+| lalpha(50) on line | r(198) `option lalpha() not allowed` | rc 0 | S-like [lcolor(%50)] |
+| falpha(50) on area | r(198) `option falpha() not allowed` | rc 0 | S-like [fcolor(%50)] |
+| jseed(1) | r(198) `option jseed() not allowed` | rc 0 | S [jitterseed()] |
+| mlg(3) (with mlabel) | r(198) `option mlg() not allowed` | rc 0 | S [mlabgap()] |
+| plotbgcolor(gs14), pbgc(gs14) | r(198) `option plotbgcolor() not allowed` / `option pbgc() not allowed` | rc 0 | S-like [plotregion(fcolor())] |
+| cv(price), colv(price) | r(198) `option cv() not allowed` / `option colv() not allowed` | rc 0 | S [colorvar()] |
+| colpalette(viridis) | r(198) `option colpalette() not allowed` | rc 0 | E (nearest twoway: colorlist()/colorrule()) |
+| colornlevels(5) | r(198) `option colornlevels() not allowed` | rc 0 | S [colorlevels()] |
+| colormissing(red) | r(198) `option colormissing() not allowed` | rc 0 | S [colorformissing()] |
+| hover(make) | r(198) `option hover() not allowed` | rc 0 | E |
+| table | r(198) `option table not allowed` | rc 0 | E |
+| bw(5) on bar, bw(2) on histogram, bw(5) on spike | r(198) `option bw() not allowed` | rc 0 (folded into barwidth) | S [barwidth()] |
+| bw(5) on scatter | r(198) `option bw() not allowed` | rc 0, `(note:  dash: ignoring unsupported option(s): bw())` | accepted-with-note |
+| kernel(GAUSSIAN) on kdensity | r(198) `invalid kernel function` | rc 0 | V (case of kernel(gaussian)) |
+| xsize(()) | r(198) `option(s) ( ) not allowed` | rc 0, `(note:  dash: graph option xsize(()) is not a number; using None instead.)` | V |
+| colorvar(make) (string) | r(7) `'make' found where numeric variable expected` | rc 0 | V (extension: string colorvar) |
+| `if price<0, colorvar(price)` | r(3001) `_calc_levels():  3001  incorrect number of arguments` | rc 0 | V |
+| title("'90s") | r(100) `) required` | rc 0 | V |
+| scheme(nosuchscheme) | rc 0, `(note: scheme nosuchscheme not found, using s2color)` | r(198) `dash: scheme() must be one of economist, meta, ...` | reverse: dash refuses what twoway draws |
+| theme(dark), link(g2), filter(foreign), title2(), subtitle2() on the one-line form | r(198) `option <w>() not allowed` | r(198) `option <w>() not allowed` (same) | = (dash refuses them here too) |
+| colorallowmultiple, colorotherlabel("Other") (with colordiscrete), colorkeysreverse | rc 0 | rc 0 | = (undocumented twoway words, not dash-only) |
+| colorvarminmax, colorformissing(), colorlevels(), jitterseed(), mlabgap(), msymbol(), barwidth(), kernel(gaussian), ttext() (controls) | rc 0 | rc 0 | = |
 
-### 1.2 Options every yxview-derived type accepts (`twoway_yxview_parse.class`)
+Count: 25 second-axis/t-axis spellings (S), marker/jseed/mlg/cv/colv/
+colornlevels/colormissing/bw (8 S), malpha/lalpha/falpha/plotbgcolor/pbgc
+(5 S-like), colpalette/hover/table (3 E), and 5 value forms (V), all
+accepted by dash and refused by twoway; scheme(unknown) goes the other way.
 
-Declared in `parse` (`:185-201`): `MLabels(string) TYPE(string) RECASTas(string) SORT SORT1(namelist) MLABVposition(name) OMITANYMiss OMITALLMiss OMITDUPmiss OMITNothing SERSET(passthru) noDROPBase COLORVar(string) COLORSTart COLOREnd COLORLEVels COLORRule COLORCUTs(numlist sort) COLORLIst(string asis) COLORKEYSREVerse COLORALLOWMULTIPLE COLORKEYSRANge COLORVARMINMax COLORFILLONLY COLORFORMISSing(string) COLOROTHERLABel(string) COLORDIScrete COLORUSEPLEGend`, weights `[aw fw pw]` (`:185`). `colorvar()` is dropped silently for area/rarea or when the child sets `.allowcolorvar=0` (`:206-208`; the fit/estimator/contour/pci classes all set 0). `colorvar(i.var)` is accepted and implies colordiscrete+coloruseplegend (`:213-218`). `colorvar()` with >2 vars on scatter/line/tsline/bar/connected/dot/dropline/spike is r(198) (`:231-236`).
+---
 
-Style options factored to the seriesstyle in `factor` (`:540-753`; min abbreviations as written): `PSTYle COLor LStyle LColor LWidth LAlign LPattern CLStyle CLColor CLWidth CLAlign CLPattern MSTyle Msymbol Symbol MColor MFColor MSIze MLstyle MLColor MLPattern MLWidth MLAlign MANGle MSYMANgle MSAngle BARBSize BMSymbol BSymbol BMColor BMSIze BMLinestyle BMLColor BMLPattern BMLWidth BMLAlign MLABSTyle MLABPosition MLABFormat MLABPREfix MLABSUFFix MLABGap MLABTextstyle MLABSize MLABColor MLABFontface MLABANGle MLABJUSTification MLABALIGNment ASTyle AColor AFColor AFIntensity ALstyle ALColor ALPattern ALWidth ALAlign BSTyle BColor BFColor BFIntensity BLstyle BLColor BLPattern BLWidth BLAlign FColor FIntensity DSTyle Dsymbol DColor DFColor DSIze DLstyle DLColor DLPattern DLWidth DLAlign`. Note: `mangle()`, `barbsize()`, the `bm*` back-symbol options, `mlabprefix()/mlabsuffix()`, `lalign()`, `mlabstyle()`, `mlalign()`, `mlpattern()` and the `d*` dot options are accepted by **every** yxview type (they are factored into the style even where nothing draws them). Plot settings factored in `FactorPlot` (`:755-803`): `Type Connect CMISSings JITTER JITTERSEED ZVARLabel YVARLabel XVARLabel ZVARFormat YVARFormat XVARFormat NUMKEYs`; and only when `.BarOrBarDerived` (viewtype in bar area dot dropline scatteri spike rbspike, `:1326-1335`): `BARType BARWidth BAROFFset DROPto BARGap BASE DOTEXtend NDOTs` (`:781-800`), plus `HORizontal VERTical` (`:456-478`). `p#()` per-plot overrides (`:496-534`).
+## 6. twoway__contour_gen (`contour/contour.do`, `contour3/c3.do`)
 
-### 1.3 Type-specific additions
+Location: `/Applications/StataNow/ado/base/t/twoway__contour_gen.ado`
+(v1.0.15, 66 lines). Syntax:
 
-| Option (min abbrev, kind, default) | Types | Source |
-|---|---|---|
-| `HORizontal VERTical` | all y2x, y3x, yxyx, zyx2 types; bar-derived; rbar swaps for histogram | `y2xview_parse:51`, `y3xview_parse:57`, `yxyxview_parse:52`, `zyx2view_parse:115`, `yxview_parse:458` |
-| `HEADlabel` (flag) | **all** yxyx types (pcspike pcscatter pccapsym pcarrow pcbarrow pci pcarrowi) and all y3x types (rpcap rpspike rbspike) | `yxyxview_parse:52,67`; `y3xview_parse:57,72` (settles C17: accepted everywhere in those families) |
-| `MWidth`, `BARWidth(real -1)`, `BAROFFset(real 0)` | rbar, rbarm (histogram via rbar) | `y2xview_parse:68-81` |
-| `ATObs`, `n(integer 3)`, `Range(numlist min=2 max=2 missingok)`, `ESTopts(string)`, `PREDopts(string)`, `XTransform(string)`, `XLOG` | lfit, qfit, lfitci, qfitci, fpfitci (qfit/fpfitci refuse `transform()` r(198) `qfit_parse:21`, `fpfitci_parse:26-31` also refuses `range()`) | `lfit_parse:52-55`; n becomes 100 under xtransform/xlog `:76-80`; `.points=3` default `:15`, lfitci sets 100 (`lfitci_parse:26`) |
-| `Level(real c(level)) STDP STDF STDR FITPlot(string) CIPlot(string) noFIT`; `type()`/`recast()` refused r(198) | lfitci qfitci fpfitci (fpfitci forces stdp, refuses stdf/stdr) | `lfitci_parse:31-62`; `fpfitci_parse:21-36` |
-| `ESTCmd(string) ESTopts PREDopts` | fpfit, fpfitci | `fpfit_parse:41`, `fpfitci_parse:40` |
-| `BWidth(real .8) Mean noWeight Adjust LOgit` | lowess | `lowess_parse:37-43` |
-| `N(integer 50) DEGree(integer 0) BWidth(string) Kernel(string)` + bare kernel names | lpoly, lpolyci | `lpoly_parse:34-47` |
-| `Level(string) PWidth(string) Var(string) SMOOTHPlot CIPlot FITPlot noFIT` | lpolyci | `lpolyci_parse:34-38` |
-| `RAnge(string asis) N(integer 300) Width(real 0) BWidth(real 0) AREA(real 1) HORizontal Kernel(string) boundary` + bare kernels | kdensity | `kdensity_parse:48-65`; defaults `:12-14` |
-| `DISCrete BINs(numlist max=1 >=0 integer) Width(numlist >0) START DENsity FRACtion FREQuency percent GAP(real 0) BAROFFSET(real 0)` | histogram | `histogram_parse:46-55`; gap bound `:63-66` |
-| `RAnge N(integer 300) DROPlines(numlist sort) BASE(string) SUBChar(name) HORizontal` | function | `function_parse:56-64`; defaults `:14-16` |
-| `noBACK Bands(integer -1) N(integer 10)` | mspline, mbands | `mspline_parse:35` |
-| `SColor EColor CRULE CCUTs(numlist sort) CColors CLABels OUTlines FORMAT LEVels MINMAX HEATMAP Interp CLPatterns CLWidths REVersekey COLORLines xcuts xlevels ycuts ylevels HEATLABEL` | contour, contourline | `zyx2view_parse:64,110-119` |
-| `LINE MEAN LOWESS BWidth(real .8) LOGit Weight ADJust` | ksm (legacy) | `ksm_parse:35` |
+```
+twoway__contour_gen zvar yvar xvar [if] [in], cuts(numlist) [gen(z y x levels)] [line] [heatmap] [interp(string)]
+```
 
-### 1.4 Sample inapplicable pairs
+- **Replaces the dataset** (`keep if/in`, `keep varlist`, then the Mata
+  routines `_contour_filled()` / `_contour_line()` / `_contour_heatmap()`
+  in the compiled library, `getmata` back). Output: four variables, default
+  names `z y x levels`: polygon vertices in rows, one polygon per run of
+  rows separated by an all-missing row. Filled: `levels` is the band index
+  1..k+1 for k cuts; line: one polyline per run, `levels` the cut index
+  1..k, `z` the cut value. `interp()` default `thinplatespline` (set in
+  `zyx2view_g.class:17`), also `shepard`, `none`.
+- Caller: `zyx2view_g.class` `reset_dserset` (lines 252-346) runs it under
+  `preserve` on the plot's serset and stores the result as the derived serset
+  (`.dserset`). Cuts: `ccuts()` when given, else the z axis's major tick
+  values, interior ticks only when the axis uses a rule (levels()).
+  **Cuts are computed only when the graph is drawn**: after `twoway contour
+  ..., nodraw`, `.Graph.plotregion1.plot1.lastcuts` is empty and the dserset
+  id is `.`; after a drawn graph (batch draws invisibly) lastcuts is
+  `7700 7800 7900 8000` (default), `7606.5 7657 7707.5 7758 7808.5 7859
+  7909.5 7960 8010.5` (levels(10)), `7500 ... 8000` (ccuts(7500(100)8000)),
+  and `serset dir` lists the derived serset `z y x levels`.
 
-All fall through to `twowaygraph_g.class:268` → Stata `syntax` → `option <name>() not allowed` r(198) (exact text needs measurement):
-`bwidth()` on scatter; `kernel()` on lfit (lfit declares no kernel); `level()` on scatter; `bands()` on line; `range()` on scatter; `base()` on scatter (scatter is not BarOrBarDerived, `yxview_parse:1326-1335`; note scatteri **is**); `n()` on scatter; `degree()` on lowess (`lowess_parse:37-43` has no degree); `stdp` on lfit (`lfit_parse:52-55`); `discrete` on kdensity (`kdensity_parse:48-65`). None of these produce a class-level message; nothing to transcribe.
+Timings (sandstone, `sysuse sandstone`, 6,400 points on a regular 80 x 80
+grid, no duplicate nodes; cuts 7700 7800 7900 8000):
 
-## 2. rpcap and rpspike
+| Run | Time |
+|---|---|
+| twoway contour depth northing easting, draw + export | 0.86 s (levels(10) 0.87; interp(shepard) 0.79; interp(none) 0.78; ccuts(...) 0.81) |
+| twoway contourline (default / levels(10) / shepard) | 0.26 / 0.29 / 0.25 s |
+| twoway__contour_gen filled, thinplatespline / shepard / none | 0.23 / 0.23 / 0.22 s → 32,689 rows (27,021 vertices, 5,668 separators; levels 1-5) |
+| twoway__contour_gen line, any interp | 0.09 s → 598 rows (575 vertices; levels 1-4) |
+| dash contour (today: seeded 1,000-point subsample, 100 x 100 grid) | 3.5 s; contourline 1.3 s |
 
-- Parser: `twoway_rpcap_parse.class:12` / `twoway_rpspike_parse.class:12` inherit `twoway_y3xview_parse` unchanged; view class `y3xview_g` (`y3xview_parse:20`); `.n=1`, one plot per command (`:53,81-85`).
-- Variables: help syntax `y1var y2var y3var xvar` (`twoway_rpcap.sthlp:32-33`, `twoway_rpspike.sthlp:32-33`). Serset/view roles: var1 = `yvar`, var2 = `ybvar`→`.y2var`, var3 = `ycvar`→`.y3var`, var4 = `xvariable` (`y3xview_parse:87-102`; `y3xview_g.class:23-54`). Count error text: "you must specify four variables with twoway rpcap" r(102/103) (`y3xview_parse:40-50`).
-- Drawing: spike from (x, y1) to (x, y2) `gdi line` then caps of total width `sz = marker.size.gmval`, half each side, at both ends (`yxview_rpcap_draw.ado:14-33`); vertical→`horizontal` swaps axes (`:39-58`). The point is `._draw_points` with `.yvar` temporarily set to `.y3var` (`:61-77`), i.e. y3 is the marker; rpspike identical minus caps (`yxview_rpspike_draw.ado:13-55`). rpcap skips rows with missing x/y1/y2 (`rpcap_draw:23-25`); rpspike does not test (`rpspike_draw:20-22`).
-- Cap width = marker size: help "msize() sets the cap width and the size of the marker symbol" (`twoway_rpcap.sthlp:114-115`). Marker symbol/size/colour from the seriesstyle `p#` → `markerstyle p#` → `symbol p` circle (`scheme-s2color.scheme:525`), `symbolsize p medium` (`:274`, 1.52778 relative `style/symbolsize-medium.style`), `color p#` (`:430-444`). Spike/cap line uses `.style.area` (line of areastyle p# → `linestyle p#other`, `style/areastyle-p#.style`).
-- Options: marker_options, line_options, colorvar_options, horizontal/vertical, axis choice, headlabel (`twoway_rpcap.sthlp:40-54`; `y3xview_parse:57`). Weighted serset: wvariable appended after the 4 vars (`yxview_parse:851-861`).
-- Legend key: rpcap = `draw_rcap_only` (horizontal line with two vertical end ticks of `marker.size.gmval/2`) + `draw_scatter` (`y3xkey_g.class:124-150`); rpspike = `draw_spike` + `draw_scatter` (`:27-36`).
-- Axis titles: y title is `label(y1)/label(y2)/label(y3)` when they differ, else the shared label (`y3xview_g.class:122-164`); x from var4; horizontal swaps dims (`:128-130`).
-- Ranges: y range = min/max over the three y vars (`y3xview_g.class:79-99`).
-- `twoway__rpspike_serset.ado` builds an immediate serset `y x yb yc [pos] [lbl]` (`:6-12,73-83`) — reached only from an immediate log, no twoway immediate type exists for it.
+On gridded data `interp()` does not matter (same output; 40 x 40 grid of
+1,600 points: 0.03 s each). On scattered points it dominates and grows about
+as n^4:
 
-## 3. contour and contourline
+| Scattered n | thinplatespline | shepard | none |
+|---|---|---|---|
+| 100 | 0.74 s (55,168 rows) | 0.37 s | 0.03 s (1,846 rows) |
+| 200 | 9.7 s (210,410 rows) | 7.7 s | 0.22 s |
+| 400 | 143 s (821,123 rows) | 128 s | 0.86 s |
+| 1,000 | twoway contour's own draw had not finished after 12 min CPU; stopped | | |
 
-- Parser `twoway_zyx2view_parse.class`; varlist z y x (`:235-245`; help `twoway_contour.sthlp` syntax "z y x"). `.allowcolorvar=0`; contourline forces its own serset (`twoway_contourline_parse.class:15-17`). Multiple contour/patch plots r(198) "multiple contour, heatmap, or patch plots not allowed"; "multiple contourline plots not allowed"; "may not combine patch and contourline plots" (`twowaygraph_g.class:349-376`).
-- Options (`zyx2view_parse:110-119`): `SColor(string asis) EColor CRULE(string asis) CCUTs(numlist sort) CColors(string asis) CLABels OUTlines FORMAT(string asis) LEVels(passthru→integer) MINMAX HEATMAP Interp(string asis) HORizontal VERTical REVersekey COLORLines xcuts xlevels ycuts ylevels HEATLABEL tw_heatmap showxycuts`, plus `CLPatterns CLWidths` (`:61-64`). `ccuts()`+`levels()` r(198) "option ccuts() cannot be combined with option levels()" (`:121-124`). `ccolors()`/`clpatterns()`/`clwidths()` elements are validated by instantiating color/linepattern/linewidth styles (`:176-208`). `ccuts()` also sets `zlabel(cuts)` on the graph (`:157-159`). Help tables: `twoway_contour.sthlp` syntax lines 15-32 (ccuts, levels, minmax, crule, scolor, ecolor, ccolors, heatmap, interp); contourline adds `format() colorlines clwidths reversekey` (`twoway_contourline.sthlp` syntax lines 15-38). `crule` values `hue|chue|intensity|linear`, default `hue` per help (`twoway_contour.sthlp` crule table 41-51; options text "The default is crule(hue)"), `interp` values `thinplatespline|shepard|none`, default thinplatespline (`:59-61`; class default `zyx2view_parse:30`, `zyx2view_g.class:17`). The scheme carries `zyx2rule contour intensity` then `zyx2rule contour hue` (last wins) (`scheme-s2color.scheme:2270-2271`), `color contour_begin blue`, `contour_end red` (`:419-420`), `numstyle contours 9` (`:56`; no reader found in readable code), `yesno contours_outline/reversekey/colorlines no` (`:2239-2241`). Rule unabbreviation: `HUE LINear INTensity CHUE PHUE REVLINear` (`zyx2rule.class:17`).
-- Cut selection (`zyx2view_g.class:254-352`): if `ccuts()` given use them; else take the z-axis major tick values, dropping the first and last when the axis uses a rule and has >2 ticks (`:261-276`); if empty use `zmax` (`:281-295`). levels = #cuts+1 (`:299-300`). `levels(#)` → `set_ccuts_from_levels`: `#-1` equally spaced cuts between zmin and zmax, step (zmax-zmin)/#; `minmax` prepends zmin and appends zmax (`:356-373`); the result is also pushed as `zlabel()` (`:372`). Help confirms (`twoway_contour.sthlp` ccuts remarks lines 11-38: "zlabel(#7)" controls cuts when neither given).
-- Colours (`zyx2style.class`): `linear`/`revlinear` interpolate RGB with `round(b + (i-1)*(e-b)/(levels-1))` (`:166-237`); `intensity` uses ecolor with intensity `i/levels` (`:239-260`); `hue` interpolates hue linearly, clamped at 0 (`:262-297`); `chue` adds 360 when hue1<=hue0 (`:300-337`); `phue` uses scheme p1..p15 then hues (`:378-445`). `ccolors()` overrides per level, repeating the last colour (`:115-138`); begin/end shades default to `shadestyle contour_begin/end` (`style/shadestyle-contour_begin.style`, blue/red). Level labels: `clabels()` else `string(cut, format)` with `format()` or the z series format (`zyx2view_g.class:227-247`).
-- Generation (`twoway__contour_gen.ado`): `syntax varlist(min=3 max=3 numeric) [if] [in], cuts(numlist) [gen(namelist min=4 max=4)] [line] [heatmap] [Interp(string)]` (`:6-7`); keeps only z y x, calls Mata **`_contour_filled(z,y,x,cuts,interp)`** for contour or **`_contour_line(...)`** for contourline (`:33-46`, `_contour_heatmap` for heatmap), then `getmata (x y z lev)` and renames to `z y x levels` (`:47-64`). The Mata functions (grid construction, thin-plate spline / Shepard interpolation, polygon tracing, grid size) are compiled: **needs measurement** (grid dimensions, point ordering, polygon closure). Help gives the formulas: TPS weights from an n+3 system with f=sqrt(y²+x²) plus affine terms; Shepard weights 1/(x²+y²) (`twoway_contour.sthlp` interp remarks 86-109); duplicates (y,x): smallest z used (`:91-94`); "regular grid" definition (`:73-77`).
-- Serset written: dserset `z y x levels` (`zyx2view_g.class:345`, `omitnothing`), i.e. polygon vertices with a level id (contour) or line vertices with a level id (contourline); the original data serset keeps z y x. Drawing: `gdi filledcontour <id> 4 2 3` with per-level `cshadeset` colours and `gm_linewidth .001` (`yxview_contour_draw.ado:24-43`); contourline `gdi linecontour <id> 4 2 3 <colorflag>` with per-level pen colours (`clinepenset`) and widths when `colorlines` (`yxview_contourline_draw.ado:15-45`). Contour keys: `levels` for contour, `levels-1` for contourline (`zyx2view_g.class:209-221`); numkeys forced 0 in the ordinary legend (`twoway_contour_parse.class:32`). Legend: `clegend()` (`B/c/clegend_option.sthlp` syntax lines 15-31: width height altaxis bmargin title_options region off/on position ring bplacement at), scheme `clockdir zyx2legend_position 3`, `gridringstyle zyx2legend_ring 4`, `gsize clegend_width huge`, `clegend_height zero` (`scheme-s2color.scheme:1925,1952,185-186`); contourline uses `plegend()` (`legend_options.sthlp` syntax line 8).
-- Refusals: string z → the `varlist(numeric ts)` check at `yxview_parse:120` (compiled message, needs measurement); too few points / all-duplicate grids → inside Mata (needs measurement).
+How dash could call it at registration: `frame put z y x if <touse>,
+into(<tmp>)` (or preserve), compute the cuts as twoway does (ccuts(), else
+the z axis's interior natscale ticks for levels(); `.lastcuts` is not
+available without drawing), `frame <tmp>: twoway__contour_gen z y x,
+cuts(<cuts>) gen(z y x levels) interp(<interp>) [line]`, then read the four
+columns (Python `sfi` from the frame, or a temp .dta) and split on the
+all-missing rows into polygons (`levels` gives the fill band). Cost is
+trivial for every help example (sandstone, gridded); for scattered data
+above a few hundred points it is as slow as twoway itself (minutes to
+hours), so Q26's "Stata grid at build" is only practical for gridded data
+or interp(none).
 
-## 4. sunflower and matamatrix
+---
 
-- sunflower: `twoway sunflower yvar xvar [weight] [if] [in] [, sunflower_options scatter_options twoway_options]`, fweights only (`twoway_sunflower.sthlp` syntax lines 4-16); gen syntax `varlist(numeric min=2 max=2) [fweight]` with `BINWidth BINAR YCENter XCENter LIght(int 3) DArk(int 13) PETALWeight PETALLength GENerate display noSINGLEpetal` (`twoway__sunflower_gen.ado:16-29`). Title: "[G-2] twoway sunflower -- Density-distribution sunflower plots" (`twoway_sunflower.sthlp:13`); description: "twoway sunflower is a special type of twoway graph. We recommend the sunflower command over twoway sunflower" (`:35-39`).
-- matamatrix: `twoway plottype mata_matrix_name [column_names] ..., options`; plottypes scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected (`twoway_mata.sthlp` syntax lines 15-43); title "[G-2] twoway mata -- Two-way graphs of mata matrices" (`:13`). Parser: `matamatrix(` prefix detected (`yxview_parse:152-182`); must exist and be real else r(198) "`name' is not a mata matrix" / "not a real-valued mata matrix"; columns named `<mat>1..` with last column `x` unless names given (`:1411-1434`).
+## 7. aspectratio() with xsize()/ysize() (`svg1/svg1.do`)
 
-## 5. dot
+`scatter mpg weight, aspectratio(r) xsize(w) ysize(h)`; plot-region rect and
+axis-line lengths from the SVG (720 units/in):
 
-- Syntax: `vert|hor`, `dotextend(yes|no)`, `base(#)`, `ndots(#)`, `dstyle() dsymbol() dcolor() dfcolor() dsize() dlstyle() dlcolor() dlwidth() dlalign()` (`twoway_dot.sthlp:34-56`; min abbreviations `dotex`, `ndot`, `dsty`, `d`, `dc`, `dfc`, `dsiz`, `dlsty`, `dlc`, `dlw`, `dla` per `cmdab`). Parser: yxview via bar_parse; `base/dotextend/ndots` factored only for bar-derived types (`yxview_parse:793-799`) and pushed as `.base`, `.dots_extend`, `.num_dots` (`:1265-1298`).
-- Defaults: `num_dots = 75`, `dots_extend yes` (`B/y/yxview.class:73-74`; help `:134-136`, `:122-125`). (`numstyle dot_num_dots 100` in the scheme is for `graph dot`, `style/barstyle-dotdefault.style`, not twoway dot.)
-- Geometry (`B/y/yxview_dot_draw.ado`): base point is computed from the current axis range, **not** from `base()`: 0 if the range spans 0, else the edge nearer 0 (`:10-23`); `delta = (max-min)/(ndots-1)` (`:25`); `dotextend(yes)` draws dots from base to `min` and from base to `max` at each x (`:72-91`); `dotextend(no)` draws from base to the observation's y (`:54-69`); dots are `gdi point` every `delta` from base toward the end (`:94-115`), capped at 10000 steps. The marker itself is drawn afterwards (`:38-50`). `base()` only widens the axis via `register_with_scale` (`yxview.class:1583-1587` style; `.base` added to scale) — the help's "default base(0)" (`twoway_dot.sthlp:128-131`) is therefore effective only through the axis range. dots are placed horizontally when `horizontal` (`:14-17`).
-- Dot style: seriesstyle p#dot `set dots scheme dots` (`style/seriesstyle-p#dot.style:9`) → `markerstyle dots`: symbol `scheme dots` = circle (`scheme-s2color.scheme:512`), size `symbolsize dots vtiny` (`:255`; 0.1 relative, `style/symbolsize-vtiny.style`), fillcolor `color dots black` (`:406`), linestyle `dotmark`: `color dotmarkline black` (`:399`), `linewidth dotmark thin` (`:1224`), `linepattern dotmark solid` (`:580`) (`style/markerstyle-dots.style`, `style/linestyle-dots.style`, `style/linestyle-p#dotmark.style`). The point marker uses markerstyle p#dot (`style/markerstyle-p#dot.style`: symbol p#dot → p circle, size p#dot → p medium). No `dotstyle-*.style` exists; `dottypestyle-dot.style` is graph dot's.
+| Command | Page | Plot region (= axis lines) | H/W |
+|---|---|---|---|
+| default (no aspectratio) | 7.5 x 4.5 in | 6.616 x 3.685 in (4763.81 x 2653.26), at x 522.8, y 113.4 | 0.557 |
+| aspectratio(2) xsize(8) ysize(4) | 8 x 4 in | **1.726 x 3.276 in** (1242.54 x 2358.36), at x 2440.6..3683.2, y 100.8..2459.2 | 1.898 |
+| aspectratio(1) xsize(5) ysize(5) | 5 x 5 in | **4.018 x 4.018 in** (2893.16 x 2893.16), at x 580.8, y 153.4 | 1.000 |
 
-## 6. pcarrow / pcbarrow heads
+The ratio 2 applies inside the plot region's margins: with equal margins m,
+(2358.36 − 2m)/(1242.54 − 2m) = 2 gives m = 63.4 units (0.088 in). dash today
+(saved-page model): aspectratio(2) xsize(8) ysize(4) → `frame_width 167,
+frame_height 334, width None, height None, min_height 160, max_height 560`,
+and Bokeh prints `ERROR:bokeh.core.validation.check:E-1023
+(MIN_PREFERRED_MAX_HEIGHT): Expected min_height <= height <= max_height`
+(also for aspectratio(1) xsize(5) ysize(5): frame 430 x 430, same error); rc 0.
+Whether the browser paints a 0 px plot was not re-measured.
 
-- Options (`twoway_pcarrow.sthlp:58-75`): `msty:le msiz:e mang:le barb:size mc:olor mfc:olor mlc:olor mlw:idth mlsty:le head:label`. Default angle 28.64 (`:153-155`; `style/anglestyle-stdarrow.style` `set val 28.64`); `barbsize(0)` draws lines only, `barbsize()=msize()` fills to a right angle (`:158-162`); line pattern of the head cannot be changed (`:181-183`).
-- Factoring: `MANGle→marker(angle)`, `BARBSize→marker(backsize)` (`yxview_parse:615-622`).
-- Drawing (`B/y/yxview_pcarrow_draw.ado`): shaft `gdi line` in `.style.area.linestyle` (`:13,22`); head via `_gr_arrowhead ang msz barbsz x0 y0 x1 y1` using `marker.angle.radians`, `marker.size.val`, `marker.backsize.val` (`:14-16,37-39`); labels at the tail unless `headlabel` (`:48-60`). pcbarrow draws pcarrow then a second head at the start point (`yxview_pcbarrow_draw.ado:13-31`). `_gr_arrowhead.ado`: direction `phi` from the transformed endpoints with the x/y metric ratio (`:15-23`); barbsize 0 → two strokes of length `msz` at `phi±ang` (`:32-45`); else a filled polygon: tip, `msz` along `phi+ang`, back by `bsz*cos(ang)` along the shaft, mirror, close (`:48-73`). Units: `msz`/`bsz` are size `.val` in graph-metric (relative) units applied through `gm_rlineto`.
-- Scheme stubs: seriesstyle p#arrow (`style/seriesstyle-p#arrow.style`: marker p#arrow, line p#arrowline); `markerstyle-p#arrow.style`: symbol p#arrow (→ `symbol p circle`, `scheme:525`), size p#arrow → `symbolsize parrow medium` (`:276`), fillcolor p#arrowfill (→ `color p#`), linestyle p#arrow (`linestyle-p#arrow.style` → `linewidth p medium`? no: `linewidth p#arrow` commented, falls to `linewidth p medium` `:1197`), angle p#arrow → `anglestyle parrow stdarrow` (`:1970`), backsize p#arrowbarb → `symbolsize parrowbarb zero` (`:277`), backangle p#arrowbarb → `anglestyle parrowbarb zero` (`:1971`). `arrowstyle-editor.style` is the graph editor's arrow (headpos neither), not twoway's. Symbols `arrow`/`arrowf` exist only as resource names (`style/symbol-arrow.style`, `symbol-arrowf.style`): compiled shapes, needs measurement.
+---
 
-## 7. Legend geometry defaults (scheme-s2color)
+## 8. a(b)c label rules crossing zero (`svg1/svg1.do`, `lab/lab.do`)
 
-| Stub | Value | Line |
-|---|---|---|
-| numstyle legend_rows / legend_cols | 0 / 2 | `:38-39` |
-| gsize key_label | medsmall (3.4722) | `:146` |
-| gsize legend_key_xsize / ysize (symxsize/symysize) | 13 / medsmall | `:176-177` |
-| gsize legend_key_gap (keygap) | vsmall (2.0833) | `:175` |
-| gsize legend_row_gap / legend_col_gap | tiny (1.3888) / large (4.8611) | `:173-174` |
-| gsize legend_colgap, key_gap, key_linespace | medium / vsmall / vsmall | `:165-168` |
-| clockdir legend_position | 6 | `:1924` |
-| gridringstyle legend_ring | 3 | `:1951` |
-| color legend / legend_line | white / black | `:412-413` |
-| linewidth/linepattern legend | thin / solid | `:1226, :582` |
-| areastyle legend; shadestyle legend fill pattern10 | `:1561`; `style/shadestyle-legend.style` |
-| margin legend / legend_key_region / legend_boxmargin | small / tiny / small | `:750-752` |
-| compass2dir legend_fillpos / legend_key | center / default | `:1899-1900` |
-| yesno legend_col_first / text_first / stacked / force_keysz / span | no ×5 | `:2217-2228` |
-| textboxstyle legend_key / key_label; legend titles heading/subheading | `:1345,1357,1322-1323` |
-| horizontal key_label left; vertical_text key_label middle | `:1778, :1803` |
+```
+clear; set obs 11; gen x=_n; gen y=(_n-6)/10; gen y7=(_n-6)*.14
+scatter y x, ylabel(-.3(.1).3)       -> -.3 -.2 -.1 0 .1 .2 .3
+scatter y7 x, ylabel(-.7(.1).7)      -> -.7 -.6 -.5 -.4 -.3 -.2 -.1 0 .1 .2 .3 .4 .5 .6 .7
+scatter y x, ylabel(-.3(.1).3) ytick(-.3(.05).3)  -> labels as the first
+```
 
-`legendstyle-default.style` maps these (rows cols col_first text_first stacked row_gap col_gap key_gap key_position key_xsize key_ysize force_keysize labelstyle legend_key, boxmargin, margin). Help defaults: cols(2), rowgap(1.4), colgap(4.9), symxsize 13, keygap 2, textwidth from longest text, symysize from font height, symplacement(center) (`legend_options.sthlp` options text lines 164-166, 261, 265, 287-292). Rows/cols rule: if neither >0 then cols=2; rows given → cols = 1+int((n-1)/rows); cols given → rows = 1+int((n-1)/cols); n counts keys plus holes (`B/l/legend_g.class:274-285`); placement program chosen by text_first/stacked/col_first (`:294-302`); keys sized `key_xsize`/`key_ysize`, forced only with `forcesize` (`:334-336`).
+twoway writes `0`. dash's saved page has y `FixedTicker.ticks`
+`[-0.3, -0.19999999999999998, -0.09999999999999998, 5.551115123125783e-17,
+0.10000000000000003, 0.2, 0.3000000000000001]` and for −.7(.1).7 a zero
+tick at `1.1102230246251565e-16` (plus residue on every other tick); no
+`major_label_overrides`, so the label text comes from the page's formatter
+(not executed here).
 
-Parser (`B/_/_fr_legend_parse_and_log.ado`): `POSition RING STYle ORDER SHOWINDEX NOSPAN SPAN` (`:20-24`); contents `NODRAWView DRAWView ALL STYLEONLY HOLes(numlist integer >0 max=300) TEXTWidth XOFFSET YOFFSET STYle Rows Cols NOCOLFirst COLFirst NOTEXTFirst TEXTFirst NOSTACked STACked ROWGap COLGap KEYGap SYMPlacement SYMXsize SYMYsize NOFORCESize FORCESize BMargin BPLACEment NOBEXpand BEXpand WIDTH HEIGHT NODRAW DRAW ON OFF` (`:197-216`), remaining options go to the textbox-style parser (`:220-221`); `label(# "text")` needs an integer (`:350-359`).
+---
 
-Placement: `ring()` edits `legend_ring`, `position()` edits `legend_position`; **ring(0) → inserted "on plotregion1"** with `box_alignment = legend_position.compass2style` (`:86-91, :111-114, :126-129`); otherwise relative position from the clock (`clockdir.class:36-52`: east→rightof, west→leftof, south→below, north→above, else "on"). Clock→compass map: 1 NE, 2 NE, 3 E, 4 SE, 5 SE, 6 S, 7 SW, 8 SW, 9 W, 10 NW, 11 NW, 12 N; 0 → center (`clockdir.class:14-15, 78-84`). So `legend(ring(0))` alone under s2color → inside, bottom-centre (position 6 → S); `pos(0)` → relative "on" → centre of the plot region (title_options confirms "position(0) designates the center", `title_options.sthlp` remarks3 lines 75-78; in ring(0) clocks 1&2, 4&5, 7&8, 10&11 coincide `:75-77`). Default location per help: position(3) ring(4) for stcolor (`legend_options.sthlp` remarks3 lines 4-9); s2color is 6/3 as above. `span` → spancols(all)/spanfit when above/below, spanrows when left/right; ignored inside ring 0 (`_fr_legend_parse_and_log.ado:93-106`). `bplacement()` → box_alignment (`:324-326`).
+## Could not measure
 
-## 8. Minor ticks and labels
-
-- Options: `{y|x|t|z}mlabel()`, `{y|x|t|z}mtick()` (`B/a/axis_label_options.sthlp` syntax 36-39); rules `#N` approx N nice values, `##N` → N-1 values between major ticks, allowed with mlabel()/mtick() only (`:62-68`, appendix `:903-910`); `##5` means 4 ticks (`:652-659`); requires evenly spaced majors, else no minor ticks (`:662-669`). Implementation: `suggest_between_ticks`: delta = major delta / N, min/max extended from the major min/max by whole deltas (`B/t/tickset_g.class:983-1005`); "##N ignored, only allowed for minor ticks" when applied to a major set (`:991`).
-- Scheme defaults: `numticks_g horizontal_minor 0`, `vertical_minor 0` → no minor ticks unless asked (`scheme-s2color.scheme:293-294`); `gsize minortick half_tiny` (.6944) vs `tick tiny` (1.3888) (`:153-154`); `gsize minortick_label vsmall` (2.0833) vs `tick_label medsmall` (`:160,158`); `gsize tickgap half_tiny` (`:156`); `color minortick black` (`:350`), `linewidth minortick thin` (`:1207`), `linepattern minortick solid` (`:569`); `tickstyle minor minor` (`:1856`), `ticksetstyle minor_horiz_default/minor_vert_default` (`:1870-1871`); grids off `yesno draw_minor_grid no` (`:2114`), `linestyle minor_grid` gs5 thin dot (`:346,1204,566`). Style files: `ticksetstyle-minor_horiz_default.style` (numticks horizontal_minor, tickstyle minor, gridstyle minor), `tickstyle-minor.style` (length minortick, linestyle minortick, textstyle minortick, textgap tickgap, show_labels yes), `textboxstyle-minortick_label.style` (size minortick_label, color tick_label).
-
-## 9. Edge titles t1title..r2title
-
-- Syntax: `t1title() t2title() b1title() b2title() l1title() l2title() r1title() r2title()` with `tinfo` (`title_options.sthlp` syntax 10-13); twoway only (`:18`); **`position()` is not allowed with them** (`:42`); l/r titles are vertical text (`:12-13`). Ring diagram: t1/b1/l1/r1 = ring 1, t2/b2/l2/r2 = ring 2, legend 3, note 4, caption 5, subtitle 6, title 7 (`:54-75`; remarks3 `:29-39`).
-- Parser (`B/_/_fr_title_parse_and_log.ado`): suboptions `NOSPAN SPAN PREFIX SUFFIX POSition RING STYle` + textbox options (`:17-18`); numbered titles: ring defaults to the digit (`:66-70`), position mapped from the letter via PosMap: l→leftof, r→rightof, t→above, b→below (`:179-195`), l/r get `orientation(vertical)` (`:75-78`); explicit position() is honoured through clockdir.relative_position (`:80-84`) despite the help; no scheme clockdir/ring stubs exist for them. Scheme textbox styles: `t1title/b1title/l1title/r1title subheading`, `t2title/b2title/l2title/r2title body` (`scheme-s2color.scheme:1331-1338`); `gsize subheading medium`, `body medsmall` (`:140,137`); colours subheading black, body (`:317`, `color body` via textboxstyle-body). Non-numbered titles: position/ring from scheme (`clockdir title_position 12`, `subtitle 12`, `caption 7`, `note 7`; rings 7/6/5/4 `:1920-1923, :1947-1950`); ring(0) → "on" (`:94-100,116-118`), `inside`/`outside` accepted as 0/1 (`:104-111`); span ignored at position(0) with message "(option span ignored for position(0))" (`:136-139`); box_alignment and horizontal justification derived from the clock (`:150-160`; `clockdir.class:90-125`: 12/6/0 center, 1-5 right, else left; 9/3/0 center, 4-8 bottom, else top).
-
-## 10. Textbox placement semantics (`B/t/textbox_options.sthlp`)
-
-Options (syntax 9-42): `tsty:le orient:ation si:ze c:olor j:ustification al:ignment m:argin linegap() width() height() box|nobox bc:olor fc:olor ls:tyle lp:attern lw:idth lc:olor la:lign bm:argin bex:pand place:ment`. Semantics: `justification` = horizontal alignment of the text inside the box, left/right/center, judged as if horizontal even when rotated (`options text 39-44`); `alignment` = vertical, baseline/middle/top (`:46-51`); `margin` = text-to-border distance, defines the box size; for rotated boxes margins refer to pre-rotation sides (`:53-62`); `linegap` = distance between lines (`:64-66`); `width/height` override the computed box (`:68-74`; remarks6: width is approximated, height never wrong); `box/nobox` draws the border; `bcolor/fcolor/lcolor` matter only with `box` (`:76-132`); `lpattern` forces centre alignment (`:120-121`); `bmargin` = margin between border and containing box (`:139-141`); `bexpand` widens (horizontal) or lengthens (vertical) the box to its container (`:143-147`); `placement(compassdir)` aligns the textbox to the container: corners nw/ne/sw/se coincide, n/s/w/e centre on an edge, c centres (remarks7 lines 62-141). Parser mapping: justification→horizontal, alignment→vertical, box→drawbox, placement→box_alignment, bcolor→fillcolor+line colour, bfcolor/fcolor→fillcolor (`B/_/_fr_tbstyle_parse_and_log.ado:11-24,37-60`); `position() ring() span` come from the enclosing title/legend parser (section 9); `width height bexpand` via `_fr_sztextbox_parse_and_log.ado:10-11`. Compass names available: center default east neast north nwest seast south swest west (`B/style/compass2dir-*.style`).
-
-## 11. Scheme stubs the plan will read (scheme-s2color.scheme) and dash-s2color.scheme coverage
-
-Present in dash's scheme (repo `dash-s2color.scheme`, grep): color legend/legend_line (:38-39), heading/subheading/key_label colours and gsizes (:43,156,162,82,169,172), `clockdir legend_position 6` (:101), `numstyle legend_cols 2`/`legend_rows 0` (:102,179), `yesno draw_minor_*` (:146-148), `linewidth/linepattern/color minor_grid`, `color minortick`, `linewidth minortick`, `linepattern minortick`, `gsize minortick_label` (:42,175,341,343,515,482,555), `numticks_g *_major 5` (:373-374), `clockdir title/subtitle/note/caption_position` (:357-360), by() stubs (`clockdir by_legend_position 6`, `gridringstyle by_legend_ring 3`, `zyx2legend_*`, `yesno by_*`, `margin by_indiv`, `margin subheading`) (:626-645), `intensity p inten80`, `intensity histogram full`, `intensity ci_area full`, `intensity background/foreground` (:76,393,313,455-456), `linewidth pbar thin` (:291), `color plotregion`, `plotregion_line`, `linewidth/linepattern plotregion` (:37,270-272), `color dots/dotmarkline`, `linepattern dots/dotmark`, `linewidth dots vvthin/dotmark thin` (:429-430,466-467,499-500), `symbolsize parrow medium` (:528), `symbolsize p medium` (:96), `color clegend_line`, `linewidth/linepattern clegend` (:423,459,492).
-
-**Absent from dash-s2color.scheme** (all from `scheme-s2color.scheme`): `symbol dots circle` (:512), `symbolsize dots vtiny` (:255), `markerstyle dots` (:627), `markerstyle p#dot/p#arrow` (:684-714), `seriesstyle p#dot/p#arrow` (:2410-2440), `linestyle dots dot`, `dotmark`, `p#dotmark`, `p#arrow`, `p#arrowline` (:944,931,1101-1147), `symbolsize parrowbarb zero` (:277), `anglestyle p/parrow stdarrow`, `parrowbarb zero` (:1969-1971), `gsize legend_key_xsize 13`, `legend_key_ysize medsmall`, `legend_key_gap vsmall`, `legend_row_gap tiny`, `legend_col_gap large`, `legend_colgap medium`, `key_gap`, `key_linespace` (:165-177), `gridringstyle legend_ring 3` and the title/subtitle/caption/note rings 7/6/5/4 (:1947-1951), `yesno legend_col_first/text_first/stacked/force_keysz/span` (:2217-2228), `margin legend/legend_key_region/legend_boxmargin/key_label` (:750-756), `compass2dir key_label west`, `legend_fillpos center`, `legend_key default` (:1898-1900), `horizontal/vertical_text key_label` (:1778,1803), `textboxstyle legend_key/key_label/leg_title/leg_subtitle` (:1322-1323,1345,1357), `areastyle/shadestyle/linestyle legend` (:1561,797,935), `gsize tick tiny`, `minortick half_tiny`, `tickgap half_tiny`, `tick_label medsmall` (:153-158), `numticks_g horizontal_minor/vertical_minor 0` (:293-294), `tickstyle minor`, `ticksetstyle minor_*` (:1856-1881), `textboxstyle t1title..l2title` (:1331-1338), `gsize body medsmall` (:137), `textboxstyle title/subtitle` (:1317-1318), `gsize by_subtitle`: no such stub exists (by panel labels use `textboxstyle subtitle subheading`), `bygraphstyle default` (:2006-2008), `special by_slope1 .3 / by_knot1 3 / by_slope2 1` (:62-64), `shadestyle plotregion` / `areastyle plotregion` / `areastyle twoway_plotregion` (:801,1494,1496), `areastyle p#area/p#bar` and `linestyle p#area/p#bar` (via `style/areastyle-p#area.style`, `linestyle-p#area.style`: width p#area→p, colour p#arealine→p#), `intensity dot_area/bar/bar_line` (:1275,1285-1286), `color contour_begin/end`, `zyx2rule contour` (:419-420,2270-2271), `numstyle contours 9` (:56), `gsize clegend_width/height` (:185-186). dash's `linewidth pbar thin` is present; `linewidth parea` is not declared in Stata's scheme either (p#area → p medium).
-
-## 12. Type options' exact semantics
-
-- histogram `gap(#)`: 0<=#<100 else "option gap() must be between 0 and 100" r(198) (`twoway_histogram_parse.class:63-66`); bar_size = binwidth*(100-gap)/100 (`:193`); help "bar width reduced by # percent", default 0 (`twoway_histogram.sthlp:217-221`). `baroffset()` passes to `.bar_offset` (`:195-196`).
-- kdensity `area(#)`: multiplier on densities, default 1, must be >0 ("option area() expects a positive number" r(198)) (`twoway__kdensity_gen.ado:66-68,174`; help `:163-169`). `boundary`: evaluation range extended by one bandwidth each side: bandwidth = user width else 0.9*min(sd, IQR/1.349)/N^0.2 (`:79-102`); exclusive with `range()` ("range() boundary" via opts_exclusive r(198), `:42-48`); help `:152-155`. Default n 300 (`kdensity_parse:12`).
-- function `droplines(numlist)`: x values must lie within range() else "some droplines not within range() option" r(198) (`twoway__function_gen.ado:152-155`); the gen computes (x, f(x)) pairs returned as `r(dropxy)` (`:184-191`) and stored on the view (`function_parse` log_edits lines 66-71); drawn as `gdi line x base x y` in the series line style, before the curve, or horizontally when `horizontal` (`B/_/_fr_droplines_draw.ado:16-51`). `base(#)`: default when unset = 0 if the y range spans 0 else the nearer edge (`:19-37`); help: default base(0), does not affect axis range (`twoway_function.sthlp:126-131`); a non-number gives "option base() incorrectly specified, ... is not a number" (`function_parse:94-99`).
-- area `nodropbase`: `noDROPBase` flag → `.drop_base=0` → `drop_base.setstyle no` (`yxview_parse:189,280-282,1144-1146`); help: area drops to the line joining (y1,x1) and (yN,xN) instead of base (`twoway_area.sthlp:166-172`); listed as unique (`:56-57`).
-- bar `baroffset(#)`: centre moved by #×barwidth, negative left/down (`twoway_bar.sthlp:136-139`); `off = bar_offset*bar_size` (`yxview__barlike_draw.ado:68-69`); default bar width = 1 x unit (`twoway_rbar.sthlp:140-142`); histogram-style spanning bars: bar_size = (1-bar_gap/200)*(xmax-xmin)/(N-1) (`:272-273`).
-- rbar `mwidth`/`msize()`: `mwidth` switches viewtype to `rbarm` (`y2xview_parse:77-79`); rbarm draws rectangles of half-width `marker.size.gmval/2` converted to data units by `gbeta/xbeta`, offset = 2*bar_offset*sz2 (`yxview_rbarm_draw.ado:10-31`); `barwidth()` with rbarm also edits `marker(size())` (`y2xview_parse:144-150`); help `:130-152`: default width becomes the marker size.
-
-## 13. mlabel position defaults by type
-
-- Default from the labelstyle: `labelstyle-p#.style` `set position scheme p#` → `clockdir p 3` (`scheme-s2color.scheme:1930`); bar family uses `seriesstyle p#bar` → `label scheme p#bar` → `labelstyle-p#bar.style` `set position scheme p#bar` → `clockdir pbar 12` (`:1931`) (`style/seriesstyle-p#bar.style:8`, `style/labelstyle-p#bar.style:5`). Which types get p#bar: `_type_suffix` returns "bar" for bar/rbar, "line" for line/rline/pcline, "area" for area/rarea, "arrow" for pcarrow/pcbarrow, nothing otherwise (`yxview_parse:1040-1049`); so bar and rbar default to 12 o'clock, every other type (scatter, connected, spike, dropline, dot, area, the r*/pc* types) to 3. Help: "If neither option is specified, the default is mlabposition(3)" (`B/m/marker_label_options.sthlp:140-141`).
-- Geometry: position 0 puts the label on the point (shift 0); otherwise shift = marker.size.gmval/2 + label.textgap.gmval (`gsize label_gap half_tiny`, `scheme:169`) along the clock angle `(12-pos)` mapped by `clockdir.class:25-30` (angle = (x>8 ? x-9 : x+3)*pi/6) (`B/y/yxview.class:516-527`).
-- `mlabvposition(varname)`: per-observation clock 0-12, takes precedence over mlabposition (`marker_label_options.sthlp:131-158`); parser unabs the variable and appends it to the serset as `pvariable` (`yxview_parse:308-317,1000-1005`); per-row position applied via `label(position())` (`yxview.class:563-583`).
+- twoway contour on 1,000+ scattered points: stopped after 12 min CPU at
+  n = 1,000; scaling measured at 100/200/400 only.
+- Browser-painted pixels (zero-obs pages, the aspectratio frame, the
+  formatter's text for 5.551e-17): only the saved page's Bokeh model was read.
+- g.pdf counts rest on a layout heuristic (prompt + indentation); a handful
+  of continuation or schematic misclassifications are possible.
+- The by() zero-obs case "one panel empty" was made with a missing y; an
+  `if` cannot empty one by() group without removing it from the by() sample.

@@ -37,12 +37,13 @@ PATTERNS = (
     ("dashboard key", re.compile(r"DASH_SERVE_TOKEN=([A-Za-z0-9_-]{20,})")),
 )
 
-#: Where the maintainer's address may appear: the planning records, and
+#: Where the maintainer's address may appear: the planning records (and
+#: their .ultraplan-archive-* copies), and
 #: the three places the maintainer's ruling D38 (18oct2026) publishes it
 #: as the package's support contact -- dash.pkg's `d Support:' line,
 #: dash.sthlp's Author section and README.md.  It is a contact, not a
 #: secret; every key pattern above is still refused in these files.
-_EMAIL_ALLOWED = (".ultraplan/",)
+_EMAIL_ALLOWED = (".ultraplan/", ".ultraplan-archive-")
 # test/test_readme.py pins the address those three files must give (D38).
 _EMAIL_ALLOWED_FILES = frozenset({"dash.pkg", "dash.sthlp", "README.md",
                                   "test/test_readme.py"})

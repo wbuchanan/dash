@@ -1,4 +1,4 @@
-# UltraPlan State: dash -- close the GAPS3 drop-in gaps
+# UltraPlan State: dash -- close the drop-in audit of 19oct2026 (WP-33)
 
 > Auto-managed by UltraPlan. Do not edit manually.
 
@@ -6,37 +6,38 @@
 
 ## Current Position
 
-- **Phase:** 6 of 6
-- **Phase name:** 6-OUTPUT
-- **Status:** complete
-- **Last activity:** 2026-10-13 - Phase 4 fixer passes finished and verified (S01-S61 against REVIEW-1..4, 3b-3e and DECISIONS D1-D8/A11-A34); Phase 5 VALIDATE.md final; Phase 6 SUMMARY.md written; plan committed on s3-bugs
+- **Phase:** 3 of 6
+- **Phase name:** 3-PLAN
+- **Status:** in_progress
+- **Last activity:** 2026-10-20 - Phase 3 PLAN: PRD approved (10/10, amendments A1-A3); index.md (91 sections, 56 batches, 221 live items), BRIEF.md and PLAN.md written; ten section-writing agents running
 
 ---
 
 ## Progress
 
 ```
-[==========] Phase 6/6: OUTPUT - complete
+[====      ] Phase 3/6: PLAN - in progress
 ```
 
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
-| 1 | UNDERSTAND | complete | 2026-10-10 | 2026-10-10 |
-| 2 | RESEARCH | complete | 2026-10-10 | 2026-10-10 |
-| 3 | PLAN | complete | 2026-10-10 | 2026-10-10 |
-| 4 | REVIEW | complete | 2026-10-10 | 2026-10-13 |
-| 5 | VALIDATE | complete | 2026-10-11 | 2026-10-13 |
-| 6 | OUTPUT | complete | 2026-10-13 | 2026-10-13 |
+| 1 | UNDERSTAND | complete | 2026-10-20 | 2026-10-20 |
+| 2 | RESEARCH | complete | 2026-10-20 | 2026-10-20 |
+| 3 | PLAN | in_progress | 2026-10-20 | |
+| 4 | REVIEW | not_started | | |
+| 5 | VALIDATE | not_started | | |
+| 6 | OUTPUT | not_started | | |
 
 ---
 
 ## Idea
 
-Develop a plan to address the remaining gaps identified in GAPS3.md (audit of
-10oct2026 at 1a78bb9 + 6370ca4). Include contour, contourline, rpcap and
-rpspike if Bokeh can draw them; otherwise note why and exclude them. The plan
-must be detailed enough that the least capable agent codes each task correctly
-on the first attempt. Prefer many small batches over few large ones.
+Archive the existing ultraplan, then create a new plan to address all of the
+shortcomings found in the most recent audit:
+`.ultraplan/review/DROPIN-AUDIT-19oct2026.md` (audit of 19oct2026 at
+`7dced3a`, 17 work packages, 403 verified findings), governed by the
+maintainer's rulings D40 and D41 (20oct2026). Planning order: package 13
+first, then 1, 11, 2, 12, 3, 4, 5, 6-10, 14-17.
 
 ---
 
@@ -44,25 +45,14 @@ on the first attempt. Prefer many small batches over few large ones.
 
 | # | Date | Action | Details |
 |---|------|--------|---------|
-| 1 | 2026-10-10 | Created | /ultraplan develop a plan to address the remaining gaps (GAPS3.md) |
-| 2 | 2026-10-10 | Phase 1 | UNDERSTAND complete: 40 questions, 9/9 categories |
-| 3 | 2026-10-10 | Phase 2 | RESEARCH complete: 3 subagents, 10 topics, conflicts C1-C4 resolved |
-| 4 | 2026-10-10 | Phase 3 | PLAN complete: PRD approved, 61 sections, 239 tasks, 22 batches |
-| 5 | 2026-10-10 | Phase 4 | REVIEW: four reviews + five deep passes, 201 finding rows; D1-D8 and A11-A34 recorded; fixer passes interrupted by the usage limit |
-| 6 | 2026-10-13 | Phase 4 | Fixer passes relaunched and finished (S01-S09, S10-S29, S30-S46, S47-S61); XML check 61 ok; 249 tasks, 116 commits |
-| 7 | 2026-10-13 | Phase 5 | VALIDATE complete: Q1-Q40, C1-C4, D1-D8 and every GAPS3 row traced; exclusions recorded; mechanical checks pass |
-| 8 | 2026-10-13 | Phase 6 | OUTPUT complete: SUMMARY.md; plan committed on s3-bugs |
+| 1 | 2026-10-20 | Archived | WP-31/WP-32 plan moved to `.ultraplan-archive-20261020/`; `handoff/` (read by test_tracking_documents.py) and `review/DROPIN-AUDIT-19oct2026.md` stay in place |
+| 2 | 2026-10-20 | Created | /ultraplan archive the existing ultraplan, then plan the audit's shortcomings |
+| 3 | 2026-10-20 | Phase 1 | UNDERSTAND complete: 58 questions, 9/9 categories (focused mode) |
+| 4 | 2026-10-20 | Phase 2 | RESEARCH complete: 3 subagents (codebase, Stata truth, Bokeh/browser), conflicts C1-C5 resolved, user approved |
+| 5 | 2026-10-20 | Phase 3 | PRD approved section by section (A1 Chrome only, A2 no matamatrix(), A3 WP-39 removed); audit report scrubbed of the three withdrawn items; index, brief and master plan written; section files in progress |
 
 ---
 
 ## Change Log
 
 (No updates yet. Use /ultraplan update to modify the plan.)
-
----
-
-## Resume Instructions
-
-**Resume from:** execution
-**Resume action:** read `.ultraplan/sections/index.md` and execute batch 0 (S01) per SUMMARY.md "How to execute"
-**Resume context:** focused mode; GAPS3.md is the discovery record; index.md wins over any section file; DECISIONS.md wins over any section text

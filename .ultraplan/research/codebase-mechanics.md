@@ -1,431 +1,656 @@
-# How the dash codebase works: the facts the GAPS3 work-package briefs need to cite
+# Codebase mechanics for WP-33..WP-50 (research, phase 2)
 
-Everything here was read on the current tree, and read-only: I ran no Stata and no pytest. The only commands I executed were four one-line `python3 -c` probes, all import or metadata checks: bokeh's version and requirements, `figure.contour`, `bokeh.plotting.contour`, and `DataTable`.
+> Researched 2026-10-20, read-only, at s3-bugs `090d928` (code unchanged since the audit's `7dced3a`). Inputs: `.ultraplan/DISCOVERY.md` (binding answers Q1-Q58), `.ultraplan/review/DROPIN-AUDIT-19oct2026.md` lines 1-915 and its appendix. Every anchor below was re-read at HEAD; "holds" means it still points at the code the audit describes. Files: dash.ado 13,952 lines, dash_parse.mata 12,499, dash_render.py 73,586, dash.sthlp 6,785, BUGS.md 4,479, ROADMAP.md 5,299, GAPS3.md 563; 433 test/*.py files, 69 .cscript scripts, 167 scripts/ entries. WP mapping (Q5): WP-33 = P13, WP-34 = P1, WP-35 = P11, WP-36 = P2, WP-37 = P12, WP-38 = P3, WP-39 = P4, WP-40 = P5, WP-41..45 = P6..P10, WP-46..49 = P14..P17, WP-50 = suite speed.
 
-Many line numbers have moved since the ones in your request. Every number below is current. The biggest moves:
-- `_FILTER_JS` starts at dash_render.py:24612. Line 46229 is `DashRenderer.render()` collecting the aggregate layers.
-- `_glyph_layer_lines` is at 46530-47393.
-- `_dash_require_deps` is in dash.ado:338-382, not in dash_render.py. The renderer's own guard is `_dash_dep_fail`, dash_render.py:92-127.
-- `_dash_option_rules` runs 2987-3079.
+## 0. Findings that shape the plan
 
-## 1. How an option travels from the command to the page
+1. **Register size and ids.** The 17 packages hold 224 items; two are withdrawn but still printed (P2 plat:PT-3, Q48; P15 basic:PT-7 jitter, Q50), so **222 live items**. Each item's first id is unique across all 224, so GAPS4.md can key rows by lead id; the id grammar needs area prefixes: `(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}`. 13 ids recur in two items. The audit's 22 "false today" help/README lines (audit :855-880) carry no ids and must be folded into items or given their own (1.3).
+2. **Two tracking traps.** (a) Audit ids such as `AX-4` match the tracking test's cert case-id shape (`_CASE_ID`, test_tracking_documents.py:254-255): truth-script case ids must never take that shape, or a BUGS entry naming an audit id would "name a test". (b) The release guard (`TestNoOpenEntryBlocksARelease`, :554-601) needs one `Graded S<n> (WP-nn)` per open entry and an allowance for every open S1/S2 title; the audit grades blocker/major/minor/cosmetic, so 33-01 must map them.
+3. **17 new truth cscripts cost cert time.** Each `* * *` script starts in all three cert sessions and loads dash_parse.mata + dash.ado once per session; the two existing WP truth scripts are already 1,023 of 2,127 cert seconds (run_all_cscripts.do:156-157). Count pins 69 / 51 / 69 move with each script (2.4); picks.sh and blockorder.py name only test_wp31_truth.cscript and GAPS3.md (8.2).
+4. **P2's fix collides with two guards.** test_cscript_hygiene.py:472 forbids the literal `capture python query` in dash.ado and dash_setup.ado, and the comments dash.ado:278-283 / dash_setup.ado:88-95 say `python query` runs Python (the audit's verifier measured `quietly python query` gives `r(execpath)` with `r(initialized)=0`). The whole harness also reads c(python_exec): every truth cscript and cert_svg.do skip r(222), and `make test` fails via scripts/stata_python_exec.sh, on a machine where Stata found Python itself.
+5. **Gallery.** dash cannot embed raw SVG/HTML/images (help promises no user markup); one `dash build` draws one in-memory dataset; there is no neutral fixed-size figure (only aspectratio() with xsize()/ysize(), which reshapes the plot region and is the VF-3 bug path); the existing static-SVG route is BokehJS `export("svg")` driven over the Chrome DevTools client (test_export_svg.py), not `output_backend="svg"` (breaks the grid's PNG save). `.gitignore` ignores `*.html`; g.pdf is `/Applications/StataNow/docs/g.pdf`; 46 `twoway_*.sthlp` under `/Applications/StataNow/ado/base/t/`.
+6. **P12's single check.** No `touse` exists on the plot route; qualifiers travel as text and become `__dashq<k>` columns only between `_dash_qual_gen` and the drop after `_dash_write_data`. The one place that sees every route's exported data is right after `_dash_qual_gen` (dash.ado:11778 one-line; :13207 build and serve), before `_dash_do_render` (:650, the only door to Python). Some types already refuse per twoway (lpoly r(2000), histogram/fpfit/mspline r(198)), and twoway draws some emptied samples, so per-case measurement (Q21) decides the Differences notes.
+7. **dash-only words: 42**, not "about 35": 38 shadow synonyms (25 second-axis forms + 13 others), 3 extensions (hover(), table, colpalette()), 1 noted-not-drawn (bw() off the bar and bandwidth types); plus 5 non-word DT-15 forms and about 20 subcommand words (section 6). Eleven rows have no twoway rc in any committed fixture and six more rest only on the audit's uncommitted p10 log, so Q8's "measure first" needs an extract script for them.
+8. **Time-series operators are already measured** (P1 item 8's precondition): test/fixtures/ts_operator_truth.json, 99 probes; twoway refuses with r(5), r(198), r(101), r(111) and r(109), not only the r(5)/r(111) the audit names.
+9. **Audit anchors:** almost all hold. Moved or wrong ones are listed at the end of section 5.
 
-### 1a. A plot option: `barwidth()`
+## 1. Tracking infrastructure (model for GAPS4.md and the ~220 new BUGS entries)
 
-1. **Declaration.** `_dash_parse_plot_opts` (dash.ado:1137) declares it in its `syntax` block (1167-1239): `BARWidth(string asis)` at :1177.
-   - Capital letters are the minimum abbreviation.
-   - The trailing `*` (:1238) collects anything undeclared into `options`, which becomes `s(_unknown)` at :1401.
-   - Before `syntax` runs, `_dash_log_split` (:1166) takes `log`/`nolog` out.
-   - After it, the stylelist options are normalised (:1246-1249, list from `_dash_stylelist_keys()`, dash_parse.mata:5283-5292). `barwidth` is on that list as a value list.
-   - The plot-level alias folds are at :1264-1299.
-2. **sreturn.** `sreturn local barwidth` at :1428. Graph options written inside a segment are returned as `g_<opt>` (:1532-1607). The pending list goes back as `s(_pending)` (:1608) and the unmatched text as `s(_unknown)` (:1609).
-3. **The caller.** `_dash_process_segment` (:4843) runs these steps in order (:5486-5619):
-   1. `_dash_route_axis2` (:5493; Mata dash_parse.mata:7015)
-   2. the parse (:5494)
-   3. `_dash_refuse_unbound` (:5498)
-   4. the second-`name()` check (:5502)
-   5. `_dash_refuse_foreign` (:5507)
-   6. `_dash_opts_repeats` (:5510)
-   7. `_dash_recast_opt` (:5516)
-   8. `_dash_hz_check` (:5526)
-   9. `_dash_connect_opt` (:5535)
-   10. the logit refusal (:5556-5563)
-   11. **the barwidth-on-rcap refusal (:5564-5574)**
-   12. `_dash_fold_mlabv` (:5577)
-   13. `_dash_fold_bw` (:5578)
-   14. the weight into s() (:5579)
-   15. **`_dash_validate_opts` (:5584)**
-   16. `_dash_stylelist_check` (:5585)
-   17. **`_dash_fold_typed` (:5594)**
-   18. `_dash_sort_opt` (:5603)
-4. **The rules table.** `_dash_option_rules` (:2987-3079) puts its tables into `c_local`s:
-   - `plot` tokens (:2990-3008) have the form `opt=kind[,p1,p2,p3][@type|type…]`. barwidth's rule is `barwidth=pos` (:2997).
-   - `graph` tokens (:3046-3053).
-   - `flags` (:3064-3066), form `flag|flag@type|type`.
-   - `values` (:3070), which lists `mlabel jitter base barwidth`. These are checked per element by `_dash_value_list` (:3636).
-   - `onevalue` (:3073): `barwidth@rbar|histogram|rcap|rspike  base@rbar|histogram`. On those types twoway refuses a list with "option barwidth() not allowed".
+### 1.1 What test/test_tracking_documents.py reads today (2,849 lines)
 
-   `_dash_validate_opts` (:3837-4012) applies them:
-   - Flags (:3859-3872): a flag on a type outside its list is refused, `display as error "option `f' not allowed"`, `exit 198`.
-   - **`@type` precedence** (:3923-3932): a type-specific rule makes the untyped rule for that option skip on that type. The rule loop (:3933-3969) runs `continue` for any `@` rule whose types exclude this type.
-   - The graph rules are checked against `s(g_<opt>)` (:3974-3990).
+- **Module docstring** items 1-11 (`test/test_tracking_documents.py:1-91`) list every rule. Item 10 (`:56-66`) is WP-31's; item 11 (`:67-78`) the counts. A new item 12 (GAPS4) goes after `:78`.
+- **BUGS.md parser.** `_ENTRY` `:145` = `^- \[(?P<mark>[ x])\] Title: (?P<title>\S.*)$`; `_FIELDS` `:146-147` = File Names and Line Numbers, Description, Suggested fix, Resolution (once each, in that order; a `(qualifier)` after the field name is allowed, `:148-149`); `_parse_bugs` `:152-198`. Notes between fields are `  - <anything>:` lines; continuation lines start with four spaces. BUGS.md has **no headings**: it is one flat list of 748 entries (747 `[x]`, 1 `[ ]`), 4,479 lines; new entries are appended at the end, one blank line between entries.
+- **Closed-entry rule** (`TestEveryClosedEntryNamesATestThatExists` `:409`): a closed entry must name a test that resolves: a file `test_*.py|cscript|do` (`_FILE_REF` `:332`), a node `test_x.py::Class[::test]` (`_NODE_REF` `:334`), a `TestX` class (`_CLASS_REF` `:335`) or a cert case id a cscript displays (`_CASE_ID` `:254-255` = `[A-Z][A-Z0-9]{0,5}(?:-[A-Z]+)*-\d{1,3}[a-z]?`, found by `_displayed_cases` `:266-312`). `CLOSED_WITHOUT_A_TEST` `:122` is `frozenset()`.
+  - **Collision to avoid.** The audit ids `AX-4`, `VF-1`, `PT-1` (also inside `plat:PT-1`) match `_CASE_ID`. `_references` (`:342-372`) counts a case id as found only if some cscript displays `<id> PASS`, so an audit id in an entry is harmless **unless** a truth script ever displays a case with an audit-id shape. New truth-script case ids must not use the `XX-n` shape (WP-31 used `U<NN>-<k>`, e.g. `U01-1`). Suggested: `Q<wp><ss>-<k>` (e.g. `Q3402-1`), which fits `[A-Z][A-Z0-9]{0,5}`.
+- **Open-entry rules.** `TestEveryOpenEntrySaysWhyItIsOpen` `:500-520`: Resolution matches `not fixed|still open|stays open|remains open` **and** `because`. `TestNoOpenEntryBlocksARelease` `:554-601`: every open entry carries exactly one `Graded S<n> (WP-\d{2}): <why>` (`_GRADE` `:565`), and no open S1/S2 entry exists unless its title is in `WP29_OPEN | WP30_OPEN | WP31_OPEN` values (`:583-584`). `_GRADE` already accepts WP-33..WP-50.
+- **WP-31 machinery** (the model to copy):
+  - `WP31_OPEN = {}` `:1990` (id -> exact title; each closing commit deletes its own key line; emptied at closeout).
+  - `WP31_LISTS` `:1994-2139` (id -> CHANGELOG lists; permanent). `WP31_SECTION` `:2142-2287` (id -> section int; permanent). `WP31_ALL = tuple(WP31_LISTS)` `:2289`.
+  - Id grammar `_WP31_ID` `:2291` = `[A-K]\d{1,2}[a-gkltx]?`; marker `<!-- WP-31 <id> -->` `:2292`.
+  - Open form `_WP31_OPEN_FORM` `:2293-2295`: `^  - Resolution: Not fixed because WP-31 section (\d{2}) has not landed\. Graded S[1-3] \(WP-31\): \S`.
+  - GAPS3 readers: `_GAPS3_ROW` `:2296` (`| <id> | <gap> | <sev> | ...` table rows); `_GAPS3_TRACKED` `:2297` = `^- \*\*(?P<id>...) Tracked:\*\* (?P<text>\S.*)$`; the three Tracked forms `_GAPS3_OPEN` `:2298` `Open (WP-31 section NN).`, `_GAPS3_CLOSED` `:2306-2307` `Closed in WP-3[12], BUGS.md "<title>", commit <sha|pending>.`, `_GAPS3_PARTLY` `:2308-2310` `Partly closed in WP-31 (section NN, commit <sha|pending>): <closed>; open: <rest> (BUGS.md "<residual title>").`
+  - `_parse_gaps3` `:2401-2416` returns `(rows, tracked, dupes)`; `_gaps3_problems` `:2419-2462` checks: one Tracked line per id, a table row for the id (letter suffix stripped), Open names the id's section and the entry is open, Closed names a closed entry title and an existing sha (or `pending`), Partly names an open residual entry; `_sha_exists` `:2465` (`git cat-file -e`).
+  - `TestWp31Tracking` `:2469-2645`: open-entry form, CHANGELOG markers, closure `(WP-31, <id>)` in a closed Resolution (`_wp31_closure_problems` `:2359-2372`), list placement (`:2493-2513`, pins `len(WP31_ALL) == 143` and sections 2..60), GAPS3 lines, reader self-tests, and the closeout pair `test_no_wp31_entry_remains_open` `:2616-2636` / `test_no_gaps3_line_is_open` `:2638-2645`.
+  - Closeout counts: `_WP31_CLOSEOUT = "4547107"` `:2696`; `_WP31_ENTRIES_LINE` `:2697-2702` parses ROADMAP's "**Entries.**" line; `_wp31_closeout_counts` `:2712-2732` recomputes from `git show <closeout>:BUGS.md/GAPS3.md`; `TestTheCountsAreTrue::test_the_wp31_closeout_counts_are_computed` `:2781-2799`.
+- **Other readers a new register must not break:** `_wp_sections` `:709-723` splits ROADMAP on `^## WP-\d{2} ` and treats a heading ending `— DONE` (or a `> **DONE` line) as done; `_parse_roadmap` `:726-741` reads only `**Gaps closed:**` (GAPS.md ids `[A-N]\d{0,2}`); `_parse_roadmap_gaps2` `:802-822` reads `**GAPS2 closed:**`. WP-31's `**GAPS3 closed:**` field (ROADMAP.md:5099) is read by nothing, so a `**GAPS4 closed:**` field is free but should get a reader. `TestNoResidualNamesAClosedRow` `:523-551` reads `.ultraplan/handoff/DROPIN-REMAINING.md` (the reason `handoff/` stays). `_USER_RECORDS` `:130` exempts `.ultraplan`.
 
-   The kinds are implemented in `_dash_validate_value` (:3098-3620):
+### 1.2 GAPS3.md and the forms in use
 
-   | Kind | Line | Meaning |
-   |---|---|---|
-   | `num` | :3166 | `,lo,hi[,x]`; `x` means strict |
-   | `int` | :3195 | |
-   | `pos` | :3218 | `,max` |
-   | `colour` | :3234 | refuses a comma-written RGB |
-   | `style` | :3261 | `,lo,hi[,u]`; `u` means a line width with gm_linewidth wording |
-   | `istyle` | :3308 | |
-   | `enum` | :3316 | `,a\|b\|c` |
-   | `numlist` | :3331 | `,min[,max]` |
-   | `axislist` | :3358 | |
-   | `keyformat` | :3383 | |
-   | `var` / `varlist` / `byvarlist` | :3408 | r(111) for a variable not found |
-   | `scheme` | :3505 | |
-   | `format` | :3583 | |
+- GAPS3.md (563 lines) is tables by area (`## 4. Gaps by area`, `:80`; `| ID | Gap | Sev | Register | Evidence | Task |`, e.g. `:90-92`) plus `## 9. Tracking` `:413` whose intro `:415-418` states the three forms and the `commit pending` rule (the merger's step k.3b rewrites `pending` to the landed sha in one tracking commit; archive `sections/BRIEF.md`, DECISIONS A11). 143 Tracked lines (`:420` on), all Closed now (no Partly line remains).
+- **Closed BUGS form** (WP-31, e.g. BUGS.md:3285): `  - Resolution: Fixed 13oct2026 (WP-31, C1). <what changed, where, and the pinning test node>`. WP-32 wrote `Fixed 19oct2026 (WP-32). ...` (BUGS.md:4468-4479 region).
+- **Residual/open form** (the one open entry, BUGS.md:4139-4143): `  - Resolution: Not fixed: it stays open because <reason>. ... Pinned by test/test_natscale.py::TestTheRuleAgainstStata::test_the_three_known_misses_are_still_missed ...` with one `Graded S3 (WP-nn)`. WP-31's closeout form for residuals: `Not fixed: deferred at WP-31's closeout because ...` (D-61.b).
+- **Overlap:** the audit's P1 item 10 (AX-3 ...) and P9's last item (plot:PT-13 ...) are the same natscale entry; the audit asks to correct its scope (BUGS.md:4139-4143, ROADMAP.md:5153 "exact at build"). 33-01 must decide: re-scope the existing entry or open new ones and cross-reference.
 
-   Where a bound is dash's own rather than twoway's, an extra sentence is added (:3147-3163: yaxis/xaxis "dash draws two axes", degree, bin, n, lowess bwidth). The error form (:3615-3618) is `"dash: <opt>() must be <bad> (got: <value>)<extra>"`, r(198).
-5. **The JSON writer.** `_dash_plot_opts_to_json` (:4400-4477) walks a fixed key list (:4441-4458; barwidth at :4443). A stylelist key writes y number k's element through `_dash_stylelist_pick`. Under `p()` the keys in `_dash_p_drops` (:4415-4430) are dropped. **The spec key is the option's full name** inside the plot's `"options"` object: `{"type":"bar","yvar":…,"xvar":…,"options":{"barwidth":".3"},…}` (assembled at :5862-5883).
-6. **The renderer.** `GlyphMapper.map_bar` reads `options["barwidth"]`, then `"width"`, through `_stat_option_float` (dash_render.py:15341-15354). `map_rbar` reads them at :18546-18551. `OptionTranslator` (class at :6721) only converts values: colours, symbols, sizes (`resolve_size` :7098, `translate_lwidth` :7602, …). The `GlyphMapper._apply_*` appliers are:
-   - `_apply_line_opts` :13143
-   - `_apply_marker_opts` :13243
-   - `_apply_fill_opts` :13503
-   - `_apply_colorvar` :13664
-   - `_apply_mlabel_opts` :14104
-7. **The served app.** It gets the same code because the whole `OptionTranslator`, `SchemeParser` and `GlyphMapper` classes are copied by source (`_glyph_layer_lines`, class loop at dash_render.py:47281-47283). A method needs no copy-list entry. A **module-level** helper or constant does:
-   - the constants tuple is at :46584-46784;
-   - the functions tuple is at :46822-47270;
-   - helpers that `_shared_stat_lines` already emits are skipped through `_emitted_names` (:46819-46821);
-   - `_shared_stat_lines` (:47396-47569) copies the statistical helpers (tuple :47446-47503) and five staticmethods with their `GlyphMapper._` prefix stripped (:47519-47530: `_histogram_grid`, `_default_lpoly_bwidth`, `_compute_lpoly_fit`, `_bootstrap_ci`, `DashRenderer._kpi_statistic`).
+### 1.3 Size of the new register (counted from the audit text)
 
-   The copy loop skips a misspelt name silently (`getattr(..., None)` then `continue`, :46785-46787 and :47273-47275). `test_statistical_helpers.py::TestTheServedAppCarriesEveryName::test_every_listed_name_exists` catches that.
+- Items per package (bold bullets under `### n.`): P1 10, P2 11, P3 12, P4 5, P5 10, P6 20, P7 17, P8 25, P9 21, P10 14, P11 23, P12 8, P13 9, P14 6, P15 19, P16 9, P17 5 = **224**; minus the two withdrawn items still printed (P2 plat:PT-3, Q48; P15 basic:PT-7 jitter, Q50) = **222 items**. The 22 lines of "Help and README wording that is false today" (audit :855-880) are not ids; most restate items of P1/P3/P4/P5/P8/P9/P11/P14/P15/P16. 33-01 must either fold each into an item (recommended: P16's or the owning package's) or give them their own ids (e.g. `HR-1..HR-22`).
+- 402 ids sit in those items (389 distinct; 13 ids appear in two items: ECO-17, DT-17, BY-7, BY-15, LT-14, ST-11, GW-18, stat:PT-8, sil:SD-17, ST-20, DT-20, GW-23, BY-8). **The first id of every item is unique across all 224 items**, so each item can be keyed by its lead id (AX-4, plat:PT-1, syn:SD-1 ...). Id grammar for the reader: `(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}`.
+- Severity: the audit grades packages blocker/major/minor/cosmetic, not S1-S3. The release guard needs an S grade per entry; a mapping (e.g. P1 blocker -> S1, major -> S2, minor/cosmetic -> S3) is a plan decision, and every S1/S2 title must be in the new open allowance or `test_no_open_entry_is_s1_or_s2` fails.
 
-   The served header has its **own bokeh import list** (`_generate_app_source`, :48014-48035ff). A new Bokeh model, such as `DataTable`, must either be imported inside the function that uses it (the `_dash_reference_lines` pattern, `from bokeh.models import Span` at :38870) or added to both import lists.
+### 1.4 What section 33-01 must add (concrete list)
 
-### 1b. A graph option: `xline()`
+1. **GAPS4.md** (new, repository root, beside GAPS3.md): a header naming the audit and rulings D40/D41; one section per package in WP order (WP-33 = P13 ... WP-49 = P17) with a table `| ID | Item | Sev | WP | Evidence | Fix |`, one row per item keyed by its lead id (other ids of the item in the Item cell); a `## Tracking` section with one `- **<id> Tracked:** <form>.` line per item. Forms (extend GAPS3's): `Open (WP-NN section NN-MM).`; `Closed in WP-NN, BUGS.md "<title>", commit <sha|pending>.`; `Documented in WP-NN, BUGS.md "<title>", commit <sha|pending>.` (Q42); `Partly closed in WP-NN (section NN-MM, commit <sha|pending>): <closed>; open: <rest> (BUGS.md "<residual title>").`; and, for the two withdrawn items if they get rows, `Withdrawn (D40|Q48|Q50).`
+2. **BUGS.md**: ~222 entries appended in the five-field form; unique titles with no `"` (the reader forbids it, `:2328`); Resolution `Not fixed because WP-NN section NN-MM has not landed. Graded S<n> (WP-NN): <why>.` (one grade, `because` present).
+3. **test_tracking_documents.py** (append after `:2849`; docstring item 12 after `:78`):
+   - `GAPS4_OPEN = {id: title}` (one key per line, deleted by each closing commit), `GAPS4_WP = {id: "WP-NN"}`, `GAPS4_SECTION = {id: "NN-MM"}` (permanent), `GAPS4_ALL = tuple(GAPS4_WP)`; optional `GAPS4_LISTS` if CHANGELOG markers are kept (WP-31 practice, `<!-- WP-NN <id> -->` in `### Results that change` / `### Changed behaviour` / a `### Fixed in WP-NN` list; Discovery does not require them).
+   - Regexes `_GAPS4_ID`, `_GAPS4_ROW`, `_GAPS4_TRACKED`, `_GAPS4_OPEN`, `_GAPS4_CLOSED` (`WP-(3[3-9]|4\d)`), `_GAPS4_DOCUMENTED`, `_GAPS4_PARTLY`; `_GAPS4_OPEN_FORM` for the BUGS Resolution with the section as `\d{2}-\d{2}`.
+   - `_parse_gaps4`, `_gaps4_problems` (as `_gaps3_problems`, plus: the Open line's section belongs to the id's WP; a Documented line names a closed entry whose Resolution starts `Documented DDmonYYYY (WP-NN, <id>)`), `_gaps4_open_problems`, `_gaps4_closure_problems` (`(WP-NN, <id>)` in a closed Resolution), reader self-tests in both directions (as `test_the_gaps3_readers` `:2567-2614`).
+   - Release guard: add `| set(GAPS4_OPEN.values())` to `allowed` at `:583-584` and extend the comment.
+   - `class TestGaps4Tracking` with the open, closure, one-line-per-id, count (`len(GAPS4_ALL) == 222`, every WP-33..49 has at least one id) and reader tests; **one closeout test per WP**, parametrised over a `GAPS4_CLOSED_WPS = ()` tuple each WP closeout extends (asserts no open key, no Open/pending line and every `(WP-NN, <id>)` closed for that WP), so WP-34's closeout cannot be blocked by WP-49's open rows.
+   - Per-WP closeout counts: the `_WP31_ENTRIES_LINE` pattern generalised to `**Entries.**` lines under each `## WP-NN` heading, each with its closeout sha constant, recomputed by `git show`.
+4. **Test-file count pins** move only if 33-01 also creates truth scripts (section 2.4).
+5. Expected 33-01 failing-first set (rule 7), as WP-31 01-01 recorded 14 red nodes: the new TestGaps4Tracking nodes, plus any pins it moves.
 
-1. It is declared in `_dash_parse_graph_opts` (:933-966) as `XLIne(string asis)` (:937), and again in the plot parser (:1209) so it can be written inside a segment. sreturn: :1056 (graph parser) and :1542 (`g_xline`, plot parser).
-2. **Seven identical key lists** in dash.ado must agree; `test_abbreviations.py::TestTheAxisRouteKnowsDashsSpellings::test_the_seven_graph_key_lists_agree` (test/test_abbreviations.py:773) checks this:
-   - :5776, the segment hands back `_sg_<key>`
-   - :6714, the accumulators are initialised
-   - :6748, the after-comma capture
-   - :6849, the per-segment reset
-   - :6924, the merge
-   - :6956, the after-comma merge
-   - :7339, the JSON writer
-3. **Repeats** are merged by the category in `_dash_rep_cat` (dash_parse.mata:6166; `xline` is category "X", every copy kept, joined with ", ") and by `_dash_rep_merge` (:8838). Options twoway takes only once are in `_dash_rep_unique` (:6200).
-4. **Validation** is `_dash_line_check` (dash.ado:7669, called from `_dash_plot` near :6984), then `_dash_line_expand` (:6988-6990), then `_dash_reflines_cap`.
-5. **JSON.** The `graph_options` object is built at :7335-7415 with key = option name (`"xline":"…"`). `text()`/`ttext()` are skipped there and written as `added_text` records. The graph JSON itself is at :7451.
-6. **The renderer** reads `graph_opts.get("xline")` in `_dash_reference_lines` (dash_render.py:38859; the loop at :38871). It is called from the saved `DashRenderer._make_figure_body` at :43808 and from the served template's `_dash_figure_for` at :49474. The function is on the copy list (:47223).
+### 1.5 ROADMAP.md WP section shape (WP-31/32, ROADMAP.md:5097-5155)
 
-### 1c. The pending list, the generic note and the foreign-option refusal
+- Heading `## WP-31 · Close the GAPS3 drop-in gaps — DONE` (`·` U+00B7, `—` U+2014 before DONE; `_wp_sections` reads it). Field line `**GAPS3 closed:** A1, ... ; partly: G3, ... · **Severity:** S1 (3), S2 (27), S3 (64) · **Effort:** XL · **Depends on:** WP-30` (`:5099`). A user story paragraph (`:5101`). `### Business requirements` (bulleted, citing the decision ids), `### Measurements` (dated: **Entries.** line read by the counts test, full pytest, certification, release gate, accessibility, timings), `### Residuals` (each with its BUGS title), then `---`.
+- WP-32 (`:5145-5155`) is the short form: `**Ruling:**` line, bullets, "Left open", dated `**Gate (...)**` lines.
+- The `## Traceability matrix` (`:5157`) is GAPS.md-only (`_matrix_gaps` `:618`). Q6 requires "a ROADMAP line" per WP closeout; the WP-31 shape gives the counts test something to read.
 
-- **The pending blocks.** Graph: dash.ado:1010-1042. Plot: :1320-1387. Each line has the form ``if `: length local X' local _dash_pending `"`_dash_pending' X"'``. Tests find these lines with the regex `_dash_pending' (\w+)"` between `program define <parser>` and `local _dash_unknown`. The tests that do so: test_unsupported_report_is_true.py:169, test_help_conformance.py:342, test_help_claims_8.py:1372, test_color_alias.py:140, test_jitter.py:355.
-- **`_dash_fold_typed`** (:2201-2272) adds names to `s(_pending)` once the type is known:
-  - colorvar and its companions off `cv_types` (scatter, connected, rconnected, dot);
-  - jitter on rscatter, rcapsym, pcscatter, pccapsym;
-  - a bare `sort` off `sort_types`;
-  - the fitarea options are *removed* from the list on the ci types (:2247-2253);
-  - lstyle/alstyle/blstyle on area and rarea;
-  - mstyle/mlstyle on the arrow types.
+## 2. Truth cscript machinery
 
-  Its comment at :2228-2233 is stale (GAPS3 F5).
-- **The generic note.** At the end of each segment, `s(_pending) + s(_unknown) + [weight]` goes into `_seg_ignored_out` (:5735-5738). `_dash_plot` accumulates it and calls `_dash_report_ignored` once (:7307-7309; program :6590-6635). That program cuts the text to option names with Mata `_dash_option_names`, removes duplicates, and prints `dash: ignoring unsupported option(s): a() b()` through `_dash_note`.
-- **`_dash_rep_und_tab`** (dash_parse.mata:6250-6324) is **not** a "named, not drawn" list. It lists the options dash does *not* declare that twoway takes **once**. Columns: name, full spelling, shortest spelling, takes a value, types (`*` for all), graph-wide, `no` half. Its readers:
-  - `_dash_rep_und_scan` (:6384): refuses a second copy, `option atobs not allowed`, r(198);
-  - `_dash_rep_und_cross` (:6432): counts graph-wide options across segments;
-  - `_dash_foreign_scan` (:6547-6586): rows an undeclared word may match without being foreign;
-  - `_dash_kernel_clash` (:6598) and `_dash_kernel_flag` (:6645).
+### 2.1 Shape of test/test_wp31_truth.cscript (14,469 lines) and test_wp30_truth.cscript (12,418)
 
-  Undeclared lower-case words simply fall to the catch-all and are named in the note. **When you declare an option that has a row here, delete the row**, and if twoway takes it only once, add it to `_dash_rep_unique` (dash_parse.mata:6200). The precedent is the colorvarminmax comment at :6294.
-- **`_dash_refuse_foreign`** (dash.ado:8569-8610) uses `_dash_foreign_scan`. It refuses an upper-case option, or a plot option written after the plot groups' comma, with "option X not allowed", r(198). Otherwise it re-parses.
+- Header `*!` lines `:1-20` (purpose, block rule, usage). `cscript "WP-31 truth: twoway comparisons" adodir ".."` `:22`; `clear all`; timer 100 started (`:24-34`, read by the runner); `DASH_CERT_PROFILE` profiler hook.
+- Python gate `:36-39`: `if "`c(python_exec)'" == "" { display as error "SKIP: Python not available."; exit 222 }` (also in `cert_svg.do:69-72`). **P2 interaction:** on a machine where Stata finds Python itself, c(python_exec) is empty (audit plat:PT-1), so every truth script, `cert_svg.do`, `run_all_cscripts.do:235-238` and `scripts/stata_python_exec.sh` (used by `make test`, `Makefile:45`) would skip or fail there; P2's fix has to decide whether the harness keeps reading the setting.
+- Loads `:41-45`: `do "cert_helpers.do"`, `quietly do "cert_svg.do"`, `qui do "../dash_parse.mata"`, `qui do "../dash.ado"`, `global dash_nobrowser 1`. Tally helpers `_w31_expect id cond msg` / `_w31_done id msg` `:47-77` (globals `w31_nfail w31_faillist w31_bad w31_ncase`; `display "<id> PASS: ..."` is what the tracking test's `_displayed_cases` sees). Private work dir from `tempfile` `:80-90`.
+- **Parts** `:92-182`: `local w31_secs` table of block seconds `:105-111` (unlisted block counts 1 s); `DASH_CERT_SHARD=k/N` (1..4) read `:112`; `WP31_ONLY` read `:124` and forces one part; Mata `_w31_part()` `:145-179` reads the script's own `^\* ==== (S[0-9]+) ` headers and assigns blocks longest-first onto the least-loaded part, setting `w31_run`.
+- **Block shape** (S01 `:184-214`): `* ==== S01 scaffold: <what> ====` / `local only : env WP31_ONLY` / `if inlist("`only'", "", "S01") & `: list posof "S01" in w31_run' {` / `display as text "S01 start " c(current_date) " " c(current_time)` ... `display as text "S01 end " ...` / `}` / `* ==== end S01 ====`. Helper programs and `python:` blocks sit directly above a section's first header (e.g. `:216-260`).
+- Marker `* ==== append new blocks above this line ====` `:14433`; summary `:14436-14469`: 0 cases -> with N>1 and no block in this part, `part k/N has no block to run`, exit 0 (D-01.f); else `no case ran` r(9); failures -> r(9); success `test_wp31_truth: ALL CHECKS PASSED`.
+- WP-30's script differs: one stub block per section created at S01 (`:191-221` S01, `:317` S02 ... `:12345-12385` S57, marker `:12387`), `w30_secs` counted 0 for unlisted blocks. WP-31 chose no stubs (D-01.e) and one block per GAPS3 row (header `S<NN> <row id>: <what>`, `_W31_HEAD` in the hygiene test).
 
-### 1d. What a section edits
+### 2.2 How blocks are checked (test/test_cscript_hygiene.py, 1,321 lines)
 
-**(a) To declare a new option:**
-1. Add it to the `syntax` of `_dash_parse_plot_opts` (:1167-1239) and/or `_dash_parse_graph_opts` (:933-966), with twoway's minimum shown in capitals.
-2. Add an `sreturn local <opt>` (plot :1403-1530, or `g_` :1532-1607; graph :1046-1121).
-3. Plot option: add the key to `_dash_plot_opts_to_json`'s list (:4441-4458). If `p()` drops it, add it to `_dash_p_drops` (:4415-4430). If it is a per-y list, add it to `_dash_stylelist_keys()` (dash_parse.mata:5283).
-4. Graph option: add it to **all seven** key lists (:5776, 6714, 6748, 6849, 6924, 6956, 7339); `_dash_rep_cat` if it merges; `_dash_rep_unique` if twoway takes it once.
-5. Add a rule to `_dash_option_rules` if its value is bounded.
-6. Delete any `_dash_rep_und_tab` row for it (dash_parse.mata:6250-6324).
-7. Tests:
-   - test_unsupported_report_is_true.py: classify it as a pending option with a `PLOT_VALUES` entry (:81), or live with a `LIVE_VALUES` entry (:447ff), or in `ALIASES`/`NOT_IN_FILE`. Bump the declared counts at :725-726 (196/85 now) with a `# a -> b: <id> <why>` comment.
-   - test_abbreviations.py: no prefix may be claimed by two options (:406), and the declared minimum must cover Stata's per test/fixtures/abbrev_truth.json (:277).
-   - test_help_conformance.py:825: an option twoway lacks, i.e. absent from abbrev_truth.json, must have a help definition entry.
+- `_W31_OPEN` `:1221` `^\* ==== (S\d{2}) (.+) ====$`, `_W31_CLOSE` `:1222`, `_W31_MARK` `:1223`, `_W31_HEAD` `:1224` `^(scaffold|[A-K]\d{1,2}[a-gkltx]?): \S` (the GAPS3 id). `_wp31_blocks` `:1227-1275` requires: one marker; each block's first two code lines are the `WP31_ONLY` gate; its third is the start display and its last two the end display and `}`; blocks above the marker; non-decreasing section order. `TestTheWp31TruthScript` `:1278-1321`: scaffold order (`cscript` ... `SKIP: Python not available.` ... `do "cert_svg.do"` ... parts ... S01 ... marker ... `has no block to run` ... `ALL CHECKS PASSED`), no `capture python:`, the block reader self-test. WP-30's twin is `_wp30_blocks` `:1089` / `TestTheWp30TruthScript` `:1150`.
+- Count pins: `test_the_glob_finds_every_script` `:283-302` asserts `len(_CSCRIPTS) == 69` (history in the comment); `test_every_script_that_skips_for_python_is_read` `:304-321` asserts 51 scripts carry a `SKIP ... Python` line; `test/test_cert_shards.py:45` asserts 69 registered names (`# 68 -> 69: test_wp31_truth.cscript (WP-31 S01)`). `TestEveryCscriptIsWiredIntoTheRunner::test_the_runner_calls_it` (class `:430`, test `:433-438`) fails for a cscript the runner never runs; `test/test_cert_verdict.py:56` `test_the_real_runner_registers_every_script_in_test` likewise.
+- Other per-script hygiene rules each new script must meet: no Python probe by execution (`:335`, `:355`, `:374`), `global dash_nobrowser 1` set after `cscript` before any build (`:813`), no unsafe macro expansion (`:415`), no jsonio (`:952`).
 
-**(b) To draw a pending option:**
-1. Delete its `if … _dash_pending` line in **both** parsers where present.
-2. Read the spec key in the shared glyph layer or helpers. Any new module-level helper goes in the copy list.
-3. Move its test entry from `PLOT_VALUES` to `LIVE_VALUES` (two values that must render differently) and update `test_the_blocks_were_actually_found` (:240-262; counts 43 plot and 24 graph now).
-4. Remove it from dash.sthlp's Unsupported section ({marker unsupported} at dash.sthlp:4967 to {marker dependencies} :5136). `TestTheUnsupportedSectionIsTrue` (test_help_conformance.py:938-960) checks this both ways.
-5. `test_help_claims_8.py::TestAnUnsupportedOptionIsInertWhenServed` (:1410) derives its list from the pending blocks, so it follows automatically. Add a `_CONTEXT` entry (:1380) if the option needs a host option.
-6. Update TWOWAY_COVERAGE_AUDIT.md in the same commit (DISCOVERY Q26).
+### 2.3 Runner registration and shards (test/run_all_cscripts.do, 3,195 lines)
 
-**(c) To refuse an option on a type with twoway's words.** Today there are four patterns:
-- (i) **A flag**: an entry in `flags` (:3064-3066), giving "option X not allowed", r(198).
-- (ii) **A typed rule** `opt=kind,…@types` (e.g. :3000-3001, :3006-3007), for a value check per type.
-- (iii) **The typed-spelling pattern** used for barwidth on rcap/rcapsym: a Mata `_dash_barwidth_typed(opts)` (dash_parse.mata:6514-6528), built over `_dash_rep_toks` and `_dash_rep_optname` so quoted or nested text is never read, plus a block in `_dash_process_segment` (:5564-5574) that runs `_dash_say("err","option ",typed,"() not allowed")`, `exit 198`. The new Mata function must be added to `_dash_require_mata`'s `_needed` list (dash.ado:448-479), to the dash_parse.mata header index (lines 1-~420), and to test/program_coverage_map.py.
-- (iv) **`onevalue`** (:3073), for a list where twoway takes one value.
+- Root and ado-path `:22-48` (DASH_REPO or cwd; `adopath ++ "`dashdir'/"`; checks `findfile dash.ado`). `DASH_PYTHON_EXEC` links the session only (`:52-61`).
+- Shard table between `// ---- shards: begin` `:75` and `// ---- shards: end` `:158`: one row per script, `<name> <seconds> <fixed-port 0|1> <shard for N=2> <N=3> <N=4>`; `test_wp30_truth.cscript 566.6 0 * * *` and `test_wp31_truth.cscript 456.4 0 * * *` (`:156-157`) run in every shard and split themselves. Written by `scripts/cert_shards.py write <timed log>`; checked by `python3 scripts/cert_shards.py check` (every registered script has a row, fixed-port scripts share a shard, `*` exactly for scripts that read DASH_CERT_SHARD, balanced assignment); `test/test_cert_shards.py` runs the check. A new row can be hand-added with `1.0 0 * * *` (D-01.g: a `*` row adds its share to every shard, so no other assignment moves).
+- Selection `:65-207`: `DASH_CERT_SHARD`, `DASH_CERT_ONLY="test_a test_b"` (subset by hand). Each script is one numbered block, e.g. block 70 `:3125-3170`: `local _cert_go : list posof "test_wp31_truth.cscript" in _cert_run` / `[ RUN ]` / `capture noisily { do "..." }` / timer 100 -> `[ TIME] <script> timer=..s wall=..s` (what cert_shards.py reads) / rc 222 -> `[ SKIP]`, 0 -> `[ PASS]`, else `[ FAIL]`. Summary `:3172-3195`. `scripts/cert_verdict.py` passes the run only if every registered script passed and none skipped.
+- `scripts/run_cert_suite.sh`: N = `DASH_CERT_SESSIONS` (default 3) sessions side by side, each `DASH_CERT_SHARD=k/N` in `$dir/s<k>` with its own `STATATMP=<dir>/tmp/` and `DASH_PYTHON_EXEC` read once from Stata (guards the stata19.rc python_exec loss).
 
-There is **no per-type applicability column** for value options yet (GAPS3 C3). Such a column would sit beside the `flags` syntax. The natural place to apply it is in `_dash_validate_opts`, before the rule loop (:3923), after recast has fixed the type (`_rc_own`). Every newly refused form needs a CHANGELOG "Changed behaviour (may need your do-files changed)" line (WP-30 M5), and its cscript case goes in the area script (test_option_validation.cscript or test_twoway_option_parity.cscript), comparing against `capture noisily twoway` run in the same session.
+### 2.4 What adding test_wp33_truth.cscript ... test_wp49_truth.cscript requires (per script)
 
-## 2. Registering a plot type
+1. The file, copied from WP-31's frame with `wp31/WP31/w31_/WP-31/U01` renamed (WP-31 01-06 did it with `sed -n '1,221p;12352,12385p'` from WP-30's); S01 scaffold case; blocks gated by `WPnn_ONLY` (environment variable, not a global) and `wNN_run`; case ids of a non-audit shape (1.1).
+2. Block headers: WP-31's `_W31_HEAD` takes a GAPS3 id; a GAPS4 id contains `:` and `-` (`plat:PT-1`), which `_wNN_part`'s `^\* ==== (S[0-9]+) ` header regex tolerates after the S number, but the hygiene head regex must take `_GAPS4_ID`. Sections are `NN-MM`; inside one WP's script the block id can stay `S<MM>`.
+3. A runner block (71, 72, ...) and a shard row `1.0 0 * * *` (or measured seconds) per script; `python3 scripts/cert_shards.py check` exits 0.
+4. Pins: `test_cscript_hygiene.py:300` 69 -> 69+k; `:321` 51 -> 51+k (each gates on c(python_exec)); `test_cert_shards.py:45` 69 -> 69+k; a `TestTheWpNNTruthScript` class or one parametrised reader over every `test_wp3[3-9]|4[0-9]_truth.cscript` (preferred: one `_wp_blocks(src, wp)` instead of 17 copies).
+5. Tooling: `../dash-wt/_tools/picks.sh:11` and `blockorder.py` name `test/test_wp31_truth.cscript` and `S\d\d` headers; they need the new file names (a `test/test_wp[34][0-9]_truth.cscript` case) and `GAPS4.md` in the line-merge list (`picks.sh:15`).
+6. **Cost:** every script in a `*` row starts in every cert session and loads `dash_parse.mata` + `dash.ado` (`qui do`, about 26,000 lines) once per session; 17 such scripts in 3 sessions add about 51 loads plus their blocks. Creating each WP's script in its own first section (not all 17 in 33-01) keeps WPs that have not started from adding empty scripts; an alternative WP-50 can weigh is one truth script with per-WP block ranges.
 
-- **Families.** `_dash_plottype_families` (dash.ado:4516-4529):
-  - `_pt_univar`, `_pt_range`, `_pt_pc`, `_pt_literal`, `_pt_imm` and `_pt_ts` are the routing families;
-  - `_pt_onefit` and `_pt_onefit_bare` hold the fits and smoothers.
+## 3. Test tiers, Makefile targets, browser and node harnesses, SVG code
 
-  The renderer's categories are `_DASH_RANGE_TYPES` (dash_render.py:25958), `_DASH_UNIVARIATE_TYPES` (:25962), `_DASH_PC_TYPES` (:25967) and `_DASH_LITERAL_TYPES` (:25975). `test_plottype_families.py:176-184` requires the two sides to be equal.
-- **Abbreviations.** `_expand_plottype_str` (dash_parse.mata:1688-1780) holds a `(full, minimum)` table (:1703-1742) and the two special spellings `mbands`/`fn` (:1757-1758). Minimums dash takes beyond twoway's (GAPS3 A2): `sc li con ar ba sp lfi qfi low lpo fp kde dr tsl tsrl msp rl rcon rsc fun`. The help states twoway's eight short names at dash.sthlp:236-244. `test_mode_parity.py::_mata_expanded_types` parses the table with the regex `\("([a-z]+)","([a-z]+)"\)`.
-- **Types refused by name.** `_dash_undrawn_plottype` (dash_parse.mata:1802-1810) holds `contour contourline rpcap rpspike`. dash.ado gives the reasons at :4889-4900. The generic "Supported:" list is at :4901-4909; `test_every_plot_type_draws._advertised_plot_types` parses it.
-- **Variable-count branches** in `_dash_process_segment`:
-  - univar :4981-4986
-  - range :4987-5037 (twoway's words: "too few variables specified" r(102), "`ptype' requires 3 variables: …" r(102)/(103))
-  - pc :5038-5059
-  - literal :5060-5172
-  - standard :5173-5262ff (fits: "too many variables specified" r(103) at :5232-5245)
+### 3.1 Targets (Makefile, 145 lines; pyproject.toml addopts `-n 8 --dist loadgroup`, `:9`)
 
-  JSON fields: :5792-5830 (`var` / `yvar1,yvar2,xvar` / `y1var,x1var,y2var,x2var` / `expr` / `values` / `yvar,xvar`). The axis x variable is chosen at :5761-5765.
-- **Other type lists in dash.ado** that a new type must be judged against:
+| Target | Runs | Anchor |
+|---|---|---|
+| `make test` | pytest under Stata's Python (read by `scripts/stata_python_exec.sh` from c(python_exec)), `DASH_STRICT=1 DASH_BASELINE=stata`, whole suite: release and batch tiers deselected | Makefile:44-50 |
+| `make test-dev` | same under the development interpreter, `DASH_BASELINE=dev` | :56-60 |
+| `make test-release` | `-m release`, `DASH_TEST_TIER=release` (27 files: Chrome, axe-core, nested pytest, subprocess sweeps, large data) | :66-68 |
+| `make test-batch` ("parity") | `-m batch` = test/test_mode_parity.py (`pytestmark = pytest.mark.batch`, `:70`) | :72-74 |
+| `make test-all` | `scripts/run_all_tests.sh`: pytest whole suite + batch tier (`DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 -n 8`), then `run_cert_suite.sh` (3 sessions); logs in `$TMPDIR/dash_all_tests.*`; never more than 8 workers | :80-81; run_all_tests.sh:32-58 |
+| `make cert` | `scripts/run_cert_suite.sh` (sharded runner + cert_verdict.py) | :93-94 |
+| `make gate` | `scripts/run_release_gate.sh` -> `scripts/release_gate.do`: net install from dash.pkg's files, run every `examples/*.do` (14), one page per shipped scheme (26), adoupdate, venv-linked sessions; `release_verdict.py` | :96-97 |
+| `make release` | check + test-batch + test-release + gate | :99 |
+| `make truth` / `truth-check` | every `scripts/extract_*.do` through `stata_slot.sh`, one at a time, then three Python generators / `test_fixtures_are_committed.py` | :105-130 |
 
-  | List | Line |
-  |---|---|
-  | `mv_range` | :2132 |
-  | `jit_undrawn` | :2218 |
-  | `_hz_htypes` / `_hz_vtypes` (also renderer `_DASH_HORIZONTAL_TYPES`, `_DASH_VERTICAL_TYPES`, `_DASH_DERIVED_ORIENT_TYPES`, dash_render.py:31835-31849; test_horizontal.py) | :2301-2302 |
-  | `_so_ser` | :2471 |
-  | `_rng` / `_sp_rng` (recast) | :2586, :2595 |
-  | alwidth and mlabangle type lists in the rules | :3006-3007 |
-  | `_wt_honoured` | :5367 |
-  | `_pt_nots` | :5195 |
-  | `_cap_types` | :5567 |
-  | `_ss_types` | :5654 |
-  | `_ts_sortx` | :5671 |
-- **Spec variable keys.** Mata `_dash_extract_vars` (dash_parse.mata:2847, key list at :2855-2857) and `_DASH_PLOT_VAR_KEYS` (dash_render.py:36470) both list `yvar xvar var yvar1 yvar2 y1var x1var y2var x2var`.
-  - rpcap/rpspike (y ylow yhigh x) can reuse `yvar` + `yvar1` + `yvar2` + `xvar` without changing these lists.
-  - contour (z y x) needs a new key such as `zvar` in both lists, plus `_dash_hover_layer_vars` (:40053), `_dash_layer_axis_names` (:1252), `_dash_axis_vars` (:1288), `_dash_layer_tick_format` (:1358) and `_dash_layer_series` (:39826).
-- **Dispatch in the renderer:**
-  - `_dash_glyph_dispatch` (dash_render.py:41883-41935): `dispatch` maps a name to `mapper.map_<name>`; `range_dispatch` handles the range types.
-  - `_dash_pc_dispatch` (:41938-41951).
-  - `_dash_plot_type_names` (:41954-41985) counts a key only when it maps to `map_<key>`, plus `_DASH_LITERAL_TYPES`. It is in TEST_ONLY and is **not** copied into the app.
-  - `_dash_add_glyph` (:42344-42404) passes range types as `(fig, source, y1, y2, x, options, view=, color_idx=)`, univariate types as `(fig, source, y, options, …)`, and the rest as `(fig, source, y, x, options, …)`; `_dash_add_pc_glyph` is at :42407.
-  - The family branches that call these: saved `DashRenderer._make_figure_body` (:43644; branches about :43981-44023); served `_dash_draw_layer` in the template (:49137-49225).
-  - Also check `_DASH_JOIN_TYPES` (:40665), `_DASH_FIT_TYPES`/`_DASH_CI_TYPES` (:39567-39574), `_DASH_COMPUTED_ONLY_TYPES` (:1884) with Mata `_dash_computed_plot_cells` (dash_parse.mata:9514; test_embedded_cells.py), `_DASH_WEIGHT_ACCEPTS` (:397), `_dash_plot_style_indices` (:39585) and `_dash_legend_entries`.
-- **Tests.**
-  - test_every_plot_type_draws.py builds `_plot_for` (:181) from the ado families. A new family needs a branch there, and a new literal type raises.
-  - test_mode_parity.py `CORPUS` (:1398) begins with a bare `_case(t,[plot_for(t)])` per type. `TestTheCorpusIsComplete` (:3448-3480) checks: a bare entry per dispatched type; no corpus type the code lacks; the code set equals the dash.ado "Supported:" set; it equals the Mata table; the literal set is pinned.
-  - `plot_for` lives in test/test_server_layer_defects.py:80 with hard-coded `_RANGE`/`_PC` sets (:68-71); it needs a branch for a new shape.
-  - test_help_plot_types.py: the `{marker plottypes}` table (dash.sthlp:235ff) must equal `_dash_plot_type_names()`; `_REFUSED` (:28) must be named after the table and found in `_dash_undrawn_plottype`'s body.
-  - test_parser.cscript P1A-49..57 (test_parser.cscript:249-) pin today's refusals and must be flipped.
-  - Also `_DASH_HORIZONTAL_TYPES` in test_horizontal.py, test_plottype_families.py and test_no_orphans.py (P1A-76's "no name reaches two rows").
-- **Every file rpcap or contour must touch.**
-  - Stata side: dash.ado (families, the var-count branch, vfields, Supported list, refusal removal, type lists), dash_parse.mata (abbreviation table, `_dash_undrawn_plottype`, `_dash_extract_vars` if a new key).
-  - Renderer: dash_render.py (`map_rpcap`/`map_contour`, a dispatch entry, a `_DASH_*_TYPES` category or new family, family branches in both modes, var-key lists, horizontal tables, copy list for new module helpers).
-  - Help: dash.sthlp (Plot types table, the refusal sentence at :573, the help Unsupported section).
-  - Tests: test_every_plot_type_draws.py, test_mode_parity.py (CORPUS, MOVE_CORPUS), test_server_layer_defects.py (`plot_for`), test_help_plot_types.py, test_plottype_families.py, test_horizontal.py, test_parser.cscript, function_test_map.py, program_coverage_map.py; plus TWOWAY_COVERAGE_AUDIT.md:14,24,101-103 and dash.pkg's "forty twoway plot types" description.
-  - Dependencies: bokeh 3.9 here has `figure.contour` and `bokeh.plotting.contour`, and requires `contourpy>=1.2` (measured).
+- Tier logic: `test/conftest.py:220-293`. `_covers_whole_suite` `:138-155`: a file, node id, `-k`, `--lf` or `--collect-only` is not a whole-suite run, so a targeted run keeps tier tests; `pytest_collection_modifyitems` `:274` (tryfirst) deselects the release and batch tiers on whole-suite runs, then groups parity entries by `xdist_group("parity:<name>")`. Session lock `:127-213` (`/tmp/dash-full-suite-<uid>.lock`). Per-process temp folder `:34-80`. `DASH_SUITE_TIMING=<path>` writes a per-test/file/worker timing report (`test/suite_timing.py`, registered at `conftest.py:116-118`).
+- **Where `make corpus` / `make gallery` fit:** beside `truth` (long, Stata-bound, never part of `make test`): `corpus:` runs the harness (Stata through `scripts/stata_slot.sh`, one slot or up to three, with `DASH_REPO`), writes the comparison data and verdicts; `gallery:` builds `docs/gallery/` and the README block from the corpus output. Neither belongs in `test-all`. Add both to `.PHONY` (`:22`) and `help` (`:24-39`).
+- **The ~20-example cert-tier guard:** either a block range in test_wp33_truth.cscript (runs in `make cert`, so in `make test-all`) or one new cscript (then the pins in 2.4 move by one more). It needs twoway drawn fresh plus the dash model, and the geometry comparison in Python called from a top-level `python:` block (the cert_svg.do pattern, `__main__`-qualified calls, cert_svg.do:44-58). Its expected verdicts come from a committed fixture with complete `_meta` (`test_fixtures_are_committed.py`).
+- **Gallery files and git:** `.gitignore` has `*.html` and `*.log`; `docs/gallery/*.html` needs `git add -f` or a `!docs/gallery/*.html` rule. `docs/` does not exist yet. The privacy guard to extend is `test/test_fixtures_are_committed.py:414` `_ABSOLUTE = ^/(Users|private|var|tmp|home)/|^[A-Z]:\\` (fixtures only today); `test/test_no_secrets.py` scans tracked files for key shapes and the maintainer's e-mail only, so Q36 needs a new path/user-name scan over `docs/gallery/`.
+- Inputs on this machine: 46 `twoway_*.sthlp` under `/Applications/StataNow/ado/base/t/`; g.pdf is at `/Applications/StataNow/docs/g.pdf` (not in the repository; DISCOVERY's `docs/g.pdf` means Stata's docs folder). Existing rc-only corpora: `test/fixtures/twoway_corpus.do` (674 lines; twoway_rc vs dash_rc) and `test/fixtures/conformance_corpus.txt` (75 lines), read by test_conformance.cscript, test_option_surface.cscript, test_option_validation.cscript. `git grep gr_example` finds only the audit.
 
-## 3. The saved page's JavaScript recompute
+### 3.2 Headless Chrome and the node harness
 
-- **Python side.** A mapper tags its renderer with `r._dash_agg_source` (the curve or bin source), `r._dash_agg_config` (a JSON-safe dict) and `r._dash_agg_rows` (from `_agg_member_ids`, :15675-15696).
-  - Histogram config: :18011-18054. Keys: `type, varname, bin_edges, ymode, wvar, wtype, discrete, start, width, bin`, plus the date keys `datekind, unit_edges, bin_first, wdatekind`.
-  - Kdensity config: :18380-18412. Keys: `type, varname, x_grid, kernel, bw_rule, bw_fixed, wvar, wtype`, optionally `datekind, x_eval, wdatekind, join`.
-  - `DashRenderer.render()` step 3b (:46219-46237) collects these into `agg_source_registry[gname]` as `(source, cfg)`, adding `member_ids` when the layer counts a subset.
-  - `_build_filter_widgets` (:45427) adds `use=_use_for(gname)` (the filter indices that reach the graph) and sets every callback's `agg_sources` and `agg_configs_json` (:45706-45717, :45787-45788).
-- **JavaScript side.** Inside `_FILTER_JS` (:24612): `const agg_configs = JSON.parse(agg_configs_json)` (:25152). Then, per config:
-  - `dash_data_for(ac.use)` (:24768; masks by `dash_mask_for` :24736);
-  - a `member_ids` pick;
-  - **one variable** `raw_col = _pick(_ac_data[ac.varname])`, with `continue` if absent;
-  - values and weights joint-filtered.
+- `test/responsive_probe.py` (302 lines): `find_chrome()` `:124-134` (`DASH_CHROME`, then `CHROME_CANDIDATES` `:43-50` macOS/Linux paths, then `which`); `chrome_argv()` `:165-190` starts the native arm64 slice via `/usr/bin/arch` (Rosetta made pages 57-98 s); `admit_script()` `:193-233` adds an injected script's sha256 to the saved page's CSP or a nonce on a served page (test-only page copies); `measure_many()` `:247-302` loads iframes of exact widths with `--headless=new --dump-dom` (one-shot, virtual time).
+- `test/range_probe.py` (300 lines): `RangeProbe` `:132` keeps one page open over the DevTools protocol (tornado websocket, `_page_ws` `:196`, `_send` `:238`, `_eval` `:241`, `_wait_for` `:251`, `js_errors` `:297`); `_free_port` `:123`. `test/test_csp_browser.py:183-279` `_CspProbe(RangeProbe)` starts Chrome with `--remote-debugging-port`, `--window-size=1400,1000`, `Runtime.enable`, `Page.enable`, `Page.addScriptToEvaluateOnNewDocument`, download behaviour, and reads violations.
+- **dash's own vector export:** `_DASH_SVG_SAVE_JS` (dash_render.py:50171-50198) calls `Bokeh.index.find_one(grid).export("svg").to_blob()`; `test/test_export_svg.py:285-335` (`_CAPTURE_JS`, `_CLICK_JS`, `_export`) clicks the Save as SVG action over DevTools and captures the blob. This is the existing route to a static dash SVG with no new dependency; `bokeh.io.export_svg` needs selenium plus a webdriver (not installed; allowed only as a dev/test dependency, Q19). Figures are never drawn with `output_backend="svg"` (it breaks the grid's PNG save in bokeh 3.8/3.9, dash_render.py:50163-50170; `test_export_svg.py:248-254` asserts canvas or webgl; AGENTS.md:151). No code takes screenshots (`Page.captureScreenshot`, `--screenshot`, `setDeviceMetricsOverride` appear nowhere).
+- Reading drawn geometry in a browser: `test/test_default_axes_chrome.py` reads each axis view's `tick_coords` before/after a move (release tier) — the model for reading dash's drawn ticks for the corpus.
+- **Node harness:** `test/js_runner.py` (836 lines): `find_node()` `:84` (`DASH_NODE`, then `which node`), `run_js` `:390`, `JsSession` `:410` (state carried across moves), `mask_parity` `:601`, `run_filter_js_block` `:677`, `run_fit_js_block` `:741`, `run_fit_rows` `:828`. This is how the saved page's JS twins are pinned to the Python twins without a browser.
+- **Mode parity guard:** `test/test_mode_parity.py` (6,790 lines, batch tier): `CORPUS` `:1525` (every dispatched plot type bare, then feature entries; `TestTheCorpusIsComplete` `:4541` derives the type list from the dispatch tables), `_render_pair` `:1330`, `_figure_profile` `:996` (glyph rows/coords via `_glyph_profile` `:368`, annotations `:526`, tools `:782`, axes `:860`, chrome `:928`), `ALLOWED` differences (`_allowed` `:177`), move classes (`TestAFilterMoveAgrees` `:4139`, `TestASequenceOfMovesAgrees` `:5785`). A "parity entry" for a new twin is a `_case(...)` in `CORPUS`. `_figure_profile` is the closest existing extractor of a dash figure's geometry for the corpus verdicts.
 
-  Then the `histogram` branch (:25213-25284) and the `kdensity` branch (:25285-25375), each writing `src.data` and calling `src.change.emit()`. **An x/y estimator needs both its x and y columns, filtered jointly.** The shared prelude reads one variable only, so a fit branch must read `ac.xvar` and `ac.yvar` itself or the prelude must be generalised.
-- **Shared JS helpers.**
-  - `_DASH_FMT_JS` (:23390): `dash_fmt` :24309, `dash_fmt_text` :24340, `dash_html_escape` :24345, `dash_stata_value_of` :24285.
-  - `_DASH_FILTER_MASK_JS` (:24504): `dash_filter_mask`.
-  - `dash_join_rebuild` :24665, `dash_pctl` :25085, `dash_wpctl` :25104, `dash_kernel` :25124.
-  - The KPI block runs from "// ---- KPI recompute, shared by" (:24904); `dash_apply_kpis` is :24916.
-  - The axis re-finish is appended after `_DASH_AXIS_FINISH_JS` (:30933) by the module statement at :31459-31462 (never inside the literal; WP-30 A153).
-- **Slicing hazards.**
-  - The brush script copies two slices of `_FILTER_JS` by marker: "// ---- KPI recompute, shared by" up to "dash_apply_kpis(new_data,", and "function dash_pctl(" up to "// Stata's kernels ([R] kdensity)" (:45374-45389).
-  - `test/js_runner.run_filter_js_block` (:518-556) slices "function dash_pctl" up to "// agg_sources is a Bokeh model list" as helpers, and cuts the branches at `"if (ac.type === 'histogram') {"`, `"} else if (ac.type === 'kdensity') {"`, `"// DASH_KDE_RULE"` and `"src.data = { x: xs, y: ys };"`.
-  - **Where to register a JS twin.** Put new estimator helpers as named functions between `dash_kernel` and the "// agg_sources is a Bokeh model list" comment, so run_filter_js_block's helper slice carries them; never between `dash_pctl` and "// Stata's kernels". Add a new `else if (ac.type === '<type>')` branch after kdensity, and extend js_runner with a block runner for it.
-- **The stale cue** (WP-29 M3):
-  - Constants: `_DASH_STALE_ALPHA`, `_DASH_STALE_SUFFIX`, `_DASH_STALE_CUE_TEXT`, `_DASH_STALE_STATUS_HTML` (:1896-1910). The status line is the only `role="status" aria-live` in the code.
-  - `_dash_stale_kind` (:1913-1929) returns "fit" for every non-histogram, non-kdensity computed type.
-  - Tags are attached in `_make_figure_body` (:44049-44060, `_frozen_layer_tag` :43040) and collected by `_collect_frozen_layers` (:43078). `_stale_cue_args` (:45817-45899) builds the models.
-  - The JS marking block is at :25377ff, inside `_FILTER_JS`.
-  - **A type that gains a JS refit** must also make `_dash_stale_kind` return None for itself. Otherwise it is refit and still marked "(unfiltered)". Then flip test/test_saved_stale_cue.py `_FROZEN` (:58), the `_DASH_STALE_STATUS_HTML` text and the help.
-- **Why a recast histogram or kdensity is marked stale (GAPS3 C16).** The recast path returns through `_dash_draw_xy_as` before the agg tagging (:17995-18003), so it never gets an `_dash_agg_config`.
-- **Python estimators** (all copied into the app):
+### 3.3 Existing twoway SVG readers (reuse for the corpus)
 
-  | Estimator | Location | Signature |
-  |---|---|---|
-  | `GlyphMapper._compute_lpoly_fit` | :16960 | `(x, y, bwidth=None, degree=0, n_grid=None, kernel="epanechnikov", w=None, x_grid=None) -> (xg, yg)` |
-  | `_fit_grid` | :20969 | `(x, options, layer="fit")`, n default 100, `_FIT_GRID` :474 |
-  | `_dash_wls` | :22185 | `(X, y, w=None, wtype=None) -> dict` |
-  | `_t_ppf` | :20887 | `(p, df)` |
-  | `_fp_grid` / `_fp_report_unsupported` | :21007 / :21042 | |
-  | `GlyphMapper._fp_prepare` / `_fp_design` / `_fp_screen` / `_fp_fit` / `_fp_plot_grid` / `_fp_stdp` | :17389 / :17424 / :17451 / :17577 / :17630 / :17677 | `_FP_POWERS` :17378 |
-  | `GlyphMapper._stata_lowess` | :16801 | `(x, y, bw=0.8, mean=False, noweight=False)` |
-  | `_default_lpoly_bwidth` | :16922 | |
-  | `_lpoly_rot_*` | :21459-21621 | |
-  | `_lpoly_kernel_weights` / `_lpoly_local_wls` / `_lpoly_se` | :22049 / :22067 / :22103 | |
-  | `_mband_default_bands` | :20795 | |
-  | `_natural_cubic_spline` | :22385 | mspline |
-  | `_qfit_design` | :22293 | |
-  | `_dash_fitci_std` / `_dash_fitci_se` | :22342 / :22352 | |
-  | `GlyphMapper._fitci_std_for` | :16528 | `(options, wtype, layer)` |
-  | `_stata_kde_bandwidth` / `_kde_curve` | :21850 / :21911 | |
+- `scripts/svg_truth.py` (686 lines, WP-28): `svg_document` `:129`, `svg_texts` `:314`, `svg_has_text` `:320`, `svg_fills` `:333`, `svg_rects` `:367`, `svg_marker_fills` `:396`, `svg_lines` `:403`, `line_groups` `:413`, `svg_plotregion` `:439`, `label_value` `:446`, `fit_axis_mapping` `:458`, `svg_axis_reading` `:500`, `svg_axis_extent` `:650`; documents Stata's writer (U+00A0 for space runs, region order).
+- `scripts/svg_chrome.py` (277): regions by the `plotregion(lcolor("1 2 3"))` sentinel (`svg_region` `:67`), title placement `:122`, label rotation/side `:151-170`, ticks `:194`, axis line `:237`, grid `:254`. Needs the sentinel in the probe command, so corpus commands copied verbatim from help files would not carry it.
+- `scripts/svg_layer.py` (203): every drawn shape (`svg_elements` `:68`, `markers` `:134`, `marker_shape` `:159`, `hollow` `:191`, `stroke_extent` `:196`).
+- `scripts/svg_scheme_visual.py` (379): graph size `:107`, regions `:117`, fonts `:173`, markers `:257`, lines `:296`, histogram bars `:314`.
+- `scripts/svg_text_runs.py` (117): styled runs of a `<text>` (`svg_text_runs` `:92`).
+- `test/cert_svg.do` (328): `cert_svg_export, name() file()` `:157-183` (`graph export ..., as(svg) replace`), `cert_svg_texts` `:186`, `cert_svg_has_text` `:211`, `cert_svg_fills` `:233`, `cert_svg_extent` `:257`, `cert_graph_scale` `:295` (reads `.Graph.plotregion1.<axis>scale` members with no Python). Pinned by test/test_svg_truth.py, test_svg_chrome.py.
+- Generators already exporting twoway SVG: `scripts/extract_svg_truth_smoke.do`, `extract_scheme_visual_truth.do`, `extract_graph_export_truth.do`, `extract_default_axes_truth.do`, `extract_axis_truth.do` and most of the 126 `extract_*_truth.do`.
 
-  The served app wraps lowess, lpoly and fpfit in `_dash_memo_wrap` (:35168; template :48709-48716).
-- **How a parity test compares a JS twin with Python.** The pattern is test_statistical_helpers.py:810-848 (`TestFilterJavaScript`):
-  1. draw with `GM().map_<type>(figure(), ColumnDataSource(...), …)`;
-  2. take `r._dash_agg_config`;
-  3. run the JS branch under node on a subset (`run_filter_js_block`);
-  4. compare with the Python mapper's output on the same subset (`np.testing.assert_allclose`).
+## 4. A gallery page built by dash itself
 
-  For the whole page, `js_runner.JsSession(r.filter_callbacks)` (js_runner.py:302-439) runs a callback's real code and args, commits `data`, `booleans`, `text`, `width`, `muted`, `visible` and `label` back, and supports chained moves. The node prelude stubs `change.emit` and `setv` (:218-275). The timing bound is test_estimator_cost.py (oracles and bounds).
+### 4.1 How a dashboard is composed today
 
-## 4. The served app's move path
+- **Routing and registry.** `dash.ado:164-165` sends `build` to `_dash_build`. `_dash_register_graph` (`dash.ado:11252`) stores each `name()` graph as globals: the command in `dash_spec_<name>`, the graph JSON in `dash_json_<name>` (`:11397-11398`, `st_global`), function points in `dash_fpts_<name>`, and appends the name to `dash_graph_registry` (`:11416-11422`). Names: at most 22 characters (part of a 32-character global name), no `__`; a taken name needs `name(n, replace)` (`:11360-11364`). KPIs share the registry (`dash_kpi_<name>` + `__sta/var/val/...` fields, `:12368-12408`). `dash clear` `:11948`. Each graph's JSON lives in one global, so it is bounded by c(macrolen).
+- **`dash build` options** (`dash.ado:13490-13505`): `SAVing(string asis)` (required, `:13521`), `TItle()`, `SUBtitle()`, `LAYout()`, `LINK()`, `THEME()`, `SCHeme()`, `NOBRowser`, `REPLACE`, `SERVER`, `TABS(string asis)`, `FILTERPOSition()`, `CSV`, `BRush()`; `filter()` copies are pulled out first (`:13481-13482`), `link()` copies at `:13488`. Declared again in `_dash_prepare_spec` (`:12482-12502`, adding CMDname, SPECpath, DATApath, INHERIT, FILTer). Help: syntax `dash.sthlp:91-106`, options `:1523-1560`. **No description, text, markdown, HTML or image option exists.**
+- **Master JSON** (`dash.ado:13432`): `{"graphs":[...],"kpis":[...],"build_options":{layout, link, filter, theme, scheme, title, subtitle, registry, tabs, filter_position, csv, ..., limits}}`, written to a private run folder (`_dash_tmp_open` `:7721`, `_dash_tmp_close` `:7789`), rendered by `_dash_do_render` (`dash.ado:650`) through the session-cached renderer module (`_dash_xm_load`; CLI `--spec/--data/--output/--mode`, dash_render.py:73428-73433).
+- **One dataset per build.** The data is serialised from memory at build and every registered command's qualifiers are re-evaluated then (`dash.sthlp:190-197`). A gallery mixing `sysuse auto`, `sysuse sp500`, `webuse ...` needs one build per dataset (or a combined frame of data), so "one page with tabs by plot type" built by a single `dash build` cannot mix datasets unless the harness merges them.
+- **Python side.** `DashRenderer.render()` dash_render.py:66307 -> `_build_kpi_html` `:65182` -> filters -> `_assemble_layout` `:66086`; order from `_dash_layout_order` `:50997` (registry order); each cell from `_dash_layout_cell` `:51524` (a by() graph is a sub-grid; a graph its figure, optional data table; else `kpi_divs.get(name)` `:51623`); shared by grid, tabs and the generated app.
+- **`tabs()`** (`dash.sthlp:1857-1899`): `tabs(Title: n1 n2[, layout(r c | n:r,c ...)] / Title2: ...)`; titles cannot hold `:` or `/`; a name may sit in several tabs; names in no tab are drawn below the tabs. Validated by `_dash_tabs_refusal` (dash_parse.mata, called at `dash.ado:12623-12631`); parsed by `_dash_parse_tabs` dash_render.py:51663 and `_dash_tab_layout` `:51737`; built by `_dash_tab_panels` `:51763-51785` (`TabPanel(child=_dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width"))), title=title)`, `Tabs(..., html_attributes={"role": "region", "aria-label": "Dashboard tabs"})`); each tab's grid `_dash_tab_grid` `:51788` (ceil(sqrt(n)) columns unless the tab has `layout()`).
+- **`layout()`** (`dash.sthlp:1778-1856`; `_compute_grid` dash_render.py:64596; `_dash_auto_grid_cols` `:51029`): `auto`, `rows cols`, `name:row,col`, or `bs[: name=span ... / ...]` (12-column page, `_render_bootstrap_html` `:64160`). Any grid narrower than 240 px per column stacks to one column (`_dash_reflow` `:50904`, `_DASH_MIN_COLUMN_PX = 240` `:491`).
+- **Other pieces:** header Divs `_dash_header_models` `:52220` (escaped, `disable_math=True`, `:52206-52217`); KPI card HTML `_dash_kpi_card_html` `:29950` (escaped, colours sanitised) wrapped by `_make_kpi_div` `:64087`; `table` is a graph option (a folded DataTable, `dash.sthlp:2047-2083`); filters sit in a top bar or left sidebar (`:66224-66245`).
 
-All of this lives in the template strings of `ServerAppBuilder._generate_app_source` (:47847-51072).
-- **Wiring.** Each widget gets `on_change('value_throttled' or 'value', _dash_event_throttle(doc, _dash_touch(cb)))` (:50465-50473). `_make_filter_cb` is at :50077.
-- **One move:**
-  1. `_on_filter_change` (:50426-50447): with a server session it calls `_dash_move_plan(True)` (:50107-50133: every target's mask, plus a mapper copy from `_dash_plan_mapper` :48828), bumps `_slot.gen`, submits `_dash_move_job(plan)` (:50415-50425) to `_dash_recompute_worker()` (:48775; `_DashRecomputeWorker.submit` :48740) and shows the "Updating..." cue (`Div` at :50608, no ARIA). Otherwise it calls `_dash_move_apply(plan, None)` inline.
-  2. The worker runs `_dash_move_compute` (:50180-50194): `agg['redraw'](_dash_agg_frame(plan,key))` for each aggregate, and `_dash_kpi_value` for each KPI.
-  3. `_dash_move_post` hands the result back (:50398, `IOLoop.add_callback`), and `_dash_move_finish` (:50379) runs on the next tick.
-  4. `_dash_move_apply` (:50195-50378):
-     - step 2 refreshes raw sources with `_dash_refresh_unlinked` per source and `_dash_refresh_linked` for the link group;
-     - step 3 copies the fresh aggregate data onto the live sources;
-     - step 3b runs `_dash_refinish_axes` (:32271);
-     - step 4 sets KPI text through `_compute_kpi` (template :48654) and `_format_kpi` (:48675), then `_dash_kpi_card` (:48112).
-- **Redraw lambdas.** `_dash_redraw_for` (:49267-49326) builds `_redraw(frame)`. It applies the graph qualifier, then the layer's own (`_dash_layer_frame`), draws on a throwaway figure through `_dash_draw_layer`, and returns the sources the mapper built. Registration (:49585-49604): **any layer whose mapper built its own source** goes into `agg_sources[(gname,pi)]`, so a new computed type is refit when served with no extra code. The saved page needs the JS twin.
-- **Second axes.**
-  - `_dash_add_secondary_axes` (:31720-31800ff) is called at saved :43792 and served :49446. It makes `extra_y_ranges['y2']`/`extra_x_ranges['x2']` from `_compute_secondary_range` (:11840).
-  - `_dash_finish_secondary_axes` (:32581) is called at saved :44108 and served :49640. It fits the range to the drawn layers.
-  - Neither `_dash_refinish_axes` (:32271-32301) nor `_DASH_AXIS_FINISH_JS` touches y2/x2 after a move (GAPS3 D9).
+### 4.2 Can a page embed raw SVG/HTML or an image next to a graph? No.
 
-## 5. Test conventions
+- Every user string reaches the page as a model property or escaped text, "never as markup of its own" (`dash.sthlp:2725-2728`). Graph titles, notes and captions are drawn on the canvas as text.
+- **Smallest in-dash addition:** a new registered panel kind modelled on KPI cards: a subcommand storing `dash_<kind>_<name>` globals and joining the registry (copy `_dash_kpi`, `dash.ado:12003`, `:12368-12408`), a new array in the master JSON (`:13432`), a Bokeh `Div` built into a dict like `self.kpi_divs` (`dash_render.py:65182`); placement is then free because `_dash_layout_cell` (`:51623`) is shared by grid, tabs and served app; `_dash_layout_order` (`:50997`), the tabs/layout name checks, `ServerAppBuilder` (`:66776`) and mode parity must learn it. It breaks the help's no-markup promise, so the safe form is an `<img src="data:image/svg+xml;base64,...">` (an SVG in `<img>` runs no script), allowed by the saved page's `img-src data: blob:`.
+- **Harness post-process (no product change):** the saved page is written by `main()` (dash_render.py:72645-72651); its head comes from `file_html(layout_root, INLINE, ...)` (`:66286`), the script hashes `_dash_script_hashes` (`:5808`), `_dash_saved_head` (`:5916`) spliced in at `<head>` (`:66293-66298`), and `_dash_seal_saved_page` (`:5929`) refuses an unhashed inline script. The saved CSP `_DASH_CSP_STANDALONE` (`:5706-5716`): `default-src 'none'; script-src 'unsafe-eval' (+hashes); style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`. Inline `<svg>` markup and data-URI images are allowed; `<img src="file.svg">` (no `'self'`), `<object>` and inline scripts are not. Injected markup can only sit outside the Bokeh root (above or below the whole layout), not inside a tab, unless the document JSON block is edited (fragile). `test/responsive_probe.py:193-233` (`admit_script`) is the CSP-safe edit precedent.
+- **Option that avoids both:** one dash page per example (or per plot type) plus a static index HTML generated by the harness that frames them (`<iframe>` of each saved page beside an `<img>` of the twoway SVG). That contradicts Q16/Q58 ("one gallery page built with dash itself, dash tabs by plot type") only if the frame page counts; the maintainer's wording asks for dash tabs, so the panel-kind route or a post-process inside a tab are the two literal readings. This is a plan decision.
 
-- **The WP-30 truth script.** test/test_wp30_truth.cscript (12,385 lines):
-  - The header lists the blocks filled so far (:1-28).
-  - Then `cscript "…" adodir ".."`, the timer, the `c(python_exec)` SKIP with exit 222, `do "cert_helpers.do"`, `do "cert_svg.do"`, the loading of `../dash_parse.mata` and `../dash.ado`, and `global dash_nobrowser 1` (:30-54).
-  - Tally helpers `_w30_expect id cond msg` and `_w30_done id msg` (:56-84), and a private work directory made from a tempfile (:90-97).
-  - The shard "parts" with per-block seconds (`w30_secs` :112-118) and Mata `_w30_part` (:146-189).
-  - Each block has the form `* ==== S<NN> <id>: <name> ====`, then `local only : env WP30_ONLY` and `if inlist("`only'","","S<NN>") & `: list posof "S<NN>" in w30_run' {`, the `S<NN> start`/`end` display lines, and `* ==== end S<NN> ====`. Helpers go above the header. The S14 example is at :2991-3317.
-  - The final marker `* ==== append new blocks above this line ====` and the summary (exit 9 on failure or when no case ran).
-  - **Truth is measured live in the same run.** Examples: `quietly twoway bar y x1, name(bgt)` then `local bs = `.bgt.plotregion1.plot1.bar_size'` (:3176-3178); `capture twoway …` / `local trc=_rc` against `capture dash …` / `local drc=_rc` (:2973-2978, LN-27). Then `_dash_serve_spec, specpath() datapath()` and a `python:` helper that renders both modes.
-  - **Registration.** test/run_all_cscripts.do: the shard table (:84-155, written by scripts/cert_shards.py; `* * *` means the script runs in every shard) and a block per script ("// 69." at :3077-3121). Pins: test_cscript_hygiene.py:299 (68 scripts), :319 (50), :328 (13 probes), `TestTheWp30TruthScript` (:1148); test_cert_shards.py:45 (68). A `test_wp31_truth.cscript` must move all of them.
-- **cert_helpers.do.** `cert_file_has path, needle() [lower]` gives r(found) (:159). `cert_log_has` gives r(found) and r(count) with Stata's line wrapping undone (:182). `cert_file_count` (:203). `_hc_logged tag cmd` is **not** in cert_helpers.do. It is local to test/test_help_claims_1.cscript:224-238: it logs the command to `c(tmpdir)dash_hc1_<tag>.log` and returns r(rc) and r(logfile).
-- **Extractors and fixtures.** Exemplar: scripts/extract_default_base_truth.do.
-  - Header comment; `DASH_REPO` root with guards (:21-43); `adopath ++`, then load the mata and ado, then `global dash_nobrowser 1` (:45-48); a work directory in `c(tmpdir)`; `shell git rev-parse HEAD > file`, never `shell=True`.
-  - Probe by class values; a `python:` block writes JSON with `"_meta":{"stata_version","born_date","dash_commit","extracted","source"}` (:181-183), `sort_keys`.
-  - Run as `DASH_REPO=<repo> scripts/stata_slot.sh <scratch> <repo>/scripts/extract_X_truth.do`. Add the fixture with `git add -f`. test_fixtures_are_committed.py requires a test to name it.
-- **`CORPUS` entry shape.** `_case(name, plots, bo, go, graphs, kpis, if_expr, in_expr, marks)` (test_mode_parity.py:1353) returns `pytest.param(name, spec, id=name)`. The spec comes from `_spec` (:177-204): `{"graphs":[{"name","graph_options","options","plots","if_expr","in_expr"}],"kpis":[…],"build_options":{layout,link,filter,…,"registry":…}}`. Example: `_case("rcap msize(large)", [plot_for("rcap", {"msize":"large"})])`.
-- **`MOVE_CORPUS` entry shape.** `_move_case(name, move, plots, go, graphs, kpis, if_expr, bo)` (:2876) returns `pytest.param(name, spec, action, oracle)`, where `move` is an element of `_MOVES` (:2819-2826), e.g. `("dropdown to Foreign","foreign, type(dropdown)",("Select","Foreign"),"foreign == 1")`. Example: `_move_case("lfit, dropdown to Foreign", _MOVES[0], [plot_for("lfit")])`.
-  - The move oracle is `_saved_with_qualifier` (:2802), i.e. the **Python saved renderer re-run with an `if`**, never the saved page's JS (GAPS3 H6). Served moves use `_served_after_move` (:2756).
-  - `_MOVED_LAYERS` (:2837-2846) and `_EMPTIED_LAYERS` (:2858) expand per type.
-- **FUNCTIONS map.** test/function_test_map.py keys are `co_qualname`s (`GlyphMapper.map_x`, `f.<locals>.g`, `app:<qualname>` for template-only functions; examples at :762, :1140). The value is one node id. `test_function_test_map.py` fails on a missing entry, a stale entry, a named test that does not exist, or a function only tests reach (keep it in `TEST_ONLY` with a reason). Ado programs and Mata functions go in test/program_coverage_map.py `COVERAGE` (:42ff) as `"script.cscript:CASE-ID"`. The WP-30 anchors remain at :299-320.
-- **The tracking reader (GAPS2).** test/test_tracking_documents.py:725-799:
-  - `_GAPS2_HEADING = ^### (?P<id>[A-NX]\d{1,2})\. (?P<title>\S.*)$`;
-  - `_GAPS2_TRACKED = ^- \*\*Tracked:\*\* (?P<text>\S.*)$`;
-  - `_GAPS2_CLOSED = ^Closed in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40})\b`;
-  - `_GAPS2_DEFERRED = ^Deferred \((WP-\d{2})\): \S`.
-  - `_parse_gaps2` returns `({id:{title,line,tracked,closed,deferred}}, dupes)`; the self-test is `test_the_gaps2_readers` (:1062).
-  - The DROPIN P2 reader is `TestNoResidualNamesAClosedRow` (:500-528): rows `^(\d+)\. (.*)$` under a `### P2:` heading, where "Written closed" or "[Closed in" marks a closed row.
-  - **GAPS3 rows are table rows (`| A1 | … |`) with no headings and no Tracked lines today**, so a GAPS3 reader needs a new line form. One option: a "Tracked" section with lines such as `- **A1 Tracked:** Closed in WP-31, BUGS.md "<title>", commit <sha>`, keyed by a table-ID regex like `^\| ([A-K]\d{1,2}) \|`.
-  - The WP-30 machinery to mirror is `WP30_OPEN` (:1580), `WP30_LISTS` (:1588), `WP30_SECTION` (:1649), `_WP30_MARKER` and `_WP30_OPEN_FORM` (:1711-1714) and `TestWp30Tracking` (:1817). The release guard's allowance is `TestNoOpenEntryBlocksARelease::test_no_open_entry_is_s1_or_s2` (:548ff).
-- **BUGS.md format.** Parsed by `_parse_bugs` (:122-176): the header `- [x] Title: …` or `- [ ] Title: …`, then exactly four fields in order (`File Names and Line Numbers`, `Description`, `Suggested fix`, `Resolution`), each starting `  - `, with continuation lines indented four spaces. An open entry's Resolution must carry exactly one `Graded S<n> (WP-NN): <why>`. The WP-30 open form was `Not fixed because WP-30 section NN has not landed. Graded S1|S2|S3 (WP-30): …`.
+### 4.3 Fixed figure size (twoway's 5.5 x 4 in)
 
-  One WP-30 entry, verbatim (BUGS.md:3020-3024):
-  ```
-  - [x] Title: bar and rbar default to 0.8 of the smallest x gap, rbar ignores barwidth() without a note, rcap caps ignore msize(), and rcapsym draws caps twoway does not
-    - File Names and Line Numbers: dash_render.py at c96facd: GlyphMapper.map_bar (10122), GlyphMapper.map_rbar (13005), GlyphMapper.map_rcap (13153), GlyphMapper.map_rcapsym (13512), GlyphMapper._tag_spacing (10293), _dash_copy_redraw_geometry (24941)
-    - Description: DROPIN-REMAINING.md:121-128 P1.17, the width and cap part, re-verified at c96facd: bar and rbar default to 0.8× the smallest x gap, not 1 x-unit; rbar ignores `barwidth()` with no note; rcap cap width ignores `msize()`, and rcapsym draws caps twoway does not. (WP-29 notes: barwidth() on a date axis is read in ms; P0.18 fixed the served redraw widths only.) Sources: GAPS2-A3-a, GAPS2-A3-b, GAPS2-A3-d, GAPS2-A3-e, AUDIT-44.
-    - Suggested fix: WP-30 section 14 (Bar widths and range caps): draw bars one x-unit wide, honour rbar barwidth(), size rcap caps from msize() and draw rcapsym without caps, unchanged by filter moves in both modes.
-    - Resolution: Fixed 07oct2026 (WP-30, P1.17a). GlyphMapper.map_bar and map_rbar draw each bar one x unit wide, ... Pinned by test/test_bar_range_geometry.py::TestBarIsOneXUnit::test_the_width_is_twoways, ..., test/test_wp30_truth.cscript BG-01, test/test_twoway_option_parity.cscript BG-07; fixture test/fixtures/bar_geometry_truth.json. Residual, deferred (WP-30): ... (P2.21). Closes GAPS2 A3 (WP-30, A3).
-  ```
-  (The Resolution is shortened here with "..."; the full text is at BUGS.md:3024.)
+- Every figure is `sizing_mode="stretch_width"`, `min_height=_MIN_FIGURE_HEIGHT` (160), `max_height=_MAX_FIGURE_HEIGHT` (560) (dash_render.py:518-519, `:63415-63432`). Proportions from `_resolve_aspect_ratio` (`:63223`) / `_dash_figure_aspect` (`:27437`): xsize()/ysize(), else 1/aspectratio(), else the scheme's graphsize (s2color 5.5x4, `dash-s2color.scheme:90-91`; stcolor 7.5x4.5, `dash-stcolor.scheme:90-91`). A lone graph (the one-line form uses layout `1 1`, dash.ado:11868) fills the page width; height = width / ratio clamped to the band.
+- The only fixed pixel size: `_dash_apply_frame_aspect` (`:27680-27701`) when `aspectratio()` is given with `xsize()`/`ysize()`: 96 px per inch, `k = min(1, 560/(h_in*96))`, then `_dash_frame_sizes` (`:27650-27677`) sets `sizing_mode="fixed"` and frame sizes (5.5x4 in -> 528x384). That changes the plot region's ratio (not twoway's neutral look) and is the audit's VF-3 0 px bug path.
+- So dash cannot render a neutral fixed 5.5x4 figure today. Harness options: drive the viewport/container width (an iframe of exact width as `responsive_probe.measure_many` does, so height follows from the 1.375 ratio and the band), or add a dev-only build option; a figure at 528 px wide gives 384 px tall with the s2color ratio, inside the 160-560 band. stcolor's ratio is 1.667, so "twoway's 5.5x4 shape" holds only for the s2color-family default graphsize; the corpus must pin the scheme or follow each scheme's graphsize.
+- Static dash SVG: the existing route is BokehJS `view.export("svg")` (`_DASH_SVG_SAVE_JS`, dash_render.py:50171) driven over DevTools as `test_export_svg.py:320-335` does; never `output_backend="svg"` on a grid figure (dash_render.py:50163-50170).
 
-## 6. The WP-30 section-brief format
+### 4.4 Saved page, served app, caps for ~150 examples
 
-Files: .ultraplan-archive-20261010/wp30/index.md (1,120 lines), section-14-bar-widths-caps.md (656), decision-register.md, and BRIEF.md (.ultraplan-archive-20261010/sections/BRIEF.md, 88 lines).
+- Saved page: one self-contained HTML, BokehJS and CSS inline (`file_html(..., INLINE)`, dash_render.py:5689-5691, `:66286`); about 1.3 MB for one graph (BokehJS), 1.6-4.7 MB for the example dashboards; recorded notes: 300 graphs 7.9 s / 4.0 MB, 3,000 tabs 14.4 s / 3.9 MB (dash_render.py:2352-2353). Served app: `dash build, server` writes a `.py` (`ServerAppBuilder` `:66776`), BokehJS from `/static`, nonce CSP (`_DASH_CSP_SERVED_META` `:5748`).
+- Caps (`_DASH_LIMITS`, dash_render.py:2360-2378; mirrored in dash.ado `_dash_limit`): cells 5M/20M `dash_max_cells`; bytes 50 MB/500 MB `dash_max_bytes`; graphs (graphs + KPIs in the registry) 100/1,000 `dash_max_graphs` (`_dash_graph_cap`, dash.ado:5174-5196, r(134)); plots 100/1,000 `dash_max_plots`; by_groups 100/1,000 `dash_max_by_groups`; tabs 50/500 `dash_max_tabs` (extra tabs cut with a note, `:51726-51733`); filters 20/200; reflines 10,000/100,000; added_text 1,000/100,000; table_rows 1,000/100,000. A 150-example page needs `global dash_max_graphs 150` (or more) before registering; tabs by plot type (about 45) stay under 50.
 
-- **index.md headings:** Overview · Decision record (Maintainer decisions M1-M12; Architect decisions A138-A156; Per-question rulings; Deltas from BRIEF.md; Execution conventions learned in WP-29 (E1-E12); Index reconciliations; Decisions for maintainer ratification) · Section manifest (a table: # / Section / Item / Batch / Depends on / Blocks / Risk / Effort / Case-id prefix) · P1 coverage · Batch execution order (step list k.0-k.5: impact at base → cut worktrees → run → land → G8 gate → close) · Batch 0..20 subsections · Test-writing rule · How to execute (0g queue script, 0a plan commit, per-entry cycle 1-7, landing routine 1-8, closeout S58.1-S58.7) · Full-suite runs · The cscript driver · Merge rules R1-R13 · Verification gates G0-G11 · Risk register.
-- **Decision register:** per item, a table `| Id | Question | Ruling | Source | Why |` (e.g. P1.1.1). Source is an M decision or an A ruling. It also has a ratification list, strict readings, new P2 residuals and cross-cutting X rulings.
-- **The truth-block spec** (index.md:94 and R1): the header `* ==== S<NN> P1.<n>: <name> ====`, the `WP30_ONLY` gate, start and end lines, helpers above the header, a second block only directly below your own, and the marker kept last. Refusal checks go to the area script, never to the truth script.
-- **Merge rules R1-R13:**
-  - R1: cscripts.
-  - R2: served copy lists and maps appended at named anchors, with a per-section anchor table.
-  - R3: help paragraph ownership, a table of help title, lines and sections.
-  - R4: CHANGELOG markers replaced in place.
-  - R5: BUGS.md and the tracking test.
-  - R6: dash.ado, dash_setup.ado and dash_parse.mata (`_needed` is data; `version 19`).
-  - R7: fixtures (`_meta`, never hand-patched).
-  - R8: the parity corpus (append; `ALLOWED` never edited).
-  - R9: pinned tests flipped with a `Flipped:` line, never deleted.
-  - R10: combined pins and counts, `# old -> new: id why`, with a table of expected movers.
-  - R11: axis finishers.
-  - R12: one editor per batch of `_generate_app_source`, `_make_figure_body`, `_build_sources_and_figures`, `_build_filter_widgets` and the four appliers.
-  - R13: GitNexus.
-- **Section-file layout** (section-14): Review amendments · Overview (with a "Test order and commit rule" paragraph) · Section decisions D-14a.. · Risk ([colour] / Why / factors / Mitigation) · Dependencies · Evidence (measured values; the Blast radius table `Symbol | Risk | Note` from `gitnexus impact`; "Measured red list" from a simulated fix, as a node / today / after table) · User stories US-14.k · Business requirements BR-14.k · Technical requirements TR-14.k (exact functions, line ranges, code blocks to insert, copy-list anchors, map keys) · Boundaries · Stata truth (extractor, key/command/recorded table, measured values, truth-block cases BG-01..) · TDD test stubs (file::Class::test, red or guard) · Test plan (table plus AC-14.k) · Tasks (a "Commit boundary" paragraph, then XML tasks) · Section completion criteria · Notes (traps, R-rule citations, notes for the closeout).
-- **The XML task schema** (BRIEF.md:17-29): `<task type="auto|checkpoint" id="NN-MM"><name>verb…</name><files>≤3 paths</files><action><![CDATA[…]]></action><verify><![CDATA[exact commands and expected output]]></verify><done>past tense</done></task>`.
-- **What made the briefs executable:**
-  - exact symbols and line anchors at a named base sha;
-  - quoted measured truth with the commands that produced it;
-  - every pinned test listed by node with its flip;
-  - copy-list anchors;
-  - verify lines with literal `grep -c` and pytest outputs;
-  - fixed commit-message line forms;
-  - boundaries naming the other sections' functions;
-  - one commit per entry, with the failing test first and its failure text saved.
+### 4.5 examples/ (14 do-files; the corpus includes them)
 
-## 7. Dependencies: every place a new one such as scipy must be declared
+- `basic_scatter`; `bootstrap_equal_cols`, `bootstrap_kpi_hero`, `bootstrap_responsive`, `bootstrap_stacked`, `geometry_responsive` (layout(bs)); `comprehensive_demo` (268 lines), `feature_tour`, `full_dashboard`, `multi_graph_dashboard`, `kelly22ex_categorical`; `plot_types_tour` (every plot type, 3 builds); `sp500_dates`; `serve_dashboard` (served app). Datasets: `sysuse auto` (13 files), `sysuse sp500` (2). They are dashboards (KPIs, filters, links), not twoway commands, so a twoway twin exists only for their graph commands; each is already run by `make gate` (release_gate.do step 2) and `test_examples_run.cscript`.
 
-1. **dash_setup.ado:**
-   - `local min_bokeh/max_bokeh/min_numpy/min_pandas` (:57-60);
-   - `pkg_list "bokeh numpy pandas"` (:312);
-   - the import check loop `foreach m in packaging bokeh numpy pandas` (:210);
-   - the ceiling special case (:326, :380, :398);
-   - `_dash_setup_venv` takes the minimums positionally (:183; program :1176);
-   - `_dash_pip_command` (:747) and `_dash_setup_gate` (:896, packaging-based);
-   - the header comment (:7-8).
-2. **dash_setup_lib.py:** `VERIFY_CODE`'s package loop `('packaging','bokeh','numpy','pandas')` (:101); the `mins` dict (:769-772); the venv pip list (:819-821); `_SPEC_RE` (:33).
-3. **dash.ado** `_dash_require_deps` (:338-382): the find_spec list `("numpy","pandas","bokeh")` at :373.
-4. **dash_render.py:**
-   - module-scope imports guarded by `_dash_dep_fail` (:92, imports :136-181);
-   - `_DASH_MIN_PACKAGES` (:186) and `_dash_dep_versions` (:189);
-   - the module docstring's Dependencies section (:55-60);
-   - **the served header's own guarded imports** (:48005-48035, which carries a comment "No scipy and no statsmodels").
 
-   A lazily imported scipy inside one estimator would avoid the module-scope guard.
-5. **dash.pkg** "Requires: Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3." (test_version_floor.py:91-93 asserts this exact string).
-6. **dash.sthlp:** Dependencies (:5136ff): "Python packages, required" and "optional -- none … no longer use scipy" (:5164-5168), plus :3167. **dash_setup.sthlp:** :102, :151-156 ("Nothing else is needed. Earlier versions listed scipy"), :165-191, :280-286.
-7. **Requirements and baselines.** test/requirements-stata.txt and requirements-dev.txt already pin scipy (1.16.3 / 1.17.1). conftest `_BASELINES` (:556-569) and `_running_env` (:583) already track scipy. scripts/floor_matrix.sh:79,107 already install it.
-8. **Pins that assert scipy is absent, and must be flipped:**
-   - test_version_floor.py:85-119 (pkg, help and CHANGELOG Requirements strings) and :450 (`_DASH_MIN_PACKAGES`);
-   - test_help_claims_6.py:1235-1255;
-   - test_help_claims_8.py:368-569 ("no layer imports scipy");
-   - test_server_optional_deps.py:149-214;
-   - test_dependency_guards.py (the per-type no-scipy guards; :575 requires every unguarded top-level import to be the standard library; :594 for the served guard);
-   - CHANGELOG "### Requirements".
+## 5. Per-package code map
 
-## 8. Accessibility and widgets today
+Conventions. "Saved JS twin" = a CustomJS string in dash_render.py that the saved page runs after a filter move (mostly inside `_FILTER_JS` dash_render.py:31821 and `_DASH_AXIS_FINISH_JS` :43010). "Served" = the generated app: `ServerAppBuilder._generate_app_source_body` (dash_render.py:68557) copies the module's functions by name (`_dash_source_of` :66526, cached in `_DASH_SOURCE_CACHE` :66523) and writes a few lines as string literals (those literal lines are the served twins that must change with the saved code, e.g. :70284-70292, :70416-70422, :70701-70704). Every new dash_render.py function needs a row in test/function_test_map.py (test_function_test_map.py), every new ado/Mata program a row in test/program_coverage_map.py; Mata programs go into `_dash_require_mata`. The per-plot Stata pipeline is `_dash_plot` (dash.ado:8335) -> `_dash_split_segs` (dash_parse.mata:3372) -> `_dash_process_segment` (dash.ado:5836, one plot) -> `_dash_render_immediate` (one-line route, args :11437) or `_dash_register_graph` (named route, :11252) -> `_dash_do_render` (dash.ado:650, the only door to Python for builds) . "Holds" below means the audit anchor was re-read at HEAD 090d928 and still points at the code it describes.
 
-- **The saved shell.**
-  - `_assemble_layout` (:45939) routes `layout(bs)` to `_render_bootstrap_html`, which hashes Bokeh's `components()` scripts at :44466-44472 and writes the head at :44591, sealing at :44606. Otherwise `file_html` is used and hashed at :46125-46139.
-  - The header is `_dash_header_models` (:36433, shared).
-  - Grid cells come from `_dash_layout_cell` (:35899, shared, on the copy list), `_dash_tab_panels` (:36015) and `_dash_bs_grid` (:36342).
-- **KPI cards.** `_dash_kpi_card_html` (:22900-22957, shared) produces `div.db-kpi-card` with no role or aria. `_make_kpi_div` (:44248) wraps it with `disable_math=True` and an `InlineStyleSheet`. The served copy is `_dash_kpi_card` (template :48112); it is rebuilt after moves at :50378.
-- **Filter widgets.** `_build_filter_widgets` (:45427) calls `FilterBuilder.build_dropdown/slider/range` (:25525/:25628/:25692). These call the shared `_dash_filter_widget` (:34566), which uses Bokeh `Select`/`Slider`/`RangeSlider`/`Date*Slider` with `title=` from `_dash_filter_title` (:34491; slider titles pass through `_dash_inert_tex`). The served twin is :50001-50015.
-- **ARIA.** The only `role`/`aria` markup is `_DASH_STALE_STATUS_HTML` (:1905-1910). The served "Updating..." `Div` (:50608) has none.
-- **CSP.**
-  - Policies: `_DASH_CSP_STANDALONE` (:4620), `_DASH_CSP_SERVED` (:4641), `_DASH_CSP_SERVED_META` (:4660), `_DASH_CSP_NO_SCRIPTS` (:4685).
-  - Helpers: `_dash_csp_meta` (:4688), `_dash_script_hashes` (:4722), `_dash_csp_standalone` (:4794), `_dash_saved_head` (:4830), `_dash_seal_saved_page` (:4843-4885), `_dash_new_nonce` (:4888), `_dash_csp_served` (:4902), `_dash_nonce_scripts` (:4929), `_dash_served_template` (:4967), `_dash_unsigned_scripts` (:5057).
-  - Saved pages allow only scripts whose hash is taken **before** dash splices its own HTML, so a new dash-authored inline `<script>` would make the seal refuse the page. New behaviour must be a Bokeh `CustomJS` (allowed by `'unsafe-eval'`), e.g. `doc.js_on_event("document_ready", …)` as `_dash_by_stack_hooks` does (:44448-44464), or an `InlineStyleSheet`. Inline styles are allowed (`style-src 'unsafe-inline'`).
-- **The headless-Chrome harness.**
-  - test/test_csp_browser.py (`pytestmark = pytest.mark.release`, :57). `_CspProbe` (:183-276) launches `chrome --headless=new --remote-debugging-port --user-data-dir=<tmp> --window-size=1400,1000` and drives it over DevTools: a listener added by `Page.addScriptToEvaluateOnNewDocument`, then `Runtime.evaluate`; it reads `violations()`, `js_errors()` and `read(js)`, and has `in_task()` and `wait_change()`. Chrome comes from `responsive_probe.find_chrome()` (:123; `DASH_CHROME` first). The module skips without Chrome, which is red under `DASH_STRICT=1`.
-  - test/test_stale_cue_browser.py runs `chrome --headless=new --virtual-time-budget=9000 --dump-dom file://page.html` (:130-162) and parses a `<pre id="r">` the probe writes.
-  - Probe scripts go in through `responsive_probe.admit_script` (:142), which adds a nonce or a sha256 to the policy. This is how an automated accessibility checker script could be injected.
+### P1 (WP-34) Default drawing of common graphs
 
-## 9. The CSV download and the hover export
+**How Stata's own ticks reach the page (items 1, 2, 8, 10).** Python plans the requests: `_dash_stata_tick_requests` (dash_render.py:41815) skips the types in `_DASH_STATA_TICK_SKIP` (`:41811-41812`: histogram, kdensity, function, scatteri, pci, pcarrowi; skip applied `:41849`); counts are `{5}` plus any `#N` 2..99 in an `[xy]N?(label|tick)` option (`:41832-41838`); x and y only, no z/colour request; serialised by `_dash_stata_tick_plan` (`:41887`). dash.ado runs them at export: one-line route `dash.ado:11806-11824` -> `_dash_stata_ticks_gen` (program `:7431`) -> `_dash_axis_ticks_stata` (`:7483`) per request -> `_dash_stata_ticks_take` (dash_render.py:41921) -> `build_options.stata_ticks` (dash.ado:11867); build route `:13236-13250`, `:13431`. The renderer reads the table (`_dash_stata_tick_table` :41734, stamped on the mapper :38327); `_dash_place_count_ticks` (:47207) passes `table=` to `_dash_axis_count_ticks` (:41612) -> `_dash_stata_pick` (:41708, match lo/hi within 1e-9 of the span, else the natscale model). Saved JS twin: `dash_axis_ticks(lo, hi, n, kind, tab)` (:43076) inside `_DASH_AXIS_FINISH_JS`; the plan carries the per-axis `stata` table (:46677, :47202).
 
-- **`_dash_csv_meta`** (:23223-23271) returns `{columns (minus __dash_row__), strings, dates{var:kind}, labels{var:{code:label}}, storage{var:type}, filename, headers?}`.
-- **`_dash_csv_payload`** (:23274-23298) returns the served rows, JSON-safe; strings through `_dash_csv_text_value`, dates through `_stata_dates_to_datetime` and `_dash_json_value`.
-- **`_DASH_CSV_JS`** (:24397-24464) has `dash_csv_cell`. It writes **raw** numbers (shortest float, float32 for float storage), ISO dates and value labels, **not Stata display formats**.
-- **The two download scripts.** `_DASH_CSV_SAVED_JS` (:24603) masks `orig_source` with `dash_filter_mask`; `_DASH_CSV_SERVED_JS` (:24475). The saved button is `_csv_button` (:45901-45937). The column rule is every dataset column.
-- **Hover formatting.**
-  - `_dash_hover_row` (:40023) formats one tooltip row in the Stata display format, through `_dash_fmt_hover` (:27986), a CustomJSHover running `_DASH_FMT_JS`'s `dash_fmt`.
-  - Value labels come from `_dash_add_hover_text` and `_dash_hover_text_column` (`__dash_hover_<var>`, :39983-40020).
-  - `_dash_hover_layer_vars` (:40053) gives each layer's plotted variables.
-  - `_dash_build_hover` (:40081) builds the one tool per figure, with `hover()` extras.
-  - `GlyphMapper._carry_cols` (:12387-12423) copies the caller's extra columns (hover, mlabel, row id) into derived sources, so the drawn rows carry those values and their row identity.
-- **For a per-graph data table:**
-  - **Columns:** `_dash_hover_layer_vars(plot)` plus the `hover()` variables. Display text comes from Python `_dash_fmt` / `_dash_fmt_text` and from `_dash_value_labels_for`; the JS twin is `dash_fmt_text` (:24340). Headers can come from `_dash_csv_meta`'s `headers` and `labels`.
-  - **Rows:** the drawn sources' `__dash_row__` ids.
-  - **Where to attach:** no `DataTable` exists anywhere today. bokeh 3.9 here does have `DataTable` and `TableColumn` (checked with an import probe; `bokeh-tables` is already inlined in the saved page, :4939). The single shared place to add a `column(fig, toggle, DataTable)` for both modes is `_dash_layout_cell` (:35899), which the saved grid, the saved tabs and the served app (template :50633, :50647) all call. Its source must be refreshed in the saved `_FILTER_JS` derived-copy loop and in the served `_dash_move_apply` step 2.
+| Step | Python (build; served after a move) | Saved JS twin |
+|---|---|---|
+| finish | `_dash_finish_count_ticks` :47712 | `dash_axis_compute` :43422 via `dash_axis_finish` :43682 |
+| served refit | `_dash_refinish_axes` :46230 (served call :71399) | same JS |
+| by() common ticks | `_dash_common_count_ticks` :47831 | `panels.length>1` block of `dash_axis_compute` |
+| layer extent | `_dash_layer_extent` :46078 (all `_DASH_X_COORDS` :45690: x, x0, x1, x2, left, right) | `dash_axis_extent` :43118 over plan fields from `_dash_axis_plan` :46382 (~:46580-46612) |
+| hull | (in finish) | `dash_axis_hull` :43148, whose `bars` list (centre +/- width/2) is hull-only: the model for "edges in the hull, not tick input" |
+
+Items:
+
+1. **AX-4/VF-1/DG-2 histogram ticks over the bar edges.** `map_histogram` (:22094) draws a Quad (left/right); `_dash_layer_extent` reads both edges as tick input; histogram is in the skip set. Fix sites: tick input from midpoints with the edges in the hull in `_dash_layer_extent`, `_dash_axis_plan` fields + `dash_axis_extent`, and the saved rebin (`_FILTER_JS` histogram branch ~:34550; `dash_hist_bin_rows` :32558); for "ask Stata", drop histogram from :41811 and request over the midpoints. Flip: test_default_axes.py:230-233 `_NOT_DEFAULT = {("P08","x")}` (read :242); test_stata_ticks.py:225-230 `test_histogram_axis_has_no_key`. Truth: default_axes_truth P08.
+2. **AX-2/TR-3/BY-26 by() x ticks at #5.** `_dash_by_numticks` :40785-40801 lowers y only (`out["y"] = max(1, ny - 1)` :40799); set at :63474 (saved) and :70342 (served string); read :42018, :45318, :45334, :46948, :47007. Stata side: add 4 to `counts` under by(). Flip: test_default_axes.py:360-365 `test_the_by_tick_count` (`{"x": 5, "y": 4}`); by_scales row d40 checks the hull only (test_by_scales.py:486). Help dash.sthlp:4679.
+3. **AX-1 range() widens default ticks.** Python :47748-47767 (`_dash_scale_values` join lo/hi unless default date axis, :47757); JS twin :43437-43441 (`const sc = tsd ? [] : a.scale.filter(...)`). Keep widening for #N and by(). Flip: test_bar_range_geometry.py:653-656 `_DB_TICKS_ELSEWHERE = {"bar_range0"}` (read :695). Help :4529.
+4. **VF-2/TR-24 by() shared y title never painted.** `_dash_by_text_cell` (:55029) builds `Plot(..., frame_height=1, height_policy="fit")` (:55040); `_dash_by_cell` (:55386) sets `height_policy` (:55403) but never clears `frame_height`; other callers :55413, :55656 (legend cell), :55889, :55924 (clegend), :56595 (ruler). Single source (copied into the served app). Tests: test_by_axes_keys.py:396-400 `test__dash_by_cell` pins frame_height==1 (flip); browser tests check bboxes/visibility only (test_legend_span_browser.py:519 `TestByPanelsFillTheirRow`, test_by_axes_keys_browser.py): a pixel test is new.
+5. **VF-3/ST-12 aspectratio() with xsize()/ysize().** `_dash_frame_sizes` (def :27650, body :27660-27677) sets `sizing_mode="fixed"`, frame sizes, `min_border_*`, never width/height; figure keeps `max_height=560`/`min_height=160` from fig_kwargs :63428-63429 (the E-1023 source). Caller `_dash_apply_frame_aspect` (:27680) at :64007, served :70704. Tests: test_sizing.py:262-275 `TestAspect::test_survives_sizes` (model only); no-validation-output pattern: test_responsive_layout.py:691 `test_no_validation_warning`. Help :5670-5679.
+6. **PIC-1/RH-14 default area unoutlined.** `map_area` (:18567): outline only `if any(k in options for k in _LINE_KEYS) or _named_ol:` (:18711), via `_dash_join_glyph` (:18721-18728, keeps cmissing breaks); the legend key needs the same. Flip: test_scheme_linewidth.py:279 (`opts = {"lcolor": "red"} if ptype == "area"`), check :468 `test_economists_area_outline_is_parea`. Help :6041.
+7. **PIC-3 ci type with nofit counts two plots.** `_dash_plot_style_indices` (:57742) `n += 2` for `_DASH_CI_TYPES` (:57731) at :57783-57787; nofit read at :14904/:14965; other counters `_dash_apply_legend` (:39310, +2 at :39411-39413), `_dash_legend_keys` (:58213, `n += 2` :58256); served copies :70165, :70270. Tests: test_ci_plot_index.py:80, :283; ci_plot_index_truth has no nofit row. Help :4441.
+8. **TR-4 date axis with a missing y at an end row.** Cause: dash.ado:7513-7520 summarises each variable over marker rows (`quietly summarize \`v' if \`lu' & \`grp' == \`g', meanonly`), so a row with missing y counts for x; ts columns are made first (`_dash_tsop_gen` :8112 at :11789, request :11821). **Operators in twoway: already measured** in test/fixtures/ts_operator_truth.json (99 probes, scripts/extract_ts_operator_truth.do, 18oct2026): 64 rc 0, 19 rc 198 (operated x with sort, O01-O22), 8 rc 101 (computed types R01-R07), 5 rc 5 "not sorted" (by(), B01-B05, E06), 2 rc 111, 1 rc 109. The audit text names only r(5) and r(111); dash already copies the r(5) and the sort r(198) refusals (dash.ado `_dash_process_segment`, the ts block around :6862-6880). Ready case T01 `line D.close date`: its `stata_ticks` row `[14977, 15340, 5, "d", [...]]` includes the missing row (the bug as recorded). Tests: test_ts_operators.py:384 `TestBothModesMatchTwoway::test_every_probe` compares titles and value labels only (:251-259): add tick checks.
+9. **DG-3 a(b)c residue at zero.** `_dash_expand_numlist` (:39963); a(b)c branch :40061-40085, `values.extend(a + b * k ...)` :40083; same arithmetic in `to`/`:` (:40058) and `a/b` (:40099). Python only (FixedTicker values; no JS twin). Callers :7155, :36601, :39500, :39659, :40183, :57115. Tests test_axis_label_grammar.py:184, :269-287.
+10. **AX-3/TR-5/TR-12/DT-27/VF-10/CV-13 model ticks at build.** As above; colour-key tick calls pass no table: :16773 (`_apply_colorvar` :16159), :29216/:29224 (`_dash_contour_zticks` :29202), :52420/:52422 (`_dash_cvar_ticks` :52409). Tracker text: BUGS.md:4139-4143, ROADMAP.md:5153. Keep test_natscale.py:65 `_KNOWN` and :99 (after-a-move misses stay open); test_stata_ticks.py `TestTheRequests` :233, `TestBuildTicksAreStatas` :175.
+
+Anchors: all hold; small moves: `_dash_frame_sizes` def 27650 (audit 27654); colour-key call 29216 (audit 29219); `_dash_by_cell` lines 55399/55403.
+
+### P2 (WP-36) Python discovery, platforms, environment
+
+(plat:PT-3 is withdrawn by Q48 and has no plan text.)
+
+- **plat:PT-1 discovery (ruled: use whichever Python Stata finds or the user sets).** `_dash_python_ok` dash.ado:290-295 (`return scalar ok = cond("`probe'" == "", 0, 1)`); `_dash_require_python` :307-319 calls it with `c(python_exec)` (:309) and on failure prints "dash: Python is required but is not available to Stata." / "Run {cmd:dash_setup} first, or link Stata to Python 3.11+: {help python}", `exit 198`. Called from `_dash_do_render` (:650, before `_dash_require_deps` and the first `python:`), `_dash_serve`, and ~19 other sites (dash.ado:104, 209, 355, 661, 7413, 7438, 7587, 7618, 7723, 7763, 7792, 7811, 11813, 11875, 13241, 13439, 13870 ...). `_dash_require_deps` (:353-400) prints `c("python_exec")` in its refusals (:364, :381, :396). dash_setup.ado:96-107 (`if "`c(python_exec)'" == ""` -> "Python is not available to Stata." ... exit 198; :119 prints the path); dash_setup_lib.py `_linked()` :829-834 (`sfi.SFIToolkit.macroExpand("\x60c(python_exec)'")`, used :848, :882, :928, :961, :983, :1041); dash_render.py `_dash_child_python()` :72987 already falls back to `sys.executable` (used :73145). Fallback site: before dash.ado:309 and dash_setup.ado:96: when c(python_exec) is empty, `quietly python query` and read `r(execpath)` (`_dash_require_python` is not rclass: `python query` overwrites the caller's r()).
+  - **Guards that conflict with the fix:** comments dash.ado:278-283 and dash_setup.ado:88-95 say `python query` runs Python; `test/test_cscript_hygiene.py:442` `TestTheShippedAdoFilesFollowTheSameRule::test_availability_is_not_decided_by_running_python` (:472) forbids the literal `capture python query` in both ado files and `:485` requires `python_exec` to appear. The user's memory (feedback_python_invocation) also warns that `python query` is not an availability check and that a SIGKILL inside `capture python query` can corrupt locals. The audit's verifier measured `quietly python query` returns `r(execpath)` with `r(initialized)=0`. The plan must measure and then rewrite comments/tests with the reason.
+  - **Harness reading the setting:** every truth cscript's gate and `cert_svg.do:69-72` skip when c(python_exec) is empty; `run_all_cscripts.do:235-238`; `scripts/stata_python_exec.sh` (used by `make test`, Makefile:45; `run_cert_suite.sh`) reads only c(python_exec). Pins: test_env_guards.cscript:350-391 ENV-01..ENV-04 (`_dash_python_ok`), ENV-06 (stubs `_dash_python_ok` to 0, expects r(198): with a fallback it must stub the fallback too), ENV-07 (message names dash_setup); test_serve_lifecycle.py:1145-1177 `TestTheChildInterpreter`; test_setup_pep668.py:677 (fake sfi maps only `c(python_exec)` and `c(pwd)`). Help dash_setup.sthlp:41-43.
+- **plat:PT-5 platforms, PT-6 `~`, TR-20, ECO-17: document only (Q47).** Runners POSIX sh (scripts/stata_batch.sh:19); opener dash.ado:10115-10116, :10200; `~` expansion dash.ado:756-763 (only `~/`, from HOME), dash_parse.mata:1453-1474 `_dash_abs_path` (`~` absolute only off Windows, :1466); cert PV-17 test_path_validation.cscript:217-232.
+- **plat:PT-2 floor (document the claim is for Stata 19+, Q46).** `_dash_require_stata` dash.ado:438-446 (`local floor 19`, exit 9), called first at :84-89; pins test_version_floor.py:424, test_wp30_truth SF-01; help dash.sthlp:6701-6707, README.md:32-33.
+- **plat:PT-11 requirement (list dependencies in the help only, Q49).** `_dash_require_deps` dash.ado:353-400 (Python >= 3.11; numpy/pandas/bokeh importable); `_dash_dep_versions` / `_DASH_MIN_PACKAGES` dash_render.py:186-210 (note only); dash_setup.ado minimums/ceilings :66-71, verdict :451-506 after `_dash_setup_gate` :444. Help Dependencies dash.sthlp:6691-6764.
+- **plat:PT-12 lock (document coverage, Q33).** dash_requirements.txt:6 (`# pythons: 3.11 3.12 3.13 3.14`), :7 (five platform tags), :11 / :83 (contourpy per Python), :600 (tzdata AMD64 only); dash_setup_lib.py:54 `_PIP_FIXED` (`--only-binary=:all:`), :432-437 `pip_lock_argv` (`--require-hashes`); `_DASH_MIN_PYTHON = (3, 11)` dash_render.py:90, no ceiling. Tests test_requirements_lock.py:68, :245.
+- **plat:PT-16 browsers (Firefox + WebKit runs in the release tier, Q32).** The browser tests are Chrome-only via `responsive_probe.find_chrome` and the CDP client (3.2); a second driver is new dev-only tooling.
+- **plat:PT-14 large data (document timings, Q31).** `_HTML_BYTES_PER_CELL = 24` dash_render.py:2279; size note :2283-2319.
+- **DG-14 WebGL (fix both, Q34).** `_WEBGL_THRESHOLD = 10_000` (:5567); saved `_make_figure_body` (:63356): `n_rows = len(self.df)` (:63396), `backend = "webgl" if n_rows > _WEBGL_THRESHOLD else "canvas"` (:63397), `output_backend=backend` (:63422): the exported frame's rows, not the rows the graph draws (per-layer qualifier columns read later, :63605-63625). Served copy :70284-70285, :70292; constant written into the app :68283. Backend is figure-level only; dashes from `translate_lpattern` (:9019) and the `line_dash` chains (:11989, :12392-12445, :12845). Tests: test_html_output.py:1980-1995 `TestWebglBackendLargeData`; test_csp_browser.py:348-350, :464, :657 (`mixed_big`), :741; test_export_svg.py:251, :405-414.
+- **plat:PT-4 function points in named graphs (points off the macro, Q35).** One-line route keeps them in a tempname strL scalar `_fp_sc` (dash.ado:8843-8892), passed at :9385 to `_dash_render_immediate`, read by `mata: _dash_fn_spec_tail(st_local("spec_json_path"), "", st_local("fp_sc"))` (:11884; dash_parse.mata:6301, branch :6311-6319). Named route: `_dash_register_graph` refuses at :11366-11377 when `_fp_len > c(macrolen)` (r(134), message :11374-11375), stores `st_global("dash_fpts_" + name, ...)` (:11399); build reads `strlen global dash_fpts_` (:13415) and `_dash_fn_spec_tail(..., _fp_names, "")` (:13446; globals loop dash_parse.mata:6321-6333); `dash clear` drops them (:11985). Pin to flip: test_parser.cscript:3295-3311 FX-07 (expects r(134) and the c(macrolen) text). Help :3713-3714, :883-884, :1509-1511 (`$dash_fpts_`).
+
+### P3 (WP-38) Stata graph integration (resolved by help documentation)
+
+- Code anchors the notes must describe (all hold): dispatcher dash.ado:155-191 (no `sreturn clear` anywhere); leftover `s(g_name)`/`s(g_saving)` from :1698-1699 (sclass parser :934), `s(_recast_type)` :3229, :3333; `dash clear g2` -> bare `_dash_clear` (:172 discards `_args`; program :11948-11997); `name(g, rep)` -> `_dash_name_split` (:10308, accepts only `^([^,]+),\s*replace\s*$`) else the garbled message :11294-11303 (comma masked to `?`, :11298); `__` refused :11316-11321; duplicate name :11360-11364 ("dash: graph name 'X' already exists. Use name(X, replace) to overwrite.", 198; twoway r(110)); saving() onto a file `_dash_saving_clobber` :870 (message :878, 198; twoway r(602)), called :11494; play() `_dash_play_check` :8255-8272 (601 not found, else 198); previews `_dash_browser_wanted` :10046-10058, `_dash_open_page` :10145, `_DASH_PREVIEW_KEEP = 5` dash_render.py:3509 (prune :4122); graph-memory note dash.ado:244 (`_dash_result`); no datasignature/c(frame)/c(changed) check anywhere.
+- Help structure: "Differences from twoway" dash.sthlp:808-1403 (`{marker differences}`, items `{phang2}N.  {ul:Heading.}` at 811, 817, 906, 975, 980, 1380; sub-points `{phang2}    {ul:Sub-heading.}`; item 2's sub-points 825 saving, 848 nodraw, 854 graph prefix, 860 namespace, 867 one name(), 879-897 "What a name may be", 899 registry globals). **No "Stata graph integration" topic section exists** (related text: Description :172-181, :194-205; Exporting :1624-1720; dash clear :1505-1517; Stored results :1750-1777; nobrowser :1595-1622; Temporary files :2844; Unsupported play() :6668-6679). Missing today: putpdf, putexcel, markdown, graph combine -> layout(), s(), dash clear arguments, r(110), name() keeps no data/frame/tempvars. Q40's "one-line Differences entry linking to a topic section" means a new topic section (e.g. `{marker graphintegration}`).
+- "Documented" pin pattern: test_help_claims_1.py:107 `_differences()` (`_between(_help(), "{marker differences}", "{marker subcommands}")`), `_prose()` :111, `TestTheDifferencesSection` :492 (:498, :515, :521); test_help_claims_9.py:23-35 (`_help`, `_between`, `_flat`; sentence-against-code); test_export_result.py:149. Message pins the notes must agree with: test_registry_collision.cscript:974, :987; test_path_validation.cscript:328; test_option_validation.cscript:3108-3195 (U54 play); test_nodraw_honoured.cscript:166-174 ND-06; test_export.cscript:167; test_reserved_names.py:392.
+
+### P4 (WP-39) Plot types and command grammar
+
+- **plot:PT-10 matamatrix().** `_dash_process_segment` block dash.ado:5924-5937 (`_dash_matamatrix_typed` at :5933, message + exit 198 :5935-5936), after type resolution (:5868-5869) and the comma split (:5915-5922), before the type syntax (:5945). Detector dash_parse.mata:2569-2588 (lower case only; `MATAMATRIX(M)` falls to a varlist r(111)). Truth rangept_truth.json `matamatrix.*`. Flip: test_matamatrix_refusal.py:36-67 (`test_function_and_needed` :38, `test_sentence` :58, `test_help` :67); test_wp31_truth.cscript:4591-4631 U21-10 (:4620 twoway 0 / dash 198); test_help_plot_types.py:29-31 (`_REFUSED = ("sunflower","matamatrix")`), :72-100; test_help_claims_1.py:415-418; test_help_claims_9.py:120-125; program_coverage_map.py:867-868. Help :737-743 (its sentence calling sunflower a twoway plot type is the D40 help fix; sunflower is not a twoway plot type).
+- **plot:PT-3/basic:PT-14/DT-14 capitals (ruled: lower case only, Q7).** Table `_dash_expand_plottype_str` dash_parse.mata:2420 (`tbl` :2437-2480: 44 rows of full name + minimum; minimums shorter than the name: sc, li, con, hist, rl, rcon, rsc, fun; non-prefix spellings :2501 `mbands`, :2502 `fn`; prefix loop :2517-2522); wrapper `_dash_expand_plottype` :2526-2528 (`strlower(strtrim(abbrev))`); lower-casing also at dash.ado:5869 (`_dash_expand_plottype(strlower(st_local("plottype")), "_pt_exp")`) and `_dash_undrawn_plottype` :2550-2558 (a by-name refusal of sunflower, message dash.ado:5882-5891; D40: sunflower is not a twoway plot type, so it gets the generic "is not a twoway plot type" refusal like any other word). Refusal text dash.ado:5897 ("is not a twoway plot type") + "Supported:" list :5898-5905, exit 198. Flip: test_help_claims_1.cscript:647-664 HC1-08 (`SC`, `Hist` drawn); test_help_claims_1.py:391-406 (asserts the strlower call in the ado). Help "Case." :528-532.
+- **plot:PT-4/syn:SD-2 empty graph.** `_dash_plot` (:8335) -> `_dash_split_segs(..., 1)` (:8368; allow_empty dash_parse.mata:3372-3404, `_n_segs` 0 at :3393-3399); graph options via `_dash_parse_graph_opts` (:934) with no plot check: the site for twoway's "xlabels() not allowed, xaxis1 does not exist". Drawing: saved `_make_figure_body` :63570-63575 (adds only an invisible BoxAnnotation; axes come from the default figure), served :70416-70422; `_DASH_EMPTY_SCALE` :40244. Flip test_bare_dash.py:73-80 (`assert len(f.left) >= 1 and len(f.below) >= 1` :80). Truth bare_prefix_truth.json holds rc only: an SVG truth is new. Help :164-167.
+- **syn:SD-1 `(scatter ..) line ..`.** `_dash_split_groups` dash_parse.mata:3520; stray-text branch :3625-3640 (false comment :3625-3630; message :3635-3638; exit :3639). Fix: text after a closing group, to the end of the piece, is another bare segment (twoway's `_parse expand`). Flip test_parser_integrity.cscript:659-673 P1B-37 (needle :670). Related test_parser.cscript:2791-2945 P1A-85 (comment :2816-2817).
+- **syn:SD-13 `||` inside one group.** `_dash_split_segs` splits only at depth 0 (:3436-3442); depth-1 `||` stays in the group's `seg_text` (`_dash_split_groups` :3581-3586) and fails as "| invalid name" r(198). test_parser.cscript:2923-2924 (with title(): both refused) survives an option-less-only fix.
+
+### P5 (WP-40) Resource limits (observation caps documented; selected-row counting; other caps documented, Q44)
+
+- Tables: `_DASH_LIMITS` dash_render.py:2360-2378 (default, ceiling, global): cells 5M/20M `dash_max_cells`, bytes 50MB/500MB, graphs 100/1,000, plots 100/1,000 `dash_max_plots`, filter_options 1,000/100,000, by_groups 100/1,000 `dash_max_by_groups`, tabs 50/500, filters 20/200, reflines 10,000/100,000, added_text 1,000/100,000, table_rows 1,000/100,000; helpers `_dash_limits` :2756, `_dash_limit_hint` :2797, `_dash_graph_qual_cols` :2883, `_dash_by_panel_count` :2899, `_dash_graph_computed_cells` :2920 (bin() clamped 1000 at :2965), `_dash_by_groups` :5418 (note :5450-5453). Ado mirror `_dash_limit` dash.ado:5063, `_dash_count_fmt` :5033.
+- plat:PT-8/syn:SD-16/sil:SD-22 refusals: `_dash_cell_cap` (above), `_dash_reflines_cap` dash.ado:9782, added_text read dash_render.py:54757.
+- plat:PT-9 plot cap per graph: `_dash_plot_cap_refuse` dash.ado:5204-5219 (exit 134 :5218); enforced in `_dash_process_segment` (tsline :6283-6290, y varlist :6307-6320) and the running total in `_dash_plot` (:8533-8536, :8673-8679); twoway's per-plot r(103) exists only for one-fit types (:6293-6306), the site for a 100-variables-per-plot r(103). Tests test_adversarial.cscript:947-1004 (P19-06..10), test_resource_limits.py:788-830 (:805).
+- plat:PT-10/BY-22 by() groups: `_DASH_LIMITS["by_groups"]` :2366, `_dash_by_groups` :5418-5455, grid bound :36637; tests test_resource_limits.cscript:165-220 RL-06..08; help :2978-2980, :3302-3305.
+- stat:PT-15/DT-17 n()/bin()/degree: `_dash_option_rules` dash.ado:3683 (:3696 `n=int,1,300@mspline n=int,1,10000 bin=int,1,1000 ... bands=int,1,200`); `_LPOLY_DEGREE_FIT_MAX = 30` dash_render.py:542; help :1149-1151, :3716.
+- sil:SD-1 histogram rebinning: `_histogram_grid` :22471 (`_MAX_BINS = 1000` :22508; discrete squeeze :22539-22546; width() dropped :22568-22576; bin() clamp :22584-22592); JS twin in `_FILTER_JS` rebin :34525-34548 (`nb = Math.min(nb, 1000)` :34543), else reuses `ac.bin_edges` :34550. Pins test_resource_limits.py:1330-1338 (`"_MAX_BINS = 1000" in source`), :66-80; test_html_output.py:1491-1499.
+- AX-16/sil:SD-10 2,000 ticks: `_MAX_AXIS_TICKS = 2000` :40233 (`_dash_axis_too_many` :40205); `_dash_parse_axis_spec` :42041 clamps `#N` (:42205) and keeps defaults with a note (:42228-42234). Tests test_default_axes.py:334, test_natscale_axes.py:256/266. Help :4524.
+- sil:SD-11 msize: `_SIZE_MAX_RS = 1000.0` :8314; `resolve_size` :8359 (:8421-8424); note `_dash_style_note` :27292 (:27349). Help :1176-1178.
+- sil:SD-12 fpfit grid: `_FP_GRID_MAX = 20000` :429; `_fp_plot_grid` :21711 (:21747-21748), `_fp_grid` :27003 (:27031-27034); JS `dash_fp_grid` :33912 (used :35019). Tests test_resource_limits.py:1333, :1353; test_embedded_cells.py:435.
+- sil:SD-13 text() 4,000: dash_parse.mata:11460-11470 (return 198 :11467-11470); tests test_global_text.py:84, :95; test_wp31_truth.cscript:11554-11564; help :784-785.
+- **Help "Resource limits"** dash.sthlp:2933-3086 (marker 2933, title 2934, intro 2936-2942, synopt table 2944-2997 with rows $dash_max_cells 2947, _bytes 2958, _graphs 2967, _plots 2971, _filter_options 2974, _by_groups 2978, _tabs 2981, _filters 2983, _reflines 2985, _added_text 2990, _table_rows 2994; clamp/refuse 2999-3002; globals 3004-3010; "What the data limit counts." 3013-3052; served 3055; sessions 3059). Differences (808-1403) has no resource-limits entry today.
+- Anchors: hold; moved: help by_groups 2976-2980 -> 2978-2980; 3300-3304 -> 3302-3305; "Resource limits 2933-3000" runs to 3086.
+- **plat:PT-7/DG-15 cell-cap counting (document and fix, Q45):**
+  `_dash_cell_cap` dash.ado:5247 (header comment :5222-5246 "if/in reduce nothing here", :5226-5230): `if "`nobs'" == "" local nobs = _N` (:5250), `local total = `nobs' * `nvars' + `extra'` (:5255), message :5277-5281, `exit 134` :5282. One-line route :11713-11727: nvars = `_dash_nvars + _dq_n + _ds_n + _dts_n + _dwx_n` (variables + one column per distinct qualifier + sort + time-series + weight-expression columns); computed-only graphs pass `_dash_computed_cells` (dash_parse.mata:12149) as extra (gate `_dash_graph_touched` :12359). Build route :13164-13177: served passes all obs with served=1 (:13170-13172); saved passes `row_vars` + `comp_cells` (:13173-13176, built :12747-13013). The cap runs before the qualifier columns exist (`_dash_qual_gen` :7917, at :11778 and :13207). Exporter `_dash_write_data` (:7581) writes every observation; a selected-rows export must go there and only when no filter, link() or csv needs every row. Python re-check `_dash_embedded_cells` dash_render.py:2994 (called :62218 with `self.df.shape[0]`), `_dash_refuse_oversized` :2805. Pins: test_qualifier_in_stata.cscript:734-760 QS-10 (74 x 7 = 518 values); test_qualifier_literals.cscript:798-856 QL-21; test_resource_limits.py:623-689 `TestAnOversizedDatasetIsRefused` (:644-651 advice never mentions if); test_embedded_cells.py:80-250 `TestTheCount`, :336-372 `TestBothModes`, :442. Help :2947-2957 (:2951 "qualifier columns times the observations"), :3013-3016, :3048-3051.
+
+### P6 (WP-41) by() fidelity (Bokeh-drawable items fixed; the rest documented, Q23)
+
+The by() parser and layout are Python shared by both modes; JS twins exist only where a move recomputes.
+- **BY-28 contour cuts per panel:** `map_contour` :24309 (`_dash_contour_cuts(options, zmin, zmax, ...)` :24371 from the panel's own z :24369-24370); helpers `_dash_contour_cuts` :29227, `_dash_contour_cut_rule` :29264, `_dash_contour_fill_levels` :29466; JS `dash_contour_cuts` :34368, `dash_contour_fill_levels` :34386 (called :35077-35090); `_dash_share_by_scales` :47937 shares x/y only (`letters = ("x","y")` :47955). No by() contour test.
+- **BY-1 ring(0) chrome dropped:** `_dash_by_chrome` :55053 (`sides=("above",)` :55079, `("below",)` :55082); skip in `_dash_text_annotations` :54419 at :54495-54496; placement `_dash_textbox_position` :54037. Tests test_by_text.py:213-296, :519-577.
+- **BY-2/29/11 scale():** `_dash_scale_factor` :27487-27501 (no by() check), applied per panel at :64004 (served :70701, `_dash_scale_columns` :70208); by(, scale()) declared in `_DASH_BY_GRAMMAR` :36146 (row :36155) but falls to `unsupported.append(tok)` :36404 in `_dash_parse_by` :36289 (named :36406-36411). Tests test_sizing.py:152-214.
+- **BY-27 function range(varname):** `_dash_fold_range` dash.ado:2401-2431 (one summarize over the plot's sample; called :6791); per-panel loop :8845-8873 reuses `_fn_lo_/_fn_hi_` (:8868); panel count `_dash_fn_panel_count`. No by() pin.
+- **BY-3/PIC-13 at() hole:** `_dash_by_keys` :55691 (legend :55786-55874, hole legend :55862-55873, `out["legend_at"]` :55874 inside `if drawn:`; clegend :55876-56024, `clegend_at` :56024); consumer `_dash_by_side` :56511 (:56543-56544). Tests test_by_axes_keys.py:75, :98, :351, :627-650, :1118-1186.
+- **BY-4/sil:SD-2 compact:** `_DASH_BYSTYLE_EXPAND` :36420-36442 (no compact entry; `_dash_bystyle_route` :36469); `_dash_by_spacing` :36785 (compact zeroes sides even beside style(), :36801); `_dash_by_axes_options` :55202 (:55239-55249). by_remainder_truth `bystyle_compact` unused. Tests test_by_grid.py:362, :403-404.
+- **BY-5 aspect + shrink:** shrink words `_DASH_BY_GRAMMAR` :36173-36175, parsed :36381-36390; ado by() refusals `_dash_by_check` dash.ado:5594 (called :4337) are the site.
+- **BY-6 by(, total) no variables:** `_dash_validate_value` dash.ado:3828 (:4264-4267 "dash: by() must name at least one variable", exit 198); no test greps it.
+- **BY-12/13** edge titles and legloc/clegloc/plegend/plegloc: grammar rows :36157-36159, :36185-36187, then :36404.
+- **GW-5 overhangs:** `_dash_overhangs` :27704 (no by() gate; called :64005, served :70702; the by() idiom `if facet_view is None:` :64006 / `if _fac_label is None:` :70703). Tests test_sizing.py:316-334.
+- **sil:SD-7 zero weights per panel:** dash.ado:6948-6968 (by() gate :6955, exit :6966); tests test_wp31_truth.cscript:4033-4059, test_weighted_markers.py.
+- Help: generic "named and ignored" :3363-3364; panel-label sub-options :5382-5385; documented layout differences :3330-3362.
+- Anchors hold; dash.ado:6952 -> block 6948-6968.
+
+### P7 (WP-42) colorvar
+
+Core: `GlyphMapper._apply_colorvar` :16159 (class :14457); cut rule `_dash_colorvar_cuts` :14200; relevel after a move: Python `_dash_cvar_relevel` :52272 (`_steps` :52460, `_bins` :52660), served call :71394; saved JS `_DASH_CVAR_RELEVEL_JS` :43925 (`dash_cvar_relevel_steps` :43981, `dash_cvar_relevel_bins` :44104 with its own levels rule :44144-44147, `dash_cvar_relevel` :44323).
+- **CV-8 continuous default:** :16727-16760 (`_rule_palette(256)` :16744, `LinearColorMapper` :16745, `ColorBar(width=12)` :16752); stepped mapper only when `stepped` (:16789-16801 -> `_colorvar_stepped_mapper` :17059; callers map_connected :18563, map_rconnected :23560/:23568, line parts :17151, scatter connected :18300). Tests test_colorvar_truth.py:89-90 (continuous not compared), test_colorvar_legend.py:228-238. Help :5523-5530.
+- **CV-1 colorfillonly:** `_colorvar_paint` :16968 (:16983-16984); `_colorvar_line_parts` :17129 (:17145-17146). Test test_colorvar_options.py:316-324.
+- **CV-3/CV-4 keys:** discrete path :16319-16698 (ascending items :16590-16594, '(missing)'/otherlabel :16599-16606, `Legend(..., title=var_display)` :16698). Tests test_colorvar_options.py:361, :376, :398; test_colorvar_legend.py:117-226.
+- **CV-2 colorlevels under colordiscrete:** :14227-14230 (`np.linspace(lo_v, edge_hi, int(levels) + 1)`, `edges[1:-1]`); JS twin :44144-44147. Flip test_colorvar_forms.py:128 (asserts `["3","6","9"]`) and :120.
+- **CV-5:** `_dash_apply_legend` :39310 (cv_legends :39359; rows/cols :39705-39714; size :39716-39735). Test test_colorvar_legend.py:179-185.
+- **CV-6** :16863-16886; **CV-11/12** :16597-16598 (tests test_colorvar_options.py:343, :350; test_colorkeysreverse_bar.py:43-71).
+- **CV-9 refusals:** rule table dash.ado:3699, :3701; :4327-4329. Flip test_option_validation.cscript:836 (OV-96 -> r(121)), :839 (OV-99 -> r(101)).
+- **CV-10/LT-14 malformed keys:** dash.ado:8772 `_dash_subopt_check zlabel` (program :3479); `_dash_axlabel_refusal` loop :8776-8782 covers x/y only; `_colorvar_key_place` :16888 (note :16918); `_dash_clegend_opts` :53244 (unknown -> other :53261-53262).
+- **CV-15/LT-12:** `_DASH_CLEGEND_SUBOPTS` :53239-53241; title :53272 / :16899. Test test_colorvar_options.py:430.
+- **AX-12 z tick family:** syntax only `ZLABel ZTItle ZSCale` dash.ado:995, :1324; `_dash_tw_takes_tab` dash_parse.mata:8013 rows :8151-8156; only unknown_option_truth.json covers it.
+- **sil:SD-4/14 key width:** ColorBar `width=12` :16752; contour `_contour_key` :24607 (`cb.width = 12` :24622). Test test_colorvar_options.py:379-389.
+- Anchors hold; moved: 16751 -> 16752; 16598-16599 -> 16597-16598; test_colorvar_truth.py:91-92 -> 89-90.
+
+### P8-P10 common ground (saved vs served)
+
+Legends, titles, notes, text() and axis titles are built by shared Python in both modes (saved `_make_figure_body`: `scheme.apply_to_figure` :63491, `_dash_style_axis_titles` :63495, `_dash_apply_regions` :63500, `_dash_add_secondary_axes` :63507, `_dash_text_annotations` :63530, `_dash_apply_legend` :63215; served strings :70353, :70356, :70371, :70380, :70385, legend :70632, frame aspect :70704). They have **no CustomJS twin**; a fix in the shared Python reaches both modes. What a move redraws: stale key/title suffixes (`_FILTER_JS` stale block :35163-35200, wired :66043; served `_dash_points_stale_follow` :2672); ticks (`_dash_refinish_axes` :46230 / `_DASH_AXIS_FINISH_JS` :43010 with `dash_natscale` :43022 = `_dash_natscale_ticks` :40276, `_DASH_TSNATSCALE_JS` :40910); minmax (`dash_minmax` tag :42979; :42329-42342, :44483-44493). Layout-time JS to keep in step: `_DASH_SPAN_JS` :38690 (re-places spanned legends/titles after layout), `_DASH_GRAPH_MARGIN_JS` :40685 (resize), `_DASH_BY_FIT_JS` :55541, `_DASH_BY_STACK_JS` :56167. Bokeh in this environment: 3.9.0 (`/opt/homebrew/lib/python3.14/site-packages/bokeh`); `make test` uses Stata's Python with bokeh 3.8 (memory), so new code must use APIs common to both.
+
+### P8 (WP-43) Legend, titles, added text
+
+Helpers: `_dash_apply_legend` :39310; `_dash_legend_box` :39176; `_dash_legend_margin_px` :39150 (`max(vals)` :39174); `_DASH_LEGEND_REGION_NAMES` :39145-39147; `_DASH_LEGEND_SUBOPTS` :53797-53803; `_DASH_LEGEND_SUBOPT_TABLE` :53532 (edge titles stage :53561-53566; Mata twin dash_parse.mata:9747-9754); `_dash_legend_arg` :38541; `_dash_move_legend` :38610; `_DASH_CLOCK_INSIDE` :38470; `_DASH_BPLACEMENT_LOCATION` :38491; `_dash_legend_key` :58149; `_dash_legend_keys` :58213; `_dash_key_signature` :58182; `_DASH_KEY_STYLE_OPTS` :58173. Textboxes: `_DASH_TEXTBOX_HONOURED` :53826-53827; `_DASH_TEXTBOX_BOX_HONOURED` :53835-53839; `_dash_textbox` :53842; `_dash_figure_title` :53918; `_dash_textbox_place` :53998; `_dash_textbox_position` :54037; `_dash_textbox_margin_px` :54091; `_dash_textbox_style` :54141; `_dash_textbox_insert` :54272; `_dash_textbox_draw` :54333; `_dash_text_annotations` :54419; `_dash_edge_titles` :54544; text(): `_dash_added_text_opts` :54640, `_dash_added_text` :54724, `_DASH_ADDED_TEXT_PLACE` :54384-54388, `_DASH_ADDED_TEXT_HONOURED` :54404-54408. Margins: `SchemeParser.margin_sides` :10274-10292 (names only) vs `_dash_margin_sides` :40390 (full grammar, regions only). Comment drift: :53794-53796 says legend subtitle() "stays named" but it is in the set (:53803) and drawn (:39291-39304).
+
+- LT-1/LT-15 legend title/subtitle style: :39260-39290 (`legend.title_text_font_size = legend.label_text_font_size` :39266); subtitle :39291-39304 copies the key style again. Bokeh's Legend has one title: a styled subtitle needs a composite (second Legend or a Label). Source: `SchemeParser.textbox_style` :11646 ('leg_title', 'leg_subtitle').
+- LT-4 bplacement at ring(0): ring-0 branch :39625-39627 ignores `_bploc` (used outside only, :39632); lookup :39612 exact keys only (no nor/nea/t/top).
+- LT-2 nobox: :39305-39307 clears border and fill.
+- LT-3 key-text textbox options: only `box` in `_DASH_LEGEND_SUBOPTS` (:53801); others named via `_dash_legend_unsupported` (:53814-53822). Bokeh Legend has `label_text_align`, `padding`, `item_background_fill_*`.
+- LT-5 all/draw/nodraw: merge loop :39403-39437 has no `all` check; words in the table (:53554-53555), not honoured.
+- LT-6 layout sub-options: region names :39145-39147; set :53797-53803.
+- LT-7 bexpand silent: :53791-53793, :53803, :53832, :53838; precedent `_dash_by_label_inside` :54952 (:54969-54975).
+- LT-8 stcolor title box fill: `_dash_textbox_style` box branch :54200-54231 (fill :54212-54214, line :54215-54217, width :54218 from `text_option_*`).
+- LT-9 fractional ring: title `re.fullmatch(r"[0-9]{1,2}", rr)` :54064; legend `r"(\d+)"` :39598; ring tags integer-only :54287, :54301, :54310-54311, :54346, :54523, :38660-38664, :16955-16958.
+- LT-10 margins: `margin_sides` callers `sides_px` :54233-54239 (titles), :54710 (text()); legend `padding` a single Int (:39241-39243).
+- LT-11 text() alignment(): noted in the ado list dash.ado:9872-9875; `_dash_at_canon` dash_parse.mata:11863-11903 never writes it; renderer ready (`_DASH_ADDED_TEXT_HONOURED`, `_DASH_ADDED_TEXT_VSHIFT` :54414-54415). Test test_scheme_key_readers.py:140 injects the spec (needs an end-to-end test).
+- LT-13 legend(t1title() ...): Python :53561-53566, Mata :9747-9754.
+- LT-14 title ring(x): `_dash_textbox_position` :54059-54067.
+- LT-16/ST-8 placement() at ring(0): ring-0 table :54068-54085; :54187-54188 uses the text() anchor table (:54384-54388; `n` -> bottom_center lifts the box).
+- LT-17 holes with cols(1): :39497-39512 inserts a full empty LegendItem.
+- LT-18/ST-18 title box sub-options missing from `_DASH_TEXTBOX_BOX_HONOURED` :53835-53839 (orientation, width, height, angle, lstyle, bl*, lalign, style); help :5341-5345, :5379-5381.
+- LT-19 edge titles: :53886-53889; clock/ring read in `_dash_edge_titles` :54601-54608.
+- LT-20/GW-21 text() box: dash.ado:9871-9881 (`_nt` list, `c_local _ao_noted`); Bokeh Label has `border_line_dash`, `padding`, `text_line_height`.
+- LT-21/VF-8/PIC-14 key marker 0.4: BokehJS `MarkerView._get_legend_args` (not reachable without a custom renderer, which Q24 excludes as TypeScript; a composite of glyphs can stand in).
+- PIC-11 key shapes: no legend-only renderer exists; keys come from layer renderers (`_dash_legend_keys` :58213).
+- MS-10 merged keys: `_sig = _dash_key_signature(_rends)` :39425 unless `_DASH_KEY_STYLE_OPTS` (:39421-39423).
+- ST-14/LT-24 documented limits (help :5170-5183, :1080-1091).
+- RH-13 horizontal kdensity key: `_dash_legend_key` :58149 takes the y label regardless of orientation.
+- **Tests to flip/extend:** test_legend_geometry.py:386-389 `test_nobox`, :302-306 `test_bplacement`, :289-293, :330-339 `test_holes` (add cols(1)), :400-404; test_legend_remainder.py:104-109 and :111-115 (title and subtitle joined in one `lg.title`: flip if separate), :118-127 `TestStillNamed`; test_legend_edges.py:117-130 (should survive); test_subopt_abbrev.py:213-220 (`canon("t1", legend table) == "t1title"` :219: flip for LT-13); test_textbox_placement.py:209-218, :287-306, :443-452 (bexpand silent); test_twoway_option_parity.cscript:5300 (note "text() draws no width() linegap();"); merge guards test_legend_histogram_only.py:110-179.
+- Anchors: all hold; Mata edge-title rows are :9747-9754 (audit 9746-9751).
+
+### P9 (WP-44) Axes
+
+- AX-13/ST-13 axis-title sub-options: `_DASH_TEXTBOX_HONOURED` :53826-53827 (size, color, prefix, suffix, axis); `_dash_style_axis_titles` :53961-53995 (font size/color/alpha, primary axes only); axes 2-9 titled inline :45663-45679.
+- **PIC-12 right title reads downward:** `axis_label_orientation` is set nowhere (its only occurrence is the copy list `_DASH_ALT_TITLE_PROPS` :45398-45402). Sites: economist's y axis moved right in `SchemeParser.apply_to_figure` :13786-13792; axes 2-9 in `_dash_add_secondary_axes` :45527 (constructors :45645-45648, side :45656-45659, `fig.add_layout(ax, side)` :45680); ytitle orientation() in `_dash_style_axis_titles`. Bokeh `Axis.axis_label_orientation` (default "parallel"). The value that reads upward on a right axis needs a browser check.
+- AX-5 custom: `"custom"` in `_DASH_AXLABEL_HONOURED` :53673.
+- AX-6 tick gridlines in the minor style: :44965-44972 (from the scheme's minor grid :13758, look key :13856). Flip test_minor_ticks.py:449-457.
+- AX-7 off fill: `fillspace` accepted :45869 (`_DASH_SCALE_LOOK_SUBOPTS` :45863-45869), never read by `_dash_scale_look` :56719.
+- AX-8/AX-14 label sub-options and style words: missing from `_DASH_AXLABEL_HONOURED` :53662-53673. Flip test_axis_look_options.py:390-400 (asserts tstyle ... nogextend not honoured); see :385, :256-261.
+- AX-9/AX-10 transforms and contradictions: `_DASH_SCALE_SUBOPTS` :56685 = {log, reverse, range}; `_dash_scale_spec` :56688; no exclusivity check in one copy.
+- AX-11 log over non-positive data: `_dash_layer_extent` :46078.
+- MS-14 log range end tick: default log ticker tag `_DASH_DEFAULT_TAG` :40263, :40387 (not traced further).
+- MS-12 lone yaxis(2) grid: `_dash_lone_second_axes` :5003-5022 renumbers k to 1.
+- MS-11/RH-17 "<first>..." x title: `_dash_axis_default_titles` :39809-39841 ("" unless first == last :39839-39840). Remove test_horizontal.py:378 `_NO_XTITLE = {"HZ-28"}` (used :416).
+- MS-13 ytitle suffix joined on one line: dash_parse.mata:11170 in `_dash_rep_merge` (:11130ff).
+- DG-6 %tC ticks: `_dash_tc_from_tC` :685 (values only, no tick shift); no %tC row in stata_ticks_truth.
+- DG-4 dates with blanks: `_dash_tdate_value` dash_parse.mata:9291 (whitelist :9310); `_dash_tdate_lines` :9483 (`tokens(seg)` :9512).
+- DG-9 non-numbers in label lists: `_dash_axlabel_refusal` dash_parse.mata:2335-2396 (`.a` takes the else branch :2385-2392).
+- DG-13/DG-11: minmax on empty :42329-42343 (FixedTicker only `if len(vals)`), tick path :44483-44487; overflow :40318-40322 (`10.0 ** z`; JS `Math.pow` :43037 does not throw).
+- plot:PT-13/AX-20 natscale entry: BUGS.md:4139; test_natscale.py:65, :98-102.
+- Anchors: hold; dash_parse.mata:9308 -> whitelist at :9310; `_dash_axlabel_refusal` ends :2396.
+
+### P10 (WP-45) Schemes, styles, figure geometry
+
+- PIC-4 economist note never painted: `_dash_text_annotations` in-band branch :54511-54527 (`Label(x=Node(target=title, symbol=align), y=Node(target=title, symbol="top"))` :54518; `fig.center = [band] + ...` :54527). Working Node-target precedent: frame/axis Nodes :44788 (test_axisn_minor.py:170). Flip test_scheme_chrome.py:193-200, test_textbox_placement.py:458-467.
+- PIC-7/PIC-8 economist widths: `p_other_band_styles` :12429-12446; `map_rarea` outlines :22977-23006 (two `fig.line` :22999-23005); range/spike/pc widths follow `plot_line_width` :12746 (`p#<kind>` -> `p#` -> `p`). Flip test_scheme_linewidth.py:398-409 and its `_KIND` map :64-79 (wrong fixture key per lwt7); test_range_outlines.py:70-91.
+- ST-1/ST-2 compass/orientation readers: `_dash_at_place` dash_parse.mata:11555-11573, `_dash_at_orient` :11579-11592 (used by `_dash_aspect_split` dash.ado:1172-1190); notes dash.ado:9858-9869.
+- ST-3 clock names: digit-only regexes at :54057 (titles), :54603 (edge titles), :39597 (legend), `_MLABEL_CLOCK_NAMES` :14505 used :17650; invented legend note dash_parse.mata:10426-10430.
+- ST-4 ring words: :39598, :54060-54067; notes dash_parse.mata:10431-10435.
+- ST-5 anglestyle: `_dash_anglestyle_degrees` :7538-7573; the h/v/rh/rv rule only in `_parse_axis_angle` :7576-7607; callers :15926, :17591, :25268.
+- ST-6 connectstyle: `_dash_connect_canon` dash_parse.mata:6844-6869; dash.ado:3417-3421 notes '?' and sets direct.
+- ST-11: same note sites; justification(l) dropped silently :54184.
+- ST-7/ST-15 style files: `_STYLE_FILE_CLASSES` :10381-10382 (seriesstyle, markerstyle, areastyle, linestyle, shadestyle); gate :13064-13067. Flip test_help_claims_9.py:222-230 (exact 5-class tuple).
+- ST-17: marker-label default "3" :17648-17649 ignores clockdir p; test_unread_scheme_directives.py:33-45, :75-163 guard the unread directives.
+- ST-10 shipped name ahead of BASE: `_resolve_path` :10542-10560 (returns the shipped translation at :10560 before any ado-path walk), `_shipped_path` :10576. Tests test_scheme_lookup.py:275, test_scheme_resolution.py:851.
+- ST-16/GW-17 unknown scheme(): `_scheme_name_ok` :10534; help :6305-6329.
+- GW-6/VF-7 graph outline and margin: `_dash_graph_margin` :40612-40667 (returns at :40650 without margin()); `graph_margin_sides` :13626; resize twin `_DASH_GRAPH_MARGIN_JS` :40685; help :4265-4266. Flip test_region_truth.py:194-195 (skip of the unasked outline), test_region_remainder.py:197-204 (min_border stays None, DECISIONS A18).
+- ST-21/GW-19: `_dash_inner_box` :40700; help :4298-4311, :4329-4335.
+- **VF-4/GW-20/sil:SD-21/VF-5/VF-11 figure proportions:** saved :63399-63431, served :70290-70307: `sizing_mode="stretch_width"`, `max_height=560`, `min_height=160` (:518-519, set :63428-63429), `aspect_ratio` from `_resolve_aspect_ratio` :63223 (xsize/ysize, then 1/aspectratio, then graphsize). No explicit "lone graph" rule: a lone figure sits in a stretch_width grid/column (:51619-51622, :66213, :66258), so at 1200 px under stcolor (1.667) it is 1200x560 = 2.14:1. fxsize/fysize `_dash_fxy_size` ~:51636-51660 (skips fixed figures). Relative size unit fixed `PT_PER_RS = 2.88` :8276 (`size_ref_in` :12130-12139 converts absolute sizes only). Help states the band in words only (:5721-5723). Tests: test_help_claims_7.py:1154-1167 `TestTheHeightBand`; test_sizing.py:238, :251, :257-260, :263-275; test_graph_options.py:161, :181; test_scheme_consumption.py:1494-1518.
+- GW-1 size units: dash.ado:3753 (`xsize=style,1,100` lets "10cm" through); `_dash_ref_in` :27374 (bare `float()` :27389-27391); `_dash_figure_aspect` :27437 -> `_stat_option_float` :27742 whose warning :27774-27776 formats `{default!r}` ("using None instead."); `_dash_frame_aspect` :27609 (:27617).
+- GW-10 fontface: `_dash_graph_set_fonts` dash.ado:7364-7387 (program :7375); `_dash_gt_fonts_of` :48451 (stSans/stSerif/stMono only), applied :17580-17583.
+- Anchors hold; `_dash_gt_fonts_of` def :48451 (audit 48452).
+### P11 (WP-35) Accepted syntax and refusals (twoway's acceptances, refusals, rc and words)
+
+- **MS-1/stat:PT-3 repeated options taken rightmost:** `_dash_label_split` dash.ado:2517-2563 (token loop :2531-2547 with per-token `capture syntax`; combined `syntax` :2551-2553); `_dash_contour_split` :2447-2497 (per-token :2477-2486; combined :2487-2491); both called from `_dash_parse_plot_opts` at :1237, :1240. General repeat machinery `_dash_opts_repeats` :10923, `_dash_refuse_repeat` :11018-11024. Pins: TP-14a rows test_twoway_option_parity.cscript:1683-1820 (39 rows, `local n14 39` :1768; append after r39/e39 :1764-1765); program_coverage_map.py:307.
+- **syn:SD-3 p1()..p20():** `_dash_tw_takes_tab()` dash_parse.mata:8013, rows `("p1","p1","1","*","1")` :8114 and `("p20","p2","1","*","1")` :8115; generator scripts/gen_twoway_takes_table.py (regenerate over p1-p20).
+- **stat:PT-7/syn:SD-6 lowess m:** `MEan` dash.ado:1274 (comment :1664-1671: one letter longer because of `Msymbol()`); flag rule `mean|noweight|adjust|logit@lowess` :3774. Constraint test_abbreviations.py:527 `test_no_prefix_is_claimed_by_two_options`.
+- **syn:SD-5 bwi():** `BWIDth(string)` :1266, alias `BW(string)` :1318.
+- **stat:PT-14/DT-13 bw() off the bandwidth types:** `_dash_fold_bw` :2067 (bandwidth types :2125, `bar_types "bar rbar histogram dot spike"` :2126, read as barwidth :2135-2138, else to `s(_unknown)` :2139-2142). Help :3655-3658.
+- **stat:PT-1/TR-7 histogram combinations:** `_dash_validate_opts` :4774 (flags :4796-4809; "may not combine" :4810-4817; discrete+bins() :4842-4846); no bins()+width() and no two-of-density/fraction/frequency/percent check; value_truth.json:3437-3443 `histogram_freqpct_1` ("options frequency percent may not be combined", 198).
+- **stat:PT-2 density ... on every type:** flags list :3772-3774 has no applicability rule for them.
+- **stat:PT-5 contour levels() 501-1000:** `_dash_contour_check` :2603 (`if \`_zl' > 1000` :2660-2665); help :596-598; truth measured under nodraw (extract_contour_truth.do:358).
+- **stat:PT-13 contour abbreviations:** INTERP(, CLWIDTHS(, CLPATTERNS(, COLORLINES in full :2479-2483, :2487-2491; help :599-601.
+- **stat:PT-6 function subchar():** `_dash_fn_points` :10385; `twoway__function_gen ..., range() x(x) n() ...` hard-codes x(x) at :10448.
+- **stat:PT-8 lowess noweight weight:** `NOWeight` :1274; rule :3774.
+- **basic:PT-8/syn:SD-10 two omit*:** `_dash_tw_takes_tab` rows dash_parse.mata:8109-8112 (noted).
+- **basic:PT-9/TR-9/stat:PT-10 return codes:** pins to flip: OV-42 test_option_validation.cscript:71 (header) and :757 (`_ov_case OV-42 "... base(abc) ..." 198 base`; twoway 4026 in value_truth.json:2845-2851 `base_1`); PS-06 test_varlist_expansion.cscript:1372-1384 (:1383 expects 198 for mlabel(make..); twoway 101). Fixture keys `_meta, vocab, formats, twoway`; structure-only check test_option_validation.py:1395-1520 (`TestTheOracleFixtureIsInStep` :1455); other users test_merge_value_truth.py, scripts/merge_value_truth.py, extract_value_truth*.do.
+- **basic:PT-13/DT-17/DT-18/TR-17 dash's own bounds:** `_dash_option_rules` :3683; checker `_dash_validate_value` :3828; help :1225-1250 ("Some bounds are dash's own").
+- **DT-15/DT-16/syn:SD-18 dash-only words:** section 6 (Q8: the maintainer rules per word after measurement).
+- **syn:SD-7 ty():** `_dash_recast_opt` :3226 (`_rc_ci "lfitci qfitci lpolyci fpfitci"` :3248, refusal :3249-3252); declaration `TYpe(string)` :1268.
+- **syn:SD-8 factor variables:** `_dash_validate_value` var kind :4284-4326 (ts regex `^[LlFfDdSs][LlFfDdSs0-9()/]*\.` :4304; mlabel operator r(111) :4311-4316; by/colorvar operator r(101) :4317-4320; else "variable not found" r(111) :4325-4326).
+- **GW-2/GW-3/GW-4/sil:SD-8:** maxaxes only in tables (dash_parse.mata:7714 in `_dash_rep_und_tab` :7658; :8090); `FXSIZE(string)`/`FYSIZE` declared in full dash.ado:980, :1309/:1313; notitling dash_parse.mata:7729, :8107.
+- **DT-19 `__dash*` variables:** `_dash_qual_gen` :7917 (`capture unab _dq_clash : __dash*` -> r(110) :7920-7926); `_dash_maxvar_room` for r(900).
+- All anchors hold.
+
+### P12 (WP-37) Statistical and computed layers; the zero-observation check
+
+**Where the qualifiers are (no `marksample`/`touse` on the plot route; the only `marksample touse` is dash.ado:10589 inside `_dash_fit_points`).**
+- Graph-wide if/in: `_dash_plot` (:8335) calls `_dash_graph_qualifier` (:2030-2045; `syntax [if] [in]` :2032; returned by `c_local _gq_if/_gq_in` :2043-2044) at :8396-8400 and hands it to every segment by value (`mata: st_global("dash__gq_if", ...)` :8408-8409; dropped :8727). Under by() only it is marked into tempvars `_by_gq_s/_by_gq_t` by `_dash_qual_mark` (:5673-5697) at :9019-9024. It is also written into the graph JSON as `if_expr`/`in_expr` (:9339-9354).
+- Each plot's if/in: in `_dash_process_segment` (:5836): `if_cl`/`in_cl` from the varpart parsers (:6343-6344), keyword stripped and abbreviations expanded (:6352-6361), combined as text with the graph's into `_ps_if`, `_ps_in`, `_psq` = `if (plot) & (graph) in ...` (:6372-6410); a mark variable only when both give `in` (`tempvar _ps_mark` :6386-6396). `_psq` is already counted by the per-type checks (:6826-6930: `quietly count \`macval(_psq)'` :6898; `count if \`_ss_c' \`_ss_ifin'` :6918), histogram start() (:6815-6824), `_dash_fold_range` (:6790), `_dash_fit_points` (:7237). The plot's own if/in returns to `_dash_plot` as `_seg_if_out`/`_seg_in_out` (:7168-7169) with `_seg_vars_out` = `yvar xvar` only (:7173); kept per segment as `_byq_pt_k`, `_byq_if_k`, `_byq_in_k`, `_byq_vv_k`, `_byq_wv_k` (:8634-8639).
+- Segment loop `forvalues k = 1/\`n_segs'` (:8558), `_dash_process_segment \`"\`macval(seg)'"' _pt_k _json_k \`n_segs'` (:8593), running plot count `_dash_nplots` (:8657). `_dash_process_segment` does not receive k (only `nsegs`, via `_dash_text_args` :5848-5853); the caller has k, `_pt_k` and `_dash_nplots`. The renderer names plots `f"graph {gname!r} plot {index}"` (dash_render.py:60686, :60785, :60912).
+
+**The last points before Python.** Python runs only in `_dash_do_render` (dash.ado:650-717; `_dash_require_python` :661; argv :694; `capture noisily python: _dash_render_ns = _dash_xm._dash_run_renderer("\`_py_renderpy'")` :708). Routes:
+- One-line (no name()): end of `_dash_plot` (:9385) -> `_dash_render_immediate` (:11432): `_dash_qual_rewrite` (:11520) gives each plot a `qual_col` `__dashq<k>`; `_dash_qual_gen "dash"` (:11778) makes the 0/1 columns; `_dash_write_data` (:11832); columns dropped (:11834-11836); `_dash_do_render` (:11908).
+- Named: `_dash_register_graph` (:11252, called :9382) stores JSON only; no data, no Python.
+- Build: `_dash_build` (:13456) -> `_dash_prepare_spec, cmdname("dash build")` (:13597; program :12454: per-graph `_dash_qual_rewrite(st_global("dash_json_"+gname))` :12861, `_dash_maxvar_room` :13202, `_dash_qual_gen` :13207, `_dash_write_data` :13255, drop :13257-13259) -> `_dash_do_render` (:13629).
+- Serve: `_dash_serve` (:13813) -> `_dash_serve_spec` -> `_dash_prepare_spec, cmdname("dash serve")` (:13794) -> its own `python:` (:13934).
+
+**What count information exists there:** none per layer. After `_dash_qual_rewrite` each plot carries `"qual_col":"__dashq<k>"` and the graph its own `qual_col` (`qual_col_total` under by(, total)) (dash_parse.mata:4549-4697); the byte columns exist in Stata only between `_dash_qual_gen` and the drop after `_dash_write_data`; the renderer ANDs plot and graph columns. At build, nothing re-counts: registration-time checks (:6826-6967) ran against the data in memory at `name()`; `_dash_prepare_spec` re-evaluates the qualifiers against the data now in memory and refuses only an unevaluable qualifier (`_dash_qual_gen` :7946-7955) or a malformed entry (:12850-12855, :12863-12868); an emptied sample at build reaches Python.
+
+**Candidate sites for the one check (the plan picks):**
+1. **At export, every route:** one new program (e.g. `_dash_zero_obs_check`) called right after `_dash_qual_gen` at dash.ado:11778 (one-line) and :13207 (`_dash_prepare_spec`: build and serve), walking the spec JSON in Mata (plot index, `type`, `qual_col`, graph `qual_col`, plot variables) and counting rows with the plot's variables non-missing. It sees the data actually exported (covers build-time re-evaluation) and has the plot number and type for the second line. Exempt the types that read no observations (scatteri, pci, pcarrowi, function: dash.ado:8964 comment) and decide by() per Q21 (panels are dropped, not refused, today).
+2. **At registration:** extend `_dash_process_segment`'s `_psq` count to every type (needs k passed in for the message). Misses the build-time re-evaluation.
+
+**Types that refuse today** (none for by() graphs: the gate `!\`: length local _ss_by'` :6884): lpoly/lpolyci "no observations" r(2000) (:6921-6923; count `!missing(y,x) & weight>0 & _ps_if` :6911-6919); histogram `_N == 0` "observation numbers out of range" r(198) (:6890-6894); fpfit/fpfitci note + r(198) and mspline/mband without bands() "bands must be between 1 and 200" r(198) (:6896-6908); function range(varname) with no observations "no observations" r(2000) in `_dash_fold_range` (:2412-2418); one observation r(2001) for lfit/lfitci/lpoly/lpolyci/kdensity (:6924-6930); weighted marker layer with no weight above zero r(198) (:6948-6967, off under by()). The measurements behind them (comment :6828-6856, 24sep2026): twoway draws, rc 0, a histogram sample emptied by a qualifier or by missing values, lfit on no observations (with a note) and fpfit emptied by missing values (with a note); dash "registered each and drew an empty layer, rc 0". So a single r(2000) check refuses where twoway draws for some types: those are the help's Differences cases (D40 rule), and Q21's per-type/per-case measurement (one empty plot among several, all empty, graph-wide if/in, by() with empty panels) is still to be made.
+
+**by() with empty panels** (`_dash_plot` :8936-9097): literal-family graphs skipped (:8966-8971); panel base = graph qualifier, or the one plot's own if/in when one segment (:9025-9035); per-rule samples (:9037-9058); `_dash_by_panels` (:5722-5835, rules R, D0, D1, N1) at :9071; `r(n)==0` -> "nothing to graph" r(198) (:9073-9075); `r(refuse)` (:9077-9087); `r(kept)==0` -> "nothing to graph" (:9088-9096); renderer twin `_dash_by_panel_dropped` dash_render.py:5478 (`_mark_unfit` :19857, `_mark_silent` :19899). Comment :8500-8507: before P1A-83 a by() graph got "no observations" r(2000) where twoway says "nothing to graph".
+
+**Pins to flip under the ruling:** test_parser.cscript:2150-2290 P1A-80 (`_p1a_vs_tw` from :1982 exits 9 when rc differs; rows expecting rc 0 on an emptied sample: lfit, qfitci, lowess, kdensity, histogram under `if price < 0` :2208-2218; `[fw=w80]` all zero :2253-2255; mpg all missing :2263-2265; `_N==0` :2276-2278) need a deliberate-difference form; rows expecting twoway's r(198) words (:2209-2214, :2270-2275); by() blocks P1A-83/84 (~:2531, :2577, :2586); test_option_validation.cscript:1761 (`function y=x, range(make)|no observations`). Renderer-level (hand-written specs; still valid): test_pipeline_integration.py:713-737, test_layer_reports.py:289-360.
+
+**Other P12 items:**
+- DG-1 contour crash: `map_contour` def :24309; body :24350-24425 holds (`zmin ... if uz.size else nan` :24369-24370; `drawable` :24379-24381; stub grid :24391-24396; `lv = ...` :24412-24413; crash at the filled `fig.contour(..., levels=fl)` :24424; lines `fig.contour` :24400). JS twins `dash_contour_points` :33986, `dash_contour_surface` :34168, `dash_contour_segments` :34213, `dash_contour_heat` :34316, `dash_contour_lines` :34338.
+- DG-8 no key without a surface: `if not lines_only and drawable: self._contour_key(...)` :24477-24478 (`_contour_key` :24607).
+- DG-5 rarea cmissing outlines: `map_rarea` :22849 (rebuild :22921-22936; bound Lines `for _yb in (y1var, y2var): fig.line(...)` :22995-22998); helpers `_dash_fill_vertices` :59843, `_dash_fill_rebuild` :59916, `_dash_fill_join` :59956; JS `dash_fill_vertices` :31933. Tests test_area_cmissing.py:235 (area only), :250, :270.
+- TR-13/stat:PT-19/sil:SD-19 contour subsample (ruled: run `twoway__contour_gen` at registration, Q26): `_DASH_CONTOUR_EXACT_MAX = 1000`, `_DASH_CONTOUR_FALLBACK_N = 100` :13992-13993 (note :13997-14001; `_dash_contour_surface` :29137). Precedents for Stata-side generators at registration: `_dash_fit_points` dash.ado:10583 (called :7214-7240 into the strL named by `$dash__ftsc`, set :8545-8550); `_dash_fn_points`/`twoway__function_gen` (:10448) after the segment loop (:8843-8880). `twoway__contour_gen` is never called (a comment at dash_render.py:28991); it would sit beside `_dash_contour_check` (called :6764) or after the loop, with its grid carried like the function points (strL, P2's off-macro rule).
+- stat:PT-12 xlog/xtransform() on lfit: route through `_dash_fit_points` (:10583, syntax :10584-10588).
+- stat:PT-16/DT-26/stat:PT-21 help only: dash.sthlp:4032-4034 (lpolyci zero df, Q27), :1166-1185, :3895-3916, :3970-3975, :436-437.
+
+### P13 (WP-33) Verification and test coverage
+
+- **TR-2 corpus:** none exists (`git grep gr_example` finds only the audit); rc-only corpora test/fixtures/twoway_corpus.do (674 lines), conformance_corpus.txt (75); mode parity compares dash with dash (3.2). New: the harness (3.1, 3.3, 4).
+- **TR-11 value_truth.json (311 answers) never compared probe by probe:** test_option_validation.py:1393-1520 (`TestTheOracleFixtureIsInStep` :1455: structure only). Holds.
+- **TR-23 strict run cannot pass:** test_graph_text.py:1321-1336 `TestBounds` (`skipif(not _dup_expands())`, 4 runs); conftest.py:196-208 (any skip turns a strict run red). Holds.
+- **BY-23/BY-31 per-type by() truth:** U60-5 in test_wp31_truth.cscript (S60, end of file); test_lpoly_rot.
+- **stat:PT-23 estimator combinations:** scripts/extract_stat_truth.do.
+- **CV-16 colorvar fixtures:** test_colorvar_truth.py:74-104 (`TestAgainstTwoway`, continuous default not compared :90); `disc_levels_price_4` colorvar_truth.json:1013 / extract_colorvar_truth.do:97.
+- **syn:SD-20 abbreviations:** abbrev_truth.json:2343 ("dash-only option; twoway has no bgcolor()") and :645 (bgc); extract_abbrev_truth.do. Holds.
+- **GW-11 scale() geometry:** `_dash_apply_scale` dash_render.py:27529-27608; help dash.sthlp:5685-5690 ("the gaps between boxes are not scaled"). Holds.
+- **BY-24 by() title position:** scripts/extract_by_text_truth.do bp01 (:155) .. bp39 (:193); `TestByTitlesSpan` test_legend_span_browser.py:373. Holds.
+### P14 (WP-46) recast() and horizontal
+
+- RH-1/RH-2: `_dash_hz_check` dash.ado:2937-2972 (`_hz_htypes` :2940, `_hz_vtypes` :2941, `_hz_derived` :2942, "option `w' not allowed" :2962-2965); in `_dash_process_segment`: `_dash_recast_opt` :6652, `if inlist(_rc_kind,"base","range2yx","ts") local ptype "\`s(_recast_type)'"` :6659, `_dash_hz_check "\`ptype'" "\`_rc_target'" "\`_rc_kind'"` :6666 (judged after recast()).
+- RH-3/RH-4: `if "\`_rc_kind'" == "range2yx" local yvar "\`yvar1'"` :6660 (yvar2 dropped); `_dash_draw_range_as` dash_render.py:26601-26625 (`_RECAST_DRAWN` -> `_dash_draw_xy_as(fig, source, xcol, locol, ...)` draws the lower bound only :26617-26619).
+- RH-5/RH-6/RH-7 histogram recast: `map_histogram` :22094 (range recast :22223-22245; yx recast builds `_mid` midpoints and heights :22246-22270); saved refit `_tag_recast` :22367 with `_hist_agg_config`; JS `dash_recast_data` :34420, `dash_hist_bin_rows` :32558; `_dash_tag_eval_extent` :61880-61897 returns early on recast() (0 left out).
+- RH-8: document (Q25).
+- RH-9/RH-10/RH-12: dot + recast `if "\`ptype'" == "dot" { _dash_recast_named ...; exit }` dash.ado:3258-3261; scatteri missing from `_hz_derived` (:2942) and `_DASH_DERIVED_ORIENT_TYPES` dash_render.py:45710-45713; `_dash_is_horizontal` :45741; `_dash_transpose_layer` :45769.
+- RH-11: `_sp_yx "scatter:2 line:2 connected:2 bar:1 ..."` dash.ado:3283; y2xtype list :3288.
+- Tests: test_horizontal.py:126-160 `TestTheTypeSets.test_sets_equal_twoways` (ado sets == Python tuples, len 28 and 26: change both together); HZ-01..17 rows test_option_validation.cscript:1438-1460. Help :372-386, :3588-3592.
+
+### P15 (WP-47) Plot-option fidelity (jitter items withdrawn, Q50)
+
+- basic:PT-1/PT-2/MS-6 headlabel: `map_pcscatter` :24940 (labels at x1/y1 :25019-25035); `map_pccapsym` :25573 (`_apply_mlabel_opts(..., x1var, y1var, ...)` :25692); `map_pcarrowi` :25834-25886 (`_immediate_labels(..., "x1", "y1")` :25877-25881); only `map_pcarrow` (:25357/:25461) and `map_pcbarrow` (:25469/:25565) read headlabel; `_dash_tw_silent_tab` dash_parse.mata:8234 row :8250 takes headlabel silently on pccapsym/pcscatter/pcarrowi (help :3472-3475 says named).
+- MS-7/MS-8/MS-9 immediate labels: `map_pci_literal` :24873 (labels read, never drawn; recast returns :24921-24924); `map_scatteri` :24655 (`if options.get("recast"): return` :24764-24767 before labels :24795-24799); false pci note dash.ado:6229-6231; mlabel(nosuch) r(111) via `_dash_fold_mlab` :2218 -> `_dash_mlabel_list` :4604 (called :2247; PS-06 pins it).
+- MS-2/TR-6/MS-3/MS-4 varlabel: `_dash_layer_series` dash_render.py:58000 (`""` rule :58038-58040; fixed names for scatteri, pci/pcarrowi, function, kdensity, histogram :58096-58118). Tests test_varlabel_options.py:169, :206, :215.
+- MS-5 varformat on marker labels: help :4746-4748.
+- basic:PT-3 mlabel(t*): `_dash_mlabel_list` pattern branch :4612+ (help :1239-1241 says refused, :3389).
+- basic:PT-4/sil:SD-3/PIC-15 lalign: :15668-15677 (center/inside/outside silent); help :4782-4786.
+- basic:PT-6 mlalign: :15937-15951; help :4769-4772.
+- basic:PT-5 dlalign: silent on every type dash_parse.mata:8249; stale `_dot_style` docstring dash_render.py:23696-23705.
+- basic:PT-10/basic:PT-11 older spellings and noted options: help Unsupported :6456-6612; silent table `_dash_tw_silent_tab` :8234, `_dash_silent_drop` :8264 (used dash.ado:6984).
+- PIC-2/PIC-5/PIC-6/ST-19/ST-9 marker shapes: `_INVISIBLE_SYMBOLS = {"i","none","invisible"}` :8159 through the symbol map :8264; test_symbol_pattern.py.
+- PIC-9 empty histogram bins: Quad rows in `map_histogram` :22094 and the JS rebin (above).
+- PIC-10 dot rows: `_dot_positions` :23739 (`ok = np.isfinite(vals)` :23766-23769); tests test_dot_rows.py, test_saved_dot_rows.py.
+- DG-12 zero weight markers: help :4192-4194.
+- PIC-16/PIC-17 dot floor: `0 < g.size < 1.0: g.size = 1.0` :23734-23735.
+- DG-7 titles/keys of emptied layers: `_dash_axis_default_titles` :39809, `_dash_legend_key` :58149.
+- basic:PT-15 documented differences: help :449-455, :655-661, :3443-3517, :4305-4307, :6069-6225.
+
+### P16 (WP-48) Help, README, tracker accuracy
+
+All spot-checked anchors hold: dash.sthlp:6629-6640 and :6682-6687 (stale "reach the note"/"titel(x) appears in the note", against :1024-1029); :854-858 ("unrecognised plot type 'graph'", against :156-163 and dash.ado:111-117 `_pf_word " is not a twoway plot type"`); :332; :3472-3475; :3611; :3676-3679; :3977-3985; :4084-4086; :1239-1241; :6249-6251; :955-967; :372-386; :3588-3592; TWOWAY_COVERAGE_AUDIT.md:71, :81, :84; test_lpoly_degree.py:16-17 docstring; dash_setup.sthlp:95-96 (lock "Python 3.11 to 3.14 ... macOS, Linux, Windows"), :208-213 (ceilings); CHANGELOG.md (1,246 lines; :589-936 exists). Help-conformance machinery for syn:SD-15: `_unsupported_section` test_help_conformance.py:359-379, `_undeclared_twoway_options` :382-400 (reads `_dash_rep_und_tab`), `TestTheUnsupportedSectionIsTrue` :1182-1212, count pin `assert len(_unsupported_section()) == 59` :807 (moves when p#() and the z tick family are listed). The audit's "test_help_conformance.py:402-410" now holds `_catchall_truth`/`_catchall_options` (does not hold). GAPS3 H5/I1/K1/K5 lack Tracked lines (GAPS3.md has Tracked lines only for WP-31 ids); DROPIN P2.34/P2.64 unmapped (.ultraplan/handoff/DROPIN-REMAINING.md, read by TestNoResidualNamesAClosedRow). The 22 "false today" lines (audit :855-880) are P16's checklist (section 1.3).
+
+### P17 (WP-49) Messages and notes (Q43: dash's extra refusal lines stay; P16 corrects help sentences that say otherwise)
+
+- plot:PT-7/GW-8/ECO-11/sil:SD-9/syn:SD-12/TR-10: "is not a twoway plot type" dash.ado:5897, `Supported:` list :5898-5903, exit :5904; `_dash_refuse_repeat` second line :11022; `_dash_refuse_foreign` :11072 (:11104-11110, upper-case and after-comma hints); `_dash_refuse_unknown` :11186 (:11233-11241 "twoway does not take this option here."); the full name comes from the `_uk_nm<k>` and `first` locals (P17's remaining fix: name the word as typed).
+- basic:PT-12 etc. notes where twoway draws the same: `_dash_added_text` :9935 (note `"dash: \`_kind'() draws no" ... "()"` :9958-9966: the "bexpand()" parentheses); silent table dash_parse.mata:8234 / `_dash_silent_drop` :8264 (used dash.ado:6984); fixture noted_option_truth.json (scripts/extract_noted_option_truth.do).
+- LT-25/ST-11/basic:PT-17/BY-7/BY-8/GW-7 named-style notes: note sites dash_parse.mata:10426-10435, dash.ado:9858-9869, `_dash_style_note` dash_render.py:27292 (text :27349), `_stat_option_float` warning :27774-27776 ("None").
+- plot:PT-6/plot:PT-8/DG-10 different words: tsrline/tsline without tsset dash.ado:6033-6035, :6278-6280 (r(111)); type split `gettoken plottype rest : seg_text, parse(" ,")` :5868 (does not split at `[`); `_dash_taxis_unit` dash_parse.mata:9264-9279 (returns "c" for %tb).
+- plot:PT-11/stat:PT-22 library messages: load `capture run "\`_dash_matalib'"` dash.ado:79-81; `_dash_require_mata` :461 (`capture mata: mata drop _dash_*()` then `capture run` :553-554); `_dash_dp_format` dash_parse.mata:745.
+- Anchors hold; :540-551 -> the load lines are :553-554.
+### Anchors that moved or no longer hold (all packages)
+
+Everything else spot-checked (at least three anchors per package; most packages all of their code anchors) holds at `090d928`.
+
+| Pkg | Audit anchor | At HEAD |
+|---|---|---|
+| P1 | dash_render.py:27654-27678 `_dash_frame_sizes` | def :27650, body :27660-27677 |
+| P1 | colour-key tick call :29219 | :29216 and :29224 (`_dash_contour_zticks` :29202) |
+| P1 | `_dash_expand_numlist` :40061-40082 | branch :40061-40085, the `a + b*k` line :40083 (def :39963) |
+| P1 | item 8 "refusals are r(5) not sorted and r(111) not tsset" | incomplete: ts_operator_truth.json also has r(198) (19 probes, O01-O22), r(101) (8, R01-R07), r(109) (1) |
+| P2 | dash_setup_lib.py:430-437 | `pip_lock_argv` :432-437 |
+| P2 | dash_setup.ado:64-69 (appendix; minimums/ceilings) | :66-71 |
+| P2 | dash.ado:338-406 (appendix; `_dash_require_deps`) | :353-400 |
+| P2 | the audit's "python query does not start Python" | contradicted by the code comments dash.ado:278-283, dash_setup.ado:88-95 and pinned by test_cscript_hygiene.py:442-483; settle by measurement |
+| P3 | dash.sthlp:815-823 "Difference 2" | item 2 is :817-823 (:811-815 is item 1) |
+| P3 | dash.sthlp:6667-6683 (play) | :6668-6679 |
+| P3 | dash.ado:154-185 (s() leftovers / dispatcher) | dispatcher :155-191; s() set at :1698-1699, :3229, :3333 |
+| P4 | dash_parse.mata:2570-2588 | `_dash_matamatrix_typed` :2569-2588 |
+| P4 | dash_render.py:63570-63576 (empty graph's axes) | holds, but misleading: it only adds an invisible BoxAnnotation; the axes come from the default figure |
+| P5 | dash.sthlp:2933-3000 Resource limits | section runs :2933-3086 (2933-2997 is the table) |
+| P5 | dash.sthlp:2976-2980; :3300-3304 | :2978-2980; :3302-3305 |
+| P6 | dash.ado:6952 (by() zero weights) | block :6948-6968, by() gate :6955, exit :6966 |
+| P6 | dash.ado:4263-4267 | :4264-4267 |
+| P7 | dash_render.py:16751 (ColorBar width) | :16752 |
+| P7 | :16598-16599, :16606 | :16597-16598, :16605 |
+| P7 | test_colorvar_truth.py:91-92 | :89-90 |
+| P8 | dash_parse.mata:9746-9751 (legend edge titles) | rows :9747-9754 |
+| P9 | dash_parse.mata:9308 (date whitelist) | :9310 |
+| P9 | `_dash_axlabel_refusal` :2335-2392 | ends :2396 |
+| P10 | dash_render.py:48452 | `_dash_gt_fonts_of` def :48451 |
+| P12 | `map_contour` :24350-24425 | def :24309; body range holds (crash at the filled `fig.contour` :24424) |
+| P15 | dash.ado:6230 for scatteri mlabel(nosuch) r(111) | :6229-6231 is the pci "draws no labels" note; the r(111) is `_dash_fold_mlab` :2218 -> `_dash_mlabel_list` :4604 (called :2247) |
+| P16 | test_help_conformance.py:402-410 | does not hold: now `_catchall_truth`/`_catchall_options`; Unsupported logic :359-400, checks :1182-1212, count pin `== 59` :807 |
+| P17 | dash.ado:540-551 (library load) | load lines :553-554 (`_dash_require_mata` :461) |
+
+## 6. dash-only option words accepted where twoway refuses (DT-15, DT-16, syn:SD-18)
+
+Method: options declared in `_dash_parse_graph_opts` (syntax `dash.ado:967-1003`) and `_dash_parse_plot_opts` (`dash.ado:1245-1333`, plus `_dash_label_split` `:2537-2552`), less twoway's own options (abbrev_truth.json `options`, the generated `_dash_tw_takes_tab` dash_parse.mata:8018-8159 from unknown_option_truth.json) and less options dash declares but refuses as twoway does. Everything else reaching the catch-all is refused r(198) (`_dash_refuse_unknown` dash.ado:11186; `_dash_unknown_scan` dash_parse.mata:8335-8365). Evidence key: **RO** test/fixtures/rejected_options.json `dash_only_option_keys` (twoway_rc 198); **AT-U** abbrev_truth.json `unprobeable` (full name refused or noted "dash-only"); **AT-R** abbrev_truth.json `dash_abbrev_stata_rejects`; **p10** the audit's p10out.log (X08, X12-X33, X50-X52; not in the repository); **help** only dash.sthlp:4952 ("twoway refuses all twenty, r(198)"). Rows marked "unverified" have no recorded twoway answer: Q8 ("measure first") needs a probe for them.
+
+**Total: 42 words on the graph and plot commands** (more than the audit's "about 35"): 38 class (b), 3 class (a), 1 accepted with a note and not drawn; plus 5 non-word DT-15 forms; plus about 20 words of dash's own subcommands.
+
+### 6.1 Class (b): second-axis spellings (25) — each shadows `<x|y|t><family>(..., axis(2))`
+
+Declared on the graph syntax and again on the plot syntax; folded into the full names at dash.ado:1033-1039 (graph) and :1396-1401 (plot); the family map is `_dash_axfam` dash_parse.mata:8725-8735. The full forms must be typed in full (`-syntax-` stops reading capitals at a digit; comment dash.ado:952-953).
+
+| word | shadows | dash.ado graph / plot | dash.sthlp | twoway's answer |
+|---|---|---|---|---|
+| ytitle2() | ytitle(, axis(2)) | 976 / 1304 | 4966-4969 | r(198): RO, AT-U |
+| ylabel2() | ylabel(, axis(2)) | 976 / 1305 | 4970-4971 | r(198): RO, AT-U |
+| yscale2() | yscale(, axis(2)) | 977 / 1305 | 4972-4973 | r(198): RO, AT-U, p10 |
+| xtitle2() | xtitle(, axis(2)) | 976 / 1304 | 4974-4975 | AT-U "dash-only" (no rc) |
+| xlabel2() | xlabel(, axis(2)) | 977 / 1305 | 4976-4977 | AT-U; p10 r(198) |
+| xscale2() | xscale(, axis(2)) | 977 / 1308 | 4978-4979 | AT-U "dash-only" (no rc) |
+| yti2() | ytitle(, axis(2)) | 992 / 1321 | 4969 | AT-R |
+| yla2() | ylabel(, axis(2)) | 991 / 1320 | 4971 | AT-R |
+| ysc2() | yscale(, axis(2)) | 991 / 1321 | 4973 | AT-R |
+| xti2() | xtitle(, axis(2)) | 991 / 1320 | 4975 | AT-R |
+| xla2() | xlabel(, axis(2)) | 990 / 1319 | 4977 | AT-R; p10 r(198) |
+| xsc2() | xscale(, axis(2)) | 990 / 1320 | 4979 | AT-R |
+| ytick2() | ytick(, axis(2)) | 993 / 1322 | 4980-4982 | p10 r(198) |
+| xtick2() | xtick(, axis(2)) | 993 / 1322 | 4983-4984 | help |
+| yline2() | yline(, axis(2)) | 993 / 1322 | 4985-4987 | help |
+| xline2() | xline(, axis(2)) | 994 / 1323 | 4988-4989 | p10 r(198) |
+| ymtick2() | ymtick(, axis(2)) | 979 / 1307 | 4990-4992, 4872 | help |
+| ymlabel2() | ymlabel(, axis(2)) | 978 / 1306 | 4993-4994, 4872 | p10 r(198) |
+| xmtick2() | xmtick(, axis(2)) | 978 / 1306 | 4995-4996, 4872 | help |
+| xmlabel2() | xmlabel(, axis(2)) | 978 / 1306 | 4997-4998, 4872 | help |
+| tlabel2() | tlabel(, axis(2)) | 999 / 1328 | 5039-5041 | p10 r(198) |
+| ttick2() | ttick(, axis(2)) | 999 / 1328 | 5039-5041 | unverified |
+| tline2() | tline(, axis(2)) | 999 / 1328 | 5039-5041 | unverified |
+| tscale2() | tscale(, axis(2)) | 1000 / 1329 | 5039-5041 | unverified |
+| ttitle2() | ttitle(, axis(2)) | 1000 / 1329 | 5039-5041 | unverified |
+
+### 6.2 Class (b): other synonyms (13)
+
+| word (shortest) | shadows | dash.ado | dash.sthlp | twoway's answer |
+|---|---|---|---|---|
+| marker() (full) | msymbol() (marker() wins if both) | 1251; read at 6957 | 5806-5808 | r(198): RO, AT-U |
+| malpha() (mal) | mcolor(color%#) | 1251; rule 3692 | 5812, 5818-5822, 1358 | r(198): RO, AT-U, AT-R |
+| lalpha() (lalp) | lcolor(color%#) | 1252; rule 3692 | 5813, 5818-5822, 4787-4789 | r(198): RO, AT-U |
+| falpha() (fa) | fcolor(color%#) | 1253; rule 3692 | 5814, 5818-5822 | r(198): RO, AT-U, AT-R |
+| jseed() (jse) | jitterseed() (jseed() wins) | 1257; rule 3690 | 5794-5796, 1174 | r(198): RO, AT-U, AT-R |
+| mlg() | mlabgap() | 1318; fold 1392 | 3435-3436 | r(198): AT-R |
+| cv() | colorvar() | 1318; fold 1393 | 5420-5421 | AT-R; p10 r(198) |
+| colv() | colorvar() | 1319; fold 1394 | 5420-5421 | AT-R; p10 r(198) |
+| colornlevels() (colorn) | colorlevels() | 1260; rule 3697 | 5430-5431, 5435-5436, 5499-5500 | r(198): RO, AT-U |
+| colormissing() (colorm) | colorformissing() (wins if both; fold 1406) | 1260 | 5432-5433, 5455, 5499-5500 | r(198): RO, AT-U, colorvar_options_truth R04 |
+| plotbgcolor() (full) | plotregion(fcolor()) | 975 / 1303 | 4252-4254 | r(198): RO, AT-U |
+| pbgc() | plotbgcolor() -> plotregion(fcolor()) | 990 / 1319; folds 1034, 1395 | 4254 | AT-R; p10 r(198) |
+| bw() on bar, rbar, histogram, dot, spike | barwidth() | 1318; `_dash_fold_bw` 2126, 2136-2138 | 3653-3658 | r(198) on all five: alias_spelling_truth.json `bw` barwidth_* |
+
+### 6.3 Class (a): extensions on the graph and plot commands (3), and one noted-not-drawn
+
+| word | what | dash.ado | dash.sthlp | twoway's answer |
+|---|---|---|---|---|
+| hover() (hov) | variables added to the tooltip | 982 / 1311 | 4429-4431, 5256-5298 | p10 r(198) |
+| table / table(rows(#) open) | folded data table under the graph | graph `TABLE TABLE2(string asis)` 1002, fold 1007-1008; plot via `_dash_label_split` 2537-2552, fold 1242; `_dash_table_fold` 9634; once only dash_parse.mata:7606 | 2051-2066 | p10 r(198) |
+| colpalette() (colpal) | named Bokeh palettes (borderline b: twoway's nearest are colorlist()/colorrule()) | 1259; enum rule 3698 | 5426-5429, 5499-5500, 5605 | r(198): RO, AT-U, AT-R |
+| bw() off the bar and bandwidth types | accepted, named in the note, not drawn | 2139-2141 (to s(_unknown)) | 3657-3658 | r(198) "option bw() not allowed" (audit DT-13, stat:PT-14) |
+
+### 6.4 DT-15 non-word forms (5)
+
+| case | dash anchor | dash.sthlp | twoway |
+|---|---|---|---|
+| kernel(GAUSSIAN), any case | dash.ado:1373-1375 -> `_dash_kernel_full` dash_parse.mata:2601-2617 (`strlower` :2607) | 1252-1253 | "invalid kernel function" r(198) (probe Q03) |
+| xsize(()) | `XSIZe(string)` dash.ado:980, passed on, reported by the renderer | 1253-1258 | "option(s) ( ) not allowed" (help's statement; not measured) |
+| colorvar() layer whose if keeps no observation | dash_render.py:16223-16227 (empty domain, no key) | 5573-5574 | r(3001) when drawn, rc 0 under nodraw (probe Q01) |
+| string colorvar() | dash_render.py:16171 | 1259-1261, 5537-5539, 5545-5546 | r(7) (Q09) |
+| title("'90s") | text read `string asis` | 1080-1087 | r(100) (Q02) |
+
+### 6.5 Words of dash's own subcommands (class a by construction; twoway has no counterpart command)
+
+- `dash build`: layout(), link(), theme(), server, nobrowser, tabs(), filterposition(), csv, brush() (`_dash_build` dash.ado:13490-13505; `_dash_prepare_spec` 12482-12501; help 1536-1570, 1778, 1857, 1900); filter(varname, type() exclude() label() direction()) pulled out before syntax (13481, 12474 -> `_dash_extract_filters` dash_parse.mata:5218; help 1545, 2084-2180).
+- `dash serve`: port(), timeout(), maxsessions(), idletimeout() (`_dash_serve_spec` 13708-13717; help 1461-1477).
+- `dash kpi`: fmt(), update() (plus title/name/subtitle/color/bgcolor) (`_dash_kpi` 12015-12023; help 2224, 2333-2356).
+
+### 6.6 Declared but already refused as twoway refuses (not counted)
+
+title2()/subtitle2() (dash.ado:987-988, 1316; refused by `_dash_unknown_scan` dash_parse.mata:8352-8353 and `_dash_refuse_title2` dash.ado:10876); link()/filter() on a graph, at(), blabel(), ciopts(), fitopts(), lineopts(), mlabwidth(), headlabel off the pc types (`_dash_tw_refuses_tab` dash_parse.mata:8208-8226); bare replace (dash_parse.mata:8304); upper-case words such as HOVER() (help 969-973). bgcolor()/bgc() is twoway's own option (`_dash_tw_takes_tab` row; rejected_options.json `only_bgcolor` twoway_rc 0).
+
+### 6.7 Stale records found on the way
+
+- abbrev_truth.json:2343 calls bgcolor "dash-only option; twoway has no bgcolor()" and :645 lists bgc as rejected by Stata: both wrong (audit syn:SD-20, P13).
+- rejected_options.json (dash commit 49958e7) records link(), filter() and mlabwidth() with dash_rc 0; dash refuses all three since WP-32.
+- dash.sthlp:6625-6640 says xreverse, xcommon, lockaspect ... "reach the note"; dash.sthlp:982-986 and dash.ado:11163-11165 say unknown words are refused r(198) (audit LT-27 et al., P16).
+- No single list of dash-only words exists in the help; dash.sthlp:4952's "twenty" covers only 6.1's first 20 rows (SD-18's fix: list them in one place). dash.ado:1029-1033 and :1387-1391 call the aliases a deliberate superset.
+
+## 7. Test-suite performance input for WP-50
+
+### 7.1 Where the time is now (newest measurements first)
+
+- **WP-32 gate, 19oct2026** (ROADMAP.md:5155): `make test-all` = pytest 38,224 passed, 6 failed, 11 skipped in **1,562 s**, plus cert; "about 40 minutes wall". WP-32 gate 18oct2026 (`:5154`): pytest 995 s.
+- **WP-31 closeout, 18oct2026** (ROADMAP.md:5112-5118): full pytest 27,473 passed in 898 s (8 workers); `make cert` 804 s wall in three sessions (shards' scripts summed 802 / 640 / 685 s); `make gate` 105 s; whole batch-end run 1,807 s.
+- **pytest critical path** (ROADMAP.md:5131, WP-31 residual "The suite's five-minute target"): single served-mode probes that each run alone on one worker: `test_size_units.py` TestStataRatios label offsets and sizes (212 s, 192 s), `test_bare_intensity.py` (93 s), `test_by_text.py`'s three served probes (66-67 s each), `test_added_text.py` (62 s), `test_intensity_blend.py` (59 s), `test_by_axes_keys.py` (40 s each). With `--dist loadgroup` a long single test sets the wall floor whatever the worker count.
+- **cert per script** (shard table, test/run_all_cscripts.do:76-156, seconds from the 18oct2026 closeout; sum 2,127 s over 69 scripts): test_wp30_truth 566.6, test_wp31_truth 456.4, test_qualifier_in_stata 153.7, test_wp29_truth 123.6, test_twoway_option_parity 68.6, test_option_validation 54.8, test_env_guards 53.0, test_by_suboptions 47.1, test_parser 45.7, test_abbreviations 36.7, test_json_escaping 32.0, test_qualifier_literals 31.7. The two WP truth scripts are 48% of cert time; seventeen more (2.4) is the largest new cost on the horizon.
+- **Older breakdown (07oct2026, wp30-p1; .ultraplan/handoff/TEST-PERFORMANCE.md, TEST-PRUNING-ANALYSIS.md):** 5,038 pytest test-seconds + 904 cert seconds; test_mode_parity 1,245 u (now batch tier); help_claims_7 267 u (40-type x two-mode sweeps, served about 88%); help_claims_8 224 u (TestNoLayerNeedsScipyOrStatsmodels, now release tier); test_server 145; test_server_layer_defects 142; Chrome files 90/85/52; a served render pair = saved 0.045 s + served build 0.166 s + compile 0.14 s + exec 0.05 s (served about 85%). Throughput levels off at about 8 workers (u per wall-second 5.6 / 6.65 / 7.0 / 7.07 at -n 6/8/10/12). Its verdict: pytest alone can reach about 5 min with every lever; pytest plus cert in 5 min on this machine is not reachable unless cert leaves the default loop.
+
+### 7.2 Levers already in place (do not re-propose)
+
+- xdist `-n 8 --dist loadgroup` (pyproject.toml:9; CLAUDE.md rule 10 says `-n auto`, the file says 8); parity entries grouped per worker (conftest.py:274-300, tryfirst: the S1 bug fixed 07oct2026, pinned by test_xdist_groups.py).
+- Tiers: release (27 files) and batch (test_mode_parity.py) leave whole-suite runs (conftest.py:220-293; test_test_tiers.py).
+- `conftest.render_models(renderer)` builds models without serialising the page (memory: gate 1,060 -> 652 s on 08oct2026); per-template compile-once app loader (conftest.py:363-470, "Generated server apps: each block of text compiled once"); `ServerAppBuilder` source cache (A2/S3); `_dash_do_render` compiles dash_render.py once per Stata session (B1); twoway oracles from committed fixtures with `DASH_CERT_REMEASURE` (B2, scripts/extract_twoway_oracle_truth.do); cert sharded into 3 sessions with self-splitting truth scripts (C); per-process temp folder (conftest.py:34-80); session lock (conftest.py:127-213); `DASH_SUITE_TIMING` report (test/suite_timing.py).
+
+### 7.3 Levers not yet taken (from the two handoff analyses and WP-31's residual)
+
+- Split each long served probe into per-case tests so loadgroup can spread them (the WP-31 residual's named files above).
+- Trim the truth scripts' repeated work (each block re-runs twoway and a dash render; `qui do` of dash_parse.mata + dash.ado per script; TEST-PRUNING C3: `run` instead of `do` to stop echo).
+- F: a spec-hash render cache per worker for identical specs across help_claims and served files (estimate 600-800 worker-s at the time).
+- E/P1-P5: served-half de-parametrisation of 40-type sweeps (needs the maintainer's call for the BUGS-pinned ones: TestJitter, TestWhereColorvarIsDrawn, TestRegionColours, TestColorColoursTheWholeLayer, TestTheSecondAxisFitsTheLayer).
+- Run cert beside pytest instead of after it (run_all_tests.sh:3-9 records why it was serialised: port fights; the fixed-port scripts are already one shard unit).
+- Keep cert out of the default loop (TEST-PRUNING's recommended option 1): CLAUDE.md rule 11's five minutes then applies to pytest only.
+- WP-50 inputs to capture first: one `DASH_SUITE_TIMING` full run and one `DASH_CERT_PROFILE` cert run at the start of WP-50 (the memory rule: timing rides on the batch-end run).
+
+## 8. Process tooling (../dash-wt/_tools)
+
+### 8.1 agent-rules.md (16 lines; written for WP-31, binding then; the plan should re-issue it for WP-33+)
+
+- Work only in the worktree `$WT` (`cd $WT && ...`); never edit, stage or commit in the main checkout.
+- Read the section file, BRIEF, index (decision record), DECISIONS (wins over section text), the tracking-foundation notes (close the BUGS entry in place, delete your own open-allowance key line, rewrite the Tracked line with `commit pending`, CHANGELOG markers in place, one truth block per row above the marker in section order), and CLAUDE.md.
+- Re-read code before editing (anchors drift). Maintainer rule: `dash twoway ...` is refused r(198) "<word> is not a twoway plot type".
+- Stata only through `$WT/scripts/stata_slot.sh <dir> <file.do>` (three slots, `/tmp/dash-stata-slot-<n>.d` mkdir locks; scripts/stata_slot.sh:1-17); every cscript driver needs `adopath ++ "<WT>/"` and `global dash_nobrowser 1`; truth blocks are chosen with the environment variable (`WP31_ONLY=S46 scripts/stata_slot.sh ...`); r(222) SKIP is not a pass; no browser windows.
+- Never change persistent Stata preferences (`graph set`, `set ..., permanently`, profile files).
+- Measure twoway before encoding any bound, refusal or geometry; the measurement wins over the plan, deviation recorded.
+- Tests: the task's tests plus every test file that directly covers the change (grep for the options, functions, constants, models; frequent cross-file hits listed: test_function_test_map, test_program_coverage_map, test_file_headers, test_statistical_helpers served copy tuples, test_resource_limits, test_dependency_guards, test_string_value_export, test_served_worker, test_private_files, test_env_guards.cscript, test_adversarial.cscript, test_option_validation, test_help_conformance, page digest pins test_served_resources `_SAVED_DIGEST`, test_date_axis_residuals `_PLAIN_DIGESTS`, test_varlist_expansion); check under Stata's Python too (`/opt/anaconda3/bin/python3 -m pytest ... -p no:randomly`); **never** the full suite, make test/test-all/cert/gate.
+- Both renderers: module-level helpers into the served copy tuples; new functions into test/function_test_map.py; new Stata/Mata programs into test/program_coverage_map.py (and `_dash_require_mata` for Mata); user text echoed only via `_dash_say`; inline JS/CSS only via the nonce/hash paths; no shared mutable state.
+- GitNexus impact before editing a function (`gitnexus impact <symbol> -d upstream -r dash`); report HIGH/CRITICAL.
+- Rule 7: failing test first (failure text saved), then the fix, one commit per row; stage by explicit path; commit messages with no tool names and **no Co-Authored-By trailer** (the project rule overrides the harness reminder); `Flipped:` comments on flipped tests; `git add -f` new fixtures with complete `_meta`; count pins move with `# old -> new: <why>`.
+- Pace: no timing runs, no over-building, hand back within about 2.5 hours, reporting shas, tests run, cscript results, flips, moved pins, likely conflict lines, deviations, anything undone or unfiled.
+
+### 8.2 picks.sh and the merge helpers
+
+- `picks.sh <sha>...` (30 lines) cherry-picks each sha onto the current branch in order; on a conflict it re-checks out each unmerged file with `--conflict=diff3` and resolves by file:
+  - `test/test_wp31_truth.cscript`: `addmerge.py ours-first` then `blockorder.py` (re-sorts `* ==== S<NN>` chunks by section number, keeps head and the tail from the marker).
+  - `test/test_tracking_documents.py`: `addmerge.py drop` (both sides' deletions applied: the open-allowance key deletions).
+  - `test/test_mode_parity.py`, `test/test_option_validation.cscript`, `test/function_test_map.py`, `test/program_coverage_map.py`: `addmerge.py ours-first` (both sides' appended lines; difflib against base so repeated lines are never dropped).
+  - digest-pin files `test/test_date_axis_residuals.py`, `test/test_served_resources.py`, `test/test_varlist_expansion.py`: `pinmerge.py` (comments from both sides, values ours) and prints `REDERIVE <file>` (pins re-derived on the merged tree).
+  - `BUGS.md`, `CHANGELOG.md`, `GAPS3.md`, `TWOWAY_COVERAGE_AUDIT.md`: `linemerge.py` (same-length hunks line by line, the changed side wins), else `unionmerge.py` and `UNION <file> (check)`.
+  - anything else: `STOP: unhandled conflict`; leftover markers stop it too. It can resume a cherry-pick in progress.
+- **Needed for WP-33+:** the per-WP truth-script names (or a `test/test_wp*_truth.cscript` case) and `GAPS4.md` in the line-merge list; `blockorder.py`'s `^\* ==== S\d\d ` header regex if sections are numbered otherwise.
+- Merge practice (memory, WP-31): one agent per section in `../dash-wt/wp<NN>-s<MM>` cut from s3-bugs; land with `picks.sh` in merge order; then one tracking commit replacing `commit pending` with landed shas (step k.3b); hold the three slot locks while the gate's cert phase runs; send cross-file regressions found by the gate back to the agent on a `-fix` branch.
+- `c5/wip.patch` in `_tools` is a leftover work file, not a tool.
