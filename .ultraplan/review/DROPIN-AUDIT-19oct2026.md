@@ -2,9 +2,9 @@
 
 Audited 19oct2026 on s3-bugs 7dced3a (StataNow 19.5 MP, macOS arm64). 21 area auditors (15 planned, 6 added by a completeness critic), each followed by an adversarial verifier. 403 findings survived verification (367 confirmed, 33 partly, 3 uncertain; none refuted). Read-only: nothing in the repository was changed.
 
-Revised 20oct2026 with the maintainer's decisions (DECISIONS.md D40). The items D40 withdraws are removed from this report. Nothing has been programmed: this document is input to a later planning process.
+Revised 20oct2026 with the maintainer's decisions (DECISIONS.md D40 and D41). The items D40 withdraws are removed from this report. Nothing has been programmed: this document is input to a later planning process.
 
-## Maintainer decisions (D40, 20oct2026)
+## Maintainer decisions (D40 and D41, 20oct2026)
 
 These rulings govern every package below. Where a package says "no ruling", the maintainer has not decided it yet and the item stays open for planning.
 
@@ -12,9 +12,9 @@ These rulings govern every package below. Where a package says "no ruling", the 
 - **No programming yet.** These decisions update the documentation only. Implementation waits for a later planning process.
 - **Planning order:** package 13 first, then the order in the table below.
 
-| Package | Severity | Maintainer decision (D40) | What that means for planning |
+| Package | Severity | Maintainer decision (D40/D41) | What that means for planning |
 |---|---|---|---|
-| 1. Default drawing of common graphs | blocker | No ruling in D40. | Open. The standing rule (draw what twoway draws) applies; to be planned. |
+| 1. Default drawing of common graphs | blocker | D41: resolve every item that can be resolved. Never draw a 0 px plot. Verify that time-series operators are allowed in twoway graphs before spending any time on the lag/difference item. A zero label is written 0, never 5.551e-17. | Resolve all ten items. (1) Histogram bin axis: ticked over the first and last bin midpoints, as twoway does. (2) by() panels: x1 at #4 as well as y. (3) range() beyond the data: ticks over the data only. (4) by()'s shared y title painted. (5) aspectratio() with xsize()/ysize(): the frame drawn at that ratio and size, never a 0 px plot, and no Bokeh validation error. (6) The default area plot and its key outlined as twoway outlines them. (7) A ci type with nofit counts one plot number. (8) Date axis with a missing y at an end row: first re-confirm by a direct twoway probe that time-series operators are allowed in twoway graphs (existing evidence: test/fixtures/ts_operator_truth.json, measured 18oct2026, 64 of 99 probes rc 0, e.g. 'line D.close L.close'; its refusals are r(5) not sorted and r(111) not tsset). Only then work on the operator part. The missing-end-row cause also applies to a plain y. (9) a(b)c rules crossing zero: the zero label is 0. (10) Axes at build: use Stata's own ticks wherever Stata can be asked at export. The after-a-move natscale misses stay open (Stata's natscale is a compiled built-in). |
 | 2. Python discovery, platforms and environment | major | Allow dash to use whichever Python Stata finds or the user sets with Stata's own commands (set python_exec, python set exec). | Python discovery (plat:PT-1): fix, so that dash and dash_setup never refuse a Python that Stata itself accepts and never insist on their own discovery. The other items (platforms, editions, version floor, lock coverage, ~ on Windows, large-data performance, WebGL) have no ruling in D40 and stay open. |
 | 3. Stata graph integration and output medium | major | Note this in the help file; that resolves the package. | Resolved by documentation. The help must state that a dashboard is not a Stata graph. name() registers a graph, there is no graph in memory, and graph export/save/use/display/combine, putdocx/putpdf/putexcel, dyndoc and markdown cannot use it. It must also cover each listed rc and message difference (name() length and '__', a duplicate name, saving() onto an existing file, nodraw with saving(, asis), play(), name(g, rep), dash clear g2, browser previews and leftover s() macros), and build-time evaluation of the data. |
 | 4. Plot types and command grammar | major | heatmap is not a Stata command and sunflower is not a twoway plot type (see the notes above). | The heatmap and sunflower items are withdrawn. Audit correction made with this ruling: the internal and undocumented class names (rbarm, rbspike, ksm, patch, normgen, ipoint, meta_*, y*xview) and adopath-defined types are withdrawn too. They came from the same source, Stata's ado file names, not from documented twoway plot types. Help follow-on: dash.sthlp:737-742 must stop calling sunflower a twoway plot type, and dash's refusal of sunflower should be the same as for any word that is not a twoway plot type. The remaining items (matamatrix(), capitalised type names, the empty graph's axes and options, a bare plot after a parenthesised group, || inside one group) have no separate ruling. They are carried forward under the package-11 ruling (compatible with twoway) unless the maintainer says otherwise. |
@@ -42,8 +42,8 @@ No. The claim is not true today (before the D40 rulings are carried out). dash p
 
 ### 1. Default drawing of common graphs (blocker, effort L)
 
-**Decision (D40):** No ruling in D40.  
-**For planning:** Open. The standing rule (draw what twoway draws) applies; to be planned.
+**Decision (D40/D41):** D41: resolve every item that can be resolved. Never draw a 0 px plot. Verify that time-series operators are allowed in twoway graphs before spending any time on the lag/difference item. A zero label is written 0, never 5.551e-17.  
+**For planning:** Resolve all ten items. (1) Histogram bin axis: ticked over the first and last bin midpoints, as twoway does. (2) by() panels: x1 at #4 as well as y. (3) range() beyond the data: ticks over the data only. (4) by()'s shared y title painted. (5) aspectratio() with xsize()/ysize(): the frame drawn at that ratio and size, never a 0 px plot, and no Bokeh validation error. (6) The default area plot and its key outlined as twoway outlines them. (7) A ci type with nofit counts one plot number. (8) Date axis with a missing y at an end row: first re-confirm by a direct twoway probe that time-series operators are allowed in twoway graphs (existing evidence: test/fixtures/ts_operator_truth.json, measured 18oct2026, 64 of 99 probes rc 0, e.g. 'line D.close L.close'; its refusals are r(5) not sorted and r(111) not tsset). Only then work on the operator part. The missing-end-row cause also applies to a plain y. (9) a(b)c rules crossing zero: the zero label is 0. (10) Axes at build: use Stata's own ticks wherever Stata can be asked at export. The after-a-move natscale misses stay open (Stata's natscale is a compiled built-in).
 
 Each item alone was graded major. Together they change the first drawing of the most common twoway commands (every default histogram and by() graph, every area plot, ysc(r(0)), aspectratio with xsize), so 'draws what twoway draws' fails for ordinary do-files.
 
@@ -80,7 +80,7 @@ Each item alone was graded major. Together they change the first drawing of the 
 
 ### 2. Python discovery, platforms and environment (major, effort XL)
 
-**Decision (D40):** Allow dash to use whichever Python Stata finds or the user sets with Stata's own commands (set python_exec, python set exec).  
+**Decision (D40/D41):** Allow dash to use whichever Python Stata finds or the user sets with Stata's own commands (set python_exec, python set exec).  
 **For planning:** Python discovery (plat:PT-1): fix, so that dash and dash_setup never refuse a Python that Stata itself accepts and never insist on their own discovery. The other items (platforms, editions, version floor, lock coverage, ~ on Windows, large-data performance, WebGL) have no ruling in D40 and stay open.
 
 twoway runs everywhere with no dependencies. dash refuses to run on a machine where Stata found Python by itself, and it is unverified off one platform and one edition.
@@ -121,7 +121,7 @@ twoway runs everywhere with no dependencies. dash refuses to run on a machine wh
 
 ### 3. Stata graph integration and output medium (major, effort L)
 
-**Decision (D40):** Note this in the help file; that resolves the package.  
+**Decision (D40/D41):** Note this in the help file; that resolves the package.  
 **For planning:** Resolved by documentation. The help must state that a dashboard is not a Stata graph. name() registers a graph, there is no graph in memory, and graph export/save/use/display/combine, putdocx/putpdf/putexcel, dyndoc and markdown cannot use it. It must also cover each listed rc and message difference (name() length and '__', a duplicate name, saving() onto an existing file, nodraw with saving(, asis), play(), name(g, rep), dash clear g2, browser previews and leftover s() macros), and build-time evaluation of the data.
 
 A do-file that names its graphs, exports them, or combines them does not work unchanged under dash.
@@ -165,7 +165,7 @@ A do-file that names its graphs, exports them, or combines them does not work un
 
 ### 4. Plot types and command grammar (major, effort L)
 
-**Decision (D40):** heatmap is not a Stata command and sunflower is not a twoway plot type (see the notes above).  
+**Decision (D40/D41):** heatmap is not a Stata command and sunflower is not a twoway plot type (see the notes above).  
 **For planning:** The heatmap and sunflower items are withdrawn. Audit correction made with this ruling: the internal and undocumented class names (rbarm, rbspike, ksm, patch, normgen, ipoint, meta_*, y*xview) and adopath-defined types are withdrawn too. They came from the same source, Stata's ado file names, not from documented twoway plot types. Help follow-on: dash.sthlp:737-742 must stop calling sunflower a twoway plot type, and dash's refusal of sunflower should be the same as for any word that is not a twoway plot type. The remaining items (matamatrix(), capitalised type names, the empty graph's axes and options, a bare plot after a parenthesised group, || inside one group) have no separate ruling. They are carried forward under the package-11 ruling (compatible with twoway) unless the maintainer says otherwise.
 
 A documented [G-2] plot type is refused with a false message, and some valid command shapes are refused.
@@ -190,7 +190,7 @@ A documented [G-2] plot type is refused with a false message, and some valid com
 
 ### 5. Resource limits (major, effort M)
 
-**Decision (D40):** For all caps on the number of observations, make sure they are documented in the help file.  
+**Decision (D40/D41):** For all caps on the number of observations, make sure they are documented in the help file.  
 **For planning:** Observation caps (the embedded-cell cap of 5M with its 20M ceiling, its counting of _N whatever if/in selects, and by()'s group limit as it bears on observations) are to be documented in the help: in Differences from twoway and in Resource limits. Caps that are not on observations (plots per graph, reflines, added texts, n(), bin(), lpoly degree, the 1,000-bin rebinning, the 2,000-tick clamp, msize, the fpfit grid, text length) have no ruling in D40 and stay open.
 
 twoway has no caps. Large datasets and many-plot or many-panel graphs are refused or truncated, and these limits are not under Differences.
@@ -228,7 +228,7 @@ twoway has no caps. Large datasets and many-plot or many-panel graphs are refuse
 
 ### 6. by() fidelity (major, effort L)
 
-**Decision (D40):** Resolve if supported by Bokeh.  
+**Decision (D40/D41):** Resolve if supported by Bokeh.  
 **For planning:** Fix every item Bokeh can draw. Items Bokeh cannot draw have no ruling yet; the proposal for planning is to document them under Differences.
 
 by() is one of the most used twoway options. Several of its sub-options and interactions draw or refuse differently.
@@ -296,7 +296,7 @@ by() is one of the most used twoway options. Several of its sub-options and inte
 
 ### 7. Colour variables (colorvar) (major, effort L)
 
-**Decision (D40):** Resolve if supported by Bokeh.  
+**Decision (D40/D41):** Resolve if supported by Bokeh.  
 **For planning:** As package 6.
 
 The default colouring of every non-line colorvar plot and every discrete key differ from twoway.
@@ -355,7 +355,7 @@ The default colouring of every non-line colorvar plot and every discrete key dif
 
 ### 8. Legend, titles and added text (major, effort L)
 
-**Decision (D40):** Resolve if supported by Bokeh.  
+**Decision (D40/D41):** Resolve if supported by Bokeh.  
 **For planning:** As package 6.
 
 Legend and title defaults and sub-options visibly differ, including the default title style and placement.
@@ -438,7 +438,7 @@ Legend and title defaults and sub-options visibly differ, including the default 
 
 ### 9. Axes (major, effort L)
 
-**Decision (D40):** Resolve if supported by Bokeh.  
+**Decision (D40/D41):** Resolve if supported by Bokeh.  
 **For planning:** As package 6.
 
 Axis sub-options and edge rules differ visibly; ytitle(, orientation(horizontal)) is a common idiom.
@@ -509,7 +509,7 @@ Axis sub-options and edge rules differ visibly; ytitle(, orientation(horizontal)
 
 ### 10. Schemes, styles and figure geometry (major, effort L)
 
-**Decision (D40):** Resolve if supported by Bokeh.  
+**Decision (D40/D41):** Resolve if supported by Bokeh.  
 **For planning:** As package 6.
 
 Shipped schemes draw wrong (economist note missing, wrong widths), style words twoway reads are not read, and figure proportions follow a height band.
@@ -559,7 +559,7 @@ Shipped schemes draw wrong (economist note missing, wrong widths), style words t
 
 ### 11. Accepted syntax and refusals (major, effort M)
 
-**Decision (D40):** Make dash compatible with twoway on these issues.  
+**Decision (D40/D41):** Make dash compatible with twoway on these issues.  
 **For planning:** Fix all: accept what twoway accepts, refuse what twoway refuses, with twoway's rc and message.
 
 Some valid twoway is refused (including repeated options twoway takes rightmost) and some invalid twoway is accepted.
@@ -638,7 +638,7 @@ Some valid twoway is refused (including repeated options twoway takes rightmost)
 
 ### 12. Statistical and computed layers (major, effort L)
 
-**Decision (D40):** If there are zero observations after the if/in qualifiers, issue an error before the graph is created in Python, for every plot type, through a single function. If that differs from Stata, note it in the help; that note resolves it.  
+**Decision (D40/D41):** If there are zero observations after the if/in qualifiers, issue an error before the graph is created in Python, for every plot type, through a single function. If that differs from Stata, note it in the help; that note resolves it.  
 **For planning:** Zero observations (DG-1, the contour crash, and every other type): one Stata-side check, run after each plot's and the graph's if/in are applied and before Python is called, refuses with an error. Where twoway draws something instead (for example an empty graph), the help documents the difference, and that is the resolution. The other items (rarea cmissing outlines, the contour subsample above 1,000 points, a contour with no surface, xlog/xtransform() on lfit, lpolyci at zero df, documented numeric limits, tie order) have no ruling in D40 and stay open.
 
 Every Stata contour example is approximated, an empty contour crashes, and rarea outlines cross gaps.
@@ -670,7 +670,7 @@ Every Stata contour example is approximated, an empty contour crashes, and rarea
 
 ### 13. Verification and test coverage (major, effort L)
 
-**Decision (D40):** Top priority. Produce it so that it can be injected into the README to demonstrate the command's flexibility.  
+**Decision (D40/D41):** Top priority. Produce it so that it can be injected into the README to demonstrate the command's flexibility.  
 **For planning:** Plan first. A broad twoway-vs-dash corpus comparison, for example every example in Stata's own twoway help files and g.pdf, run under both twoway and dash. Its output (command, twoway picture, dash picture, verdict) is generated in a form that can be injected into README.md as a gallery.
 
 Most gaps above went unnoticed because no test compares dash's drawing with twoway over a broad corpus.
@@ -705,7 +705,7 @@ Most gaps above went unnoticed because no test compares dash's drawing with twow
 
 ### 14. recast() and horizontal (minor, effort M)
 
-**Decision (D40):** Resolve.  
+**Decision (D40/D41):** Resolve.  
 **For planning:** Fix all.
 
 Rarely used combinations, but they refuse valid commands or draw wrong axes and styles.
@@ -731,7 +731,7 @@ Rarely used combinations, but they refuse valid commands or draw wrong axes and 
 
 ### 15. Plot-option fidelity: markers, labels, lines, fills (minor, effort L)
 
-**Decision (D40):** Resolve.  
+**Decision (D40/D41):** Resolve.  
 **For planning:** Fix all.
 
 Many smaller drawing differences on options and symbols, mostly visible only on specific options.
@@ -796,7 +796,7 @@ Many smaller drawing differences on options and symbols, mostly visible only on 
 
 ### 16. Help, README and tracker accuracy (minor, effort S)
 
-**Decision (D40):** Resolve.  
+**Decision (D40/D41):** Resolve.  
 **For planning:** Fix all.
 
 Stale or contradictory sentences make the documented scope of the claim untrustworthy.
@@ -831,7 +831,7 @@ Stale or contradictory sentences make the documented scope of the claim untrustw
 
 ### 17. Messages and notes (cosmetic, effort S)
 
-**Decision (D40):** Resolve.  
+**Decision (D40/D41):** Resolve.  
 **For planning:** Fix all.
 
 Return codes match, but the text differs from twoway's, and notes appear where twoway is silent.
