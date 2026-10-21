@@ -46,12 +46,36 @@ import dash_render as dr  # noqa: E402
 from by_panel_probe import (by_grid, chrome_texts, panel_label,  # noqa: E402
                             panel_label_title)
 from conftest import load_app  # noqa: E402
+from known_differences import dead_rows, known_problems  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "by_text_truth.json")
 _MODES = ("saved", "served")
 _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_by_text_")
 _TRUTH = None
+
+#: {"<probe>": "<GAPS4 id>", "<probe>:text": ..., "<probe>:offset": ...}
+#: (WP-33 BY-24, D-33-12.g as ruled in D44, D-33-10.a): a probe whose side
+#: or alignment differs from twoway's (TestPlacementMatchesTwoway, plain
+#: key), whose overall texts do (TestOverallTextMatchesTwoway, ":text") and
+#: whose corner offset does
+#: (test_legend_span_browser.py::TestByTitlesAtPosition, ":offset").
+BY_POSITION_KNOWN = {
+    # BY-24a (41-02, D44): by()'s title at clocks 5, 6 and 7 is drawn above
+    # the panels; twoway draws it below them.
+    "bp43": "BY-24a",
+    "bp44": "BY-24a",
+    "bp45": "BY-24a",
+    # BY-18 (41-05): at clocks 3 and 9 dash draws by()'s title above and
+    # its note below the panels, aligned right or left; twoway draws them
+    # beside the panels, centred.
+    "bp64": "BY-18",
+    "bp65": "BY-18",
+    "bp66": "BY-18",
+    "bp67": "BY-18",
+}
+#: Differences a ruling keeps (D-33-10.a's companion dict; empty).
+BY_POSITION_DELIBERATE = {}
 
 
 from conftest import render_models  # noqa: E402
@@ -175,6 +199,13 @@ def _ok_probes():
     return sorted(k for k, p in _truth()["probes"].items() if p["rc"] == 0)
 
 
+def _known(check=""):
+    """BY_POSITION_KNOWN's rows of one check: plain keys (placement),
+    ":text" (overall texts) or ":offset" (the Chrome test's)."""
+    return {k: v for k, v in BY_POSITION_KNOWN.items()
+            if k.partition(":")[2] == check}
+
+
 # ---------------------------------------------------------------------------
 # The fixture
 # ---------------------------------------------------------------------------
@@ -184,9 +215,18 @@ class TestTheFixture:
         t = _truth()
         assert {"stata_version", "born_date", "dash_commit",
                 "extracted"} <= set(t["_meta"])
-        assert len(t["probes"]) == 39
+        # 39 -> 67: BY-24 position() probes (WP-33)
+        assert len(t["probes"]) == 67
         assert t["probes"]["bp32"]["rc"] == 198
         assert t["probes"]["bp35"]["rc"] == 198
+
+    def test_every_known_difference_is_open(self):
+        """BY_POSITION_KNOWN: every row live (D-33-10.a rule 3), every
+        key a probe of the fixture, plain or with :text or :offset."""
+        assert dead_rows(BY_POSITION_KNOWN, "by_position") == []
+        for key in BY_POSITION_KNOWN:
+            pid, _, check = key.partition(":")
+            assert pid in _truth()["probes"] and check in ("", "text", "offset"), key
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -215,8 +255,11 @@ class TestOverallTextMatchesTwoway:
         """Every probe twoway draws: the head and foot cells hold twoway's
         overall title, subtitle, note (its lines joined) and caption, the
         note at size(large)'s size where by(, note()) asks for it."""
-        bad = []
+        # Flipped (WP-33 BY-24): the loops compare every probe; a listed
+        # difference belongs to its item (BY_POSITION_KNOWN).
+        res = {}
         for pid in _ok_probes():
+            bad = []
             p = _truth()["probes"][pid]
             o = p["overall"]
             r = _draw(mode, _probe_spec(p))
@@ -225,7 +268,7 @@ class TestOverallTextMatchesTwoway:
             want = sorted(t for t in (o["title"], o["subtitle"],
                                       "\n".join(o["note"]), o["caption"]) if t)
             if got != want:
-                bad.append((pid, got, want))
+                bad.append("dash %r, twoway %r" % (got, want))
             if "size(large)" in p["options"]:
                 rows = [m for c in (r.head, r.foot) if c is not None
                         for m in list(c.above) + list(c.below)
@@ -233,10 +276,11 @@ class TestOverallTextMatchesTwoway:
                         and m.text == "\n".join(o["note"])]
                 big = dr._textbox_size({"size": "large"}, None)
                 if [m.text_font_size for m in rows] != [big]:
-                    bad.append((pid, "note size",
-                                [m.text_font_size for m in rows], big))
-        assert not bad, "\n".join("%s: dash %r, twoway %r" % b[:3]
-                                  for b in bad)
+                    bad.append("note size: dash %r, twoway %r"
+                               % ([m.text_font_size for m in rows], big))
+            res[pid + ":text"] = "; ".join(bad) if bad else None
+        assert known_problems(res, _known("text"), "by_position",
+                              deliberate=BY_POSITION_DELIBERATE) == []
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -248,8 +292,11 @@ class TestPlacementMatchesTwoway:
         # An SVG text with no text-anchor is anchored at its start.
         align_of = {"start": "left", "middle": "center", "end": "right",
                     None: "left"}
-        bad = []
+        # Flipped (WP-33 BY-24): the loops compare every probe; a listed
+        # difference belongs to its item (BY_POSITION_KNOWN).
+        res = {}
         for pid in _ok_probes():
+            bad = []
             p = _truth()["probes"][pid]
             svg = p["svg"]
             r = _draw(mode, _probe_spec(p))
@@ -287,8 +334,10 @@ class TestPlacementMatchesTwoway:
                     if side != want_side or got_align != align_of[t["anchor"]]:
                         bad.append((pid, first, (side, got_align),
                                     (want_side, t["anchor"])))
-        assert not bad, "\n".join("%s %r: dash %r, twoway %r" % b
-                                  for b in bad)
+            res[pid] = "; ".join("%r: dash %r, twoway %r" % b[1:]
+                                 for b in bad) if bad else None
+        assert known_problems(res, _known(), "by_position",
+                              deliberate=BY_POSITION_DELIBERATE) == []
 
 
 # ---------------------------------------------------------------------------

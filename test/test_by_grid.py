@@ -55,6 +55,20 @@ def _data():
     """by_text_truth's auto data with twoway's g10 = mod(_n, 10) and
     g3 = mod(_n, 3), as the extractor made them."""
     data = copy.deepcopy(tbt._truth()["data"])
+    # WP-33 BY-24: the regenerated fixture's data block is the columnar
+    # form dash writes now (dataFormat dash-columns-1); the callers here
+    # and in the files that import this one edit rows, so it is given
+    # back as the row form ("values", a missing number "null" as the row
+    # writer wrote it), which the renderers read too.
+    if "columns" in data:
+        dr._dash_decode_columns(data)
+        cols = data.pop("columns")
+        data.pop("dataFormat")
+        data["values"] = [
+            {v: (c[i] if isinstance(c, list) else
+                 ("null" if c[i] != c[i] else float(c[i])))
+             for v, c in cols.items()}
+            for i in range(data["numberOfRecords"])]
     for i, row in enumerate(data["values"], start=1):
         row["g10"] = float(i % 10)
         row["g3"] = float(i % 3)

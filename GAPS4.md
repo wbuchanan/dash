@@ -137,6 +137,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 |---|---|---|---|---|---|---|
 | BY-28 | contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel | S2 | 41-01 | Fix | zyx2view_g.class:255-276; tw_f29a.svg has 3 colours in both panels; dash dump shows per-panel cuts; _dash_share_by_scales shares x/y only | Compute the cuts once over all panels (Total included), in both modes; measure the exact cuts from a drawn graph |
 | BY-1 | by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too) | S2 | 41-02 | Fix | _dash_by_chrome sides=('above',)/('below',) (dash_render.py:55079, 55082); skipped at 54495 | Draw them inside the panel array at their clock; add truth probes (M11: every P6-P10 item is drawn, none only named). |
+| BY-24a | by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them | S2 | 41-02 | Fix | by_text_truth.json bp43-bp45 (twoway's X below the panels, anchored end/middle/start); test_by_text.py BY_POSITION_KNOWN | Put by()'s title below the panels at clocks 5, 6 and 7, in both modes |
 | BY-2 | A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored (also BY-29, BY-11) | S2 | 41-03 | Fix | twoway SVGs identical with and without scale(1.5) or scale(0.5); _dash_scale_factor (dash_render.py:27487) has no by() check; by(scale()) falls to the unsupported branch (36404) | Ignore the outer scale() under by(); apply by(, scale()) to the whole by() graph |
 | BY-27 | function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed) | S2 | 41-03 | Fix | twoway__function_gen.ado:101-102; _dash_fold_range (dash.ado:2401-2432); dash.ado:8845-8873 | Compute the min/max per panel and for Total inside the per-panel loop; pin it against sersets |
 | BY-3 | An at() hole for a legend or colour key that is not drawn is not reserved in the grid | S2 | 41-04 | Fix | bygraph_g.class:612-618, 670-676; dash_render.py:55786-55874, 55990-56024 | Return the at() cell whenever at() is given and the key object exists |
@@ -322,7 +323,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-16 Tracked:** Open (WP-33 section 33-13).
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
-- **BY-24 Tracked:** Open (WP-33 section 33-12).
+- **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit pending.
 - **AX-4 Tracked:** Open (WP-34 section 34-01).
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
 - **AX-1 Tracked:** Open (WP-34 section 34-03).
@@ -408,6 +409,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-13 Tracked:** Open (WP-40 section 40-02).
 - **BY-28 Tracked:** Open (WP-41 section 41-01).
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
+- **BY-24a Tracked:** Open (WP-41 section 41-02).
 - **BY-2 Tracked:** Open (WP-41 section 41-03).
 - **BY-27 Tracked:** Open (WP-41 section 41-03).
 - **BY-3 Tracked:** Open (WP-41 section 41-04).

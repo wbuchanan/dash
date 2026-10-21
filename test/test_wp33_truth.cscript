@@ -513,6 +513,66 @@ if inlist("`only'", "", "S12") & `: list posof "S12" in w33_run' {
 }
 * ==== end S12 ====
 
+python:
+def _w33s12_text_x():
+    # S12 BY-24: the x of the first text "X" in the SVG texts list named
+    # by the local tlist (cert_svg_texts' JSON lines) and in the committed
+    # fixture's probe named by the local pid (fixtures/by_text_truth.json,
+    # written by scripts/extract_by_text_truth.do), as the locals x and fx
+    # ("." when there is none).  No macro is expanded into Python text.
+    import json
+    from sfi import Macro
+    pid = Macro.getLocal("pid")
+    x = "."
+    with open(Macro.getLocal("tlist"), encoding="utf-8") as fh:
+        for line in fh:
+            t = json.loads(line)
+            if t.get("text") == "X":
+                x = "%.3f" % t["x"]
+                break
+    Macro.setLocal("x", x)
+    with open("fixtures/by_text_truth.json", encoding="utf-8") as fh:
+        svg = json.load(fh)["probes"][pid]["svg"]
+    fx = [t["x"] for t in svg if t["text"] == "X"]
+    Macro.setLocal("fx", "%.3f" % fx[0] if fx else ".")
+end
+
+* ==== S12 BY-24: by() text positions ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S12") & `: list posof "S12" in w33_run' {
+    display as text "S12 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3312-2: by()'s note at clock 5 and title at clock 11 are where
+    // the committed truth (fixtures/by_text_truth.json bp55 and bp40)
+    // puts them, drawn as extract_by_text_truth.do's bt draws (scheme
+    // stcolor for this session only, put back after).
+    // ------------------------------------------------------------
+    local s12_scheme "`c(scheme)'"
+    set scheme stcolor
+    foreach pc in "bp55|note" "bp40|title" {
+        gettoken pid rest : pc, parse("|")
+        gettoken bar what : rest, parse("|")
+        local clock = cond("`what'" == "note", 5, 11)
+        sysuse auto, clear
+        twoway scatter mpg weight, by(foreign, `what'("X", position(`clock'))) name(Graph, replace)
+        capture erase "`w33_work'/s12_`pid'.svg"
+        cert_svg_export, name(Graph) file("`w33_work'/s12_`pid'.svg")
+        local svg "`r(file)'"
+        cert_svg_texts, file("`svg'")
+        local tlist "`r(list)'"
+        python: __import__("__main__")._w33s12_text_x()
+        _w33_expect Q3312-2 "(abs(`x' - `fx') <= 1)" "`pid': X at x `x', the fixture's `fx'"
+        capture erase "`svg'"
+        capture erase "`tlist'"
+    }
+    _w33_done Q3312-2 "by()'s note at clock 5 and title at clock 11 are where the committed truth puts them"
+    capture graph drop Graph
+    set scheme `s12_scheme'
+    display as text "S12 end " c(current_date) " " c(current_time)
+}
+* ==== end S12 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

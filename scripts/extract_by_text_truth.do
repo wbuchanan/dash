@@ -191,6 +191,36 @@ bt bp36 "" `"by(foreign, title("X", ring(0)))"'
 bt bp37 "" "by(foreign) scheme(economist)"
 bt bp38 "" `"by(foreign, title("X") note("N")) scheme(economist)"'
 bt bp39 "" `"by(foreign, title("X") subtitle("S") note("N") caption("C")) scheme(s2color)"'
+* WP-33 BY-24: by()'s four texts at clock positions (D-33-12.f): each
+* text at 11, 12, 1, 5, 6, 7, then title and note at 3 and 9.
+bt bp40 "" `"by(foreign, title("X", position(11)))"'
+bt bp41 "" `"by(foreign, title("X", position(12)))"'
+bt bp42 "" `"by(foreign, title("X", position(1)))"'
+bt bp43 "" `"by(foreign, title("X", position(5)))"'
+bt bp44 "" `"by(foreign, title("X", position(6)))"'
+bt bp45 "" `"by(foreign, title("X", position(7)))"'
+bt bp46 "" `"by(foreign, subtitle("X", position(11)))"'
+bt bp47 "" `"by(foreign, subtitle("X", position(12)))"'
+bt bp48 "" `"by(foreign, subtitle("X", position(1)))"'
+bt bp49 "" `"by(foreign, subtitle("X", position(5)))"'
+bt bp50 "" `"by(foreign, subtitle("X", position(6)))"'
+bt bp51 "" `"by(foreign, subtitle("X", position(7)))"'
+bt bp52 "" `"by(foreign, note("X", position(11)))"'
+bt bp53 "" `"by(foreign, note("X", position(12)))"'
+bt bp54 "" `"by(foreign, note("X", position(1)))"'
+bt bp55 "" `"by(foreign, note("X", position(5)))"'
+bt bp56 "" `"by(foreign, note("X", position(6)))"'
+bt bp57 "" `"by(foreign, note("X", position(7)))"'
+bt bp58 "" `"by(foreign, caption("X", position(11)))"'
+bt bp59 "" `"by(foreign, caption("X", position(12)))"'
+bt bp60 "" `"by(foreign, caption("X", position(1)))"'
+bt bp61 "" `"by(foreign, caption("X", position(5)))"'
+bt bp62 "" `"by(foreign, caption("X", position(6)))"'
+bt bp63 "" `"by(foreign, caption("X", position(7)))"'
+bt bp64 "" `"by(foreign, title("X", position(3)))"'
+bt bp65 "" `"by(foreign, title("X", position(9)))"'
+bt bp66 "" `"by(foreign, note("X", position(3)))"'
+bt bp67 "" `"by(foreign, note("X", position(9)))"'
 file close btrec
 
 python:
@@ -253,7 +283,9 @@ for pid in order:
                  "anchor": t["anchor"], "size": t["size"]}
                 for t in doc["texts"] if t["text"]
                 and not _NUM.match(t["text"])]
-    p["canvas"] = (doc.get("canvas") or {}).get("width")
+    # svg_truth names the viewBox width "w" (WP-33 BY-24: "width" was
+    # read here, so every probe's canvas was null).
+    p["canvas"] = (doc.get("canvas") or {}).get("w")
 
 with open(os.path.join(WORK, "data.json"), encoding="utf-8") as fh:
     data = json.load(fh)

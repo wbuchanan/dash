@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 226 registered items, by lead id, with its
+#: BUGS.md entry of each of the 227 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -2874,7 +2874,6 @@ GAPS4_OPEN = {
     'TR-2': 'No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand)',
     'stat:PT-23': 'Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...',
     'CV-16': 'colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously',
-    'BY-24': 'by() title/note/caption under position() has truth only for caption pos(5)',
     'AX-4': 'The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints',
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
     'AX-1': 'xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data',
@@ -2960,6 +2959,7 @@ GAPS4_OPEN = {
     'sil:SD-13': 'text() whose globals expand past 4,000 characters is refused r(198)',
     'BY-28': 'contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel',
     'BY-1': "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)",
+    'BY-24a': "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them",
     'BY-2': 'A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored',
     'BY-27': "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)",
     'BY-3': 'An at() hole for a legend or colour key that is not drawn is not reserved in the grid',
@@ -3189,6 +3189,7 @@ GAPS4_WP = {
     'sil:SD-13': 'WP-40',
     'BY-28': 'WP-41',
     'BY-1': 'WP-41',
+    'BY-24a': 'WP-41',
     'BY-2': 'WP-41',
     'BY-27': 'WP-41',
     'BY-3': 'WP-41',
@@ -3418,6 +3419,7 @@ GAPS4_SECTION = {
     'sil:SD-13': '40-02',
     'BY-28': '41-01',
     'BY-1': '41-02',
+    'BY-24a': '41-02',
     'BY-2': '41-03',
     'BY-27': '41-03',
     'BY-3': '41-04',
@@ -3568,7 +3570,8 @@ _GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
               "WP-46", "WP-47", "WP-48", "WP-49")
 _GAPS4_WITHDRAWN = ("plat:PT-3", "basic:PT-7", "plot:PT-10")
 # An optional lower-case letter: the rows a closing section registers for
-# differences it measured and no audit item covers (D42: syn:SD-20a..e).
+# differences it measured and no audit item covers (D42: syn:SD-20a..e;
+# D44: BY-24a).
 _GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}[a-z]?"
 _GAPS4_KINDS = ("Fix", "Document", "Partly", "Fix per the Q8 per-word ruling",
                 "Fix or Document per the Q8 per-word ruling")
@@ -3755,7 +3758,9 @@ class TestGaps4Tracking:
         # WP-33 33-10 measured (D42, syn:SD-20a..e).
         # old -> new: 221 -> 226: syn:SD-20 registered five measured
         # binding differences (D42)
-        assert len(GAPS4_ALL) == 226
+        # old -> new: 226 -> 227: BY-24 registered BY-24a, by()'s title at
+        # clocks 5-7 drawn above the panels (D44)
+        assert len(GAPS4_ALL) == 227
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

@@ -4526,11 +4526,11 @@
   - Suggested fix: Compare frame insets under scale(0.5)/(1.5); correct the help
   - Resolution: Fixed 21oct2026 (WP-33, GW-11). scripts/extract_scale_frame_truth.do measures twoway's plot region under scale(0.5..2) for two commands (gaps scale, region margins stay; command B's left side departs at scale(2), where the legend is wider than the plot and twoway widens the plot column, listed under LT-6 by the maintainer's ruling D43); test/test_scale_frame.py compares dash's frame insets in Chrome in both modes, differences listed under GW-6, VF-4 and LT-6 in test/scale_frame_known.py; the help says the gaps scale. Pinned by test/test_scale_frame.py::TestDashAgainstTwoway, test/test_sizing.py::TestScaleFrameTruth, test/test_sizing.py::TestScaleHelp, test/test_wp33_truth.cscript Q3311-1; fixture test/fixtures/scale_frame_truth.json. Closes GAPS4 GW-11 (WP-33, GW-11).
 
-- [ ] Title: by() title/note/caption under position() has truth only for caption pos(5)
+- [x] Title: by() title/note/caption under position() has truth only for caption pos(5)
   - File Names and Line Numbers: extract_by_text_truth.do bp01-bp39; TestByTitlesSpan
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids BY-24; partly; tracked: untracked. Registered as GAPS4 BY-24 (WP-33, section 33-12, Fix).
   - Suggested fix: Add position() probes
-  - Resolution: Not fixed because WP-33 section 33-12 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, BY-24). scripts/extract_by_text_truth.do measures by()'s title, subtitle, note and caption at clocks 11, 12, 1, 5, 6, 7, 3 and 9 (bp40-bp67; its canvas width is now read from the SVG's viewBox); test/test_by_text.py compares side and alignment in both modes and test/test_legend_span_browser.py::TestByTitlesAtPosition the corner offsets in Chrome, differences listed under BY-18 (clocks 3 and 9 beside the panels) and BY-24a (by()'s title at clocks 5-7 below the panels, registered by D44). Pinned by those, test/test_wp33_truth.cscript Q3312-2; fixture test/fixtures/by_text_truth.json. Closes GAPS4 BY-24 (WP-33, BY-24).
 
 - [ ] Title: The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints
   - File Names and Line Numbers: default_axes_truth P08 (scale 13.8125-39.1875, ticks 15(5)40); dash draws 10(10)40 with an empty band, and rep78 discrete 0(2)6 against twoway's 1(1)5; histogram is in _DASH_STATA_TICK_SKIP (dash_render.py:41811); test_default_axes.py:230-233 excludes P08 x
@@ -5833,3 +5833,9 @@
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20e (WP-35, section 35-03, Fix).
   - Suggested fix: Record them for scatter's connecting line as twoway reads them
   - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+
+- [ ] Title: by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them
+  - File Names and Line Numbers: test/fixtures/by_text_truth.json bp43-bp45 (twoway scatter mpg weight, by(foreign, title("X", position(5|6|7)))); test/test_by_text.py BY_POSITION_KNOWN
+  - Description: Measured by WP-33 section 33-12 (BY-24) in test/fixtures/by_text_truth.json (scripts/extract_by_text_truth.do): twoway draws by()'s title at clocks 5, 6 and 7 below the panels; dash draws it above them in both modes (aligned as twoway aligns it). subtitle(), note() and caption() at those clocks are placed as twoway places them. A difference no audit item covers, registered by the maintainer ruling D44 (21oct2026). Registered as GAPS4 BY-24a (WP-41, section 41-02, Fix).
+  - Suggested fix: Put by()'s title in the foot cell below the panels at clocks 5, 6 and 7, as the note and caption are
+  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): by()'s title is drawn on the wrong side of the panels.

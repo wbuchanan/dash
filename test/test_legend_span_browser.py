@@ -25,6 +25,7 @@ sys.path.insert(0, _HERE)
 import responsive_probe  # noqa: E402
 import test_by_axes_keys as bk  # noqa: E402
 import test_by_axes_keys_browser as kb  # noqa: E402
+import test_by_text as tbt  # noqa: E402
 
 if responsive_probe.find_chrome() is None:
     pytest.skip("headless Chrome is not installed (set DASH_CHROME); "
@@ -436,6 +437,53 @@ class TestByTitlesSpan:
                 assert _centre(second["box"])[0] - (
                     second["frame"][0] + second["frame"][1]) / 2.0 > 5, \
                     second
+
+
+#: by()'s title, subtitle, note and caption at the corner clocks 11, 1, 5
+#: and 7 (by_text_truth.json bp40-bp63, scripts/extract_by_text_truth.do).
+_CORNER_PROBES = ("bp40", "bp42", "bp43", "bp45", "bp46", "bp48", "bp49",
+                  "bp51", "bp52", "bp54", "bp55", "bp57", "bp58", "bp60",
+                  "bp61", "bp63")
+
+
+def _anchored_edge(box, anchor):
+    """The x of *box*'s edge an SVG text-anchor names (start: left, end:
+    right, middle: its centre)."""
+    return {"end": box[2], "middle": (box[0] + box[2]) / 2.0}.get(
+        anchor, box[0])
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByTitlesAtPosition:
+    """WP-33 BY-24 (D-33-12.g): by(foreign, <text>("X", position(c))) at
+    the corner clocks puts the text's anchored edge where twoway's SVG
+    does, as a fraction of the graph's width (twoway: its x over the
+    canvas width; dash: the text's box edge over the figure root's), within
+    0.02; a difference is a BY_POSITION_KNOWN "<probe>:offset" row."""
+
+    def test_the_corner_clocks(self, mode):
+        res = {}
+        for pid in _CORNER_PROBES:
+            p = tbt._truth()["probes"][pid]
+            (x,) = [t for t in p["svg"] if t["text"] == "X"]
+            want = x["x"] / p["canvas"]
+            spec = tbt._probe_spec(p)
+            spec["build_options"]["scheme"] = \
+                spec["build_options"]["scheme"] or "stcolor"
+            st = kb._measure(mode, spec, _BY_JS)[1400]["wide"]
+            g = st["grid"]
+            boxes = _by_titles(st, "X")
+            if len(boxes) != 1:
+                res[pid + ":offset"] = "dash draws %d texts X" % len(boxes)
+                continue
+            got = (_anchored_edge(boxes[0]["box"], x["anchor"]) - g[0]) / \
+                (g[2] - g[0])
+            res[pid + ":offset"] = None if abs(got - want) <= 0.02 else \
+                "anchored (%s) edge at %.3f of the width, twoway %.3f" % (
+                    x["anchor"], got, want)
+        assert tbt.known_problems(
+            res, tbt._known("offset"), "by_position",
+            deliberate=tbt.BY_POSITION_DELIBERATE) == []
 
 
 def _panels(st):

@@ -928,6 +928,7 @@ and now matches Stata.
 - No test skips on a premise twoway's measurements contradict, so a strict run can pass (WP-33, TR-23)
 - The help no longer says scale() leaves the gaps between boxes unscaled; twoway's frame under scale() is measured and compared (WP-33, GW-11)
 - Every plot type's by() panels are compared with twoway's per-panel data (WP-33, BY-23)
+- by()'s titles and notes at each clock position are compared with twoway's (WP-33, BY-24)
 
 ### Fixed in WP-32
 
