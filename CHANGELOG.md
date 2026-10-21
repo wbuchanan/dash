@@ -929,6 +929,7 @@ and now matches Stata.
 - The help no longer says scale() leaves the gaps between boxes unscaled; twoway's frame under scale() is measured and compared (WP-33, GW-11)
 - Every plot type's by() panels are compared with twoway's per-panel data (WP-33, BY-23)
 - by()'s titles and notes at each clock position are compared with twoway's (WP-33, BY-24)
+- Twenty-three estimator option combinations are measured in twoway and compared with dash (WP-33, stat:PT-23)
 
 ### Fixed in WP-32
 

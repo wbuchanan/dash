@@ -573,6 +573,81 @@ if inlist("`only'", "", "S12") & `: list posof "S12" in w33_run' {
 }
 * ==== end S12 ====
 
+python:
+def _w33s13_combo():
+    # S13 stat:PT-23: the serset in memory (columns in serset order,
+    # named by the local cols, "-" for one not compared) against the
+    # committed combos record of the local key, at its sample_index.
+    import json
+    from sfi import Data, Macro
+    key = Macro.getLocal("key")
+    cols = Macro.getLocal("cols").split()
+    with open("fixtures/stat_truth.json", encoding="utf-8") as fh:
+        rec = json.load(fh)["combos"][key]
+    n = Data.getObsTotal()
+    bad = []
+    if n != rec["n_points"]:
+        bad.append("%d rows, the fixture %s" % (n, rec["n_points"]))
+    idx = rec.get("sample_index") or list(range(1, n + 1))
+    for j, name in enumerate(cols):
+        if name == "-" or bad:
+            continue
+        want = rec[name]
+        for k, i in enumerate(idx):
+            got = Data.getAt(j, i - 1)
+            w = want[k]
+            if w is None or abs(got - w) > 1e-9 * max(1.0, abs(w)):
+                bad.append("%s[%d] %r, the fixture %r" % (name, i, got, w))
+                break
+    Macro.setLocal("ok", "0" if bad else "1")
+    Macro.setLocal("msg", "; ".join(bad)[:500].replace('"', "'"))
+end
+
+* ==== S13 stat:PT-23: estimator combinations ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S13") & `: list posof "S13" in w33_run' {
+    display as text "S13 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3313-1: twoway lfitci [pw=price] and histogram rep78 [fw=fw],
+    // discrete percent draw the sersets fixtures/stat_truth.json's
+    // combos section holds (scripts/extract_stat_truth.do), so the
+    // truth test_statistical_truth.py::TestEstimatorCombinations reads
+    // has not drifted.
+    // ------------------------------------------------------------
+    local d "`w33_work'/s13"
+    capture mkdir "`d'"
+    foreach c in lfitci hist {
+        sysuse auto, clear
+        quietly generate fw = int(price/1000)
+        capture erase "`d'/s13_`c'.gph"
+        if "`c'" == "lfitci" {
+            twoway lfitci mpg weight [pw=price] || , nodraw saving("`d'/s13_`c'.gph", replace)
+            local key "auto:lfitci_pw"
+            local cols "fit lower upper fit_x"
+        }
+        else {
+            twoway histogram rep78 [fw=fw], discrete percent || , nodraw saving("`d'/s13_`c'.gph", replace)
+            local key "auto:hist_disc_fw_pct"
+            local cols "bar_height - bin_midpoint"
+        }
+        capture graph drop _all
+        capture serset drop _all
+        quietly graph use "`d'/s13_`c'.gph"
+        serset set 0
+        serset use, clear
+        python: __import__("__main__")._w33s13_combo()
+        _w33_expect Q3313-1 "(`ok')" "`key': `msg'"
+        capture graph drop _all
+        capture serset drop _all
+        capture erase "`d'/s13_`c'.gph"
+    }
+    _w33_done Q3313-1 "twoway's lfitci [pw] and histogram discrete [fw] percent sersets are the committed combos truth"
+    capture rmdir "`d'"
+    display as text "S13 end " c(current_date) " " c(current_time)
+}
+* ==== end S13 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

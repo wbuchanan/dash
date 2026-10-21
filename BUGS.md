@@ -4502,11 +4502,11 @@
   - Suggested fix: Turn the 93-command byx probe into extract_by_types_truth.do and compare both modes per panel
   - Resolution: Fixed 21oct2026 (WP-33, BY-23). scripts/extract_by_types_truth.do records twoway's per-panel sersets for all 44 types under by(foreign) and by(foreign, total) (and, per panel, the serset its plot draws and a contour's cuts); test/test_by_types.py compares each panel's rows, extents and sampled values in both modes (served in the batch tier), differences listed under BY-28 (contour and contourline cut each panel at its own z ticks). Pinned by test/test_by_types.py::TestPanelsMatchTwoway, test/test_wp33_truth.cscript Q3312-1; fixture test/fixtures/by_types_truth.json. Closes GAPS4 BY-23 (WP-33, BY-23).
 
-- [ ] Title: Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...
+- [x] Title: Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...
   - File Names and Line Numbers: stat_truth keys; numeric.do
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids stat:PT-23; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-23 (WP-33, section 33-13, Fix).
   - Suggested fix: Add them to extract_stat_truth.do
-  - Resolution: Not fixed because WP-33 section 33-13 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, stat:PT-23). scripts/extract_stat_truth.do records 23 estimator combinations (section combos: lpoly high degree and weights, lpolyci, kdensity weights and boundary, ci bands with pw/stdr/stdf/range, fpfit weights, histogram discrete with fw/width/fraction, lowess flag combinations); test/test_statistical_truth.py::TestEstimatorCombinations compares dash's mappers with each; lpolyci [fw] degree 2 is listed as stat:PT-16's documented difference, lpoly degree 8 and the degree-2 rule-of-thumb round-off (lpoly [aw] gaussian, lpolyci biweight) as DT-26's, and the lowess tie order as stat:PT-21's. Pinned by test/test_statistical_truth.py::TestEstimatorCombinations, test/test_wp33_truth.cscript Q3313-1; fixture test/fixtures/stat_truth.json. Closes GAPS4 stat:PT-23 (WP-33, stat:PT-23).
 
 - [ ] Title: colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously
   - File Names and Line Numbers: test_colorvar_truth.py:70-104; test_colorvar_options.py; test_colorvar_coverage.py

@@ -2146,6 +2146,116 @@ sysuse census, clear
 zq_edge_twoway, key(census:pop:bin75) varname(pop) opts(frequency bin(75))
 display as text "histogram edges probed: 3 new cases, 9 drawn sersets"
 
+* ==== WP-33 33-13: estimator combinations (stat:PT-23) ====
+* combos       23 option combinations twoway was never measured on, each
+*              the drawn serset of `twoway <cmd> || , nodraw saving()' on
+*              auto (fw = int(price/1000), as LAYER 14 builds it), stored
+*              whole (maxn 300).  Serset orders, measured 21oct2026:
+*              lpoly y x; lpolyci y x lower upper; kdensity y x (+ the raw
+*              variable, dropped); lfitci/qfitci/fpfitci fit lower upper x;
+*              fpfit fit x; histogram height 0 midpoint; lowess y x.  A
+*              histogram also records twoway__histogram_gen's r(width)
+*              and r(start) for the same options.
+* combos_data  auto's rep78 and foreign in dataset order (the probe CSV
+*              carries mpg and weight only).
+* ===========================================================================
+sysuse auto, clear
+preserve
+quietly generate long obs_index = _n
+quietly keep obs_index rep78 foreign
+zq_curve obs_index rep78 foreign, sec(combos_data) key(auto) maxn(3000)
+restore
+
+foreach spec in ///
+    "lpoly_deg4_bw800|lpoly|lpoly mpg weight, degree(4) bwidth(800)" ///
+    "lpoly_deg8_bw800|lpoly|lpoly mpg weight, degree(8) bwidth(800)" ///
+    "lpoly_aw_gauss_deg2|lpoly|lpoly mpg weight [aw=price], kernel(gaussian) degree(2)" ///
+    "lpoly_cos_deg3_n20|lpoly|lpoly mpg weight, kernel(cosine) degree(3) n(20)" ///
+    "lpolyci_biw_deg2|lpolyci|lpolyci mpg weight, kernel(biweight) degree(2)" ///
+    "lpolyci_var_deg1|lpolyci|lpolyci mpg weight, degree(1) var(10)" ///
+    "lpolyci_fw_deg2|lpolyci|lpolyci mpg weight [fw=fw], degree(2)" ///
+    "kd_aw_boundary|kdensity|kdensity mpg [aw=price], boundary" ///
+    "kd_fw_area_range_n|kdensity|kdensity mpg [fw=fw], area(2) range(10 40) n(50)" ///
+    "kd_gauss|kdensity|kdensity mpg, kernel(gaussian)" ///
+    "kd_rect_n50|kdensity|kdensity mpg, kernel(rectangle) n(50)" ///
+    "kd_epan2_boundary|kdensity|kdensity mpg, kernel(epan2) boundary" ///
+    "lfitci_pw|lfitci|lfitci mpg weight [pw=price]" ///
+    "qfitci_stdr_l80|qfitci|qfitci mpg weight, stdr level(80)" ///
+    "lfitci_range_n_stdf|lfitci|lfitci mpg weight, range(1000 6000) n(20) stdf" ///
+    "fpfit_pw|fpfit|fpfit mpg weight [pw=price]" ///
+    "fpfitci_fw|fpfitci|fpfitci mpg weight [fw=fw]" ///
+    "hist_disc_fw_pct|histogram|histogram rep78 [fw=fw], discrete percent" ///
+    "hist_disc_w3_frac|histogram|histogram rep78, discrete width(3) fraction" ///
+    "hist_bin_start_freq|histogram|histogram mpg, bin(8) start(10) frequency" ///
+    "lowess_mean_noweight|lowess|lowess mpg weight, mean noweight" ///
+    "lowess_mean_adjust|lowess|lowess mpg weight, mean adjust" ///
+    "lowess_logit_bw|lowess|lowess foreign weight, logit bwidth(0.5)" {
+    local p1 = strpos(`"`spec'"', "|")
+    local nm = substr(`"`spec'"', 1, `p1' - 1)
+    local rest = substr(`"`spec'"', `p1' + 1, .)
+    local p2 = strpos(`"`rest'"', "|")
+    local pt = substr(`"`rest'"', 1, `p2' - 1)
+    local c = substr(`"`rest'"', `p2' + 1, .)
+    local key "auto:`nm'"
+    sysuse auto, clear
+    quietly generate fw = int(price/1000)
+    local p "${ZQ_WORK}/combo_`nm'.gph"
+    capture erase "`p'"
+    capture twoway `c' || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(combos) key(`key') fld(cmd) val(twoway `c')
+    zq_s, sec(combos) key(`key') fld(type) val(`pt')
+    zq_s, sec(combos) key(`key') fld(load_cmd) val(sysuse auto, clear; gen fw = int(price/1000))
+    zq_n, sec(combos) key(`key') fld(rc) val(`rc')
+    if `rc' == 0 & "`pt'" == "histogram" {
+        * the bin grid: twoway__histogram_gen with the same options
+        local gc : subinstr local c "histogram " ""
+        if strpos(`"`gc'"', ",") local gc `"`gc' return"'
+        else                     local gc `"`gc', return"'
+        capture twoway__histogram_gen `gc'
+        zq_n, sec(combos) key(`key') fld(gen_rc) val(_rc)
+        if _rc == 0 {
+            zq_n, sec(combos) key(`key') fld(width) val(r(width))
+            zq_n, sec(combos) key(`key') fld(start) val(r(start))
+            zq_n, sec(combos) key(`key') fld(bin)   val(r(bin))
+        }
+    }
+    if `rc' == 0 {
+        preserve
+        if "`pt'" == "lpoly" {
+            zq_serset lpoly_y lpoly_x, path("`p'") set(0)
+            zq_curve lpoly_x lpoly_y, sec(combos) key(`key') maxn(300)
+        }
+        else if "`pt'" == "lpolyci" {
+            zq_serset lp_y lp_x lower upper, path("`p'") set(0)
+            zq_curve lp_x lp_y lower upper, sec(combos) key(`key') maxn(300)
+        }
+        else if "`pt'" == "kdensity" {
+            zq_serset kde_y kde_x, path("`p'") set(0)
+            zq_curve kde_x kde_y, sec(combos) key(`key') maxn(300)
+        }
+        else if inlist("`pt'", "lfitci", "qfitci", "fpfitci") {
+            zq_serset fit lower upper fit_x, path("`p'") set(0)
+            zq_curve fit_x fit lower upper, sec(combos) key(`key') maxn(300)
+        }
+        else if "`pt'" == "fpfit" {
+            zq_serset fit fit_x, path("`p'") set(0)
+            zq_curve fit_x fit, sec(combos) key(`key') maxn(300)
+        }
+        else if "`pt'" == "histogram" {
+            zq_serset bar_height zero bin_midpoint, path("`p'") set(0)
+            quietly keep bar_height bin_midpoint
+            zq_curve bin_midpoint bar_height, sec(combos) key(`key') maxn(300)
+        }
+        else {
+            zq_serset lowess_y lowess_x, path("`p'") set(0)
+            zq_curve lowess_x lowess_y, sec(combos) key(`key') maxn(300)
+        }
+        restore
+    }
+}
+display as text "combos probed: 23 estimator combinations"
+
 * ===========================================================================
 file close zqrec
 display as text "records written to ${ZQ_REC}"
@@ -3075,6 +3185,8 @@ doc = {
             "kernel_probes": len(sections.get("kernels", {})),
             "histogram_edge_twoway_probes": len(sections.get("histogram_edge_twoway", {})),
             "histogram_edge_data_probes": len(sections.get("histogram_edge_data", {})),
+            # WP-33 33-13
+            "combos": len(sections.get("combos", {})),
         },
     },
     "rules": RULES,
@@ -3111,7 +3223,9 @@ for name in ("datasets", "histogram", "histogram_edge", "histogram_resolved_cmd"
              "weight_acceptance", "weighted", "weighted_data",
              # WP-31 F3
              "weighted_ci", "fitci_std_fw", "kernels",
-             "histogram_edge_twoway", "histogram_edge_data"):
+             "histogram_edge_twoway", "histogram_edge_data",
+             # WP-33 33-13
+             "combos", "combos_data"):
     doc[name] = sections.get(name, {})
 
 with open(OUT, "w") as fh:

@@ -2056,3 +2056,276 @@ class TestHistogramOnEdge:
         assert sorted(truth["unverified"]) == [
             "lpoly.rot_bandwidth_formula",
             "mband.default_band_count_formula"]
+
+
+# ======================================================================
+# estimator option combinations (WP-33 33-13, stat:PT-23)
+# ======================================================================
+
+from known_differences import dead_rows, known_problems  # noqa: E402
+
+# D-33-13.a: the 23 combinations, written out so collection never depends
+# on the fixture.  Each is `twoway <cmd>' on auto, recorded by
+# scripts/extract_stat_truth.do's `combos' section as the drawn serset.
+_COMBO_KEYS = (
+    "auto:lpoly_deg4_bw800", "auto:lpoly_deg8_bw800",
+    "auto:lpoly_aw_gauss_deg2", "auto:lpoly_cos_deg3_n20",
+    "auto:lpolyci_biw_deg2", "auto:lpolyci_var_deg1",
+    "auto:lpolyci_fw_deg2", "auto:kd_aw_boundary",
+    "auto:kd_fw_area_range_n", "auto:kd_gauss", "auto:kd_rect_n50",
+    "auto:kd_epan2_boundary", "auto:lfitci_pw", "auto:qfitci_stdr_l80",
+    "auto:lfitci_range_n_stdf", "auto:fpfit_pw", "auto:fpfitci_fw",
+    "auto:hist_disc_fw_pct", "auto:hist_disc_w3_frac",
+    "auto:hist_bin_start_freq", "auto:lowess_mean_noweight",
+    "auto:lowess_mean_adjust", "auto:lowess_logit_bw",
+)
+
+# D-33-13.c: each difference keyed to the live GAPS4 item that fixes or
+# documents it (known_differences.py's rules; A-10: a documented row stays
+# after its item closes).
+STAT_COMBOS_KNOWN = {
+    # the zero-df grid point: with Stata's bwidth() and pwidth() dash's
+    # band pinches at x = 3017.14 (lower 12.0, twoway 10.955); at the
+    # defaults the rule of thumb's round-off shows first (measured
+    # 21oct2026).
+    "auto:lpolyci_fw_deg2": "stat:PT-16 (documented)",
+    # degree above 7 (x = 4777.14: 7.3e-6 of the value).
+    "auto:lpoly_deg8_bw800": "DT-26 (documented)",
+    # lpoly's rule-of-thumb bandwidth at degree 2 (pilot degree 5 on raw
+    # powers; _default_lpoly_bwidth: 5e-5 agreement at degree 2/3): one
+    # grid point 3.7e-6 / 2.2e-6 off; with Stata's r(bwidth) (and
+    # r(pwidth)) passed in, both agree (measured 21oct2026).
+    "auto:lpoly_aw_gauss_deg2": "DT-26 (documented)",
+    "auto:lpolyci_biw_deg2": "DT-26 (documented)",
+    # twoway's order among tied x is unstable: the smooth values per x
+    # are twoway's, the drawn order within a tie is not.
+    "auto:lowess_mean_noweight": "stat:PT-21 (documented)",
+    "auto:lowess_mean_adjust": "stat:PT-21 (documented)",
+    "auto:lowess_logit_bw": "stat:PT-21 (documented)",
+}
+STAT_COMBOS_DELIBERATE = {}
+
+# dash's options for each combination: (y, x, weight, options); y/x name
+# the auto columns _combo_columns builds, weight is None, "aw_price",
+# "fw_fw" or "pw_price".
+_COMBO_SPEC = {
+    "auto:lpoly_deg4_bw800": ("mpg", "weight", None,
+                              {"degree": "4", "bwidth": "800"}),
+    "auto:lpoly_deg8_bw800": ("mpg", "weight", None,
+                              {"degree": "8", "bwidth": "800"}),
+    "auto:lpoly_aw_gauss_deg2": ("mpg", "weight", "aw_price",
+                                 {"kernel": "gaussian", "degree": "2"}),
+    "auto:lpoly_cos_deg3_n20": ("mpg", "weight", None,
+                                {"kernel": "cosine", "degree": "3",
+                                 "n": "20"}),
+    "auto:lpolyci_biw_deg2": ("mpg", "weight", None,
+                              {"kernel": "biweight", "degree": "2"}),
+    "auto:lpolyci_var_deg1": ("mpg", "weight", None,
+                              {"degree": "1", "lpvar": "10"}),
+    "auto:lpolyci_fw_deg2": ("mpg", "weight", "fw_fw", {"degree": "2"}),
+    "auto:kd_aw_boundary": ("mpg", None, "aw_price",
+                            {"boundary": "boundary"}),
+    "auto:kd_fw_area_range_n": ("mpg", None, "fw_fw",
+                                {"area": "2", "range": "10 40", "n": "50"}),
+    "auto:kd_gauss": ("mpg", None, None, {"kernel": "gaussian"}),
+    "auto:kd_rect_n50": ("mpg", None, None,
+                         {"kernel": "rectangle", "n": "50"}),
+    "auto:kd_epan2_boundary": ("mpg", None, None,
+                               {"kernel": "epan2", "boundary": "boundary"}),
+    "auto:lfitci_pw": ("mpg", "weight", "pw_price", {}),
+    "auto:qfitci_stdr_l80": ("mpg", "weight", None,
+                             {"stdr": "stdr", "level": "80"}),
+    "auto:lfitci_range_n_stdf": ("mpg", "weight", None,
+                                 {"range": "1000 6000", "n": "20",
+                                  "stdf": "stdf"}),
+    "auto:fpfit_pw": ("mpg", "weight", "pw_price", {}),
+    "auto:fpfitci_fw": ("mpg", "weight", "fw_fw", {}),
+    "auto:hist_disc_fw_pct": ("rep78", None, "fw_fw",
+                              {"discrete": "discrete", "percent": "percent"}),
+    "auto:hist_disc_w3_frac": ("rep78", None, None,
+                               {"discrete": "discrete", "width": "3",
+                                "fraction": "fraction"}),
+    "auto:hist_bin_start_freq": ("mpg", None, None,
+                                 {"bin": "8", "start": "10",
+                                  "frequency": "frequency"}),
+    "auto:lowess_mean_noweight": ("mpg", "weight", None,
+                                  {"mean": "mean", "noweight": "noweight"}),
+    "auto:lowess_mean_adjust": ("mpg", "weight", None,
+                                {"mean": "mean", "adjust": "adjust"}),
+    "auto:lowess_logit_bw": ("foreign", "weight", None,
+                             {"logit": "logit", "bwidth": "0.5"}),
+}
+
+
+def _combo_columns(truth, datasets):
+    """auto's mpg and weight (the CSV), price and fw (weighted_data) and
+    rep78 and foreign (combos_data), all in dataset order."""
+    y, x = _need(datasets, "auto")
+    data = truth["combos_data"]["auto"]
+    assert data["obs_index"] == list(range(1, len(y) + 1)), (
+        "combos_data is not in dataset order")
+    return {"mpg": y, "weight": x,
+            "price": _weight_column(truth, "auto:aw_price"),
+            "fw": _weight_column(truth, "auto:fw_fw"),
+            "rep78": _series(data, "rep78"),
+            "foreign": _series(data, "foreign")}
+
+
+def _combo_close(name, got, want, rtol=1e-6, atol_k=1e-6):
+    """None when *got* matches *want* (rtol plus atol_k x span), else the
+    largest difference, in words."""
+    got = np.asarray(got, dtype=float)
+    want = np.asarray(want, dtype=float)
+    if got.shape != want.shape:
+        return f"{name}: dash has {got.shape[0]} values, twoway {want.shape[0]}"
+    if not np.array_equal(np.isnan(got), np.isnan(want)):
+        return f"{name}: missing at other positions than twoway's"
+    ok = ~np.isnan(want)
+    if not ok.any():
+        return None
+    tol = rtol * np.abs(want[ok]) + atol_k * _span(want[ok])
+    err = np.abs(got[ok] - want[ok])
+    if np.all(err <= tol):
+        return None
+    k = int(np.argmax(err - tol))
+    return (f"{name}: dash {got[ok][k]!r} vs twoway {want[ok][k]!r} "
+            f"(largest of {int((err > tol).sum())} differences)")
+
+
+def _combo_curve(rec, gx, gy, xkey, ykey):
+    if len(gx) != rec["n_points"]:
+        return (f"dash drew {len(gx)} points, twoway {rec['n_points']}")
+    return (_combo_close(xkey, _at_samples(rec, gx, xkey), _series(rec, xkey))
+            or _combo_close(ykey, _at_samples(rec, gy, ykey),
+                            _series(rec, ykey)))
+
+
+def _combo_difference(truth, datasets, mapper, key):
+    """None when dash's mapper draws twoway's serset for *key*, else the
+    first difference (D-33-13.b)."""
+    rec = _rec(truth, "combos", key)
+    if rec["rc"] != 0:
+        return f"twoway refused {rec['cmd']} (rc {rec['rc']})"
+    yv, xv, wk, extra = _COMBO_SPEC[key]
+    cols = _combo_columns(truth, datasets)
+    data = {"y": list(cols[yv])}
+    if xv:
+        data["x"] = list(cols[xv])
+    opts = dict(extra)
+    if wk:
+        wt, wvar = wk.split("_")
+        data[wvar] = list(cols[wvar])
+        opts.update({"weight": _WEIGHT_TYPE[wt], "wexp": wvar})
+    src = ColumnDataSource(data)
+    pt = rec["type"]
+    _clear_notes()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if pt in ("lfitci", "qfitci", "fpfitci"):
+            opts.setdefault("level", "95")
+            rs = getattr(mapper, "map_" + pt)(figure(), src, "y", "x", opts)
+            keys = ("x_fp", "y_fp") if pt == "fpfitci" else ("x_fit", "y_fit")
+            gx, gy, glo, ghi = _band_data(rs, *keys)
+            return (_combo_curve(rec, gx, gy, "fit_x", "fit")
+                    or _combo_close("lower", _at_samples(rec, glo, "lower"),
+                                    _series(rec, "lower"))
+                    or _combo_close("upper", _at_samples(rec, ghi, "upper"),
+                                    _series(rec, "upper")))
+        if pt == "lpolyci":
+            rs = mapper.map_lpolyci(figure(), src, "y", "x", opts)
+            band = [g for g in rs if "y_lower" in g.data_source.data][0]
+            line = [g for g in rs if "y_lp" in g.data_source.data][0]
+            gx, gy = _line_data(line, "x_lp", "y_lp")
+            diff = _combo_curve(rec, gx, gy, "lp_x", "lp_y")
+            if diff:
+                return diff
+            bd = band.data_source.data
+            bx = np.asarray(bd["x_lp"], float)
+            blo = np.asarray(bd["y_lower"], float)
+            bhi = np.asarray(bd["y_upper"], float)
+            wx = _series(rec, "lp_x")
+            for name, got, want in (("lower", blo, _series(rec, "lower")),
+                                    ("upper", bhi, _series(rec, "upper"))):
+                drawn = []
+                for xx, ww in zip(wx, want):
+                    hit = np.where(np.abs(bx - xx) <= 1e-6 * abs(xx))[0]
+                    if not np.isfinite(ww):
+                        if len(hit) and np.isfinite(got[hit[0]]) \
+                                and blo[hit[0]] != bhi[hit[0]]:
+                            return (f"{name}: dash draws a band at x = {xx} "
+                                    f"where twoway draws none")
+                        continue
+                    if not len(hit):
+                        return f"{name}: no band point at x = {xx}"
+                    drawn.append((got[hit[0]], ww))
+                if drawn:
+                    d = _combo_close(name, [a for a, _ in drawn],
+                                     [b for _, b in drawn])
+                    if d:
+                        return d
+            return None
+        if pt == "histogram":
+            r = mapper.map_histogram(figure(), src, "y", opts)
+            d = r.data_source.data
+            top = np.asarray(d["top"], dtype=float)
+            left = np.asarray(d["left"], dtype=float)
+            right = np.asarray(d["right"], dtype=float)
+            mids = (left + right) / 2.0
+            want_mid = _series(rec, "bin_midpoint")
+            want_h = _series(rec, "bar_height")
+            drawn = top > 0
+            if int(drawn.sum()) != int((want_h > 0).sum()):
+                return (f"dash drew {int(drawn.sum())} non-empty bars, "
+                        f"twoway {int((want_h > 0).sum())}")
+            keep = want_h > 0
+            return (_combo_close("bin_midpoint", mids[drawn], want_mid[keep],
+                                 rtol=1e-9, atol_k=1e-9)
+                    # the serset stores heights as float (46.134020618...
+                    # is 46.1340217590332 there): 1e-6, not 1e-9
+                    or _combo_close("bar_height", top[drawn], want_h[keep],
+                                    rtol=1e-6, atol_k=1e-9)
+                    # the edges: midpoints plus twoway__histogram_gen's
+                    # r(width) (r(start) is the smallest value under
+                    # discrete, not an edge)
+                    or _combo_close("bar_width", right - left,
+                                    np.full(len(top), float(rec["width"])),
+                                    rtol=1e-9, atol_k=1e-9))
+        if pt == "kdensity":
+            r = mapper.map_kdensity(figure(), src, "y", opts)
+            gx, gy = _line_data(r, "x", "y")
+            return _combo_curve(rec, gx, gy, "kde_x", "kde_y")
+        if pt == "lpoly":
+            r = mapper.map_lpoly(figure(), src, "y", "x", opts)
+            gx, gy = _line_data(r, "x_lp", "y_lp")
+            return _combo_curve(rec, gx, gy, "lpoly_x", "lpoly_y")
+        if pt == "fpfit":
+            r = mapper.map_fpfit(figure(), src, "y", "x", opts)
+            gx, gy = _line_data(r, "x_fp", "y_fp")
+            return _combo_curve(rec, gx, gy, "fit_x", "fit")
+        if pt == "lowess":
+            r = mapper.map_lowess(figure(), src, "y", "x", opts)
+            gx, gy = _line_data(r, "x_lw", "y_lw")
+            return _combo_curve(rec, gx, gy, "lowess_x", "lowess_y")
+    raise AssertionError(f"{key}: no comparison for type {pt!r}")
+
+
+class TestEstimatorCombinations:
+    """stat:PT-23: estimator option combinations twoway was never measured
+    on, each compared at the mapper (GlyphMapper is copied whole into the
+    served app, so this covers both renderers)."""
+
+    def test_the_section_exists(self, truth):
+        assert sorted(truth["combos"]) == sorted(_COMBO_KEYS)
+
+    @pytest.mark.parametrize("key", _COMBO_KEYS)
+    def test_each_combination(self, truth, datasets, mapper, key):
+        diff = _combo_difference(truth, datasets, mapper, key)
+        known = ({key: STAT_COMBOS_KNOWN[key]}
+                 if key in STAT_COMBOS_KNOWN else {})
+        assert known_problems({key: diff}, known, "stat_combos",
+                              deliberate=STAT_COMBOS_DELIBERATE) == []
+
+    def test_every_known_difference_is_open(self):
+        assert dead_rows(STAT_COMBOS_KNOWN, "stat_combos") == []
+        assert set(STAT_COMBOS_KNOWN) <= set(_COMBO_KEYS)
+        assert set(STAT_COMBOS_DELIBERATE) <= set(_COMBO_KEYS)
