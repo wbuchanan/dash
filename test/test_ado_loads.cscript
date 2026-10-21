@@ -78,8 +78,9 @@ display "P15-03 PASS: dash clear executed without error"
 // _dash_formats_json, _dash_date_fmts_swap and _dash_date_fmts_restore
 // were the three this loop left out and no test file named (GAPS.md L7);
 // test_program_coverage.cscript PC-01..04 tests the first.  The other two
-// bracketed jsonio's export and left with it (24sep2026); _dash_byte_cap
-// came with the bytes limit.  Every
+// bracketed jsonio's export and left with it (24sep2026).  _dash_byte_cap
+// and _dash_cell_cap left with the size caps the maintainer removed
+// (P4-3, WP-33 33-15).  Every
 // program's test is named in test/program_coverage_map.py.
 // _dash_kv_json and _dash_graph_opts_to_json left the list when WP-26
 // deleted them (24sep2026): nothing called either.
@@ -90,7 +91,7 @@ foreach prog in dash _dash_validate_path _dash_json_str                ///
     _dash_parse_varpart_3v  _dash_parse_varpart_4v                      ///
     _dash_parse_varpart_any _dash_plot_opts_to_json                     ///
     _dash_process_segment                                               ///
-    _dash_formats_json _dash_byte_cap _dash_cell_cap                    ///
+    _dash_formats_json                                                  ///
     _dash_plot _dash_register_graph _dash_do_render                     ///
     _dash_render_immediate _dash_clear _dash_kpi _dash_build            ///
     _dash_serve {

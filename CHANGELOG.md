@@ -852,6 +852,7 @@ and now matches Stata.
 - `dash scatter mpg weight, jit(5)` (and j(), ji(), jitt(), jitte()): refused, r(198), "option jit() not allowed", as twoway refuses it; write jitter() in full (was: taken as jitter()) (WP-31, A3d)
 - A quoted string standing alone among the options -- dash scatter mpg weight, "abc" -- is refused as twoway refuses it, r(198), "quotes unbalanced" (or "invalid syntax" or "parentheses do not balance", as twoway answers where the string stands); dash kept it and named it in the note. (WP-31, D16b)
 - lal() was dash's lalpha(), so lal(outside) was refused ("must be a number"); it is lalign(), as twoway reads it, and lalpha() is shortened to no less than lalp(): a do-file writing lal(50) for the line opacity writes lalp(50) (WP-31, C17b)
+- A dashboard has no size cap: `$dash_max_cells` (5,000,000 values) and `$dash_max_bytes` (50,000,000 bytes of text) are gone in both modes, so a build dash refused with r(134) for its size now draws, and the two globals are no longer read (a value dash refused with r(198) changes nothing). Every count cap is unchanged. (WP-33, 33-15)
 
 ### Removed
 

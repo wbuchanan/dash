@@ -862,9 +862,12 @@ end
 qui sysuse auto, clear
 global dash_nobrowser 1
 capture dash clear
-local p19_keys "cells bytes graphs plots filter_options by_groups tabs filters"
-local p19_defs "5000000 50000000 100 100 1000 100 50 20"
-local p19_ceil "20000000 500000000 1000 1000 100000 1000 500 200"
+// Flipped (WP-33 33-15): cells and bytes left the table -- the
+// maintainer removed the size caps (P4-3) -- so six globals, not eight.
+local p19_keys "graphs plots filter_options by_groups tabs filters"
+local p19_defs "100 100 1000 100 50 20"
+local p19_ceil "1000 1000 100000 1000 500 200"
+capture macro drop dash_max_cells dash_max_bytes
 foreach k of local p19_keys {
     capture macro drop dash_max_`k'
 }
@@ -934,7 +937,7 @@ display "P19-04 PASS: 3 registered at dash_max_graphs 2 → rc=134 saying more t
 _dash_limit, name(graphs)
 assert r(value) == 100 & r(default) == 100 & r(ceiling) == 1000
 assert "`r(global)'" == "dash_max_graphs"
-forvalues i = 1/8 {
+forvalues i = 1/6 {
     local k : word `i' of `p19_keys'
     _dash_limit, name(`k')
     assert r(value)   == `: word `i' of `p19_defs''
@@ -1003,7 +1006,9 @@ macro drop dash_max_plots
 dash clear
 display "P19-10 PASS: the immediate route refuses 3 plots at dash_max_plots 2 and writes no file"
 
-// P19-11 — 148 values at dash_max_cells 100 → r(134) before any export
+// P19-11 — 148 values at dash_max_cells 100.  Flipped (WP-33 33-15): it
+// was refused with r(134) before any export; the maintainer removed the
+// size caps (P4-3), so the same command builds and the data is unchanged.
 qui sysuse auto, clear
 generate double d = mdy(1, 1, 2000) + _n
 format d %td
@@ -1014,34 +1019,20 @@ tempfile p19c
 local p19cf "`p19c'.html"
 capture erase "`p19cf'"
 _adv_p19_run `"dash scatter mpg d, saving("`p19cf'")"'
-assert r(rc) == 134
+assert r(rc) == 0
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 100 dash embeds.")
-assert r(found) == 1
-cert_file_has "`lg'", needle("Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most 20,000,000).")
-assert r(found) == 1
-// if/in reduce nothing that is exported, so they are not offered.
-cert_file_has "`lg'", needle("if/in")
+cert_file_has "`lg'", needle("would embed")
 assert r(found) == 0
-// Nothing writes "if/in" here -- dash.ado names it only in the comment
-// above _dash_cell_cap, and the refusal came in without it, beside this
-// check (72d94e5) -- and a remedy in other words, "an if qualifier", would
-// pass the search.  So the refusal is held to its
-// whole output: the log holds these two lines and nothing else (measured
-// 24sep2026, 2 lines at linesize 255), so no third remedy can be added in
-// any wording without failing here.
-mata: st_local("p1911n", strofreal(rows(cat(st_local("lg")))))
-assert `p1911n' == 2
-capture confirm file "`p19cf'"
-assert _rc != 0
+confirm file "`p19cf'"
 quietly datasignature
 assert "`r(datasignature)'" == "`sig0'"
 local fmt_d : format d
 assert "`fmt_d'" == "%td"
-display "P19-11 PASS: 148 values at dash_max_cells 100 → rc=134, no file, data and %td format unchanged"
+display "P19-11 PASS: 148 values at dash_max_cells 100 → rc=0, the file written, data and %td format unchanged"
 
-// P19-12 — dash_max_cells 148 accepts the same command
+// P19-12 — dash_max_cells 148: the global changes nothing either way
 global dash_max_cells 148
+capture erase "`p19cf'"
 capture noisily dash scatter mpg d, saving("`p19cf'")
 assert _rc == 0
 confirm file "`p19cf'"
@@ -1049,7 +1040,8 @@ local fmt_d : format d
 assert "`fmt_d'" == "%td"
 display "P19-12 PASS: the same command at dash_max_cells 148 writes the dashboard"
 
-// P19-13 — dash build is capped the same way
+// P19-13 — dash build at dash_max_cells 100.  Flipped (WP-33 33-15): it
+// was refused; with no size cap (P4-3) it builds.
 dash clear
 global dash_max_cells 100
 dash scatter mpg weight, name(c1)
@@ -1057,25 +1049,15 @@ tempfile p19b
 local p19bf "`p19b'.html"
 capture erase "`p19bf'"
 _adv_p19_run `"dash build, saving("`p19bf'") replace nobrowser"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 100 dash embeds.")
-assert r(found) == 1
-cert_file_has "`lg'", needle("set global dash_max_cells to a higher value (at most 20,000,000).")
-assert r(found) == 1
-capture confirm file "`p19bf'"
-assert _rc != 0
-local opts : all globals "dash_opts_*"
-assert "`opts'" == ""
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("would embed")
+assert r(found) == 0
+confirm file "`p19bf'"
 quietly datasignature
 assert "`r(datasignature)'" == "`sig0'"
-global dash_max_cells 148
-capture noisily dash build, saving("`p19bf'") replace nobrowser
-assert _rc == 0
-confirm file "`p19bf'"
 macro drop dash_max_cells
 dash clear
-display "P19-13 PASS: dash build refuses 148 values at 100 (no file, no dash_opts_*), builds at 148"
+display "P19-13 PASS: dash build at dash_max_cells 100 builds 148 values"
 
 // P19-14 — _dash_limits_json carries only the limits that are set
 foreach k of local p19_keys {
@@ -1086,10 +1068,12 @@ assert `"`r(json)'"' == "{}"
 global dash_max_by_groups 7
 _dash_limits_json
 assert `"`r(json)'"' == `"{"by_groups":7}"'
-global dash_max_cells 00148
+// Flipped (WP-33 33-15): dash_max_cells 00148 -> dash_max_plots 00148;
+// cells left the table (P4-3).
+global dash_max_plots 00148
 global dash_max_tabs 3
 _dash_limits_json
-assert `"`r(json)'"' == `"{"cells":148,"by_groups":7,"tabs":3}"'
+assert `"`r(json)'"' == `"{"plots":148,"by_groups":7,"tabs":3}"'
 display `"P19-14 PASS: _dash_limits_json gives {} unset, {"by_groups":7}, and set keys in table order"'
 
 // P19-15 — the master specs carry it as build_options.limits
@@ -1099,7 +1083,7 @@ tempfile p19js p19jd
 _dash_serve_spec, specpath("`p19js'") datapath("`p19jd'")
 // Flipped (WP-31 E10): the registration's _style_rows and _stata_props
 // now follow limits in build_options, so limits no longer ends the spec.
-cert_file_has "`p19js'", needle(`","limits":{"cells":148,"by_groups":7,"tabs":3}"')
+cert_file_has "`p19js'", needle(`","limits":{"plots":148,"by_groups":7,"tabs":3}"')
 assert r(found) == 1
 // The immediate route leaves no spec file to read; that the renderer
 // parsed a spec carrying limits is what rc 0 shows, on both routes.
@@ -1115,10 +1099,11 @@ display "P19-15 PASS: build_options.limits is in the build/serve spec, and both 
 // P19-16 — dash clear keeps the limits: they are settings, not registry
 dash scatter mpg weight, name(z1)
 dash clear
-assert "${dash_max_cells}" == "00148"
+// Flipped (WP-33 33-15): the sample global cells -> plots (P4-3).
+assert "${dash_max_plots}" == "00148"
 assert "${dash_max_by_groups}" == "7"
 assert "${dash_graph_registry}" == ""
-display "P19-16 PASS: dash clear leaves global dash_max_cells set"
+display "P19-16 PASS: dash clear leaves global dash_max_plots set"
 
 // P19-17 — accepted values: 1, the ceiling, leading zeros, empty = default,
 // and the same answers under a caller's version 16 (the old regex engine)
@@ -1131,21 +1116,23 @@ assert r(value) == 1
 global dash_max_graphs 1000
 _dash_limit, name(graphs)
 assert r(value) == 1000
-global dash_max_cells 20000000
-_dash_limit, name(cells)
-assert r(value) == 20000000
-global dash_max_cells 000000148
-_dash_limit, name(cells)
+// Flipped (WP-33 33-15): the sample key cells -> plots, its ceiling
+// 1,000; cells left the table (P4-3).
+global dash_max_plots 1000
+_dash_limit, name(plots)
+assert r(value) == 1000
+global dash_max_plots 000000148
+_dash_limit, name(plots)
 assert r(value) == 148
 global dash_max_graphs ""
 _dash_limit, name(graphs)
 assert r(value) == 100
-version 16: _dash_limit, name(cells)
+version 16: _dash_limit, name(plots)
 assert r(value) == 148
-mata: st_global("dash_max_cells", "12" + char(10))
-capture version 16: _dash_limit, name(cells)
+mata: st_global("dash_max_plots", "12" + char(10))
+capture version 16: _dash_limit, name(plots)
 assert _rc == 198
-capture _dash_limit, name(cells)
+capture _dash_limit, name(plots)
 assert _rc == 198
 foreach k of local p19_keys {
     capture macro drop dash_max_`k'
@@ -1153,20 +1140,20 @@ foreach k of local p19_keys {
 display "P19-17 PASS: 1, the ceiling and leading zeros accepted, empty is the default, same under version 16"
 
 // P19-18 — every hostile value, for every key, straight to _dash_limit
-forvalues i = 1/8 {
+forvalues i = 1/6 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' "_dash_limit, name(`k')" ""
     _dash_limit, name(`k')
     assert r(value) == `: word `i' of `p19_defs''
 }
-display "P19-18 PASS: 14 hostile values x 8 globals → rc=198 naming the global, echo safe; dropped → default"
+display "P19-18 PASS: 14 hostile values x 6 globals → rc=198 naming the global, echo safe; dropped → default"
 
 // P19-19 — the immediate route refuses each of them and writes nothing
 qui sysuse auto, clear
 tempfile p19r
 local p19rf "`p19r'.html"
 capture erase "`p19rf'"
-forvalues i = 1/8 {
+forvalues i = 1/6 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash scatter mpg weight, saving("`p19rf'")"' "`p19rf'"
 }
@@ -1179,7 +1166,7 @@ display "P19-19 PASS: the immediate route refuses every hostile value of every g
 capture erase "`p19rf'"
 dash clear
 dash scatter mpg weight, name(b1)
-forvalues i = 1/8 {
+forvalues i = 1/6 {
     local k : word `i' of `p19_keys'
     _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash build, saving("`p19rf'") replace nobrowser"' "`p19rf'"
 }
@@ -1216,41 +1203,23 @@ _dash_count_fmt p19s 1234567890123
 assert "`p19s'" == "1,234,567,890,123"
 _dash_count_fmt p19s 20000000
 assert "`p19s'" == "20,000,000"
-qui sysuse auto, clear
-global dash_max_cells 50
-_adv_p19_run "_dash_cell_cap 1"
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 50 dash embeds.")
-assert r(found) == 1
-_adv_p19_run "_dash_cell_cap 0"
-assert r(rc) == 0
-macro drop dash_max_cells
-display "P19-22 PASS: counts past 10^12 keep their separators; 74 x 1 is refused as 1 variable"
+// Flipped (WP-33 33-15): the _dash_cell_cap half -- the maintainer
+// removed the size caps (P4-3), and the program with them.
+capture program list _dash_cell_cap
+assert _rc == 111
+display "P19-22 PASS: counts past 10^12 keep their separators; _dash_cell_cap is gone"
 
-// P19-23 — the default, with no global set: 2,600,000 observations of two
-// variables (5,200,000 values) are refused before jsonio sees them, and
-// 2,500,000 x 2 -- exactly 5,000,000 -- is within it.
-clear
-quietly set obs 2600000
-generate double y = mod(_n, 7)
-generate double x = _n
-tempfile p19big
-local p19gf "`p19big'.html"
-capture erase "`p19gf'"
-_adv_p19_run `"dash scatter y x, saving("`p19gf'")"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 5,200,000 values (2,600,000 observations x 2 variables), more than the 5,000,000 dash embeds.")
-assert r(found) == 1
-capture confirm file "`p19gf'"
-assert _rc != 0
-quietly keep in 1/2500000
-_adv_p19_run "_dash_cell_cap 2"
-assert r(rc) == 0
-quietly set obs 2500001
-_adv_p19_run "_dash_cell_cap 2"
-assert r(rc) == 134
-qui sysuse auto, clear
-display "P19-23 PASS: the default refuses 5,200,000 values and admits exactly 5,000,000"
+// P19-23 — the default cell limit.  Flipped (WP-33 33-15): 2,600,000
+// observations of two variables were refused at the default 5,000,000;
+// the maintainer removed the size caps (P4-3), so the table holds no
+// cells row and _dash_cell_cap is gone.
+_dash_limit_table
+local p19rows "`_dash_limit_rows'"
+assert !strpos(" `p19rows'", " cells=")
+assert !strpos(" `p19rows'", " bytes=")
+capture program list _dash_cell_cap
+assert _rc == 111
+display "P19-23 PASS: _dash_limit_table holds no cells row and _dash_cell_cap is gone"
 
 // P19-24..26 — a refused name is echoed as text, never as SMCL.  The
 // filter() echo replaced only the FIRST run of unsafe characters
@@ -1288,13 +1257,10 @@ assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P19-26 PASS: a refused KPI name is echoed as text, not SMCL"
 
-// P19-27..30 -- the bytes of text exported ($dash_max_bytes).  The cells
-// limit counts values, not bytes, and a strL is exported in full since
-// dash writes its own data file (24sep2026): 60 observations of a
-// 1,000,000-byte strL passed the cells limit (60 values) and made a page
-// of 60 MB.  make in auto is 871 bytes of text (measured: the sum of
-// strlen(make)), str18, so its bound, 18 x 74 = 1,332, is over 870 and the
-// values themselves are counted.
+// P19-27..30 -- the bytes of text exported ($dash_max_bytes).  Flipped
+// (WP-33 33-15): each was refused with r(134); the maintainer removed the
+// size caps (P4-3), so the same commands build at the old lowered limit.
+// make in auto is 871 bytes of text (the sum of strlen(make)).
 qui sysuse auto, clear
 quietly datasignature
 local sig0 "`r(datasignature)'"
@@ -1307,22 +1273,17 @@ local p19tf "`p19t'.html"
 capture erase "`p19tf'"
 global dash_max_bytes 870
 _adv_p19_run `"dash scatter mpg weight, mlabel(make) saving("`p19tf'")"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed 871 bytes of text (in 1 string variable), more than the 870 dash embeds.")
-assert r(found) == 1
-cert_file_has "`lg'", needle("Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_bytes to a higher value (at most 500,000,000).")
-assert r(found) == 1
-mata: st_local("p1927n", strofreal(rows(cat(st_local("lg")))))
-assert `p1927n' == 2
-capture confirm file "`p19tf'"
-assert _rc != 0
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("bytes of text")
+assert r(found) == 0
+confirm file "`p19tf'"
+capture erase "`p19tf'"
 quietly datasignature
 assert "`r(datasignature)'" == "`sig0'"
-display "P19-27 PASS: 871 bytes of text at dash_max_bytes 870 → rc=134 in the cells limit's words, no file, data unchanged"
+display "P19-27 PASS: 871 bytes of text at dash_max_bytes 870 → rc=0, the file written, data unchanged"
 
 // P19-28 -- at 871 the same command draws, and so does a dashboard with no
-// string variable at dash_max_bytes 1: numbers are the cells limit's.
+// string variable at dash_max_bytes 1.
 global dash_max_bytes 871
 capture noisily dash scatter mpg weight, mlabel(make) saving("`p19tf'")
 assert _rc == 0
@@ -1333,66 +1294,36 @@ capture noisily dash scatter mpg weight, saving("`p19tf'")
 assert _rc == 0
 confirm file "`p19tf'"
 capture erase "`p19tf'"
-display "P19-28 PASS: at dash_max_bytes 871 it draws; with no string variable, dash_max_bytes 1 refuses nothing"
+display "P19-28 PASS: at dash_max_bytes 871 and at 1 it draws; the global is not read"
 
-// P19-29 -- dash build and the served spec are held to it the same way
+// P19-29 -- dash build and the served spec at 870 build too
 global dash_max_bytes 870
 dash scatter mpg weight, mlabel(make) name(t1)
 _adv_p19_run `"dash build, saving("`p19tf'") replace nobrowser"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 871 bytes of text (in 1 string variable), more than the 870 dash embeds.")
-assert r(found) == 1
-capture confirm file "`p19tf'"
-assert _rc != 0
-local opts : all globals "dash_opts_*"
-assert "`opts'" == ""
-tempfile p19ts p19td
-_adv_p19_run `"_dash_serve_spec, specpath("`p19ts'") datapath("`p19td'")"'
-assert r(rc) == 134
-capture confirm file "`p19td'"
-assert _rc != 0
-global dash_max_bytes 871
-capture noisily dash build, saving("`p19tf'") replace nobrowser
-assert _rc == 0
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("bytes of text")
+assert r(found) == 0
 confirm file "`p19tf'"
 capture erase "`p19tf'"
+tempfile p19ts p19td
+_adv_p19_run `"_dash_serve_spec, specpath("`p19ts'") datapath("`p19td'")"'
+assert r(rc) == 0
+confirm file "`p19td'"
 dash clear
 quietly datasignature
 assert "`r(datasignature)'" == "`sig0'"
-display "P19-29 PASS: dash build and the served spec refuse 871 bytes at 870 (no file, no dash_opts_*), build at 871"
+macro drop dash_max_bytes
+display "P19-29 PASS: dash build and the served spec build 871 bytes at dash_max_bytes 870"
 
-// P19-30 -- the default, with no global set: 60 observations of a
-// 1,000,000-byte strL, 60 values, are 60,000,000 bytes and refused before
-// the file is written; 50 of them, exactly 50,000,000, are within it.
-foreach k of local p19_keys {
-    capture macro drop dash_max_`k'
-}
-clear
-quietly set obs 60
-generate double y = _n
-generate double x = _n
-generate strL s = "a" * 1000000
-capture erase "`p19tf'"
-_adv_p19_run `"dash scatter y x, mlabel(s) saving("`p19tf'")"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 60,000,000 bytes of text (in 1 string variable), more than the 50,000,000 dash embeds.")
-assert r(found) == 1
-capture confirm file "`p19tf'"
-assert _rc != 0
-quietly keep in 1/50
-_adv_p19_run "_dash_byte_cap y x s"
-assert r(rc) == 0
-quietly set obs 51
-quietly replace s = "a" in 51
-_adv_p19_run "_dash_byte_cap y x s s"
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 50,000,001 bytes of text (in 1 string variable)")
-assert r(found) == 1
-// A name that is not a variable is not counted, and not an error here.
-_adv_p19_run "_dash_byte_cap nosuchvar y"
-assert r(rc) == 0
-qui sysuse auto, clear
-display "P19-30 PASS: the default refuses 60,000,000 bytes of strL text and admits exactly 50,000,000; a variable named twice counts once"
+// P19-30 -- the default bytes limit.  Flipped (WP-33 33-15): 60 x a
+// 1,000,000-byte strL was refused at 50,000,000; with no size cap the
+// table holds no bytes row and _dash_byte_cap is gone (no 60 MB page is
+// built here).
+_dash_limit_table
+assert !strpos(" `_dash_limit_rows'", " bytes=")
+capture program list _dash_byte_cap
+assert _rc == 111
+display "P19-30 PASS: _dash_limit_table holds no bytes row and _dash_byte_cap is gone"
 
 foreach k of local p19_keys {
     capture macro drop dash_max_`k'
@@ -3124,136 +3055,87 @@ restore
 * ---- generated by scripts/gen_string_varlists_cscript.py: end ----
 
 * ==== S08 G3: data limit (DL-01..DL-06) ====
-// The saved page's cells limit counts what it embeds: a histogram alone
-// (bin(10): 4 x 10 = 40 values) passes at dash_max_cells 70, where 74
-// observations x 1 variable (74) would have refused it; a scatter (74 x
-// 2 = 148) is still refused, byte for byte as P19-11 shows it, and a
-// filter, link(), csv or hover() that reaches the histogram makes it
-// count its own row again.  All on sysuse auto (74 obs); no fixture, no
-// git add -f -- these numbers are measured live in this run, against
-// dash's own arithmetic, not typed in twice.
+// The saved page's cells limit counted what it embeds (WP-28 G3).
+// Flipped (WP-33 33-15): the maintainer removed the size caps (P4-3), so
+// every case below -- each refused at its lowered dash_max_cells but
+// DL-01 and DL-03a -- now builds at the same limit, rc 0, the file
+// written, and no "would embed" line.  Case ids and inputs are kept.
 preserve
 capture dash clear
 sysuse auto, clear
 
+// _dl_builds <id> <file> <cmd>: rc 0, the file written, no refusal.
+capture program drop _dl_builds
+program define _dl_builds
+    version 16.0
+    args id file cmdtext
+    capture erase `"`file'"'
+    _adv_p19_run `"`cmdtext'"'
+    local rc = r(rc)
+    cert_file_has "`r(log)'", needle("would embed")
+    local f = r(found)
+    capture confirm file `"`file'"'
+    local ex = _rc == 0
+    if `rc' != 0 | `f' | !`ex' {
+        display as error "`id' FAIL: rc `rc', would-embed `f', file `ex'"
+        exit 9
+    }
+end
+
 global dash_max_cells 70
 tempfile dl1
 local dl1f "`dl1'.html"
-capture erase "`dl1f'"
-_adv_p19_run `"dash histogram price, bin(10) saving("`dl1f'")"'
-assert r(rc) == 0
-confirm file "`dl1f'"
+_dl_builds DL-01 "`dl1f'" `"dash histogram price, bin(10) saving("`dl1f'")"'
 dash clear
-display "DL-01 PASS: a histogram's own drawn output (40 values) passes dash_max_cells 70, where 74 observations x 1 variable would not"
+display "DL-01 PASS: a histogram at dash_max_cells 70 builds"
 
 tempfile dl2
 local dl2f "`dl2'.html"
-capture erase "`dl2f'"
-_adv_p19_run `"dash scatter mpg price, saving("`dl2f'")"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 70 dash embeds.")
-assert r(found) == 1
-cert_file_has "`lg'", needle("Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most 20,000,000).")
-assert r(found) == 1
-mata: st_local("dl2n", strofreal(rows(cat("`lg'"))))
-assert `dl2n' == 2
-capture confirm file "`dl2f'"
-assert _rc != 0
+_dl_builds DL-02 "`dl2f'" `"dash scatter mpg price, saving("`dl2f'")"'
 dash clear
-display "DL-02 PASS: a row-drawing scatter (148 values) is still refused at dash_max_cells 70, the two lines byte-identical to P19-11's shape"
+display "DL-02 PASS: a scatter of 148 values at dash_max_cells 70 builds (no size cap)"
 
-// DL-03: the named route -- a filter, link(), csv or hover() that
-// reaches the lone histogram graph makes it count its own row.
 tempfile dl3
 local dl3f "`dl3'.html"
 dash histogram price, bin(10) name(h1)
-capture erase "`dl3f'"
-_adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser"'
-assert r(rc) == 0
-confirm file "`dl3f'"
-display "DL-03a PASS: the named route builds h1 alone at dash_max_cells 70 (40 values)"
-
-capture erase "`dl3f'"
-_adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser filter(foreign, type(dropdown))"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 70 dash embeds.")
-assert r(found) == 1
-display "DL-03b PASS: filter() with no exclude() reaches h1 -- 74 observations x 2 variables (price, foreign)"
-
-capture erase "`dl3f'"
-_adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser link(_all)"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 70 dash embeds.")
-assert r(found) == 1
-display "DL-03c PASS: link(_all) reaches the lone graph -- its own row counts again"
-
-capture erase "`dl3f'"
-_adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser csv"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 70 dash embeds.")
-assert r(found) == 1
-display "DL-03d PASS: csv reaches the lone graph the same way"
-
+_dl_builds DL-03a "`dl3f'" `"dash build, saving("`dl3f'") replace nobrowser"'
+display "DL-03a PASS: the named route builds h1 alone at dash_max_cells 70"
+_dl_builds DL-03b "`dl3f'" `"dash build, saving("`dl3f'") replace nobrowser filter(foreign, type(dropdown))"'
+display "DL-03b PASS: with filter() it builds at dash_max_cells 70 (no size cap)"
+_dl_builds DL-03c "`dl3f'" `"dash build, saving("`dl3f'") replace nobrowser link(_all)"'
+display "DL-03c PASS: with link(_all) it builds at dash_max_cells 70 (no size cap)"
+_dl_builds DL-03d "`dl3f'" `"dash build, saving("`dl3f'") replace nobrowser csv"'
+display "DL-03d PASS: with csv it builds at dash_max_cells 70 (no size cap)"
 dash clear
 dash histogram price, bin(10) hover(foreign) name(h1)
-capture erase "`dl3f'"
-_adv_p19_run `"dash build, saving("`dl3f'") replace nobrowser"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 70 dash embeds.")
-assert r(found) == 1
-display "DL-03e PASS: hover() reaches the graph too; its hover() variable is exported, but no layer of h1 can show it, so it does not inflate the count"
+_dl_builds DL-03e "`dl3f'" `"dash build, saving("`dl3f'") replace nobrowser"'
+display "DL-03e PASS: with hover() it builds at dash_max_cells 70 (no size cap)"
 
-// DL-04: a KPI beside the untouched histogram always counts its own
-// variable, and h1's own bars still add their drawn cells beside it --
-// the two parts of TR-08.7's "both" message form.
 dash clear
 dash histogram price, bin(10) name(h1)
 dash kpi mean(price), name(k1) title(T)
 tempfile dl4
 local dl4f "`dl4'.html"
-capture erase "`dl4f'"
-_adv_p19_run `"dash build, saving("`dl4f'") replace nobrowser"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 114 values (74 observations x 1 variable, and 40 values of computed layers), more than the 70 dash embeds.")
-assert r(found) == 1
-display "DL-04 PASS: a KPI's own variable (74 observations x 1 variable) and h1's own bars (40 values of computed layers) both count, 114 in all"
+_dl_builds DL-04 "`dl4f'" `"dash build, saving("`dl4f'") replace nobrowser"'
+display "DL-04 PASS: a KPI beside the histogram builds at dash_max_cells 70 (no size cap)"
 
-// DL-05: a served app always embeds every observation of every variable,
-// and says so.
 dash clear
 dash histogram price, bin(10) name(h1)
 tempfile dl5
 local dl5f "`dl5'.py"
-capture erase "`dl5f'"
-_adv_p19_run `"dash build, server saving("`dl5f'") replace nobrowser"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 70 dash embeds.")
-assert r(found) == 1
-cert_file_has "`lg'", needle("A served app embeds every observation of every variable it uses.")
-assert r(found) == 1
-capture confirm file "`dl5f'"
-assert _rc != 0
-display "DL-05 PASS: dash build, server counts every observation of every variable and says a served app always does"
+_dl_builds DL-05 "`dl5f'" `"dash build, server saving("`dl5f'") replace nobrowser"'
+display "DL-05 PASS: dash build, server builds at dash_max_cells 70 (no size cap)"
 
-// DL-06: a lower limit that the histogram's own drawn output still
-// crosses names the drawn output, not a row x column shape.
 dash clear
 global dash_max_cells 30
 dash histogram price, bin(10) name(h1)
 tempfile dl6
 local dl6f "`dl6'.html"
-capture erase "`dl6f'"
-_adv_p19_run `"dash build, saving("`dl6f'") replace nobrowser"'
-assert r(rc) == 134
-cert_file_has "`r(log)'", needle("dash: this dashboard would embed 40 values (the drawn output of its computed layers), more than the 30 dash embeds.")
-assert r(found) == 1
-capture confirm file "`dl6f'"
-assert _rc != 0
-display "DL-06 PASS: a computed-only graph over the limit names the drawn output, not a row x column shape"
+_dl_builds DL-06 "`dl6f'" `"dash build, saving("`dl6f'") replace nobrowser"'
+display "DL-06 PASS: the histogram builds at dash_max_cells 30 (no size cap)"
 
 macro drop dash_max_cells
+capture program drop _dl_builds
 capture dash clear
 restore
 * ==== end S08 ====
@@ -3263,8 +3145,8 @@ restore
 // refusals and counts that follow.  A hover() variable dropped after
 // name() is r(111) at dash build, a registry hover() value that is not a
 // list of names r(198) with an 80-character echo, both before any file is
-// written; hover()'s variables count toward the limits where the page
-// holds them (a layer can show them, or csv, or a served app); a hostile
+// written; hover()'s variables counted toward the size limits, which the
+// maintainer removed (P4-3, WP-33 33-15); a hostile
 // hover() value reaches the page only as data.  HX-20..HX-25 call the
 // Mata reader _dash_extract_hover_vars directly.
 preserve
@@ -3367,101 +3249,75 @@ capture erase "`hx13l'"
 macro drop HX13_J
 display "HX-13 PASS: the one-line route refuses a hover() word that is not a name (r(198)) or not a variable (r(111)) before writing"
 
-// HX-14: a served app counts every hover() variable.
+// HX-14..HX-17: hover()'s variables counted toward the cells and bytes
+// limits where the page held them.  Flipped (WP-33 33-15): each was
+// refused at its lowered limit; the maintainer removed the size caps
+// (P4-3), so each builds at the same limit, rc 0, the file written, and
+// no "would embed" or "bytes of text" line.  _hx_builds <id> <file> <cmd>.
+capture program drop _hx_builds
+program define _hx_builds
+    version 16.0
+    args id file cmdtext
+    capture erase `"`file'"'
+    _adv_p19_run `"`cmdtext'"'
+    local rc = r(rc)
+    local lg "`r(log)'"
+    cert_file_has "`lg'", needle("would embed")
+    local f1 = r(found)
+    cert_file_has "`lg'", needle("bytes of text")
+    local f2 = r(found)
+    capture confirm file `"`file'"'
+    local ex = _rc == 0
+    if `rc' != 0 | `f1' | `f2' | !`ex' {
+        display as error "`id' FAIL: rc `rc', would-embed `f1', bytes `f2', file `ex'"
+        exit 9
+    }
+    capture erase `"`file'"'
+end
+
+// HX-14: a served app with three hover() variables at dash_max_cells 200.
 dash clear
 global dash_max_cells 200
 dash scatter mpg weight, hover(rep78 headroom trunk) name(g1)
 tempfile hx14
 local hx14p "`hx14'.py"
-capture erase "`hx14p'"
-_adv_p19_run `"dash build, server saving("`hx14p'") replace nobrowser"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("370 values (74 observations x 5 variables)")
-assert r(found) == 1
-cert_file_has "`lg'", needle("A served app embeds every observation of every variable it uses.")
-assert r(found) == 1
-capture confirm file "`hx14p'"
-assert _rc != 0
-display "HX-14 PASS: dash build, server counts hover(rep78 headroom trunk): 370 values (74 observations x 5 variables)"
+_hx_builds HX-14 "`hx14p'" `"dash build, server saving("`hx14p'") replace nobrowser"'
+display "HX-14 PASS: dash build, server with hover(rep78 headroom trunk) builds at dash_max_cells 200"
 
-// HX-15: the one-line saved page counts them when a layer shows them.
+// HX-15: the one-line saved page at the same limit.
 dash clear
 tempfile hx15
 local hx15f "`hx15'.html"
-capture erase "`hx15f'"
-_adv_p19_run `"dash scatter mpg weight, hover(rep78 headroom trunk) saving("`hx15f'", replace)"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("370 values (74 observations x 5 variables)")
-assert r(found) == 1
-capture confirm file "`hx15f'"
-assert _rc != 0
+_hx_builds HX-15 "`hx15f'" `"dash scatter mpg weight, hover(rep78 headroom trunk) saving("`hx15f'", replace)"'
 macro drop dash_max_cells
-display "HX-15 PASS: the one-line scatter counts its hover() variables: 370 values (74 observations x 5 variables)"
+display "HX-15 PASS: the one-line scatter with three hover() variables builds at dash_max_cells 200"
 
-// HX-16: a string hover() variable counts toward the bytes limit.
+// HX-16: a string hover() variable at dash_max_bytes 100.
 global dash_max_bytes 100
-mata: st_local("hxb", strofreal(sum(strlen(st_sdata(., "make")))))
-local hxs : display %30.0fc `hxb'
-local hxs = strtrim("`hxs'")
 tempfile hx16
 local hx16f "`hx16'.html"
-capture erase "`hx16f'"
-_adv_p19_run `"dash scatter mpg weight, hover(make) saving("`hx16f'", replace)"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: this dashboard would embed `hxs' bytes of text (in 1 string variable), more than the 100 dash embeds.")
-assert r(found) == 1
-capture confirm file "`hx16f'"
-assert _rc != 0
-display "HX-16 PASS: hover(make) on a scatter counts make's `hxs' bytes of text against dash_max_bytes 100"
+_hx_builds HX-16 "`hx16f'" `"dash scatter mpg weight, hover(make) saving("`hx16f'", replace)"'
+display "HX-16 PASS: hover(make) on a scatter builds at dash_max_bytes 100"
 
-// HX-17: no layer of a histogram can show hover()'s variable, so the
-// saved page leaves it out of its counts (review A1); a served app and
-// csv count it.
+// HX-17: a histogram's hover() variable, saved, built, served and under
+// csv, at dash_max_bytes 100 and then dash_max_cells 70.
 dash clear
 tempfile hx17
 local hx17f "`hx17'.html"
 local hx17p "`hx17'.py"
-capture erase "`hx17f'"
-_adv_p19_run `"dash histogram price, bin(10) hover(make) saving("`hx17f'", replace)"'
-assert r(rc) == 0
-confirm file "`hx17f'"
+_hx_builds HX-17 "`hx17f'" `"dash histogram price, bin(10) hover(make) saving("`hx17f'", replace)"'
 dash histogram price, bin(10) hover(make) name(h1)
-capture erase "`hx17f'"
-_adv_p19_run `"dash build, saving("`hx17f'") replace nobrowser"'
-assert r(rc) == 0
-confirm file "`hx17f'"
-capture erase "`hx17p'"
-_adv_p19_run `"dash build, server saving("`hx17p'") replace nobrowser"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("bytes of text (in 1 string variable), more than the 100 dash embeds.")
-assert r(found) == 1
-capture confirm file "`hx17p'"
-assert _rc != 0
+_hx_builds HX-17 "`hx17f'" `"dash build, saving("`hx17f'") replace nobrowser"'
+_hx_builds HX-17 "`hx17p'" `"dash build, server saving("`hx17p'") replace nobrowser"'
 macro drop dash_max_bytes
 global dash_max_cells 70
 dash clear
 dash histogram price, bin(10) hover(foreign) name(h1)
-capture erase "`hx17p'"
-_adv_p19_run `"dash build, server saving("`hx17p'") replace nobrowser"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("148 values (74 observations x 2 variables)")
-assert r(found) == 1
-cert_file_has "`lg'", needle("A served app embeds every observation of every variable it uses.")
-assert r(found) == 1
-capture erase "`hx17f'"
-_adv_p19_run `"dash build, saving("`hx17f'") replace nobrowser csv"'
-assert r(rc) == 134
-local lg "`r(log)'"
-cert_file_has "`lg'", needle("148 values (74 observations x 2 variables)")
-assert r(found) == 1
-capture erase "`hx17f'"
-capture erase "`hx17p'"
-display "HX-17 PASS: a histogram's hover() variable does not count saved (one-line, build); it counts served (bytes; 148 = 74 x 2) and under csv (148)"
+_hx_builds HX-17 "`hx17p'" `"dash build, server saving("`hx17p'") replace nobrowser"'
+_hx_builds HX-17 "`hx17f'" `"dash build, saving("`hx17f'") replace nobrowser csv"'
+macro drop dash_max_cells
+capture program drop _hx_builds
+display "HX-17 PASS: a histogram's hover() variable builds saved, served and under csv at the old lowered limits"
 
 // HX-18: a literal-only graph exports hover()'s variable but counts no
 // cell of it, and still says hover() does not reach it.
@@ -3767,13 +3623,13 @@ display "  P9-06..10: Resource-exhaustion counts and sizes → rc=198 naming the
 display "  P9-11..14: Code in KPI fmt() → rc=198 naming fmt(), no KPI registered"
 display "  P19-01..05: Registry cap (dash_max_graphs) → rc=134 for a new name; replace and dash clear still work"
 display "  P19-06..10: Plot cap (dash_max_plots) → rc=134, each y variable counted, nothing registered or written"
-display "  P19-11..13: Cell cap (dash_max_cells) → rc=134 before export on both routes, data and formats unchanged"
+display "  P19-11..13: No cell cap (P4-3) — dash_max_cells changes nothing on both routes, data and formats unchanged"
 display "  P19-14..16: build_options.limits carries only the set limits; dash clear keeps them"
 display "  P19-17..21: Hostile dash_max_* values → rc=198 on every route, echo reduced to safe characters"
-display "  P19-22: Message helpers — separators past 10^12, singular variable"
-display "  P19-23: Default cell cap at scale — 5,200,000 values refused, 5,000,000 admitted"
+display "  P19-22: Message helpers — separators past 10^12; _dash_cell_cap gone"
+display "  P19-23: No default cell cap — no cells row, _dash_cell_cap gone"
 display "  P19-24..26: A refused filter, graph or KPI name → echoed as text, never as SMCL"
-display "  P19-27..30: Byte cap (dash_max_bytes) → rc=134 before export on every route; strL text counted"
+display "  P19-27..30: No byte cap (P4-3) — dash_max_bytes changes nothing on every route; _dash_byte_cap gone"
 display "  P20-01..13: Every other echo of user text (option values, plot type, link, exclude, theme, fmt, port, timeout, saving) → shown as text, never as SMCL"
 display "  P20-14, 19: port()/timeout() → digits only (no trailing newline), timeout() at most nine digits"
 display "  P20-15..18: Overlong UTF-8, saving() spellings, a layout() backslash, a quote breakout → refused or escaped"

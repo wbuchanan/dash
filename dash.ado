@@ -493,7 +493,6 @@ program define _dash_require_mata
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
-        _dash_computed_cells _dash_graph_touched _dash_qual_cols_in _dash_json_has_value ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_axisn_clear _dash_axisn_json _dash_axisn_tf_in _dash_axisn_tf_out ///
@@ -4997,19 +4996,13 @@ end
 // This is the one table of limits.  Each row is key=default,ceiling.  A
 // session raises or lowers a limit with global dash_max_<key>: a whole
 // number written in digits only, at most nine of them, from 1 to the
-// ceiling.  dash.ado enforces four itself -- cells (values embedded:
-// observations x variables exported), bytes (the bytes of text in the
-// string values exported), graphs (graphs and KPI cards in the
-// registry) and plots (plot entries in one graph, one per y variable) --
-// and hands every limit the session has set to the renderer as
-// build_options.limits, under these keys, for the four it enforces:
-// filter_options, by_groups, tabs and filters.
+// ceiling.  dash.ado enforces graphs, plots, reflines and added_text
+// itself and hands every limit the session has set to the renderer as
+// build_options.limits; a dashboard has no size cap (P4-3).
 // ================================================================
 program define _dash_limit_table
     version 19
     local rows ///
-        cells=5000000,20000000 ///
-        bytes=50000000,500000000 ///
         graphs=100,1000 ///
         plots=100,1000 ///
         filter_options=1000,100000 ///
@@ -5218,149 +5211,6 @@ program define _dash_plot_cap_refuse
     exit 134
 end
 
-// ----------------------------------------------------------------
-// _dash_cell_cap <nvars> [<nobs>] [<extra>] [<served>]  -- the
-//                                     embedded-data limit, before the
-//                                     export
-//
-// The export (_dash_write_data) writes every observation of every
-// variable it is given; the
-// renderer applies if/in itself, so if/in reduce nothing here and are not
-// offered as a remedy.  <nobs> is the observations exported, _N unless the
-// caller exports fewer (the one-row placeholder a graph of literal values
-// sends).  Both callers run this before the file is written, so a
-// refusal leaves the data in memory exactly as it was.
-//
-// <extra> (GAPS2 G3) is the drawn output of computed-only graphs
-// (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
-// or hover() reaches; hover()'s own variables are counted only for a
-// graph one of whose layers can show them (WP-29 P0.10): those graphs'
-// rows are never in <nvars>, so a
-// saved page can hold more observations than the cells limit alone would
-// allow.  <nvars> of 0 means every graph is computed-only and untouched
-// -- nothing row-shaped is embedded at all.  <served> of 1 says every
-// observation of every variable is embedded regardless (the served
-// route always calls this with the full count and extra empty): a third
-// line then says so.  The two-line message is byte for byte what it was
-// before <extra> and <served> existed.
-// ----------------------------------------------------------------
-program define _dash_cell_cap
-    version 19
-    args nvars nobs extra served
-    if "`nobs'"  == "" local nobs  = _N
-    if "`extra'" == "" local extra = 0
-    _dash_limit, name(cells)
-    local lim  = r(value)
-    local ceil = r(ceiling)
-    local total = `nobs' * `nvars' + `extra'
-    if `total' <= `lim' exit
-
-    _dash_count_fmt _cells_s `total'
-    _dash_count_fmt _lim_s   `lim'
-    _dash_count_fmt _ceil_s  `ceil'
-    if `nvars' == 0 {
-        local _shape "the drawn output of its computed layers"
-    }
-    else {
-        _dash_count_fmt _obs_s   `nobs'
-        _dash_count_fmt _vars_s  `nvars'
-        local _obs_w  = cond(`nobs' == 1, "observation", "observations")
-        local _vars_w = cond(`nvars' == 1, "variable", "variables")
-        if `extra' > 0 {
-            _dash_count_fmt _extra_s `extra'
-            local _shape "`_obs_s' `_obs_w' x `_vars_s' `_vars_w', and `_extra_s' values of computed layers"
-        }
-        else {
-            local _shape "`_obs_s' `_obs_w' x `_vars_s' `_vars_w'"
-        }
-    }
-    display as error "dash: this dashboard would embed `_cells_s' values (`_shape'), more than the `_lim_s' dash embeds."
-    display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most `_ceil_s')."
-    if "`served'" == "1" {
-        display as error "      A served app embeds every observation of every variable it uses."
-    }
-    exit 134
-end
-
-// ----------------------------------------------------------------
-// _dash_byte_cap <varlist>  -- the bytes of text exported, before the
-//                              export
-//
-// The cells limit counts values, not bytes, and the export writes a strL
-// in full (_dash_write_data, 24sep2026): 60 observations of a
-// 1,000,000-byte strL were 60 values and a 60 MB page.  This holds the
-// bytes of text in the string values of <varlist> -- every observation, as
-// Stata stores them, before JSON escaping -- to $dash_max_bytes.  Numbers
-// are the cells limit's.  A name that is not a variable is skipped (the
-// export reports it), and a variable named twice is counted once, as the
-// export writes it once.
-//
-// Nothing is counted when it cannot matter: a str# variable holds at most
-// its width in bytes, so when every string variable is a str# and width x
-// _N summed is within the limit the data are not read.  Otherwise the
-// lengths are summed in Mata, a million observations at a time, so no
-// variable is made and no more than that is held at once; the sum stops
-// once it is over the limit.  Both callers run this before the file is
-// written, so a refusal leaves the data in memory as it was.
-// ----------------------------------------------------------------
-program define _dash_byte_cap
-    version 19
-    _dash_limit, name(bytes)
-    local lim  = r(value)
-    local ceil = r(ceiling)
-    if _N == 0 exit
-    local names ""
-    foreach v of local 0 {
-        capture unab u : `v', max(1)
-        if _rc == 0 local names `names' `u'
-    }
-    local names : list uniq names
-    local strs ""
-    tempname bound tot
-    scalar `bound' = 0
-    foreach v of local names {
-        capture confirm string variable `v'
-        if _rc continue
-        local strs `strs' `v'
-        local t : type `v'
-        if "`t'" == "strL" scalar `bound' = .
-        else scalar `bound' = `bound' + real(substr("`t'", 4, .)) * _N
-    }
-    if "`strs'" == "" exit
-    if `bound' <= `lim' exit
-    scalar `tot' = 0
-    local n = _N
-    foreach v of local strs {
-        forvalues a = 1(1000000)`n' {
-            local b = min(`a' + 999999, `n')
-            mata: st_numscalar(st_local("tot"), st_numscalar(st_local("tot")) + ///
-                sum(strlen(st_sdata((`a', `b'), st_local("v")))))
-            if `tot' > `lim' continue, break
-        }
-        if `tot' > `lim' continue, break
-    }
-    if `tot' <= `lim' exit
-
-    // Over: the whole count, for the message.  Only a refusal pays for
-    // the variables the running total did not reach.
-    scalar `tot' = 0
-    foreach v of local strs {
-        forvalues a = 1(1000000)`n' {
-            local b = min(`a' + 999999, `n')
-            mata: st_numscalar(st_local("tot"), st_numscalar(st_local("tot")) + ///
-                sum(strlen(st_sdata((`a', `b'), st_local("v")))))
-        }
-    }
-    local nstr : word count `strs'
-    _dash_count_fmt _bytes_s `tot'
-    _dash_count_fmt _nstr_s  `nstr'
-    _dash_count_fmt _lim_s   `lim'
-    _dash_count_fmt _ceil_s  `ceil'
-    local _str_w = cond(`nstr' == 1, "variable", "variables")
-    display as error "dash: this dashboard would embed `_bytes_s' bytes of text (in `_nstr_s' string `_str_w'), more than the `_lim_s' dash embeds."
-    display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_bytes to a higher value (at most `_ceil_s')."
-    exit 134
-end
 // END resource limits (WP-19)
 
 // ================================================================
@@ -11583,11 +11433,7 @@ program define _dash_render_immediate
     // WP-29 P0.10: every variable hover() names is exported -- it was
     // not, so a variable named only there was left out of the tooltip
     // with rc 0 and no note.  Read and checked in Mata
-    // (_dash_extract_hover_vars) before it reaches any command.  It is
-    // COUNTED (_cap_vars: the cells and bytes limits) only when a layer
-    // of this graph can show it: a graph made only of computed or
-    // literal layers draws no observation, and the page holds none of
-    // its rows (design review A1).
+    // (_dash_extract_hover_vars) before it reaches any command.
     local _hvars ""
     local _hv_bad ""
     local _hv_why ""
@@ -11600,19 +11446,9 @@ program define _dash_render_immediate
         mata: _dash_say("err", "dash: hover(): variable ", st_local("_hv_bad"), " not found")
         exit 111
     }
-    local _cap_vars `needed_vars'
     if "`_hvars'" != "" {
-        _dash_plottype_families
-        local _hv_show = 1
-        // WP-31 B4b: a contour's polygons are no observations either.
-        mata: st_local("_hv_show", strofreal(!_dash_spec_types_in( ///
-            st_local("json_spec"), st_local("_pt_univar") + " " + ///
-            st_local("_pt_onefit") + " " + st_local("_pt_contour") + " " + ///
-            st_local("_pt_literal"))))
-        if `_hv_show' local _cap_vars : list _cap_vars | _hvars
         local needed_vars : list needed_vars | _hvars
     }
-    local _cap_vars = strtrim("`_cap_vars'")
     local needed_vars = strtrim("`needed_vars'")
 
     // The literal family -- scatteri, pci, pcarrowi and function -- takes
@@ -11670,14 +11506,9 @@ program define _dash_render_immediate
     // ---- Resource limits (WP-19), before anything is exported ----
     // Every dash_max_* global the session has set is validated here -- a
     // bad one is refused before the export, not after it -- and travels to
-    // the renderer as build_options.limits.  Then the size of what is
-    // about to be embedded, every observation of every variable in
-    // needed_vars, is held to the cells limit, and the text in its string
-    // variables to the bytes limit.  All come before the file is written,
-    // so a refusal leaves the user's data exactly as it was.
+    // the renderer as build_options.limits.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
-    local _dash_nvars : word count `_cap_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
     // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
@@ -11703,33 +11534,9 @@ program define _dash_render_immediate
         local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
     }
     if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
-    // GAPS2 G3: the one-line route draws a single graph and never takes
-    // a server option (_dash_plot's own syntax has none), so the reduced
-    // accounting always applies -- unless the graph names no variable at
-    // all (the literal family, `_varfree'), which is never a computed-only
-    // type either, so the plain count below is exactly today's.
-    local _ri_gc = -1
-    local _ri_gt = 1
-    if !`_varfree' {
-        _dash_limit, name(by_groups)
-        local _ri_byg = r(value)
-        mata: st_local("_ri_gc", strofreal(_dash_computed_cells( ///
-            st_local("json_spec"), st_nobs(), `_ri_byg', ///
-            "`_pt_univar' `_pt_onefit'")))
-        mata: st_local("_ri_gt", strofreal(_dash_graph_touched( ///
-            "", st_local("json_spec"), "", "", "")))
-    }
-    if `_ri_gc' >= 0 & !`_ri_gt' {
-        _dash_cell_cap 0 "" `_ri_gc'
-    }
-    else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n''
-    }
-
     // Reference lines: positions times by() panels (WP-30 P1.21a).
     _dash_reflines_of `"`macval(json_spec)'"'
     _dash_reflines_cap `r(n)'
-    _dash_byte_cap `_cap_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
@@ -11976,7 +11783,7 @@ program define _dash_clear
     // The dash_max_* globals are deliberately NOT swept, and none of the
     // patterns here matches them.  They are the session's resource limits
     // (WP-19) -- settings the user chose, like $dash_nobrowser -- not
-    // registry state: a do-file that raises dash_max_cells once and runs
+    // registry state: a do-file that raises dash_max_graphs once and runs
     // `dash clear' between dashboards must keep the limit it set.
     capture macro drop dash_spec_*
     capture macro drop dash_json_*
@@ -12743,21 +12550,12 @@ program define _dash_prepare_spec, rclass
     // And each distinct qualifier, which is evaluated in Stata and exported
     // as a column (_dash_qual_rewrite, _dash_qual_take, _dash_qual_gen).
     local all_vars ""
-    // GAPS2 G3: the saved page's cells limit counts what it embeds, not
-    // every exported variable -- row_vars/comp_cells decide that, beside
-    // all_vars (which the export still uses unchanged, per DISCOVERY
-    // Q9: the JSON export is not shrunk).  _pt_univar/_pt_onefit name the
-    // computed-only types; by_groups is the LIMIT, not any graph's actual
-    // group count, which is not known before the export.  WP-29 P0.10:
-    // hover()'s variables are always in all_vars, and in row_vars only
-    // for a graph one of whose layers can show them (or under csv);
-    // _hv_hide holds the others, which a served app still counts.
-    local row_vars ""
+    // WP-29 P0.10: hover()'s variables are always exported: in all_vars
+    // as each graph is read when one of its layers can show them (or
+    // under csv), and _hv_hide holds the others, appended after every
+    // other variable -- the partition fixes the data file's column order.
     local _hv_hide ""
-    local comp_cells = 0
     _dash_plottype_families
-    _dash_limit, name(by_groups)
-    local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
     // The time-series table, one for the dashboard (WP-30 P1.7), and the
     // weight-expression table (WP-31 A5).
@@ -12807,12 +12605,7 @@ program define _dash_prepare_spec, rclass
                     exit 198
                 }
                 if !`: list _kwv in all_vars' local all_vars "`all_vars' `_kwv'"
-                if !`: list _kwv in row_vars' local row_vars "`row_vars' `_kwv'"
             }
-            // GAPS2 G3: a KPI always counts its variable (and, below, its
-            // own qualifier column) -- it never draws from a computed-only
-            // layer, so it is never excluded from row_vars.
-            if !`: list kpi_var in row_vars' local row_vars "`row_vars' `kpi_var'"
             // The KPI's own if and in: the column that will hold Stata's
             // answer (_dash_qual_gen), read by value from the registry.
             // Its variables are not exported -- the answer is.  They used
@@ -12828,9 +12621,6 @@ program define _dash_prepare_spec, rclass
                     st_local("gname"), "' holds a qualifier dash cannot evaluate: " + ///
                     st_local("_dq_err") + ". Run dash clear and register it again.")
                 exit 198
-            }
-            if `: length local _kqc_`k'' {
-                if !`: list _kqc_`k' in row_vars' local row_vars "`row_vars' `_kqc_`k''"
             }
             continue
         }
@@ -12974,48 +12764,6 @@ program define _dash_prepare_spec, rclass
             else {
                 local _hv_hide : list _hv_hide | _hv_k
             }
-
-            // GAPS2 G3: does this graph draw only its own computed
-            // output (_dash_computed_cells, on the rewritten graph so a
-            // qualifier's text is never scanned), and does nothing else
-            // reach its rows (_dash_graph_touched)?  filter is read here
-            // in its pre-rewrite form -- _dash_graph_touched needs only
-            // exclude()'s graph names, not the filter's own variable
-            // name, so the full-name rewrite below does not matter yet.
-            mata: st_local("_gc_`k'", strofreal(_dash_computed_cells( ///
-                st_local("_qg_`k'"), st_nobs(), `_by_groups_lim', ///
-                "`_pt_univar' `_pt_onefit'")))
-            mata: st_local("_gt_`k'", strofreal(_dash_graph_touched( ///
-                "`gname'", st_local("_qg_`k'"), st_local("filter"), ///
-                st_local("link"), st_local("csv"))))
-            // WP-31 G3: the panel count only ever lowers by()'s estimate;
-            // where its per-panel bounds pass the graph's own rows (many
-            // tiny panels), the graph is counted in full, as before.
-            mata: st_local("_gby_`k'", strofreal(_dash_json_has_value(st_local("_qg_`k'"), "by")))
-            if `_gby_`k'' & `_gc_`k'' > _N * max(1, `: word count `gvars'') {
-                local _gc_`k' = -1
-            }
-            if `_gc_`k'' >= 0 & !`_gt_`k'' {
-                local comp_cells = `comp_cells' + `_gc_`k''
-            }
-            else {
-                foreach v of local gvars {
-                    if !`: list v in row_vars' local row_vars "`row_vars' `v'"
-                }
-                foreach v of local qvars {
-                    capture confirm variable `v'
-                    if _rc == 0 {
-                        if !`: list v in row_vars' local row_vars "`row_vars' `v'"
-                    }
-                }
-                mata: st_local("_gqc_`k'", _dash_qual_cols_in(st_local("_qg_`k'")))
-                foreach v of local _gqc_`k' {
-                    if !`: list v in row_vars' local row_vars "`row_vars' `v'"
-                }
-                // hover() makes a graph touched (_dash_graph_touched), so
-                // this branch is the only one a non-empty _hv_k reaches.
-                if `_hv_show_`k'' local row_vars : list row_vars | _hv_k
-            }
         }
     }
 
@@ -13054,10 +12802,6 @@ program define _dash_prepare_spec, rclass
         if !`: list _fvfull in all_vars' {
             local all_vars "`all_vars' `_fvfull'"
         }
-        // GAPS2 G3: a filter variable always counts, whatever it excludes.
-        if !`: list _fvfull in row_vars' {
-            local row_vars "`row_vars' `_fvfull'"
-        }
     }
     if !`: list _ffull == _fvars' {
         mata: st_local("filter", _dash_filter_setvars(st_local("filter"), ///
@@ -13065,12 +12809,7 @@ program define _dash_prepare_spec, rclass
     }
 
     local all_vars = strtrim("`all_vars'")
-    local row_vars = strtrim("`row_vars'")
 
-    // WP-29 P0.10 (review A1): the saved page's text count leaves out
-    // the hover() variables no layer of their graph can show; a served
-    // app embeds every exported column, so it counts them.
-    local _byte_vars "`all_vars'"
     local all_vars : list all_vars | _hv_hide
     local all_vars = strtrim("`all_vars'")
 
@@ -13120,18 +12859,9 @@ program define _dash_prepare_spec, rclass
 
     // ---- resource limits (WP-19), before anything is exported ----
     // As on the immediate route: every dash_max_* global the session has
-    // set is validated and carried to the renderer as build_options.limits,
-    // and what is about to be embedded -- every observation of every
-    // variable in all_vars on a served app; on a saved page what row_vars,
-    // comp_cells and _byte_vars count, which leave out what no filter,
-    // link(), csv or hover() reaches and hover()'s variables that no layer
-    // of their graph can show (WP-29 P0.10) -- is held to the cells limit,
-    // and the text in its string variables to the bytes limit.  All come before the file
-    // is written, so a refusal leaves the data as it was, and before `dash
-    // build' records its dash_opts_* globals.
+    // set is validated and carried to the renderer as build_options.limits.
     _dash_limits_json
     local _dash_lim_json `"`r(json)'"'
-    local _dash_nvars : word count `all_vars'
     // Each qualifier column is embedded with the data, and counted.
     mata: _dash_qual_export()
     // sort(varlist)'s join-order columns (WP-29 P0.1): each distinct
@@ -13161,20 +12891,6 @@ program define _dash_prepare_spec, rclass
         local _ds_json `"`_ds_json'`_ds_sep'"`_ds_vj'":"__dashs`_dsk'""'
     }
     if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
-    // GAPS2 G3: the server route -- dash build, server (the SERVER
-    // option here) or dash serve (which never passes its own server
-    // option: `cmdname' alone decides it, checked above at "ignoring
-    // option(s) that only apply to dash build") -- embeds every
-    // observation of every variable and says so; the saved route counts
-    // only what the page will hold.
-    if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n'' "" 0 1
-        _dash_byte_cap `all_vars'
-    }
-    else {
-        _dash_cell_cap `: word count `row_vars'' "" `comp_cells'
-        _dash_byte_cap `_byte_vars'
-    }
 
     // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
@@ -13407,23 +13123,6 @@ program define _dash_prepare_spec, rclass
     // uses -- a served dashboard otherwise sends the browser only what it
     // plots.  A flag, so only "1" or "0" reaches the spec.
     local _csv_flag = cond("`csv'" != "", "1", "0")
-    // The function points of the graphs drawn, written beside them by
-    // _dash_fn_spec_tail, count against the bytes the dashboard embeds
-    // (WP-29 P0.6): refused here, before the file is written.
-    local _fp_bytes 0
-    foreach _fpn of local _fp_names {
-        local _fp_l : strlen global dash_fpts_`_fpn'
-        local _fp_bytes = `_fp_bytes' + `_fp_l'
-    }
-    _dash_limit, name(bytes)
-    if `_fp_bytes' > r(value) {
-        _dash_count_fmt _fp_bytes_s `_fp_bytes'
-        _dash_count_fmt _fp_lim_s   `r(value)'
-        _dash_count_fmt _fp_ceil_s  `r(ceiling)'
-        display as error "dash: this dashboard would embed `_fp_bytes_s' characters of function points, more than the `_fp_lim_s' dash embeds."
-        display as error "      Use a smaller n(), or set global dash_max_bytes to a higher value (at most `_fp_ceil_s')."
-        exit 134
-    }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.

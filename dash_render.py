@@ -2264,9 +2264,9 @@ def _dash_kpi_column(col, stat, varname, kind=None):
 # will be large.
 #
 # Deliberately a REPORT rather than a refusal: the user may well mean it,
-# and `twoway' does not refuse to plot a million points either.  The refusal
-# is _DASH_LIMITS["cells"] below, five times further out.  The number is
-# calibrated, not guessed -- a million cells is about 24 MB of standalone
+# and `twoway' does not refuse to plot a million points either.  There is
+# no refusal: a dashboard has no size cap (maintainer decision P4-3).  The
+# number is calibrated, not guessed -- a million cells is about 24 MB of standalone
 # HTML and a comparable base64 payload in a served app. Below it sit every
 # dataset that ships with Stata: auto is 888 cells, nlsw88 is 38,182.
 _LARGE_DATASET_CELLS = 1_000_000
@@ -2292,10 +2292,8 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
 
     ``rows``/``cols`` are the shape known without building a frame (the
     served builder counts its JSON rather than parsing one; the saved
-    renderer passes ``len(row_cols)``, GAPS2 G3, not every column in
-    memory).  ``extra`` (also G3) is the drawn output of computed-only
-    layers no filter, link(), csv or hover() reaches; those rows are not
-    in *cols*.
+    renderer passes the rows and columns its page plan holds
+    (_dash_embed_plan)).  ``extra`` is added to the count as it is.
     """
     cells = int(rows) * int(cols) + int(extra)
     # Above the threshold, as the constant and dash.sthlp say: this said so
@@ -2321,28 +2319,15 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
 
 # ---- Resource limits (ROADMAP WP-19) ----------------------------------------
 #
-# Every input that decides how MUCH dash builds has a ceiling: no dataset,
-# option value or registry can make the output or the memory unbounded
-# (CLAUDE.md rule 3).  Each limit is a default the user can move for the
+# Every count that decides how MUCH dash builds has a ceiling: no option
+# value or registry can make the output unbounded, and the size of the data
+# is not limited (P4-3) (CLAUDE.md rule 3).  Each limit is a default the user can move for the
 # session with a global macro, up to a hard ceiling nothing can move, and
 # every clamp names the limit and the global that raises it.
 #
 # Measured on this machine, 23sep2026, standalone unless marked:
 #
-#   cells           2,000,000 cells: 47.6 MB, 1.0 GB RSS; 4,000,000: 94.9 MB,
-#                   2.1 GB RSS.  The ceiling is where a page stops opening at
-#                   all: Chrome holds no string past ~512 MB, about 21 million
-#                   cells at 24 bytes.  Refused, not clamped: which rows to
-#                   drop is not dash's decision.
-#   bytes           the bytes of text in the string values exported.  The
-#                   cells limit counts values, and a strL is exported in
-#                   full since dash writes its own data file (24sep2026):
-#                   60 observations of a 1,000,000-byte strL were 60 values
-#                   and a 60 MB page.  The default, 50 MB, is about what the
-#                   default cells limit makes of numbers (5,000,000 values
-#                   at ~24 bytes is ~120 MB of page with its keys); the
-#                   ceiling, 500 MB, is Chrome's ~512 MB string.  Refused,
-#                   not clamped, as cells are.
+# Chrome holds no string past ~512 MB (measured 23sep2026); a dashboard has no size cap (P4-3).
 #   filter_options  a dropdown on 200,000 distinct values: 200,001 options,
 #                   38.8 MB of page, a 14.8 MB served app, 954 MB RSS.  A
 #                   list past a thousand entries cannot be read, so a numeric
@@ -2358,8 +2343,6 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
 # the same table (_dash_limit) and writes any global the user set into
 # build_options["limits"]; test_resource_limits.py checks the two agree.
 _DASH_LIMITS = {
-    "cells":          (5_000_000, 20_000_000, "dash_max_cells"),
-    "bytes":          (50_000_000, 500_000_000, "dash_max_bytes"),
     "graphs":         (100, 1_000, "dash_max_graphs"),
     "plots":          (100, 1_000, "dash_max_plots"),
     "filter_options": (1_000, 100_000, "dash_max_filter_options"),
@@ -2715,15 +2698,6 @@ def _dash_points_stale_follow(aggs):
     if status is not None:
         status.visible = any_stale
 
-#: One bound on every computed layer above except a histogram and a
-#: lowess, which are counted exactly (see _dash_graph_computed_cells):
-#: kdensity/lpoly/lpolyci/the fits draw at most 2 or 4 * 10,000 = 40,000;
-#: fpfit/fpfitci at most 2 or 4 * _FP_GRID_MAX (20,000) = 80,000; mspline
-#: at most 2 * ((200-1)*300 + 200) = 119,800; mband at most 2 * 200 = 400.
-#: dash_parse.mata's _dash_computed_plot_cells() returns the same number;
-#: test/test_embedded_cells.py::TestTheTwoLanguagesAgree pins both.
-_DASH_COMPUTED_PLOT_CELLS = 120_000
-
 
 class DashLimitError(ValueError):
     """A dashboard over a limit dash refuses rather than clamps."""
@@ -2802,48 +2776,6 @@ def _dash_limit_hint(key, verb="raise the limit", start=False):
             f"(at most {ceiling:,})")
 
 
-def _dash_refuse_oversized(rows, cols, limits, mode, extra=0):
-    """Raise :class:`DashLimitError` when rows x cols + extra is over the
-    cell limit.
-
-    The same refusal dash.ado makes before it exports anything; this one is
-    for a spec that reached the renderer another way.
-
-    ``extra`` (GAPS2 G3) is the drawn output of computed-only layers
-    (histogram, kdensity, a fit or a smoother) that no filter, link(), csv
-    or hover() reaches; those layers' own rows are never in *cols*, so a
-    saved page can embed more observations than the cells limit alone
-    would allow.  ``cols == 0`` means every graph is computed-only and
-    untouched -- nothing row-shaped is embedded at all -- so the message
-    names the drawn output rather than a row x column shape.  The message
-    is byte-identical to before this option existed when ``extra == 0``.
-    A served app always embeds every observation of every variable it
-    uses (``_embed_data``), so ``mode == "server app"`` adds a third
-    sentence saying so, whether or not extra is used on that route.
-    """
-    rows, cols, extra = int(rows), int(cols), int(extra)
-    cells = rows * cols + extra
-    limit = int(limits["cells"])
-    if cells <= limit:
-        return
-    if cols == 0:
-        shape = "the drawn output of its computed layers"
-    elif extra > 0:
-        shape = (f"{rows:,} observations x {cols} variables, and "
-                 f"{extra:,} values of computed layers")
-    else:
-        shape = f"{rows:,} observations x {cols} variables"
-    msg = (
-        f"dash: this {mode} would embed {cells:,} values ({shape}), "
-        f"more than the {limit:,} dash embeds. Reduce the data in memory "
-        f"first (keep, drop, sample or collapse, inside preserve/restore), "
-        f"or {_dash_limit_hint('cells', 'a higher value')}.")
-    if mode == "server app":
-        msg += (" A served app embeds every observation of every "
-                "variable it uses.")
-    raise DashLimitError(msg)
-
-
 def _dash_refuse_string_plot_vars(spec, string_vars, mode):
     """Raise :class:`DashSpecError` when a plot names a string variable.
 
@@ -2878,316 +2810,6 @@ def _dash_refuse_string_plot_vars(spec, string_vars, mode):
                         f"numeric variables there (r(109)). colorvar(), "
                         f"mlabel(), hover() and by() take a string "
                         f"variable.")
-
-
-def _dash_graph_qual_cols(g):
-    """The distinct qual_col/qual_col_total names a graph dict names, on
-    itself and on each of its plots (the Python twin of dash_parse.mata's
-    _dash_qual_cols_in, GAPS2 G3)."""
-    out = []
-    objs = [g] + [p for p in (g.get("plots") or []) if isinstance(p, dict)]
-    for o in objs:
-        if not isinstance(o, dict):
-            continue
-        for key in ("qual_col", "qual_col_total"):
-            v = o.get(key)
-            if v and v not in out:
-                out.append(v)
-    return out
-
-
-def _dash_by_panel_count(frame, by_raw, limit):
-    """The panels ``by(by_raw)`` draws over *frame* (WP-31 G3): its groups
-    as both modes make them (``_dash_by_groups``; missing values only under
-    ``missing``, .a-.z apart), at most *limit*, plus one for ``total``.
-    None when *frame* is None or lacks a by() variable."""
-    bv, _cols, total, missing, _u = _dash_parse_by(str(by_raw or ""),
-                                                  warn=False)
-    names = bv.split()
-    if frame is None or not names or any(v not in frame.columns
-                                         for v in names):
-        return None
-    work = frame if missing else _dash_by_nonmissing(frame, names)
-    if work.empty:
-        n = 0
-    else:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            n = len(_dash_by_groups(work, names, missing, max(1, int(limit))))
-    return n + (1 if total else 0)
-
-
-def _dash_graph_computed_cells(g, rows, by_groups_limit=1, panels=None):
-    """-1 unless every plot of *g* is a computed-only type
-    (_DASH_COMPUTED_ONLY_TYPES) and *g* has no by(); else the cells its
-    computed layers draw -- the Python twin of dash_parse.mata's
-    _dash_computed_cells (GAPS2 G3).
-
-    bin()/width()/discrete() are read once for the whole graph, from the
-    first plot that gives one, so Mata (reading the graph's raw JSON text)
-    and Python (reading its plot list) decide the same thing from
-    different representations: a graph holding two histograms with
-    different bin() values is counted from the first.
-
-    by() is counted with its real panel count *panels*
-    (``_dash_by_panel_count``, WP-31 G3): each panel's computed layers
-    draw at most their one-panel bound, and a lowess draws two cells per
-    observation whichever panel holds it.  Multiplying by
-    *by_groups_limit* instead (100 by default) made even a two-panel
-    by(foreign) on a generic computed type read as 12,000,000; with
-    *panels* None (unknown) by() returns -1 and the graph is counted in
-    full, as before.
-    """
-    if str((g.get("graph_options") or {}).get("by") or "").strip():
-        if panels is None:
-            return -1
-    else:
-        panels = 1
-    plots = [p for p in (g.get("plots") or []) if isinstance(p, dict)]
-    if not plots:
-        return -1
-    if any(str(p.get("type", "")) not in _DASH_COMPUTED_ONLY_TYPES
-           for p in plots):
-        return -1
-
-    bin_val = None
-    has_width_or_discrete = False
-    for p in plots:
-        opts = p.get("options") or {}
-        if bin_val is None:
-            raw = str(opts.get("bin") or "").strip()
-            if raw.isdigit():
-                # map_histogram's own _MAX_BINS (dash_render.py, ~9907)
-                # clamps an outsized bin() the same way before it ever
-                # draws a bar; reading the raw value here made bin(99999999)
-                # read as 399,999,996 cells and refused a build the
-                # renderer would draw with 1,000 bins and a warning.
-                bin_val = min(int(raw), 1000)
-        if (str(opts.get("width") or "").strip()
-                or str(opts.get("discrete") or "").strip()):
-            has_width_or_discrete = True
-
-    if bin_val is not None:
-        wd, bins = False, bin_val
-    elif has_width_or_discrete:
-        wd, bins = True, 0
-    elif rows > 0:
-        wd = False
-        bins = max(1, math.floor(min(math.sqrt(rows),
-                                     10 * math.log10(rows))))
-    else:
-        wd, bins = False, 1
-
-    total = 0
-    for p in plots:
-        ptype = str(p.get("type", ""))
-        if ptype == "lowess":
-            total += 2 * rows
-        elif ptype == "histogram":
-            total += 4 * (rows if wd else bins * panels)
-        else:
-            total += _DASH_COMPUTED_PLOT_CELLS * panels
-
-    return total
-
-
-def _dash_embedded_cells(spec, rows, columns, limits, frame=None):
-    """(row_cols, extra) -- what a SAVED page embeds for *spec* over
-    *rows* observations of *columns* (GAPS2 G3): the Python twin of
-    dash.ado's _dash_prepare_spec accounting and dash_parse.mata's
-    _dash_computed_cells/_dash_graph_touched.
-
-    A graph made only of computed-only plot types
-    (_DASH_COMPUTED_ONLY_TYPES) that no filter, link(), csv or hover()
-    reaches draws its own bounded output (``extra``) and its variables are
-    not counted as ``row_cols``; every other graph, every KPI and every
-    filter variable counts its columns.  hover()'s own variables count
-    where a layer of their graph can show them (``_dash_hover_shown``,
-    WP-29 P0.10, design review A1); under csv every column counts.  ``rows`` and ``columns`` are
-    plain numbers/names -- no frame is built here, which is how the
-    renderer calls this with ``self.df.shape[0]`` and
-    ``list(self.df.columns)``.
-    """
-    columns = list(columns or ())
-    colset = set(columns)
-    build = (spec or {}).get("build_options", {}) or {}
-    graphs = [g for g in (spec or {}).get("graphs", []) or []
-             if isinstance(g, dict)]
-    kpis = [k for k in (spec or {}).get("kpis", []) or []
-           if isinstance(k, dict)]
-
-    if _dash_csv_wanted(build):
-        return list(columns), 0
-
-    graph_names = [g.get("name", "") for g in graphs]
-    linked = set(_dash_link_names(build.get("link", ""), graph_names))
-    filters = _dash_parse_filter_raw(build.get("filter", ""), warn=False)
-    by_groups_limit = int((limits or {}).get(
-        "by_groups", _DASH_LIMITS["by_groups"][0]))
-
-    row_cols = []
-
-    def _add(name):
-        if name and name in colset and name not in row_cols:
-            row_cols.append(name)
-
-    extra = 0
-    for g in graphs:
-        gname = g.get("name", "")
-        go = g.get("graph_options") or {}
-        hover = str(go.get("hover") or "").strip()
-        touched = bool(
-            gname in linked or hover
-            or any(gname not in (f.get("exclude") or []) for f in filters))
-        _by = str(go.get("by") or "").strip()
-        gc = -1 if touched else _dash_graph_computed_cells(
-            g, rows, by_groups_limit,
-            _dash_by_panel_count(frame, _by, by_groups_limit)
-            if _by else None)
-        if gc >= 0 and _by:
-            # WP-31 G3: the panel count only ever lowers by()'s estimate;
-            # where its per-panel bounds pass the graph's own rows (many
-            # tiny panels), the graph is counted in full, as before.
-            _gv = {p.get(k) for p in (g.get("plots") or [])
-                   if isinstance(p, dict) for k in DashRenderer._VAR_KEYS}
-            _gv |= set(_dash_parse_by(_by, warn=False)[0].split())
-            _gv = {v for v in _gv if v and v in colset}
-            if gc > rows * max(1, len(_gv)):
-                gc = -1
-        if gc >= 0 and not touched:
-            extra += gc
-            continue
-        for p in g.get("plots") or []:
-            if not isinstance(p, dict):
-                continue
-            for key in DashRenderer._VAR_KEYS:
-                _add(p.get(key))
-            for v in _dash_option_columns(p.get("options") or {}):
-                _add(v)
-        bv, _bcols, _btotal, _bmiss, _unsup = _dash_parse_by(
-            str(go.get("by") or "").strip(), warn=False)
-        for name in bv.split():
-            _add(name)
-        for qc in _dash_graph_qual_cols(g):
-            _add(qc)
-        # WP-29 P0.10: hover()'s variables are exported; the saved page
-        # holds them where a layer of this graph can show them.
-        if _dash_hover_shown(g):
-            for name in hover.split():
-                _add(name)
-
-    for k in kpis:
-        _add(k.get("var"))
-        # A weighted card's weight (WP-31 H2k), read with its variable.
-        _add(k.get("wexp"))
-        for key in ("qual_col", "qual_col_total"):
-            _add(k.get(key))
-
-    for f in filters:
-        _add(f.get("varname"))
-
-    return row_cols, extra
-
-
-def _dash_hover_shown(g):
-    """Whether some layer of graph dict *g* can show hover()'s variables
-    (WP-29 P0.10, design review A1): True when *g* has no plot dicts, or
-    some plot whose type -- read exactly, as dash_parse.mata's
-    _dash_spec_types_in and _dash_graph_computed_cells read it -- is not
-    a computed-only or literal type (``_DASH_COMPUTED_ONLY_TYPES |
-    _DASH_LITERAL_TYPES``, dash.ado's _pt_univar, _pt_onefit and
-    _pt_literal) or a contour type (``_DASH_CONTOUR_TYPES``, _pt_contour;
-    WP-31 B4b).  Such a graph draws no observation, so the saved page
-    holds none of hover()'s rows for it."""
-    hidden = (_DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
-              | _DASH_CONTOUR_TYPES)
-    plots = [p for p in (g or {}).get("plots") or [] if isinstance(p, dict)]
-    if not plots:
-        return True
-    return any(str(p.get("type", "")) not in hidden for p in plots)
-
-
-def _dash_hover_unembedded(spec):
-    """The names only an unshowing hover() gives (WP-29 P0.10): the
-    hover() variables of graphs no layer of which can show them
-    (``_dash_hover_shown``), less every name the saved page holds for
-    another reason -- a plot's variable or option column, a by()
-    variable, a showing graph's hover(), a KPI's variable or a filter's.
-    Empty under csv, which puts every column in the download.  The Python
-    mirror of dash.ado's _hv_hide less _byte_vars: the saved bytes
-    re-check leaves these out, as Stata's count does."""
-    spec = spec or {}
-    build = spec.get("build_options", {}) or {}
-    if _dash_csv_wanted(build):
-        return set()
-    hidden, other = set(), set()
-    for g in spec.get("graphs", []) or []:
-        if not isinstance(g, dict):
-            continue
-        go = g.get("graph_options") or {}
-        names = str(go.get("hover") or "").split()
-        if _dash_hover_shown(g):
-            other.update(names)
-        else:
-            hidden.update(names)
-        for p in g.get("plots") or []:
-            if not isinstance(p, dict):
-                continue
-            for key in DashRenderer._VAR_KEYS:
-                v = p.get(key)
-                if v:
-                    other.add(v)
-            other.update(_dash_option_columns(p.get("options") or {}))
-        other.update(_dash_parse_by(str(go.get("by") or "").strip(),
-                                    warn=False)[0].split())
-    for k in spec.get("kpis", []) or []:
-        if isinstance(k, dict) and k.get("var"):
-            other.add(k.get("var"))
-        if isinstance(k, dict) and k.get("wexp"):
-            other.add(k.get("wexp"))
-    for f in _dash_parse_filter_raw(build.get("filter", ""), warn=False):
-        if f.get("varname"):
-            other.add(f.get("varname"))
-    return hidden - other
-
-
-def _dash_text_bytes(df, string_vars):
-    """The bytes of text, as UTF-8, in *df*'s string columns: the columns
-    named in *string_vars* that the frame holds.  pandas' own string
-    methods, column by column; no Python loop over rows."""
-    total = 0
-    if df is None or not len(df):
-        return 0
-    for col in sorted(set(string_vars or ()) & set(map(str, df.columns))):
-        lens = df[col].astype(str).str.encode("utf-8").str.len()
-        total += int(lens.sum())
-    return total
-
-
-def _dash_refuse_overbytes(df, string_vars, limits, mode, file_bytes=None):
-    """Raise :class:`DashLimitError` when the text in *df*'s string columns
-    is more bytes than the bytes limit.
-
-    The same refusal dash.ado makes before it writes the data file; this
-    one is for a data file that reached the renderer another way.  The
-    values' text is part of the data file, so a file of *file_bytes* no
-    larger than the limit cannot hold more, and is not counted: ordinary
-    data costs nothing.
-    """
-    limit = int(limits["bytes"])
-    if file_bytes is not None and int(file_bytes) <= limit:
-        return
-    nbytes = _dash_text_bytes(df, string_vars)
-    if nbytes <= limit:
-        return
-    nstr = len(set(string_vars or ()) & set(map(str, df.columns)))
-    word = "variable" if nstr == 1 else "variables"
-    raise DashLimitError(
-        f"dash: this {mode} would embed {nbytes:,} bytes of text (in "
-        f"{nstr:,} string {word}), more than the {limit:,} dash embeds. "
-        f"Reduce the data in memory first (keep, drop, sample or collapse, "
-        f"inside preserve/restore), or "
-        f"{_dash_limit_hint('bytes', 'a higher value')}.")
 
 
 #: The key jsonio gave the value label of a missing value: ``.`` is
@@ -62107,8 +61729,6 @@ class DashRenderer:
         with open(data_json_path, encoding="utf-8") as f:
             # Each number as Stata holds it (_dash_read_data_json).
             self.data_json: dict = _dash_read_data_json(f.read())
-        # Its size bounds the text it holds (_dash_refuse_overbytes).
-        self._data_file_bytes: int = os.path.getsize(data_json_path)
 
         # The resource limits (WP-19): the defaults, moved by any global the
         # user set, and the spec held to the graph and plot limits before
@@ -62210,28 +61830,6 @@ class DashRenderer:
         self._facet_total_keys: set = set()
 
         self._load_data()
-        # What the saved page will actually embed (GAPS2 G3): a graph made
-        # only of computed layers that no filter, link(), csv or hover()
-        # reaches draws its own bounded output, not one glyph per row.
-        # Computed once and kept on self so the size note below (render())
-        # need not recompute it.
-        self._embedded_row_cols, self._embedded_extra = _dash_embedded_cells(
-            self.master_spec, self.df.shape[0], list(self.df.columns),
-            self.limits, frame=self.df)
-        # Refused before anything is drawn from it: dash.ado refuses the
-        # same data before exporting it, so this is for a spec that reached
-        # the renderer another way.
-        _dash_refuse_oversized(self.df.shape[0], len(self._embedded_row_cols),
-                               self.limits, "dashboard",
-                               extra=self._embedded_extra)
-        # WP-29 P0.10 (review A1(b)): a hover() string no layer of its
-        # graph can show is exported but not counted, as dash.ado's
-        # _byte_vars leaves it out.
-        _dash_refuse_overbytes(
-            self.df,
-            set(self.string_vars) - _dash_hover_unembedded(self.master_spec),
-            self.limits, "dashboard",
-            getattr(self, "_data_file_bytes", None))
         # A string plot variable is refused here too (GAPS2 G2): dash.ado
         # refuses it before export, and this is for a spec that reached
         # the renderer another way.
@@ -66334,12 +65932,11 @@ class DashRenderer:
         link_names, filters_cfg = self._parse_link_and_filters(build)
         self._embed = None
         self._ensure_embed(graphs, kpis, link_names, filters_cfg)
-        # GAPS2 G3: the note reports embedded bytes, under the same
-        # row_cols/extra count __init__ refused on (computed once there),
-        # over the rows the page holds.
-        _report_dataset_shape(int(self._embed["rows"].sum()),
-                              len(self._embedded_row_cols), "dashboard",
-                              extra=self._embedded_extra)
+        # The note counts the rows and columns the page plan holds
+        # (_dash_embed_plan); a dashboard has no size cap (P4-3).
+        rows = int(self._embed["rows"].sum())
+        cols = sum(1 for s in self._embed["need"].values() if bool(s.any()))
+        _report_dataset_shape(rows, cols, "dashboard")
         # Sub-option reports already made this render, so a by() panel does
         # not repeat its graph's.
         self._reported_subopts = set()
@@ -68345,13 +67942,13 @@ class ServerAppBuilder:
 
         # ServerAppBuilder holds the data as a JSON string, not a frame.
         # Parsing a large one costs about a second, so it is only parsed when
-        # it COULD reach a threshold -- the large-dataset report or the cell
-        # limit, whichever is lower: the smallest plausible cell is three
+        # it COULD reach the large-dataset report: the smallest plausible
+        # cell is three
         # bytes of JSON -- an empty text in the column layout's list
         # (`"",'; WP-32, G3b), where a float32 is 5 1/3 bytes of base64 and
         # the row layout's cell six (`"a":1,') -- so a shorter string cannot
         # hold that many cells and needs no parse.
-        _floor = min(_LARGE_DATASET_CELLS, int(self.limits["cells"]))
+        _floor = _LARGE_DATASET_CELLS
         if len(self._raw_data_str) >= _floor * 3:
             _shape = None
             try:
@@ -68369,9 +67966,6 @@ class ServerAppBuilder:
                     AttributeError):
                 pass
             if _shape is not None:
-                # The refusal is not inside the try: it must reach the user.
-                _dash_refuse_oversized(_shape[0], _shape[1], self.limits,
-                                       "server app")
                 _report_dataset_shape(_shape[0], _shape[1], "server app")
         # A string plot variable is refused here too (GAPS2 G2), before
         # anything is embedded.  Unlike the size report above this is a
@@ -68386,21 +67980,6 @@ class ServerAppBuilder:
         _sisstr.update(_sd.get("variableIsString", {}) or {})
         _dash_refuse_string_plot_vars(
             self.spec, {k for k, v in _sisstr.items() if v}, "server app")
-        # The bytes of text: a string of N characters is at most 4N bytes
-        # of UTF-8, so a shorter one cannot be over the limit and is not
-        # measured; one that could be is measured, and counted only when
-        # its bytes are over the limit (_dash_refuse_overbytes).
-        _blim = int(self.limits["bytes"])
-        if len(self._raw_data_str) * 4 > _blim:
-            _fbytes = len(self._raw_data_str.encode("utf-8"))
-            if _fbytes > _blim:
-                _d = self._data()
-                _d = _d.get("StataJSON", _d)
-                _isstr = dict(_d.get("variableTypeIsString", {}) or {})
-                _isstr.update(_d.get("variableIsString", {}) or {})
-                _dash_refuse_overbytes(
-                    self._frame(), {k for k, v in _isstr.items() if v},
-                    self.limits, "server app", _fbytes)
 
         # The qualifier columns the spec names, and any column under the
         # reserved __dash prefix (G1, WP-28), are validated now, where the

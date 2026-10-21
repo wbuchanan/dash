@@ -119,8 +119,9 @@ def _served_doc(spec, data):
 
 class TestBothRoutesExportHover:
     """The Stata half, read as text: both routes call the checked Mata
-    reader, union its names into the export, and count them only where a
-    layer can show them (review A1)."""
+    reader and union its names into the export.  They counted them toward
+    the size caps only where a layer could show them (review A1); the
+    maintainer removed the size caps (P4-3, WP-33 33-15)."""
 
     def test_the_extractor_is_required(self):
         ado = _read("dash.ado")
@@ -133,23 +134,29 @@ class TestBothRoutesExportHover:
         body = _program(_read("dash.ado"), "_dash_render_immediate")
         call = body.find('_dash_extract_hover_vars(st_local("json_spec")')
         assert call >= 0
-        assert call < body.find("_dash_cell_cap")
         assert call < body.find("_dash_write_data")
         assert "local needed_vars : list needed_vars | _hvars" in body
         after = body[call:]
         assert "exit 198" in after and "exit 111" in after
         assert after.find("exit 198") < after.find("_dash_write_data")
-        assert "local _dash_nvars : word count `_cap_vars'" in body
-        assert "_dash_byte_cap `_cap_vars'" in body
+        # Flipped (WP-33 33-15): the route counted _cap_vars toward
+        # _dash_cell_cap and _dash_byte_cap; the maintainer removed the
+        # size caps (P4-3), so none of the three is left.
+        for gone in ("_dash_cell_cap", "_cap_vars", "_dash_byte_cap"):
+            assert gone not in body, gone
 
-    def test_the_build_route_unions_hover_into_all_vars_and_row_vars(self):
+    def test_the_build_route_unions_hover_into_all_vars(self):
+        # Flipped: test_the_build_route_unions_hover_into_all_vars_and_row_vars
+        # -> test_the_build_route_unions_hover_into_all_vars -- row_vars and
+        # _dash_graph_touched( fed the cell cap, which the maintainer
+        # removed (P4-3).
         body = _program(_read("dash.ado"), "_dash_prepare_spec")
         call = body.find('_dash_extract_hover_vars(st_local("_qg_')
         assert call >= 0
         assert body.find('_dash_extract_qual_vars(st_local("_qg_')  < call
-        assert call < body.find("_dash_graph_touched(")
+        assert "_dash_graph_touched(" not in body
         assert "local all_vars : list all_vars | _hv_k" in body
-        assert "local row_vars : list row_vars | _hv_k" in body
+        assert "row_vars" not in body
         assert "local all_vars : list all_vars | _hv_hide" in body
         after = body[call:]
         i198 = after.find("exit 198")
@@ -158,10 +165,22 @@ class TestBothRoutesExportHover:
         assert "holds a hover() value" in after[:i198]
         assert "hover(): variable " in after[:i111]
 
-    def test_both_routes_test_the_three_families(self):
+    def test_the_build_route_tests_the_three_families(self):
+        # Flipped: test_both_routes_test_the_three_families ->
+        # test_the_build_route_tests_the_three_families -- the one-line
+        # route tested them only to leave an unshown hover() out of the
+        # size caps, which the maintainer removed (P4-3); the build route
+        # keeps its test, which fixes the data file's column order.
         ado = _read("dash.ado")
-        for name, key in (("_dash_render_immediate", "json_spec"),
-                          ("_dash_prepare_spec", "_qg_")):
+        body = _program(ado, "_dash_render_immediate")
+        call = body.find('_dash_extract_hover_vars(st_local("json_spec")')
+        assert call >= 0
+        # The route still reads the literal family (_pt_literal, for a
+        # variable-free graph); what went is the hover() test of the
+        # computed families.
+        tail = body[call:body.find("_dash_write_data", call)]
+        assert "_hv_show" not in tail and "_pt_univar" not in tail
+        for name, key in (("_dash_prepare_spec", "_qg_"),):
             body = _program(ado, name)
             call = body.find('_dash_extract_hover_vars(st_local("' + key)
             assert call >= 0, name
@@ -175,20 +194,13 @@ class TestBothRoutesExportHover:
                 # The flag is set only when csv is not given.
                 assert "`csv'\" == \"\"" in after[:t], after[:t][-300:]
 
-    def test_the_saved_byte_cap_leaves_out_what_no_layer_shows(self):
+    def test_no_byte_cap_is_left(self):
+        # Flipped: test_the_saved_byte_cap_leaves_out_what_no_layer_shows ->
+        # test_no_byte_cap_is_left -- the saved and served byte caps were
+        # removed by the maintainer (P4-3).
         body = _program(_read("dash.ado"), "_dash_prepare_spec")
-        caps = [m.start() for m in re.finditer(r"_dash_byte_cap `", body)]
-        assert len(caps) == 2, caps
-        served = body.find("_dash_byte_cap `all_vars'")
-        saved = body.find("_dash_byte_cap `_byte_vars'")
-        assert served >= 0 and saved >= 0
-        branch = body.rfind('if "`server\'" != ""', 0, served)
-        assert branch >= 0
-        els = body.find("else {", served)
-        assert branch < served < els < saved
-        # No unconditional cap after the branch: both calls are its own.
-        close = body.find("\n    }\n", saved)
-        assert "_dash_byte_cap" not in body[close:]
+        assert "_dash_byte_cap" not in body
+        assert "_byte_vars" not in body
 
     def test_the_mata_extractor_reads_the_value_as_designed(self):
         fn = _mata_function(_read("dash_parse.mata"),
@@ -210,18 +222,22 @@ def _string_data():
     return data
 
 
-class TestTheByteLimit:
-    """A string hover() variable on a saved page counts toward
-    $dash_max_bytes only when a layer can show it (review A1(b)); a
-    served app embeds every column and counts it always."""
+class TestNoByteLimit:
+    """A string hover() variable counted toward $dash_max_bytes on a saved
+    page when a layer could show it, and always on a served app (review
+    A1(b)).  The maintainer removed the size caps (P4-3, WP-33 33-15): at
+    the same lowered limit every case builds.
+    Flipped: TestTheByteLimit -> TestNoByteLimit."""
 
     _BO = {"limits": {"bytes": 100}}
 
     def test_a_string_hover_variable_a_layer_shows_counts_saved(self):
+        # Flipped: the refusal was wrong because the maintainer removed the
+        # size caps (P4-3).
         spec = tp._spec([tp.plot_for("scatter")], self._BO,
                         {"hover": "make"})
-        with pytest.raises(dr.DashLimitError, match="bytes of text"):
-            _saved(spec, _string_data())
+        r = _saved(spec, _string_data())
+        assert "g1" in r.figures
 
     def test_a_string_hover_variable_no_layer_shows_does_not_count_saved(
             self):
@@ -231,10 +247,12 @@ class TestTheByteLimit:
         assert "g1" in r.figures
 
     def test_the_served_app_counts_it_whatever_the_graph(self):
+        # Flipped: the refusal was wrong because the maintainer removed the
+        # size caps (P4-3); the app is written.
         spec = tp._spec([tp.plot_for("histogram", var="mpg")], self._BO,
                         {"hover": "make"})
-        with pytest.raises(dr.DashLimitError):
-            _app_path(spec, _string_data())
+        _tag, ap = _app_path(spec, _string_data())
+        assert os.path.exists(ap)
 
 
 class TestTheServedApp:

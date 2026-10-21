@@ -14,7 +14,7 @@
 *! limit.  dash.ado's own refusals (graphs, plots, cells, a bad global) are
 *! certified in test_adversarial.cscript, P19.
 *!
-*! Tests: RL-01 through RL-14, AT-40 through AT-42
+*! Tests: RL-01 through RL-14, AT-40 through AT-42, Q3315-1 through Q3315-5
 *!
 *! Usage:  do test/test_resource_limits.cscript
 *! Version: 1.0  23sep2026
@@ -303,7 +303,8 @@ display "RL-12 PASS: with no settings, an ordinary dashboard draws no note"
 // and sent every observation of it: a function graph over a dataset of
 // ten million observations exported ten million values for nothing, and
 // under the cell limit it was refused for them.  auto has 74 observations.
-global dash_max_cells 10
+// Flipped (WP-33 33-15): its global dash_max_cells 10 line went; the
+// maintainer removed the size caps (P4-3).
 tempfile out13
 capture erase "`out13'.html"
 _rl_on "`rllog'"
@@ -317,17 +318,19 @@ cert_log_has "`rllog'", needle("would embed")
 assert r(found) == 0
 display "RL-13 PASS: a function graph is not refused for data it never reads"
 
-// A graph that does read variables is still held to the limit -- with the
-// refusal RL-13 reads for, in the words it reads.
+// A graph that does read variables was held to the cell limit.  Flipped
+// (WP-33 33-15): at dash_max_cells 10 it was refused r(134); the
+// maintainer removed the size caps (P4-3), so it builds.
+global dash_max_cells 10
 _rl_on "`rllog'"
 capture noisily dash scatter mpg weight, saving("`out13'.html", replace)
 local rc = _rc
 _rl_off
-assert `rc' == 134
+assert `rc' == 0
 cert_log_has "`rllog'", needle("would embed")
-assert r(found) == 1
+assert r(found) == 0
 macro drop dash_max_cells
-display "RL-14 PASS: a graph of variables is still held to the cell limit"
+display "RL-14 PASS: a graph of variables builds at dash_max_cells 10 (no size cap)"
 
 // ================================================================
 // AT-40..42 — text() points times by() panels over the added_text limit
@@ -403,6 +406,99 @@ if `rc1' != 134 | !`f1' {
 else display "AT-42 PASS: 1,200 texts over two graphs refused at build"
 assert `rc1' == 134 & `f1'
 capture erase "`out42'.html"
+
+// ================================================================
+// Q3315-1..5 — a dashboard has no size cap (WP-33 33-15, P4-3)
+// ================================================================
+// $dash_max_cells and $dash_max_bytes are gone in both modes: set or not,
+// valid or not, they change nothing, and nothing is refused for its size.
+tempfile q3315
+local q15f "`q3315'.html"
+
+// Q3315-1: past the old cell cap the one-line route draws.
+global dash_max_cells 10
+dash clear
+capture erase "`q15f'"
+_rl_on "`rllog'"
+capture noisily dash scatter mpg weight, saving("`q15f'", replace)
+local rc = _rc
+_rl_off
+cert_log_has "`rllog'", needle("would embed")
+local f1 = r(found)
+capture confirm file "`q15f'"
+local ex = _rc == 0
+if `rc' != 0 | `f1' | !`ex' {
+    display as error "Q3315-1 FAIL: rc `rc', would-embed `f1', file `ex'"
+}
+else display "Q3315-1 PASS: dash_max_cells 10 refuses nothing"
+assert `rc' == 0 & !`f1' & `ex'
+
+// Q3315-2: past the old bytes cap a hover() string draws.
+global dash_max_bytes 1
+capture erase "`q15f'"
+_rl_on "`rllog'"
+capture noisily dash scatter mpg weight, hover(make) saving("`q15f'", replace)
+local rc = _rc
+_rl_off
+cert_log_has "`rllog'", needle("bytes of text")
+local f1 = r(found)
+capture confirm file "`q15f'"
+local ex = _rc == 0
+if `rc' != 0 | `f1' | !`ex' {
+    display as error "Q3315-2 FAIL: rc `rc', bytes-of-text `f1', file `ex'"
+}
+else display "Q3315-2 PASS: dash_max_bytes 1 refuses nothing"
+assert `rc' == 0 & !`f1' & `ex'
+
+// Q3315-3: a value dash refused with r(198) naming the global is not read.
+global dash_max_cells abc
+global dash_max_bytes 0
+capture erase "`q15f'"
+capture noisily dash scatter mpg weight, saving("`q15f'", replace)
+local rc = _rc
+if `rc' != 0 {
+    display as error "Q3315-3 FAIL: rc `rc'"
+}
+else display "Q3315-3 PASS: hostile size globals are not read"
+assert `rc' == 0
+
+// Q3315-4: dash build and the serve spec, at both old caps.
+global dash_max_cells 10
+global dash_max_bytes 1
+dash clear
+quietly dash function y = sin(x), range(0 6) n(2000) name(f1)
+quietly dash scatter mpg weight, name(s1)
+capture erase "`q15f'"
+capture noisily dash build, saving("`q15f'") replace nobrowser
+local rc1 = _rc
+tempfile q15s q15d
+capture noisily _dash_serve_spec, specpath("`q15s'") datapath("`q15d'")
+local rc2 = _rc
+capture confirm file "`q15d'"
+local ex = _rc == 0
+if `rc1' != 0 | `rc2' != 0 | !`ex' {
+    display as error "Q3315-4 FAIL: build rc `rc1', serve spec rc `rc2', data `ex'"
+}
+else display "Q3315-4 PASS: dash build and the serve spec draw past the old caps"
+assert `rc1' == 0 & `rc2' == 0 & `ex'
+
+// Q3315-5: the cap programs are gone and the globals reach no spec.
+capture program list _dash_cell_cap
+local rc1 = _rc
+capture program list _dash_byte_cap
+local rc2 = _rc
+macro drop dash_max_bytes
+global dash_max_cells 5
+_dash_limits_json
+local j `"`r(json)'"'
+macro drop dash_max_cells
+if `rc1' != 111 | `rc2' != 111 | `"`j'"' != "{}" {
+    display as error `"Q3315-5 FAIL: rc `rc1' `rc2', json `j'"'
+}
+else display "Q3315-5 PASS: no cap program, and dash_max_cells reaches no spec"
+assert `rc1' == 111 & `rc2' == 111 & `"`j'"' == "{}"
+capture erase "`q15f'"
+dash clear
 
 dash clear
 capture erase "`rllog'"

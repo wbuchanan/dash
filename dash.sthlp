@@ -2934,36 +2934,16 @@ formats grows by that much for each.
 {title:Resource limits}
 
 {pstd}
-The quantities below decide how much {cmd:dash} builds -- the values it
-embeds and the bytes of text among them, the graphs in the registry and the plots in a graph, the panels of
-a {cmd:by()} graph, and the tabs, filters and dropdown values a dashboard
-draws -- and each has a limit, so that none of them can grow without bound.
-Each limit has a default, a ceiling that nothing moves, and a global macro
-that moves it for the rest of the session:
+The quantities below decide how much {cmd:dash} builds -- the graphs in the
+registry and the plots in a graph, the panels of a {cmd:by()} graph, and
+the tabs, filters, dropdown values, reference lines, added texts and table
+rows a dashboard draws -- and each has a limit.  Each limit has a default,
+a ceiling that nothing moves, and a global macro that moves it for the rest
+of the session:
 
 {synoptset 28 tabbed}{...}
 {synopthdr:global}
 {synoptline}
-{synopt:{cmd:$dash_max_cells}}values the saved page embeds: for a graph
-    that draws rows, or that a {cmd:filter()}, {cmd:link()}, {cmd:csv} or
-    {cmd:hover()} reaches, its variables -- the ones its layers plot and
-    the ones {cmd:hover()} names when one of its layers can show them --
-    and qualifier columns times the observations; for a graph made only of computed layers ({cmd:histogram},
-    {cmd:kdensity}, a fit or a smoother) that nothing else reaches, the
-    values its layers draw, not one row per observation; KPI cards and
-    {cmd:filter()} variables always count.  A served app embeds every
-    observation of every variable it uses, whatever the graphs; default
-    5,000,000, at most 20,000,000.  Over it the build is refused with
-    {cmd:r(134)} before anything is exported, naming the count.{p_end}
-{synopt:{cmd:$dash_max_bytes}}bytes of text embedded: the length in bytes
-    of every string value, {cmd:strL} values included, of the string
-    variables a dashboard uses, as Stata stores them; default 50,000,000,
-    at most 500,000,000.  Over it the dashboard is refused with
-    {cmd:r(134)} before anything is exported.  On the saved page a string
-    variable {cmd:hover()} names counts under the same rule as for
-    {cmd:$dash_max_cells} (when a layer of its graph can show it, or
-    {cmd:csv} is given); a served app counts every string variable it
-    exports.  Numbers are counted by {cmd:$dash_max_cells} alone.{p_end}
 {synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
     100, at most 1,000.  A new name past it is refused with
     {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
@@ -3010,46 +2990,16 @@ drop these globals, because they are settings rather than registry;
 {cmd:macro drop dash_max_*} does.
 
 {pstd}
-{ul:What the data limit counts.}  {cmd:dash} still exports every
-observation of the variables a dashboard uses -- the data file on disk is
-unchanged, and each distinct qualifier is one more exported column,
-counted like a variable -- but the {cmd:$dash_max_cells} limit itself
-counts only what the saved page will actually embed.  A graph drawn from
-rows -- or touched by a {cmd:filter()} that does not exclude it, a
-{cmd:link()}, {cmd:csv}, or {cmd:hover()} -- counts its variables and
-qualifier columns times the observations, as before; the variables
-{cmd:hover()} names are among its counted variables when a layer of the
-graph can show them.  A graph made only of computed layers, or of
-{cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, exports its
-{cmd:hover()} variables but does not count them unless {cmd:csv} is
-given.  A graph made only
-of computed layers ({cmd:histogram}, {cmd:kdensity}, {cmd:lfit} and the
-other fits and smoothers) that nothing else reaches draws its own bounded
-output instead: a histogram's bars (four values a bin, the observations
-themselves only under {cmd:width()} or {cmd:discrete} with no
-{cmd:bin()}), a {cmd:lowess} curve (two values an observation, so it
-never escapes the cap on its own), and every other computed layer at most
-120,000 values.  KPI cards and {cmd:filter()} variables always count,
-whatever draws from them.  So a {cmd:histogram} on six million
-observations now builds a saved page -- a few dozen bars, not six million
-rows -- where a {cmd:scatter} of the same data is still refused.  A
-served app is unaffected: it embeds every observation of every variable
-it uses, because a live session can move a filter to any value, and says
-so in its own refusal.  Reduce the data first -- {cmd:keep}, {cmd:drop},
-{cmd:sample} or {cmd:collapse}, inside {cmd:preserve} and {cmd:restore} --
-when a row-drawing graph, a KPI or a filter is what is over the limit.
-Above 1,000,000 embedded values {cmd:dash} notes the size the file will
-be, at about 24 bytes a value, which is what a saved page takes; a served
-app's file carries the values as text and takes up to about twice that.
-Measured, 4,000,000 values made a 95 MB page and took about 2 GB of
-memory to render.  A string value adds its own length to that, and a
-{cmd:strL} is exported whole, so text is held to {cmd:$dash_max_bytes} as
-well: 60 observations of a 1,000,000-byte {cmd:strL} are only 60 values
-but 60,000,000 bytes, and are refused at the default.  A saved page may
-hold fewer observations than the limit counts: only those its graphs, cards
-and filters select (see {help dash##description:Description}); the size the
-dashboard reports when it is large counts those, and a served app's report
-counts every observation.
+{ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:
+it embeds every value its graphs, cards and filters need, however many, in
+a saved page and in a served app.  Above 1,000,000 embedded values it notes
+the size the file will be, at about 24 bytes a value, which is what a saved
+page takes; a served app's file carries the values as text and takes up to
+about twice that.  Measured, 4,000,000 values made a 95 MB page and took
+about 2 GB of memory to render, and Chrome, the browser dash is tested in,
+cannot hold a page much past 512 MB.  To make a page smaller, reduce the
+data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or {cmd:collapse},
+inside {cmd:preserve} and {cmd:restore}.
 
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see
@@ -5291,10 +5241,7 @@ Every variable {cmd:hover()} names is exported with the data, whether or
 not a layer plots it, so its value is in the tooltip of the saved
 dashboard and the served app, before and after a filter move; its values
 are part of the saved page's source, like the variables the layers draw.
-It counts toward {cmd:$dash_max_cells}, and a string one also toward
-{cmd:$dash_max_bytes}, on the saved page when a layer of its graph can
-show it or {cmd:csv} is given, and always in a served app (see
-{help dash##limits:Resource limits}).  {cmd:dash build} and
+{cmd:dash build} and
 {cmd:dash serve} refuse a {cmd:hover()} variable no longer in memory with
 r(111), as they refuse a dropped plotted variable.
 

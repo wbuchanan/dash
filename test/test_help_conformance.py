@@ -914,9 +914,10 @@ class TestTheParsersFoundSomething:
         # Build-time options entries go (refused, as twoway refuses them).
         # 465 -> 466: WP-32 the Contour options entry goes, the contour
         # paragraph's heatmap and outlines entries come.
-        assert len(defs) == 466, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 466 "
-            f"measured 19oct2026")
+        # 466 -> 464: the $dash_max_cells and $dash_max_bytes rows removed (WP-33 33-15)
+        assert len(defs) == 464, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 464 "
+            f"measured 21oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -1371,4 +1372,7 @@ class TestInternalLinksResolve:
         # every titled section (15 new jumps, six of them to sections no
         # link named: install, alsosee and four others) and the
         # Installation paragraph links Dependencies.
-        assert len(refs) == 121 and len(set(refs)) == 44
+        # 121 -> 119: the hover() paragraph's link to Resource limits and
+        # the data-limit paragraph's link to Description removed with the
+        # size caps (WP-33 33-15)
+        assert len(refs) == 119 and len(set(refs)) == 44

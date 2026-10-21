@@ -573,8 +573,9 @@ class TestTheLimitsTable:
         # Flipped (WP-30 P1.10): 9 -> 10 keys; the nine-key set was wrong
         # because P1.10 adds the added_text limit (A28).
         # 10 -> 11 keys (WP-31 H2t): the table_rows limit.
+        # 11 -> 9 keys (WP-33 33-15): the cells and bytes limits removed (P4-3)
         assert set(dr._DASH_LIMITS) == {
-            "cells", "bytes", "graphs", "plots", "filter_options",
+            "graphs", "plots", "filter_options",
             "by_groups", "tabs", "filters", "reflines", "added_text",
             "table_rows"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
@@ -588,9 +589,11 @@ class TestTheLimitsTable:
         assert dr._dash_limits({"limits": "cells=5"}) == dr._dash_limits({})
 
     def test_a_set_limit_is_honoured(self):
-        got = dr._dash_limits({"limits": {"cells": 100, "tabs": "7",
+        # Flipped (WP-33 33-15): the sample key cells -> plots; the cells
+        # limit was removed by the maintainer (P4-3).
+        got = dr._dash_limits({"limits": {"plots": 100, "tabs": "7",
                                           "by_groups": 3.0}})
-        assert got["cells"] == 100
+        assert got["plots"] == 100
         assert got["tabs"] == 7
         assert got["by_groups"] == 3
         assert got["graphs"] == dr._DASH_LIMITS["graphs"][0]
@@ -605,13 +608,15 @@ class TestTheLimitsTable:
         assert _named(msgs, "dash_max_graphs", "1,000"), msgs
 
     def test_the_ceiling_cannot_be_lifted_by_the_spec(self):
+        # Flipped (WP-33 33-15): the sample key cells -> graphs; the cells
+        # limit was removed by the maintainer (P4-3).
         dr._dash_reset_notes()
         got, msgs = _warns(lambda: dr._dash_limits(
-            {"limits": {"cells": 20_000_001}}))
-        assert got["cells"] == 5_000_000
-        assert _named(msgs, "dash_max_cells", "20,000,000"), msgs
-        got = dr._dash_limits({"limits": {"cells": 20_000_000}})
-        assert got["cells"] == 20_000_000
+            {"limits": {"graphs": 1_001}}))
+        assert got["graphs"] == 100
+        assert _named(msgs, "dash_max_graphs", "1,000"), msgs
+        got = dr._dash_limits({"limits": {"graphs": 1_000}})
+        assert got["graphs"] == 1_000
 
     def test_the_hint_names_the_global_and_its_ceiling(self):
         assert dr._dash_limit_hint("tabs", "draw more") == (
@@ -620,61 +625,40 @@ class TestTheLimitsTable:
             .startswith("Set global dash_max_tabs")
 
 
-class TestAnOversizedDatasetIsRefused:
-    """AC-19.3: refused with a clear message, not written at 95 MB."""
+class TestAnOversizedDatasetIsNotRefused:
+    """AC-19.3 refused an oversized dataset; the maintainer removed the cell
+    cap (P4-3, WP-33 33-15): a dashboard of any size is drawn, and the size
+    note above _LARGE_DATASET_CELLS still says how large it will be.
+    Flipped: TestAnOversizedDatasetIsRefused -> TestAnOversizedDatasetIsNotRefused."""
 
-    def test_at_the_limit_nothing_is_raised(self):
-        """100 cells against a limit of 100: returned, and nothing said.
-        The next test is the control -- one row more is refused."""
-        got, msgs = _warns(lambda: dr._dash_refuse_oversized(
-            50, 2, {"cells": 100}, "dashboard"))
-        assert got is None
-        assert msgs == []
-
-    def test_over_the_limit_the_message_says_what_and_how(self):
-        with pytest.raises(dr.DashLimitError) as exc:
-            dr._dash_refuse_oversized(51, 2, {"cells": 100}, "dashboard")
-        msg = str(exc.value)
-        for needle in ("102 values", "51 observations x 2 variables",
-                       "more than the 100", "keep, drop, sample or collapse",
-                       "set global dash_max_cells", "at most 20,000,000"):
-            assert needle in msg, (needle, msg)
-        # The whole advice, word by word.  This read only the words between
-        # "Reduce" and the advice's first comma -- " the data in memory
-        # first (keep" -- so advice to add an if qualifier anywhere after
-        # "keep," passed (measured 24sep2026).  The reader sees the advice
-        # it checks: keep and collapse are words of it.
-        advice = msg.split("Reduce", 1)[1]
-        words = re.findall(r"[A-Za-z]+", advice)
-        assert "keep" in words and "collapse" in words, words
-        assert "if" not in words and "qualifier" not in advice, (
-            "an if qualifier does not reduce what is exported: " + advice)
-
-    def test_the_saved_renderer_refuses_before_drawing(self, tmp_path):
-        # GAPS2 G3: the frame is 12 x 4 (y, x, g, s), but g1's lone
-        # scatter draws only y and x -- g and s are exported yet drawn by
-        # nothing, so the saved page's count is 12 x 2 = 24, not 48.
+    def test_the_saved_renderer_draws_past_the_old_cap(self, tmp_path):
+        # Flipped: test_the_saved_renderer_refuses_before_drawing ->
+        # test_the_saved_renderer_draws_past_the_old_cap -- the refusal at
+        # cells 10 was wrong because the maintainer removed the size caps (P4-3).
         spec = _spec([_graph("g1")], limits={"cells": 10})
-        _, sp, dp = _write(tmp_path, spec, _frame(12))
-        with pytest.raises(dr.DashLimitError, match="24 values"):
-            dr.DashRenderer(sp, dp)
+        r, html, _ = _standalone(tmp_path, spec, _frame(12))
+        assert "g1" in r.figures and len(html) > 1000
 
     def test_the_saved_renderer_draws_within_the_limit(self, tmp_path):
         spec = _spec([_graph("g1")], limits={"cells": 48})
         r, html, _ = _standalone(tmp_path, spec, _frame(12))
         assert "g1" in r.figures and len(html) > 1000
 
-    def test_the_server_app_is_refused_at_build(self, tmp_path):
+    def test_the_server_app_builds_past_the_old_cap(self, tmp_path):
+        # Flipped: test_the_server_app_is_refused_at_build ->
+        # test_the_server_app_builds_past_the_old_cap -- the refusal was
+        # wrong because the maintainer removed the size caps (P4-3).
         spec = _spec([_graph("g1")], limits={"cells": 10})
         _, sp, dp = _write(tmp_path, spec, _frame(12))
-        with pytest.raises(dr.DashLimitError, match="server app"):
-            dr.ServerAppBuilder(sp, dp).build(str(tmp_path / "a.py"))
-        assert not (tmp_path / "a.py").exists()
+        dr.ServerAppBuilder(sp, dp).build(str(tmp_path / "a.py"))
+        assert (tmp_path / "a.py").exists()
 
-    def test_the_default_limit_is_five_million_cells(self):
-        assert dr._dash_limits({})["cells"] == 5_000_000
-        assert dr._LARGE_DATASET_CELLS < dr._DASH_LIMITS["cells"][0], (
-            "the report must come before the refusal")
+    def test_there_is_no_default_cell_limit(self):
+        # Flipped: test_the_default_limit_is_five_million_cells ->
+        # test_there_is_no_default_cell_limit -- the 5,000,000 default was
+        # removed by the maintainer (P4-3); the size note stays.
+        assert "cells" not in dr._dash_limits({})
+        assert dr._LARGE_DATASET_CELLS == 1_000_000
 
     def test_the_size_estimate_is_the_measured_one(self, tmp_path):
         """_HTML_BYTES_PER_CELL is used to tell the user how big the page
@@ -688,101 +672,50 @@ class TestAnOversizedDatasetIsRefused:
         assert 0.5 < len(html) / est < 2.0, (len(html), est)
 
 
-class TestTheBytesOfTextAreLimited:
-    """$dash_max_bytes: the cells limit counts values, not bytes, and a strL
-    reaches the page in full since dash writes its own data file
-    (24sep2026), so 60 observations of a 1,000,000-byte strL -- 60 values --
-    made a 60 MB page.  dash.ado refuses such data before it writes the file
-    (test_adversarial.cscript P19-27..30); the renderer holds the same limit
-    for a data file that reached it another way, and counts only when the
-    file is larger than the limit, so ordinary data costs nothing."""
+class TestTheBytesOfTextAreNotLimited:
+    """$dash_max_bytes refused a page over 50,000,000 bytes of text; the
+    maintainer removed it (P4-3, WP-33 33-15), so a set value changes
+    nothing in either mode.
+    Flipped: TestTheBytesOfTextAreLimited -> TestTheBytesOfTextAreNotLimited."""
 
-    def test_the_default_and_the_ceiling(self):
-        assert dr._DASH_LIMITS["bytes"] == (50_000_000, 500_000_000,
-                                            "dash_max_bytes")
-        assert dr._dash_limits({})["bytes"] == 50_000_000
-        assert dr._dash_limits({"limits": {"bytes": 871}})["bytes"] == 871
-
-    @pytest.mark.parametrize("bad", [0, -1, 500_000_001, 1.5, True, "1e3",
-                                     "12345678901", "\u00b2", "\u0663"])
-    def test_a_hostile_value_is_named_and_the_default_used(self, bad):
-        dr._dash_reset_notes()
-        got, msgs = _warns(lambda: dr._dash_limits({"limits": {"bytes": bad}}))
-        assert got["bytes"] == 50_000_000
-        assert _named(msgs, "dash_max_bytes", "500,000,000"), msgs
-
-    def test_the_count_is_utf8_bytes_of_the_string_columns_only(self):
-        df = pd.DataFrame({"s": ["ab", "\u00e9", ""], "t": ["x", "y", "z"],
-                           "n": [1.0, 2.0, 3.0]})
-        assert dr._dash_text_bytes(df, {"s"}) == 4
-        assert dr._dash_text_bytes(df, {"s", "t"}) == 7
-        assert dr._dash_text_bytes(df, {"gone"}) == 0
-        assert dr._dash_text_bytes(pd.DataFrame(), {"s"}) == 0
-
-    def test_at_the_limit_nothing_is_raised(self):
-        df = pd.DataFrame({"s": ["abc", "de"]})
-        got, msgs = _warns(lambda: dr._dash_refuse_overbytes(
-            df, {"s"}, {"bytes": 5}, "dashboard", file_bytes=10**9))
-        assert got is None and msgs == []
-
-    def test_over_the_limit_the_message_is_the_cells_limits(self):
-        df = pd.DataFrame({"s": ["abc", "def"], "t": ["", "x"]})
-        with pytest.raises(dr.DashLimitError) as exc:
-            dr._dash_refuse_overbytes(df, {"s", "t"}, {"bytes": 5},
-                                      "dashboard", file_bytes=10**9)
-        msg = str(exc.value)
-        assert msg.startswith(
-            "dash: this dashboard would embed 7 bytes of text (in 2 string "
-            "variables), more than the 5 dash embeds. Reduce the data in "
-            "memory first (keep, drop, sample or collapse, inside "
-            "preserve/restore), or set global dash_max_bytes to a higher "
-            "value (at most 500,000,000)."), msg
-
-    def test_a_file_within_the_limit_is_not_counted(self, monkeypatch):
-        """The text of a data file is part of the file, so a file no larger
-        than the limit cannot hold more text than it: nothing is counted."""
-        def boom(*a, **k):
-            raise AssertionError("counted a file within the limit")
-        monkeypatch.setattr(dr, "_dash_text_bytes", boom)
-        df = pd.DataFrame({"s": ["abcdef"]})
-        assert dr._dash_refuse_overbytes(df, {"s"}, {"bytes": 5},
-                                         "dashboard", file_bytes=5) is None
-
-    def test_the_saved_renderer_refuses_before_drawing(self, tmp_path):
+    def test_the_saved_renderer_draws_past_the_old_cap(self, tmp_path):
+        # Flipped: test_the_saved_renderer_refuses_before_drawing ->
+        # test_the_saved_renderer_draws_past_the_old_cap -- the refusal at
+        # bytes 40 was wrong because the maintainer removed the size caps (P4-3).
         spec = _spec([_graph("g1")], limits={"bytes": 40})
-        _, sp, dp = _write(tmp_path, spec, _frame(12))   # s: 12 x 4 bytes
-        with pytest.raises(dr.DashLimitError,
-                           match="48 bytes of text .in 1 string variable."):
-            dr.DashRenderer(sp, dp)
+        r, html, _ = _standalone(tmp_path, spec, _frame(12))
+        assert "g1" in r.figures and len(html) > 1000
 
     def test_the_saved_renderer_draws_at_the_limit(self, tmp_path):
         spec = _spec([_graph("g1")], limits={"bytes": 48})
         r, html, _ = _standalone(tmp_path, spec, _frame(12))
         assert "g1" in r.figures and len(html) > 1000
 
-    def test_the_server_app_is_refused_at_build(self, tmp_path):
+    def test_the_server_app_builds_past_the_old_cap(self, tmp_path):
+        # Flipped: test_the_server_app_is_refused_at_build ->
+        # test_the_server_app_builds_past_the_old_cap -- the refusal was
+        # wrong because the maintainer removed the size caps (P4-3).
         spec = _spec([_graph("g1")], limits={"bytes": 40})
         _, sp, dp = _write(tmp_path, spec, _frame(12))
-        with pytest.raises(dr.DashLimitError, match="server app would embed "
-                                                    "48 bytes of text"):
-            dr.ServerAppBuilder(sp, dp).build(str(tmp_path / "a.py"))
-        assert not (tmp_path / "a.py").exists()
+        dr.ServerAppBuilder(sp, dp).build(str(tmp_path / "a.py"))
+        assert (tmp_path / "a.py").exists()
 
     def test_the_server_app_builds_at_the_limit(self, tmp_path):
         spec = _spec([_graph("g1")], limits={"bytes": 48})
         doc, built, _, _ = _served(tmp_path, spec, _frame(12))
         assert not _named(built, "bytes of text")
 
-    def test_a_large_strl_value_is_refused_at_the_default(self, tmp_path):
-        """Exhaustion: two values of 30,000,000 bytes are two cells, far
-        inside the cells limit, and 60,000,000 bytes of text."""
+    def test_a_large_strl_value_is_taken(self, tmp_path):
+        """Two values of 30,000,000 bytes, 60,000,000 bytes of text: the
+        renderer is constructed (not rendered: a 60 MB page is slow).
+        Flipped: test_a_large_strl_value_is_refused_at_the_default ->
+        test_a_large_strl_value_is_taken -- the refusal was wrong because
+        the maintainer removed the size caps (P4-3)."""
         df = pd.DataFrame({"y": [1.0, 2.0], "x": [1.0, 2.0],
                            "s": ["a" * 30_000_000, "b" * 30_000_000]})
         spec = _spec([_graph("g1")])
         _, sp, dp = _write(tmp_path, spec, df)
-        with pytest.raises(dr.DashLimitError,
-                           match="60,000,000 bytes of text"):
-            dr.DashRenderer(sp, dp)
+        dr.DashRenderer(sp, dp)
 
 
 class TestTheGraphAndPlotLimits:
@@ -1552,9 +1485,11 @@ class TestTheTwoLanguagesAgree:
             flat = " ".join(row[0].split())
             assert f"default {default:,}" in flat, (glob, flat)
             assert f"at most {ceiling:,}" in flat, (glob, flat)
-        assert "r(134)" in " ".join(
-            [r for r in rows if r.startswith("{cmd:$dash_max_bytes}}")][0]
-            .split())
+        # Flipped (WP-33 33-15): the $dash_max_bytes row and its r(134)
+        # were removed with the size caps (P4-3); the section says so.
+        for gone in ("dash_max_cells", "dash_max_bytes"):
+            assert not [r for r in rows if r.startswith("{cmd:$%s}}" % gone)]
+        assert "{ul:No size limit.}" in sec
 
     def test_dash_ado_names_the_same_globals(self):
         with open(os.path.join(_HERE, "..", "dash.ado"), encoding="utf-8") as fh:
@@ -1562,3 +1497,80 @@ class TestTheTwoLanguagesAgree:
         assert 'local gname "dash_max_`name\'"' in ado
         for _key, (_d, _c, glob) in dr._DASH_LIMITS.items():
             assert glob == "dash_max_" + _key
+
+
+#: The pure pins of the removed cap code (WP-33 33-15, D-33-15.e): each old
+#: test name with the names it pinned, now asserted gone.  A name in
+#: _DASH_LIMITS is a key; anything else is a dash_render attribute.
+_CAP_CODE_GONE = [
+    ("TestAnOversizedDatasetIsRefused::test_at_the_limit_nothing_is_raised",
+     ("_dash_refuse_oversized",)),
+    ("TestAnOversizedDatasetIsRefused::"
+     "test_over_the_limit_the_message_says_what_and_how",
+     ("_dash_refuse_oversized",)),
+    ("TestTheBytesOfTextAreLimited::test_the_default_and_the_ceiling",
+     ("key:bytes",)),
+    ("TestTheBytesOfTextAreLimited::"
+     "test_a_hostile_value_is_named_and_the_default_used", ("key:bytes",)),
+    ("TestTheBytesOfTextAreLimited::"
+     "test_the_count_is_utf8_bytes_of_the_string_columns_only",
+     ("_dash_text_bytes",)),
+    ("TestTheBytesOfTextAreLimited::test_at_the_limit_nothing_is_raised",
+     ("_dash_refuse_overbytes",)),
+    ("TestTheBytesOfTextAreLimited::"
+     "test_over_the_limit_the_message_is_the_cells_limits",
+     ("_dash_refuse_overbytes",)),
+    ("TestTheBytesOfTextAreLimited::test_a_file_within_the_limit_is_not_counted",
+     ("_dash_refuse_overbytes", "_dash_text_bytes")),
+]
+
+
+class TestNoSizeCap:
+    """Maintainer decision P4-3 (WP-33 33-15): a dashboard has no size cap.
+    The embedded-cell cap ($dash_max_cells) and the page-bytes cap
+    ($dash_max_bytes) are gone in both modes and both languages; the size
+    note above _LARGE_DATASET_CELLS is a report, not a cap, and stays."""
+
+    def test_the_limit_tables_hold_no_size_cap(self):
+        assert "cells" not in dr._DASH_LIMITS
+        assert "bytes" not in dr._DASH_LIMITS
+        with open(os.path.join(_HERE, "..", "dash.ado"), encoding="utf-8") as fh:
+            ado = fh.read()
+        start = ado.index("program define _dash_limit_table")
+        body = ado[start:ado.index("\nend", start)]
+        assert "cells=" not in body and "bytes=" not in body, body
+        dr._dash_reset_notes()
+        got, msgs = _warns(lambda: dr._dash_limits(
+            {"limits": {"cells": 1, "bytes": 1}}))
+        assert "cells" not in got and "bytes" not in got, got
+        assert msgs == [], msgs
+
+    def test_a_page_past_the_old_caps_is_drawn_in_both_modes(self, tmp_path):
+        # _frame's column s is a string variable, which the bytes cap
+        # counted; at cells 1 and bytes 1 both caps refused this spec.
+        spec = _spec([_graph("g1")], limits={"cells": 1, "bytes": 1})
+        r, html, _ = _standalone(tmp_path, spec, _frame(12))
+        assert "g1" in r.figures and len(html) > 1000
+        doc, built, _, _ = _served(tmp_path, spec, _frame(12))
+        assert doc.roots
+        assert not _named(built, "would embed"), built
+
+    def test_the_size_note_counts_the_rows_and_columns_the_page_holds(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setattr(dr, "_LARGE_DATASET_CELLS", 10)
+        dr._dash_reset_notes()
+        spec = _spec([_graph("g1")])
+        _, _, msgs = _standalone(tmp_path, spec, _frame(12))
+        notes = _named(msgs, "12 observations on 2 variables")
+        assert len(notes) == 1, msgs
+
+    @pytest.mark.parametrize("old, names", _CAP_CODE_GONE,
+                             ids=[o.replace("::", ".") for o, _ in _CAP_CODE_GONE])
+    def test_the_cap_code_is_gone(self, old, names):
+        # Flipped: each <old> pinned removed cap code; the maintainer
+        # removed the size caps (P4-3), so the names are asserted gone.
+        for name in names:
+            if name.startswith("key:"):
+                assert name[4:] not in dr._DASH_LIMITS, old
+            else:
+                assert not hasattr(dr, name), (old, name)

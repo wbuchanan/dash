@@ -158,12 +158,6 @@ COVERAGE = {
                                 "test_option_validation.cscript:OV-126"),
         # e2e: every default and ceiling read back through _dash_limit.
         "_dash_limit_table": ("test_adversarial.cscript:P19-05",),
-        # direct: the bytes of text exported, refused over $dash_max_bytes
-        # on both routes before the file is written, strL text counted, a
-        # variable named twice counted once.
-        "_dash_byte_cap": ("test_adversarial.cscript:P19-27",
-                           "test_adversarial.cscript:P19-29",
-                           "test_adversarial.cscript:P19-30"),
         "_dash_count_fmt": ("test_adversarial.cscript:P19-22",),
         "_dash_limit": ("test_adversarial.cscript:P19-05",
                         "test_adversarial.cscript:P19-17",
@@ -175,8 +169,6 @@ COVERAGE = {
                             "test_adversarial.cscript:P19-04"),
         "_dash_plot_cap_refuse": ("test_adversarial.cscript:P19-07",
                                   "test_adversarial.cscript:P19-09"),
-        "_dash_cell_cap": ("test_adversarial.cscript:P19-11",
-                           "test_adversarial.cscript:P19-23"),
         # e2e: the option keys in a segment's JSON.
         "_dash_plot_opts_to_json": ("test_parser.cscript:P1A-52",
                                     "test_parser.cscript:P1A-47"),
@@ -484,9 +476,6 @@ COVERAGE = {
         # e2e: through _dash_json_str_args; direct in PC-28.
         # WP-31 G2: the comma formats under set dp comma.
         "_dash_dp_format": ("test_wp31_truth.cscript:U43-03",),
-        # WP-31 G3: a by() graph's real panel count, through
-        # _dash_computed_cells.
-        "_dash_by_panel_n": ("test_wp31_truth.cscript:U43-07",),
         # WP-31 C12: a function layer's panels under by().
         "_dash_fn_panel_count": ("test_wp31_truth.cscript:U46-04",),
         # WP-31 G7: a %tb format's business calendar, as JSON.
@@ -795,24 +784,15 @@ COVERAGE = {
         "_dash_lpolyci_opts": ("test_statistical_options.cscript:LB-11",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
-        # GAPS2 G3 (WP-28 section 08): e2e through _dash_prepare_spec and
-        # _dash_render_immediate.
-        "_dash_json_count_key": ("test_adversarial.cscript:DL-01",
-                                 "test_adversarial.cscript:DL-06"),
-        "_dash_json_has_value": ("test_adversarial.cscript:DL-01",
-                                 "test_adversarial.cscript:DL-03a"),
+        # GAPS2 G3 (WP-28 section 08); the counters it fed went with the
+        # size caps (P4-3, WP-33 33-15).
+        "_dash_json_has_value": ("test_twoway_option_parity.cscript:AT-04",),
         "_dash_json_first_num": ("test_adversarial.cscript:DL-01",
-                                 "test_adversarial.cscript:DL-06"),
-        "_dash_computed_plot_cells": ("test_adversarial.cscript:DL-01",
-                                      "test_adversarial.cscript:DL-06"),
-        "_dash_computed_cells": ("test_adversarial.cscript:DL-01",
                                  "test_adversarial.cscript:DL-06"),
         # _dash_filter_refusal calls this for its own exclude() check, so
         # HC3-20/HC3-08 exercise it too; DL-03b is its own case.
         "_dash_filter_excludes": ("test_adversarial.cscript:DL-03b",
                                   "test_help_claims_3.cscript:HC3-20"),
-        "_dash_graph_touched": ("test_adversarial.cscript:DL-03b",),
-        "_dash_qual_cols_in": ("test_adversarial.cscript:DL-04",),
         # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
         "_dash_cmd_metachar": ("test_serve_browser.cscript:SB-21",),
         # WP-30 S06 (P1.26a): One note channel (P1.26 part a)

@@ -94,63 +94,20 @@ class TestUserFieldShadowing:
 
 
 class TestCellCap:
-    """A by()-faceted computed-only graph is counted by its real panels,
-    not in full (WP-31 G3; dash_parse.mata's _dash_computed_cells is the
-    twin, compared in Stata by test_wp31_truth.cscript U43-07)."""
+    """A by()-faceted computed-only graph was counted by its real panels
+    for the cells limit (WP-31 G3).  The maintainer removed the size caps
+    (P4-3, WP-33 33-15), and the count with them: each old pin is a row."""
 
-    @staticmethod
-    def _frame(n=1000):
-        import numpy as np
-        import pandas as pd
-        rng = np.random.default_rng(3)
-        g = np.where(np.arange(n) % 3 == 0, np.nan, np.arange(n) % 2)
-        return pd.DataFrame({"y": rng.random(n), "g": g})
-
-    @staticmethod
-    def _spec(by, ptype="kdensity"):
-        return {"graphs": [{"name": "h", "graph_options": {"by": by},
-                            "plots": [{"type": ptype, "var": "y",
-                                       "options": {}}]}],
-                "kpis": [], "build_options": {}}
-
-    def test_panel_count(self):
-        df = self._frame()
-        assert dr._dash_by_panel_count(df, "g", 100) == 2
-        assert dr._dash_by_panel_count(df, "g, missing", 100) == 3
-        assert dr._dash_by_panel_count(df, "g, total", 100) == 3
-        assert dr._dash_by_panel_count(df, "g", 1) == 1
-        assert dr._dash_by_panel_count(df, "nosuch", 100) is None
-        assert dr._dash_by_panel_count(None, "g", 100) is None
-
-    def test_counts_planned_rows(self):
-        # Flipped (batch-14 gate): the panel count only ever lowers the
-        # estimate, so a frame whose own rows hold more cells than the
-        # panels' bounds is counted by its panels, and a small one (many
-        # tiny panels, test_layer_reports' hostile by(, total)) in full.
-        df = self._frame(200_000)
-        rows, extra = dr._dash_embedded_cells(
-            self._spec("g"), len(df), list(df.columns), {}, frame=df)
-        assert rows == [] and extra == 2 * dr._DASH_COMPUTED_PLOT_CELLS
-        rows, extra = dr._dash_embedded_cells(
-            self._spec("g, total"), len(df), list(df.columns), {}, frame=df)
-        assert rows == [] and extra == 3 * dr._DASH_COMPUTED_PLOT_CELLS
-        small = self._frame()
-        rows, extra = dr._dash_embedded_cells(
-            self._spec("g"), len(small), list(small.columns), {},
-            frame=small)
-        assert sorted(rows) == ["g", "y"] and extra == 0
-
-    def test_lowess_counts_each_row_once(self):
-        df = self._frame()
-        spec = self._spec("g")
-        spec["graphs"][0]["plots"] = [{"type": "lowess", "yvar": "y",
-                                       "xvar": "y", "options": {}}]
-        _rows, extra = dr._dash_embedded_cells(
-            spec, len(df), list(df.columns), {}, frame=df)
-        assert extra == 2 * len(df)
-
-    def test_no_frame_counts_in_full(self):
-        df = self._frame()
-        rows, _extra = dr._dash_embedded_cells(
-            self._spec("g"), len(df), list(df.columns), {})
-        assert "y" in rows
+    @pytest.mark.parametrize("old, names", [
+        ("test_panel_count", ("_dash_by_panel_count",)),
+        ("test_counts_planned_rows",
+         ("_dash_embedded_cells", "_DASH_COMPUTED_PLOT_CELLS")),
+        ("test_lowess_counts_each_row_once", ("_dash_embedded_cells",
+                                              "_dash_graph_computed_cells")),
+        ("test_no_frame_counts_in_full", ("_dash_embedded_cells",)),
+    ], ids=lambda v: v if isinstance(v, str) else None)
+    def test_the_count_code_is_gone(self, old, names):
+        # Flipped: <old> pinned the panel count the cells limit read; the
+        # maintainer removed the size caps (P4-3), so its names are gone.
+        for name in names:
+            assert not hasattr(dr, name), (old, name)

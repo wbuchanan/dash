@@ -839,9 +839,9 @@ forvalues j = 1/6 {
     // and its answer, the column __dashq1, is exported instead.
     assert `hd' == 0 & `hh' == 0 & `hq' == 1
 }
-// The embedded-data limit counts what is exported: three variables here,
-// on the build and on the one-line route alike.
-global dash_max_cells 250
+// Both routes build.  Flipped (WP-33 33-15): the runs were under
+// dash_max_cells 250, the embedded-data limit the maintainer removed
+// (P4-3), so the global lines went.
 capture dash clear
 dash scatter mpg rowid if make != "d", name(ql21m)
 tempfile h21
@@ -852,11 +852,10 @@ capture erase "`h21'.html"
 _ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html", replace)"'
 local rc21b = r(rc)
 capture erase "`h21'.html"
-global dash_max_cells ""
-display as text "  QL-21 under dash_max_cells 250: build rc `rc21a', one-line rc `rc21b'"
+display as text "  QL-21: build rc `rc21a', one-line rc `rc21b'"
 assert `rc21a' == 0 & `rc21b' == 0
 capture dash clear
-display "QL-21 PASS: a word inside a qualifier's string literal is not exported, nor counted against the data limit"
+display "QL-21 PASS: a word inside a qualifier's string literal is not exported"
 
 // ----------------------------------------------------------------
 // QL-22 -- a variable the qualifier abbreviates is written out when the

@@ -732,9 +732,10 @@ capture dash clear
 display "QS-09 PASS: a hand-set qualifier cannot leave its parentheses, name its own column or carry a command in its range"
 
 // ----------------------------------------------------------------
-// QS-10 -- resource exhaustion (rule 18): a qualifier column counts
-// against the embedded-data limit, so many distinct qualifiers cannot
-// embed more than the limit allows.
+// QS-10 -- resource exhaustion (rule 18): a qualifier column counted
+// against the embedded-data limit.  Flipped (WP-33 33-15): the five-
+// qualifier build was refused at dash_max_cells 500; the maintainer
+// removed the size caps (P4-3), so it builds.
 // ----------------------------------------------------------------
 capture dash clear
 forvalues j = 1/5 {
@@ -750,15 +751,13 @@ _qs_run `"dash build, saving("`p'.html") replace nobrowser"'
 local rc10 = r(rc)
 cert_log_has "`r(log)'", needle("518 values")
 local m10 = r(found)
-global dash_max_cells 600
-_qs_run `"dash build, saving("`p'.html") replace nobrowser"'
-local rc10b = r(rc)
 global dash_max_cells ""
-display as text "  QS-10 under 500 cells: rc `rc10' (518 named `m10'); under 600: rc `rc10b'"
-assert `rc10' == 134 & `m10' == 1 & `rc10b' == 0
+display as text "  QS-10 under 500 cells: rc `rc10' (518 named `m10')"
+assert `rc10' == 0 & `m10' == 0
+confirm file "`p'.html"
 capture erase "`p'.html"
 capture dash clear
-display "QS-10 PASS: qualifier columns count against the embedded-data limit"
+display "QS-10 PASS: qualifier columns no longer count against a limit"
 
 // ----------------------------------------------------------------
 // QS-11 -- the one-line form of a date qualifier on a saved page, the

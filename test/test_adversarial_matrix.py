@@ -658,7 +658,7 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-59",
         ],
     },
-    # global dash_max_cells, dash_max_graphs ... (WP-19).
+    # global dash_max_graphs, dash_max_plots ... (WP-19).
     "resource_limit_globals": {
         "bypass": [
             "test_adversarial.cscript:P19-17",
@@ -669,15 +669,13 @@ SURFACES = {
             "test_adversarial.cscript:P19-20",
             "test_adversarial.cscript:P19-21",
         ],
+        # The count caps.  The cells and bytes caps (P19-11, P19-23,
+        # P19-27, P19-29 and the bytes node) were removed by the
+        # maintainer (P4-3, WP-33 33-15): a dashboard has no size cap.
         "exhaustion": [
-            "test_adversarial.cscript:P19-11",
-            "test_adversarial.cscript:P19-23",
+            "test_adversarial.cscript:P19-01",
+            "test_adversarial.cscript:P19-07",
             "test_resource_limits.cscript:RL-01",
-            # $dash_max_bytes (24sep2026): the text a strL carries, which
-            # the cells limit does not count, refused on every route.
-            "test_adversarial.cscript:P19-27",
-            "test_adversarial.cscript:P19-29",
-            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_a_hostile_value_is_named_and_the_default_used",
         ],
     },
     # dash_setup: its options, and what the environment reports back
@@ -730,11 +728,11 @@ SURFACES = {
         ],
         "exhaustion": [
             # 60 observations of a 1,000,000-byte strL: 60 values, 60 MB of
-            # text, refused before the file is written, and by the renderer
-            # for a data file that reached it another way.
+            # text.  Refused until the maintainer removed the size caps
+            # (P4-3, WP-33 33-15); now taken by both renderers.
             "test_adversarial.cscript:P19-30",
-            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_a_large_strl_value_is_refused_at_the_default",
-            "test/test_resource_limits.py::TestTheBytesOfTextAreLimited::test_the_server_app_is_refused_at_build",
+            "test/test_resource_limits.py::TestTheBytesOfTextAreNotLimited::test_a_large_strl_value_is_taken",
+            "test/test_resource_limits.py::TestTheBytesOfTextAreNotLimited::test_the_server_app_builds_past_the_old_cap",
             "test_adversarial.cscript:P19-11",
             "test_resource_limits.cscript:RL-03",
             "test/test_resource_limits.py::TestADropdownOnAContinuousVariable::test_the_widget_lists_at_most_the_limit",
@@ -769,7 +767,7 @@ SURFACES = {
             _M + "TestHostileSpec::test_a_deeply_nested_spec_fails_before_anything_is_written",
             "test/test_toolbar.py::TestSaveFilename::test_a_huge_name_is_refused_without_being_scanned",
             _M + "TestLayoutGridBound::test_an_oversized_grid_is_drawn_as_auto",
-            "test/test_resource_limits.py::TestAnOversizedDatasetIsRefused::test_the_saved_renderer_refuses_before_drawing",
+            "test/test_resource_limits.py::TestAnOversizedDatasetIsNotRefused::test_the_saved_renderer_draws_past_the_old_cap",
             "test/test_help_claims_4.py::TestAHandEditedStatistic::test_a_huge_digit_run_is_cheap_in_both_modes",
         ],
     },

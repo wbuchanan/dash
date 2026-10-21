@@ -177,9 +177,10 @@ class TestLinkAll:
         assert "== '_all'" not in code and '== "_all"' not in code
         # Defined once each; _dash_link_groups called by _dash_link_names,
         # the saved builder, _dash_embed_plan and the app's make_document;
-        # _dash_link_names by the server builder and _dash_embedded_cells.
+        # _dash_link_names by the server builder.
         # 6 -> 3 and 5: WP-31 H2l moved the rule into _dash_link_groups.
-        assert code.count("_dash_link_names(") == 3
+        # 3 -> 2: _dash_embedded_cells removed (WP-33 33-15)
+        assert code.count("_dash_link_names(") == 2
         assert code.count("_dash_link_groups(") == 5
 
 

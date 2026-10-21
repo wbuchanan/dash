@@ -592,41 +592,35 @@ assert r(n) == 2
 display "HC5-12 PASS: twoway rscatter labels observation 1's low end alone and observation 2's two ends"
 
 // ================================================================
-// HC5-13 -- the cell limit counts every observation, whatever the if
+// HC5-13 -- the cell limit counted every observation, whatever the if.
+// Flipped (WP-33 33-15): refused at dash_max_cells 100; the maintainer
+// removed the size caps (P4-3), so it builds and the page exists.
 // ================================================================
 sysuse auto, clear
 global dash_max_cells 100
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight if foreign == 1, saving("`page'")"' "`logfile'"
-assert r(rc) == 134
-// Every observation of mpg, weight and the qualifier's own foreign.
-cert_log_has "`logfile'", needle("would embed 222 values (74 observations x 3 variables)")
-assert r(found) == 1
-capture confirm file "`page'"
-assert _rc != 0
-// Reducing the data first is what the help advises, and it works.
-preserve
-quietly keep if foreign == 1
-_hc5_run `"dash scatter mpg weight, saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-restore
-display "HC5-13 PASS: if foreign == 1 embeds all 74 observations and is refused at 100 values; keep if foreign == 1 builds"
+cert_log_has "`logfile'", needle("would embed")
+assert r(found) == 0
+confirm file "`page'"
+display "HC5-13 PASS: if foreign == 1 at dash_max_cells 100 builds the page"
 
 // ================================================================
-// HC5-14 -- dash serve's spec is refused before anything is exported
+// HC5-14 -- dash serve's spec.  Flipped (WP-33 33-15): it was refused at
+// the cell limit; with no size cap (P4-3) the spec and its data file are
+// written.
 // ================================================================
 capture dash clear
 dash scatter mpg weight, name(hc14)
 tempfile hc14s hc14d
 _hc5_run `"_dash_serve_spec, specpath("`hc14s'") datapath("`hc14d'")"' "`logfile'"
-assert r(rc) == 134
-cert_log_has "`logfile'", needle("set global dash_max_cells to a higher value (at most 20,000,000)")
-assert r(found) == 1
-capture confirm file "`hc14d'"
-assert _rc != 0
+assert r(rc) == 0
+confirm file "`hc14s'"
+confirm file "`hc14d'"
 macro drop dash_max_cells
 capture dash clear
-display "HC5-14 PASS: the spec dash serve launches from is refused at the cell limit, and no data file is written"
+display "HC5-14 PASS: at dash_max_cells 100 the spec dash serve launches from and its data file are written"
 
 // ================================================================
 // HC5-15 -- a layout() grid past dash_max_graphs is refused

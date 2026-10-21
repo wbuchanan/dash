@@ -378,11 +378,6 @@
 *!       refuses as twoway does in text(), ttext() and tick labels
 *!       (WP-31 D13b).
 *!
-*!   _dash_json_has_value(s, key)
-*!       1 when the JSON text s holds key with a non-empty value; dash.ado
-*!       reads a graph's by() through it for the embedded-cell count
-*!       (WP-31 G3).
-*!
 *!   _dash_gt_ccl(s)
 *!       s with each {ccl name} replaced by c(name) as twoway's graph text
 *!       draws it (WP-31 E9); applied by dash.ado to the graph's text
@@ -568,23 +563,6 @@
 *!       The reference-line positions of one graph's JSON: the tokens of
 *!       every copy of xline(), yline(), xline2() and yline2() (WP-30
 *!       P1.21a), for dash.ado's _dash_reflines_of.
-*!
-*!   _dash_computed_cells(gjson, nobs, bygroups, types)
-*!       -1 unless every plot of gjson is in types; else the cells its
-*!       computed layers draw (GAPS2 G3).  _dash_computed_plot_cells()
-*!       (120,000, the bound on every computed layer this does not count
-*!       exactly) and _dash_filter_excludes(group) (the exclude() names of
-*!       one filter() group, factored out of _dash_filter_refusal) are its
-*!       own internal helpers, called by no other program directly; so is
-*!       the one that counts a by() graph's real panels (WP-31 G3).
-*!
-*!   _dash_graph_touched(gname, gjson, filter, link, csv)
-*!       1 when a filter, link(), csv or hover() reaches gname's rows
-*!       (GAPS2 G3); 0 when only its own computed output is drawn.
-*!
-*!   _dash_qual_cols_in(gjson)
-*!       The distinct qual_col/qual_col_total values named in gjson,
-*!       blank-separated (GAPS2 G3).
 *!
 *!   _dash_route_axis2(opts)
 *!       opts with each x/y title, label, mlabel, tick, mtick, line and
@@ -3716,7 +3694,7 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 //
 // The variables a graph's hover() names, each once, in the order first
 // written, blank-separated, into the caller's local out_macro.  hover()
-// is read the way _dash_graph_touched reads it -- _dash_json_get_str: the
+// is read as the filter refusal reads it -- _dash_json_get_str: the
 // first "hover":" key, its escapes decoded; a title holding that text
 // carries its quotes escaped and never matches -- and split as the
 // renderer splits it (_dash_blank_words).  Each word must be a Stata name
@@ -4750,8 +4728,8 @@ void _dash_sort_reset()
 }
 
 // _dash_sort_scan(json) -- add every "sortvars" value of json to the
-// table, each once, in the order first met (read as _dash_qual_cols_in
-// reads its keys: the value up to the next double quote).  Sets the
+// table, each once, in the order first met (each value read up to the
+// next double quote).  Sets the
 // caller's local _ds_bad to the first value holding a token that is not a
 // Stata name, and leaves it alone otherwise.
 void _dash_sort_scan(string scalar json)
@@ -5588,7 +5566,7 @@ string scalar _dash_filter_refusal(string scalar filter,
         // exclude("g1") for g1, and the renderer, reading "g1", built no
         // widget, rc 0 (measured 24sep2026; JSE-56).  _dash_filter_excludes
         // (WP-28 G3) is the one reader of a group's exclude() names, so
-        // this refusal and _dash_graph_touched's reading cannot drift.
+        // every reading of them is the same.
         names = _dash_filter_excludes(groups[g])
         for (k = 1; k <= cols(names); k++) {
             if (!anyof(reg, names[k])) {
@@ -12063,28 +12041,6 @@ real scalar _dash_spec_has_plots(string scalar json)
     return(substr(json, q, 1) == "{")
 }
 
-// GAPS2 G3 (WP-28 section 08): what the SAVED page embeds is not every
-// exported variable times _N -- a graph made only of computed layers
-// (histogram, kdensity, the fits and smoothers) that nothing else reaches
-// draws its own drawn output, bounded, whatever the row count.  The
-// SERVED app is unaffected: _embed_data (dash_render.py) always embeds
-// every row.
-//
-// _dash_json_count_key(s, key, val) -- occurrences of "key":"val..." in s;
-// val == "" counts every value of key (as _dash_spec_types_in does for
-// "type").  A helper shared by the counters below so they read the spec's
-// raw JSON text the same way _dash_spec_types_in and _dash_json_get_str
-// do -- no JSON parse, so a title or a qualifier's text can hold anything
-// without being mistaken for a key.
-real scalar _dash_json_count_key(string scalar s, string scalar key,
-                                 string scalar val) {
-    string scalar needle
-    needle = char(34) + key + char(34) + ":" + char(34) + val +
-             (val != "" ? char(34) : "")
-    if (strlen(needle) == 0) return(0)
-    return((strlen(s) - strlen(subinstr(s, needle, "", .))) / strlen(needle))
-}
-
 // 1 when "key":"<non-empty>" is in s (a flag or a value sub-option that
 // was actually given: _dash_plot_opts_to_json (dash.ado) writes a key only
 // when its s() value is non-empty).
@@ -12116,113 +12072,6 @@ real scalar _dash_json_first_num(string scalar s, string scalar key) {
     return(strtoreal(val))
 }
 
-// _dash_computed_plot_cells() -- one bound on every computed layer except
-// histogram and lowess, which _dash_computed_cells counts exactly.
-// Derivation (dash.ado's option caps at _dash_option_rules, ~1866, and
-// the renderer's own grids):
-//   kdensity, lpoly, lpolyci, lfit family (2 or 4 * n, n <= 10000)  40,000
-//   fpfit, fpfitci                      (2 or 4 * _FP_GRID_MAX)    80,000
-//   mspline           (2 * ((bands-1)*n + bands), bands<=200, n<=300) 119,800
-//   mband                               (2 * bands, bands <= 200)      400
-// 120,000 bounds every one of these; test/test_embedded_cells.py::
-// TestTheTwoLanguagesAgree::test_the_constant_bounds_every_computed_layer
-// re-derives the bound from dash.ado's own caps.
-real scalar _dash_computed_plot_cells() {
-    return(120000)
-}
-
-// -1 unless every plot type in gjson is one of `types' (_dash_spec_types_in);
-// else the cells this graph's computed layers draw: a lowess draws 2 per
-// observation and never escapes any cap; a histogram draws 4 times its bin
-// count -- the data's own count under width()/discrete() with no bin(),
-// else the first bin() given, else Stata's default rule
-// (max(1, floor(min(sqrt(nobs), 10*log10(nobs))))); every other computed
-// type is bounded by _dash_computed_plot_cells().
-//
-// by() is counted with its real panel count (_dash_by_panel_n, WP-31
-// G3): each panel's computed layers draw at most their one-panel bound,
-// and a lowess two cells per observation whichever panel holds it.
-// Multiplying by the by_groups LIMIT instead (100 by default) made even a
-// two-panel by(foreign) on a generic computed type read as 12,000,000; a
-// by() whose variables cannot be read returns -1 (counted in full).
-// dash_render.py's _dash_graph_computed_cells is the twin.
-real scalar _dash_computed_cells(string scalar gjson, real scalar nobs,
-                                 real scalar bygroups, string scalar types) {
-    real scalar P, L, H, wd, bin_val, bins, cells, G
-
-    if (!_dash_spec_types_in(gjson, types)) return(-1)
-    G = 1
-    if (_dash_json_has_value(gjson, "by")) {
-        G = _dash_by_panel_n(gjson, bygroups)
-        if (G < 0) return(-1)
-    }
-
-    P = _dash_json_count_key(gjson, "type", "")
-    L = _dash_json_count_key(gjson, "type", "lowess")
-    H = _dash_json_count_key(gjson, "type", "histogram")
-
-    bin_val = _dash_json_first_num(gjson, "bin")
-    // dash.ado's own bin=int,1,1000 option cap keeps a dash-built spec's
-    // bin() in range already; this clamp matches the renderer's own
-    // map_histogram _MAX_BINS (dash_render.py, ~9907) for a hand-written
-    // spec that reached here another way.
-    if (bin_val != . & bin_val > 1000) bin_val = 1000
-    wd = (bin_val == .) & (_dash_json_has_value(gjson, "width") |
-                           _dash_json_has_value(gjson, "discrete"))
-    if (bin_val != .) bins = bin_val
-    else if (nobs <= 0) bins = 1
-    else bins = max((1, floor(min((sqrt(nobs), 10 * log10(nobs))))))
-
-    cells = L * 2 * nobs + H * 4 * (wd ? nobs : bins * G) +
-            (P - L - H) * _dash_computed_plot_cells() * G
-    return(cells)
-}
-
-// _dash_by_panel_n(gjson, bygroups) -- the panels the graph's by() draws
-// over the data in memory: its distinct value combinations (rows with a
-// missing value, . or .a-.z or "", left out unless `missing'; each
-// extended missing value its own panel), at most bygroups, plus one for
-// `total'.  -1 when a by() variable is not in the data.  The local
-// _dbp_by is used as scratch.  dash_render.py's _dash_by_panel_count is
-// the twin.
-real scalar _dash_by_panel_n(string scalar gjson, real scalar bygroups)
-{
-    string scalar   raw, vl, op
-    string rowvector vars
-    string matrix   key
-    real colvector  keep
-    real scalar     p, i, idx, n, miss, tot
-
-    _dash_json_get_str(gjson, "by", "_dbp_by")
-    raw = st_local("_dbp_by")
-    p = strpos(raw, ",")
-    vl = p ? substr(raw, 1, p - 1) : raw
-    op = p ? " " + strlower(substr(raw, p + 1, .)) + " " : ""
-    miss = ustrregexm(op, "[ ,](mis|miss|missi|missin|missing)[ ,(]")
-    tot  = ustrregexm(op, "[ ,](tot|tota|total)[ ,(]")
-    vars = tokens(vl)
-    if (cols(vars) == 0) return(-1)
-    n = st_nobs()
-    key = J(n, cols(vars), "")
-    keep = J(n, 1, 1)
-    for (i = 1; i <= cols(vars); i++) {
-        idx = _st_varindex(vars[i], 1)
-        if (idx == .) return(-1)
-        if (st_isstrvar(idx)) {
-            key[., i] = st_sdata(., idx)
-            if (!miss) keep = keep :* (key[., i] :!= "")
-        }
-        else {
-            key[., i] = strofreal(st_data(., idx), "%21x")
-            if (!miss) keep = keep :* (st_data(., idx) :< .)
-        }
-    }
-    key = select(key, keep)
-    n = rows(key) ? rows(uniqrows(key)) : 0
-    if (n > bygroups) n = bygroups
-    return(n + tot)
-}
-
 // _dash_bcal_json(cal, lo, hi) -- business calendar cal's days lo..hi as
 // the spec holds them (WP-31 G7): {"min":lo,"td":[dofb(lo, cal), ...]},
 // each day _dash_json_number17's (null where dofb() is missing).
@@ -12240,7 +12089,7 @@ string scalar _dash_bcal_json(string scalar cal, real scalar lo,
 }
 
 // _dash_fn_panel_count(byraw, touse) -- the panels by(byraw) draws over
-// the rows where the variable touse is 1: _dash_by_panel_n's rule (the
+// the rows where the variable touse is 1 (the
 // distinct value combinations, missing ones left out unless `missing',
 // plus one for `total'), for the function layers dash.ado evaluates once
 // per panel (WP-31 C12).  -1 when a by() variable is not in the data.
@@ -12348,66 +12197,6 @@ string rowvector _dash_filter_excludes(string scalar group) {
     return(out)
 }
 
-// 1 when a filter, link(), csv or hover() reaches gname's rows: csv holds
-// every column of the frame; link(_all) or link() naming gname shares one
-// source; hover() is read the way dash.ado reads it (_dash_json_get_str,
-// over the graph's own JSON, so a title or qualifier holding the text
-// "hover" is never mistaken for the key); and a filter group whose
-// exclude() does NOT name gname reaches it (a group with no exclude() at
-// all reaches every graph).  0 otherwise -- the graph draws only its own
-// computed output, and _dash_computed_cells already bounds that.
-real scalar _dash_graph_touched(string scalar gname, string scalar gjson,
-                                string scalar filter, string scalar link,
-                                string scalar csv) {
-    string rowvector groups, excl
-    string scalar    hover
-    real scalar      g
-
-    if (csv != "") return(1)
-    if (link == "_all") return(1)
-    if (anyof(_dash_blank_words(link), gname)) return(1)
-    _dash_json_get_str(gjson, "hover", "_dgt_hover")
-    hover = strtrim(st_local("_dgt_hover"))
-    if (hover != "") return(1)
-    if (filter != "") {
-        groups = _dash_filter_split(filter, 1)
-        for (g = 1; g <= cols(groups); g++) {
-            excl = _dash_filter_excludes(groups[g])
-            if (!anyof(excl, gname)) return(1)
-        }
-    }
-    return(0)
-}
-
-// The distinct "qual_col" and "qual_col_total" values named anywhere in
-// gjson (a graph's own qualifier, each plot's, and the by() Total panel's),
-// blank-separated; "" values are not qualifiers and are skipped.  Read the
-// same raw-text way as the counters above.
-string scalar _dash_qual_cols_in(string scalar gjson) {
-    string rowvector keys
-    string scalar    out, needle, tail, val
-    real scalar      ki, pos, vstart, vend
-
-    out  = ""
-    keys = ("qual_col", "qual_col_total")
-    for (ki = 1; ki <= 2; ki++) {
-        needle = char(34) + keys[ki] + char(34) + ":" + char(34)
-        tail = gjson
-        pos = strpos(tail, needle)
-        while (pos) {
-            vstart = pos + strlen(needle)
-            vend = strpos(substr(tail, vstart, .), char(34))
-            if (!vend) break
-            val = substr(tail, vstart, vend - 1)
-            if (val != "" & !strpos(" " + out + " ", " " + val + " ")) {
-                out = out + (out == "" ? "" : " ") + val
-            }
-            tail = substr(tail, vstart + vend, .)
-            pos = strpos(tail, needle)
-        }
-    }
-    return(out)
-}
 
 // _dash_angle_out(s) -- 1 when s, stripped, is twoway's real literal and
 // lies outside -360..360, else 0 (WP-30 P1.18a).  twoway refuses such an

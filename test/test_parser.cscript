@@ -3292,8 +3292,9 @@ assert "${dash_graph_registry}" == ""
 display "FX-06 PASS: a generator option cannot be injected through the expression, and Break ends the command r(1) with the data as they were"
 
 // ================================================================
-// FX-07 -- no point is ever truncated: one graph past c(macrolen), and a
-//          dashboard past dash_max_bytes, are refused r(134)
+// FX-07 -- no point is ever truncated: one graph past c(macrolen) is
+//          refused r(134); a dashboard past the old dash_max_bytes builds
+//          (WP-33 33-15: no size cap, P4-3)
 // ================================================================
 sysuse auto, clear
 dash clear
@@ -3326,19 +3327,21 @@ capture erase "`a07'"
 dash clear
 clear
 dash function y = x, n(300) name(fx07c)
+// Flipped (WP-33 33-15): refused r(134) at dash_max_bytes 1000; the
+// maintainer removed the size caps (P4-3), so it builds.
 global dash_max_bytes 1000
+capture erase "`h07'"
 _p1a_logrun `"dash build, saving("`h07'") replace"'
 local rc07 = r(rc)
 local lg07 "`r(log)'"
 macro drop dash_max_bytes
-assert `rc07' == 134
+assert `rc07' == 0
 cert_file_has "`lg07'", needle("characters of function points")
-assert r(found) == 1
-cert_file_has "`lg07'", needle("dash_max_bytes")
-assert r(found) == 1
+assert r(found) == 0
+confirm file "`h07'"
 capture erase "`h07'"
 dash clear
-display "FX-07 PASS: a graph whose points exceed one macro, and a dashboard whose points exceed dash_max_bytes, are refused r(134) before anything is stored"
+display "FX-07 PASS: a graph whose points exceed one macro is refused r(134); a dashboard whose points pass 1,000 characters builds at dash_max_bytes 1000"
 
 // ================================================================
 // FX-08 -- the points live in $dash_fpts_<name>, which goes with its graph

@@ -755,7 +755,9 @@ _hc2_ok "HC2-26c" `=r(found) == 1' "and its title"
 // The build gives filter() too: HC2-28a holds dash clear to dropping
 // dash_opts_filter, and until 24sep2026 no build before it gave one, so
 // that global was empty whether or not dash clear dropped it.
-global dash_max_cells 6000000
+// Flipped (WP-33 33-15): $dash_max_graphs in place of $dash_max_cells,
+// which the maintainer removed with the size caps (P4-3).
+global dash_max_graphs 600
 quietly dash kpi mean(price), name(k1) title("K")
 local hc2out "`hc2f'_27.html"
 _hc2_expect "HC2-27a" 0 `"dash build, saving("`hc2out'") replace csv title("Before") filter(foreign)"'
@@ -775,8 +777,8 @@ foreach g in dash_graph_registry dash_json_s1 dash_spec_s1 dash_json_s2 dash_kpi
 }
 _hc2_ok "HC2-28a" `="`left'" == ""' "dash clear drops the registry's globals and the remembered options`left'"
 _hc2_ok "HC2-28b" `="${dash_nobrowser}" == "1"' "dash clear keeps \$dash_nobrowser"
-_hc2_ok "HC2-28c" `="${dash_max_cells}" == "6000000"' "dash clear keeps \$dash_max_cells"
-macro drop dash_max_cells
+_hc2_ok "HC2-28c" `="${dash_max_graphs}" == "600"' "dash clear keeps \$dash_max_graphs"
+macro drop dash_max_graphs
 
 // ================================================================
 // The browser
