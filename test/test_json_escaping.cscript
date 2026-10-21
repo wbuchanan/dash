@@ -904,6 +904,8 @@ capture dash clear
 // JSE-24 -- the immediate route: the saved page draws Stata's 22 rows.
 tempfile j2_p24
 global J2_PAGE "`j2_p24'.html"
+// A temp name can repeat one an earlier script left a .html beside.
+capture erase "$J2_PAGE"
 dash scatter mpg weight if make != "AMC Concord" & foreign == 1, saving("`j2_p24'.html")
 python: _j2_page_rows()
 display as text "  page rows: [$J2_PAGE_ROWS]"
@@ -1163,6 +1165,8 @@ quietly count if make != "`j2_L5'" & foreign == 1
 local j2_n34 = r(N)
 tempfile j2_p34
 global J2_PAGE "`j2_p34'.html"
+// A temp name can repeat one an earlier script left a .html beside.
+capture erase "$J2_PAGE"
 _j2_run `"dash scatter mpg weight if make != "`j2_L5'" & foreign == 1, saving("`j2_p34'.html")"'
 assert r(rc) == 0
 python: _j2_page_rows()

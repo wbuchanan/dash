@@ -11788,7 +11788,7 @@ string scalar _dash_gt_ccl(string scalar s)
 // "at_lines":[..],"at_opts":".."}.  Numbers in %21.0g; lines already a
 // JSON array and opts already _dash_json_escape()d (_dash_at_opts), written as
 // they come.  Every key starts at_, so no substring reader of the graph's
-// JSON (_dash_json_has_value, _dash_json_first_num) finds one.
+// JSON (_dash_json_first_num) finds one.
 string scalar _dash_at_json(string scalar kind, real scalar y,
                             real scalar x, real scalar ya, real scalar xa,
                             string scalar lines, string scalar opts)
@@ -12039,18 +12039,6 @@ real scalar _dash_spec_has_plots(string scalar json)
     }
     if (q > n) return(0)
     return(substr(json, q, 1) == "{")
-}
-
-// 1 when "key":"<non-empty>" is in s (a flag or a value sub-option that
-// was actually given: _dash_plot_opts_to_json (dash.ado) writes a key only
-// when its s() value is non-empty).
-real scalar _dash_json_has_value(string scalar s, string scalar key) {
-    string scalar needle
-    real scalar   pos
-    needle = char(34) + key + char(34) + ":" + char(34)
-    pos = strpos(s, needle)
-    if (!pos) return(0)
-    return(substr(s, pos + strlen(needle), 1) != char(34))
 }
 
 // The first "key":"<digits>" value in s, or missing when key is absent or

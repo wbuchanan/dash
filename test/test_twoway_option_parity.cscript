@@ -5247,7 +5247,8 @@ sysuse auto, clear
 capture dash clear
 capture noisily dash scatter mpg weight, text(30 3000 `""width":"1" "added_text_n":"0""') text(20 4000 "B", width(5)) name(zat4)
 local drc = _rc
-mata: st_local("hw", strofreal(_dash_json_has_value(st_global("dash_json_zat4"), "width")))
+// dash writes a "width" key only when width() was given a value.
+mata: st_local("hw", strofreal(strpos(st_global("dash_json_zat4"), char(34) + "width" + char(34) + ":" + char(34)) > 0))
 mata: st_local("fn", strofreal(_dash_json_first_num(st_global("dash_json_zat4"), "added_text_n")))
 if `drc' | `hw' | `fn' != 2 local bad `"`bad' [readers: rc `drc' width `hw' added_text_n `fn']"'
 if `"`bad'"' != "" {

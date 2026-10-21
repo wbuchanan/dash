@@ -715,7 +715,8 @@ class TestTheBytesOfTextAreNotLimited:
                            "s": ["a" * 30_000_000, "b" * 30_000_000]})
         spec = _spec([_graph("g1")])
         _, sp, dp = _write(tmp_path, spec, df)
-        dr.DashRenderer(sp, dp)
+        r = dr.DashRenderer(sp, dp)
+        assert len(r.df) == 2 and len(r.df["s"].iloc[0]) == 30_000_000
 
 
 class TestTheGraphAndPlotLimits:

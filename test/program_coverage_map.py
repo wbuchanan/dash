@@ -784,9 +784,6 @@ COVERAGE = {
         "_dash_lpolyci_opts": ("test_statistical_options.cscript:LB-11",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
-        # GAPS2 G3 (WP-28 section 08); the counters it fed went with the
-        # size caps (P4-3, WP-33 33-15).
-        "_dash_json_has_value": ("test_twoway_option_parity.cscript:AT-04",),
         "_dash_json_first_num": ("test_adversarial.cscript:DL-01",
                                  "test_adversarial.cscript:DL-06"),
         # _dash_filter_refusal calls this for its own exclude() check, so

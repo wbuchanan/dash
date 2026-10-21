@@ -1658,8 +1658,11 @@ class TestTheHelpSaysSo:
         assert ("That source holds the observations the group's graphs "
                 "draw") in h
         assert "numbered as the saved page numbers them" in h
-        assert "A saved page may hold fewer observations than the limit " \
-               "counts" in h
+        # Flipped: the limit sentence is gone -- "A saved page may hold
+        # fewer observations than the limit counts" described the cell
+        # cap, which the maintainer removed (P4-3, WP-33 33-15).
+        assert "than the limit counts" not in h
+        assert "{ul:No size limit.}" in h
 
 
 def test_the_node_cases_ran():
