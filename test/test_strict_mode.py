@@ -238,6 +238,12 @@ _STANDING_SKIP_NODES = (
     "test/test_graph_text.py::TestOtherSmclDirectives::test_each_directive",
     "test/test_mode_parity.py::TestTheExportsAgree"
     "::test_the_moves_reach_the_exports",
+    # D-33-11.b, batch 33.4 gate: parametrised over the graph options dash
+    # reports unsupported, a list that is empty today.
+    "test/test_help_claims_8.py::TestAnUnsupportedOptionIsInertWhenServed"
+    "::test_graph_level",
+    "test/test_unsupported_report_is_true.py"
+    "::test_a_graph_option_reported_unsupported_really_is",
 )
 
 _SKIP_CALLS = ("pytest.skip", "pytest.importorskip", "pytest.xfail")
@@ -262,8 +268,10 @@ def _skip_sites(node):
     """``"<file>:<line>: <what>"`` for each skip site in the class (and
     the method, when the node names one) *node* names: a ``mark.skip`` or
     ``mark.skipif`` decorator, bare or called, and a call of
-    ``pytest.skip``, ``pytest.importorskip`` or ``pytest.xfail``.  A node
-    naming no class or method is a site too."""
+    ``pytest.skip``, ``pytest.importorskip`` or ``pytest.xfail``, and a
+    ``mark.parametrize`` over what a call returns (an empty list skips).
+    A node may name a module-level function; a node naming nothing is a
+    site too."""
     path, _, rest = node.partition("::")
     names = rest.split("::")
     with open(os.path.join(os.path.dirname(_HERE), path),
@@ -271,11 +279,14 @@ def _skip_sites(node):
         tree = ast.parse(fh.read())
     cls = [c for c in tree.body
            if isinstance(c, ast.ClassDef) and c.name == names[0]]
-    if not cls:
+    top = [f for f in tree.body
+           if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+           and f.name == names[0]]
+    if not cls and not top:
         return ["%s not found" % node]
-    funcs = [f for f in cls[0].body
-             if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
-    if len(names) > 1:
+    funcs = top or [f for f in cls[0].body
+                    if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if cls and len(names) > 1:
         funcs = [f for f in funcs if f.name == names[1]]
         if not funcs:
             return ["%s not found" % node]
@@ -286,6 +297,11 @@ def _skip_sites(node):
             if name.endswith("mark.skip") or name.endswith("mark.skipif"):
                 out.append("%s:%d: @%s on %s" % (path, d.lineno, name,
                                                  f.name))
+            if (name.endswith("mark.parametrize") and isinstance(d, ast.Call)
+                    and len(d.args) > 1
+                    and isinstance(d.args[1], ast.Call)):
+                out.append("%s:%d: @%s over a call's values on %s"
+                           % (path, d.lineno, name, f.name))
         for c in ast.walk(f):
             if isinstance(c, ast.Call) and _dotted(c.func) in _SKIP_CALLS:
                 out.append("%s:%d: %s() in %s" % (path, c.lineno,
@@ -321,3 +337,23 @@ class TestNoStandingSkip:
             "test/test_x.py::TestY not found"]
         assert _skip_sites("test/test_x.py::TestX::test_z") == [
             "test/test_x.py::TestX::test_z not found"]
+
+    def test_the_reader_sees_a_call_parametrize_and_a_module_function(
+            self, tmp_path, monkeypatch):
+        """D-33-11.b (batch 33.4): values a call returns can be empty, so
+        parametrize over a call is a site, a literal or a name is not; a
+        node may name a module-level function."""
+        src = ("import pytest\n\n\n"
+               "@pytest.mark.parametrize('o', sorted(set([])))\n"
+               "def test_e(o):\n    assert o\n\n\n"
+               "@pytest.mark.parametrize('o', [1, 2])\n"
+               "def test_f(o):\n    assert o\n\n\n"
+               "@pytest.mark.parametrize('o', MODES)\n"
+               "def test_g(o):\n    assert o\n")
+        (tmp_path / "test").mkdir()
+        (tmp_path / "test" / "test_y.py").write_text(src)
+        monkeypatch.setattr(
+            sys.modules[__name__], "_HERE", str(tmp_path / "test"))
+        assert len(_skip_sites("test/test_y.py::test_e")) == 1
+        assert _skip_sites("test/test_y.py::test_f") == []
+        assert _skip_sites("test/test_y.py::test_g") == []

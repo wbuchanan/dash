@@ -1451,11 +1451,13 @@ class TestAnUnsupportedOptionIsInertWhenServed:
         first, second = _served_pair(tmp_path, opt, "plot")
         assert first == second, "plot-level %s() changes the served app" % opt
 
-    @pytest.mark.parametrize("opt", sorted(set(_pending_names(
-        "_dash_parse_graph_opts"))))
-    def test_graph_level(self, tmp_path, opt):
-        first, second = _served_pair(tmp_path, opt, "graph")
-        assert first == second, "graph-level %s() changes the served app" % opt
+    # Flipped (WP-33 D-33-11.b, batch 33.4 gate): parametrised over the
+    # graph-level pending list, which is empty today, so it only skipped.
+    def test_graph_level(self, tmp_path):
+        for opt in sorted(set(_pending_names("_dash_parse_graph_opts"))):
+            first, second = _served_pair(tmp_path, opt, "graph")
+            assert first == second, (
+                "graph-level %s() changes the served app" % opt)
 
     def test_the_fingerprint_sees_a_live_option(self, tmp_path):
         """Guards the guard: mcolor() must change it."""

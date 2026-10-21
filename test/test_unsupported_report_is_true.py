@@ -318,21 +318,26 @@ def test_a_plot_option_reported_unsupported_really_is(tmp_path, opt):
     )
 
 
-@pytest.mark.parametrize("opt", sorted(set(_graph_pending())))
-def test_a_graph_option_reported_unsupported_really_is(tmp_path, opt):
-    a, b, ptype = PLOT_VALUES[opt]
-    if opt in FLAGS:
-        first = _render(tmp_path, ptype, {}, {opt: opt}, f"g_{opt}_on")
-        second = _render(tmp_path, ptype, {}, {}, f"g_{opt}_off")
-        how = f"writing {opt} rather than omitting it"
-    else:
-        first = _render(tmp_path, ptype, {}, {opt: a}, f"g_{opt}_a")
-        second = _render(tmp_path, ptype, {}, {opt: b}, f"g_{opt}_b")
-        how = f"changing it from {a!r} to {b!r}"
-    assert first == second, (
-        f"dash reports graph-level {opt}() as unsupported, but {how} changes "
-        f"the rendered dashboard — the note names an option that works"
-    )
+# Flipped (WP-33 D-33-11.b, batch 33.4 gate): parametrised over the
+# graph-level pending list, which is empty today, so it only skipped.  One
+# test now checks every listed option, none included, and never skips.
+def test_a_graph_option_reported_unsupported_really_is(tmp_path):
+    for opt in sorted(set(_graph_pending())):
+        a, b, ptype = PLOT_VALUES[opt]
+        if opt in FLAGS:
+            first = _render(tmp_path, ptype, {}, {opt: opt}, f"g_{opt}_on")
+            second = _render(tmp_path, ptype, {}, {}, f"g_{opt}_off")
+            how = f"writing {opt} rather than omitting it"
+        else:
+            first = _render(tmp_path, ptype, {}, {opt: a}, f"g_{opt}_a")
+            second = _render(tmp_path, ptype, {}, {opt: b}, f"g_{opt}_b")
+            how = f"changing it from {a!r} to {b!r}"
+        assert first == second, (
+            f"dash reports graph-level {opt}() as unsupported, but {how} "
+            f"changes the rendered dashboard — the note names an option "
+            f"that works"
+        )
+    assert all(o in PLOT_VALUES for o in _graph_pending())
 
 
 # ---------------------------------------------------------------------------
