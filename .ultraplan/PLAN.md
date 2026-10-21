@@ -176,3 +176,36 @@ dash is a Stata package: `dash.ado` and `dash_parse.mata` parse twoway syntax in
 - **Changed:** `dash.ado`, `dash_parse.mata`, `dash_render.py`, `dash_setup.ado`, `dash_setup_lib.py`, `dash.sthlp`, `dash_setup.sthlp`, `README.md`, `dash.pkg` (help/README sentences only), `BUGS.md`, `CHANGELOG.md`, `ROADMAP.md`, `TWOWAY_COVERAGE_AUDIT.md`, `Makefile`, `.gitignore`, `test/test_tracking_documents.py`, `test/test_cscript_hygiene.py`, `test/test_cert_shards.py`, `test/run_all_cscripts.do`, `test/test_mode_parity.py`, `test/function_test_map.py`, `test/program_coverage_map.py`, `test/test_no_secrets.py`, the area cscripts and the pinned tests each section flips.
 - **Outside the repository (orchestrator):** `../dash-wt/_tools/picks.sh`, `blockorder.py` (taught `test_wp[34][0-9]_truth.cscript` and GAPS4.md by 33-01's hand-back), `agent-rules.md` (re-issued for WP-33+).
 
+
+## Review Notes
+
+### Review Date: 2026-10-20
+
+### Self-Review Results
+- Five independent reviews (`review/REVIEW-1..5.md`) over all section files against the 8-category checklist, adapted to a Stata/Python package (anchors spot-checked against the code; every pinned test node collected): **203 findings** -- 6 critical, 72 major, 125 minor.
+- Auto-fixed: 178 by three fix passes (a fixer per section group, an adversarial verifier per group, a refix pass, a cross-section critic: 31 agents; a cross-section pass: 15 agents; a closing pass with a major-only final check: 9 agents). The final check found 5 major defects (four wrong function names, one section missing its closing steps); all five were fixed by hand.
+- Maintainer decisions: 10 (P4-1..P4-10); architect rulings within them: 21 (A-1..A-21); Phase 5 added P5-1..P5-3 and A-22..A-28. All in `review/DECISIONS.md`, which wins over the index and the sections.
+- Mechanical check after the last pass (and again after Phase 5's fixes): 92 sections, 509 tasks, every task's XML parses, ids sequential, every Appendix A item named in its section, no banned topic.
+
+### Category Results
+
+| Category | Findings | Critical | Result |
+|---|---|---|---|
+| Completeness | 22 | 1 | fixed (WP-33 interfaces published; closing steps in every item) |
+| Consistency (incl. rule checks Q48, Q50, CLAUDE.md, banned topics) | 74 | 3 | fixed (A-2 edition text verbatim; A-3 one truth script per WP; owners and JS flags synced) |
+| Feasibility | 42 | 1 | fixed (calibration stop rule removed, A-4; wrong names and anchors corrected) |
+| Security | 8 | 1 | fixed (custom markers use CustomJS's function form under the unchanged CSP; image link() whitelisted; safe evaluator P4-6) |
+| Scalability / performance | 13 | 0 | fixed (gallery split by plot type and de-duplicated, P4-1/P4-2; size caps removed, P4-3) |
+| Edge cases | 31 | 0 | fixed |
+| User experience | 7 | 0 | fixed |
+| Cost & complexity | 6 | 0 | fixed (no new dependency; no consolidation) |
+
+### Refinement Questions Asked (Phase 4c)
+- One gallery page would exceed limits -> remove duplicates (425 examples), no size cap on dashboards (cells and page bytes removed in batch 33.1), split the gallery by plot type for load speed (P4-1..P4-3).
+- Examples needing ts operators/sort()/weights in multi-dataset builds -> extend frames (P4-4); frames use Stata's own `frame f:` prefix (A-17).
+- LT-24 -> match twoway (P4-5). text() `=exp` -> safe whitelisted evaluator, documented (P4-6).
+- Q8 dash-only words -> "the syntax should mirror twoway syntax as close as possible" unless the option is dash-only functionality (P4-7): 38 synonyms refused with a hint line naming twoway's spelling (P4-9); hover() and table kept.
+- When the README gallery appears -> built last, at the final closeout (P4-8). Refused examples -> data only (P4-10).
+
+### Sections Modified
+- All 92 section files were revised by the fix passes. New: section 33-15 (size caps removed, batch 33.1). Moved: 42-05 to batch 42.3 (42-03 to 42.4, 42-04 to 42.5). Risk raised to red: 43-01, 43-02, 47-03. Dependencies added: 33-05, 33-06, 33-07, 33-11..33-13, 47-04. The index's Owns column was rebuilt from each section's own function list.

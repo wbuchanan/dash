@@ -150,6 +150,40 @@ line to add and the line it goes after.
   Truth is measured live in the block (`capture noisily twoway ...` beside
   `capture dash ...`, `.Graph` class values, `graph export ..., as(svg)` read
   with test/cert_svg.do) or read from a fixture an extract script wrote.
+- **Block order.** Blocks stay in section order inside a WP's script (the
+  hygiene reader requires it). A section whose blocks belong before blocks
+  already landed (e.g. 37-02 after 37-04 and 37-05) inserts them directly
+  above the first block with a higher `S<MM>`, not above the marker. An item
+  with no Stata comparison (a pure harness, tracking or help-text item, e.g.
+  TR-2, TR-23) adds no truth block; its pytest pin is enough.
+- **The corpus ledger and the known-differences tables (from WP-34 on).**
+  Every item's closing task (Fix, Document or Partly), before its commit: (1) deletes the item's
+  plain rows of `scripts/corpus/ledger.tsv` (keeping `<id> (documented)` and
+  `<id> (residual)` rows), reruns `python3 scripts/corpus/ledger.py` (33-05)
+  and `git add -f`s the regenerated ledger fixture; (2) runs `python3
+  test/known_differences.py <lead id>` (33-10, D-33-10.h), deletes every row it
+  prints -- a difference the item's ruling keeps moves into that table's
+  deliberate dict (the companion dict 33-10 names for that table, e.g.
+  `DELIBERATE` for VALUE_KNOWN, `ABBREV_DELIBERATE`, `COLORVAR_DELIBERATE`)
+  with the ruling id written `"<ruling id>: <what is kept>"`, where the
+  ruling id is a DECISIONS or index id (P4-n, A-n, Q-n, M-n) -- and runs the
+  hygiene command it prints; (3) if 33-09's guard check (Q3309-1) reports any
+  change for a guard example (an improved verdict or a changed field),
+  regenerates `corpus_guard_truth.json` with its extract script and commits it
+  with the item. A Document item keeps its `<id> (documented)` rows. Each
+  section names these steps in its closing tasks.
+- **Task counts** (DECISIONS A-14). Q11's "1-4 tasks" counts per item: a
+  section with several items may hold more tasks in all, because each item
+  ends in its own closing commit; no section is split for its task count.
+- **Pull form.** In the main checkout `git merge --ff-only main`; inside a
+  worktree `git pull --ff-only . main` (a no-op when the batch base already
+  contains main). Paths in commands use the absolute worktree path
+  `/Users/billy/Desktop/Programs/StataPrograms/d/dash-wt/wpNN-sMM` for `$WT`.
+- **Task `<files>`** holds the task's primary files (at most three); every
+  other file the action edits -- beyond BRIEF's implied tracking documents and
+  maps -- is named by path in the action text, so a merger can list them.
+- **Exception to "task 01 never commits".** 34-07's precondition fixture
+  (PD-16) is committed by its own task before any operator work.
 - **Running one cscript.** Write a two-line driver `printf 'cd
   "%s/test"\nglobal dash_nobrowser 1\ndo "%s/test/%s"\n' "<repo>" "<repo>"
   "<script>.cscript" > <scratch>/run_<script>.do` and run
