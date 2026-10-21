@@ -310,7 +310,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 One line per row, rewritten in place by the item's closing commit; test/test_tracking_documents.py::TestGaps4Tracking reads exactly these forms: `Open (WP-NN section NN-MM).`, `Closed in WP-NN, BUGS.md "<title>", commit <sha>.`, `Documented in WP-NN, BUGS.md "<title>", commit <sha>.`, or `Partly closed in WP-NN (section NN-MM, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").` A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha.
 
 - **TR-2 Tracked:** Open (WP-33 section 33-14).
-- **TR-11 Tracked:** Open (WP-33 section 33-10).
+- **TR-11 Tracked:** Closed in WP-33, BUGS.md "value_truth.json (311 twoway answers) is never compared with dash probe by probe", commit pending.
 - **TR-23 Tracked:** Open (WP-33 section 33-11).
 - **BY-23 Tracked:** Open (WP-33 section 33-12).
 - **stat:PT-23 Tracked:** Open (WP-33 section 33-13).

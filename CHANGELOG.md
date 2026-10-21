@@ -923,6 +923,8 @@ and now matches Stata.
 
 - `dash image using file.svg, name()` places a checked SVG picture, with an optional caption and an optional link() to a page in the same folder, where layout() and tabs() put it, in the saved page and the served app; `$dash_max_images` (default 100) bounds them. (WP-33, 33-06)
 
+- The certification suite compares dash's return code and first line with twoway's for each of the 311 bad-value probes (WP-33, TR-11)
+
 ### Fixed in WP-32
 
 Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).

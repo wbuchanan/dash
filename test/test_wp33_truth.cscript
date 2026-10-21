@@ -207,6 +207,161 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w33_run' {
 }
 * ==== end S00 ====
 
+// ----------------------------------------------------------------
+// S10 helpers (WP-33 section 33-10, TR-11).  _w33s10_list writes one line
+// <id>|<twoway rc>|dash <probe command without "twoway "> per probe of
+// value_truth.json; _w33s10_one runs one probe through dash under its own
+// log; _w33s10_judge compares dash's rc and first line with twoway's
+// (D-33-10.d) and applies test/known_differences.py's rule to
+// test/value_truth_known.py's VALUE_KNOWN and DELIBERATE.
+// ----------------------------------------------------------------
+python:
+def _w33s10_list(fixture, out):
+    import json
+    with open(fixture, encoding="utf-8") as fh:
+        probes = json.load(fh)["twoway"]
+    with open(out, "w", encoding="utf-8") as fh:
+        for p in probes:
+            cmd = p["command"]
+            assert cmd.startswith("twoway ") and "|" not in cmd, p["id"]
+            fh.write("%s|%d|dash %s\n" % (p["id"], p["rc"],
+                                          cmd[len("twoway "):]))
+
+
+def _w33s10_first(path):
+    # dash's first line: the first non-blank line of its log that is not
+    # a command echo, runs of blanks made one (D-33-10.d).
+    import re
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if not ln.strip() or ln.startswith((". ", "> ")):
+                    continue
+                return re.sub(r"\s+", " ", ln).strip()
+    except OSError:
+        pass
+    return ""
+
+
+def _w33s10_judge(fixture, logdir, known_module_dir):
+    import importlib, json, os, sys
+    from sfi import Macro
+    with open(fixture, encoding="utf-8") as fh:
+        probes = json.load(fh)["twoway"]
+    results = {}
+    for p in probes:
+        try:
+            with open(os.path.join(logdir, p["id"] + ".rc")) as fh:
+                drc = int(fh.read().strip())
+        except (OSError, ValueError):
+            drc = -1
+        line = _w33s10_first(os.path.join(logdir, p["id"] + ".log"))
+        msg = p["message"]
+        agree = drc == p["rc"] and (
+            p["rc"] == 0 or msg == line
+            or (line != "" and msg.startswith(line + " ")))
+        results[p["id"]] = None if agree else (
+            "twoway r(%d) %s / dash r(%d) %s"
+            % (p["rc"], msg[:80], drc, line[:80]))
+    with open(os.path.join(logdir, "results.json"), "w",
+              encoding="utf-8") as fh:
+        json.dump(results, fh, indent=1, sort_keys=True)
+    sys.path.insert(0, known_module_dir)
+    try:
+        kd = importlib.import_module("known_differences")
+        vk = importlib.import_module("value_truth_known")
+        probs = kd.known_problems(results, vk.VALUE_KNOWN, "value_truth",
+                                  deliberate=vk.DELIBERATE)
+    finally:
+        sys.path.remove(known_module_dir)
+    for pr in probs:
+        print("S10 problem: " + pr)
+    Macro.setGlobal("w33_s10_n", str(len(probs)))
+    # Quotes, backticks and dollars would break the _w33_expect line.
+    bad = "; ".join(probs[:15])[:2000]
+    for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+        bad = bad.replace(ch, to)
+    Macro.setGlobal("w33_s10_bad", bad)
+end
+
+capture program drop _w33s10_one
+program define _w33s10_one
+    // _w33s10_one <dir> <id> <twoway rc> <dash command...>: register the
+    // probe (Stata-side checks only); where that passes and twoway
+    // refused, run the one-line form too, which renders (D-33-10.c), and
+    // keep its answer.  The output goes to <dir>/<id>.log, the rc to
+    // <dir>/<id>.rc.
+    version 19
+    gettoken d 0 : 0
+    gettoken pid 0 : 0
+    gettoken trc 0 : 0
+    quietly dash clear
+    capture log close _s10
+    quietly log using "`d'/`pid'.log", text replace name(_s10) nomsg
+    capture noisily `0' name(s10g, replace)
+    local drc = _rc
+    quietly log close _s10
+    if `drc' == 0 & `trc' != 0 {
+        // The render's answer replaces the registration's, first line
+        // included.
+        quietly dash clear
+        quietly log using "`d'/`pid'.log", text replace name(_s10) nomsg
+        capture noisily `0'
+        local drc = _rc
+        quietly log close _s10
+    }
+    tempname fh
+    file open `fh' using "`d'/`pid'.rc", write text replace
+    file write `fh' "`drc'" _n
+    file close `fh'
+end
+
+* ==== S10 TR-11: value_truth probe by probe ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S10") & `: list posof "S10" in w33_run' {
+    display as text "S10 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3310-1: each of fixtures/value_truth.json's 311 probes through
+    // dash: the rc (and, where twoway refused, the first line) is
+    // twoway's, or the probe is a live known difference listed in
+    // test/value_truth_known.py under the GAPS4 item that fixes it.  The
+    // 230 probes twoway draws are registered, not rendered (A-10).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local s10_d "`w33_work'/s10"
+    capture mkdir "`s10_d'"
+    local s10_ls = c(linesize)
+    set linesize 255
+    python: __import__("__main__")._w33s10_list("fixtures/value_truth.json", r"`s10_d'/list.txt")
+    tempname s10_fh
+    file open `s10_fh' using "`s10_d'/list.txt", read text
+    file read `s10_fh' line
+    while r(eof) == 0 {
+        gettoken pid rest : line, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken trc rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        _w33s10_one "`s10_d'" `pid' `trc' `rest'
+        file read `s10_fh' line
+    }
+    file close `s10_fh'
+    set linesize `s10_ls'
+    python: __import__("__main__")._w33s10_judge("fixtures/value_truth.json", r"`s10_d'", r"`c(pwd)'")
+    _w33_expect Q3310-1 "(${w33_s10_n} == 0)" "${w33_s10_bad}"
+    _w33_done Q3310-1 "every value_truth probe: twoway's rc and first line, or a live known difference of a GAPS4 item"
+
+    local s10_files : dir "`s10_d'" files "*"
+    foreach f of local s10_files {
+        capture erase "`s10_d'/`f'"
+    }
+    capture rmdir "`s10_d'"
+    macro drop w33_s10_*
+    dash clear
+    display as text "S10 end " c(current_date) " " c(current_time)
+}
+* ==== end S10 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

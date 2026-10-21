@@ -4484,11 +4484,11 @@
   - Suggested fix: Per M5, P4-8 and A-25: make corpus judges every corpus example by geometry and glyph colours (within a recorded RGB tolerance), with an image score and a known-differences ledger; a ~20-example guard runs in cert; the gallery is built only at the final closeout.
   - Resolution: Not fixed because WP-33 section 33-14 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
 
-- [ ] Title: value_truth.json (311 twoway answers) is never compared with dash probe by probe
+- [x] Title: value_truth.json (311 twoway answers) is never compared with dash probe by probe
   - File Names and Line Numbers: test_option_validation.py:1395-1510 checks structure only
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids TR-11; confirmed; tracked: untracked. Registered as GAPS4 TR-11 (WP-33, section 33-10, Fix).
   - Suggested fix: Parametrised rc and first-line check with a deliberate-differences list
-  - Resolution: Not fixed because WP-33 section 33-10 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, TR-11). Certification block S10 TR-11 runs each of value_truth.json's 311 probes through dash -- registered, and rendered where twoway refused and registration passed; the 230 probes twoway draws are compared at registration only -- and compares the rc and first line with twoway's; 65 differences are listed in test/value_truth_known.py under the GAPS4 items that fix or document them (test/known_differences.py's rule; the count-cap probes under stat:PT-15 (documented)). Pinned by test/test_option_validation.py::TestTheValueOracleProbeByProbe, test/test_known_differences.py::TestKnownProblems, test/test_wp33_truth.cscript Q3310-1; fixture test/fixtures/value_truth.json. Closes GAPS4 TR-11 (WP-33, TR-11).
 
 - [ ] Title: No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass
   - File Names and Line Numbers: ROADMAP.md:5155; test_graph_text.py:1323-1336; conftest.py:195-208

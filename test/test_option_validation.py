@@ -1524,3 +1524,42 @@ class TestTheOracleFixtureIsInStep:
             assert verdict[good] == 0, good
         for bad in ("%12s", "bogus", "9.2f", "%9.2", "%9.2f_n", "%c", "%"):
             assert verdict[bad] != 0, bad
+
+
+# ---- (f) every value_truth probe compared with dash (WP-33 TR-11) ---------
+#
+# The structural guards above never asked dash what it answers for each
+# probe.  Certification block S10 TR-11 of test/test_wp33_truth.cscript
+# runs all 311 probes through dash and compares the rc and first line with
+# twoway's (Q3310-1); every difference is listed in
+# test/value_truth_known.py under the GAPS4 item that fixes it, by
+# test/known_differences.py's rule (WP-33 section 33-10, D-33-10.a).
+
+_WP33_TRUTH = os.path.join(_HERE, "test_wp33_truth.cscript")
+# The probes past a count cap M10 keeps (D-33-10.b): twoway draws them, dash
+# refuses them, and 40-02 documents the caps.
+_COUNT_CAP_PROBES = ("histogram_bin_4", "lpoly_n_5")
+
+
+class TestTheValueOracleProbeByProbe:
+    def test_the_cert_block_compares_every_probe(self):
+        with open(_WP33_TRUTH, encoding="utf-8") as fh:
+            src = fh.read()
+        m = re.search(r"^\* ==== S10 TR-11: .*?^\* ==== end S10 ====",
+                      src, re.S | re.M)
+        assert m, "no S10 TR-11 block in test_wp33_truth.cscript"
+        block = m.group(0)
+        assert "value_truth.json" in block
+        assert "Q3310-1" in block
+
+    def test_every_known_difference_is_open(self):
+        import known_differences as kd
+        import value_truth_known as vk
+        ids = {p["id"] for p in _fixture()["twoway"]}
+        assert kd.dead_rows(vk.VALUE_KNOWN, "value_truth") == []
+        assert set(vk.VALUE_KNOWN) <= ids, set(vk.VALUE_KNOWN) - ids
+        assert set(vk.DELIBERATE) <= ids, set(vk.DELIBERATE) - ids
+        assert not set(vk.VALUE_KNOWN) & set(vk.DELIBERATE)
+        for pid in _COUNT_CAP_PROBES:
+            if pid in vk.VALUE_KNOWN:
+                assert vk.VALUE_KNOWN[pid] == "stat:PT-15 (documented)", pid
