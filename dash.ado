@@ -12491,7 +12491,7 @@ program define _dash_frames_plan, rclass
     return local frames "`frames'"
 end
 
-// _dash_frames_one <cmdname> <file>  -- one frame's part of the stack,
+// _dash_frames_one <cmdname> <file> <q> <s> <t> <w>  -- one frame's part of the stack,
 // run as frame <f>: _dash_frames_one ...  In a preserved copy of the
 // frame: the frame's own qualifier, join-order, time-series and weight
 // columns, made from its own rows, tsset and sort order; then each
@@ -12505,8 +12505,12 @@ end
 // caller's locals.
 program define _dash_frames_one
     version 19
-    args cmdname file
+    args cmdname file _dq_n _ds_n _dts_n _dwx_n
     local F = c(frame)
+    // WP-31 G3d in each frame: the build's working columns (every frame's,
+    // so never fewer than this frame makes) counted against the room this
+    // frame's c(maxvar) leaves, before the first is made.
+    _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `_dwx_n' "`cmdname'"
     preserve
     local _dash_qual_vars ""
     local _dash_sort_vars ""
@@ -12564,7 +12568,7 @@ program define _dash_frames_one
     c_local _dash_fr_split "`_split'"
 end
 
-// _dash_frames_stack <cmdname> <stack> <frames>  -- the build's data from
+// _dash_frames_stack <cmdname> <stack> <frames> <q> <s> <t> <w>  -- the build's data from
 // every frame of the plan, in its order, appended into the frame <stack>
 // (a tempname of the caller's, dropped when the caller ends): each frame's
 // part made by _dash_frames_one in that frame, each qualifier column 0 on
@@ -12572,7 +12576,7 @@ end
 // caller's locals in column-number order, the split columns in k order.
 program define _dash_frames_stack
     version 19
-    args cmdname stack frames
+    args cmdname stack frames nq ns nt nw
     local _qall ""
     local _sall ""
     local _i 0
@@ -12581,7 +12585,7 @@ program define _dash_frames_stack
         tempfile _fp`_i'
         local _dash_fr_qual ""
         local _dash_fr_split ""
-        frame `F': _dash_frames_one "`cmdname'" "`_fp`_i''"
+        frame `F': _dash_frames_one "`cmdname'" "`_fp`_i''" `nq' `ns' `nt' `nw'
         local _qall `_qall' `_dash_fr_qual'
         local _sall `_sall' `_dash_fr_split'
     }
@@ -13463,7 +13467,7 @@ program define _dash_prepare_spec, rclass
             _estimates hold `_dash_eh', restore nullok
         }
         local _dash_split_vars ""
-        _dash_frames_stack "`cmdname'" `_dash_stk' "`_dash_fr_frames'"
+        _dash_frames_stack "`cmdname'" `_dash_stk' "`_dash_fr_frames'" `_dq_n' `_ds_n' `_dts_n' `_dwx_n'
         frame `_dash_stk': _dash_formats_json "`all_vars' `_dash_split_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
         if `_dts_n' + `_dwx_n' > 0 {
             frame `_dash_stk': mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))

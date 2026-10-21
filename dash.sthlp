@@ -17,6 +17,7 @@
 {viewerjumpto "Data tables"       "dash##table"}{...}
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
+{viewerjumpto "Graphs from several frames" "dash##frames"}{...}
 {viewerjumpto "Image panels"      "dash##image"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
 {viewerjumpto "Temporary files"   "dash##tempfiles"}{...}

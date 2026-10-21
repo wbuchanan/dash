@@ -85,18 +85,22 @@ class TestTheShapeOfTheExamples:
     # New group of 2 at index 9: WP-31 H2k, the weighted KPI example.
     # New group of 4 at index 8: WP-31 J2, the Linking section's example
     # of a linked graph with its own if.
-    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 4, 2, 2, 1, 2, 2, 5, 4, 5, 2, 6,
-                   4, 2, 2, 5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
+    # WP-33 33-07: the Graphs from several frames example (7) after the
+    # Linking section's two groups.
+    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 7, 4, 4, 2, 2, 7, 1, 2, 2, 5, 4, 5, 2,
+                   6, 4, 2, 2, 5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
         # 34 -> 35: WP-31 H2k, the weighted KPI example group.
         # 35 -> 36: WP-31 J2, the Linking section's qualifier example.
-        assert len(groups) == 36
+        # 36 -> 37: WP-33 33-07, the Graphs from several frames example.
+        assert len(groups) == 37
         # 103 -> 104, 107 -> 108: WP-31 D14 the per-tab layout() build.
         # 104 -> 106, 108 -> 110: WP-31 H2k, the weighted KPI example.
         # 106 -> 110, 110 -> 114: WP-31 J2, its four lines.
-        assert len(_commands(groups)) == 110
-        assert sum(len(c.lines) for c in _commands(groups)) == 114
+        # 110 -> 117, 114 -> 121: WP-33 33-07, its seven one-line commands.
+        assert len(_commands(groups)) == 117
+        assert sum(len(c.lines) for c in _commands(groups)) == 121
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES
@@ -176,8 +180,10 @@ class TestEveryExampleLineIsRead:
 # Every group is one a fresh session can run
 # ---------------------------------------------------------------------------
 
-_LOADS = re.compile(r"^(?:sysuse|use|webuse|input|import|set\s+obs)\b")
-_NEEDS_DATA = re.compile(r"^dash\s+(?!(?:build|serve|clear)\b)")
+# WP-33 33-07: Stata's frame prefix loads or registers in that frame.
+_FRAME = r"(?:frame\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?"
+_LOADS = re.compile(r"^" + _FRAME + r"(?:sysuse|use|webuse|input|import|set\s+obs)\b")
+_NEEDS_DATA = re.compile(r"^" + _FRAME + r"dash\s+(?!(?:build|serve|clear)\b)")
 _BUILDS = re.compile(r"^dash\s+(?:build|serve)\b")
 
 
@@ -1048,6 +1054,9 @@ class TestSavedFileAndRegisteredName:
         ("dash build, saving(x.html)", ""),
         ("dash scatter y x, rename(q)", ""),
         ("global dash_max_by_groups 250", ""),
+        # WP-33 33-07: Stata's frame prefix registers in that frame.
+        ("frame cars: dash scatter mpg weight if foreign, name(g1)", "g1"),
+        ("frame sp: dash build, saving(x.html)", ""),
     ])
     def test_registered_name(self, text, want):
         assert hx.registered_name(text) == want

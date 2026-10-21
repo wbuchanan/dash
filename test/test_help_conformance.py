@@ -1387,4 +1387,6 @@ class TestInternalLinksResolve:
         # link to Graphs from several frames (dash##frames, WP-33 33-07).
         # 122 -> 123 links: the scale() paragraph links Differences from
         # twoway for dash's measured scale() differences (WP-33 GW-11).
-        assert len(refs) == 123 and len(set(refs)) == 46
+        # 123 -> 124 links: the Jump To entry for Graphs from several
+        # frames (WP-33 33-07, batch 33.3 gate).
+        assert len(refs) == 124 and len(set(refs)) == 46

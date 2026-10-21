@@ -25,7 +25,10 @@ class TestTheRoomIsCountedFirst:
         gens = [i for i, l in enumerate(lines)
                 if re.match(r"\s*(capture noisily )?_dash_(qual|sort|tsop|wexp)"
                             r"_gen \"", l)]
-        assert len(checks) == 2 and len(gens) == 8
+        # 2 -> 3 checks, 8 -> 12 generators: WP-33 33-07's multi-frame
+        # path (_dash_frames_one) makes the columns in each frame, after its
+        # own count.
+        assert len(checks) == 3 and len(gens) == 12
         for c in checks:
             after = [g for g in gens if g > c]
             nearest = after[:4]

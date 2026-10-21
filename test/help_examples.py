@@ -547,7 +547,9 @@ def saved_file(text):
 
 
 def registered_name(text):
-    """The name a plot or KPI command registers under ``name()``, or ""."""
+    """The name a plot or KPI command registers under ``name()``, or "".
+    Stata's ``frame <name>:`` prefix registers the graph in that frame."""
+    text = re.sub(r"^frame\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*", "", text)
     if not re.match(r"^dash\s", text) or re.match(r"^dash\s+(?:build|serve|clear)\b", text):
         return ""
     m = re.search(r"\bnam(?:e)?\(\s*([A-Za-z_][A-Za-z0-9_]*)", text)
