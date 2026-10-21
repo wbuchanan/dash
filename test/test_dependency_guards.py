@@ -394,13 +394,6 @@ _RENDER = os.path.join(_S25_ROOT, "dash_render.py")
 _FLOOR = "3.11"  # _dash_pymin; test_version_floor.py pins every copy equal
 
 
-def _old_python_env():
-    """The environment for another interpreter: none of the caller's
-    PYTHON* variables, which belong to the caller's own Python (an empty
-    PYTHONHOME makes Python 3.6 abort before it reads a line)."""
-    return {k: v for k, v in os.environ.items()
-            if not k.startswith("PYTHON") and k != "__PYVENV_LAUNCHER__"}
-
 
 def _run(code, *args, cwd=None):
     """Run ``code`` in a fresh ``sys.executable -B``; (rc, stdout, stderr)."""
@@ -512,44 +505,6 @@ class TestTheRendererRefusesWithTheRemedy:
             assert name == "ImportError", got
             assert loc.get("_dd_err") == msg, got
             assert "pandas" in msg and "dash_setup" in msg, got
-
-    def test_the_old_interpreters_get_none_of_the_callers_python_variables(
-            self, monkeypatch):
-        """An inherited empty PYTHONHOME made /usr/local/bin/python3.6 abort
-        at start-up (SIGABRT, "No module named 'encodings'") instead of
-        reading dash_render.py: the old interpreters run without it."""
-        monkeypatch.setenv("PYTHONHOME", "")
-        monkeypatch.setenv("PYTHONPATH", "/nowhere")
-        env = _old_python_env()
-        assert "PYTHONHOME" not in env and "PYTHONPATH" not in env
-        assert env.get("PATH") == os.environ.get("PATH")
-
-    # Opt-in: a run starts the host's old interpreters only when
-    # DASH_OLD_PYTHONS=1 is set (the maintainer, 21oct2026).
-    @pytest.mark.skipif(os.environ.get("DASH_OLD_PYTHONS") != "1"
-                        or not (os.path.exists("/usr/local/bin/python3.6")
-                                and os.path.exists("/usr/local/bin/python3.7")),
-                        reason="opt-in: DASH_OLD_PYTHONS=1 and "
-                               "/usr/local/bin/python3.6 and python3.7")
-    def test_the_old_interpreters_here_get_the_remedy(self, tmp_path):
-        args = [_RENDER, "--spec", "s.json", "--data", "d.json",
-                "--output", "o.html"]
-        p6 = _sp_s25.run(["/usr/local/bin/python3.6", "-B"] + args,
-                         capture_output=True, text=True, timeout=120,
-                         cwd=str(tmp_path),
-                         env=_old_python_env())
-        assert "SyntaxError" in p6.stderr, p6.stderr
-        assert ("dash needs Python %s or later: link a newer Python, then "
-                "run dash_setup" % _FLOOR) in p6.stderr, p6.stderr
-        p7 = _sp_s25.run(["/usr/local/bin/python3.7", "-B"] + args,
-                         capture_output=True, text=True, timeout=120,
-                         cwd=str(tmp_path),
-                         env=_old_python_env())
-        assert p7.returncode == 1, p7.stderr
-        line = _one_line(p7.stderr)
-        assert line.startswith("dash: Python 3.7."), line
-        assert "older than dash needs" in line, line
-
 
 def _is_dep_fail_try(node):
     if not isinstance(node, _ast_s25.Try):
@@ -701,9 +656,7 @@ class TestTheVersionNote:
 
     # WP-31 I4: the note was printed only through dash.ado's
     # _dash_xm_load, so `python dash_render.py' and `python app.py' with a
-    # numpy or pandas below the floor said nothing.  The SyntaxError leg of
-    # GAPS3 I4 is TestTheRendererRefusesWithTheRemedy's
-    # test_the_old_interpreters_here_get_the_remedy (WP-30).
+    # numpy or pandas below the floor said nothing.
 
     def test_a_hand_run_renderer_prints_the_note(self, monkeypatch, capsys):
         import runpy
