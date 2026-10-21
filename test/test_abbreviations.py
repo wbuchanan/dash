@@ -29,6 +29,7 @@ Run:  /opt/homebrew/bin/python3.14 -m pytest test/test_abbreviations.py -v
 import json
 import os
 import re
+import sys
 
 import pytest
 
@@ -39,6 +40,10 @@ ADO_PATH   = os.path.join(ROOT, "dash.ado")
 MATA_PATH  = os.path.join(ROOT, "dash_parse.mata")
 HELP_PATH  = os.path.join(ROOT, "dash.sthlp")
 FIXTURE    = os.path.join(HERE, "fixtures", "abbrev_truth.json")
+UNKNOWN_FIXTURE = os.path.join(HERE, "fixtures", "unknown_option_truth.json")
+
+sys.path.insert(0, HERE)
+from known_differences import dead_rows, known_problems  # noqa: E402,F401
 
 
 # ============================================================
@@ -220,9 +225,17 @@ def test_fixture_is_self_consistent(truth):
                      if not e["dash"].get("accepts"))
     assert rejects == sorted(truth["dash_rejects_min_abbrev"])
 
+    # Flipped (WP-33 syn:SD-20): this compared the options dash records
+    # under another key with dash_mismaps, which counts the spellings of
+    # dash's former abbreviation table -- equal only while both were 0.
+    # With every declared option measured, an option dash stores under its
+    # twoway synonym's key is _STORED_UNDER's, and any other landing is a
+    # known difference listed in ABBREV_KNOWN.
     mismapped = sorted(n for n, e in truth["options"].items()
-                       if e["dash"].get("accepts") and e["dash"].get("key") != n)
-    assert len(mismapped) == c["dash_mismaps"]
+                       if e["dash"].get("accepts")
+                       and e["dash"].get("key") not in _landings(n))
+    listed = set(k[len("land:"):] for k in ABBREV_KNOWN if k.startswith("land:"))
+    assert set(mismapped) <= listed, sorted(set(mismapped) - listed)
 
     for name, e in truth["options"].items():
         assert e["min_abbrev"], "%s has no minimum abbreviation" % name
@@ -340,15 +353,31 @@ class TestTheLivePin:
         minimums: dash itself, probed with twoway's minimum on a plot type
         twoway takes the option on, accepts it and records it under the
         option's own key."""
+        # Flipped (WP-33 syn:SD-20): the key must be the option's own, or
+        # the twoway synonym's dash stores it under (_STORED_UNDER); a
+        # landing elsewhere is a known difference (ABBREV_KNOWN "land:"),
+        # judged by test/known_differences.py's rule.  The 93 options of
+        # the old record all landed on their own key; the regenerated one
+        # measures every declared option.
         declared = set(full for _, full in plot_decls)
-        bad = []
+        results = {}
         for name, e in sorted(truth["options"].items()):
             if name not in declared:
                 continue
             d = e["dash"]
-            if d.get("accepts") is not True or d.get("key") != name:
-                bad.append("%s(%s...): %r" % (e["min_abbrev"], name, d))
-        assert not bad, "\n  ".join(bad)
+            ok = d.get("accepts") is True and d.get("key") in _landings(name)
+            results["land:" + name] = None if ok else (
+                "%s(%s...): %r" % (e["min_abbrev"], name, d))
+        assert known_problems(_only(results, "land:"), _only(ABBREV_KNOWN, "land:"),
+                              "abbrev", deliberate=ABBREV_DELIBERATE) == []
+
+    def test_every_stored_under_row_is_measured(self, truth):
+        """_STORED_UNDER pinned both ways: each row is an option the record
+        measured and dash stored, at twoway's minimum, under that key."""
+        bad = ["%s: %r" % (n, truth["options"].get(n, {}).get("dash"))
+               for n, k in sorted(_STORED_UNDER.items())
+               if truth["options"].get(n, {}).get("dash", {}).get("key") != k]
+        assert not bad, bad
 
     def test_no_unpinned_minimum_is_shorter_than_twoways(self, truth,
                                                          plot_decls):
@@ -394,7 +423,7 @@ class TestTheLivePin:
 # ============================================================
 def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
     declared = dict((full, mn) for mn, full in plot_decls)
-    bad = []
+    results = {}
     checked = 0
     for name, e in sorted(truth["options"].items()):
         if name not in declared:
@@ -405,19 +434,28 @@ def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
         # capitals, so T1title's minimum is t itself (see _syntax_options),
         # and the *1title declarations cover twoway's single letters.
         if want.startswith(got) and len(got) <= len(want):
+            results["min:" + name] = None
             continue
-        bad.append("%s(): dash needs %r, declaration only allows %r"
-                   % (name, want, got))
-    # dash declares all 93 of the fixture's options, so all 93 are compared
-    # (measured 24sep2026).  The skip above passed a reader that found no
-    # declaration, or fixture keys that no longer match one, with nothing
-    # compared at all.
-    assert checked == 93, (
+        # Flipped (WP-33 syn:SD-20): a declaration longer than twoway's
+        # minimum is no difference when dash, probed live with twoway's
+        # minimum, stored it under the option's own key or its synonym's
+        # (a fold before -syntax-: nodropb(); a synonym: bin(), cmiss());
+        # any other is a known difference listed under "min:".
+        d = e["dash"]
+        if d.get("accepts") is True and d.get("key") in _landings(name):
+            results["min:" + name] = None
+            continue
+        results["min:" + name] = ("%s(): dash needs %r, declaration only "
+                                  "allows %r" % (name, want, got))
+    # dash declares all 180 of the fixture's options, so all are compared.
+    # The skip above passed a reader that found no declaration, or fixture
+    # keys that no longer match one, with nothing compared at all.
+    # old -> new: 93 -> 180: syn:SD-20 regenerated fixture
+    assert checked == 180, (
         "%d of the fixture's %d options were compared with a declaration"
         % (checked, len(truth["options"])))
-    assert not bad, (
-        "%d option(s) reject an abbreviation twoway accepts.\n  "
-        % len(bad)) + "\n  ".join(bad)
+    assert known_problems(_only(results, "min:"), _only(ABBREV_KNOWN, "min:"),
+                          "abbrev", deliberate=ABBREV_DELIBERATE) == []
 
 
 # ============================================================
@@ -437,10 +475,12 @@ def test_declarations_resolve_abbreviations_like_twoway(truth, plot_decls):
             where = "reject it outright" if got is None else "bind it to %s()" % got
             bad.append("%s(): twoway binds it to %s(), dash's declarations %s"
                        % (ab, want, where))
-    # 39 of the 61 recorded spellings have a twoway binding to an option dash
-    # declares; the other 22 record no binding (measured 24sep2026).  As
-    # above, the skip let a test with nothing compared pass.
-    assert checked == 39, (
+    # 40 of the 61 recorded spellings have a twoway binding to an option dash
+    # declares; the other 21 record no binding.  As above, the skip let a
+    # test with nothing compared pass.
+    # old -> new: 39 -> 40: syn:SD-20 regenerated fixture (bgc() now binds
+    # to bgcolor(), measured)
+    assert checked == 40, (
         "%d of %d recorded spellings were compared"
         % (checked, len(truth["abbrev_resolution"])))
     assert not bad, (
@@ -501,6 +541,57 @@ _SHARED_SPELLINGS = {
     # written in full, so only the full name is shared.
     "table": ("table", "table2"),
 }
+
+
+#: Known binding differences from twoway (WP-33 section 33-10, syn:SD-20):
+#: {"<option or spelling>": "<GAPS4 id>",  # twoway <x> / dash <y>}, by
+#: test/known_differences.py's rule (D-33-10.a); every known_problems call
+#: over it passes deliberate=ABBREV_DELIBERATE, the differences a ruling
+#: keeps ({"<key>": "<ruling id>: <what is kept>"}).
+ABBREV_KNOWN = {
+    "land:clcolor": "syn:SD-20e",  # twoway clc() on scatter / dash records no key
+    "land:clpattern": "syn:SD-20e",  # twoway clp() on scatter / dash records no key
+    "land:clstyle": "syn:SD-20e",  # twoway cls() on scatter / dash records no key
+    "land:clwidth": "syn:SD-20e",  # twoway clw() on scatter / dash records no key
+    "land:dsize": "syn:SD-20a",  # twoway dsi() is dsize() / dash notes it, no key
+    "land:estcmd": "syn:SD-20b",  # twoway est() is estcmd() / dash estopts
+    "land:fxsize": "GW-4",  # twoway fxsiz() / dash noted, no key
+    "land:fysize": "GW-4",  # twoway fysiz() / dash noted, no key
+    "land:smoothplot": "syn:SD-20c",  # twoway s() accepted / dash records no key
+    "land:zlabel": "syn:SD-20d",  # twoway zl() is zlabel() / dash records no key
+    "land:ztitle": "syn:SD-20d",  # twoway zt() is ztitle() / dash records no key
+    "min:dsize": "syn:SD-20a",  # twoway dsi / dash declares dsiz
+    "min:estcmd": "syn:SD-20b",  # twoway est / dash declares estc
+    "min:fxsize": "GW-4",  # twoway fxsiz / dash declares fxsize in full
+    "min:fysize": "GW-4",  # twoway fysiz / dash declares fysize in full
+    "min:smoothplot": "syn:SD-20c",  # twoway s / dash declares smoothp
+    "min:zlabel": "syn:SD-20d",  # twoway zl / dash declares zlab
+    "min:ztitle": "syn:SD-20d",  # twoway zt / dash declares zti
+}
+
+ABBREV_DELIBERATE = {
+}
+
+#: {option: key}: options dash stores under the key of the twoway option
+#: they are a synonym of, so landing there is landing on the option itself
+#: (measured, abbrev_truth.json; pinned both ways by
+#: TestTheLivePin::test_every_stored_under_row_is_measured).
+_STORED_UNDER = {
+    "tlabel": "xlabel", "tline": "xline", "tmlabel": "xmlabel",
+    "tmtick": "xmtick", "tscale": "xscale", "ttick": "xtick",
+    "ttitle": "xtitle", "ttext": "text", "bins": "bin",
+    "cmissings": "cmissing", "colorformissing": "colormissing",
+}
+
+
+def _landings(name):
+    """The keys landing on option name means: its own, and its synonym's."""
+    return {name, _STORED_UNDER.get(name, name)}
+
+
+def _only(table, prefix):
+    """The rows of a results or known table whose key starts with prefix."""
+    return {k: v for k, v in table.items() if k.startswith(prefix)}
 
 
 def _shared_spellings(decls):
@@ -991,3 +1082,51 @@ class TestJitterMinimum:
         g = g[:g.index("_dash_opts_repeats _dash_parse_graph_opts")]
         assert "_dash_refuse_jit" in g
 
+
+# ============================================================
+# WP-33 syn:SD-20: every option dash declares is measured
+#
+# abbrev_truth.json measured 93 options and listed 28 as unprobeable;
+# about 120 more that dash's two parsers declare had no measurement at
+# all, and the hand-written reason for bgcolor() said twoway has no such
+# option, which is false (twowaygraph_g.class declares BGColor(string);
+# bgc(red), bgcol(red) and bgcolor(red) are rc 0 in twoway).
+# ============================================================
+def _unmeasured(truth, plot_decls):
+    """The declared options the fixture neither measures nor gives a
+    reason for (the recompute one-liner of section 33-10's Evidence)."""
+    return [full for _mn, full in plot_decls
+            if full not in truth["options"]
+            and full not in truth["unprobeable"]]
+
+
+class TestEveryDeclaredOptionIsMeasured:
+    def test_every_declared_option_is_measured(self, truth, plot_decls):
+        missing = _unmeasured(truth, plot_decls)
+        assert not missing, "%d declared option(s) unmeasured: %s" % (
+            len(missing), " ".join(missing))
+
+    def test_bgcolor_is_measured_as_twoways(self, truth):
+        assert "bgcolor" in truth["options"], truth["unprobeable"].get(
+            "bgcolor")
+        assert truth["options"]["bgcolor"]["min_abbrev"] == "bgc"
+        rows = [r for r in truth.get("dash_abbrev_stata_rejects", [])
+                if r.startswith("bgc:")]
+        assert not rows, rows
+
+    def test_no_rejection_contradicts_another_oracle(self, truth):
+        with open(UNKNOWN_FIXTURE, encoding="utf-8") as fh:
+            probes = json.load(fh)["probes"]
+        bad = []
+        for name, reason in sorted(truth["unprobeable"].items()):
+            if not reason.startswith("twoway rejected the full option name"):
+                continue
+            p = probes.get(name)
+            if p is not None and p.get("twoway_rc") == 0:
+                bad.append("%s: abbrev_truth says twoway rejects it; "
+                           "unknown_option_truth.json measured rc 0" % name)
+        assert not bad, "\n  ".join(bad)
+
+    def test_every_known_difference_is_open(self, truth, plot_decls):
+        assert dead_rows(ABBREV_KNOWN, "abbrev") == []
+        assert not set(ABBREV_KNOWN) & set(ABBREV_DELIBERATE)

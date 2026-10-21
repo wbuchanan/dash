@@ -46,6 +46,11 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | stat:PT-2 | density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram | S2 | 35-04 | Fix | dash.ado:3772-3774; run3 | Add them to the flag-applicability rule |
 | stat:PT-5 | contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer | S2 | 35-04 | Fix | lev2.log; dash.ado:2660-2665; dash.sthlp:596-598; extract_contour_truth.do:358 measured under nodraw | Bound at 500 levels and 499 cuts in twoway's words; re-measure drawn |
 | stat:PT-13 | contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options | S2 | 35-03 | Fix | twoway_contourline.sthlp:44-58; contour_truth abbrev.*; dash.sthlp:599-601 | Resolve them to the contour options first |
+| syn:SD-20a | dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe | S2 | 35-03 | Fix | abbrev_truth options.dsize (dot mpg weight, dsi(small)); dash.ado _dash_parse_plot_opts | Declare dsize() with twoway's minimum dsi |
+| syn:SD-20b | fpfit est(), twoway's minimum of estcmd(), is bound to estopts() | S2 | 35-03 | Fix | abbrev_truth options.estcmd (fpfit mpg weight, est(fp)); dash.ado _dash_parse_plot_opts | Declare estcmd() with twoway's minimum est, so est() reaches estcmd() |
+| syn:SD-20c | lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key | S2 | 35-03 | Fix | abbrev_truth options.smoothplot (lpolyci mpg weight, s(line)) | Measure what twoway binds s() to on the ci types and read it the same way |
+| syn:SD-20d | colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle | S2 | 35-03 | Fix | abbrev_truth options.zlabel, options.ztitle (scatter mpg weight, colorvar(turn) zl(10(10)50)) | Declare zlabel() and ztitle() with twoway's minimums zl and zt |
+| syn:SD-20e | clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated | S2 | 35-03 | Fix | abbrev_truth options.clcolor, clpattern, clstyle, clwidth (scatter mpg weight, clc(red)) | Record them for scatter's connecting line as twoway reads them |
 | stat:PT-6 | function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note | S2 | 35-03 | Fix | twoway_function_parse.class:55-71; dash.ado:10448 hard-codes x(x) | Validate it as a name and pass it as x() |
 | stat:PT-8 | lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes | S2 | 35-04 | Fix | twoway_lowess_parse.class:37-47; probe1 #77-#78 | Treat the pair in the repeat check; take weight silently |
 | stat:PT-9 | Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1) | S2 | 35-03 | Fix | twoway_mspline_parse.class:35; probe1 #114 | Accept them as twoway does |
@@ -315,7 +320,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-23 Tracked:** Open (WP-33 section 33-12).
 - **stat:PT-23 Tracked:** Open (WP-33 section 33-13).
 - **CV-16 Tracked:** Open (WP-33 section 33-13).
-- **syn:SD-20 Tracked:** Open (WP-33 section 33-10).
+- **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit pending.
 - **GW-11 Tracked:** Open (WP-33 section 33-11).
 - **BY-24 Tracked:** Open (WP-33 section 33-12).
 - **AX-4 Tracked:** Open (WP-34 section 34-01).
@@ -337,6 +342,11 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-13 Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20a Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20b Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20c Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20d Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20e Tracked:** Open (WP-35 section 35-03).
 - **stat:PT-6 Tracked:** Open (WP-35 section 35-03).
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-9 Tracked:** Open (WP-35 section 35-03).

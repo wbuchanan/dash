@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 221 registered items, by lead id, with its
+#: BUGS.md entry of each of the 226 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -2876,7 +2876,6 @@ GAPS4_OPEN = {
     'BY-23': 'Per-type by() drawing is pinned against twoway only for function (default range) and lpoly',
     'stat:PT-23': 'Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...',
     'CV-16': 'colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously',
-    'syn:SD-20': "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()",
     'GW-11': 'scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled',
     'BY-24': 'by() title/note/caption under position() has truth only for caption pos(5)',
     'AX-4': 'The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints',
@@ -2898,6 +2897,11 @@ GAPS4_OPEN = {
     'stat:PT-2': 'density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram',
     'stat:PT-5': 'contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer',
     'stat:PT-13': 'contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options',
+    'syn:SD-20a': "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe",
+    'syn:SD-20b': "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()",
+    'syn:SD-20c': 'lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key',
+    'syn:SD-20d': "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle",
+    'syn:SD-20e': 'clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated',
     'stat:PT-6': 'function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note',
     'stat:PT-8': "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes",
     'stat:PT-9': 'Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)',
@@ -3122,6 +3126,11 @@ GAPS4_WP = {
     'stat:PT-2': 'WP-35',
     'stat:PT-5': 'WP-35',
     'stat:PT-13': 'WP-35',
+    'syn:SD-20a': 'WP-35',
+    'syn:SD-20b': 'WP-35',
+    'syn:SD-20c': 'WP-35',
+    'syn:SD-20d': 'WP-35',
+    'syn:SD-20e': 'WP-35',
     'stat:PT-6': 'WP-35',
     'stat:PT-8': 'WP-35',
     'stat:PT-9': 'WP-35',
@@ -3346,6 +3355,11 @@ GAPS4_SECTION = {
     'stat:PT-2': '35-04',
     'stat:PT-5': '35-04',
     'stat:PT-13': '35-03',
+    'syn:SD-20a': '35-03',
+    'syn:SD-20b': '35-03',
+    'syn:SD-20c': '35-03',
+    'syn:SD-20d': '35-03',
+    'syn:SD-20e': '35-03',
     'stat:PT-6': '35-03',
     'stat:PT-8': '35-04',
     'stat:PT-9': '35-03',
@@ -3556,7 +3570,9 @@ _GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
               "WP-40", "WP-41", "WP-42", "WP-43", "WP-44", "WP-45",
               "WP-46", "WP-47", "WP-48", "WP-49")
 _GAPS4_WITHDRAWN = ("plat:PT-3", "basic:PT-7", "plot:PT-10")
-_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}"
+# An optional lower-case letter: the rows a closing section registers for
+# differences it measured and no audit item covers (D42: syn:SD-20a..e).
+_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}[a-z]?"
 _GAPS4_KINDS = ("Fix", "Document", "Partly", "Fix per the Q8 per-word ruling",
                 "Fix or Document per the Q8 per-word ruling")
 _GAPS4_ROW = re.compile(
@@ -3738,8 +3754,11 @@ class TestGaps4Tracking:
 
     def test_the_register_holds_every_item(self):
         rows, tracked, dupes = _parse_gaps4(_read("GAPS4.md"))
-        # index.md Appendix A: 224 printed, 3 withdrawn
-        assert len(GAPS4_ALL) == 221
+        # index.md Appendix A: 224 printed, 3 withdrawn; plus the five rows
+        # WP-33 33-10 measured (D42, syn:SD-20a..e).
+        # old -> new: 221 -> 226: syn:SD-20 registered five measured
+        # binding differences (D42)
+        assert len(GAPS4_ALL) == 226
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

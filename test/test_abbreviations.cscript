@@ -422,9 +422,46 @@ def _takes(name, ptype):
     return rec is None or not (rec["rc"] == 198 and rec["message"]
                                == "option " + name + "() not allowed")
 
-def carrier(name):
+# WP-33 syn:SD-20: the record measures every option dash declares, each in
+# the context twoway took it in, with a companion option (colorvar()) where
+# twoway reads it only beside one; the probe is written there too.
+def _fixture_ctx(name):
+    """(plot and varlist, companion) of the fixture's full-name command."""
+    cmd = (OPTS.get(name) or {}).get("full_name_cmd") or ""
+    if not cmd.startswith("twoway ") or ", " not in cmd:
+        return None, ""
+    head, rest = cmd[len("twoway "):].split(", ", 1)
+    at = re.search(r"(?<![a-z0-9])%s(?![a-z0-9])" % re.escape(name), rest)
+    return head, (rest[:at.start()].strip() if at else "")
+
+# ABBREV_KNOWN and _STORED_UNDER of test_abbreviations.py, read with ast
+# (no import: the module needs pytest): an option dash stores under its
+# twoway synonym's key lands there, and an option whose landing is a known
+# difference ("land:<option>", listed under its GAPS4 item) is run without
+# the key assertion -- the pytest side judges the list.
+import ast as _zqa_ast
+with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(FX))),
+                       "test_abbreviations.py"), encoding="utf-8") as _fh:
+    _zqa_tree = _zqa_ast.parse(_fh.read())
+_ZQA_TABLES = {}
+for _nd in _zqa_tree.body:
+    if (isinstance(_nd, _zqa_ast.Assign) and len(_nd.targets) == 1
+            and isinstance(_nd.targets[0], _zqa_ast.Name)
+            and _nd.targets[0].id in ("ABBREV_KNOWN", "_STORED_UNDER")):
+        _ZQA_TABLES[_nd.targets[0].id] = _zqa_ast.literal_eval(_nd.value)
+STORED_UNDER = _ZQA_TABLES["_STORED_UNDER"]
+KNOWN_LAND = {k[len("land:"):] for k in _ZQA_TABLES["ABBREV_KNOWN"]
+              if k.startswith("land:")}
+
+def carrier(name, measured=True):
     """The plot a value option is written on: scatter, unless twoway
-    refuses the option there (C3)."""
+    refuses the option there (C3), or (measured) the record measured it on
+    another type or beside a companion (syn:SD-20).  A4's documented
+    spellings keep their own carriers (measured=False)."""
+    head, comp = _fixture_ctx(name)
+    if measured and name not in _C3_OPTS and head and (
+            comp or not head.startswith("scatter ")):
+        return head + ", " + (comp + " " if comp else "")
     if name not in _C3_OPTS or _takes(name, "scatter"):
         return "scatter mpg weight, "
     ctx = OPTS.get(name, {}).get("plottype_context")
@@ -449,7 +486,18 @@ def opt_cmd(abb, name):
 # WP-30 P1.10: text() is written as added_text records, counted under the
 # string key added_text_n; the spec holds no text key.
 def spec_key(name):
-    return "" if name == "name" else {"text": "added_text_n"}.get(name, name)
+    if name == "name":
+        return ""
+    key = STORED_UNDER.get(name, name)
+    key = {"text": "added_text_n"}.get(key, key)
+    # the companion's own key is recorded beside the probed option's
+    comp = _fixture_ctx(name)[1]
+    extra = [c for c in re.findall(r"([a-z][a-z0-9]*)\(", comp) if c in CAND]
+    return " ".join([key] + extra)
+
+def a_mode(name):
+    """The A1/A2 mode: a known landing difference runs unasserted."""
+    return "known" if name in KNOWN_LAND else "ok"
 
 CASES = []
 def add(grp, ident, cmd, keys="", ptype="", optname="", mode="ok"):
@@ -460,7 +508,7 @@ def add(grp, ident, cmd, keys="", ptype="", optname="", mode="ok"):
 for name in sorted(OPTS):
     mn = OPTS[name]["min_abbrev"]
     add("A1", name + " [" + mn + "]", opt_cmd(mn, name),
-        keys=spec_key(name), optname=name)
+        keys=spec_key(name), optname=name, mode=a_mode(name))
 
 # ---- A2: the whole prefix ladder --------------------------------------
 for name in sorted(OPTS):
@@ -470,7 +518,7 @@ for name in sorted(OPTS):
     for L in range(len(mn) + 1, len(name) + 1):
         pre = name[:L]
         add("A2", name + " [" + pre + "]", opt_cmd(pre, name),
-            keys=spec_key(name), optname=name)
+            keys=spec_key(name), optname=name, mode=a_mode(name))
 
 # ---- A3: the mis-mappings, by name ------------------------------------
 MISMAP = []
@@ -554,7 +602,7 @@ def doc_cmd(spelling, full):
     v = value_of(full)
     if v is None:
         v = "1"
-    return carrier(full) + spelling + "(" + v + ") name(zqab)"
+    return carrier(full, measured=False) + spelling + "(" + v + ") name(zqab)"
 
 # Accepted means RECORDED, under the full name, as A1 means it.  This was
 # mode "rconly", and the one-line command returns rc 0 for any option at all
@@ -794,7 +842,12 @@ forvalues i = 1/`zqa_ncase' {
     // ---- assertion 1: accepted (or, for R3, at least not silently wrong)
     local bad1 = 0
     local bad2 = 0
-    if "`mode'" == "nosilent" {
+    if "`mode'" == "known" {
+        // A known difference of test_abbreviations.py's ABBREV_KNOWN
+        // (WP-33 syn:SD-20): run, not asserted; the pytest side holds the
+        // list to the record.
+    }
+    else if "`mode'" == "nosilent" {
         if `rc' == 0 {
             local extra : list gotk - expk
             if "`extra'" != "" | `: word count `gotk'' != 1 local bad2 = 1

@@ -87,10 +87,14 @@ program define zq_ctx
 end
 
 program define zq_opt
-    syntax, OPT(string) [VALue(string asis) CTXs(string) ORAcle(string)]
+    * with(): a companion option written before the probed one in the
+    * reference command and in every prefix command (WP-33 syn:SD-20), for
+    * an option twoway reads only beside another (colorvar's family).
+    syntax, OPT(string) [VALue(string asis) CTXs(string) ORAcle(string) WITH(string asis)]
     global ZQ_NOPT = ${ZQ_NOPT} + 1
     global ZQ_OPTN_${ZQ_NOPT} "`opt'"
     global ZQ_OPTV_${ZQ_NOPT} `"`value'"'
+    global ZQ_OPTW_${ZQ_NOPT} `"`with'"'
     global ZQ_OPTC_${ZQ_NOPT} "`ctxs'"
     global ZQ_OPTO_${ZQ_NOPT} "`oracle'"
 end
@@ -130,6 +134,11 @@ zq_ctx, name(rarea)     cmd(rarea turn mpg weight)
 zq_ctx, name(rbar)      cmd(rbar turn mpg weight)
 zq_ctx, name(rcap)      cmd(rcap turn mpg weight)
 zq_ctx, name(function)  cmd(function y=x)
+* WP-33 syn:SD-20: the types the newly measured options need.
+zq_ctx, name(pcarrow)   cmd(pcarrow mpg weight turn length)
+zq_ctx, name(contour)   cmd(contour price weight length)
+zq_ctx, name(rcapsym)   cmd(rcapsym turn mpg weight)
+zq_ctx, name(fpfit)     cmd(fpfit mpg weight)
 
 * ===========================================================================
 * Options to probe.  ctxs() restricts the search order; empty = try them all
@@ -248,6 +257,139 @@ zq_opt, opt(l2title)      value(ZQSENTINEL)
 zq_opt, opt(r1title)      value(ZQSENTINEL)
 zq_opt, opt(r2title)      value(ZQSENTINEL)
 
+* ---- WP-33 33-10: every declared option (syn:SD-20) ----
+* Every option dash's two parsers declare that the fixture did not measure.
+* No ctxs(): the loop tries every context in order and takes the first in
+* which twoway accepts the full name; a word twoway refuses everywhere is
+* filed under unprobeable by the loop itself, with its last rc.
+zq_opt, opt(bgcolor)       value(red)
+zq_opt, opt(mlalign)       value(inside)
+zq_opt, opt(acolor)        value(red)
+zq_opt, opt(alcolor)       value(red)
+zq_opt, opt(alwidth)       value(thick)
+zq_opt, opt(alpattern)     value(dash)
+zq_opt, opt(colorlevels)   value(4)        with(colorvar(turn))
+zq_opt, opt(colorvarminmax)                with(colorvar(turn))
+zq_opt, opt(colorstart)    value(red)      with(colorvar(turn))
+zq_opt, opt(colorend)      value(blue)     with(colorvar(turn))
+zq_opt, opt(colorrule)     value(hue)      with(colorvar(turn))
+zq_opt, opt(colorfillonly)                 with(colorvar(turn))
+zq_opt, opt(colorformissing) value(red)    with(colorvar(turn))
+zq_opt, opt(colorkeysrange)                with(colorvar(turn))
+zq_opt, opt(colorkeysreverse)              with(colorvar(turn))
+zq_opt, opt(colorallowmultiple)            with(colorvar(turn))
+zq_opt, opt(colorotherlabel) value("Other") with(colorvar(turn))
+zq_opt, opt(clegend)       value(off)      with(colorvar(turn))
+zq_opt, opt(plegend)       value(off)      with(colorvar(turn))
+zq_opt, opt(zlabel)        value(10(10)50) with(colorvar(turn))
+zq_opt, opt(ztitle)        value(Z)        with(colorvar(turn))
+zq_opt, opt(zscale)        value(log)      with(colorvar(turn))
+zq_opt, opt(pcycle)        value(3)
+zq_opt, opt(cmissings)     value(n)
+zq_opt, opt(recastas)      value(line)     ctxs(lfitci lpolyci)
+zq_opt, opt(type)          value(lfit)     ctxs(lfitci lpolyci)
+zq_opt, opt(bins)          value(10)       ctxs(histogram)
+zq_opt, opt(discrete)                      ctxs(histogram)
+zq_opt, opt(gap)           value(10)
+zq_opt, opt(baroffset)     value(10)
+zq_opt, opt(area)          value(1)        ctxs(kdensity)
+zq_opt, opt(boundary)                      ctxs(kdensity)
+zq_opt, opt(droplines)     value(0.5)
+zq_opt, opt(nodropbase)                    ctxs(dropline)
+zq_opt, opt(stdp)                          ctxs(lfitci lpolyci)
+zq_opt, opt(stdf)                          ctxs(lfitci lpolyci)
+zq_opt, opt(stdr)                          ctxs(lfitci lpolyci)
+zq_opt, opt(mean)                          ctxs(lowess)
+zq_opt, opt(noweight)                      ctxs(lowess)
+zq_opt, opt(adjust)                        ctxs(lowess)
+zq_opt, opt(logit)                         ctxs(lowess)
+zq_opt, opt(atobs)                         ctxs(lfit lfitci)
+zq_opt, opt(estopts)       value(nocons)   ctxs(lfit lfitci)
+zq_opt, opt(predopts)      value(xb)       ctxs(lfit lfitci)
+zq_opt, opt(estcmd)        value(fp)       ctxs(fpfit)
+zq_opt, opt(fitplot)       value(line)     ctxs(lfitci lpolyci)
+zq_opt, opt(ciplot)        value(rarea)    ctxs(lfitci lpolyci)
+zq_opt, opt(smoothplot)    value(line)     ctxs(lfitci lpolyci)
+zq_opt, opt(nofit)                         ctxs(lfitci lpolyci)
+zq_opt, opt(astyle)        value(p2)
+zq_opt, opt(alstyle)       value(p2)
+zq_opt, opt(bstyle)        value(p2)
+zq_opt, opt(blstyle)       value(p2)
+zq_opt, opt(clstyle)       value(p2)
+zq_opt, opt(p)             value(p2)
+zq_opt, opt(dstyle)        value(p2)
+zq_opt, opt(dlstyle)       value(p2)
+zq_opt, opt(bmlinestyle)   value(p2)
+zq_opt, opt(dotextend)     value(no)       ctxs(dot)
+zq_opt, opt(ndots)         value(10)       ctxs(dot)
+zq_opt, opt(dsymbol)       value(o)        ctxs(dot)
+zq_opt, opt(dcolor)        value(red)      ctxs(dot)
+zq_opt, opt(dfcolor)       value(red)      ctxs(dot)
+zq_opt, opt(dsize)         value(small)    ctxs(dot)
+zq_opt, opt(dlcolor)       value(red)      ctxs(dot)
+zq_opt, opt(dlwidth)       value(thick)    ctxs(dot)
+zq_opt, opt(dlalign)       value(inside)   ctxs(dot)
+zq_opt, opt(sort1)
+zq_opt, opt(clcolor)       value(red)
+zq_opt, opt(clpattern)     value(dash)
+zq_opt, opt(clwidth)       value(thick)
+zq_opt, opt(mlabangle)     value(45)
+zq_opt, opt(mlabformat)    value(%9.1f)
+zq_opt, opt(mlabtextstyle) value(p2)
+zq_opt, opt(mlabvposition) value(foreign)
+zq_opt, opt(xoverhangs)
+zq_opt, opt(yoverhangs)
+zq_opt, opt(xvarformat)    value(%9.1f)
+zq_opt, opt(yvarformat)    value(%9.1f)
+zq_opt, opt(fxsize)        value(50)
+zq_opt, opt(fysize)        value(50)
+zq_opt, opt(scale)         value(1.2)
+zq_opt, opt(tlabel)        value(2000 3000)
+zq_opt, opt(ttick)         value(2000 3000)
+zq_opt, opt(tmlabel)       value(2500)
+zq_opt, opt(tmtick)        value(2500)
+zq_opt, opt(tscale)        value(range(1000 5000))
+zq_opt, opt(ttitle)        value(T)
+zq_opt, opt(tline)         value(3000)
+zq_opt, opt(ttext)         value(20 3000 "T")
+zq_opt, opt(mangle)        value(30)       ctxs(pcarrow)
+zq_opt, opt(barbsize)      value(2)        ctxs(pcarrow)
+zq_opt, opt(headlabel)                     ctxs(pcarrow)
+zq_opt, opt(mwidth)                        ctxs(rbar histogram)
+* dash-only words and spellings: twoway refuses each in every context.
+zq_opt, opt(mlg)           value(2)
+zq_opt, opt(cv)            value(turn)
+zq_opt, opt(colv)          value(turn)
+zq_opt, opt(pbgc)          value(red)
+zq_opt, opt(xla2)          value(2000 3000)
+zq_opt, opt(xsc2)          value(log)
+zq_opt, opt(xti2)          value(T)
+zq_opt, opt(yla2)          value(20 30)
+zq_opt, opt(ysc2)          value(log)
+zq_opt, opt(yti2)          value(T)
+zq_opt, opt(ytick2)        value(20 30)
+zq_opt, opt(xtick2)        value(2000 3000)
+zq_opt, opt(yline2)        value(20)
+zq_opt, opt(xline2)        value(3000)
+zq_opt, opt(xmlabel2)      value(2500)
+zq_opt, opt(ymlabel2)      value(25)
+zq_opt, opt(xmtick2)       value(2500)
+zq_opt, opt(ymtick2)       value(25)
+zq_opt, opt(tlabel2)       value(2000 3000)
+zq_opt, opt(ttick2)        value(2000 3000)
+zq_opt, opt(tline2)        value(3000)
+zq_opt, opt(tscale2)       value(log)
+zq_opt, opt(ttitle2)       value(T)
+zq_opt, opt(hover)         value(make)
+zq_opt, opt(replace)
+zq_opt, opt(table)
+zq_opt, opt(table2)        value(make)
+* bw(): dash reads it as barwidth() on the bar family and as bwidth()
+* elsewhere (stat:PT-14); twoway has no option of that name, and reads the
+* spelling as bwidth() only on the bandwidth types, which abbrev_resolution
+* measures.  Probed on the types dash folds it on.
+zq_opt, opt(bw)            value(1)        ctxs(scatter bar histogram dot)
+
 * ===========================================================================
 * Plot types to probe
 * ===========================================================================
@@ -335,6 +477,7 @@ forvalues i = 1/`NOPT' {
     local vl  `"${ZQ_OPTV_`i'}"'
     local cl  "${ZQ_OPTC_`i'}"
     local ora "${ZQ_OPTO_`i'}"
+    local wth `"${ZQ_OPTW_`i'}"'
     local L   = strlen("`nm'")
 
     if "`ora'" == "graph_exists" {
@@ -419,7 +562,7 @@ forvalues i = 1/`NOPT' {
         if `"`vl'"' == "" local ostr "`nm'"
         else              local ostr `"`nm'(`vl')"'
         set seed 12345
-        capture twoway `cc', `ostr' nodraw saving("`p'", replace)
+        capture twoway `cc', `wth' `ostr' nodraw saving("`p'", replace)
         local lastrc = _rc
         if `lastrc' == 0 {
             local ctxname "`cn'"
@@ -433,6 +576,7 @@ forvalues i = 1/`NOPT' {
         continue
     }
     file write `rec' `"OPT|`nm'|`ctxname'|`vl'|`ctxcmd'|`refpath'"' _n
+    if `"`wth'"' != "" file write `rec' `"WITH|`nm'|`wth'"' _n
 
     * ---- every proper prefix, in that context ----
     forvalues k = 1/`=`L'-1' {
@@ -442,7 +586,7 @@ forvalues i = 1/`NOPT' {
         else              local ostr `"`pre'(`vl')"'
         capture erase "`p'"
         set seed 12345
-        capture twoway `ctxcmd', `ostr' nodraw saving("`p'", replace)
+        capture twoway `ctxcmd', `wth' `ostr' nodraw saving("`p'", replace)
         file write `rec' "CAND|`nm'|`k'|`pre'|`=_rc'|`p'" _n
     }
 
@@ -461,7 +605,7 @@ forvalues i = 1/`NOPT' {
         if `"`vl'"' == "" local ostr "`pre'"
         else              local ostr `"`pre'(`vl')"'
         capture dash clear
-        capture dash `dctx', `ostr' name(zqdash)
+        capture dash `dctx', `wth' `ostr' name(zqdash)
         file write `rec' `"DASH|`nm'|`k'|`pre'|`=_rc'|${dash_json_zqdash}"' _n
         capture dash clear
     }
@@ -621,7 +765,6 @@ DASH_TABLE = {
 
 # dash-only / unprobeable options, with the reason.  Never guessed.
 SKIP = {
-    "bgcolor":     "dash-only option; twoway has no bgcolor() (background colour is graphregion(fcolor()))",
     "plotbgcolor": "dash-only option; twoway has no plotbgcolor() (use plotregion(fcolor()))",
     "link":        "dash-only option (cross-filter link target); no twoway counterpart",
     "filter":      "dash-only option (interactive filter widget); no twoway counterpart",
@@ -666,6 +809,7 @@ selfchk = None
 meta_rows, base, opt_rows, cand_rows, dash_rows = {}, {}, {}, [], []
 direct_rows, directtry, dashname_rows, noctx = {}, [], {}, {}
 pt_rows, ptcand_rows, ptdash_rows = {}, [], []
+with_rows = {}
 
 with open(REC, "r", errors="replace") as fh:
     for line in fh:
@@ -684,6 +828,7 @@ with open(REC, "r", errors="replace") as fh:
         elif t == "DIRECTTRY": directtry.append({"name": f[1], "k": int(f[2]), "pre": f[3], "rc1": int(f[4]), "rc2": int(f[5])})
         elif t == "DASHNAME":  dashname_rows[f[1]] = {"pre": f[2], "rc": int(f[3]), "registry": "|".join(f[4:])}
         elif t == "NOCTX":     noctx[f[1]] = {"rc": f[2], "value": "|".join(f[3:])}
+        elif t == "WITH":      with_rows[f[1]] = "|".join(f[2:])
         elif t == "PT":        pt_rows[f[1]] = {"vars": f[2], "rc": int(f[3]), "ref": f[4]}
         elif t == "PTCAND":    ptcand_rows.append({"name": f[1], "k": int(f[2]), "pre": f[3], "rc": int(f[4]), "path": f[5]})
         elif t == "PTDASH":    ptdash_rows.append({"name": f[1], "k": int(f[2]), "pre": f[3], "rc": int(f[4]), "json": "|".join(f[5:])})
@@ -740,6 +885,11 @@ def dash_entry(name, k, abbrev):
         return {"accepts": False, "rc": r["rc"], "key": None,
                 "probe_cmd": "dash " + ctxcmd + ", " + abbrev + "(...) name(zqdash)"}
     keys = dash_keys(r["json"])
+    # A companion option (with()) is written in every probe; its own key is
+    # not the probed option's landing.
+    if keys is not None and name in with_rows:
+        comp = set(re.findall(r"([a-z][a-z0-9]*)\(", with_rows[name]))
+        keys = [k for k in keys if k not in comp]
     if keys is None:
         return {"accepts": True, "rc": 0, "key": None,
                 "note": "dash spec JSON could not be parsed: " + r["json"][:120]}
@@ -770,7 +920,9 @@ for name, meta in sorted(opt_rows.items()):
             (", ".join(accepted) if accepted else "(none)"))
         continue
     ostr = name if val == "" else name + "(" + val + ")"
-    full_cmd = "twoway " + meta["ctxcmd"] + ", " + ostr + " nodraw"
+    wpre = with_rows.get(name, "")
+    wpre = wpre + " " if wpre else ""
+    full_cmd = "twoway " + meta["ctxcmd"] + ", " + wpre + ostr + " nodraw"
 
     if ref is None:
         unprobeable[name] = "reference .gph was not produced in context " + ctx
@@ -785,7 +937,7 @@ for name, meta in sorted(opt_rows.items()):
             if r["rc"] == 0:
                 minab = r["pre"]
                 pstr = r["pre"] if val == "" else r["pre"] + "(" + val + ")"
-                probe_cmd = "twoway " + meta["ctxcmd"] + ", " + pstr + " nodraw"
+                probe_cmd = "twoway " + meta["ctxcmd"] + ", " + wpre + pstr + " nodraw"
                 break
     else:
         for k in sorted(cand_by[name]):
@@ -793,7 +945,7 @@ for name, meta in sorted(opt_rows.items()):
             if r["rc"] == 0 and gph(r["path"]) is not None and gph(r["path"]) == ref:
                 minab = r["pre"]
                 pstr = r["pre"] if val == "" else r["pre"] + "(" + val + ")"
-                probe_cmd = "twoway " + meta["ctxcmd"] + ", " + pstr + " nodraw"
+                probe_cmd = "twoway " + meta["ctxcmd"] + ", " + wpre + pstr + " nodraw"
                 break
 
     options_out[name] = {

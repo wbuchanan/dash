@@ -4514,11 +4514,11 @@
   - Suggested fix: Extend the extract scripts with the run1-run8 probes
   - Resolution: Not fixed because WP-33 section 33-13 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
 
-- [ ] Title: About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()
+- [x] Title: About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()
   - File Names and Line Numbers: twowaygraph_g.class:128; abbrev_truth unprobeable.bgcolor
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids syn:SD-20; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-20 (WP-33, section 33-10, Fix).
   - Suggested fix: Extend extract_abbrev_truth.do; correct the fixture
-  - Resolution: Not fixed because WP-33 section 33-10 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, syn:SD-20). scripts/extract_abbrev_truth.do measures every option dash declares (a companion option written into both commands where one is needed), bgcolor as twoway's own option (minimum bgc), and the hand-written bgcolor reason is gone; 18 binding differences of 11 options are listed in test/test_abbreviations.py ABBREV_KNOWN under their GAPS4 items (GW-4 and the five rows the maintainer ruling D42 registered, syn:SD-20a..e, WP-35 section 35-03), and the options dash stores under a twoway synonym's key are pinned in _STORED_UNDER. Pinned by test/test_abbreviations.py::TestEveryDeclaredOptionIsMeasured, test/test_wp33_truth.cscript Q3310-2; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20 (WP-33, syn:SD-20).
 
 - [ ] Title: scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled
   - File Names and Line Numbers: sizing_truth base/scale_*; dash_render.py:27529-27610; dash.sthlp:5687-5690
@@ -5803,3 +5803,33 @@
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids plot:PT-11, stat:PT-22; confirmed (plot:PT-11); uncertain (stat:PT-22, trigger unknown); tracked: untracked. Registered as GAPS4 plot:PT-11 (WP-49, section 49-02, Fix).
   - Suggested fix: Skip the run when the library exists, or suppress its output; add a cscript with discard
   - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+
+- [ ] Title: dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe
+  - File Names and Line Numbers: abbrev_truth options.dsize (dot mpg weight, dsi(small)); dash.ado _dash_parse_plot_opts
+  - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20a (WP-35, section 35-03, Fix).
+  - Suggested fix: Declare dsize() with twoway's minimum dsi
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+
+- [ ] Title: fpfit est(), twoway's minimum of estcmd(), is bound to estopts()
+  - File Names and Line Numbers: abbrev_truth options.estcmd (fpfit mpg weight, est(fp)); dash.ado _dash_parse_plot_opts
+  - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20b (WP-35, section 35-03, Fix).
+  - Suggested fix: Declare estcmd() with twoway's minimum est, so est() reaches estcmd()
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+
+- [ ] Title: lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key
+  - File Names and Line Numbers: abbrev_truth options.smoothplot (lpolyci mpg weight, s(line))
+  - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20c (WP-35, section 35-03, Fix).
+  - Suggested fix: Measure what twoway binds s() to on the ci types and read it the same way
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+
+- [ ] Title: colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle
+  - File Names and Line Numbers: abbrev_truth options.zlabel, options.ztitle (scatter mpg weight, colorvar(turn) zl(10(10)50))
+  - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20d (WP-35, section 35-03, Fix).
+  - Suggested fix: Declare zlabel() and ztitle() with twoway's minimums zl and zt
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+
+- [ ] Title: clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated
+  - File Names and Line Numbers: abbrev_truth options.clcolor, clpattern, clstyle, clwidth (scatter mpg weight, clc(red))
+  - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20e (WP-35, section 35-03, Fix).
+  - Suggested fix: Record them for scatter's connecting line as twoway reads them
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.

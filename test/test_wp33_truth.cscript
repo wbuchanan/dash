@@ -362,6 +362,35 @@ if inlist("`only'", "", "S10") & `: list posof "S10" in w33_run' {
 }
 * ==== end S10 ====
 
+* ==== S10 syn:SD-20: abbreviation bindings ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S10") & `: list posof "S10" in w33_run' {
+    display as text "S10 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3310-2: bgc(), bgcol() and bgcolor() are twoway's graph option
+    // (twowaygraph_g.class declares BGColor) and dash's; the fixture
+    // abbrev_truth.json said twoway had no bgcolor().
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach s in bgc bgcol bgcolor {
+        capture twoway scatter mpg weight, `s'(red) nodraw
+        local s10_trc = _rc
+        _w33_expect Q3310-2 "(`s10_trc' == 0)" "twoway `s'(red): rc `s10_trc'"
+        quietly dash clear
+        capture dash scatter mpg weight, `s'(red) name(s10b)
+        local s10_drc = _rc
+        _w33_expect Q3310-2 "(`s10_drc' == 0)" "dash `s'(red): rc `s10_drc'"
+        local s10_has = strpos(`"${dash_json_s10b}"', `""bgcolor""') > 0
+        _w33_expect Q3310-2 "(`s10_has')" "dash `s'(red) recorded no bgcolor"
+    }
+    _w33_done Q3310-2 "bgc(), bgcol() and bgcolor() are twoway's graph option in both"
+    capture graph drop _all
+    quietly dash clear
+    display as text "S10 end " c(current_date) " " c(current_time)
+}
+* ==== end S10 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
