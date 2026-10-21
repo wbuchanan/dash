@@ -1,0 +1,532 @@
+# GAPS4 -- the drop-in audit of 19oct2026, registered
+
+*Every live item of `.ultraplan/review/DROPIN-AUDIT-19oct2026.md` as committed at `f81cd31` (audited at `7dced3a`), under the maintainer's rulings D40 and D41, registered for the WP-33..WP-49 plan (`.ultraplan/sections/index.md`, Appendix A). Written 21oct2026 at `1291e9c` by section 33-01. Three audit items were withdrawn by rulings Q48, Q50 and A2 and are not registered.*
+
+One row per item, keyed by its first id (the lead id); the item's other ids follow its text. Sev: S1 for audit package 1, S2 for packages 2-13, S3 for packages 14-17 (index PD-2). Section: the plan section that resolves the item. Kind: Fix, Document, Partly, or the per-word ruling form. Evidence is the audit's; Fix is the audit's suggestion, or the ruling that resolved the item where one did (every Document and Partly row, and each Fix row whose suggestion a ruling replaced).
+
+## WP-33 · Verification corpus and README gallery (P13)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| TR-2 | No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand) | S2 | 33-14 | Fix | git grep gr_example is empty; twoway_corpus.do and conformance_corpus check rc only; test_mode_parity compares dash with dash | Per M5, P4-8 and A-25: make corpus judges every corpus example by geometry and glyph colours (within a recorded RGB tolerance), with an image score and a known-differences ledger; a ~20-example guard runs in cert; the gallery is built only at the final closeout. |
+| TR-11 | value_truth.json (311 twoway answers) is never compared with dash probe by probe | S2 | 33-10 | Fix | test_option_validation.py:1395-1510 checks structure only | Parametrised rc and first-line check with a deliberate-differences list |
+| TR-23 | No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass | S2 | 33-11 | Fix | ROADMAP.md:5155; test_graph_text.py:1323-1336; conftest.py:195-208 | Convert TestBounds so it runs (R9: pinned tests are never deleted); run make test-all once and record it. |
+| BY-23 | Per-type by() drawing is pinned against twoway only for function (default range) and lpoly (also BY-31) | S2 | 33-12 | Fix | U60-5 compares saved with served for five types; U46-04; test_lpoly_rot | Turn the 93-command byx probe into extract_by_types_truth.do and compare both modes per panel |
+| stat:PT-23 | Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ... | S2 | 33-13 | Fix | stat_truth keys; numeric.do | Add them to extract_stat_truth.do |
+| CV-16 | colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously | S2 | 33-13 | Fix | test_colorvar_truth.py:70-104; test_colorvar_options.py; test_colorvar_coverage.py | Extend the extract scripts with the run1-run8 probes |
+| syn:SD-20 | About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor() | S2 | 33-10 | Fix | twowaygraph_g.class:128; abbrev_truth unprobeable.bgcolor | Extend extract_abbrev_truth.do; correct the fixture |
+| GW-11 | scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled | S2 | 33-11 | Fix | sizing_truth base/scale_*; dash_render.py:27529-27610; dash.sthlp:5687-5690 | Compare frame insets under scale(0.5)/(1.5); correct the help |
+| BY-24 | by() title/note/caption under position() has truth only for caption pos(5) | S2 | 33-12 | Fix | extract_by_text_truth.do bp01-bp39; TestByTitlesSpan | Add position() probes |
+
+## WP-34 · Default drawing of common graphs (P1)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| AX-4 | The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints (also VF-1, DG-2) | S1 | 34-01 | Fix | default_axes_truth P08 (scale 13.8125-39.1875, ticks 15(5)40); dash draws 10(10)40 with an empty band, and rep78 discrete 0(2)6 against twoway's 1(1)5; histogram is in _DASH_STATA_TICK_SKIP (dash_render.py:41811); test_default_axes.py:230-233 excludes P08 x | Use the midpoints as the tick input and keep the edges in the hull, at build, in the served refit and in the saved-page refit (or ask Stata over the midpoints); remove the exclusion; add discrete, bin(), width(), frequency and horizontal rows |
+| AX-2 | by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4) (also TR-3, BY-26) | S1 | 34-02 | Fix | bygraphstyle-default/compact/altleg/econ.style:39-40; _dash_by_numticks (dash_render.py:40785-40801) lowers y only; by_scales_truth d40 records #4 on x; probes on length, price, displacement, lfit range(), histogram width(5) | Use nx-1 on x1 (x2/y2 keep the scheme count, f02/c17); request n=4 from Stata's tick table; add truth rows whose x has #4 different from #5; correct dash.sthlp:4679 |
+| AX-1 | xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data | S1 | 34-03 | Fix | Probes R1-R3 and C63; axis_truth b2_range_0/_100/_three draw 10..40; dash_render.py:47748-47768; exclusion test_bar_range_geometry.py:653-656; dash.sthlp:4529 says range() widens the ticks | On a default numeric axis, tick over the data and keep range() in the hull only (build, served, saved refit); keep widening for #N and by(); pin R1-R3 |
+| VF-2 | A by() graph's shared y title is never painted (its cell canvas is 1 px tall) (also TR-24) | S1 | 34-02 | Fix | Title visible=true, bbox 28x560, canvas 28x1 with 0 inked px; _dash_by_text_cell frame_height=1 (dash_render.py:55040) is never cleared in _dash_by_cell (55398-55405); the browser tests check bboxes and visibility only | Clear frame_height when the cell fills its track; check the dash_by_legend/clegend cells; add a pixel-level browser test |
+| VF-3 | aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed (also ST-12) | S1 | 34-04 | Fix | _dash_frame_sizes (dash_render.py:27654-27678) sets frame sizes but not width/height; q04 draws 600x560 with a 544x509 frame; min/max_height 160/560 against the default height 600; dash.sthlp:5670-5679; test_sizing.py:262-275 checks the model only | Set width/height (or None) and clear min/max_height on fixed figures; add a headless test of frame size and ratio; assert no Bokeh validation output |
+| PIC-1 | A default area plot (and its legend key) has no outline in any scheme (also RH-14) | S1 | 34-05 | Fix | dash_render.py:18711-18733 strokes only when lcolor/lwidth/lpattern/lstyle is given; twoway strokes p#arealine at 2x parea, clipped, in all 10 schemes run; test_scheme_linewidth.py:279 injects lcolor(red) | Always draw the outline from the p#area line chain, inner-aligned, on the key too, keeping cmissing breaks |
+| PIC-3 | A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style | S1 | 34-06 | Fix | twoway_lfitci_parse.class sets .n=1 under nofit; _dash_plot_style_indices (dash_render.py:57783-57787) always adds 2; gr_example #78 scatter drawn p5 where twoway draws p3 | Count one plot under nofit and check fitplot()/ciplot(); add nofit rows to ci_plot_index_truth; check legend numbering |
+| TR-4 | A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end) | S1 | 34-07 | Fix | area/line d.gnp96 date draws 1967q2..2002q2 in 35-quarter steps against twoway's 1970q1(40)2000q1; the plain-y probe V1 is wrong too; x is summarised over rows with a missing y, so _dash_stata_pick (dash_render.py:41708) finds no match | Summarise only rows where all of the layer's variables are non-missing (twoway's omit rule); add operator and plain-missing rows to ts_operator_truth |
+| DG-3 | a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label | S1 | 34-08 | Fix | _dash_expand_numlist (dash_render.py:40061-40082) computes a+b*k in plain floats; ylabel(-.3(.1).3) and -.7(.1).7 | Reproduce Stata numlist's rounding (snap to 0, round relative to b); add a truth probe |
+| AX-3 | Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci\|\|scatter overlay, and the colour key's levels (also TR-5, TR-12, DT-27, VF-10, CV-13) | S1 | 34-09 | Fix | Stata is asked only for counts {5} plus #N matched by the label/tick regex (dash_render.py:41832-41838); skip set at 41811; build-time misses B2, C42, B6, B4, E2; qfitci\|\|scatter draws y 0(10)40 where twoway draws 10(10)40; colour-key tick calls pass no table (16773, 29219, 52420): zlabel(#3) gives 3 colours where twoway gives 2; BUGS.md:4139-4143 and ROADMAP.md:5153 say the drawing is 'exact at build' | At export, ask _natscale/_tsnatscale for the by() counts, mtick/mlabel #N, every computed lo/hi and the colour variable's range; correct the BUGS/ROADMAP scope |
+| plot:PT-13 | Open entry: the natscale model misses 3 of 264 axes after a filter move or without embedded ticks (also AX-20, syn:SD-21, VF-9, BY-25, sil:SD-16) | S2 | 34-09 | Partly | BUGS.md:4139; test_natscale.py _KNOWN | Partly closed by ruling (D41, PD-9): Stata's own ticks at build (34-09); the natscale misses after a filter move stay open as the re-scoped natscale entry. |
+
+## WP-35 · Accepted syntax and refusals (P11, with P4's remaining items)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| MS-1 | Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns (also stat:PT-3) | S2 | 35-01 | Fix | _dash_label_split (dash.ado:2517-2560, syntax at 2551); _dash_contour_split (2447-2499); twoway_zyx2view_parse.class:89-106; runs G01-G06, run3 #101-#119 | Keep only the last copy before the combined syntax; keep refusing repeated flags; add TP-14a rows |
+| syn:SD-3 | p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn | S2 | 35-02 | Fix | twowaygraph_g.class:145-152; dash_parse.mata:8114-8115; p1.svg; v1out.log | Map p#(opts) onto the #th plot; regenerate the takes table over p1-p20 |
+| stat:PT-7 | lowess m (twoway's documented minimum of mean) is refused (also syn:SD-6) | S2 | 35-03 | Fix | dash.ado:1274, 1664-1671; lowm.log | On lowess, read a bare m as mean |
+| syn:SD-5 | bwi() is refused on lowess, kdensity, lpoly and lpolyci | S2 | 35-03 | Fix | dash.ado:1266, 1318; abbrev_truth unprobeable.bwidth | Declare BWidth with twoway's minimum on those types |
+| stat:PT-1 | histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses (also TR-7) | S2 | 35-04 | Fix | twoway__histogram_gen.ado:27-51; dash.ado:4788-4848; value_truth histogram_freqpct_1 | Add both checks in twoway's words and order |
+| stat:PT-2 | density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram | S2 | 35-04 | Fix | dash.ado:3772-3774; run3 | Add them to the flag-applicability rule |
+| stat:PT-5 | contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer | S2 | 35-04 | Fix | lev2.log; dash.ado:2660-2665; dash.sthlp:596-598; extract_contour_truth.do:358 measured under nodraw | Bound at 500 levels and 499 cuts in twoway's words; re-measure drawn |
+| stat:PT-13 | contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options | S2 | 35-03 | Fix | twoway_contourline.sthlp:44-58; contour_truth abbrev.*; dash.sthlp:599-601 | Resolve them to the contour options first |
+| stat:PT-6 | function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note | S2 | 35-03 | Fix | twoway_function_parse.class:55-71; dash.ado:10448 hard-codes x(x) | Validate it as a name and pass it as x() |
+| stat:PT-8 | lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes | S2 | 35-04 | Fix | twoway_lowess_parse.class:37-47; probe1 #77-#78 | Treat the pair in the repeat check; take weight silently |
+| stat:PT-9 | Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1) | S2 | 35-03 | Fix | twoway_mspline_parse.class:35; probe1 #114 | Accept them as twoway does |
+| stat:PT-14 | bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types (also DT-13) | S2 | 35-04 | Fix | _dash_fold_bw (dash.ado:2125-2145); dash.sthlp:3655-3658 | Refuse it outside lowess, lpoly, lpolyci and kdensity |
+| basic:PT-8 | Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed' (also syn:SD-10) | S2 | 35-06 | Fix | twoway_yxview_parse.class:238-243 | Refuse in twoway's words |
+| basic:PT-9 | Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111 (also TR-9, stat:PT-10) | S2 | 35-05 | Fix | value_truth.json; OV-42 and PS-06 pin dash's codes; DROPIN P2.64 | Give each rule twoway's rc and line (the fixture holds them); flip OV-42 and PS-06 |
+| basic:PT-13 | Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses (also DT-17, DT-18, TR-17) | S2 | 35-05 | Fix | plaintypes4 C2-C10; Q05, Q06, Q12; dash.sthlp:1225-1250, 5871 | Accept as twoway does (clamp or no-op); bound only where the element is drawn |
+| DT-15 | Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...) (also DT-16, syn:SD-18) | S2 | 35-07 | Fix per the Q8 per-word ruling | dash.sthlp:1251-1265, 4948-4953; p10out X08-X52 | Per the maintainer's per-word ruling (P4-7): the 25 second-axis forms (ytitle2() ... ttitle2()), malpha(), lalpha(), falpha(), marker(), jseed(), mlg(), plotbgcolor(), pbgc() and bw() read as barwidth() are refused with twoway's words and a second line naming twoway's spelling (P4-9); kernel() is read case-sensitively and xsize(()) is refused as twoway refuses them; a colorvar() layer whose if keeps no observation is answered as twoway answers it; hover() and table stay, listed as dash-only options in one help paragraph. |
+| syn:SD-7 | ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type | S2 | 35-03 | Fix | twoway_lfitci_parse.class:34-37; dash.ado:3248-3252 | Refuse only exact type/recastas; measure what ty() draws |
+| syn:SD-8 | Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198) | S2 | 35-06 | Fix | dash.ado:4300-4321; F01-F05; v3 | Refuse with twoway's rc and words |
+| GW-2 | aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198) | S2 | 35-06 | Fix | twowaygraph_g.class:155-161 | Refuse in twoway's words after the merge |
+| GW-3 | maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn | S2 | 35-06 | Fix | twowaygraph_g.class:136 | Validate it; refuse axis numbers above it with r(125) |
+| GW-4 | fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied | S2 | 35-06 | Fix | graph.ado:161; dash.ado:980, 1309 | Declare FXSIZe/FYSIZe |
+| sil:SD-8 | title() with notitling is accepted with a note; twoway fails r(4018) | S2 | 35-06 | Fix | twowaygraph_g.class:577-582 | Refuse the pair as measured |
+| DT-19 | Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar) | S2 | 35-08 | Fix | dash.sthlp:211-243; Q11 | Use tempnames or a frame for working columns |
+| plot:PT-3 | Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations (also basic:PT-14, DT-14) | S2 | 35-09 | Fix | dash.ado:5869; dash_parse.mata:2526-2528; dash.sthlp:528-532 | Per M7: plot-type names are read in lower case only; capitalised spellings are refused as twoway refuses them. |
+| plot:PT-4 | The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist') (also syn:SD-2) | S2 | 35-09 | Fix | empty_tw.svg has no axes; dash_render.py:63570-63576; test_bare_dash.py:74-80; p3out E20-E51; dash.sthlp:164-166 | Draw no axes when there is no layer; refuse axis, scale and line options there in twoway's words (plural names); add an SVG truth for twoway, title(T) |
+| syn:SD-1 | A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it | S2 | 35-09 | Fix | dash_parse.mata:3622-3640 (the comment at 3627-3630 is false); p2/p11 logs; P1B-37 pins dash's message | Follow twoway's _parse expand: text up to the next \|\| is another plot; give twoway's '<word> is not a twoway plot type' and r(111) cases |
+| syn:SD-13 | A \|\| inside one group with no graph options, '(scatter .. \|\| line ..)', is refused; twoway draws both | S2 | 35-09 | Fix | p2out S13; probe v1 | Per M7: accept the option-less form, as twoway draws it. |
+
+## WP-36 · Python discovery and environment (P2)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| plat:PT-1 | dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal | S2 | 36-01 | Fix | fresh-HOME probe: c(python_exec) is empty while python query gives r(execpath)=/usr/local/bin/python3 and initialized=0; dash.ado:290-319; dash_setup.ado:96-107; dash_setup_lib.py:829-834 | Per M8 (C5): no pre-check of Python and no python query probe; when c(python_exec) is empty, dash and dash_setup run the normal python: path and show Stata's own failure with dash's advice; the fresh-HOME test is a release-tier pytest through scripts/stata_slot.sh (A-8). |
+| plat:PT-5 | Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh (also TR-20, ECO-17) | S2 | 36-04 | Document | dash.sthlp:6701-6707, 2521, 2722; dash.ado:10115-10200; dash_render.py:3598-3764; test_serve_lifecycle skipif win32; scripts/stata_batch.sh:19 | Documented only (Q47, M8): README and help state the tested platform (macOS arm64, StataNow 19.5, console); no code changes. |
+| plat:PT-4 | Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help | S2 | 36-03 | Fix | probe3 r(134) at 408,235 characters; dash.ado:11366-11377; dash.sthlp:3713-3714 | Per A-7: the function points of a named graph go to a private file under dash's temp folder, keyed by graph name; fix the message and the help. |
+| plat:PT-2 | The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later | S2 | 36-04 | Document | dash.ado:84-89, 438-447; dash.sthlp:6701-6707; README.md:32-33 | Documented only (Q46, M8): the Stata 19 floor stays; README and help state that the drop-in claim is for Stata 19 and later. |
+| plat:PT-11 | Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it (also ECO-17) | S2 | 36-04 | Document | dash.ado:351-400; dash_setup.ado:439-507; dash.sthlp:6709-6719 | Documented only (Q49, M8): the help lists the dependencies, and nothing else changes. |
+| plat:PT-12 | The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route | S2 | 36-04 | Document | dash_requirements.txt:6-7, 11, 83, 600; dash_setup_lib.py:54, 430-437; no Python ceiling | Documented only (Q33, M8): dash_setup's help states the Pythons and platform tags the lock covers, and that Python 3.15 and Windows ARM64 are not covered. |
+| plat:PT-6 | saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative | S2 | 36-04 | Document | dash.ado:756-763; dash_parse.mata:1455-1475; [U] 11.6.2 | Documented only (Q47, M8): the tested-platform statement covers it; saving()'s ~ expansion is not changed. |
+| plat:PT-16 | 'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified | S2 | 36-04 | Document | dash.sthlp:172-174; BUGS P1.29 residual; dash_render.py:237 | Documented only (M8): the help states that Chrome is the browser dash is tested in. |
+| plat:PT-14 | Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size | S2 | 36-04 | Document | probe1/probe2 timings and RSS; q1.html CDS entries; dash_render.py:2279 | Documented only (Q31, M8): page columns stay JSON number lists; the help states the measured timings and memory (about 6-8 s and 1.4 GB of Stata memory per million rows). |
+| DG-14 | WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's | S2 | 36-02 | Fix | dash_render.py:5567, 63396, 70285; px_L02.png (SwiftShader only) | Keep dashed lines on the canvas backend; base the threshold on the drawn rows; add a WebGL-vs-canvas pixel check |
+
+## WP-37 · Statistical and computed layers (P12)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| DG-1 | contour over zero observations crashes with a Python traceback, r(7102) | S2 | 37-01 | Fix | map_contour (dash_render.py:24350-24425) passes NaN levels to fig.contour | Per M9 (PD-15): one Stata-side zero-observation check copies twoway's measured answer per type and case. |
+| DG-5 | rarea with cmissing(n) draws its bound outlines across the gaps | S2 | 37-02 | Fix | dash_render.py:22918-22998; d_M05.png; test_area_cmissing has no rarea outline test | Give the bound Lines their own NaN-broken columns |
+| TR-13 | contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter (also stat:PT-19, sil:SD-19) | S2 | 37-03 | Fix | dash.sthlp:565-592; dash_render.py:13992-14003 | Per M9: contour comes from twoway__contour_gen, run at export, when the data is a full grid or interp(none); scattered data above 1,000 points keeps the subsample and its note. |
+| DG-8 | A contour with no surface (two observations) draws no colour key | S2 | 37-02 | Fix | map_contour not-drawable branch; C01 | Build the key from the levels anyway |
+| stat:PT-12 | xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x | S2 | 37-04 | Fix | twoway_lfit_parse.class:75-88; sersets.log xtr | Route through _dash_fit_points with xtrans() |
+| stat:PT-16 | lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off | S2 | 37-05 | Document | lpolyci_truth a_d3 row 47; dash.sthlp:4032-4034 | Documented only (Q27, M9): the help describes the zero-df difference accurately; Stata's compiled round-off is not copied. |
+| DT-26 | Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000 | S2 | 37-05 | Document | dash.sthlp:1166-1185, 3895-3916, 3970-3975, 3795-3796 | Documented only (37-05): the help states each measured numeric limit (lpoly at degree 6-7 and above 7, the exact-polynomial cases, fpfit's date-time model choice, ndots thinning above 2,000,000). |
+| stat:PT-21 | Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks) (also BY-30, DG-16) | S2 | 37-05 | Document | dash.sthlp:436-437; BUGS G6; repeated runs differ | Documented only (37-05): the help states that tied sort keys keep data order, where twoway's order among ties is unstable. |
+
+## WP-38 · Stata graph integration, documented (P3)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| syn:SD-17 | name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output (also ECO-3) | S2 | 38-01 | Document | dash.sthlp:815-823 (Difference 2); probe p3 B1/B2 | Documented only (M10): the help states that name() registers the graph instead of drawing it and that saving() beside name() writes nothing. |
+| GW-12 | A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601) (also ECO-2, plat:PT-13, TR-16) | S2 | 38-01 | Document | dash.sthlp:172-182, 1631-1663; dash.ado:244; probes p1 F1/F4 and p2 A1/A2 | Documented only (M10): the help states that a dashboard is not a Stata graph and names what cannot use it; no export command is added (PRD section 7). |
+| ECO-1 | A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111) | S2 | 38-01 | Document | p3 C/D: CDS shape [5] against [69]; p2 D4; dash.ado has no datasignature/c(frame) check | Documented only (M10): the help states that a registered graph draws its frame's data as it is at dash build, not as it was at registration, and that a graph registered under frame f: (frame f: dash ..., name(), section 33-07) draws frame f, as twoway draws from the current frame. |
+| ECO-4 | graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout() | S2 | 38-01 | Document | probe p3 E; p1 F6 | Documented only (M10): the help maps graph combine's options onto layout() and names those dash build refuses. |
+| GW-13 | name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists' (also ECO-6, ECO-12) | S2 | 38-02 | Document | dash.ado:11294-11303, 11360-11364; dash.sthlp:861-897; test_registry_collision.cscript:987 | Documented only (M10): the help states name()'s limits (22 characters, no '__') and the rc and words a duplicate name gives. |
+| GW-14 | saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing (also ECO-13) | S2 | 38-02 | Document | probe p1 I1/I2; dash.sthlp:825-829; dash.ado:11458-11508 | Documented only (M10): the help states the rc and words saving() onto an existing file gives. |
+| GW-15 | nodraw with saving(, asis) writes the page where twoway gives r(601) | S2 | 38-02 | Document | probe v1; dash.sthlp:848-852; ND-06 | Documented only (M10): the help states that nodraw with saving(, asis) writes the page. |
+| GW-16 | play() refuses a readable recording (r(198)); there is no Graph Editor (also ECO-14) | S2 | 38-02 | Document | dash.ado:8239-8272; dash.sthlp:6667-6683; U54 | Documented only (M10): the help states that play() is refused and that there is no Graph Editor. |
+| GW-9 | name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed' | S2 | 38-02 | Document | dash.ado:11273-11303; probe p4 | Documented only (M10): the help states the message a bad name() sub-option gives. |
+| ECO-5 | 'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items | S2 | 38-02 | Document | dash.ado:11948-11997; probe p1 J1 | Documented only (M10): the help states that dash clear clears the whole registry and that there is no dir, describe or drop for registered items. |
+| ECO-15 | Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none | S2 | 38-01 | Document | dash.ado:10045-10200; dash.sthlp:1608-1611, 1769, 2864-2867 | Documented only (M10): the help states that each one-line command opens a new browser page, that the newest five previews are kept, and that saving() opens none. |
+| ECO-7 | dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s() | S2 | 38-01 | Document | dash.ado:154-185; probes p1/p2 | Documented only (M10): the help states which s() macros dash leaves. |
+
+## WP-40 · Resource limits (P5)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| plat:PT-8 | r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts (also syn:SD-16, sil:SD-22) | S2 | 40-02 | Document | dash_render.py:2360-2375; dash.sthlp:2933-3000; probes: 11M obs refused, 300 plots refused | Documented (M10, Q44, P4-3): the embedded-cell cap is removed (section 33-15), so a dashboard has no size cap and the help says so; the count caps (100 plots, 10,000 reference lines, 1,000 added texts) stay and are documented under Resource limits and Differences. |
+| plat:PT-7 | The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows (also DG-15) | S2 | 40-01 | Fix | dash.ado:5222-5254, 11720-11727, 13170-13176; probe1/probe2 | Export only the rows some graph draws when no filter(), link(), brush(), csv or KPI card needs every row and the page is not served (Q45, A-12); with the embedded-cell cap removed (P4-3, section 33-15) this keeps pages and data files small and refuses nothing. |
+| plat:PT-9 | The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws | S2 | 40-02 | Document | limits.sthlp:104; probe6/probe7; dash.ado:5204-5219 | Documented only (M10, Q44): the per-graph plot limit stays and is documented under Resource limits and Differences. |
+| plat:PT-10 | by() draws the first 100 groups (ceiling 1,000), with a note (also BY-22) | S2 | 40-02 | Document | dash_render.py:2366; dash.sthlp:2976-2980, 3300-3304 | Documented only (M10, Q44): by()'s group limit stays and is documented under Resource limits and Differences. |
+| stat:PT-15 | n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree (also DT-17) | S2 | 40-02 | Document | probe1 #3, #85, #177; dash.sthlp:1149-1172, 3711-3716 | Documented only (M10, Q44): the n(), bin() and degree() bounds stay and are documented under Resource limits and Differences. |
+| sil:SD-1 | histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars | S2 | 40-02 | Document | dash_render.py:22508, 22539-22576; twoway__histogram_gen.ado:205-216 tabulates occupied bins; price discrete/width(1)/width(10) | Documented only (M10, Q44): the 1,000-bin bound and its rebinning stay and are documented under Resource limits and Differences. |
+| AX-16 | An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently (also sil:SD-10) | S2 | 40-02 | Document | dash_render.py:40233, 42205, 42228-42233; twoway draws 2,501 labels | Documented only (M10, Q44): the 2,000-tick bound stays and is documented under Resource limits and Differences. |
+| sil:SD-11 | msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number | S2 | 40-02 | Document | dash_render.py:8314, 8421-8424; dash.sthlp:1177-1178 | Documented only (M10, Q44): the 1,000-unit msize() bound stays; the help and the note's wording are corrected. |
+| sil:SD-12 | fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently | S2 | 40-02 | Document | dash_render.py:429, 21747, 27031 | Documented only (M10, Q44): the 20,000-point fpfit grid stays and is documented under Resource limits and Differences. |
+| sil:SD-13 | text() whose globals expand past 4,000 characters is refused r(198) | S2 | 40-02 | Document | dash_parse.mata:11461-11469; dash.sthlp:784-785, 5232-5234 | Documented only (M10, Q44): the 4,000-character bound on text() after its globals expand stays and is documented under Resource limits and Differences. |
+
+## WP-41 · by() fidelity (P6)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| BY-28 | contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel | S2 | 41-01 | Fix | zyx2view_g.class:255-276; tw_f29a.svg has 3 colours in both panels; dash dump shows per-panel cuts; _dash_share_by_scales shares x/y only | Compute the cuts once over all panels (Total included), in both modes; measure the exact cuts from a drawn graph |
+| BY-1 | by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too) | S2 | 41-02 | Fix | _dash_by_chrome sides=('above',)/('below',) (dash_render.py:55079, 55082); skipped at 54495 | Draw them inside the panel array at their clock; add truth probes (M11: every P6-P10 item is drawn, none only named). |
+| BY-2 | A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored (also BY-29, BY-11) | S2 | 41-03 | Fix | twoway SVGs identical with and without scale(1.5) or scale(0.5); _dash_scale_factor (dash_render.py:27487) has no by() check; by(scale()) falls to the unsupported branch (36404) | Ignore the outer scale() under by(); apply by(, scale()) to the whole by() graph |
+| BY-27 | function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed) | S2 | 41-03 | Fix | twoway__function_gen.ado:101-102; _dash_fold_range (dash.ado:2401-2432); dash.ado:8845-8873 | Compute the min/max per panel and for Total inside the per-panel loop; pin it against sersets |
+| BY-3 | An at() hole for a legend or colour key that is not drawn is not reserved in the grid | S2 | 41-04 | Fix | bygraph_g.class:612-618, 670-676; dash_render.py:55786-55874, 55990-56024 | Return the at() cell whenever at() is given and the key object exists |
+| BY-4 | compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn (also sil:SD-2) | S2 | 41-05 | Fix | bygraph_g.class:291-293; bygraphstyle-compact.style:39 special_options; _DASH_BYSTYLE_EXPAND has no compact entry; by_remainder_truth bystyle_compact is unused | Apply compact only without style(); expand compact's special options |
+| BY-5 | aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined') | S2 | 41-05 | Fix | bygraph_g.class:559-566; probe1 T14 | Refuse it in twoway's words |
+| BY-6 | by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()' | S2 | 41-05 | Fix | dash.ado:4263-4267; probe1 T17 | Use twoway's line and r(100) |
+| BY-12 | by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles | S2 | 41-02 | Fix | bygraph_g.class:203-216; probes T4-T7 | Draw the eight edge titles on the by() graph |
+| BY-13 | by(, legloc() clegloc() plegend() plegloc()) are named and ignored | S2 | 41-04 | Fix | bygraph_g.class:142-144; P6 equals P6b; T13 | Merge them into the legend/clegend placement; implement plegend() |
+| BY-14 | coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key | S2 | 41-04 | Fix | probes T10-T12; kp.py | Implement by(, plegend()) and twoway's key form |
+| BY-10 | Panel-label sub-options twoway draws are named: justification(), nobexpand, lwidth()/lpattern(), span, alignment(), linegap(), bmargin(), placement(), orientation() | S2 | 41-06 | Fix | probes T29, P1-P3, P13; dash.sthlp:5382-5385 | Draw them on the panel label row |
+| BY-16 | by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line (also BY-17) | S2 | 41-06 | Fix | dash.sthlp:3280-3287 | Write the raw value as twoway does; split quoted parts |
+| BY-18 | Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing (also BY-19, BY-20, BY-21) | S2 | 41-05 | Fix | dash.sthlp:3330-3362, 3342-3343, 5372-5373, 5683-5684 | Port combine's regions, beside-panel placement and per-frame aspect |
+| VF-6 | by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row | S2 | 41-05 | Fix | q03 407 vs 448 px; twoway regions equal | Give every panel the same left border, or draw the y labels in an outer column |
+| GW-5 | xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally | S2 | 41-05 | Fix | advanced_options.sthlp:151-156; _dash_overhangs (dash_render.py:27704) called per panel at 64005; sizing_truth overhang_* | Skip under by(); measure only the end labels per side |
+| sil:SD-7 | A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198) | S2 | 41-03 | Fix | dash.ado:6952; probes q1, p2 | Apply the check per panel |
+| PIC-13 | A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x) | S2 | 41-04 | Fix | tw64 vs tw65; d65 label size 10pt | Scale the hole legend by by()'s size multiplier |
+| BY-7 | by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor (also BY-15) | S2 | 41-02 | Fix | probe1 T20, T8 | Print twoway's clockdir note with its fallback; take bgcolor in silence or draw it |
+| TR-19 | Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions | S2 | 41-02 | Fix | BUGS.md:3999-4095 | Open BUGS entries for them |
+
+## WP-42 · Colour variables (P7)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| CV-8 | An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white) (also DT-22, sil:SD-20) | S2 | 42-01 | Fix | dash_render.py:16730-16760; dash.sthlp:5523-5530; test_colorvar_truth.py:91-92 skips the default; K10/T7/I7 | Route every type through the stepped mapper and draw the stepped key, as lines already are |
+| CV-1 | colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads) | S2 | 42-02 | Fix | dash_render.py:16983-16984, 17145-17147; F1-F8; colorvar_options.sthlp:178-185 | Keep line_color mapped on line glyphs; keep the series colour only on marker and bar outlines |
+| CV-3 | The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame | S2 | 42-03 | Fix | dash_render.py:16319-16698; K1-K4, K8, T1-T5, L4; TestOtherlabel compares against the plegend probe | Draw twoway's axis-style key: highest at top, z axis at natscale ticks or cuts, no missing entry, the type's key swatch |
+| CV-4 | The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied | S2 | 42-04 | Fix | dash_render.py:16606, 16698; K5, K6, M4, Q3, C28 | Descending levels plus 'Other', no title, display-format numbers; keep legend() off it |
+| CV-2 | colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1) | S2 | 42-05 | Fix | yxview.class:2406-2427; dash_render.py:14227-14230; test_colorvar_forms.py:128 pins dash's rule; disc_levels_price_4 passes vacuously | Use k+1 steps under colordiscrete (add min/max with colorvarminmax), also in the relevel path |
+| CV-5 | legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them | S2 | 42-04 | Fix | dash_render.py:39703-39735; Q1, Q3, P12 | Exclude colorvar keys from legend()'s grid and size steps |
+| CV-6 | Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend | S2 | 42-02 | Fix | dash_render.py:16859-16886; M1, K11 | One key from the last colorvar layer; keep plot-legend items |
+| CV-7 | A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour | S2 | 42-02 | Fix | D_K9 field-mapped renderer; bokeh.js:32111-32112 | Use a proxy swatch in the pstyle colour |
+| CV-11 | colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals (also CV-12) | S2 | 42-04 | Fix | dash_render.py:16598-16599, 14228; R1, I5 | Reverse colours only; use zero-width cuts |
+| CV-9 | colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words (also syn:SD-9) | S2 | 42-05 | Fix | dash.ado:3699-3701, 4329; run1 A1/A2/A5, C5-C7; p3out F09/F13 | Use twoway's rc and line; refuse wildcards |
+| CV-10 | Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198) (also LT-14) | S2 | 42-05 | Fix | dash.ado:8776-8782; dash_render.py:16917-16918, 53261; run1 A8, run6 P1/P5/P6/P9 | Run zlabel through _dash_axlabel_refusal and zscale through the scale check; refuse unknown clegend/plegend words |
+| CV-14 | Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing | S2 | 42-05 | Fix or Document per the Q8 per-word ruling | dash.sthlp:1258-1260, 5422, 5499-5500, 5537-5540, 5573-5576 | Per the maintainer's per-word ruling (P4-7): a string colorvar() is refused r(7), and colpalette(), colornlevels(), colormissing(), cv() and colv() are refused with twoway's words and a second line naming twoway's spelling (P4-9); an empty colorvar() layer and an all-missing colorvar() are answered as twoway answers them; the entry closes naming the kept and the refused words (A-12). |
+| CV-15 | On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option' (also LT-23) | S2 | 42-03 | Fix | dash.sthlp:5471-5478, 5596-5597; _DASH_CLEGEND_SUBOPTS (dash_render.py:53239-53241) | Draw them once the axis-style key exists; reword the note |
+| LT-12 | clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options | S2 | 42-03 | Fix | dash_render.py:53271-53272, 16898-16899; C_ti, C_cbx | Parse it as a textbox and draw it above the key, keeping ztitle |
+| AX-12 | The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list (also syn:SD-4) | S2 | 42-03 | Fix | twowaygraph_g.class:122-123; dash.ado:995, 1324; dash_parse.mata:8151-8156; Z01-Z32 | Accept the plurals; draw the ticks and labels on the key (M11: every P6-P10 item is drawn). |
+| sil:SD-4 | The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read (also sil:SD-14) | S2 | 42-01 | Fix | dash_render.py:16751, 24622; scheme-s2color.scheme:56, 185, 2239-2241 | Read clegend_width/height and the four contour keys |
+| LT-22 | contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line | S2 | 42-03 | Fix | dash.sthlp:592-593, 5527-5533; CL_ctl, CL_cl | Build the level legend under colorlines; drop the note on plain contourline |
+
+## WP-43 · Legend, titles and added text (P8)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| LT-1 | legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles | S2 | 43-01 | Fix | dash_render.py:39260-39304; stcolor 157.44 vs 112.56 px; s2color dknavy | Style them from textbox_style('leg_title'/'leg_subtitle'), with overrides |
+| LT-4 | legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read (also ST-1 (bplacement part)) | S2 | 43-02 | Fix | dash_render.py:39622-39627, 38491; L_r0bp, L_r0p1bp | Use bplacement for the inside location at ring(0); read compass2dir abbreviations |
+| LT-2 | legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing | S2 | 43-03 | Fix | dash_render.py:39305-39307; legend_geometry_truth nobox equals default; test_legend_geometry.py:386; dash.sthlp:4472 | Treat box/nobox as the key-text box; fix the help and flip the test |
+| LT-3 | Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle() | S2 | 43-03 | Fix | _DASH_LEGEND_SUBOPTS (dash_render.py:53797-53803); probes L_box..L_ts | Draw them (M11: every P6-P10 item is drawn, none only named). |
+| LT-5 | legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ | S2 | 43-02 | Fix | legend_g.class:161-240; L_mrgall, L_draw1, L_nodraw | Honour all (skip the merge), draw and nodraw |
+| LT-6 | Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign()) | S2 | 43-03 | Fix | dash_render.py:39145-39147, 53797; probes | Implement them on the Legend (M11: every P6-P10 item is drawn). |
+| LT-7 | bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box | S2 | 43-03 | Fix | dash_render.py:53792, 53832-53839; T_bex, M_bexp | Draw the expanded box (M11: every P6-P10 item is drawn). |
+| LT-8 | A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line | S2 | 43-05 | Fix | dash_render.py:54211-54218; textboxstyle-heading.style; stcolor.scheme:43 | Take the fill and line from the textbox style |
+| LT-9 | A fractional ring() (7.5, 4.5) or ring(100) is dropped silently | S2 | 43-05 | Fix | dash_render.py:54064, 39598; ringposstyle.sthlp | Parse ring as a real 0-100 and order by value |
+| LT-10 | Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest | S2 | 43-03 | Fix | dash_render.py:10274-10292, 39150-39177 | Route through _dash_margin_sides with per-side padding |
+| LT-11 | text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn | S2 | 43-06 | Fix | dash.ado:9872-9876; _dash_at_canon (dash_parse.mata:11863-11904) drops it; dash.sthlp:767-770 | Pass alignment through _dash_at_canon; add an end-to-end test |
+| LT-13 | legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198) | S2 | 43-01 | Fix | dash_render.py:53560-53566; dash_parse.mata:9746-9751 | Drop the eight edge titles from both legend tables |
+| LT-14 | title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198) | S2 | 43-05 | Fix | _dash_textbox_position (dash_render.py:54059-54067); R_tring | Refuse a non-numeric title ring after twoway's notes |
+| LT-15 | legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored | S2 | 43-01 | Fix | dash_render.py:39260-39304 | Apply them (M11: every P6-P10 item is drawn, none only named). |
+| LT-16 | title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored (also ST-8) | S2 | 43-05 | Fix | dash_render.py:54187-54188, 54384-54388; T_r0pl; probe2 tw_1..19; dash.sthlp:5359-5361 | Place the box at twoway's inside compass point; add a truth fixture |
+| LT-17 | legend(holes()) with cols(1) inserts a full blank row | S2 | 43-02 | Fix | legend_g.class:312-357; dash_render.py:39497-39510 | Mirror legend_g's hole placement |
+| LT-18 | Title box sub-options named: orientation(), width(), height(), angle(), lstyle(), bl*, lalign(), style(); clocks 2-4/8-10 drawn above or below (style() and lalign() missing from the help list) (also ST-18) | S2 | 43-05 | Fix | _DASH_TEXTBOX_BOX_HONOURED (dash_render.py:53835-53839); dash.sthlp:5341-5345, 5379-5381 | Draw them (M11: every P6-P10 item is drawn). |
+| LT-19 | Edge titles draw no box, justification(), margin() or tstyle() | S2 | 43-05 | Fix | dash_render.py:53886-53889; dash.sthlp:5316-5325 | Reuse _dash_textbox_style |
+| LT-20 | text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally (also GW-21) | S2 | 43-06 | Fix | dash.ado:9871-9881; dash.sthlp:773-783 | Draw a fixed-size multi-line box and dashed frame |
+| LT-21 | Legend keys: marker at 0.4 of the box, not the marker's size; textfirst, stacked, symplacement() and the legend's own note()/caption() not drawn; at 384 px an economist 3-column legend clips its labels (undocumented) (also VF-8, PIC-14) | S2 | 43-04 | Fix | dash.sthlp:4453-4501; bokeh MarkerView 0.4; s_misc.png | Custom legend renderer; at minimum stop the clipping |
+| PIC-11 | Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong | S2 | 43-04 | Fix | z_key_zoom.png, y_rk_stcolor.png, p101_key.png | Legend-only renderers in twoway's key shapes |
+| MS-10 | Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15) | S2 | 43-04 | Fix | dash_render.py:39385-39431; A08, E21 | Merge only by the same resolved p# with no style options |
+| ST-14 | Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style (also TR-14, DG-17, PIC-18) | S2 | 43-07 | Fix | dash.sthlp:5170-5183; BUGS.md:3689; graph_text.sthlp examples | Draw texts as positioned runs or HTML text |
+| LT-24 | title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100) | S2 | 43-05 | Fix | dash.sthlp:1080-1091 | Refuse option text with an unbalanced quote with twoway's measured rc and words (r(100), r(109) or r(198) by form); quotes inside if qualifiers and compound-quoted text keep today's handling (P4-5). |
+| RH-13 | A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x' | S2 | 43-04 | Fix | twoway_kdensity_parse.class:177-181; tw_Q25.svg; V5 | Key it by the grid name when yxswitch applies |
+
+## WP-44 · Axes (P9)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| AX-13 | Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ... (also ST-13) | S2 | 44-01 | Fix | dash_render.py:53826-53827, 53961-53995; dash.sthlp:1099-1105 | Draw orientation(), margins and justification; the boxed right-hand axis title takes the overlay route, with no residual (A-5). |
+| AX-5 | custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198)) | S2 | 44-02 | Fix | _gs_parse_and_log_tickset.ado:427-438; C01, C02, G4; dash.sthlp:4567-4568 | Draw custom ticks as their own styled overlay; refuse the empty form |
+| AX-6 | Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle | S2 | 44-02 | Fix | scheme-s2color.scheme:1846; dash_render.py:44966-44972; C50, G1, G2; dash.sthlp:4867 | Use the tickset's gridstyle |
+| AX-7 | yscale(off fill) is drawn as off; twoway keeps the axis's space | S2 | 44-03 | Fix | C10 vs C11 | Keep the border space when fill is given with off |
+| AX-8 | Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels | S2 | 44-02 | Fix | _DASH_AXLABEL_HONOURED (dash_render.py:53662-53673); C05-C08, F9, F11 | Map them to labels/grid; pad for labelminlen; read ticksetstyle files |
+| AX-9 | xscale/yscale atanh, logit, log1m and style() are named and drawn linear (also sil:SD-5) | S2 | 44-03 | Fix | scale.class:149-204; transform.class; C12-C17; GAPS3 D7 closed without them | Draw the transforms (M11: every P6-P10 item is drawn). |
+| AX-10 | Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198) | S2 | 44-03 | Fix | F1, F8 | opts_exclusive within one copy, before the repeat merge |
+| AX-11 | A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there) | S2 | 44-03 | Fix | C20, G6; dash.sthlp:4662 | Natscale over all finite values, then drop those at or below zero; twoway's degenerate picture for non-positive data on a log axis is documented under Differences, as RH-8 is (A-5). |
+| AX-14 | tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named | S2 | 44-02 | Fix | dash.sthlp:4568-4572; F12 | Read the style files; draw nogextend with Grid bounds |
+| AX-15 | Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build (also AX-17, AX-19) | S2 | 44-02 | Fix | dash.sthlp:4868-4870, 5098-5107, 4741-4751, 4818-4820 | Per M11 (section 44-02): draw each part as twoway draws it with Bokeh's shipped models and CustomJS, no custom glyph model; the dates past the browser's range and the reference line off the canvas stay documented differences, and the item closes Documented (A-5). |
+| AX-18 | A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear (also stat:PT-20, VF-12) | S2 | 44-04 | Fix | dash.sthlp:4723-4731, 4815-4820 | Label with numbers as twoway does; draw log date axes |
+| MS-14 | xscale(range()) on a log axis adds a tick at the range end | S2 | 44-03 | Fix | B04 FixedTicker [1000..5000]; b2_log_range renders 20000 | Do not add range ends to log default ticks; compare drawn_ticks |
+| MS-12 | A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none | S2 | 44-05 | Fix | _dash_lone_second_axes (dash_render.py:5003-5017); E14, C10 | Keep axis k's grid default when renumbering |
+| MS-11 | twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn (also RH-17) | S2 | 44-01 | Fix | dash_render.py:39809-39841; E12, E13, C04, P36; test_horizontal.py:378 skips; dash.sthlp:3630-3632 | Measure and apply the rule in both modes |
+| MS-13 | ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles | S2 | 44-01 | Fix | dash_parse.mata:11170; E08, B17 | Join axis-title suffix/prefix copies as separate lines |
+| PIC-12 | A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2)) | S2 | 44-01 | Fix | tw rotate(-90); axis_label_orientation never set | Set axis_label_orientation on right axes |
+| DG-6 | %tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001) | S2 | 44-04 | Fix | T04/T05; no %tC row in stata_ticks_truth | Shift Stata's tick values by the leap seconds; label with %tC |
+| DG-4 | Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range()) | S2 | 44-04 | Fix | dash_parse.mata:9308, 9512; DT04, DT05, DT09, DT20 | Tokenise datelists binding parentheses |
+| DG-9 | A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier' (also TR-8) | S2 | 44-05 | Fix | T11; value_truth xlabel_1..; _dash_axlabel_refusal (dash_parse.mata:2335-2392); dash.sthlp:4522-4523 | Refuse in twoway's words |
+| DG-13 | ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199)) (also DG-11) | S2 | 44-03 | Fix | dash_render.py:42324-42340, 40316-40322; S07, X06 | No ticks on an empty minmax axis; guard 10**z |
+
+## WP-45 · Schemes, styles and figure geometry (P10)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| PIC-4 | economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve) | S2 | 45-01 | Fix | d_tt_economist.html rendered headless; dash_render.py:54518-54527; dash.sthlp:6202-6205 | Place it in a painted row; add a pixel test |
+| PIC-7 | economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside (also PIC-8) | S2 | 45-01 | Fix | linestyle-p#other chain; linewidth_chain_truth lwt7; dash_render.py:12429-12446, 22978-23006 | Route line widths through p#other and rarea through p#area; fix the test that pins the wrong key |
+| ST-1 | Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing (also ST-2, ST-3, ST-4, ST-5, ST-6, ST-11) | S2 | 45-02 | Fix | dash_parse.mata:11555-11590, 6844-6869, 10426-10435; dash_render.py:7538-7573, 54057, 39597-39598, 17650; class _unabbrev files; probe1 hashes | One reader per class following its _unabbrev rules; drop the invented notes; extend the fixtures |
+| ST-7 | Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read | S2 | 45-03 | Fix | _STYLE_FILE_CLASSES (dash_render.py:10381-10382); probe1 G13, p3 | Extend the style-file walk to the leaf classes |
+| ST-15 | color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black) (also GW-18) | S2 | 45-03 | Fix | dash.sthlp:6141-6153; BUGS.md:4385 (D36) | Read them with the other style classes |
+| ST-17 | Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped (also GW-18) | S2 | 45-03 | Fix | dash.sthlp:6293-6303, 6366-6372, 6225; test_unread_scheme_directives.py | Draw the directives |
+| ST-10 | A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation | S2 | 45-03 | Fix | _resolve_path (dash_render.py:10542-10560); p3 F | Rank shipped translations at BASE's position |
+| ST-16 | An unknown scheme() is refused r(198) where twoway notes and draws s2color (also GW-17) | S2 | 45-03 | Fix | dash.sthlp:1260-1264, 6305-6329 | Note and draw s2color, as twoway does (M11: every P6-P10 item is fixed). |
+| GW-6 | The graph-region outline is not stroked by default, and the scheme's graph margin (3.5 units) is not drawn (Bokeh's 5 px min_border is used) (also VF-7) | S2 | 45-04 | Fix | region_truth D22; test_region_truth.py:194 skip; _dash_graph_margin (dash_render.py:40612-40650) | Stroke from the scheme's graphregion line; add the margin to min_border |
+| ST-21 | graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph (also GW-19) | S2 | 45-04 | Fix | dash.sthlp:4298-4311, 4329-4335 | Draw an inner BoxAnnotation; compute the margin on the frame |
+| VF-4 | Figure proportions: a lone graph fills the page width within a 160-560 px height band (2.14:1 at 1200 px where twoway is 1.667:1; xsize()/ysize()/aspectratio() alone change nothing); relative sizes are a fixed 2.88 pt (0.889x twoway under stcolor); fxsize()/fysize() shrink the cell (also GW-20, sil:SD-21, VF-5, VF-11) | S2 | 45-04 | Fix | dash_render.py:518-519; dash.sthlp:5641-5723 (band values not stated) | Per A-1: every graph keeps twoway's shape (the xsize()/ysize() ratio, else the scheme's graph size), the width fills its cell, the 160-560 px band is removed, and relative sizes scale with the scheme's graph size. |
+| GW-1 | xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None' | S2 | 45-04 | Fix | region_options.sthlp:155-170; dash.ado:3753; float() at dash_render.py:27374, 27437, 27742 | Parse in/pt/cm everywhere; measure out-of-range values |
+| ST-22 | Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words | S2 | 45-05 | Fix | colour_grammar_truth opt_17; stylelist_truth R14; dash.sthlp:1316-1349 | Match the clamp; reword the refusal |
+| GW-10 | graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags) | S2 | 45-05 | Fix | dash.ado:7364-7387; dash_render.py:48452 | Measure under changed fontface, then apply the default face |
+
+## WP-46 · recast() and horizontal (P14)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| RH-1 | A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright (also RH-2) | S3 | 46-01 | Fix | dash.ado:2937-2972, 6659; twoway_y2xview_parse.class:51-65, 119; P01-P03, P10, P11, V2-V4 | Judge h/v by kind range2yx: accept and turn line types; take silently and draw upright for bar-like types |
+| RH-3 | A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key (also RH-4) | S3 | 46-02 | Fix | dash.ado:6660; _dash_draw_range_as (dash_render.py:26601-26625); y2xview_g.class:60-75; P17-P19, P27, P28 | Carry yvar2/hicol into the hull and the titles/keys |
+| RH-5 | histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis (also RH-6, RH-7) | S3 | 46-02 | Fix | twoway_histogram_parse.class:160-193; map_histogram (dash_render.py:22223-22270); _dash_tag_eval_extent 61880-61897 | Apply the histogram role's style and bar width; include 0 |
+| RH-8 | histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose | S3 | 46-02 | Document | twoway_yxview_parse.class:319-324, 456-468; P06-P12, Q22, Q23, V6 | Documented only (Q25, M12): dash keeps its clean transpose; twoway's broken picture is listed under Differences with a measured example. |
+| RH-9 | Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1) (also RH-10, RH-12) | S3 | 46-01 | Fix | dash.ado:3258-3261, 2942; dash_render.py:45710; Q01-Q05, R02-R04, V7 | Judge on the typed recast target; add scatteri to the derived lists |
+| RH-11 | Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike | S3 | 46-01 | Fix | y2xtype.class _unabbrev; dash.ado:3288 | Use full-name minimums for yx names in the y2xtype table |
+
+## WP-47 · Plot-option fidelity (P15)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| basic:PT-1 | headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point (also basic:PT-2, MS-6) | S3 | 47-01 | Fix | map_pcscatter/map_pccapsym/map_pcarrowi (dash_render.py:25019-25079, 25692, 25834-25886); tw SVGs move labels; tw_silent headlabel row came from a probe without mlabel | Read headlabel and label (x2,y2); re-measure with mlabel() |
+| MS-7 | Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111) (also MS-8, MS-9) | S3 | 47-01 | Fix | map_pci_literal (24913-24929); map_scatteri (24764-24796); dash.ado:6230; C05-C15, E15-E18 | Draw the labels after the recast; check mlabel against data only where twoway does |
+| MS-2 | yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram (also TR-6) | S3 | 47-02 | Fix | dash_render.py:58096-58118; D03-D07; dash.sthlp:4760-4762 | Apply them in those branches (histogram joins the scale word; pc keeps /xb) |
+| MS-3 | yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash (also MS-4) | S3 | 47-02 | Fix | dash_render.py:58038-58040; E02-E05, D21 | Treat "" as the name for y; resolve labels per variable across the graph |
+| MS-5 | xvarformat()/yvarformat() do not reach marker labels of the plotted variable | S3 | 47-02 | Fix | D10, E20; dash.sthlp:4746-4748 | Format those labels with the layer's format |
+| basic:PT-3 | mlabel(t*) naming several variables draws labels; twoway draws none | S3 | 47-02 | Fix | plaintypes5; BUGS C10b closed from serset rows; dash.sthlp:1238 vs 3389 | Draw no labels for such an element; correct the help and the record |
+| basic:PT-4 | Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round (also sil:SD-3, PIC-15) | S3 | 47-03 | Fix | dash_render.py:15668-15677; P9, P33, P36, P39; tw32/tw100 SVGs; dash.sthlp:4782-4786 | Inset or outset closed shapes by half the width; round cap ends (M12: resolved by drawing). |
+| basic:PT-6 | mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture | S3 | 47-03 | Fix | varlabel_mlabel_truth malign hashes; dash_render.py:15937-15951; dash.sthlp:4769-4772 | Measure diameters; compensate size (M12: resolved by drawing). |
+| basic:PT-5 | dlalign(center\|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value) | S3 | 47-03 | Fix | P43, Q24; dot_truth D30; extract_noted_option_truth.do:125 | Size the dot outline by alignment; probe non-default values for tw_silent |
+| basic:PT-10 | Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize) (also syn:SD-11, sil:SD-17, ST-20, DT-20) | S3 | 47-04 | Fix | twoway_yxview_parse.class:141, 557-716; probe hashes | Fold each onto the option dash draws |
+| basic:PT-11 | Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc. (also TR-18, DT-20, sil:SD-17, ST-20) | S3 | 47-05 | Fix | plaintypes P7-P38 diffs; dash.sthlp:6456-6612 | Draw them (M12: resolved by drawing). |
+| PIC-2 | Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default) (also PIC-5, PIC-6, ST-19, ST-9) | S3 | 47-06 | Fix | dash_render.py:8159-8263; symbol_pattern_truth; bokeh marker paths | Square at pi/4 for diamonds; custom chevron; Bokeh 'cross'; drop invisible from both tables |
+| PIC-9 | Empty histogram bins draw an outline segment along the base | S3 | 47-06 | Fix | tw59/60/61 rect counts vs Quad rows | Omit zero-height bins in both renderers and the refit |
+| PIC-10 | dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row | S3 | 47-06 | Fix | yxview_dot_draw.ado draw_full_dots; dash_render.py:23766-23770 | Draw rows for every non-missing x |
+| DG-12 | Markers with missing or zero weight are invisible; twoway still draws a dot | S3 | 47-06 | Fix | t_EM03.svg; dash.sthlp:4192-4194 | Draw twoway's minimal dot |
+| PIC-16 | Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels (also PIC-17) | S3 | 47-06 | Fix | dash_render.py:23733-23735; dash.sthlp:3811, 1287-1289 | Floor fill plus outline; patterns limited by Bokeh |
+| DG-7 | Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x') | S3 | 47-02 | Fix | D03, E04, D05 | Use twoway's names in those cases |
+| basic:PT-15 | Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys (also DT-23, DT-24, sil:SD-23) | S3 | 47-06 | Fix | dash.sthlp:449-455, 655-661, 3443-3517, 4305-4307, 6069-6225 | Case by case |
+
+## WP-48 · Help, README and tracker accuracy (P16)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| LT-27 | The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too (also GW-24, syn:SD-14, ECO-10, DT-05, TR-21, sil:SD-15) | S3 | 48-01 | Fix | dash.sthlp:6629-6640, 6682-6687 against 1024-1029 | Rewrite both and pin them with help-claim tests |
+| plot:PT-5 | 'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale (also ECO-9, DT-06) | S3 | 48-01 | Fix | dash.sthlp:854-858 against 156-163; dash.ado:106-119 | Delete the paragraph |
+| basic:PT-16 | Stale passages: :332 and :3472-3475 headlabel/mangle 'named'; :3611 recast on dot; :3676 degree() >7 refused; :3977-3985 fpfit bwidth accepted; :4084 acolor named; :1239 mlabel(t*) refused; :240-246 shadowed x/y; :3635 merged keys; :3179 rescale note; :3290 subtitle box; :4782/:6573/:6597 lalign/dlalign/'every type'; TWOWAY_COVERAGE_AUDIT:71/81/84; _dot_style docstring; test_lpoly_degree.py:16 (also DT-07, DT-08, DT-09, DT-10, DT-11, DT-12, stat:PT-18, BY-9) | S3 | 48-01 | Fix | line numbers as listed; probes P05-P14 | Correct each and add pins |
+| GW-22 | Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn (also GW-23) | S3 | 48-01 | Fix | dash.sthlp:6249-6251 vs 5708-5717; 955-967 | Correct both |
+| syn:SD-15 | The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing | S3 | 48-02 | Fix | test_help_conformance.py:402-410 | Generate candidates from twoway's declarations |
+| RH-15 | Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences | S3 | 48-02 | Fix | dash.sthlp:372-386, 3588-3592 | Correct after the RH fixes, or list under Differences |
+| DT-29 | dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives (also DT-30, TR-22) | S3 | 48-03 | Fix | dash_setup.sthlp:90-126, 208-213; CHANGELOG.md:589-936; GAPS3 section 9 | Annotate, retire or map each |
+| ECO-16 | Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph) (also ECO-8) | S3 | 48-02 | Fix | dash.sthlp:179-182, 2763, 6637-6638; README.md:15-16 | Add a 'Stata graph commands and reports' paragraph and recipes |
+| DT-28 | Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway (also syn:SD-19) | S3 | 48-02 | Document | dash.sthlp:172-176; dash.ado:6948-6967 | Documented only (48-02): reviewed and needing no change; the help says so. |
+
+## WP-49 · Messages and notes (P17)
+
+| ID | Item | Sev | Section | Kind | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| plot:PT-7 | Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba()) (also GW-8, ECO-11, sil:SD-9, syn:SD-12, TR-10) | S3 | 49-01 | Fix | dash.ado:5897-5904, 11022, 11104-11110, 11233-11241; dash.sthlp Differences 5 | Per Q43/M12 (PD-11): the first line of every refusal is twoway's words naming the option as typed; dash's second and later lines and the Supported list stay. |
+| basic:PT-12 | Notes for options twoway draws the same picture with: afcolor on scatter, clalign, dlpattern on dot, bmsize on scatter, bargap, omitallmiss, onepanel, xlog on qfit, back/noback, heatlabel, zvarformat, nolog, noreverse, ring(), labelkeepleadingzero, legend nostack/angle/orientation, text angle/bexpand ('bexpand()' with parentheses), by() spacers/subtitle width (also stat:PT-11, stat:PT-8, AX-21, LT-26, BY-8, BY-15, GW-23) | S3 | 49-02 | Fix | normalised SVG diffs of 0; catchall_options_truth has no picture comparison; dash.ado:9958-9966 | Extend extract_noted_option_truth to every type with non-default values and take these silently |
+| LT-25 | Named-style notes: invented twoway-worded notes where twoway prints none; missing notes for clockdir 13 and justification(bogus); 'not a recognised size; using medium' instead of the gsize note; iscale(abc) note printed twice; xsize() bounds and graphsize notes in dash's words with 'None' (also ST-11, basic:PT-17, BY-7, BY-8, GW-7) | S3 | 49-02 | Fix | probes R_tpos, R_tjust, R_tsz, C11, T15, p1 xsize | Echo twoway's notes once each, in its words |
+| plot:PT-6 | Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis (also plot:PT-8, DG-10) | S3 | 49-01 | Fix | dash.ado:6033-6035, 6278-6280, 5868; dash_parse.mata:9264-9279 | Print twoway's lines; split the type at '[' |
+| plot:PT-11 | '_dash_dp_format() already exists' and '(11721 lines skipped)' are printed after discard and, in long sessions, mid-session (also stat:PT-22) | S3 | 49-02 | Fix | dash.ado:79-81, 540-551; p4.log; probe1 #42 | Skip the run when the library exists, or suppress its output; add a cscript with discard |
+
+## Tracking
+
+One line per row, rewritten in place by the item's closing commit; test/test_tracking_documents.py::TestGaps4Tracking reads exactly these forms: `Open (WP-NN section NN-MM).`, `Closed in WP-NN, BUGS.md "<title>", commit <sha>.`, `Documented in WP-NN, BUGS.md "<title>", commit <sha>.`, or `Partly closed in WP-NN (section NN-MM, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").` A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha.
+
+- **TR-2 Tracked:** Open (WP-33 section 33-14).
+- **TR-11 Tracked:** Open (WP-33 section 33-10).
+- **TR-23 Tracked:** Open (WP-33 section 33-11).
+- **BY-23 Tracked:** Open (WP-33 section 33-12).
+- **stat:PT-23 Tracked:** Open (WP-33 section 33-13).
+- **CV-16 Tracked:** Open (WP-33 section 33-13).
+- **syn:SD-20 Tracked:** Open (WP-33 section 33-10).
+- **GW-11 Tracked:** Open (WP-33 section 33-11).
+- **BY-24 Tracked:** Open (WP-33 section 33-12).
+- **AX-4 Tracked:** Open (WP-34 section 34-01).
+- **AX-2 Tracked:** Open (WP-34 section 34-02).
+- **AX-1 Tracked:** Open (WP-34 section 34-03).
+- **VF-2 Tracked:** Open (WP-34 section 34-02).
+- **VF-3 Tracked:** Open (WP-34 section 34-04).
+- **PIC-1 Tracked:** Open (WP-34 section 34-05).
+- **PIC-3 Tracked:** Open (WP-34 section 34-06).
+- **TR-4 Tracked:** Open (WP-34 section 34-07).
+- **DG-3 Tracked:** Open (WP-34 section 34-08).
+- **AX-3 Tracked:** Open (WP-34 section 34-09).
+- **plot:PT-13 Tracked:** Open (WP-34 section 34-09).
+- **MS-1 Tracked:** Open (WP-35 section 35-01).
+- **syn:SD-3 Tracked:** Open (WP-35 section 35-02).
+- **stat:PT-7 Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-5 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-1 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-13 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-6 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-9 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
+- **basic:PT-8 Tracked:** Open (WP-35 section 35-06).
+- **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
+- **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
+- **DT-15 Tracked:** Open (WP-35 section 35-07).
+- **syn:SD-7 Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-8 Tracked:** Open (WP-35 section 35-06).
+- **GW-2 Tracked:** Open (WP-35 section 35-06).
+- **GW-3 Tracked:** Open (WP-35 section 35-06).
+- **GW-4 Tracked:** Open (WP-35 section 35-06).
+- **sil:SD-8 Tracked:** Open (WP-35 section 35-06).
+- **DT-19 Tracked:** Open (WP-35 section 35-08).
+- **plot:PT-3 Tracked:** Open (WP-35 section 35-09).
+- **plot:PT-4 Tracked:** Open (WP-35 section 35-09).
+- **syn:SD-1 Tracked:** Open (WP-35 section 35-09).
+- **syn:SD-13 Tracked:** Open (WP-35 section 35-09).
+- **plat:PT-1 Tracked:** Open (WP-36 section 36-01).
+- **plat:PT-5 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-4 Tracked:** Open (WP-36 section 36-03).
+- **plat:PT-2 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-11 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-12 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-6 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-16 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-14 Tracked:** Open (WP-36 section 36-04).
+- **DG-14 Tracked:** Open (WP-36 section 36-02).
+- **DG-1 Tracked:** Open (WP-37 section 37-01).
+- **DG-5 Tracked:** Open (WP-37 section 37-02).
+- **TR-13 Tracked:** Open (WP-37 section 37-03).
+- **DG-8 Tracked:** Open (WP-37 section 37-02).
+- **stat:PT-12 Tracked:** Open (WP-37 section 37-04).
+- **stat:PT-16 Tracked:** Open (WP-37 section 37-05).
+- **DT-26 Tracked:** Open (WP-37 section 37-05).
+- **stat:PT-21 Tracked:** Open (WP-37 section 37-05).
+- **syn:SD-17 Tracked:** Open (WP-38 section 38-01).
+- **GW-12 Tracked:** Open (WP-38 section 38-01).
+- **ECO-1 Tracked:** Open (WP-38 section 38-01).
+- **ECO-4 Tracked:** Open (WP-38 section 38-01).
+- **GW-13 Tracked:** Open (WP-38 section 38-02).
+- **GW-14 Tracked:** Open (WP-38 section 38-02).
+- **GW-15 Tracked:** Open (WP-38 section 38-02).
+- **GW-16 Tracked:** Open (WP-38 section 38-02).
+- **GW-9 Tracked:** Open (WP-38 section 38-02).
+- **ECO-5 Tracked:** Open (WP-38 section 38-02).
+- **ECO-15 Tracked:** Open (WP-38 section 38-01).
+- **ECO-7 Tracked:** Open (WP-38 section 38-01).
+- **plat:PT-8 Tracked:** Open (WP-40 section 40-02).
+- **plat:PT-7 Tracked:** Open (WP-40 section 40-01).
+- **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
+- **plat:PT-10 Tracked:** Open (WP-40 section 40-02).
+- **stat:PT-15 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-1 Tracked:** Open (WP-40 section 40-02).
+- **AX-16 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-11 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-12 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-13 Tracked:** Open (WP-40 section 40-02).
+- **BY-28 Tracked:** Open (WP-41 section 41-01).
+- **BY-1 Tracked:** Open (WP-41 section 41-02).
+- **BY-2 Tracked:** Open (WP-41 section 41-03).
+- **BY-27 Tracked:** Open (WP-41 section 41-03).
+- **BY-3 Tracked:** Open (WP-41 section 41-04).
+- **BY-4 Tracked:** Open (WP-41 section 41-05).
+- **BY-5 Tracked:** Open (WP-41 section 41-05).
+- **BY-6 Tracked:** Open (WP-41 section 41-05).
+- **BY-12 Tracked:** Open (WP-41 section 41-02).
+- **BY-13 Tracked:** Open (WP-41 section 41-04).
+- **BY-14 Tracked:** Open (WP-41 section 41-04).
+- **BY-10 Tracked:** Open (WP-41 section 41-06).
+- **BY-16 Tracked:** Open (WP-41 section 41-06).
+- **BY-18 Tracked:** Open (WP-41 section 41-05).
+- **VF-6 Tracked:** Open (WP-41 section 41-05).
+- **GW-5 Tracked:** Open (WP-41 section 41-05).
+- **sil:SD-7 Tracked:** Open (WP-41 section 41-03).
+- **PIC-13 Tracked:** Open (WP-41 section 41-04).
+- **BY-7 Tracked:** Open (WP-41 section 41-02).
+- **TR-19 Tracked:** Open (WP-41 section 41-02).
+- **CV-8 Tracked:** Open (WP-42 section 42-01).
+- **CV-1 Tracked:** Open (WP-42 section 42-02).
+- **CV-3 Tracked:** Open (WP-42 section 42-03).
+- **CV-4 Tracked:** Open (WP-42 section 42-04).
+- **CV-2 Tracked:** Open (WP-42 section 42-05).
+- **CV-5 Tracked:** Open (WP-42 section 42-04).
+- **CV-6 Tracked:** Open (WP-42 section 42-02).
+- **CV-7 Tracked:** Open (WP-42 section 42-02).
+- **CV-11 Tracked:** Open (WP-42 section 42-04).
+- **CV-9 Tracked:** Open (WP-42 section 42-05).
+- **CV-10 Tracked:** Open (WP-42 section 42-05).
+- **CV-14 Tracked:** Open (WP-42 section 42-05).
+- **CV-15 Tracked:** Open (WP-42 section 42-03).
+- **LT-12 Tracked:** Open (WP-42 section 42-03).
+- **AX-12 Tracked:** Open (WP-42 section 42-03).
+- **sil:SD-4 Tracked:** Open (WP-42 section 42-01).
+- **LT-22 Tracked:** Open (WP-42 section 42-03).
+- **LT-1 Tracked:** Open (WP-43 section 43-01).
+- **LT-4 Tracked:** Open (WP-43 section 43-02).
+- **LT-2 Tracked:** Open (WP-43 section 43-03).
+- **LT-3 Tracked:** Open (WP-43 section 43-03).
+- **LT-5 Tracked:** Open (WP-43 section 43-02).
+- **LT-6 Tracked:** Open (WP-43 section 43-03).
+- **LT-7 Tracked:** Open (WP-43 section 43-03).
+- **LT-8 Tracked:** Open (WP-43 section 43-05).
+- **LT-9 Tracked:** Open (WP-43 section 43-05).
+- **LT-10 Tracked:** Open (WP-43 section 43-03).
+- **LT-11 Tracked:** Open (WP-43 section 43-06).
+- **LT-13 Tracked:** Open (WP-43 section 43-01).
+- **LT-14 Tracked:** Open (WP-43 section 43-05).
+- **LT-15 Tracked:** Open (WP-43 section 43-01).
+- **LT-16 Tracked:** Open (WP-43 section 43-05).
+- **LT-17 Tracked:** Open (WP-43 section 43-02).
+- **LT-18 Tracked:** Open (WP-43 section 43-05).
+- **LT-19 Tracked:** Open (WP-43 section 43-05).
+- **LT-20 Tracked:** Open (WP-43 section 43-06).
+- **LT-21 Tracked:** Open (WP-43 section 43-04).
+- **PIC-11 Tracked:** Open (WP-43 section 43-04).
+- **MS-10 Tracked:** Open (WP-43 section 43-04).
+- **ST-14 Tracked:** Open (WP-43 section 43-07).
+- **LT-24 Tracked:** Open (WP-43 section 43-05).
+- **RH-13 Tracked:** Open (WP-43 section 43-04).
+- **AX-13 Tracked:** Open (WP-44 section 44-01).
+- **AX-5 Tracked:** Open (WP-44 section 44-02).
+- **AX-6 Tracked:** Open (WP-44 section 44-02).
+- **AX-7 Tracked:** Open (WP-44 section 44-03).
+- **AX-8 Tracked:** Open (WP-44 section 44-02).
+- **AX-9 Tracked:** Open (WP-44 section 44-03).
+- **AX-10 Tracked:** Open (WP-44 section 44-03).
+- **AX-11 Tracked:** Open (WP-44 section 44-03).
+- **AX-14 Tracked:** Open (WP-44 section 44-02).
+- **AX-15 Tracked:** Open (WP-44 section 44-02).
+- **AX-18 Tracked:** Open (WP-44 section 44-04).
+- **MS-14 Tracked:** Open (WP-44 section 44-03).
+- **MS-12 Tracked:** Open (WP-44 section 44-05).
+- **MS-11 Tracked:** Open (WP-44 section 44-01).
+- **MS-13 Tracked:** Open (WP-44 section 44-01).
+- **PIC-12 Tracked:** Open (WP-44 section 44-01).
+- **DG-6 Tracked:** Open (WP-44 section 44-04).
+- **DG-4 Tracked:** Open (WP-44 section 44-04).
+- **DG-9 Tracked:** Open (WP-44 section 44-05).
+- **DG-13 Tracked:** Open (WP-44 section 44-03).
+- **PIC-4 Tracked:** Open (WP-45 section 45-01).
+- **PIC-7 Tracked:** Open (WP-45 section 45-01).
+- **ST-1 Tracked:** Open (WP-45 section 45-02).
+- **ST-7 Tracked:** Open (WP-45 section 45-03).
+- **ST-15 Tracked:** Open (WP-45 section 45-03).
+- **ST-17 Tracked:** Open (WP-45 section 45-03).
+- **ST-10 Tracked:** Open (WP-45 section 45-03).
+- **ST-16 Tracked:** Open (WP-45 section 45-03).
+- **GW-6 Tracked:** Open (WP-45 section 45-04).
+- **ST-21 Tracked:** Open (WP-45 section 45-04).
+- **VF-4 Tracked:** Open (WP-45 section 45-04).
+- **GW-1 Tracked:** Open (WP-45 section 45-04).
+- **ST-22 Tracked:** Open (WP-45 section 45-05).
+- **GW-10 Tracked:** Open (WP-45 section 45-05).
+- **RH-1 Tracked:** Open (WP-46 section 46-01).
+- **RH-3 Tracked:** Open (WP-46 section 46-02).
+- **RH-5 Tracked:** Open (WP-46 section 46-02).
+- **RH-8 Tracked:** Open (WP-46 section 46-02).
+- **RH-9 Tracked:** Open (WP-46 section 46-01).
+- **RH-11 Tracked:** Open (WP-46 section 46-01).
+- **basic:PT-1 Tracked:** Open (WP-47 section 47-01).
+- **MS-7 Tracked:** Open (WP-47 section 47-01).
+- **MS-2 Tracked:** Open (WP-47 section 47-02).
+- **MS-3 Tracked:** Open (WP-47 section 47-02).
+- **MS-5 Tracked:** Open (WP-47 section 47-02).
+- **basic:PT-3 Tracked:** Open (WP-47 section 47-02).
+- **basic:PT-4 Tracked:** Open (WP-47 section 47-03).
+- **basic:PT-6 Tracked:** Open (WP-47 section 47-03).
+- **basic:PT-5 Tracked:** Open (WP-47 section 47-03).
+- **basic:PT-10 Tracked:** Open (WP-47 section 47-04).
+- **basic:PT-11 Tracked:** Open (WP-47 section 47-05).
+- **PIC-2 Tracked:** Open (WP-47 section 47-06).
+- **PIC-9 Tracked:** Open (WP-47 section 47-06).
+- **PIC-10 Tracked:** Open (WP-47 section 47-06).
+- **DG-12 Tracked:** Open (WP-47 section 47-06).
+- **PIC-16 Tracked:** Open (WP-47 section 47-06).
+- **DG-7 Tracked:** Open (WP-47 section 47-02).
+- **basic:PT-15 Tracked:** Open (WP-47 section 47-06).
+- **LT-27 Tracked:** Open (WP-48 section 48-01).
+- **plot:PT-5 Tracked:** Open (WP-48 section 48-01).
+- **basic:PT-16 Tracked:** Open (WP-48 section 48-01).
+- **GW-22 Tracked:** Open (WP-48 section 48-01).
+- **syn:SD-15 Tracked:** Open (WP-48 section 48-02).
+- **RH-15 Tracked:** Open (WP-48 section 48-02).
+- **DT-29 Tracked:** Open (WP-48 section 48-03).
+- **ECO-16 Tracked:** Open (WP-48 section 48-02).
+- **DT-28 Tracked:** Open (WP-48 section 48-02).
+- **plot:PT-7 Tracked:** Open (WP-49 section 49-01).
+- **basic:PT-12 Tracked:** Open (WP-49 section 49-02).
+- **LT-25 Tracked:** Open (WP-49 section 49-02).
+- **plot:PT-6 Tracked:** Open (WP-49 section 49-01).
+- **plot:PT-11 Tracked:** Open (WP-49 section 49-02).

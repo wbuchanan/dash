@@ -76,6 +76,15 @@ file holds, mechanically:
    rows closed and partly closed, open BUGS.md entries) are the ones the
    documents held at the closeout commit, computed (WP-32, BUGS.md
    "Harness guards").
+12. The drop-in audit's items (GAPS4.md, .ultraplan/sections/index.md
+   PD-1..PD-4) are open in BUGS.md in the form "Not fixed because WP-NN
+   section NN-MM has not landed. Graded S<n> (WP-NN): ...", listed in
+   GAPS4_OPEN, which exempts them from the release guard, and tracked "Open
+   (WP-NN section NN-MM)." in GAPS4.md's Tracking section, until their
+   section lands; then the key is gone, the Tracked line reads Closed,
+   Documented or Partly closed, and a closed Resolution holds "(WP-NN,
+   <id>)". Each WP's closeout appends it to GAPS4_CLOSED_WPS and records
+   its counts (GAPS4_CLOSEOUT).
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -579,9 +588,12 @@ class TestNoOpenEntryBlocksARelease:
         # landed (WP29_OPEN, empty since its closeout); WP-30's P1 entries
         # do the same until theirs land (WP30_OPEN), and TestWp30Tracking
         # holds each one to its WP-30 form.  WP-31's entries do the same
-        # until theirs land (WP31_OPEN; TestWp31Tracking).
+        # until theirs land (WP31_OPEN; TestWp31Tracking).  GAPS4's
+        # entries do the same until their sections land (GAPS4_OPEN;
+        # TestGaps4Tracking).
         allowed = (set(WP29_OPEN.values()) | set(WP30_OPEN.values())
-                   | set(WP31_OPEN.values()))
+                   | set(WP31_OPEN.values())
+                   | set(GAPS4_OPEN.values()))
         bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
                for e in entries if not e["closed"]
                and e["title"] not in allowed
@@ -2847,3 +2859,1032 @@ class TestTheCountsAreTrue:
                if not heads.get("WP-%02d" % n, "").rstrip().endswith(
                    "— DONE")]
         assert not bad, "\n".join(bad)
+
+
+# ===========================================================================
+# The drop-in audit's items, GAPS4.md (item 12 of the module docstring)
+# ===========================================================================
+
+#: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
+#: BUGS.md entry of each of the 221 registered items, by lead id, with its
+#: exact title, one key per line in Appendix A order.  An item's closing
+#: commit closes its entry in place and deletes its own key line.
+#: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
+GAPS4_OPEN = {
+    'TR-2': 'No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand)',
+    'TR-11': 'value_truth.json (311 twoway answers) is never compared with dash probe by probe',
+    'TR-23': 'No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass',
+    'BY-23': 'Per-type by() drawing is pinned against twoway only for function (default range) and lpoly',
+    'stat:PT-23': 'Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...',
+    'CV-16': 'colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously',
+    'syn:SD-20': "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()",
+    'GW-11': 'scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled',
+    'BY-24': 'by() title/note/caption under position() has truth only for caption pos(5)',
+    'AX-4': 'The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints',
+    'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
+    'AX-1': 'xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data',
+    'VF-2': "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)",
+    'VF-3': 'aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed',
+    'PIC-1': 'A default area plot (and its legend key) has no outline in any scheme',
+    'PIC-3': 'A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style',
+    'TR-4': "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)",
+    'DG-3': "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label",
+    'AX-3': "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels",
+    'plot:PT-13': 'Open entry: the natscale model misses 3 of 264 axes after a filter move or without embedded ticks',
+    'MS-1': 'Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns',
+    'syn:SD-3': 'p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn',
+    'stat:PT-7': "lowess m (twoway's documented minimum of mean) is refused",
+    'syn:SD-5': 'bwi() is refused on lowess, kdensity, lpoly and lpolyci',
+    'stat:PT-1': 'histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses',
+    'stat:PT-2': 'density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram',
+    'stat:PT-5': 'contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer',
+    'stat:PT-13': 'contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options',
+    'stat:PT-6': 'function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note',
+    'stat:PT-8': "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes",
+    'stat:PT-9': 'Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)',
+    'stat:PT-14': 'bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types',
+    'basic:PT-8': "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'",
+    'basic:PT-9': 'Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111',
+    'basic:PT-13': "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses",
+    'DT-15': 'Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)',
+    'syn:SD-7': 'ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type',
+    'syn:SD-8': 'Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)',
+    'GW-2': 'aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)',
+    'GW-3': 'maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn',
+    'GW-4': "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied",
+    'sil:SD-8': 'title() with notitling is accepted with a note; twoway fails r(4018)',
+    'DT-19': "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)",
+    'plot:PT-3': 'Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations',
+    'plot:PT-4': "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')",
+    'syn:SD-1': "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it",
+    'syn:SD-13': "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both",
+    'plat:PT-1': 'dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal',
+    'plat:PT-5': 'Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh',
+    'plat:PT-4': "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help",
+    'plat:PT-2': 'The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later',
+    'plat:PT-11': 'Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it',
+    'plat:PT-12': 'The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route',
+    'plat:PT-6': "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\\' as relative",
+    'plat:PT-16': "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified",
+    'plat:PT-14': 'Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size',
+    'DG-14': "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's",
+    'DG-1': 'contour over zero observations crashes with a Python traceback, r(7102)',
+    'DG-5': 'rarea with cmissing(n) draws its bound outlines across the gaps',
+    'TR-13': 'contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter',
+    'DG-8': 'A contour with no surface (two observations) draws no colour key',
+    'stat:PT-12': 'xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x',
+    'stat:PT-16': 'lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off',
+    'DT-26': 'Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000',
+    'stat:PT-21': "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)",
+    'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',
+    'GW-12': 'A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)',
+    'ECO-1': 'A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)',
+    'ECO-4': 'graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()',
+    'GW-13': "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'",
+    'GW-14': "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing",
+    'GW-15': 'nodraw with saving(, asis) writes the page where twoway gives r(601)',
+    'GW-16': 'play() refuses a readable recording (r(198)); there is no Graph Editor',
+    'GW-9': "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'",
+    'ECO-5': "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items",
+    'ECO-15': 'Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none',
+    'ECO-7': 'dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()',
+    'plat:PT-8': 'r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts',
+    'plat:PT-7': "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows",
+    'plat:PT-9': "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws",
+    'plat:PT-10': 'by() draws the first 100 groups (ceiling 1,000), with a note',
+    'stat:PT-15': 'n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree',
+    'sil:SD-1': 'histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars',
+    'AX-16': 'An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently',
+    'sil:SD-11': "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number",
+    'sil:SD-12': 'fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently',
+    'sil:SD-13': 'text() whose globals expand past 4,000 characters is refused r(198)',
+    'BY-28': 'contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel',
+    'BY-1': "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)",
+    'BY-2': 'A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored',
+    'BY-27': "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)",
+    'BY-3': 'An at() hole for a legend or colour key that is not drawn is not reserved in the grid',
+    'BY-4': 'compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn',
+    'BY-5': "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')",
+    'BY-6': "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'",
+    'BY-12': 'by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles',
+    'BY-13': 'by(, legloc() clegloc() plegend() plegloc()) are named and ignored',
+    'BY-14': "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key",
+    'BY-10': 'Panel-label sub-options twoway draws are named: justification(), nobexpand, lwidth()/lpattern(), span, alignment(), linegap(), bmargin(), placement(), orientation()',
+    'BY-16': 'by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line',
+    'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",
+    'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',
+    'GW-5': 'xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally',
+    'sil:SD-7': 'A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)',
+    'PIC-13': 'A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)',
+    'BY-7': 'by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor',
+    'TR-19': "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions",
+    'CV-8': 'An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)',
+    'CV-1': 'colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)',
+    'CV-3': "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame",
+    'CV-4': "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied",
+    'CV-2': 'colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)',
+    'CV-5': "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them",
+    'CV-6': "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend",
+    'CV-7': "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour",
+    'CV-11': 'colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals',
+    'CV-9': "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words",
+    'CV-10': "Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)",
+    'CV-14': "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing",
+    'CV-15': "On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'",
+    'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
+    'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',
+    'sil:SD-4': "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read",
+    'LT-22': 'contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line',
+    'LT-1': "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles",
+    'LT-4': 'legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read',
+    'LT-2': 'legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing',
+    'LT-3': 'Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()',
+    'LT-5': 'legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ',
+    'LT-6': 'Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())',
+    'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
+    'LT-8': 'A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line',
+    'LT-9': 'A fractional ring() (7.5, 4.5) or ring(100) is dropped silently',
+    'LT-10': 'Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest',
+    'LT-11': 'text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn',
+    'LT-13': 'legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)',
+    'LT-14': 'title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)',
+    'LT-15': 'legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored',
+    'LT-16': 'title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored',
+    'LT-17': 'legend(holes()) with cols(1) inserts a full blank row',
+    'LT-18': 'Title box sub-options named: orientation(), width(), height(), angle(), lstyle(), bl*, lalign(), style(); clocks 2-4/8-10 drawn above or below (style() and lalign() missing from the help list)',
+    'LT-19': 'Edge titles draw no box, justification(), margin() or tstyle()',
+    'LT-20': "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally",
+    'LT-21': "Legend keys: marker at 0.4 of the box, not the marker's size; textfirst, stacked, symplacement() and the legend's own note()/caption() not drawn; at 384 px an economist 3-column legend clips its labels (undocumented)",
+    'PIC-11': 'Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong',
+    'MS-10': 'Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)',
+    'ST-14': 'Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style',
+    'LT-24': 'title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)',
+    'RH-13': "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'",
+    'AX-13': 'Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...',
+    'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',
+    'AX-6': 'Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle',
+    'AX-7': "yscale(off fill) is drawn as off; twoway keeps the axis's space",
+    'AX-8': 'Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels',
+    'AX-9': 'xscale/yscale atanh, logit, log1m and style() are named and drawn linear',
+    'AX-10': 'Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)',
+    'AX-11': "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)",
+    'AX-14': 'tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named',
+    'AX-15': 'Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build',
+    'AX-18': 'A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear',
+    'MS-14': 'xscale(range()) on a log axis adds a tick at the range end',
+    'MS-12': 'A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none',
+    'MS-11': "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn",
+    'MS-13': 'ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles',
+    'PIC-12': "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))",
+    'DG-6': '%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)',
+    'DG-4': 'Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())',
+    'DG-9': "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'",
+    'DG-13': "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))",
+    'PIC-4': "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)",
+    'PIC-7': 'economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside',
+    'ST-1': "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing",
+    'ST-7': 'Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read',
+    'ST-15': 'color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)',
+    'ST-17': 'Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped',
+    'ST-10': 'A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation',
+    'ST-16': 'An unknown scheme() is refused r(198) where twoway notes and draws s2color',
+    'GW-6': "The graph-region outline is not stroked by default, and the scheme's graph margin (3.5 units) is not drawn (Bokeh's 5 px min_border is used)",
+    'ST-21': "graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph",
+    'VF-4': 'Figure proportions: a lone graph fills the page width within a 160-560 px height band (2.14:1 at 1200 px where twoway is 1.667:1; xsize()/ysize()/aspectratio() alone change nothing); relative sizes are a fixed 2.88 pt (0.889x twoway under stcolor); fxsize()/fysize() shrink the cell',
+    'GW-1': "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'",
+    'ST-22': "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words",
+    'GW-10': 'graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)',
+    'RH-1': 'A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright',
+    'RH-3': 'A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key',
+    'RH-5': "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis",
+    'RH-8': 'histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose',
+    'RH-9': 'Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)',
+    'RH-11': 'Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike',
+    'basic:PT-1': 'headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point',
+    'MS-7': 'Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)',
+    'MS-2': 'yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram',
+    'MS-3': "yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash",
+    'MS-5': 'xvarformat()/yvarformat() do not reach marker labels of the plotted variable',
+    'basic:PT-3': 'mlabel(t*) naming several variables draws labels; twoway draws none',
+    'basic:PT-4': "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round",
+    'basic:PT-6': "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture",
+    'basic:PT-5': 'dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)',
+    'basic:PT-10': 'Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)',
+    'basic:PT-11': 'Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.',
+    'PIC-2': 'Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)',
+    'PIC-9': 'Empty histogram bins draw an outline segment along the base',
+    'PIC-10': 'dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row',
+    'DG-12': 'Markers with missing or zero weight are invisible; twoway still draws a dot',
+    'PIC-16': 'Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels',
+    'DG-7': "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')",
+    'basic:PT-15': 'Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys',
+    'LT-27': "The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too",
+    'plot:PT-5': "'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale",
+    'basic:PT-16': "Stale passages: :332 and :3472-3475 headlabel/mangle 'named'; :3611 recast on dot; :3676 degree() >7 refused; :3977-3985 fpfit bwidth accepted; :4084 acolor named; :1239 mlabel(t*) refused; :240-246 shadowed x/y; :3635 merged keys; :3179 rescale note; :3290 subtitle box; :4782/:6573/:6597 lalign/dlalign/'every type'; TWOWAY_COVERAGE_AUDIT:71/81/84; _dot_style docstring; test_lpoly_degree.py:16",
+    'GW-22': "Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn",
+    'syn:SD-15': 'The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing',
+    'RH-15': "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences",
+    'DT-29': 'dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives',
+    'ECO-16': 'Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)',
+    'DT-28': "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway",
+    'plot:PT-7': "Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())",
+    'basic:PT-12': "Notes for options twoway draws the same picture with: afcolor on scatter, clalign, dlpattern on dot, bmsize on scatter, bargap, omitallmiss, onepanel, xlog on qfit, back/noback, heatlabel, zvarformat, nolog, noreverse, ring(), labelkeepleadingzero, legend nostack/angle/orientation, text angle/bexpand ('bexpand()' with parentheses), by() spacers/subtitle width",
+    'LT-25': "Named-style notes: invented twoway-worded notes where twoway prints none; missing notes for clockdir 13 and justification(bogus); 'not a recognised size; using medium' instead of the gsize note; iscale(abc) note printed twice; xsize() bounds and graphsize notes in dash's words with 'None'",
+    'plot:PT-6': "Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis",
+    'plot:PT-11': "'_dash_dp_format() already exists' and '(11721 lines skipped)' are printed after discard and, in long sessions, mid-session",
+}
+
+GAPS4_WP = {
+    'TR-2': 'WP-33',
+    'TR-11': 'WP-33',
+    'TR-23': 'WP-33',
+    'BY-23': 'WP-33',
+    'stat:PT-23': 'WP-33',
+    'CV-16': 'WP-33',
+    'syn:SD-20': 'WP-33',
+    'GW-11': 'WP-33',
+    'BY-24': 'WP-33',
+    'AX-4': 'WP-34',
+    'AX-2': 'WP-34',
+    'AX-1': 'WP-34',
+    'VF-2': 'WP-34',
+    'VF-3': 'WP-34',
+    'PIC-1': 'WP-34',
+    'PIC-3': 'WP-34',
+    'TR-4': 'WP-34',
+    'DG-3': 'WP-34',
+    'AX-3': 'WP-34',
+    'plot:PT-13': 'WP-34',
+    'MS-1': 'WP-35',
+    'syn:SD-3': 'WP-35',
+    'stat:PT-7': 'WP-35',
+    'syn:SD-5': 'WP-35',
+    'stat:PT-1': 'WP-35',
+    'stat:PT-2': 'WP-35',
+    'stat:PT-5': 'WP-35',
+    'stat:PT-13': 'WP-35',
+    'stat:PT-6': 'WP-35',
+    'stat:PT-8': 'WP-35',
+    'stat:PT-9': 'WP-35',
+    'stat:PT-14': 'WP-35',
+    'basic:PT-8': 'WP-35',
+    'basic:PT-9': 'WP-35',
+    'basic:PT-13': 'WP-35',
+    'DT-15': 'WP-35',
+    'syn:SD-7': 'WP-35',
+    'syn:SD-8': 'WP-35',
+    'GW-2': 'WP-35',
+    'GW-3': 'WP-35',
+    'GW-4': 'WP-35',
+    'sil:SD-8': 'WP-35',
+    'DT-19': 'WP-35',
+    'plot:PT-3': 'WP-35',
+    'plot:PT-4': 'WP-35',
+    'syn:SD-1': 'WP-35',
+    'syn:SD-13': 'WP-35',
+    'plat:PT-1': 'WP-36',
+    'plat:PT-5': 'WP-36',
+    'plat:PT-4': 'WP-36',
+    'plat:PT-2': 'WP-36',
+    'plat:PT-11': 'WP-36',
+    'plat:PT-12': 'WP-36',
+    'plat:PT-6': 'WP-36',
+    'plat:PT-16': 'WP-36',
+    'plat:PT-14': 'WP-36',
+    'DG-14': 'WP-36',
+    'DG-1': 'WP-37',
+    'DG-5': 'WP-37',
+    'TR-13': 'WP-37',
+    'DG-8': 'WP-37',
+    'stat:PT-12': 'WP-37',
+    'stat:PT-16': 'WP-37',
+    'DT-26': 'WP-37',
+    'stat:PT-21': 'WP-37',
+    'syn:SD-17': 'WP-38',
+    'GW-12': 'WP-38',
+    'ECO-1': 'WP-38',
+    'ECO-4': 'WP-38',
+    'GW-13': 'WP-38',
+    'GW-14': 'WP-38',
+    'GW-15': 'WP-38',
+    'GW-16': 'WP-38',
+    'GW-9': 'WP-38',
+    'ECO-5': 'WP-38',
+    'ECO-15': 'WP-38',
+    'ECO-7': 'WP-38',
+    'plat:PT-8': 'WP-40',
+    'plat:PT-7': 'WP-40',
+    'plat:PT-9': 'WP-40',
+    'plat:PT-10': 'WP-40',
+    'stat:PT-15': 'WP-40',
+    'sil:SD-1': 'WP-40',
+    'AX-16': 'WP-40',
+    'sil:SD-11': 'WP-40',
+    'sil:SD-12': 'WP-40',
+    'sil:SD-13': 'WP-40',
+    'BY-28': 'WP-41',
+    'BY-1': 'WP-41',
+    'BY-2': 'WP-41',
+    'BY-27': 'WP-41',
+    'BY-3': 'WP-41',
+    'BY-4': 'WP-41',
+    'BY-5': 'WP-41',
+    'BY-6': 'WP-41',
+    'BY-12': 'WP-41',
+    'BY-13': 'WP-41',
+    'BY-14': 'WP-41',
+    'BY-10': 'WP-41',
+    'BY-16': 'WP-41',
+    'BY-18': 'WP-41',
+    'VF-6': 'WP-41',
+    'GW-5': 'WP-41',
+    'sil:SD-7': 'WP-41',
+    'PIC-13': 'WP-41',
+    'BY-7': 'WP-41',
+    'TR-19': 'WP-41',
+    'CV-8': 'WP-42',
+    'CV-1': 'WP-42',
+    'CV-3': 'WP-42',
+    'CV-4': 'WP-42',
+    'CV-2': 'WP-42',
+    'CV-5': 'WP-42',
+    'CV-6': 'WP-42',
+    'CV-7': 'WP-42',
+    'CV-11': 'WP-42',
+    'CV-9': 'WP-42',
+    'CV-10': 'WP-42',
+    'CV-14': 'WP-42',
+    'CV-15': 'WP-42',
+    'LT-12': 'WP-42',
+    'AX-12': 'WP-42',
+    'sil:SD-4': 'WP-42',
+    'LT-22': 'WP-42',
+    'LT-1': 'WP-43',
+    'LT-4': 'WP-43',
+    'LT-2': 'WP-43',
+    'LT-3': 'WP-43',
+    'LT-5': 'WP-43',
+    'LT-6': 'WP-43',
+    'LT-7': 'WP-43',
+    'LT-8': 'WP-43',
+    'LT-9': 'WP-43',
+    'LT-10': 'WP-43',
+    'LT-11': 'WP-43',
+    'LT-13': 'WP-43',
+    'LT-14': 'WP-43',
+    'LT-15': 'WP-43',
+    'LT-16': 'WP-43',
+    'LT-17': 'WP-43',
+    'LT-18': 'WP-43',
+    'LT-19': 'WP-43',
+    'LT-20': 'WP-43',
+    'LT-21': 'WP-43',
+    'PIC-11': 'WP-43',
+    'MS-10': 'WP-43',
+    'ST-14': 'WP-43',
+    'LT-24': 'WP-43',
+    'RH-13': 'WP-43',
+    'AX-13': 'WP-44',
+    'AX-5': 'WP-44',
+    'AX-6': 'WP-44',
+    'AX-7': 'WP-44',
+    'AX-8': 'WP-44',
+    'AX-9': 'WP-44',
+    'AX-10': 'WP-44',
+    'AX-11': 'WP-44',
+    'AX-14': 'WP-44',
+    'AX-15': 'WP-44',
+    'AX-18': 'WP-44',
+    'MS-14': 'WP-44',
+    'MS-12': 'WP-44',
+    'MS-11': 'WP-44',
+    'MS-13': 'WP-44',
+    'PIC-12': 'WP-44',
+    'DG-6': 'WP-44',
+    'DG-4': 'WP-44',
+    'DG-9': 'WP-44',
+    'DG-13': 'WP-44',
+    'PIC-4': 'WP-45',
+    'PIC-7': 'WP-45',
+    'ST-1': 'WP-45',
+    'ST-7': 'WP-45',
+    'ST-15': 'WP-45',
+    'ST-17': 'WP-45',
+    'ST-10': 'WP-45',
+    'ST-16': 'WP-45',
+    'GW-6': 'WP-45',
+    'ST-21': 'WP-45',
+    'VF-4': 'WP-45',
+    'GW-1': 'WP-45',
+    'ST-22': 'WP-45',
+    'GW-10': 'WP-45',
+    'RH-1': 'WP-46',
+    'RH-3': 'WP-46',
+    'RH-5': 'WP-46',
+    'RH-8': 'WP-46',
+    'RH-9': 'WP-46',
+    'RH-11': 'WP-46',
+    'basic:PT-1': 'WP-47',
+    'MS-7': 'WP-47',
+    'MS-2': 'WP-47',
+    'MS-3': 'WP-47',
+    'MS-5': 'WP-47',
+    'basic:PT-3': 'WP-47',
+    'basic:PT-4': 'WP-47',
+    'basic:PT-6': 'WP-47',
+    'basic:PT-5': 'WP-47',
+    'basic:PT-10': 'WP-47',
+    'basic:PT-11': 'WP-47',
+    'PIC-2': 'WP-47',
+    'PIC-9': 'WP-47',
+    'PIC-10': 'WP-47',
+    'DG-12': 'WP-47',
+    'PIC-16': 'WP-47',
+    'DG-7': 'WP-47',
+    'basic:PT-15': 'WP-47',
+    'LT-27': 'WP-48',
+    'plot:PT-5': 'WP-48',
+    'basic:PT-16': 'WP-48',
+    'GW-22': 'WP-48',
+    'syn:SD-15': 'WP-48',
+    'RH-15': 'WP-48',
+    'DT-29': 'WP-48',
+    'ECO-16': 'WP-48',
+    'DT-28': 'WP-48',
+    'plot:PT-7': 'WP-49',
+    'basic:PT-12': 'WP-49',
+    'LT-25': 'WP-49',
+    'plot:PT-6': 'WP-49',
+    'plot:PT-11': 'WP-49',
+}
+
+GAPS4_SECTION = {
+    'TR-2': '33-14',
+    'TR-11': '33-10',
+    'TR-23': '33-11',
+    'BY-23': '33-12',
+    'stat:PT-23': '33-13',
+    'CV-16': '33-13',
+    'syn:SD-20': '33-10',
+    'GW-11': '33-11',
+    'BY-24': '33-12',
+    'AX-4': '34-01',
+    'AX-2': '34-02',
+    'AX-1': '34-03',
+    'VF-2': '34-02',
+    'VF-3': '34-04',
+    'PIC-1': '34-05',
+    'PIC-3': '34-06',
+    'TR-4': '34-07',
+    'DG-3': '34-08',
+    'AX-3': '34-09',
+    'plot:PT-13': '34-09',
+    'MS-1': '35-01',
+    'syn:SD-3': '35-02',
+    'stat:PT-7': '35-03',
+    'syn:SD-5': '35-03',
+    'stat:PT-1': '35-04',
+    'stat:PT-2': '35-04',
+    'stat:PT-5': '35-04',
+    'stat:PT-13': '35-03',
+    'stat:PT-6': '35-03',
+    'stat:PT-8': '35-04',
+    'stat:PT-9': '35-03',
+    'stat:PT-14': '35-04',
+    'basic:PT-8': '35-06',
+    'basic:PT-9': '35-05',
+    'basic:PT-13': '35-05',
+    'DT-15': '35-07',
+    'syn:SD-7': '35-03',
+    'syn:SD-8': '35-06',
+    'GW-2': '35-06',
+    'GW-3': '35-06',
+    'GW-4': '35-06',
+    'sil:SD-8': '35-06',
+    'DT-19': '35-08',
+    'plot:PT-3': '35-09',
+    'plot:PT-4': '35-09',
+    'syn:SD-1': '35-09',
+    'syn:SD-13': '35-09',
+    'plat:PT-1': '36-01',
+    'plat:PT-5': '36-04',
+    'plat:PT-4': '36-03',
+    'plat:PT-2': '36-04',
+    'plat:PT-11': '36-04',
+    'plat:PT-12': '36-04',
+    'plat:PT-6': '36-04',
+    'plat:PT-16': '36-04',
+    'plat:PT-14': '36-04',
+    'DG-14': '36-02',
+    'DG-1': '37-01',
+    'DG-5': '37-02',
+    'TR-13': '37-03',
+    'DG-8': '37-02',
+    'stat:PT-12': '37-04',
+    'stat:PT-16': '37-05',
+    'DT-26': '37-05',
+    'stat:PT-21': '37-05',
+    'syn:SD-17': '38-01',
+    'GW-12': '38-01',
+    'ECO-1': '38-01',
+    'ECO-4': '38-01',
+    'GW-13': '38-02',
+    'GW-14': '38-02',
+    'GW-15': '38-02',
+    'GW-16': '38-02',
+    'GW-9': '38-02',
+    'ECO-5': '38-02',
+    'ECO-15': '38-01',
+    'ECO-7': '38-01',
+    'plat:PT-8': '40-02',
+    'plat:PT-7': '40-01',
+    'plat:PT-9': '40-02',
+    'plat:PT-10': '40-02',
+    'stat:PT-15': '40-02',
+    'sil:SD-1': '40-02',
+    'AX-16': '40-02',
+    'sil:SD-11': '40-02',
+    'sil:SD-12': '40-02',
+    'sil:SD-13': '40-02',
+    'BY-28': '41-01',
+    'BY-1': '41-02',
+    'BY-2': '41-03',
+    'BY-27': '41-03',
+    'BY-3': '41-04',
+    'BY-4': '41-05',
+    'BY-5': '41-05',
+    'BY-6': '41-05',
+    'BY-12': '41-02',
+    'BY-13': '41-04',
+    'BY-14': '41-04',
+    'BY-10': '41-06',
+    'BY-16': '41-06',
+    'BY-18': '41-05',
+    'VF-6': '41-05',
+    'GW-5': '41-05',
+    'sil:SD-7': '41-03',
+    'PIC-13': '41-04',
+    'BY-7': '41-02',
+    'TR-19': '41-02',
+    'CV-8': '42-01',
+    'CV-1': '42-02',
+    'CV-3': '42-03',
+    'CV-4': '42-04',
+    'CV-2': '42-05',
+    'CV-5': '42-04',
+    'CV-6': '42-02',
+    'CV-7': '42-02',
+    'CV-11': '42-04',
+    'CV-9': '42-05',
+    'CV-10': '42-05',
+    'CV-14': '42-05',
+    'CV-15': '42-03',
+    'LT-12': '42-03',
+    'AX-12': '42-03',
+    'sil:SD-4': '42-01',
+    'LT-22': '42-03',
+    'LT-1': '43-01',
+    'LT-4': '43-02',
+    'LT-2': '43-03',
+    'LT-3': '43-03',
+    'LT-5': '43-02',
+    'LT-6': '43-03',
+    'LT-7': '43-03',
+    'LT-8': '43-05',
+    'LT-9': '43-05',
+    'LT-10': '43-03',
+    'LT-11': '43-06',
+    'LT-13': '43-01',
+    'LT-14': '43-05',
+    'LT-15': '43-01',
+    'LT-16': '43-05',
+    'LT-17': '43-02',
+    'LT-18': '43-05',
+    'LT-19': '43-05',
+    'LT-20': '43-06',
+    'LT-21': '43-04',
+    'PIC-11': '43-04',
+    'MS-10': '43-04',
+    'ST-14': '43-07',
+    'LT-24': '43-05',
+    'RH-13': '43-04',
+    'AX-13': '44-01',
+    'AX-5': '44-02',
+    'AX-6': '44-02',
+    'AX-7': '44-03',
+    'AX-8': '44-02',
+    'AX-9': '44-03',
+    'AX-10': '44-03',
+    'AX-11': '44-03',
+    'AX-14': '44-02',
+    'AX-15': '44-02',
+    'AX-18': '44-04',
+    'MS-14': '44-03',
+    'MS-12': '44-05',
+    'MS-11': '44-01',
+    'MS-13': '44-01',
+    'PIC-12': '44-01',
+    'DG-6': '44-04',
+    'DG-4': '44-04',
+    'DG-9': '44-05',
+    'DG-13': '44-03',
+    'PIC-4': '45-01',
+    'PIC-7': '45-01',
+    'ST-1': '45-02',
+    'ST-7': '45-03',
+    'ST-15': '45-03',
+    'ST-17': '45-03',
+    'ST-10': '45-03',
+    'ST-16': '45-03',
+    'GW-6': '45-04',
+    'ST-21': '45-04',
+    'VF-4': '45-04',
+    'GW-1': '45-04',
+    'ST-22': '45-05',
+    'GW-10': '45-05',
+    'RH-1': '46-01',
+    'RH-3': '46-02',
+    'RH-5': '46-02',
+    'RH-8': '46-02',
+    'RH-9': '46-01',
+    'RH-11': '46-01',
+    'basic:PT-1': '47-01',
+    'MS-7': '47-01',
+    'MS-2': '47-02',
+    'MS-3': '47-02',
+    'MS-5': '47-02',
+    'basic:PT-3': '47-02',
+    'basic:PT-4': '47-03',
+    'basic:PT-6': '47-03',
+    'basic:PT-5': '47-03',
+    'basic:PT-10': '47-04',
+    'basic:PT-11': '47-05',
+    'PIC-2': '47-06',
+    'PIC-9': '47-06',
+    'PIC-10': '47-06',
+    'DG-12': '47-06',
+    'PIC-16': '47-06',
+    'DG-7': '47-02',
+    'basic:PT-15': '47-06',
+    'LT-27': '48-01',
+    'plot:PT-5': '48-01',
+    'basic:PT-16': '48-01',
+    'GW-22': '48-01',
+    'syn:SD-15': '48-02',
+    'RH-15': '48-02',
+    'DT-29': '48-03',
+    'ECO-16': '48-02',
+    'DT-28': '48-02',
+    'plot:PT-7': '49-01',
+    'basic:PT-12': '49-02',
+    'LT-25': '49-02',
+    'plot:PT-6': '49-01',
+    'plot:PT-11': '49-02',
+}
+
+
+GAPS4_ALL = tuple(GAPS4_WP)
+
+#: The WPs whose closeout (step WE.2) has run, in run order; each WE
+#: appends its own (TestGaps4Tracking::test_every_closed_wp_is_closed).
+GAPS4_CLOSED_WPS = ()
+
+#: WP -> the commit that recorded its closeout counts (WE.2's follow-up
+#: commit); test_the_gaps4_closeout_counts_are_computed recomputes them.
+GAPS4_CLOSEOUT = {}
+
+_GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
+              "WP-40", "WP-41", "WP-42", "WP-43", "WP-44", "WP-45",
+              "WP-46", "WP-47", "WP-48", "WP-49")
+_GAPS4_WITHDRAWN = ("plat:PT-3", "basic:PT-7", "plot:PT-10")
+_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}"
+_GAPS4_KINDS = ("Fix", "Document", "Partly", "Fix per the Q8 per-word ruling",
+                "Fix or Document per the Q8 per-word ruling")
+_GAPS4_ROW = re.compile(
+    r"^\| (?P<id>%s) \| (?P<item>.+?) \| (?P<sev>S[1-3]) \| "
+    r"(?P<sec>\d{2}-\d{2}) \| (?P<kind>%s) \| "
+    % (_GAPS4_ID, "|".join(re.escape(k) for k in _GAPS4_KINDS)))
+_GAPS4_TRACKED = re.compile(
+    r"^- \*\*(?P<id>%s) Tracked:\*\* (?P<text>\S.*)$" % _GAPS4_ID)
+_GAPS4_OPEN = re.compile(r"^Open \((WP-\d{2}) section (\d{2}-\d{2})\)\.$")
+_GAPS4_CLOSED = re.compile(
+    r'^Closed in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
+_GAPS4_DOCUMENTED = re.compile(
+    r'^Documented in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
+_GAPS4_PARTLY = re.compile(
+    r"^Partly closed in (WP-\d{2}) \(section (\d{2}-\d{2}), commit "
+    r'([0-9a-f]{7,40}|pending)\): (\S.*); open: (\S.*) \(BUGS\.md "([^"]+)"\)\.$')
+_GAPS4_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because (WP-\d{2}) section (\d{2}-\d{2}) "
+    r"has not landed\. Graded (S[1-3]) \((WP-\d{2})\): \S")
+_GAPS4_ENTRIES_LINE = re.compile(
+    r"^- \*\*Entries\.\*\* (?P<all>\d+) (?P<wp>WP-\d{2}) entries; "
+    r"(?P<closed>\d+) closed, (?P<documented>\d+) documented, "
+    r"(?P<partly>\d+) partly closed; BUGS\.md holds (?P<open>\d+) open "
+    r"entries\.$", re.M)
+
+
+def _parse_gaps4(text):
+    """(rows, tracked, dupes): rows {id: {"sev", "sec", "kind"}}, tracked
+    {id: Tracked text}, dupes the ids with two rows or two Tracked lines."""
+    rows, tracked, dupes = {}, {}, []
+    for ln in text.split("\n"):
+        m = _GAPS4_ROW.match(ln)
+        if m:
+            if m.group("id") in rows:
+                dupes.append(m.group("id"))
+            rows[m.group("id")] = {"sev": m.group("sev"),
+                                   "sec": m.group("sec"),
+                                   "kind": m.group("kind")}
+        t = _GAPS4_TRACKED.match(ln)
+        if t:
+            if t.group("id") in tracked:
+                dupes.append(t.group("id"))
+            tracked[t.group("id")] = t.group("text")
+    return rows, tracked, dupes
+
+
+def _gaps4_open_problems(open_map, entries, rows):
+    """Each GAPS4_OPEN title is one open entry in the open form naming the
+    id's WP and section, graded with its row's Sev."""
+    unknown = sorted(set(open_map) - set(GAPS4_ALL))
+    bad = ["ids GAPS4 does not have: %s" % unknown] if unknown else []
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its GAPS4_OPEN key"
+                       % (pid, title))
+            continue
+        m = _GAPS4_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+        want = (GAPS4_WP.get(pid), GAPS4_SECTION.get(pid),
+                (rows.get(pid) or {}).get("sev"), GAPS4_WP.get(pid))
+        if not m:
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-NN "
+                       "section NN-MM has not landed. Graded S<n> (WP-NN): "
+                       "...'" % (pid, title))
+        elif m.groups() != want:
+            bad.append("%s: its Resolution names %s, not %s"
+                       % (pid, m.groups(), want))
+    return bad
+
+
+def _gaps4_closure_problems(open_ids, entries):
+    """Every id no longer open has a closed entry naming (WP-NN, <id>)."""
+    bad = []
+    for pid in GAPS4_ALL:
+        if pid in open_ids:
+            continue
+        tag = "(%s, %s)" % (GAPS4_WP[pid], pid)
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _gaps4_problems(rows, tracked, dupes, open_ids, entries, sha_exists):
+    """Every id has one row in its own section and one Tracked line in one
+    of PD-3's four forms, consistent with BUGS.md."""
+    bad = ["%s has two Tracked lines or two rows" % d for d in dupes]
+    bad += ["GAPS4.md names %s, which GAPS4 does not have" % t
+            for t in sorted((set(tracked) | set(rows)) - set(GAPS4_ALL))]
+    for pid in GAPS4_ALL:
+        wp, sec = GAPS4_WP[pid], GAPS4_SECTION[pid]
+        if pid not in rows:
+            bad.append("%s: GAPS4.md has no table row for it" % pid)
+        elif rows[pid]["sec"] != sec:
+            bad.append("%s: its row names section %s, not %s"
+                       % (pid, rows[pid]["sec"], sec))
+        if pid not in tracked:
+            bad.append("%s: GAPS4.md has 0 Tracked lines" % pid)
+            continue
+        text = tracked[pid]
+        o, c = _GAPS4_OPEN.match(text), _GAPS4_CLOSED.match(text)
+        d, p = _GAPS4_DOCUMENTED.match(text), _GAPS4_PARTLY.match(text)
+        if o:
+            if o.groups() != (wp, sec):
+                bad.append("%s: Open names %s section %s, not %s section %s"
+                           % ((pid,) + o.groups() + (wp, sec)))
+            if pid not in open_ids:
+                bad.append("%s: Tracked Open but its entry is closed" % pid)
+        elif c or d:
+            m, form = (c, "Closed") if c else (d, "Documented")
+            if m.group(1) != wp:
+                bad.append("%s: %s names %s, not %s" % (pid, form, m.group(1), wp))
+            if pid in open_ids:
+                bad.append("%s: Tracked %s but its entry is open" % (pid, form))
+            hits = [e for e in entries if e["closed"] and e["title"] == m.group(2)]
+            if not hits:
+                bad.append("%s: no closed BUGS.md entry is titled %r"
+                           % (pid, m.group(2)))
+            elif d and not any(e["fields"].get("Resolution", "").startswith(
+                    "  - Resolution: Documented ") for e in hits):
+                bad.append("%s: Tracked Documented but %r's Resolution does "
+                           "not begin 'Documented'" % (pid, m.group(2)))
+            if m.group(3) != "pending" and not sha_exists(m.group(3)):
+                bad.append("%s: commit %s does not exist" % (pid, m.group(3)))
+        elif p:
+            if p.group(1) != wp or p.group(2) != sec:
+                bad.append("%s: Partly names %s section %s, not %s section %s"
+                           % (pid, p.group(1), p.group(2), wp, sec))
+            if pid in open_ids:
+                bad.append("%s: Tracked Partly but its entry is open" % pid)
+            if p.group(3) != "pending" and not sha_exists(p.group(3)):
+                bad.append("%s: commit %s does not exist" % (pid, p.group(3)))
+            if not [e for e in entries if not e["closed"]
+                    and e["title"] == p.group(6)]:
+                bad.append("%s: no open BUGS.md entry is titled %r"
+                           % (pid, p.group(6)))
+        else:
+            bad.append("%s: Tracked line %r is in none of the four forms"
+                       % (pid, text))
+    return bad
+
+
+def _gaps4_closeout_counts(wp, bugs_text, gaps4_text):
+    """The counts a WP's ROADMAP.md "Entries." line states, computed from
+    BUGS.md and GAPS4.md as they were at its closeout commit."""
+    entries, _p = _parse_bugs(bugs_text)
+    _rows, tracked, _d = _parse_gaps4(gaps4_text)
+    lines = [tracked.get(pid, "") for pid in GAPS4_ALL if GAPS4_WP[pid] == wp]
+    return {"all": len(lines), "wp": wp,
+            "closed": sum(1 for t in lines if t.startswith("Closed in ")),
+            "documented": sum(1 for t in lines if t.startswith("Documented in ")),
+            "partly": sum(1 for t in lines if t.startswith("Partly closed in ")),
+            "open": sum(1 for e in entries if not e["closed"])}
+
+
+def _roadmap_gaps4_counts(roadmap, wp):
+    """The counts ROADMAP.md's "Entries." line for *wp* states, or {}."""
+    for m in _GAPS4_ENTRIES_LINE.finditer(roadmap):
+        if m.group("wp") == wp:
+            return {k: (v if k == "wp" else int(v))
+                    for k, v in m.groupdict().items()}
+    return {}
+
+
+class TestGaps4Tracking:
+    """The drop-in audit's items (index.md PD-1..PD-4): GAPS4.md's rows and
+    Tracked lines, BUGS.md's open and closed forms, and GAPS4_OPEN."""
+
+    def test_the_register_holds_every_item(self):
+        rows, tracked, dupes = _parse_gaps4(_read("GAPS4.md"))
+        # index.md Appendix A: 224 printed, 3 withdrawn
+        assert len(GAPS4_ALL) == 221
+        assert tuple(GAPS4_SECTION) == GAPS4_ALL
+        # GAPS4_OPEN shrinks as items close; never compare it with
+        # GAPS4_ALL for equality.
+        assert set(GAPS4_OPEN) <= set(GAPS4_ALL)
+        assert set(GAPS4_WP.values()) == set(_GAPS4_WPS)
+        bad = [pid for pid in GAPS4_ALL
+               if not re.match(r"^%s$" % _GAPS4_ID, pid)]
+        assert not bad, bad
+        bad = [pid for pid in GAPS4_ALL
+               if not re.match(r"^\d{2}-\d{2}$", GAPS4_SECTION[pid])
+               or GAPS4_SECTION[pid][:2] != GAPS4_WP[pid][3:]]
+        assert not bad, bad
+        assert set(rows) == set(GAPS4_ALL), sorted(
+            set(rows) ^ set(GAPS4_ALL))
+        assert not dupes, dupes
+        text = _read("GAPS4.md")
+        for w in _GAPS4_WITHDRAWN:
+            assert w not in GAPS4_WP, w
+            assert not re.search(r"(?<![\w:])%s(?!\d)" % re.escape(w),
+                                 text), w
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        rows, _t, _d = _parse_gaps4(_read("GAPS4.md"))
+        bad = _gaps4_open_problems(GAPS4_OPEN, entries, rows)
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_entry_names_its_closure(self, bugs):
+        bad = _gaps4_closure_problems(set(GAPS4_OPEN), bugs[0])
+        assert not bad, "\n".join(bad)
+
+    def test_every_item_has_one_tracked_line(self, bugs):
+        rows, tracked, dupes = _parse_gaps4(_read("GAPS4.md"))
+        bad = _gaps4_problems(rows, tracked, dupes, set(GAPS4_OPEN), bugs[0],
+                              _sha_exists)
+        assert not bad, "\n".join(bad)
+
+    def test_every_closed_wp_is_closed(self, bugs):
+        # Passes trivially while GAPS4_CLOSED_WPS is empty (a loop, never a
+        # parametrise over an empty tuple, which would skip).
+        _r, tracked, _d = _parse_gaps4(_read("GAPS4.md"))
+        bad = []
+        for wp in GAPS4_CLOSED_WPS:
+            bad += [pid for pid in GAPS4_OPEN if GAPS4_WP[pid] == wp]
+            bad += ["%s: %s" % (pid, t) for pid, t in tracked.items()
+                    if GAPS4_WP.get(pid) == wp
+                    and (_GAPS4_OPEN.match(t) or "commit pending" in t)]
+            bad += [e["title"] for e in bugs[0] if not e["closed"]
+                    and e["fields"].get("Resolution", "").startswith(
+                        "  - Resolution: Not fixed because %s section" % wp)]
+        assert not bad, "\n".join(bad)
+
+    def test_the_gaps4_closeout_counts_are_computed(self):
+        for wp, sha in GAPS4_CLOSEOUT.items():
+            stated = _roadmap_gaps4_counts(
+                _git("show", sha + ":ROADMAP.md").stdout, wp)
+            got = _gaps4_closeout_counts(
+                wp, _git("show", sha + ":BUGS.md").stdout,
+                _git("show", sha + ":GAPS4.md").stdout)
+            assert stated == got, (wp, stated, got)
+
+    def test_the_gaps4_readers(self):
+        text = ("| ID | Item | Sev | Section | Kind | Evidence | Fix |\n"
+                "|---|---|---|---|---|---|---|\n"
+                "| AX-4 | t \\| u | S1 | 34-01 | Fix | e | f |\n"
+                "| plat:PT-1 | x | S2 | 36-01 | Fix | e | f |\n\n"
+                "- **AX-4 Tracked:** Open (WP-34 section 34-01).\n"
+                '- **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "T2", '
+                "commit 0123abc.\n")
+        rows, tracked, dupes = _parse_gaps4(text)
+        assert {k: v["sec"] for k, v in rows.items()} == {
+            "AX-4": "34-01", "plat:PT-1": "36-01"}
+        assert tracked == {
+            "AX-4": "Open (WP-34 section 34-01).",
+            "plat:PT-1": 'Closed in WP-36, BUGS.md "T2", commit 0123abc.'}
+        assert dupes == []
+        tracked_all = {pid: "Open (%s section %s)." % (GAPS4_WP[pid],
+                                                      GAPS4_SECTION[pid])
+                       for pid in GAPS4_ALL}
+        rows_all = {pid: {"sev": "S2", "sec": GAPS4_SECTION[pid],
+                          "kind": "Fix"} for pid in GAPS4_ALL}
+        tracked_all["plat:PT-1"] = tracked["plat:PT-1"]
+        entries = [{"title": "T2", "closed": True, "fields": {}},
+                   {"title": "R1", "closed": False, "fields": {}}]
+        others = set(GAPS4_ALL) - {"plat:PT-1"}
+        assert _gaps4_problems(rows_all, tracked_all, [], others, entries,
+                               lambda s: s == "0123abc") == []
+        got = _gaps4_problems(rows_all, tracked_all, [], set(GAPS4_ALL),
+                              entries, lambda s: False)
+        assert "plat:PT-1: Tracked Closed but its entry is open" in got
+        assert "plat:PT-1: commit 0123abc does not exist" in got
+        partly = dict(tracked_all)
+        partly["plat:PT-1"] = ("Partly closed in WP-36 (section 36-01, "
+                               'commit pending): x; open: y (BUGS.md "R1").')
+        assert _gaps4_problems(rows_all, partly, [], others, entries,
+                               lambda s: False) == []
+        doc = dict(tracked_all)
+        doc["plat:PT-1"] = 'Documented in WP-36, BUGS.md "T2", commit pending.'
+        fixed = [{"title": "T2", "closed": True,
+                  "fields": {"Resolution": "  - Resolution: Fixed x."}}]
+        assert any("Resolution does not begin 'Documented'" in b
+                   for b in _gaps4_problems(rows_all, doc, [], others, fixed,
+                                            lambda s: False))
+        wrong = dict(tracked_all)
+        wrong["plat:PT-1"] = "Open (WP-35 section 36-01)."
+        assert any("Open names WP-35 section 36-01, not WP-36 section 36-01"
+                   in b for b in _gaps4_problems(rows_all, wrong, [],
+                                                 set(GAPS4_ALL), entries,
+                                                 lambda s: False))
+        norow = {k: v for k, v in rows_all.items() if k != "AX-4"}
+        assert "AX-4: GAPS4.md has no table row for it" in _gaps4_problems(
+            norow, tracked_all, [], set(GAPS4_ALL) - {"plat:PT-1"}, entries,
+            lambda s: True)
+
+    def test_the_gaps4_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-34 section 34-01 has not landed. "
+                     "Graded S1 (WP-34): drop-in audit package 1, blocker.")
+        rows = {"AX-4": {"sev": "S1", "sec": "34-01", "kind": "Fix"}}
+        good = [entry("T1", False, open_form)]
+        assert _gaps4_open_problems({"AX-4": "T1"}, good, rows) == []
+        for open_map, entries, says in (
+                ({"AX-4": "T2"}, [entry("T2", True, "Fixed x.")], "is closed"),
+                ({"AX-4": "T9"}, good, "0 BUGS.md entries"),
+                ({"AX-4": "T1"}, [entry("T1", False, open_form.replace(
+                    "34-01", "34-02"))], "its Resolution names"),
+                ({"ZZ-9": "T1"}, good, "does not have"),
+                ({"AX-4": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote")):
+            assert any(says in b for b in _gaps4_open_problems(
+                open_map, entries, rows)), (says, open_map)
+        others = set(GAPS4_ALL) - {"AX-4"}
+        assert _gaps4_closure_problems(others, [entry(
+            "T2", True, "Fixed 01nov2026 (WP-34, AX-4). Done.")]) == []
+        assert _gaps4_closure_problems(others, []) == [
+            "AX-4 is closed and no closed BUGS.md entry's Resolution holds "
+            "(WP-34, AX-4)"]
+
+    def test_the_count_reader(self):
+        line = ("- **Entries.** 11 WP-34 entries; 9 closed, 0 documented, "
+                "1 partly closed; BUGS.md holds 12 open entries.")
+        assert _roadmap_gaps4_counts("x\n" + line + "\n", "WP-34") == {
+            "all": 11, "wp": "WP-34", "closed": 9, "documented": 0,
+            "partly": 1, "open": 12}
+        assert _roadmap_gaps4_counts(line, "WP-35") == {}

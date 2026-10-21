@@ -4477,3 +4477,1329 @@
   - Description: DECISIONS D39 (D-53e), 18oct2026: printing fixed the page at 1000 px and printed what the screen showed, so with tabs() only the active tab's graphs reached the paper (the help said to print each tab in turn). The maintainer ruled that printing prints every tab, fitted to the paper.
   - Suggested fix: while the page prints, replace each Tabs by one image per tab, each on a page of its own and scaled to the page, in both renderers.
   - Resolution: Fixed 18oct2026 (WP-32, D-53e). The print hook (code _DASH_COMPOSITE_JS + _DASH_PRINT_HOOK_JS, args roots, tabs and tables, built by _dash_print_models at the three document_ready sites) on beforeprint shows each tab of every Tabs through its views (never through active, so no callback or server sees a tab change), lays it out at once, exports its grid and draws it with its open tables and the tab strip marked as Save dashboard draws it onto a canvas (class dash-print-tab, role img, named by the tab's title) styled width 100%, max-height 100vh, object-fit contain and break-before page; the canvases replace the hidden Tabs until afterprint removes them and shows it again. A tab that cannot be drawn leaves its Tabs printed as before. layout(bs) pages get the same hook. Pinned by test/test_export_composite.py::TestInChrome::test_print_draws_every_tab_on_a_page_of_its_own[auto], [bs], ::TestPrint::test_the_print_models.
+
+- [ ] Title: No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand)
+  - File Names and Line Numbers: git grep gr_example is empty; twoway_corpus.do and conformance_corpus check rc only; test_mode_parity compares dash with dash
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids TR-2; confirmed; tracked: untracked. Registered as GAPS4 TR-2 (WP-33, section 33-14, Fix).
+  - Suggested fix: Per M5, P4-8 and A-25: make corpus judges every corpus example by geometry and glyph colours (within a recorded RGB tolerance), with an image score and a known-differences ledger; a ~20-example guard runs in cert; the gallery is built only at the final closeout.
+  - Resolution: Not fixed because WP-33 section 33-14 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: value_truth.json (311 twoway answers) is never compared with dash probe by probe
+  - File Names and Line Numbers: test_option_validation.py:1395-1510 checks structure only
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids TR-11; confirmed; tracked: untracked. Registered as GAPS4 TR-11 (WP-33, section 33-10, Fix).
+  - Suggested fix: Parametrised rc and first-line check with a deliberate-differences list
+  - Resolution: Not fixed because WP-33 section 33-10 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass
+  - File Names and Line Numbers: ROADMAP.md:5155; test_graph_text.py:1323-1336; conftest.py:195-208
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids TR-23; confirmed; tracked: ROADMAP WP-32 gate note. Registered as GAPS4 TR-23 (WP-33, section 33-11, Fix).
+  - Suggested fix: Convert TestBounds so it runs (R9: pinned tests are never deleted); run make test-all once and record it.
+  - Resolution: Not fixed because WP-33 section 33-11 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: Per-type by() drawing is pinned against twoway only for function (default range) and lpoly
+  - File Names and Line Numbers: U60-5 compares saved with served for five types; U46-04; test_lpoly_rot
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids BY-23, BY-31; partly; tracked: GAPS3 K2 (partial). Registered as GAPS4 BY-23 (WP-33, section 33-12, Fix).
+  - Suggested fix: Turn the 93-command byx probe into extract_by_types_truth.do and compare both modes per panel
+  - Resolution: Not fixed because WP-33 section 33-12 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...
+  - File Names and Line Numbers: stat_truth keys; numeric.do
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids stat:PT-23; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-23 (WP-33, section 33-13, Fix).
+  - Suggested fix: Add them to extract_stat_truth.do
+  - Resolution: Not fixed because WP-33 section 33-13 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously
+  - File Names and Line Numbers: test_colorvar_truth.py:70-104; test_colorvar_options.py; test_colorvar_coverage.py
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids CV-16; confirmed; tracked: untracked. Registered as GAPS4 CV-16 (WP-33, section 33-13, Fix).
+  - Suggested fix: Extend the extract scripts with the run1-run8 probes
+  - Resolution: Not fixed because WP-33 section 33-13 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()
+  - File Names and Line Numbers: twowaygraph_g.class:128; abbrev_truth unprobeable.bgcolor
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids syn:SD-20; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-20 (WP-33, section 33-10, Fix).
+  - Suggested fix: Extend extract_abbrev_truth.do; correct the fixture
+  - Resolution: Not fixed because WP-33 section 33-10 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled
+  - File Names and Line Numbers: sizing_truth base/scale_*; dash_render.py:27529-27610; dash.sthlp:5687-5690
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids GW-11; partly; tracked: BUGS D5/E11 (closed). Registered as GAPS4 GW-11 (WP-33, section 33-11, Fix).
+  - Suggested fix: Compare frame insets under scale(0.5)/(1.5); correct the help
+  - Resolution: Not fixed because WP-33 section 33-11 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: by() title/note/caption under position() has truth only for caption pos(5)
+  - File Names and Line Numbers: extract_by_text_truth.do bp01-bp39; TestByTitlesSpan
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids BY-24; partly; tracked: untracked. Registered as GAPS4 BY-24 (WP-33, section 33-12, Fix).
+  - Suggested fix: Add position() probes
+  - Resolution: Not fixed because WP-33 section 33-12 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+
+- [ ] Title: The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints
+  - File Names and Line Numbers: default_axes_truth P08 (scale 13.8125-39.1875, ticks 15(5)40); dash draws 10(10)40 with an empty band, and rep78 discrete 0(2)6 against twoway's 1(1)5; histogram is in _DASH_STATA_TICK_SKIP (dash_render.py:41811); test_default_axes.py:230-233 excludes P08 x
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids AX-4, VF-1, DG-2; confirmed; tracked: untracked (test exclusion only). Registered as GAPS4 AX-4 (WP-34, section 34-01, Fix).
+  - Suggested fix: Use the midpoints as the tick input and keep the edges in the hull, at build, in the served refit and in the saved-page refit (or ask Stata over the midpoints); remove the exclusion; add discrete, bin(), width(), frequency and horizontal rows
+  - Resolution: Not fixed because WP-34 section 34-01 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)
+  - File Names and Line Numbers: bygraphstyle-default/compact/altleg/econ.style:39-40; _dash_by_numticks (dash_render.py:40785-40801) lowers y only; by_scales_truth d40 records #4 on x; probes on length, price, displacement, lfit range(), histogram width(5)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids AX-2, TR-3, BY-26; confirmed; tracked: untracked. Registered as GAPS4 AX-2 (WP-34, section 34-02, Fix).
+  - Suggested fix: Use nx-1 on x1 (x2/y2 keep the scheme count, f02/c17); request n=4 from Stata's tick table; add truth rows whose x has #4 different from #5; correct dash.sthlp:4679
+  - Resolution: Not fixed because WP-34 section 34-02 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data
+  - File Names and Line Numbers: Probes R1-R3 and C63; axis_truth b2_range_0/_100/_three draw 10..40; dash_render.py:47748-47768; exclusion test_bar_range_geometry.py:653-656; dash.sthlp:4529 says range() widens the ticks
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids AX-1; confirmed; tracked: untracked (misattributed residual in closed BUGS P1.17b). Registered as GAPS4 AX-1 (WP-34, section 34-03, Fix).
+  - Suggested fix: On a default numeric axis, tick over the data and keep range() in the hull only (build, served, saved refit); keep widening for #N and by(); pin R1-R3
+  - Resolution: Not fixed because WP-34 section 34-03 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: A by() graph's shared y title is never painted (its cell canvas is 1 px tall)
+  - File Names and Line Numbers: Title visible=true, bbox 28x560, canvas 28x1 with 0 inked px; _dash_by_text_cell frame_height=1 (dash_render.py:55040) is never cleared in _dash_by_cell (55398-55405); the browser tests check bboxes and visibility only
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids VF-2, TR-24; confirmed (VF-2); TR-24 was uncertain and is settled by VF-2; tracked: untracked. Registered as GAPS4 VF-2 (WP-34, section 34-02, Fix).
+  - Suggested fix: Clear frame_height when the cell fills its track; check the dash_by_legend/clegend cells; add a pixel-level browser test
+  - Resolution: Not fixed because WP-34 section 34-02 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed
+  - File Names and Line Numbers: _dash_frame_sizes (dash_render.py:27654-27678) sets frame sizes but not width/height; q04 draws 600x560 with a 544x509 frame; min/max_height 160/560 against the default height 600; dash.sthlp:5670-5679; test_sizing.py:262-275 checks the model only
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids VF-3, ST-12; confirmed; tracked: untracked (BUGS WP-31 D5 marked fixed). Registered as GAPS4 VF-3 (WP-34, section 34-04, Fix).
+  - Suggested fix: Set width/height (or None) and clear min/max_height on fixed figures; add a headless test of frame size and ratio; assert no Bokeh validation output
+  - Resolution: Not fixed because WP-34 section 34-04 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: A default area plot (and its legend key) has no outline in any scheme
+  - File Names and Line Numbers: dash_render.py:18711-18733 strokes only when lcolor/lwidth/lpattern/lstyle is given; twoway strokes p#arealine at 2x parea, clipped, in all 10 schemes run; test_scheme_linewidth.py:279 injects lcolor(red)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids PIC-1, RH-14; confirmed; tracked: untracked (GAPS3 E8 fixed rarea/rbar only). Registered as GAPS4 PIC-1 (WP-34, section 34-05, Fix).
+  - Suggested fix: Always draw the outline from the p#area line chain, inner-aligned, on the key too, keeping cmissing breaks
+  - Resolution: Not fixed because WP-34 section 34-05 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style
+  - File Names and Line Numbers: twoway_lfitci_parse.class sets .n=1 under nofit; _dash_plot_style_indices (dash_render.py:57783-57787) always adds 2; gr_example #78 scatter drawn p5 where twoway draws p3
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids PIC-3; confirmed (legend-number knock-on unverified); tracked: untracked. Registered as GAPS4 PIC-3 (WP-34, section 34-06, Fix).
+  - Suggested fix: Count one plot under nofit and check fitplot()/ciplot(); add nofit rows to ci_plot_index_truth; check legend numbering
+  - Resolution: Not fixed because WP-34 section 34-06 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)
+  - File Names and Line Numbers: area/line d.gnp96 date draws 1967q2..2002q2 in 35-quarter steps against twoway's 1970q1(40)2000q1; the plain-y probe V1 is wrong too; x is summarised over rows with a missing y, so _dash_stata_pick (dash_render.py:41708) finds no match
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids TR-4; partly (measurement confirmed; the cause is the missing-end rows, not the operator columns); tracked: untracked. Registered as GAPS4 TR-4 (WP-34, section 34-07, Fix).
+  - Suggested fix: Summarise only rows where all of the layer's variables are non-missing (twoway's omit rule); add operator and plain-missing rows to ts_operator_truth
+  - Resolution: Not fixed because WP-34 section 34-07 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label
+  - File Names and Line Numbers: _dash_expand_numlist (dash_render.py:40061-40082) computes a+b*k in plain floats; ylabel(-.3(.1).3) and -.7(.1).7
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids DG-3; confirmed; tracked: untracked. Registered as GAPS4 DG-3 (WP-34, section 34-08, Fix).
+  - Suggested fix: Reproduce Stata numlist's rounding (snap to 0, round relative to b); add a truth probe
+  - Resolution: Not fixed because WP-34 section 34-08 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels
+  - File Names and Line Numbers: Stata is asked only for counts {5} plus #N matched by the label/tick regex (dash_render.py:41832-41838); skip set at 41811; build-time misses B2, C42, B6, B4, E2; qfitci||scatter draws y 0(10)40 where twoway draws 10(10)40; colour-key tick calls pass no table (16773, 29219, 52420): zlabel(#3) gives 3 colours where twoway gives 2; BUGS.md:4139-4143 and ROADMAP.md:5153 say the drawing is 'exact at build'
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids AX-3, TR-5, TR-12, DT-27, VF-10, CV-13; confirmed (TR-5 cause unproven; VF-10 partly: the computed axes matched in the probes and truth rows); tracked: BUGS.md open natscale entry (scope understated); computed axes partly documented at dash.sthlp:4529. Registered as GAPS4 AX-3 (WP-34, section 34-09, Fix).
+  - Suggested fix: At export, ask _natscale/_tsnatscale for the by() counts, mtick/mlabel #N, every computed lo/hi and the colour variable's range; correct the BUGS/ROADMAP scope
+  - Resolution: Not fixed because WP-34 section 34-09 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+
+- [ ] Title: Open entry: the natscale model misses 3 of 264 axes after a filter move or without embedded ticks
+  - File Names and Line Numbers: BUGS.md:4139; test_natscale.py _KNOWN
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids plot:PT-13, AX-20, syn:SD-21, VF-9, BY-25, sil:SD-16; confirmed (the noted after-move exception); tracked: BUGS.md open natscale entry. Registered as GAPS4 plot:PT-13 (WP-34, section 34-09, Partly).
+  - Suggested fix: Partly closed by ruling (D41, PD-9): Stata's own ticks at build (34-09); the natscale misses after a filter move stay open as the re-scoped natscale entry.
+  - Resolution: Not fixed because WP-34 section 34-09 has not landed. Graded S2 (WP-34): drop-in audit package 9, major.
+
+- [ ] Title: Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns
+  - File Names and Line Numbers: _dash_label_split (dash.ado:2517-2560, syntax at 2551); _dash_contour_split (2447-2499); twoway_zyx2view_parse.class:89-106; runs G01-G06, run3 #101-#119
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids MS-1, stat:PT-3; confirmed; tracked: untracked. Registered as GAPS4 MS-1 (WP-35, section 35-01, Fix).
+  - Suggested fix: Keep only the last copy before the combined syntax; keep refusing repeated flags; add TP-14a rows
+  - Resolution: Not fixed because WP-35 section 35-01 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn
+  - File Names and Line Numbers: twowaygraph_g.class:145-152; dash_parse.mata:8114-8115; p1.svg; v1out.log
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-3; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-3 (WP-35, section 35-02, Fix).
+  - Suggested fix: Map p#(opts) onto the #th plot; regenerate the takes table over p1-p20
+  - Resolution: Not fixed because WP-35 section 35-02 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: lowess m (twoway's documented minimum of mean) is refused
+  - File Names and Line Numbers: dash.ado:1274, 1664-1671; lowm.log
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-7, syn:SD-6; confirmed; tracked: code comment only. Registered as GAPS4 stat:PT-7 (WP-35, section 35-03, Fix).
+  - Suggested fix: On lowess, read a bare m as mean
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: bwi() is refused on lowess, kdensity, lpoly and lpolyci
+  - File Names and Line Numbers: dash.ado:1266, 1318; abbrev_truth unprobeable.bwidth
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-5; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-5 (WP-35, section 35-03, Fix).
+  - Suggested fix: Declare BWidth with twoway's minimum on those types
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses
+  - File Names and Line Numbers: twoway__histogram_gen.ado:27-51; dash.ado:4788-4848; value_truth histogram_freqpct_1
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-1, TR-7; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-1 (WP-35, section 35-04, Fix).
+  - Suggested fix: Add both checks in twoway's words and order
+  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram
+  - File Names and Line Numbers: dash.ado:3772-3774; run3
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-2; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-2 (WP-35, section 35-04, Fix).
+  - Suggested fix: Add them to the flag-applicability rule
+  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer
+  - File Names and Line Numbers: lev2.log; dash.ado:2660-2665; dash.sthlp:596-598; extract_contour_truth.do:358 measured under nodraw
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-5; confirmed; tracked: documented wrongly. Registered as GAPS4 stat:PT-5 (WP-35, section 35-04, Fix).
+  - Suggested fix: Bound at 500 levels and 499 cuts in twoway's words; re-measure drawn
+  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options
+  - File Names and Line Numbers: twoway_contourline.sthlp:44-58; contour_truth abbrev.*; dash.sthlp:599-601
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-13; confirmed; tracked: documented as full spellings required. Registered as GAPS4 stat:PT-13 (WP-35, section 35-03, Fix).
+  - Suggested fix: Resolve them to the contour options first
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note
+  - File Names and Line Numbers: twoway_function_parse.class:55-71; dash.ado:10448 hard-codes x(x)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-6; confirmed; tracked: help claim inaccurate. Registered as GAPS4 stat:PT-6 (WP-35, section 35-03, Fix).
+  - Suggested fix: Validate it as a name and pass it as x()
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes
+  - File Names and Line Numbers: twoway_lowess_parse.class:37-47; probe1 #77-#78
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-8; confirmed; tracked: help Unsupported. Registered as GAPS4 stat:PT-8 (WP-35, section 35-04, Fix).
+  - Suggested fix: Treat the pair in the repeat check; take weight silently
+  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)
+  - File Names and Line Numbers: twoway_mspline_parse.class:35; probe1 #114
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-9; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-9 (WP-35, section 35-03, Fix).
+  - Suggested fix: Accept them as twoway does
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types
+  - File Names and Line Numbers: _dash_fold_bw (dash.ado:2125-2145); dash.sthlp:3655-3658
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-14, DT-13; confirmed; tracked: documented. Registered as GAPS4 stat:PT-14 (WP-35, section 35-04, Fix).
+  - Suggested fix: Refuse it outside lowess, lpoly, lpolyci and kdensity
+  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'
+  - File Names and Line Numbers: twoway_yxview_parse.class:238-243
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids basic:PT-8, syn:SD-10; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-8 (WP-35, section 35-06, Fix).
+  - Suggested fix: Refuse in twoway's words
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111
+  - File Names and Line Numbers: value_truth.json; OV-42 and PS-06 pin dash's codes; DROPIN P2.64
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids basic:PT-9, TR-9, stat:PT-10; confirmed; tracked: DROPIN P2.64 unmapped; partly documented dash.sthlp:1144-1146. Registered as GAPS4 basic:PT-9 (WP-35, section 35-05, Fix).
+  - Suggested fix: Give each rule twoway's rc and line (the fixture holds them); flip OV-42 and PS-06
+  - Resolution: Not fixed because WP-35 section 35-05 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses
+  - File Names and Line Numbers: plaintypes4 C2-C10; Q05, Q06, Q12; dash.sthlp:1225-1250, 5871
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids basic:PT-13, DT-17, DT-18, TR-17; confirmed (barwidth(-1) is twoway's default sentinel); tracked: documented ('Some bounds are dash's own'). Registered as GAPS4 basic:PT-13 (WP-35, section 35-05, Fix).
+  - Suggested fix: Accept as twoway does (clamp or no-op); bound only where the element is drawn
+  - Resolution: Not fixed because WP-35 section 35-05 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)
+  - File Names and Line Numbers: dash.sthlp:1251-1265, 4948-4953; p10out X08-X52
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids DT-15, DT-16, syn:SD-18; confirmed; tracked: documented piecemeal. Registered as GAPS4 DT-15 (WP-35, section 35-07, Fix per the Q8 per-word ruling).
+  - Suggested fix: Per the maintainer's per-word ruling (P4-7): the 25 second-axis forms (ytitle2() ... ttitle2()), malpha(), lalpha(), falpha(), marker(), jseed(), mlg(), plotbgcolor(), pbgc() and bw() read as barwidth() are refused with twoway's words and a second line naming twoway's spelling (P4-9); kernel() is read case-sensitively and xsize(()) is refused as twoway refuses them; a colorvar() layer whose if keeps no observation is answered as twoway answers it; hover() and table stay, listed as dash-only options in one help paragraph.
+  - Resolution: Not fixed because WP-35 section 35-07 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type
+  - File Names and Line Numbers: twoway_lfitci_parse.class:34-37; dash.ado:3248-3252
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-7; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-7 (WP-35, section 35-03, Fix).
+  - Suggested fix: Refuse only exact type/recastas; measure what ty() draws
+  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)
+  - File Names and Line Numbers: dash.ado:4300-4321; F01-F05; v3
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-8; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-8 (WP-35, section 35-06, Fix).
+  - Suggested fix: Refuse with twoway's rc and words
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)
+  - File Names and Line Numbers: twowaygraph_g.class:155-161
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids GW-2; confirmed; tracked: untracked. Registered as GAPS4 GW-2 (WP-35, section 35-06, Fix).
+  - Suggested fix: Refuse in twoway's words after the merge
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn
+  - File Names and Line Numbers: twowaygraph_g.class:136
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids GW-3; confirmed; tracked: untracked. Registered as GAPS4 GW-3 (WP-35, section 35-06, Fix).
+  - Suggested fix: Validate it; refuse axis numbers above it with r(125)
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied
+  - File Names and Line Numbers: graph.ado:161; dash.ado:980, 1309
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids GW-4; confirmed; tracked: untracked. Registered as GAPS4 GW-4 (WP-35, section 35-06, Fix).
+  - Suggested fix: Declare FXSIZe/FYSIZe
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: title() with notitling is accepted with a note; twoway fails r(4018)
+  - File Names and Line Numbers: twowaygraph_g.class:577-582
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids sil:SD-8; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-8 (WP-35, section 35-06, Fix).
+  - Suggested fix: Refuse the pair as measured
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)
+  - File Names and Line Numbers: dash.sthlp:211-243; Q11
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids DT-19; confirmed; tracked: documented. Registered as GAPS4 DT-19 (WP-35, section 35-08, Fix).
+  - Suggested fix: Use tempnames or a frame for working columns
+  - Resolution: Not fixed because WP-35 section 35-08 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+
+- [ ] Title: Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations
+  - File Names and Line Numbers: dash.ado:5869; dash_parse.mata:2526-2528; dash.sthlp:528-532
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids plot:PT-3, basic:PT-14, DT-14; confirmed; tracked: dash.sthlp 'Case'. Registered as GAPS4 plot:PT-3 (WP-35, section 35-09, Fix).
+  - Suggested fix: Per M7: plot-type names are read in lower case only; capitalised spellings are refused as twoway refuses them.
+  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+
+- [ ] Title: The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')
+  - File Names and Line Numbers: empty_tw.svg has no axes; dash_render.py:63570-63576; test_bare_dash.py:74-80; p3out E20-E51; dash.sthlp:164-166
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids plot:PT-4, syn:SD-2; confirmed; tracked: untracked. Registered as GAPS4 plot:PT-4 (WP-35, section 35-09, Fix).
+  - Suggested fix: Draw no axes when there is no layer; refuse axis, scale and line options there in twoway's words (plural names); add an SVG truth for twoway, title(T)
+  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+
+- [ ] Title: A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it
+  - File Names and Line Numbers: dash_parse.mata:3622-3640 (the comment at 3627-3630 is false); p2/p11 logs; P1B-37 pins dash's message
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids syn:SD-1; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-1 (WP-35, section 35-09, Fix).
+  - Suggested fix: Follow twoway's _parse expand: text up to the next || is another plot; give twoway's '<word> is not a twoway plot type' and r(111) cases
+  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+
+- [ ] Title: A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both
+  - File Names and Line Numbers: p2out S13; probe v1
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids syn:SD-13; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-13 (WP-35, section 35-09, Fix).
+  - Suggested fix: Per M7: accept the option-less form, as twoway draws it.
+  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+
+- [ ] Title: dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal
+  - File Names and Line Numbers: fresh-HOME probe: c(python_exec) is empty while python query gives r(execpath)=/usr/local/bin/python3 and initialized=0; dash.ado:290-319; dash_setup.ado:96-107; dash_setup_lib.py:829-834
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-1; confirmed (whether GUI Stata saves the Python it found is unmeasured); tracked: untracked. Registered as GAPS4 plat:PT-1 (WP-36, section 36-01, Fix).
+  - Suggested fix: Per M8 (C5): no pre-check of Python and no python query probe; when c(python_exec) is empty, dash and dash_setup run the normal python: path and show Stata's own failure with dash's advice; the fresh-HOME test is a release-tier pytest through scripts/stata_slot.sh (A-8).
+  - Resolution: Not fixed because WP-36 section 36-01 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh
+  - File Names and Line Numbers: dash.sthlp:6701-6707, 2521, 2722; dash.ado:10115-10200; dash_render.py:3598-3764; test_serve_lifecycle skipif win32; scripts/stata_batch.sh:19
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-5, TR-20, ECO-17; confirmed; tracked: ROADMAP 'Deferred: the platform package (P1.34.6)'; GAPS3 I1 has no Tracked line. Registered as GAPS4 plat:PT-5 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q47, M8): README and help state the tested platform (macOS arm64, StataNow 19.5, console); no code changes.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help
+  - File Names and Line Numbers: probe3 r(134) at 408,235 characters; dash.ado:11366-11377; dash.sthlp:3713-3714
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-4; confirmed; tracked: n() refusal documented. Registered as GAPS4 plat:PT-4 (WP-36, section 36-03, Fix).
+  - Suggested fix: Per A-7: the function points of a named graph go to a private file under dash's temp folder, keyed by graph name; fix the message and the help.
+  - Resolution: Not fixed because WP-36 section 36-03 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later
+  - File Names and Line Numbers: dash.ado:84-89, 438-447; dash.sthlp:6701-6707; README.md:32-33
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-2; partly (a documented package requirement); tracked: ROADMAP platform package; maintainer decision M2. Registered as GAPS4 plat:PT-2 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q46, M8): the Stata 19 floor stays; README and help state that the drop-in claim is for Stata 19 and later.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it
+  - File Names and Line Numbers: dash.ado:351-400; dash_setup.ado:439-507; dash.sthlp:6709-6719
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-11, ECO-17; partly (dash itself only notes an old numpy/pandas); tracked: dash.sthlp Dependencies. Registered as GAPS4 plat:PT-11 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q49, M8): the help lists the dependencies, and nothing else changes.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route
+  - File Names and Line Numbers: dash_requirements.txt:6-7, 11, 83, 600; dash_setup_lib.py:54, 430-437; no Python ceiling
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-12; confirmed; tracked: generic in dash_setup.sthlp; specifics untracked. Registered as GAPS4 plat:PT-12 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q33, M8): dash_setup's help states the Pythons and platform tags the lock covers, and that Python 3.15 and Windows ARM64 are not covered.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative
+  - File Names and Line Numbers: dash.ado:756-763; dash_parse.mata:1455-1475; [U] 11.6.2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-6; confirmed from code and the manual (not run on Windows); tracked: untracked. Registered as GAPS4 plat:PT-6 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q47, M8): the tested-platform statement covers it; saving()'s ~ expansion is not changed.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: 'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified
+  - File Names and Line Numbers: dash.sthlp:172-174; BUGS P1.29 residual; dash_render.py:237
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-16; confirmed; tracked: ROADMAP S04, S41. Registered as GAPS4 plat:PT-16 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (M8): the help states that Chrome is the browser dash is tested in.
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size
+  - File Names and Line Numbers: probe1/probe2 timings and RSS; q1.html CDS entries; dash_render.py:2279
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-14; confirmed; tracked: untracked. Registered as GAPS4 plat:PT-14 (WP-36, section 36-04, Document).
+  - Suggested fix: Documented only (Q31, M8): page columns stay JSON number lists; the help states the measured timings and memory (about 6-8 s and 1.4 GB of Stata memory per million rows).
+  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's
+  - File Names and Line Numbers: dash_render.py:5567, 63396, 70285; px_L02.png (SwiftShader only)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids DG-14; partly (unverified on GPU WebGL); tracked: untracked. Registered as GAPS4 DG-14 (WP-36, section 36-02, Fix).
+  - Suggested fix: Keep dashed lines on the canvas backend; base the threshold on the drawn rows; add a WebGL-vs-canvas pixel check
+  - Resolution: Not fixed because WP-36 section 36-02 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+
+- [ ] Title: contour over zero observations crashes with a Python traceback, r(7102)
+  - File Names and Line Numbers: map_contour (dash_render.py:24350-24425) passes NaN levels to fig.contour
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids DG-1; confirmed; tracked: untracked. Registered as GAPS4 DG-1 (WP-37, section 37-01, Fix).
+  - Suggested fix: Per M9 (PD-15): one Stata-side zero-observation check copies twoway's measured answer per type and case.
+  - Resolution: Not fixed because WP-37 section 37-01 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: rarea with cmissing(n) draws its bound outlines across the gaps
+  - File Names and Line Numbers: dash_render.py:22918-22998; d_M05.png; test_area_cmissing has no rarea outline test
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids DG-5; confirmed; tracked: untracked. Registered as GAPS4 DG-5 (WP-37, section 37-02, Fix).
+  - Suggested fix: Give the bound Lines their own NaN-broken columns
+  - Resolution: Not fixed because WP-37 section 37-02 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter
+  - File Names and Line Numbers: dash.sthlp:565-592; dash_render.py:13992-14003
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids TR-13, stat:PT-19, sil:SD-19; confirmed; tracked: documented; ROADMAP D4. Registered as GAPS4 TR-13 (WP-37, section 37-03, Fix).
+  - Suggested fix: Per M9: contour comes from twoway__contour_gen, run at export, when the data is a full grid or interp(none); scattered data above 1,000 points keeps the subsample and its note.
+  - Resolution: Not fixed because WP-37 section 37-03 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: A contour with no surface (two observations) draws no colour key
+  - File Names and Line Numbers: map_contour not-drawable branch; C01
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids DG-8; confirmed; tracked: untracked. Registered as GAPS4 DG-8 (WP-37, section 37-02, Fix).
+  - Suggested fix: Build the key from the levels anyway
+  - Resolution: Not fixed because WP-37 section 37-02 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x
+  - File Names and Line Numbers: twoway_lfit_parse.class:75-88; sersets.log xtr
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids stat:PT-12; confirmed; tracked: help Unsupported. Registered as GAPS4 stat:PT-12 (WP-37, section 37-04, Fix).
+  - Suggested fix: Route through _dash_fit_points with xtrans()
+  - Resolution: Not fixed because WP-37 section 37-04 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off
+  - File Names and Line Numbers: lpolyci_truth a_d3 row 47; dash.sthlp:4032-4034
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids stat:PT-16; confirmed; tracked: lpolyci_truth D4. Registered as GAPS4 stat:PT-16 (WP-37, section 37-05, Document).
+  - Suggested fix: Documented only (Q27, M9): the help describes the zero-df difference accurately; Stata's compiled round-off is not copied.
+  - Resolution: Not fixed because WP-37 section 37-05 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000
+  - File Names and Line Numbers: dash.sthlp:1166-1185, 3895-3916, 3970-3975, 3795-3796
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids DT-26; confirmed; tracked: documented. Registered as GAPS4 DT-26 (WP-37, section 37-05, Document).
+  - Suggested fix: Documented only (37-05): the help states each measured numeric limit (lpoly at degree 6-7 and above 7, the exact-polynomial cases, fpfit's date-time model choice, ndots thinning above 2,000,000).
+  - Resolution: Not fixed because WP-37 section 37-05 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)
+  - File Names and Line Numbers: dash.sthlp:436-437; BUGS G6; repeated runs differ
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids stat:PT-21, BY-30, DG-16; uncertain (stat:PT-21); partly (BY-30); confirmed (DG-16); tracked: documented. Registered as GAPS4 stat:PT-21 (WP-37, section 37-05, Document).
+  - Suggested fix: Documented only (37-05): the help states that tied sort keys keep data order, where twoway's order among ties is unstable.
+  - Resolution: Not fixed because WP-37 section 37-05 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+
+- [ ] Title: name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output
+  - File Names and Line Numbers: dash.sthlp:815-823 (Difference 2); probe p3 B1/B2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids syn:SD-17, ECO-3; confirmed; tracked: dash.sthlp Differences item 2 (deliberate). Registered as GAPS4 syn:SD-17 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help states that name() registers the graph instead of drawing it and that saving() beside name() writes nothing.
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)
+  - File Names and Line Numbers: dash.sthlp:172-182, 1631-1663; dash.ado:244; probes p1 F1/F4 and p2 A1/A2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-12, ECO-2, plat:PT-13, TR-16; confirmed (TR-16 partly: its 'dash graph' bullet is wrong); tracked: ROADMAP deferred P1.28 B3 / M8. Registered as GAPS4 GW-12 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help states that a dashboard is not a Stata graph and names what cannot use it; no export command is added (PRD section 7).
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)
+  - File Names and Line Numbers: p3 C/D: CDS shape [5] against [69]; p2 D4; dash.ado has no datasignature/c(frame) check
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-1; partly; tracked: build-time evaluation documented at dash.sthlp:194-205; the rest untracked. Registered as GAPS4 ECO-1 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help states that a registered graph draws its frame's data as it is at dash build, not as it was at registration, and that a graph registered under frame f: (frame f: dash ..., name(), section 33-07) draws frame f, as twoway draws from the current frame.
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()
+  - File Names and Line Numbers: probe p3 E; p1 F6
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-4; confirmed; tracked: untracked. Registered as GAPS4 ECO-4 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help maps graph combine's options onto layout() and names those dash build refuses.
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'
+  - File Names and Line Numbers: dash.ado:11294-11303, 11360-11364; dash.sthlp:861-897; test_registry_collision.cscript:987
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-13, ECO-6, ECO-12; confirmed; tracked: dash.sthlp 'What a name may be' (the rc is not listed). Registered as GAPS4 GW-13 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states name()'s limits (22 characters, no '__') and the rc and words a duplicate name gives.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing
+  - File Names and Line Numbers: probe p1 I1/I2; dash.sthlp:825-829; dash.ado:11458-11508
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-14, ECO-13; confirmed; tracked: dash.sthlp Differences item 2. Registered as GAPS4 GW-14 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states the rc and words saving() onto an existing file gives.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: nodraw with saving(, asis) writes the page where twoway gives r(601)
+  - File Names and Line Numbers: probe v1; dash.sthlp:848-852; ND-06
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-15; confirmed; tracked: documented. Registered as GAPS4 GW-15 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states that nodraw with saving(, asis) writes the page.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: play() refuses a readable recording (r(198)); there is no Graph Editor
+  - File Names and Line Numbers: dash.ado:8239-8272; dash.sthlp:6667-6683; U54
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-16, ECO-14; confirmed; tracked: dash.sthlp Unsupported, play(). Registered as GAPS4 GW-16 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states that play() is refused and that there is no Graph Editor.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'
+  - File Names and Line Numbers: dash.ado:11273-11303; probe p4
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-9; confirmed; tracked: untracked. Registered as GAPS4 GW-9 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states the message a bad name() sub-option gives.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: 'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items
+  - File Names and Line Numbers: dash.ado:11948-11997; probe p1 J1
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-5; confirmed; tracked: untracked. Registered as GAPS4 ECO-5 (WP-38, section 38-02, Document).
+  - Suggested fix: Documented only (M10): the help states that dash clear clears the whole registry and that there is no dir, describe or drop for registered items.
+  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none
+  - File Names and Line Numbers: dash.ado:10045-10200; dash.sthlp:1608-1611, 1769, 2864-2867
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-15; partly; tracked: mostly documented. Registered as GAPS4 ECO-15 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help states that each one-line command opens a new browser page, that the newest five previews are kept, and that saving() opens none.
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()
+  - File Names and Line Numbers: dash.ado:154-185; probes p1/p2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-7; confirmed; tracked: untracked. Registered as GAPS4 ECO-7 (WP-38, section 38-01, Document).
+  - Suggested fix: Documented only (M10): the help states which s() macros dash leaves.
+  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+
+- [ ] Title: r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts
+  - File Names and Line Numbers: dash_render.py:2360-2375; dash.sthlp:2933-3000; probes: 11M obs refused, 300 plots refused
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-8, syn:SD-16, sil:SD-22; confirmed; tracked: dash.sthlp Resource limits (not in Differences). Registered as GAPS4 plat:PT-8 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented (M10, Q44, P4-3): the embedded-cell cap is removed (section 33-15), so a dashboard has no size cap and the help says so; the count caps (100 plots, 10,000 reference lines, 1,000 added texts) stay and are documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows
+  - File Names and Line Numbers: dash.ado:5222-5254, 11720-11727, 13170-13176; probe1/probe2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-7, DG-15; confirmed (plat:PT-7 partly: deliberate, documented); tracked: documented at dash.sthlp:2950-2953, 3048-3050. Registered as GAPS4 plat:PT-7 (WP-40, section 40-01, Fix).
+  - Suggested fix: Export only the rows some graph draws when no filter(), link(), brush(), csv or KPI card needs every row and the page is not served (Q45, A-12); with the embedded-cell cap removed (P4-3, section 33-15) this keeps pages and data files small and refuses nothing.
+  - Resolution: Not fixed because WP-40 section 40-01 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws
+  - File Names and Line Numbers: limits.sthlp:104; probe6/probe7; dash.ado:5204-5219
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-9; confirmed; tracked: untracked. Registered as GAPS4 plat:PT-9 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the per-graph plot limit stays and is documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: by() draws the first 100 groups (ceiling 1,000), with a note
+  - File Names and Line Numbers: dash_render.py:2366; dash.sthlp:2976-2980, 3300-3304
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-10, BY-22; confirmed; tracked: Resource limits. Registered as GAPS4 plat:PT-10 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): by()'s group limit stays and is documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree
+  - File Names and Line Numbers: probe1 #3, #85, #177; dash.sthlp:1149-1172, 3711-3716
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids stat:PT-15, DT-17; confirmed; tracked: documented. Registered as GAPS4 stat:PT-15 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the n(), bin() and degree() bounds stay and are documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars
+  - File Names and Line Numbers: dash_render.py:22508, 22539-22576; twoway__histogram_gen.ado:205-216 tabulates occupied bins; price discrete/width(1)/width(10)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-1; confirmed; tracked: untracked (TWOWAY_COVERAGE_AUDIT.md:98 mentions the cap). Registered as GAPS4 sil:SD-1 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the 1,000-bin bound and its rebinning stay and are documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently
+  - File Names and Line Numbers: dash_render.py:40233, 42205, 42228-42233; twoway draws 2,501 labels
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids AX-16, sil:SD-10; confirmed; tracked: partly in the Axis labels paragraph. Registered as GAPS4 AX-16 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the 2,000-tick bound stays and is documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number
+  - File Names and Line Numbers: dash_render.py:8314, 8421-8424; dash.sthlp:1177-1178
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-11; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-11 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the 1,000-unit msize() bound stays; the help and the note's wording are corrected.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently
+  - File Names and Line Numbers: dash_render.py:429, 21747, 27031
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-12; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-12 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the 20,000-point fpfit grid stays and is documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: text() whose globals expand past 4,000 characters is refused r(198)
+  - File Names and Line Numbers: dash_parse.mata:11461-11469; dash.sthlp:784-785, 5232-5234
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-13; partly; tracked: documented; BUGS D13. Registered as GAPS4 sil:SD-13 (WP-40, section 40-02, Document).
+  - Suggested fix: Documented only (M10, Q44): the 4,000-character bound on text() after its globals expand stays and is documented under Resource limits and Differences.
+  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+
+- [ ] Title: contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel
+  - File Names and Line Numbers: zyx2view_g.class:255-276; tw_f29a.svg has 3 colours in both panels; dash dump shows per-panel cuts; _dash_share_by_scales shares x/y only
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-28; confirmed; tracked: untracked. Registered as GAPS4 BY-28 (WP-41, section 41-01, Fix).
+  - Suggested fix: Compute the cuts once over all panels (Total included), in both modes; measure the exact cuts from a drawn graph
+  - Resolution: Not fixed because WP-41 section 41-01 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)
+  - File Names and Line Numbers: _dash_by_chrome sides=('above',)/('below',) (dash_render.py:55079, 55082); skipped at 54495
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-1; confirmed; tracked: untracked. Registered as GAPS4 BY-1 (WP-41, section 41-02, Fix).
+  - Suggested fix: Draw them inside the panel array at their clock; add truth probes (M11: every P6-P10 item is drawn, none only named).
+  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored
+  - File Names and Line Numbers: twoway SVGs identical with and without scale(1.5) or scale(0.5); _dash_scale_factor (dash_render.py:27487) has no by() check; by(scale()) falls to the unsupported branch (36404)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-2, BY-29, BY-11; confirmed; tracked: untracked (by(scale()) only under the generic sentence dash.sthlp:3363-3364). Registered as GAPS4 BY-2 (WP-41, section 41-03, Fix).
+  - Suggested fix: Ignore the outer scale() under by(); apply by(, scale()) to the whole by() graph
+  - Resolution: Not fixed because WP-41 section 41-03 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)
+  - File Names and Line Numbers: twoway__function_gen.ado:101-102; _dash_fold_range (dash.ado:2401-2432); dash.ado:8845-8873
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-27; confirmed; tracked: untracked. Registered as GAPS4 BY-27 (WP-41, section 41-03, Fix).
+  - Suggested fix: Compute the min/max per panel and for Total inside the per-panel loop; pin it against sersets
+  - Resolution: Not fixed because WP-41 section 41-03 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: An at() hole for a legend or colour key that is not drawn is not reserved in the grid
+  - File Names and Line Numbers: bygraph_g.class:612-618, 670-676; dash_render.py:55786-55874, 55990-56024
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-3; confirmed; tracked: untracked. Registered as GAPS4 BY-3 (WP-41, section 41-04, Fix).
+  - Suggested fix: Return the at() cell whenever at() is given and the key object exists
+  - Resolution: Not fixed because WP-41 section 41-04 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn
+  - File Names and Line Numbers: bygraph_g.class:291-293; bygraphstyle-compact.style:39 special_options; _DASH_BYSTYLE_EXPAND has no compact entry; by_remainder_truth bystyle_compact is unused
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-4, sil:SD-2; confirmed; tracked: untracked. Registered as GAPS4 BY-4 (WP-41, section 41-05, Fix).
+  - Suggested fix: Apply compact only without style(); expand compact's special options
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')
+  - File Names and Line Numbers: bygraph_g.class:559-566; probe1 T14
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-5; confirmed; tracked: untracked. Registered as GAPS4 BY-5 (WP-41, section 41-05, Fix).
+  - Suggested fix: Refuse it in twoway's words
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'
+  - File Names and Line Numbers: dash.ado:4263-4267; probe1 T17
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-6; confirmed; tracked: untracked. Registered as GAPS4 BY-6 (WP-41, section 41-05, Fix).
+  - Suggested fix: Use twoway's line and r(100)
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles
+  - File Names and Line Numbers: bygraph_g.class:203-216; probes T4-T7
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-12; confirmed; tracked: generic dash.sthlp:3363-3364. Registered as GAPS4 BY-12 (WP-41, section 41-02, Fix).
+  - Suggested fix: Draw the eight edge titles on the by() graph
+  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by(, legloc() clegloc() plegend() plegloc()) are named and ignored
+  - File Names and Line Numbers: bygraph_g.class:142-144; P6 equals P6b; T13
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-13; confirmed; tracked: generic. Registered as GAPS4 BY-13 (WP-41, section 41-04, Fix).
+  - Suggested fix: Merge them into the legend/clegend placement; implement plegend()
+  - Resolution: Not fixed because WP-41 section 41-04 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key
+  - File Names and Line Numbers: probes T10-T12; kp.py
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-14; partly (the dash key does carry the title); tracked: untracked. Registered as GAPS4 BY-14 (WP-41, section 41-04, Fix).
+  - Suggested fix: Implement by(, plegend()) and twoway's key form
+  - Resolution: Not fixed because WP-41 section 41-04 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: Panel-label sub-options twoway draws are named: justification(), nobexpand, lwidth()/lpattern(), span, alignment(), linegap(), bmargin(), placement(), orientation()
+  - File Names and Line Numbers: probes T29, P1-P3, P13; dash.sthlp:5382-5385
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-10; confirmed; tracked: documented. Registered as GAPS4 BY-10 (WP-41, section 41-06, Fix).
+  - Suggested fix: Draw them on the panel label row
+  - Resolution: Not fixed because WP-41 section 41-06 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line
+  - File Names and Line Numbers: dash.sthlp:3280-3287
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-16, BY-17; confirmed; tracked: documented. Registered as GAPS4 BY-16 (WP-41, section 41-06, Fix).
+  - Suggested fix: Write the raw value as twoway does; split quoted parts
+  - Resolution: Not fixed because WP-41 section 41-06 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing
+  - File Names and Line Numbers: dash.sthlp:3330-3362, 3342-3343, 5372-5373, 5683-5684
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-18, BY-19, BY-20, BY-21; confirmed; tracked: documented. Registered as GAPS4 BY-18 (WP-41, section 41-05, Fix).
+  - Suggested fix: Port combine's regions, beside-panel placement and per-frame aspect
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row
+  - File Names and Line Numbers: q03 407 vs 448 px; twoway regions equal
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids VF-6; confirmed; tracked: untracked. Registered as GAPS4 VF-6 (WP-41, section 41-05, Fix).
+  - Suggested fix: Give every panel the same left border, or draw the y labels in an outer column
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally
+  - File Names and Line Numbers: advanced_options.sthlp:151-156; _dash_overhangs (dash_render.py:27704) called per panel at 64005; sizing_truth overhang_*
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids GW-5; confirmed; tracked: untracked. Registered as GAPS4 GW-5 (WP-41, section 41-05, Fix).
+  - Suggested fix: Skip under by(); measure only the end labels per side
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)
+  - File Names and Line Numbers: dash.ado:6952; probes q1, p2
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids sil:SD-7; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-7 (WP-41, section 41-03, Fix).
+  - Suggested fix: Apply the check per panel
+  - Resolution: Not fixed because WP-41 section 41-03 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)
+  - File Names and Line Numbers: tw64 vs tw65; d65 label size 10pt
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids PIC-13; confirmed; tracked: untracked. Registered as GAPS4 PIC-13 (WP-41, section 41-04, Fix).
+  - Suggested fix: Scale the hole legend by by()'s size multiplier
+  - Resolution: Not fixed because WP-41 section 41-04 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor
+  - File Names and Line Numbers: probe1 T20, T8
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-7, BY-15; confirmed; tracked: untracked / generic. Registered as GAPS4 BY-7 (WP-41, section 41-02, Fix).
+  - Suggested fix: Print twoway's clockdir note with its fallback; take bgcolor in silence or draw it
+  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions
+  - File Names and Line Numbers: BUGS.md:3999-4095
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids TR-19; confirmed; tracked: closed-entry residuals. Registered as GAPS4 TR-19 (WP-41, section 41-02, Fix).
+  - Suggested fix: Open BUGS entries for them
+  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+
+- [ ] Title: An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)
+  - File Names and Line Numbers: dash_render.py:16730-16760; dash.sthlp:5523-5530; test_colorvar_truth.py:91-92 skips the default; K10/T7/I7
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-8, DT-22, sil:SD-20; confirmed; tracked: dash.sthlp 'How the colours are drawn is dash's'. Registered as GAPS4 CV-8 (WP-42, section 42-01, Fix).
+  - Suggested fix: Route every type through the stepped mapper and draw the stepped key, as lines already are
+  - Resolution: Not fixed because WP-42 section 42-01 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)
+  - File Names and Line Numbers: dash_render.py:16983-16984, 17145-17147; F1-F8; colorvar_options.sthlp:178-185
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-1; confirmed; tracked: untracked. Registered as GAPS4 CV-1 (WP-42, section 42-02, Fix).
+  - Suggested fix: Keep line_color mapped on line glyphs; keep the series colour only on marker and bar outlines
+  - Resolution: Not fixed because WP-42 section 42-02 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame
+  - File Names and Line Numbers: dash_render.py:16319-16698; K1-K4, K8, T1-T5, L4; TestOtherlabel compares against the plegend probe
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-3; confirmed; tracked: partly documented (dash.sthlp:5536). Registered as GAPS4 CV-3 (WP-42, section 42-03, Fix).
+  - Suggested fix: Draw twoway's axis-style key: highest at top, z axis at natscale ticks or cuts, no missing entry, the type's key swatch
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied
+  - File Names and Line Numbers: dash_render.py:16606, 16698; K5, K6, M4, Q3, C28
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-4; confirmed; tracked: untracked. Registered as GAPS4 CV-4 (WP-42, section 42-04, Fix).
+  - Suggested fix: Descending levels plus 'Other', no title, display-format numbers; keep legend() off it
+  - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)
+  - File Names and Line Numbers: yxview.class:2406-2427; dash_render.py:14227-14230; test_colorvar_forms.py:128 pins dash's rule; disc_levels_price_4 passes vacuously
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-2; confirmed; tracked: untracked. Registered as GAPS4 CV-2 (WP-42, section 42-05, Fix).
+  - Suggested fix: Use k+1 steps under colordiscrete (add min/max with colorvarminmax), also in the relevel path
+  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them
+  - File Names and Line Numbers: dash_render.py:39703-39735; Q1, Q3, P12
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-5; confirmed; tracked: untracked. Registered as GAPS4 CV-5 (WP-42, section 42-04, Fix).
+  - Suggested fix: Exclude colorvar keys from legend()'s grid and size steps
+  - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend
+  - File Names and Line Numbers: dash_render.py:16859-16886; M1, K11
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-6; confirmed; tracked: untracked. Registered as GAPS4 CV-6 (WP-42, section 42-02, Fix).
+  - Suggested fix: One key from the last colorvar layer; keep plot-legend items
+  - Resolution: Not fixed because WP-42 section 42-02 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour
+  - File Names and Line Numbers: D_K9 field-mapped renderer; bokeh.js:32111-32112
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-7; confirmed (inferred from the model, not a rendered pixel); tracked: untracked. Registered as GAPS4 CV-7 (WP-42, section 42-02, Fix).
+  - Suggested fix: Use a proxy swatch in the pstyle colour
+  - Resolution: Not fixed because WP-42 section 42-02 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals
+  - File Names and Line Numbers: dash_render.py:16598-16599, 14228; R1, I5
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-11, CV-12; confirmed; tracked: untracked. Registered as GAPS4 CV-11 (WP-42, section 42-04, Fix).
+  - Suggested fix: Reverse colours only; use zero-width cuts
+  - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words
+  - File Names and Line Numbers: dash.ado:3699-3701, 4329; run1 A1/A2/A5, C5-C7; p3out F09/F13
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-9, syn:SD-9; confirmed (syn:SD-9 partly: the string colorvar is documented); tracked: untracked. Registered as GAPS4 CV-9 (WP-42, section 42-05, Fix).
+  - Suggested fix: Use twoway's rc and line; refuse wildcards
+  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)
+  - File Names and Line Numbers: dash.ado:8776-8782; dash_render.py:16917-16918, 53261; run1 A8, run6 P1/P5/P6/P9
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-10, LT-14; confirmed; tracked: untracked. Registered as GAPS4 CV-10 (WP-42, section 42-05, Fix).
+  - Suggested fix: Run zlabel through _dash_axlabel_refusal and zscale through the scale check; refuse unknown clegend/plegend words
+  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing
+  - File Names and Line Numbers: dash.sthlp:1258-1260, 5422, 5499-5500, 5537-5540, 5573-5576
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-14; confirmed; tracked: documented. Registered as GAPS4 CV-14 (WP-42, section 42-05, Fix or Document per the Q8 per-word ruling).
+  - Suggested fix: Per the maintainer's per-word ruling (P4-7): a string colorvar() is refused r(7), and colpalette(), colornlevels(), colormissing(), cv() and colv() are refused with twoway's words and a second line naming twoway's spelling (P4-9); an empty colorvar() layer and an all-missing colorvar() are answered as twoway answers them; the entry closes naming the kept and the refused words (A-12).
+  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'
+  - File Names and Line Numbers: dash.sthlp:5471-5478, 5596-5597; _DASH_CLEGEND_SUBOPTS (dash_render.py:53239-53241)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-15, LT-23; confirmed; tracked: documented. Registered as GAPS4 CV-15 (WP-42, section 42-03, Fix).
+  - Suggested fix: Draw them once the axis-style key exists; reword the note
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options
+  - File Names and Line Numbers: dash_render.py:53271-53272, 16898-16899; C_ti, C_cbx
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids LT-12; confirmed; tracked: untracked. Registered as GAPS4 LT-12 (WP-42, section 42-03, Fix).
+  - Suggested fix: Parse it as a textbox and draw it above the key, keeping ztitle
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list
+  - File Names and Line Numbers: twowaygraph_g.class:122-123; dash.ado:995, 1324; dash_parse.mata:8151-8156; Z01-Z32
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids AX-12, syn:SD-4; confirmed; tracked: untracked. Registered as GAPS4 AX-12 (WP-42, section 42-03, Fix).
+  - Suggested fix: Accept the plurals; draw the ticks and labels on the key (M11: every P6-P10 item is drawn).
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read
+  - File Names and Line Numbers: dash_render.py:16751, 24622; scheme-s2color.scheme:56, 185, 2239-2241
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids sil:SD-4, sil:SD-14; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-4 (WP-42, section 42-01, Fix).
+  - Suggested fix: Read clegend_width/height and the four contour keys
+  - Resolution: Not fixed because WP-42 section 42-01 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line
+  - File Names and Line Numbers: dash.sthlp:592-593, 5527-5533; CL_ctl, CL_cl
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids LT-22; partly; tracked: documented. Registered as GAPS4 LT-22 (WP-42, section 42-03, Fix).
+  - Suggested fix: Build the level legend under colorlines; drop the note on plain contourline
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+
+- [ ] Title: legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles
+  - File Names and Line Numbers: dash_render.py:39260-39304; stcolor 157.44 vs 112.56 px; s2color dknavy
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-1; confirmed; tracked: untracked. Registered as GAPS4 LT-1 (WP-43, section 43-01, Fix).
+  - Suggested fix: Style them from textbox_style('leg_title'/'leg_subtitle'), with overrides
+  - Resolution: Not fixed because WP-43 section 43-01 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read
+  - File Names and Line Numbers: dash_render.py:39622-39627, 38491; L_r0bp, L_r0p1bp
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-4, ST-1 (bplacement part); confirmed; tracked: untracked. Registered as GAPS4 LT-4 (WP-43, section 43-02, Fix).
+  - Suggested fix: Use bplacement for the inside location at ring(0); read compass2dir abbreviations
+  - Resolution: Not fixed because WP-43 section 43-02 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing
+  - File Names and Line Numbers: dash_render.py:39305-39307; legend_geometry_truth nobox equals default; test_legend_geometry.py:386; dash.sthlp:4472
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-2; confirmed; tracked: untracked. Registered as GAPS4 LT-2 (WP-43, section 43-03, Fix).
+  - Suggested fix: Treat box/nobox as the key-text box; fix the help and flip the test
+  - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()
+  - File Names and Line Numbers: _DASH_LEGEND_SUBOPTS (dash_render.py:53797-53803); probes L_box..L_ts
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-3; confirmed; tracked: generic dash.sthlp:1043-1049. Registered as GAPS4 LT-3 (WP-43, section 43-03, Fix).
+  - Suggested fix: Draw them (M11: every P6-P10 item is drawn, none only named).
+  - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ
+  - File Names and Line Numbers: legend_g.class:161-240; L_mrgall, L_draw1, L_nodraw
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-5; confirmed; tracked: generic. Registered as GAPS4 LT-5 (WP-43, section 43-02, Fix).
+  - Suggested fix: Honour all (skip the merge), draw and nodraw
+  - Resolution: Not fixed because WP-43 section 43-02 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())
+  - File Names and Line Numbers: dash_render.py:39145-39147, 53797; probes
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-6; confirmed; tracked: generic; TWOWAY_COVERAGE_AUDIT.md:143. Registered as GAPS4 LT-6 (WP-43, section 43-03, Fix).
+  - Suggested fix: Implement them on the Legend (M11: every P6-P10 item is drawn).
+  - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box
+  - File Names and Line Numbers: dash_render.py:53792, 53832-53839; T_bex, M_bexp
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-7; confirmed; tracked: untracked. Registered as GAPS4 LT-7 (WP-43, section 43-03, Fix).
+  - Suggested fix: Draw the expanded box (M11: every P6-P10 item is drawn).
+  - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line
+  - File Names and Line Numbers: dash_render.py:54211-54218; textboxstyle-heading.style; stcolor.scheme:43
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-8; confirmed; tracked: untracked. Registered as GAPS4 LT-8 (WP-43, section 43-05, Fix).
+  - Suggested fix: Take the fill and line from the textbox style
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: A fractional ring() (7.5, 4.5) or ring(100) is dropped silently
+  - File Names and Line Numbers: dash_render.py:54064, 39598; ringposstyle.sthlp
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-9; confirmed; tracked: untracked. Registered as GAPS4 LT-9 (WP-43, section 43-05, Fix).
+  - Suggested fix: Parse ring as a real 0-100 and order by value
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest
+  - File Names and Line Numbers: dash_render.py:10274-10292, 39150-39177
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-10; confirmed; tracked: untracked (BUGS D11 fixed regions only). Registered as GAPS4 LT-10 (WP-43, section 43-03, Fix).
+  - Suggested fix: Route through _dash_margin_sides with per-side padding
+  - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn
+  - File Names and Line Numbers: dash.ado:9872-9876; _dash_at_canon (dash_parse.mata:11863-11904) drops it; dash.sthlp:767-770
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-11; confirmed; tracked: untracked. Registered as GAPS4 LT-11 (WP-43, section 43-06, Fix).
+  - Suggested fix: Pass alignment through _dash_at_canon; add an end-to-end test
+  - Resolution: Not fixed because WP-43 section 43-06 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)
+  - File Names and Line Numbers: dash_render.py:53560-53566; dash_parse.mata:9746-9751
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-13; confirmed; tracked: untracked. Registered as GAPS4 LT-13 (WP-43, section 43-01, Fix).
+  - Suggested fix: Drop the eight edge titles from both legend tables
+  - Resolution: Not fixed because WP-43 section 43-01 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)
+  - File Names and Line Numbers: _dash_textbox_position (dash_render.py:54059-54067); R_tring
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-14; confirmed; tracked: untracked. Registered as GAPS4 LT-14 (WP-43, section 43-05, Fix).
+  - Suggested fix: Refuse a non-numeric title ring after twoway's notes
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored
+  - File Names and Line Numbers: dash_render.py:39260-39304
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-15; confirmed; tracked: untracked. Registered as GAPS4 LT-15 (WP-43, section 43-01, Fix).
+  - Suggested fix: Apply them (M11: every P6-P10 item is drawn, none only named).
+  - Resolution: Not fixed because WP-43 section 43-01 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored
+  - File Names and Line Numbers: dash_render.py:54187-54188, 54384-54388; T_r0pl; probe2 tw_1..19; dash.sthlp:5359-5361
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-16, ST-8; confirmed; tracked: untracked. Registered as GAPS4 LT-16 (WP-43, section 43-05, Fix).
+  - Suggested fix: Place the box at twoway's inside compass point; add a truth fixture
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: legend(holes()) with cols(1) inserts a full blank row
+  - File Names and Line Numbers: legend_g.class:312-357; dash_render.py:39497-39510
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-17; confirmed; tracked: untracked. Registered as GAPS4 LT-17 (WP-43, section 43-02, Fix).
+  - Suggested fix: Mirror legend_g's hole placement
+  - Resolution: Not fixed because WP-43 section 43-02 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Title box sub-options named: orientation(), width(), height(), angle(), lstyle(), bl*, lalign(), style(); clocks 2-4/8-10 drawn above or below (style() and lalign() missing from the help list)
+  - File Names and Line Numbers: _DASH_TEXTBOX_BOX_HONOURED (dash_render.py:53835-53839); dash.sthlp:5341-5345, 5379-5381
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-18, ST-18; confirmed; tracked: documented (partly). Registered as GAPS4 LT-18 (WP-43, section 43-05, Fix).
+  - Suggested fix: Draw them (M11: every P6-P10 item is drawn).
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Edge titles draw no box, justification(), margin() or tstyle()
+  - File Names and Line Numbers: dash_render.py:53886-53889; dash.sthlp:5316-5325
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-19; confirmed; tracked: documented. Registered as GAPS4 LT-19 (WP-43, section 43-05, Fix).
+  - Suggested fix: Reuse _dash_textbox_style
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally
+  - File Names and Line Numbers: dash.ado:9871-9881; dash.sthlp:773-783
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-20, GW-21; confirmed; tracked: documented. Registered as GAPS4 LT-20 (WP-43, section 43-06, Fix).
+  - Suggested fix: Draw a fixed-size multi-line box and dashed frame
+  - Resolution: Not fixed because WP-43 section 43-06 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Legend keys: marker at 0.4 of the box, not the marker's size; textfirst, stacked, symplacement() and the legend's own note()/caption() not drawn; at 384 px an economist 3-column legend clips its labels (undocumented)
+  - File Names and Line Numbers: dash.sthlp:4453-4501; bokeh MarkerView 0.4; s_misc.png
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-21, VF-8, PIC-14; confirmed; tracked: documented (D-31.a; ROADMAP M17), clipping untracked. Registered as GAPS4 LT-21 (WP-43, section 43-04, Fix).
+  - Suggested fix: Custom legend renderer; at minimum stop the clipping
+  - Resolution: Not fixed because WP-43 section 43-04 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong
+  - File Names and Line Numbers: z_key_zoom.png, y_rk_stcolor.png, p101_key.png
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids PIC-11; confirmed; tracked: untracked. Registered as GAPS4 PIC-11 (WP-43, section 43-04, Fix).
+  - Suggested fix: Legend-only renderers in twoway's key shapes
+  - Resolution: Not fixed because WP-43 section 43-04 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)
+  - File Names and Line Numbers: dash_render.py:39385-39431; A08, E21
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids MS-10; confirmed; tracked: untracked. Registered as GAPS4 MS-10 (WP-43, section 43-04, Fix).
+  - Suggested fix: Merge only by the same resolved p# with no style options
+  - Resolution: Not fixed because WP-43 section 43-04 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style
+  - File Names and Line Numbers: dash.sthlp:5170-5183; BUGS.md:3689; graph_text.sthlp examples
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids ST-14, TR-14, DG-17, PIC-18; confirmed; tracked: documented limit. Registered as GAPS4 ST-14 (WP-43, section 43-07, Fix).
+  - Suggested fix: Draw texts as positioned runs or HTML text
+  - Resolution: Not fixed because WP-43 section 43-07 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)
+  - File Names and Line Numbers: dash.sthlp:1080-1091
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-24; confirmed; tracked: documented. Registered as GAPS4 LT-24 (WP-43, section 43-05, Fix).
+  - Suggested fix: Refuse option text with an unbalanced quote with twoway's measured rc and words (r(100), r(109) or r(198) by form); quotes inside if qualifiers and compound-quoted text keep today's handling (P4-5).
+  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'
+  - File Names and Line Numbers: twoway_kdensity_parse.class:177-181; tw_Q25.svg; V5
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids RH-13; confirmed; tracked: untracked. Registered as GAPS4 RH-13 (WP-43, section 43-04, Fix).
+  - Suggested fix: Key it by the grid name when yxswitch applies
+  - Resolution: Not fixed because WP-43 section 43-04 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+
+- [ ] Title: Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...
+  - File Names and Line Numbers: dash_render.py:53826-53827, 53961-53995; dash.sthlp:1099-1105
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-13, ST-13; confirmed; tracked: documented (generic). Registered as GAPS4 AX-13 (WP-44, section 44-01, Fix).
+  - Suggested fix: Draw orientation(), margins and justification; the boxed right-hand axis title takes the overlay route, with no residual (A-5).
+  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))
+  - File Names and Line Numbers: _gs_parse_and_log_tickset.ado:427-438; C01, C02, G4; dash.sthlp:4567-4568
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-5; confirmed; tracked: untracked. Registered as GAPS4 AX-5 (WP-44, section 44-02, Fix).
+  - Suggested fix: Draw custom ticks as their own styled overlay; refuse the empty form
+  - Resolution: Not fixed because WP-44 section 44-02 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle
+  - File Names and Line Numbers: scheme-s2color.scheme:1846; dash_render.py:44966-44972; C50, G1, G2; dash.sthlp:4867
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-6; confirmed; tracked: untracked. Registered as GAPS4 AX-6 (WP-44, section 44-02, Fix).
+  - Suggested fix: Use the tickset's gridstyle
+  - Resolution: Not fixed because WP-44 section 44-02 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: yscale(off fill) is drawn as off; twoway keeps the axis's space
+  - File Names and Line Numbers: C10 vs C11
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-7; confirmed; tracked: untracked. Registered as GAPS4 AX-7 (WP-44, section 44-03, Fix).
+  - Suggested fix: Keep the border space when fill is given with off
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels
+  - File Names and Line Numbers: _DASH_AXLABEL_HONOURED (dash_render.py:53662-53673); C05-C08, F9, F11
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-8; confirmed; tracked: untracked. Registered as GAPS4 AX-8 (WP-44, section 44-02, Fix).
+  - Suggested fix: Map them to labels/grid; pad for labelminlen; read ticksetstyle files
+  - Resolution: Not fixed because WP-44 section 44-02 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: xscale/yscale atanh, logit, log1m and style() are named and drawn linear
+  - File Names and Line Numbers: scale.class:149-204; transform.class; C12-C17; GAPS3 D7 closed without them
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-9, sil:SD-5; confirmed; tracked: closed GAPS3 D7 residual. Registered as GAPS4 AX-9 (WP-44, section 44-03, Fix).
+  - Suggested fix: Draw the transforms (M11: every P6-P10 item is drawn).
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)
+  - File Names and Line Numbers: F1, F8
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-10; confirmed; tracked: untracked. Registered as GAPS4 AX-10 (WP-44, section 44-03, Fix).
+  - Suggested fix: opts_exclusive within one copy, before the repeat merge
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)
+  - File Names and Line Numbers: C20, G6; dash.sthlp:4662
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-11; partly; tracked: untracked. Registered as GAPS4 AX-11 (WP-44, section 44-03, Fix).
+  - Suggested fix: Natscale over all finite values, then drop those at or below zero; twoway's degenerate picture for non-positive data on a log axis is documented under Differences, as RH-8 is (A-5).
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named
+  - File Names and Line Numbers: dash.sthlp:4568-4572; F12
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-14; confirmed; tracked: documented. Registered as GAPS4 AX-14 (WP-44, section 44-02, Fix).
+  - Suggested fix: Read the style files; draw nogextend with Grid bounds
+  - Resolution: Not fixed because WP-44 section 44-02 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build
+  - File Names and Line Numbers: dash.sthlp:4868-4870, 5098-5107, 4741-4751, 4818-4820
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-15, AX-17, AX-19; confirmed; tracked: documented. Registered as GAPS4 AX-15 (WP-44, section 44-02, Fix).
+  - Suggested fix: Per M11 (section 44-02): draw each part as twoway draws it with Bokeh's shipped models and CustomJS, no custom glyph model; the dates past the browser's range and the reference line off the canvas stay documented differences, and the item closes Documented (A-5).
+  - Resolution: Not fixed because WP-44 section 44-02 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear
+  - File Names and Line Numbers: dash.sthlp:4723-4731, 4815-4820
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids AX-18, stat:PT-20, VF-12; confirmed; tracked: documented. Registered as GAPS4 AX-18 (WP-44, section 44-04, Fix).
+  - Suggested fix: Label with numbers as twoway does; draw log date axes
+  - Resolution: Not fixed because WP-44 section 44-04 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: xscale(range()) on a log axis adds a tick at the range end
+  - File Names and Line Numbers: B04 FixedTicker [1000..5000]; b2_log_range renders 20000
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-14; confirmed; tracked: untracked. Registered as GAPS4 MS-14 (WP-44, section 44-03, Fix).
+  - Suggested fix: Do not add range ends to log default ticks; compare drawn_ticks
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none
+  - File Names and Line Numbers: _dash_lone_second_axes (dash_render.py:5003-5017); E14, C10
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-12; confirmed; tracked: untracked. Registered as GAPS4 MS-12 (WP-44, section 44-05, Fix).
+  - Suggested fix: Keep axis k's grid default when renumbering
+  - Resolution: Not fixed because WP-44 section 44-05 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn
+  - File Names and Line Numbers: dash_render.py:39809-39841; E12, E13, C04, P36; test_horizontal.py:378 skips; dash.sthlp:3630-3632
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-11, RH-17; confirmed; tracked: residual in closed BUGS P1.9a (horizontal case only). Registered as GAPS4 MS-11 (WP-44, section 44-01, Fix).
+  - Suggested fix: Measure and apply the rule in both modes
+  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles
+  - File Names and Line Numbers: dash_parse.mata:11170; E08, B17
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-13; confirmed; tracked: untracked. Registered as GAPS4 MS-13 (WP-44, section 44-01, Fix).
+  - Suggested fix: Join axis-title suffix/prefix copies as separate lines
+  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))
+  - File Names and Line Numbers: tw rotate(-90); axis_label_orientation never set
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids PIC-12; confirmed; tracked: untracked. Registered as GAPS4 PIC-12 (WP-44, section 44-01, Fix).
+  - Suggested fix: Set axis_label_orientation on right axes
+  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: %tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)
+  - File Names and Line Numbers: T04/T05; no %tC row in stata_ticks_truth
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids DG-6; confirmed; tracked: untracked. Registered as GAPS4 DG-6 (WP-44, section 44-04, Fix).
+  - Suggested fix: Shift Stata's tick values by the leap seconds; label with %tC
+  - Resolution: Not fixed because WP-44 section 44-04 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())
+  - File Names and Line Numbers: dash_parse.mata:9308, 9512; DT04, DT05, DT09, DT20
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids DG-4; confirmed; tracked: untracked. Registered as GAPS4 DG-4 (WP-44, section 44-04, Fix).
+  - Suggested fix: Tokenise datelists binding parentheses
+  - Resolution: Not fixed because WP-44 section 44-04 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'
+  - File Names and Line Numbers: T11; value_truth xlabel_1..; _dash_axlabel_refusal (dash_parse.mata:2335-2392); dash.sthlp:4522-4523
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids DG-9, TR-8; confirmed (TR-8 partly); tracked: bare-word case documented; .a untracked. Registered as GAPS4 DG-9 (WP-44, section 44-05, Fix).
+  - Suggested fix: Refuse in twoway's words
+  - Resolution: Not fixed because WP-44 section 44-05 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))
+  - File Names and Line Numbers: dash_render.py:42324-42340, 40316-40322; S07, X06
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids DG-13, DG-11; confirmed; tracked: untracked. Registered as GAPS4 DG-13 (WP-44, section 44-03, Fix).
+  - Suggested fix: No ticks on an empty minmax axis; guard 10**z
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+
+- [ ] Title: economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)
+  - File Names and Line Numbers: d_tt_economist.html rendered headless; dash_render.py:54518-54527; dash.sthlp:6202-6205
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids PIC-4; confirmed; tracked: untracked. Registered as GAPS4 PIC-4 (WP-45, section 45-01, Fix).
+  - Suggested fix: Place it in a painted row; add a pixel test
+  - Resolution: Not fixed because WP-45 section 45-01 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside
+  - File Names and Line Numbers: linestyle-p#other chain; linewidth_chain_truth lwt7; dash_render.py:12429-12446, 22978-23006
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids PIC-7, PIC-8; confirmed; tracked: untracked (BUGS S3 resolution wrong). Registered as GAPS4 PIC-7 (WP-45, section 45-01, Fix).
+  - Suggested fix: Route line widths through p#other and rarea through p#area; fix the test that pins the wrong key
+  - Resolution: Not fixed because WP-45 section 45-01 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing
+  - File Names and Line Numbers: dash_parse.mata:11555-11590, 6844-6869, 10426-10435; dash_render.py:7538-7573, 54057, 39597-39598, 17650; class _unabbrev files; probe1 hashes
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-1, ST-2, ST-3, ST-4, ST-5, ST-6, ST-11; confirmed; tracked: untracked. Registered as GAPS4 ST-1 (WP-45, section 45-02, Fix).
+  - Suggested fix: One reader per class following its _unabbrev rules; drop the invented notes; extend the fixtures
+  - Resolution: Not fixed because WP-45 section 45-02 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read
+  - File Names and Line Numbers: _STYLE_FILE_CLASSES (dash_render.py:10381-10382); probe1 G13, p3
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-7; confirmed; tracked: untracked. Registered as GAPS4 ST-7 (WP-45, section 45-03, Fix).
+  - Suggested fix: Extend the style-file walk to the leaf classes
+  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)
+  - File Names and Line Numbers: dash.sthlp:6141-6153; BUGS.md:4385 (D36)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-15, GW-18; confirmed; tracked: documented limit. Registered as GAPS4 ST-15 (WP-45, section 45-03, Fix).
+  - Suggested fix: Read them with the other style classes
+  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped
+  - File Names and Line Numbers: dash.sthlp:6293-6303, 6366-6372, 6225; test_unread_scheme_directives.py
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-17, GW-18; confirmed; tracked: documented. Registered as GAPS4 ST-17 (WP-45, section 45-03, Fix).
+  - Suggested fix: Draw the directives
+  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation
+  - File Names and Line Numbers: _resolve_path (dash_render.py:10542-10560); p3 F
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-10; confirmed; tracked: untracked. Registered as GAPS4 ST-10 (WP-45, section 45-03, Fix).
+  - Suggested fix: Rank shipped translations at BASE's position
+  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: An unknown scheme() is refused r(198) where twoway notes and draws s2color
+  - File Names and Line Numbers: dash.sthlp:1260-1264, 6305-6329
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-16, GW-17; confirmed; tracked: documented. Registered as GAPS4 ST-16 (WP-45, section 45-03, Fix).
+  - Suggested fix: Note and draw s2color, as twoway does (M11: every P6-P10 item is fixed).
+  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: The graph-region outline is not stroked by default, and the scheme's graph margin (3.5 units) is not drawn (Bokeh's 5 px min_border is used)
+  - File Names and Line Numbers: region_truth D22; test_region_truth.py:194 skip; _dash_graph_margin (dash_render.py:40612-40650)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids GW-6, VF-7; confirmed; tracked: untracked. Registered as GAPS4 GW-6 (WP-45, section 45-04, Fix).
+  - Suggested fix: Stroke from the scheme's graphregion line; add the margin to min_border
+  - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph
+  - File Names and Line Numbers: dash.sthlp:4298-4311, 4329-4335
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-21, GW-19; confirmed; tracked: documented. Registered as GAPS4 ST-21 (WP-45, section 45-04, Fix).
+  - Suggested fix: Draw an inner BoxAnnotation; compute the margin on the frame
+  - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: Figure proportions: a lone graph fills the page width within a 160-560 px height band (2.14:1 at 1200 px where twoway is 1.667:1; xsize()/ysize()/aspectratio() alone change nothing); relative sizes are a fixed 2.88 pt (0.889x twoway under stcolor); fxsize()/fysize() shrink the cell
+  - File Names and Line Numbers: dash_render.py:518-519; dash.sthlp:5641-5723 (band values not stated)
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids VF-4, GW-20, sil:SD-21, VF-5, VF-11; confirmed; tracked: documented (Figure proportions). Registered as GAPS4 VF-4 (WP-45, section 45-04, Fix).
+  - Suggested fix: Per A-1: every graph keeps twoway's shape (the xsize()/ysize() ratio, else the scheme's graph size), the width fills its cell, the 160-560 px band is removed, and relative sizes scale with the scheme's graph size.
+  - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'
+  - File Names and Line Numbers: region_options.sthlp:155-170; dash.ado:3753; float() at dash_render.py:27374, 27437, 27742
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids GW-1; confirmed; tracked: untracked. Registered as GAPS4 GW-1 (WP-45, section 45-04, Fix).
+  - Suggested fix: Parse in/pt/cm everywhere; measure out-of-range values
+  - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words
+  - File Names and Line Numbers: colour_grammar_truth opt_17; stylelist_truth R14; dash.sthlp:1316-1349
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-22; confirmed; tracked: documented. Registered as GAPS4 ST-22 (WP-45, section 45-05, Fix).
+  - Suggested fix: Match the clamp; reword the refusal
+  - Resolution: Not fixed because WP-45 section 45-05 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)
+  - File Names and Line Numbers: dash.ado:7364-7387; dash_render.py:48452
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids GW-10; confirmed (unverified: plain-text faces never measured); tracked: partly (closed BUGS entry, tags only). Registered as GAPS4 GW-10 (WP-45, section 45-05, Fix).
+  - Suggested fix: Measure under changed fontface, then apply the default face
+  - Resolution: Not fixed because WP-45 section 45-05 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+
+- [ ] Title: A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright
+  - File Names and Line Numbers: dash.ado:2937-2972, 6659; twoway_y2xview_parse.class:51-65, 119; P01-P03, P10, P11, V2-V4
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-1, RH-2; confirmed; tracked: untracked. Registered as GAPS4 RH-1 (WP-46, section 46-01, Fix).
+  - Suggested fix: Judge h/v by kind range2yx: accept and turn line types; take silently and draw upright for bar-like types
+  - Resolution: Not fixed because WP-46 section 46-01 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key
+  - File Names and Line Numbers: dash.ado:6660; _dash_draw_range_as (dash_render.py:26601-26625); y2xview_g.class:60-75; P17-P19, P27, P28
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-3, RH-4; confirmed; tracked: untracked. Registered as GAPS4 RH-3 (WP-46, section 46-02, Fix).
+  - Suggested fix: Carry yvar2/hicol into the hull and the titles/keys
+  - Resolution: Not fixed because WP-46 section 46-02 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis
+  - File Names and Line Numbers: twoway_histogram_parse.class:160-193; map_histogram (dash_render.py:22223-22270); _dash_tag_eval_extent 61880-61897
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-5, RH-6, RH-7; confirmed; tracked: untracked. Registered as GAPS4 RH-5 (WP-46, section 46-02, Fix).
+  - Suggested fix: Apply the histogram role's style and bar width; include 0
+  - Resolution: Not fixed because WP-46 section 46-02 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose
+  - File Names and Line Numbers: twoway_yxview_parse.class:319-324, 456-468; P06-P12, Q22, Q23, V6
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-8; confirmed; tracked: untracked. Registered as GAPS4 RH-8 (WP-46, section 46-02, Document).
+  - Suggested fix: Documented only (Q25, M12): dash keeps its clean transpose; twoway's broken picture is listed under Differences with a measured example.
+  - Resolution: Not fixed because WP-46 section 46-02 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)
+  - File Names and Line Numbers: dash.ado:3258-3261, 2942; dash_render.py:45710; Q01-Q05, R02-R04, V7
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-9, RH-10, RH-12; confirmed; tracked: untracked. Registered as GAPS4 RH-9 (WP-46, section 46-01, Fix).
+  - Suggested fix: Judge on the typed recast target; add scatteri to the derived lists
+  - Resolution: Not fixed because WP-46 section 46-01 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike
+  - File Names and Line Numbers: y2xtype.class _unabbrev; dash.ado:3288
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 14 (minor): ids RH-11; confirmed; tracked: untracked. Registered as GAPS4 RH-11 (WP-46, section 46-01, Fix).
+  - Suggested fix: Use full-name minimums for yx names in the y2xtype table
+  - Resolution: Not fixed because WP-46 section 46-01 has not landed. Graded S3 (WP-46): drop-in audit package 14, minor.
+
+- [ ] Title: headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point
+  - File Names and Line Numbers: map_pcscatter/map_pccapsym/map_pcarrowi (dash_render.py:25019-25079, 25692, 25834-25886); tw SVGs move labels; tw_silent headlabel row came from a probe without mlabel
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-1, basic:PT-2, MS-6; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-1 (WP-47, section 47-01, Fix).
+  - Suggested fix: Read headlabel and label (x2,y2); re-measure with mlabel()
+  - Resolution: Not fixed because WP-47 section 47-01 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)
+  - File Names and Line Numbers: map_pci_literal (24913-24929); map_scatteri (24764-24796); dash.ado:6230; C05-C15, E15-E18
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids MS-7, MS-8, MS-9; confirmed; tracked: untracked. Registered as GAPS4 MS-7 (WP-47, section 47-01, Fix).
+  - Suggested fix: Draw the labels after the recast; check mlabel against data only where twoway does
+  - Resolution: Not fixed because WP-47 section 47-01 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram
+  - File Names and Line Numbers: dash_render.py:58096-58118; D03-D07; dash.sthlp:4760-4762
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids MS-2, TR-6; confirmed; tracked: untracked. Registered as GAPS4 MS-2 (WP-47, section 47-02, Fix).
+  - Suggested fix: Apply them in those branches (histogram joins the scale word; pc keeps /xb)
+  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash
+  - File Names and Line Numbers: dash_render.py:58038-58040; E02-E05, D21
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids MS-3, MS-4; confirmed; tracked: untracked (per-layer reading stated in the help). Registered as GAPS4 MS-3 (WP-47, section 47-02, Fix).
+  - Suggested fix: Treat "" as the name for y; resolve labels per variable across the graph
+  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: xvarformat()/yvarformat() do not reach marker labels of the plotted variable
+  - File Names and Line Numbers: D10, E20; dash.sthlp:4746-4748
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids MS-5; confirmed; tracked: untracked. Registered as GAPS4 MS-5 (WP-47, section 47-02, Fix).
+  - Suggested fix: Format those labels with the layer's format
+  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: mlabel(t*) naming several variables draws labels; twoway draws none
+  - File Names and Line Numbers: plaintypes5; BUGS C10b closed from serset rows; dash.sthlp:1238 vs 3389
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-3; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-3 (WP-47, section 47-02, Fix).
+  - Suggested fix: Draw no labels for such an element; correct the help and the record
+  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round
+  - File Names and Line Numbers: dash_render.py:15668-15677; P9, P33, P36, P39; tw32/tw100 SVGs; dash.sthlp:4782-4786
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-4, sil:SD-3, PIC-15; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-4 (WP-47, section 47-03, Fix).
+  - Suggested fix: Inset or outset closed shapes by half the width; round cap ends (M12: resolved by drawing).
+  - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture
+  - File Names and Line Numbers: varlabel_mlabel_truth malign hashes; dash_render.py:15937-15951; dash.sthlp:4769-4772
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-6; confirmed (default size inferred, not measured); tracked: partly documented. Registered as GAPS4 basic:PT-6 (WP-47, section 47-03, Fix).
+  - Suggested fix: Measure diameters; compensate size (M12: resolved by drawing).
+  - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)
+  - File Names and Line Numbers: P43, Q24; dot_truth D30; extract_noted_option_truth.do:125
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-5; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-5 (WP-47, section 47-03, Fix).
+  - Suggested fix: Size the dot outline by alignment; probe non-default values for tw_silent
+  - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)
+  - File Names and Line Numbers: twoway_yxview_parse.class:141, 557-716; probe hashes
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-10, syn:SD-11, sil:SD-17, ST-20, DT-20; confirmed; tracked: dash.sthlp Unsupported 'Older spellings', 'edge styles'. Registered as GAPS4 basic:PT-10 (WP-47, section 47-04, Fix).
+  - Suggested fix: Fold each onto the option dash draws
+  - Resolution: Not fixed because WP-47 section 47-04 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.
+  - File Names and Line Numbers: plaintypes P7-P38 diffs; dash.sthlp:6456-6612
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-11, TR-18, DT-20, sil:SD-17, ST-20; confirmed (TR-18's headlabel bullet is wrong); tracked: dash.sthlp Unsupported. Registered as GAPS4 basic:PT-11 (WP-47, section 47-05, Fix).
+  - Suggested fix: Draw them (M12: resolved by drawing).
+  - Resolution: Not fixed because WP-47 section 47-05 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)
+  - File Names and Line Numbers: dash_render.py:8159-8263; symbol_pattern_truth; bokeh marker paths
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids PIC-2, PIC-5, PIC-6, ST-19, ST-9; confirmed (ST-19 partly); tracked: untracked (arrow shaft documented). Registered as GAPS4 PIC-2 (WP-47, section 47-06, Fix).
+  - Suggested fix: Square at pi/4 for diamonds; custom chevron; Bokeh 'cross'; drop invisible from both tables
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Empty histogram bins draw an outline segment along the base
+  - File Names and Line Numbers: tw59/60/61 rect counts vs Quad rows
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids PIC-9; confirmed; tracked: untracked. Registered as GAPS4 PIC-9 (WP-47, section 47-06, Fix).
+  - Suggested fix: Omit zero-height bins in both renderers and the refit
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row
+  - File Names and Line Numbers: yxview_dot_draw.ado draw_full_dots; dash_render.py:23766-23770
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids PIC-10; confirmed; tracked: untracked. Registered as GAPS4 PIC-10 (WP-47, section 47-06, Fix).
+  - Suggested fix: Draw rows for every non-missing x
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Markers with missing or zero weight are invisible; twoway still draws a dot
+  - File Names and Line Numbers: t_EM03.svg; dash.sthlp:4192-4194
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids DG-12; confirmed; tracked: untracked. Registered as GAPS4 DG-12 (WP-47, section 47-06, Fix).
+  - Suggested fix: Draw twoway's minimal dot
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels
+  - File Names and Line Numbers: dash_render.py:23733-23735; dash.sthlp:3811, 1287-1289
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids PIC-16, PIC-17; confirmed; tracked: documented. Registered as GAPS4 PIC-16 (WP-47, section 47-06, Fix).
+  - Suggested fix: Floor fill plus outline; patterns limited by Bokeh
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')
+  - File Names and Line Numbers: D03, E04, D05
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids DG-7; confirmed; tracked: untracked. Registered as GAPS4 DG-7 (WP-47, section 47-02, Fix).
+  - Suggested fix: Use twoway's names in those cases
+  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys
+  - File Names and Line Numbers: dash.sthlp:449-455, 655-661, 3443-3517, 4305-4307, 6069-6225
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-15, DT-23, DT-24, sil:SD-23; confirmed; tracked: documented. Registered as GAPS4 basic:PT-15 (WP-47, section 47-06, Fix).
+  - Suggested fix: Case by case
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+
+- [ ] Title: The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too
+  - File Names and Line Numbers: dash.sthlp:6629-6640, 6682-6687 against 1024-1029
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids LT-27, GW-24, syn:SD-14, ECO-10, DT-05, TR-21, sil:SD-15; confirmed; tracked: untracked. Registered as GAPS4 LT-27 (WP-48, section 48-01, Fix).
+  - Suggested fix: Rewrite both and pin them with help-claim tests
+  - Resolution: Not fixed because WP-48 section 48-01 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: 'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale
+  - File Names and Line Numbers: dash.sthlp:854-858 against 156-163; dash.ado:106-119
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids plot:PT-5, ECO-9, DT-06; confirmed; tracked: untracked. Registered as GAPS4 plot:PT-5 (WP-48, section 48-01, Fix).
+  - Suggested fix: Delete the paragraph
+  - Resolution: Not fixed because WP-48 section 48-01 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Stale passages: :332 and :3472-3475 headlabel/mangle 'named'; :3611 recast on dot; :3676 degree() >7 refused; :3977-3985 fpfit bwidth accepted; :4084 acolor named; :1239 mlabel(t*) refused; :240-246 shadowed x/y; :3635 merged keys; :3179 rescale note; :3290 subtitle box; :4782/:6573/:6597 lalign/dlalign/'every type'; TWOWAY_COVERAGE_AUDIT:71/81/84; _dot_style docstring; test_lpoly_degree.py:16
+  - File Names and Line Numbers: line numbers as listed; probes P05-P14
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids basic:PT-16, DT-07, DT-08, DT-09, DT-10, DT-11, DT-12, stat:PT-18, BY-9; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-16 (WP-48, section 48-01, Fix).
+  - Suggested fix: Correct each and add pins
+  - Resolution: Not fixed because WP-48 section 48-01 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn
+  - File Names and Line Numbers: dash.sthlp:6249-6251 vs 5708-5717; 955-967
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids GW-22, GW-23; confirmed; tracked: untracked. Registered as GAPS4 GW-22 (WP-48, section 48-01, Fix).
+  - Suggested fix: Correct both
+  - Resolution: Not fixed because WP-48 section 48-01 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing
+  - File Names and Line Numbers: test_help_conformance.py:402-410
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids syn:SD-15; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-15 (WP-48, section 48-02, Fix).
+  - Suggested fix: Generate candidates from twoway's declarations
+  - Resolution: Not fixed because WP-48 section 48-02 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences
+  - File Names and Line Numbers: dash.sthlp:372-386, 3588-3592
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids RH-15; partly; tracked: untracked. Registered as GAPS4 RH-15 (WP-48, section 48-02, Fix).
+  - Suggested fix: Correct after the RH fixes, or list under Differences
+  - Resolution: Not fixed because WP-48 section 48-02 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives
+  - File Names and Line Numbers: dash_setup.sthlp:90-126, 208-213; CHANGELOG.md:589-936; GAPS3 section 9
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids DT-29, DT-30, TR-22; confirmed; tracked: untracked. Registered as GAPS4 DT-29 (WP-48, section 48-03, Fix).
+  - Suggested fix: Annotate, retire or map each
+  - Resolution: Not fixed because WP-48 section 48-03 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)
+  - File Names and Line Numbers: dash.sthlp:179-182, 2763, 6637-6638; README.md:15-16
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids ECO-16, ECO-8; confirmed (ECO-8 partly: not a syntax gap); tracked: untracked. Registered as GAPS4 ECO-16 (WP-48, section 48-02, Fix).
+  - Suggested fix: Add a 'Stata graph commands and reports' paragraph and recipes
+  - Resolution: Not fixed because WP-48 section 48-02 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway
+  - File Names and Line Numbers: dash.sthlp:172-176; dash.ado:6948-6967
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids DT-28, syn:SD-19; partly (not gaps); tracked: documented. Registered as GAPS4 DT-28 (WP-48, section 48-02, Document).
+  - Suggested fix: Documented only (48-02): reviewed and needing no change; the help says so.
+  - Resolution: Not fixed because WP-48 section 48-02 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+
+- [ ] Title: Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())
+  - File Names and Line Numbers: dash.ado:5897-5904, 11022, 11104-11110, 11233-11241; dash.sthlp Differences 5
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids plot:PT-7, GW-8, ECO-11, sil:SD-9, syn:SD-12, TR-10; confirmed; tracked: untracked. Registered as GAPS4 plot:PT-7 (WP-49, section 49-01, Fix).
+  - Suggested fix: Per Q43/M12 (PD-11): the first line of every refusal is twoway's words naming the option as typed; dash's second and later lines and the Supported list stay.
+  - Resolution: Not fixed because WP-49 section 49-01 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+
+- [ ] Title: Notes for options twoway draws the same picture with: afcolor on scatter, clalign, dlpattern on dot, bmsize on scatter, bargap, omitallmiss, onepanel, xlog on qfit, back/noback, heatlabel, zvarformat, nolog, noreverse, ring(), labelkeepleadingzero, legend nostack/angle/orientation, text angle/bexpand ('bexpand()' with parentheses), by() spacers/subtitle width
+  - File Names and Line Numbers: normalised SVG diffs of 0; catchall_options_truth has no picture comparison; dash.ado:9958-9966
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids basic:PT-12, stat:PT-11, stat:PT-8, AX-21, LT-26, BY-8, BY-15, GW-23; confirmed (stat:PT-11 partly: zvarlabel on contour is drawn by twoway, so its note stays); tracked: untracked. Registered as GAPS4 basic:PT-12 (WP-49, section 49-02, Fix).
+  - Suggested fix: Extend extract_noted_option_truth to every type with non-default values and take these silently
+  - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+
+- [ ] Title: Named-style notes: invented twoway-worded notes where twoway prints none; missing notes for clockdir 13 and justification(bogus); 'not a recognised size; using medium' instead of the gsize note; iscale(abc) note printed twice; xsize() bounds and graphsize notes in dash's words with 'None'
+  - File Names and Line Numbers: probes R_tpos, R_tjust, R_tsz, C11, T15, p1 xsize
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids LT-25, ST-11, basic:PT-17, BY-7, BY-8, GW-7; confirmed; tracked: untracked. Registered as GAPS4 LT-25 (WP-49, section 49-02, Fix).
+  - Suggested fix: Echo twoway's notes once each, in its words
+  - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+
+- [ ] Title: Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis
+  - File Names and Line Numbers: dash.ado:6033-6035, 6278-6280, 5868; dash_parse.mata:9264-9279
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids plot:PT-6, plot:PT-8, DG-10; confirmed; tracked: untracked. Registered as GAPS4 plot:PT-6 (WP-49, section 49-01, Fix).
+  - Suggested fix: Print twoway's lines; split the type at '['
+  - Resolution: Not fixed because WP-49 section 49-01 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+
+- [ ] Title: '_dash_dp_format() already exists' and '(11721 lines skipped)' are printed after discard and, in long sessions, mid-session
+  - File Names and Line Numbers: dash.ado:79-81, 540-551; p4.log; probe1 #42
+  - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids plot:PT-11, stat:PT-22; confirmed (plot:PT-11); uncertain (stat:PT-22, trigger unknown); tracked: untracked. Registered as GAPS4 plot:PT-11 (WP-49, section 49-02, Fix).
+  - Suggested fix: Skip the run when the library exists, or suppress its output; add a cscript with discard
+  - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
