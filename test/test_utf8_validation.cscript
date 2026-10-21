@@ -326,12 +326,13 @@ mata: st_local("_u8_gates", strofreal(_u8_code_has("../dash.ado", ///
     "_dash_check_utf8(strtrim")))
 mata: st_local("_u8_sites", _u8_code_sites("../dash.ado", ///
     "_dash_check_utf8(strtrim"))
-local _u8_want "_dash_plot _dash_kpi _dash_prepare_spec _dash_build _dash_serve_spec _dash_serve"
+// 6 -> 7: WP-33 33-06 _dash_image checks its caption(), alt() and link().
+local _u8_want "_dash_plot _dash_kpi _dash_image _dash_prepare_spec _dash_build _dash_serve_spec _dash_serve"
 if `"`_u8_sites'"' != "`_u8_want'" {
     display as error "UTF-11 FAIL: the gate is in: `_u8_sites'"
     display as error "             expected in:  `_u8_want'"
 }
-assert `_u8_gates' == 6
+assert `_u8_gates' == 7
 assert `"`_u8_sites'"' == "`_u8_want'"
 display "UTF-11 PASS: the gate runs at every command entry point, not one"
 

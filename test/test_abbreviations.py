@@ -863,8 +863,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 21 -> 22: D5 WP-31's _dash_aspect_split reads aspectratio()'s
     # placement() with twoway's own syntax statement; 22 -> 23: D8
     # _dash_label_split declares yvarlabel() and xvarlabel(), which the
-    # plot parser's syntax has no room for.
-    assert len(with_syntax) == 23, with_syntax
+    # plot parser's syntax has no room for.  23 -> 24: WP-33 33-06
+    # _dash_image (dash image using <file>, name() caption() alt() link()).
+    assert len(with_syntax) == 24, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
