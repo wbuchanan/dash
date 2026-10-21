@@ -4496,11 +4496,11 @@
   - Suggested fix: Convert TestBounds so it runs (R9: pinned tests are never deleted); run make test-all once and record it.
   - Resolution: Fixed 21oct2026 (WP-33, TR-23). The nine tests that skipped because a measured truth contradicts their premise assert that truth instead (TestBounds: {dup}/{hline} past their bounds drawn as typed, no cut note; TestOtherSmclDirectives: quoted keys through compound quotes in the xlabel and legend sinks; TestTheExportsAgree at build: the build's exports are deterministic); the strict whole-suite run is the batch 33.3 gate's and is recorded in ROADMAP's WP-33 section by WE.4. Pinned by test/test_strict_mode.py::TestNoStandingSkip::test_none_of_them_can_skip, test/test_graph_text.py::TestBounds. Closes GAPS4 TR-23 (WP-33, TR-23).
 
-- [ ] Title: Per-type by() drawing is pinned against twoway only for function (default range) and lpoly
+- [x] Title: Per-type by() drawing is pinned against twoway only for function (default range) and lpoly
   - File Names and Line Numbers: U60-5 compares saved with served for five types; U46-04; test_lpoly_rot
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids BY-23, BY-31; partly; tracked: GAPS3 K2 (partial). Registered as GAPS4 BY-23 (WP-33, section 33-12, Fix).
   - Suggested fix: Turn the 93-command byx probe into extract_by_types_truth.do and compare both modes per panel
-  - Resolution: Not fixed because WP-33 section 33-12 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, BY-23). scripts/extract_by_types_truth.do records twoway's per-panel sersets for all 44 types under by(foreign) and by(foreign, total) (and, per panel, the serset its plot draws and a contour's cuts); test/test_by_types.py compares each panel's rows, extents and sampled values in both modes (served in the batch tier), differences listed under BY-28 (contour and contourline cut each panel at its own z ticks). Pinned by test/test_by_types.py::TestPanelsMatchTwoway, test/test_wp33_truth.cscript Q3312-1; fixture test/fixtures/by_types_truth.json. Closes GAPS4 BY-23 (WP-33, BY-23).
 
 - [ ] Title: Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...
   - File Names and Line Numbers: stat_truth keys; numeric.do

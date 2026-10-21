@@ -927,6 +927,7 @@ and now matches Stata.
 - The abbreviation record measures every option dash declares, and records bgcolor() as twoway's option (WP-33, syn:SD-20)
 - No test skips on a premise twoway's measurements contradict, so a strict run can pass (WP-33, TR-23)
 - The help no longer says scale() leaves the gaps between boxes unscaled; twoway's frame under scale() is measured and compared (WP-33, GW-11)
+- Every plot type's by() panels are compared with twoway's per-panel data (WP-33, BY-23)
 
 ### Fixed in WP-32
 

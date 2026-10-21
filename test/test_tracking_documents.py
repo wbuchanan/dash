@@ -2872,7 +2872,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'TR-2': 'No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand)',
-    'BY-23': 'Per-type by() drawing is pinned against twoway only for function (default range) and lpoly',
     'stat:PT-23': 'Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...',
     'CV-16': 'colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously',
     'BY-24': 'by() title/note/caption under position() has truth only for caption pos(5)',

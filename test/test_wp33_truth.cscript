@@ -452,6 +452,67 @@ if inlist("`only'", "", "S11") & `: list posof "S11" in w33_run' {
 }
 * ==== end S11 ====
 
+python:
+def _w33s12_serset():
+    # S12 BY-23: serset number j (0-based, in order) of the committed
+    # fixture's probe pid (fixtures/by_types_truth.json, written by
+    # scripts/extract_by_types_truth.do): its N and first row's first two
+    # values, as the locals fn, fa and fb.  No macro is expanded into
+    # Python text.
+    import json
+    from sfi import Macro
+    pid = Macro.getLocal("pid")
+    j = int(Macro.getLocal("j"))
+    with open("fixtures/by_types_truth.json", encoding="utf-8") as fh:
+        s = json.load(fh)["probes"][pid]["sersets"][j]
+    row = (s.get("rows") or s.get("samples"))[0]
+    Macro.setLocal("fn", str(s["n"]))
+    Macro.setLocal("fa", "%.17g" % row[0])
+    Macro.setLocal("fb", "%.17g" % row[1])
+end
+
+* ==== S12 BY-23: per-type by() truth ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S12") & `: list posof "S12" in w33_run' {
+    display as text "S12 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3312-1: twoway's per-panel sersets under by() are the committed
+    // truth (fixtures/by_types_truth.json), so the per-type comparison
+    // test/test_by_types.py reads has not drifted: lfit under
+    // by(foreign) (one 3-row serset per panel) and kdensity under
+    // by(foreign, total) (three of 300 rows).
+    // ------------------------------------------------------------
+    foreach pc in "bt_lfit_by|lfit mpg weight|" "bt_kdensity_total|kdensity mpg|, total" {
+        gettoken pid rest : pc, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken cmd rest : rest, parse("|")
+        gettoken bar byo : rest, parse("|")
+        sysuse auto, clear
+        capture serset drop _all
+        capture graph drop _all
+        twoway (`cmd'), by(foreign`byo') nodraw
+        local np = `.Graph.graphs.arrnels'
+        forvalues j = 0/`=`np' - 1' {
+            serset set `j'
+            serset use, clear
+            quietly ds
+            local v1 : word 1 of `r(varlist)'
+            local v2 : word 2 of `r(varlist)'
+            local n = _N
+            local a = `v1'[1]
+            local b = `v2'[1]
+            python: __import__("__main__")._w33s12_serset()
+            _w33_expect Q3312-1 "(`n' == `fn' & reldif(`a', `fa') <= 1e-9 & reldif(`b', `fb') <= 1e-9)" "`pid' serset `j': N `n', first row `a' `b'; the fixture's `fn', `fa' `fb'"
+        }
+    }
+    _w33_done Q3312-1 "twoway's per-panel sersets are the committed truth"
+    capture serset drop _all
+    capture graph drop _all
+    display as text "S12 end " c(current_date) " " c(current_time)
+}
+* ==== end S12 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
