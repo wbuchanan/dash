@@ -574,8 +574,10 @@ class TestTheLimitsTable:
         # because P1.10 adds the added_text limit (A28).
         # 10 -> 11 keys (WP-31 H2t): the table_rows limit.
         # 11 -> 9 keys (WP-33 33-15): the cells and bytes limits removed (P4-3)
+        # Flipped: 9 -> 10 keys (WP-33 33-06): the images limit; the
+        # nine-key set was wrong because 33-06 adds $dash_max_images.
         assert set(dr._DASH_LIMITS) == {
-            "graphs", "plots", "filter_options",
+            "graphs", "images", "plots", "filter_options",
             "by_groups", "tabs", "filters", "reflines", "added_text",
             "table_rows"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():

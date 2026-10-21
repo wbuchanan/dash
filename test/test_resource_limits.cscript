@@ -500,6 +500,36 @@ assert `rc1' == 111 & `rc2' == 111 & `"`j'"' == "{}"
 capture erase "`q15f'"
 dash clear
 
+// Q3306-6 (WP-33 33-06): $dash_max_images bounds the image panels, r(134),
+// and images do not count against $dash_max_graphs.
+dash clear
+qui sysuse auto, clear
+local q6svg "fixtures/svg_truth_smoke.svg"
+global dash_max_images 1
+global dash_max_graphs 2
+capture noisily dash image using "`q6svg'", name(im1)
+local q6a = _rc
+capture noisily dash image using "`q6svg'", name(im2)
+local q6b = _rc
+capture noisily dash image using "`q6svg'", name(im1, replace) caption("again")
+local q6c = _rc
+capture noisily dash scatter mpg weight, name(g1)
+local q6d = _rc
+capture noisily dash kpi mean(mpg), name(k1) title("K")
+local q6e = _rc
+capture noisily dash scatter mpg weight, name(g3)
+local q6f = _rc
+global dash_max_images 1001
+capture noisily dash image using "`q6svg'", name(im3)
+local q6g = _rc
+macro drop dash_max_images dash_max_graphs
+if `q6a' != 0 | `q6b' != 134 | `q6c' != 0 | `q6d' != 0 | `q6e' != 0 | `q6f' != 134 | `q6g' != 198 {
+    display as error "Q3306-6 FAIL: rc `q6a' `q6b' `q6c' `q6d' `q6e' `q6f' `q6g'"
+}
+else display "Q3306-6 PASS: dash_max_images bounds images, which no graph limit counts"
+assert `q6a' == 0 & `q6b' == 134 & `q6c' == 0 & `q6d' == 0 & `q6e' == 0 & `q6f' == 134 & `q6g' == 198
+dash clear
+
 dash clear
 capture erase "`rllog'"
 capture program drop _rl_on

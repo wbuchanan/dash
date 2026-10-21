@@ -104,8 +104,9 @@ class TestArgv:
             assert '"%s"' % n in body, n
         assert "globals().pop" in body
         disp = "\n".join(_program(ado, "dash"))
-        # after build, serve and the plot route
-        assert disp.count("_dash_py_tidy") == 3
+        # after build, serve and the plot route; 3 -> 4: and after dash
+        # image, which checks its file in Python (WP-33 33-06)
+        assert disp.count("_dash_py_tidy") == 4
         # the render's own names go as soon as the run is over
         ren = "\n".join(_program(ado, "_dash_do_render"))
         assert ren.index("'_dash_render_ns', '_dash_priv_argv'") > \

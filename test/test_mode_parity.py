@@ -195,7 +195,7 @@ def _build_options(bo=None):
 
 
 def _spec(plots=None, build_options=None, graph_options=None, graphs=None,
-          kpis=None, if_expr="", in_expr=""):
+          kpis=None, if_expr="", in_expr="", images=None):
     """A master spec with one graph (``plots``) or several (``graphs``).
 
     ``graphs`` is a list of ``(name, plots, graph_options, extra)`` where
@@ -220,8 +220,14 @@ def _spec(plots=None, build_options=None, graph_options=None, graphs=None,
     bo = _build_options(build_options)
     if not bo["registry"]:
         bo["registry"] = " ".join(
-            names + [k.get("name", "") for k in (kpis or [])])
-    return {"graphs": gs, "kpis": list(kpis or []), "build_options": bo}
+            names + [k.get("name", "") for k in (kpis or [])]
+            + [i.get("name", "") for i in (images or [])])
+    out = {"graphs": gs, "kpis": list(kpis or []), "build_options": bo}
+    # Image panels (WP-33 33-06): the key only when there are any, as
+    # dash.ado writes it.
+    if images:
+        out["images"] = [dict(i) for i in images]
+    return out
 
 
 def _kpi(name="k1", stat="mean", var="mpg", **kw):
@@ -1478,8 +1484,8 @@ def _explain(name, what, diffs):
 # ---------------------------------------------------------------------------
 
 def _case(name, plots=None, bo=None, go=None, graphs=None, kpis=None,
-          if_expr="", in_expr="", marks=()):
-    spec = _spec(plots, bo, go, graphs, kpis, if_expr, in_expr)
+          if_expr="", in_expr="", marks=(), images=None):
+    spec = _spec(plots, bo, go, graphs, kpis, if_expr, in_expr, images)
     return pytest.param(name, spec, id=name, marks=list(marks))
 
 
@@ -2803,6 +2809,17 @@ CORPUS = [
                   ("g4", [plot_for("line")])]),
     _case("brush filter", bo={"link": "_all", "brush": "filter"},
           graphs=[("g1", [_sc()]), ("g2", [_sc()])]),
+    # WP-33 33-06: an image panel beside a graph, and one in a tab, with
+    # a caption and a link() page; both modes draw one _dash_image_div.
+    _case("image_panel", [_sc()], bo={"layout": "1 2"},
+          images=[{"name": "im1", "caption": "Twoway's <picture>",
+                   "alt": "twoway", "link": "scatter.html",
+                   "path": os.path.join(_HERE, "fixtures",
+                                        "svg_truth_smoke.svg")}]),
+    _case("image_panel in tabs", [_sc()], bo={"tabs": "A: g1 / B: im1"},
+          images=[{"name": "im1", "caption": "", "alt": "", "link": "",
+                   "path": os.path.join(_HERE, "fixtures",
+                                        "svg_truth_smoke.svg")}]),
 ]
 
 

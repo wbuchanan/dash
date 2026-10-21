@@ -320,9 +320,10 @@ def _headings(line):
 _CMD_ANY = re.compile(r"\{cmd:((?:[^{}]|\{c(?:har)?\s+[^{}]*\})*)\}")
 
 #: Not a command: a subcommand's bare name, or a message dash prints
-#: ("dash: ...", "dash build: ...").
+#: ("dash: ...", "dash build: ...").  dash image joined the subcommands in
+#: WP-33 33-06.
 _NOT_A_MENTION = re.compile(
-    r"^dash(?:\s+(?:build|serve|kpi|clear))?\s*$|^dash(?:\s+\w+)?\s*:")
+    r"^dash(?:\s+(?:build|serve|kpi|clear|image))?\s*$|^dash(?:\s+\w+)?\s*:")
 
 
 def is_mention(content):

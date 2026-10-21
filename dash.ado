@@ -161,6 +161,11 @@ program define dash, rclass
         _dash_kpi `macval(_args)'
         exit
     }
+    if "`_subcmd'" == "image" {
+        _dash_image `macval(_args)'
+        _dash_py_tidy
+        exit
+    }
     if "`_subcmd'" == "build" {
         _dash_build `macval(_args)'
         _dash_py_tidy
@@ -5004,6 +5009,7 @@ program define _dash_limit_table
     version 19
     local rows ///
         graphs=100,1000 ///
+        images=100,1000 ///
         plots=100,1000 ///
         filter_options=1000,100000 ///
         by_groups=100,1000 ///
@@ -5171,7 +5177,12 @@ program define _dash_graph_cap
     local lim  = r(value)
     local ceil = r(ceiling)
     if `already' == 1 exit
-    local n : word count ${dash_graph_registry}
+    // Image panels have a limit of their own (_dash_image_cap) and are
+    // not counted here (WP-33 33-06).
+    local n 0
+    foreach _g of global dash_graph_registry {
+        if "${dash_img_`_g'}" != "1" local ++n
+    }
     if `n' < `lim' exit
 
     _dash_count_fmt _n_s    `n'
@@ -5184,6 +5195,37 @@ program define _dash_graph_cap
     else            local _why "more than the `_lim_s' one dashboard draws"
     display as error "dash: the registry already holds `_n_s' graphs and KPI cards, `_why'."
     display as error "      Run dash clear, reuse a name with name(<name>, replace), or set global dash_max_graphs to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+// ----------------------------------------------------------------
+// _dash_image_cap <already>  -- the image-panel limit (WP-33 33-06)
+//
+// As _dash_graph_cap, for the registry's image panels: $dash_max_images
+// (default 100, at most 1,000) is read and validated on every image
+// registration, and a name already held by an image is a replace and
+// never counts.
+// ----------------------------------------------------------------
+program define _dash_image_cap
+    version 19
+    args already
+    _dash_limit, name(images)
+    local lim  = r(value)
+    local ceil = r(ceiling)
+    if `already' == 1 exit
+    local n 0
+    foreach _g of global dash_graph_registry {
+        if "${dash_img_`_g'}" == "1" local ++n
+    }
+    if `n' < `lim' exit
+
+    _dash_count_fmt _n_s    `n'
+    _dash_count_fmt _lim_s  `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    if `n' == `lim' local _why "the most one dashboard draws"
+    else            local _why "more than the `_lim_s' one dashboard draws"
+    display as error "dash: the registry already holds `_n_s' images, `_why'."
+    display as error "      Run dash clear, reuse a name with name(<name>, replace), or set global dash_max_images to a higher value (at most `_ceil_s')."
     exit 134
 end
 
@@ -11789,6 +11831,7 @@ program define _dash_clear
     capture macro drop dash_json_*
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
+    capture macro drop dash_img_*
     capture macro drop dash_fpts_*
     capture macro drop dash_tu_*
 
@@ -12220,6 +12263,125 @@ end
 
 
 // ================================================================
+// _dash_image  — image panel subcommand (WP-33 33-06)
+// ================================================================
+// dash image using <file.svg>, name(<n>) [caption() alt() link(<page>.html)]
+// registers an SVG picture that layout() and tabs() place like a KPI card.
+// The file is checked here and again at build (_dash_image_check in
+// dash_render.py): well-formed SVG with no script, event handler,
+// foreignObject, DOCTYPE, entity or external reference.  Its bytes are
+// never put in a global (c(macrolen) would bound them); the build reads
+// the file.  No file is refused for its size (DECISIONS A-18); only the
+// number of images is bounded, by $dash_max_images (_dash_image_cap).
+program define _dash_image
+    version 19
+    mata: _dash_check_utf8(strtrim(st_local("0")))
+    syntax using/ , NAMe(string) [CAPtion(string) ALT(string) LINK(string)]
+
+    // name() by dash kpi's rules and bound (see _dash_kpi): an image's
+    // longest globals, dash_img_<name>__lnk and its siblings, put 14
+    // characters around the name, so it is at most 18 characters.
+    mata: st_local("_nm_raw_ok", ///
+        strofreal(!ustrregexm(st_local("name"), "[^A-Za-z0-9_, \t]")))
+    local replace_flag 0
+    if `_nm_raw_ok' {
+        _dash_name_split `"`name'"' _nm replace_flag
+        local name `"`_nm'"'
+    }
+    mata: st_local("_nm_ok", strofreal(st_local("_nm_raw_ok") == "1" & ///
+        regexm(st_local("name"), "^[a-zA-Z_][a-zA-Z0-9_]*$") & ///
+        strlen(st_local("name")) <= 18))
+    if !`_nm_ok' {
+        mata: st_local("_name_safe", ustrregexra(usubstr( ///
+            st_local("name"), 1, 40), "[^A-Za-z0-9_.\-]", "?"))
+        display as error "dash image: invalid name '`_name_safe''. " ///
+            "Names must start with a letter or underscore, contain only " ///
+            "letters, digits, and underscores, and be at most 18 characters."
+        exit(198)
+    }
+    if strpos("`name'", "__") {
+        mata: _dash_say("err", "dash image: name '", st_local("name"), ///
+            "' holds two underscores in a row, which dash keeps for the " + ///
+            "names it generates, such as a by() graph's panels. " + ///
+            "Choose a name without __.")
+        exit(198)
+    }
+    if "`name'" == "_all" {
+        display as error "dash image: name '_all' is the word link(_all) " ///
+            "uses for every graph. Choose another name."
+        exit(198)
+    }
+
+    // The file, read by value: a missing file in Stata's words, r(601).
+    mata: st_local("_im_path", _dash_abs_path(st_local("using"), c("pwd"), c("os")))
+    mata: st_local("_im_ex", strofreal(fileexists(st_local("_im_path"))))
+    if `_im_ex' != 1 {
+        mata: _dash_say("err", "file ", st_local("using"), " not found")
+        exit 601
+    }
+    // The SVG check, from the renderer: "" or "<rc> <text>".
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    python: _dash_M.setLocal("_im_err", _dash_xm._dash_image_check(_dash_M.getLocal("_im_path")))
+    local _im_elen : length local _im_err
+    if `_im_elen' > 0 {
+        mata: st_local("_im_rc", substr(st_local("_im_err"), 1, 3)); ///
+            st_local("_im_err", substr(st_local("_im_err"), 5, .))
+        mata: _dash_say("err", "", st_local("_im_err"), "")
+        exit `_im_rc'
+    }
+    // link(): the file name of a page in the same folder, by the rule the
+    // page's markup applies (_dash_image_link_ok); the text is not echoed.
+    local _im_llen : length local link
+    if `_im_llen' > 0 {
+        python: _dash_M.setLocal("_im_lok", "1" if _dash_xm._dash_image_link_ok(_dash_M.getLocal("link")) else "0")
+        if "`_im_lok'" != "1" {
+            display as error "dash image: link() takes the file name of a " ///
+                "page in the same folder: letters, digits, _ or -, then .html."
+            exit 198
+        }
+    }
+
+    // The registry, shared with graphs and KPI cards (see _dash_kpi).
+    local _im_registry = "${dash_graph_registry}"
+    local _im_already  = 0
+    local _im_isimg    = 0
+    local _im_ntok : word count `_im_registry'
+    forvalues k = 1/`_im_ntok' {
+        if "`:word `k' of `_im_registry''" == "`name'" local _im_already = 1
+    }
+    if `_im_already' == 1 & `replace_flag' == 0 {
+        display as error "dash image: name '`name'' already exists. " ///
+            "Use name(`name', replace) to overwrite."
+        exit(198)
+    }
+    if `_im_already' == 1 & "${dash_img_`name'}" == "1" local _im_isimg = 1
+    _dash_image_cap `_im_isimg'
+    if `_im_already' == 1 {
+        _dash_drop_item "`name'"
+    }
+
+    // alt() defaults to the caption, else the name.  Every field by value.
+    mata: st_local("alt", st_local("alt") != "" ? st_local("alt") : ///
+        (st_local("caption") != "" ? st_local("caption") : st_local("name")))
+    global dash_img_`name' "1"
+    mata: st_global("dash_img_" + st_local("name") + "__pth", st_local("_im_path"))
+    mata: st_global("dash_img_" + st_local("name") + "__cap", st_local("caption"))
+    mata: st_global("dash_img_" + st_local("name") + "__alt", st_local("alt"))
+    mata: st_global("dash_img_" + st_local("name") + "__lnk", st_local("link"))
+
+    if `_im_already' == 0 {
+        if "${dash_graph_registry}" == "" global dash_graph_registry "`name'"
+        else global dash_graph_registry "${dash_graph_registry} `name'"
+    }
+    display as text "dash: image '`name'' registered."
+end
+
+
+// ================================================================
 // _dash_build  — build dashboard
 // ================================================================
 // ================================================================
@@ -12575,6 +12737,9 @@ program define _dash_prepare_spec, rclass
         // dash_kpi_<name>_stat, ..., a graph a_stat beside KPI a found KPI
         // a's statistic here, "mean", and was drawn as a blank KPI card
         // (measured 23sep2026 at 9f48cf7).
+        // An image panel (WP-33 33-06) exports no data; it is checked and
+        // written with the images below.
+        if "${dash_img_`gname'}" == "1" continue
         if "${dash_kpi_`gname'}" == "1" {
             // _dash_kpi always stores a statistic and a variable.  A KPI
             // without them was not registered by this dash -- its marker
@@ -12832,6 +12997,7 @@ program define _dash_prepare_spec, rclass
         _dash_plottype_families
         forvalues k = 1/`ntok_reg' {
             local gname : word `k' of `registry'
+            if "${dash_img_`gname'}" == "1" continue
             if "${dash_kpi_`gname'}" == "1" continue
             mata: st_local("_gvf", strofreal(_dash_spec_types_in( ///
                 st_global("dash_json_" + st_local("gname")), ///
@@ -12847,6 +13013,7 @@ program define _dash_prepare_spec, rclass
         mata: _dash_qual_reset()
         forvalues k = 1/`ntok_reg' {
             local gname : word `k' of `registry'
+            if "${dash_img_`gname'}" == "1" continue
             if "${dash_kpi_`gname'}" == "1" continue
             mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
                 st_global("dash_json_" + st_local("gname")), "_dq_err", 0))
@@ -12872,6 +13039,7 @@ program define _dash_prepare_spec, rclass
     mata: _dash_sort_reset()
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
+        if "${dash_img_`gname'}" == "1" continue
         if "${dash_kpi_`gname'}" == "1" continue
         mata: _dash_sort_scan(st_local("_qg_`k'"))
     }
@@ -12988,6 +13156,7 @@ program define _dash_prepare_spec, rclass
 
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
+        if "${dash_img_`gname'}" == "1" continue
         if "${dash_kpi_`gname'}" == "1" {
             // An entry should never hold a graph AND a KPI: both registrars
             // retire whatever held the name before.  If one does, this loop
@@ -13053,6 +13222,44 @@ program define _dash_prepare_spec, rclass
         local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","weight":"`kweight'","wexp":"`kwexp'","if_expr":"","in_expr":"","qual_col":"`_kqc'"}"'
         local n_kpis = `n_kpis' + 1
     }
+
+    // assemble images JSON (WP-33 33-06): each image's file checked again
+    // (it may have changed since it was registered) and its fields read
+    // and escaped by value.  The renderer reads the file and draws it from
+    // a data address; the spec carries its path.
+    local images_json ""
+    local n_images = 0
+    forvalues k = 1/`ntok_reg' {
+        local gname : word `k' of `registry'
+        if "${dash_img_`gname'}" != "1" continue
+        if `n_images' == 0 {
+            _dash_require_python
+            _dash_xm_load
+            python: import sys
+            python: from sfi import Macro as _dash_M
+            python: _dash_xm = sys.modules["_dash_render_export"]
+        }
+        mata: st_local("_im_path", st_global("dash_img_" + st_local("gname") + "__pth"))
+        python: _dash_M.setLocal("_im_err", _dash_xm._dash_image_check(_dash_M.getLocal("_im_path")))
+        local _im_elen : length local _im_err
+        if `_im_elen' > 0 {
+            mata: st_local("_im_rc", substr(st_local("_im_err"), 1, 3)); ///
+                st_local("_im_err", substr(st_local("_im_err"), 5, .))
+            mata: _dash_say("err", "", st_local("_im_err"), "")
+            exit `_im_rc'
+        }
+        mata: st_local("_im_pth", _dash_json_escape(st_local("_im_path")))
+        mata: st_local("_im_cap", _dash_json_escape(st_global("dash_img_" + st_local("gname") + "__cap")))
+        mata: st_local("_im_alt", _dash_json_escape(st_global("dash_img_" + st_local("gname") + "__alt")))
+        mata: st_local("_im_lnk", _dash_json_escape(st_global("dash_img_" + st_local("gname") + "__lnk")))
+        if `n_images' > 0 local images_json `"`images_json', "'
+        local images_json `"`images_json'{"name":"`gname'","path":"`_im_pth'","caption":"`_im_cap'","alt":"`_im_alt'","link":"`_im_lnk'"}"'
+        local n_images = `n_images' + 1
+    }
+    // The key only when an image is registered: a dashboard with none is
+    // unchanged byte for byte.
+    local _im_part ""
+    if `n_images' > 0 local _im_part `","images":[`images_json']"'
 
     // JSON-escape it, like every other string that goes into master_json.
     // It did not used to be: filter(weight, type(range) label("Curb weight"))
@@ -13128,7 +13335,7 @@ program define _dash_prepare_spec, rclass
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'`_dash_brush_json'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json']`_im_part',"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'`_dash_brush_json'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:

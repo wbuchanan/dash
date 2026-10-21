@@ -4274,5 +4274,35 @@ assert `at_r16' == 0 & "`at_ok16'" == "1" & `at_n16' == 1 & `at_rb16' == 0 & "`a
 capture dash clear
 macro drop J6_*
 
+// Q3306-7 (WP-33 33-06): an image's caption and alt are stored and
+// written by value -- a quote, a backtick, a $ and SMCL braces as typed.
+capture dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(g7)
+capture noisily dash image using "fixtures/svg_truth_smoke.svg", name(im7) ///
+    caption(`"a "q" \`x' \$x {bf:x}"') alt(`"\$y \`z'"')
+local q7a = _rc
+mata: st_local("q7v", strofreal( ///
+    st_global("dash_img_im7__cap") == "a " + char(34) + "q" + char(34) + " " + ///
+        char(96) + "x' " + char(36) + "x {bf:x}" & ///
+    st_global("dash_img_im7__alt") == char(36) + "y " + char(96) + "z'"))
+tempfile q7
+local q7s "`q7'_spec.json"
+local q7d "`q7'_data.json"
+capture erase "`q7s'"
+capture erase "`q7d'"
+capture noisily _dash_prepare_spec, specpath("`q7s'") datapath("`q7d'")
+local q7b = _rc
+python: import json, sfi; _q7 = json.load(open(sfi.Macro.getLocal("q7s"), encoding="utf-8")); _q7i = _q7.get("images") or [{}]; sfi.Macro.setLocal("q7w", "1" if (_q7i[0].get("caption") == sfi.Macro.getGlobal("dash_img_im7__cap") and _q7i[0].get("alt") == sfi.Macro.getGlobal("dash_img_im7__alt") and _q7i[0].get("path", "").endswith("svg_truth_smoke.svg") and _q7i[0].get("link") == "" and len(_q7["graphs"]) == 1) else "0")
+python: del _q7, _q7i
+capture erase "`q7s'"
+capture erase "`q7d'"
+if `q7a' != 0 | `q7v' != 1 | `q7b' != 0 | "`q7w'" != "1" {
+    display as error "Q3306-7 FAIL: rc `q7a' `q7b', stored `q7v', written `q7w'"
+}
+else display "Q3306-7 PASS: an image's caption and alt are stored and written as typed"
+assert `q7a' == 0 & `q7v' == 1 & `q7b' == 0 & "`q7w'" == "1"
+capture dash clear
+
 display ""
 display "All JSON escaping tests PASSED."

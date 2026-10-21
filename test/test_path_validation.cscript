@@ -873,5 +873,58 @@ if "`bad'" != "" display as error "GE-19 FAIL:`bad'"
 assert "`bad'" == ""
 display "GE-19 PASS: _sv_img names the suffix replaced, from the fixed row"
 
+// ================================================================
+// Q3306-4, -5, -9 (WP-33 33-06) -- dash image's file and link()
+// ================================================================
+capture dash clear
+global dash_nobrowser 1
+qui sysuse auto, clear
+local q6svg "fixtures/svg_truth_smoke.svg"
+
+// Q3306-4: a missing file is refused r(601) in Stata's words.
+capture noisily dash image using "no_such_picture.svg", name(im4)
+local q4 = _rc
+if `q4' != 601 | "${dash_img_im4}" != "" {
+    display as error "Q3306-4 FAIL: rc `q4'"
+}
+else display "Q3306-4 PASS: a missing SVG is refused r(601)"
+assert `q4' == 601 & "${dash_img_im4}" == ""
+
+// Q3306-5: an SVG holding a script is refused r(198), and so is one with
+// an event handler or an external reference.
+tempfile q5
+local q5f "`q5'.svg"
+local q5bad ""
+foreach body in "<script>alert(1)</script>" `"<rect onclick="x" width="1" height="1"/>"' ///
+    `"<image href="http://x.org/a.png"/>"' "<foreignObject/>" {
+    capture erase "`q5f'"
+    file open _q5 using "`q5f'", write text replace
+    file write _q5 `"<svg xmlns="http://www.w3.org/2000/svg">`body'</svg>"' _n
+    file close _q5
+    capture noisily dash image using "`q5f'", name(im5)
+    if _rc != 198 | "${dash_img_im5}" != "" local q5bad "`q5bad' `=_rc'"
+}
+capture erase "`q5f'"
+if "`q5bad'" != "" display as error "Q3306-5 FAIL:`q5bad'"
+else display "Q3306-5 PASS: a script, handler, foreignObject or external reference is refused r(198)"
+assert "`q5bad'" == ""
+
+// Q3306-9: link() takes the file name of a page in the same folder; any
+// other text is refused r(198) before the registered image is touched.
+capture noisily dash image using "`q6svg'", name(im9) link(scatter.html)
+local q9a = _rc
+local q9l "${dash_img_im9__lnk}"
+local q9bad ""
+foreach lk in "../up.html" "https://x.org/p.html" "sub/p.html" "page.htm" {
+    capture noisily dash image using "`q6svg'", name(im9, replace) link(`lk')
+    if _rc != 198 | "${dash_img_im9__lnk}" != "scatter.html" local q9bad "`q9bad' `lk'"
+}
+if `q9a' != 0 | "`q9l'" != "scatter.html" | "`q9bad'" != "" {
+    display as error "Q3306-9 FAIL: rc `q9a', link `q9l', accepted:`q9bad'"
+}
+else display "Q3306-9 PASS: link() takes only a page name in the same folder"
+assert `q9a' == 0 & "`q9l'" == "scatter.html" & "`q9bad'" == ""
+capture dash clear
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

@@ -317,6 +317,10 @@ COVERAGE = {
         "_dash_clear": ("test_clear_registry.cscript:CLR-01",
                         "test_clear_registry.cscript:CLR-04"),
         # e2e: the card's value in the page.
+        # WP-33 33-06: dash image registers, refuses and is bounded.
+        "_dash_image": ("test_registry_collision.cscript:Q3306-1",
+                        "test_path_validation.cscript:Q3306-5"),
+        "_dash_image_cap": ("test_resource_limits.cscript:Q3306-6",),
         "_dash_kpi": ("test_e2e_kpi.cscript:P2-76",
                       "test_help_claims_4.cscript:HC4-01",
                       "test_gaps2_truth.cscript:KF-01"),

@@ -301,7 +301,9 @@ _PROGRAMS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts", "_dash_build",
              "_dash_contour_split",
              # WP-31 S34: yvarlabel() and the other options the plot
              # parser's syntax has no room for.
-             "_dash_label_split")
+             "_dash_label_split",
+             # WP-33 33-06: dash image's caption(), alt() and link().
+             "_dash_image")
 
 # Declared by `syntax' for internal plumbing; never typed by a user.  The
 # only exceptions to "every spelling dash accepts is documented", each with
@@ -641,9 +643,10 @@ class TestTheParsersFoundSomething:
         # 266 -> 265: WP-32 play() leaves the Not drawn entry.
         # 265 -> 265: WP-32 heatmap and outlines leave the Unsupported
         # entries for two entries of the contour paragraph.
-        assert len(found) == 265, (
-            f"{len(found)} options parsed out of dash.sthlp, 265 measured "
-            f"19oct2026: a reader of the parser lost a form, or the help "
+        # 265 -> 266: dash image's alt() (WP-33 33-06).
+        assert len(found) == 266, (
+            f"{len(found)} options parsed out of dash.sthlp, 266 measured "
+            f"21oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -733,7 +736,8 @@ class TestTheParsersFoundSomething:
         # 275 -> 277: H2t table and table2 declared (both parsers and
         # _dash_label_split)
         # 277 -> 278: H2l brush() declared by dash build's syntaxes
-        assert len(_ado_declarations()) == 278
+        # 278 -> 279: dash image's alt() (WP-33 33-06).
+        assert len(_ado_declarations()) == 279
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -915,8 +919,9 @@ class TestTheParsersFoundSomething:
         # 465 -> 466: WP-32 the Contour options entry goes, the contour
         # paragraph's heatmap and outlines entries come.
         # 466 -> 464: the $dash_max_cells and $dash_max_bytes rows removed (WP-33 33-15)
-        assert len(defs) == 464, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 464 "
+        # 464 -> 467: dash image's syntax line, Image panels section and $dash_max_images row (WP-33 33-06)
+        assert len(defs) == 467, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 467 "
             f"measured 21oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1375,4 +1380,6 @@ class TestInternalLinksResolve:
         # 121 -> 119: the hover() paragraph's link to Resource limits and
         # the data-limit paragraph's link to Description removed with the
         # size caps (WP-33 33-15)
-        assert len(refs) == 119 and len(set(refs)) == 44
+        # 119 -> 121 links, 44 -> 45 targets: the Image panels jump link
+        # (dash##image) and its link to Resource limits (WP-33 33-06).
+        assert len(refs) == 121 and len(set(refs)) == 45

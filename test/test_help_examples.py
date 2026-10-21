@@ -470,8 +470,9 @@ _PLAIN_CMD_LINE = re.compile(
     r"(?:\{cmd:(?:[^{}]|\{c(?:har)?\s+[^{}]*\})*\})+"
     r"(?:\{p_end\})?\s*$")
 _PLAIN_MENTION = re.compile(r"\{cmd:(dash\s[^{}]*)\}")
+# dash image joined the subcommands' bare names in WP-33 33-06.
 _NOT_A_COMMAND = re.compile(
-    r"^dash\s+(?:build|serve|kpi|clear)\s*$|^dash(?:\s+\w+)?\s*:")
+    r"^dash\s+(?:build|serve|kpi|clear|image)\s*$|^dash(?:\s+\w+)?\s*:")
 
 
 def _outside_syntax(name):

@@ -579,6 +579,13 @@ FUNCTIONS = {
  '_dash_ts_daily': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
  '_dash_keep_primary_ranges': 'test/test_help_claims_7.py::TestTheSecondAxisIsItsOwn::test_the_first_axis_is_scaled_to_its_own_layers',
  '_dash_kpi_card_html': 'test/test_scheme_review_fixes.py::test_the_carried_name_is_escaped',
+ # WP-33 33-06: the image panel.
+ '_dash_image_problem': 'test/test_image_panel.py::TestTheCheck::test_refusals',
+ '_dash_image_check': 'test/test_image_panel.py::TestTheCheck::test_a_missing_file_is_601_in_statas_words',
+ '_dash_resolve_images': 'test/test_image_panel.py::TestResolve::test_uri_and_no_path',
+ '_dash_image_link_ok': 'test/test_image_panel.py::TestTheMarkup::test_link_wraps_the_img',
+ '_dash_image_html': 'test/test_image_panel.py::TestTheMarkup::test_escaping',
+ '_dash_image_div': 'test/test_image_panel.py::TestTheMarkup::test_the_div',
  '_dash_kpi_date_valued': 'test/test_server_layer_defects.py::TestTheKpiFormatHelpers::test_a_date_valued_statistic_is_shown_as_a_date',
  '_dash_kpi_keys': 'test/test_served_bs_layout.py::TestTheServedDocument::test_auto_bs',
  '_dash_axis_date_kind': 'test/test_served_dates.py::TestANumberOnADateAxisIsAStataDate::test_xline_on_a_td_axis_is_drawn_at_04jan2001',

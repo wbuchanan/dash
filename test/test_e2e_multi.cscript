@@ -264,6 +264,44 @@ assert r(found) == 1
 display "P1B-71 PASS: a placement layout naming a graph that begins with bs builds as placed"
 
 // ================================================================
+// Q3306-8 (WP-33 33-06) -- dash build with an image panel in tabs()
+// ================================================================
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(g1)
+dash image using "fixtures/svg_truth_smoke.svg", name(im1) caption("Twoway's picture") link(scatter.html)
+tempfile q8
+local q8f "`q8'.html"
+capture erase "`q8f'"
+capture noisily dash build, saving("`q8f'") replace nobrowser tabs(Dash: g1 / Twoway: im1)
+local q8a = _rc
+cert_file_has "`q8f'", needle("data:image/svg+xml;base64,")
+local q8u = r(found)
+cert_file_has "`q8f'", needle("dash-image")
+local q8c = r(found)
+cert_file_has "`q8f'", needle("svg_truth_smoke")
+local q8p = r(found)
+cert_file_has "`q8f'", needle("scatter.html")
+local q8l = r(found)
+capture erase "`q8f'"
+// A page of image panels alone, as the gallery's index page is.
+dash clear
+dash image using "fixtures/svg_truth_smoke.svg", name(a1) link(a.html)
+dash image using "fixtures/svg_truth_smoke.svg", name(a2) link(b.html)
+capture noisily dash build, saving("`q8f'") replace nobrowser
+local q8b = _rc
+cert_file_has "`q8f'", needle("b.html")
+local q8i = r(found)
+capture erase "`q8f'"
+dash clear
+mata: st_local("q8left", invtokens(st_dir("global", "macro", "dash_img_*")'))
+if `q8a' != 0 | `q8u' != 1 | `q8c' != 1 | `q8p' != 0 | `q8l' != 1 | `q8b' != 0 | `q8i' != 1 | "`q8left'" != "" {
+    display as error "Q3306-8 FAIL: rc `q8a' `q8b', uri `q8u' `q8c', path `q8p', link `q8l' `q8i', left `q8left'"
+}
+else display "Q3306-8 PASS: dash build draws an image panel from its data address, and dash clear removes it"
+assert `q8a' == 0 & `q8u' == 1 & `q8c' == 1 & `q8p' == 0 & `q8l' == 1 & `q8b' == 0 & `q8i' == 1 & "`q8left'" == ""
+
+// ================================================================
 // Cleanup
 // ================================================================
 dash clear

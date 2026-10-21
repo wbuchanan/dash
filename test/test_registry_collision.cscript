@@ -1469,6 +1469,81 @@ cert_file_has "`pg'", needle("Graph b1")
 assert r(found) == 0
 display "REG-43 PASS: AC-04.3 -- the build names b1, the entry it skips the graph of, and draws its KPI card"
 
+// ================================================================
+// Q3306-1..3, Q3306-10 (WP-33 33-06) -- dash image shares the registry
+// ================================================================
+dash clear
+qui sysuse auto, clear
+local q6svg "fixtures/svg_truth_smoke.svg"
+
+// Q3306-1: an image registers, and name(, replace) replaces it in place.
+capture noisily dash image using "`q6svg'", name(im1) caption("First")
+local q1a = _rc
+capture noisily dash image using "`q6svg'", name(im1, replace) caption("Second")
+local q1b = _rc
+local q1n : word count ${dash_graph_registry}
+mata: st_local("q1ok", strofreal(st_global("dash_img_im1") == "1" & ///
+    st_global("dash_img_im1__cap") == "Second" & ///
+    st_global("dash_img_im1__alt") == "Second" & ///
+    st_global("dash_img_im1__lnk") == "" & ///
+    pathisabs(st_global("dash_img_im1__pth"))))
+if `q1a' != 0 | `q1b' != 0 | `q1n' != 1 | `q1ok' != 1 {
+    display as error "Q3306-1 FAIL: rc `q1a' `q1b', registry `q1n', fields `q1ok'"
+}
+else display "Q3306-1 PASS: an image registers and name(, replace) replaces it"
+assert `q1a' == 0 & `q1b' == 0 & `q1n' == 1 & `q1ok' == 1
+
+// Q3306-2: a taken name is refused without replace, by an image, a KPI
+// and a graph alike, and the image is kept.
+capture noisily dash image using "`q6svg'", name(im1)
+local q2a = _rc
+capture noisily dash kpi mean(mpg), name(im1) title("K")
+local q2b = _rc
+capture noisily dash scatter mpg weight, name(im1)
+local q2c = _rc
+if `q2a' != 198 | `q2b' != 198 | `q2c' != 198 | "${dash_img_im1}" != "1" {
+    display as error "Q3306-2 FAIL: rc `q2a' `q2b' `q2c'"
+}
+else display "Q3306-2 PASS: a taken image name is refused without replace"
+assert `q2a' == 198 & `q2b' == 198 & `q2c' == 198 & "${dash_img_im1}" == "1"
+
+// Q3306-3: a graph registered under the image's name with replace
+// retires every global the image owned.
+capture noisily dash scatter mpg weight, name(im1, replace)
+local q3a = _rc
+mata: st_local("q3left", invtokens(st_dir("global", "macro", "dash_img_*")'))
+local q3n : word count ${dash_graph_registry}
+local q3j : strlen global dash_json_im1
+if `q3a' != 0 | "`q3left'" != "" | `q3n' != 1 | `q3j' == 0 {
+    display as error "Q3306-3 FAIL: rc `q3a', left `q3left', registry `q3n'"
+}
+else display "Q3306-3 PASS: a graph under an image's name retires the image"
+assert `q3a' == 0 & "`q3left'" == "" & `q3n' == 1 & `q3j' > 0
+
+// Q3306-10: an 18-character name registers, a 19-character one is refused
+// in dash kpi's words and leaves no global.
+dash clear
+local n18 "abcdefghijklmnopqr"
+local n19 "abcdefghijklmnopqrs"
+capture noisily dash image using "`q6svg'", name(`n18')
+local q10a = _rc
+local q10l = strlen("dash_img_`n18'__lnk")
+local q10lg "`c(tmpdir)'dash_reg_q3306_10.log"
+capture erase "`q10lg'"
+quietly log using "`q10lg'", replace text name(_q10log)
+capture noisily dash image using "`q6svg'", name(`n19')
+local q10b = _rc
+quietly log close _q10log
+cert_log_has "`q10lg'", needle("dash image: invalid name 'abcdefghijklmnopqrs'. Names must start with a letter or underscore, contain only letters, digits, and underscores, and be at most 18 characters.")
+local q10w = r(count)
+mata: _dash_item_globals(st_local("n19"), "_left")
+capture erase "`q10lg'"
+if `q10a' != 0 | `q10l' != 32 | "${dash_img_`n18'}" != "1" | `q10b' != 198 | `q10w' != 1 | "`_left'" != "" {
+    display as error "Q3306-10 FAIL: rc `q10a' `q10b', len `q10l', said `q10w', left `_left'"
+}
+else display "Q3306-10 PASS: an image name is at most 18 characters"
+assert `q10a' == 0 & `q10l' == 32 & `q10b' == 198 & `q10w' == 1 & "`_left'" == ""
+
 dash clear
 macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh

@@ -2344,6 +2344,8 @@ def _report_dataset_shape(rows, cols, mode, stacklevel=3, extra=0):
 # build_options["limits"]; test_resource_limits.py checks the two agree.
 _DASH_LIMITS = {
     "graphs":         (100, 1_000, "dash_max_graphs"),
+    # Image panels in the registry (WP-33 33-06); no byte bound (A-18).
+    "images":         (100, 1_000, "dash_max_images"),
     "plots":          (100, 1_000, "dash_max_plots"),
     "filter_options": (1_000, 100_000, "dash_max_filter_options"),
     "by_groups":      (100, 1_000, "dash_max_by_groups"),
@@ -4810,6 +4812,175 @@ def _dash_attach_function_points(spec):
     return out
 
 
+def _dash_image_problem(data):
+    """What makes *data* (an SVG file's bytes) unfit for an image panel, as
+    the words of a refusal ("a script element"), or None (WP-33 33-06).
+
+    Refused rather than stripped: text that is not UTF-8 or not XML, a root
+    other than ``{http://www.w3.org/2000/svg}svg``, a DOCTYPE or entity
+    declaration, a stylesheet instruction, a ``script`` or
+    ``foreignObject`` element in any namespace, an attribute named ``on*``
+    in any case, an ``href``/``xlink:href`` other than ``#id`` or a
+    base64 ``data:image/(png|jpeg|gif|svg+xml)`` address, a ``url(`` not
+    followed by ``#`` in an attribute or a style element, an animation
+    that sets an href, or ``javascript:`` or ``@import`` anywhere.  The
+    whole file is read: no file is refused for its size (DECISIONS A-18).
+    """
+    import re
+    import xml.etree.ElementTree as ET
+    try:
+        text = bytes(data).decode("utf-8")
+    except (UnicodeDecodeError, TypeError):
+        return "text that is not UTF-8"
+    low = text.lower()
+    for needle, what in (("<!doctype", "a DOCTYPE declaration"),
+                         ("<!entity", "an entity declaration"),
+                         ("<?xml-stylesheet", "a stylesheet instruction"),
+                         ("javascript:", "a javascript: address"),
+                         ("@import", "an @import rule")):
+        if needle in low:
+            return what
+    try:
+        root = ET.fromstring(bytes(data))
+    except ET.ParseError:
+        return "text that is not well-formed XML"
+    if root.tag != "{http://www.w3.org/2000/svg}svg":
+        return "a root element other than svg"
+    ext_url = re.compile(r"url\(\s*(?![\s'\"]*#)", re.I)
+    data_href = re.compile(r"data:image/(png|jpeg|gif|svg\+xml);base64,"
+                           r"[A-Za-z0-9+/=\s]*")
+    for el in root.iter():
+        local = str(el.tag).rsplit("}", 1)[-1].lower()
+        if local == "script":
+            return "a script element"
+        if local == "foreignobject":
+            return "a foreignObject element"
+        if local == "style" and ext_url.search(el.text or ""):
+            return "an external reference"
+        for key, val in el.attrib.items():
+            name = str(key).rsplit("}", 1)[-1].lower()
+            if name.startswith("on"):
+                return "an event handler"
+            if name == "href" and not (
+                    val.startswith("#") or data_href.fullmatch(val)):
+                return "an external reference"
+            if ext_url.search(val):
+                return "an external reference"
+            if (local in ("set", "animate") and name == "attributename"
+                    and val.rsplit(":", 1)[-1].lower() == "href"):
+                return "an external reference"
+    return None
+
+
+def _dash_image_check(path):
+    """An image panel's file, checked: ``""``, or the refusal prefixed by
+    its return code, ``"601 file <name> not found"`` or ``"198 dash image:
+    <name> holds <what>; ..."`` (WP-33 33-06).  dash.ado calls it when the
+    image is registered and again at build; ``<name>`` is the file's base
+    name, which dash.ado echoes through ``_dash_say``."""
+    import os
+    p = str(path or "")
+    base = os.path.basename(p) or p
+    try:
+        with open(p, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return f"601 file {base} not found"
+    what = _dash_image_problem(data)
+    if what:
+        return (f"198 dash image: {base} holds {what}; an image panel takes "
+                f"an SVG with no script, event handler, foreignObject or "
+                f"external reference.")
+    return ""
+
+
+def _dash_resolve_images(images):
+    """The spec's ``images`` with each file read, checked and replaced by
+    its address, ``uri`` = ``data:image/svg+xml;base64,<b64>``, keeping
+    ``name``, ``caption``, ``alt`` and ``link`` (WP-33 33-06).  Both modes
+    call it on the spec they load, so the served app's embedded spec
+    carries the address and no path.  A refused file raises
+    ``DashLimitError`` with ``_dash_image_check``'s words."""
+    import base64
+    out = []
+    for im in images or []:
+        if not isinstance(im, dict):
+            continue
+        err = _dash_image_check(im.get("path", ""))
+        if err:
+            raise DashLimitError(err.split(" ", 1)[1])
+        with open(str(im.get("path", "")), "rb") as fh:
+            data = fh.read()
+        out.append({"name": str(im.get("name", "") or ""),
+                    "caption": str(im.get("caption", "") or ""),
+                    "alt": str(im.get("alt", "") or ""),
+                    "link": str(im.get("link", "") or ""),
+                    "uri": "data:image/svg+xml;base64,"
+                           + base64.b64encode(data).decode("ascii")})
+    return out
+
+
+def _dash_image_link_ok(link):
+    """True when *link* is the file name of a page in the same folder,
+    ``^[A-Za-z0-9_-]+\\.html$`` read in full (no scheme, slash, ``..`` or
+    trailing line feed) -- the one rule dash.ado's ``link()`` and the
+    panel's markup apply (WP-33 33-06, DECISIONS A-17)."""
+    import re
+    if not isinstance(link, str):
+        return False
+    return re.fullmatch(r"[A-Za-z0-9_-]+\.html", link) is not None
+
+
+def _dash_image_html(uri, caption, alt, link=""):
+    """An image panel's markup: ``<figure class="dash-image" role="group"
+    aria-label=alt><img src=uri alt=alt width="100%"><figcaption>caption
+    </figcaption></figure>``, the caption and alt escaped, no figcaption
+    when the caption is empty, and with *link* the ``<img>`` alone wrapped
+    in ``<a href=link>`` (WP-33 33-06).  *uri* must be a base64 SVG data
+    address and *link* empty or a page name (``_dash_image_link_ok``),
+    else ``ValueError``."""
+    import html
+    import re
+    uri = str(uri or "")
+    if not re.fullmatch(r"data:image/svg\+xml;base64,[A-Za-z0-9+/=]+", uri):
+        raise ValueError("dash image: the picture is not an SVG data address")
+    link = "" if link is None else link
+    if link != "" and not _dash_image_link_ok(link):
+        raise ValueError("dash image: link() takes the file name of a page "
+                         "in the same folder")
+    a = html.escape(str(alt or ""), quote=True)
+    img = f'<img src="{uri}" alt="{a}" width="100%">'
+    if link:
+        img = f'<a href="{html.escape(link, quote=True)}">{img}</a>'
+    cap = str(caption or "")
+    fc = (f"<figcaption>{html.escape(cap, quote=True)}</figcaption>"
+          if cap else "")
+    return (f'<figure class="dash-image" role="group" aria-label="{a}">'
+            f"{img}{fc}</figure>")
+
+
+def _dash_image_div(image):
+    """One image panel's Div, from a resolved ``images`` entry (WP-33
+    33-06): ``_dash_image_html`` in a stretch-width Div with MathJax off,
+    named for assistive technology as a KPI card is.  alt() defaults to
+    the caption, else the name.  Both modes build the panel here."""
+    from bokeh.models import Div
+    im = image if isinstance(image, dict) else {}
+    name = str(im.get("name", "") or "")
+    caption = str(im.get("caption", "") or "")
+    alt = str(im.get("alt", "") or "") or caption or name
+    div = Div(text=_dash_image_html(im.get("uri", ""), caption, alt,
+                                    im.get("link") or ""),
+              sizing_mode="stretch_width", disable_math=True)
+    return _dash_aria(div, alt, role="group")
+
+
+#: dash image's two checks, which dash.ado calls by name at registration
+#: and at build (WP-33 33-06).
+_DASH_ADO_ENTRY_POINTS = _DASH_ADO_ENTRY_POINTS + (_dash_image_check,
+                                                   _dash_image_link_ok)
+
+
 def _dash_cap_spec(spec, limits):
     """The spec with at most ``graphs`` items and ``plots`` plots a graph,
     and each item under a name of its own (``_dash_named_once``).
@@ -4844,6 +5015,41 @@ def _dash_cap_spec(spec, limits):
             f"{_dash_limit_hint('graphs', 'draw more', start=True)}.",
             UserWarning, stacklevel=2)
 
+    # Image panels (WP-33 33-06): under a name no graph or card has and
+    # dash does not keep, and at most limits["images"] of them, the first
+    # in the spec's order -- the registry's.  A spec without the key is
+    # left without it.
+    if "images" in spec:
+        taken = {_dash_item_name(i) for i in list(graphs) + list(kpis)}
+        images, refused = [], []
+        for im in spec.get("images") or []:
+            if not isinstance(im, dict):
+                continue
+            iname = str(im.get("name") or "")
+            if (not iname or _dash_reserved_name(iname)
+                    or iname in _DASH_KEYWORD_NAMES or iname in taken):
+                refused.append(iname)
+                continue
+            taken.add(iname)
+            images.append(im)
+        if refused:
+            one = len(refused) == 1
+            warnings.warn(
+                f"dash: image name{'' if one else 's'} "
+                f"{_dash_listed_names(refused)} "
+                f"{'is' if one else 'are'} another item's or kept by dash; "
+                f"{'that image is' if one else 'those images are'} not "
+                f"drawn.", UserWarning, stacklevel=2)
+        if len(images) > limits["images"]:
+            warnings.warn(
+                f"dash: {len(images):,} image panels, more than the "
+                f"{limits['images']:,} a dashboard draws; the first "
+                f"{limits['images']:,} in the registry are drawn. "
+                f"{_dash_limit_hint('images', 'draw more', start=True)}.",
+                UserWarning, stacklevel=2)
+            images = images[:limits["images"]]
+        out["images"] = images
+
     capped = []
     for g in graphs:
         plots = g.get("plots") or []
@@ -4869,10 +5075,14 @@ def _dash_cap_spec(spec, limits):
     def _item_names(gs, ks):
         return ({str((g.get("graph_options") or {}).get("name")
                      or g.get("name") or "") for g in gs}
-                | {str(k.get("name") or "") for k in ks}) - {""}
+                | {str(k.get("name") or "") for k in ks
+                   if isinstance(k, dict)}) - {""}
     _layout, _problem = _dash_layout_check(
-        bo.get("layout", ""), _item_names(capped, kpis),
-        _item_names(spec.get("graphs") or [], spec.get("kpis") or []))
+        bo.get("layout", ""),
+        _item_names(capped, kpis + list(out.get("images") or [])),
+        _item_names(spec.get("graphs") or [],
+                    list(spec.get("kpis") or [])
+                    + list(spec.get("images") or [])))
     if _problem:
         warnings.warn(_problem, UserWarning, stacklevel=2)
     if _layout != bo.get("layout", ""):
@@ -51143,11 +51353,13 @@ def _dash_graph_options_of(graphs, name):
     return {}
 
 
-def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
+def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
+                      image_divs=None):
     """The ONE renderable a registered name owns, or None.
 
     A faceted graph is one cell: its panels in a sub-grid that honours
-    by(, cols(#)).  A plain graph is its figure.  A KPI is its card.  The
+    by(, cols(#)).  A plain graph is its figure.  A KPI is its card, and
+    an image panel its Div (``image_divs``, WP-33 33-06).  The
     grid AND the tab panels call this,
     in both modes -- the saved tabs used to flatten a faceted graph's
     panels into the tab's own grid, ignoring cols(), while the saved grid
@@ -51242,7 +51454,9 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         tbl = getattr(figures[name], "_dash_table", None)
         return column(figures[name], *tbl, sizing_mode="stretch_width") \
             if tbl else figures[name]
-    return kpi_divs.get(name)
+    if name in kpi_divs:
+        return kpi_divs[name]
+    return (image_divs or {}).get(name)
 
 
 def _dash_fxy_size(item, graph_opts):
@@ -61736,6 +61950,11 @@ class DashRenderer:
         # Each function layer's stored points onto its plot (WP-29 P0.6),
         # before anything is capped or drawn.
         self.master_spec = _dash_attach_function_points(self.master_spec)
+        # Image panels read, checked and drawn from data addresses (WP-33
+        # 33-06); a spec without images gains no key.
+        if "images" in self.master_spec:
+            self.master_spec["images"] = _dash_resolve_images(
+                self.master_spec.get("images"))
         self.limits: dict = _dash_limits(
             self.master_spec.get("build_options", {}))
         self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
@@ -61797,6 +62016,7 @@ class DashRenderer:
         self.sources: dict[str, ColumnDataSource] = {}   # name → CDS
         self.figures: dict[str, Any] = {}                # name → Figure
         self.kpi_divs: dict[str, Div] = {}               # name → Div
+        self.image_divs: dict[str, Div] = {}             # name → Div
         self.filter_widgets: list = []
         self.filter_callbacks: list = []
         # WP-31 H1: the error status Div, when the page has a filter.
@@ -63858,7 +64078,8 @@ class DashRenderer:
                 # button writes the one item it holds, named after it:
                 # g1.png, not a dashboard.png per cell.
                 cell = _dash_layout_cell(name, self.figures, self._facet_map,
-                                         self.kpi_divs, _gopts_of)
+                                         self.kpi_divs, _gopts_of,
+                                         self.image_divs)
                 if cell is None:
                     continue
                 all_models.append(_dash_name_save(cell, name))
@@ -64155,7 +64376,8 @@ class DashRenderer:
 
         def _cell_of(name):
             return _dash_layout_cell(name, self.figures, self._facet_map,
-                                     self.kpi_divs, _gopts_of)
+                                     self.kpi_divs, _gopts_of,
+                                     self.image_divs)
 
         tabs_widget, placed = _dash_tab_panels(tabs_spec, _cell_of)
         placed_keys: set[str] = set()
@@ -65765,7 +65987,7 @@ class DashRenderer:
         # panels and the generated app use as well.
         cells: list[Any] = [
             _dash_layout_cell(name, self.figures, self._facet_map,
-                              self.kpi_divs, _gopts_of)
+                              self.kpi_divs, _gopts_of, self.image_divs)
             for name in _grid_names
         ]
 
@@ -66043,6 +66265,10 @@ class DashRenderer:
 
         # ---- 4. Build KPI Divs ----
         self._build_kpi_html(kpis)
+        # The image panels' Divs (WP-33 33-06), by the builder the served
+        # app runs as well.
+        images = list(self.master_spec.get("images") or [])
+        self.image_divs = {im["name"]: _dash_image_div(im) for im in images}
 
         # ---- 5. Build filter widgets and wire callbacks ----
         filter_row_widgets = self._build_filter_widgets(filters_cfg, link_names, kpis)
@@ -66074,7 +66300,7 @@ class DashRenderer:
         # every layout -- so the same spec placed a card above its graph
         # when saved and below it when served.
         all_names: list[str] = _dash_layout_order(
-            build.get("registry", ""), graphs, kpis)
+            build.get("registry", ""), graphs, kpis + images)
         kpi_names: list[str] = [n for n in all_names
                                 if _dash_kpi_keys(n, self.kpi_divs)]
 
@@ -66425,6 +66651,10 @@ class ServerAppBuilder:
         # Each function layer's stored points onto its plot (WP-29 P0.6),
         # before the spec is capped and embedded: the app draws them.
         self.spec = _dash_attach_function_points(self.spec)
+        # Image panels read here, before the spec is embedded: the app
+        # draws their data addresses and reads no file (WP-33 33-06).
+        if "images" in self.spec:
+            self.spec["images"] = _dash_resolve_images(self.spec.get("images"))
 
         with open(data_path, "r", encoding="utf-8") as f:
             self._raw_data_str: str = f.read()
@@ -67460,6 +67690,9 @@ class ServerAppBuilder:
                          "_dash_apply_regions",
                          "_resolve_kpi_color", "_sanitize_css_color",
                          "_dash_kpi_card_html",
+                         # An image panel's markup and Div (WP-33 33-06).
+                         "_dash_image_html", "_dash_image_div",
+                         "_dash_image_link_ok",
                          "_dash_warn_filter_missing", "_dash_warn_filter_type",
                          # The filter() reader and the two helpers it calls.
                          "_dash_filter_split", "_dash_filter_label",
@@ -70536,6 +70769,9 @@ class ServerAppBuilder:
             "        # WP-31 K6: the card is a named group, as the saved one.",
             "        _dash_aria(kpi_divs[kname], _dash_graph_text_plain(ktitle or '') or kname,",
             "                   role='group')",
+            "    # Image panels, by the saved page's own builder (WP-33 33-06).",
+            "    image_divs = {im.get('name', ''): _dash_image_div(im)",
+            "                  for im in (spec.get('images') or [])}",
             "",
             "    # Reverse map: faceted gname → original gname (for qualifier lookup).",
             "    # Faceted graph names (e.g. 'g1 — 0') are children of original names;",
@@ -71360,7 +71596,8 @@ class ServerAppBuilder:
             "    registry = bo.get('registry', '') or ''",
             "    # The registry as typed, graphs and KPI cards alike -- the",
             "    # saved renderer's rule as well now.",
-            "    all_names = _dash_layout_order(registry, graphs, kpi_defs)",
+            "    all_names = _dash_layout_order(registry, graphs,",
+            "                                   kpi_defs + (spec.get('images') or []))",
             '',
             '    def _gopts_of(name):',
             '        return _dash_graph_options_of(graphs, name)',
@@ -71368,7 +71605,8 @@ class ServerAppBuilder:
             '    def _dash_cell(name):',
             '        """The renderable for one registered name, or None -- the',
             '        resolver the saved grid and tabs use as well."""',
-            '        return _dash_layout_cell(name, figures, _facet_map, kpi_divs, _gopts_of)',
+            '        return _dash_layout_cell(name, figures, _facet_map, kpi_divs, _gopts_of,',
+            '                                 image_divs)',
             '',
             '    def _dash_placements(spec_str):',
             '        """Placements, through the saved renderer\'s own parser.',

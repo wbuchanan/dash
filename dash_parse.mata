@@ -537,7 +537,8 @@
 *!       The globals one registry item owns that Stata holds, by exact name:
 *!       dash_json_<name>, dash_spec_<name>, dash_fpts_<name>,
 *!       dash_kpi_<name> and dash_kpi_<name>__<field> for each field
-*!       _dash_kpi_fields() lists.
+*!       _dash_kpi_fields() lists, and an image panel's dash_img_<name>
+*!       and dash_img_<name>__pth, __cap, __alt and __lnk.
 *!
 *!   _dash_option_names(in_macro, out_macro)
 *!       The option names in the option text held by the local in_macro,
@@ -6009,6 +6010,10 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     fld = _dash_kpi_fields()
     own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tu_" + nm,
            "dash_kpi_" + nm)
+    // An image panel's marker and fields (WP-33 33-06).
+    own = own, ("dash_img_" + nm, "dash_img_" + nm + "__pth",
+                "dash_img_" + nm + "__cap", "dash_img_" + nm + "__alt",
+                "dash_img_" + nm + "__lnk")
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]
     }

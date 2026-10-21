@@ -17,6 +17,7 @@
 {viewerjumpto "Data tables"       "dash##table"}{...}
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
+{viewerjumpto "Image panels"      "dash##image"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
 {viewerjumpto "Temporary files"   "dash##tempfiles"}{...}
 {viewerjumpto "Resource limits"   "dash##limits"}{...}
@@ -85,6 +86,11 @@
 {cmd:color(}{it:color}{cmd:)}
 {cmd:bgcolor(}{it:color}{cmd:)}
 {cmdab:upd:ate}{cmd:(}{it:mode}{cmd:)}]
+
+{pstd}{ul:Image panel}{p_end}
+
+{p 8 17 2}
+{cmd:dash image using} {it:filename}{cmd:,} {cmd:name(}{it:name}{cmd:)} [{cmd:caption(}{it:text}{cmd:)} {cmd:alt(}{it:text}{cmd:)} {cmd:link(}{it:page}{cmd:.html)}]
 
 {pstd}{ul:Build dashboard (standalone HTML)}{p_end}
 
@@ -2380,6 +2386,44 @@ panel.  For a statistic of each group, register a card per group:
 {phang2}{cmd:. dash kpi mean(mpg) if foreign == 0, title("Domestic") name(kdom)}{p_end}
 
 
+{marker image}
+{title:Image panels}
+
+{pstd}
+{cmd:dash image} {cmd:using} {it:filename}{cmd:,} {cmd:name(}{it:name}{cmd:)}
+registers a picture, an SVG file, that {cmd:layout()} and {cmd:tabs()}
+place by its name as they place a graph or a KPI card, in a saved page and
+a served app alike.  {cmd:caption()} is shown beneath the picture and
+{cmd:alt()}, which defaults to the caption, else the name, is its text for
+a screen reader; both are shown as typed, never as markup.  {cmd:name()}
+follows the rules of a KPI card's: a letter or underscore first, then
+letters, digits and underscores, at most 18 characters, and
+{cmd:name(}{it:name}{cmd:, replace)} to reuse a name.  {cmd:dash clear}
+removes image panels with the rest of the registry.
+
+{pstd}
+The file is checked when it is registered and read again by
+{cmd:dash build} and {cmd:dash serve}.  It must be well-formed SVG with no
+{cmd:script} or {cmd:foreignObject} element, no event-handler attribute
+({cmd:onload} and the like), no DOCTYPE or entity declaration and no
+external reference: a link or {cmd:url()} may only point inside the file
+or hold an embedded PNG, JPEG, GIF or SVG image.  A file that breaks one of
+these rules is refused with {cmd:r(198)}, and a missing file with
+{cmd:r(601)}.  No file is refused for its size; only the number of image
+panels is bounded, by {cmd:$dash_max_images} (see
+{help dash##limits:Resource limits}).
+
+{pstd}
+The page draws the picture inside an image element, which runs no script
+and loads nothing from outside the page.  {cmd:link(}{it:page}{cmd:.html)}
+makes the picture a link to another page in the same folder: the text must
+be a file name made of letters, digits, {cmd:_} or {cmd:-}, then
+{cmd:.html} -- no folder, no {cmd:..} and no address -- and anything else
+is refused with {cmd:r(198)}.  A saved page and a served app carry the same
+relative link; beside a saved page it opens the page in the same folder,
+while in a served app it resolves against the app's own address.
+
+
 {marker server_mode}
 {title:Server Mode}
 
@@ -2726,6 +2770,9 @@ Within the file, data values are base64-encoded so that no data content can
 affect the Python source's syntax, and every user-supplied string reaches
 the page as a Bokeh model property or as escaped text inside the markup dash
 writes, never as markup of its own.
+An image panel shows an SVG file that dash has checked, inside an image
+element, which runs no script; its only link is the {cmd:link()} page in
+the same folder.
 Text drawn on a graph -- a title, subtitle, note, caption, axis title,
 tick label, legend key, {cmd:by()} panel title or colour key -- is never
 handed to a TeX engine: {cmd:$$}, {cmd:\(} and {cmd:\[} in it are drawn
@@ -2948,6 +2995,7 @@ of the session:
     100, at most 1,000.  A new name past it is refused with
     {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
     is refused with {cmd:r(198)} when larger.{p_end}
+{synopt:{cmd:$dash_max_images}}image panels in the registry; default 100, at most 1,000.  Over it {cmd:dash image} is refused with {cmd:r(134)}.{p_end}
 {synopt:{cmd:$dash_max_plots}}plots in one graph, where each y variable of
     {cmd:scatter y1 y2 x} is one; default 100, at most 1,000.  Refused with
     {cmd:r(134)}.{p_end}
