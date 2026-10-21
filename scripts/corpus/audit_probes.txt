@@ -1,0 +1,74 @@
+# Frozen from the drop-in audit's appendix on 21oct2026; regenerate only with --freeze-audit.
+plot:PT-8	sysuse auto, clear	twoway scatter[aw=price] mpg weight
+ECO-1	sysuse auto, clear	twoway line mpg rep78, name(gc)
+ECO-8	sysuse auto, clear	twoway kdensity mpg, normal
+DT-08	sysuse auto, clear	twoway dot mpg weight, recast(line)
+DT-11	sysuse auto, clear	scatter mpg turn weight, mlabel(t*)
+DT-18	sysuse auto, clear	twoway scatter mpg weight, lwidth(-1)
+DT-20	sysuse auto, clear	twoway scatter mpg weight, symbol(T)
+TR-3	sysuse auto, clear	twoway scatter weight length, by(foreign)
+TR-3	sysuse auto, clear	tw histogram le, discrete by(region, total)
+TR-4	sysuse auto, clear	twoway area d.gnp96 date
+TR-4	sysuse auto, clear	twoway line d.gnp96 date
+TR-5	sysuse auto, clear	twoway qfitci mpg weight, stdf || scatter mpg weight
+TR-6	sysuse auto, clear	scatter open close, msize(*.25) mcolor(*.6) || function y=x, range(close) yvarlab("y=x")
+TR-24	sysuse auto, clear	twoway scatter mpg weight, by(foreign)
+CV-6	sysuse auto, clear	scatter mpg weight, colorvar(rep78) || scatter price weight, colorvar(foreign) colorallowmultiple
+CV-12	sysuse auto, clear	scatter mpg weight if rep78==3, colorvar(rep78) colorlevels(3)
+CV-13	sysuse auto, clear	line mpg weight, colorvar(trunk) zlabel(#3) sort
+BY-27	sysuse auto, clear	twoway (scatter mpg weight) (function y=40-x/200, range(weight)), by(foreign)
+BY-29	sysuse auto, clear	twoway (scatter mpg weight) (lfit mpg weight), by(foreign) scale(1.5)
+BY-30	sysuse auto, clear	line mpg weight, sort by(foreign)
+# ---- hand-added: the appendix's unquoted prose probes (section 33-02, D-33-02.j); --freeze-audit keeps every line below ----
+plot:PT-6	sysuse auto, clear	twoway tsline mpg
+basic:PT-3	sysuse auto, clear	scatter mpg price weight in 1/5, mlabel(t*)
+basic:PT-4	sysuse auto, clear	line mpg weight
+basic:PT-8	sysuse auto, clear	scatter mpg weight, omitanymiss omitallmiss
+stat:PT-7	sysuse auto, clear	twoway lowess mpg weight, m
+stat:PT-12	sysuse auto, clear	twoway lfit mpg weight, xtransform(X^2) n(7)
+stat:PT-14	sysuse auto, clear	twoway histogram mpg, bw(1)
+stat:PT-16	sysuse auto, clear	twoway lpolyci mpg weight, degree(3)
+stat:PT-16	sysuse auto, clear	twoway lpolyci mpg weight [fw=rep78], degree(2)
+stat:PT-21	sysuse auto, clear	twoway lowess mpg weight, mean noweight
+AX-2	sysuse auto, clear	scatter mpg length, by(foreign)
+AX-2	sysuse auto, clear	scatter mpg price, by(foreign)
+AX-2	sysuse auto, clear	scatter mpg displacement, by(foreign)
+AX-3	sysuse auto, clear	twoway kdensity price, by(foreign)
+AX-3	sysuse auto, clear	scatter price mpg, by(foreign)
+AX-4	sysuse auto, clear	twoway histogram mpg
+AX-4	sysuse auto, clear	twoway histogram price
+BY-2	sysuse auto, clear	scatter mpg weight, scale(1.5) by(foreign)
+BY-5	sysuse auto, clear	scatter mpg weight, aspectratio(1) by(foreign, shrink)
+BY-6	sysuse auto, clear	scatter mpg weight, by(, total)
+BY-14	sysuse auto, clear	scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend by(foreign, plegend(on))
+BY-20	sysuse auto, clear	scatter mpg weight, aspectratio(1) by(foreign)
+syn:SD-1	sysuse auto, clear	twoway (scatter mpg weight) line mpg weight
+syn:SD-13	sysuse auto, clear	twoway (scatter mpg weight || line mpg weight)
+syn:SD-13	sysuse auto, clear	twoway (scatter mpg weight || line mpg weight),
+syn:SD-19	sysuse auto, clear	scatter mpg weight [fw=0], nodraw
+VF-1	sysuse auto, clear	twoway histogram rep78, discrete
+DT-27	sysuse auto, clear	twoway kdensity mpg
+sil:SD-8	sysuse auto, clear	twoway scatter mpg weight, title(T) notitling
+sil:SD-10	sysuse auto, clear	twoway scatter mpg weight, xlabel(0(2)5000)
+sil:SD-11	sysuse auto, clear	twoway scatter mpg weight, msize(1500)
+RH-6	sysuse auto, clear	twoway histogram mpg, recast(bar)
+RH-11	sysuse auto, clear	twoway histogram mpg, recast(li)
+RH-13	sysuse auto, clear	twoway (scatter mpg weight) (kdensity mpg, horizontal xaxis(2))
+BY-26	sysuse auto, clear	scatter mpg weight, by(foreign, yrescale) xscale(range(0))
+PIC-3	sysuse auto, clear	twoway (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight)
+MS-1	sysuse auto, clear	scatter mpg weight, yvarlabel("Q") yvarlabel("R")
+MS-2	sysuse auto, clear	twoway kdensity mpg, xvarlabel("M") yvarlabel("D")
+MS-3	sysuse auto, clear	scatter mpg weight, yvarlabel("")
+MS-3	sysuse auto, clear	scatter mpg price weight, yvarlabel("" "B")
+MS-3	sysuse auto, clear	scatter mpg price weight, yvarlabel("A" "")
+MS-4	sysuse auto, clear	twoway (scatter mpg weight) (scatter mpg weight, yvarlabel("B"))
+MS-4	sysuse auto, clear	twoway (scatter mpg weight, yvarlabel("A")) (scatter mpg length, yvarlabel("B"))
+MS-5	sysuse auto, clear	scatter mpg weight in 1/5, mlabel(mpg) yvarformat(%9.2f)
+MS-11	sysuse auto, clear	twoway (scatter mpg weight) (scatter price length, yaxis(2))
+MS-11	sysuse auto, clear	twoway (scatter mpg weight) (scatteri 20 3000 25 4000, yaxis(2))
+MS-11	sysuse auto, clear	twoway (scatter mpg weight) (scatter mpg length, yaxis(2)) (scatter price weight, yaxis(2))
+MS-12	sysuse auto, clear	scatter mpg weight, yaxis(2)
+MS-12	sysuse auto, clear	twoway pci 20 3000 30 4000, yaxis(2)
+MS-14	sysuse auto, clear	scatter mpg weight, xscale(range(1000)) xscale(log)
+DG-8	sysuse auto, clear	twoway contour price mpg weight in 1/2
+DG-9	sysuse auto, clear	scatter mpg rep78, xlabel(1/5 .a, valuelabel)
