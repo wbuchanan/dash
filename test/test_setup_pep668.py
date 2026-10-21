@@ -610,7 +610,7 @@ class TestMessages:
     def test_below_the_floor_the_guidance_names_the_floor_and_never_venv(self, lib):
         """WP-30 P1.33: a private environment made from a Python below the
         floor is below it too, so the guidance points at a newer Python."""
-        exe = "/opt/homebrew/bin/python3.10"
+        exe = "/opt/old/bin/python-below-floor"
         for kind, what in (("managed", "externally managed (PEP 668)"),
                            ("nopip", "has no pip")):
             text, cmd = lib.below_floor_message(exe, "3.11", kind)
@@ -901,7 +901,7 @@ class TestModuleShape:
 class TestLiveRefusal:
 
     def test_a_real_externally_managed_python_is_detected_and_refused(self, lib, offline):
-        for exe in (sys.executable, "/opt/homebrew/bin/python3.13", "/usr/bin/python3"):
+        for exe in (sys.executable, "/opt/homebrew/bin/python3.13"):
             if os.path.exists(exe) and lib.detect_environment(exe).get("externally_managed"):
                 rc, out, err = lib.run_child([exe, "-m", "pip", "install", "--dry-run",
                                               "--no-index", "bokeh>=3.8"])

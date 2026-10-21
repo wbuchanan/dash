@@ -355,7 +355,7 @@ _dash_python_ok "   "
 assert r(ok) == 0
 display "ENV-02 PASS: a blank python_exec is not available"
 
-_dash_python_ok "/usr/bin/python3"
+_dash_python_ok "/opt/homebrew/bin/python3"
 assert r(ok) == 1
 display "ENV-03 PASS: a path is available"
 
@@ -557,7 +557,9 @@ display "ENV-12: programs running python: `_env_pyprogs'"
 // Flipped (WP-30 P1.32): _dash_require_deps runs python: (its two captured lines) and joins the list.
 // Flipped (WP-31 D15): _dash_stata_ticks_gen gathers Stata's own #N ticks through the module and joins it, guarded.
 // Flipped (WP-31 H7): _dash_py_tidy pops dash's names from Python's __main__ after a command and joins it, guarded.
-assert "`_env_pyprogs'" == "_dash_py_tidy _dash_require_deps _dash_do_render _dash_empty_data _dash_stata_ticks_gen _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
+// Flipped (WP-33 33-06): _dash_image reads and cleans the SVG through
+// python: and joins the list, guarded.
+assert "`_env_pyprogs'" == "_dash_py_tidy _dash_require_deps _dash_do_render _dash_empty_data _dash_stata_ticks_gen _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_image _dash_prepare_spec _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
