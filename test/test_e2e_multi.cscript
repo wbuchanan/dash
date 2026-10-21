@@ -302,6 +302,420 @@ else display "Q3306-8 PASS: dash build draws an image panel from its data addres
 assert `q8a' == 0 & `q8u' == 1 & `q8c' == 1 & `q8p' == 0 & `q8l' == 1 & `q8b' == 0 & `q8i' == 1 & "`q8left'" == ""
 
 // ================================================================
+// Q3307-5..17 (WP-33 33-07) -- each registered graph is drawn from the
+// frame it was registered in (frame f: dash ..., name()), as twoway draws
+// from the frame its command runs in.  The spec and data are read with
+// the renderer's own loader; each frame's expected values are that
+// frame's own, saved to a .dta and read beside them.
+// ================================================================
+python:
+import hashlib as _q37h
+import json as _q37j
+import sys as _q37s
+import pandas as _q37pd
+from sfi import Macro as _q37M
+
+
+def _q37_load(spec_path, data_path):
+    xm = _q37s.modules["_dash_render_export"]
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = _q37j.load(fh)
+    with open(data_path, encoding="utf-8") as fh:
+        sj = xm._dash_read_data_json(fh.read())
+    sj = sj.get("StataJSON", sj)
+    return spec, sj, xm._dash_columns_frame(sj)
+
+
+def _q37_rows(spec, df, name):
+    for g in spec["graphs"]:
+        if (g.get("graph_options") or {}).get("name") == name:
+            col = g["plots"][0].get("qual_col") or ""
+            if not col:
+                return None
+            return df[col].fillna(0) == 1
+    return None
+
+
+def _q37_count(spec_path, data_path, name, need):
+    # The rows a graph's first layer is drawn from, with every variable
+    # of need non-missing: the rows twoway draws for a scatter or line.
+    spec, sj, df = _q37_load(spec_path, data_path)
+    rows = _q37_rows(spec, df, name)
+    if rows is None:
+        return -1
+    for v in need.split():
+        rows = rows & df[v].notna()
+    return int(rows.sum())
+
+
+def _q37_same(spec_path, data_path, name, col, dta, var):
+    # The exported column col on graph name's rows, in order, against
+    # var of the frame saved to dta, row for row.
+    spec, sj, df = _q37_load(spec_path, data_path)
+    rows = _q37_rows(spec, df, name)
+    got = df.loc[rows, col].tolist()
+    want = _q37pd.read_stata(dta, convert_categoricals=False,
+                             convert_dates=False)[var].tolist()
+    if len(got) != len(want):
+        return "0 %d rows, %d expected" % (len(got), len(want))
+    for a, b in zip(got, want):
+        if isinstance(b, str):
+            if a != b:
+                return "0 %r for %r" % (a, b)
+        elif not ((a != a and b != b) or abs(float(a) - float(b)) < 1e-6):
+            return "0 %r for %r" % (a, b)
+    return "1"
+
+
+def _q37_order(spec_path, data_path, name, col, dta, var):
+    # The order the exported column col puts graph name's rows in, against
+    # the order var of the frame saved to dta puts them in: equal ranks,
+    # whatever rows of other frames stand above them in the data.
+    spec, sj, df = _q37_load(spec_path, data_path)
+    rows = _q37_rows(spec, df, name)
+    got = df.loc[rows, col].rank(method="first").tolist()
+    want = _q37pd.read_stata(dta, convert_categoricals=False,
+                             convert_dates=False)[var].rank(
+                                 method="first").tolist()
+    return "1" if got == want else "0 %r for %r" % (got[:5], want[:5])
+
+
+def _q37_key(spec_path, *path):
+    with open(spec_path, encoding="utf-8") as fh:
+        o = _q37j.load(fh)
+    for p in path:
+        if not isinstance(o, dict) or p not in o:
+            return "<none>"
+        o = o[p]
+    return o if isinstance(o, str) else _q37j.dumps(o, sort_keys=True,
+                                                     separators=(",", ":"))
+
+
+def _q37_meta(data_path, part, col):
+    with open(data_path, encoding="utf-8") as fh:
+        sj = _q37j.load(fh)
+    sj = sj.get("StataJSON", sj)
+    o = (sj.get(part) or {}).get(col, "<none>")
+    return o if isinstance(o, str) else _q37j.dumps(o, sort_keys=True,
+                                                     separators=(",", ":"))
+
+
+def _q37_digest(spec_path, data_path, wd):
+    parts = []
+    for p in (spec_path, data_path):
+        with open(p, encoding="utf-8") as fh:
+            parts.append(fh.read().replace(wd, "<WD>"))
+    return _q37h.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+end
+
+local q37wd = substr("`c(pwd)'", 1, strlen("`c(pwd)'") - 5)
+local q37s "`c(tmpdir)'q37_spec.json"
+local q37d "`c(tmpdir)'q37_data.json"
+local q37x "`c(tmpdir)'q37_frame.dta"
+tempfile q37p
+local q37h "`q37p'.html"
+
+// ---- Q3307-5: a build of one frame writes the same spec and data ----
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight if foreign == 1, name(f5a)
+dash line price weight in 1/10, sort(weight) name(f5b)
+dash scatter price mpg, name(f5c)
+_dash_serve_spec, specpath("`q37s'") datapath("`q37d'") filter(foreign)
+python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), _q37M.getLocal("q37wd")))
+// sha256 of the single-frame spec and data at dc4078c (WP-33 33-07)
+local base_digest "97ad5d7d61b04b5ed65ffab76a8aa39b631d9d3c337d2c119dce69ec25aecaac"
+display "Q3307-5 digest `dig'"
+assert "`dig'" == "`base_digest'"
+display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"
+
+// ---- Q3307-6: graphs of three frames, one build ----
+dash clear
+capture frame drop cars
+capture frame drop sp
+frame create cars
+frame cars: qui sysuse auto, clear
+frame create sp
+frame sp: qui sysuse sp500, clear
+qui sysuse census, clear
+frame cars: dash scatter mpg weight if foreign == 1, name(c1)
+frame sp: dash line close date in 1/10, name(s1)
+dash scatter pop medage, name(d1)
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+local q6rc = _rc
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+local q6srv = _rc
+frame cars: qui count if (foreign == 1) & !missing(mpg, weight)
+local q6c1 = r(N)
+frame sp: qui count in 1/10
+local q6s1 = r(N)
+qui count if !missing(pop, medage)
+local q6d1 = r(N)
+foreach g in c1 s1 d1 {
+    local _need "mpg weight"
+    if "`g'" == "s1" local _need "close date"
+    if "`g'" == "d1" local _need "pop medage"
+    python: _q37M.setLocal("q6g_`g'", str(_q37_count(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "`g'", "`_need'")))
+}
+display "Q3307-6 rc `q6rc' `q6srv'; rows c1 `q6g_c1'/`q6c1' s1 `q6g_s1'/`q6s1' d1 `q6g_d1'/`q6d1'"
+assert `q6rc' == 0 & `q6srv' == 0
+assert `q6g_c1' == `q6c1' & `q6g_s1' == `q6s1' & `q6g_d1' == `q6d1'
+display "Q3307-6 PASS: each graph draws its own frame's rows"
+
+// ---- Q3307-8 and Q3307-7: a cross-frame link group; nothing changes ----
+local q7f0 = c(frame)
+qui datasignature
+local q7s0 "`r(datasignature)'"
+capture noisily dash build, saving("`q37h'") replace nobrowser link(c1 s1)
+local q8rc = _rc
+local q7f1 = c(frame)
+qui datasignature
+local q7s1 "`r(datasignature)'"
+// dash serve's spec is refused alike, and so is a brush over the group.
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'") link(c1 s1)
+local q8srv = _rc
+capture noisily dash build, saving("`q37h'") replace nobrowser link(c1 s1) brush(filter)
+local q8br = _rc
+display "Q3307-8 rc build `q8rc', serve `q8srv', brush `q8br'"
+assert `q8rc' == 198 & `q8srv' == 198 & `q8br' == 198
+display "Q3307-8 PASS: a link group across frames is refused r(198), built and served"
+assert "`q7f1'" == "`q7f0'" & "`q7s1'" == "`q7s0'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+qui datasignature
+assert c(frame) == "`q7f0'" & "`r(datasignature)'" == "`q7s0'"
+display "Q3307-7 PASS: the working frame and its data are unchanged by a build and by a refused one"
+
+// ---- Q3307-9: a filter skips the graphs whose frame lacks its variable ----
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'") filter(price)
+assert _rc == 0
+python: _q37M.setLocal("q9f", _q37_key(_q37M.getLocal("q37s"), "build_options", "filter"))
+display `"Q3307-9 filter: `q9f'"'
+assert strpos(`"`q9f'"', "exclude(") > 0 & strpos(`"`q9f'"', "s1") > 0 & strpos(`"`q9f'"', "d1") > 0 & strpos(`"`q9f'"', "c1") == 0
+display "Q3307-9 PASS: filter(price) excludes the graphs whose frame has no price"
+
+// ---- Q3307-10: time-series operators in their own frame ----
+dash clear
+frame sp: qui tsset date
+frame sp: dash tsline close L.close, name(t1)
+frame cars: dash scatter mpg weight, name(c1)
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+frame sp: qui generate double __q37lc = L.close
+frame sp: qui save "`q37x'", replace
+frame sp: drop __q37lc
+python: _q37M.setLocal("q10ok", _q37_same(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "t1", "__dasht1", _q37M.getLocal("q37x"), "__q37lc"))
+display "Q3307-10 `q10ok'"
+assert "`q10ok'" == "1"
+display "Q3307-10 PASS: L.close is frame sp's own"
+
+// ---- Q3307-12: sort() ranks over its own frame's rows ----
+dash clear
+capture frame drop sp2
+frame create sp2
+frame sp2: qui sysuse sp500, clear
+frame sp2: gsort -close
+frame sp2: dash line close date, sort(date) name(s2)
+frame cars: dash scatter mpg weight, name(c1)
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+frame sp2: qui generate double __q37o = _n
+frame sp2: sort date __q37o
+frame sp2: qui generate double __q37r = _n
+frame sp2: sort __q37o
+frame sp2: qui save "`q37x'", replace
+python: _q37M.setLocal("q12ok", _q37_order(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "s2", "__dashs1", _q37M.getLocal("q37x"), "__q37r"))
+display "Q3307-12 `q12ok'"
+assert "`q12ok'" == "1"
+// The sorting frames stacked below frame cars's rows, two frames sorting
+// by the same list: each graph keeps twoway's order in its own frame.
+dash clear
+capture frame drop sp3
+frame create sp3
+frame sp3: qui sysuse sp500, clear
+frame sp3: sort close
+frame sp3: qui generate double __q37o = _n
+frame sp3: sort date __q37o
+frame sp3: qui generate double __q37r = _n
+frame sp3: sort __q37o
+local q37x3 "`c(tmpdir)'q37_frame3.dta"
+frame sp3: qui save "`q37x3'", replace
+frame cars: dash scatter mpg weight, name(c1)
+frame sp3: dash line open date, sort(date) name(s3)
+frame sp2: dash line close date, sort(date) name(s2)
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+python: _q37M.setLocal("q12b", _q37_order(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "s2", "__dashs1", _q37M.getLocal("q37x"), "__q37r"))
+python: _q37M.setLocal("q12c", _q37_order(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "s3", "__dashs1", _q37M.getLocal("q37x3"), "__q37r"))
+capture erase "`q37x3'"
+frame drop sp3
+display "Q3307-12 stacked third `q12b', second `q12c'"
+assert "`q12b'" == "1" & "`q12c'" == "1"
+frame drop sp2
+display "Q3307-12 PASS: sort(date) is the rank in frame sp2, stacked first or second"
+
+// ---- Q3307-13: a weight expression in its own frame ----
+dash clear
+frame cars: dash scatter mpg weight [aw=price/1000], name(w1)
+frame sp: dash line close date, name(s1)
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+frame cars: qui generate double __q37w = price/1000
+frame cars: qui save "`q37x'", replace
+frame cars: drop __q37w
+python: _q37M.setLocal("q13ok", _q37_same(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "w1", "__dashw1", _q37M.getLocal("q37x"), "__q37w"))
+display "Q3307-13 `q13ok'"
+assert "`q13ok'" == "1"
+display "Q3307-13 PASS: [aw=price/1000] is frame cars's own"
+
+// ---- Q3307-15: a variable only one frame's graphs use is not split ----
+dash clear
+frame sp: qui generate price = close
+frame sp: label variable price "Another price"
+frame cars: dash scatter price weight, name(p1)
+frame sp: dash line close date, name(s1)
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+python: _q37M.setLocal("q15k", _q37_key(_q37M.getLocal("q37s"), "build_options", "frame_cols"))
+python: _q37M.setLocal("q15m", _q37_meta(_q37M.getLocal("q37d"), "variableLabels", "__dashm1"))
+frame sp: drop price
+display "Q3307-15 frame_cols `q15k', __dashm1 `q15m'"
+assert "`q15k'" == "<none>" & "`q15m'" == "<none>"
+display "Q3307-15 PASS: only the variables a frame's graphs use are compared"
+
+// ---- Q3307-16: a graph whose frame is gone is refused ----
+dash clear
+capture frame drop tmp
+frame create tmp
+frame tmp: qui sysuse auto, clear
+frame tmp: dash scatter mpg weight, name(g16)
+frame cars: dash scatter mpg weight, name(c1)
+frame drop tmp
+tempfile q16l
+local q16lg "`q16l'.log"
+capture log close _q16log
+log using "`q16lg'", name(_q16log) text replace
+capture noisily dash build, saving("`q37h'") replace nobrowser
+local q16rc = _rc
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+local q16srv = _rc
+log close _q16log
+cert_log_has "`q16lg'", needle("frame tmp not found")
+local q16a = r(count)
+cert_log_has "`q16lg'", needle("was registered in frame tmp")
+local q16b = r(count)
+capture erase "`q16lg'"
+display "Q3307-16 rc `q16rc' `q16srv', said `q16a' `q16b'"
+assert `q16rc' == 111 & `q16srv' == 111 & `q16a' >= 2 & `q16b' >= 2
+display "Q3307-16 PASS: a graph whose frame is gone is refused r(111)"
+
+// ---- Q3307-11: a variable stored as a string in one frame and a number in another ----
+dash clear
+frame sp: qui generate make = _n
+frame cars: dash scatter mpg weight, mlabel(make) name(m1)
+frame sp: dash scatter close date, mlabel(make) name(m2)
+tempfile q11l
+local q11lg "`q11l'.log"
+capture log close _q11log
+log using "`q11lg'", name(_q11log) text replace
+capture noisily dash build, saving("`q37h'") replace nobrowser filter(make)
+local q11rc = _rc
+log close _q11log
+cert_log_has "`q11lg'", needle("filter() variable make is a string in frame cars and numeric in frame sp")
+local q11a = r(count)
+capture erase "`q11lg'"
+display "Q3307-11 filter rc `q11rc', said `q11a'"
+assert `q11rc' == 109 & `q11a' >= 1
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+python: _q37M.setLocal("q11k", _q37_key(_q37M.getLocal("q37s"), "build_options", "frame_cols"))
+display `"Q3307-11 frame_cols `q11k'"'
+assert `"`q11k'"' == `"{"m2":{"make":{"col":"__dashm1","frame":"sp"}}}"'
+frame cars: qui save "`q37x'", replace
+python: _q37M.setLocal("q11a", _q37_same(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "m1", "make", _q37M.getLocal("q37x"), "make"))
+frame sp: qui save "`q37x'", replace
+python: _q37M.setLocal("q11b", _q37_same(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), "m2", "__dashm1", _q37M.getLocal("q37x"), "make"))
+display "Q3307-11 values `q11a' `q11b'"
+assert "`q11a'" == "1" & "`q11b'" == "1"
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+frame sp: drop make
+display "Q3307-11 PASS: make keeps each frame's storage kind, and filter(make) is refused r(109)"
+
+// ---- Q3307-14: a variable formatted differently in two frames ----
+dash clear
+capture frame drop spm
+frame copy sp spm
+frame spm: qui replace date = mofd(date)
+frame spm: format date %tm
+frame sp: dash line close date, name(d1)
+frame spm: dash line close date, name(d2)
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser
+assert _rc == 0
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'")
+assert _rc == 0
+python: _q37M.setLocal("q14a", _q37_key(_q37M.getLocal("q37s"), "build_options", "formats", "date"))
+python: _q37M.setLocal("q14b", _q37_key(_q37M.getLocal("q37s"), "build_options", "formats", "__dashm1"))
+python: _q37M.setLocal("q14k", _q37_key(_q37M.getLocal("q37s"), "build_options", "frame_cols"))
+display `"Q3307-14 `q14a' `q14b' `q14k'"'
+assert "`q14a'" == "%td" & "`q14b'" == "%tm"
+assert `"`q14k'"' == `"{"d2":{"date":{"col":"__dashm1","frame":"spm"}}}"'
+frame drop spm
+display "Q3307-14 PASS: date keeps each frame's display format"
+
+// ---- Q3307-17: value labels and variable labels per frame ----
+dash clear
+capture frame drop c2
+frame copy cars c2
+frame c2: label define origin 0 "US" 1 "Abroad", replace
+frame c2: label variable foreign "Made abroad"
+frame c2: label values rep78 origin
+frame cars: dash scatter mpg weight, mlabel(foreign) name(v1)
+frame c2: dash scatter mpg weight, mlabel(foreign) by(rep78) name(v2)
+capture erase "`q37h'"
+capture noisily dash build, saving("`q37h'") replace nobrowser filter(foreign)
+assert _rc == 0
+capture noisily _dash_serve_spec, specpath("`q37s'") datapath("`q37d'") filter(foreign)
+assert _rc == 0
+foreach c in foreign __dashm1 rep78 {
+    python: _q37M.setLocal("q17v_`c'", _q37_meta(_q37M.getLocal("q37d"), "valueLabels", "`c'"))
+    python: _q37M.setLocal("q17l_`c'", _q37_meta(_q37M.getLocal("q37d"), "variableLabels", "`c'"))
+    python: _q37M.setLocal("q17n_`c'", _q37_meta(_q37M.getLocal("q37d"), "valueLabelNames", "`c'"))
+}
+python: _q37M.setLocal("q17f", _q37_key(_q37M.getLocal("q37s"), "build_options", "filter"))
+display `"Q3307-17 foreign `q17v_foreign' `q17l_foreign' `q17n_foreign'"'
+display `"Q3307-17 __dashm1 `q17v___dashm1' `q17l___dashm1' `q17n___dashm1'"'
+display `"Q3307-17 rep78 `q17n_rep78'; filter `q17f'"'
+assert `"`q17v_foreign'"' == `"{"0":"Domestic","1":"Foreign"}"'
+assert `"`q17v___dashm1'"' == `"{"0":"US","1":"Abroad"}"'
+assert "`q17l_foreign'" == "Car origin" & "`q17l___dashm1'" == "Made abroad"
+assert "`q17n___dashm1'" == "__dashl1" & "`q17n_rep78'" == "__dashl1"
+assert `"`q17f'"' == "foreign"
+frame drop c2
+frame drop cars
+frame drop sp
+capture erase "`q37h'"
+capture erase "`q37s'"
+capture erase "`q37d'"
+capture erase "`q37x'"
+display "Q3307-17 PASS: foreign keeps each frame's value and variable labels, and the filter reaches both graphs"
+
+// ================================================================
 // Cleanup
 // ================================================================
 dash clear

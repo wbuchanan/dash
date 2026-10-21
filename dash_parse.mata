@@ -507,6 +507,41 @@
 *!   _dash_wexp_export()
 *!       The table into the caller's locals _dwx_n and _dwx_e<k>.
 *!
+*!   _dash_frame_set(f)
+*!       The frame the table entries made next belong to (WP-33 33-07).
+*!
+*!   _dash_frame_set_all(on)
+*!       1: every qualifier pair, the empty one too, takes a column.
+*!
+*!   _dash_frames_reset()
+*!       Empty the build's frame records (keep lists, splits, label sets).
+*!
+*!   _dash_frames_keep_add(f, g, vars)
+*!       vars into frame f's keep list, and graph g's own list.
+*!
+*!   _dash_frames_keep_of(f)
+*!       Frame f's keep list.
+*!
+*!   _dash_frames_take(f, v)
+*!       "" when frame f keeps v under its name, else its split column
+*!       __dashm<k>.
+*!
+*!   _dash_frames_lset(lab)
+*!       "" when value label lab travels under its name, else its copy
+*!       __dashl<j>.
+*!
+*!   _dash_frames_cols_json()
+*!       The spec's build_options.frame_cols object.
+*!
+*!   _dash_filter_exclude_add(filter, k, names)
+*!       filter with names added to group k's exclude().
+*!
+*!   _dash_link_split(link)
+*!       link()'s groups, split at each "||" (WP-33 33-07 reads them).
+*!
+*!   _dash_blank_words(s)
+*!       The words of s between runs of ASCII blanks, quotes and all.
+*!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
 *!       " || ", into the local filter_out, and `0' without them into
@@ -4211,8 +4246,15 @@ void _dash_qual_reset()
     external transmorphic scalar _dash_qual_tab
     external string matrix       _dash_qual_list
 
-    _dash_qual_tab  = asarray_create("string", 3)
-    _dash_qual_list = J(0, 3, "")
+    // The fourth part of each key is the frame the pair is evaluated in
+    // (WP-33 33-07, _dash_frame_key_now); "" on a build of one frame.
+    _dash_qual_tab  = asarray_create("string", 4)
+    _dash_qual_list = J(0, 4, "")
+    // Every export starts on one frame: a build of several sets its own
+    // keys after this (_dash_frame_set, _dash_frame_set_all), so a build
+    // that stopped half way leaves nothing for the next export.
+    _dash_frame_set("")
+    _dash_frame_set_all(0)
 }
 
 
@@ -4323,14 +4365,16 @@ string scalar _dash_qual_take_by(string scalar ifx, string scalar inx,
     string scalar    why
     real scalar      k
 
-    if (strtrim(ifx) == "" & strtrim(inx) == "") return("")
+    // On a build of several frames (WP-33 33-07) the empty pair takes a
+    // column too: 1 on its frame's rows, 0 on every other frame's.
+    if (strtrim(ifx) == "" & strtrim(inx) == "" & !_dash_frame_all_now()) return("")
     why = _dash_qual_refusal(ifx, inx)
     if (why != "") {
         st_local(errmacro, why)
         return("")
     }
     if (!name_them) return("")
-    key = (ifx, inx, order)
+    key = (ifx, inx, order, _dash_frame_key_now())
     if (asarray_contains(_dash_qual_tab, key)) {
         return("__dashq" + strofreal(asarray(_dash_qual_tab, key)))
     }
@@ -4685,6 +4729,7 @@ void _dash_qual_export()
         st_local("_dq_if_" + strofreal(k), _dash_qual_list[k, 1])
         st_local("_dq_in_" + strofreal(k), _dash_qual_list[k, 2])
         st_local("_dq_by_" + strofreal(k), _dash_qual_list[k, 3])
+        st_local("_dq_fr_" + strofreal(k), _dash_qual_list[k, 4])
     }
 }
 
@@ -4724,8 +4769,10 @@ void _dash_qual_orders()
 void _dash_sort_reset()
 {
     external string colvector _dash_sort_list
+    external string colvector _dash_sort_frames
 
-    _dash_sort_list = J(0, 1, "")
+    _dash_sort_list   = J(0, 1, "")
+    _dash_sort_frames = J(0, 1, "")
 }
 
 // _dash_sort_scan(json) -- add every "sortvars" value of json to the
@@ -4736,13 +4783,21 @@ void _dash_sort_reset()
 void _dash_sort_scan(string scalar json)
 {
     external string colvector _dash_sort_list
-    string scalar    needle, tail, val
+    external string colvector _dash_sort_frames
+    string scalar    needle, tail, val, fk
     string rowvector t
-    real scalar      pos, vstart, vend, i, ok
+    real scalar      pos, vstart, vend, i, ok, ix
 
     if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
         _dash_sort_list = J(0, 1, "")
     }
+    // The frames each list is ranked in (WP-33 33-07), " f1 f2 ": one
+    // column a list, each frame ranking its own rows, since the spec's
+    // sort_cols names one column for a list.
+    if (rows(_dash_sort_frames) != rows(_dash_sort_list)) {
+        _dash_sort_frames = J(rows(_dash_sort_list), 1, " ")
+    }
+    fk = " " + _dash_frame_key_now() + " "
     needle = char(34) + "sortvars" + char(34) + ":" + char(34)
     tail   = json
     pos    = strpos(tail, needle)
@@ -4757,8 +4812,21 @@ void _dash_sort_scan(string scalar json)
         if (!ok) {
             if (st_local("_ds_bad") == "") st_local("_ds_bad", val)
         }
-        else if (!anyof(_dash_sort_list, val)) {
-            _dash_sort_list = _dash_sort_list \ val
+        else {
+            ix = 0
+            for (i = 1; i <= rows(_dash_sort_list); i++) {
+                if (_dash_sort_list[i] == val) {
+                    ix = i
+                    break
+                }
+            }
+            if (!ix) {
+                _dash_sort_list   = _dash_sort_list \ val
+                _dash_sort_frames = _dash_sort_frames \ fk
+            }
+            else if (!strpos(_dash_sort_frames[ix], fk)) {
+                _dash_sort_frames[ix] = _dash_sort_frames[ix] + substr(fk, 2, .)
+            }
         }
         tail = substr(tail, vstart + vend, .)
         pos  = strpos(tail, needle)
@@ -4770,14 +4838,19 @@ void _dash_sort_scan(string scalar json)
 void _dash_sort_export()
 {
     external string colvector _dash_sort_list
+    external string colvector _dash_sort_frames
     real scalar k
 
     if (rows(_dash_sort_list) == 0 & cols(_dash_sort_list) == 0) {
         _dash_sort_list = J(0, 1, "")
     }
+    if (rows(_dash_sort_frames) != rows(_dash_sort_list)) {
+        _dash_sort_frames = J(rows(_dash_sort_list), 1, " ")
+    }
     st_local("_ds_n", strofreal(rows(_dash_sort_list)))
     for (k = 1; k <= rows(_dash_sort_list); k++) {
         st_local("_ds_v" + strofreal(k), _dash_sort_list[k])
+        st_local("_ds_f" + strofreal(k), _dash_sort_frames[k])
     }
 }
 
@@ -4798,8 +4871,10 @@ void _dash_sort_export()
 void _dash_tsop_reset()
 {
     external string colvector _dash_tsop_list
+    external string colvector _dash_tsop_frames
 
-    _dash_tsop_list = J(0, 1, "")
+    _dash_tsop_list   = J(0, 1, "")
+    _dash_tsop_frames = J(0, 1, "")
 }
 
 // _dash_tsop_canon(expr) -- 1 when expr is <ops>.<var>: one or more of the
@@ -4857,14 +4932,20 @@ real scalar _dash_tsop_canon(string scalar e)
 string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
 {
     external string colvector _dash_tsop_list
+    external string colvector _dash_tsop_frames
     real rowvector   b
     real scalar      n, i, e, k, v, ve, from, m, cap, ix
-    string scalar    tok, val, shown
+    string scalar    tok, val, shown, fk
     string rowvector part, keys
 
     if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
         _dash_tsop_list = J(0, 1, "")
     }
+    // Each expression is keyed by its frame too (WP-33 33-07).
+    if (rows(_dash_tsop_frames) != rows(_dash_tsop_list)) {
+        _dash_tsop_frames = J(rows(_dash_tsop_list), 1, "")
+    }
+    fk = _dash_frame_key_now()
     st_local(errmacro, "")
     keys = ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var", "wexp")
     b    = ascii(json)
@@ -4917,7 +4998,7 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
         }
         ix = 0
         for (k = 1; k <= rows(_dash_tsop_list); k++) {
-            if (_dash_tsop_list[k] == val) {
+            if (_dash_tsop_list[k] == val & _dash_tsop_frames[k] == fk) {
                 ix = k
                 break
             }
@@ -4928,7 +5009,8 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
                     "time-series expressions")
                 return(json)
             }
-            _dash_tsop_list = _dash_tsop_list \ val
+            _dash_tsop_list   = _dash_tsop_list \ val
+            _dash_tsop_frames = _dash_tsop_frames \ fk
             ix = rows(_dash_tsop_list)
         }
         if (m + 2 > cap) {
@@ -4950,14 +5032,19 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
 void _dash_tsop_export()
 {
     external string colvector _dash_tsop_list
+    external string colvector _dash_tsop_frames
     real scalar k
 
     if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
         _dash_tsop_list = J(0, 1, "")
     }
+    if (rows(_dash_tsop_frames) != rows(_dash_tsop_list)) {
+        _dash_tsop_frames = J(rows(_dash_tsop_list), 1, "")
+    }
     st_local("_dts_n", strofreal(rows(_dash_tsop_list)))
     for (k = 1; k <= rows(_dash_tsop_list); k++) {
         st_local("_dts_e" + strofreal(k), _dash_tsop_list[k])
+        st_local("_dts_f" + strofreal(k), _dash_tsop_frames[k])
     }
 }
 
@@ -4974,12 +5061,16 @@ void _dash_tsop_export()
 string scalar _dash_tsop_meta(string scalar fmtmacro)
 {
     external string colvector _dash_tsop_list
+    external string colvector _dash_tsop_frames
     external string colvector _dash_wexp_list
     real scalar   k, dot
-    string scalar e, base, lab, out, fmt, nm, q
+    string scalar e, base, lab, out, fmt, nm, q, sp
 
     if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
         _dash_tsop_list = J(0, 1, "")
+    }
+    if (rows(_dash_tsop_frames) != rows(_dash_tsop_list)) {
+        _dash_tsop_frames = J(rows(_dash_tsop_list), 1, "")
     }
     q   = char(34)
     out = ""
@@ -4988,6 +5079,13 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
         e    = _dash_tsop_list[k]
         dot  = strpos(e, ".")
         base = substr(e, dot + 1, .)
+        // On a build of several frames (WP-33 33-07) a base its frame
+        // holds in a split column is read from that column: the stack's
+        // own base is another frame's.
+        if (_dash_tsop_frames[k] != "") {
+            sp = _dash_frames_split_of(_dash_tsop_frames[k], base)
+            if (sp != "") base = sp
+        }
         nm   = "__dasht" + strofreal(k)
         lab  = (_st_varindex(base, 0) < . ? st_varlabel(base) : "")
         lab  = (lab != "" ? lab + ", " + substr(e, 1, dot - 1) : e)
@@ -5054,8 +5152,10 @@ real scalar _dash_wexp_ok(string scalar e)
 void _dash_wexp_reset()
 {
     external string colvector _dash_wexp_list
+    external string colvector _dash_wexp_frames
 
-    _dash_wexp_list = J(0, 1, "")
+    _dash_wexp_list   = J(0, 1, "")
+    _dash_wexp_frames = J(0, 1, "")
 }
 
 // _dash_wexp_rewrite(json, errmacro) -- json with each "wexp" value that is
@@ -5068,14 +5168,20 @@ void _dash_wexp_reset()
 string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
 {
     external string colvector _dash_wexp_list
+    external string colvector _dash_wexp_frames
     real rowvector   b
     real scalar      n, i, e, k, v, ve, from, m, cap, ix
-    string scalar    tok, val, shown
+    string scalar    tok, val, shown, fk
     string rowvector part
 
     if (rows(_dash_wexp_list) == 0 & cols(_dash_wexp_list) == 0) {
         _dash_wexp_list = J(0, 1, "")
     }
+    // Each expression is keyed by its frame too (WP-33 33-07).
+    if (rows(_dash_wexp_frames) != rows(_dash_wexp_list)) {
+        _dash_wexp_frames = J(rows(_dash_wexp_list), 1, "")
+    }
+    fk = _dash_frame_key_now()
     st_local(errmacro, "")
     b    = ascii(json)
     n    = cols(b)
@@ -5133,7 +5239,7 @@ string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
         }
         ix = 0
         for (k = 1; k <= rows(_dash_wexp_list); k++) {
-            if (_dash_wexp_list[k] == val) {
+            if (_dash_wexp_list[k] == val & _dash_wexp_frames[k] == fk) {
                 ix = k
                 break
             }
@@ -5144,7 +5250,8 @@ string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
                     "weight expressions")
                 return(json)
             }
-            _dash_wexp_list = _dash_wexp_list \ val
+            _dash_wexp_list   = _dash_wexp_list \ val
+            _dash_wexp_frames = _dash_wexp_frames \ fk
             ix = rows(_dash_wexp_list)
         }
         if (m + 2 > cap) {
@@ -5166,15 +5273,344 @@ string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
 void _dash_wexp_export()
 {
     external string colvector _dash_wexp_list
+    external string colvector _dash_wexp_frames
     real scalar k
 
     if (rows(_dash_wexp_list) == 0 & cols(_dash_wexp_list) == 0) {
         _dash_wexp_list = J(0, 1, "")
     }
+    if (rows(_dash_wexp_frames) != rows(_dash_wexp_list)) {
+        _dash_wexp_frames = J(rows(_dash_wexp_list), 1, "")
+    }
     st_local("_dwx_n", strofreal(rows(_dash_wexp_list)))
     for (k = 1; k <= rows(_dash_wexp_list); k++) {
         st_local("_dwx_e" + strofreal(k), _dash_wexp_list[k])
+        st_local("_dwx_f" + strofreal(k), _dash_wexp_frames[k])
     }
+}
+
+
+// ------------------------------------------------------------
+// Graphs from several frames (WP-33 33-07).  A graph registered under
+// Stata's frame prefix (frame f: dash ..., name(g)) is drawn from frame f.
+// On such a build every qualifier, time-series and weight column is keyed
+// by its frame (_dash_frame_key_now); each frame keeps the variables its
+// graphs use; and a variable two frames hold with another storage kind,
+// display format, value label or variable label is kept by the later
+// frame under a split column __dashm<k> (DECISIONS A-23), a value-label
+// set of one name and other contents under __dashl<j>.  The externals
+// live for one build: _dash_frames_reset() empties them.
+// ------------------------------------------------------------
+
+// _dash_frame_set(f) -- the frame the table entries made next belong to;
+// "" on a build of one frame.
+void _dash_frame_set(string scalar f)
+{
+    external string scalar _dash_frame_key
+
+    _dash_frame_key = f
+}
+
+// _dash_frame_set_all(on) -- 1: every plot's qualifier pair, the empty
+// one included, takes a column (a build of several frames).
+void _dash_frame_set_all(real scalar on)
+{
+    external real scalar _dash_frame_all
+
+    _dash_frame_all = (on == 1)
+}
+
+// _dash_frame_key_now() -- the frame key, "" when none was set.
+string scalar _dash_frame_key_now()
+{
+    pointer() scalar p
+
+    p = findexternal("_dash_frame_key")
+    if (p == NULL) return("")
+    if (eltype(*p) != "string" | rows(*p) != 1 | cols(*p) != 1) return("")
+    return(*p)
+}
+
+// _dash_frame_all_now() -- 1 when every pair takes a column.
+real scalar _dash_frame_all_now()
+{
+    pointer() scalar p
+
+    p = findexternal("_dash_frame_all")
+    if (p == NULL) return(0)
+    if (eltype(*p) != "real" | rows(*p) != 1 | cols(*p) != 1) return(0)
+    return(*p == 1)
+}
+
+// _dash_frames_reset() -- empty the build's frame records.
+void _dash_frames_reset()
+{
+    external transmorphic scalar _dash_frames_owner, _dash_frames_split,
+                                 _dash_frames_splitrec, _dash_frames_keep,
+                                 _dash_frames_gkeep, _dash_frames_lseen,
+                                 _dash_frames_lsets
+    external string matrix       _dash_frames_gorder
+    external real scalar         _dash_frames_nsplit, _dash_frames_nlset
+
+    _dash_frames_owner    = asarray_create("string", 1)
+    _dash_frames_split    = asarray_create("string", 1)
+    _dash_frames_splitrec = asarray_create("string", 1)
+    _dash_frames_keep     = asarray_create("string", 1)
+    _dash_frames_gkeep    = asarray_create("string", 1)
+    _dash_frames_lseen    = asarray_create("string", 1)
+    _dash_frames_lsets    = asarray_create("string", 1)
+    _dash_frames_gorder   = J(0, 2, "")
+    _dash_frames_nsplit   = 0
+    _dash_frames_nlset    = 0
+}
+
+// _dash_frames_keep_add(f, g, vars) -- the names vars into frame f's keep
+// list, each once in the order first met; with g not "", also into graph
+// g's own list (the variables frame_cols may map for g).
+void _dash_frames_keep_add(string scalar f, string scalar g,
+                           string scalar vars)
+{
+    external transmorphic scalar _dash_frames_keep, _dash_frames_gkeep
+    external string matrix       _dash_frames_gorder
+    string rowvector v
+    string scalar    cur
+    real scalar      i
+
+    v   = tokens(vars)
+    cur = (asarray_contains(_dash_frames_keep, f) ?
+           asarray(_dash_frames_keep, f) : "")
+    for (i = 1; i <= cols(v); i++) {
+        if (!anyof(tokens(cur), v[i])) cur = cur + " " + v[i]
+    }
+    asarray(_dash_frames_keep, f, strtrim(cur))
+    if (g == "") return
+    if (!asarray_contains(_dash_frames_gkeep, g)) {
+        _dash_frames_gorder = _dash_frames_gorder \ (g, f)
+        cur = ""
+    }
+    else cur = asarray(_dash_frames_gkeep, g)
+    for (i = 1; i <= cols(v); i++) {
+        if (!anyof(tokens(cur), v[i])) cur = cur + " " + v[i]
+    }
+    asarray(_dash_frames_gkeep, g, strtrim(cur))
+}
+
+// _dash_frames_keep_of(f) -- frame f's keep list.
+string scalar _dash_frames_keep_of(string scalar f)
+{
+    external transmorphic scalar _dash_frames_keep
+
+    if (!asarray_contains(_dash_frames_keep, f)) return("")
+    return(asarray(_dash_frames_keep, f))
+}
+
+// _dash_vl_hash(lab) -- the contents of value label lab in the data in
+// memory, its values and texts joined; "" when it is not defined.
+string scalar _dash_vl_hash(string scalar lab)
+{
+    real colvector   vals
+    string colvector txt
+    string scalar    out
+    real scalar      i
+
+    if (lab == "") return("")
+    if (!st_vlexists(lab)) return("")
+    st_vlload(lab, vals, txt)
+    out = ""
+    for (i = 1; i <= rows(vals); i++) {
+        out = out + strofreal(vals[i], "%21.0g") + char(2) + txt[i] + char(3)
+    }
+    return(out)
+}
+
+// _dash_var_meta(v) -- variable v's record in the data in memory:
+// kind, format, value-label name, value-label contents and variable label,
+// separated by char(1).
+string scalar _dash_var_meta(string scalar v)
+{
+    string scalar sep, vl
+
+    sep = char(1)
+    vl  = st_varvaluelabel(v)
+    return((st_isstrvar(v) ? "string" : "numeric") + sep + st_varformat(v) +
+           sep + vl + sep + _dash_vl_hash(vl) + sep + st_varlabel(v))
+}
+
+// _dash_frames_clash(meta1, meta2, v) -- "" when two records of v agree,
+// else the first difference: storage kind, display format, value label
+// (its contents; the set's name alone is not a difference) or variable
+// label.
+string scalar _dash_frames_clash(string scalar meta1, string scalar meta2,
+                                 string scalar v)
+{
+    string rowvector a, b, what
+    real scalar      i
+
+    a    = _dash_frames_fields(meta1)
+    b    = _dash_frames_fields(meta2)
+    what = ("storage kind", "display format", "", "value label",
+            "variable label")
+    for (i = 1; i <= 5; i++) {
+        if (i == 3) continue
+        if (a[i] != b[i]) return(what[i])
+    }
+    return("")
+}
+
+// _dash_frames_fields(meta) -- a record's five fields.
+string rowvector _dash_frames_fields(string scalar meta)
+{
+    string rowvector out
+    string scalar    rest
+    real scalar      i, p
+
+    out  = J(1, 5, "")
+    rest = meta
+    for (i = 1; i <= 4; i++) {
+        p = strpos(rest, char(1))
+        if (!p) {
+            out[i] = rest
+            rest   = ""
+            continue
+        }
+        out[i] = substr(rest, 1, p - 1)
+        rest   = substr(rest, p + 1, .)
+    }
+    out[5] = rest
+    return(out)
+}
+
+// _dash_frames_take(f, v) -- run with frame f's data in memory: "" when
+// f keeps v under its own name (the first frame to keep v, or one whose
+// record matches that frame's), else the split column __dashm<k> f keeps
+// it under, an earlier one reused for an identical record.
+string scalar _dash_frames_take(string scalar f, string scalar v)
+{
+    external transmorphic scalar _dash_frames_owner, _dash_frames_split,
+                                 _dash_frames_splitrec
+    external real scalar         _dash_frames_nsplit
+    string scalar rec, col, rk
+
+    rec = _dash_var_meta(v)
+    if (!asarray_contains(_dash_frames_owner, v)) {
+        asarray(_dash_frames_owner, v, rec)
+        return("")
+    }
+    if (_dash_frames_clash(asarray(_dash_frames_owner, v), rec, v) == "") {
+        return("")
+    }
+    rk = v + char(0) + rec
+    if (asarray_contains(_dash_frames_splitrec, rk)) {
+        col = asarray(_dash_frames_splitrec, rk)
+    }
+    else {
+        _dash_frames_nsplit = _dash_frames_nsplit + 1
+        col = "__dashm" + strofreal(_dash_frames_nsplit)
+        asarray(_dash_frames_splitrec, rk, col)
+    }
+    asarray(_dash_frames_split, f + char(0) + v, col)
+    return(col)
+}
+
+// _dash_frames_lset(lab) -- run with a frame's data in memory: "" when
+// value label lab may travel under its own name (the first frame to use
+// it, or one whose contents match), else the set __dashl<j> its contents
+// travel under, one per distinct name and contents.
+string scalar _dash_frames_lset(string scalar lab)
+{
+    external transmorphic scalar _dash_frames_lseen, _dash_frames_lsets
+    external real scalar         _dash_frames_nlset
+    string scalar h, k, nm
+
+    h = _dash_vl_hash(lab)
+    if (!asarray_contains(_dash_frames_lseen, lab)) {
+        asarray(_dash_frames_lseen, lab, h)
+        return("")
+    }
+    if (asarray(_dash_frames_lseen, lab) == h) return("")
+    k = lab + char(0) + h
+    if (asarray_contains(_dash_frames_lsets, k)) return(asarray(_dash_frames_lsets, k))
+    _dash_frames_nlset = _dash_frames_nlset + 1
+    nm = "__dashl" + strofreal(_dash_frames_nlset)
+    asarray(_dash_frames_lsets, k, nm)
+    return(nm)
+}
+
+// _dash_frames_split_of(f, v) -- the split column frame f keeps v under,
+// "" for none.
+string scalar _dash_frames_split_of(string scalar f, string scalar v)
+{
+    pointer() scalar p
+
+    p = findexternal("_dash_frames_split")
+    if (p == NULL) return("")
+    if (eltype(*p) == "real" | eltype(*p) == "string") return("")
+    if (!asarray_contains(*p, f + char(0) + v)) return("")
+    return(asarray(*p, f + char(0) + v))
+}
+
+// _dash_frames_cols_json() -- the spec's build_options.frame_cols object:
+// for each graph, in registry order, each of its variables its frame
+// keeps in a split column, {"<g>":{"<v>":{"col":"__dashm<k>","frame":
+// "<f>"}}}; "{}" when nothing was split.
+string scalar _dash_frames_cols_json()
+{
+    external transmorphic scalar _dash_frames_gkeep
+    external string matrix       _dash_frames_gorder
+    string rowvector v
+    string scalar    out, one, q, col
+    real scalar      i, j
+
+    q   = char(34)
+    out = ""
+    for (i = 1; i <= rows(_dash_frames_gorder); i++) {
+        v   = tokens(asarray(_dash_frames_gkeep, _dash_frames_gorder[i, 1]))
+        one = ""
+        for (j = 1; j <= cols(v); j++) {
+            col = _dash_frames_split_of(_dash_frames_gorder[i, 2], v[j])
+            if (col == "") continue
+            one = one + (one != "" ? "," : "") + q + _dash_json_escape(v[j]) +
+                  q + ":{" + q + "col" + q + ":" + q + col + q + "," + q +
+                  "frame" + q + ":" + q +
+                  _dash_json_escape(_dash_frames_gorder[i, 2]) + q + "}"
+        }
+        if (one == "") continue
+        out = out + (out != "" ? "," : "") + q +
+              _dash_json_escape(_dash_frames_gorder[i, 1]) + q + ":{" + one + "}"
+    }
+    return("{" + out + "}")
+}
+
+// _dash_filter_exclude_add(filter, k, names) -- filter with the graphs
+// names added to group k's exclude(): the group gains exclude() holding
+// its own exclude() names and names, written last, where the renderer
+// reads the last exclude() of a group; the groups read as
+// _dash_filter_refusal reads them.
+string scalar _dash_filter_exclude_add(string scalar filter, real scalar k,
+                                       string scalar names)
+{
+    string rowvector groups, had, add
+    string scalar    out, grp, all
+    real scalar      g, i
+
+    groups = _dash_filter_split(filter, 1)
+    out    = ""
+    for (g = 1; g <= cols(groups); g++) {
+        grp = groups[g]
+        add = tokens(names)
+        if (g == k & cols(add) > 0) {
+            had = _dash_filter_excludes(grp)
+            all = invtokens(had)
+            for (i = 1; i <= cols(add); i++) {
+                if (!anyof(had, add[i])) all = all + (all != "" ? " " : "") + add[i]
+            }
+            grp = _dash_blank_trim(grp)
+            grp = grp + (_dash_first_comma_pos(grp) ? " " : ", ") +
+                  "exclude(" + all + ")"
+        }
+        out = out + (g > 1 ? " || " : "") + grp
+    }
+    return(out)
 }
 
 
@@ -6009,7 +6445,7 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
 
     fld = _dash_kpi_fields()
     own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tu_" + nm,
-           "dash_kpi_" + nm)
+           "dash_frm_" + nm, "dash_kpi_" + nm)
     // An image panel's marker and fields (WP-33 33-06).
     own = own, ("dash_img_" + nm, "dash_img_" + nm + "__pth",
                 "dash_img_" + nm + "__cap", "dash_img_" + nm + "__alt",

@@ -3306,6 +3306,52 @@ foreach _u56p in `"bar mpg weight, acolor(red)@"color":"red"@"lcolor":"red""' //
 _ov_assert U56-0 "(`_u56n' == 8)" "the 8 U56 cases ran"
 capture dash clear
 
+// ----------------------------------------------------------------
+// Q3307-2..4 (WP-33 33-07): a graph's frame is Stata's own frame prefix,
+// as twoway's is; dash takes no frame() option.
+// ----------------------------------------------------------------
+quietly sysuse auto, clear
+quietly generate zz = 1
+capture frame drop cars
+frame create cars
+frame cars: quietly sysuse auto, clear
+capture dash clear
+// Q3307-2: frame() is refused as twoway refuses it.
+capture twoway scatter mpg weight, frame(cars)
+local _q2tw = _rc
+capture dash scatter mpg weight, name(g2) frame(cars)
+local _q2d = _rc
+local _q2g : length global dash_frm_g2
+_ov_assert Q3307-2 "(`_q2tw' == 198 & `_q2d' == `_q2tw' & `_q2g' == 0)" "frame() refused as twoway refuses it: rc `_q2tw' twoway, `_q2d' dash"
+// Q3307-3: a variable missing in the prefixed frame is twoway's refusal.
+capture log close _ovlog
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily frame cars: twoway scatter zz weight
+local _q3tw = _rc
+log close _ovlog
+_ov_count "`c(tmpdir)'dash_ov.log" "variable zz not found"
+local _q3twn = r(n)
+_ov_count "`c(tmpdir)'dash_ov.log" "frame cars not found"
+local _q3twf = r(n)
+capture log close _ovlog
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily frame cars: dash scatter zz weight, name(g3)
+local _q3d = _rc
+log close _ovlog
+_ov_count "`c(tmpdir)'dash_ov.log" "variable zz not found"
+local _q3dn = r(n)
+_ov_count "`c(tmpdir)'dash_ov.log" "frame cars not found"
+local _q3df = r(n)
+local _q3g : length global dash_frm_g3
+_ov_assert Q3307-3 "(`_q3tw' == 111 & `_q3d' == 111 & `_q3twn' >= 1 & `_q3dn' >= 1 & `_q3twf' == 0 & `_q3df' == 0 & `_q3g' == 0)" "a variable missing in frame cars: rc `_q3tw' twoway, `_q3d' dash"
+// Q3307-4: the refused registration leaves nothing for the next one.
+dash scatter mpg weight, name(g9)
+local _q4ok = ("${dash_frm_g9}" == c(frame))
+_ov_assert Q3307-4 "(`_q4ok' == 1)" "a registration after a refused one records the current frame (got ${dash_frm_g9})"
+drop zz
+frame drop cars
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

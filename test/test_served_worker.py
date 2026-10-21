@@ -34,6 +34,9 @@ The audit of every name the worker reaches (``_WORKER_AUDIT``; verdicts):
   itself; at worst two equal copies, never iterated |
 | ``_go`` (WP-31 D5, the redraw's graph options) | read only after the
   build |
+| ``_frame_cols``, ``_df_ref_all``, ``_gfac_to_orig`` (WP-33 33-07: the
+  split columns' map, the callback's frame, the panel-to-graph map) | read
+  only after the build |
 | ``_DASH_NOTED`` (via notes) | GIL-atomic ``in``/``add``; at worst a note
   twice |
 | ``_fmt_cache`` | GIL-atomic get/set of equal transforms |
@@ -88,6 +91,10 @@ _WORKER_AUDIT = {
     # constants, read and never written.
     "_DASH_BY_AXES_SPELLINGS", "_DASH_BY_GRAMMAR", "_DASH_BY_SUPPORTED",
     "_DASH_BY_TEXT_SPELLINGS",
+    # WP-33 33-07: a split graph's move rows (_dash_frame_rows) read the
+    # spec's frame_cols map, the callback's frame and its panel-to-graph
+    # map -- each built before any session and never written after.
+    "_frame_cols", "_df_ref_all", "_gfac_to_orig",
 }
 
 

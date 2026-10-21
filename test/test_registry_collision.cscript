@@ -1544,6 +1544,31 @@ if `q10a' != 0 | `q10l' != 32 | "${dash_img_`n18'}" != "1" | `q10b' != 198 | `q1
 else display "Q3306-10 PASS: an image name is at most 18 characters"
 assert `q10a' == 0 & `q10l' == 32 & `q10b' == 198 & `q10w' == 1 & "`_left'" == ""
 
+// ================================================================
+// Q3307-1 (WP-33 33-07) -- a named registration records its frame
+// ================================================================
+// frame cars: dash ..., name(g1) stores the frame in dash_frm_g1, as
+// twoway draws from the frame its command runs in; a registration in the
+// default frame stores that frame; dash clear leaves no dash_frm_* global.
+dash clear
+capture frame drop cars
+frame create cars
+frame cars: quietly sysuse auto, clear
+quietly sysuse auto, clear
+frame cars: dash scatter mpg weight, name(g1)
+local q1a "${dash_frm_g1}"
+dash scatter mpg weight, name(g1, replace)
+local q1b "${dash_frm_g1}"
+local q1cur = c(frame)
+dash clear
+mata: st_local("q1left", invtokens(st_dir("global", "macro", "dash_frm_*")'))
+frame drop cars
+if "`q1a'" != "cars" | "`q1b'" != "`q1cur'" | "`q1left'" != "" {
+    display as error "Q3307-1 FAIL: frame '`q1a'' then '`q1b'' (current `q1cur'), left `q1left'"
+}
+else display "Q3307-1 PASS: a named registration records the frame it ran in, and dash clear removes it"
+assert "`q1a'" == "cars" & "`q1b'" == "`q1cur'" & "`q1left'" == ""
+
 dash clear
 macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh

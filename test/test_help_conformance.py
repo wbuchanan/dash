@@ -920,8 +920,9 @@ class TestTheParsersFoundSomething:
         # paragraph's heatmap and outlines entries come.
         # 466 -> 464: the $dash_max_cells and $dash_max_bytes rows removed (WP-33 33-15)
         # 464 -> 467: dash image's syntax line, Image panels section and $dash_max_images row (WP-33 33-06)
-        assert len(defs) == 467, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 467 "
+        # 467 -> 474: the Graphs from several frames paragraph (WP-33 33-07)
+        assert len(defs) == 474, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 474 "
             f"measured 21oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1382,4 +1383,6 @@ class TestInternalLinksResolve:
         # size caps (WP-33 33-15)
         # 119 -> 121 links, 44 -> 45 targets: the Image panels jump link
         # (dash##image) and its link to Resource limits (WP-33 33-06).
-        assert len(refs) == 121 and len(set(refs)) == 45
+        # 121 -> 122 links, 45 -> 46 targets: the qualifier paragraph's
+        # link to Graphs from several frames (dash##frames, WP-33 33-07).
+        assert len(refs) == 122 and len(set(refs)) == 46

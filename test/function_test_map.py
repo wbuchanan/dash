@@ -81,6 +81,7 @@ FUNCTIONS = {
  '_dash_read_data_json.<locals>._double': 'test/test_data_file_numbers.py::TestTheReader::test_every_out_of_range_value_is_missing',
  '_dash_read_data_json.<locals>._integer': 'test/test_data_file_numbers.py::TestTheReader::test_an_integer_beyond_2_53_is_the_nearest_double',
  'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer_constructs_from_packaged_install',
+ 'DashRenderer._dash_graph_frame': 'test/test_graph_frames.py::TestTheFrameRenderer::test_the_context_puts_everything_back',
  'DashRenderer._add_glyph': 'test/test_glyphs.py::TestNewPlotTypes::test_rscatter_in_dispatch',
  'DashRenderer._add_pc_glyph': 'test/test_every_plot_type_draws.py::test_a_plot_type_draws_a_glyph',
  'DashRenderer._apply_graph_filter': 'test/test_server.py::TestGraphQualifierPropagation::test_renderer_apply_graph_filter_empty_if_expr',
@@ -1012,6 +1013,9 @@ FUNCTIONS = {
  'app:_format_kpi': 'test/test_help_claims_4.py::TestEveryStatisticIsStatas::test_every_card',
  'app:_load_spec_and_data': 'test/test_server_data_shape.py::TestVariableLabelsSurviveToo::test_the_label_reaches_the_app',
  'app:make_document': 'test/test_csp.py::TestTheServedApp::test_a_refused_session_is_served_under_the_policy_too',
+ 'app:make_document.<locals>._dash_frame_in': 'test/test_graph_frames.py::TestTheFramePage::test_the_served_app_keeps_each_frames_metadata',
+ 'app:make_document.<locals>._dash_frame_out': 'test/test_graph_frames.py::TestTheFramePage::test_the_served_app_keeps_each_frames_metadata',
+ 'app:make_document.<locals>._dash_frame_rows': 'test/test_graph_frames.py::TestTheFramePage::test_a_served_move_filters_each_graph_by_its_own_frame',
  'app:make_document.<locals>._dash_table_copy': 'test/test_data_table.py::TestTheView::test_a_linked_table_follows_a_served_move',
  'app:make_document.<locals>._dash_table_cols': 'test/test_data_table.py::TestTheColumns::test_order_and_titles',
  'app:make_document.<locals>._dash_cell': 'test/test_help_claims_4.py::TestEveryStatisticIsStatas::test_every_card',
@@ -1367,6 +1371,9 @@ FUNCTIONS = {
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
  '_dash_col_display': 'test/test_ts_operators.py::TestTheNotes::test_the_display_rule',
  '_dash_take_tsop_columns': 'test/test_ts_operators.py::TestTakingTheColumnsIn::test_the_take_rule',
+ '_dash_frame_cols_named': 'test/test_graph_frames.py::TestTheFrameColsSpec::test_entries_dash_writes',
+ '_dash_frame_view': 'test/test_graph_frames.py::TestTheFrameView::test_a_graph_reads_its_own_frame',
+ '_dash_filter_frame_column': 'test/test_graph_frames.py::TestTheFrameView::test_a_filter_reads_each_graphs_own_column',
  '_dash_tsop_cols_named': 'test/test_ts_operators.py::TestTheColumnsAreNamedInTheSpec::test_the_map_rule',
  '_dash_tsop_labels': 'test/test_ts_operators.py::TestTheLabels::test_the_label_rule',
  # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)

@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- A graph registered with `name()` is drawn at `dash build` from the frame it was registered in (`frame cars: dash scatter mpg weight, name(g1)`), as twoway draws from the current frame, with its time-series operators, sort() and weights; it used to be drawn from the frame `dash build` ran in, and was refused with r(111) when its variables were not there. One dashboard can hold graphs of several frames, a variable two frames hold differently keeping each frame's own format and labels; graphs of different frames cannot share a `link()` group, and a filter skips only the graphs whose frame lacks its variable. (WP-33, 33-07)
 - The twenty shipped schemes are now `dash-<name>.scheme` files, installed in
   `PLUS/d/` instead of `PLUS/s/<name>.scheme` and `PLUS/e/economist.scheme`.
   `scheme(s2color)` and `scheme(s2color.scheme)` work as before. (after WP-28)

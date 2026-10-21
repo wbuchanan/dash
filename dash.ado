@@ -485,6 +485,9 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
+        _dash_frame_set _dash_frame_set_all _dash_frames_reset _dash_frames_keep_add ///
+        _dash_frames_keep_of _dash_frames_take _dash_frames_lset _dash_frames_cols_json ///
+        _dash_filter_exclude_add _dash_link_split _dash_blank_words ///
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
@@ -7808,7 +7811,9 @@ end
 // ================================================================
 program define _dash_qual_gen
     version 19
-    args cmdname
+    // frame (WP-33 33-07): when given, only the columns of that frame's
+    // entries (_dq_fr_<k>) are made; the column numbers stay the table's.
+    args cmdname frame
 
     capture unab _dq_clash : __dash*
     if _rc == 0 {
@@ -7822,12 +7827,14 @@ program define _dash_qual_gen
     mata: _dash_qual_export()
     local made ""
     forvalues k = 1/`_dq_n' {
+        if `: length local frame' & "`_dq_fr_`k''" != "`frame'" continue
         quietly generate byte __dashq`k' = 0
         local made `made' __dashq`k'
     }
     // The data's own order: every column no by() graph sorts.
     forvalues k = 1/`_dq_n' {
         if `: length local _dq_by_`k'' continue
+        if `: length local frame' & "`_dq_fr_`k''" != "`frame'" continue
         local v "__dashq`k'"
         local _qx : copy local _dq_if_`k'
         local _qn : copy local _dq_in_`k'
@@ -7855,7 +7862,7 @@ program define _dash_qual_gen
     local _dq_nord = 0
     mata: _dash_qual_orders()
     forvalues j = 1/`_dq_nord' {
-        capture noisily _dash_qual_gen_by "`cmdname'" `_dq_ord_`j''
+        capture noisily _dash_qual_gen_by "`cmdname'" "`frame'" `_dq_ord_`j''
         local rc = _rc
         if `rc' {
             drop `made'
@@ -7884,6 +7891,8 @@ end
 program define _dash_qual_gen_by, sortpreserve
     version 19
     gettoken cmdname order : 0
+    // The frame whose columns are made, "" for every column (WP-33 33-07).
+    gettoken frame order : order
     local order : list retokenize order
     local _dq_n = 0
     mata: _dash_qual_export()
@@ -7900,6 +7909,7 @@ program define _dash_qual_gen_by, sortpreserve
     forvalues k = 1/`_dq_n' {
         local _o : copy local _dq_by_`k'
         if !`: list _o == order' continue
+        if `: length local frame' & "`_dq_fr_`k''" != "`frame'" continue
         local v "__dashq`k'"
         local _qx : copy local _dq_if_`k'
         local _qn : copy local _dq_in_`k'
@@ -7945,7 +7955,9 @@ end
 // ================================================================
 program define _dash_sort_gen, sortpreserve
     version 19
-    args cmdname
+    // frame (WP-33 33-07): when given, only the lists that frame's graphs
+    // use (_ds_f<k>) are ranked, over its own rows.
+    args cmdname frame
     local _ds_n = 0
     mata: _dash_sort_export()
     if `_ds_n' == 0 {
@@ -7963,6 +7975,7 @@ program define _dash_sort_gen, sortpreserve
     quietly generate double `_ds_obs' = _n
     local made ""
     forvalues k = 1/`_ds_n' {
+        if `: length local frame' & !strpos("`_ds_f`k''", " `frame' ") continue
         foreach _ds_nm of local _ds_v`k' {
             capture confirm variable `_ds_nm', exact
             if _rc {
@@ -8003,10 +8016,16 @@ end
 // ================================================================
 program define _dash_tsop_gen
     version 19
-    args cmdname
+    // frame (WP-33 33-07): when given, only that frame's expressions
+    // (_dts_f<k>) are made, under its own tsset.
+    args cmdname frame
     local _dts_n = 0
     mata: _dash_tsop_export()
-    if `_dts_n' == 0 {
+    local _dt_mine 0
+    forvalues k = 1/`_dts_n' {
+        if !`: length local frame' | "`_dts_f`k''" == "`frame'" local ++_dt_mine
+    }
+    if `_dt_mine' == 0 {
         c_local _dash_tsop_vars ""
         exit
     }
@@ -8023,6 +8042,7 @@ program define _dash_tsop_gen
     }
     local made ""
     forvalues k = 1/`_dts_n' {
+        if `: length local frame' & "`_dts_f`k''" != "`frame'" continue
         mata: st_local("_dt_ok", strofreal(_dash_tsop_canon(st_local("_dts_e`k'"))))
         if !`_dt_ok' {
             if "`made'" != "" drop `made'
@@ -8092,7 +8112,9 @@ end
 
 program define _dash_wexp_gen
     version 19
-    args cmdname
+    // frame (WP-33 33-07): when given, only that frame's expressions
+    // (_dwx_f<k>) are made, from its own variables.
+    args cmdname frame
     local _dwx_n = 0
     mata: _dash_wexp_export()
     if `_dwx_n' == 0 {
@@ -8108,6 +8130,7 @@ program define _dash_wexp_gen
     }
     local made ""
     forvalues k = 1/`_dwx_n' {
+        if `: length local frame' & "`_dwx_f`k''" != "`frame'" continue
         mata: st_local("_dw_ok", strofreal(_dash_wexp_ok(st_local("_dwx_e`k'"))))
         if !`_dw_ok' {
             if "`made'" != "" drop `made'
@@ -11303,6 +11326,10 @@ program define _dash_register_graph
     }
     else capture macro drop dash_tu_`name'
     capture macro drop dash__tunit
+    // The frame the graph was registered in (WP-33 33-07, P4-7): dash build
+    // draws it from there, as twoway draws from the current frame.
+    // dash_frm_<name> is 9 + 22 characters, within a global's 32.
+    mata: st_global("dash_frm_" + st_local("name"), c("frame"))
 
     // Update registry
     if `already' == 0 {
@@ -11834,6 +11861,7 @@ program define _dash_clear
     capture macro drop dash_img_*
     capture macro drop dash_fpts_*
     capture macro drop dash_tu_*
+    capture macro drop dash_frm_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
@@ -12382,6 +12410,255 @@ end
 
 
 // ================================================================
+// Graphs from several frames (WP-33 33-07, P4-4, P4-7)
+// ================================================================
+// A graph registered under Stata's own prefix, frame f: dash ...,
+// name(g), is drawn from frame f, as frame f: twoway ... draws from it;
+// _dash_register_graph records the frame in dash_frm_<g>.  dash never
+// changes the working frame: every command that reads another frame runs
+// under the frame prefix, which gives the frame back when it fails.
+//
+// _dash_frames_plan <cmdname> <link>  (rclass) -- the build's frames.
+// r(multi) is 0 when every graph was registered in the frame dash build
+// runs in (a graph with no dash_frm_<g> counts as that frame): the build
+// is then exactly as before.  r(frames) lists the frames in the order the
+// stack is made, the build's own first when a graph or KPI uses it;
+// r(of_<k>) is registry entry k's frame.  Refused: a graph whose frame is
+// gone (Stata's "frame <f> not found", r(111), naming the graph), and a
+// link() group joining graphs of two frames (r(198)).
+program define _dash_frames_plan, rclass
+    version 19
+    args cmdname link
+    local reg "${dash_graph_registry}"
+    local cur = c(frame)
+    local multi 0
+    local frames ""
+    local n : word count `reg'
+    local _own 0
+    forvalues k = 1/`n' {
+        local g : word `k' of `reg'
+        if "${dash_img_`g'}" == "1" {
+            return local of_`k' "`cur'"
+            continue
+        }
+        if "${dash_kpi_`g'}" == "1" {
+            local _own 1
+            return local of_`k' "`cur'"
+            continue
+        }
+        mata: st_local("_f", st_global("dash_frm_" + st_local("g")))
+        if `"`_f'"' == "" local _f "`cur'"
+        if "`_f'" == "`cur'" local _own 1
+        else {
+            local multi 1
+            capture confirm frame `_f'
+            if _rc {
+                mata: _dash_say("err", "frame ", st_local("_f"), " not found")
+                mata: _dash_say("err", "`cmdname': graph ", st_local("g"), ///
+                    " was registered in frame " + st_local("_f") + ".")
+                exit 111
+            }
+            if !`: list _f in frames' local frames `frames' `_f'
+        }
+        local _of_`k' "`_f'"
+        return local of_`k' "`_f'"
+    }
+    if `_own' local frames `cur' `frames'
+    if `multi' {
+        local _lklen : length local link
+        if `_lklen' > 0 {
+            mata: st_local("_lkg", strofreal(cols(_dash_link_split(st_local("link")))))
+            forvalues j = 1/`_lkg' {
+                mata: st_local("_lkw", invtokens(_dash_blank_words(_dash_link_split(st_local("link"))[`j'])))
+                if "`_lkw'" == "_all" local _lkw `reg'
+                local _lkf ""
+                foreach _lg of local _lkw {
+                    local _lk : list posof "`_lg'" in reg
+                    if `_lk' == 0 continue
+                    if "${dash_kpi_`_lg'}" == "1" | "${dash_img_`_lg'}" == "1" continue
+                    if "`_lkf'" == "" local _lkf "`_of_`_lk''"
+                    else if "`_of_`_lk''" != "`_lkf'" {
+                        mata: _dash_say("err", "`cmdname': link() joins graphs from frames ", ///
+                            st_local("_lkf") + " and " + st_local("_of_`_lk'"), ///
+                            "; a link group draws from one frame")
+                        exit 198
+                    }
+                }
+            }
+        }
+    }
+    return local multi "`multi'"
+    return local frames "`frames'"
+end
+
+// _dash_frames_one <cmdname> <file>  -- one frame's part of the stack,
+// run as frame <f>: _dash_frames_one ...  In a preserved copy of the
+// frame: the frame's own qualifier, join-order, time-series and weight
+// columns, made from its own rows, tsset and sort order; then each
+// variable its graphs use that an earlier frame holds differently
+// renamed to its split column __dashm<k> (DECISIONS A-23), each value
+// label whose name an earlier frame used for other contents moved to its
+// copy __dashl<j>, and every label set no kept variable uses dropped (so
+// append never meets a set of one name and two contents); the kept
+// variables and the made columns saved to <file>.  The preserve gives the
+// frame back as it was.  The made and split columns come back in the
+// caller's locals.
+program define _dash_frames_one
+    version 19
+    args cmdname file
+    local F = c(frame)
+    preserve
+    local _dash_qual_vars ""
+    local _dash_sort_vars ""
+    local _dash_tsop_vars ""
+    local _dash_wexp_vars ""
+    _dash_qual_gen "`cmdname'" "`F'"
+    _dash_sort_gen "`cmdname'" "`F'"
+    _dash_tsop_gen "`cmdname'" "`F'"
+    _dash_wexp_gen "`cmdname'" "`F'"
+    mata: st_local("_keep", _dash_frames_keep_of(st_local("F")))
+    // Each time-series column's base, whose label and format name the
+    // column (_dash_tsop_meta).
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    forvalues k = 1/`_dts_n' {
+        if "`_dts_f`k''" != "`F'" continue
+        local _b = substr("`_dts_e`k''", strpos("`_dts_e`k''", ".") + 1, .)
+        if !`: list _b in _keep' local _keep `_keep' `_b'
+    }
+    local _out ""
+    local _split ""
+    foreach v of local _keep {
+        confirm variable `v', exact
+        mata: st_local("_col", _dash_frames_take(st_local("F"), st_local("v")))
+        if "`_col'" != "" {
+            rename `v' `_col'
+            local _out `_out' `_col'
+            local _split `_split' `_col'
+        }
+        else local _out `_out' `v'
+    }
+    local _made `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+    quietly keep `_out' `_made'
+    // The value-label sets: each kept variable's, under a name no other
+    // frame used for other contents.
+    local _used ""
+    foreach v of varlist _all {
+        local _vl : value label `v'
+        if "`_vl'" == "" continue
+        mata: st_local("_nl", _dash_frames_lset(st_local("_vl")))
+        if "`_nl'" != "" {
+            capture label list `_nl'
+            if _rc label copy `_vl' `_nl'
+            label values `v' `_nl'
+            local _vl `_nl'
+        }
+        if !`: list _vl in _used' local _used `_used' `_vl'
+    }
+    quietly label dir
+    local _all_l `r(names)'
+    local _drop : list _all_l - _used
+    if "`_drop'" != "" label drop `_drop'
+    quietly save "`file'", replace
+    c_local _dash_fr_qual "`_dash_qual_vars'"
+    c_local _dash_fr_split "`_split'"
+end
+
+// _dash_frames_stack <cmdname> <stack> <frames>  -- the build's data from
+// every frame of the plan, in its order, appended into the frame <stack>
+// (a tempname of the caller's, dropped when the caller ends): each frame's
+// part made by _dash_frames_one in that frame, each qualifier column 0 on
+// every other frame's rows.  The working columns come back in the
+// caller's locals in column-number order, the split columns in k order.
+program define _dash_frames_stack
+    version 19
+    args cmdname stack frames
+    local _qall ""
+    local _sall ""
+    local _i 0
+    foreach F of local frames {
+        local ++_i
+        tempfile _fp`_i'
+        local _dash_fr_qual ""
+        local _dash_fr_split ""
+        frame `F': _dash_frames_one "`cmdname'" "`_fp`_i''"
+        local _qall `_qall' `_dash_fr_qual'
+        local _sall `_sall' `_dash_fr_split'
+    }
+    frame create `stack'
+    forvalues j = 1/`_i' {
+        if `j' == 1 frame `stack': quietly use "`_fp`j''", clear
+        else {
+            frame `stack': local _off`j' = _N
+            frame `stack': quietly append using "`_fp`j''"
+        }
+    }
+    local _off1 0
+    frame `stack': local _offend = _N
+    foreach q of local _qall {
+        frame `stack': quietly replace `q' = 0 if missing(`q')
+    }
+    // A join-order column holds each frame's ranks on its own rows; the
+    // renderers take it as distinct whole numbers over every row, so a
+    // frame's ranks are moved past the rows above it, and a row of a frame
+    // that does not rank by it takes its row number.  The order within a
+    // frame, the only order a graph reads, is unchanged.
+    capture frame `stack': unab _sv_all : __dashs*
+    if !_rc {
+        foreach sv of local _sv_all {
+            forvalues j = 1/`_i' {
+                local _a = `_off`j'' + 1
+                local _jn = `j' + 1
+                local _b = cond(`j' < `_i', "`_off`_jn''", "`_offend'")
+                if `_a' > `_b' continue
+                frame `stack': quietly replace `sv' = `sv' + `_off`j'' in `_a'/`_b' if !missing(`sv')
+            }
+            frame `stack': quietly replace `sv' = _n if missing(`sv')
+        }
+    }
+    // Every column the table holds, in column-number order: each is made
+    // in the frames its entries name.
+    local _dq_n = 0
+    mata: _dash_qual_export()
+    local _ds_n = 0
+    mata: _dash_sort_export()
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    local _dwx_n = 0
+    mata: _dash_wexp_export()
+    local _qv ""
+    forvalues k = 1/`_dq_n' {
+        local _qv `_qv' __dashq`k'
+    }
+    local _sv ""
+    forvalues k = 1/`_ds_n' {
+        local _sv `_sv' __dashs`k'
+    }
+    local _tv ""
+    forvalues k = 1/`_dts_n' {
+        local _tv `_tv' __dasht`k'
+    }
+    local _wv ""
+    forvalues k = 1/`_dwx_n' {
+        local _wv `_wv' __dashw`k'
+    }
+    local _sall : list uniq _sall
+    local _sord ""
+    forvalues k = 1/99999 {
+        if !`: list posof "__dashm`k'" in _sall' continue, break
+        local _sord `_sord' __dashm`k'
+    }
+    c_local _dash_qual_vars "`_qv'"
+    c_local _dash_sort_vars "`_sv'"
+    c_local _dash_tsop_vars "`_tv'"
+    c_local _dash_wexp_vars "`_wv'"
+    c_local _dash_split_vars "`_sord'"
+    mata: st_local("_map", _dash_frames_cols_json())
+    c_local _dash_fcols_map `"`_map'"'
+end
+
+
+// ================================================================
 // _dash_build  — build dashboard
 // ================================================================
 // ================================================================
@@ -12708,6 +12985,23 @@ program define _dash_prepare_spec, rclass
     // scheme() then theme() then c(scheme), and a theme was always present.
     // An empty theme means "the user did not ask", which is the truth.
 
+    // ---- graphs from several frames (WP-33 33-07) ----
+    // Each graph is drawn from the frame it was registered in (Stata's
+    // frame prefix; dash_frm_<g>).  When all of them share the frame this
+    // build runs in, nothing below changes (_dash_fr_multi 0).  Otherwise
+    // each graph's registry entry is read in its own frame (_fpx, the
+    // frame prefix), every column is keyed by its frame, and the data are
+    // a stack of the frames, made in the frame _dash_stk names.
+    tempname _dash_stk
+    _dash_frames_plan "`cmdname'" `"`macval(link)'"'
+    local _dash_fr_multi = r(multi)
+    local _dash_fr_frames "`r(frames)'"
+    local _fr_n : word count `registry'
+    forvalues k = 1/`_fr_n' {
+        local _fof_`k' "`r(of_`k')'"
+    }
+    local _fpx ""
+
     // ---- determine all variables needed ----
     // And each distinct qualifier, which is evaluated in Stata and exported
     // as a column (_dash_qual_rewrite, _dash_qual_take, _dash_qual_gen).
@@ -12723,11 +13017,22 @@ program define _dash_prepare_spec, rclass
     // weight-expression table (WP-31 A5).
     mata: _dash_tsop_reset()
     mata: _dash_wexp_reset()
+    if `_dash_fr_multi' {
+        mata: _dash_frames_reset()
+        mata: _dash_frame_set_all(1)
+    }
     local _rl_sum 0
     local _at_sum 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
+        // The entry's frame (WP-33 33-07): its columns are keyed by it,
+        // and a frame other than this build's is read under its prefix.
+        if `_dash_fr_multi' {
+            mata: _dash_frame_set(st_local("_fof_`k'"))
+            local _fpx ""
+            if "`_fof_`k''" != "`c(frame)'" local _fpx "frame `_fof_`k'':"
+        }
 
         // A KPI is exactly its marker: the global dash_kpi_<name> holding
         // "1", the one global _dash_kpi writes under that name -- here and
@@ -12771,6 +13076,9 @@ program define _dash_prepare_spec, rclass
                 }
                 if !`: list _kwv in all_vars' local all_vars "`all_vars' `_kwv'"
             }
+            if `_dash_fr_multi' {
+                mata: _dash_frames_keep_add(c("frame"), "", st_local("kpi_var") + " " + st_local("_kwv"))
+            }
             // The KPI's own if and in: the column that will hold Stata's
             // answer (_dash_qual_gen), read by value from the registry.
             // Its variables are not exported -- the answer is.  They used
@@ -12813,7 +13121,7 @@ program define _dash_prepare_spec, rclass
             // by the column that holds Stata's answer, and no qualifier
             // text left for a renderer to translate.  Read by value.
             local _dq_err ""
-            mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
+            `_fpx' mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
                 st_global("dash_json_" + st_local("gname")), "_dq_err", 1))
             if `: length local _dq_err' {
                 mata: _dash_say("err", "`cmdname': registry entry '", ///
@@ -12826,12 +13134,12 @@ program define _dash_prepare_spec, rclass
             local _dts_err ""
             // A weight expression first (WP-31 A5): the column __dashw<k>
             // _dash_wexp_gen fills at export.
-            mata: st_local("_qg_`k'", _dash_wexp_rewrite(st_local("_qg_`k'"), "_dts_err"))
+            `_fpx' mata: st_local("_qg_`k'", _dash_wexp_rewrite(st_local("_qg_`k'"), "_dts_err"))
             if `: length local _dts_err' {
                 mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
                 exit 198
             }
-            mata: st_local("_qg_`k'", _dash_tsop_rewrite(st_local("_qg_`k'"), "_dts_err"))
+            `_fpx' mata: st_local("_qg_`k'", _dash_tsop_rewrite(st_local("_qg_`k'"), "_dts_err"))
             if `: length local _dts_err' {
                 mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
                 exit 198
@@ -12856,9 +13164,9 @@ program define _dash_prepare_spec, rclass
                 local _tu_v `3'
                 local _tu_u `5'
                 local _tu_now "?"
-                capture confirm variable `_tu_v', exact
+                `_fpx' capture confirm variable `_tu_v', exact
                 if !_rc {
-                    local _tu_f : format `_tu_v'
+                    `_fpx' local _tu_f : format `_tu_v'
                     mata: st_local("_tu_now", _dash_taxis_unit(st_local("_tu_f"), 1))
                 }
                 if "`_tu_now'" != "`_tu_u'" & !`_tu_said' {
@@ -12886,9 +13194,11 @@ program define _dash_prepare_spec, rclass
             // are not exported, its answer is.
             local qvars ""
             mata: _dash_extract_qual_vars(st_local("_qg_`k'"), "qvars")
+            local _qv_ok ""
             foreach v of local qvars {
-                capture confirm variable `v'
+                `_fpx' capture confirm variable `v'
                 if _rc == 0 {
+                    local _qv_ok `_qv_ok' `v'
                     if !`: list v in all_vars' local all_vars "`all_vars' `v'"
                 }
             }
@@ -12904,7 +13214,7 @@ program define _dash_prepare_spec, rclass
             local _hv_k ""
             local _hv_bad ""
             local _hv_why ""
-            mata: _dash_extract_hover_vars(st_local("_qg_`k'"), "_hv_k", "_hv_bad", "_hv_why")
+            `_fpx' mata: _dash_extract_hover_vars(st_local("_qg_`k'"), "_hv_k", "_hv_bad", "_hv_why")
             if "`_hv_why'" == "name" {
                 mata: _dash_say("err", "`cmdname': registry entry '" + ///
                     st_local("gname") + "' holds a hover() value that is " + ///
@@ -12929,8 +13239,15 @@ program define _dash_prepare_spec, rclass
             else {
                 local _hv_hide : list _hv_hide | _hv_k
             }
+            // What this graph's frame keeps for it (WP-33 33-07).
+            if `_dash_fr_multi' {
+                mata: _dash_frames_keep_add(st_local("_fof_`k'"), st_local("gname"), ///
+                    st_local("gvars") + " " + st_local("_qv_ok") + " " + st_local("_hv_k"))
+            }
         }
     }
+    local _fpx ""
+    if `_dash_fr_multi' mata: _dash_frame_set(c("frame"))
 
     // Reference lines: positions times by() panels over every graph
     // (WP-30 P1.21a), refused before any export.
@@ -12956,13 +13273,64 @@ program define _dash_prepare_spec, rclass
     // filter(fore) built with rc 0 and no widget -- "the variable is not in
     // the data" (measured at 4ede074).
     local _ffull ""
+    local _fgi 0
     foreach _fvar of local _fvars {
-        capture confirm variable `_fvar'
-        if _rc != 0 {
-            display as error "`cmdname': filter() variable `_fvar' not found."
-            exit(111)
+        local ++_fgi
+        if `_dash_fr_multi' {
+            // A build of several frames (WP-33 33-07): the variable is
+            // resolved in every frame; each frame that holds it must give
+            // the same full name and kind (DECISIONS A-28), and every
+            // graph whose frame does not hold it is excluded.
+            local _fhave ""
+            local _fvfull ""
+            local _fkind ""
+            local _ff1 ""
+            foreach _F of local _dash_fr_frames {
+                frame `_F': capture confirm variable `_fvar'
+                if _rc continue
+                frame `_F': unab _fu : `_fvar'
+                frame `_F': capture confirm string variable `_fu', exact
+                local _fk = cond(_rc, "numeric", "a string")
+                if "`_ff1'" == "" {
+                    local _ff1 "`_F'"
+                    local _fvfull "`_fu'"
+                    local _fkind "`_fk'"
+                }
+                else if "`_fu'" != "`_fvfull'" {
+                    mata: _dash_say("err", "`cmdname': filter() variable ", st_local("_fvar"), ///
+                        " abbreviates " + st_local("_fvfull") + " in frame " + st_local("_ff1") + ///
+                        " and " + st_local("_fu") + " in frame " + st_local("_F"))
+                    exit 198
+                }
+                else if "`_fk'" != "`_fkind'" {
+                    mata: _dash_say("err", "`cmdname': filter() variable ", st_local("_fvfull"), ///
+                        " is " + st_local("_fkind") + " in frame " + st_local("_ff1") + ///
+                        " and " + st_local("_fk") + " in frame " + st_local("_F"))
+                    exit 109
+                }
+                local _fhave `_fhave' `_F'
+                mata: _dash_frames_keep_add(st_local("_F"), "", st_local("_fu"))
+            }
+            if "`_ff1'" == "" {
+                display as error "`cmdname': filter() variable `_fvar' not found."
+                exit(111)
+            }
+            local _fxg ""
+            forvalues k = 1/`ntok_reg' {
+                local gname : word `k' of `registry'
+                if "${dash_img_`gname'}" == "1" | "${dash_kpi_`gname'}" == "1" continue
+                if !`: list _fof_`k' in _fhave' local _fxg `_fxg' `gname'
+            }
+            local _fxadd_`_fgi' "`_fxg'"
         }
-        unab _fvfull : `_fvar'
+        else {
+            capture confirm variable `_fvar'
+            if _rc != 0 {
+                display as error "`cmdname': filter() variable `_fvar' not found."
+                exit(111)
+            }
+            unab _fvfull : `_fvar'
+        }
         local _ffull `_ffull' `_fvfull'
         if !`: list _fvfull in all_vars' {
             local all_vars "`all_vars' `_fvfull'"
@@ -12971,6 +13339,14 @@ program define _dash_prepare_spec, rclass
     if !`: list _ffull == _fvars' {
         mata: st_local("filter", _dash_filter_setvars(st_local("filter"), ///
             st_local("_ffull")))
+    }
+    if `_dash_fr_multi' {
+        forvalues j = 1/`_fgi' {
+            if "`_fxadd_`j''" != "" {
+                mata: st_local("filter", _dash_filter_exclude_add(st_local("filter"), ///
+                    `j', st_local("_fxadd_`j'")))
+            }
+        }
     }
 
     local all_vars = strtrim("`all_vars'")
@@ -13041,6 +13417,7 @@ program define _dash_prepare_spec, rclass
         local gname : word `k' of `registry'
         if "${dash_img_`gname'}" == "1" continue
         if "${dash_kpi_`gname'}" == "1" continue
+        if `_dash_fr_multi' mata: _dash_frame_set(st_local("_fof_`k'"))
         mata: _dash_sort_scan(st_local("_qg_`k'"))
     }
     mata: st_local("_ds_isbad", strofreal(st_local("_ds_bad") != ""))
@@ -13060,17 +13437,58 @@ program define _dash_prepare_spec, rclass
     }
     if `_ds_n' > 0 local _ds_json `","sort_cols":{`_ds_json'}"'
 
-    // Collect display formats, as on the immediate route.
-    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
-    // The time-series columns' formats and the spec's map (WP-30 P1.7).
+    // Collect display formats, as on the immediate route.  A build of
+    // several frames reads them from its stack, below (WP-33 33-07).
     local _dts_json ""
-    if `_dts_n' + `_dwx_n' > 0 {
-        mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
-        local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+    local _dash_fcols_map "{}"
+    local _dash_fr_stack = `_dash_fr_multi' & !`_novars'
+    if !`_dash_fr_stack' {
+        _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
+        // The time-series columns' formats and the spec's map (WP-30 P1.7).
+        if `_dts_n' + `_dwx_n' > 0 {
+            mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+            local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+        }
     }
     local _dash_jrc = 0
     if `_novars' {
         _dash_empty_data "`datapath'"
+    }
+    else if `_dash_fr_stack' {
+        // The stack (WP-33 33-07): each frame's rows and columns, made in
+        // that frame (_dash_frames_stack); formats, Stata's ticks and the
+        // data file read from it.  The working frame is never changed.
+        if `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n' > 0 {
+            tempname _dash_eh
+            _estimates hold `_dash_eh', restore nullok
+        }
+        local _dash_split_vars ""
+        _dash_frames_stack "`cmdname'" `_dash_stk' "`_dash_fr_frames'"
+        frame `_dash_stk': _dash_formats_json "`all_vars' `_dash_split_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
+        if `_dts_n' + `_dwx_n' > 0 {
+            frame `_dash_stk': mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+            local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+        }
+        local _dst_names ""
+        forvalues _dstk = 1/`ntok_reg' {
+            if `: length local _qg_`_dstk'' local _dst_names `_dst_names' _qg_`_dstk'
+        }
+        local _dash_st_json ""
+        _dash_require_python
+        _dash_require_deps
+        capture _dash_xm_load
+        if _rc == 0 {
+            capture python: import sys
+            capture python: from sfi import Macro as _dash_M
+            capture python: _dash_xm = sys.modules["_dash_render_export"]
+            capture python: _dash_M.setLocal("_dst_reqs", _dash_xm._dash_stata_tick_plan(_dash_M.getLocal("_dst_names"), _dash_M.getLocal("_dash_fmt_json"), _dash_M.getLocal("_dash_fcols_map")))
+            if _rc == 0 & `: length local _dst_reqs' {
+                capture frame `_dash_stk': _dash_stata_ticks_gen `_dst_reqs'
+                if _rc local _dash_st_json ""
+            }
+        }
+        capture noisily frame `_dash_stk': _dash_write_data "`datapath'" `all_vars' `_dash_split_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+        local _dash_jrc = _rc
     }
     else {
         // The qualifier columns, as on the immediate route: made first,
@@ -13335,7 +13753,14 @@ program define _dash_prepare_spec, rclass
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json']`_im_part',"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'`_dash_brush_json'}"'
+    // The split columns' map (WP-33 33-07): only when a variable was split.
+    local _dash_fcols_bo ""
+    if `"`macval(_dash_fcols_map)'"' != "{}" local _dash_fcols_bo `","frame_cols":`macval(_dash_fcols_map)'"'
+    if `_dash_fr_multi' {
+        mata: _dash_frame_set("")
+        mata: _dash_frame_set_all(0)
+    }
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json']`_im_part',"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","dp":"`_dash_dp'","adoarchive":"`c(adoarchive)'"`_dash_gsf',"formats":`_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'`_dash_fcols_bo'`_dash_brush_json'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:

@@ -408,6 +408,10 @@ COVERAGE = {
         # WP-31 S07 (A5): weight expressions
         "_dash_wexp_gen": ("test_wp31_truth.cscript:U07-1", "test_wp31_truth.cscript:U07-3"),
         "_dash_wexp_yx": ("test_statistical_options.cscript:U20-08",),
+        # WP-33 33-07: graphs from several frames
+        "_dash_frames_plan": ("test_e2e_multi.cscript:Q3307-6", "test_e2e_multi.cscript:Q3307-8", "test_e2e_multi.cscript:Q3307-16"),
+        "_dash_frames_one": ("test_e2e_multi.cscript:Q3307-6", "test_e2e_multi.cscript:Q3307-17"),
+        "_dash_frames_stack": ("test_e2e_multi.cscript:Q3307-6", "test_e2e_multi.cscript:Q3307-12"),
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
         "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
         "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
@@ -876,6 +880,23 @@ COVERAGE = {
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         "_dash_connect_canon": ("test_twoway_option_parity.cscript:CM-08", "test_twoway_option_parity.cscript:CM-05"),
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+        # WP-33 33-07: graphs from several frames
+        "_dash_frame_set": ("test_e2e_multi.cscript:Q3307-6",),
+        "_dash_frame_set_all": ("test_e2e_multi.cscript:Q3307-6",),
+        "_dash_frame_key_now": ("test_e2e_multi.cscript:Q3307-10",),
+        "_dash_frame_all_now": ("test_e2e_multi.cscript:Q3307-6",),
+        "_dash_frames_reset": ("test_e2e_multi.cscript:Q3307-6",),
+        "_dash_frames_keep_add": ("test_e2e_multi.cscript:Q3307-15",),
+        "_dash_frames_keep_of": ("test_e2e_multi.cscript:Q3307-15",),
+        "_dash_vl_hash": ("test_e2e_multi.cscript:Q3307-17",),
+        "_dash_var_meta": ("test_e2e_multi.cscript:Q3307-11", "test_e2e_multi.cscript:Q3307-14"),
+        "_dash_frames_clash": ("test_e2e_multi.cscript:Q3307-11", "test_e2e_multi.cscript:Q3307-14", "test_e2e_multi.cscript:Q3307-17"),
+        "_dash_frames_fields": ("test_e2e_multi.cscript:Q3307-14",),
+        "_dash_frames_take": ("test_e2e_multi.cscript:Q3307-11", "test_e2e_multi.cscript:Q3307-15"),
+        "_dash_frames_lset": ("test_e2e_multi.cscript:Q3307-17",),
+        "_dash_frames_split_of": ("test_e2e_multi.cscript:Q3307-14",),
+        "_dash_frames_cols_json": ("test_e2e_multi.cscript:Q3307-11", "test_e2e_multi.cscript:Q3307-14"),
+        "_dash_filter_exclude_add": ("test_e2e_multi.cscript:Q3307-9",),
         "_dash_tsop_canon": ("test_parser.cscript:TSO-11",),
         "_dash_tsop_export": ("test_parser.cscript:TSO-01",),
         "_dash_tsop_meta": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-09"),

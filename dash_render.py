@@ -41644,7 +41644,7 @@ _DASH_STATA_TICK_SKIP = frozenset((
     "histogram", "kdensity", "function", "scatteri", "pci", "pcarrowi"))
 
 
-def _dash_stata_tick_requests(graphs, formats):
+def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
     """The ranges whose Stata ticks the export asks for (WP-31 D15): per
     graph and drawn axis (letter and axis numbers; ``horizontal`` swaps the
     letters), the layers on it as ``(variables, qualifier columns)``, each
@@ -41655,12 +41655,17 @@ def _dash_stata_tick_requests(graphs, formats):
     qualifier text is never read (DECISIONS A25)."""
     out = []
     fm = formats if isinstance(formats, dict) else {}
+    fcols = frame_cols if isinstance(frame_cols, dict) else {}
 
     for g in graphs or ():
         if not isinstance(g, dict):
             continue
         go = g.get("graph_options")
         go = go if isinstance(go, dict) else {}
+        # A graph that reads a variable from its frame's split column
+        # (WP-33 33-07) asks for that column's range, in its format.
+        _vmap = {v: e["col"] for v, e in
+                 (fcols.get(go.get("name", "")) or {}).items()}
         counts = {5}
         for k, v in go.items():
             if isinstance(v, str) and re.match(r"[xy]\d?(label|tick)\Z",
@@ -41684,9 +41689,10 @@ def _dash_stata_tick_requests(graphs, formats):
             o = o if isinstance(o, dict) else {}
             # The keys dash.ado writes a layer's variables under: a range
             # layer's two y, a pc layer's two pairs.
-            ys = [v for k in ("yvar", "yvar1", "yvar2", "y1var", "y2var")
+            ys = [_vmap.get(v, v)
+                  for k in ("yvar", "yvar1", "yvar2", "y1var", "y2var")
                   for v in str(p.get(k, "") or "").split()]
-            xs = [v for k in ("xvar", "x1var", "x2var")
+            xs = [_vmap.get(v, v) for k in ("xvar", "x1var", "x2var")
                   for v in str(p.get(k, "") or "").split()]
             if not all(_DASH_STATA_NAME_RE.match(v) for v in ys + xs):
                 continue
@@ -41716,7 +41722,7 @@ def _dash_stata_tick_requests(graphs, formats):
 _DASH_STATA_TICK_REQ_MAX = 128
 
 
-def _dash_stata_tick_plan(names, formats_text):
+def _dash_stata_tick_plan(names, formats_text, frame_cols_text=""):
     """The requests dash.ado's ``_dash_stata_ticks_gen`` runs at export
     (WP-31 D15), as one line: each ``<n> <unit> <byvar> <layer>...`` (the
     arguments of ``_dash_axis_ticks_stata``), joined by ";".  *names* are
@@ -41739,8 +41745,17 @@ def _dash_stata_tick_plan(names, formats_text):
         formats = json.loads(formats_text or "{}")
     except (TypeError, ValueError):
         formats = {}
+    # The split columns' map (WP-33 33-07), "" or text that is not an
+    # object read as none.
+    try:
+        _fc = json.loads(frame_cols_text or "{}")
+        _fc = _dash_frame_cols_named(
+            {"build_options": {"frame_cols": _fc}}) if isinstance(
+                _fc, dict) else {}
+    except ValueError:
+        _fc = {}
     out = []
-    for rq in _dash_stata_tick_requests(graphs, formats):
+    for rq in _dash_stata_tick_requests(graphs, formats, _fc):
         layers = " ".join("+".join(vs) + ":" + "+".join(ms)
                           for vs, ms in rq["layers"])
         line = "%d %s %s %s" % (rq["n"], rq["unit"] or "-",
@@ -59359,6 +59374,108 @@ def _dash_take_tsop_columns(df, spec):
     return df, tsmap
 
 
+#: WP-33 33-07: a split column's name, ``__dashm<k>`` (DECISIONS A-23).
+_DASH_FRAME_COL_RE = re.compile(r"__dashm[1-9][0-9]{0,3}\Z")
+
+#: WP-33 33-07: the metadata maps a graph's frame view rewrites.
+_DASH_FRAME_META_KEYS = ("variable_labels", "value_labels",
+                         "value_label_names", "formats", "numeric_formats",
+                         "date_vars", "storage_types")
+
+
+def _dash_frame_cols_named(spec):
+    """The split columns *spec* maps, ``{graph: {var: {"col", "frame"}}}``
+    (WP-33 33-07, DECISIONS A-23).
+
+    dash.ado writes ``build_options.frame_cols`` when graphs of two frames
+    share a variable the frames hold with another storage kind, display
+    format, value label or variable label: the later frame's copy travels
+    in a column ``__dashm<k>`` of its own, and each of that frame's graphs
+    reads it under the variable's name.  Validated as ``ts_cols`` is: absent
+    or ``{}`` gives ``{}``.
+
+    Raises:
+        ValueError: An entry dash.ado would not write.
+    """
+    bo = (spec or {}).get("build_options") if isinstance(spec, dict) else None
+    raw = bo.get("frame_cols") if isinstance(bo, dict) else None
+    if raw in (None, {}):
+        return {}
+    bad = ValueError("dash: the spec's frame_cols entry is not one dash writes.")
+    if not isinstance(raw, dict):
+        raise bad
+    out = {}
+    for g, ent in raw.items():
+        if not isinstance(g, str) or not isinstance(ent, dict):
+            raise bad
+        one = {}
+        for v, c in ent.items():
+            if not isinstance(v, str) or not _dash_is_stata_name(v):
+                raise bad
+            if not isinstance(c, dict) or set(c) != {"col", "frame"}:
+                raise bad
+            col, fr = c.get("col"), c.get("frame")
+            if not isinstance(col, str) or not _DASH_FRAME_COL_RE.match(col):
+                raise bad
+            if not isinstance(fr, str) or not _dash_is_stata_name(fr):
+                raise bad
+            one[v] = {"col": col, "frame": fr}
+        out[g] = one
+    return out
+
+
+def _dash_frame_view(df, meta, cols):
+    """One graph's view of the data (WP-33 33-07, DECISIONS A-23).
+
+    *cols* is ``{var: split column}``; *meta* holds the maps of
+    ``_DASH_FRAME_META_KEYS`` (dicts keyed by column) and ``string_vars``
+    (a set).  With *cols* empty, ``(df, meta)`` themselves.  Else a frame in
+    which each var holds its split column's values, and copies of the maps
+    in which each var takes its column's entries (none when the column has
+    none) and is a string exactly when its column is.  The inputs are not
+    changed; the split columns stay in the frame.
+    """
+    if not cols:
+        return df, meta
+    view_df = df.assign(**{v: df[c] for v, c in cols.items()})
+    view = {}
+    for k in _DASH_FRAME_META_KEYS:
+        d = dict(meta.get(k) or {})
+        for v, c in cols.items():
+            if c in d:
+                d[v] = d[c]
+            else:
+                d.pop(v, None)
+        view[k] = d
+    sv = set(meta.get("string_vars") or ())
+    for v, c in cols.items():
+        if c in sv:
+            sv.add(v)
+        else:
+            sv.discard(v)
+    view["string_vars"] = sv
+    return view_df, view
+
+
+def _dash_filter_frame_column(df, fvar, frame_cols, graph_rows):
+    """The column a filter widget offers its choices from (WP-33 33-07,
+    DECISIONS A-27): ``df[fvar]`` itself when no graph reads *fvar* from a
+    split column; else a copy whose values on each such graph's rows
+    (*graph_rows*, the page plan's ``{graph: bool Series}``) are that
+    graph's split column's, so the choices are every frame's values."""
+    hits = [(g, m[fvar]["col"]) for g, m in (frame_cols or {}).items()
+            if fvar in m and g in (graph_rows or {})]
+    if not hits:
+        return df[fvar]
+    out = df[fvar].copy()
+    if any(pd.api.types.is_string_dtype(df[c]) or df[c].dtype == object
+           for _g, c in hits) and out.dtype != object:
+        out = out.astype(object)
+    for g, c in hits:
+        rows = pd.Series(graph_rows[g], index=df.index).fillna(False).astype(bool)
+        out[rows] = df.loc[rows, c]
+    return out
+
 def _dash_tsop_labels(variable_labels, tsmap):
     """A copy of *variable_labels* with each time-series column labelled by
     twoway's text from *tsmap* (``_dash_tsop_cols_named``): titles, keys
@@ -62106,6 +62223,81 @@ class DashRenderer:
                 dp=_dash_build_dp(self.master_spec),
                 bcal=(self.master_spec.get("build_options", {})
                       or {}).get("bcal"))
+        # WP-33 33-07 (DECISIONS A-23): a table graph that reads a variable
+        # from its frame's split column writes that frame's text on its
+        # own rows (the graph's qualifier column), in its own formats.
+        for g in self.master_spec.get("graphs", []) or []:
+            if not isinstance(g, dict):
+                continue
+            gname = (g.get("graph_options") or {}).get("name", "")
+            if gname not in (getattr(self, "frame_cols", None) or {}):
+                continue
+            if not _dash_table_spec(g.get("graph_options") or {},
+                                    self._limits):
+                continue
+            gvars = [v for v in _dash_table_vars(g)
+                     if v in self.frame_cols[gname]]
+            rows = _dash_qual_mask(g, getattr(self, "qual_masks", None))
+            if not gvars or rows is None:
+                continue
+            with self._dash_graph_frame(gname):
+                vdf = self.df.copy()
+                _dash_table_text_frame(
+                    vdf, gvars, getattr(self, "formats", {}),
+                    getattr(self, "storage_types", {}), self.value_labels,
+                    self.value_label_names, self.variable_labels,
+                    getattr(self, "date_vars", {}),
+                    dp=_dash_build_dp(self.master_spec),
+                    bcal=(self.master_spec.get("build_options", {})
+                          or {}).get("bcal"))
+            rows = rows.reindex(self.df.index, fill_value=False).to_numpy(
+                dtype=bool)
+            for v in gvars:
+                c = _DASH_TABLE_PREFIX + v
+                if c in vdf.columns and c in self.df.columns:
+                    self.df.loc[rows, c] = vdf.loc[rows, c]
+
+    @contextlib.contextmanager
+    def _dash_graph_frame(self, name):
+        """Graph *name*'s own frame (WP-33 33-07, DECISIONS A-23): while
+        open, ``self.df`` and the metadata maps are ``_dash_frame_view``'s
+        copies for the variables ``self.frame_cols`` maps for the graph,
+        and the mapper reads them; everything is put back on leaving, an
+        exception included.  A graph the map does not name changes
+        nothing."""
+        cols = {v: e["col"] for v, e in
+                ((getattr(self, "frame_cols", None) or {}).get(name)
+                 or {}).items()}
+        if not cols:
+            yield
+            return
+        names = _DASH_FRAME_META_KEYS + ("string_vars",)
+        saved = {k: getattr(self, k, None) for k in ("df",) + names}
+        saved_ds = getattr(self.mapper, "dataset", None)
+        meta = {k: (getattr(self, k, None) or
+                    (set() if k == "string_vars" else {})) for k in names}
+        vdf, vmeta = _dash_frame_view(self.df, meta, cols)
+        try:
+            self.df = vdf
+            for k in names:
+                setattr(self, k, vmeta[k])
+            self.mapper.dataset = vdf
+            _dash_attach_labels(self.mapper, self.variable_labels,
+                                self.value_labels, self.value_label_names,
+                                self.date_vars, self.numeric_formats,
+                                storage_types=self.storage_types,
+                                formats=self.formats)
+            yield
+        finally:
+            for k, v in saved.items():
+                setattr(self, k, v)
+            self.mapper.dataset = saved_ds
+            _dash_attach_labels(self.mapper, self.variable_labels,
+                                self.value_labels, self.value_label_names,
+                                getattr(self, "date_vars", {}),
+                                getattr(self, "numeric_formats", {}),
+                                storage_types=getattr(self, "storage_types", {}),
+                                formats=getattr(self, "formats", {}))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -62196,8 +62388,22 @@ class DashRenderer:
             self.df, self.master_spec)
         self.variable_labels = _dash_tsop_labels(self.variable_labels,
                                                  self.tsop_cols)
+        # The split columns of a build of several frames (WP-33 33-07,
+        # DECISIONS A-23) stay too: each graph the map names reads its own
+        # frame's copy of a variable through _dash_graph_frame.
+        self.frame_cols = _dash_frame_cols_named(self.master_spec)
+        _fcs = []
+        for _fm in self.frame_cols.values():
+            for _fe in _fm.values():
+                if _fe["col"] not in self.df.columns:
+                    raise ValueError(
+                        "dash: the spec names the frame column %s, which is "
+                        "not in the data." % _fe["col"])
+                if _fe["col"] not in _fcs:
+                    _fcs.append(_fe["col"])
         self.df, self.qual_masks = _dash_take_qual_columns(
-            self.df, self.master_spec, keep=tuple(self.tsop_cols))
+            self.df, self.master_spec,
+            keep=tuple(self.tsop_cols) + tuple(_fcs))
         for _qc in list(self.qual_masks) + list(self.sort_keys):
             self.variable_labels.pop(_qc, None)
             self.value_label_names.pop(_qc, None)
@@ -64699,275 +64905,283 @@ class DashRenderer:
             _linked_graph_views: dict = {}
 
             for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                if name in link_names:
-                    linked_source = _src_of_name[name]
-                    _link_index = self._link_index_of[name]
-                    self.sources[name] = linked_source
-                    # Build a CDSView for linked graphs that have qualifiers.
-                    _g_fdf = self._apply_graph_filter(g)
-                    # The mask is over the link group's rows, the rows the
-                    # source holds (WP-29 P0.11): sized to self.df it would
-                    # misalign, and a facet or layer mask of the source's
-                    # length would never intersect with it.
-                    _df_idx_set = frozenset(_g_fdf.index)
-                    _bool_mask = [
-                        bool(i in _df_idx_set) for i in _link_index
-                    ]
-                    if not all(_bool_mask):
-                        _qf = BooleanFilter(booleans=_bool_mask)
-                        _linked_graph_views[name] = CDSView(filter=_qf)
-                        self._register_view_filter(
-                            linked_source, _qf,
-                            [int(r) for r, keep in zip(
-                                linked_source.data[_ROW_ID_COLUMN],
-                                _bool_mask) if keep])
-                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_lnk2:
-                        # The QUALIFIED frame.  This was self.df, so a linked
-                        # `if price > 4500, by(foreign)' faceted every row.
-                        by_groups_lnk = self._expand_by_groups(
-                            g, base_df=self._apply_graph_filter(g))
-                        facet_entries_lnk = []
-                        facet_masks_lnk   = []
-                        for idx, (label, group_df) in enumerate(by_groups_lnk):
-                            fkey = f"{name}__by__{idx}"
-                            if group_df.attrs.get("_dash_total"):
-                                self._facet_total_keys.add(fkey)
-                            _gidx = frozenset(group_df.index)
-                            mask = [i in _gidx for i in _link_index]
-                            facet_entries_lnk.append((fkey, label))
-                            facet_masks_lnk.append((label, mask))
-                        self._facet_map[name]   = facet_entries_lnk
-                        self._facet_masks[name] = facet_masks_lnk
-                else:
-                    g_vars      = DashRenderer._collect_graph_vars(self.df, g)
+                # WP-33 33-07: the graph's own frame view (A-23).
+                with self._dash_graph_frame(g.get("graph_options", {}).get("name", "")):
+                    name = g.get("graph_options", {}).get("name", "")
+                    if name in link_names:
+                        linked_source = _src_of_name[name]
+                        _link_index = self._link_index_of[name]
+                        self.sources[name] = linked_source
+                        # Build a CDSView for linked graphs that have qualifiers.
+                        _g_fdf = self._apply_graph_filter(g)
+                        # The mask is over the link group's rows, the rows the
+                        # source holds (WP-29 P0.11): sized to self.df it would
+                        # misalign, and a facet or layer mask of the source's
+                        # length would never intersect with it.
+                        _df_idx_set = frozenset(_g_fdf.index)
+                        _bool_mask = [
+                            bool(i in _df_idx_set) for i in _link_index
+                        ]
+                        if not all(_bool_mask):
+                            _qf = BooleanFilter(booleans=_bool_mask)
+                            _linked_graph_views[name] = CDSView(filter=_qf)
+                            self._register_view_filter(
+                                linked_source, _qf,
+                                [int(r) for r, keep in zip(
+                                    linked_source.data[_ROW_ID_COLUMN],
+                                    _bool_mask) if keep])
+                        by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
+                        if by_raw_lnk2:
+                            # The QUALIFIED frame.  This was self.df, so a linked
+                            # `if price > 4500, by(foreign)' faceted every row.
+                            by_groups_lnk = self._expand_by_groups(
+                                g, base_df=self._apply_graph_filter(g))
+                            facet_entries_lnk = []
+                            facet_masks_lnk   = []
+                            for idx, (label, group_df) in enumerate(by_groups_lnk):
+                                fkey = f"{name}__by__{idx}"
+                                if group_df.attrs.get("_dash_total"):
+                                    self._facet_total_keys.add(fkey)
+                                _gidx = frozenset(group_df.index)
+                                mask = [i in _gidx for i in _link_index]
+                                facet_entries_lnk.append((fkey, label))
+                                facet_masks_lnk.append((label, mask))
+                            self._facet_map[name]   = facet_entries_lnk
+                            self._facet_masks[name] = facet_masks_lnk
+                    else:
+                        g_vars      = DashRenderer._collect_graph_vars(self.df, g)
+                        g_vars += [v for v in brush_kpi_vars if v not in g_vars]
+                        filtered_df = self._apply_graph_filter(g)
+                        self.sources[name] = self._make_source(
+                            g_vars, df=filtered_df, rows=_grows.get(name))
+        else:
+            for g in graphs:
+                # WP-33 33-07: the graph's own frame view (A-23).
+                with self._dash_graph_frame(g.get("graph_options", {}).get("name", "")):
+                    name   = g.get("graph_options", {}).get("name", "")
+                    g_vars = DashRenderer._collect_graph_vars(self.df, g)
+                    for fc in filters_cfg:
+                        fv = fc.get("varname", "")
+                        if fv and fv not in g_vars:
+                            g_vars.append(fv)
                     g_vars += [v for v in brush_kpi_vars if v not in g_vars]
                     filtered_df = self._apply_graph_filter(g)
                     self.sources[name] = self._make_source(
                         g_vars, df=filtered_df, rows=_grows.get(name))
-        else:
-            for g in graphs:
-                name   = g.get("graph_options", {}).get("name", "")
-                g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                for fc in filters_cfg:
-                    fv = fc.get("varname", "")
-                    if fv and fv not in g_vars:
-                        g_vars.append(fv)
-                g_vars += [v for v in brush_kpi_vars if v not in g_vars]
-                filtered_df = self._apply_graph_filter(g)
-                self.sources[name] = self._make_source(
-                    g_vars, df=filtered_df, rows=_grows.get(name))
 
         # ---- 2b. Handle by() faceting on unlinked sources ----
         for g in graphs:
-            name    = g.get("graph_options", {}).get("name", "")
-            by_raw  = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw and name not in link_names:
-                base_src = self.sources.pop(name, None)
-                if base_src is None:
-                    continue
-                # The QUALIFIED frame, not self.df.  Measured on ten rows:
-                # `if price > 4500, by(foreign)' faceted 5 + 4 observations
-                # when saved and the 2 + 3 that qualify when served.  The
-                # base source built in phase 2 was already qualified; the
-                # grouping simply did not start from it.
-                by_groups = self._expand_by_groups(
-                    g, base_df=self._apply_graph_filter(g))
-                if len(by_groups) == 1 and by_groups[0][0] == "" and \
-                        not by_groups[0][1].attrs.get("_dash_by_group"):
-                    # No faceting (by() vars missing from df) OR all facet
-                    # values are NaN (work_df became empty after dropna).
-                    # In the all-missing case by_groups[0][1] is an empty
-                    # DataFrame — build a zero-row source so the graph renders
-                    # empty instead of falling back to the full original source.
-                    if len(by_groups[0][1]) == 0:
-                        self.sources[name] = self._make_source(
-                            list(base_src.data.keys()), df=by_groups[0][1]
-                        )
+            # WP-33 33-07: the graph's own frame view (A-23).
+            with self._dash_graph_frame(g.get("graph_options", {}).get("name", "")):
+                name    = g.get("graph_options", {}).get("name", "")
+                by_raw  = (g.get("graph_options", {}).get("by") or "").strip()
+                if by_raw and name not in link_names:
+                    base_src = self.sources.pop(name, None)
+                    if base_src is None:
+                        continue
+                    # The QUALIFIED frame, not self.df.  Measured on ten rows:
+                    # `if price > 4500, by(foreign)' faceted 5 + 4 observations
+                    # when saved and the 2 + 3 that qualify when served.  The
+                    # base source built in phase 2 was already qualified; the
+                    # grouping simply did not start from it.
+                    by_groups = self._expand_by_groups(
+                        g, base_df=self._apply_graph_filter(g))
+                    if len(by_groups) == 1 and by_groups[0][0] == "" and \
+                            not by_groups[0][1].attrs.get("_dash_by_group"):
+                        # No faceting (by() vars missing from df) OR all facet
+                        # values are NaN (work_df became empty after dropna).
+                        # In the all-missing case by_groups[0][1] is an empty
+                        # DataFrame — build a zero-row source so the graph renders
+                        # empty instead of falling back to the full original source.
+                        if len(by_groups[0][1]) == 0:
+                            self.sources[name] = self._make_source(
+                                list(base_src.data.keys()), df=by_groups[0][1]
+                            )
+                        else:
+                            self.sources[name] = base_src
                     else:
-                        self.sources[name] = base_src
-                else:
-                    g_vars        = list(base_src.data.keys())
-                    facet_entries = []
-                    for idx, (label, group_df) in enumerate(by_groups):
-                        fkey = f"{name}__by__{idx}"
-                        if group_df.attrs.get("_dash_total"):
-                            self._facet_total_keys.add(fkey)
-                        self.sources[fkey] = self._make_source(
-                            g_vars, df=group_df, rows=_grows.get(name))
-                        facet_entries.append((fkey, label))
-                    self._facet_map[name] = facet_entries
-                    if _dash_table_spec(g.get("graph_options", {}),
-                                        self._limits):
-                        # WP-31 H2t (D6): the data table's own source,
-                        # every panel's rows once (the Total panel's are
-                        # theirs already), under the graph's name, so a
-                        # filter move rewrites it as it rewrites a graph's.
-                        _tb_idx = set()
-                        for _lb, _gdf in by_groups:
-                            if not _gdf.attrs.get("_dash_total"):
-                                _tb_idx.update(_gdf.index)
-                        _qdf = self._apply_graph_filter(g)
-                        self.sources[name] = self._make_source(
-                            g_vars, df=_qdf[_qdf.index.isin(_tb_idx)],
-                            rows=_grows.get(name))
+                        g_vars        = list(base_src.data.keys())
+                        facet_entries = []
+                        for idx, (label, group_df) in enumerate(by_groups):
+                            fkey = f"{name}__by__{idx}"
+                            if group_df.attrs.get("_dash_total"):
+                                self._facet_total_keys.add(fkey)
+                            self.sources[fkey] = self._make_source(
+                                g_vars, df=group_df, rows=_grows.get(name))
+                            facet_entries.append((fkey, label))
+                        self._facet_map[name] = facet_entries
+                        if _dash_table_spec(g.get("graph_options", {}),
+                                            self._limits):
+                            # WP-31 H2t (D6): the data table's own source,
+                            # every panel's rows once (the Total panel's are
+                            # theirs already), under the graph's name, so a
+                            # filter move rewrites it as it rewrites a graph's.
+                            _tb_idx = set()
+                            for _lb, _gdf in by_groups:
+                                if not _gdf.attrs.get("_dash_total"):
+                                    _tb_idx.update(_gdf.index)
+                            _qdf = self._apply_graph_filter(g)
+                            self.sources[name] = self._make_source(
+                                g_vars, df=_qdf[_qdf.index.isin(_tb_idx)],
+                                rows=_grows.get(name))
 
         # ---- 3. Build figures ----
         for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-            # The letters a by() graph's panels draw on their own scales
-            # (WP-29 P0.2); empty for any other graph.
-            _brs = _dash_by_rescale(
-                str(g.get("graph_options", {}).get("by", "") or ""))
-            # Notes decided from the spec alone, raised here and, for the
-            # served app, at build time (ServerAppBuilder._plan_graph_notes).
-            for _nk, _nt in (_dash_unused_second_axis_notes(g)
-                             + _dash_by_range_notes(g)):
-                _dash_warn_once(_nk, _nt)
-            if name in self._facet_map:
-                shared_src_render = self.sources.get(name)
-                masks_render      = self._facet_masks.get(name, [])
-                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
-                    if shared_src_render is not None and name in link_names:
-                        src = shared_src_render
-                        if panel_idx_r < len(masks_render):
-                            _, mask_r   = masks_render[panel_idx_r]
-                            _pf = BooleanFilter(booleans=mask_r)
-                            panel_view_r = CDSView(filter=_pf)
-                            # The booleans are sized to the UNFILTERED frame;
-                            # once the callback shortens the shared source
-                            # they must be rebuilt, so record which rows
-                            # belong to this panel.
-                            _lids = list(
-                                shared_src_render.data[_ROW_ID_COLUMN])
-                            self._register_view_filter(
-                                shared_src_render, _pf,
-                                [int(_lids[i]) for i, keep in enumerate(mask_r)
-                                 if keep])
+            # WP-33 33-07: the graph's own frame view (A-23).
+            with self._dash_graph_frame(g.get("graph_options", {}).get("name", "")):
+                name = g.get("graph_options", {}).get("name", "")
+                # The letters a by() graph's panels draw on their own scales
+                # (WP-29 P0.2); empty for any other graph.
+                _brs = _dash_by_rescale(
+                    str(g.get("graph_options", {}).get("by", "") or ""))
+                # Notes decided from the spec alone, raised here and, for the
+                # served app, at build time (ServerAppBuilder._plan_graph_notes).
+                for _nk, _nt in (_dash_unused_second_axis_notes(g)
+                                 + _dash_by_range_notes(g)):
+                    _dash_warn_once(_nk, _nt)
+                if name in self._facet_map:
+                    shared_src_render = self.sources.get(name)
+                    masks_render      = self._facet_masks.get(name, [])
+                    for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
+                        if shared_src_render is not None and name in link_names:
+                            src = shared_src_render
+                            if panel_idx_r < len(masks_render):
+                                _, mask_r   = masks_render[panel_idx_r]
+                                _pf = BooleanFilter(booleans=mask_r)
+                                panel_view_r = CDSView(filter=_pf)
+                                # The booleans are sized to the UNFILTERED frame;
+                                # once the callback shortens the shared source
+                                # they must be rebuilt, so record which rows
+                                # belong to this panel.
+                                _lids = list(
+                                    shared_src_render.data[_ROW_ID_COLUMN])
+                                self._register_view_filter(
+                                    shared_src_render, _pf,
+                                    [int(_lids[i]) for i, keep in enumerate(mask_r)
+                                     if keep])
+                            else:
+                                panel_view_r = None
                         else:
+                            src          = self.sources.get(fkey)
                             panel_view_r = None
-                    else:
-                        src          = self.sources.get(fkey)
-                        panel_view_r = None
+                        if src is None:
+                            continue
+                        try:
+                            # The Total panel draws its own qualifiers' rows
+                            # (_dash_total_spec).
+                            g_panel = (_dash_total_spec(g)
+                                       if fkey in self._facet_total_keys else g)
+                            # WP-31 C12: the panel's own function points.
+                            g_panel = _dash_fn_panel_spec(g_panel, panel_idx_r)
+                            fig = self._make_figure(g_panel, src,
+                                                    facet_view=panel_view_r,
+                                                    rescale=_brs)
+                            # The label is a row of its own under the graph's
+                            # title(), merged with subtitle() (WP-30 P1.15a).
+                            _dash_by_panel_label(
+                                fig, label, g.get("graph_options", {}),
+                                self.scheme,
+                                getattr(self, "_reported_subopts", None), name)
+                            if name in link_names:
+                                _dash_dim_nonselection(fig, self._brush_alpha)
+                                fig._dash_link_group = self._link_group_of[name]
+                            self.figures[fkey] = fig
+                        except Exception as exc:
+                            raise RuntimeError(
+                                f"dash_render: failed to build facet figure '{fkey}': {exc}"
+                            ) from exc
+                    # twoway draws a by() graph's panels on one scale per axis,
+                    # over all their data, unless rescaled; one range object is
+                    # shared, then the panels are ticked on it
+                    # (_dash_share_by_scales); the served app runs the same
+                    # helper.
+                    _dash_share_by_scales(
+                        [self.figures[fk] for fk, _ in self._facet_map[name]
+                         if fk in self.figures], _brs)
+                    # by()'s overall text, once over the panels (WP-30
+                    # P1.15a): carried by the first panel to _dash_layout_cell.
+                    _first = next((self.figures[fk] for fk, _ in
+                                   self._facet_map[name] if fk in self.figures),
+                                  None)
+                    if _first is not None:
+                        _go = g.get("graph_options", {})
+                        _bv = [v for v in _dash_parse_by(
+                            str(_go.get("by", "") or ""), warn=False)[0].split()
+                            if v in self.df.columns]
+                        _first._dash_by_chrome = _dash_by_chrome(
+                            _go, _bv, self.variable_labels, self.scheme,
+                            getattr(self, "_reported_subopts", None), name)
+                        # WP-31 H2t (D6): one data table under the grid.
+                        _tspec = _dash_table_spec(_go, self._limits)
+                        _tsrc = self.sources.get(name)
+                        if _tspec and _tsrc is not None:
+                            if name in link_names:
+                                # A copy of the panels' rows of the link
+                                # group's source, which the move keeps by row
+                                # identity (_collect_derived_sources).
+                                _lix = self._link_index_of[name]
+                                _tmask = np.zeros(len(_lix), dtype=bool)
+                                for (_fk, _lb), (_l2, _m) in zip(
+                                        self._facet_map[name],
+                                        self._facet_masks.get(name, [])):
+                                    if _fk not in self._facet_total_keys:
+                                        _tmask |= np.asarray(_m, dtype=bool)
+                                _tsrc = self._dash_table_copy(
+                                    g, self.df.loc[_lix[_tmask]])
+                            _dash_data_table(
+                                _first, self._dash_table_columns(g), _tspec,
+                                source=_tsrc)
+                else:
+                    src = self.sources.get(name)
                     if src is None:
                         continue
+                    # For linked graphs with if_expr/in_expr, apply a CDSView so
+                    # the qualifier mask is honoured without filtering the shared source.
+                    _qual_view = _linked_graph_views.get(name) \
+                        if "_linked_graph_views" in dir() else None
                     try:
-                        # The Total panel draws its own qualifiers' rows
-                        # (_dash_total_spec).
-                        g_panel = (_dash_total_spec(g)
-                                   if fkey in self._facet_total_keys else g)
-                        # WP-31 C12: the panel's own function points.
-                        g_panel = _dash_fn_panel_spec(g_panel, panel_idx_r)
-                        fig = self._make_figure(g_panel, src,
-                                                facet_view=panel_view_r,
-                                                rescale=_brs)
-                        # The label is a row of its own under the graph's
-                        # title(), merged with subtitle() (WP-30 P1.15a).
-                        _dash_by_panel_label(
-                            fig, label, g.get("graph_options", {}),
-                            self.scheme,
-                            getattr(self, "_reported_subopts", None), name)
+                        _fig = self._make_figure(g, src, facet_view=_qual_view,
+                                                 rescale=_brs)
                         if name in link_names:
-                            _dash_dim_nonselection(fig, self._brush_alpha)
-                            fig._dash_link_group = self._link_group_of[name]
-                        self.figures[fkey] = fig
-                    except Exception as exc:
-                        raise RuntimeError(
-                            f"dash_render: failed to build facet figure '{fkey}': {exc}"
-                        ) from exc
-                # twoway draws a by() graph's panels on one scale per axis,
-                # over all their data, unless rescaled; one range object is
-                # shared, then the panels are ticked on it
-                # (_dash_share_by_scales); the served app runs the same
-                # helper.
-                _dash_share_by_scales(
-                    [self.figures[fk] for fk, _ in self._facet_map[name]
-                     if fk in self.figures], _brs)
-                # by()'s overall text, once over the panels (WP-30
-                # P1.15a): carried by the first panel to _dash_layout_cell.
-                _first = next((self.figures[fk] for fk, _ in
-                               self._facet_map[name] if fk in self.figures),
-                              None)
-                if _first is not None:
-                    _go = g.get("graph_options", {})
-                    _bv = [v for v in _dash_parse_by(
-                        str(_go.get("by", "") or ""), warn=False)[0].split()
-                        if v in self.df.columns]
-                    _first._dash_by_chrome = _dash_by_chrome(
-                        _go, _bv, self.variable_labels, self.scheme,
-                        getattr(self, "_reported_subopts", None), name)
-                    # WP-31 H2t (D6): one data table under the grid.
-                    _tspec = _dash_table_spec(_go, self._limits)
-                    _tsrc = self.sources.get(name)
-                    if _tspec and _tsrc is not None:
-                        if name in link_names:
-                            # A copy of the panels' rows of the link
-                            # group's source, which the move keeps by row
-                            # identity (_collect_derived_sources).
-                            _lix = self._link_index_of[name]
-                            _tmask = np.zeros(len(_lix), dtype=bool)
-                            for (_fk, _lb), (_l2, _m) in zip(
-                                    self._facet_map[name],
-                                    self._facet_masks.get(name, [])):
-                                if _fk not in self._facet_total_keys:
-                                    _tmask |= np.asarray(_m, dtype=bool)
-                            _tsrc = self._dash_table_copy(
-                                g, self.df.loc[_lix[_tmask]])
-                        _dash_data_table(
-                            _first, self._dash_table_columns(g), _tspec,
-                            source=_tsrc)
-            else:
-                src = self.sources.get(name)
-                if src is None:
-                    continue
-                # For linked graphs with if_expr/in_expr, apply a CDSView so
-                # the qualifier mask is honoured without filtering the shared source.
-                _qual_view = _linked_graph_views.get(name) \
-                    if "_linked_graph_views" in dir() else None
-                try:
-                    _fig = self._make_figure(g, src, facet_view=_qual_view,
-                                             rescale=_brs)
-                    if name in link_names:
-                        _dash_dim_nonselection(_fig, self._brush_alpha)
-                        _fig._dash_link_group = self._link_group_of[name]
-                    self.figures[name] = _fig
-                    # WP-31 H2t: the graph's data table, under its figure.
-                    _tspec = _dash_table_spec(g.get("graph_options", {}),
-                                              self._limits)
-                    if _tspec and name in link_names:
-                        # A linked graph draws the link group's source,
-                        # through views a move rebuilds: the table lists a
-                        # copy of the graph's own rows, which a move keeps
-                        # by row identity (_collect_derived_sources).
-                        _dash_data_table(
-                            _fig, self._dash_table_columns(g), _tspec,
-                            source=self._dash_table_copy(
-                                g, self._apply_graph_filter(g)))
-                    elif _tspec:
-                        _tb = _dash_data_table(
-                            _fig, self._dash_table_columns(g), _tspec)
-                        _vr = (getattr(_tb[1], "_dash_view_rows", None)
-                               if _tb else None)
-                        if _vr is not None and \
-                                _ROW_ID_COLUMN in _tb[1].source.data:
-                            # The first layer draws its own if/in through
-                            # a view a move rebuilds; the table lists a
-                            # copy of those rows, which a move keeps by
-                            # row identity (_collect_derived_sources), as
-                            # the served table keeps its layer's rows.
-                            _ids = _tb[1].source.data[_ROW_ID_COLUMN]
-                            _lab = {v: k for k, v in
-                                    self._row_rank_map().items()}
+                            _dash_dim_nonselection(_fig, self._brush_alpha)
+                            _fig._dash_link_group = self._link_group_of[name]
+                        self.figures[name] = _fig
+                        # WP-31 H2t: the graph's data table, under its figure.
+                        _tspec = _dash_table_spec(g.get("graph_options", {}),
+                                                  self._limits)
+                        if _tspec and name in link_names:
+                            # A linked graph draws the link group's source,
+                            # through views a move rebuilds: the table lists a
+                            # copy of the graph's own rows, which a move keeps
+                            # by row identity (_collect_derived_sources).
                             _dash_data_table(
                                 _fig, self._dash_table_columns(g), _tspec,
                                 source=self._dash_table_copy(
-                                    g, self.df.loc[[_lab[int(_ids[i])]
-                                                    for i in _vr]]))
-                except Exception as exc:
-                    raise RuntimeError(
-                        f"dash_render: failed to build figure '{name}': {exc}"
-                    ) from exc
+                                    g, self._apply_graph_filter(g)))
+                        elif _tspec:
+                            _tb = _dash_data_table(
+                                _fig, self._dash_table_columns(g), _tspec)
+                            _vr = (getattr(_tb[1], "_dash_view_rows", None)
+                                   if _tb else None)
+                            if _vr is not None and \
+                                    _ROW_ID_COLUMN in _tb[1].source.data:
+                                # The first layer draws its own if/in through
+                                # a view a move rebuilds; the table lists a
+                                # copy of those rows, which a move keeps by
+                                # row identity (_collect_derived_sources), as
+                                # the served table keeps its layer's rows.
+                                _ids = _tb[1].source.data[_ROW_ID_COLUMN]
+                                _lab = {v: k for k, v in
+                                        self._row_rank_map().items()}
+                                _dash_data_table(
+                                    _fig, self._dash_table_columns(g), _tspec,
+                                    source=self._dash_table_copy(
+                                        g, self.df.loc[[_lab[int(_ids[i])]
+                                                        for i in _vr]]))
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"dash_render: failed to build figure '{name}': {exc}"
+                        ) from exc
 
         # ---- 3e. Every canvas text drawn as typed (WP-30 P1.11a) ----
         # Last: every figure, by() panel title and shared by() scale is
@@ -65381,7 +65595,11 @@ class DashRenderer:
             # The rows its targets select: an observation every if/in
             # excludes adds no option or bound, and an empty reach draws the
             # shared builder's empty widget (the dtype is kept).
-            _fcol = self.df[fvar]
+            # A graph that reads fvar from its frame's split column offers
+            # that column's values (WP-33 33-07, DECISIONS A-27).
+            _fcol = _dash_filter_frame_column(
+                self.df, fvar, getattr(self, "frame_cols", None) or {},
+                (getattr(self, "_embed", None) or {}).get("graph_rows", {}))
             if _fi < len(_frows):
                 _fcol = _fcol[_frows[_fi].reindex(
                     self.df.index, fill_value=False).to_numpy(dtype=bool)]
@@ -65882,9 +66100,14 @@ class DashRenderer:
             getattr(self, "value_labels", {}),
             getattr(self, "value_label_names", {}),
             storage_types=getattr(self, "storage_types", {}),
-            # A time-series column is headed by its expression (P1.7).
-            display_names={k: v["expr"] for k, v in
-                           getattr(self, "tsop_cols", {}).items()})
+            # A time-series column is headed by its expression (P1.7),
+            # a split column by its variable and frame (WP-33 33-07).
+            display_names=dict(
+                {k: v["expr"] for k, v in
+                 getattr(self, "tsop_cols", {}).items()},
+                **{e["col"]: "%s [frame %s]" % (v, e["frame"])
+                   for m in (getattr(self, "frame_cols", None) or {}).values()
+                   for v, e in m.items()}))
         # The page's planned cells (WP-29 P0.11); under csv every cell is
         # planned, so this is every row, as the download needs.
         _plan = getattr(self, "_embed", None)
@@ -66984,6 +67207,8 @@ class ServerAppBuilder:
                       # The time-series columns (WP-30 P1.7).
                       "_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
                       "_DASH_TSOP_EXPR_RE", "_DASH_TSOP_LABEL_MAX",
+                      # The split columns of several frames (WP-33 33-07).
+                      "_DASH_FRAME_COL_RE", "_DASH_FRAME_META_KEYS",
                       # The join-order columns and the joining types
                       # (WP-29 P0.1).
                       "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
@@ -67227,6 +67452,7 @@ class ServerAppBuilder:
                          # The time-series columns (WP-30 P1.7).
                          "_dash_tsop_cols_named", "_dash_take_tsop_columns",
                          "_dash_tsop_labels", "_dash_col_display",
+                         "_dash_frame_cols_named", "_dash_frame_view", "_dash_filter_frame_column",
                          "_dash_qual_mask",
                          # A by(, total) Total panel's own qualifier
                          # columns, as the saved page reads them.
@@ -69155,7 +69381,17 @@ class ServerAppBuilder:
             "    # The time-series columns (WP-30 P1.7): data, labelled with",
             "    # twoway's text, as the saved page takes them.",
             "    df, _tsop_cols = _dash_take_tsop_columns(df, spec)",
-            "    df, qual_masks = _dash_take_qual_columns(df, spec, keep=tuple(_tsop_cols))",
+            "    # The split columns of a build of several frames (WP-33 33-07):",
+            "    # data, each read by its own graphs, as the saved page keeps them.",
+            "    _frame_cols = _dash_frame_cols_named(spec)",
+            "    _fcs = []",
+            "    for _fm in _frame_cols.values():",
+            "        for _fe in _fm.values():",
+            "            if _fe['col'] not in df.columns:",
+            "                raise ValueError('dash: the spec names the frame column %s, which is not in the data.' % _fe['col'])",
+            "            if _fe['col'] not in _fcs:",
+            "                _fcs.append(_fe['col'])",
+            "    df, qual_masks = _dash_take_qual_columns(df, spec, keep=tuple(_tsop_cols) + tuple(_fcs))",
             "    var_labels = _dash_tsop_labels(var_labels, _tsop_cols)",
             "    for _qc in list(qual_masks) + list(sort_keys):",
             "        for _qm in (var_labels, val_label_names, type_is_str):",
@@ -69178,6 +69414,7 @@ class ServerAppBuilder:
             "        'sort_keys': sort_keys,",
             "        'storage_types': storage_types,",
             "        'tsop_cols': _tsop_cols,",
+            "        'frame_cols': _frame_cols,",
             "    }",
             "    return spec, df, meta",
             "",
@@ -69568,6 +69805,12 @@ class ServerAppBuilder:
             "    # qualifier of a spec it wrote selects its rows with one, and",
             "    # none is translated (_dash_qualified_frame's qual).",
             "    _qual_masks = meta['qual_masks']",
+            "    # The split columns' map (WP-33 33-07), as the saved page reads it.",
+            "    _frame_cols = meta.get('frame_cols', {}) or {}",
+            "    # This document's own copies of the format maps, so a graph's",
+            "    # frame view (_dash_frame_in) rebinds them for this document only.",
+            "    _FORMATS = dict(globals()['_FORMATS'])",
+            "    _NUM_FORMATS = dict(globals()['_NUM_FORMATS'])",
             "    # sort(varlist)'s ranks, by frame label (_dash_join_key).",
             "    _sort_keys = meta['sort_keys']",
             "    graphs = spec.get('graphs', [])",
@@ -69616,6 +69859,58 @@ class ServerAppBuilder:
             "                        numeric_formats=_NUM_FORMATS,",
             "                        storage_types=_storage_types,",
             "                        formats=_FORMATS)",
+            "    # WP-33 33-07 (DECISIONS A-23): a graph the spec's frame_cols",
+            "    # map names is built from its own frame's view -- the frame and",
+            "    # every metadata map, the saved renderer's _dash_graph_frame --",
+            "    # and everything is put back after it.",
+            "    def _dash_frame_in(gname):",
+            "        nonlocal df, var_labels, val_labels, val_label_names, _date_vars",
+            "        nonlocal _storage_types, _FORMATS, _NUM_FORMATS, _num_formats, meta",
+            "        _cols = {v: e['col'] for v, e in (_frame_cols.get(gname) or {}).items()}",
+            "        if not _cols:",
+            "            return None",
+            "        _saved = (df, var_labels, val_labels, val_label_names, _date_vars,",
+            "                  _storage_types, _FORMATS, _NUM_FORMATS, _num_formats, meta)",
+            "        _tis = meta.get('type_is_str') or {}",
+            "        _m = {'variable_labels': var_labels, 'value_labels': val_labels,",
+            "              'value_label_names': val_label_names, 'formats': _FORMATS,",
+            "              'numeric_formats': _NUM_FORMATS, 'date_vars': _date_vars,",
+            "              'storage_types': _storage_types,",
+            "              'string_vars': {k for k, v in _tis.items() if v}}",
+            "        df, _v = _dash_frame_view(df, _m, _cols)",
+            "        var_labels, val_labels = _v['variable_labels'], _v['value_labels']",
+            "        val_label_names, _FORMATS = _v['value_label_names'], _v['formats']",
+            "        _NUM_FORMATS = _num_formats = _v['numeric_formats']",
+            "        _date_vars, _storage_types = _v['date_vars'], _v['storage_types']",
+            "        _tis2 = {k: (k in _v['string_vars']) for k in set(_tis) | set(_v['string_vars'])}",
+            "        meta = dict(meta, var_labels=var_labels, val_labels=val_labels,",
+            "                    val_label_names=val_label_names, date_vars=_date_vars,",
+            "                    storage_types=_storage_types, type_is_str=_tis2)",
+            "        _dash_attach_labels(_dash_cur_mapper(), var_labels, val_labels,",
+            "                            val_label_names, date_vars=_date_vars,",
+            "                            numeric_formats=_NUM_FORMATS,",
+            "                            storage_types=_storage_types, formats=_FORMATS)",
+            "        _dash_cur_mapper().dataset = df",
+            "        return _saved",
+            "    def _dash_frame_out(_saved):",
+            "        nonlocal df, var_labels, val_labels, val_label_names, _date_vars",
+            "        nonlocal _storage_types, _FORMATS, _NUM_FORMATS, _num_formats, meta",
+            "        if _saved is None:",
+            "            return",
+            "        (df, var_labels, val_labels, val_label_names, _date_vars,",
+            "         _storage_types, _FORMATS, _NUM_FORMATS, _num_formats, meta) = _saved",
+            "        _dash_attach_labels(_dash_cur_mapper(), var_labels, val_labels,",
+            "                            val_label_names, date_vars=_date_vars,",
+            "                            numeric_formats=_NUM_FORMATS,",
+            "                            storage_types=_storage_types, formats=_FORMATS)",
+            "        _dash_cur_mapper().dataset = df",
+            "    def _dash_frame_rows(gname, frame):",
+            "        # A move's rows of one graph, its split columns read under",
+            "        # the variables' names (the data of _dash_frame_in's view).",
+            "        _cols = {v: e['col'] for v, e in (_frame_cols.get(gname) or {}).items()}",
+            "        if not _cols:",
+            "            return frame",
+            "        return frame.assign(**{v: frame[c] for v, c in _cols.items()})",
             "    # The session's c(level): a band with no level() of its own",
             "    # draws at it.  It used to reach the legend key and never",
             "    # the band, so `set level 90' served a 95% band labelled 90%.",
@@ -69635,6 +69930,30 @@ class ServerAppBuilder:
             "                               val_labels, val_label_names, var_labels,",
             "                               _date_vars, dp=_dash_cache_dp(_fmt_cache),",
             "                               bcal=_fmt_cache.get('bcal'))",
+            "    # WP-33 33-07: a table graph that reads a variable from its",
+            "    # frame's split column writes that frame's text on its own rows.",
+            "    for _gt in graphs:",
+            "        _gtn = _gt.get('graph_options', {}).get('name', '')",
+            "        if _gtn not in _frame_cols or not _dash_table_spec(_gt.get('graph_options', {}) or {}, _dash_lim):",
+            "            continue",
+            "        _gtv = [_v for _v in _dash_table_vars(_gt) if _v in _frame_cols[_gtn]]",
+            "        _gtr = _dash_qual_mask(_gt, _qual_masks)",
+            "        if not _gtv or _gtr is None:",
+            "            continue",
+            "        _fsv = _dash_frame_in(_gtn)",
+            "        try:",
+            "            _vdf = df.copy()",
+            "            _dash_table_text_frame(_vdf, _gtv, _FORMATS, _storage_types,",
+            "                                   val_labels, val_label_names, var_labels,",
+            "                                   _date_vars, dp=_dash_cache_dp(_fmt_cache),",
+            "                                   bcal=_fmt_cache.get('bcal'))",
+            "        finally:",
+            "            _dash_frame_out(_fsv)",
+            "        _gtr = _gtr.reindex(df.index, fill_value=False).to_numpy(dtype=bool)",
+            "        for _v in _gtv:",
+            "            _c = _DASH_TABLE_PREFIX + _v",
+            "            if _c in _vdf.columns and _c in df.columns:",
+            "                df.loc[_gtr, _c] = _vdf.loc[_gtr, _c]",
             "",
             "    # ---- Determine linked graphs, by the saved renderer's rule ----",
             "    # WP-31 H2l: each link() copy is a group with a source of its own.",
@@ -69721,26 +70040,31 @@ class ServerAppBuilder:
             "    # ---- Per-graph independent sources (for non-linked) ----",
             "    graph_sources: dict = {}",
             "    for g in graphs:",
-            "        gname = g.get('graph_options', {}).get('name', '')",
-            "        if gname in linked_names:",
-            "            graph_sources[gname] = [_shared_of[gname]]",
-            "        else:",
-            "            gvars = []",
-            "            for p in g.get('plots', []):",
-            "                for k in _DASH_PLOT_VAR_KEYS:",
-            "                    v = p.get(k, '')",
-            "                    if v and v in df.columns and v not in gvars:",
-            "                        gvars.append(v)",
-            "            # The graph's planned rows, blanked, with their labels so",
-            "            # a move refreshes it by identity (WP-29 P0.11).",
-            "            _pdf = df[df.index.isin(_EMBED_GROWS.get(gname, df.index[0:0]))]",
-            "            _pdata = {v: _dash_column_values(_dash_embed_values(",
-            "                          _pdf[v], _EMBED['need'].get(v)))",
-            "                      for v in gvars}",
-            "            if gvars:",
-            "                _pdata['index'] = list(_pdf.index)",
-            "            graph_sources[gname] = [ColumnDataSource(_pdata)",
-            "                                    if gvars else ColumnDataSource({})]",
+            "        # WP-33 33-07: the graph's own frame view (A-23).",
+            "        _fsv = _dash_frame_in(g.get('graph_options', {}).get('name', ''))",
+            "        try:",
+            "            gname = g.get('graph_options', {}).get('name', '')",
+            "            if gname in linked_names:",
+            "                graph_sources[gname] = [_shared_of[gname]]",
+            "            else:",
+            "                gvars = []",
+            "                for p in g.get('plots', []):",
+            "                    for k in _DASH_PLOT_VAR_KEYS:",
+            "                        v = p.get(k, '')",
+            "                        if v and v in df.columns and v not in gvars:",
+            "                            gvars.append(v)",
+            "                # The graph's planned rows, blanked, with their labels so",
+            "                # a move refreshes it by identity (WP-29 P0.11).",
+            "                _pdf = df[df.index.isin(_EMBED_GROWS.get(gname, df.index[0:0]))]",
+            "                _pdata = {v: _dash_column_values(_dash_embed_values(",
+            "                              _pdf[v], _EMBED['need'].get(v)))",
+            "                          for v in gvars}",
+            "                if gvars:",
+            "                    _pdata['index'] = list(_pdf.index)",
+            "                graph_sources[gname] = [ColumnDataSource(_pdata)",
+            "                                        if gvars else ColumnDataSource({})]",
+            "        finally:",
+            "            _dash_frame_out(_fsv)",
             "",
             "    # ---- Aggregated plot ColumnDataSources ----",
             "    # key: (gname, plot_index) → {'source': CDS, 'compute': callable}",
@@ -70542,142 +70866,147 @@ class ServerAppBuilder:
             "    # rebuilt from the frame, which has none.",
             "    _hover_label_vars = {}",
             "    for g in graphs:",
-            "        go = g.get('graph_options', {})",
-            "        gname = go.get('name', '')",
-            "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
-            "        _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
-            "        g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname,",
-            "                                     qual=_dash_qual_mask(g, _qual_masks))",
-            "        _owner_rows[gname] = g_df.index",
-            "        # One parser for both render modes.  It rejects an",
-            "        # injection pattern by returning no variables.  The",
-            "        # sub-options dash does not implement were named when",
-            "        # this app was built, where the user reads it; a",
-            "        # session does not repeat it.",
-            "        _bv, _bcols, _btotal, _bmissing, _ = _dash_parse_by(",
-            "            (go.get('by') or '').strip(), warn=False)",
-            "        # The letters the panels draw on their own scales (P0.2).",
-            "        _brs = _dash_by_rescale((go.get('by') or '').strip())",
-            "        by_vars = [v for v in _bv.split() if v in df.columns]",
-            "        if not by_vars:",
-            "            figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, g_df)",
-            "            continue",
-            "        _btotal = _btotal or go.get('by_total', '0') == '1'",
-            "        _bmissing = _bmissing or go.get('by_missing', '0') == '1'",
-            "        # The QUALIFIED frame is what is grouped -- the saved",
-            "        # renderer grouped the whole dataset until WP-11, and",
-            "        # `if price > 4500, by(foreign)' faceted every row.",
-            "        work_df = g_df if _bmissing else _dash_by_nonmissing(g_df, by_vars)",
-            "        # by(, total)'s Total panel evaluates its qualifiers in the",
-            "        # data's order, the groups sorted on the by() variables, as",
-            "        # twoway does and as saved (_dash_total_spec; QS-16..).",
-            "        _g_tot = _dash_total_spec(g) if _btotal else g",
-            "        _t_df = work_df",
-            "        if _g_tot is not g:",
-            "            _t_df = _dash_qualified_frame(",
-            "                df, _g_if, _g_in, 'graph %r' % gname,",
-            "                qual=_dash_qual_mask(_g_tot, _qual_masks))",
-            "            if not _bmissing:",
-            "                _t_df = _dash_by_nonmissing(_t_df, by_vars)",
-            "        if work_df.empty and (_g_tot is g or _t_df.empty):",
-            "            # Every by() value is missing: one empty panel, as saved.",
-            "            _owner_rows[gname] = work_df.index",
-            "            figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, work_df,",
-            "                                              _rescale=_brs)",
-            "            continue",
-            "        if gname not in linked_names:",
-            "            graph_sources.pop(gname, None)",
-            "        _gvars = []",
-            "        for _pp in g.get('plots', []):",
-            "            for _k in _DASH_PLOT_VAR_KEYS:",
-            "                _v = _pp.get(_k, '')",
-            "                if _v and _v in df.columns and _v not in _gvars:",
-            "                    _gvars.append(_v)",
-            "        _panels = []",
-            "        # The saved renderer's grouping, under the same by_groups",
-            "        # limit (the build said so when it was over).",
-            "        for _key, _gdf in (() if work_df.empty else _dash_by_groups(",
-            "                work_df, by_vars, _bmissing, _dash_lim['by_groups'], gname)):",
-            "            # A panel twoway leaves out, as the saved renderer does.",
-            "            if _dash_by_panel_dropped(_gdf, df, g.get('plots', []),",
-            "                                      _qual_masks, gname):",
+            "        # WP-33 33-07: the graph's own frame view (A-23).",
+            "        _fsv = _dash_frame_in(g.get('graph_options', {}).get('name', ''))",
+            "        try:",
+            "            go = g.get('graph_options', {})",
+            "            gname = go.get('name', '')",
+            "            _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
+            "            _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
+            "            g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname,",
+            "                                         qual=_dash_qual_mask(g, _qual_masks))",
+            "            _owner_rows[gname] = g_df.index",
+            "            # One parser for both render modes.  It rejects an",
+            "            # injection pattern by returning no variables.  The",
+            "            # sub-options dash does not implement were named when",
+            "            # this app was built, where the user reads it; a",
+            "            # session does not repeat it.",
+            "            _bv, _bcols, _btotal, _bmissing, _ = _dash_parse_by(",
+            "                (go.get('by') or '').strip(), warn=False)",
+            "            # The letters the panels draw on their own scales (P0.2).",
+            "            _brs = _dash_by_rescale((go.get('by') or '').strip())",
+            "            by_vars = [v for v in _bv.split() if v in df.columns]",
+            "            if not by_vars:",
+            "                figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, g_df)",
             "                continue",
-            "            _panels.append((_dash_facet_label(",
-            "                by_vars, _key, val_label_names, val_labels,",
-            "                date_vars=_date_vars,",
-            "                date_formatter=_dash_stata_date_text,",
-            "                formats=_FORMATS, subtitle_format=_dash_by_subtitle_format(",
-            "                    go.get('by', ''))), _gdf, _key))",
-            "        # The Total panel is one more panel, answered as the groups",
-            "        # are, as saved (P1A-84).",
-            "        _t_idx = -1",
-            "        if _btotal and not _t_df.empty and not _dash_by_panel_dropped(",
-            "                _t_df, df, _g_tot.get('plots', []), _qual_masks, gname):",
-            "            _panels.append(('Total', _t_df, None))",
-            "            _t_idx = len(_panels) - 1",
-            "        if not _panels:",
-            "            # Every panel left out: one empty panel, as saved.",
-            "            warnings.warn(f'dash: graph {gname!r}: nothing to graph.',",
-            "                          UserWarning, stacklevel=2)",
-            "            _panels.append(('', work_df.iloc[0:0], None))",
-            "        _entries = []",
-            "        for _fi, (_label, _gdf, _key) in enumerate(_panels):",
-            "            _fname = f'{gname}__by__{_fi}'",
-            "            if gname in linked_names:",
-            "                # A panel of a linked graph draws from the shared",
-            "                # source through a view, as the saved one does.",
-            "                linked_names.add(_fname)",
-            "                _shared_of[_fname] = _shared_of[gname]",
-            "                graph_sources[_fname] = [_shared_of[gname]]",
-            "            else:",
-            "                _pgdf = _gdf[_gdf.index.isin(",
-            "                    _EMBED_GROWS.get(gname, _gdf.index[0:0]))]",
-            "                _pgdata = {_v: _dash_column_values(_dash_embed_values(",
-            "                               _pgdf[_v], _EMBED['need'].get(_v)))",
-            "                           for _v in _gvars}",
-            "                _pgdata['index'] = list(_pgdf.index)",
-            "                graph_sources[_fname] = [ColumnDataSource(_pgdata)]",
-            "            _owner_rows[_fname] = _gdf.index",
-            "            # WP-31 C12: the panel's own function points.",
-            "            _g_pan = _dash_fn_panel_spec(g, _fi)",
-            "            if _fi == _t_idx and _g_tot is not g:",
-            "                # The Total panel: its own qualifier columns, drawn",
-            "                # and reapplied after a filter move (_total_quals).",
-            "                _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
-            "                _total_quals[_fname] = {",
-            "                    'if_expr': _g_if, 'in_expr': _g_in,",
-            "                    'qual_col': str(_g_tot.get('qual_col') or '')}",
-            "            figures[_fname] = _dash_under_graph_scheme(_g_pan, _dash_figure_for,",
-            "                _g_pan, _fname, _gdf, _fac_label=_label, _rescale=_brs)",
-            "            _entries.append((_fname, _label))",
-            "            _facet_group_vals[_fname] = (by_vars, _key)",
-            "        _facet_map[gname] = _entries",
-            "        # twoway draws a by() graph's panels on one scale per",
-            "        # axis unless rescaled, as the saved figure's are.",
-            "        _dash_share_by_scales([figures[_f] for _f, _ in _entries",
-            "                               if _f in figures], _brs)",
-            "        # by()'s overall text, once over the panels (P1.15a).",
-            "        _f0 = next((_f for _f, _ in _entries if _f in figures), None)",
-            "        if _f0 is not None:",
-            "            figures[_f0]._dash_by_chrome = _dash_by_chrome(",
-            "                go, by_vars, var_labels, _dash_cur_scheme(),",
-            "                _reported_subopts, gname)",
-            "            # WP-31 H2t (D6): one data table under the grid, over",
-            "            # every panel's rows (a Total panel's are theirs already).",
-            "            _tspec = _dash_table_spec(go, _dash_lim)",
-            "            if _tspec:",
-            "                _tidx = work_df.index[0:0]",
-            "                for _fi, (_label, _gdf, _key) in enumerate(_panels):",
-            "                    if _fi != _t_idx:",
-            "                        _tidx = _tidx.union(_gdf.index)",
-            "                _tcols = _dash_table_cols(g)",
-            "                _tsrc = _dash_table_copy(gname, work_df[work_df.index.isin(_tidx)],",
-            "                                         _tcols)",
-            "                # Under the graph's name, so a move rewrites it with the",
-            "                # graph's own mask, as a graph's source (beside the link",
-            "                # group's, for a linked graph).",
-            "                graph_sources.setdefault(gname, []).append(_tsrc)",
-            "                _dash_data_table(figures[_f0], _tcols, _tspec, source=_tsrc)",
+            "            _btotal = _btotal or go.get('by_total', '0') == '1'",
+            "            _bmissing = _bmissing or go.get('by_missing', '0') == '1'",
+            "            # The QUALIFIED frame is what is grouped -- the saved",
+            "            # renderer grouped the whole dataset until WP-11, and",
+            "            # `if price > 4500, by(foreign)' faceted every row.",
+            "            work_df = g_df if _bmissing else _dash_by_nonmissing(g_df, by_vars)",
+            "            # by(, total)'s Total panel evaluates its qualifiers in the",
+            "            # data's order, the groups sorted on the by() variables, as",
+            "            # twoway does and as saved (_dash_total_spec; QS-16..).",
+            "            _g_tot = _dash_total_spec(g) if _btotal else g",
+            "            _t_df = work_df",
+            "            if _g_tot is not g:",
+            "                _t_df = _dash_qualified_frame(",
+            "                    df, _g_if, _g_in, 'graph %r' % gname,",
+            "                    qual=_dash_qual_mask(_g_tot, _qual_masks))",
+            "                if not _bmissing:",
+            "                    _t_df = _dash_by_nonmissing(_t_df, by_vars)",
+            "            if work_df.empty and (_g_tot is g or _t_df.empty):",
+            "                # Every by() value is missing: one empty panel, as saved.",
+            "                _owner_rows[gname] = work_df.index",
+            "                figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, work_df,",
+            "                                                  _rescale=_brs)",
+            "                continue",
+            "            if gname not in linked_names:",
+            "                graph_sources.pop(gname, None)",
+            "            _gvars = []",
+            "            for _pp in g.get('plots', []):",
+            "                for _k in _DASH_PLOT_VAR_KEYS:",
+            "                    _v = _pp.get(_k, '')",
+            "                    if _v and _v in df.columns and _v not in _gvars:",
+            "                        _gvars.append(_v)",
+            "            _panels = []",
+            "            # The saved renderer's grouping, under the same by_groups",
+            "            # limit (the build said so when it was over).",
+            "            for _key, _gdf in (() if work_df.empty else _dash_by_groups(",
+            "                    work_df, by_vars, _bmissing, _dash_lim['by_groups'], gname)):",
+            "                # A panel twoway leaves out, as the saved renderer does.",
+            "                if _dash_by_panel_dropped(_gdf, df, g.get('plots', []),",
+            "                                          _qual_masks, gname):",
+            "                    continue",
+            "                _panels.append((_dash_facet_label(",
+            "                    by_vars, _key, val_label_names, val_labels,",
+            "                    date_vars=_date_vars,",
+            "                    date_formatter=_dash_stata_date_text,",
+            "                    formats=_FORMATS, subtitle_format=_dash_by_subtitle_format(",
+            "                        go.get('by', ''))), _gdf, _key))",
+            "            # The Total panel is one more panel, answered as the groups",
+            "            # are, as saved (P1A-84).",
+            "            _t_idx = -1",
+            "            if _btotal and not _t_df.empty and not _dash_by_panel_dropped(",
+            "                    _t_df, df, _g_tot.get('plots', []), _qual_masks, gname):",
+            "                _panels.append(('Total', _t_df, None))",
+            "                _t_idx = len(_panels) - 1",
+            "            if not _panels:",
+            "                # Every panel left out: one empty panel, as saved.",
+            "                warnings.warn(f'dash: graph {gname!r}: nothing to graph.',",
+            "                              UserWarning, stacklevel=2)",
+            "                _panels.append(('', work_df.iloc[0:0], None))",
+            "            _entries = []",
+            "            for _fi, (_label, _gdf, _key) in enumerate(_panels):",
+            "                _fname = f'{gname}__by__{_fi}'",
+            "                if gname in linked_names:",
+            "                    # A panel of a linked graph draws from the shared",
+            "                    # source through a view, as the saved one does.",
+            "                    linked_names.add(_fname)",
+            "                    _shared_of[_fname] = _shared_of[gname]",
+            "                    graph_sources[_fname] = [_shared_of[gname]]",
+            "                else:",
+            "                    _pgdf = _gdf[_gdf.index.isin(",
+            "                        _EMBED_GROWS.get(gname, _gdf.index[0:0]))]",
+            "                    _pgdata = {_v: _dash_column_values(_dash_embed_values(",
+            "                                   _pgdf[_v], _EMBED['need'].get(_v)))",
+            "                               for _v in _gvars}",
+            "                    _pgdata['index'] = list(_pgdf.index)",
+            "                    graph_sources[_fname] = [ColumnDataSource(_pgdata)]",
+            "                _owner_rows[_fname] = _gdf.index",
+            "                # WP-31 C12: the panel's own function points.",
+            "                _g_pan = _dash_fn_panel_spec(g, _fi)",
+            "                if _fi == _t_idx and _g_tot is not g:",
+            "                    # The Total panel: its own qualifier columns, drawn",
+            "                    # and reapplied after a filter move (_total_quals).",
+            "                    _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
+            "                    _total_quals[_fname] = {",
+            "                        'if_expr': _g_if, 'in_expr': _g_in,",
+            "                        'qual_col': str(_g_tot.get('qual_col') or '')}",
+            "                figures[_fname] = _dash_under_graph_scheme(_g_pan, _dash_figure_for,",
+            "                    _g_pan, _fname, _gdf, _fac_label=_label, _rescale=_brs)",
+            "                _entries.append((_fname, _label))",
+            "                _facet_group_vals[_fname] = (by_vars, _key)",
+            "            _facet_map[gname] = _entries",
+            "            # twoway draws a by() graph's panels on one scale per",
+            "            # axis unless rescaled, as the saved figure's are.",
+            "            _dash_share_by_scales([figures[_f] for _f, _ in _entries",
+            "                                   if _f in figures], _brs)",
+            "            # by()'s overall text, once over the panels (P1.15a).",
+            "            _f0 = next((_f for _f, _ in _entries if _f in figures), None)",
+            "            if _f0 is not None:",
+            "                figures[_f0]._dash_by_chrome = _dash_by_chrome(",
+            "                    go, by_vars, var_labels, _dash_cur_scheme(),",
+            "                    _reported_subopts, gname)",
+            "                # WP-31 H2t (D6): one data table under the grid, over",
+            "                # every panel's rows (a Total panel's are theirs already).",
+            "                _tspec = _dash_table_spec(go, _dash_lim)",
+            "                if _tspec:",
+            "                    _tidx = work_df.index[0:0]",
+            "                    for _fi, (_label, _gdf, _key) in enumerate(_panels):",
+            "                        if _fi != _t_idx:",
+            "                            _tidx = _tidx.union(_gdf.index)",
+            "                    _tcols = _dash_table_cols(g)",
+            "                    _tsrc = _dash_table_copy(gname, work_df[work_df.index.isin(_tidx)],",
+            "                                             _tcols)",
+            "                    # Under the graph's name, so a move rewrites it with the",
+            "                    # graph's own mask, as a graph's source (beside the link",
+            "                    # group's, for a linked graph).",
+            "                    graph_sources.setdefault(gname, []).append(_tsrc)",
+            "                    _dash_data_table(figures[_f0], _tcols, _tspec, source=_tsrc)",
+            "        finally:",
+            "            _dash_frame_out(_fsv)",
             "",
             "    # Every canvas text drawn as typed (WP-30 P1.11a): last, once",
             "    # every figure, by() panel title and shared scale is built,",
@@ -70815,7 +71144,7 @@ class ServerAppBuilder:
             "        # The widget itself comes from the builder the saved renderer",
             "        # runs: option values, titles, steps and bounds are one rule.",
             "        widget, _sent = _dash_filter_widget(",
-            "            ftype, fvar, df[fvar][_EMBED['filter_rows'][_fi].to_numpy(dtype=bool)],",
+            "            ftype, fvar, _dash_filter_frame_column(df, fvar, _frame_cols, _EMBED['graph_rows'])[_EMBED['filter_rows'][_fi].to_numpy(dtype=bool)],",
             "            _ftitle, vlabels,",
             "            date_kind=_date_vars.get(fvar, ''),",
             "            max_options=_dash_lim['filter_options'],",
@@ -70881,6 +71210,14 @@ class ServerAppBuilder:
             "",
             "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None, _axis_figs=None, _axis_fmap=None, _doc=None, _slot=None):",
             "        _redrawn_views = _redrawn_views or {}",
+            "        # WP-33 33-07 (DECISIONS A-27): each filter tests a graph's",
+            "        # own frame's values -- a split column on that graph's rows.",
+            "        _df_fmask = _df_ref",
+            "        if _frame_cols:",
+            "            _fvs = {f.get('var') or f.get('varname') or '' for f in _filter_specs}",
+            "            _df_fmask = _df_ref.assign(**{",
+            "                _fv: _dash_filter_frame_column(_df_ref, _fv, _frame_cols, _EMBED['graph_rows'])",
+            "                for _fv in _fvs if _fv in _df_ref.columns})",
             "        # GAPS2 E2: the graph names sharing each link group's source",
             "        # (WP-31 H2l: _shared is the list of them), so a group's own",
             "        # mask is the AND of the filters that apply to at least one",
@@ -70907,7 +71244,7 @@ class ServerAppBuilder:
             "                                   members)",
             "            key = tuple(id(w) for w in ws)",
             "            if key not in _masks:",
-            "                _masks[key] = _dash_frame_filter_mask(_df_ref, ws)",
+            "                _masks[key] = _dash_frame_filter_mask(_df_fmask, ws)",
             "            return _masks[key]",
             "        def _dash_kpi_wanted(kpi):",
             "            # A card a move recounts: update(filter) or update(both),",
@@ -70959,11 +71296,14 @@ class ServerAppBuilder:
             "                plan['scheme'] = _doc_scheme",
             "                plan['mapper'] = _dash_plan_mapper(_doc_mapper, _doc_scheme)",
             "            return plan",
+            "        _df_ref_all = _df_ref",
             "        def _dash_agg_frame(plan, key):",
             "            # The rows one aggregated layer redraws from (worker or loop).",
             "            gname = key[0]",
             "            # This layer's OWN mask (GAPS2 E2), not every widget's.",
             "            mask = plan['masks'][gname]",
+            "            # The graph's own frame's columns (WP-33 33-07).",
+            "            _df_ref = _dash_frame_rows(_gfac_to_orig.get(gname, gname), _df_ref_all)",
             "            fdf = _df_ref[mask]",
             "            # Derive per-facet data frame analogously to raw source update.",
             "            # Faceted aggregates must recompute from the facet's subgroup,",
@@ -71050,7 +71390,9 @@ class ServerAppBuilder:
             "                # A by() graph's panels answer to its name, as on the",
             "                # saved page (_dash_widgets_for/_dash_excluded).",
             "                mask = plan['masks'][gname]",
-            "                fdf = _df_ref[mask]",
+            "                # The graph's own frame's columns (WP-33 33-07).",
+            "                _df_g = _dash_frame_rows(_gfac_to_orig.get(gname, gname), _df_ref)",
+            "                fdf = _df_g[mask]",
             "                # For faceted sources, further filter by group value",
             "                if gname in _fgvals:",
             "                    _bvs, _gkey = _fgvals[gname]",
@@ -71061,11 +71403,11 @@ class ServerAppBuilder:
             "                        # Apply group filter on top of global mask",
             "                        _facet_mask = mask.copy()",
             "                        if len(_bvs) == 1:",
-            "                            _facet_mask = mask & (_df_ref[_bvs[0]] == _gkey)",
+            "                            _facet_mask = mask & (_df_g[_bvs[0]] == _gkey)",
             "                        else:",
             "                            for _bv, _gv in zip(_bvs, _gkey):",
-            "                                _facet_mask = _facet_mask & (_df_ref[_bv] == _gv)",
-            "                        _gdf = _df_ref[_facet_mask]",
+            "                                _facet_mask = _facet_mask & (_df_g[_bv] == _gv)",
+            "                        _gdf = _df_g[_facet_mask]",
             "                else:",
             "                    _gdf = fdf",
             "                # Reapply graph-level if_expr/in_expr qualifier so that",
@@ -71088,7 +71430,7 @@ class ServerAppBuilder:
             "                # move keeps only rows it selects, intersected by index.",
             "                _q_cb = _dash_qual_mask(_qual_cb, _qual_masks)",
             "                if _in_cb or _if_cb or _q_cb is not None:",
-            "                    _gdf = _dash_layer_frame(_df_ref, _gdf, _if_cb, _in_cb,",
+            "                    _gdf = _dash_layer_frame(_df_g, _gdf, _if_cb, _in_cb,",
             "                                             'graph %r' % _orig_gn_cb,",
             "                                             qual=_q_cb)",
             "                # What a selection cleared below counts: the rows this",
@@ -71540,8 +71882,10 @@ class ServerAppBuilder:
             "            list(df.columns), bo.get('formats', {}) or {},",
             "            meta.get('type_is_str', {}) or {}, val_labels,",
             "            val_label_names, storage_types=_storage_types,",
-            "            display_names={k: v['expr'] for k, v in",
-            "                           (meta.get('tsop_cols') or {}).items()})",
+            "            display_names=dict({k: v['expr'] for k, v in",
+            "                                (meta.get('tsop_cols') or {}).items()},",
+            "                               **{e['col']: '%s [frame %s]' % (v, e['frame'])",
+            "                                  for m in _frame_cols.values() for v, e in m.items()}))",
             "        _csv_src = ColumnDataSource(data={})",
             "        _csv_btn = _DashButton(label='Download CSV',",
             "                               name='dash_csv_download',",

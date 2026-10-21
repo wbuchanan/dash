@@ -189,12 +189,14 @@ def _mata_code(text):
 
 #: What may stand before a command: braces, else, the capture / noisily /
 #: quietly prefixes in every abbreviation Stata takes (with or without a
-#: colon), version #: and by ...:.
+#: colon), version #:, by ...: and Stata's frame <name>: prefix (WP-33
+#: 33-07 runs a program in another frame under it).
 _PREFIX = re.compile(
     r"^(?:\{|\}|else\b|"
     r"(?:cap|capt|captu|captur|capture|n|no|noi|nois|noisi|noisil|noisily|"
     r"qui|quie|quiet|quietl|quietly)\b\s*:?|"
     r"version\s+[0-9.]+\s*:|"
+    r"frame\s+[^\s:]+\s*:|"
     r"(?:by|bys|byso|bysor|bysort)\b[^:]*:)\s*")
 
 #: A name that is a word of its own: not part of a longer word, a macro's

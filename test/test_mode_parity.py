@@ -243,8 +243,16 @@ def _write(spec):
     dp = os.path.join(_TMP, f"data_{tag}.json")
     with open(sp, "w") as fh:
         json.dump(spec, fh)
+    # WP-33 33-07: a spec mapping a split column gets its frame's own
+    # copy of `when', the %tm month of each %td day.
+    df = _DF
+    if (spec.get("build_options") or {}).get("frame_cols"):
+        day = pd.Timestamp("1960-01-01") + pd.to_timedelta(_DF["when"],
+                                                           unit="D")
+        df = _DF.assign(__dashm1=((day.dt.year - 1960) * 12
+                                  + day.dt.month - 1).astype(float))
     with open(dp, "w") as fh:
-        json.dump(make_data_json(_DF, _VALUE_LABELS, _LABEL_NAMES), fh)
+        json.dump(make_data_json(df, _VALUE_LABELS, _LABEL_NAMES), fh)
     return tag, sp, dp
 
 
@@ -2820,6 +2828,17 @@ CORPUS = [
           images=[{"name": "im1", "caption": "", "alt": "", "link": "",
                    "path": os.path.join(_HERE, "fixtures",
                                         "svg_truth_smoke.svg")}]),
+    # WP-33 33-07 (DECISIONS A-23): g2's frame holds `when' as a %tm
+    # month, in the split column __dashm1 (_write adds it); both modes draw
+    # g2 from it, in its own format.
+    _case("frames: g2 reads its frame's own column",
+          graphs=[("g1", [plot_for("scatter", yvar="mpg", xvar="when")],
+                   None),
+                  ("g2", [plot_for("scatter", yvar="mpg", xvar="when")],
+                   None)],
+          bo={"formats": {"when": "%td", "__dashm1": "%tm"},
+              "frame_cols": {"g2": {"when": {"col": "__dashm1",
+                                             "frame": "f2"}}}}),
 ]
 
 

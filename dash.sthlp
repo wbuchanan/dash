@@ -225,7 +225,9 @@ own columns ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count} ...) reaches
 {cmd:hover()} and {cmd:mlabel()}, and the missing-code columns {cmd:__dashm_}{it:var} and display-text columns
 {cmd:__dasht_}{it:var} that carry {cmd:.a} to {cmd:.z} -- and data holding such a variable are
 refused with {cmd:r(110)} before anything is exported; every other Stata
-name, however dash-like it looks, is read as your data.
+name, however dash-like it looks, is read as your data.  A graph registered in another frame
+({cmd:frame} {it:name}{cmd::} {cmd:dash} ...{cmd:, name()}) reads that frame
+instead; see {help dash##frames:Graphs from several frames}.
 
 {pstd}
 {ul:What a saved page holds.}  A saved dashboard holds, for each variable,
@@ -2385,6 +2387,53 @@ panel.  For a statistic of each group, register a card per group:
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash kpi mean(mpg) if foreign == 0, title("Domestic") name(kdom)}{p_end}
 
+
+{marker frames}
+{title:Graphs from several frames}
+
+{pstd}
+A registered graph is drawn from the frame it was registered in, as
+{cmd:twoway} draws from the frame its command runs in.  {cmd:dash} takes
+Stata's own prefix and adds no option:
+{cmd:frame cars: dash scatter mpg weight, name(g1)} is
+{cmd:frame cars: twoway scatter mpg weight}, registered.  So one
+{cmd:dash build} can hold graphs of several datasets, each in its own frame,
+and the frame {cmd:dash build} runs in, and its data, are left as they were.
+
+{phang2}{cmd:. frame create cars}{p_end}
+{phang2}{cmd:. frame cars: sysuse auto, clear}{p_end}
+{phang2}{cmd:. frame create sp}{p_end}
+{phang2}{cmd:. frame sp: sysuse sp500, clear}{p_end}
+{phang2}{cmd:. frame cars: dash scatter mpg weight if foreign, name(g1)}{p_end}
+{phang2}{cmd:. frame sp: dash line close date in 1/100, name(g2)}{p_end}
+{phang2}{cmd:. dash build, saving(two.html) replace}{p_end}
+
+{pstd}
+Each graph is drawn from its own frame's rows: its {it:if} and {it:in},
+time-series operators ({cmd:L.close} under that frame's {cmd:tsset}),
+{cmd:sort()} and weight expressions ({cmd:[aw=pop/1000]}) are evaluated in
+that frame, as {cmd:twoway} evaluates them there.  A variable that graphs of
+two frames both use, held in each with another storage kind,
+display format, value label or variable label, is drawn in each graph with its own
+frame's: {cmd:date} formatted {cmd:%td} in one frame and {cmd:%tm} in
+another draws days in the first frame's graphs and months in the second's.
+KPI cards read the frame current at {cmd:dash build}.
+
+{pstd}
+A {cmd:filter()} applies to every graph whose frame holds its variable, by
+that graph's own frame's values; a graph whose frame does not hold it is
+added to the filter's {cmd:exclude()} list.  The filter's choices are every
+such frame's values, labelled with the first such frame's value labels.
+
+{pstd}
+Three shapes are refused at {cmd:dash build}, before anything is written: a
+graph whose frame no longer exists ({cmd:frame} {it:name} {cmd:not found},
+{cmd:r(111)}, naming the graph); a {cmd:link()} group joining graphs of two
+frames ({cmd:r(198)}: a link group draws from one frame, and brushing
+follows the link groups); and a {cmd:filter()} whose variable one frame
+stores as a string and another as a number ({cmd:r(109)}, naming the
+variable and the two frames: one filter control cannot offer both texts and
+numbers).  A variable that only one frame's graphs use is never compared.
 
 {marker image}
 {title:Image panels}
