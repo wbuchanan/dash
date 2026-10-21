@@ -648,6 +648,61 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w33_run' {
 }
 * ==== end S13 ====
 
+python:
+def _w33s13_key():
+    # S13 CV-16: the colour key texts (D-33-13.d: unrotated texts right of
+    # the plot region, top to bottom) of the SVG named by the local svg,
+    # and of the committed disc_rep78 probe.
+    import json, os, sys
+    from sfi import Macro
+    svg = Macro.getLocal("svg")
+    sys.path.insert(0, os.path.join(os.path.abspath(".."), "scripts"))
+    import svg_truth
+
+    def key(texts, right):
+        return [t["text"] for t in sorted(
+            (t for t in texts if t["x"] is not None and t["x"] > right + 1
+             and not t["rotate"]), key=lambda t: (t["y"], t["x"]))]
+
+    doc = svg_truth.svg_document(svg)
+    got = key(doc["texts"], doc["plotregion"]["right"])
+    with open("fixtures/colorvar_truth.json", encoding="utf-8") as fh:
+        p = json.load(fh)["probes"]["disc_rep78"]
+    want = key(p["texts"], p["plot"]["right"])
+    Macro.setLocal("ok", "1" if got == want and got else "0")
+    Macro.setLocal("msg", ("twoway %s, the fixture %s" % (got, want))[:400]
+                   .replace('"', "'"))
+end
+
+* ==== S13 CV-16: colorvar key truth ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S13") & `: list posof "S13" in w33_run' {
+    display as text "S13 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3313-2: twoway's colour key under colorvar(rep78) colordiscrete
+    // reads, top to bottom, as fixtures/colorvar_truth.json's disc_rep78
+    // probe does (scripts/extract_colorvar_truth.do), so the key texts
+    // test_colorvar_truth.py::TestTheKeyAgainstTwoway reads have not
+    // drifted.
+    // ------------------------------------------------------------
+    local d "`w33_work'/s13k"
+    capture mkdir "`d'"
+    sysuse auto, clear
+    twoway scatter mpg weight, colorvar(rep78) colordiscrete name(zqg, replace)
+    capture erase "`d'/s13k.svg"
+    cert_svg_export, name(zqg) file("`d'/s13k.svg")
+    local svg "`r(file)'"
+    python: __import__("__main__")._w33s13_key()
+    _w33_expect Q3313-2 "(`ok')" "`msg'"
+    _w33_done Q3313-2 "twoway's colordiscrete key texts are the committed colorvar truth"
+    capture erase "`svg'"
+    capture graph drop zqg
+    capture rmdir "`d'"
+    display as text "S13 end " c(current_date) " " c(current_time)
+}
+* ==== end S13 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

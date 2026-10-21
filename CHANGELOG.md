@@ -930,6 +930,7 @@ and now matches Stata.
 - Every plot type's by() panels are compared with twoway's per-panel data (WP-33, BY-23)
 - by()'s titles and notes at each clock position are compared with twoway's (WP-33, BY-24)
 - Twenty-three estimator option combinations are measured in twoway and compared with dash (WP-33, stat:PT-23)
+- colorvar keys, frames and per-type colours are compared with twoway's (WP-33, CV-16)
 
 ### Fixed in WP-32
 

@@ -320,7 +320,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit 18fc1eb.
 - **BY-23 Tracked:** Closed in WP-33, BUGS.md "Per-type by() drawing is pinned against twoway only for function (default range) and lpoly", commit pending.
 - **stat:PT-23 Tracked:** Closed in WP-33, BUGS.md "Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...", commit pending.
-- **CV-16 Tracked:** Open (WP-33 section 33-13).
+- **CV-16 Tracked:** Closed in WP-33, BUGS.md "colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously", commit pending.
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit pending.

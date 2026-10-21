@@ -81,6 +81,21 @@ program define zcp
     global ZS_DS_${ZS_N}   `"`ds'"'
     global ZS_BODY_${ZS_N} `"`body'"'
     global ZS_OPTS_${ZS_N} `"`opts'"'
+    global ZS_FULL_${ZS_N} 0
+end
+
+* WP-33 33-13 (CV-16): a probe whose command is not `body, opts' (several
+* plots, or by()): the whole command, to which the loop adds name().
+program define zcp2
+    local id   `"`1'"'
+    local ds   `"`2'"'
+    local cmd  `"`3'"'
+    global ZS_N = ${ZS_N} + 1
+    global ZS_ID_${ZS_N}   `"`id'"'
+    global ZS_DS_${ZS_N}   `"`ds'"'
+    global ZS_BODY_${ZS_N} `"`cmd'"'
+    global ZS_OPTS_${ZS_N} ""
+    global ZS_FULL_${ZS_N} 1
 end
 
 zcp "selfcheck_foreign"       "auto" "twoway scatter mpg weight" "colorvar(foreign) colordiscrete"
@@ -100,12 +115,44 @@ zcp "zlabel_price"            "auto" "twoway scatter mpg weight" "colorvar(price
 zcp "zscale_log"              "auto" "twoway scatter mpg weight" "colorvar(price) zscale(log)"
 zcp "zscale_rev"              "auto" "twoway scatter mpg weight" "colorvar(price) zscale(reverse)"
 
+* WP-33 33-13 (CV-16, D-33-13.e): six non-scatter types in two colourings,
+* the options on non-scatter types, by(), two colorvar layers, legend()
+* and a colordiscrete + colorlevels() probe with more than one group.
+foreach t in line connected bar spike rcap pcspike {
+    local b "twoway `t' mpg weight"
+    if inlist("`t'", "line", "connected") local b "twoway `t' mpg weight, sort"
+    if "`t'" == "rcap"    local b "twoway rcap mpg price weight"
+    if "`t'" == "pcspike" local b "twoway pcspike mpg weight price foreign"
+    if inlist("`t'", "line", "connected") {
+        zcp2 "cv16_`t'_disc_rep78" "auto" "`b' colorvar(rep78) colordiscrete"
+        zcp2 "cv16_`t'_levels_price_4" "auto" "`b' colorvar(price) colorlevels(4)"
+    }
+    else {
+        zcp "cv16_`t'_disc_rep78" "auto" "`b'" "colorvar(rep78) colordiscrete"
+        zcp "cv16_`t'_levels_price_4" "auto" "`b'" "colorvar(price) colorlevels(4)"
+    }
+}
+zcp  "cv16_bar_fillonly"        "auto" "twoway bar mpg weight" "colorvar(rep78) colordiscrete colorfillonly"
+zcp2 "cv16_line_fillonly"       "auto" "twoway line mpg weight, sort colorvar(rep78) colordiscrete colorfillonly"
+zcp2 "cv16_line_plegend"        "auto" "twoway line mpg weight, sort colorvar(rep78) colordiscrete coloruseplegend"
+zcp  "cv16_bar_keysrange"       "auto" "twoway bar mpg weight" "colorvar(price) colorlevels(4) colorkeysrange"
+zcp2 "cv16_line_cuts_list"      "auto" "twoway line mpg weight, sort colorvar(rep78) colorcuts(2 4) colorlist(red green blue)"
+zcp2 "cv16_scatter_by"          "auto" "twoway scatter mpg weight, colorvar(rep78) colordiscrete by(foreign)"
+* colorallowmultiple is a layer option: as a graph option twoway refuses
+* the pair r(198) "multiple contour, patch, or colorvar plots not allowed"
+* (measured 21oct2026), so each layer carries it.
+zcp2 "cv16_two_layers"          "auto" "twoway (scatter mpg weight, colorvar(rep78) colordiscrete colorallowmultiple) (scatter mpg length, colorvar(rep78) colordiscrete colorallowmultiple),"
+zcp  "cv16_legend_rows2"        "auto" "twoway scatter mpg weight" "colorvar(rep78) colordiscrete legend(rows(2))"
+zcp  "cv16_disc_levels_rep78_3" "auto" "twoway scatter mpg weight" "colorvar(rep78) colordiscrete colorlevels(3)"
+
 * rc/message-only probes (the refusals): run separately below, not through
 * the SVG loop.
 local rcprobes_cmd1 "colorvar(price) colorcuts(5000) colorlevels(4)"
 local rcprobes_id1  "cuts_and_levels"
 local rcprobes_cmd2 "colorvar(price) colorlevels(4) colorlevels(3)"
 local rcprobes_id2  "levels_twice"
+local rcprobes_cmd3 "colorvar(price) zlabel(bogus)"
+local rcprobes_id3  "cv16_zlabel_bogus"
 
 tempname rec
 local recfile "${ZS_WORK}/records.txt"
@@ -127,6 +174,12 @@ forvalues i = 1/`zs_n' {
 
     local full `"`body', `opts' name(zqg, replace)"'
     local nofull `"`body', `opts' nodraw name(zqg, replace)"'
+    local cmdtxt `"`body', `opts'"'
+    if ${ZS_FULL_`i'} {
+        local full `"`body' name(zqg, replace)"'
+        local nofull `"`body' nodraw name(zqg, replace)"'
+        local cmdtxt `"`body'"'
+    }
 
     capture noisily `nofull'
     local rc_nodraw = _rc
@@ -142,7 +195,7 @@ forvalues i = 1/`zs_n' {
         local rcx = _rc
     }
     capture graph drop zqg
-    file write `rec' `"PROBE|`id'|`ds'|colorvar|`rc'|`svg'|`body', `opts'"' _n
+    file write `rec' `"PROBE|`id'|`ds'|colorvar|`rc'|`svg'|`cmdtxt'"' _n
     display as text "probe `id' rc=`rc' rc_nodraw=`rc_nodraw' svg_rc=`rcx'"
 }
 
@@ -151,7 +204,7 @@ sysuse auto, clear
 tempname dcol
 file open `dcol' using "${ZS_WORK}/data_auto.txt", write replace text
 forvalues o = 1/`=_N' {
-    file write `dcol' "`=foreign[`o']'|`=rep78[`o']'|`=price[`o']'" _n
+    file write `dcol' "`=foreign[`o']'|`=rep78[`o']'|`=price[`o']'|`=mpg[`o']'|`=weight[`o']'|`=length[`o']'" _n
 }
 file close `dcol'
 
@@ -160,10 +213,16 @@ file close `dcol'
 * run under a log so its own message is what the fixture records (the
 * CHANGELOG/BUGS.md text and the truth-script block compare dash's words).
 sysuse auto, clear
-capture noisily twoway scatter mpg weight, `rcprobes_cmd1' nodraw
-local tw_rc1 = _rc
-capture noisily twoway scatter mpg weight, `rcprobes_cmd2' nodraw
-local tw_rc2 = _rc
+* twoway's own words go to a log each (WP-33 33-13: the first line is
+* recorded as twoway_message).
+forvalues k = 1/3 {
+    capture log close _zcp
+    capture erase "${ZS_WORK}/tw_`rcprobes_id`k''.log"
+    log using "${ZS_WORK}/tw_`rcprobes_id`k''.log", name(_zcp) text replace
+    capture noisily twoway scatter mpg weight, `rcprobes_cmd`k'' nodraw
+    local tw_rc`k' = _rc
+    log close _zcp
+}
 
 capture log close _zcp
 capture erase "${ZS_WORK}/cuts_and_levels.log"
@@ -180,8 +239,17 @@ local dash_rc2 = _rc
 log close _zcp
 capture graph drop zqr2
 
+capture erase "${ZS_WORK}/cv16_zlabel_bogus.log"
+log using "${ZS_WORK}/cv16_zlabel_bogus.log", name(_zcp) text replace
+capture noisily dash scatter mpg weight, `rcprobes_cmd3' name(zqr3)
+local dash_rc3 = _rc
+log close _zcp
+capture graph drop zqr3
+capture dash clear
+
 file write `rec' `"RCPROBE|cuts_and_levels|`tw_rc1'|`dash_rc1'|${ZS_WORK}/cuts_and_levels.log"' _n
 file write `rec' `"RCPROBE|levels_twice|`tw_rc2'|`dash_rc2'|${ZS_WORK}/levels_twice.log"' _n
+file write `rec' `"RCPROBE|cv16_zlabel_bogus|`tw_rc3'|`dash_rc3'|${ZS_WORK}/cv16_zlabel_bogus.log"' _n
 
 file close `rec'
 display as text "records written to `recfile'"
@@ -235,18 +303,129 @@ with open(REC, "r", encoding="utf-8") as fh:
                     if ln.startswith("option") or ln.startswith("may not"):
                         msg = ln
                         break
+            twmsg = ""
+            twlog = os.path.join(WORK, "tw_" + pid + ".log")
+            if os.path.exists(twlog):
+                with open(twlog, "r", encoding="utf-8",
+                          errors="replace") as lf:
+                    for ln in lf:
+                        if not ln.strip() or ln.startswith((". ", "> ")) \
+                                or ln.strip().startswith(("name:", "log:",
+                                                          "log type:",
+                                                          "opened on:",
+                                                          "closed on:")) \
+                                or set(ln.strip()) <= set("-"):
+                            continue
+                        twmsg = ln.strip()
+                        break
             rc_only[pid] = {"twoway_rc": int(tw_rc), "dash_rc": int(dash_rc),
-                            "message": msg}
+                            "message": msg, "twoway_message": twmsg}
 
 data = {}
 with open(os.path.join(WORK, "data_auto.txt"), "r", encoding="utf-8") as fh:
     foreign, rep78, price = [], [], []
+    # WP-33 33-13 (CV-16): the y and x columns of the new probes too.
+    mpg, weight, length = [], [], []
     for line in fh:
-        f, r, p = line.rstrip("\n").split("|")
+        f, r, p, m, w, l = line.rstrip("\n").split("|")
         foreign.append(None if f == "." else float(f))
         rep78.append(None if r == "." else float(r))
         price.append(None if p == "." else float(p))
-data["auto"] = {"foreign": foreign, "rep78": rep78, "price": price}
+        mpg.append(None if m == "." else float(m))
+        weight.append(None if w == "." else float(w))
+        length.append(None if l == "." else float(l))
+data["auto"] = {"foreign": foreign, "rep78": rep78, "price": price,
+                "mpg": mpg, "weight": weight, "length": length}
+
+def _cv16_fields(p, doc):
+    """WP-33 33-13 (CV-16, D-33-13.d): every text with its position, the
+    plot region, the stroked rects (for the key frame), the in-region
+    drawn elements' colours by kind, and under by() the marker fills of
+    each panel."""
+    r3 = lambda v: None if v is None else round(v, 3)
+    p["texts"] = [{"text": t["text"], "x": r3(t["x"]), "y": r3(t["y"]),
+                   "anchor": t["anchor"], "size": r3(t["size"]),
+                   "rotate": t["rotate"]} for t in doc["texts"]]
+    pr = doc["plotregion"] or {}
+    p["plot"] = {k: r3(pr.get(k)) for k in ("left", "top", "right",
+                                            "bottom")}
+    p["rects"] = [{"x": r3(r["x"]), "y": r3(r["y"]), "w": r3(r["w"]),
+                   "h": r3(r["h"]), "stroke": r["stroke"], "fill": r["fill"]}
+                  for r in doc["rects"]
+                  if r["stroke"] not in (None, "none") and r["x"] is not None]
+    first = doc["regions"][0] if doc["regions"] else None
+    panels = [g for g in doc["regions"] if first and g["fill"] == first["fill"]
+              and (g["bottom"] - g["top"]) >= 0.5 * (first["bottom"]
+                                                     - first["top"])
+              and (g["right"] - g["left"]) >= 0.25 * (first["right"]
+                                                      - first["left"])]
+    p["panels"] = [{k: r3(g[k]) for k in ("left", "top", "right", "bottom")}
+                   for g in panels]
+
+    def inside(x, y):
+        return any(g["left"] - 0.5 <= x <= g["right"] + 0.5
+                   and g["top"] - 0.5 <= y <= g["bottom"] + 0.5
+                   for g in panels)
+
+    # Grid strokes: a colour whose horizontal segments at one y reach
+    # across 90% of a panel (twoway draws a grid line in short pieces);
+    # they and the black axes are dropped from the line counts.
+    width = (first["right"] - first["left"]) if first else 0
+    reach = {}
+    for d in doc["hlines"]:
+        k = (round(d["y1"], 2), d["stroke"])
+        lo, hi = reach.get(k, (float("inf"), float("-inf")))
+        reach[k] = (min(lo, d["x1"], d["x2"]), max(hi, d["x1"], d["x2"]))
+    grid = {"#000000"} | {k[1] for k, (lo, hi) in reach.items()
+                          if width and hi - lo >= 0.9 * width
+                          and sum(1 for d in doc["hlines"]
+                                  if (round(d["y1"], 2), d["stroke"]) == k)
+                          >= 5}
+    el = {}
+
+    def add(kind, colour):
+        if colour in (None, "none"):
+            return
+        el.setdefault(kind, {})
+        el[kind][colour] = el[kind].get(colour, 0) + 1
+
+    for c in doc["circles"]:
+        if c.get("cx") is not None and inside(c["cx"], c["cy"]):
+            add("circle", c["fill"])
+    for kind, key in (("hline", "hlines"), ("vline", "vlines"),
+                      ("diag", "diaglines")):
+        for d in doc[key]:
+            if d["stroke"] in grid:
+                continue
+            if inside(d["x1"], d["y1"]) and inside(d["x2"], d["y2"]):
+                add(kind, d["stroke"])
+    region_boxes = {(round(g["left"], 2), round(g["top"], 2))
+                    for g in doc["regions"]}
+    for r in doc["rects"]:
+        if r["x"] is None or not r["w"] or not r["h"]:
+            continue
+        if (round(r["x"], 2), round(r["y"], 2)) in region_boxes and \
+                r["fill"] == (first or {}).get("fill"):
+            continue
+        if inside(r["x"], r["y"]) and inside(r["x"] + r["w"],
+                                             r["y"] + r["h"]):
+            add("rect", r["fill"])
+    for q in doc["paths"]:
+        add("path", q["stroke"])
+    p["elements"] = el
+    if len(panels) > 1:
+        byp = []
+        for g in panels:
+            n = {}
+            for c in doc["circles"]:
+                if c.get("cx") is None or c["fill"] in (None, "none"):
+                    continue
+                if g["left"] <= c["cx"] <= g["right"] and \
+                        g["top"] <= c["cy"] <= g["bottom"]:
+                    n[c["fill"]] = n.get(c["fill"], 0) + 1
+            byp.append(n)
+        p["fills_by_panel"] = byp
+
 
 selfcheck_verdict = "unknown"
 for pid, p in probes.items():
@@ -258,8 +437,10 @@ for pid, p in probes.items():
         p["fills"] = {}
         p["marker_order"] = "unknown"
         p["key_texts"] = []
+        p.pop("svg", None)
         continue
     doc = svg_document(svgpath)
+    _cv16_fields(p, doc)
     # Only markers inside the plot region: the key's own swatches are
     # circles too, drawn outside it.
     pr = doc["plotregion"] or {}
@@ -302,7 +483,8 @@ for pid, p in probes.items():
 for pid, info in rc_only.items():
     probes[pid] = {"dataset": "auto", "colorvar": "price",
                    "rc": info["dash_rc"], "twoway_rc": info["twoway_rc"],
-                   "message": info["message"], "n_markers": 0,
+                   "message": info["message"],
+                   "twoway_message": info["twoway_message"], "n_markers": 0,
                    "fill_groups": [], "n_groups": 0, "fills": {},
                    "marker_order": "n/a", "key_texts": []}
 
@@ -319,6 +501,10 @@ meta = {
     "dash_commit": dash_commit,
     "extracted": __import__("datetime").date.today().isoformat(),
     "svg_truth_functions": ["svg_document", "svg_marker_fills", "svg_texts"],
+    "cv16_fields": "texts, plot, rects, panels, elements (in-region drawn "
+                   "colours by kind: circle fill, rect fill, hline/vline/diag "
+                   "stroke, path stroke; axis and full-width grid strokes "
+                   "and region rects dropped), fills_by_panel under by()",
     "marker_order_selfcheck": selfcheck_verdict,
 }
 
