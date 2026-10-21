@@ -6278,9 +6278,14 @@ class TestTheExportsAgree:
 
     def test_the_moves_reach_the_exports(self, state, moves):
         """Guards the guard: the state after a move is not the build's
-        (the build's own state has no move to check, and is skipped)."""
+        (at the build's own state, which has no move, the state the
+        guard compares against is deterministic)."""
+        # Flipped (WP-33 TR-23): the build state skipped ("the build state
+        # has no move"); it checks that two saved exports of the build agree.
         if not moves:
-            pytest.skip("the build state has no move")
+            assert (_saved_exports(_EXPORT_SPEC, [])
+                    == _saved_exports(_EXPORT_SPEC, []))
+            return
         built = _saved_exports(_EXPORT_SPEC, [])
         moved = _saved_exports(_EXPORT_SPEC, moves)
         assert built[0] != moved[0] and built[1] != moved[1]

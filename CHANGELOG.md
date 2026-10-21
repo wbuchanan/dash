@@ -925,6 +925,7 @@ and now matches Stata.
 - `dash image using file.svg, name()` places a checked SVG picture, with an optional caption and an optional link() to a page in the same folder, where layout() and tabs() put it, in the saved page and the served app; `$dash_max_images` (default 100) bounds them. (WP-33, 33-06)
 - The certification suite compares dash's return code and first line with twoway's for each of the 311 bad-value probes (WP-33, TR-11)
 - The abbreviation record measures every option dash declares, and records bgcolor() as twoway's option (WP-33, syn:SD-20)
+- No test skips on a premise twoway's measurements contradict, so a strict run can pass (WP-33, TR-23)
 
 ### Fixed in WP-32
 

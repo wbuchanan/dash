@@ -316,7 +316,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 
 - **TR-2 Tracked:** Open (WP-33 section 33-14).
 - **TR-11 Tracked:** Closed in WP-33, BUGS.md "value_truth.json (311 twoway answers) is never compared with dash probe by probe", commit 025a0d8.
-- **TR-23 Tracked:** Open (WP-33 section 33-11).
+- **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit pending.
 - **BY-23 Tracked:** Open (WP-33 section 33-12).
 - **stat:PT-23 Tracked:** Open (WP-33 section 33-13).
 - **CV-16 Tracked:** Open (WP-33 section 33-13).

@@ -4490,11 +4490,11 @@
   - Suggested fix: Parametrised rc and first-line check with a deliberate-differences list
   - Resolution: Fixed 21oct2026 (WP-33, TR-11). Certification block S10 TR-11 runs each of value_truth.json's 311 probes through dash -- registered, and rendered where twoway refused and registration passed; the 230 probes twoway draws are compared at registration only -- and compares the rc and first line with twoway's; 65 differences are listed in test/value_truth_known.py under the GAPS4 items that fix or document them (test/known_differences.py's rule; the count-cap probes under stat:PT-15 (documented)). Pinned by test/test_option_validation.py::TestTheValueOracleProbeByProbe, test/test_known_differences.py::TestKnownProblems, test/test_wp33_truth.cscript Q3310-1; fixture test/fixtures/value_truth.json. Closes GAPS4 TR-11 (WP-33, TR-11).
 
-- [ ] Title: No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass
+- [x] Title: No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass
   - File Names and Line Numbers: ROADMAP.md:5155; test_graph_text.py:1323-1336; conftest.py:195-208
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids TR-23; confirmed; tracked: ROADMAP WP-32 gate note. Registered as GAPS4 TR-23 (WP-33, section 33-11, Fix).
   - Suggested fix: Convert TestBounds so it runs (R9: pinned tests are never deleted); run make test-all once and record it.
-  - Resolution: Not fixed because WP-33 section 33-11 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, TR-23). The nine tests that skipped because a measured truth contradicts their premise assert that truth instead (TestBounds: {dup}/{hline} past their bounds drawn as typed, no cut note; TestOtherSmclDirectives: quoted keys through compound quotes in the xlabel and legend sinks; TestTheExportsAgree at build: the build's exports are deterministic); the strict whole-suite run is the batch 33.3 gate's and is recorded in ROADMAP's WP-33 section by WE.4. Pinned by test/test_strict_mode.py::TestNoStandingSkip::test_none_of_them_can_skip, test/test_graph_text.py::TestBounds. Closes GAPS4 TR-23 (WP-33, TR-23).
 
 - [ ] Title: Per-type by() drawing is pinned against twoway only for function (default range) and lpoly
   - File Names and Line Numbers: U60-5 compares saved with served for five types; U46-04; test_lpoly_rot

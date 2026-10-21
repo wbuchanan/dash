@@ -7,6 +7,7 @@ were: a warning, and a skip.  The helpers are tested directly, and the hooks
 by running a throwaway suite, with a copy of conftest.py, in a subprocess of
 this interpreter, serially and under xdist.
 """
+import ast
 import os
 import shutil
 import subprocess
@@ -224,3 +225,99 @@ class TestStrictModeOnARun:
                  baseline=_other_baseline())
         assert r.returncode == 0, r.stdout + r.stderr
         assert "differs from the %s baseline" % _other_baseline() in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# WP-33 TR-23: the tests that skipped on a measured false premise.  Strict
+# mode already fails any skip at the gate; this static guard reads their
+# source and fails on any skip site left in them (D-33-11.i).
+# ---------------------------------------------------------------------------
+
+_STANDING_SKIP_NODES = (
+    "test/test_graph_text.py::TestBounds",
+    "test/test_graph_text.py::TestOtherSmclDirectives::test_each_directive",
+    "test/test_mode_parity.py::TestTheExportsAgree"
+    "::test_the_moves_reach_the_exports",
+)
+
+_SKIP_CALLS = ("pytest.skip", "pytest.importorskip", "pytest.xfail")
+
+
+def _dotted(node):
+    """The dotted name of a Name/Attribute chain, or "" for anything
+    else (a call's own function is read through)."""
+    if isinstance(node, ast.Call):
+        node = node.func
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return ""
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _skip_sites(node):
+    """``"<file>:<line>: <what>"`` for each skip site in the class (and
+    the method, when the node names one) *node* names: a ``mark.skip`` or
+    ``mark.skipif`` decorator, bare or called, and a call of
+    ``pytest.skip``, ``pytest.importorskip`` or ``pytest.xfail``.  A node
+    naming no class or method is a site too."""
+    path, _, rest = node.partition("::")
+    names = rest.split("::")
+    with open(os.path.join(os.path.dirname(_HERE), path),
+              encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    cls = [c for c in tree.body
+           if isinstance(c, ast.ClassDef) and c.name == names[0]]
+    if not cls:
+        return ["%s not found" % node]
+    funcs = [f for f in cls[0].body
+             if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if len(names) > 1:
+        funcs = [f for f in funcs if f.name == names[1]]
+        if not funcs:
+            return ["%s not found" % node]
+    out = []
+    for f in funcs:
+        for d in f.decorator_list:
+            name = _dotted(d)
+            if name.endswith("mark.skip") or name.endswith("mark.skipif"):
+                out.append("%s:%d: @%s on %s" % (path, d.lineno, name,
+                                                 f.name))
+        for c in ast.walk(f):
+            if isinstance(c, ast.Call) and _dotted(c.func) in _SKIP_CALLS:
+                out.append("%s:%d: %s() in %s" % (path, c.lineno,
+                                                  _dotted(c.func), f.name))
+    return out
+
+
+class TestNoStandingSkip:
+
+    def test_none_of_them_can_skip(self):
+        assert [s for n in _STANDING_SKIP_NODES
+                for s in _skip_sites(n)] == []
+
+    def test_the_reader_finds_each_kind_of_site(self, tmp_path,
+                                                monkeypatch):
+        """The reader sees decorators bare and called, the three calls,
+        and a node that names nothing."""
+        src = ("import pytest\n\n\nclass TestX:\n"
+               "    @pytest.mark.skip\n    def test_a(self):\n"
+               "        pass\n\n"
+               "    @pytest.mark.skipif(True, reason='r')\n"
+               "    def test_b(self):\n        pytest.skip('s')\n\n"
+               "    def test_c(self):\n        pytest.importorskip('m')\n"
+               "        pytest.xfail('x')\n\n"
+               "    def test_d(self):\n        assert True\n")
+        (tmp_path / "test").mkdir()
+        (tmp_path / "test" / "test_x.py").write_text(src)
+        monkeypatch.setattr(
+            sys.modules[__name__], "_HERE", str(tmp_path / "test"))
+        assert len(_skip_sites("test/test_x.py::TestX")) == 5
+        assert _skip_sites("test/test_x.py::TestX::test_d") == []
+        assert _skip_sites("test/test_x.py::TestY") == [
+            "test/test_x.py::TestY not found"]
+        assert _skip_sites("test/test_x.py::TestX::test_z") == [
+            "test/test_x.py::TestX::test_z not found"]

@@ -1265,22 +1265,31 @@ class TestOtherSmclDirectives:
                       for i, k in enumerate(plain))
         leg = " ".join('label(%d "%s")' % (i + 1, d[k]["typed"])
                        for i, k in enumerate(plain))
+        # Flipped (WP-33 TR-23): the quoted keys skipped in these sinks --
+        # a compound-quoted label carries the double quote.
+        xl_q = " ".join('%d `"%s"\'' % (2000 + 200 * i, d[k]["typed"])
+                        for i, k in enumerate(quoted))
+        leg_q = " ".join('label(%d `"%s"\')' % (i + 1, d[k]["typed"])
+                         for i, k in enumerate(quoted))
         out = {}
         for mode in MODES:
-            spec = _spec([_sc()], graph_options={"title": title,
-                                                 "xlabel": xl})
-            models, _ = _models(mode, spec, _data(_df()))
-            out[(mode, "title")] = "\n".join(_title_texts(models))
-            out[(mode, "xlabel")] = [
-                v for a in _of(models, LinearAxis)
-                for v in (a.major_label_overrides or {}).values()]
-            spec = _spec([_sc() for _ in plain],
-                         graph_options={"legend": leg})
-            models, _ = _models(mode, spec, _data(_df()))
-            out[(mode, "legend")] = [
-                getattr(i.label, "value", i.label) if not isinstance(
-                    i.label, dict) else i.label.get("value")
-                for i in _of(models, LegendItem)]
+            for sfx, x, lg, n in (("", xl, leg, len(plain)),
+                                  ("_q", xl_q, leg_q, len(quoted))):
+                spec = _spec([_sc()], graph_options={"title": title,
+                                                     "xlabel": x})
+                models, _ = _models(mode, spec, _data(_df()))
+                if not sfx:
+                    out[(mode, "title")] = "\n".join(_title_texts(models))
+                out[(mode, "xlabel" + sfx)] = [
+                    v for a in _of(models, LinearAxis)
+                    for v in (a.major_label_overrides or {}).values()]
+                spec = _spec([_sc() for _ in range(n)],
+                             graph_options={"legend": lg})
+                models, _ = _models(mode, spec, _data(_df()))
+                out[(mode, "legend" + sfx)] = [
+                    getattr(i.label, "value", i.label) if not isinstance(
+                        i.label, dict) else i.label.get("value")
+                    for i in _of(models, LegendItem)]
         return d, quoted, out
 
     @pytest.mark.parametrize("mode", MODES)
@@ -1290,7 +1299,7 @@ class TestOtherSmclDirectives:
     def test_each_directive(self, smcl_sinks, mode, sink, key):
         d, quoted, out = smcl_sinks
         if sink != "title" and key in quoted:
-            pytest.skip("a double quote ends a tick or legend label")
+            sink += "_q"
         want = d[key]["text"]
         got = out[(mode, sink)]
         if sink == "title":
@@ -1308,34 +1317,35 @@ class TestOtherSmclDirectives:
         assert dr._dash_graph_text_plain("{dup 300:x}") == "x" * 300
 
 
-def _dup_expands():
-    if not os.path.exists(_SMCL_FIXTURE):
-        return False
-    rec = _smcl_truth()["smcl.dup_big"]
-    return rec.get("text") != rec["typed"]
-
-
-_NO_CUT = "twoway draws {dup 1000:x} as typed: no count is cut (D-42b)"
-
-
 class TestBounds:
 
-    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
-    def test_dup_is_cut(self):
-        flags = dr._dash_graph_text_parts("{dup 1000:x}")[3]
-        assert "cut" in flags
+    # Flipped (WP-33 TR-23): test_dup_is_cut -- twoway draws {dup 1000:x}
+    # and {hline 300} as typed (smcl_text_truth.json), so there is nothing
+    # to cut.
+    def test_dup_past_its_bound_is_drawn_as_typed(self):
+        rec = _smcl_truth()["smcl.dup_big"]
+        parts = dr._dash_graph_text_parts(rec["typed"])
+        assert "cut" not in parts[3]
+        assert dr._dash_graph_text(rec["typed"])[0] == rec["text"]
 
-    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
-    def test_hline_is_cut(self):
-        flags = dr._dash_graph_text_parts("{hline 100000}")[3]
-        assert "cut" in flags
+    # Flipped (WP-33 TR-23): test_hline_is_cut -- twoway draws {dup 1000:x}
+    # and {hline 300} as typed (smcl_text_truth.json), so there is nothing
+    # to cut.
+    @pytest.mark.parametrize("variant", ("h256", "h300"))
+    def test_hline_past_its_bound_is_drawn_as_typed(self, variant):
+        rec = _smcl_truth()["smcl.hline"]["variants"][variant]
+        parts = dr._dash_graph_text_parts(rec["typed"])
+        assert "cut" not in parts[3]
+        assert dr._dash_graph_text(rec["typed"])[0] == rec["text"]
 
-    @pytest.mark.skipif(not _dup_expands(), reason=_NO_CUT)
+    # Flipped (WP-33 TR-23): test_note_once -- twoway draws {dup 1000:x}
+    # and {hline 300} as typed (smcl_text_truth.json), so there is nothing
+    # to cut and nothing to note.
     @pytest.mark.parametrize("mode", MODES)
-    def test_note_once(self, mode):
+    def test_no_cut_note_past_a_bound(self, mode):
         spec = _spec([_sc()], graph_options={"title": '"{dup 1000:x}"'})
         _, ws = _models(mode, spec, _data(_df()))
-        assert len([w for w in _gt_notes(ws) if "was cut" in w]) == 1
+        assert [w for w in _gt_notes(ws) if "was cut" in w] == []
 
     def test_total_budget(self):
         """25 x {hline 200} would expand to 5,000 characters: the
