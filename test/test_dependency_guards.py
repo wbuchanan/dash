@@ -524,9 +524,13 @@ class TestTheRendererRefusesWithTheRemedy:
         assert "PYTHONHOME" not in env and "PYTHONPATH" not in env
         assert env.get("PATH") == os.environ.get("PATH")
 
-    @pytest.mark.skipif(not (os.path.exists("/usr/local/bin/python3.6")
-                             and os.path.exists("/usr/local/bin/python3.7")),
-                        reason="needs /usr/local/bin/python3.6 and python3.7")
+    # Opt-in: a run starts the host's old interpreters only when
+    # DASH_OLD_PYTHONS=1 is set (the maintainer, 21oct2026).
+    @pytest.mark.skipif(os.environ.get("DASH_OLD_PYTHONS") != "1"
+                        or not (os.path.exists("/usr/local/bin/python3.6")
+                                and os.path.exists("/usr/local/bin/python3.7")),
+                        reason="opt-in: DASH_OLD_PYTHONS=1 and "
+                               "/usr/local/bin/python3.6 and python3.7")
     def test_the_old_interpreters_here_get_the_remedy(self, tmp_path):
         args = [_RENDER, "--spec", "s.json", "--data", "d.json",
                 "--output", "o.html"]
