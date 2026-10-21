@@ -42,7 +42,7 @@ class TestTheRealTable:
         rows = S.read_table(_runner())
         names = [r[0] for r in rows]
         assert sorted(names) == sorted(V.registered_scripts(_runner()))
-        assert len(names) == len(set(names)) == 69  # 68 -> 69: test_wp31_truth.cscript (WP-31 S01)
+        assert len(names) == len(set(names)) == 70  # 68 -> 69: test_wp31_truth.cscript (WP-31 S01); 69 -> 70: test_wp33_truth.cscript (WP-33 33-01)
 
     def test_the_fixed_port_scripts_share_a_shard_for_every_n(self):
         rows = S.read_table(_runner())
@@ -74,9 +74,11 @@ class TestTheRealTable:
         assert rows["test_wp30_truth.cscript"] == {n: S.EVERY
                                                    for n in S.COUNTS}
         # ["test_wp30_truth.cscript"] -> plus test_wp31_truth.cscript:
-        # WP-31 S01 adds the second script that splits itself.
+        # WP-31 S01 adds the second script that splits itself; plus
+        # test_wp33_truth.cscript: WP-33 33-01 adds the third.
         assert [s for s, k in rows.items() if S.EVERY in k.values()] == [
-            "test_wp30_truth.cscript", "test_wp31_truth.cscript"]
+            "test_wp30_truth.cscript", "test_wp31_truth.cscript",
+            "test_wp33_truth.cscript"]
         with open(S.WP30, encoding="utf-8") as fh:
             text = fh.read()
         secs = S.wp30_seconds(text)

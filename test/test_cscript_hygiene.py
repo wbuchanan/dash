@@ -26,6 +26,7 @@ suite that runs on every change.
 import glob
 import os
 import re
+import sys
 
 import pytest
 
@@ -294,10 +295,11 @@ class TestTheChecksReachEveryScript:
         # package adds (.ultraplan/wp29/index.md A3), so 67; plus WP-30's
         # test_wp30_truth, the one script that package adds
         # (.ultraplan/wp30/index.md A142), so 68 now; plus WP-31's
-        # test_wp31_truth (.ultraplan/sections/index.md A5), so 69.  An empty
+        # test_wp31_truth (.ultraplan/sections/index.md A5), so 69; plus
+        # 69 -> 70: test_wp33_truth.cscript (WP-33 33-01).  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 69, (
+        assert len(_CSCRIPTS) == 70, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -318,7 +320,8 @@ class TestTheChecksReachEveryScript:
         # WP-29's test_wp29_truth gates the same way, so 49; WP-30's
         # test_wp30_truth gates the same way, so 50; WP-31's test_wp31_truth
         # gates the same way, so 51.
-        assert len(names) == 51, f"{len(names)}: {sorted(names)}"
+        # 51 -> 52: test_wp33_truth gates on c(python_exec) (WP-33 33-01)
+        assert len(names) == 52, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -1224,15 +1227,22 @@ _W31_MARK = "* ==== append new blocks above this line ===="
 _W31_HEAD = re.compile(r"^(scaffold|[A-K]\d{1,2}[a-gkltx]?): \S")
 
 
-def _wp31_blocks(src):
-    """As _wp30_blocks, with WP31_ONLY and w31_run, a header naming one
-    GAPS3 row id (a section may own several blocks, one per row), and
-    section order non-decreasing."""
+_W_MARK = "* ==== append new blocks above this line ===="
+_W_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}"
+_W_HEAD = re.compile(r"^(scaffold|tool|%s): \S" % _W_GAPS4_ID)
+
+
+def _wp_blocks(src, wp, head=_W_HEAD, row="GAPS4 row"):
+    """(blocks, bad) of WP-<wp>'s truth script: one marker; each block
+    `* ==== S<MM> <head> ====` .. `* ==== end S<MM> ====` above it, gated by
+    WP<wp>_ONLY and w<wp>_run, printing its start line first and its end
+    line last, in non-decreasing section order.  blocks are (S<MM>, first
+    line, last line, header text)."""
     lines = src.split("\n")
     bad = []
-    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W31_MARK]
+    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W_MARK]
     if len(marks) != 1:
-        bad.append("the line %r appears %d times" % (_W31_MARK, len(marks)))
+        bad.append("the line %r appears %d times" % (_W_MARK, len(marks)))
     mark = marks[0] if marks else len(lines) + 1
     blocks, cur = [], None
     for n, ln in enumerate(lines, 1):
@@ -1247,21 +1257,21 @@ def _wp31_blocks(src):
                 bad.append("line %d closes %s, which is not the open block"
                            % (n, c.group(1)))
             else:
-                blocks.append((cur[0], cur[1], n))
-                if not _W31_HEAD.match(cur[2]):
-                    bad.append("%s (line %d) names no GAPS3 row ('<id>: "
-                               "<what>')" % (cur[0], cur[1]))
+                blocks.append((cur[0], cur[1], n, cur[2]))
+                if not head.match(cur[2]):
+                    bad.append("%s (line %d) names no %s ('<id>: <what>')"
+                               % (cur[0], cur[1], row))
             cur = None
     if cur:
         bad.append("%s (line %d) is never closed" % cur[:2])
-    for k, (sec, first, last) in enumerate(blocks):
+    for k, (sec, first, last, _h) in enumerate(blocks):
         code = [ln.strip() for ln in lines[first:last - 1]
                 if ln.strip() and not ln.strip().startswith(("//", "*"))]
-        if code[:2] != ["local only : env WP31_ONLY",
+        if code[:2] != ["local only : env WP%s_ONLY" % wp,
                         'if inlist("`only\'", "", "%s") & `: list posof '
-                        '"%s" in w31_run\' {' % (sec, sec)]:
-            bad.append("%s (line %d) is not gated by WP31_ONLY=%s"
-                       % (sec, first, sec))
+                        '"%s" in w%s_run\' {' % (sec, sec, wp)]:
+            bad.append("%s (line %d) is not gated by WP%s_ONLY=%s"
+                       % (sec, first, wp, sec))
         timed = ['display as text "%s %s " c(current_date) " " '
                  'c(current_time)' % (sec, w) for w in ("start", "end")]
         if code[2:3] != timed[:1] or code[-2:] != [timed[1], "}"]:
@@ -1273,6 +1283,13 @@ def _wp31_blocks(src):
             bad.append("%s (line %d) follows %s: blocks go in section order"
                        % (sec, first, blocks[k - 1][0]))
     return blocks, bad
+
+
+def _wp31_blocks(src):
+    """WP-31's reader: _wp_blocks with its GAPS3 head; blocks as
+    (S<NN>, first line, last line)."""
+    blocks, bad = _wp_blocks(src, "31", head=_W31_HEAD, row="GAPS3 row")
+    return [b[:3] for b in blocks], bad
 
 
 class TestTheWp31TruthScript:
@@ -1319,3 +1336,137 @@ class TestTheWp31TruthScript:
                 (good.replace("S14", "S00"), "section order"),
                 (good.replace(_W31_MARK + "\n", ""), "appears 0 times")):
             assert any(says in b for b in _wp31_blocks(text)[1]), (says,)
+
+
+# ---------------------------------------------------------------------------
+# The per-WP truth scripts of WP-33..WP-49 (index.md PD-6): one template,
+# one block reader
+# ---------------------------------------------------------------------------
+
+_WP_TEMPLATE = os.path.join(_HERE, "templates", "wp_truth_template.cscript")
+_WP_TRUTHS = sorted(
+    p for p in glob.glob(os.path.join(_HERE, "test_wp*_truth.cscript"))
+    if re.search(r"test_wp(3[3-9]|4[0-9])_truth\.cscript$", p))
+# The seconds statement and its /// continuation lines: the one statement
+# of a WP script's frame a later commit may rewrite (measured block costs).
+_SECS = re.compile(r"^local w\d\d_secs[^\n]*(?:\n    [^\n]*)*\n", re.M)
+
+
+def _wp_of(path):
+    return re.search(r"test_wp(\d{2})_truth\.cscript$", path).group(1)
+
+
+def _head_and_tail(text):
+    """The frame of a WP truth script: everything through S00's end line
+    (less the seconds statement) and everything from the marker on."""
+    i = text.index("* ==== end S00 ====\n") + len("* ==== end S00 ====\n")
+    j = text.index(_W_MARK)
+    return _SECS.sub("", text[:i], count=1), text[j:]
+
+
+class TestTheWpTruthScripts:
+
+    def test_the_template_and_the_wp33_script_exist(self):
+        assert os.path.isfile(_WP_TEMPLATE), _WP_TEMPLATE
+        assert "test_wp33_truth.cscript" in [
+            os.path.basename(p) for p in _WP_TRUTHS], _WP_TRUTHS
+
+    @pytest.mark.parametrize("path", _WP_TRUTHS, ids=os.path.basename)
+    def test_the_scaffold_is_in_order(self, path):
+        wp = _wp_of(path)
+        text = _read(path)
+        order = ['cscript "WP-%s truth' % wp, "SKIP: Python not available.",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"',
+                 "// ---- parts: begin",
+                 "local w%s_sh : environment DASH_CERT_SHARD" % wp,
+                 "// ---- parts: end", "* ==== S00 ",
+                 "local only : env WP%s_ONLY" % wp, "* ==== end S00 ====",
+                 _W_MARK, "has no block to run",
+                 "test_wp%s_truth: ALL CHECKS PASSED" % wp]
+        positions = [text.find(s) for s in order]
+        assert -1 not in positions, dict(zip(order, positions))
+        assert positions == sorted(positions), (order, positions)
+        assert "capture python:" not in text
+
+    @pytest.mark.parametrize("path", _WP_TRUTHS, ids=os.path.basename)
+    def test_every_block_is_gated_timed_closed_and_in_section_order(
+            self, path):
+        blocks, bad = _wp_blocks(_read(path), _wp_of(path))
+        assert not bad, "\n".join(bad)
+        assert blocks and blocks[0][0] == "S00", blocks
+        assert blocks[0][3].startswith("scaffold: "), blocks[0]
+
+    @pytest.mark.parametrize("path", _WP_TRUTHS, ids=os.path.basename)
+    def test_each_block_names_a_row_of_its_own_section(self, path):
+        sys.path.insert(0, _HERE)
+        import test_tracking_documents as T
+        wp = _wp_of(path)
+        blocks, _bad = _wp_blocks(_read(path), wp)
+        bad = []
+        for sec, first, _last, head in blocks:
+            m = re.match(r"^(%s): " % _W_GAPS4_ID, head)
+            if not m:
+                continue
+            pid = m.group(1)
+            if (T.GAPS4_WP.get(pid) != "WP-" + wp
+                    or T.GAPS4_SECTION.get(pid) != "%s-%s" % (wp, sec[1:])):
+                bad.append("%s (line %d) names %s, a row of %s section %s"
+                           % (sec, first, pid, T.GAPS4_WP.get(pid),
+                              T.GAPS4_SECTION.get(pid)))
+        assert not bad, "\n".join(bad)
+
+    def test_the_template_makes_a_clean_script(self):
+        t = _read(_WP_TEMPLATE)
+        assert t.count("@@WP@@") >= 100
+        for left in ("WP-31", "w31", "U01-1", "GAPS3"):
+            assert left not in t, left
+        blocks, bad = _wp_blocks(t.replace("@@WP@@", "47"), "47")
+        assert bad == [], bad
+        assert [b[0] for b in blocks] == ["S00"], blocks
+
+    @pytest.mark.parametrize("path", _WP_TRUTHS, ids=os.path.basename)
+    def test_every_script_keeps_the_templates_head_and_tail(self, path):
+        # Sections append only between the S00 block and the marker, and a
+        # WP's W0 must not edit the frame.
+        made = _read(_WP_TEMPLATE).replace("@@WP@@", _wp_of(path))
+        assert _head_and_tail(_read(path)) == _head_and_tail(made)
+
+    def test_the_block_reader(self):
+        def block(sec, head, body=""):
+            return ("* ==== %s %s ====\nlocal only : env WP47_ONLY\n"
+                    'if inlist("`only\'", "", "%s") & `: list posof "%s" '
+                    'in w47_run\' {\n'
+                    '    display as text "%s start " c(current_date) " " '
+                    "c(current_time)\n%s"
+                    '    display as text "%s end " c(current_date) " " '
+                    "c(current_time)\n}\n* ==== end %s ====\n"
+                    % (sec, head, sec, sec, sec, body, sec, sec))
+        good = ('cscript "x"\n' + block("S00", "scaffold: smoke")
+                + block("S02", "AX-4: ticks")
+                + block("S02", "plat:PT-1: python")
+                + block("S09", "tool: guard") + _W_MARK + "\n")
+        blocks, bad = _wp_blocks(good, "47")
+        assert bad == [], bad
+        assert [b[0] for b in blocks] == ["S00", "S02", "S02", "S09"], blocks
+        swapped = good.replace(block("S09", "tool: guard"),
+                               block("S09", "tool: guard")
+                               + block("S01", "tool: late"))
+        for text, wp, says in (
+                (good.replace('"S00") &', '"S01") &'), "47", "not gated"),
+                (good.replace("AX-4: ticks", "nothing"), "47",
+                 "names no GAPS4 row"),
+                (swapped, "47", "section order"),
+                (good.replace(_W_MARK + "\n", ""), "47", "appears 0 times"),
+                (good, "48", "not gated")):
+            assert any(says in b for b in _wp_blocks(text, wp)[1]), (says,)
+
+    def test_the_seconds_table_may_change(self):
+        t = _read(_WP_TEMPLATE).replace("@@WP@@", "47")
+        u = t.replace("local w47_secs S00 1\n",
+                      "local w47_secs ///\n    S00 1 S09 150 ///\n"
+                      "    S10 300\n")
+        assert u != t
+        assert _head_and_tail(u) == _head_and_tail(t)
+        u2 = t.replace("SKIP: Python not available.", "SKIP: x.")
+        assert _head_and_tail(u2) != _head_and_tail(t)
+        assert len(_SECS.findall(t)) == 1

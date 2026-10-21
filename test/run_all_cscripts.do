@@ -154,7 +154,8 @@ local _cert_shards ///
     test_varlist_expansion.cscript        7.5 0  2 2 1 ///
     test_wp29_truth.cscript             123.6 1  1 1 1 ///
     test_wp30_truth.cscript             566.6 0  * * * ///
-    test_wp31_truth.cscript             456.4 0  * * *
+    test_wp31_truth.cscript             456.4 0  * * * ///
+    test_wp33_truth.cscript               1.0 0  * * *
 // ---- shards: end ----
 local _cert_sh : environment DASH_CERT_SHARD
 mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-4]/[1-4]$")))
@@ -3164,6 +3165,52 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_wp31_truth.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+}
+
+// 71. test_wp33_truth.cscript (WP-33: the one certification script for
+// every twoway/Stata-value comparison WP-33's sections need; S00's
+// scaffold and one block per GAPS4 row or harness tool, above its "append
+// new blocks above this line" marker -- .ultraplan/sections/index.md
+// PD-6).  It runs in every shard, each session running its own part of
+// the blocks (DASH_CERT_SHARD).
+// ----------------------------------------------------------------
+local _cert_go : list posof "test_wp33_truth.cscript" in _cert_run
+if `_cert_go' {
+display as text "[ RUN ] test_wp33_truth.cscript"
+cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
+capture noisily {
+    do "test_wp33_truth.cscript"
+}
+local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_wp33_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_wp33_truth.cscript"
+    capture noisily profiler report
+}
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_wp33_truth.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_wp33_truth.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_wp33_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 }
