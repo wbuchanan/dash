@@ -96,7 +96,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | DG-8 | A contour with no surface (two observations) draws no colour key | S2 | 37-02 | Fix | map_contour not-drawable branch; C01 | Build the key from the levels anyway |
 | stat:PT-12 | xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x | S2 | 37-04 | Fix | twoway_lfit_parse.class:75-88; sersets.log xtr | Route through _dash_fit_points with xtrans() |
 | stat:PT-16 | lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off | S2 | 37-05 | Document | lpolyci_truth a_d3 row 47; dash.sthlp:4032-4034 | Documented only (Q27, M9): the help describes the zero-df difference accurately; Stata's compiled round-off is not copied. |
-| DT-26 | Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000 | S2 | 37-05 | Document | dash.sthlp:1166-1185, 3895-3916, 3970-3975, 3795-3796 | Documented only (37-05): the help states each measured numeric limit (lpoly at degree 6-7 and above 7, the exact-polynomial cases, fpfit's date-time model choice, ndots thinning above 2,000,000). |
+| DT-26 | Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000 | S2 | 37-05 | Document | dash.sthlp:1166-1185, 3895-3916, 3970-3975, 3795-3796 | Documented only (37-05): the help states each measured numeric limit (lpoly at degree 6-7 and above 7, and the degree 2-3 rule-of-thumb bandwidth round-off of about 4e-6 relative at one grid point (D45, stat:PT-23), the exact-polynomial cases, fpfit's date-time model choice, ndots thinning above 2,000,000). |
 | stat:PT-21 | Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks) (also BY-30, DG-16) | S2 | 37-05 | Document | dash.sthlp:436-437; BUGS G6; repeated runs differ | Documented only (37-05): the help states that tied sort keys keep data order, where twoway's order among ties is unstable. |
 
 ## WP-38 · Stata graph integration, documented (P3)
@@ -318,12 +318,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **TR-2 Tracked:** Open (WP-33 section 33-14).
 - **TR-11 Tracked:** Closed in WP-33, BUGS.md "value_truth.json (311 twoway answers) is never compared with dash probe by probe", commit 025a0d8.
 - **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit 18fc1eb.
-- **BY-23 Tracked:** Closed in WP-33, BUGS.md "Per-type by() drawing is pinned against twoway only for function (default range) and lpoly", commit pending.
-- **stat:PT-23 Tracked:** Closed in WP-33, BUGS.md "Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...", commit pending.
-- **CV-16 Tracked:** Closed in WP-33, BUGS.md "colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously", commit pending.
+- **BY-23 Tracked:** Closed in WP-33, BUGS.md "Per-type by() drawing is pinned against twoway only for function (default range) and lpoly", commit 858c397.
+- **stat:PT-23 Tracked:** Closed in WP-33, BUGS.md "Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...", commit b0017ac.
+- **CV-16 Tracked:** Closed in WP-33, BUGS.md "colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously", commit 1f4db09.
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
-- **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit pending.
+- **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
 - **AX-4 Tracked:** Open (WP-34 section 34-01).
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
 - **AX-1 Tracked:** Open (WP-34 section 34-03).
