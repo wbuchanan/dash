@@ -316,12 +316,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 
 - **TR-2 Tracked:** Open (WP-33 section 33-14).
 - **TR-11 Tracked:** Closed in WP-33, BUGS.md "value_truth.json (311 twoway answers) is never compared with dash probe by probe", commit 025a0d8.
-- **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit pending.
+- **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit 18fc1eb.
 - **BY-23 Tracked:** Open (WP-33 section 33-12).
 - **stat:PT-23 Tracked:** Open (WP-33 section 33-13).
 - **CV-16 Tracked:** Open (WP-33 section 33-13).
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
-- **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit pending.
+- **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Open (WP-33 section 33-12).
 - **AX-4 Tracked:** Open (WP-34 section 34-01).
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
