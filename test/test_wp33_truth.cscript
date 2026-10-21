@@ -391,6 +391,67 @@ if inlist("`only'", "", "S10") & `: list posof "S10" in w33_run' {
 }
 * ==== end S10 ====
 
+python:
+def _w33s11_plot():
+    # S11 GW-11: twoway's plot region (the plotregion(lcolor("1 2 3"))
+    # sentinel) in the SVG named by the local svg, and the committed
+    # fixture's for the local key; read as extract_scale_frame_truth.do
+    # reads it.  No macro is expanded into Python text.
+    import json, os, sys
+    from sfi import Macro
+    svg = Macro.getLocal("svg")
+    key = Macro.getLocal("key")
+    sys.path.insert(0, os.path.join(os.path.abspath(".."), "scripts"))
+    try:
+        import svg_chrome
+        r = svg_chrome.svg_region(svg, "#010203")
+        Macro.setLocal("top", "%.3f" % r["top"] if r else ".")
+        Macro.setLocal("left", "%.3f" % r["left"] if r else ".")
+        with open("fixtures/scale_frame_truth.json", encoding="utf-8") as fh:
+            f = json.load(fh)[key]["plot"]
+        Macro.setLocal("ftop", "%.3f" % f["top"])
+        Macro.setLocal("fleft", "%.3f" % f["left"])
+    finally:
+        try:
+            os.remove(svg)
+        except OSError:
+            pass
+end
+
+* ==== S11 GW-11: scale() frame geometry ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S11") & `: list posof "S11" in w33_run' {
+    display as text "S11 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3311-1: twoway's plot region under scale(0.5) and scale(1.5) is
+    // the committed truth (fixtures/scale_frame_truth.json, written by
+    // scripts/extract_scale_frame_truth.do), so the fixture the Chrome
+    // comparison reads has not drifted.  The scheme is set for this
+    // session only and put back.
+    // ------------------------------------------------------------
+    local s11_scheme "`c(scheme)'"
+    set scheme s2color
+    local d "`w33_work'/s11"
+    capture mkdir "`d'"
+    foreach k in 0.5 1.5 {
+        sysuse auto, clear
+        twoway scatter mpg weight, title("T") scale(`k') plotregion(lcolor("1 2 3")) graphregion(lcolor("4 5 6")) name(zf1, replace)
+        capture erase "`d'/zf1_`k'.svg"
+        cert_svg_export, name(zf1) file("`d'/zf1_`k'.svg")
+        local svg "`r(file)'"
+        local key "A:`k'"
+        python: __import__("__main__")._w33s11_plot()
+        _w33_expect Q3311-1 "(abs(`top' - `ftop') <= 0.5 & abs(`left' - `fleft') <= 0.5)" "scale(`k'): twoway's plot region top `top' left `left', the fixture's `ftop' `fleft'"
+    }
+    _w33_done Q3311-1 "twoway's plot region under scale() is the committed truth"
+    capture graph drop zf1
+    capture rmdir "`d'"
+    set scheme `s11_scheme'
+    display as text "S11 end " c(current_date) " " c(current_time)
+}
+* ==== end S11 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

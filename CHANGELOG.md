@@ -926,6 +926,7 @@ and now matches Stata.
 - The certification suite compares dash's return code and first line with twoway's for each of the 311 bad-value probes (WP-33, TR-11)
 - The abbreviation record measures every option dash declares, and records bgcolor() as twoway's option (WP-33, syn:SD-20)
 - No test skips on a premise twoway's measurements contradict, so a strict run can pass (WP-33, TR-23)
+- The help no longer says scale() leaves the gaps between boxes unscaled; twoway's frame under scale() is measured and compared (WP-33, GW-11)
 
 ### Fixed in WP-32
 

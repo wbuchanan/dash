@@ -1,0 +1,1175 @@
+{
+ "A:0.5": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2634.23,
+   "left": 245.77,
+   "right": 3859.02,
+   "top": 188.11
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "10",
+    "x": 200.76,
+    "y": 2602.54
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "20",
+    "x": 200.76,
+    "y": 1833.91
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "30",
+    "x": 200.76,
+    "y": 1065.27
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "40",
+    "x": 200.76,
+    "y": 296.64
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "Mileage (mpg)",
+    "x": 145.69,
+    "y": 1411.17
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "2,000",
+    "x": 540.42,
+    "y": 2699.11
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "3,000",
+    "x": 1636.1,
+    "y": 2699.11
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "4,000",
+    "x": 2731.78,
+    "y": 2699.11
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "5,000",
+    "x": 3827.34,
+    "y": 2699.11
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "Weight (lbs.)",
+    "x": 2052.39,
+    "y": 2754.18
+   },
+   {
+    "anchor": "middle",
+    "size": 70.04,
+    "text": "T",
+    "x": 2052.39,
+    "y": 158.37
+   }
+  ]
+ },
+ "A:0.75": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2561.71,
+   "left": 318.28,
+   "right": 3859.02,
+   "top": 231.67
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "10",
+    "x": 250.68,
+    "y": 2514.18
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "20",
+    "x": 250.68,
+    "y": 1793.19
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "30",
+    "x": 250.68,
+    "y": 1072.33
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "40",
+    "x": 250.68,
+    "y": 351.34
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "Mileage (mpg)",
+    "x": 168.26,
+    "y": 1396.69
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "2,000",
+    "x": 621.1,
+    "y": 2659.19
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "3,000",
+    "x": 1684.61,
+    "y": 2659.19
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "4,000",
+    "x": 2748.12,
+    "y": 2659.19
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "5,000",
+    "x": 3811.5,
+    "y": 2659.19
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "Weight (lbs.)",
+    "x": 2088.65,
+    "y": 2741.61
+   },
+   {
+    "anchor": "middle",
+    "size": 104.94,
+    "text": "T",
+    "x": 2088.65,
+    "y": 187.25
+   }
+  ]
+ },
+ "A:1": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2489.18,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 275.35
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "10",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "20",
+    "x": 300.72,
+    "y": 1752.6
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "30",
+    "x": 300.72,
+    "y": 1079.26
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "40",
+    "x": 300.72,
+    "y": 406.04
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "2,000",
+    "x": 701.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "3,000",
+    "x": 1733.0,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "4,000",
+    "x": 2764.33,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "5,000",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "size": 139.96,
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ]
+ },
+ "A:1.5": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2344.27,
+   "left": 535.71,
+   "right": 3859.02,
+   "top": 362.6
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "10",
+    "x": 400.69,
+    "y": 2249.23
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "20",
+    "x": 400.69,
+    "y": 1671.3
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "30",
+    "x": 400.69,
+    "y": 1093.37
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "40",
+    "x": 400.69,
+    "y": 515.43
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "Mileage (mpg)",
+    "x": 235.73,
+    "y": 1353.37
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "2,000",
+    "x": 862.91,
+    "y": 2539.17
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "3,000",
+    "x": 1829.89,
+    "y": 2539.17
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "4,000",
+    "x": 2797.0,
+    "y": 2539.17
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "5,000",
+    "x": 3764.1,
+    "y": 2539.17
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "Weight (lbs.)",
+    "x": 2197.43,
+    "y": 2704.13
+   },
+   {
+    "anchor": "middle",
+    "size": 210.0,
+    "text": "T",
+    "x": 2197.43,
+    "y": 273.67
+   }
+  ]
+ },
+ "A:2": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2199.23,
+   "left": 680.75,
+   "right": 3859.02,
+   "top": 449.97
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "10",
+    "x": 500.78,
+    "y": 2072.51
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "20",
+    "x": 500.78,
+    "y": 1589.99
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "30",
+    "x": 500.78,
+    "y": 1107.47
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "40",
+    "x": 500.78,
+    "y": 624.83
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "Mileage (mpg)",
+    "x": 280.75,
+    "y": 1324.54
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "2,000",
+    "x": 1024.16,
+    "y": 2459.08
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "3,000",
+    "x": 1926.91,
+    "y": 2459.08
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "4,000",
+    "x": 2829.67,
+    "y": 2459.08
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "5,000",
+    "x": 3732.42,
+    "y": 2459.08
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "Weight (lbs.)",
+    "x": 2269.95,
+    "y": 2679.11
+   },
+   {
+    "anchor": "middle",
+    "size": 280.05,
+    "text": "T",
+    "x": 2269.95,
+    "y": 331.24
+   }
+  ]
+ },
+ "B:0.5": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2449.21,
+   "left": 245.77,
+   "right": 3859.02,
+   "top": 260.38
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "10",
+    "x": 200.76,
+    "y": 2417.53
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "20",
+    "x": 200.76,
+    "y": 1731.81
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "30",
+    "x": 200.76,
+    "y": 1046.22
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "40",
+    "x": 200.76,
+    "y": 360.62
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "Y",
+    "x": 145.69,
+    "y": 1354.73
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "2,000",
+    "x": 540.42,
+    "y": 2514.1
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "3,000",
+    "x": 1636.1,
+    "y": 2514.1
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "4,000",
+    "x": 2731.78,
+    "y": 2514.1
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "5,000",
+    "x": 3827.34,
+    "y": 2514.1
+   },
+   {
+    "anchor": "middle",
+    "size": 50.0,
+    "text": "X",
+    "x": 2052.39,
+    "y": 2569.17
+   },
+   {
+    "anchor": null,
+    "size": 50.0,
+    "text": "Mileage (mpg)",
+    "x": 1590.31,
+    "y": 2675.64
+   },
+   {
+    "anchor": null,
+    "size": 50.0,
+    "text": "Fitted values",
+    "x": 2303.61,
+    "y": 2675.64
+   },
+   {
+    "anchor": null,
+    "size": 39.97,
+    "text": "N",
+    "x": 254.43,
+    "y": 2758.55
+   },
+   {
+    "anchor": "middle",
+    "size": 54.95,
+    "text": "S",
+    "x": 2052.39,
+    "y": 235.17
+   },
+   {
+    "anchor": "middle",
+    "size": 70.04,
+    "text": "T",
+    "x": 2052.39,
+    "y": 158.37
+   }
+  ]
+ },
+ "B:0.75": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2284.13,
+   "left": 318.28,
+   "right": 3859.02,
+   "top": 340.2
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "10",
+    "x": 250.68,
+    "y": 2236.6
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "20",
+    "x": 250.68,
+    "y": 1640.23
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "30",
+    "x": 250.68,
+    "y": 1043.74
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "40",
+    "x": 250.68,
+    "y": 447.25
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "Y",
+    "x": 168.26,
+    "y": 1312.16
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "2,000",
+    "x": 621.1,
+    "y": 2381.61
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "3,000",
+    "x": 1684.61,
+    "y": 2381.61
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "4,000",
+    "x": 2748.12,
+    "y": 2381.61
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "5,000",
+    "x": 3811.5,
+    "y": 2381.61
+   },
+   {
+    "anchor": "middle",
+    "size": 74.99,
+    "text": "X",
+    "x": 2088.65,
+    "y": 2464.15
+   },
+   {
+    "anchor": null,
+    "size": 74.99,
+    "text": "Mileage (mpg)",
+    "x": 1430.55,
+    "y": 2623.75
+   },
+   {
+    "anchor": null,
+    "size": 74.99,
+    "text": "Fitted values",
+    "x": 2400.38,
+    "y": 2623.75
+   },
+   {
+    "anchor": null,
+    "size": 60.02,
+    "text": "N",
+    "x": 331.28,
+    "y": 2748.2
+   },
+   {
+    "anchor": "middle",
+    "size": 82.54,
+    "text": "S",
+    "x": 2088.65,
+    "y": 302.38
+   },
+   {
+    "anchor": "middle",
+    "size": 104.94,
+    "text": "T",
+    "x": 2088.65,
+    "y": 187.25
+   }
+  ]
+ },
+ "B:1": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 2119.16,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 419.9
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "10",
+    "x": 300.72,
+    "y": 2055.8
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "20",
+    "x": 300.72,
+    "y": 1548.53
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "30",
+    "x": 300.72,
+    "y": 1041.27
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "40",
+    "x": 300.72,
+    "y": 534.0
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "Y",
+    "x": 190.71,
+    "y": 1269.59
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "2,000",
+    "x": 701.66,
+    "y": 2249.12
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "3,000",
+    "x": 1733.0,
+    "y": 2249.12
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "4,000",
+    "x": 2764.33,
+    "y": 2249.12
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "5,000",
+    "x": 3795.66,
+    "y": 2249.12
+   },
+   {
+    "anchor": "middle",
+    "size": 99.99,
+    "text": "X",
+    "x": 2124.91,
+    "y": 2359.13
+   },
+   {
+    "anchor": null,
+    "size": 99.99,
+    "text": "Mileage (mpg)",
+    "x": 1270.79,
+    "y": 2571.98
+   },
+   {
+    "anchor": null,
+    "size": 99.99,
+    "text": "Fitted values",
+    "x": 2497.15,
+    "y": 2571.98
+   },
+   {
+    "anchor": null,
+    "size": 79.94,
+    "text": "N",
+    "x": 408.0,
+    "y": 2737.89
+   },
+   {
+    "anchor": "middle",
+    "size": 110.01,
+    "text": "S",
+    "x": 2124.91,
+    "y": 369.63
+   },
+   {
+    "anchor": "middle",
+    "size": 139.96,
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ]
+ },
+ "B:1.5": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 1789.11,
+   "left": 535.71,
+   "right": 3859.02,
+   "top": 579.54
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "10",
+    "x": 400.69,
+    "y": 1694.07
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "20",
+    "x": 400.69,
+    "y": 1365.25
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "30",
+    "x": 400.69,
+    "y": 1036.31
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "40",
+    "x": 400.69,
+    "y": 707.38
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "Y",
+    "x": 235.73,
+    "y": 1184.32
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "2,000",
+    "x": 862.91,
+    "y": 1984.01
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "3,000",
+    "x": 1829.89,
+    "y": 1984.01
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "4,000",
+    "x": 2797.0,
+    "y": 1984.01
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "5,000",
+    "x": 3764.1,
+    "y": 1984.01
+   },
+   {
+    "anchor": "middle",
+    "size": 149.99,
+    "text": "X",
+    "x": 2197.43,
+    "y": 2149.1
+   },
+   {
+    "anchor": null,
+    "size": 149.99,
+    "text": "Mileage (mpg)",
+    "x": 951.27,
+    "y": 2468.33
+   },
+   {
+    "anchor": null,
+    "size": 149.99,
+    "text": "Fitted values",
+    "x": 2690.82,
+    "y": 2468.33
+   },
+   {
+    "anchor": null,
+    "size": 119.91,
+    "text": "N",
+    "x": 561.7,
+    "y": 2717.24
+   },
+   {
+    "anchor": "middle",
+    "size": 164.96,
+    "text": "S",
+    "x": 2197.43,
+    "y": 504.0
+   },
+   {
+    "anchor": "middle",
+    "size": 210.0,
+    "text": "T",
+    "x": 2197.43,
+    "y": 273.67
+   }
+  ]
+ },
+ "B:2": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "plot": {
+   "bottom": 1459.06,
+   "left": 589.17,
+   "right": 3859.02,
+   "top": 739.06
+  },
+  "rc": 0,
+  "texts": [
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "10",
+    "x": 409.08,
+    "y": 1332.33
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "20",
+    "x": 409.08,
+    "y": 1181.85
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "30",
+    "x": 409.08,
+    "y": 1031.36
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "40",
+    "x": 409.08,
+    "y": 880.76
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "Y",
+    "x": 280.75,
+    "y": 1099.06
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "2,000",
+    "x": 939.26,
+    "y": 1719.03
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "3,000",
+    "x": 1870.36,
+    "y": 1719.03
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "4,000",
+    "x": 2801.33,
+    "y": 1719.03
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "5,000",
+    "x": 3732.42,
+    "y": 1719.03
+   },
+   {
+    "anchor": "middle",
+    "size": 199.98,
+    "text": "X",
+    "x": 2224.16,
+    "y": 1939.06
+   },
+   {
+    "anchor": null,
+    "size": 199.98,
+    "text": "Mileage (mpg)",
+    "x": 867.24,
+    "y": 2364.67
+   },
+   {
+    "anchor": null,
+    "size": 199.98,
+    "text": "Fitted values",
+    "x": 2733.02,
+    "y": 2364.67
+   },
+   {
+    "anchor": null,
+    "size": 160.01,
+    "text": "N",
+    "x": 623.7,
+    "y": 2696.55
+   },
+   {
+    "anchor": "middle",
+    "size": 220.03,
+    "text": "S",
+    "x": 2224.16,
+    "y": 638.46
+   },
+   {
+    "anchor": "middle",
+    "size": 280.05,
+    "text": "T",
+    "x": 2224.16,
+    "y": 331.24
+   }
+  ]
+ },
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "06f61ef73b208f6e3ee225b22f2adbc027f964ee",
+  "extracted": "21 Oct 2026 13:25:04",
+  "source": "scripts/extract_scale_frame_truth.do",
+  "stata_version": "19.5"
+ },
+ "rules": {
+  "A": {
+   "bottom": {
+    "intercept": 2779.201,
+    "max_residual": 0.041,
+    "slope": -289.98
+   },
+   "left": {
+    "intercept": 100.799,
+    "max_residual": 0.041,
+    "slope": 289.968
+   },
+   "right": {
+    "intercept": 3859.02,
+    "max_residual": 0.0,
+    "slope": 0.0
+   },
+   "top": {
+    "intercept": 100.772,
+    "max_residual": 0.048,
+    "slope": 174.581
+   }
+  },
+  "B": {
+   "bottom": {
+    "intercept": 2779.232,
+    "max_residual": 0.038,
+    "slope": -660.085
+   },
+   "left": {
+    "intercept": 144.22,
+    "max_residual": 37.065,
+    "slope": 236.283
+   },
+   "right": {
+    "intercept": 3859.02,
+    "max_residual": 0.0,
+    "slope": 0.0
+   },
+   "top": {
+    "intercept": 100.825,
+    "max_residual": 0.048,
+    "slope": 319.123
+   }
+  }
+ }
+}

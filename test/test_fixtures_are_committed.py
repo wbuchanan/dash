@@ -358,6 +358,7 @@ GENERATORS = {
     "region_truth.json": "scripts/extract_region_truth.do",
     "rejected_options.json": "scripts/extract_rejected_options.do",
     "saving_chars_truth.json": "scripts/extract_saving_chars_truth.do",
+    "scale_frame_truth.json": "scripts/extract_scale_frame_truth.do",
     "scheme_layer_truth.json": "scripts/extract_scheme_layer_truth.do",
     "scheme_lookup_truth.json": "scripts/extract_scheme_lookup_truth.do",
     "scheme_ref_gsize_truth.json": "scripts/extract_scheme_ref_gsize_truth.do",

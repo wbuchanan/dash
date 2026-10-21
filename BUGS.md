@@ -4520,11 +4520,11 @@
   - Suggested fix: Extend extract_abbrev_truth.do; correct the fixture
   - Resolution: Fixed 21oct2026 (WP-33, syn:SD-20). scripts/extract_abbrev_truth.do measures every option dash declares (a companion option written into both commands where one is needed), bgcolor as twoway's own option (minimum bgc), and the hand-written bgcolor reason is gone; 18 binding differences of 11 options are listed in test/test_abbreviations.py ABBREV_KNOWN under their GAPS4 items (GW-4 and the five rows the maintainer ruling D42 registered, syn:SD-20a..e, WP-35 section 35-03), and the options dash stores under a twoway synonym's key are pinned in _STORED_UNDER. Pinned by test/test_abbreviations.py::TestEveryDeclaredOptionIsMeasured, test/test_wp33_truth.cscript Q3310-2; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20 (WP-33, syn:SD-20).
 
-- [ ] Title: scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled
+- [x] Title: scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled
   - File Names and Line Numbers: sizing_truth base/scale_*; dash_render.py:27529-27610; dash.sthlp:5687-5690
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 13 (major): ids GW-11; partly; tracked: BUGS D5/E11 (closed). Registered as GAPS4 GW-11 (WP-33, section 33-11, Fix).
   - Suggested fix: Compare frame insets under scale(0.5)/(1.5); correct the help
-  - Resolution: Not fixed because WP-33 section 33-11 has not landed. Graded S2 (WP-33): drop-in audit package 13, major.
+  - Resolution: Fixed 21oct2026 (WP-33, GW-11). scripts/extract_scale_frame_truth.do measures twoway's plot region under scale(0.5..2) for two commands (gaps scale, region margins stay; command B's left side departs at scale(2), where the legend is wider than the plot and twoway widens the plot column, listed under LT-6 by the maintainer's ruling D43); test/test_scale_frame.py compares dash's frame insets in Chrome in both modes, differences listed under GW-6, VF-4 and LT-6 in test/scale_frame_known.py; the help says the gaps scale. Pinned by test/test_scale_frame.py::TestDashAgainstTwoway, test/test_sizing.py::TestScaleFrameTruth, test/test_sizing.py::TestScaleHelp, test/test_wp33_truth.cscript Q3311-1; fixture test/fixtures/scale_frame_truth.json. Closes GAPS4 GW-11 (WP-33, GW-11).
 
 - [ ] Title: by() title/note/caption under position() has truth only for caption pos(5)
   - File Names and Line Numbers: extract_by_text_truth.do bp01-bp39; TestByTitlesSpan

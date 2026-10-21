@@ -1385,4 +1385,6 @@ class TestInternalLinksResolve:
         # (dash##image) and its link to Resource limits (WP-33 33-06).
         # 121 -> 122 links, 45 -> 46 targets: the qualifier paragraph's
         # link to Graphs from several frames (dash##frames, WP-33 33-07).
-        assert len(refs) == 122 and len(set(refs)) == 46
+        # 122 -> 123 links: the scale() paragraph links Differences from
+        # twoway for dash's measured scale() differences (WP-33 GW-11).
+        assert len(refs) == 123 and len(set(refs)) == 46

@@ -230,6 +230,66 @@ class TestScaleBounds:
         assert d["fx_bad_150"]["rc"] == 0 and d["fy_bad_0"]["rc"] == 0
 
 
+_SF_FIX = os.path.join(_HERE, "fixtures", "scale_frame_truth.json")
+_SF_KEY = re.compile(r"[AB]:(top|left|bottom|right):(slope|intercept|linear)")
+
+
+class TestScaleFrameTruth:
+    """WP-33 GW-11: twoway's plot region under scale(0.5..2)
+    (scale_frame_truth.json, scripts/extract_scale_frame_truth.do) and
+    the hygiene of the known-differences tables test/test_scale_frame.py
+    reads (default tier, D-33-11.h)."""
+
+    def test_twoway_scales_the_gaps(self):
+        """Every side but the right moves linearly with the factor (the
+        title, label and key gaps scale; only the region's margins stay);
+        a side twoway itself draws non-linearly is listed, with its
+        owner, in SCALE_FRAME_TWOWAY_KNOWN (D43)."""
+        import scale_frame_known as sfk
+        from known_differences import known_problems
+        with open(_SF_FIX, encoding="utf-8") as fh:
+            d = json.load(fh)
+        assert sorted(d["_meta"]) == ["born_date", "dash_commit",
+                                      "extracted", "source",
+                                      "stata_version"]
+        assert len([k for k in d if ":" in k]) == 10
+        res = {}
+        for c in ("A", "B"):
+            rules = d["rules"][c]
+            assert rules["right"]["slope"] == 0
+            for side in ("top", "left", "bottom"):
+                r = rules[side]
+                assert abs(r["slope"]) > 10, (c, side, r)
+                res["%s:%s:linear" % (c, side)] = (
+                    None if r["max_residual"] < 1 else
+                    "twoway's largest residual %s" % r["max_residual"])
+        assert known_problems(res, sfk.SCALE_FRAME_TWOWAY_KNOWN,
+                              "scale_frame_twoway") == []
+
+    def test_every_known_difference_is_open(self):
+        import scale_frame_known as sfk
+        from known_differences import dead_rows
+        for name, known in (("scale_frame", sfk.SCALE_FRAME_KNOWN),
+                            ("scale_frame_twoway",
+                             sfk.SCALE_FRAME_TWOWAY_KNOWN)):
+            assert dead_rows(known, name) == []
+            assert [k for k in known if not _SF_KEY.fullmatch(k)] == []
+        assert not set(sfk.SCALE_FRAME_DELIBERATE) & set(
+            sfk.SCALE_FRAME_KNOWN)
+
+
+class TestScaleHelp:
+    def test_the_sentence_says_the_gaps_scale(self):
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        i = text.index("{phang2}{opt scale(#)}")
+        para = " ".join(text[i:text.index("{p_end}", i)].split())
+        assert "gaps between boxes are not scaled" not in para
+        assert "the gaps around titles, labels, keys and added text" in para
+        assert "only the graph region's margins stay as they are" in para
+
+
 class TestFxFy:
     @pytest.mark.parametrize("mode", _MODES)
     def test_fysize(self, mode, tmp_path):

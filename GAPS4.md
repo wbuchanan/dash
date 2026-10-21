@@ -321,7 +321,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-23 Tracked:** Open (WP-33 section 33-13).
 - **CV-16 Tracked:** Open (WP-33 section 33-13).
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
-- **GW-11 Tracked:** Open (WP-33 section 33-11).
+- **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit pending.
 - **BY-24 Tracked:** Open (WP-33 section 33-12).
 - **AX-4 Tracked:** Open (WP-34 section 34-01).
 - **AX-2 Tracked:** Open (WP-34 section 34-02).

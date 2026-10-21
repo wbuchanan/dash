@@ -5730,8 +5730,11 @@ each panel as a figure.{p_end}
 {phang2}{opt scale(#)} multiplies every text size, marker size and line
 width of the graph -- titles, axis titles, tick labels and tick lengths,
 legend keys and labels, added text, reference lines -- by {it:#}, as in
-{helpb twoway}; the gaps between boxes are not scaled.  {cmd:scale(0)}
-draws them at size 0 and a negative {it:#} is refused, r(198), in
+{helpb twoway}, and with them the gaps around titles, labels, keys and
+added text; only the graph region's margins stay as they are.  dash's
+differences are listed under
+{help dash##differences:Differences from twoway}.  {cmd:scale(0)} draws
+every size at 0 and a negative {it:#} is refused, r(198), in
 {cmd:twoway}'s words; a word is noted and drawn at 1.{p_end}
 
 {phang2}{opt fysize(#)} draws the figure {it:#} percent as tall, and

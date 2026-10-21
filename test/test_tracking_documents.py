@@ -2875,7 +2875,6 @@ GAPS4_OPEN = {
     'BY-23': 'Per-type by() drawing is pinned against twoway only for function (default range) and lpoly',
     'stat:PT-23': 'Estimator combinations with no truth (all matched when measured): lfitci [pw], lpoly degree >=4, weighted kdensity boundary, combined lowess flags, histogram discrete [fw] ...',
     'CV-16': 'colorvar fixtures never compare key texts, order or frames; non-scatter options and interactions are unmeasured; disc_levels_price_4 passes vacuously',
-    'GW-11': 'scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled',
     'BY-24': 'by() title/note/caption under position() has truth only for caption pos(5)',
     'AX-4': 'The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints',
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
