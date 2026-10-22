@@ -450,8 +450,150 @@ def is_schematic(cmd):
     # function name: xvarlab() and exp() are runnable, a title may say varlist.
     sc = _scan(cmd)
     bare = "".join(" " if sc[i][1] else ch for i, ch in enumerate(cmd))
-    return re.search(r"\b(?:yvar\w*|xvar\w*|varlist|varname|ylist|xlist|zvar|exp)\b(?!\s*\()",
+    return re.search(r"\b(?:yvar\w*|xvar\w*|varlist|varname|ylist|xlist|zvar|exp|any_options)"
+                     r"\b(?!\s*\()",
                      bare) is not None
+
+
+# ------------------------------------------- each example's own data (D52)
+
+#: Plot types that read no variables: their data are typed in the command.
+_NO_VARS = ("function", "scatteri", "pci", "pcarrowi")
+#: Setup commands that make variables in ways setup_vars does not follow.
+_OPAQUE = ("collapse", "reshape", "merge", "append", "contract", "separate", "statsby",
+           "joinby", "cross", "xpose", "stack", "mkspline", "xi", "do", "run", "svmat",
+           "tabulate", "tab", "kdensity", "lowess", "lpoly", "split", "xtile", "pctile",
+           "fillin", "encode", "decode")
+_TYPES = r"(?:byte|int|long|float|double|str\d*|strL)"
+
+
+def dta_varnames(path):
+    """The variable names of a Stata .dta file of release 117-119; None if unreadable."""
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return None
+    m = re.match(rb"<stata_dta><header><release>(\d+)</release><byteorder>(LSF|MSF)"
+                 rb"</byteorder><K>", data)
+    if not m or int(m.group(1)) not in (117, 118, 119):
+        return None
+    rel, order = int(m.group(1)), "<" if m.group(2) == b"LSF" else ">"
+    import struct
+    kfmt, klen = ("I", 4) if rel == 119 else ("H", 2)
+    k = struct.unpack(order + kfmt, data[m.end():m.end() + klen])[0]
+    a = data.find(b"<varnames>")
+    if a < 0:
+        return None
+    a += len(b"<varnames>")
+    width = 33 if rel == 117 else 129
+    return [data[a + j * width:a + (j + 1) * width].split(b"\x00")[0].decode("utf-8", "replace")
+            for j in range(k)]
+
+
+def dataset_vars(stata_dir, cache):
+    """{dataset: its variable names} of the shipped datasets and the cached webuse ones."""
+    out = {}
+    paths = sorted(glob.glob(os.path.join(stata_dir, "ado", "base", "*", "*.dta")))
+    paths += sorted(glob.glob(os.path.join(cache, "*.dta")))
+    for p in paths:
+        name = os.path.splitext(os.path.basename(p))[0]
+        names = dta_varnames(p)
+        if names is not None and name not in out:
+            out[name] = names
+    return out
+
+
+def command_vars(cmd):
+    """The variable names in the varlists of cmd's plots, in order, each once."""
+    rest, _ = _strip_prefix(cmd)
+    plots = []
+    for seg in _split_top(rest, "||"):
+        for inner, _opts in _plots_of(seg):
+            plots += [p.strip() for p in _split_top(inner, "||")]
+    out = []
+    for inner in plots:
+        c = _first_comma(inner)
+        words = (inner if c < 0 else inner[:c]).split()
+        if not words:
+            continue
+        pt = _expand_plottype(words[0])
+        if pt is None or pt in _NO_VARS:
+            continue
+        for w in words[1:]:
+            if w in ("if", "in", "using") or w.startswith(("[", "if(", "in(")):
+                break
+            w = re.sub(r"^(?:[A-Za-z]*\d*\.)+", "", w)  # time-series operators
+            if re.fullmatch(r"[A-Za-z_]\w*", w) and w not in out:
+                out.append(w)
+    return out
+
+
+def setup_vars(setup, dsvars):
+    """The variables setup leaves in memory, or None when they cannot be known."""
+    have, in_input = set(), False
+    for c in setup:
+        if in_input:
+            in_input = c.strip() != "end"
+            continue
+        m = datasets._LOAD_RE.match(c)
+        if m:
+            name = os.path.splitext(m.group(2).split("/")[-1])[0]
+            if name not in dsvars:
+                return None
+            have = set(dsvars[name])
+            continue
+        s = _unprefixed(c)
+        word = (re.match(r"[A-Za-z_]\w*", s) or [None])[0]
+        if word in _OPAQUE or re.search(r"\bgen(?:erate)?\(", s):
+            return None
+        if s == "clear" or re.match(r"^drop\s+_all\s*$", s):
+            have = set()
+        elif word in ("gen", "generate", "egen"):
+            m = re.match(r"^\w+\s+(?:%s\s+)?([A-Za-z_]\w*)\s*=" % _TYPES, s)
+            if m:
+                have.add(m.group(1))
+        elif word == "predict":
+            body = s.split(",")[0].split()[1:]
+            have.update(w for w in body if not re.fullmatch(_TYPES, w))
+        elif word == "input":
+            have.update(w for w in s.split()[1:] if not re.fullmatch(_TYPES, w))
+            in_input = True
+        elif word in ("rename", "ren") and len(s.split()) == 3:
+            have.add(s.split()[2])
+        elif word == "range" and len(s.split()) > 1:
+            have.add(s.split()[1])
+        elif word == "stset":
+            have.update(("_t", "_d", "_st", "_t0"))
+    return have
+
+
+def _holds(have, need):
+    """Whether have holds every name of need, in full or as Stata's unique abbreviation."""
+    for v in need:
+        if v not in have and sum(h.startswith(v) for h in have) != 1:
+            return False
+    return True
+
+
+def infer_setup(cmd, setup, candidates, dsvars):
+    """(the setup cmd runs on, None) or (None, why it is dropped) (D52).
+
+    A setup that leaves cmd's variables in memory (a unique abbreviation
+    counts, as in Stata), a setup whose variables cannot be known and a plot
+    that reads no variables keep their setup; otherwise the first candidate
+    dataset that holds every variable is loaded instead."""
+    need = command_vars(cmd)
+    if not need:
+        return setup, None
+    have = setup_vars(setup, dsvars)
+    if have is None or _holds(have, need):
+        return setup, None
+    for name in candidates:
+        if name in dsvars and _holds(set(dsvars[name]), need):
+            word = "sysuse" if name in _shipped_names() else "webuse"
+            return ["%s %s, clear" % (word, name)], None
+    return None, "no dataset holds its variables"
 
 
 def strip_registry_options(cmd):
@@ -541,11 +683,34 @@ def ado_programs(text):
                 if buf is None:
                     break
             continue
-        _add_xeq(progs[name], " ".join(st.split()))
+        (_add_raw if name.startswith("_") else _add_xeq)(progs[name], " ".join(st.split()))
     return progs
 
 
+def _add_raw(cmds, stmt):
+    """A helper program's statement: helpers run their commands without Xeq."""
+    first = stmt.split()[0]
+    if first in ("Msg", "preserve", "restore", "version", "args", "syntax") \
+            or stmt.startswith("set more"):
+        return
+    cmds.append(stmt)
+
+
+def inline_helpers(body, progs, depth=0):
+    """body with each call of a helper program (_name) replaced by its commands."""
+    out = []
+    for c in body:
+        if re.match(r"^_[A-Za-z]\w*$", c) and c in progs and depth < 5:
+            out += inline_helpers(progs[c], progs, depth + 1)
+        else:
+            out.append(c)
+    return out
+
+
 def _add_xeq(cmds, stmt):
+    if re.match(r"^_[A-Za-z]\w*$", stmt):
+        cmds.append(stmt)  # a call of a helper program, inlined by inline_helpers
+        return
     m = re.match(r"^Xeq(?:\s+(.*))?$", stmt)
     if not m or not (m.group(1) or "").strip():
         return
@@ -617,6 +782,8 @@ _CURLY = (("”", '"'), ("“", '"'), ("’", "'"), ("‘", "`"),
           ("−", "-"))
 _PROMPT_RE = re.compile(r"^(\s*)\. (\S.*)$")
 _LOAD_RE = re.compile(r"^(?:use|sysuse|webuse)\s+(\S+?)(?:\s*,\s*clear)?\s*$")
+#: A margin annotation the manual prints beside a command line, "(note 1)".
+_NOTE_RE = re.compile(r"\s{4,}\(note \d+\)\s*$")
 
 
 def _uncurl(s):
@@ -668,10 +835,22 @@ def gpdf_commands(text):
             if not pm:
                 continue
             p_ind = len(pm.group(1))
-            cmd = " ".join(_uncurl(pm.group(2)).split())
-            while k < len(lines) and _continues(lines[k], p_ind, cmd):
-                cmd = cmd + " " + " ".join(_uncurl(lines[k]).split())
+            cmd = " ".join(_uncurl(_NOTE_RE.sub("", pm.group(2))).split())
+            graphish = _is_graph(cmd)
+            while k < len(lines):
+                st = lines[k].strip()
+                if st.startswith(">"):
+                    piece = st[1:]  # Stata's own continuation mark
+                elif graphish and _continues(lines[k], p_ind, cmd):
+                    piece = lines[k]
+                else:
+                    break
+                cmd = cmd + " " + " ".join(_uncurl(_NOTE_RE.sub("", piece)).split())
                 k += 1
+            if re.match(r"^input\b", cmd):
+                rows, k = _input_rows(lines, k)
+                setup += [cmd] + rows
+                continue
             lm = _LOAD_RE.match(cmd)
             if lm:
                 setup = [_data_load(lm.group(1), cmd)]
@@ -682,6 +861,25 @@ def gpdf_commands(text):
             else:
                 setup.append(cmd)
     return out
+
+
+def _input_rows(lines, k):
+    """(the data rows of an input listing starting at lines[k], ending with end; next k)."""
+    rows = []
+    while k < len(lines) and not _PROMPT_RE.match(lines[k]):
+        m = re.match(r"^\s*\d+\.\s*(.*?)\s*$", lines[k])
+        if not m:
+            if rows or not lines[k].strip():
+                break
+            k += 1  # the variable-name header
+            continue
+        k += 1
+        rows.append(" ".join(_uncurl(m.group(1)).split()))
+        if rows[-1] == "end":
+            break
+    if not rows or rows[-1] != "end":
+        rows.append("end")
+    return rows, k
 
 
 def _data_load(target, cmd):
@@ -903,7 +1101,7 @@ def _help_records(stata_dir, dropped):
             if body is None:
                 dropped.append(("help", where, "no such program", lk["kind"] + " " + lk["arg"]))
                 continue
-            pairs, other = split_setup(body)
+            pairs, other = split_setup(inline_helpers(body, progs[lk["kind"]]))
             for c in other:
                 dropped.append(("help", where, "not a setup command", c))
             for setup, cmd in pairs:
@@ -923,10 +1121,14 @@ def _gpdf_records(stata_dir, pdftotext, dropped):
                          check=True).stdout.decode("utf-8", errors="replace")
     recs = []
     for c in gpdf_commands(txt):
-        setup = []
+        setup, in_input = [], False
         for s in c["setup"]:
-            if _is_setup(s):
+            if in_input or _is_setup(s):
                 setup.append(s)
+                if re.match(r"^input\b", _unprefixed(s)):
+                    in_input = True
+                elif s.strip() == "end":
+                    in_input = False
             else:
                 dropped.append(("gpdf", "docs/g.pdf:%d" % c["page"], "not a setup command", s))
         stem = re.sub(r"\s+", "_", c["entry"] or "g")
@@ -995,6 +1197,14 @@ def extract(stata_dir, repo, out, pdftotext=None):
            + _example_records(repo)
            + _audit_records(os.path.join(repo, "scripts", "corpus", "audit_probes.txt")))
     drawn = _drawn_types()
+    dsvars = dataset_vars(stata_dir, datasets.cache_dir())
+    entry_ds = {}
+    for r in raw:
+        for n in datasets.datasets_of(r["setup"]):
+            lst = entry_ds.setdefault((r["src"], r["stem"]), [])
+            if n not in lst:
+                lst.append(n)
+    shipped_sorted = sorted(n for n in dsvars if n in _shipped_names())
     byid, counts = {}, {"help": 0, "gpdf": 0, "ex": 0, "audit": 0}
     for r in raw:
         where = "%s:%s" % (r["file"], r["line"])
@@ -1002,6 +1212,12 @@ def extract(stata_dir, repo, out, pdftotext=None):
         if is_schematic(cmd):
             dropped.append((r["src"], where, "schematic", cmd))
             continue
+        cands = entry_ds.get((r["src"], r["stem"]), []) + shipped_sorted
+        setup, why = infer_setup(cmd, r["setup"], cands, dsvars)
+        if setup is None:
+            dropped.append((r["src"], where, why, cmd))
+            continue
+        r = dict(r, setup=setup)
         pt = plot_type(cmd)
         if pt is None:
             dropped.append((r["src"], where, "not a twoway command", cmd))

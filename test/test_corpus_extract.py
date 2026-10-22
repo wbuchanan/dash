@@ -488,3 +488,170 @@ class TestExtract:
         for ln in (out / "extract_duplicates.tsv").read_text(encoding="utf-8").splitlines()[1:]:
             assert ln.split("\t")[1] in kept
         assert res["kept"] == len(recs)
+
+
+# ------------------------------------------- each example's own data (D52)
+
+def _dta(names, release=118):
+    """A minimal Stata .dta of release 117-119 holding only these variable names."""
+    import struct
+    k = len(names)
+    width = 33 if release == 117 else 129
+    kfmt = "<I" if release == 119 else "<H"
+    return (b"<stata_dta><header><release>%d</release><byteorder>LSF</byteorder><K>"
+            % release + struct.pack(kfmt, k) + b"</K><N>" + struct.pack("<Q", 0)
+            + b"</N><label>\x00\x00</label><timestamp>\x00</timestamp></header><map>"
+            + b"\x00" * 112 + b"</map><variable_types>" + b"\x00\x00" * k
+            + b"</variable_types><varnames>"
+            + b"".join(n.encode().ljust(width, b"\x00") for n in names) + b"</varnames>")
+
+
+_GPDF_WRAPS = (
+    "                         axis label options — Options for specifying axis labels 490\n"
+    "\n"
+    "       . sysuse sp500\n"
+    "       . summarize volume\n"
+    "           Variable         Obs        Mean    Std. dev.       Min        Max\n"
+    "             volume         248    12320.68    2585.929       4103     23637\n"
+    "       . twoway rcap lo hi month,\n"
+    "       >           xlabel(1 ”J” 2 ”F”\n"
+    "       >                  3 ”M”)\n"
+    "       . twoway\n"
+    "                 bar maletotal agegrp, horizontal\n"
+    "        ||\n"
+    "             , xtitle(”Population”)\n"
+    "        ysca(noline) ylabel(none)                                        (note 1)\n"
+    "        xsca(noline titlegap(-3.5))                                      (note 2)\n"
+    "\n"
+    "       . clear\n"
+    "       . input y1 x1 y2 x2\n"
+    "                y1         x1            y2           x2\n"
+    "         1. 1.1 1.2 1.3 1.4\n"
+    "         2. 2.1 2.2 2.3 2.4\n"
+    "         3. end\n"
+    "       . twoway pcarrow y1 x1 y2 x2, any_options\n")
+
+
+class TestGpdfWraps:
+
+    def test_continuations_notes_output_and_input(self):
+        cmds = extract.gpdf_commands(_GPDF_WRAPS)
+        assert cmds[0]["cmd"] == 'twoway rcap lo hi month, xlabel(1 "J" 2 "F" 3 "M")'
+        assert cmds[0]["setup"] == ["sysuse sp500, clear", "summarize volume"]
+        assert cmds[1]["cmd"] == ('twoway bar maletotal agegrp, horizontal || , '
+                                  'xtitle("Population") ysca(noline) ylabel(none) '
+                                  'xsca(noline titlegap(-3.5))')
+        assert cmds[2]["setup"][-5:] == ["clear", "input y1 x1 y2 x2", "1.1 1.2 1.3 1.4",
+                                         "2.1 2.2 2.3 2.4", "end"]
+        assert extract.is_schematic(cmds[2]["cmd"])
+
+
+class TestHelpers:
+
+    def test_a_called_helper_program_is_inlined(self):
+        text = ("program pcarrow1\n\tMsg preserve\n\tpreserve\n\t_arrow_dta1\n"
+                "\tXeq twoway pcarrow y1 x1 y2 x2\n\tMsg restore\nend\n\n"
+                "program _arrow_dta1\n\tdrop _all\n\tset obs 2\n\tqui gen x1 = 0\nend\n")
+        progs = extract.ado_programs(text)
+        body = extract.inline_helpers(progs["pcarrow1"], progs)
+        assert body == ["drop _all", "set obs 2", "qui gen x1 = 0",
+                        "twoway pcarrow y1 x1 y2 x2"]
+
+
+class TestOwnData:
+
+    def test_dta_varnames(self, tmp_path):
+        for rel in (117, 118, 119):
+            p = tmp_path / ("d%d.dta" % rel)
+            p.write_bytes(_dta(["make", "mpg", "weight"], rel))
+            assert extract.dta_varnames(str(p)) == ["make", "mpg", "weight"]
+        bad = tmp_path / "x.dta"
+        bad.write_bytes(b"not a dta")
+        assert extract.dta_varnames(str(bad)) is None
+
+    def test_command_vars(self):
+        assert extract.command_vars("twoway (scatter mpg weight if foreign) "
+                                    "(lfit mpg weight [aw=pop]), by(foreign)") == \
+            ["mpg", "weight"]
+        assert extract.command_vars("scatter y1 y2 x || line L.gnp d.r year in 1/5") == \
+            ["y1", "y2", "x", "gnp", "r", "year"]
+        assert extract.command_vars("twoway function y=exp(x), range(0 1)") == []
+        assert extract.command_vars('twoway pcarrowi 0 0 0 1 (3) "3"') == []
+        assert extract.command_vars("scatter mpg weight || lfit mpg weight || if !foreign") \
+            == ["mpg", "weight"]
+        assert extract.command_vars("scatter y* x1-x3") == []
+        assert extract.command_vars("twoway (scatter mpg weight || line le year)") == \
+            ["mpg", "weight", "le", "year"]
+
+    def test_setup_vars(self):
+        ds = {"auto": ["make", "mpg", "weight"]}
+        assert extract.setup_vars(["sysuse auto, clear", "gen w2 = weight",
+                                   "qui predict double hat, xb"], ds) == \
+            {"make", "mpg", "weight", "w2", "hat"}
+        assert extract.setup_vars(["drop _all", "set obs 2", "qui gen str time = \"a\"",
+                                   "input y x", "1 2", "end", "stset t"], ds) == \
+            {"time", "y", "x", "_t", "_d", "_st", "_t0"}
+        assert extract.setup_vars([], ds) == set()
+        assert extract.setup_vars(["webuse nosuch, clear"], ds) is None
+        assert extract.setup_vars(["sysuse auto, clear", "collapse mpg, by(weight)"], ds) \
+            is None
+        assert extract.setup_vars(["sysuse auto, clear", "encode make, gen(m)"], ds) is None
+
+    def test_infer_setup(self):
+        ds = {"auto": ["make", "mpg", "weight", "foreign"], "lifeexp": ["lexp", "gnppc"],
+              "uslifeexp2": ["le", "year"]}
+        cands = ["uslifeexp2", "auto", "lifeexp"]
+        # the setup holds the variables (an abbreviation counts): kept as it is
+        assert extract.infer_setup("scatter mp weight", ["sysuse auto, clear"], cands, ds) \
+            == (["sysuse auto, clear"], None)
+        # no setup, or one whose dataset lacks them: the first dataset that holds them
+        assert extract.infer_setup("scatter mpg weight", [], cands, ds) == \
+            (["sysuse auto, clear"], None)
+        assert extract.infer_setup("scatter mpg weight", ["sysuse uslifeexp2, clear"],
+                                   cands, ds) == (["sysuse auto, clear"], None)
+        # a unique abbreviation picks a dataset, an ambiguous one does not
+        assert extract.infer_setup("scatter mp weight", [], cands, ds) == \
+            (["sysuse auto, clear"], None)
+        assert extract.infer_setup("scatter m weight", [], cands, ds) == \
+            (None, "no dataset holds its variables")
+        assert extract.infer_setup("scatter y1 y2 x", [], cands, ds) == \
+            (None, "no dataset holds its variables")
+        # a setup whose variables cannot be known, and an immediate plot: kept
+        assert extract.infer_setup("scatter z q", ["webuse lbw, clear"], cands, ds) == \
+            (["webuse lbw, clear"], None)
+        assert extract.infer_setup("twoway scatteri 1 2", [], cands, ds) == ([], None)
+
+    def test_extract_loads_or_drops(self, tmp_path, monkeypatch):
+        stata = tmp_path / "stata"
+        (stata / "ado" / "base" / "a").mkdir(parents=True)
+        (stata / "ado" / "base" / "t").mkdir(parents=True)
+        (stata / "ado" / "base" / "a" / "auto.dta").write_bytes(
+            _dta(["make", "mpg", "weight"]))
+        (stata / "ado" / "base" / "t" / "uslifeexp2.dta").write_bytes(_dta(["le", "year"]))
+        (stata / "ado" / "base" / "t" / "twoway_scatter.sthlp").write_text(
+            '{it:({stata "gr_example auto: twoway scatter mpg weight":click})}\n',
+            encoding="utf-8")
+        monkeypatch.setenv("DASH_STATA_DIR", str(stata))
+        monkeypatch.setenv("DASH_CORPUS_CACHE", str(tmp_path / "cache"))
+        monkeypatch.setattr(extract, "_shipped_names", lambda: frozenset({"auto", "uslifeexp2"}))
+        assert extract.dataset_vars(str(stata), str(tmp_path / "cache")) == {
+            "auto": ["make", "mpg", "weight"], "uslifeexp2": ["le", "year"]}
+        pdf = tmp_path / "g.txt"
+        pdf.write_text(
+            "                  graph twoway — Twoway graphs 213\n\n"
+            "       . sysuse uslifeexp2\n"
+            "       . scatter mpg weight, ms(O)\n"
+            "       . scatter y1 y2 x, ms(O Oh)\n", encoding="utf-8")
+        (stata / "docs").mkdir()
+        (stata / "docs" / "g.pdf").write_text("x")
+        fake = tmp_path / "pdftotext"
+        fake.write_text('#!/bin/sh\ncat "%s"\n' % pdf)
+        fake.chmod(0o755)
+        out = tmp_path / "run"
+        extract.extract(str(stata), _ROOT, str(out), pdftotext=str(fake))
+        recs = [json.loads(l) for l in (out / "examples.jsonl").read_text().splitlines()]
+        g = [r for r in recs if r["source"] == "gpdf"]
+        assert [(r["cmd"], r["setup"]) for r in g] == [
+            ("scatter mpg weight, ms(O)", ["sysuse auto, clear"])]
+        dropped = (out / "extract_dropped.tsv").read_text(encoding="utf-8")
+        assert "no dataset holds its variables\tscatter y1 y2 x, ms(O Oh)" in dropped
