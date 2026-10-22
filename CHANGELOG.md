@@ -920,6 +920,8 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-34
+
 ### Fixed in WP-33
 
 - `dash image using file.svg, name()` places a checked SVG picture, with an optional caption and an optional link() to a page in the same folder, where layout() and tabs() put it, in the saved page and the served app; `$dash_max_images` (default 100) bounds them. (WP-33, 33-06)
