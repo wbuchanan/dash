@@ -65,6 +65,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | GW-3 | maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn | S2 | 35-06 | Fix | twowaygraph_g.class:136 | Validate it; refuse axis numbers above it with r(125) |
 | GW-4 | fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied | S2 | 35-06 | Fix | graph.ado:161; dash.ado:980, 1309 | Declare FXSIZe/FYSIZe |
 | sil:SD-8 | title() with notitling is accepted with a note; twoway fails r(4018) | S2 | 35-06 | Fix | twowaygraph_g.class:577-582 | Refuse the pair as measured |
+| syn:SD-22 | twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere | S2 | 35-06 | Document | WP-33 33-14 corpus run: gpdf-clegend_option-e6dbcac1 (g.pdf p.544, twoway contour depth northing easting, levels(10) zlabel(7600 "Low" 7800 "Medium" 8000 "High") region(fcolor(gs15)))) draws in twoway and dash refuses it; measured 22oct2026: contour ..., levels(10) bogus(1) gives rc 0 and contour ..., bogus(1) gives rc 198; registered by D54 | Documented only (D54): dash keeps refusing options contour does not know, with levels() as without it; the help states twoway's leniency. |
 | DT-19 | Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar) | S2 | 35-08 | Fix | dash.sthlp:211-243; Q11 | Use tempnames or a frame for working columns |
 | plot:PT-3 | Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations (also basic:PT-14, DT-14) | S2 | 35-09 | Fix | dash.ado:5869; dash_parse.mata:2526-2528; dash.sthlp:528-532 | Per M7: plot-type names are read in lower case only; capitalised spellings are refused as twoway refuses them. |
 | plot:PT-4 | The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist') (also syn:SD-2) | S2 | 35-09 | Fix | empty_tw.svg has no axes; dash_render.py:63570-63576; test_bare_dash.py:74-80; p3out E20-E51; dash.sthlp:164-166 | Draw no axes when there is no layer; refuse axis, scale and line options there in twoway's words (plural names); add an SVG truth for twoway, title(T) |
@@ -364,6 +365,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-3 Tracked:** Open (WP-35 section 35-06).
 - **GW-4 Tracked:** Open (WP-35 section 35-06).
 - **sil:SD-8 Tracked:** Open (WP-35 section 35-06).
+- **syn:SD-22 Tracked:** Open (WP-35 section 35-06).
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
 - **plot:PT-3 Tracked:** Open (WP-35 section 35-09).
 - **plot:PT-4 Tracked:** Open (WP-35 section 35-09).

@@ -4730,6 +4730,12 @@
   - Suggested fix: Refuse the pair as measured
   - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
+- [ ] Title: twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere
+  - File Names and Line Numbers: scripts/corpus/ledger.tsv syn:SD-22 row; the 33-14 corpus run's gpdf-clegend_option-e6dbcac1 (g.pdf p.544: twoway contour depth northing easting, levels(10) zlabel(7600 "Low" 7800 "Medium" 8000 "High") region(fcolor(gs15))))
+  - Description: Measured by WP-33 section 33-14 (the first corpus run, 22oct2026): the manual's command has one ')' too many and names region(), which contour does not take, yet twoway draws it (rc 0); dash refuses it with "unmatched ')'". twoway contour (and contourline) with levels() accepts and ignores any option it does not know: levels(10) bogus(1) and levels(10) region(fcolor(red)) give rc 0, while bogus(1) and region(fcolor(red)) without levels() give rc 198 "option ... not allowed", as does scatter ..., title(x)). A difference no audit item covers, registered by the maintainer ruling D54 (22oct2026): dash keeps refusing; twoway's leniency is documented, not copied. Registered as GAPS4 syn:SD-22 (WP-35, section 35-06, Document).
+  - Suggested fix: State in the help that twoway contour with levels() ignores options it does not know and that dash refuses them, as twoway does without levels()
+  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): a command twoway draws is refused, by design (D54).
+
 - [ ] Title: Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)
   - File Names and Line Numbers: dash.sthlp:211-243; Q11
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids DT-19; confirmed; tracked: documented. Registered as GAPS4 DT-19 (WP-35, section 35-08, Fix).

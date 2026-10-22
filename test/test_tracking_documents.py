@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 229 registered items, by lead id, with its
+#: BUGS.md entry of each of the 230 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -2910,6 +2910,7 @@ GAPS4_OPEN = {
     'GW-3': 'maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn',
     'GW-4': "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied",
     'sil:SD-8': 'title() with notitling is accepted with a note; twoway fails r(4018)',
+    'syn:SD-22': 'twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere',
     'DT-19': "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)",
     'plot:PT-3': 'Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations',
     'plot:PT-4': "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')",
@@ -3142,6 +3143,7 @@ GAPS4_WP = {
     'GW-3': 'WP-35',
     'GW-4': 'WP-35',
     'sil:SD-8': 'WP-35',
+    'syn:SD-22': 'WP-35',
     'DT-19': 'WP-35',
     'plot:PT-3': 'WP-35',
     'plot:PT-4': 'WP-35',
@@ -3374,6 +3376,7 @@ GAPS4_SECTION = {
     'GW-3': '35-06',
     'GW-4': '35-06',
     'sil:SD-8': '35-06',
+    'syn:SD-22': '35-06',
     'DT-19': '35-08',
     'plot:PT-3': '35-09',
     'plot:PT-4': '35-09',
@@ -3768,7 +3771,9 @@ class TestGaps4Tracking:
         # by()'s x labels drawn on every panel (D48)
         # old -> new: 228 -> 229: 33-05's corpus verdicts registered MS-15,
         # marker labels clipped at the plot region (D50)
-        assert len(GAPS4_ALL) == 229
+        # old -> new: 229 -> 230: 33-14's corpus run registered syn:SD-22,
+        # contour with levels() ignoring options it does not know (D54)
+        assert len(GAPS4_ALL) == 230
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

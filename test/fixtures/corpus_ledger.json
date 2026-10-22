@@ -1,7 +1,7 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "7758ec4c74d2b80629b4c7b95be547bc717ac60c",
+    "dash_commit": "81ea31cf0affb9d49c1fa55c36df7d1814afb319",
     "extracted": "22 Oct 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
@@ -151,6 +151,15 @@
       "note": "dash clips marker labels at the plot region; twoway lets them extend over the axis area (D50, 47-06)",
       "plottype": "*",
       "when": "*"
+    },
+    {
+      "check": "rc",
+      "form": "documented",
+      "gaps4_id": "syn:SD-22 (documented)",
+      "id": "syn:SD-22",
+      "note": "twoway contour with levels() ignores options it does not know; dash refuses them (D54, 35-06)",
+      "plottype": "contour",
+      "when": "\\blevels?\\("
     }
   ]
 }

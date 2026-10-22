@@ -16,3 +16,4 @@ VF-4	line_width	*	*	line widths are relative sizes, 0.889x twoway's under stcolo
 basic:PT-4	outline_extra	*	*	dash strokes a bar, histogram, rbar or area outline where twoway strokes none (D51, 47-03)
 GW-6	margins	*	*	the scheme's graph margin is not drawn; the plot region's outer insets differ (45-04)
 MS-15	marker_labels	*	*	dash clips marker labels at the plot region; twoway lets them extend over the axis area (D50, 47-06)
+syn:SD-22 (documented)	rc	contour	\blevels?\(	twoway contour with levels() ignores options it does not know; dash refuses them (D54, 35-06)
