@@ -25,19 +25,30 @@ shard when the others are balanced.  test_wp30_truth.cscript's parts are
 the same longest-first rule over its blocks' seconds (its ``parts``
 section, which wp30_parts mirrors).
 
+The release tier (22oct2026; the ``local _cert_release`` line under the
+table, which cert_verdict.release_scripts reads) is left out of a default
+run: the shards balance the default tier's scripts as if they were alone,
+then place the release tier's on top -- a fixed-port one in the fixed-port
+scripts' shard, a split one in every shard, the rest longest first onto the
+least loaded -- so that a release or all run keeps the fixed-port rule.
+
 Usage:
   python3 scripts/cert_shards.py write <timed run log> [<source>]
           rewrite the table from a run's ``[ TIME] <script> timer=<s>
           wall=<s>`` lines (a script timed more than once, as a split
           script is in the shards' logs put together, counts their
           sum); <source> says in the table where the seconds
-          come from (default: the log's file name)
+          come from (default: the log's file name).  The release tier
+          is kept, and a release-tier script the log does not time (a
+          default run's) keeps its seconds
   python3 scripts/cert_shards.py check                   exit 1 unless the
           table holds every registered script, marks exactly the fixed-port
           scripts and, with *, exactly the scripts that split themselves,
           gives each N the balanced assignment of its seconds, and every
           part of test_wp30_truth.cscript has a timed block
   python3 scripts/cert_shards.py show                    each N's loads
+          (the default tier's and every script's when there is a release
+          tier)
 """
 import os
 import re
@@ -111,10 +122,42 @@ def splits_itself(text):
                for ln in logical_lines(text))
 
 
-def assign(seconds, port, n, every=frozenset()):
+def assign(seconds, port, n, every=frozenset(), release=frozenset()):
     """{script: shard (1..n)}: longest first onto the least loaded shard,
     the fixed-port scripts one unit; each script in *every* is "*", its
-    seconds shared out over the n shards before the others are placed."""
+    seconds shared out over the n shards before the others are placed.
+    The scripts in *release* are placed after the others, on their loads:
+    see the module's docstring."""
+    if release:
+        base = {s: v for s, v in seconds.items() if s not in release}
+        out = _assign(base, port, n, every)
+        load = loads(base, out, n)
+        rel = {s: v for s, v in seconds.items() if s in release}
+        share = sum(v for s, v in rel.items() if s in every) / n
+        load = [v + share for v in load]
+        out.update({s: EVERY for s in rel if s in every})
+        rest = {s: v for s, v in rel.items() if s not in every}
+        held = sorted(s for s in rest if s in port)
+        at = sorted({out[s] for s in base if s in port and s not in every})
+        units = [(rest[s], [s]) for s in rest if s not in port]
+        if held and at:
+            for s in held:
+                out[s] = at[0]
+                load[at[0] - 1] += rest[s]
+        elif held:
+            units.append((sum(rest[s] for s in held), held))
+        units.sort(key=lambda u: (-u[0], u[1][0]))
+        for sec, scripts in units:
+            k = min(range(n), key=lambda i: (load[i], i))
+            load[k] += sec
+            for s in scripts:
+                out[s] = k + 1
+        return out
+    return _assign(seconds, port, n, every)
+
+
+def _assign(seconds, port, n, every=frozenset()):
+    """assign with no release tier."""
     units = []
     together = sorted(s for s in seconds if s in port and s not in every)
     if together:
@@ -186,12 +229,19 @@ def read_table(runner_text):
     return rows
 
 
-def render_table(seconds, port, source, every=frozenset()):
-    """The block's text for these seconds, fixed-port scripts and scripts
-    that split themselves over every shard.  The shards are those of the
-    seconds as the table writes them, to a tenth, so that check agrees."""
+def read_release(runner_text):
+    """The release tier the runner's table names (its order)."""
+    return cert_verdict.release_scripts(runner_text)
+
+
+def render_table(seconds, port, source, every=frozenset(),
+                 release=frozenset()):
+    """The block's text for these seconds, fixed-port scripts, scripts
+    that split themselves over every shard and release-tier scripts.  The
+    shards are those of the seconds as the table writes them, to a tenth,
+    so that check agrees."""
     seconds = {s: float("%.1f" % v) for s, v in seconds.items()}
-    shards = {n: assign(seconds, port, n, every) for n in COUNTS}
+    shards = {n: assign(seconds, port, n, every, release) for n in COUNTS}
     lines = [
         BEGIN,
         "// Each certification script: the seconds it takes, 1 when it runs",
@@ -212,6 +262,14 @@ def render_table(seconds, port, source, every=frozenset()):
                      % (width, s, seconds[s], 1 if s in port else 0,
                         shards[2][s], shards[3][s], shards[4][s],
                         " ///" if i < len(names) - 1 else ""))
+    if release:
+        lines += [
+            "// The release tier: the closed work packages' truth scripts,",
+            "// which a default run (make cert, make test-all) leaves out and",
+            "// DASH_CERT_TIER=release or all runs (make cert-release, make",
+            "// cert-all, make gate); their shards are placed on top of the",
+            "// default tier's balance.",
+            "local _cert_release " + " ".join(sorted(release))]
     return "\n".join(lines) + "\n"
 
 
@@ -258,6 +316,13 @@ def check(runner_text):
     if marked != port:
         probs.append("fixed-port marks %s, the scripts that serve on a fixed "
                      "port %s" % (sorted(marked), sorted(port)))
+    release = read_release(runner_text)
+    if len(release) != len(set(release)):
+        probs.append("the release tier names a script twice")
+    if set(release) - set(named):
+        probs.append("the release tier names a script the runner does not "
+                     "run: " + " ".join(sorted(set(release) - set(named))))
+    release = set(release) & set(named)
     starred = {r[0] for r in rows if EVERY in r[3].values()}
     if any(set(r[3].values()) != {EVERY} for r in rows if r[0] in starred):
         probs.append("a row is * for some N and not for every N")
@@ -272,7 +337,7 @@ def check(runner_text):
     if "test_wp30_truth.cscript" in starred and os.path.exists(WP30):
         probs += wp30_check(_cscript_text("test_wp30_truth.cscript"))
     for n in COUNTS:
-        want = assign(seconds, marked, n, starred)
+        want = assign(seconds, marked, n, starred, release)
         got = {r[0]: r[3][n] for r in rows}
         if got != want:
             probs.append("the shards for N=%d are not the balanced "
@@ -312,12 +377,18 @@ def main(argv):
         return 1 if probs else 0
     if argv[1:2] == ["show"] and len(argv) == 2:
         rows = read_table(runner)
-        seconds = {r[0]: r[1] for r in rows}
-        for n in COUNTS:
-            shards = {r[0]: r[3][n] for r in rows}
-            print("N=%d: %s" % (n, "  ".join(
-                "%d: %.0f s" % (k + 1, v)
-                for k, v in enumerate(loads(seconds, shards, n)))))
+        release = set(read_release(runner))
+        tiers = [("", rows)]
+        if release:
+            tiers = [(" default", [r for r in rows if r[0] not in release]),
+                     (" all", rows)]
+        for label, these in tiers:
+            seconds = {r[0]: r[1] for r in these}
+            for n in COUNTS:
+                shards = {r[0]: r[3][n] for r in these}
+                print("N=%d%s: %s" % (n, label, "  ".join(
+                    "%d: %.0f s" % (k + 1, v)
+                    for k, v in enumerate(loads(seconds, shards, n)))))
         if os.path.exists(WP30):
             text = _cscript_text("test_wp30_truth.cscript")
             secs = wp30_seconds(text)
@@ -332,6 +403,15 @@ def main(argv):
         with open(argv[2], encoding="utf-8", errors="replace") as fh:
             seconds = seconds_from_log(fh.read())
         scripts = cert_verdict.registered_scripts(runner)
+        release = set(read_release(runner)) & set(scripts)
+        # A default run times no release-tier script: it keeps its seconds.
+        try:
+            kept = {r[0]: r[1] for r in read_table(runner)}
+        except ValueError:
+            kept = {}
+        for s in release - set(seconds):
+            if s in kept:
+                seconds[s] = kept[s]
         lacking = sorted(set(scripts) - set(seconds))
         if lacking:
             print("cert_shards: the log times no run of: " + " ".join(lacking))
@@ -341,7 +421,7 @@ def main(argv):
                 if serves_on_a_fixed_port(_cscript_text(s))}
         every = {s for s in scripts if splits_itself(_cscript_text(s))}
         source = argv[3] if len(argv) == 4 else os.path.basename(argv[2])
-        new = render_table(seconds, port, source, every)
+        new = render_table(seconds, port, source, every, release)
         start = runner.index(BEGIN)
         stop = runner.index(END)
         with open(RUNNER, "w", encoding="utf-8") as fh:

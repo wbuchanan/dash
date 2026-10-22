@@ -227,6 +227,26 @@ class TestWhatCountsAsADiagnostic:
 
 class TestTheGateIsWiredUp:
 
+    def test_the_gate_runs_the_certification_scripts_of_its_tier(self):
+        # The release tier (22oct2026): the closed work packages' truth
+        # scripts left make cert; the release gate runs them.  make gate
+        # alone runs every certification script (the all tier); make
+        # release, whose make check has run the default tier, runs the
+        # release tier, so each script runs once.
+        with open(os.path.join(ROOT, "Makefile"), encoding="utf-8") as fh:
+            mk = fh.read()
+        assert re.search(r"^GATE_CERT_TIER \?= all$", mk, re.M)
+        assert re.search(r"^release: GATE_CERT_TIER = release$", mk, re.M)
+        gate = re.search(r"^gate:\n((?:\t.*\n)+)", mk, re.M).group(1)
+        assert "DASH_CERT_TIER='$(GATE_CERT_TIER)'" in gate
+        with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
+                  encoding="utf-8") as fh:
+            sh = fh.read()
+        assert 'DASH_CERT_TIER="${DASH_CERT_TIER:-all}"' in sh
+        assert 'sh "$REPO/scripts/run_cert_suite.sh"' in sh
+        # The gate fails when either half does.
+        assert "[ $rc -eq 0 ] && [ $crc -eq 0 ]" in sh
+
     def test_make_gate_runs_the_gate_and_release_runs_check_first(self):
         with open(os.path.join(ROOT, "Makefile"), encoding="utf-8") as fh:
             mk = fh.read()

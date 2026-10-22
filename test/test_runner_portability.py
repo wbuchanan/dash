@@ -215,6 +215,7 @@ class TestEveryRunnerUsesTheWrapper:
         'printf "STATATMP=%s\\n" "${STATATMP-}"; '
         'printf "SHARD=%s\\n" "${DASH_CERT_SHARD-}"; '
         'printf "PYX=%s\\n" "${DASH_PYTHON_EXEC-unset}"; '
+        'printf "TIER=%s\\n" "${DASH_CERT_TIER-unset}"; '
         'printf "PWD=%s\\n" "$(pwd)"; '
         'for a in "$@"; do printf "ARG=%s\\n" "$a"; done; } > "$f"\n')
 
@@ -253,6 +254,8 @@ class TestEveryRunnerUsesTheWrapper:
             assert os.path.realpath(rec["DASH_REPO"]) == real
             assert rec["SHARD"] == "%d/%d" % (k, n)
             assert rec["PYX"] == "/x/python3"
+            # The release tier (22oct2026): unset, the default tier.
+            assert rec["TIER"] == "default"
             assert rec["STATATMP"].endswith("/s%d/tmp/" % k)
             assert os.path.realpath(rec["PWD"]) == os.path.realpath(
                 rec["STATATMP"][:-len("tmp/")])
@@ -274,7 +277,8 @@ class TestEveryRunnerUsesTheWrapper:
         ("DASH_CERT_SESSIONS", "0"), ("DASH_CERT_SESSIONS", "5"),
         ("DASH_CERT_SESSIONS", "x"), ("DASH_CERT_SESSIONS", "3 "),
         ("DASH_CERT_ONLY", "test_a;rm"), ("DASH_CERT_ONLY", "a\tb"),
-        ("DASH_CERT_ONLY", "$HOME")])
+        ("DASH_CERT_ONLY", "$HOME"), ("DASH_CERT_TIER", "nightly"),
+        ("DASH_CERT_TIER", "release;rm"), ("DASH_CERT_TIER", "Release")])
     def test_run_cert_suite_refuses_a_bad_setting_before_stata(
             self, tmp_path, var, value):
         tree = tmp_path / "tree"
@@ -312,6 +316,45 @@ class TestEveryRunnerUsesTheWrapper:
         assert r.returncode == 0, r.stdout + r.stderr
         assert "1 of 1 registered scripts passed" in r.stdout
         assert (tmp_path / "fake.out").read_text() == "ONLY=test_a\n"
+
+    @pytest.mark.parametrize("tier", ["release", "all"])
+    def test_run_cert_suite_hands_the_tier_to_every_session_and_verdict(
+            self, tmp_path, tier):
+        tree = tmp_path / "tree"
+        _copy_runner(tree, "run_cert_suite.sh", "stata_batch.sh",
+                     "cert_verdict.py")
+        (tree / "test").mkdir()
+        (tree / "test" / "run_all_cscripts.do").write_text(
+            'capture noisily {\n    do "test_a.cscript"\n}\n'
+            'capture noisily {\n    do "test_r.cscript"\n}\n'
+            "local _cert_release test_r.cscript\n")
+        # Each session reports the release script (shard 1) and, in the
+        # all tier, test_a (shard 2), and records the tier it was handed.
+        body = ('k="${DASH_CERT_SHARD%%/*}"\n'
+                'printf "TIER=%s\\n" "${DASH_CERT_TIER-unset}" '
+                '> "$FAKE_OUT.$k"\n'
+                'if [ "$k" = 1 ]; then r="[ PASS] test_r.cscript"; '
+                'elif [ "$DASH_CERT_TIER" = all ]; then '
+                'r="[ PASS] test_a.cscript"; else r=""; fi\n'
+                'n=0; [ -n "$r" ] && n=1\n'
+                'printf "[ TIER] %s\\n[SHARD] %s: x\\n%s\\n'
+                'ALL TESTS PASSED (%s passed, 0 skipped)\\n" '
+                '"$DASH_CERT_TIER" "$DASH_CERT_SHARD" "$r" "$n" '
+                '> run_all_cscripts.log\n')
+        fake = _fake_stata(tmp_path / "bin", body)
+        env = {"PATH": "/usr/bin:/bin", "STATA_BIN": str(fake),
+               "STATA_ARCH": "none", "FAKE_OUT": str(tmp_path / "fake.out"),
+               "PYTHON": sys.executable, "TMPDIR": str(tmp_path),
+               "DASH_CERT_SESSIONS": "2", "DASH_PYTHON_EXEC": "/x/python3",
+               "DASH_CERT_TIER": tier}
+        r = _run(["/bin/sh", str(tree / "scripts" / "run_cert_suite.sh")], env)
+        assert r.returncode == 0, r.stdout + r.stderr
+        n = {"release": 1, "all": 2}[tier]
+        assert "%d of %d registered scripts passed" % (n, n) in r.stdout
+        assert "%s tier" % tier in r.stdout
+        for k in (1, 2):
+            assert (tmp_path / ("fake.out.%d" % k)).read_text() == \
+                "TIER=%s\n" % tier
 
     def test_run_cert_suite_refuses_a_tree_stata_cannot_be_handed(self,
                                                                   tmp_path):

@@ -260,7 +260,153 @@ class TestTheShardedVerdict:
                 in lines)
 
 
+#: A runner of three scripts, test_c in the release tier.
+_RUNNER_REL = (_RUNNER3 + "local _cert_shards ///\n"
+               "    test_c.cscript  9.0 0  1 1 1\n"
+               "local _cert_release test_c.cscript\n")
+
+
+def _tiered(tier, k, n, results, summary=True):
+    """A shard's log that names its tier."""
+    return "[ TIER] %s\n" % tier + _shard(k, n, results, summary)
+
+
+class TestTheTiers:
+    """The release tier of the certification scripts (22oct2026): the
+    closed work packages' truth scripts run in the release gate and at a
+    work package's closeout, not in a default run (make cert, make
+    test-all).  A default run passes without them and still needs every
+    other script exactly once; a release-tier run needs each of them."""
+
+    def test_the_release_list_is_read(self):
+        assert V.release_scripts(_RUNNER_REL) == ["test_c.cscript"]
+        assert V.release_scripts(_RUNNER3) == []
+        assert V.tier_scripts(_RUNNER_REL, "default") == [
+            "test_a.cscript", "test_b.cscript"]
+        assert V.tier_scripts(_RUNNER_REL, "release") == ["test_c.cscript"]
+        assert V.tier_scripts(_RUNNER_REL, "all") == [
+            "test_a.cscript", "test_b.cscript", "test_c.cscript"]
+        with pytest.raises(ValueError):
+            V.tier_scripts(_RUNNER_REL, "nightly")
+
+    def test_the_real_runner_puts_the_closed_truth_scripts_in_release(self):
+        with open(os.path.join(_HERE, "run_all_cscripts.do"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        assert V.release_scripts(text) == [
+            "test_wp29_truth.cscript", "test_wp30_truth.cscript",
+            "test_wp31_truth.cscript"]
+        default = V.tier_scripts(text, "default")
+        assert len(default) == 67  # 70 registered, less the three
+        assert set(default) | set(V.release_scripts(text)) == set(
+            V.registered_scripts(text))
+
+    def test_a_default_run_passes_without_the_release_scripts(self):
+        logs = [_tiered("default", 1, 2, [("PASS", "test_a.cscript")]),
+                _tiered("default", 2, 2, [("PASS", "test_b.cscript")])]
+        ok, lines = V.verdict_logs(logs, _RUNNER_REL)
+        assert ok, lines
+        assert lines[0] == ("certification suite: 2 of 2 registered scripts "
+                            "passed (2 sessions)")
+        assert "  left to the release tier: test_c.cscript" in lines
+        # The tier is the default: the same without naming it.
+        assert V.verdict_logs(logs, _RUNNER_REL, tier="default")[0]
+
+    def test_a_default_run_still_needs_every_other_script_once(self):
+        ok, lines = V.verdict_logs(
+            [_tiered("default", 1, 2, [("PASS", "test_a.cscript")]),
+             _tiered("default", 2, 2, [])], _RUNNER_REL)
+        assert not ok
+        assert "  never reported: test_b.cscript" in lines
+        ok, lines = V.verdict_logs(
+            [_tiered("default", 1, 2, [("PASS", "test_a.cscript"),
+                                       ("PASS", "test_b.cscript")]),
+             _tiered("default", 2, 2, [("PASS", "test_b.cscript")])],
+            _RUNNER_REL)
+        assert not ok
+        assert "  reported twice: test_b.cscript" in lines
+        ok, lines = V.verdict_logs(
+            [_tiered("default", 1, 2, [("PASS", "test_a.cscript")]),
+             _tiered("default", 2, 2, [("SKIP", "test_b.cscript")])],
+            _RUNNER_REL)
+        assert not ok
+        assert "  skipped: test_b.cscript" in lines
+
+    def test_a_release_script_in_a_default_run_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_tiered("default", 1, 2, [("PASS", "test_a.cscript"),
+                                       ("PASS", "test_c.cscript")]),
+             _tiered("default", 2, 2, [("PASS", "test_b.cscript")])],
+            _RUNNER_REL)
+        assert not ok
+        assert "  reported but not in the default tier: test_c.cscript" \
+            in lines
+
+    def test_a_release_run_needs_each_release_script(self):
+        ok, lines = V.verdict_logs(
+            [_tiered("release", 1, 2, [("PASS", "test_c.cscript")]),
+             _tiered("release", 2, 2, [])], _RUNNER_REL, tier="release")
+        assert ok, lines
+        assert lines[0] == ("certification suite: 1 of 1 registered scripts "
+                            "passed (2 sessions, release tier)")
+        ok, lines = V.verdict_logs(
+            [_tiered("release", 1, 2, []), _tiered("release", 2, 2, [])],
+            _RUNNER_REL, tier="release")
+        assert not ok
+        assert "  never reported: test_c.cscript" in lines
+        ok, lines = V.verdict_logs(
+            [_tiered("release", 1, 2, [("PASS", "test_a.cscript"),
+                                       ("PASS", "test_c.cscript")]),
+             _tiered("release", 2, 2, [])], _RUNNER_REL, tier="release")
+        assert not ok
+        assert "  reported but not in the release tier: test_a.cscript" \
+            in lines
+
+    def test_an_all_run_needs_every_script(self):
+        ok, lines = V.verdict_logs(
+            [_tiered("all", 1, 2, [("PASS", "test_a.cscript"),
+                                   ("PASS", "test_c.cscript")]),
+             _tiered("all", 2, 2, [("PASS", "test_b.cscript")])],
+            _RUNNER_REL, tier="all")
+        assert ok, lines
+        ok, lines = V.verdict_logs(
+            [_tiered("all", 1, 2, [("PASS", "test_a.cscript")]),
+             _tiered("all", 2, 2, [("PASS", "test_b.cscript")])],
+            _RUNNER_REL, tier="all")
+        assert not ok
+        assert "  never reported: test_c.cscript" in lines
+
+    def test_a_log_of_another_tier_fails_it(self):
+        ok, lines = V.verdict_logs(
+            [_tiered("release", 1, 2, [("PASS", "test_a.cscript")]),
+             _tiered("default", 2, 2, [("PASS", "test_b.cscript")])],
+            _RUNNER_REL)
+        assert not ok
+        assert "  log 1 ran the release tier, not the default tier" in lines
+
+    def test_only_picks_by_name_whatever_the_tier(self):
+        ok, lines = V.verdict(_log([("PASS", "test_c.cscript")]),
+                              _RUNNER_REL, only=["test_c"])
+        assert ok, lines
+
+
 class TestTheCommandLine:
+
+    def test_tier_on_the_command_line(self, tmp_path):
+        runner = tmp_path / "run.do"
+        runner.write_text(_RUNNER_REL)
+        log = tmp_path / "one.log"
+        log.write_text(_log([("PASS", "test_c.cscript")]))
+        r = self._run("--tier", "release", str(log), str(runner))
+        assert r.returncode == 0, r.stdout
+        r = self._run(str(log), str(runner))
+        assert r.returncode == 1
+        r = self._run("--tier", "nightly", str(log), str(runner))
+        assert r.returncode == 2
+        assert self._run("--tier").returncode == 2
+        r = self._run("--only", "test_c", "--tier", "default", str(log),
+                      str(runner))
+        assert r.returncode == 0, r.stdout
 
     def _run(self, *args):
         return subprocess.run(
@@ -342,6 +488,21 @@ class TestMakeCheckIsWired:
         mk = _read("Makefile")
         m = re.search(r"^check:([^\n]*)$", mk, re.M)
         assert m and m.group(1).split() == ["test", "test-dev", "cert"]
+
+    @pytest.mark.parametrize("target,tier", [("cert-release", "release"),
+                                             ("cert-all", "all")])
+    def test_the_release_tier_has_its_own_targets(self, target, tier):
+        recipe = _recipe(_read("Makefile"), target)
+        assert "scripts/run_cert_suite.sh" in recipe
+        assert "DASH_CERT_TIER=%s" % tier in recipe
+        # make cert runs the default tier: it names none.
+        assert "DASH_CERT_TIER" not in _recipe(_read("Makefile"), "cert")
+
+    def test_the_runner_hands_the_tier_to_stata_and_the_verdict(self):
+        script = _read("scripts", "run_cert_suite.sh")
+        assert 'tier="${DASH_CERT_TIER:-default}"' in script
+        assert script.count('DASH_CERT_TIER="$tier"') == 2
+        assert script.count('--tier "$tier"') == 2
 
     def test_test_is_strict_under_statas_python(self):
         recipe = _recipe(_read("Makefile"), "test")

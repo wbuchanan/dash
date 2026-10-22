@@ -20,6 +20,11 @@
 # reports before they start (DASH_PYTHON_EXEC, unless it is set already),
 # so a settings file rewritten by a concurrent session cannot unlink them.
 # DASH_CERT_ONLY="test_a test_b" runs, and judges, only those scripts.
+# DASH_CERT_TIER (22oct2026; default, release or all) runs, and judges, one
+# tier: default (unset) every script but the release tier's -- the closed
+# work packages' truth scripts, the runner's _cert_release line -- release
+# those alone, all every script (make cert-release, make cert-all; the
+# release gate and a work package's closeout).
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="${PYTHON:-python3}"
@@ -43,14 +48,21 @@ case "$only" in
     echo "certification suite: DASH_CERT_ONLY holds script names only (letters, digits, _ and .)" >&2
     exit 2 ;;
 esac
+tier="${DASH_CERT_TIER:-default}"
+case "$tier" in
+  default|release|all) ;;
+  *) echo "certification suite: DASH_CERT_TIER must be default, release or all" >&2
+     exit 2 ;;
+esac
 dir="$(mktemp -d "${TMPDIR:-/tmp}/dash_cert.XXXXXX")" || exit 1
 echo "certification suite: running in $dir"
 echo "certification suite: testing $REPO"
+echo "certification suite: the $tier tier"
 # The logs to judge, as the positional parameters (a path may hold a blank).
 set --
 if [ "$n" = 1 ]; then
   mkdir -p "$dir/tmp"
-  (cd "$dir" && DASH_REPO="$REPO" STATATMP="$dir/tmp/" sh "$REPO/scripts/stata_batch.sh" -b do \
+  (cd "$dir" && DASH_REPO="$REPO" DASH_CERT_TIER="$tier" STATATMP="$dir/tmp/" sh "$REPO/scripts/stata_batch.sh" -b do \
       "$REPO/test/run_all_cscripts.do" >/dev/null 2>&1)
   set -- "$dir/run_all_cscripts.log"
 else
@@ -63,6 +75,7 @@ else
   while [ "$k" -le "$n" ]; do
     mkdir -p "$dir/s$k/tmp"
     (cd "$dir/s$k" && DASH_REPO="$REPO" DASH_CERT_SHARD="$k/$n" \
+        DASH_CERT_TIER="$tier" \
         DASH_PYTHON_EXEC="$pyx" STATATMP="$dir/s$k/tmp/" \
         sh "$REPO/scripts/stata_batch.sh" -b do \
         "$REPO/test/run_all_cscripts.do" >/dev/null 2>&1) &
@@ -72,10 +85,10 @@ else
   wait
 fi
 if [ -n "$only" ]; then
-  "$PYTHON" "$REPO/scripts/cert_verdict.py" --only "$only" "$@" \
+  "$PYTHON" "$REPO/scripts/cert_verdict.py" --only "$only" --tier "$tier" "$@" \
       "$REPO/test/run_all_cscripts.do"
 else
-  "$PYTHON" "$REPO/scripts/cert_verdict.py" "$@" \
+  "$PYTHON" "$REPO/scripts/cert_verdict.py" --tier "$tier" "$@" \
       "$REPO/test/run_all_cscripts.do"
 fi
 rc=$?

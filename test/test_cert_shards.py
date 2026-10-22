@@ -58,7 +58,12 @@ class TestTheRealTable:
             assert len({r[3][n] for r in port}) == 1, n
 
     def test_every_shard_is_used_and_the_loads_are_balanced(self):
+        # Flipped: the release tier (22oct2026) -- the balance that matters
+        # is the default tier's, which make cert and make test-all run; the
+        # release-tier scripts are placed on top of it.
         rows = S.read_table(_runner())
+        release = set(S.read_release(_runner()))
+        rows = [r for r in rows if r[0] not in release]
         seconds = {r[0]: r[1] for r in rows}
         for n in S.COUNTS:
             shards = {r[0]: r[3][n] for r in rows}
@@ -67,6 +72,21 @@ class TestTheRealTable:
             # Within a tenth of each other: the longest single unit (the
             # fixed-port scripts, about 110 s) is under a shard's share.
             assert max(ld) <= 1.1 * min(ld), (n, ld)
+
+    def test_the_closed_truth_scripts_are_the_release_tier(self):
+        assert S.read_release(_runner()) == [
+            "test_wp29_truth.cscript", "test_wp30_truth.cscript",
+            "test_wp31_truth.cscript"]
+
+    def test_three_default_sessions_finish_close_together(self):
+        # The batch-end gate runs three sessions: their loads within 5 % of
+        # each other, so that none waits long on another.
+        rows = S.read_table(_runner())
+        release = set(S.read_release(_runner()))
+        seconds = {r[0]: r[1] for r in rows if r[0] not in release}
+        shards = {r[0]: r[3][3] for r in rows if r[0] not in release}
+        ld = S.loads(seconds, shards, 3)
+        assert max(ld) <= 1.05 * min(ld), ld
 
 
     def test_the_wp30_script_runs_in_every_shard_split_by_its_blocks(self):
@@ -133,6 +153,23 @@ class TestTheRules:
         assert got == {"w": "*", "a": 1, "b": 2, "c": 2}
         assert S.loads(seconds, got, 2) == [13, 9]
 
+    def test_the_release_tier_is_placed_on_the_default_balance(self):
+        seconds = {"a": 10, "b": 8, "c": 6, "p": 3, "q": 2, "r": 20,
+                   "w": 12, "x": 7}
+        port, every, release = {"p", "q"}, {"w"}, {"r", "w", "x", "q"}
+        got = S.assign(seconds, port, 2, every, release)
+        # The default tier (a, b, c, p) as if alone ...
+        assert {s: got[s] for s in "abcp"} == S.assign(
+            {s: seconds[s] for s in "abcp"}, {"p"}, 2)
+        # ... then the release tier on top: w in every shard, q with the
+        # fixed-port unit's p, r and x longest first onto the lighter.
+        assert got["w"] == S.EVERY and got["q"] == got["p"]
+        assert got == {"a": 1, "b": 2, "c": 2, "p": 1, "w": "*", "q": 1,
+                       "r": 2, "x": 1}
+        # No release tier: the assignment as before.
+        assert S.assign(seconds, port, 2, every) == S.assign(
+            seconds, port, 2, every, frozenset())
+
     def test_logical_lines(self):
         text = ("* a comment\nlocal a 1 // note\nlocal b ///\n  2 ///\n"
                 "  3\n// gone\n")
@@ -180,6 +217,20 @@ class TestTheRules:
         body = [l for l in text.splitlines() if l.startswith("    test_")]
         assert all(l.endswith(" ///") for l in body[:-1])
         assert not body[-1].endswith("///")
+
+    def test_the_release_list_reads_back(self):
+        seconds = {"test_a.cscript": 3.0, "test_b.cscript": 1.5,
+                   "test_r.cscript": 9.0}
+        text = (S.render_table(seconds, set(), "a run",
+                               release={"test_r.cscript"}) + S.END + "\n")
+        assert S.read_release(text) == ["test_r.cscript"]
+        assert "local _cert_release test_r.cscript" in text
+        assert [r[0] for r in S.read_table(text)] == sorted(seconds)
+        for n in S.COUNTS:
+            assert {r[0]: r[3][n] for r in S.read_table(text)} == S.assign(
+                seconds, set(), n, frozenset(), {"test_r.cscript"})
+        # No release tier, no line.
+        assert "_cert_release" not in S.render_table(seconds, set(), "a run")
 
     def test_a_runner_without_one_table_is_refused(self):
         with pytest.raises(ValueError):
@@ -269,6 +320,39 @@ class TestTheCommandLine:
         r = self._run(tree, "check")
         assert r.returncode == 1 and "* marks" in r.stdout
 
+    def test_write_keeps_the_release_tier_and_its_seconds(self, tmp_path):
+        # A default run times no release-tier script: write keeps the
+        # list and those scripts' seconds from the table it replaces.
+        tree, log = self._tree(tmp_path)
+        assert self._run(tree, "write", str(log)).returncode == 0
+        path = tree / "test" / "run_all_cscripts.do"
+        path.write_text(path.read_text().replace(
+            S.END, "local _cert_release test_a.cscript\n" + S.END))
+        log.write_text("[ TIME] test_b.cscript timer=    2.000s wall=   2s\n"
+                       "[ TIME] test_p.cscript timer=    5.000s wall=   5s\n")
+        r = self._run(tree, "write", str(log))
+        assert r.returncode == 0, r.stdout + r.stderr
+        text = path.read_text()
+        assert S.read_release(text) == ["test_a.cscript"]
+        assert {r[0]: r[1] for r in S.read_table(text)} == {
+            "test_a.cscript": 10.0, "test_b.cscript": 2.0,
+            "test_p.cscript": 5.0}
+        assert self._run(tree, "check").returncode == 0
+        r = self._run(tree, "show")
+        assert "N=2 default: 1: 5 s  2: 2 s" in r.stdout, r.stdout
+
+    def test_check_finds_a_release_script_the_runner_does_not_run(
+            self, tmp_path):
+        tree, log = self._tree(tmp_path)
+        assert self._run(tree, "write", str(log)).returncode == 0
+        path = tree / "test" / "run_all_cscripts.do"
+        path.write_text(path.read_text().replace(
+            S.END, "local _cert_release test_z.cscript\n" + S.END))
+        r = self._run(tree, "check")
+        assert r.returncode == 1
+        assert "the release tier names a script the runner does not run: " \
+            "test_z.cscript" in r.stdout
+
     def test_write_needs_every_script_timed(self, tmp_path):
         tree, log = self._tree(tmp_path)
         log.write_text("[ TIME] test_a.cscript timer=   10.000s wall=  10s\n")
@@ -321,10 +405,28 @@ class TestTheRunnerRunsOnlyItsShard:
         assert sel.index('st_local("_cert_sh")') < sel.index('"`_cert_sh\'"')
         assert sel.index('st_local("_cert_only")') < \
             sel.index('"`_cert_only\'"')
-        assert sel.count("exit 198") == 3
+        # 3 -> 4: the release tier's DASH_CERT_TIER is checked the same way
+        assert sel.count("exit 198") == 4
+        assert "local _cert_tier : environment DASH_CERT_TIER" in sel
+        assert '"^(default|release|all)?$"' in sel
+        assert sel.index('st_local("_cert_tier")') < \
+            sel.index('"`_cert_tier\'"')
         # Before the first script.
         assert src.index("// ---- selection: end ----") < \
             src.index('display as text "[ RUN ]')
+
+    def test_the_tier_picks_the_scripts_unless_only_names_them(self):
+        sel = _runner()
+        sel = sel[sel.index("// ---- selection: begin"):
+                  sel.index("// ---- selection: end ----")]
+        assert 'if "`_cert_tier\'" == "default" local _cert_run : list ' \
+            "_cert_run - _cert_release" in sel
+        assert 'if "`_cert_tier\'" == "release" local _cert_run : list ' \
+            "_cert_run & _cert_release" in sel
+        # DASH_CERT_ONLY picks by name from every script, whatever the tier.
+        assert sel.index('if "`_cert_only\'" != "" {') < sel.index(
+            'if "`_cert_tier\'" == "default"')
+        assert 'display as text "[ TIER] `_cert_tier\'"' in _runner()
 
     def test_a_star_row_runs_in_every_shard(self):
         sel = _runner()

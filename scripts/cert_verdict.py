@@ -18,8 +18,19 @@ passed, and each log's own summary agreeing with its results.  A script
 whose shard table row says "*" (it splits itself across the sessions, as
 test_wp30_truth.cscript does) is reported, and passed, in every one of them.
 
-Usage:  python3 scripts/cert_verdict.py [--only "<names>"] <log> [<log> ...] <run_all_cscripts.do>
-        --only judges just the scripts it names (a DASH_CERT_ONLY run).
+The scripts the runner's ``local _cert_release`` line names (in its shard
+table) are the release tier (22oct2026): the closed work packages' truth
+scripts, which run in the release gate and at a work package's closeout but
+not in a default run.  A run is of one tier (DASH_CERT_TIER, each log saying
+which: ``[ TIER] <tier>``): default, every script but the release tier's;
+release, the release tier's alone; all, every script.  The run is judged
+against its tier's scripts: each must pass exactly once, and a script of
+another tier that reports fails it.
+
+Usage:  python3 scripts/cert_verdict.py [--only "<names>"] [--tier <tier>] <log> [<log> ...] <run_all_cscripts.do>
+        --only judges just the scripts it names (a DASH_CERT_ONLY run),
+        whatever their tier; --tier names the run's tier (default, release
+        or all; default when it is not given).
 Exit:   0 when every registered script passed; 1 otherwise, naming each
         script that failed, skipped, never reported or reported twice.
 """
@@ -34,6 +45,10 @@ _SUMMARY = re.compile(r"^ALL TESTS PASSED \((\d+) passed, (\d+) skipped\)\s*$",
                       re.M)
 _SHARD = re.compile(r"^\[SHARD\] ([1-9])/([1-9]):", re.M)
 # A shard-table row whose shards are "*": the script runs in every shard.
+_TIER = re.compile(r"^\[ TIER\] (\S+)", re.M)
+_RELEASE = re.compile(r"^local _cert_release\b([ \t\w.]*)$", re.M)
+#: The tiers a run can be of.
+TIERS = ("default", "release", "all")
 _EVERY = re.compile(r"^\s+(test_\w+\.cscript)\s+[0-9.]+\s+[01]\s+\*\s+\*"
                     r"\s+\*\s*(?:///)?\s*$", re.M)
 
@@ -48,27 +63,53 @@ def every_shard_scripts(runner_text):
     return _EVERY.findall(runner_text)
 
 
-def verdict(log_text, runner_text, only=None):
+def release_scripts(runner_text):
+    """The release tier: the scripts the runner's ``local _cert_release``
+    line names, in its order."""
+    out = []
+    for m in _RELEASE.finditer(runner_text):
+        out += m.group(1).split()
+    return out
+
+
+def tier_scripts(runner_text, tier):
+    """The registered scripts a run of *tier* runs, in the runner's order."""
+    if tier not in TIERS:
+        raise ValueError("the tier must be one of %s, not %r"
+                         % (", ".join(TIERS), tier))
+    scripts = registered_scripts(runner_text)
+    release = set(release_scripts(runner_text))
+    if tier == "default":
+        return [s for s in scripts if s not in release]
+    if tier == "release":
+        return [s for s in scripts if s in release]
+    return scripts
+
+
+def verdict(log_text, runner_text, only=None, tier="default"):
     """(ok, lines) for a run in one session: see verdict_logs."""
-    return verdict_logs([log_text], runner_text, only)
+    return verdict_logs([log_text], runner_text, only, tier)
 
 
-def verdict_logs(log_texts, runner_text, only=None):
+def verdict_logs(log_texts, runner_text, only=None, tier="default"):
     """(ok, lines): whether the run passed, and a report to print.
 
-    ok is True only when every registered script (or every one *only*
-    names) reported PASS, none reported FAIL or SKIP, no script reported
-    twice, and each log's own summary says all of its scripts passed with
-    none skipped.  More than one log is a sharded run: each must name its
-    shard, and together they must be shards 1 to N of one N, each once.
+    ok is True only when every script of the run's *tier* (or every one
+    *only* names, whatever its tier) reported PASS, none reported FAIL or
+    SKIP, no script reported twice, no script outside them reported, no
+    log names another tier, and each log's own summary says all of its
+    scripts passed with none skipped.  More than one log is a sharded run:
+    each must name its shard, and together they must be shards 1 to N of
+    one N, each once.
     """
-    scripts = registered_scripts(runner_text)
+    registered = registered_scripts(runner_text)
+    scripts = tier_scripts(runner_text, tier)
     unknown = []
     if only is not None:
         want = [n if n.endswith(".cscript") else n + ".cscript"
                 for n in only]
-        unknown = sorted(set(want) - set(scripts))
-        scripts = [s for s in scripts if s in want]
+        unknown = sorted(set(want) - set(registered))
+        scripts = [s for s in registered if s in want]
     results = {}
     twice = []
     log_probs = []
@@ -78,6 +119,10 @@ def verdict_logs(log_texts, runner_text, only=None):
         else set()
     every_seen = {s: [] for s in every}
     for i, text in enumerate(log_texts, 1):
+        if only is None:
+            for named in sorted(set(_TIER.findall(text)) - {tier}):
+                log_probs.append("log %d ran the %s tier, not the %s tier"
+                                 % (i, named, tier))
         found = _SHARD.findall(text)
         if len(log_texts) > 1:
             if len(found) != 1:
@@ -121,7 +166,8 @@ def verdict_logs(log_texts, runner_text, only=None):
     failed = [s for s in scripts if results.get(s) == "FAIL"]
     skipped = [s for s in scripts if results.get(s) == "SKIP"]
     missing = [s for s in scripts if s not in results]
-    stray = sorted(set(results) - set(scripts))
+    stray = sorted(set(results) - set(registered))
+    outside = sorted(set(results) & set(registered) - set(scripts))
     passed = [s for s in scripts if results.get(s) == "PASS"]
     if len(log_texts) == 1:
         # One session ran everything: its count is the whole run's.
@@ -131,15 +177,27 @@ def verdict_logs(log_texts, runner_text, only=None):
     else:
         summary_ok = not log_probs
     ok = bool(scripts) and not (failed or skipped or missing or stray
-                                or twice or unknown) and summary_ok
+                                or outside or twice or unknown
+                                or log_probs) and summary_ok
     head = "certification suite: %d of %d registered scripts passed" % (
         len(passed), len(scripts))
+    notes = []
     if len(log_texts) > 1:
-        head += " (%d sessions)" % len(log_texts)
+        notes.append("%d sessions" % len(log_texts))
+    if only is None and tier != "default":
+        notes.append("%s tier" % tier)
+    if notes:
+        head += " (%s)" % ", ".join(notes)
     lines = [head]
+    left = [s for s in release_scripts(runner_text) if s in registered]
+    if only is None and tier == "default" and left:
+        lines.append("  left to the release tier: " + " ".join(left))
+    within = ("named by --only" if only is not None
+              else "in the %s tier" % tier)
     for label, names in (("failed", failed), ("skipped", skipped),
                          ("never reported", missing),
                          ("reported but not registered", stray),
+                         ("reported but not " + within, outside),
                          ("reported twice", twice),
                          ("named by --only but not registered", unknown)):
         if names:
@@ -158,11 +216,19 @@ def verdict_logs(log_texts, runner_text, only=None):
 def main(argv):
     args = list(argv[1:])
     only = None
-    if args[:1] == ["--only"]:
+    tier = "default"
+    while args[:1] in (["--only"], ["--tier"]):
         if len(args) < 2:
             sys.stderr.write(__doc__)
             return 2
-        only = args[1].split()
+        if args[0] == "--only":
+            only = args[1].split()
+        else:
+            tier = args[1]
+            if tier not in TIERS:
+                sys.stderr.write("cert_verdict.py: --tier must be one of %s\n"
+                                 % ", ".join(TIERS))
+                return 2
         args = args[2:]
     if len(args) < 2:
         sys.stderr.write(__doc__)
@@ -179,7 +245,7 @@ def main(argv):
             return 1
     with open(runner, encoding="utf-8") as fh:
         runner_text = fh.read()
-    ok, lines = verdict_logs(texts, runner_text, only)
+    ok, lines = verdict_logs(texts, runner_text, only, tier)
     print("\n".join(lines))
     return 0 if ok else 1
 

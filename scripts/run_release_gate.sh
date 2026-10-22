@@ -8,6 +8,12 @@
 # "/" and must not be the directory the batch log is written to.  STATA_BIN
 # names the console binary (scripts/stata_batch.sh) and PYTHON the
 # interpreter the verdict runs under.
+#
+# Then the certification scripts of DASH_CERT_TIER (default all; 22oct2026),
+# through scripts/run_cert_suite.sh: the release tier -- the closed work
+# packages' truth scripts, which make cert leaves out -- runs here.  make
+# release, whose make check ran the default tier, asks for the release tier
+# alone.  The gate passes only when both halves do.
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="${PYTHON:-python3}"
@@ -51,4 +57,6 @@ done
     "$REPO" "$newest" "$dir/work/venvmake.log" "$dir/work/venvuse.log"
 rc=$?
 echo "release gate log: ${log:-none}"
-exit $rc
+DASH_CERT_TIER="${DASH_CERT_TIER:-all}" PYTHON="$PYTHON" sh "$REPO/scripts/run_cert_suite.sh"
+crc=$?
+[ $rc -eq 0 ] && [ $crc -eq 0 ]
