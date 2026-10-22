@@ -5154,6 +5154,29 @@ Measured at the closeout, 18oct2026, on s3-bugs (StataNow 19.5 MP, macOS arm64).
 - **Gate (18oct2026):** `make test-all` -- pytest 37,557 passed, 5 failed, 9 skipped (995 s); cert 68 of 69 (test_wp31_truth U39-08). The five pytest failures and U39-08 were merge interactions fixed and re-run green; one was a sub-second timing test that passes alone.
 - **Gate (19oct2026):** `make test-all` -- pytest 38,224 passed, 6 failed, 11 skipped (1,562 s); cert 68 of 69 (test_wp31_truth U29-4). The six pytest failures and U29-4 were merge interactions (guards, a pin, an orphan scan that missed `_dash_pend` dispatch, the node harness writing sources back as lists), fixed and re-run green; test_dual_axis's one-pass timing passes alone. The suite now takes about 40 minutes wall, past CLAUDE.md's five-minute target.
 
+## WP-33 · Verification corpus and README gallery (P13) — DONE
+
+**GAPS4 closed:** TR-2, TR-11, TR-23, BY-23, BY-24, stat:PT-23, CV-16, syn:SD-20, GW-11
+
+As the maintainer, I want every twoway example in the help files, the graphics manual, examples/ and the drop-in audit compared with dash's picture by geometry and colour, each difference explained by a known item or counted as unexplained, so that later work packages are measured against a recorded baseline and the closing gallery can show twoway's picture beside dash's.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M1-M14, PD-1..PD-18) and .ultraplan/review/DECISIONS.md (P4-1..P4-10, A-1..A-28, P5-1..P5-3, D42-D54), which hold them in full.
+
+- **Tracking (M4, PD-1..PD-6).** GAPS4.md registers the audit's items (221 at the start; 230 after the rows the batches measured: syn:SD-20a..e, BY-24a, BY-32, MS-15, syn:SD-22), each with a BUGS.md entry; one truth script per work package from a shared template.
+- **No size cap (P4-3).** The embedded-cell and page-bytes caps are removed in both modes; every count cap stays and is documented.
+- **The corpus (M5, P4-2, D52).** One example per combination of plot types and option names; each run on the data its variables come from; only what twoway accepts is compared, and fragments whose variables no shipped dataset holds are dropped and listed.
+- **Verdicts (PD-14, A-4, A-25, D46-D51).** Geometry decides: axes and their scale, ticks, labels, titles, legend, glyphs, colours, text size, margins, marker size, line width, marker labels and outlines; the maintainer labelled the 32 calibration pairs (D49: no pair is Same, every one differs in text size, margins and marker or line size, owned by VF-4 and GW-6); the ledger keys each known difference by its GAPS4 item.
+- **Gallery (P4-1, P4-8, PD-12, PD-13).** dash image panels and graphs registered under Stata's frame prefix make the per-plot-type gallery pages possible; the gallery and the README block are built only at WP-50's closeout.
+- **Guard (M5).** Twenty-one corpus examples are compared in every certification run (Q3309-1).
+- **Suite speed (22oct2026, the maintainer).** The gate records where its time goes (timing.txt); heavy served comparisons check a representative subset at the gate and every probe in the release tier; long probe loops are split; the closed WP-29/30/31 truth scripts run in the release tier and at each work package's closeout (`make cert-all`). The gate went from 2,062 s to about 1,260-1,560 s, still past the five-minute target.
+
+- **Baseline (Q12, approved 22oct2026).** test/fixtures/corpus_baseline.json: 339 examples compared, 0 Same, 235 Close, 104 Differs, 0 skipped; 87 fragments dropped for want of a dataset; dash refuses 3 that twoway draws.
+- **Entries.** 9 WP-33 entries; 9 closed, 0 documented, 0 partly closed; BUGS.md holds 222 open entries.
+- **Left open:** none of WP-33's items. The batches registered nine measured differences for later work packages (D42, D44, D48, D50, D54).
+- **Gate (22oct2026):** `make test-all` -- pytest 39,112 passed, 1 failed (1,051 s; a two-second timing bound under a loaded machine, converted to a ratio check in 6d07e30 and re-run green); cert 67 of 67 (506 s). `make cert-all` -- 70 of 70 passed.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
