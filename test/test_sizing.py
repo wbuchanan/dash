@@ -323,7 +323,11 @@ class TestAspect:
     def test_survives_sizes(self, mode, tmp_path):
         f = _figure(mode, tmp_path, {"aspectratio": "1", "xsize": "8",
                                      "ysize": "4"})
-        assert f.aspect_ratio == pytest.approx(2.0)
+        # Flipped (WP-34 VF-3): aspect_ratio 2 was the leftover that
+        # collapsed the frame; the box is the figure's width and height now.
+        assert f.aspect_ratio is None
+        assert (f.width, f.height) == f._dash_frame_box
+        assert f.min_height is None and f.max_height is None
         assert f.sizing_mode == "fixed"
         assert f.frame_width == f.frame_height
         w, h = f._dash_frame_box
@@ -364,6 +368,20 @@ class TestAspect:
         assert d["aspect_bad_sub"]["lines"] == ["option foo not allowed"]
         assert d["aspect_bad_place"]["rc"] == 0
 
+    def test_the_borders_count_the_title(self):
+        """D55: a figure's own title is counted on its side, as its lines
+        at 1.3 x the font's px plus its standoff; an empty title is not."""
+        from bokeh.plotting import figure
+        f = figure(title="T\nU")
+        f.title.text_font_size = "14pt"
+        b = dr._dash_frame_borders(f)
+        assert b["above"] == pytest.approx(2 * 1.3 * 14 * 4 / 3
+                                           + f.title.standoff)
+        assert dr._dash_frame_borders(figure())["above"] == 5
+        g = figure(title="T", title_location="left")
+        assert dr._dash_frame_borders(g)["left"] > 5
+        assert dr._dash_frame_borders(g)["above"] == 5
+
     def test_the_frame_rule(self):
         from bokeh.plotting import figure
         f = figure()
@@ -371,6 +389,149 @@ class TestAspect:
         dr._dash_frame_sizes(f, 0.5, "c", 600, 600)
         assert f.frame_height == round(f.frame_width * 0.5)
         assert f.frame_width == round(600 - b["left"] - b["right"])
+
+
+#: aspectratio() with xsize()/ysize(): the three probes measured in [B]
+#: §4.6 (WP-34 VF-3).  Every box is under the page's height bound, so the
+#: expectations compare with ``_dash_frame_box``, never with a bound.
+_FIXED = (
+    {"aspectratio": "2", "xsize": "8", "ysize": "4"},
+    {"aspectratio": "1", "xsize": "8"},
+    {"aspectratio": ".5", "xsize": "6", "ysize": "3"},
+)
+_FIXED_IDS = ("ar2_8x4", "ar1_8", "ar05_6x3")
+
+#: The same box with a title, and a title and subtitle (D55), and the room
+#: above the frame headless Chrome gave them: title 14pt 31 px (bokeh 3.9;
+#: 33 under 3.8), a subtitle 11pt 26 px (28) under it.
+_FIXED_TITLED = (
+    {"aspectratio": "2", "xsize": "8", "ysize": "4", "title": '"T"'},
+    {"aspectratio": "2", "xsize": "8", "ysize": "4", "title": '"T"',
+     "subtitle": '"S"'},
+)
+_FIXED_TITLED_IDS = ("ar2_title", "ar2_title_subtitle")
+_TITLE_ROOM = {"ar2_title": 33, "ar2_title_subtitle": 61}
+
+
+def _fixed_build(mode, wd, go):
+    """``(figure, models, log lines)`` of *go* in *mode*: every model of
+    the page's roots and every record Bokeh logged while the page was
+    built -- the saved page's ``render()``, or the served document's
+    creation and validation (what the server runs before it sends it)."""
+    import logging
+    from bokeh.plotting import figure as _fcls
+    seen = []
+
+    class _H(logging.Handler):
+        def emit(self, record):
+            seen.append(record.getMessage())
+
+    log = logging.getLogger("bokeh")
+    h = _H(level=logging.DEBUG)
+    log.addHandler(h)
+    try:
+        tag = next(_SEQ)
+        wd = Path(wd)
+        sp, dp = wd / ("s%d.json" % tag), wd / ("d%d.json" % tag)
+        sp.write_text(json.dumps(_spec([_sc()], go)), encoding="utf-8")
+        dp.write_text(json.dumps(make_data_json(_DF)), encoding="utf-8")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if mode == "saved":
+                r = dr.DashRenderer(str(sp), str(dp))
+                r.render()
+                roots = [r._last_layout_root]
+            else:
+                from bokeh.document import Document
+                ap = str(wd / ("a%d.py" % tag))
+                dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
+                mod = load_app(ap, "_sz_fixed_%d" % tag)
+                doc = Document()
+                mod.make_document(doc)
+                doc.validate()
+                roots = list(doc.roots)
+    finally:
+        log.removeHandler(h)
+    models = set()
+    for root in roots:
+        models |= set(root.references())
+    figs = [m for m in models if isinstance(m, _fcls)]
+    assert len(figs) == 1, figs
+    return figs[0], models, seen
+
+
+@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("go", _FIXED, ids=_FIXED_IDS)
+class TestFixedFrame:
+    """aspectratio() with xsize()/ysize() (WP-34 VF-3): the figure is the
+    box, its height bounds and own ratio are cleared, and its frame has
+    ratio # -- before, BokehJS sized the host 600 x 560 from Bokeh's
+    default height against max_height and aspectratio(2) xsize(8) ysize(4)
+    drew a 0 px frame, and every build printed E-1023."""
+
+    def test_box_and_ratio(self, mode, go, tmp_path):
+        f, _m, _l = _fixed_build(mode, tmp_path, go)
+        ar = float(go["aspectratio"])
+        assert f.sizing_mode == "fixed"
+        assert (f.width, f.height) == f._dash_frame_box
+        assert isinstance(f.width, int) and isinstance(f.height, int)
+        assert f.min_height is None and f.max_height is None
+        assert f.aspect_ratio is None
+        assert f.frame_width > 0 and f.frame_height > 0
+        assert f.frame_height / f.frame_width == pytest.approx(ar, rel=0.01)
+        w, h = f._dash_frame_box
+        assert f.min_border_left + f.frame_width + f.min_border_right \
+            == pytest.approx(w, abs=1)
+        assert f.min_border_top + f.frame_height + f.min_border_bottom \
+            == pytest.approx(h, abs=1)
+
+    def test_no_validation_message(self, mode, go, tmp_path):
+        from bokeh.core.validation import check_integrity
+        _f, models, logged = _fixed_build(mode, tmp_path, go)
+        issues = check_integrity(models)
+        codes = sorted("W-%d %s" % (w.code, w.name) for w in issues.warning) \
+            + sorted("E-%d %s" % (e.code, e.name) for e in issues.error)
+        assert codes == [], codes
+        assert [m for m in logged if "E-10" in m or "W-10" in m] == [], logged
+
+
+@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("go,room", [(g, _TITLE_ROOM[i]) for g, i in
+                                     zip(_FIXED_TITLED, _FIXED_TITLED_IDS)],
+                         ids=_FIXED_TITLED_IDS)
+class TestFixedFrameTitles:
+    """D55: the figure's own title, and a subtitle under it, take room
+    above the frame; the estimate counts them, so BokehJS draws the frame
+    at its size and ratio instead of squeezing it (title("T") drew 168x308,
+    ratio 1.83, for aspectratio(2) xsize(8) ysize(4))."""
+
+    def test_the_room_above_holds_them(self, mode, go, room, tmp_path):
+        f, _m, _l = _fixed_build(mode, tmp_path, go)
+        assert f._dash_frame_est["above"] >= room
+        assert f.min_border_top >= room
+        assert f.frame_height / f.frame_width == pytest.approx(2.0, rel=0.01)
+        assert f.min_border_top + f.frame_height + f.min_border_bottom \
+            == pytest.approx(f.height, abs=1)
+
+
+class TestFixedFrameHelp:
+    def test_the_size_sentence(self):
+        from test_help_claims_1 import _between, _help
+        para = " ".join(_between(_help(), "{phang2}{opt aspectratio(#)}",
+                                 "{p_end}").split())
+        # D55: the residual is stated (titles estimated up to 4 px high
+        # each line, measured in Chrome), no longer "a few pixels" either way.
+        assert ("The figure is drawn at that size; the room the axes and "
+                "titles take is estimated, up to 4 pixels high for each "
+                "line of a title, so the plot region, always of ratio "
+                "{it:#}, can be that much smaller than the largest that "
+                "fits.") in para
+        assert "differ from the largest fit by a few pixels" not in para
+        assert ("Such a figure keeps its size in a cell narrower than it, "
+                "which then scrolls sideways.") in para
+        assert "the figure's size can differ from {cmd:xsize()}" not in para
+        # The height bound is 45-04's to remove (DECISIONS A-1).
+        assert "held to the page's height bound" in para
 
 
 class TestOverhangs:

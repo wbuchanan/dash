@@ -5720,9 +5720,11 @@ the page's height bound) and its plot region is the largest of ratio
 {it:#} that fits, placed where {it:placement} says -- {cmd:e} against
 the right edge, {cmd:w} the left, {cmd:n} the top, {cmd:s} the bottom,
 {cmd:c} (the default) centred; a name {cmd:twoway} does not know is noted
-and centred, as {cmd:twoway} draws it.  The room the axes and titles take
-is estimated, so the figure's size can differ from {cmd:xsize()} by a few
-pixels.  Without {cmd:xsize()} or {cmd:ysize()} the figure stretches to
+and centred, as {cmd:twoway} draws it.  The figure is drawn at that size;
+the room the axes and titles take is estimated, up to 4 pixels high for
+each line of a title, so the plot region, always of ratio {it:#}, can be
+that much smaller than the largest that fits.  Such a figure keeps its size
+in a cell narrower than it, which then scrolls sideways.  Without {cmd:xsize()} or {cmd:ysize()} the figure stretches to
 its cell, so {it:#} shapes the whole figure instead (the plot region's
 own ratio then differs from {it:#} by the room the axes take), and
 {it:placement} has no slack to use.  Under {cmd:by()} {it:#} shapes

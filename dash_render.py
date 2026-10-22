@@ -27477,12 +27477,30 @@ def _dash_frame_aspect(graph_opts):
 
 def _dash_frame_borders(fig):
     """The px each side of *fig*'s frame is estimated to need, as
-    ``{"left", "right", "above", "below"}``: an axis 45 px, a title or
-    label its font's height plus 10 px, and the figure's own min_border
-    when larger (WP-31 D5).  An estimate, used to size the frame so the
-    figure stays near the size xsize()/ysize() asked for."""
-    from bokeh.models import Axis
+    ``{"left", "right", "above", "below"}``: an axis 45 px, a title its
+    lines at 1.3 x its font's px plus its standoff (other text its font's
+    height plus 10 px), the figure's own title counted on its
+    ``title_location`` side (D55: BokehJS 3.9 gave title("T") 31 px and a
+    subtitle under it 26 more, 3.8 33 and 28, and an uncounted title squeezed the frame
+    off its ratio), and the figure's own min_border when larger (WP-31
+    D5).  An estimate, used to size the frame so the figure stays near the
+    size xsize()/ysize() asked for; it errs high, never low."""
+    from bokeh.models import Axis, Title
+
+    def _text_px(m):
+        pt = OptionTranslator.css_to_pt(getattr(m, "text_font_size", None))
+        if pt is None:
+            return 0.0
+        if not isinstance(m, Title):
+            return pt * 4.0 / 3.0 + 10.0
+        text = str(m.text or "")
+        if not text.strip():
+            return 0.0
+        pad = m.standoff if isinstance(m.standoff, (int, float)) else 10
+        return (text.count("\n") + 1) * pt * 4.0 / 3.0 * 1.3 + float(pad)
+
     base = fig.min_border if isinstance(fig.min_border, (int, float)) else 5
+    own_title = getattr(fig, "title", None)
     out = {}
     for side in ("left", "right", "above", "below"):
         own = getattr(fig, "min_border_" + {"above": "top",
@@ -27492,10 +27510,10 @@ def _dash_frame_borders(fig):
             if isinstance(m, Axis):
                 tot += 45.0
             else:
-                pt = OptionTranslator.css_to_pt(
-                    getattr(m, "text_font_size", None))
-                if pt is not None:
-                    tot += pt * 4.0 / 3.0 + 10.0
+                tot += _text_px(m)
+        if isinstance(own_title, Title) \
+                and (fig.title_location or "above") == side:
+            tot += _text_px(own_title)
         own = own if isinstance(own, (int, float)) else base
         out[side] = max(float(own), tot)
     return out
@@ -27509,7 +27527,10 @@ def _dash_frame_sizes(fig, ar, placement, width, height):
     figure, the slack put where ``placement()`` puts the plot region
     (measured, sizing_truth.json ar_place_*: ``e`` against the right edge,
     ``w`` the left, ``n`` the top, ``s`` the bottom, ``c`` centred) through
-    ``min_border_*``.  No page JavaScript."""
+    ``min_border_*``.  No page JavaScript.  The figure's width and height
+    are the box and its height bounds and aspect ratio are cleared (WP-34
+    VF-3): with a fixed policy BokehJS sizes the host from them, and
+    Bokeh's default 600 against max_height 560 drew a 0 px frame."""
     if fig is None or not ar or ar <= 0 or not width or not height:
         return
     b = _dash_frame_borders(fig)
@@ -27524,6 +27545,11 @@ def _dash_frame_sizes(fig, ar, placement, width, height):
     xl = sx if "e" in p else (0.0 if "w" in p else sx / 2.0)
     yt = sy if "s" in p else (0.0 if "n" in p else sy / 2.0)
     fig.sizing_mode = "fixed"
+    fig.width = int(round(float(width)))
+    fig.height = int(round(float(height)))
+    fig.min_height = None
+    fig.max_height = None
+    fig.aspect_ratio = None
     fig.frame_width, fig.frame_height = fw, fh
     fig.min_border_left = int(round(b["left"] + xl))
     fig.min_border_right = int(round(b["right"] + sx - xl))

@@ -303,6 +303,131 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w34_run' {
 }
 * ==== end S01 ====
 
+python:
+def _q3404_cmp(svg, page, ar):
+    """q3404_bad: "" when twoway's plot region in *svg* and dash's frame on
+    the saved *page* both have ratio *ar* within 2% and agree within 2%,
+    and twoway's graph size (its canvas, 720 units an inch, at 96 px an
+    inch) is the page figure's width and height within 1 px; else what
+    differed.  The region's own margin m = 63.4 units is taken off each
+    side ([S] section 7)."""
+    import json
+    import os
+    import re
+    import sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.abspath(os.path.join("..", "scripts")))
+    import svg_truth
+    doc = svg_truth.svg_document(svg)
+    p, c = doc["plotregion"], doc["canvas"]
+    m = 63.4
+    tw = (p["bottom"] - p["top"] - 2 * m) / (p["right"] - p["left"] - 2 * m)
+    tw_w, tw_h = c["w"] / 720.0 * 96.0, c["h"] / 720.0 * 96.0
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    figs = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            if o.get("name") == "Figure" and isinstance(o.get("attributes"), dict):
+                figs.append(o["attributes"])
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    for body in re.findall(r'<script type="application/json"[^>]*>(.*?)</script>', html, re.S):
+        try:
+            walk(json.loads(body))
+        except ValueError:
+            pass
+    bad = []
+    if len(figs) != 1:
+        bad.append("%d figures on the page" % len(figs))
+    else:
+        f = figs[0]
+        fw, fh_ = f.get("frame_width"), f.get("frame_height")
+        dw = (fh_ / fw) if fw and fh_ else None
+        if dw is None or abs(dw - ar) > 0.02 * ar:
+            bad.append("dash's frame %sx%s is not ratio %s" % (fw, fh_, ar))
+        if abs(tw - ar) > 0.02 * ar:
+            bad.append("twoway's region ratio %.4f is not %s" % (tw, ar))
+        if dw is not None and abs(dw - tw) > 0.02 * tw:
+            bad.append("ratios differ: dash %.4f twoway %.4f" % (dw, tw))
+        if f.get("width") is None or abs(f["width"] - tw_w) > 1 \
+                or f.get("height") is None or abs(f["height"] - tw_h) > 1:
+            bad.append("figure %sx%s, twoway's graph %.1fx%.1f px"
+                       % (f.get("width"), f.get("height"), tw_w, tw_h))
+    Macro.setGlobal("q3404_bad", "; ".join(bad)[:1500])
+    Macro.setGlobal("q3404_got", "twoway region ratio %.4f, graph %.0fx%.0f px" % (tw, tw_w, tw_h))
+end
+
+* ==== S04 VF-3: aspectratio() with xsize()/ysize() draws its frame ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w34_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w34_work'/s04vf3"
+    capture mkdir "`q04d'"
+
+    // Q3404-1: twoway's plot-region ratio and graph size against the
+    // ratio and size of dash's figure on the saved page, live.
+    // Q3404-2: building it prints no Bokeh validation line (E-1023 was
+    // printed on every such build).
+    sysuse auto, clear
+    local q04_o1 "aspectratio(2) xsize(8) ysize(4)"
+    local q04_r1 2
+    local q04_o2 "aspectratio(1) xsize(5) ysize(5)"
+    local q04_r2 1
+    local q04_o3 "aspectratio(.5) xsize(6) ysize(3)"
+    local q04_r3 .5
+    // D55: a title, and a title with a subtitle, leave the ratio as it is.
+    local q04_o4 `"aspectratio(2) xsize(8) ysize(4) title("T")"'
+    local q04_r4 2
+    local q04_o5 `"aspectratio(2) xsize(8) ysize(4) title("T") subtitle("S")"'
+    local q04_r5 2
+    local q04_b1 ""
+    local q04_b2 ""
+    forvalues i = 1/5 {
+        capture graph drop q04g
+        quietly twoway scatter mpg weight, `q04_o`i'' name(q04g, replace)
+        cert_svg_export, name(q04g) file("`q04d'/tw`i'.svg")
+        local q04_rc = r(rc)
+        capture graph drop q04g
+        capture erase "`q04d'/ar`i'.html"
+        capture log close q3404
+        quietly log using "`q04d'/ar`i'.log", text replace name(q3404)
+        capture noisily dash scatter mpg weight, `q04_o`i'' saving("`q04d'/ar`i'.html", replace)
+        local q04_drc = _rc
+        quietly log close q3404
+        if `q04_rc' | `q04_drc' {
+            local q04_b1 `"`q04_b1' [`q04_o`i'': export rc `q04_rc', dash rc `q04_drc']"'
+            continue
+        }
+        python: _q3404_cmp(r"`q04d'/tw`i'.svg", r"`q04d'/ar`i'.html", float("`q04_r`i''"))
+        display as text `"Q3404-1 `q04_o`i'': ${q3404_got}"'
+        if `"${q3404_bad}"' != "" local q04_b1 `"`q04_b1' [`q04_o`i'': ${q3404_bad}]"'
+        foreach n in E-1023 E-10 W-10 {
+            cert_file_has "`q04d'/ar`i'.log", needle("`n'")
+            if r(found) local q04_b2 `"`q04_b2' [`q04_o`i'': `n' in the log]"'
+        }
+        capture erase "`q04d'/tw`i'.svg"
+        capture erase "`q04d'/ar`i'.html"
+        capture erase "`q04d'/ar`i'.log"
+        dash clear
+    }
+    _w34_expect Q3404-1 `"(`"`q04_b1'"' == "")"' `"`q04_b1'"'
+    _w34_done Q3404-1 "twoway's plot region and graph size are dash's frame ratio and figure size, five probes"
+    _w34_expect Q3404-2 `"(`"`q04_b2'"' == "")"' `"`q04_b2'"'
+    _w34_done Q3404-2 "no Bokeh validation line in the build log, five probes"
+
+    global q3404_bad ""
+    global q3404_got ""
+    capture rmdir "`q04d'"
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

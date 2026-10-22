@@ -2844,6 +2844,9 @@ CORPUS = [
           [plot_for("histogram", {"gap": "50", "baroffset": "1"})]),
     _case("histogram horizontal ticks",
           [plot_for("histogram", {"horizontal": "horizontal"})]),
+    # WP-34 VF-3: the fixed figure is the xsize()/ysize() box in both modes.
+    _case("aspectratio 2 xsize 8 ysize 4", [_sc()],
+          go={"aspectratio": "2", "xsize": "8", "ysize": "4"}),
 ]
 
 

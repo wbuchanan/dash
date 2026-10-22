@@ -610,6 +610,7 @@ FUNCTIONS = {
  '_dash_apply_scale.<locals>.whole': 'test/test_sizing.py::TestScale::test_idempotent',
  '_dash_frame_aspect': 'test/test_sizing.py::TestAspect::test_alone_keeps_figure_ratio',
  '_dash_frame_borders': 'test/test_sizing.py::TestAspect::test_the_frame_rule',
+ '_dash_frame_borders.<locals>._text_px': 'test/test_sizing.py::TestAspect::test_the_borders_count_the_title',
  '_dash_frame_sizes': 'test/test_sizing.py::TestAspect::test_the_frame_rule',
  '_dash_apply_frame_aspect': 'test/test_sizing.py::TestAspect::test_survives_sizes',
  '_dash_overhangs': 'test/test_sizing.py::TestOverhangs::test_never_lowers',
