@@ -2,9 +2,10 @@
 
     python3 scripts/corpus/summary.py --run <run> [--out <json>]
 
-Reads <run>/examples.jsonl, extract_duplicates.tsv and verdicts.jsonl and
-prints one line: the examples, the duplicates removed, the verdicts and how
-many examples twoway draws for the gallery.  With --out it also writes the
+Reads <run>/extract_duplicates.tsv, twoway.jsonl and verdicts.jsonl and
+prints one line: the examples compared, the duplicates removed, the examples
+twoway refuses (dropped from the comparison, DECISIONS D52), the verdicts and
+how many examples twoway draws for the gallery.  With --out it also writes the
 counts with a _meta stamp; section 33-14 writes test/fixtures/
 corpus_baseline.json this way.
 """
@@ -15,6 +16,8 @@ import argparse
 import datetime
 import json
 import subprocess
+
+from scripts.corpus import twoway_run
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SOURCE = "scripts/corpus/summary.py"
@@ -35,26 +38,29 @@ def _sorted(d):
 def summarise(run_dir):
     """The run's counts: examples, duplicates, verdicts, refusals, gallery, per plot type,
     per ledger id and the differences outside tolerance no ledger row explains."""
-    examples = _jsonl(os.path.join(run_dir, "examples.jsonl"))
     dup = 0
     path = os.path.join(run_dir, "extract_duplicates.tsv")
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
             dup = max(0, sum(1 for ln in fh if ln.strip()) - 1)
     verdicts = dict.fromkeys(_VERDICTS, 0)
-    refused = {"twoway": 0, "dash": 0}
+    refused = {"dash": 0}
+    twoway_refuses = 0
     by_type, led, unexplained = {}, {}, {}
     gallery = 0
+    judged = set()
     for v in _jsonl(os.path.join(run_dir, "verdicts.jsonl")):
+        judged.add(v["id"])
+        rc_tw, rc_da = v.get("rc_twoway"), v.get("rc_dash")
+        if not v.get("skip") and rc_tw not in (0, None):
+            twoway_refuses += 1  # D52: dropped, not a verdict (an older run's row)
+            continue
         said = v.get("verdict") or "skipped"
         verdicts[said] += 1
         t = by_type.setdefault(v.get("plottype") or "", dict.fromkeys(_VERDICTS, 0))
         t.setdefault("examples", 0)
         t["examples"] += 1
         t[said] += 1
-        rc_tw, rc_da = v.get("rc_twoway"), v.get("rc_dash")
-        if not v.get("skip") and rc_tw not in (0, None):
-            refused["twoway"] += 1
         if not v.get("skip") and rc_tw == 0 and rc_da not in (0, None):
             refused["dash"] += 1
         gallery += bool(v.get("gallery"))
@@ -63,9 +69,11 @@ def summarise(run_dir):
         for d in v.get("differences") or []:
             if not d.get("within_tol") and not d.get("gaps4"):
                 unexplained[d["check"]] = unexplained.get(d["check"], 0) + 1
-    return _sorted({"examples": len(examples), "duplicates": dup, "verdicts": verdicts,
-                    "refused": refused, "gallery": gallery, "by_plottype": by_type,
-                    "ledger": led, "unexplained": unexplained})
+    twoway_refuses += len(twoway_run.refused_ids(run_dir) - judged)
+    return _sorted({"examples": sum(verdicts.values()), "duplicates": dup,
+                    "verdicts": verdicts, "refused": refused,
+                    "twoway_refuses": twoway_refuses, "gallery": gallery,
+                    "by_plottype": by_type, "ledger": led, "unexplained": unexplained})
 
 
 def _git_head():
@@ -97,10 +105,10 @@ def main(argv=None):
     a = ap.parse_args(argv)
     s = summarise(a.run)
     v = s["verdicts"]
-    print("corpus: %d examples (%d duplicates removed): %d Same, %d Close, %d Differs, "
-          "%d skipped; %d twoway draws for the gallery"
-          % (s["examples"], s["duplicates"], v["Same"], v["Close"], v["Differs"],
-             v["skipped"], s["gallery"]))
+    print("corpus: %d examples (%d duplicates removed; %d twoway refuses): %d Same, "
+          "%d Close, %d Differs, %d skipped; %d twoway draws for the gallery"
+          % (s["examples"], s["duplicates"], s["twoway_refuses"], v["Same"], v["Close"],
+             v["Differs"], v["skipped"], s["gallery"]))
     if a.out:
         write_fixture(s, a.out, a.run)
     return 0

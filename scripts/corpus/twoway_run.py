@@ -8,7 +8,9 @@ Reads <run>/examples.jsonl, writes one do-file per chunk of examples
 code, the first line twoway printed, the SVG twoway exported (moved to
 <run>/twoway/<id>.svg, unedited) and the size twoway drew it at -- plus
 <run>/stata_version.txt.  An example whose dataset the offline cache lacks
-is run in no chunk; each such dataset is named once (DECISIONS A-26).
+is run in no chunk; each such dataset is named once (DECISIONS A-26).  An
+example twoway refuses joins <run>/extract_dropped.tsv with the reason
+"twoway refuses (rc N)" and the later stages skip it (DECISIONS D52).
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -275,9 +277,53 @@ def run(run_dir, jobs=3, timeout=1800, only=None):
     with open(os.path.join(run_dir, "twoway.jsonl"), "w", encoding="utf-8") as fh:
         for r in rows:
             fh.write(json.dumps({k: r[k] for k in ROW_KEYS}) + "\n")
+    drop_refused(run_dir, examples, rows)
     return {"rc0": sum(r["rc"] == 0 for r in rows),
             "refused": sum(r["rc"] not in (None, 0) for r in rows),
             "skipped": sum(r["skip"] is not None for r in rows)}
+
+
+REFUSES = "twoway refuses (rc %d)"
+
+
+def drop_refused(run_dir, examples, rows):
+    """List each example twoway refuses in <run_dir>/extract_dropped.tsv (D52).
+
+    The corpus compares only what twoway accepts: such an example is dropped
+    with the reason "twoway refuses (rc N)", and the later stages skip it.
+    The list's earlier refusal rows for these examples are replaced, so a
+    rerun never repeats one.  Returns the dropped ids."""
+    rc = {r["id"]: r.get("rc") for r in rows if not r.get("skip")}
+    refused = [e for e in sorted(examples, key=lambda e: e["id"])
+               if rc.get(e["id"]) not in (0, None)]
+    path = os.path.join(run_dir, "extract_dropped.tsv")
+    lines = ["source\twhere\treason\tcmd"]
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            lines = [ln.rstrip("\n") for ln in fh if ln.strip()] or lines
+    def key(where, cmd):
+        return where + "\t" + cmd
+    mine = {key("%s:%s" % (e.get("file"), e.get("line")), e["cmd"]) for e in examples}
+    kept = [ln for ln in lines[1:]
+            if not (ln.split("\t")[2:3] and ln.split("\t")[2].startswith("twoway refuses (")
+                    and key(ln.split("\t")[1], "\t".join(ln.split("\t")[3:])) in mine)]
+    for e in refused:
+        kept.append("\t".join(str(x).replace("\t", " ") for x in (
+            e.get("source"), "%s:%s" % (e.get("file"), e.get("line")),
+            REFUSES % rc[e["id"]], e["cmd"])))
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join([lines[0]] + kept) + "\n")
+    return [e["id"] for e in refused]
+
+
+def refused_ids(run_dir):
+    """The ids of <run_dir>/twoway.jsonl's examples twoway refused (D52)."""
+    path = os.path.join(run_dir, "twoway.jsonl")
+    if not os.path.exists(path):
+        return set()
+    with open(path, encoding="utf-8") as fh:
+        rows = [json.loads(ln) for ln in fh if ln.strip()]
+    return {r["id"] for r in rows if not r.get("skip") and r.get("rc") not in (0, None)}
 
 
 def main(argv=None):

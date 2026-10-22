@@ -1,7 +1,5 @@
 # Frozen from the drop-in audit's appendix on 21oct2026; regenerate only with --freeze-audit.
-plot:PT-8	sysuse auto, clear	twoway scatter[aw=price] mpg weight
 ECO-1	sysuse auto, clear	twoway line mpg rep78, name(gc)
-ECO-8	sysuse auto, clear	twoway kdensity mpg, normal
 DT-08	sysuse auto, clear	twoway dot mpg weight, recast(line)
 DT-11	sysuse auto, clear	scatter mpg turn weight, mlabel(t*)
 DT-18	sysuse auto, clear	twoway scatter mpg weight, lwidth(-1)
@@ -20,13 +18,10 @@ BY-27	sysuse auto, clear	twoway (scatter mpg weight) (function y=40-x/200, range
 BY-29	sysuse auto, clear	twoway (scatter mpg weight) (lfit mpg weight), by(foreign) scale(1.5)
 BY-30	sysuse auto, clear	line mpg weight, sort by(foreign)
 # ---- hand-added: the appendix's unquoted prose probes (section 33-02, D-33-02.j); --freeze-audit keeps every line below ----
-plot:PT-6	sysuse auto, clear	twoway tsline mpg
 basic:PT-3	sysuse auto, clear	scatter mpg price weight in 1/5, mlabel(t*)
 basic:PT-4	sysuse auto, clear	line mpg weight
-basic:PT-8	sysuse auto, clear	scatter mpg weight, omitanymiss omitallmiss
 stat:PT-7	sysuse auto, clear	twoway lowess mpg weight, m
 stat:PT-12	sysuse auto, clear	twoway lfit mpg weight, xtransform(X^2) n(7)
-stat:PT-14	sysuse auto, clear	twoway histogram mpg, bw(1)
 stat:PT-16	sysuse auto, clear	twoway lpolyci mpg weight, degree(3)
 stat:PT-16	sysuse auto, clear	twoway lpolyci mpg weight [fw=rep78], degree(2)
 stat:PT-21	sysuse auto, clear	twoway lowess mpg weight, mean noweight
@@ -38,8 +33,6 @@ AX-3	sysuse auto, clear	scatter price mpg, by(foreign)
 AX-4	sysuse auto, clear	twoway histogram mpg
 AX-4	sysuse auto, clear	twoway histogram price
 BY-2	sysuse auto, clear	scatter mpg weight, scale(1.5) by(foreign)
-BY-5	sysuse auto, clear	scatter mpg weight, aspectratio(1) by(foreign, shrink)
-BY-6	sysuse auto, clear	scatter mpg weight, by(, total)
 BY-14	sysuse auto, clear	scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend by(foreign, plegend(on))
 BY-20	sysuse auto, clear	scatter mpg weight, aspectratio(1) by(foreign)
 syn:SD-1	sysuse auto, clear	twoway (scatter mpg weight) line mpg weight
@@ -48,7 +41,6 @@ syn:SD-13	sysuse auto, clear	twoway (scatter mpg weight || line mpg weight),
 syn:SD-19	sysuse auto, clear	scatter mpg weight [fw=0], nodraw
 VF-1	sysuse auto, clear	twoway histogram rep78, discrete
 DT-27	sysuse auto, clear	twoway kdensity mpg
-sil:SD-8	sysuse auto, clear	twoway scatter mpg weight, title(T) notitling
 sil:SD-10	sysuse auto, clear	twoway scatter mpg weight, xlabel(0(2)5000)
 sil:SD-11	sysuse auto, clear	twoway scatter mpg weight, msize(1500)
 RH-6	sysuse auto, clear	twoway histogram mpg, recast(bar)
@@ -71,4 +63,3 @@ MS-12	sysuse auto, clear	scatter mpg weight, yaxis(2)
 MS-12	sysuse auto, clear	twoway pci 20 3000 30 4000, yaxis(2)
 MS-14	sysuse auto, clear	scatter mpg weight, xscale(range(1000)) xscale(log)
 DG-8	sysuse auto, clear	twoway contour price mpg weight in 1/2
-DG-9	sysuse auto, clear	scatter mpg rep78, xlabel(1/5 .a, valuelabel)

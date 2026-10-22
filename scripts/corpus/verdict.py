@@ -1016,6 +1016,10 @@ def run(run_dir, rules_path, ledger_path, gaps4_path=None):
     states = ledger_mod.gaps4_states(gaps4_path)
     examples = sorted(_jsonl(os.path.join(run_dir, "examples.jsonl")), key=lambda e: e["id"])
     tws = {r["id"]: r for r in _jsonl(os.path.join(run_dir, "twoway.jsonl"))}
+    # D52: an example twoway refuses is dropped from the comparison, not judged.
+    examples = [e for e in examples
+                if (tws.get(e["id"]) or {}).get("skip")
+                or (tws.get(e["id"]) or {}).get("rc") in (0, None)]
     das = {r["id"]: r for r in _jsonl(os.path.join(run_dir, "dash.jsonl"))}
     try:
         probe = _open_probe(run_dir)

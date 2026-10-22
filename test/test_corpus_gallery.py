@@ -164,7 +164,8 @@ class TestLoadRun:
         with open(run / "dash.jsonl", "a", encoding="utf-8") as fh:
             fh.write(json.dumps({"id": "help-scatter-zzzz9999", "rc": 0}) + "\n")
         rows, missing = gallery.load_run(str(run))
-        assert [r["id"] for r in rows] == sorted(_IDS)
+        # D52: the example twoway refuses is dropped, neither a row nor missing.
+        assert [r["id"] for r in rows] == sorted(_IDS[:2])
         assert missing == ["help-scatter-zzzz9999"]
         r = {r["id"]: r for r in rows}[_IDS[0]]
         assert set(r) == {"id", "example", "twoway", "dash", "verdict"}
@@ -466,13 +467,10 @@ class TestCorpusJson:
     def test_every_example_with_both_answers_sorted(self, tmp_path, cache):
         corpus, rows, svgs, out = _corpus(tmp_path, cache)
         ex = corpus["examples"]
-        assert [e["id"] for e in ex] == sorted(_IDS)
+        assert [e["id"] for e in ex] == sorted(_IDS[:2])
         by = {e["id"]: e for e in ex}
         a, b, c = _IDS
-        assert by[c]["rc"] == [198, 198] and by[c]["shown"] is None
-        assert by[c]["page"] is None and by[c]["twoway_svg"] is None
-        assert by[c]["dash_svg"] is None and by[c]["dash_svg_vector"] is None
-        assert by[c]["missing"] is None
+        assert c not in by  # D52: twoway refuses it, so it is not in the comparison
         assert by[a]["duplicates"] == ["gpdf-scatter-dddd0004"]
         assert by[a]["ledger"] == ["AX-4"] and by[a]["checks"] == ["legend", "x_ticks"]
         assert by[a]["differences"][0]["gaps4"] == "AX-4"
@@ -482,10 +480,10 @@ class TestCorpusJson:
         assert by[a]["dash_command"] == "dash scatter mpg weight"
         assert corpus["_meta"]["load_s"] == {"scatter.html": 1.25, "index.html": 0.5}
         n = corpus["_meta"]["counts"]
-        assert n["examples"] == 3 and n["duplicates"] == 1 and n["gallery"] == 2
+        assert n["examples"] == 2 and n["duplicates"] == 1 and n["gallery"] == 2
         assert n["Same"] + n["Close"] + n["Differs"] + n["skipped"] == n["examples"]
         assert n["live"] + n["static"] + n["refused_shown"] == n["gallery"]
-        assert n["refused_twoway"] == 1 and n["refused_dash"] == 0
+        assert "refused_twoway" not in n and n["refused_dash"] == 0
         # A webuse dataset the cache lacks: shown static, its missing list read.
         {r["id"]: r for r in rows}[b]["example"]["setup"] = ["webuse lbw, clear"]
         shown = {_IDS[0]: ("live", "scatter"), _IDS[1]: ("static", "scatter")}
@@ -673,7 +671,7 @@ class TestMain:
         assert corpus["_meta"]["pages"] == ["scatter"] and corpus["_meta"]["load_s"] == {}
         assert corpus["_meta"]["stata_version"] == "19.5"
         assert {e["id"]: e["shown"] for e in corpus["examples"]} == {
-            _IDS[0]: "live", _IDS[1]: "live", _IDS[2]: None}
+            _IDS[0]: "live", _IDS[1]: "live"}
         text = readme.read_text(encoding="utf-8")
         assert text.count("## Gallery") == 1 and text.count("<p><img") == 1
         assert os.path.exists(run / "gallery" / "scatter" / "page.do")
@@ -721,9 +719,10 @@ class TestSummary:
     def test_counts_per_verdict_type_and_ledger(self, tmp_path):
         run = _fake_run(tmp_path)
         s = summary.summarise(str(run))
-        assert s["examples"] == 3 and s["duplicates"] == 1 and s["gallery"] == 2
-        assert s["verdicts"] == {"Close": 1, "Differs": 0, "Same": 2, "skipped": 0}
-        assert s["refused"] == {"dash": 0, "twoway": 1}
+        # D52: the example twoway refuses is dropped, not counted as a verdict.
+        assert s["examples"] == 2 and s["duplicates"] == 1 and s["gallery"] == 2
+        assert s["verdicts"] == {"Close": 1, "Differs": 0, "Same": 1, "skipped": 0}
+        assert s["refused"] == {"dash": 0} and s["twoway_refuses"] == 1
         assert s["by_plottype"]["scatter"] == {"Close": 1, "Differs": 0, "Same": 1,
                                                "examples": 2, "skipped": 0}
         assert s["ledger"] == {"AX-4": 1}
@@ -740,14 +739,14 @@ class TestSummary:
         assert m["stata_version"] == "19.5" and m["source"] == "scripts/corpus/summary.py"
         assert re.match(r"^\d{2} [A-Z][a-z]{2} \d{4}$", m["born_date"])
         assert re.match(r"^[0-9a-f]{40}$", m["dash_commit"])
-        assert d["examples"] == 3
+        assert d["examples"] == 2
 
     def test_main_prints_the_line_and_writes_out(self, tmp_path, capsys):
         run = _fake_run(tmp_path)
         assert summary.main(["--run", str(run)]) == 0
         out = capsys.readouterr().out
-        assert ("corpus: 3 examples (1 duplicates removed): 2 Same, 1 Close, 0 Differs, "
-                "0 skipped; 2 twoway draws for the gallery") in out
+        assert ("corpus: 2 examples (1 duplicates removed; 1 twoway refuses): 1 Same, "
+                "1 Close, 0 Differs, 0 skipped; 2 twoway draws for the gallery") in out
         b = tmp_path / "b.json"
         assert summary.main(["--run", str(run), "--out", str(b)]) == 0
         d = json.loads(b.read_text(encoding="utf-8"))

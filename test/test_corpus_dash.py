@@ -181,6 +181,25 @@ class TestRunStata:
         assert str(tmp_path) not in (run / "dash.jsonl").read_text()
 
 
+class TestOnlyWhatTwowayDraws:
+
+    def test_an_example_twoway_refuses_is_not_run(self, tmp_path, monkeypatch):
+        # D52: dash runs only the examples twoway accepts; a refused one has no row.
+        cache = tmp_path / "cache"
+        cache.mkdir()
+        monkeypatch.setenv("DASH_CORPUS_CACHE", str(cache))
+        run = tmp_path / "run"
+        _write_run(run, [_ex("a", cmd="dash scatter mpg weight, nosuch"), _ex("c")],
+                   [_tw("a", rc=198), _tw("c")])
+        log = "##VERSION 19.5\n##BEGIN c\n##SETUP c 0\n##RC c 0\n"
+        monkeypatch.setattr(twoway_run, "SLOT_CMD", _fake_slot(tmp_path, log, ["c"]))
+        counts = dash_run.run_stata(str(run))
+        text = sorted((run / "dash").glob("c*/dash.do"))[0].read_text()
+        assert "##BEGIN a" not in text and "##BEGIN c" in text
+        assert [r["id"] for r in _rows(run)] == ["c"]
+        assert counts == {"rc0": 1, "refused": 0, "skipped": 0}
+
+
 class TestNormalise:
 
     def test_texts_and_ids(self):

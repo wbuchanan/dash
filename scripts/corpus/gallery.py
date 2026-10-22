@@ -14,8 +14,9 @@ panel beside the live dash graph drawn in the frame of its own setup; and
 index.html, whose panels link to the pages.  Each page is one `dash build'
 in its own Stata session through scripts/stata_slot.sh.  Every page is timed
 in headless Chrome.  Only when every page has built are the SVGs and pages
-moved into --gallery, corpus.json written there (every example, refused ones
-included) and, with --readme, the README block written between its markers.
+moved into --gallery, corpus.json written there (every example compared; one
+twoway refuses is dropped from the comparison, DECISIONS D52) and, with
+--readme, the README block written between its markers.
 The gallery is built only at WP-50's closeout (DECISIONS P4-8).
 
 FRAME_LIMIT: measured 22oct2026, one Stata session created 99 frames besides
@@ -87,6 +88,9 @@ def load_run(run_dir):
                       ("verdict", "verdicts")):
         parts[key] = {r["id"]: r for r in _jsonl(os.path.join(run_dir, name + ".jsonl"))}
     every = set().union(*(set(v) for v in parts.values()))
+    # D52: an example twoway refuses is dropped from the comparison.
+    every -= {i for i, r in parts["twoway"].items()
+              if not r.get("skip") and r.get("rc") not in (0, None)}
     rows, missing = [], []
     for i in sorted(every):
         if all(i in v for v in parts.values()):
@@ -486,8 +490,7 @@ def corpus_json(rows, shown, svgs, meta, root):
     cache = datasets.cache_dir()
     examples = []
     n = dict.fromkeys(("examples", "duplicates", "Same", "Close", "Differs", "skipped",
-                       "refused_twoway", "refused_dash", "gallery", "live", "static",
-                       "refused_shown"), 0)
+                       "refused_dash", "gallery", "live", "static", "refused_shown"), 0)
     for r in sorted(rows, key=lambda r: r["id"]):
         e, v = r["example"], r["verdict"]
         kind, page = _shown_of(shown.get(r["id"]))
@@ -515,8 +518,6 @@ def corpus_json(rows, shown, svgs, meta, root):
         n["duplicates"] += len(e.get("duplicates") or [])
         n[v.get("verdict") or "skipped"] += 1
         rc_tw, rc_da = v.get("rc_twoway"), v.get("rc_dash")
-        if not v.get("skip") and rc_tw not in (0, None):
-            n["refused_twoway"] += 1
         if not v.get("skip") and rc_tw == 0 and rc_da not in (0, None):
             n["refused_dash"] += 1
         n["gallery"] += bool(v.get("gallery"))

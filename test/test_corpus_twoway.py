@@ -282,6 +282,33 @@ def _fake_canned(tmp_path, log_text, svg_ids=(), status=0):
     return ["sh", "-c", script, "sh"]
 
 
+class TestTwowayRefusals:
+
+    def test_refused_examples_join_the_dropped_list_once(self, tmp_path):
+        # D52: an example twoway refuses is dropped from the comparison and
+        # listed with its reason; rewriting the list never repeats a row.
+        run = tmp_path / "run"
+        run.mkdir()
+        (run / "extract_dropped.tsv").write_text(
+            "source\twhere\treason\tcmd\nhelp\tx.sthlp:1\tschematic\tscatter yvar xvar\n",
+            encoding="utf-8")
+        exs = [dict(_ex("a", cmd="twoway scatter mpg weight, nosuch"), source="audit",
+                    file="scripts/corpus/audit_probes.txt", line=3),
+               dict(_ex("b"), source="help", file="t.sthlp", line=9)]
+        rows = [{"id": "a", "rc": 198, "skip": None}, {"id": "b", "rc": 0, "skip": None}]
+        for _ in range(2):
+            assert twoway_run.drop_refused(str(run), exs, rows) == ["a"]
+        with open(run / "twoway.jsonl", "w", encoding="utf-8") as fh:
+            for r in rows + [{"id": "s", "rc": None, "skip": "setup rc 111"}]:
+                fh.write(json.dumps(r) + "\n")
+        assert twoway_run.refused_ids(str(run)) == {"a"}
+        lines = (run / "extract_dropped.tsv").read_text(encoding="utf-8").splitlines()
+        assert lines == ["source\twhere\treason\tcmd",
+                         "help\tx.sthlp:1\tschematic\tscatter yvar xvar",
+                         "audit\tscripts/corpus/audit_probes.txt:3\ttwoway refuses (rc 198)"
+                         "\ttwoway scatter mpg weight, nosuch"]
+
+
 class TestRun:
 
     def test_records_from_a_canned_log(self, tmp_path, monkeypatch, capsys):

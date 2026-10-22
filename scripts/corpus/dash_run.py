@@ -175,6 +175,8 @@ def run_stata(run_dir, jobs=3, timeout=1800, only=None):
     if only is not None:
         examples = [e for e in examples if e["id"] in only]
     tw = {r["id"]: r for r in _read_jsonl(os.path.join(run_dir, "twoway.jsonl"))}
+    refused = twoway_run.refused_ids(run_dir)  # D52: compared only where twoway draws
+    examples = [e for e in examples if e["id"] not in refused]
     cache = datasets.cache_dir()
     for name in twoway_run.missing_datasets(examples, cache):
         print("skip: dataset %s not cached" % name)

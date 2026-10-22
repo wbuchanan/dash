@@ -553,6 +553,26 @@ class TestJudge:
         assert verdict.main(["--run", str(tmp_path), "--rules", str(rules),
                              "--ledger", str(led)]) == 0
 
+    def test_an_example_twoway_refuses_is_not_judged(self, tmp_path, monkeypatch):
+        # D52: no verdict row and no count for an example twoway refuses.
+        ex, tw, da = self._run(tmp_path)
+        ex2 = dict(ex, id="e2", cmd="twoway scatter mpg weight, nosuch")
+        tw2 = dict(tw, id="e2", rc=198, first_line="option nosuch not allowed", svg=None)
+        da2 = dict(da, id="e2", rc=198, svg=None, view=None)
+        for name, rows in (("examples", [ex, ex2]), ("twoway", [tw, tw2]),
+                           ("dash", [da, da2])):
+            (tmp_path / (name + ".jsonl")).write_text(
+                "".join(json.dumps(r) + "\n" for r in rows))
+        rules = tmp_path / "rules.json"
+        rules.write_text(json.dumps(_RULES))
+        led = tmp_path / "ledger.json"
+        led.write_text(json.dumps({"_meta": {}, "rows": []}))
+        monkeypatch.setattr(verdict, "_open_probe", lambda run_dir: _StubProbe(48, 24))
+        c = verdict.run(str(tmp_path), str(rules), str(led))
+        assert sum(c.values()) == 1
+        rows = [json.loads(x) for x in (tmp_path / "verdicts.jsonl").read_text().splitlines()]
+        assert [r["id"] for r in rows] == ["e1"]
+
 
 @pytest.mark.release
 @pytest.mark.skipif(not _CHROME, reason="headless Chrome is not installed "
