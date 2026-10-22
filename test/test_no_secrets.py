@@ -14,8 +14,11 @@ This file holds the patterns, so it is the one file not scanned; the
 planted samples below are built from fragments at run time, so the
 repository never holds a matching string.
 """
+import base64
+import getpass
 import os
 import re
+import socket
 import subprocess
 import sys
 
@@ -131,3 +134,109 @@ def test_the_contact_files_still_refuse_keys():
         text = _text(rel)
         if text is not None:
             assert _findings(text) == [], rel
+
+
+# ---- the gallery (WP-33 33-08, D-33-08.l) -----------------------------------
+# Every file under docs/gallery/ (built only at WP-50's closeout) and the
+# README text between the gallery markers must name no machine path, no
+# user, host or licensee name and not the maintainer's address, payloads
+# encoded as base64 included.  $DASH_GALLERY_DIR and $DASH_GALLERY_README
+# point the scan at a scratch build.
+
+_GALLERY_START = "<!-- dash-gallery:start -->"
+_GALLERY_END = "<!-- dash-gallery:end -->"
+_GALLERY_PATHS = (
+    re.compile(r"(?<![\w.])/(Users|private|var|tmp|home|Applications|Volumes|opt)/"),
+    re.compile(r"\b[A-Za-z]:\\"),
+    re.compile(r"file://"),
+    re.compile(r"~/"),
+    re.compile(r"Licensed to"),
+    re.compile(r"Serial number"),
+)
+_B64_URI = re.compile(r"data:[^,;]*;base64,([A-Za-z0-9+/=]{64,})")
+_B64_RUN = re.compile(r"[A-Za-z0-9+/=]{200,}")
+
+
+def _gallery_texts():
+    """(where, text) of every gallery file and of the README block, each base64
+    payload decoded and added as its own text."""
+    gdir = os.environ.get("DASH_GALLERY_DIR") or os.path.join(_REPO, "docs", "gallery")
+    readme = os.environ.get("DASH_GALLERY_README") or os.path.join(_REPO, "README.md")
+    out = []
+    if os.path.isdir(gdir):
+        for base, _dirs, files in os.walk(gdir):
+            for f in sorted(files):
+                p = os.path.join(base, f)
+                with open(p, "rb") as fh:
+                    out.append((os.path.relpath(p, gdir), fh.read().decode("utf-8", "replace")))
+    if os.path.exists(readme):
+        with open(readme, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+        if _GALLERY_START in text and _GALLERY_END in text:
+            a = text.index(_GALLERY_START)
+            out.append(("README block", text[a:text.index(_GALLERY_END, a)]))
+    decoded = []
+    for where, text in out:
+        runs = [m.group(1) for m in _B64_URI.finditer(text)]
+        runs += [m.group(0) for m in _B64_RUN.finditer(text)]
+        for s in runs:
+            try:
+                raw = base64.b64decode(s + "=" * (-len(s) % 4))
+            except ValueError:
+                continue
+            decoded.append((where + " (base64)", raw.decode("utf-8", "replace")))
+    return out + decoded
+
+
+def _names():
+    names = [getpass.getuser(), socket.gethostname().split(".")[0]]
+    p = subprocess.run(["git", "-C", _REPO, "config", "user.name"],
+                       capture_output=True, text=True)
+    names += p.stdout.split() if p.returncode == 0 else []
+    return [n for n in names if len(n) >= 3]
+
+
+def _gallery_findings(texts):
+    bad = []
+    names = [re.compile(r"(?<!\w)%s(?!\w)" % re.escape(n)) for n in _names()]
+    email = _email()
+    for where, text in texts:
+        for pat in _GALLERY_PATHS + tuple(names):
+            if pat.search(text):
+                bad.append("%s: %s" % (where, pat.pattern))
+        if email and email in text:
+            bad.append("%s: the maintainer's e-mail address" % where)
+    return bad
+
+
+def test_the_gallery_holds_no_path_or_name():
+    assert _gallery_findings(_gallery_texts()) == []
+
+
+def test_the_gallery_scan_catches_planted_samples(tmp_path, monkeypatch):
+    g = tmp_path / "g"
+    (g / "svg").mkdir(parents=True)
+    readme = tmp_path / "README.md"
+    readme.write_text("# x\n" + _GALLERY_START + "\nclean\n" + _GALLERY_END + "\n",
+                      encoding="utf-8")
+    monkeypatch.setenv("DASH_GALLERY_DIR", str(g))
+    monkeypatch.setenv("DASH_GALLERY_README", str(readme))
+    assert _gallery_findings(_gallery_texts()) == []
+    user = getpass.getuser()
+    samples = {
+        "a.html": "<p>" + "/Us" + "ers/someone/x.dta</p>",
+        "b.html": "by %s today" % user,
+        "c.html": "Licensed" + " to: someone",
+        "svg/d.svg": '<image href="data:text/plain;base64,%s"/>'
+        % base64.b64encode(("see " + "/pri" + "vate/tmp/x" + " " * 60).encode()).decode(),
+    }
+    for name, text in samples.items():
+        for f in list(g.rglob("*.*")):
+            f.unlink()
+        (g / name).write_text(text, encoding="utf-8")
+        assert _gallery_findings(_gallery_texts()) != [], name
+    for f in list(g.rglob("*.*")):
+        f.unlink()
+    readme.write_text(_GALLERY_START + "\nC:" + "\\Users\\x\n" + _GALLERY_END + "\n",
+                      encoding="utf-8")
+    assert _gallery_findings(_gallery_texts()) != []
