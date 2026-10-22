@@ -274,12 +274,12 @@ def _category(pid):
     return (pid,)
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each _category and every sixth probe of
 #: the rest; release checks every probe served.
 _PARAMS = probe_params(
     sorted(_probes()), representative(sorted(_probes()), _category,
-                                      stride=6))
+                                      stride=6), size=8, saved_size=25)
 _BASE_PT = {}
 
 

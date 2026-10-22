@@ -294,12 +294,12 @@ def _category(pid):
     return (pid[0], len(plots) > 1, word)
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each _category and every fourth probe of
 #: the rest; release checks every probe served.  A node builds one page of
 #: its group's probes.
 _PARAMS = probe_params(sorted(_PROBES), representative(
-    sorted(_PROBES), _category, stride=4))
+    sorted(_PROBES), _category, stride=4), size=6, saved_size=14)
 #: The probes the single-probe tests read, built as one small page.
 _FEW = ("p02", "p46")
 
@@ -959,13 +959,13 @@ def _box_category(pid):
     return (box.get("fill"), box.get("outline"), box.get("stroke_width"))
 
 
-#: The box probes test_scheme_colours compares and the gate's
+#: The box probes test_scheme_colours compares, per node, and the gate's
 #: served subset (pytest speed, 22oct2026): the first probe of each
 #: _box_category and every fourth probe of the rest; release checks every
 #: probe served.
 _COMPARED_BOXES = [pid for pid in _box_pids() if pid.startswith("box_")]
 _BOX_PARAMS = probe_params(_COMPARED_BOXES, representative(
-    _COMPARED_BOXES, _box_category, stride=4))
+    _COMPARED_BOXES, _box_category, stride=4), size=6, saved_size=14)
 
 
 class TestTheLabelBox:

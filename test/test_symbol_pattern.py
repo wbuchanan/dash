@@ -124,13 +124,13 @@ class TestTheFixture:
 
 
 
-#: The gate's served subset (pytest speed,
+#: Symbols per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first symbol of each Bokeh marker and height factor
 #: (symbols that share both take the same branch) and every fourth symbol
 #: of the rest; release checks every symbol served.
 _HEIGHT_PARAMS = probe_params(sorted(SHAPE), representative(
     sorted(SHAPE), lambda n: (SHAPE[n][0], round(_factor(n), 3)), stride=4),
-    modes=MODES)
+    size=8, saved_size=41, modes=MODES)
 
 class TestSymbols:
     @pytest.mark.parametrize("name", sorted(SHAPE))

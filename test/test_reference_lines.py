@@ -137,7 +137,7 @@ class TestPositions:
 
 
 _LSTYLE_SCHEMES = ("s2color", "stcolor", "s1mono")
-#: "<scheme>/S<nn>": S01-S16 under each scheme.  The
+#: "<scheme>/S<nn>": S01-S16 under each scheme.  Probes per node and the
 #: gate's served subset (pytest speed, 22oct2026): each option under one
 #: scheme, the schemes taken in turn (S01 s2color, S02 stcolor, S03
 #: s1mono, S04 s2color, ...), so every option and every scheme is drawn
@@ -147,7 +147,8 @@ _LSTYLE_KEYS = ["%s/S%02d" % (s, i) for s in _LSTYLE_SCHEMES
                 for i in range(1, 17)]
 _LSTYLE_PARAMS = probe_params(_LSTYLE_KEYS, representative(
     _LSTYLE_KEYS, always=["%s/S%02d" % (_LSTYLE_SCHEMES[i % 3], i)
-                          for i in range(1, 17)], stride=6))
+                          for i in range(1, 17)], stride=6),
+    size=6, saved_size=16)
 
 
 class TestLstyle:

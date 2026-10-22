@@ -1067,13 +1067,19 @@ def _offset_category(pid):
             r.get("plottype", "scatter"), "msize" in o)
 
 
+#: Probes per node (pytest speed, 22oct2026): a served build costs about
+#: 1.2 s here, a saved one about a fifth of that.
+_SERVED_PER_NODE = 8
+_SAVED_PER_NODE = 30
 #: The gate's served subsets (probe_groups.representative): the first
 #: probe of each family (_size_category, _offset_category) and every
 #: eighth probe of the rest; release checks every probe served.
 _SIZE_PARAMS = probe_params(
-    _SIZE_IDS, representative(_SIZE_IDS, _size_category, stride=8))
+    _SIZE_IDS, representative(_SIZE_IDS, _size_category, stride=8),
+    size=_SERVED_PER_NODE, saved_size=_SAVED_PER_NODE)
 _OFFSET_PARAMS = probe_params(
-    _OFFSET_IDS, representative(_OFFSET_IDS, _offset_category, stride=8))
+    _OFFSET_IDS, representative(_OFFSET_IDS, _offset_category, stride=8),
+    size=_SERVED_PER_NODE, saved_size=_SAVED_PER_NODE)
 
 
 class TestStataRatios:
@@ -1186,7 +1192,7 @@ def _scheme_keywords(scheme):
     return {k: str(props.get(k, "")).strip() for k in _SCHEME_KEYS}
 
 
-#: The gate's served subset (pytest speed,
+#: Schemes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first scheme of each set of keywords
 #: (_scheme_keywords: schemes with the same four keywords take the same
 #: branches) and every fourth scheme of the rest; release checks every
@@ -1194,7 +1200,8 @@ def _scheme_keywords(scheme):
 _SCHEME_PARAMS = probe_params(
     _builtin_names(),
     representative(_builtin_names(), lambda s: tuple(sorted(
-        _scheme_keywords(s).items())), stride=4))
+        _scheme_keywords(s).items())), stride=4),
+    size=4, saved_size=13)
 
 
 class TestExplicitKeywordEqualsSchemeDefault:

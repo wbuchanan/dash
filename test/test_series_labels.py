@@ -208,14 +208,15 @@ def _probe_summaries(mode, only=None):
     return out
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each letter (D dates, F fits, G graph
 #: options, H second axes, K the title rule, ...: each letter is one
 #: family of the fixture) and every fourth probe of the rest; release
 #: checks every probe served.  A node builds one page per data set of its
 #: group's probes.
 _PARAMS = probe_params(sorted(_FIX["probes"]), representative(
-    sorted(_FIX["probes"]), lambda pid: pid[0], stride=4))
+    sorted(_FIX["probes"]), lambda pid: pid[0], stride=4),
+    size=25, saved_size=50)
 
 
 def _twoway_keys(pid):
@@ -381,7 +382,9 @@ class TestKeysMatchTwoway:
         # Flipped (WP-31 C13): P2.50 and P2.51 were open; the merge of keys
         # with the same text and style closes both, so no residual is left
         # and test_keys holds every probe.
-        got = _probe_summaries(mode)
+        # Flipped (pytest speed, 22oct2026): builds only the residual
+        # probes it reads, not every probe.
+        got = _probe_summaries(mode, _NOT_YET_KEYS)
         same = [pid for pid in _NOT_YET_KEYS
                 if got[pid]["keys"] == _twoway_keys(pid)]
         assert not same, same

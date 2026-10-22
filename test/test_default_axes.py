@@ -270,11 +270,11 @@ def _category(pid):
     return (plots[0].get("type"), len(plots) > 1, "by" in go)
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each _category and every fourth probe of
 #: the rest; release checks every probe served.
 _PARAMS = probe_params(sorted(_PROBES), representative(
-    sorted(_PROBES), _category, stride=4))
+    sorted(_PROBES), _category, stride=4), size=6, saved_size=21)
 
 
 # ---------------------------------------------------------------------------

@@ -190,11 +190,11 @@ def _labels(mode, sch):
     return _CACHE[(mode, sch)]
 
 
-#: The gate's served subset
+#: One scheme per node (one build each), and the gate's served subset
 #: (pytest speed, 22oct2026): stcolor and s2color (the defaults), then
 #: every second scheme of the rest; release checks every scheme served.
 _STYLE_PARAMS = probe_params(_SCHEMES, representative(
-    _SCHEMES, always=("stcolor", "s2color"), stride=2))
+    _SCHEMES, always=("stcolor", "s2color"), stride=2), size=1)
 
 
 class TestTheLabels:

@@ -519,14 +519,14 @@ def _first_of_each_scheme(pids):
     return set(out.values())
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each scheme, the first of each
 #: _category and every fifth probe of the rest; release checks every
 #: probe served.  Without the fixture the one node of each mode fails
 #: saying so.
 _PARAMS = (probe_params(_probe_ids(), representative(
     _probe_ids(), _category, always=_first_of_each_scheme(_probe_ids()),
-    stride=5))
+    stride=5), size=8, saved_size=15)
     if _probe_ids() else [pytest.param(m, (), id=m) for m in MODES])
 
 

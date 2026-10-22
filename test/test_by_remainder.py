@@ -52,6 +52,12 @@ _FIX = None
 _BUILT = {}
 _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_by_remainder_")
+#: The modes, each on one xdist worker (pytest speed, 22oct2026): every
+#: test of a mode reads _build_all's one page of every probe, which a
+#: worker builds once (17 s served); spread over eight workers each paid
+#: for it.
+_ONE_BUILD = [pytest.param(m, marks=pytest.mark.xdist_group(
+    "by-remainder-" + m)) for m in _MODES]
 
 
 def _fix():
@@ -208,7 +214,7 @@ def _fill_of(pid, w_min):
 
 
 class TestRegions:
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_each_panel(self, mode):
         """by()'s graphregion() fills every panel's border and chrome cell
         (twoway's whole graph region, regions_graph_red); by()'s
@@ -236,19 +242,19 @@ class TestRegions:
                 if getattr(c, "name", "") == "dash_by_foot"]
         assert str(foot[0].border_fill_color).lower() == red
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_by_copy_wins(self, mode):
         assert _fill_of("regions_outer_vs_by", 3900) == "#ff0000"
         for f in _panels(mode, "rg_outer"):
             assert str(f.border_fill_color).lower() == "#ff0000"
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_silent(self, mode):
         bad = [n for n in _notes(mode) if "not implemented" in n and (
             "graphregion(fcolor" in n or "plotregion(fcolor" in n)]
         assert bad == []
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_margin_named(self, mode):
         """twoway insets the whole array by by()'s margin() once
         (regions_margin: panel 1 moves right, panel 2 does not).  Flipped
@@ -276,11 +282,11 @@ class TestLegend:
         assert (hole["x"], hole["y"]) == (full["x"], full["y"])
         assert abs(pos5["x"] + pos5["w"] - (2688.84 + 1135.65)) < 1
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_no_warning(self, mode):
         assert not [n for n in _notes(mode) if "drawn beside the panels" in n]
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_hole(self, mode):
         """ring(0) with a hole: the legend cell stays below the panels,
         centred (pos 6)."""
@@ -288,14 +294,14 @@ class TestLegend:
         assert leg is not None and leg.location == "center"
         assert leg in cell.above
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_full_grid(self, mode):
         cell, leg = _legend(mode, "lg_pos5")
         assert leg.location == "right"
         cell, leg = _legend(mode, "lg_full")
         assert leg.location == "center"
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_items_span_panels(self, mode):
         _c, leg = _legend(mode, "lg_beside")
         panels = _panels(mode, "lg_beside")
@@ -332,7 +338,7 @@ class TestAlternateAxes:
         assert b["alternate_xaxes"] and b["alternate_yaxes"]
         assert a["texts"] == b["texts"] and a["rects"] == b["rects"]
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_default_unchanged(self, mode):
         assert dr.SchemeParser("s2color") is not None
         assert "alt_xaxes" not in dr._DASH_BY_FLAG_DEFAULTS
@@ -351,7 +357,7 @@ def _measured_margin(pid):
 
 
 class TestMargin:
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     @pytest.mark.parametrize("name,pid", [("m2", "margin_2"),
                                           ("m4", "margin_4"),
                                           ("m10", "margin_10")])
@@ -361,7 +367,7 @@ class TestMargin:
             got = f._dash_margin["x"][1] / (0.022 * 4.0 / 5.5)
             assert abs(got - want) < 2e-3, (name, got, want)
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_iscale(self, mode):
         want = _measured_margin("margin_iscale_half")
         assert abs(want - 0.5) < 2e-3
@@ -393,7 +399,7 @@ class TestSubtitleFormat:
                                    formats={"g": "%9.1f"})
         assert lab == "1.0"
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_subtitleformat(self, mode):
         assert [panel_label(f) for f in _panels(mode, "stf_g4")] == [
             "0.00", "1.00", "2.00", "3.00"]
@@ -414,7 +420,7 @@ def _box(fig):
 
 
 class TestLabelBox:
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_box_colours(self, mode):
         fills = [r for r in _probe("sub_fcolor_lcolor")["rects"]
                  if r["h"] and r["h"] < 130]
@@ -426,7 +432,7 @@ class TestLabelBox:
         assert not [n for n in _notes(mode) if "fcolor(yellow)" in n
                     and "box_fl" in n]
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_nobox(self, mode):
         assert not [r for r in _probe("sub_nobox")["rects"]
                     if r["h"] and r["h"] < 130]
@@ -434,7 +440,7 @@ class TestLabelBox:
             assert _box(f) is None
             assert panel_label_title(f).visible is True
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_by_subtitle_leaves_the_box(self, mode):
         """by()'s own subtitle() is the overall subtitle: its box words
         leave the panel labels' boxes as they are (byin_fcolor_lcolor)."""
@@ -456,7 +462,7 @@ class TestShrink:
                 p = _probe("shrink_%s_%s" % (w, g))
                 assert abs(p["marker_r"] / base["marker_r"] - 0.795) < 0.01
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_word(self, mode):
         """The four words that change nothing are honoured in silence."""
         assert not [n for n in _notes(mode) if "noishrink" in n
@@ -473,7 +479,7 @@ class TestOnePanel:
         assert [t["t"] for t in p["texts"]
                 if t["t"].startswith("Graphs by")] == ["Graphs by onee"]
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_chrome(self, mode):
         from by_panel_probe import chrome_texts
         cells = _cells(mode, "one_empty")
@@ -638,13 +644,13 @@ class TestTheFollowUp:
              if r["fill"] == "#ffffff" and r["w"] > 1900 and r["h"] < 200]
         assert a == b and abs(a[0]["x"] + a[0]["w"] - (2688.84 + 1135.65)) < 1
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_outer_graphregion_draws_nothing(self, mode):
         for f in _panels(mode, "rg_outer_only"):
             assert str(f.border_fill_color).lower() == "#eaf2f3"
             assert str(f.background_fill_color).lower() == "#ffff00"
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_ring0_sits_inside_the_titles(self, mode):
         leg, xt = _kid(mode, "lg_hole", "dash_by_legend"), \
             _kid(mode, "lg_hole", "dash_by_xtitle")
@@ -653,7 +659,7 @@ class TestTheFollowUp:
             _kid(mode, "lg_beside", "dash_by_xtitle")
         assert leg[1] > xt[1]
 
-    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("mode", _ONE_BUILD)
     def test_corner_aligned_without_ring0(self, mode):
         _c, leg = _legend(mode, "lg_pos1")
         assert leg.location == "right"

@@ -229,11 +229,11 @@ def _grid_category(by):
     return (var.strip(), bool(re.search(r"\bhol", opts)))
 
 
-#: The gate's served subset (pytest
+#: Probes per node, one page each, and the gate's served subset (pytest
 #: speed, 22oct2026): the first probe of each _grid_category and every
 #: third probe of the rest; release checks every probe served.
 _GRID_PARAMS = probe_params(_grid_probes(), representative(
-    _grid_probes(), _grid_category, stride=3))
+    _grid_probes(), _grid_category, stride=3), size=5, saved_size=18)
 
 
 class TestTheGridIsDrawn:

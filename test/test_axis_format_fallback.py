@@ -751,12 +751,12 @@ def _category(cid):
             plots[0].get("type") if plots else None)
 
 
-#: The gate's served subset (pytest speed, 22oct2026):
+#: Cases per node and the gate's served subset (pytest speed, 22oct2026):
 #: the first case of each _category and every fifth case of the rest;
 #: release checks every case served.  Without the fixture the one node of
 #: each mode fails saying so.
 _PARAMS = (probe_params(_compared(), representative(
-    _compared(), _category, stride=5))
+    _compared(), _category, stride=5), size=8, saved_size=12)
     if _compared() else [pytest.param(m, (), id=m) for m in MODES])
 
 

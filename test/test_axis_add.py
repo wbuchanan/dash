@@ -133,11 +133,11 @@ def _auto_category(pid):
     return (letter, "add" in spec, "norescale" in spec, form)
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each _auto_category and every fourth
 #: probe of the rest; release checks every probe served.
 _AUTO_PARAMS = probe_params(sorted(_AUTO), representative(
-    sorted(_AUTO), _auto_category, stride=4))
+    sorted(_AUTO), _auto_category, stride=4), size=7, saved_size=28)
 
 
 class TestAddUnionsWithTheDefault:

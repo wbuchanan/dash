@@ -227,13 +227,18 @@ def _category(pid):
             bool(re.search(r"\b(missing|total)\b", inner)))
 
 
+#: Probes per node (pytest speed, 22oct2026): a served build costs about
+#: 2.8 s here, a saved one a fraction of that.
+_SERVED_PER_NODE = 3
+_SAVED_PER_NODE = 12
 #: The gate's served subset (probe_groups.representative): every probe a
 #: BY_POSITION_KNOWN row names, the first probe of each _category, and
 #: every fifth probe of the rest; release checks every probe served.
 _SERVED_SUBSET = representative(
     _ok_probes(), _category,
     always={k.partition(":")[0] for k in BY_POSITION_KNOWN}, stride=5)
-_PARAMS = probe_params(_ok_probes(), _SERVED_SUBSET)
+_PARAMS = probe_params(_ok_probes(), _SERVED_SUBSET, size=_SERVED_PER_NODE,
+                       saved_size=_SAVED_PER_NODE)
 
 
 # ---------------------------------------------------------------------------

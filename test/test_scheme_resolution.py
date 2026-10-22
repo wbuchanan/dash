@@ -805,14 +805,14 @@ class TestBothModesAgreeOnTheOpacity:
                 [STTRANS_ALPHA] * 15), attr
 
 
-#: The gate's served subset (pytest speed,
+#: Schemes per node and the gate's served subset (pytest speed,
 #: 22oct2026): s2color and stcolor (the defaults), then every fourth
 #: scheme of the rest (every scheme pins the same alphas, so no scheme
 #: takes a branch of its own); release checks every scheme served.
 _OTHER_PARAMS = probe_params(
     OTHER_SCHEMES, representative(OTHER_SCHEMES,
                                   always=("s2color", "stcolor"), stride=4),
-    modes=MODES)
+    size=4, saved_size=13, modes=MODES)
 
 
 class TestEveryOtherSchemeIsUnchanged:

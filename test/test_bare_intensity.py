@@ -218,15 +218,17 @@ class TestTheTextReader:
         assert dr._textbox_color({}, None, with_alpha=True) == (None, None)
 
 
-#: The keys "<scheme>/<value>" (one build of every probe each).  The
-#: gate's served subset (probe_groups.representative, pytest speed,
-#: 22oct2026): the diagonal that pairs each scheme with a different value,
-#: so every scheme and every value is built served, and every sixth key of
-#: the rest; release checks every key served.
+#: One node per scheme and value ("<scheme>/<value>": one build of every
+#: probe), four to a saved node (pytest speed, 22oct2026).  The gate's
+#: served subset (probe_groups.representative): the diagonal that pairs
+#: each scheme with a different value, so every scheme and every value is
+#: built served, and every sixth key of the rest; release checks every key
+#: served.
 _KEYS = ["%s/%s" % (s, v) for s in _SCHEMES for v in _VALUES]
 _DIAGONAL = ["%s/%s" % sv for sv in zip(_SCHEMES, _VALUES)]
 _PARAMS = probe_params(_KEYS, representative(_KEYS, always=_DIAGONAL,
-                                             stride=6))
+                                             stride=6),
+                       size=1, saved_size=4)
 
 
 class TestEverySite:

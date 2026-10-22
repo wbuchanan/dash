@@ -235,11 +235,11 @@ def _opacity_category(pid):
     return (p["group"], p["scheme"], kind)
 
 
-#: The gate's served subset (pytest speed,
+#: Probes per node and the gate's served subset (pytest speed,
 #: 22oct2026): the first probe of each _opacity_category and every fourth
 #: probe of the rest; release checks every probe served.
 _OPACITY_PARAMS = probe_params(_opacity_ids(), representative(
-    _opacity_ids(), _opacity_category, stride=4),
+    _opacity_ids(), _opacity_category, stride=4), size=8, saved_size=20,
     modes=MODES)
 
 
