@@ -59,3 +59,21 @@ class TestTheWiring:
             sh = fh.read()
         assert " &\n" not in sh and "wait " not in sh
         assert sh.index("-m pytest test/") < sh.index("run_cert_suite.sh >")
+
+
+class TestTheTiming:
+    """The gate records where its time goes (the maintainer, 22oct2026:
+    the whole suite takes about 33 minutes against the five-minute target)."""
+
+    def test_pytest_reports_its_slowest_tests(self):
+        r = _dry()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "--durations=0" in r.stdout
+        assert "--durations-min=1" in r.stdout
+
+    def test_the_timing_report_is_written_beside_the_logs(self):
+        with open(SCRIPT, encoding="utf-8") as fh:
+            sh = fh.read()
+        assert 'scripts/gate_timing.py "$out"' in sh
+        assert sh.index('scripts/gate_timing.py "$out"') > \
+            sh.index("run_cert_suite.sh >")
