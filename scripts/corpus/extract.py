@@ -37,7 +37,8 @@ HAND_MARKER = ("# ---- hand-added: the appendix's unquoted prose probes "
 SETUP_WORDS = ("sysuse", "webuse", "use", "generate", "gen", "replace",
                "label", "drop", "keep", "sort", "gsort", "tsset", "xtset",
                "format", "egen", "encode", "input", "end", "clear", "regress",
-               "reg", "predict", "summarize", "sum", "collapse", "expand")
+               "reg", "predict", "summarize", "sum", "collapse", "expand",
+               "stset", "streg", "stcox")
 
 _TWOWAY_WORDS = ("twoway", "twowa", "twow", "two", "tw")
 _GRAPH_WORDS_BASE = ("twoway", "tw", "two", "twow", "twowa", "scatter", "line",
@@ -444,7 +445,7 @@ def signature(cmd):
 
 def is_schematic(cmd):
     """True for a syntax diagram rather than a runnable command."""
-    if "..." in cmd or "…" in cmd or "{it:" in cmd:
+    if "..." in cmd or "…" in cmd or "{it:" in cmd or ". . ." in cmd:
         return True
     # A placeholder is a whole word outside quoted text and not an option or
     # function name: xvarlab() and exp() are runnable, a title may say varlist.
@@ -782,8 +783,9 @@ _CURLY = (("”", '"'), ("“", '"'), ("’", "'"), ("‘", "`"),
           ("−", "-"))
 _PROMPT_RE = re.compile(r"^(\s*)\. (\S.*)$")
 _LOAD_RE = re.compile(r"^(?:use|sysuse|webuse)\s+(\S+?)(?:\s*,\s*clear)?\s*$")
-#: A margin annotation the manual prints beside a command line, "(note 1)".
-_NOTE_RE = re.compile(r"\s{4,}\(note \d+\)\s*$")
+#: A margin annotation the manual prints beside a command line, "(note 1)"
+#: or "← new".
+_NOTE_RE = re.compile(r"\s{4,}(?:\(note \d+\)|←\s*\w*)\s*$")
 
 
 def _uncurl(s):

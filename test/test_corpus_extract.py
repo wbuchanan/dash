@@ -545,6 +545,25 @@ class TestGpdfWraps:
                                          "2.1 2.2 2.3 2.4", "end"]
         assert extract.is_schematic(cmds[2]["cmd"])
 
+    def test_arrows_ellipses_and_survival_setup(self):
+        text = ("                  graph combine — Combine multiple graphs 112\n\n"
+                "       . twoway histogram lexp, fraction\n"
+                "               xsca(alt reverse) horiz\n"
+                "               fxsize(25)                                         ← new\n"
+                "       . use https://www.stata-press.com/data/r19/cancer, clear\n"
+                "       . quietly stset studytime, fail(died)\n"
+                "       . quietly streg, distribution(exponential)\n"
+                "       . predict S, surv\n"
+                "       . graph twoway line S _t, sort\n")
+        cmds = extract.gpdf_commands(text)
+        assert cmds[0]["cmd"] == ("twoway histogram lexp, fraction xsca(alt reverse) horiz "
+                                  "fxsize(25)")
+        pairs, dropped = extract.split_setup(cmds[1]["setup"] + [cmds[1]["cmd"]])
+        assert dropped == [] and pairs[0][0] == [
+            "sysuse cancer, clear", "quietly stset studytime, fail(died)",
+            "quietly streg, distribution(exponential)", "predict S, surv"]
+        assert extract.is_schematic("scatter . . . , . . . recast(bar)")
+
 
 class TestHelpers:
 
