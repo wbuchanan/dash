@@ -1,0 +1,358 @@
+{
+  "_meta": {
+    "born_date": "22 Oct 2026",
+    "dash_commit": "81ea31cf0affb9d49c1fa55c36df7d1814afb319",
+    "extracted": "22 Oct 2026",
+    "source": "scripts/corpus/summary.py",
+    "stata_version": "19.5"
+  },
+  "by_plottype": {
+    "area": {
+      "Close": 0,
+      "Differs": 4,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "bar": {
+      "Close": 4,
+      "Differs": 3,
+      "Same": 0,
+      "examples": 7,
+      "skipped": 0
+    },
+    "connected": {
+      "Close": 3,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "contour": {
+      "Close": 15,
+      "Differs": 2,
+      "Same": 0,
+      "examples": 17,
+      "skipped": 0
+    },
+    "contourline": {
+      "Close": 0,
+      "Differs": 6,
+      "Same": 0,
+      "examples": 6,
+      "skipped": 0
+    },
+    "dot": {
+      "Close": 3,
+      "Differs": 3,
+      "Same": 0,
+      "examples": 6,
+      "skipped": 0
+    },
+    "dropline": {
+      "Close": 4,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "fpfit": {
+      "Close": 0,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "fpfitci": {
+      "Close": 6,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 6,
+      "skipped": 0
+    },
+    "function": {
+      "Close": 4,
+      "Differs": 6,
+      "Same": 0,
+      "examples": 10,
+      "skipped": 0
+    },
+    "histogram": {
+      "Close": 14,
+      "Differs": 3,
+      "Same": 0,
+      "examples": 17,
+      "skipped": 0
+    },
+    "kdensity": {
+      "Close": 6,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 7,
+      "skipped": 0
+    },
+    "lfit": {
+      "Close": 2,
+      "Differs": 2,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "lfitci": {
+      "Close": 7,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 8,
+      "skipped": 0
+    },
+    "line": {
+      "Close": 22,
+      "Differs": 6,
+      "Same": 0,
+      "examples": 28,
+      "skipped": 0
+    },
+    "lowess": {
+      "Close": 2,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "lpoly": {
+      "Close": 1,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "lpolyci": {
+      "Close": 2,
+      "Differs": 2,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "mband": {
+      "Close": 1,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "mspline": {
+      "Close": 1,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "pcarrow": {
+      "Close": 4,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "pcarrowi": {
+      "Close": 3,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "pcbarrow": {
+      "Close": 1,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    },
+    "pccapsym": {
+      "Close": 2,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    },
+    "pci": {
+      "Close": 3,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "pcscatter": {
+      "Close": 1,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "pcspike": {
+      "Close": 3,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "qfit": {
+      "Close": 0,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "qfitci": {
+      "Close": 4,
+      "Differs": 6,
+      "Same": 0,
+      "examples": 10,
+      "skipped": 0
+    },
+    "rarea": {
+      "Close": 4,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "rbar": {
+      "Close": 4,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "rcap": {
+      "Close": 2,
+      "Differs": 4,
+      "Same": 0,
+      "examples": 6,
+      "skipped": 0
+    },
+    "rcapsym": {
+      "Close": 3,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "rconnected": {
+      "Close": 2,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    },
+    "rline": {
+      "Close": 2,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    },
+    "rpcap": {
+      "Close": 0,
+      "Differs": 3,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "rpspike": {
+      "Close": 3,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 3,
+      "skipped": 0
+    },
+    "rscatter": {
+      "Close": 2,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    },
+    "rspike": {
+      "Close": 5,
+      "Differs": 1,
+      "Same": 0,
+      "examples": 6,
+      "skipped": 0
+    },
+    "scatter": {
+      "Close": 80,
+      "Differs": 44,
+      "Same": 0,
+      "examples": 124,
+      "skipped": 0
+    },
+    "scatteri": {
+      "Close": 1,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 1,
+      "skipped": 0
+    },
+    "spike": {
+      "Close": 4,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 4,
+      "skipped": 0
+    },
+    "tsline": {
+      "Close": 3,
+      "Differs": 2,
+      "Same": 0,
+      "examples": 5,
+      "skipped": 0
+    },
+    "tsrline": {
+      "Close": 2,
+      "Differs": 0,
+      "Same": 0,
+      "examples": 2,
+      "skipped": 0
+    }
+  },
+  "duplicates": 390,
+  "examples": 339,
+  "gallery": 338,
+  "ledger": {
+    "AX-1": 4,
+    "AX-2": 4,
+    "AX-4": 4,
+    "BY-32": 6,
+    "GW-6": 335,
+    "MS-15": 10,
+    "VF-4": 328,
+    "syn:SD-22": 1
+  },
+  "refused": {
+    "dash": 3
+  },
+  "twoway_refuses": 0,
+  "unexplained": {
+    "axis_titles": 17,
+    "colours": 19,
+    "glyph_extents": 14,
+    "glyphs": 32,
+    "legend": 25,
+    "marker_shape": 12,
+    "rc": 2,
+    "titles": 13,
+    "x_labels": 7,
+    "x_labels_none": 6,
+    "x_ticks": 4,
+    "y_labels": 14,
+    "y_labels_none": 6,
+    "y_ticks": 12
+  },
+  "verdicts": {
+    "Close": 235,
+    "Differs": 104,
+    "Same": 0,
+    "skipped": 0
+  }
+}

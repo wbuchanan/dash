@@ -318,7 +318,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 
 One line per row, rewritten in place by the item's closing commit; test/test_tracking_documents.py::TestGaps4Tracking reads exactly these forms: `Open (WP-NN section NN-MM).`, `Closed in WP-NN, BUGS.md "<title>", commit <sha>.`, `Documented in WP-NN, BUGS.md "<title>", commit <sha>.`, or `Partly closed in WP-NN (section NN-MM, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").` A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha.
 
-- **TR-2 Tracked:** Open (WP-33 section 33-14).
+- **TR-2 Tracked:** Closed in WP-33, BUGS.md "No picture comparison over a broad corpus (109 gr_example commands run here only once, by hand)", commit pending.
 - **TR-11 Tracked:** Closed in WP-33, BUGS.md "value_truth.json (311 twoway answers) is never compared with dash probe by probe", commit 025a0d8.
 - **TR-23 Tracked:** Closed in WP-33, BUGS.md "No green strict batch-end run is recorded on HEAD; TestBounds (4 runs) always skips, so DASH_STRICT=1 cannot pass", commit 18fc1eb.
 - **BY-23 Tracked:** Closed in WP-33, BUGS.md "Per-type by() drawing is pinned against twoway only for function (default range) and lpoly", commit 858c397.

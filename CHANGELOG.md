@@ -931,6 +931,7 @@ and now matches Stata.
 - by()'s titles and notes at each clock position are compared with twoway's (WP-33, BY-24)
 - Twenty-three estimator option combinations are measured in twoway and compared with dash (WP-33, stat:PT-23)
 - colorvar keys, frames and per-type colours are compared with twoway's (WP-33, CV-16)
+- make corpus compares about 339 twoway examples with dash, and twenty of them run in every certification gate (WP-33, TR-2)
 
 ### Fixed in WP-32
 
