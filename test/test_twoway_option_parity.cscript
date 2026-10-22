@@ -5259,23 +5259,34 @@ if `"`bad'"' != "" {
 else display as text "AT-04 PASS: each copy a record with its own sub-options; no key read from text"
 
 // AT-04b: 100,000 one-point copies, joined as _dash_rep_merge joins them,
-// are read in linear time: under one second.
-mata: _zat_big = ("1 1 " + char(34) + "a" + char(34) + char(30)) * 100000
-timer clear 56
-timer on 56
-local _at_n ""
-capture mata: st_local("_zat_rc", strofreal(_dash_at_parse(_zat_big, 0)))
-local prc = _rc
-timer off 56
-quietly timer list 56
-local secs = r(t56)
-mata: mata drop _zat_big
-if `prc' | "`_at_n'" != "100000" | `secs' >= 1 {
+// are read in linear time.  Measured as linear, not against a wall-clock
+// bound: 100,000 copies take under 8 times what 25,000 take (linear is
+// about 4, quadratic about 16), with 50 ms of slack for timer noise and a
+// 10-second ceiling.  A one-second bound failed under a loaded machine
+// (1.12 s, 22oct2026) on code that reads the same 100,000 in 0.77 s alone.
+// (zat_sz: _dash_at_parse sets locals of its own, _at_k among them.)
+foreach zat_sz in 25000 100000 {
+    mata: _zat_big = ("1 1 " + char(34) + "a" + char(34) + char(30)) * `zat_sz'
+    timer clear 56
+    timer on 56
+    local _at_n ""
+    capture mata: st_local("_zat_rc", strofreal(_dash_at_parse(_zat_big, 0)))
+    local prc`zat_sz' = _rc
+    timer off 56
+    quietly timer list 56
+    local secs`zat_sz' = r(t56)
+    local n`zat_sz' "`_at_n'"
+    mata: mata drop _zat_big
+}
+local _at_bad = `prc25000' | `prc100000' | "`n25000'" != "25000"
+local _at_bad = `_at_bad' | "`n100000'" != "100000"
+local _at_bad = `_at_bad' | `secs100000' >= 8 * `secs25000' + 0.05 | `secs100000' >= 10
+if `_at_bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' AT-04b"
-    display as error "AT-04b FAIL: `_at_n' records in `secs' s"
+    display as error "AT-04b FAIL: `n25000' records in `secs25000' s, `n100000' in `secs100000' s"
 }
-else display as text "AT-04b PASS: 100,000 copies read in `secs' s"
+else display as text "AT-04b PASS: 25,000 copies in `secs25000' s, 100,000 in `secs100000' s"
 
 // AT-05: a sub-option twoway does not take is refused in its words; its
 // abbreviations are accepted; an unknown placement() is noted as twoway
