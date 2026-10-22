@@ -428,6 +428,205 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w34_run' {
 }
 * ==== end S04 ====
 
+// S05 helpers (WP-34 section 34-05, PIC-1): _w34s05_tw reads the outline
+// twoway strokes round an area in its exported SVG -- the <use> stroking
+// the path a filled <use> fills -- and _w34s05_dash the dash page's ring
+// (the Line tagged dash_area_outline).  Each sets global <p>_line (the
+// stroke colour) and <p>_shape (the subpaths or runs: c|b per piece,
+// closed and with base corners, 1 or 0).
+python:
+import json as _w34s05_json
+import re as _w34s05_re
+from sfi import Macro as _w34s05_M
+
+
+def _w34s05_pieces(pts_list):
+    out = []
+    for pts, closed in pts_list:
+        if not pts:
+            continue
+        ys = [p[1] for p in pts]
+        xs = [p[0] for p in pts]
+        lo, xmin, xmax = max(ys), min(xs), max(xs)
+        c = closed or (abs(pts[0][0] - pts[-1][0]) <= 0.01
+                       and abs(pts[0][1] - pts[-1][1]) <= 0.01)
+        at = lambda x: any(abs(p[0] - x) <= 0.5 and abs(p[1] - lo) <= 0.5
+                           for p in pts)
+        out.append("%d%d" % (int(bool(c)), int(bool(at(xmin) and at(xmax)))))
+    return " ".join(out)
+
+
+def _w34s05_tw(path, p):
+    svg = open(path, encoding="utf-8").read()
+    ids = {}
+    for m in _w34s05_re.finditer(r"<path\b([^>]*)>", svg):
+        a = m.group(1)
+        i = _w34s05_re.search(r'\bid="([^"]+)"', a)
+        d = _w34s05_re.search(r'\bd="([^"]+)"', a)
+        if i and d:
+            ids[i.group(1)] = d.group(1)
+    filled, stroked = set(), []
+    for m in _w34s05_re.finditer(r"<use\b([^>]*)>", svg):
+        a = m.group(1)
+        h = _w34s05_re.search(r'href="#([^"]+)"', a)
+        st = _w34s05_re.search(r'style="([^"]*)"', a)
+        if not h or not st:
+            continue
+        st = st.group(1).lower()
+        if "fill:none" not in st and "fill:#" in st:
+            filled.add(h.group(1))
+        sc = _w34s05_re.search(r"stroke:(#[0-9a-f]{6})", st)
+        if sc and "fill:none" in st:
+            stroked.append((h.group(1), sc.group(1)))
+    hit = [(h, c) for h, c in stroked if h in filled and h in ids]
+    if not hit:
+        _w34s05_M.setGlobal(p + "_line", "none")
+        _w34s05_M.setGlobal(p + "_shape", "none")
+        return
+    colour = hit[0][1]
+    pieces = []
+    num = _w34s05_re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
+    for h, _c in hit:
+        _w34s05_path(ids[h], num, pieces)
+    _w34s05_M.setGlobal(p + "_line", colour)
+    _w34s05_M.setGlobal(p + "_shape", _w34s05_pieces(pieces))
+
+
+def _w34s05_path(d, num, pieces):
+    """Append the subpaths of SVG path data *d* to *pieces*."""
+    cur, closed = None, False
+    pos = (0.0, 0.0)
+    for cmd, args in _w34s05_re.findall(r"([MLHVZmlhvz])([^MLHVZmlhvz]*)",
+                                        d):
+        v = [float(z) for z in num.findall(args)]
+        rel = cmd.islower()
+        if cmd in "Mm":
+            if cur:
+                pieces.append((cur, closed))
+            cur, closed = [], False
+        if cmd in "MmLl":
+            for a, b in zip(v[0::2], v[1::2]):
+                pos = (pos[0] + a, pos[1] + b) if rel else (a, b)
+                cur.append(pos)
+        elif cmd in "Hh":
+            for a in v:
+                pos = (pos[0] + a if rel else a, pos[1])
+                cur.append(pos)
+        elif cmd in "Vv":
+            for b in v:
+                pos = (pos[0], pos[1] + b if rel else b)
+                cur.append(pos)
+        else:
+            closed = True
+    if cur:
+        pieces.append((cur, closed))
+
+
+def _w34s05_dash(path, p):
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer
+    page = open(path, encoding="utf-8").read()
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    blocks = _w34s05_re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _w34s05_re.S)
+    docs = [d for b in blocks for d in _w34s05_json.loads(
+        _w34s05_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                       lambda m: ents[m.group(1)], b)).values()]
+    doc = Document.from_json(docs[0])
+    rings = [m for m in doc.models if isinstance(m, GlyphRenderer)
+             and "dash_area_outline" in (m.tags or [])]
+    if len(rings) != 1:
+        _w34s05_M.setGlobal(p + "_line", "none")
+        _w34s05_M.setGlobal(p + "_shape", "none")
+        return
+    g = rings[0].glyph
+    d = rings[0].data_source.data
+    fx = g.x if isinstance(g.x, str) else getattr(g.x, "field", None)
+    fy = g.y if isinstance(g.y, str) else getattr(g.y, "field", None)
+    xs = [float(v) for v in d[fx]]
+    ys = [-float(v) for v in d[fy]]
+    runs, cur = [], []
+    for x, y in zip(xs, ys):
+        if x != x or y != y:
+            if cur:
+                runs.append((cur, False))
+            cur = []
+        else:
+            cur.append((x, y))
+    if cur:
+        runs.append((cur, False))
+    _w34s05_M.setGlobal(p + "_line", str(g.line_color).lower())
+    # Data units: y negated so the base is the largest y, as in the SVG;
+    # the 0.5 tolerance is far below the gap between two vertices.
+    _w34s05_M.setGlobal(p + "_shape", _w34s05_pieces(runs))
+end
+
+* ==== S05 PIC-1: the default area outline ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w34_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3405-1: twoway's stroked outline colour of `twoway area le_wm
+    // year, scheme(<s>)' equals the line colour of dash's outline ring.
+    // ------------------------------------------------------------
+    foreach s in stcolor s2color economist {
+        capture dash clear
+        sysuse uslifeexp, clear
+        quietly twoway area le_wm year, scheme(`s') name(w34s05, replace)
+        cert_svg_export, name(w34s05) file("`w34_work'/s05_tw_`s'.svg")
+        python: _w34s05_tw(r"`w34_work'/s05_tw_`s'.svg", "w34s05t")
+        local s05_tw "${w34s05t_line}"
+        capture erase "`w34_work'/s05_a_`s'.html"
+        capture noisily dash area le_wm year, scheme(`s') saving("`w34_work'/s05_a_`s'.html", replace)
+        _w34_expect Q3405-1 "(_rc == 0)" "dash area le_wm year, scheme(`s') refused: rc `=_rc'"
+        python: _w34s05_dash(r"`w34_work'/s05_a_`s'.html", "w34s05d")
+        local s05_d "${w34s05d_line}"
+        _w34_expect Q3405-1 `"("`s05_tw'" != "none")"' "`s': no stroked outline found in twoway's SVG"
+        _w34_expect Q3405-1 `"("`s05_tw'" == "`s05_d'")"' "`s': twoway strokes `s05_tw', dash's outline is `s05_d'"
+        capture erase "`w34_work'/s05_tw_`s'.svg"
+        capture erase "`w34_work'/s05_a_`s'.html"
+        capture graph drop w34s05
+    }
+    _w34_done Q3405-1 "the outline colour is twoway's in stcolor, s2color and economist"
+
+    // ------------------------------------------------------------
+    // Q3405-2: the pieces twoway strokes (closed, with base corners) are
+    // the runs of dash's ring, for the plain and gap probes (stcolor).
+    // ------------------------------------------------------------
+    foreach pr in plain gap {
+        capture dash clear
+        sysuse uslifeexp, clear
+        local s05_o ""
+        if "`pr'" == "gap" {
+            quietly replace le_wm = . in 40/45
+            local s05_o "cmissing(n)"
+        }
+        quietly twoway area le_wm year, `s05_o' scheme(stcolor) name(w34s05, replace)
+        cert_svg_export, name(w34s05) file("`w34_work'/s05_tw_`pr'.svg")
+        python: _w34s05_tw(r"`w34_work'/s05_tw_`pr'.svg", "w34s05t")
+        local s05_tw "${w34s05t_shape}"
+        capture erase "`w34_work'/s05_p_`pr'.html"
+        capture noisily dash area le_wm year, `s05_o' scheme(stcolor) saving("`w34_work'/s05_p_`pr'.html", replace)
+        _w34_expect Q3405-2 "(_rc == 0)" "dash area le_wm year, `s05_o' refused: rc `=_rc'"
+        python: _w34s05_dash(r"`w34_work'/s05_p_`pr'.html", "w34s05d")
+        local s05_d "${w34s05d_shape}"
+        _w34_expect Q3405-2 `"("`s05_tw'" != "none")"' "`pr': no stroked outline found in twoway's SVG"
+        _w34_expect Q3405-2 `"("`s05_tw'" == "`s05_d'")"' "`pr': twoway strokes pieces `s05_tw', dash's ring runs are `s05_d'"
+        capture erase "`w34_work'/s05_tw_`pr'.svg"
+        capture erase "`w34_work'/s05_p_`pr'.html"
+        capture graph drop w34s05
+    }
+    _w34_done Q3405-2 "dash's ring has twoway's closed pieces and base corners (plain, gap)"
+    macro drop w34s05t_line w34s05t_shape w34s05d_line w34s05d_shape
+    capture dash clear
+
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -12575,6 +12575,23 @@ class SchemeParser:
         self._plot_lwidth_memo[key] = val
         return val
 
+    def area_line_style(self, index: int = 0) -> dict:
+        """The outline twoway strokes round the area plot at *index*
+        (zero-based, cycling through fifteen) -- its ``p#area`` line style
+        (WP-34 PIC-1): ``{"line": hex, "line_alpha": float|None,
+        "line_width": px|None, "line_dash": list}``, the colour through
+        ``color p#arealine -> parealine -> p# -> p``, the width
+        ``linewidth p#area`` (:meth:`plot_line_width`) and the pattern
+        ``linepattern p#area -> parea -> p# -> p``.  A method, so it reads
+        directives parsed after construction."""
+        i = index % 15 + 1
+        line, alpha = self._stub_color_alpha(i, "arealine")
+        return {"line": line, "line_alpha": alpha,
+                "line_width": self.plot_line_width(index, "area"),
+                "line_dash": list(self._lpattern_chain((
+                    f"linepattern p{i}area", "linepattern parea",
+                    f"linepattern p{i}", "linepattern p")))}
+
     def plot_line_width(self, index: int = 0,
                         kind: str = "") -> "float | None":
         """The line width in pixels for the plot at *index* (zero-based,
@@ -18447,11 +18464,6 @@ class GlyphMapper:
                 options, order)
         x_arr = _dash_float_values(source.data[xvar])[_area_idx]
         y_arr = _dash_float_values(source.data[yvar])[_area_idx]
-        # The row identity, for the border line's copy: the saved page's
-        # filter callback keeps a move's rows of each copy by it.
-        _area_ids = None
-        if _ROW_ID_COLUMN in source.data:
-            _area_ids = np.asarray(source.data[_ROW_ID_COLUMN])[_area_idx]
 
         # base() sets the lower boundary; with none, twoway's default base
         # (0 clamped into the axis's scale), filled by
@@ -18531,34 +18543,82 @@ class GlyphMapper:
 
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
 
-        # Add an optional border line on top of the area when line options are given.
-        # VArea has no native border; a separate Line renderer is required.
-        _LINE_KEYS = ("lcolor", "lwidth", "lpattern")
+        # The outline (WP-34 PIC-1, DECISIONS A-6): twoway strokes the
+        # polygon it fills -- top, base and the closing edges, or under
+        # nodropbase the chord -- in the p#area line style, so one ring
+        # Line over a source of its own, rebuilt from the fill's source
+        # (_dash_area_ring) at build, by _dash_finish_auto_bases and, in
+        # the browser, by _DASH_AREA_RING_JS on every assignment of the
+        # fill's data.  color() sets the outline too; lcolor(), lwidth(),
+        # lpattern() restyle it.
         # WP-32: lstyle(), alstyle() and blstyle() stroke the outline in
         # that named line style, as twoway draws it (noted_option_truth.json:
         # the outline's colour the style's, lcolor() still over it in
-        # either order), so the border is drawn in the aline role then.
-        _named_ol = any(str(options.get(k, "") or "").strip()
-                        for k in ("lstyle", "alstyle", "blstyle"))
-        if any(k in options for k in _LINE_KEYS) or _named_ol:
-            # Default border color = the fill's resolved colour, unblended
-            border_color = _fill_base or "#aec7e8"
-            _border_data = {xvar: x_arr, yvar: y_arr}
-            if _area_ids is not None and _ROW_ID_COLUMN not in _border_data:
-                _border_data[_ROW_ID_COLUMN] = _area_ids
-            border_source = ColumnDataSource(_border_data)
-            # Through the join, so cmissing(n) breaks the outline where it
-            # breaks the fill (WP-31 C6); area ignores connect().  A named
-            # line style (lstyle(), alstyle(), blstyle()) styles it in the
-            # aline role (WP-32); otherwise no named style reaches it.
-            _dash_join_glyph(
-                self, fig, {k: v for k, v in options.items()
-                            if k != "connect"},
-                dict(x=xvar, y=yvar, source=border_source,
-                     line_color=border_color,
-                     line_width=self.scheme.plot_line_width(color_idx,
-                                                            "area")),
-                role="aline" if _named_ol else None)
+        # either order): the aline role below.
+        from bokeh.models import CustomJS as _CJS
+        _als = self.scheme.area_line_style(color_idx)
+        _oa_c = "color" in _oa
+        _drop = not _nodrop
+        _ad = area_source.data
+        _pins = [int(i) for i in (_pin_rows if _pin_rows is not None
+                                  else ())]
+        _has_rid = _ROW_ID_COLUMN in _ad
+        if _has_rid:
+            _brk = [v is None for v in _ad[_ROW_ID_COLUMN]]
+        else:
+            _ps = set(_pins)
+            _brk = [i in _ps for i in range(len(_ad[yvar]))]
+        _rx, _ry = _dash_area_ring(_ad[xvar], _ad[_y1_col] if _drop else None,
+                                   _ad[yvar], _brk, drop=_drop)
+        ring = ColumnDataSource({xvar: _rx, yvar: _ry})
+        _lw = _als["line_width"]
+        if _lw is None:
+            _lw = self.scheme.plot_line_width(color_idx, "area")
+        _rkw = dict(x=xvar, y=yvar, source=ring,
+                    line_color=(_fill_base if _oa_c else _als["line"])
+                    or "#aec7e8",
+                    line_dash=list(_als["line_dash"]),
+                    line_alpha=1.0 if _als["line_alpha"] is None
+                    else _als["line_alpha"])
+        if _lw is not None:
+            _rkw["line_width"] = _lw
+        ring_r = fig.line(**_rkw)
+        ring_r.tags = ["dash_area_outline"]
+        # Styled in the aline role, an area's outline: a named style's
+        # area line (pstyle(ci) under ciplot(area) strokes ci_arealine,
+        # colour_width_edges_truth.json c4b.<scheme>.ciplot_area).
+        _opts = {k: v for k, v in options.items() if k != "connect"}
+        self._apply_line_opts(ring_r, _opts, role="aline")
+        r._dash_area_ring = {"ring": ring, "x": xvar,
+                             "y1": _y1_col if _drop else "", "y2": yvar,
+                             "pins": _pins}
+        area_source.js_on_change("data", _CJS(
+            args=dict(src=area_source, ring=ring, x=xvar,
+                      y1=_y1_col if _drop else "", y2=yvar,
+                      rid=_ROW_ID_COLUMN if _has_rid else "",
+                      pins=list(_pins)),
+            code=_DASH_AREA_RING_JS, name="dash_area_ring"))
+        # The legend key (WP-34 PIC-1): a swatch in the area's fill and the
+        # ring's line, whose visibility hides the area and its outline
+        # (a by() legend's click); every filter, brush, extent and redraw
+        # path skips a swatch (_dash_is_swatch).
+        _kf = (r.glyph.fill_color if isinstance(r.glyph.fill_color, str)
+               else (_fill_base or self.scheme.default_color(color_idx,
+                                                             "area")))
+        _kl = (ring_r.glyph.line_color
+               if isinstance(ring_r.glyph.line_color, str) else _als["line"])
+        key = fig.quad(left=[float("nan")], right=[float("nan")],
+                       top=[float("nan")], bottom=[float("nan")],
+                       fill_color=_kf, fill_alpha=r.glyph.fill_alpha,
+                       line_color=_kl, line_width=ring_r.glyph.line_width,
+                       line_alpha=ring_r.glyph.line_alpha,
+                       name="%sarea_key_%d" % (_DASH_SWATCH_PREFIX,
+                                               len(fig.renderers)))
+        # Set on the glyph: a list keyword would be read as a column.
+        key.glyph.line_dash = list(ring_r.glyph.line_dash)
+        key._dash_key_glyph = True
+        key.js_link("visible", r, "visible")
+        key.js_link("visible", ring_r, "visible")
 
         # No marker labels: twoway draws none on an area (measured).
         return r
@@ -22229,7 +22289,9 @@ class GlyphMapper:
         (a base), read off the columns as built; ``_FILTER_JS``'s
         ``dash_recast_data`` writes the recounted points by it.  A layer
         with a column of any other shape (dot's dots, a stepped join) is
-        left untagged and keeps the build with its cue.
+        left untagged and keeps the build with its cue.  An area's
+        outline ring and its key swatch (WP-34 PIC-1) are skipped: the
+        ring follows the recounted fill through its own script.
         """
         xs = np.asarray(xs, dtype=float)
         ys = np.asarray(ys, dtype=float)
@@ -22238,6 +22300,9 @@ class GlyphMapper:
             return
         plans = []
         for g in added:
+            if "dash_area_outline" in (getattr(g, "tags", None) or ()) \
+                    or _dash_is_swatch(g):
+                continue
             ds = getattr(g, "data_source", None)
             if not isinstance(ds, ColumnDataSource) or not ds.data:
                 return
@@ -43840,6 +43905,44 @@ const dash_heads = () => {
 };
 dash_heads();
 """
+
+#: An area's outline ring (WP-34 PIC-1, DECISIONS A-6), the JS twin of
+#: _dash_area_ring: hung on every area fill source's ``data`` change, it
+#: rewrites the ring source ``ring`` from the fill's source ``src`` after
+#: every assignment (a filter move, a recast recount, the auto-base
+#: refill).  Args, all data: the columns ``x``, ``y1`` (the base; "" under
+#: nodropbase) and ``y2`` (the top); ``rid`` (the row-id column when the
+#: fill's source has one, else ""), whose null rows are the zero-height
+#: gap vertices; ``pins`` (the build's gap rows, read only when ``rid`` is
+#: "").  Column names are used only as keys.  One script for both modes.
+_DASH_AREA_RING_JS = r"""
+const d = src.data, has = (c) => !!c && Object.prototype.hasOwnProperty.call(d, c);
+if (!has(x) || !has(y2) || (rid && !has(rid)) || (y1 && !has(y1))) return;
+const X = d[x], T = d[y2], B = y1 ? d[y1] : null, R = rid ? d[rid] : null;
+const P = new Set((pins || []).map(Number));
+const n = Math.min(X.length, T.length, R ? R.length : T.length, B ? B.length : T.length);
+const num = (v) => (v === null || v === undefined || v === "") ? NaN : Number(v);
+const ok = [];
+for (let i = 0; i < n; i++) {
+    const brk = R ? (R[i] === null || R[i] === undefined) : P.has(i);
+    ok.push(!brk && isFinite(num(X[i])) && isFinite(num(T[i])) && (!B || isFinite(num(B[i]))));
+}
+const ox = [], oy = [];
+for (let i = 0; i < n; ) {
+    if (!ok[i]) { i++; continue; }
+    let j = i;
+    while (j + 1 < n && ok[j + 1]) j++;
+    if (ox.length) { ox.push(NaN); oy.push(NaN); }
+    for (let k = i; k <= j; k++) { ox.push(num(X[k])); oy.push(num(T[k])); }
+    if (B) for (let k = j; k >= i; k--) { ox.push(num(X[k])); oy.push(num(B[k])); }
+    ox.push(num(X[i])); oy.push(num(T[i]));
+    i = j + 1;
+}
+const nd = {};
+nd[x] = ox;
+nd[y2] = oy;
+ring.data = nd;
+"""
 for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
                    ("@@DASH_SIDE@@", _DASH_NATSCALE_SIDE),
                    ("@@DASH_UNCOVERED@@", _DASH_NATSCALE_UNCOVERED),
@@ -45923,7 +46026,15 @@ def _dash_auto_base_props(r, letter):
     """``(prop,)`` when renderer *r* draws a default base on an axis of
     *letter* (its ``dash_base:`` tag, :func:`_dash_base_spec`), else ``()``:
     the property every value reader skips, as twoway's scale has no
-    default base (WP-30 P1.3a D7 a, P1.17b)."""
+    default base (WP-30 P1.3a D7 a, P1.17b).  An area's outline ring
+    (WP-34 PIC-1) is no tick or hull input on either axis: its base
+    vertices are the default base.  Its tuple leads with ``line_width``,
+    a property that holds a number, not a column, so a reader that takes
+    the first entry for a default base's column (``_dash_axis_plan``'s
+    ``autobase``) finds none, and the axis's own letter, which every
+    reader skips."""
+    if "dash_area_outline" in (getattr(r, "tags", None) or ()):
+        return ("line_width", letter)
     bs = _dash_base_spec(r)
     return (bs["prop"],) if bs and bs["auto"] and bs["letter"] == letter \
         else ()
@@ -45965,7 +46076,9 @@ def _dash_finish_auto_bases(fig):
     mapper's provisional value.  Returns the number of columns written.
     Run at the ends of :func:`_dash_finish_count_ticks` and
     :func:`_dash_common_count_ticks`, in both modes and after a served
-    move; the saved page's twin is ``dash_fill_auto_bases``.  Never
+    move; the saved page's twin is ``dash_fill_auto_bases``.  An area's
+    outline ring is rewritten from its fill right after the fill's base
+    column (:func:`_dash_area_ring_write`, WP-34 PIC-1).  Never
     raises."""
     n = 0
     for r in getattr(fig, "renderers", None) or ():
@@ -45999,6 +46112,7 @@ def _dash_finish_auto_bases(fig):
                               equal_nan=True):
                 continue
             data[field] = new
+            _dash_area_ring_write(r)
             n += 1
         except Exception:  # noqa: BLE001 -- never raises
             continue
@@ -58215,6 +58329,9 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     out = []
     n = 1
     for plot, rends in plot_renderers:
+        # WP-34 PIC-1: a layer with key glyphs (an area's outlined swatch)
+        # is keyed by them alone.
+        keyed = [r for r in rends if getattr(r, "_dash_key_glyph", False)]
         # WP-31 B5b: twoway keys dot's marker, not its rows of dots.
         rends = [r for r in rends if not _dash_is_swatch(r)
                  and "dash_dots" not in (getattr(r, "tags", None) or ())]
@@ -58226,18 +58343,28 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                 ser = _dash_layer_series(plot, var_labels, default_level)
                 # A band drawn as another type by ciplot() is marked so;
                 # a line hidden by nofit takes no key (WP-31 C4).
+                # A fitplot(area) fit's fill carries its outline ring and
+                # no _dash_ci_band: it is the fit, not the band (WP-34
+                # PIC-1).
                 band = [r for r in rends
                         if getattr(r, "_dash_ci_band", False)
-                        or type(getattr(r, "glyph", None)).__name__
-                        in ("VArea", "Band", "Patch")]
+                        or (type(getattr(r, "glyph", None)).__name__
+                            in ("VArea", "Band", "Patch")
+                            and getattr(r, "_dash_area_ring", None) is None)]
                 line = [r for r in rends if r not in band
                         and not getattr(r, "_dash_nofit", False)]
+                bkey = [k for k in keyed if getattr(k, "_dash_ci_band", False)]
+                lkey = [k for k in keyed
+                        if not getattr(k, "_dash_ci_band", False)
+                        and not getattr(k, "_dash_nofit", False)]
                 if band:
-                    out.append((n, ser[0][0], band))
+                    out.append((n, ser[0][0], bkey or band))
                 if line:
-                    out.append((n + 1, ser[-1][0], line))
+                    out.append((n + 1, ser[-1][0], lkey or line))
             n += 2
             continue
+        if keyed and rends:
+            rends = keyed
         if ptype in _DASH_CONTOUR_TYPES:
             # WP-31 B4b: twoway gives contour no key (numkeys 0; its
             # colour key is the clegend) and contourline's level keys are
@@ -58782,10 +58909,15 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     # own (GlyphMapper._ci_band_glyphs): a tooltip on it would name the
     # polygon's vertices, so it answers for nothing; the band does.  A
     # connect(none) line is drawn hidden and answers for nothing either
-    # (_dash_join_hide; WP-30 P1.8a).
+    # (_dash_join_hide; WP-30 P1.8a).  An area's outline ring (WP-34
+    # PIC-1) is its polygon too: like a ci band's outline, its vertices
+    # answer for nothing; the fill does.  Its key swatch, one NaN row
+    # drawn for the legend, answers for nothing either.
     _rends = [r for r in fig.renderers if getattr(r, "data_source", None)
               is not None
               and "dash_ci_outline" not in (getattr(r, "tags", None) or [])
+              and "dash_area_outline" not in (getattr(r, "tags", None) or [])
+              and not getattr(r, "_dash_key_glyph", False)
               and "dash_join_none" not in (getattr(r, "tags", None) or [])
               # WP-31 B5b: dot's rows answer for nothing; the marker does.
               and "dash_dots" not in (getattr(r, "tags", None) or [])]
@@ -60038,6 +60170,76 @@ def _dash_fill_rebuild(data, xcol, ycols, pin, xi, yi, col):
     return new
 
 
+def _dash_area_ring(xs, y1s, y2s, breaks=None, drop=True):
+    """An area's whole outline as one ring of vertices (WP-34 PIC-1,
+    DECISIONS A-6): twoway strokes the polygon it fills, so each run of
+    drawn rows is the run's tops (*y2s*) in order, then with *drop* its
+    bases (*y1s*) in reverse, then its first top again; without *drop*
+    (nodropbase) the tops and then the first top, the closing chord.  A
+    run is a maximal sequence of rows whose x and top (and with *drop* its
+    base) are finite and that *breaks* does not mark (map_area's zero-height
+    gap vertices); runs are separated by one (nan, nan) vertex.  Returns two
+    float arrays.  Pure, O(n); the twin of _DASH_AREA_RING_JS."""
+    x = _dash_float_values(xs)
+    t = _dash_float_values(y2s)
+    b = _dash_float_values(y1s) if drop else None
+    n = min(len(x), len(t), len(b) if drop else len(t))
+    brk = (np.zeros(n, dtype=bool) if breaks is None
+           else np.asarray(list(breaks)[:n], dtype=bool))
+    ok = np.isfinite(x[:n]) & np.isfinite(t[:n]) & ~brk
+    if drop:
+        ok &= np.isfinite(b[:n])
+    ox, oy = [], []
+    i = 0
+    while i < n:
+        if not ok[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and ok[j + 1]:
+            j += 1
+        if ox:
+            ox.append(np.nan)
+            oy.append(np.nan)
+        ox.extend(x[i:j + 1])
+        oy.extend(t[i:j + 1])
+        if drop:
+            ox.extend(x[i:j + 1][::-1])
+            oy.extend(b[i:j + 1][::-1])
+        ox.append(x[i])
+        oy.append(t[i])
+        i = j + 1
+    return np.asarray(ox, dtype=float), np.asarray(oy, dtype=float)
+
+
+def _dash_area_ring_write(r):
+    """Rewrite the outline ring map_area hung on area renderer *r*
+    (``r._dash_area_ring``) from *r*'s own source (WP-34 PIC-1): a row
+    breaks the ring where its _ROW_ID_COLUMN value is None (the fill's
+    zero-height gap vertices), or, on a source without that column, where
+    its index is one of the build's pin rows.  True when it wrote; never
+    raises."""
+    spec = getattr(r, "_dash_area_ring", None)
+    if not spec:
+        return False
+    try:
+        d = r.data_source.data
+        x, y1, y2 = spec["x"], spec["y1"], spec["y2"]
+        rid = d.get(_ROW_ID_COLUMN)
+        n = len(d[y2])
+        if rid is not None:
+            brk = [v is None for v in list(rid)[:n]]
+        else:
+            pins = set(int(i) for i in spec.get("pins") or ())
+            brk = [i in pins for i in range(n)]
+        rx, ry = _dash_area_ring(d[x], d[y1] if y1 else None, d[y2], brk,
+                                 drop=bool(y1))
+        spec["ring"].data = {x: rx, y2: ry}
+        return True
+    except Exception:  # noqa: BLE001 -- never raises
+        return False
+
+
 def _dash_fill_join(xcol, ycols, pin, style, cmiss, xs, ok, ids,
                     repin=False):
     """A filled copy's ``_dash_join`` record for the saved page's rebuild
@@ -60745,6 +60947,10 @@ def _dash_layer_drew_anything(renderers):
     if not renderers:
         return False
     for _r in renderers:
+        # An area's key swatch (WP-34 PIC-1) is one NaN row drawn for the
+        # legend, no data.
+        if getattr(_r, "_dash_key_glyph", False):
+            continue
         _src = getattr(_r, "data_source", None)
         if _src is None:
             return True          # an annotation, not a data glyph
@@ -67440,7 +67646,9 @@ class ServerAppBuilder:
                       "_DASH_BS_LG_FROM_PX", "_DASH_KPI_CELL_MIN_PX",
                       "_DASH_KPI_CELL_MIN_NARROW_PX",
                       # The arrowheads' script and default angle (WP-31 C1).
-                      "_DASH_ARROW_HEAD_JS", "_DASH_ARROW_ANGLE_DEG"):
+                      "_DASH_ARROW_HEAD_JS", "_DASH_ARROW_ANGLE_DEG",
+                      # An area's outline ring script (WP-34 PIC-1).
+                      "_DASH_AREA_RING_JS"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -67740,6 +67948,8 @@ class ServerAppBuilder:
                          # WP-30 P1.17b: twoway's default base.
                          "_dash_base_spec", "_dash_auto_base_props",
                          "_dash_axis_scale", "_dash_finish_auto_bases",
+                         # WP-34 PIC-1: an area's outline ring.
+                         "_dash_area_ring", "_dash_area_ring_write",
                          # WP-30 P1.3b: the date model's explicit order.
                          "_dash_ts_pair",
                          # WP-30 P1.20b: plot-region margin and inner box.

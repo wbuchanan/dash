@@ -1440,7 +1440,14 @@ class TestTheServedIndexIsARank:
                 spec = tp._spec([plot_for(t, if_expr="price > 4500")],
                                 {"filter": _RANGE, "link": link})
                 doc, _ = tp._served(spec)
+                # Flipped (WP-34 PIC-1): an area's outline ring is drawn
+                # from its fill's source, not from rows (A-6).
+                rings = {id(m.data_source) for m in doc.models
+                         if "dash_area_outline" in (getattr(m, "tags", None)
+                                                    or [])}
                 for s in _sources(doc):
+                    if id(s) in rings:
+                        continue
                     if (frame_vars & set(s.data)) and "index" not in s.data:
                         bad.append((t, link, sorted(s.data)))
         assert bad == [], bad

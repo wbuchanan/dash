@@ -554,6 +554,7 @@ class JsSession:
                             and [x.id for x in m.renderers] != rs:
                         m.renderers = [objs[i] for i in rs]
             self._seen.update(objs)
+            _fire_area_rings(out, objs)
         self.runs.append(out)
         return out
 
@@ -592,6 +593,36 @@ class JsSession:
         """*source*'s ``_ROW_ID_COLUMN``, as Python holds it now, or
         ``None`` when the column is absent."""
         return source.data.get(dr._ROW_ID_COLUMN)
+
+
+def _fire_area_rings(out, objs):
+    """Run, after a committed run, the area outline ring script
+    (``dr._DASH_AREA_RING_JS``, WP-34 PIC-1) hung on the ``data`` change of
+    every source the run returned, as BokehJS fires it on each assignment
+    of the fill's data in the browser; node runs the callback alone.  The
+    script is a pure function of the fill's data, so running it on a
+    source the run left unchanged rewrites the same ring.  The other
+    ``change:data`` scripts (the arrowheads') need a browser view and are
+    left to the browser tests."""
+    code = getattr(dr, "_DASH_AREA_RING_JS", None)
+    if not code or _RING_RUNNING:
+        return
+    _RING_RUNNING.append(True)
+    try:
+        for mid in out:
+            m = objs.get(mid)
+            if not isinstance(m, ColumnDataSource):
+                continue
+            for cb in (m.js_property_callbacks or {}).get("change:data", []):
+                if getattr(cb, "code", None) == code:
+                    JsSession([]).run_code(cb.code, cb.args)
+    finally:
+        _RING_RUNNING.clear()
+
+
+#: Set while _fire_area_rings runs: the ring script's own run returns the
+#: fill's source too, and assigns only the ring, so it fires nothing.
+_RING_RUNNING = []
 
 
 # ---------------------------------------------------------------------------

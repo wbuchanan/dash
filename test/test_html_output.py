@@ -1955,7 +1955,12 @@ class TestOutputBackendAndVisualMarkers:
             spec, data = _single_graph_spec(ptype, keys)
             drawn = [[(layer["glyph"], layer["rows"]) for layer in fig]
                      for fig in _figure_layers(_render_to_html(spec, data))]
-            assert drawn == [[(glyph, 20)]], (ptype, drawn)
+            # Flipped (WP-34 PIC-1): an area draws its outline ring (20
+            # tops, 20 bases and the closing vertex) and its key swatch
+            # (one row) after the fill, as twoway outlines it (A-6).
+            want = ([[(glyph, 20), ("Line", 41), ("Quad", 1)]]
+                    if ptype == "area" else [[(glyph, 20)]])
+            assert drawn == want, (ptype, drawn)
 
     def test_rarea_varea_glyph_has_fill_attributes(self):
         """rarea VArea glyph model must have fill_color and fill_alpha attributes."""
@@ -2167,7 +2172,11 @@ class TestNewOptionHtml:
         html = _render_to_html(spec, data)
         # The area's lower edge is 3 all along: the VArea's y1.  "3.0" and
         # '"y1"' are both in the page's BokehJS.
-        band = _only_layer(html, "VArea")
+        # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
+        # one ring rebuilt from the fill's source (A-6), drawn after the
+        # VArea with its key swatch: the fill is the first layer.
+        assert _figure_glyphs(html) == [["VArea", "Line", "Quad"]]
+        band = _figure_layers(html)[0][0]
         assert _values(band, "y1") == [3.0] * 20, \
             "area base(3) must put the lower boundary at 3"
         assert _values(band, "y2") == [float(i) for i in range(1, 21)]

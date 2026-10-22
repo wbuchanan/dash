@@ -87,7 +87,9 @@ class TestTheDrawAsHelper:
 _DERIVED = [
     ("lfit", "scatter", ["Scatter"]),
     ("qfit", "line", ["Line"]),
-    ("lowess", "area", ["VArea"]),
+    # Flipped (WP-34 PIC-1): an area draws its outline ring and its key
+    # swatch after the fill (A-6).
+    ("lowess", "area", ["VArea", "Line", "Quad"]),
     ("lpoly", "bar", ["VBar"]),
     ("fpfit", "spike", ["Segment"]),
     ("mspline", "dropline", ["Segment", "Scatter"]),
@@ -124,9 +126,14 @@ def _figs(mode, recast):
 
 def _points(fig):
     """The (x, y) points a layer drew: a Line/Scatter/VArea/VBar's x and y
-    columns, a histogram's quad midpoints and tops."""
+    columns, a histogram's quad midpoints and tops.  Flipped (WP-34
+    PIC-1): not an area's outline ring, its whole polygon rebuilt from the
+    fill's source (A-6), nor its key swatch."""
     out = set()
     for g in fig.renderers:
+        if "dash_area_outline" in (g.tags or []) \
+                or getattr(g, "_dash_key_glyph", False):
+            continue
         d = g.data_source.data
         if "top" in d and "left" in d:
             for lo, hi, t in zip(d["left"], d["right"], d["top"]):
@@ -240,7 +247,9 @@ class TestRecastAfterAMove:
             doc, _ = jo._served_move(spec, tp._DF, action)
             fig = jo._served_figs(doc)[0]
             out.append((_glyphs(fig), _points(fig)))
-        assert out[0][0] == ["VArea"] and out[0][1]
+        # Flipped (WP-34 PIC-1): the fill, its outline ring and its key
+        # swatch (A-6).
+        assert out[0][0] == ["VArea", "Line", "Quad"] and out[0][1]
         assert out[0][1] == out[1][1]
 
 

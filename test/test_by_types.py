@@ -197,10 +197,15 @@ def _draw(mode, spec):
 # ---------------------------------------------------------------------------
 def _glyphs(fig):
     """The panel's data renderers: every GlyphRenderer but dot's guide
-    dots (tag dash_dots)."""
+    dots (tag dash_dots).  Flipped (WP-34 PIC-1): nor an area's outline
+    ring (tag dash_area_outline), whose base vertices are no data, nor its
+    key swatch -- the outline is the area's whole polygon, one ring
+    rebuilt from the fill's source (A-6)."""
     return [r for r in fig.renderers
             if type(r).__name__ == "GlyphRenderer"
-            and "dash_dots" not in (r.tags or [])]
+            and "dash_dots" not in (r.tags or [])
+            and "dash_area_outline" not in (r.tags or [])
+            and not getattr(r, "_dash_key_glyph", False)]
 
 
 def _kept(r):

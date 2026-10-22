@@ -2847,6 +2847,11 @@ CORPUS = [
     # WP-34 VF-3: the fixed figure is the xsize()/ysize() box in both modes.
     _case("aspectratio 2 xsize 8 ysize 4", [_sc()],
           go={"aspectratio": "2", "xsize": "8", "ysize": "4"}),
+    # WP-34 PIC-1: an area's whole outline, one ring, and its key swatch.
+    _case("area default outline", [plot_for("area")]),
+    _case("area cmissing outline", [plot_for("area", {"cmissing": "n"})]),
+    _case("area nodropbase outline",
+          [plot_for("area", {"nodropbase": "nodropbase"})]),
 ]
 
 
@@ -4149,6 +4154,9 @@ _CVAR_MOVES = [
                {"by": "foreign, clegend(on)"}),
 ]
 MOVE_CORPUS.extend(_CVAR_MOVES)
+# WP-34 PIC-1: the outline ring follows the fill through a range move.
+MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
+                              [plot_for("area")]))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 
@@ -5164,6 +5172,11 @@ def _assert_each_layer_names_its_own(fig, mode, extra=()):
     tools = [t for t in fig.tools if isinstance(t, HoverTool)]
     seen = {"mpg": 0, "price": 0}
     for r in fig.renderers:
+        # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
+        # one ring rebuilt from the fill's source (A-6); like a ci band's
+        # outline it answers for nothing, the fill does.
+        if "dash_area_outline" in (getattr(r, "tags", None) or []):
+            continue
         drawn = _glyph_fields(r) & {"mpg", "price"}
         if len(drawn) != 1:
             continue

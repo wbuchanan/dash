@@ -460,7 +460,14 @@ scheme's area line style -- its plot colour at the medium line width,
 under {cmd:s2color} navy as wide as {cmd:line}'s -- along its two bounds,
 which {cmd:alcolor()}, {cmd:alwidth()}, {cmd:alpattern()}, {cmd:lcolor()}
 and {cmd:color()} restyle; the short edges {cmd:twoway} also strokes
-where the area closes at its first and last {it:x} are not drawn.  A malformed name in {cmd:sort()} is
+where the area closes at its first and last {it:x} are not drawn.  An
+{cmd:area} is outlined whole, as {cmd:twoway} strokes its polygon: along
+its top, its base and the two short edges at its first and last points
+(under {cmd:nodropbase}, along the chord that closes it), in the scheme's
+area line colour, width and pattern, which {cmd:color()}, {cmd:lcolor()},
+{cmd:lwidth()}, {cmd:lpattern()} and the named line styles restyle; a
+{cmd:cmissing(n)} gap breaks it where it breaks the fill, and its legend
+key is the outlined fill.  A malformed name in {cmd:sort()} is
 refused on every plot type -- {cmd:sort(x*)} is "* invalid name",
 r(198) -- and a name that is no usable variable on the plot types that
 draw observations: {cmd:sort(nosuch)} on {cmd:line} is "variable nosuch not
@@ -6089,7 +6096,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     same, or {cmd:linewidth p}{it:#}{cmd:mark} and {cmd:linewidth pmark}
     where a scheme declares them; {cmd:mlwidth()} still wins), a bar's
     and an area's outline width ({cmd:linewidth pbar} and
-    {cmd:linewidth parea}), the
+    {cmd:linewidth parea}; an area is outlined by default, as
+    {cmd:twoway} outlines it), the
     marker fill and outline colours ({cmd:color p}{it:#}{cmd:markfill}
     and {cmd:color p}{it:#}{cmd:markline}, each falling back to
     {cmd:p}{it:#} as Stata's chain does; {cmd:color p}{it:#}{cmd:mark} is

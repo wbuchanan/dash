@@ -66,8 +66,11 @@ def _plain_points(r, ptype):
 
 
 def _recast_renderers(r):
+    # Flipped (WP-34 PIC-1): an area's outline ring is drawn from its
+    # fill's source by its own script; the fill is the recounted renderer.
     return [g for g in r.figures["g2"].renderers
-            if not dr._dash_is_swatch(g)]
+            if not dr._dash_is_swatch(g)
+            and "dash_area_outline" not in (getattr(g, "tags", None) or ())]
 
 
 @pytest.mark.parametrize("ptype", sorted(_TYPES))

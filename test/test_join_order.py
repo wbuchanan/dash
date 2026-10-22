@@ -231,9 +231,13 @@ def _served_figs(doc):
 
 
 def _joined(fig, xvar):
-    """Each Line and VArea renderer's x column, in drawn order."""
+    """Each Line and VArea renderer's x column, in drawn order.  Flipped
+    (WP-34 PIC-1): not an area's outline ring, the area's whole polygon
+    rebuilt from the fill's source (A-6); the fill holds the join."""
     out = []
     for g in fig.renderers:
+        if "dash_area_outline" in (g.tags or []):
+            continue
         if isinstance(g.glyph, (Line, VArea)):
             data = g.data_source.data
             if xvar in data:
@@ -297,6 +301,11 @@ def _drawn(name, src, options=None, **kw):
                 fig, src, "y", "x", dict(options or {}), **kw)
     out = []
     for g in fig.renderers:
+        # Flipped (WP-34 PIC-1): an area's outline ring is its whole
+        # polygon rebuilt from the fill's source (A-6); the fill holds the
+        # join order.
+        if "dash_area_outline" in (g.tags or []):
+            continue
         if isinstance(g.glyph, Line):
             d = g.data_source.data
             out.append(([float(v) for v in d[g.glyph.x]],

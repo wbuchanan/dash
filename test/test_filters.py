@@ -1736,6 +1736,21 @@ class TestFilterReachesTheRenderedSource:
             assert len(lines) == 1, "the graph draws %d lines" % len(lines)
         rendered = self._sources_behind_glyphs(fig)
         assert rendered, "the graph draws nothing"
+        # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
+        # one ring rebuilt from the fill's source (A-6) by the script hung
+        # on the fill source's data change, and the key swatch draws no
+        # row: neither is the filter's to write.
+        import dash_render as _dr
+        for r in fig.renderers:
+            if getattr(r, "_dash_key_glyph", False):
+                rendered.discard(id(r.data_source))
+            ring = getattr(r, "_dash_area_ring", None)
+            if ring:
+                assert id(r.data_source) in targets
+                assert any(c.code == _dr._DASH_AREA_RING_JS for c in
+                           r.data_source.js_property_callbacks.get(
+                               "change:data", []))
+                rendered.discard(id(ring["ring"]))
         # Every source a glyph draws from, not merely one of them: a
         # connected plot's markers drew from the graph's source and its
         # line from a copy nothing wrote.

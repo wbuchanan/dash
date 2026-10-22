@@ -2316,7 +2316,10 @@ class TestAreaBorderLine:
         # read, and `>= 1' passed with the border drawn twice, or drawn
         # UNDER the fill, which hides it.
         added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
-        assert added == ["VArea", "Line"], (
+        # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
+        # one ring rebuilt from the fill's source (A-6), followed by the
+        # area's key swatch.
+        assert added == ["VArea", "Line", "Quad"], (
             f"lcolor must add the area, then one border line over it: {added}")
         line_renderers = [r for r in fig.renderers
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
@@ -2334,7 +2337,10 @@ class TestAreaBorderLine:
         # [VArea, Line], as for lcolor above: `>= 1' passed with the border
         # drawn twice or under the fill (24sep2026).
         added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
-        assert added == ["VArea", "Line"], (
+        # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
+        # one ring rebuilt from the fill's source (A-6), followed by the
+        # area's key swatch.
+        assert added == ["VArea", "Line", "Quad"], (
             f"lwidth must add the area, then one border line over it: {added}")
         line_renderers = [r for r in fig.renderers
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
@@ -2349,8 +2355,11 @@ class TestAreaBorderLine:
         gm.map_area(fig, cds, "mpg", "weight", {})
         line_renderers = [r for r in fig.renderers
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
-        assert len(line_renderers) == 0, \
-            "no line options must not add a border line renderer"
+        # Flipped (WP-34 PIC-1): twoway outlines every area, so the ring
+        # is drawn with no line option too, in the area line style.
+        assert len(line_renderers) == 1, \
+            "an area draws its outline ring with no line options"
+        assert line_renderers[0].tags == ["dash_area_outline"]
 
 
 # ================================================================

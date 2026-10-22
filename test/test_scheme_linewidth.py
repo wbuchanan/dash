@@ -276,7 +276,9 @@ def _layers(ptype):
     if ptype == "kdensity":
         return [{"type": "kdensity", "var": "y", "options": {}},
                 {"type": "kdensity", "var": "y2", "options": {}}]
-    opts = {"lcolor": "red"} if ptype == "area" else {}
+    # Flipped (WP-34 PIC-1): an area is outlined by default, as twoway
+    # outlines it; lcolor(red) only forced the outline.
+    opts = {}
     return [{"type": ptype, "yvar": "y", "xvar": "x", "options": dict(opts)},
             {"type": ptype, "yvar": "y2", "xvar": "x", "options": dict(opts)}]
 

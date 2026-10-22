@@ -531,6 +531,13 @@ class TestAPerPlotQualifierIsRead:
         # (measured 24sep2026).  all() alone passed a layer that drew no
         # renderer in either mode.
         layers = {"connected": 2, "dropline": 2}.get(ptype, 1)
+        if ptype == "area":
+            # Flipped (WP-34 PIC-1): the outline is the area's whole
+            # polygon, one ring rebuilt from the fill's source (A-6) --
+            # 5 tops, 5 bases and the closing vertex -- and its key swatch
+            # (one row), after the fill.
+            assert [n for _, n in srv[1:]] == [11, 1], srv
+            srv = srv[:1]
         if ptype == "dot":
             # Its rows of dots come first (WP-31 B5b), 76 for each of the
             # five cars over the scale 10..40 at 75 dots (base 10: one dot

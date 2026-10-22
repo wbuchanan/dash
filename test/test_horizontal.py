@@ -227,6 +227,11 @@ class TestHorizontalIsTheTranspose:
                 bad.append((t, "renderers", len(ur), len(hr)))
                 continue
             for a, b in zip(ur, hr):
+                # Flipped (WP-34 PIC-1): an area's key swatch is one NaN
+                # row for the legend, which no transposition reaches (a
+                # swatch is no layer, _dash_transpose_layer).
+                if getattr(a, "_dash_key_glyph", False):
+                    continue
                 for s in _SLOTS:
                     ga, gb = getattr(a, s, None), getattr(b, s, None)
                     if not hasattr(ga, "properties_with_values"):

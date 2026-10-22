@@ -332,7 +332,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-1 Tracked:** Open (WP-34 section 34-03).
 - **VF-2 Tracked:** Open (WP-34 section 34-02).
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit pending.
-- **PIC-1 Tracked:** Open (WP-34 section 34-05).
+- **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit pending.
 - **PIC-3 Tracked:** Open (WP-34 section 34-06).
 - **TR-4 Tracked:** Open (WP-34 section 34-07).
 - **DG-3 Tracked:** Open (WP-34 section 34-08).

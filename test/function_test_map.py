@@ -361,6 +361,7 @@ FUNCTIONS = {
  'SchemeParser.default_connect_pattern': 'test/test_scheme_consumption.py::TestLinePatternFollowsStatasOwnChain::test_a_connected_plot_keeps_reading_p_hash_line',
  'SchemeParser.default_line_pattern': 'test/test_scheme.py::TestDefaultColorAPI::test_default_line_pattern_returns_list',
  'SchemeParser.default_marker_size': 'test/test_dropline_marker_options.py::TestTheSchemeSetsTheSizeAndWidth::test_the_marker_size_comes_from_the_scheme',
+ 'SchemeParser.area_line_style': 'test/test_area_outline.py::TestTheStyle::test_matches_twoway',
  'SchemeParser.plot_line_width': 'test/test_scheme_linewidth.py::TestTheChainByKey::test_the_kind_stub_beats_p_hash',
  'SchemeParser._plot_lwidth_of': 'test/test_scheme_linewidth.py::TestAdversarial::test_a_hostile_width_falls_through_the_chain',
  'SchemeParser.default_symbol': 'test/test_scheme.py::TestDefaultColorAPI::test_default_symbol_returns_string',
@@ -1194,6 +1195,8 @@ FUNCTIONS = {
  'GlyphMapper._tag_base': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_each_mapper_tags_its_base',
  '_dash_auto_base_props': 'test/test_bar_range_geometry.py::TestTheMappersMarkTheirBase::test_each_mapper_tags_its_base',
  '_dash_axis_scale': 'test/test_bar_range_geometry.py::TestTheFill::test_the_axis_scale',
+ '_dash_area_ring': 'test/test_area_outline.py::TestTheRing::test_the_helper',
+ '_dash_area_ring_write': 'test/test_area_outline.py::TestTheRing::test_the_finish_rewrites_the_ring',
  '_dash_base_spec': 'test/test_bar_range_geometry.py::TestTheBaseSpec::test_reads_only_well_formed_tags',
  '_dash_finish_auto_bases': 'test/test_bar_range_geometry.py::TestTheFill::test_clamps_zero_into_the_scale',
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)

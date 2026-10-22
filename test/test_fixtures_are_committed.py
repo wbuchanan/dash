@@ -261,6 +261,7 @@ GENERATORS = {
     "alias_spelling_truth.json": "scripts/extract_alias_spelling_truth.do",
     "applicability_truth.json": "scripts/extract_applicability_truth.do",
     "area_cmissing_truth.json": "scripts/extract_area_cmissing_truth.do",
+    "area_outline_truth.json": "scripts/extract_area_outline_truth.do",
     "arrowhead_truth.json": "scripts/extract_arrowhead_truth.do",
     "axes_n_truth.json": "scripts/extract_axes_n_truth.do",
     "axis2_move_truth.json": "scripts/extract_axis2_move_truth.do",

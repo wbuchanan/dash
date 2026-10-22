@@ -505,9 +505,19 @@ class TestTheHelpers:
                               ("scatter", {}, None)):
             plots = [P(t, "mpg", "weight", **opts)]
             f = _figs("saved", _spec(plots))[0]
+            # Flipped (WP-34 PIC-1): an area's outline ring is no tick or
+            # hull input on either axis (its own row below) and its key
+            # swatch is no layer; the fill keeps its base's role.
             got = {dr._dash_auto_base_props(r, "y") or None
                    for r in f.renderers
-                   if type(r.glyph).__name__ != "Scatter"} or {None}
+                   if type(r.glyph).__name__ != "Scatter"
+                   and not dr._dash_is_swatch(r)
+                   and "dash_area_outline" not in (r.tags or [])} or {None}
+            for r in f.renderers:
+                if "dash_area_outline" in (r.tags or []) and not (
+                        "x" in dr._dash_auto_base_props(r, "x")
+                        and "y" in dr._dash_auto_base_props(r, "y")):
+                    bad.append((t, "ring", r.tags))
             if got != {want}:
                 bad.append((t, opts, got))
         for lit in ({"type": "scatteri", "values": [[1.0, 2.0]]},

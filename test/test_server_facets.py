@@ -395,7 +395,10 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
         for f in figs:
             for r in f.renderers:
                 src = getattr(r, "data_source", None)
-                if src is None or id(src) in seen:
+                # Flipped (WP-34 PIC-1): an area's key swatch is one NaN
+                # row drawn for the legend, no layer's data.
+                if src is None or id(src) in seen \
+                        or getattr(r, "_dash_key_glyph", False):
                     continue
                 seen.add(id(src))
                 for k, v in src.data.items():
