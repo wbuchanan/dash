@@ -1,0 +1,464 @@
+{
+  "T_close": 0.73,
+  "T_same": null,
+  "_meta": {
+    "born_date": "22 Oct 2026",
+    "dash_commit": "7758ec4c74d2b80629b4c7b95be547bc717ac60c",
+    "extracted": "22 Oct 2026",
+    "source": "scripts/corpus/calibrate.py",
+    "stata_version": "19.5",
+    "table": "scripts/corpus/calibration.tsv"
+  },
+  "aspect_abs": 0.05,
+  "calibration": [
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-graph_editor-88374bfd",
+      "label": "Close",
+      "ssim": 0.8066
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-axis_label_options-ac1ea974",
+      "label": "Close",
+      "ssim": 0.8039
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-graph_twoway-30a8a3a3",
+      "label": "Close",
+      "ssim": 0.7883
+    },
+    {
+      "aspect_diff": 0.0608,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-twoway_lfit-02972943",
+      "label": "Close",
+      "ssim": 0.8087
+    },
+    {
+      "aspect_diff": -0.0241,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-twoway_bar-54ebe9ee",
+      "label": "Close",
+      "ssim": 0.7334
+    },
+    {
+      "aspect_diff": 0.1147,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-graph_intro-213d475d",
+      "label": "Close",
+      "ssim": 0.7835
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-scatter-18d9be31",
+      "label": "Close",
+      "ssim": 0.7883
+    },
+    {
+      "aspect_diff": -0.058,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-title_options-6d902dbd",
+      "label": "Close",
+      "ssim": 0.8011
+    },
+    {
+      "aspect_diff": -0.0241,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-twoway_bar-9b08fc9d",
+      "label": "Close",
+      "ssim": 0.7416
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-scatter-97b1c0ce",
+      "label": "Close",
+      "ssim": 0.8287
+    },
+    {
+      "aspect_diff": 0.0467,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-legend_options-58897c5e",
+      "label": "Close",
+      "ssim": 0.821
+    },
+    {
+      "aspect_diff": 0.1112,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "help-twoway_bar-a3513348",
+      "label": "Close",
+      "ssim": 0.8035
+    },
+    {
+      "aspect_diff": -0.0554,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "ex-bootstrap_kpi_hero-62a41c90",
+      "label": "Close",
+      "ssim": 0.772
+    },
+    {
+      "aspect_diff": -0.0358,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "ex-full_dashboard-82b1c7bf",
+      "label": "Close",
+      "ssim": 0.7586
+    },
+    {
+      "aspect_diff": -0.0358,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "ex-serve_dashboard-01245900",
+      "label": "Close",
+      "ssim": 0.7697
+    },
+    {
+      "aspect_diff": -0.0422,
+      "checks_differing": [
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "help-twoway_lpoly-fd31fe86",
+      "label": "Close",
+      "ssim": 0.8272
+    },
+    {
+      "aspect_diff": -0.0274,
+      "checks_differing": [
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "audit-BY-26-10dd9560",
+      "label": "Close",
+      "ssim": 0.8145
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "help-marker_label_options-3a6eeb08",
+      "label": "Close",
+      "ssim": 0.798
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "help-marker_label_options-1e723d7d",
+      "label": "Close",
+      "ssim": 0.7963
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_labels",
+        "marker_size",
+        "text_size",
+        "x_labels",
+        "x_ticks"
+      ],
+      "colour_dist": 0,
+      "id": "help-marker_label_options-9b377083",
+      "label": "Close",
+      "ssim": 0.7975
+    },
+    {
+      "aspect_diff": 0.0856,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size",
+        "titles"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-graph_editor-88374bfd-1",
+      "label": "Differs",
+      "ssim": 0.7934
+    },
+    {
+      "aspect_diff": 0.0856,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "titles"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-axis_label_options-ac1ea974-2",
+      "label": "Differs",
+      "ssim": 0.793
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_shape",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-scatter-97b1c0ce-3",
+      "label": "Differs",
+      "ssim": 0.8298
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_shape",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-scatter-18d9be31-4",
+      "label": "Differs",
+      "ssim": 0.7885
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size",
+        "y_scale"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-graph_twoway-30a8a3a3-5",
+      "label": "Differs",
+      "ssim": 0.7733
+    },
+    {
+      "aspect_diff": 0.1147,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "y_scale"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-graph_intro-213d475d-6",
+      "label": "Differs",
+      "ssim": 0.7635
+    },
+    {
+      "aspect_diff": -0.1452,
+      "checks_differing": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "x_labels"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-twoway_bar-54ebe9ee-7",
+      "label": "Differs",
+      "ssim": 0.7215
+    },
+    {
+      "aspect_diff": -0.173,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-title_options-6d902dbd-8",
+      "label": "Differs",
+      "ssim": 0.8101
+    },
+    {
+      "aspect_diff": 0.6895,
+      "checks_differing": [
+        "frame_aspect",
+        "legend",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-graph_intro-213d475d-9",
+      "label": "Differs",
+      "ssim": 0.7503
+    },
+    {
+      "aspect_diff": 0.4308,
+      "checks_differing": [
+        "frame_aspect",
+        "legend",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "cal-help-twoway_lfit-02972943-10",
+      "label": "Differs",
+      "ssim": 0.7997
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "colours",
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 255,
+      "id": "cal-help-graph_editor-88374bfd-11",
+      "label": "Differs",
+      "ssim": 0.8056
+    },
+    {
+      "aspect_diff": -0.058,
+      "checks_differing": [
+        "colours",
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 255,
+      "id": "cal-help-title_options-6d902dbd-12",
+      "label": "Differs",
+      "ssim": 0.7996
+    }
+  ],
+  "colour_tol": 0,
+  "extent_rel": 0.01,
+  "inset_abs": 0.005,
+  "size_rel": 0.05,
+  "text_rel": 0.05,
+  "tick_rel": 1e-06
+}

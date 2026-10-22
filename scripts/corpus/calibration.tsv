@@ -1,0 +1,39 @@
+# The verdict's calibration set (WP-33 33-05, D-33-05.c): id<TAB>label<TAB>mutation.
+# Same and Close rows are corpus examples as they are; a Differs row is a Same
+# example whose dash command gets the mutation as one more option (calibrate.py
+# --prepare writes it as cal-<id>-<n>).  "-" is no mutation.
+# Labels confirmed by the maintainer (D49, 22oct2026): every unmutated pair is
+# Close (text size, margins, marker size and line width differ in all of
+# them), so the set holds no Same row and T_same is recorded null.
+help-graph_editor-88374bfd	Close	-
+help-axis_label_options-ac1ea974	Close	-
+help-graph_twoway-30a8a3a3	Close	-
+help-twoway_lfit-02972943	Close	-
+help-twoway_bar-54ebe9ee	Close	-
+help-graph_intro-213d475d	Close	-
+help-scatter-18d9be31	Close	-
+help-title_options-6d902dbd	Close	-
+help-twoway_bar-9b08fc9d	Close	-
+help-scatter-97b1c0ce	Close	-
+help-legend_options-58897c5e	Close	-
+help-twoway_bar-a3513348	Close	-
+ex-bootstrap_kpi_hero-62a41c90	Close	-
+ex-full_dashboard-82b1c7bf	Close	-
+ex-serve_dashboard-01245900	Close	-
+help-twoway_lpoly-fd31fe86	Close	-
+audit-BY-26-10dd9560	Close	-
+help-marker_label_options-3a6eeb08	Close	-
+help-marker_label_options-1e723d7d	Close	-
+help-marker_label_options-9b377083	Close	-
+help-graph_editor-88374bfd	Differs	title("Mutated")
+help-axis_label_options-ac1ea974	Differs	title("Mutated")
+help-scatter-97b1c0ce	Differs	msymbol(T)
+help-scatter-18d9be31	Differs	msymbol(T)
+help-graph_twoway-30a8a3a3	Differs	yscale(log)
+help-graph_intro-213d475d	Differs	yscale(log)
+help-twoway_bar-54ebe9ee	Differs	xlabel(none)
+help-title_options-6d902dbd	Differs	xlabel(none)
+help-graph_intro-213d475d	Differs	legend(off)
+help-twoway_lfit-02972943	Differs	legend(off)
+help-graph_editor-88374bfd	Differs	mcolor(red)
+help-title_options-6d902dbd	Differs	mcolor(red)

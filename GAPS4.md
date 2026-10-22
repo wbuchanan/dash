@@ -144,6 +144,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | BY-4 | compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn (also sil:SD-2) | S2 | 41-05 | Fix | bygraph_g.class:291-293; bygraphstyle-compact.style:39 special_options; _DASH_BYSTYLE_EXPAND has no compact entry; by_remainder_truth bystyle_compact is unused | Apply compact only without style(); expand compact's special options |
 | BY-5 | aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined') | S2 | 41-05 | Fix | bygraph_g.class:559-566; probe1 T14 | Refuse it in twoway's words |
 | BY-6 | by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()' | S2 | 41-05 | Fix | dash.ado:4263-4267; probe1 T17 | Use twoway's line and r(100) |
+| BY-32 | Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row | S2 | 41-05 | Fix | WP-33 33-05 calibration run: by(region) and histogram by(region, total) -- twoway's top panels carry no x labels, dash's first panel labels 0..40000 and 55..80 (help-gph_files-3cf91fd6, help-twoway_histogram-0821dd80); registered by D48 | Label x only on the panels of the bottom row, as twoway's by() styles do |
 | BY-12 | by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles | S2 | 41-02 | Fix | bygraph_g.class:203-216; probes T4-T7 | Draw the eight edge titles on the by() graph |
 | BY-13 | by(, legloc() clegloc() plegend() plegloc()) are named and ignored | S2 | 41-04 | Fix | bygraph_g.class:142-144; P6 equals P6b; T13 | Merge them into the legend/clegend placement; implement plegend() |
 | BY-14 | coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key | S2 | 41-04 | Fix | probes T10-T12; kp.py | Implement by(, plegend()) and twoway's key form |
@@ -284,6 +285,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | PIC-10 | dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row | S3 | 47-06 | Fix | yxview_dot_draw.ado draw_full_dots; dash_render.py:23766-23770 | Draw rows for every non-missing x |
 | DG-12 | Markers with missing or zero weight are invisible; twoway still draws a dot | S3 | 47-06 | Fix | t_EM03.svg; dash.sthlp:4192-4194 | Draw twoway's minimal dot |
 | PIC-16 | Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels (also PIC-17) | S3 | 47-06 | Fix | dash_render.py:23733-23735; dash.sthlp:3811, 1287-1289 | Floor fill plus outline; patterns limited by Bokeh |
+| MS-15 | dash clips marker labels at the plot region; twoway lets them extend over the axis area | S2 | 47-06 | Fix | WP-33 33-05 calibration run: help-marker_label_options-9b377083 (scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000))): twoway's Honduras label runs left over the y-axis labels, dash's stops at the plot region; registered by D50 | Let marker labels draw outside the plot region as twoway does |
 | DG-7 | Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x') | S3 | 47-02 | Fix | D03, E04, D05 | Use twoway's names in those cases |
 | basic:PT-15 | Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys (also DT-23, DT-24, sil:SD-23) | S3 | 47-06 | Fix | dash.sthlp:449-455, 655-661, 3443-3517, 4305-4307, 6069-6225 | Case by case |
 
@@ -416,6 +418,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-4 Tracked:** Open (WP-41 section 41-05).
 - **BY-5 Tracked:** Open (WP-41 section 41-05).
 - **BY-6 Tracked:** Open (WP-41 section 41-05).
+- **BY-32 Tracked:** Open (WP-41 section 41-05).
 - **BY-12 Tracked:** Open (WP-41 section 41-02).
 - **BY-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
@@ -526,6 +529,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-10 Tracked:** Open (WP-47 section 47-06).
 - **DG-12 Tracked:** Open (WP-47 section 47-06).
 - **PIC-16 Tracked:** Open (WP-47 section 47-06).
+- **MS-15 Tracked:** Open (WP-47 section 47-06).
 - **DG-7 Tracked:** Open (WP-47 section 47-02).
 - **basic:PT-15 Tracked:** Open (WP-47 section 47-06).
 - **LT-27 Tracked:** Open (WP-48 section 48-01).

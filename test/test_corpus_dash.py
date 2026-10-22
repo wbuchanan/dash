@@ -350,8 +350,9 @@ def _two_scatters():
 
 
 _ROOT_SVG = re.compile(r"<svg\b[^>]*>")
+# D49: a Scatter's marker size joins the dump ("size", null for other glyphs).
 _RENDERER_KEYS = {"glyph", "n", "x", "y", "marker", "fill", "line", "line_width",
-                  "fill_alpha", "line_alpha", "visible"}
+                  "fill_alpha", "line_alpha", "visible", "size"}
 
 
 @pytest.mark.release
@@ -383,6 +384,25 @@ class TestInChrome:
         assert all(set(r) == _RENDERER_KEYS for r in rs), rs
         assert any(r["n"] and r["n"] > 0 and r["marker"] == "circle" for r in rs), rs
         assert all(r["visible"] is True for r in rs)
+        sizes = [r["size"] for r in rs if r["glyph"] == "Scatter"]
+        assert sizes and all(isinstance(z, dict) and z["value"] > 0 for z in sizes), sizes
+
+    def test_each_axis_has_its_scale_and_tick_pixels(self, tmp_path):
+        # D46: the dump names each axis's scale and where its ticks are drawn.
+        import test_default_axes as tda
+        page = _page(tmp_path, tda._spec([tda.P("scatter", "price", "weight")],
+                                         {"yscale": "log"}))
+        with dash_run.CorpusProbe(page, timeout=120) as p:
+            got = dash_run.export_page(p, page, 720, 432)
+        axes = {a["dim"]: a for a in got["view"]["figures"][0]["axes"]}
+        assert axes[0]["scale"] == "linear" and axes[1]["scale"] == "log", axes
+        for a in axes.values():
+            assert len(a["tick_px"]) == len(a["ticks"]) and a["ticks"], a
+        xs = axes[0]["tick_px"]
+        assert xs == sorted(xs) and xs[0] < xs[-1]
+        # A log axis spaces 1000 .. 10000 like 10000 .. 100000, not linearly.
+        frame = got["view"]["figures"][0]["frame"]
+        assert all(frame[1] - 1 <= y <= frame[1] + frame[3] + 1 for y in axes[1]["tick_px"])
 
     def test_a_by_grid_is_letterboxed(self, tmp_path):
         import test_default_axes as tda

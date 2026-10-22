@@ -123,6 +123,7 @@ truth:
 	    echo "make truth: $$py"; $(PYTHON) "$$py" || failed=1; \
 	done; \
 	echo "make truth: run by hand: $(PYTHON) scripts/extract_pip_refusals.py --managed <python> --plain <python> --out test/fixtures/pip_refusals.json"; \
+	echo "make truth: run by hand after a corpus run: $(PYTHON) scripts/corpus/calibrate.py --write <run>; $(PYTHON) scripts/corpus/ledger.py --run <run>"; \
 	git status --short -- test/fixtures; \
 	exit $$failed
 

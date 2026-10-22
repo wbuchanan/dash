@@ -360,8 +360,17 @@ DUMP_JS = r"""() => {
         if (typeof v.compute_labels === "function" && ticks)
           labels = safe(() => v.compute_labels(ticks).items.map(
             (b) => typeof b.text === "string" ? b.text : null));
+        // The axis's own scale (its range name's), a model: its type names it.
+        const scale = safe(() => dim === 0 ? v.coordinates.x_scale : v.coordinates.y_scale);
+        const kind = safe(() => {
+          const t = scale.type;
+          return t === "LogScale" ? "log" : t === "LinearScale" ? "linear"
+            : t === "CategoricalScale" ? "categorical" : t;
+        });
+        const tickPx = safe(() => ticks.map((t) => r1(scale.compute(t))));
         axes.push({side: safe(() => m.side ?? v.panel?.side), dim: dim, ticks: ticks,
-                   labels: labels, title: safe(() => textOf(m.axis_label))});
+                   labels: labels, title: safe(() => textOf(m.axis_label)),
+                   scale: kind, tick_px: tickPx});
       } else if (m && v.glyph !== undefined && m.data_source !== undefined) {
         const gm = safe(() => v.glyph.model);
         const src = safe(() => m.data_source);
@@ -374,6 +383,7 @@ DUMP_JS = r"""() => {
           fill: safe(() => written(gm.fill_color)),
           line: safe(() => written(gm.line_color)),
           line_width: safe(() => written(gm.line_width)),
+          size: safe(() => gm.type === "Scatter" ? written(gm.size) : null),
           fill_alpha: safe(() => written(gm.fill_alpha)),
           line_alpha: safe(() => written(gm.line_alpha)),
           visible: safe(() => typeof m.visible === "boolean" ? m.visible : null),

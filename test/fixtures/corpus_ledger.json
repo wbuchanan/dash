@@ -1,0 +1,156 @@
+{
+  "_meta": {
+    "born_date": "22 Oct 2026",
+    "dash_commit": "7758ec4c74d2b80629b4c7b95be547bc717ac60c",
+    "extracted": "22 Oct 2026",
+    "source": "scripts/corpus/ledger.py",
+    "stata_version": "19.5",
+    "tsv": "scripts/corpus/ledger.tsv"
+  },
+  "rows": [
+    {
+      "check": "x_ticks",
+      "form": "plain",
+      "gaps4_id": "AX-4",
+      "id": "AX-4",
+      "note": "the bin axis is ticked over the bar edges; twoway ticks the first and last bin midpoints",
+      "plottype": "histogram",
+      "when": "*"
+    },
+    {
+      "check": "x_labels",
+      "form": "plain",
+      "gaps4_id": "AX-4",
+      "id": "AX-4",
+      "note": "the bin axis labels follow its ticks (AX-4)",
+      "plottype": "histogram",
+      "when": "*"
+    },
+    {
+      "check": "x_ticks",
+      "form": "plain",
+      "gaps4_id": "AX-2",
+      "id": "AX-2",
+      "note": "by() panels tick x at the scheme's #5; twoway's by() styles use #4",
+      "plottype": "*",
+      "when": "\\bby\\("
+    },
+    {
+      "check": "x_labels",
+      "form": "plain",
+      "gaps4_id": "AX-2",
+      "id": "AX-2",
+      "note": "by() panels' x labels follow their ticks (AX-2)",
+      "plottype": "*",
+      "when": "\\bby\\("
+    },
+    {
+      "check": "x_ticks",
+      "form": "plain",
+      "gaps4_id": "AX-1",
+      "id": "AX-1",
+      "note": "xscale(range()) beyond the data widens the default ticks; twoway ticks only the data",
+      "plottype": "*",
+      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
+    },
+    {
+      "check": "x_labels",
+      "form": "plain",
+      "gaps4_id": "AX-1",
+      "id": "AX-1",
+      "note": "the x labels follow the widened ticks (AX-1)",
+      "plottype": "*",
+      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
+    },
+    {
+      "check": "y_ticks",
+      "form": "plain",
+      "gaps4_id": "AX-1",
+      "id": "AX-1",
+      "note": "yscale(range()) beyond the data widens the default ticks; twoway ticks only the data",
+      "plottype": "*",
+      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
+    },
+    {
+      "check": "y_labels",
+      "form": "plain",
+      "gaps4_id": "AX-1",
+      "id": "AX-1",
+      "note": "the y labels follow the widened ticks (AX-1)",
+      "plottype": "*",
+      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
+    },
+    {
+      "check": "frame_aspect",
+      "form": "plain",
+      "gaps4_id": "GW-6",
+      "id": "GW-6",
+      "note": "default plot-region margins differ (45-04)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "x_labels_none",
+      "form": "plain",
+      "gaps4_id": "BY-32",
+      "id": "BY-32",
+      "note": "by() labels x on every panel; twoway only on the bottom row (D48)",
+      "plottype": "*",
+      "when": "\\bby\\("
+    },
+    {
+      "check": "text_size",
+      "form": "plain",
+      "gaps4_id": "VF-4",
+      "id": "VF-4",
+      "note": "text is drawn at a fixed 2.88 pt relative size, 0.889x twoway's under stcolor (45-04)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "marker_size",
+      "form": "plain",
+      "gaps4_id": "VF-4",
+      "id": "VF-4",
+      "note": "marker sizes are relative sizes, 0.889x twoway's under stcolor (45-04)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "line_width",
+      "form": "plain",
+      "gaps4_id": "VF-4",
+      "id": "VF-4",
+      "note": "line widths are relative sizes, 0.889x twoway's under stcolor (45-04)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "outline_extra",
+      "form": "plain",
+      "gaps4_id": "basic:PT-4",
+      "id": "basic:PT-4",
+      "note": "dash strokes a bar, histogram, rbar or area outline where twoway strokes none (D51, 47-03)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "margins",
+      "form": "plain",
+      "gaps4_id": "GW-6",
+      "id": "GW-6",
+      "note": "the scheme's graph margin is not drawn; the plot region's outer insets differ (45-04)",
+      "plottype": "*",
+      "when": "*"
+    },
+    {
+      "check": "marker_labels",
+      "form": "plain",
+      "gaps4_id": "MS-15",
+      "id": "MS-15",
+      "note": "dash clips marker labels at the plot region; twoway lets them extend over the axis area (D50, 47-06)",
+      "plottype": "*",
+      "when": "*"
+    }
+  ]
+}

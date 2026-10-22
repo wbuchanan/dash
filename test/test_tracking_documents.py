@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 227 registered items, by lead id, with its
+#: BUGS.md entry of each of the 229 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -2964,6 +2964,7 @@ GAPS4_OPEN = {
     'BY-4': 'compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn',
     'BY-5': "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')",
     'BY-6': "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'",
+    'BY-32': 'Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row',
     'BY-12': 'by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles',
     'BY-13': 'by(, legloc() clegloc() plegend() plegloc()) are named and ignored',
     'BY-14': "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key",
@@ -3074,6 +3075,7 @@ GAPS4_OPEN = {
     'PIC-10': 'dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row',
     'DG-12': 'Markers with missing or zero weight are invisible; twoway still draws a dot',
     'PIC-16': 'Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels',
+    'MS-15': 'dash clips marker labels at the plot region; twoway lets them extend over the axis area',
     'DG-7': "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')",
     'basic:PT-15': 'Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys',
     'LT-27': "The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too",
@@ -3194,6 +3196,7 @@ GAPS4_WP = {
     'BY-4': 'WP-41',
     'BY-5': 'WP-41',
     'BY-6': 'WP-41',
+    'BY-32': 'WP-41',
     'BY-12': 'WP-41',
     'BY-13': 'WP-41',
     'BY-14': 'WP-41',
@@ -3304,6 +3307,7 @@ GAPS4_WP = {
     'PIC-10': 'WP-47',
     'DG-12': 'WP-47',
     'PIC-16': 'WP-47',
+    'MS-15': 'WP-47',
     'DG-7': 'WP-47',
     'basic:PT-15': 'WP-47',
     'LT-27': 'WP-48',
@@ -3424,6 +3428,7 @@ GAPS4_SECTION = {
     'BY-4': '41-05',
     'BY-5': '41-05',
     'BY-6': '41-05',
+    'BY-32': '41-05',
     'BY-12': '41-02',
     'BY-13': '41-04',
     'BY-14': '41-04',
@@ -3534,6 +3539,7 @@ GAPS4_SECTION = {
     'PIC-10': '47-06',
     'DG-12': '47-06',
     'PIC-16': '47-06',
+    'MS-15': '47-06',
     'DG-7': '47-02',
     'basic:PT-15': '47-06',
     'LT-27': '48-01',
@@ -3758,7 +3764,11 @@ class TestGaps4Tracking:
         # binding differences (D42)
         # old -> new: 226 -> 227: BY-24 registered BY-24a, by()'s title at
         # clocks 5-7 drawn above the panels (D44)
-        assert len(GAPS4_ALL) == 227
+        # old -> new: 227 -> 228: 33-05's corpus verdicts registered BY-32,
+        # by()'s x labels drawn on every panel (D48)
+        # old -> new: 228 -> 229: 33-05's corpus verdicts registered MS-15,
+        # marker labels clipped at the plot region (D50)
+        assert len(GAPS4_ALL) == 229
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

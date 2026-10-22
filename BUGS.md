@@ -5839,3 +5839,15 @@
   - Description: Measured by WP-33 section 33-12 (BY-24) in test/fixtures/by_text_truth.json (scripts/extract_by_text_truth.do): twoway draws by()'s title at clocks 5, 6 and 7 below the panels; dash draws it above them in both modes (aligned as twoway aligns it). subtitle(), note() and caption() at those clocks are placed as twoway places them. A difference no audit item covers, registered by the maintainer ruling D44 (21oct2026). Registered as GAPS4 BY-24a (WP-41, section 41-02, Fix).
   - Suggested fix: Put by()'s title in the foot cell below the panels at clocks 5, 6 and 7, as the note and caption are
   - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): by()'s title is drawn on the wrong side of the panels.
+
+- [ ] Title: Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row
+  - File Names and Line Numbers: scripts/corpus/ledger.tsv BY-32 rows; the 33-05 calibration run's help-gph_files-3cf91fd6 (scatter lexp gnppc, by(region)) and help-twoway_histogram-0821dd80 (tw histogram le, discrete by(region, total))
+  - Description: Measured by WP-33 section 33-05 (corpus verdict engine): under a by() grid of two or more rows twoway labels the x axis only on the bottom row's panels; dash labels it on every panel, the first panel included. A difference no audit item covers, registered by the maintainer ruling D48 (22oct2026). Registered as GAPS4 BY-32 (WP-41, section 41-05, Fix).
+  - Suggested fix: Label x only on the panels of the bottom row, as twoway's by() styles do
+  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): by() panels carry x labels twoway does not draw.
+
+- [ ] Title: dash clips marker labels at the plot region; twoway lets them extend over the axis area
+  - File Names and Line Numbers: scripts/corpus/ledger.tsv MS-15 row; the 33-05 calibration run's help-marker_label_options-9b377083 (scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000)))
+  - Description: Measured by WP-33 section 33-05 (corpus verdict engine): twoway draws a marker label past the plot region, over the y-axis label area (Honduras at clock 9); dash clips it at the plot region's edge. A difference no audit item covers, registered by the maintainer ruling D50 (22oct2026). Registered as GAPS4 MS-15 (WP-47, section 47-06, Fix).
+  - Suggested fix: Let marker labels draw outside the plot region as twoway does
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S2 (WP-47): a marker label is cut off where twoway shows it whole.

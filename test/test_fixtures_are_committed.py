@@ -297,6 +297,8 @@ GENERATORS = {
     "conformance_corpus.txt": HAND_WRITTEN,
     "connect_truth.json": "scripts/extract_connect_truth.do",
     "contour_truth.json": "scripts/extract_contour_truth.do",
+    "corpus_ledger.json": "scripts/corpus/ledger.py",
+    "corpus_verdict_rules.json": "scripts/corpus/calibrate.py",
     "data_locale_truth.json": "scripts/extract_data_locale_truth.do",
     "date_axes_truth.json": "scripts/extract_date_axes_truth.do",
     "date_axis_truth.json": "scripts/extract_date_axis_truth.do",
