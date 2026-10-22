@@ -208,6 +208,126 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w33_run' {
 * ==== end S00 ====
 
 // ----------------------------------------------------------------
+// S09 helpers (WP-33 section 33-09, the corpus guard).  _w33s09_prepare
+// writes the guard's run folder from the fixture's frozen records
+// (scripts/corpus/guard.py: examples.jsonl, the twoway and dash do-files
+// and the guard.do that wraps them) and says whether headless Chrome is
+// found; _w33s09_judge measures every example (33-04's export, 33-05's
+// judge) and compares the rows with the fixture's (D-33-09.c).
+// ----------------------------------------------------------------
+python:
+def _w33s09_paths(repo):
+    import os, sys
+    added = [p for p in (repo, os.path.join(repo, "test")) if p not in sys.path]
+    for p in reversed(added):
+        sys.path.insert(0, p)
+    return added
+
+
+def _w33s09_unpaths(added):
+    import sys
+    for p in added:
+        while p in sys.path:
+            sys.path.remove(p)
+
+
+def _w33s09_prepare(fixture, run, repo):
+    import json, os, shutil
+    from sfi import Macro
+    repo = os.path.abspath(repo)
+    added = _w33s09_paths(repo)
+    try:
+        from scripts.corpus import datasets, guard
+        import responsive_probe
+        chrome = bool(responsive_probe.find_chrome())
+        Macro.setGlobal("w33_s09_chrome", "1" if chrome else "0")
+        if not chrome:
+            shutil.rmtree(run, ignore_errors=True)
+            return
+        with open(fixture, encoding="utf-8") as fh:
+            fx = json.load(fh)
+        recs = {i: row["record"] for i, row in fx["examples"].items()}
+        guard.write_examples(recs, run)
+        ex = [recs[i] for i in sorted(recs)]
+        Macro.setLocal("gdo", guard.guard_do(ex, run, datasets.cache_dir(), repo))
+    finally:
+        _w33s09_unpaths(added)
+
+
+def _w33s09_judge(fixture, run, repo):
+    import json, os, shutil
+    from sfi import Macro
+    repo = os.path.abspath(repo)
+    added = _w33s09_paths(repo)
+    try:
+        from scripts.corpus import guard
+        with open(fixture, encoding="utf-8") as fh:
+            fx = json.load(fh)
+        recs = [fx["examples"][i]["record"] for i in sorted(fx["examples"])]
+        try:
+            got = guard.measure(run, recs,
+                                os.path.join(repo, fx["_meta"]["rules"]),
+                                os.path.join(repo, fx["_meta"]["ledger"]),
+                                os.path.join(repo, "GAPS4.md"))
+            probs = guard.compare(fx["examples"], got)
+        except Exception as exc:
+            probs = ["the guard could not measure: %s: %s"
+                     % (type(exc).__name__, str(exc).replace(run, "<run>"))]
+        for pr in probs:
+            print("S09 problem: " + pr)
+        Macro.setGlobal("w33_s09_n", str(len(probs)))
+        # Quotes, backticks and dollars would break the _w33_expect line.
+        bad = "; ".join(probs[:10])[:2000]
+        for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+            bad = bad.replace(ch, to)
+        Macro.setGlobal("w33_s09_bad", bad)
+    finally:
+        shutil.rmtree(run, ignore_errors=True)
+        _w33s09_unpaths(added)
+end
+
+* ==== S09 tool: corpus guard ====
+local only : env WP33_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w33_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3309-1: about twenty help-file examples (scripts/corpus/
+    // guard_examples.txt, frozen in fixtures/corpus_guard_truth.json),
+    // drawn by twoway and by dash in this session under guard.do, which
+    // leaves the scheme, line size, ado-path, data and graphs as it found
+    // them; dash's page is exported at twoway's size in headless Chrome
+    // and judged; every rc, first line, verdict, check list and summary
+    // is the fixture's.  No Chrome is a failure, never a skip.
+    // ------------------------------------------------------------
+    local run "`w33_work'/s09"
+    local gdo ""
+    capture noisily python: __import__("__main__")._w33s09_prepare("fixtures/corpus_guard_truth.json", r"`run'", "..")
+    local s09_rc = _rc
+    if `s09_rc' {
+        _w33_expect Q3309-1 "(0)" "the guard could not write its run (r(`s09_rc'))"
+    }
+    else if "${w33_s09_chrome}" != "1" {
+        _w33_expect Q3309-1 "(0)" "headless Chrome not found; the guard cannot run"
+    }
+    else {
+        capture noisily do "`gdo'"
+        local s09_rc = _rc
+        _w33_expect Q3309-1 "(`s09_rc' == 0)" "guard.do ended r(`s09_rc')"
+        global w33_s09_n 1
+        global w33_s09_bad "the guard's judge did not run"
+        capture noisily python: __import__("__main__")._w33s09_judge("fixtures/corpus_guard_truth.json", r"`run'", "..")
+        _w33_expect Q3309-1 "(${w33_s09_n} == 0)" "${w33_s09_bad}"
+    }
+    _w33_done Q3309-1 "the guard's examples draw the recorded twoway and dash pictures and verdicts"
+
+    macro drop w33_s09_*
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
+// ----------------------------------------------------------------
 // S10 helpers (WP-33 section 33-10, TR-11).  _w33s10_list writes one line
 // <id>|<twoway rc>|dash <probe command without "twoway "> per probe of
 // value_truth.json; _w33s10_one runs one probe through dash under its own

@@ -1,0 +1,22 @@
+# WP-33 33-09: the certification guard's examples (D-33-09.b); about twenty, one per common type
+help-added_text_options-0a48288d  # line: twoway line le year || fpfit le year || , ytitle("Life expec
+help-added_text_options-60798f5e  # qfitci: twoway qfitci mpg weight, stdf || scatter mpg weight, ms(O) 
+help-axis_label_options-045ec53a  # scatter: scatter mpg weight, ymlabel(##5) xmtick(##10)
+help-axis_label_options-21f6f276  # by: scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogr
+help-clegend_option-2779567d  # contour: twoway contour temperature longitude latitude, levels(10) xl
+help-graph_intro-724684a2  # histogram: twoway histogram lexp, fraction xsca(alt reverse) horiz
+help-graph_text-a2e86192  # function: twoway function y = 2*exp(-2*x), range(0 2) title("{&functio
+help-graph_twoway-30a8a3a3  # connected: twoway connected le year
+help-legend_options-50fe8709  # lfit: scatter mpg weight || lfit mpg weight ||, legend(order(2)) b
+help-tsline-16ade7ec  # tsline: tsline ar ma
+help-twoway_area-17337f6e  # area: twoway area d.gnp96 date, xlabel(36(8)164, angle(90)) ylabel
+help-twoway_bar-129aaf18  # bar: twoway bar maletotal agegrp, horizontal xvarlab(Male) || bar
+help-twoway_dot-11245001  # dot: twoway dot change date in 1/45
+help-twoway_dropline-bff26da0  # dropline: twoway dropline change date in 1/57, yline(0, lstyle(foregro
+help-twoway_kdensity-d3ba423b  # kdensity: tw histogram lexp, color(*.5) || kdensity lexp ||, by(region
+help-twoway_lfitci-0dd9d812  # lfitci: twoway lfitci mpg weight, ciplot(rline)
+help-twoway_lowess-1410d0d5  # lowess: tw scatter mpg weight || lfit mpg weight || lowess mpg weigh
+help-twoway_lpoly-5dd7635f  # lpoly: twoway scatter weight length || lpoly weight length || lowes
+help-twoway_rarea-2d21b873  # rarea: twoway rarea high low date in 1/57
+help-twoway_rcap-db1390e4  # rcap: twoway rcap high low date in 1/37
+help-twoway_spike-6cc28eef  # spike: twoway spike change date

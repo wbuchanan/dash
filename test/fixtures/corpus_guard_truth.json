@@ -1,0 +1,949 @@
+{
+  "_meta": {
+    "born_date": "14 Oct 2026",
+    "dash_commit": "2ed6cfd559495e836cdc90bc86d60d46a0a13fd8",
+    "extracted": "22 Oct 2026 09:11:49",
+    "ledger": "test/fixtures/corpus_ledger.json",
+    "rules": "test/fixtures/corpus_verdict_rules.json",
+    "source": "scripts/extract_corpus_guard_truth.do",
+    "stata_version": "19.5"
+  },
+  "examples": {
+    "help-added_text_options-0a48288d": {
+      "checks": [
+        "colours",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": "(note:  dash: text() draws no width(); see help dash##added_text)",
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway line le year || fpfit le year || , ytitle(\"Life expectancy, years\") xlabel(1900 1918 1940(20)2000) title(\"Life expectancy at birth\") subtitle(\"US, 1900 to 1999\") note(\"Source: National Vital Statistics Report, Vol. 50 No. 6\") legend(off) text(48.5 1923 \"The 1918 influenza pandemic was the worst epidemic\" \"known in the US\" \"More citizens died than in all combat deaths of the\" \"20th century.\" , place(se) box bcolor(gs15) just(left) margin(l+4 t+1 b+1) width(85))",
+        "dash_cmd": "dash line le year || fpfit le year || , ytitle(\"Life expectancy, years\") xlabel(1900 1918 1940(20)2000) title(\"Life expectancy at birth\") subtitle(\"US, 1900 to 1999\") note(\"Source: National Vital Statistics Report, Vol. 50 No. 6\") legend(off) text(48.5 1923 \"The 1918 influenza pandemic was the worst epidemic\" \"known in the US\" \"More citizens died than in all combat deaths of the\" \"20th century.\" , place(se) box bcolor(gs15) just(left) margin(l+4 t+1 b+1) width(85))",
+        "datasets": [
+          "uslifeexp"
+        ],
+        "duplicates": [],
+        "entry": "textop1",
+        "file": "base/a/added_text_options.sthlp",
+        "finding": null,
+        "id": "help-added_text_options-0a48288d",
+        "line": 239,
+        "plottype": "line",
+        "setup": [
+          "sysuse uslifeexp, clear"
+        ],
+        "signature": "line+fpfit|legend,note,subtitle,text,title,xlabel,ytitle",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.72,
+      "summary": "text size, margins, line width, colours",
+      "verdict": "Differs"
+    },
+    "help-added_text_options-60798f5e": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size",
+        "y_labels",
+        "y_ticks"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway qfitci mpg weight, stdf || scatter mpg weight, ms(O) text(41 2040 \"VW Diesel\", place(e)) text(28 3260 \"Plymouth Arrow\", place(e)) text(35 2050 \"Datsun 210 and Subaru\", place(e))",
+        "dash_cmd": "dash qfitci mpg weight, stdf || scatter mpg weight, ms(O) text(41 2040 \"VW Diesel\", place(e)) text(28 3260 \"Plymouth Arrow\", place(e)) text(35 2050 \"Datsun 210 and Subaru\", place(e))",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [
+          "help-twoway_pcarrowi-60798f5e",
+          "help-twoway_scatteri-60798f5e"
+        ],
+        "entry": null,
+        "file": "base/a/added_text_options.sthlp",
+        "finding": null,
+        "id": "help-added_text_options-60798f5e",
+        "line": 211,
+        "plottype": "qfitci",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "qfitci+scatter|msymbol,stdf,text",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.7479,
+      "summary": "y-axis ticks, y-axis labels, text size, margins, marker size, line width, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-axis_label_options-045ec53a": {
+      "checks": [
+        "frame_aspect",
+        "glyph_extents",
+        "margins",
+        "marker_size",
+        "text_size",
+        "y_labels",
+        "y_ticks"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "scatter mpg weight, ymlabel(##5) xmtick(##10)",
+        "dash_cmd": "dash scatter mpg weight, ymlabel(##5) xmtick(##10)",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [],
+        "entry": "minorticks1",
+        "file": "base/a/axis_label_options.sthlp",
+        "finding": null,
+        "id": "help-axis_label_options-045ec53a",
+        "line": 648,
+        "plottype": "scatter",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "scatter|xmtick,ymlabel",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.8104,
+      "summary": "y-axis ticks, y-axis labels, text size, margins, marker size, marker positions, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-axis_label_options-21f6f276": {
+      "checks": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogrid)",
+        "dash_cmd": "dash scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogrid)",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/a/axis_label_options.sthlp",
+        "finding": null,
+        "id": "help-axis_label_options-21f6f276",
+        "line": 721,
+        "plottype": "scatter",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "scatter|by,xlabel,ylabel",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": false,
+      "ssim": 0.848,
+      "summary": "text size, margins, marker size, plot region shape",
+      "verdict": "Close"
+    },
+    "help-clegend_option-2779567d": {
+      "checks": [
+        "frame_aspect",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway contour temperature longitude latitude, levels(10) xlabel(,format(%9.0f)) by(date, clegend(on))",
+        "dash_cmd": "dash contour temperature longitude latitude, levels(10) xlabel(,format(%9.0f)) by(date, clegend(on))",
+        "datasets": [
+          "surface"
+        ],
+        "duplicates": [
+          "help-clegend_option-65dafdfc"
+        ],
+        "entry": null,
+        "file": "base/c/clegend_option.sthlp",
+        "finding": null,
+        "id": "help-clegend_option-2779567d",
+        "line": 421,
+        "plottype": "contour",
+        "setup": [
+          "sysuse surface, clear"
+        ],
+        "signature": "contour|by,levels,xlabel",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": false,
+      "ssim": 0.6357,
+      "summary": "text size, margins, plot region shape",
+      "verdict": "Close"
+    },
+    "help-graph_intro-724684a2": {
+      "checks": [
+        "axis_titles",
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "titles"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway histogram lexp, fraction xsca(alt reverse) horiz",
+        "dash_cmd": "dash histogram lexp, fraction xsca(alt reverse) horiz",
+        "datasets": [
+          "lifeexp"
+        ],
+        "duplicates": [],
+        "entry": "combine4",
+        "file": "base/g/graph_intro.sthlp",
+        "finding": null,
+        "id": "help-graph_intro-724684a2",
+        "line": 563,
+        "plottype": "histogram",
+        "setup": [
+          "sysuse lifeexp, clear",
+          "gen loggnp = log10(gnppc)",
+          "label var loggnp \"Log base 10 of GNP per capita\""
+        ],
+        "signature": "histogram|fraction,horizontal,xscale",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": [
+          "saving(hy)"
+        ]
+      },
+      "size_matched": true,
+      "ssim": 0.7638,
+      "summary": "axis titles, titles, text size, margins, line width, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-graph_text-a2e86192": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "titles"
+      ],
+      "first_dash": "(note:  dash: graph '': {sup:} or {sub:} around a character with no raised or lowered form in a title, subtitle, note or caption is drawn on the line (help dash, Text in graphs).)",
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway function y = 2*exp(-2*x), range(0 2) title(\"{&function}(x)=2e{superscript:-2x}\")",
+        "dash_cmd": "dash function y = 2*exp(-2*x), range(0 2) title(\"{&function}(x)=2e{superscript:-2x}\")",
+        "datasets": [],
+        "duplicates": [
+          "ex-plot_types_tour-9163246e",
+          "help-graph_text-b5b441d6"
+        ],
+        "entry": "funcsup1",
+        "file": "base/g/graph_text.sthlp",
+        "finding": null,
+        "id": "help-graph_text-a2e86192",
+        "line": 135,
+        "plottype": "function",
+        "setup": [],
+        "signature": "function|range,title",
+        "source": "help",
+        "sources": [
+          "help",
+          "ex"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.8356,
+      "summary": "titles, text size, margins, line width, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-graph_twoway-30a8a3a3": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway connected le year",
+        "dash_cmd": "dash connected le year",
+        "datasets": [
+          "uslifeexp2"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/g/graph_twoway.sthlp",
+        "finding": null,
+        "id": "help-graph_twoway-30a8a3a3",
+        "line": 205,
+        "plottype": "connected",
+        "setup": [
+          "sysuse uslifeexp2, clear"
+        ],
+        "signature": "connected|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.7883,
+      "summary": "text size, margins, marker size, line width, plot region shape",
+      "verdict": "Close"
+    },
+    "help-legend_options-50fe8709": {
+      "checks": [
+        "frame_aspect",
+        "legend",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels_none"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "BY-32",
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "scatter mpg weight || lfit mpg weight ||, legend(order(2)) by(foreign, total legend(pos(4)))",
+        "dash_cmd": "dash scatter mpg weight || lfit mpg weight ||, legend(order(2)) by(foreign, total legend(pos(4)))",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [
+          "help-legend_options-4ad5522d"
+        ],
+        "entry": null,
+        "file": "base/l/legend_options.sthlp",
+        "finding": null,
+        "id": "help-legend_options-50fe8709",
+        "line": 970,
+        "plottype": "scatter",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "scatter+lfit|by,legend",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": false,
+      "ssim": 0.7893,
+      "summary": "x-axis labels, legend keys, text size, margins, marker size, line width, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-tsline-16ade7ec": {
+      "checks": [
+        "frame_aspect",
+        "margins"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "tsline ar ma",
+        "dash_cmd": "dash tsline ar ma",
+        "datasets": [
+          "tsline1"
+        ],
+        "duplicates": [
+          "audit-plot_PT-6-15b18d84"
+        ],
+        "entry": "arma",
+        "file": "base/t/tsline.sthlp",
+        "finding": null,
+        "id": "help-tsline-16ade7ec",
+        "line": 178,
+        "plottype": "tsline",
+        "setup": [
+          "sysuse tsline1, clear",
+          "tsset lags"
+        ],
+        "signature": "tsline|",
+        "source": "help",
+        "sources": [
+          "help",
+          "audit"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.6073,
+      "summary": "margins, plot region shape",
+      "verdict": "Close"
+    },
+    "help-twoway_area-17337f6e": {
+      "checks": [
+        "colours",
+        "frame_aspect",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway area d.gnp96 date, xlabel(36(8)164, angle(90)) ylabel(-100(50)200) ytitle(\"Billions of 1996 dollars\") xtitle(\"\") subtitle(\"Change in US GNP\", position(11)) note(\"Source: US Department of Commerce, Bureau of Economic Analysis\")",
+        "dash_cmd": "dash area d.gnp96 date, xlabel(36(8)164, angle(90)) ylabel(-100(50)200) ytitle(\"Billions of 1996 dollars\") xtitle(\"\") subtitle(\"Change in US GNP\", position(11)) note(\"Source: US Department of Commerce, Bureau of Economic Analysis\")",
+        "datasets": [
+          "gnp96"
+        ],
+        "duplicates": [],
+        "entry": "twoarea",
+        "file": "base/t/twoway_area.sthlp",
+        "finding": null,
+        "id": "help-twoway_area-17337f6e",
+        "line": 246,
+        "plottype": "area",
+        "setup": [
+          "sysuse gnp96, clear"
+        ],
+        "signature": "area|note,subtitle,xlabel,xtitle,ylabel,ytitle",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.5672,
+      "summary": "text size, margins, plot region shape, colours",
+      "verdict": "Differs"
+    },
+    "help-twoway_bar-129aaf18": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "x_ticks"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway bar maletotal agegrp, horizontal xvarlab(Male) || bar femtotal agegrp, horizontal xvarlab(Female) || , ylabel(1(1)17, valuelabel labsize(*.8)) xtitle(\"Population in millions\") ytitle(\"\") xlabel(-10 \"10\" -7.5 \"7.5\" -5 \"5\" -2.5 \"2.5\" 2.5 5 7.5 10) legend(label(1 Male) label(2 Female)) title(\"US male and female population by age\") subtitle(\"Year 2000\") note(\"Source: US Census Bureau, Census 2000, Tables 1, 2, and 3\", span)",
+        "dash_cmd": "dash bar maletotal agegrp, horizontal xvarlab(Male) || bar femtotal agegrp, horizontal xvarlab(Female) || , ylabel(1(1)17, valuelabel labsize(*.8)) xtitle(\"Population in millions\") ytitle(\"\") xlabel(-10 \"10\" -7.5 \"7.5\" -5 \"5\" -2.5 \"2.5\" 2.5 5 7.5 10) legend(label(1 Male) label(2 Female)) title(\"US male and female population by age\") subtitle(\"Year 2000\") note(\"Source: US Census Bureau, Census 2000, Tables 1, 2, and 3\", span)",
+        "datasets": [
+          "pop2000"
+        ],
+        "duplicates": [],
+        "entry": "twobar2",
+        "file": "base/t/twoway_bar.sthlp",
+        "finding": null,
+        "id": "help-twoway_bar-129aaf18",
+        "line": 282,
+        "plottype": "bar",
+        "setup": [
+          "sysuse pop2000, clear",
+          "replace maletotal = -maletotal/1e+6",
+          "replace femtotal = femtotal/1e+6"
+        ],
+        "signature": "bar+bar|horizontal,legend,note,subtitle,title,xlabel,xtitle,xvarlabel,ylabel,ytitle",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.6052,
+      "summary": "x-axis ticks, text size, margins, line width, plot region shape",
+      "verdict": "Differs"
+    },
+    "help-twoway_dot-11245001": {
+      "checks": [
+        "glyphs",
+        "margins",
+        "marker_size",
+        "text_size",
+        "x_labels"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway dot change date in 1/45",
+        "dash_cmd": "dash dot change date in 1/45",
+        "datasets": [
+          "sp500"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_dot.sthlp",
+        "finding": null,
+        "id": "help-twoway_dot-11245001",
+        "line": 217,
+        "plottype": "dot",
+        "setup": [
+          "sysuse sp500, clear"
+        ],
+        "signature": "dot|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.2824,
+      "summary": "x-axis labels, number of markers, text size, margins, marker size",
+      "verdict": "Differs"
+    },
+    "help-twoway_dropline-bff26da0": {
+      "checks": [
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway dropline change date in 1/57, yline(0, lstyle(foreground))",
+        "dash_cmd": "dash dropline change date in 1/57, yline(0, lstyle(foreground))",
+        "datasets": [
+          "sp500"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_dropline.sthlp",
+        "finding": null,
+        "id": "help-twoway_dropline-bff26da0",
+        "line": 180,
+        "plottype": "dropline",
+        "setup": [
+          "sysuse sp500, clear"
+        ],
+        "signature": "dropline|yline",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.7455,
+      "summary": "text size, margins, marker size, line width",
+      "verdict": "Close"
+    },
+    "help-twoway_kdensity-d3ba423b": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size",
+        "x_labels_none"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "BY-32",
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "tw histogram lexp, color(*.5) || kdensity lexp ||, by(region)",
+        "dash_cmd": "dash histogram lexp, color(*.5) || kdensity lexp ||, by(region)",
+        "datasets": [
+          "lifeexp"
+        ],
+        "duplicates": [
+          "help-twoway_kdensity-bd64f7be"
+        ],
+        "entry": null,
+        "file": "base/t/twoway_kdensity.sthlp",
+        "finding": null,
+        "id": "help-twoway_kdensity-d3ba423b",
+        "line": 234,
+        "plottype": "histogram",
+        "setup": [
+          "sysuse lifeexp, clear"
+        ],
+        "signature": "histogram+kdensity|by,color",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": false,
+      "ssim": 0.7933,
+      "summary": "x-axis labels, text size, margins, line width, plot region shape",
+      "verdict": "Close"
+    },
+    "help-twoway_lfitci-0dd9d812": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway lfitci mpg weight, ciplot(rline)",
+        "dash_cmd": "dash lfitci mpg weight, ciplot(rline)",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_lfitci.sthlp",
+        "finding": null,
+        "id": "help-twoway_lfitci-0dd9d812",
+        "line": 247,
+        "plottype": "lfitci",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "lfitci|ciplot",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.824,
+      "summary": "text size, margins, line width, plot region shape",
+      "verdict": "Close"
+    },
+    "help-twoway_lowess-1410d0d5": {
+      "checks": [
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "tw scatter mpg weight || lfit mpg weight || lowess mpg weight ||, by(foreign)",
+        "dash_cmd": "dash scatter mpg weight || lfit mpg weight || lowess mpg weight ||, by(foreign)",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_lowess.sthlp",
+        "finding": null,
+        "id": "help-twoway_lowess-1410d0d5",
+        "line": 162,
+        "plottype": "scatter",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "scatter+lfit+lowess|by",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": false,
+      "ssim": 0.8109,
+      "summary": "text size, margins, marker size, line width",
+      "verdict": "Close"
+    },
+    "help-twoway_lpoly-5dd7635f": {
+      "checks": [
+        "frame_aspect",
+        "line_width",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway scatter weight length || lpoly weight length || lowess weight length",
+        "dash_cmd": "dash scatter weight length || lpoly weight length || lowess weight length",
+        "datasets": [
+          "auto"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_lpoly.sthlp",
+        "finding": null,
+        "id": "help-twoway_lpoly-5dd7635f",
+        "line": 155,
+        "plottype": "scatter",
+        "setup": [
+          "sysuse auto, clear"
+        ],
+        "signature": "scatter+lpoly+lowess|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.7922,
+      "summary": "text size, margins, marker size, line width, plot region shape",
+      "verdict": "Close"
+    },
+    "help-twoway_rarea-2d21b873": {
+      "checks": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway rarea high low date in 1/57",
+        "dash_cmd": "dash rarea high low date in 1/57",
+        "datasets": [
+          "sp500"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_rarea.sthlp",
+        "finding": null,
+        "id": "help-twoway_rarea-2d21b873",
+        "line": 212,
+        "plottype": "rarea",
+        "setup": [
+          "sysuse sp500, clear"
+        ],
+        "signature": "rarea|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.7776,
+      "summary": "text size, margins, line width",
+      "verdict": "Close"
+    },
+    "help-twoway_rcap-db1390e4": {
+      "checks": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway rcap high low date in 1/37",
+        "dash_cmd": "dash rcap high low date in 1/37",
+        "datasets": [
+          "sp500"
+        ],
+        "duplicates": [],
+        "entry": null,
+        "file": "base/t/twoway_rcap.sthlp",
+        "finding": null,
+        "id": "help-twoway_rcap-db1390e4",
+        "line": 166,
+        "plottype": "rcap",
+        "setup": [
+          "sysuse sp500, clear"
+        ],
+        "signature": "rcap|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.766,
+      "summary": "text size, margins, line width",
+      "verdict": "Close"
+    },
+    "help-twoway_spike-6cc28eef": {
+      "checks": [
+        "line_width",
+        "margins",
+        "text_size"
+      ],
+      "first_dash": null,
+      "first_twoway": null,
+      "ledger": [
+        "GW-6",
+        "VF-4"
+      ],
+      "rc_dash": 0,
+      "rc_twoway": 0,
+      "record": {
+        "cmd": "twoway spike change date",
+        "dash_cmd": "dash spike change date",
+        "datasets": [
+          "sp500"
+        ],
+        "duplicates": [
+          "help-twoway_spike-3d9d56ab"
+        ],
+        "entry": null,
+        "file": "base/t/twoway_spike.sthlp",
+        "finding": null,
+        "id": "help-twoway_spike-6cc28eef",
+        "line": 171,
+        "plottype": "spike",
+        "setup": [
+          "sysuse sp500, clear"
+        ],
+        "signature": "spike|",
+        "source": "help",
+        "sources": [
+          "help"
+        ],
+        "stripped": []
+      },
+      "size_matched": true,
+      "ssim": 0.6764,
+      "summary": "text size, margins, line width",
+      "verdict": "Close"
+    }
+  }
+}
