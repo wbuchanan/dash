@@ -252,7 +252,8 @@ global br01_data "`br01_data'"
 global br01_app "`br01_app'"
 
 python:
-# The eight sites, as the fix wrote them (BUGS.md): fa() is 0 to 100.
+# The eight sites, as the fix wrote them (BUGS.md): 0 to 100, now written
+# fcolor(<colour>%N) (D52).
 _br01_want = {"u3": 40, "b6": 25, "b9": 50, "b13": 40,
               "m2": 30, "m3": 30, "m4": 30, "m5": 30}
 # b6 is an mband: a line, with no fill in dash or in twoway (measured).
@@ -267,7 +268,14 @@ for _g in _br01_spec["graphs"]:
         _t = _t[1:-1]
     _br01_title[_go.get("name")] = _t
     for _p in _g.get("plots") or []:
-        _fa = (_p.get("options") or {}).get("falpha")
+        # Flipped (22oct2026, DECISIONS D52): examples/ use twoway's own
+        # spelling, fcolor(<colour>%N), where they wrote dash's fa(N); the
+        # opacity the example asks for is read from either.
+        _po = _p.get("options") or {}
+        _fa = _po.get("falpha")
+        if _fa in (None, ""):
+            _m = re.search(r"%\s*([0-9.]+)\s*$", str(_po.get("fcolor") or ""))
+            _fa = _m.group(1) if _m else None
         if _fa not in (None, ""):
             _br01_written[_go.get("name")] = (_p.get("type"), float(_fa))
 
@@ -339,7 +347,7 @@ capture erase "`br01_dir'/comprehensive_demo.html"
 capture rmdir "`br01_dir'"
 
 assert ${br01_a} == 0
-display "BR-01a PASS: the example asks for falpha 40, 25, 50, 40 and 30 four times, as the fix wrote them"
+display "BR-01a PASS: the example asks for fill opacity 40, 25, 50, 40 and 30 four times, as the fix wrote them"
 assert ${br01_b} == 0
 assert ${br01_nb} == 7
 display "BR-01b PASS: the saved page draws the seven fills at 0.40, 0.50, 0.40 and 0.30 four times, and b6's mband none"

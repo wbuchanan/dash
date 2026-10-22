@@ -26,7 +26,7 @@ dash scatter price weight, name(square) aspectratio(1) ///
     title("Square (aspectratio 1)") xtitle("Weight") ytitle("Price")
 
 // Scheme default proportions
-dash scatter mpg length, name(scheme) ///
+dash scatter mpg length, name(schemeprops) ///
     title("Scheme default proportions") xtitle("Length") ytitle("MPG")
 
 // A faceted graph: panels must match the unfaceted ones

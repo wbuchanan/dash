@@ -58,7 +58,7 @@ dash (function 2000 + 400*sin(x), range(0 20))  ///
 dash (line price weight)                        ///
      (line mpg weight, yaxis(2)),               ///
     title("Two scales, one x axis")                 ///
-    ytitle2("Mileage (mpg)")                        ///
+    ytitle("Mileage (mpg)", axis(2))                ///
     name(twoaxis)
 
 // ----------------------------------------------------------------
@@ -91,7 +91,7 @@ dash scatter mpg weight, by(foreign)   ///
     name(facets)
 
 dash scatter mpg weight,               ///
-    colorvar(price) colpalette(viridis) colornlevels(8)  ///
+    colorvar(price) colpalette(viridis) colorlevels(8)   ///
     title("Coloured by a third variable")                ///
     name(cvar)
 

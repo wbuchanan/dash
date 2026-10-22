@@ -63,7 +63,7 @@ dash kdensity mpg, ///
     name(u2) title("MPG Kernel Density") xtitle("Mileage (mpg)")
 
 // u3: histogram + kdensity overlay on the same axes
-dash (histogram mpg, fc(ltblue) fa(40)) ///
+dash (histogram mpg, fc(ltblue%40)) ///
      (kdensity  mpg, lc(maroon) lw(medthick)), ///
      name(u3) title("MPG: Histogram + Density Overlay") xtitle("Mileage (mpg)")
 
@@ -111,7 +111,7 @@ dash (scatter mpg weight, mc(orange) msi(small)) ///
 
 // b6: scatter + mean band
 dash (scatter mpg weight, mc(navy) msi(small))  ///
-     (mband   mpg weight, fc(ltblue) fa(25)),  ///
+     (mband   mpg weight, fc(ltblue%25)),  ///
      name(b6) title("MPG vs Weight: Mean Band")  ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
@@ -126,7 +126,7 @@ dash connected mpg rep78, mc(maroon) lc(maroon) ///
      xtitle("Repair Record") ytitle("Mileage (mpg)")
 
 // b9: area plot
-dash area mpg weight, fc(ltblue) fa(50) ///
+dash area mpg weight, fc(ltblue%50) ///
      name(b9) title("MPG vs Weight: Area") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
@@ -146,7 +146,7 @@ dash dot mpg rep78, mc(navy) ///
      xtitle("Repair Record") ytitle("Mileage (mpg)")
 
 // b14: rarea  (range area — mpg ± 2 vs weight)
-dash rarea mpg_lo mpg_hi weight, fc(ltblue) fa(40) lw(0) ///
+dash rarea mpg_lo mpg_hi weight, fc(ltblue%40) lw(0) ///
      name(b13) title("MPG Range vs Weight: rarea") ///
      xtitle("Weight (lbs.)") ytitle("MPG ± 2")
 
@@ -176,25 +176,25 @@ dash scatter mpg weight, colorvar(foreign) colordiscrete ///
 
 // m2: OLS fit with 95% CI band  (scatter + lfitci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete)     ///
-     (lfitci  mpg weight, fc(ltblue) fa(30)),     ///
+     (lfitci  mpg weight, fc(ltblue%30)),     ///
      name(m2) title("OLS Fit with 95% CI (lfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m3: quadratic fit with 95% CI  (scatter + qfitci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete)   ///
-     (qfitci  mpg weight, fc(lavender) fa(30)),   ///
+     (qfitci  mpg weight, fc(lavender%30)),   ///
      name(m3) title("Quadratic Fit with 95% CI (qfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m4: local polynomial with 95% CI  (scatter + lpolyci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete) ///
-     (lpolyci mpg weight, fc(lime) fa(30)),            ///
+     (lpolyci mpg weight, fc(lime%30)),            ///
      name(m4) title("Local Poly with 95% CI (lpolyci)")  ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m5: fractional polynomial fit + CI  (scatter + fpfitci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete)  ///
-     (fpfitci mpg weight, fc(gold) fa(30)),       ///
+     (fpfitci mpg weight, fc(gold%30)),       ///
      name(m5) title("Fractional Poly Fit + CI (fpfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
