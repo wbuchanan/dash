@@ -229,6 +229,28 @@ def read_table(runner_text):
     return rows
 
 
+def continuation_problems(runner_text):
+    """The table is one Stata command over many lines: every row but the
+    last ends in `///' and the last does not.  A row after an unfinished
+    last row is read by Stata as a command of its own (r(199), and no
+    script runs), though read_table takes it."""
+    if runner_text.count(BEGIN) != 1 or runner_text.count(END) != 1:
+        return []
+    block = runner_text[runner_text.index(BEGIN):runner_text.index(END)]
+    rows = [ln for ln in block.splitlines()
+            if re.match(r"^\s+test_\w+\.cscript\s", ln)]
+    names = [ln.split()[0] for ln in rows]
+    probs = []
+    for i, ln in enumerate(rows[:-1]):
+        if not ln.rstrip().endswith("///"):
+            probs.append("%s's row ends the table's command, but %s's row "
+                         "follows it" % (names[i], names[i + 1]))
+    if rows and rows[-1].rstrip().endswith("///"):
+        probs.append("the table's last row, %s's, continues into the next "
+                     "line" % names[-1])
+    return probs
+
+
 def read_release(runner_text):
     """The release tier the runner's table names (its order)."""
     return cert_verdict.release_scripts(runner_text)
@@ -298,6 +320,7 @@ def check(runner_text):
         rows = read_table(runner_text)
     except ValueError as exc:
         return [str(exc)]
+    probs += continuation_problems(runner_text)
     scripts = cert_verdict.registered_scripts(runner_text)
     named = [r[0] for r in rows]
     if sorted(named) != sorted(set(named)):

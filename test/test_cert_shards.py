@@ -441,3 +441,28 @@ class TestTheRunnerRunsOnlyItsShard:
         assert src.index("[SHARD]") < src.index('display as text "[ RUN ]')
         # A shard with nothing planned (a DASH_CERT_ONLY subset) passes.
         assert "else if `n_pass' == 0 & `_cert_nrun' > 0 {" in src
+
+
+class TestTheTableIsOneStataCommand:
+    """Batch 34.1's gate (22oct2026): a row added after the table's last
+    row, which had no `///', made Stata read the new row as a command
+    (r(199)) and no certification script ran; the Python reader took it."""
+
+    def test_every_row_but_the_last_continues_the_command(self):
+        assert S.continuation_problems(_runner()) == []
+
+    def test_a_row_after_an_unfinished_last_row_is_named(self):
+        text = (S.BEGIN + "\nlocal _cert_shards ///\n"
+                "    test_a.cscript    1.0 0  1 1 1 ///\n"
+                "    test_b.cscript    1.0 0  1 1 1\n"
+                "    test_c.cscript    1.0 0  1 1 1\n" + S.END + "\n")
+        assert S.continuation_problems(text) == [
+            "test_b.cscript's row ends the table's command, but "
+            "test_c.cscript's row follows it"]
+        good = text.replace("1 1 1\n    test_c", "1 1 1 ///\n    test_c")
+        assert S.continuation_problems(good) == []
+        bad = good.replace("test_c.cscript    1.0 0  1 1 1\n",
+                           "test_c.cscript    1.0 0  1 1 1 ///\n")
+        assert S.continuation_problems(bad) == [
+            "the table's last row, test_c.cscript's, continues "
+            "into the next line"]

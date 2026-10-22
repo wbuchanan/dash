@@ -158,7 +158,7 @@ local _cert_shards ///
     test_wp29_truth.cscript             138.4 1  2 2 2 ///
     test_wp30_truth.cscript             628.1 0  * * * ///
     test_wp31_truth.cscript             520.1 0  * * * ///
-    test_wp33_truth.cscript              66.5 0  * * *
+    test_wp33_truth.cscript              66.5 0  * * * ///
     test_wp34_truth.cscript               1.0 0  * * *
 // The release tier: the closed work packages' truth scripts,
 // which a default run (make cert, make test-all) leaves out and
