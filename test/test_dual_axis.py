@@ -482,15 +482,22 @@ class TestTheLoneAxisRewrite:
         assert _dr._dash_lone_second_axes(bad) == bad
 
     def test_many_graphs_cost_one_pass(self):
-        """Resource: the rewrite is linear in the spec (2,000 graphs of 50
-        layers each, well under two seconds)."""
+        """Resource: the rewrite is linear in the spec.  Flipped
+        (22oct2026): a two-second bound for 2,000 graphs of 50 layers failed
+        on a loaded machine (2.9 s); linear is measured as a ratio instead --
+        2,000 graphs take under 8 times what 500 take (linear is about 4,
+        quadratic about 16), with 50 ms of slack and a 20-second ceiling."""
         import time
         import dash_render as _dr
         g = {"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
                         "options": {"yaxis": "2"}}] * 50,
              "graph_options": {}}
-        t0 = time.perf_counter()
-        out = _dr._dash_lone_second_axes({"graphs": [g] * 2000})
-        assert time.perf_counter() - t0 < 2.0
+        secs = {}
+        for n in (500, 2000):
+            t0 = time.perf_counter()
+            out = _dr._dash_lone_second_axes({"graphs": [g] * n})
+            secs[n] = time.perf_counter() - t0
+        assert secs[2000] < 8 * secs[500] + 0.05, secs
+        assert secs[2000] < 20, secs
         assert all("yaxis" not in p["options"]
                    for gg in out["graphs"] for p in gg["plots"])
