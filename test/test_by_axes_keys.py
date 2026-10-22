@@ -34,6 +34,7 @@ from conftest import load_app, render_models  # noqa: E402
 import test_by_grid as tg  # noqa: E402
 import test_by_text as tbt  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 from by_panel_probe import (by_grid, panel_label,  # noqa: E402
                             panel_label_title, side_title)
 
@@ -270,16 +271,37 @@ def _colour_keys(fig):
     return out
 
 
-def _probe_build(mode):
-    """One build per mode of every chrome probe dash can spell, each graph
-    titled with its probe id."""
-    key = ("probes", mode)
+def _probe_build(mode, pids=None):
+    """One build per mode of the chrome probes *pids* (default: every
+    probe dash can spell), each graph titled with its probe id."""
+    pids = tuple(sorted(_PROBES if pids is None else pids))
+    key = ("probes", mode, pids)
     if key not in _BUILT:
-        graphs = [_graph(pid, plots, go) for pid, (plots, go)
-                  in sorted(_PROBES.items())]
+        graphs = [_graph(pid, *_PROBES[pid]) for pid in pids]
         roots, notes, owner = _build(mode, _spec(graphs))
         _BUILT[key] = (_grids(roots), notes, owner)
     return _BUILT[key]
+
+
+def _category(pid):
+    """A probe's family for the served subset: its series (p, q or r),
+    whether it has a second layer, and the key its by() asks about
+    (legend, clegend, holes, total, the i-options or none)."""
+    plots, go = _PROBES[pid]
+    by = str(go.get("by", ""))
+    word = next((w for w in ("clegend", "legend", "holes", "total", "iy",
+                             "ix", "title") if w in by or w in go), "")
+    return (pid[0], len(plots) > 1, word)
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each _category and every fourth probe of
+#: the rest; release checks every probe served.  A node builds one page of
+#: its group's probes.
+_PARAMS = probe_params(sorted(_PROBES), representative(
+    sorted(_PROBES), _category, stride=4))
+#: The probes the single-probe tests read, built as one small page.
+_FEW = ("p02", "p46")
 
 
 def _matched(grid, probe):
@@ -545,14 +567,14 @@ class TestTheUnitFunctions:
         assert not bad, bad
 
 
-@pytest.mark.parametrize("mode", _MODES)
 class TestOuterAxes:
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probe(self, mode, group):
         """Each panel draws the y, x and second y axes twoway draws, for
         every probe."""
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, group)
         bad = []
-        for pid in sorted(_PROBES):
+        for pid in group:
             p = _fix()["probes"][pid]
             if pid not in grids:
                 bad.append((pid, "no grid"))
@@ -568,15 +590,15 @@ class TestOuterAxes:
         assert not bad, bad
 
 
-@pytest.mark.parametrize("mode", _MODES)
 class TestAxisTitlesOnce:
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probe(self, mode, group):
         """No panel draws an axis title twoway leaves off (a second
         axis's included), and the title cells hold twoway's l1title and
         b1title."""
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, group)
         bad = []
-        for pid in sorted(_PROBES):
+        for pid in group:
             p = _fix()["probes"][pid]
             grid = grids[pid]
             for q, fig in _matched(grid, p):
@@ -596,14 +618,14 @@ class TestAxisTitlesOnce:
         assert not bad, bad
 
 
-@pytest.mark.parametrize("mode", _MODES)
 class TestOneLegend:
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probe(self, mode, group):
         """Panel legends only where twoway draws them; one overall legend
         of panel 1's keys, in order, on twoway's side or in its hole."""
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, group)
         bad = []
-        for pid in sorted(_PROBES):
+        for pid in group:
             if pid.startswith("q"):
                 continue
             p = _fix()["probes"][pid]
@@ -635,10 +657,11 @@ class TestOneLegend:
                 bad.append((pid, "items"))
         assert not bad, bad
 
+    @pytest.mark.parametrize("mode", _MODES)
     def test_a_hole_counts_in_the_grid(self, mode):
         """by(foreign, legend(at(3) pos(0))): a 2 x 2 grid, the legend in
         cell 3 (E4 p46), full_n 3."""
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, _FEW)
         grid = grids["p46"]
         c = _cell(grid, "dash_by_legend")
         pan = [(int(x[1]), int(x[2])) for x in grid.children
@@ -687,7 +710,7 @@ class TestColourKeyUnderBy:
         bound to panel 1's mapper (continuous) or holding panel 1's
         levels (discrete), on twoway's side."""
         from bokeh.models import ColorBar, Legend
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, ("q06", "q07", "q08", "q09"))
         bad = []
         for pid in ("q06", "q07", "q08", "q09"):
             p = _fix()["probes"][pid]
@@ -801,7 +824,7 @@ class TestTheToolbar:
     def test_one_save_tool(self, mode):
         """Guard: the grid keeps one SaveTool, which writes <name>.png."""
         from bokeh.models import SaveTool
-        grids, _n, _o = _probe_build(mode)
+        grids, _n, _o = _probe_build(mode, _FEW)
         grid = grids["p02"]
         saves = [t for t in grid.toolbar.tools if isinstance(t, SaveTool)]
         # A sub-grid of an auto layout writes dashboard.png, as before.
@@ -905,14 +928,20 @@ def _boxes(fig):
             if isinstance(m, ColorBar) and m.name == "dash_by_label_box"]
 
 
-def _box_build(mode):
-    key = ("boxes", mode)
+def _box_pids():
+    """The label-box probes a page draws."""
+    return [pid for pid in sorted(_fix()["label_box"])
+            if pid not in ("box_fcolor", "box_nobox")]
+
+
+def _box_build(mode, pids=None):
+    """One page per mode of the label-box probes *pids* (default: all)."""
+    pids = tuple(sorted(_box_pids() if pids is None else pids))
+    key = ("boxes", mode, pids)
     if key not in _BUILT:
         lb = _fix()["label_box"]
         graphs = []
-        for pid in sorted(lb):
-            if pid in ("box_fcolor", "box_nobox"):
-                continue
+        for pid in pids:
             by = {"box_two": "foreign rep78",
                   "box_total": "foreign, total"}.get(pid, "foreign")
             graphs.append(_graph(pid, _ONE, {"by": by,
@@ -920,6 +949,23 @@ def _box_build(mode):
         roots, notes, owner = _build(mode, _spec(graphs, scheme="s2color"))
         _BUILT[key] = (_grids(roots), notes, owner)
     return _BUILT[key]
+
+
+def _box_category(pid):
+    """A label-box probe's family for the served subset: twoway's fill,
+    outline and stroke width of its box."""
+    rec = _fix()["label_box"][pid]
+    box = rec["panels"][0]["box"] if rec.get("panels") else {}
+    return (box.get("fill"), box.get("outline"), box.get("stroke_width"))
+
+
+#: The box probes test_scheme_colours compares and the gate's
+#: served subset (pytest speed, 22oct2026): the first probe of each
+#: _box_category and every fourth probe of the rest; release checks every
+#: probe served.
+_COMPARED_BOXES = [pid for pid in _box_pids() if pid.startswith("box_")]
+_BOX_PARAMS = probe_params(_COMPARED_BOXES, representative(
+    _COMPARED_BOXES, _box_category, stride=4))
 
 
 class TestTheLabelBox:
@@ -941,14 +987,14 @@ class TestTheLabelBox:
         g.add_layout(Title(name="dash_by_label", text=""), "above")
         assert dr._dash_by_label_box(g, None) is None
 
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_scheme_colours(self, mode):
+    @pytest.mark.parametrize("mode,group", _BOX_PARAMS)
+    def test_scheme_colours(self, mode, group):
         """Every scheme: each panel's box fill and outline are twoway's,
         and its outline width is twoway's stroke in px."""
-        grids, _n, _o = _box_build(mode)
+        grids, _n, _o = _box_build(mode, group)
         lb = _fix()["label_box"]
         bad = []
-        for pid in sorted(lb):
+        for pid in group:
             if not pid.startswith("box_") or pid in ("box_fcolor",
                                                      "box_nobox"):
                 continue
@@ -973,7 +1019,8 @@ class TestTheLabelBox:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_height_follows_the_text_and_margins(self, mode):
-        grids, _n, _o = _box_build(mode)
+        grids, _n, _o = _box_build(mode, ("box_s2color", "box_stcolor",
+                                          "box_economist", "box_two"))
         lb = _fix()["label_box"]
         bad = []
         for pid in ("box_s2color", "box_stcolor", "box_economist",
@@ -1016,7 +1063,7 @@ class TestTheLabelBox:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_which_panels_have_a_box(self, mode):
-        grids, _n, _o = _box_build(mode)
+        grids, _n, _o = _box_build(mode, ("box_s2color", "box_total"))
         assert [len(_boxes(f)) for f in _panels(grids["box_total"])] == [
             1, 1, 1]
         spec = _spec([_graph("g1", _ONE, {"by": "foreign",

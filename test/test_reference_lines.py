@@ -38,6 +38,7 @@ from bokeh.plotting import figure as bokeh_figure  # noqa: E402
 from test_mode_parity import (_sc, _served, _served_after_move,  # noqa: E402
                               _spec, _standalone)
 from test_saved_filter_layers import _move, _render  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIX = json.load(open(os.path.join(_ROOT, "test", "fixtures",
                                    "refline_truth.json"), encoding="utf-8"))
@@ -135,18 +136,35 @@ class TestPositions:
             "20", "10(5)40", True)
 
 
+_LSTYLE_SCHEMES = ("s2color", "stcolor", "s1mono")
+#: "<scheme>/S<nn>": S01-S16 under each scheme.  The
+#: gate's served subset (pytest speed, 22oct2026): each option under one
+#: scheme, the schemes taken in turn (S01 s2color, S02 stcolor, S03
+#: s1mono, S04 s2color, ...), so every option and every scheme is drawn
+#: served, and every sixth key of the rest; release checks every key
+#: served.
+_LSTYLE_KEYS = ["%s/S%02d" % (s, i) for s in _LSTYLE_SCHEMES
+                for i in range(1, 17)]
+_LSTYLE_PARAMS = probe_params(_LSTYLE_KEYS, representative(
+    _LSTYLE_KEYS, always=["%s/S%02d" % (_LSTYLE_SCHEMES[i % 3], i)
+                          for i in range(1, 17)], stride=6))
+
+
 class TestLstyle:
-    @pytest.mark.parametrize("mode", MODES)
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _LSTYLE_PARAMS)
+    def test_probe(self, mode, group):
         """S01-S16 under s2color, stcolor and s1mono: colour, width over
         the default line's (2 %), dashed and presence equal twoway's."""
         bad = []
-        for scheme in ("s2color", "stcolor", "s1mono"):
+        for scheme in _LSTYLE_SCHEMES:
+            mine = [k for k in group if k.startswith(scheme + "/")]
+            if not mine:
+                continue
             base_w = _P[f"Z1_{scheme}"]["lines"][0]["width"]
             dflt, _ = _draw({"xline": "3000"}, mode, scheme)
             dflt_w = dflt[0].line_width
-            for i in range(1, 17):
-                rec = _P[f"S{i:02d}_{scheme}"]
+            for key in mine:
+                rec = _P["%s_%s" % (key.partition("/")[2], scheme)]
                 spans, _ = _draw(_go(rec["opt"]), mode, scheme)
                 if not rec["lines"]:
                     if spans:

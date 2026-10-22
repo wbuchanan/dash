@@ -42,6 +42,7 @@ from by_panel_probe import grid_cells, side_title  # noqa: E402
 from conftest import load_app  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 from test_unlabelled_variables import (_filter, _spec, _text,  # noqa: E402
                                        _write_data)
 
@@ -151,17 +152,20 @@ def _summary(figs):
 _CACHE = {}
 
 
-def _probe_summaries(mode):
-    """``{pid: summary}`` for every probe, built in *mode*, once."""
-    if mode in _CACHE:
-        return _CACHE[mode]
+def _probe_summaries(mode, only=None):
+    """``{pid: summary}`` for every probe (or those in *only*), built in
+    *mode*, once."""
+    only = tuple(sorted(_FIX["probes"] if only is None else only))
+    if (mode, only) in _CACHE:
+        return _CACHE[(mode, only)]
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="dash_sl_"))
     out = {}
     for ds in ("auto", "sp500"):
         dp = str(tmp / f"data_{ds}.json")
         with open(dp, "w", encoding="utf-8") as fh:
             json.dump(_FIX["data"][ds], fh)
-        pids = sorted(p for p, v in _FIX["probes"].items() if v["ds"] == ds)
+        pids = sorted(p for p, v in _FIX["probes"].items()
+                      if v["ds"] == ds and p in only)
         for c in range(0, len(pids), 50):
             chunk = pids[c:c + 50]
             graphs, points = [], {}
@@ -200,8 +204,18 @@ def _probe_summaries(mode):
                                      if c not in by_pid[tag_]]
             for pid in chunk:
                 out[pid] = _summary(by_pid.get(pid, []))
-    _CACHE[mode] = out
+    _CACHE[(mode, only)] = out
     return out
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each letter (D dates, F fits, G graph
+#: options, H second axes, K the title rule, ...: each letter is one
+#: family of the fixture) and every fourth probe of the rest; release
+#: checks every probe served.  A node builds one page per data set of its
+#: group's probes.
+_PARAMS = probe_params(sorted(_FIX["probes"]), representative(
+    sorted(_FIX["probes"]), lambda pid: pid[0], stride=4))
 
 
 def _twoway_keys(pid):
@@ -351,17 +365,18 @@ class TestTheLegendKeys:
         assert dr._dash_legend_key({"type": "scatter"}) == "scatter"
 
 
-@pytest.mark.parametrize("mode", ["saved", "served"])
 class TestKeysMatchTwoway:
-    def test_keys(self, mode):
-        got = _probe_summaries(mode)
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_keys(self, mode, group):
+        got = _probe_summaries(mode, group)
         bad = ["%s: dash %r, twoway %r" % (pid, got[pid]["keys"],
                                             _twoway_keys(pid))
-               for pid in sorted(_FIX["probes"])
+               for pid in group
                if pid not in _NOT_YET_KEYS
                and got[pid]["keys"] != _twoway_keys(pid)]
         assert not bad, "\n".join(bad)
 
+    @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_the_residuals_still_differ(self, mode):
         # Flipped (WP-31 C13): P2.50 and P2.51 were open; the merge of keys
         # with the same text and style closes both, so no residual is left
@@ -523,12 +538,12 @@ def _drawn_numbers(probe):
     return want
 
 
-@pytest.mark.parametrize("mode", ["saved", "served"])
 class TestTitlesMatchTwoway:
-    def test_titles(self, mode):
-        got = _probe_summaries(mode)
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_titles(self, mode, group):
+        got = _probe_summaries(mode, group)
         bad = []
-        for pid in sorted(_FIX["probes"]):
+        for pid in group:
             want = _drawn_numbers(_FIX["probes"][pid])
             have = {k: got[pid][k] for k in ("y1", "y2", "x1", "x2")}
             if have != want:

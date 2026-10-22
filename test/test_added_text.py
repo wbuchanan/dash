@@ -36,6 +36,7 @@ import test_saved_filter_layers as sfl  # noqa: E402
 from conftest import render_models  # noqa: E402
 from js_runner import requires_node  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _ROOT = os.path.dirname(_HERE)
 _FIXTURE = os.path.join(_HERE, "fixtures", "added_text_truth.json")
@@ -248,16 +249,59 @@ def _place_probes():
     return out
 
 
-@pytest.mark.parametrize("mode", MODES)
+def _probes():
+    return dict(_PROBE_RECORDS, **_place_probes())
+
+
+_COMPASS = {"n": "cardinal", "e": "cardinal", "s": "cardinal",
+            "w": "cardinal", "c": "centre"}
+
+
+def _category(pid):
+    """A probe's family for the served subset: a placement probe (pl_#)
+    by its compass class (cardinal, diagonal or centre), an orientation
+    probe (or_#) by its angle, every other probe on its own."""
+    fam = re.sub(r"_\d+$", "", pid)
+    opts = str(_probes()[pid][0].get("at_opts", ""))
+    if fam == "pl":
+        m = re.search(r"placement\((\w+)\)", opts)
+        return (fam, _COMPASS.get(m.group(1) if m else "c", "diagonal"))
+    if fam == "or":
+        m = re.search(r"orientation\((\w+)\)", opts)
+        word = m.group(1) if m else ""
+        return (fam, ("r" if word.startswith("r") else "")
+                + ("v" if "vert" in word else "h" if "hor" in word else ""))
+    return (pid,)
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each _category and every sixth probe of
+#: the rest; release checks every probe served.
+_PARAMS = probe_params(
+    sorted(_probes()), representative(sorted(_probes()), _category,
+                                      stride=6))
+_BASE_PT = {}
+
+
+def _base_pt(mode):
+    """The size of the "aaa" probe's first Label in *mode*: the default
+    every probe's size is a ratio to."""
+    if mode not in _BASE_PT:
+        labs = _all_labels(_spec(_probes()["aaa"]), mode)
+        _BASE_PT[mode] = _pt(labs[0].text_font_size)
+    return _BASE_PT[mode]
+
+
 class TestAgainstTwoway:
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probe(self, mode, group):
         """Every drawn probe: lines, size against the default, colour,
         angle, side of the point, position and box, as twoway drew them."""
-        probes = dict(_PROBE_RECORDS, **_place_probes())
+        probes = _probes()
         base_px = _FIX["probes"]["aaa"]["texts"][0]["size"]
-        base_pt = None
+        base_pt = _base_pt(mode)
         bad = []
-        for pid in ["aaa"] + sorted(set(probes) - {"aaa"}):
+        for pid in group:
             fx = _FIX["probes"][pid]
             labs = _all_labels(_spec(probes[pid], go=_PROBE_GO.get(pid)),
                                mode)
@@ -273,8 +317,6 @@ class TestAgainstTwoway:
                                f"{[t['text'] for t in mine]}")
                     continue
                 t = mine[0]
-                if base_pt is None:
-                    base_pt = _pt(lab.text_font_size)
                 ratio = _pt(lab.text_font_size) / base_pt
                 if not math.isclose(ratio, t["size"] / base_px, rel_tol=.01):
                     bad.append(f"{pid}: size ratio {ratio:.4f} vs "

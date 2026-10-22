@@ -26,6 +26,7 @@ import test_mode_parity as tmp  # noqa: E402
 from test_mode_parity import (_layout_tree, _served, _spec,  # noqa: E402
                               _standalone)
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _FIX = os.path.join(_HERE, "fixtures", "bare_intensity_truth.json")
@@ -88,11 +89,12 @@ def _go(pid, v):
     return {k: x.replace("@", v) for k, x in _P[pid][1].items()}
 
 
-def _graphs(scheme):
-    """Every (probe, value) of *scheme*'s fixture as one graph each."""
+def _graphs(scheme, values=_VALUES):
+    """Every (probe, value) of *scheme*'s fixture, for each of *values*,
+    as one graph each."""
     gs, keys = [], []
     for pid in sorted(_P):
-        for v in _VALUES:
+        for v in values:
             name = f"g{len(gs)}"
             gs.append((name, _plots(pid, v), _go(pid, v)))
             keys.append((name, pid, v))
@@ -216,24 +218,35 @@ class TestTheTextReader:
         assert dr._textbox_color({}, None, with_alpha=True) == (None, None)
 
 
-class TestEverySite:
-    """Every probe of every scheme against twoway, one build per scheme
-    and mode; every mismatch reported."""
+#: The keys "<scheme>/<value>" (one build of every probe each).  The
+#: gate's served subset (probe_groups.representative, pytest speed,
+#: 22oct2026): the diagonal that pairs each scheme with a different value,
+#: so every scheme and every value is built served, and every sixth key of
+#: the rest; release checks every key served.
+_KEYS = ["%s/%s" % (s, v) for s in _SCHEMES for v in _VALUES]
+_DIAGONAL = ["%s/%s" % sv for sv in zip(_SCHEMES, _VALUES)]
+_PARAMS = probe_params(_KEYS, representative(_KEYS, always=_DIAGONAL,
+                                             stride=6))
 
-    @pytest.mark.parametrize("mode", ["saved", "served"])
-    def test_probe(self, mode):
+
+class TestEverySite:
+    """Every probe of every scheme against twoway, one build per scheme,
+    value and mode; every mismatch reported."""
+
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probe(self, mode, group):
         d = _truth()
         bad = []
-        for scheme in _SCHEMES:
-            gs, keys = _graphs(scheme)
-            byname = {}
-            # A page holds at most 100 graphs: two builds per scheme.
-            for part in (gs[:52], gs[52:]):
-                spec = _spec(graphs=part, build_options={"scheme": scheme})
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    byname.update(_saved_figures(spec) if mode == "saved"
-                                  else _served_figures(spec))
+        for key in group:
+            scheme, _, value = key.partition("/")
+            # One build per scheme and value: 26 graphs (a page holds at
+            # most 100).
+            gs, keys = _graphs(scheme, (value,))
+            spec = _spec(graphs=gs, build_options={"scheme": scheme})
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                byname = (_saved_figures(spec) if mode == "saved"
+                          else _served_figures(spec))
             for name, pid, v in keys:
                 rec = d["schemes"][scheme][pid][v]
                 if rec["rc"] != 0:

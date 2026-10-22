@@ -27,6 +27,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
                         "scheme_layer_truth.json")
@@ -216,15 +217,40 @@ class TestTheFixture:
         assert all(p["rc"] == 0 for p in TRUTH["probes"].values())
 
 
-@pytest.mark.parametrize("mode", MODES)
+def _opacity_ids():
+    return sorted(pid for pid, p in TRUTH["probes"].items()
+                  if p["group"] in ("opacity", "opacity_user"))
+
+
+def _opacity_category(pid):
+    """An opacity probe's family for the served subset: its group, its
+    scheme and its plot type's kind (a CI band pair, a paired-coordinate
+    layer, a range layer, a filled layer or a line)."""
+    p = TRUTH["probes"][pid]
+    words = str(p.get("command", "")).split()
+    t = words[0] if words else ""
+    kind = ("ci" if t.endswith("ci") else "pc" if t.startswith("pc")
+            else "fill" if t in ("area", "rarea", "histogram", "rbar")
+            else "range" if t.startswith("r") else "line")
+    return (p["group"], p["scheme"], kind)
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each _opacity_category and every fourth
+#: probe of the rest; release checks every probe served.
+_OPACITY_PARAMS = probe_params(_opacity_ids(), representative(
+    _opacity_ids(), _opacity_category, stride=4),
+    modes=MODES)
+
+
 class TestTwowaysOpacity:
-    def test_each_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _OPACITY_PARAMS)
+    def test_each_probe(self, mode, group):
         """dash's alphas equal twoway's on every opacity probe; the band
         and the grid aside."""
         bad = []
-        for pid, p in sorted(TRUTH["probes"].items()):
-            if p["group"] not in ("opacity", "opacity_user"):
-                continue
+        for pid in group:
+            p = TRUTH["probes"][pid]
             want = _twoway_alphas(p)
             got = _alphas(_fig([_probe_plot(p)], p["scheme"], mode))
             if got != want:

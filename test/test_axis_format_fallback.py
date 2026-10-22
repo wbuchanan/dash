@@ -44,6 +44,7 @@ from bokeh.models import (CustomJSTickFormatter, LinearAxis,  # noqa: E402
 from test_display_format_sites import (MODES, build, js_texts,  # noqa: E402
                                        spec_of, _graph, _scatter)
 from test_mode_parity import _fire  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 FIXTURE = os.path.join(_ROOT, "test", "fixtures", "axis_format_truth.json")
 
@@ -742,13 +743,31 @@ def _mismatches(ids, check):
     return bad
 
 
-@pytest.mark.parametrize("mode", MODES)
+def _category(cid):
+    """A case's family for the served subset: its fixture group and its
+    first layer's plot type."""
+    plots = _CASE_SPECS[cid][0]
+    return (_fixture()["cases"][cid]["group"],
+            plots[0].get("type") if plots else None)
+
+
+#: The gate's served subset (pytest speed, 22oct2026):
+#: the first case of each _category and every fifth case of the rest;
+#: release checks every case served.  Without the fixture the one node of
+#: each mode fails saying so.
+_PARAMS = (probe_params(_compared(), representative(
+    _compared(), _category, stride=5))
+    if _compared() else [pytest.param(m, (), id=m) for m in MODES])
+
+
 class TestAgainstTwoway:
 
-    def test_the_axis_text(self, mode):
-        """Every compared case; the failing case ids are listed together."""
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_the_axis_text(self, mode, group):
+        """Every compared case of the group; the failing case ids are
+        listed together."""
         from bokeh.io import curdoc
-        cids = _compared()
+        cids = list(group)
         assert cids, FIXTURE
         fx = _fixture()
 

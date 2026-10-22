@@ -34,6 +34,7 @@ import dash_render as dr  # noqa: E402
 from conftest import load_app, render_models  # noqa: E402
 import test_by_text as tbt  # noqa: E402
 from by_panel_probe import by_grid, panel_label  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "by_grid_truth.json")
 _MODES = ("saved", "served")
@@ -221,10 +222,24 @@ class TestPositions:
         assert extra["drawn"][1:] == (1, 4)
 
 
+def _grid_category(by):
+    """A grid probe's family for the served subset: its by() variable
+    and whether it has holes()."""
+    var, _, opts = by.partition(",")
+    return (var.strip(), bool(re.search(r"\bhol", opts)))
+
+
+#: The gate's served subset (pytest
+#: speed, 22oct2026): the first probe of each _grid_category and every
+#: third probe of the rest; release checks every probe served.
+_GRID_PARAMS = probe_params(_grid_probes(), representative(
+    _grid_probes(), _grid_category, stride=3))
+
+
 class TestTheGridIsDrawn:
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_every_probe(self, mode):
-        probes = _grid_probes()
+    @pytest.mark.parametrize("mode,group", _GRID_PARAMS)
+    def test_every_probe(self, mode, group):
+        probes = list(group)
         roots, _ = _build(mode, _many([{"by": by} for by in probes]))
         grids = _grids(roots)
         assert len(grids) == len(probes)

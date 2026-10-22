@@ -36,6 +36,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
                         "symbol_pattern_truth.json")
@@ -121,6 +122,15 @@ class TestTheFixture:
         assert not sorted(w for w in want if "sym." + w not in TRUTH)
         assert all(_rec(n)["rc"] == 0 for n in want)
 
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first symbol of each Bokeh marker and height factor
+#: (symbols that share both take the same branch) and every fourth symbol
+#: of the rest; release checks every symbol served.
+_HEIGHT_PARAMS = probe_params(sorted(SHAPE), representative(
+    sorted(SHAPE), lambda n: (SHAPE[n][0], round(_factor(n), 3)), stride=4),
+    modes=MODES)
 
 class TestSymbols:
     @pytest.mark.parametrize("name", sorted(SHAPE))
@@ -227,14 +237,14 @@ class TestSymbols:
         assert T.symbol_traits("x", option=True)[2] == pytest.approx(
             _factor("x"), abs=0.01)
 
-    @pytest.mark.parametrize("mode", MODES)
-    def test_every_symbol_is_twoways_height(self, mode):
+    @pytest.mark.parametrize("mode,group", _HEIGHT_PARAMS)
+    def test_every_symbol_is_twoways_height(self, mode, group):
         """Each symbol is drawn as tall, against O, as twoway draws it:
         the diamond 1.42 of O, the triangles and arrows as tall as O (a
         Bokeh triangle is sqrt(3)/2 of its size), lgx 1.41 of X."""
         (o,), _ = _drawn(mode, [_sc(msymbol="O")])
         bad = []
-        for name in sorted(SHAPE):
+        for name in group:
             (g,), _ = _drawn(mode, [_sc(msymbol=name)])
             if abs(g.size / o.size - _factor(name)) > 0.01:
                 bad.append((name, round(g.size / o.size, 4),

@@ -52,6 +52,7 @@ import dash_render as dr  # noqa: E402
 from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 #: The twenty-six StataCorp schemes dash ships as translations (DESIGN §2):
 #: the fourteen of WP-16, the six user-selectable ones that were missing,
@@ -804,14 +805,31 @@ class TestBothModesAgreeOnTheOpacity:
                 [STTRANS_ALPHA] * 15), attr
 
 
-@pytest.mark.parametrize("mode", MODES)
+#: The gate's served subset (pytest speed,
+#: 22oct2026): s2color and stcolor (the defaults), then every fourth
+#: scheme of the rest (every scheme pins the same alphas, so no scheme
+#: takes a branch of its own); release checks every scheme served.
+_OTHER_PARAMS = probe_params(
+    OTHER_SCHEMES, representative(OTHER_SCHEMES,
+                                  always=("s2color", "stcolor"), stride=4),
+    modes=MODES)
+
+
 class TestEveryOtherSchemeIsUnchanged:
-    @each("name", OTHER_SCHEMES)
-    def test_the_alphas_are_what_they_were(self, name, mode):
-        got = _alphas_by_glyph(name, mode)
-        want = {cls: PINNED_EXCEPTIONS.get((name, cls), v)
-                for cls, v in PINNED_ALPHAS.items()}
-        assert got == want, (name, mode, got, want)
+    @pytest.mark.parametrize("mode,group", _OTHER_PARAMS)
+    def test_the_alphas_are_what_they_were(self, mode, group):
+        """Every scheme of the group; each mismatch named."""
+        # Flipped (pytest speed, 22oct2026): a loop over the group's
+        # schemes, each mismatch collected, in place of one subtest per
+        # scheme over every scheme in one test.
+        bad = []
+        for name in group:
+            got = _alphas_by_glyph(name, mode)
+            want = {cls: PINNED_EXCEPTIONS.get((name, cls), v)
+                    for cls, v in PINNED_ALPHAS.items()}
+            if got != want:
+                bad.append((name, mode, got, want))
+        assert not bad, bad
 
 
 # ---------------------------------------------------------------------------

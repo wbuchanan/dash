@@ -36,6 +36,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from test_mode_parity import _spec as _mp_spec  # noqa: E402
 import test_mlabvposition as _mv  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIX = json.load(open(os.path.join(_HERE, "fixtures",
                                    "mlabtextstyle_truth.json"),
@@ -189,11 +190,18 @@ def _labels(mode, sch):
     return _CACHE[(mode, sch)]
 
 
-@pytest.mark.parametrize("mode", ["saved", "served"])
+#: The gate's served subset
+#: (pytest speed, 22oct2026): stcolor and s2color (the defaults), then
+#: every second scheme of the rest; release checks every scheme served.
+_STYLE_PARAMS = probe_params(_SCHEMES, representative(
+    _SCHEMES, always=("stcolor", "s2color"), stride=2))
+
+
 class TestTheLabels:
-    def test_style(self, mode):
+    @pytest.mark.parametrize("mode,group", _STYLE_PARAMS)
+    def test_style(self, mode, group):
         bad = []
-        for sch in _SCHEMES:
+        for sch in group:
             got = _labels(mode, sch)
             tw = _FIX["schemes"][sch]
             base = got[("DEF", "Q")][0]
@@ -208,6 +216,7 @@ class TestTheLabels:
                         bad.append((sch, pid, ser, g, want, rec[ser]["fill"]))
         assert not bad, bad
 
+    @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_an_unknown_name_is_noted_and_drawn_body(self, mode):
         from bokeh.document import Document
         from conftest import load_app, render_models

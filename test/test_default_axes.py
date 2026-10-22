@@ -37,6 +37,7 @@ import dash_render as dr  # noqa: E402
 import js_runner  # noqa: E402
 import test_by_scales as tb  # noqa: E402
 from conftest import make_data_json  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "default_axes_truth.json")
 _MODES = ("saved", "served")
@@ -262,6 +263,20 @@ def _compare(pid, row, figs, bad):
                 bad.append("%s %s draws minor ticks" % (pid, axis))
 
 
+def _category(pid):
+    """A probe's family for the served subset: its first layer's plot
+    type, whether it has a second layer and whether it has by()."""
+    plots, go = _PROBES[pid][:2]
+    return (plots[0].get("type"), len(plots) > 1, "by" in go)
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each _category and every fourth probe of
+#: the rest; release checks every probe served.
+_PARAMS = probe_params(sorted(_PROBES), representative(
+    sorted(_PROBES), _category, stride=4))
+
+
 # ---------------------------------------------------------------------------
 class TestStataTruth:
     """twoway's ticks and scale for every probe, in each mode."""
@@ -271,10 +286,10 @@ class TestStataTruth:
         assert all(m.get(k) for k in ("stata_version", "born_date",
                                       "dash_commit", "extracted"))
 
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_probes(self, mode):
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_probes(self, mode, group):
         rows, bad = _truth()["probes"], []
-        for pid in sorted(_PROBES):
+        for pid in group:
             spec, which = _probe_spec(pid)
             _compare(pid, rows[pid], _figs(mode, spec, which), bad)
         assert not bad, "\n".join(bad)

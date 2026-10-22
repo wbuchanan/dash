@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from conftest import make_data_json, load_app  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 _MODES = ("saved", "served")
 _PX_PER_RS = 3.84          # 2.88pt x 4/3
@@ -1031,6 +1032,50 @@ def _every_probe(pids, one, mode, wd):
         len(bad), len(pids), "\n".join(bad))
 
 
+def _size_kind(v):
+    """A size value's form: the default, a multiplier, a number, a number
+    with a unit, or a keyword."""
+    if v == "":
+        return "default"
+    if v.startswith("*"):
+        return "star"
+    if re.fullmatch(r"[-+.\deEdD]+", v):
+        return "number"
+    return "unit" if re.search(r"\d", v) else "keyword"
+
+
+def _size_category(pid):
+    """A size probe's family for the served subset: site, scheme and the
+    value's form (_size_kind)."""
+    r = _PROBES.get(pid, {})
+    return (r.get("site"), r.get("scheme"), _size_kind(_value(r)))
+
+
+def _clock_kind(c):
+    c = int(c) if c not in (None, "") else 3
+    return {0: "centre", 6: "vertical", 12: "vertical", 3: "horizontal",
+            9: "horizontal"}.get(c, "diagonal")
+
+
+def _offset_category(pid):
+    """A label-offset probe's family for the served subset: site, scheme,
+    the clock's kind (_clock_kind: each takes its own branch of
+    _one_offset), the plot type and whether msize() is set."""
+    r = _PROBES.get(pid, {})
+    o = _opts_of(str(r.get("command", "")))
+    return (r.get("site"), r.get("scheme"), _clock_kind(o.get("mlabposition")),
+            r.get("plottype", "scatter"), "msize" in o)
+
+
+#: The gate's served subsets (probe_groups.representative): the first
+#: probe of each family (_size_category, _offset_category) and every
+#: eighth probe of the rest; release checks every probe served.
+_SIZE_PARAMS = probe_params(
+    _SIZE_IDS, representative(_SIZE_IDS, _size_category, stride=8))
+_OFFSET_PARAMS = probe_params(
+    _OFFSET_IDS, representative(_OFFSET_IDS, _offset_category, stride=8))
+
+
 class TestStataRatios:
     """dash against twoway, probe by probe.  A ``*#`` value is compared as
     a ratio to the site's default (dash's own default is not always
@@ -1038,15 +1083,17 @@ class TestStataRatios:
     later sections'); every other value as twoway's drawn size in relative
     units (one unit = 3.84px = 2.88pt in dash)."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_sizes(self, mode, tmp_path):
-        """Every size probe; the failing probe ids are listed together."""
-        _every_probe(_SIZE_IDS, self._one_size, mode, tmp_path)
+    @pytest.mark.parametrize("mode,group", _SIZE_PARAMS)
+    def test_sizes(self, mode, group, tmp_path):
+        """Every size probe of the group; the failing probe ids are listed
+        together."""
+        _every_probe(group, self._one_size, mode, tmp_path)
 
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_label_offsets(self, mode, tmp_path):
-        """Every label-offset probe, listed together on failure."""
-        _every_probe(_OFFSET_IDS, self._one_offset, mode, tmp_path)
+    @pytest.mark.parametrize("mode,group", _OFFSET_PARAMS)
+    def test_label_offsets(self, mode, group, tmp_path):
+        """Every label-offset probe of the group, listed together on
+        failure."""
+        _every_probe(group, self._one_offset, mode, tmp_path)
 
     @staticmethod
     def _one_size(mode, pid, tmp_path):
@@ -1129,20 +1176,38 @@ def _builtin_names():
     return sorted(dr.SchemeParser._BUILTIN_NAMES)
 
 
+_SCHEME_KEYS = ("symbolsize p", "gsize heading", "gsize tick_label",
+                "gsize key_label")
+
+
+def _scheme_keywords(scheme):
+    """{scheme key: its keyword} for the four sizes _one_scheme sets."""
+    props = dr.SchemeParser(scheme)._props
+    return {k: str(props.get(k, "")).strip() for k in _SCHEME_KEYS}
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first scheme of each set of keywords
+#: (_scheme_keywords: schemes with the same four keywords take the same
+#: branches) and every fourth scheme of the rest; release checks every
+#: scheme served.
+_SCHEME_PARAMS = probe_params(
+    _builtin_names(),
+    representative(_builtin_names(), lambda s: tuple(sorted(
+        _scheme_keywords(s).items())), stride=4))
+
+
 class TestExplicitKeywordEqualsSchemeDefault:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_each_scheme(self, mode, tmp_path):
-        bad = _mismatches(_builtin_names(), lambda scheme:
+    @pytest.mark.parametrize("mode,group", _SCHEME_PARAMS)
+    def test_each_scheme(self, mode, group, tmp_path):
+        bad = _mismatches(group, lambda scheme:
                           self._one_scheme(mode, scheme, tmp_path))
         assert not bad, "\n".join(bad)
 
     @staticmethod
     def _one_scheme(mode, scheme, tmp_path):
-        props = dr.SchemeParser(scheme)._props
-        kw = {k: str(props.get(k, "")).strip() for k in (
-            "symbolsize p", "gsize heading", "gsize tick_label",
-            "gsize key_label")}
+        kw = _scheme_keywords(scheme)
         plots = [_sc(), _sc2(yaxis="2")]
         default = _figure(mode, tmp_path, plots, scheme,
                           go={"title": '"T"'})

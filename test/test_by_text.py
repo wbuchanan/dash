@@ -28,6 +28,7 @@ import itertools
 import json
 import logging
 import os
+import re
 import sys
 import tempfile
 import time
@@ -47,6 +48,8 @@ from by_panel_probe import (by_grid, chrome_texts, panel_label,  # noqa: E402
                             panel_label_title)
 from conftest import load_app  # noqa: E402
 from known_differences import dead_rows, known_problems  # noqa: E402
+from probe_groups import (known_in, known_outside, probe_params,  # noqa: E402
+                          representative)
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "by_text_truth.json")
 _MODES = ("saved", "served")
@@ -206,6 +209,33 @@ def _known(check=""):
             if k.partition(":")[2] == check}
 
 
+_CLOCK_SIDE = {11: "top", 12: "top", 1: "top", 5: "bottom", 6: "bottom",
+               7: "bottom", 3: "side", 9: "side"}
+
+
+def _category(pid):
+    """A probe's family for the served subset: whether it has an overall
+    text option outside by(), one inside by(), the clock side a
+    position() puts it on, and whether by() adds a missing or total
+    panel."""
+    o = _truth()["probes"][pid]["options"]
+    outer, _, inner = o.partition("by(")
+    texts = r"\b(title|subtitle|note|caption|ti|sub|cap)\("
+    m = re.search(r"position\((\d+)\)", o)
+    return (bool(re.search(texts, outer)), bool(re.search(texts, inner)),
+            _CLOCK_SIDE.get(int(m.group(1))) if m else None,
+            bool(re.search(r"\b(missing|total)\b", inner)))
+
+
+#: The gate's served subset (probe_groups.representative): every probe a
+#: BY_POSITION_KNOWN row names, the first probe of each _category, and
+#: every fifth probe of the rest; release checks every probe served.
+_SERVED_SUBSET = representative(
+    _ok_probes(), _category,
+    always={k.partition(":")[0] for k in BY_POSITION_KNOWN}, stride=5)
+_PARAMS = probe_params(_ok_probes(), _SERVED_SUBSET)
+
+
 # ---------------------------------------------------------------------------
 # The fixture
 # ---------------------------------------------------------------------------
@@ -227,15 +257,19 @@ class TestTheFixture:
         for key in BY_POSITION_KNOWN:
             pid, _, check = key.partition(":")
             assert pid in _truth()["probes"] and check in ("", "text", "offset"), key
+        # Every placement and text row's probe is one a group compares
+        # (known_problems rule (4) across the groups).
+        assert known_outside(_known(), _ok_probes()) == []
+        assert known_outside(_known("text"), _ok_probes()) == []
 
 
-@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("mode,group", _PARAMS)
 class TestPanelsMatchTwoway:
-    def test_panels(self, mode):
+    def test_panels(self, mode, group):
         """Every probe twoway draws: the panel count, each panel's label,
         title, note, caption and rows equal twoway's, in panel order."""
         bad = []
-        for pid in _ok_probes():
+        for pid in group:
             p = _truth()["probes"][pid]
             r = _draw(mode, _probe_spec(p))
             got = [("\n".join([panel_label(f)] if panel_label(f) else []),
@@ -249,16 +283,16 @@ class TestPanelsMatchTwoway:
         assert not bad, "\n".join("%s: dash %r, twoway %r" % b for b in bad)
 
 
-@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("mode,group", _PARAMS)
 class TestOverallTextMatchesTwoway:
-    def test_texts(self, mode):
+    def test_texts(self, mode, group):
         """Every probe twoway draws: the head and foot cells hold twoway's
         overall title, subtitle, note (its lines joined) and caption, the
         note at size(large)'s size where by(, note()) asks for it."""
         # Flipped (WP-33 BY-24): the loops compare every probe; a listed
         # difference belongs to its item (BY_POSITION_KNOWN).
         res = {}
-        for pid in _ok_probes():
+        for pid in group:
             bad = []
             p = _truth()["probes"][pid]
             o = p["overall"]
@@ -279,13 +313,14 @@ class TestOverallTextMatchesTwoway:
                     bad.append("note size: dash %r, twoway %r"
                                % ([m.text_font_size for m in rows], big))
             res[pid + ":text"] = "; ".join(bad) if bad else None
-        assert known_problems(res, _known("text"), "by_position",
+        assert known_problems(res, known_in(_known("text"), group),
+                              "by_position",
                               deliberate=BY_POSITION_DELIBERATE) == []
 
 
-@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("mode,group", _PARAMS)
 class TestPlacementMatchesTwoway:
-    def test_sides_and_alignment(self, mode):
+    def test_sides_and_alignment(self, mode, group):
         """Every probe twoway draws: each panel label's alignment and each
         overall text's side (above or below the panels) and alignment are
         those of twoway's SVG (start left, middle center, end right)."""
@@ -295,7 +330,7 @@ class TestPlacementMatchesTwoway:
         # Flipped (WP-33 BY-24): the loops compare every probe; a listed
         # difference belongs to its item (BY_POSITION_KNOWN).
         res = {}
-        for pid in _ok_probes():
+        for pid in group:
             bad = []
             p = _truth()["probes"][pid]
             svg = p["svg"]
@@ -336,7 +371,8 @@ class TestPlacementMatchesTwoway:
                                     (want_side, t["anchor"])))
             res[pid] = "; ".join("%r: dash %r, twoway %r" % b[1:]
                                  for b in bad) if bad else None
-        assert known_problems(res, _known(), "by_position",
+        assert known_problems(res, known_in(_known(), group),
+                              "by_position",
                               deliberate=BY_POSITION_DELIBERATE) == []
 
 

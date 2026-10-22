@@ -31,6 +31,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw, _props_scheme  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 G = dr.GlyphMapper
 
@@ -503,12 +504,39 @@ def _mismatches(ids, check):
     return bad
 
 
-@pytest.mark.parametrize("mode", MODES)
+def _category(pid):
+    """A probe's family for the served subset: its plot type (the
+    command's first word) and whether it sets fintensity()."""
+    cmd = str(_PROBES[pid].get("command", ""))
+    return (cmd.split()[0] if cmd.split() else "", "fintensity(" in cmd)
+
+
+def _first_of_each_scheme(pids):
+    """The first probe id (sorted) of each scheme."""
+    out = {}
+    for pid in sorted(pids):
+        out.setdefault(_PROBES[pid].get("scheme"), pid)
+    return set(out.values())
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each scheme, the first of each
+#: _category and every fifth probe of the rest; release checks every
+#: probe served.  Without the fixture the one node of each mode fails
+#: saying so.
+_PARAMS = (probe_params(_probe_ids(), representative(
+    _probe_ids(), _category, always=_first_of_each_scheme(_probe_ids()),
+    stride=5))
+    if _probe_ids() else [pytest.param(m, (), id=m) for m in MODES])
+
+
 class TestStataFills:
-    def test_each_probe(self, mode, tmp_path):
-        """Every probe; the failing probe ids are listed together."""
+    @pytest.mark.parametrize("mode,group", _PARAMS)
+    def test_each_probe(self, mode, group, tmp_path):
+        """Every probe of the group; the failing probe ids are listed
+        together."""
         from bokeh.io import curdoc
-        pids = _probe_ids()
+        pids = list(group)
         assert pids, _FIXTURE_PATH
 
         def check(pid):

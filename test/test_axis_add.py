@@ -35,6 +35,7 @@ import test_default_axes as tda  # noqa: E402
 from test_date_axis_residuals import _L  # noqa: E402
 from test_date_range import _filter, _saved, _served  # noqa: E402
 from test_date_range import _spec as _dspec  # noqa: E402
+from probe_groups import probe_params, representative  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "axis_add_truth.json"),
           encoding="utf-8") as _fh:
@@ -120,13 +121,33 @@ class TestTheParser:
             assert dr._dash_parse_axis_spec(raw)["add"] is True, raw
 
 
+def _auto_category(pid):
+    """An auto probe's family for the served subset: its axis, whether it
+    adds, whether it keeps the scale (norescale) and its rule's form (a
+    #n count, a (step) rule, minmax or none, or plain values)."""
+    go, letter = _AUTO[pid]
+    spec = " ".join(str(v) for v in go.values())
+    form = ("count" if "#" in spec else "rule" if "(" in spec
+            else "word" if re.search(r"\b(minmax|none)\b", spec)
+            else "values" if spec.split(",")[0].strip() else "empty")
+    return (letter, "add" in spec, "norescale" in spec, form)
+
+
+#: The gate's served subset (pytest speed,
+#: 22oct2026): the first probe of each _auto_category and every fourth
+#: probe of the rest; release checks every probe served.
+_AUTO_PARAMS = probe_params(sorted(_AUTO), representative(
+    sorted(_AUTO), _auto_category, stride=4))
+
+
 class TestAddUnionsWithTheDefault:
-    @pytest.mark.parametrize("mode", _MODES)
-    def test_probe(self, mode):
+    @pytest.mark.parametrize("mode,group", _AUTO_PARAMS)
+    def test_probe(self, mode, group):
         """Every auto probe: the axis's ticks, its hull and its labels'
         visibility are twoway's, and no note names add."""
         bad = []
-        for pid, (go, letter) in _AUTO.items():
+        for pid in group:
+            go, letter = _AUTO[pid]
             figs, caught = a2._draw(mode, a2._spec(_SC, go))
             f = figs[0]
             rec = _P[pid]["yaxis1" if letter == "y" else "xaxis1"]
