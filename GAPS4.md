@@ -327,12 +327,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
-- **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit pending.
+- **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit 06c46ea.
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
 - **AX-1 Tracked:** Open (WP-34 section 34-03).
 - **VF-2 Tracked:** Open (WP-34 section 34-02).
-- **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit pending.
-- **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit pending.
+- **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.
+- **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
 - **PIC-3 Tracked:** Open (WP-34 section 34-06).
 - **TR-4 Tracked:** Open (WP-34 section 34-07).
 - **DG-3 Tracked:** Open (WP-34 section 34-08).

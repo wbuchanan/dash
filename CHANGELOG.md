@@ -924,7 +924,6 @@ and now matches Stata.
 
 - A histogram's bin axis is ticked over its first and last bin midpoints, as twoway ticks it (histogram mpg: 10(10)40 -> 15(5)40) (WP-34, AX-4)
 - aspectratio() with xsize()/ysize() draws its plot region at that size and ratio; aspectratio(2) xsize(8) ysize(4) drew a 0 px plot and printed Bokeh's E-1023 (WP-34, VF-3)
-
 - A default area plot and its legend key are outlined as twoway outlines them -- the whole polygon, top, base and end edges -- in the scheme's area line style (WP-34, PIC-1)
 
 ### Fixed in WP-33
