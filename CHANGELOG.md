@@ -922,6 +922,8 @@ and now matches Stata.
 
 ### Fixed in WP-34
 
+- A histogram's bin axis is ticked over its first and last bin midpoints, as twoway ticks it (histogram mpg: 10(10)40 -> 15(5)40) (WP-34, AX-4)
+
 ### Fixed in WP-33
 
 - `dash image using file.svg, name()` places a checked SVG picture, with an optional caption and an optional link() to a page in the same folder, where layout() and tabs() put it, in the saved page and the served app; `$dash_max_images` (default 100) bounds them. (WP-33, 33-06)

@@ -581,7 +581,11 @@ _SAVED_DIGEST = (
     # contour parts, the bins relevel and the kept colour rows (each
     # agent's masked model diff showed code strings only); the same under
     # both Pythons.
-    "04d45c84eca1dd9b95976a41797c399067f515810c423ca383e9b01d5d6ba30d")
+    # 04d45c84... -> 0c62765f...: WP-34 AX-4, every axis-plan layer
+    # carries hfields and the finish and filter code read a histogram's
+    # midpoint and span columns (code and plan keys only); the same under
+    # both Pythons.
+    "0c62765f169ab823551b82ba0509308f5d36bbea6ea3ccef2c6076ad8729200c")
 
 
 # ===========================================================================

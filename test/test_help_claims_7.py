@@ -449,7 +449,14 @@ class TestTheSecondAxisFitsTheLayer:
               + getattr(fig, "left" if letter == "y" else "below")
               if getattr(a, letter + "_range_name", "") == name][0]
         ticks = list(getattr(ax.ticker, "ticks", None) or [])
-        lo, hi = min([ext[0]] + ticks), max([ext[1]] + ticks)
+        # Flipped (WP-34 AX-4): a histogram's ticks are read over its bin
+        # midpoints, so the extent above no longer holds its bars; its
+        # span (role "hull": each midpoint plus or minus half a bar, as
+        # twoway's scale runs) joins the hull.
+        span = dr._dash_layer_extent(fig.renderers, letter + "_range_name",
+                                     name, role="hull") or ()
+        lo, hi = (min([ext[0]] + ticks + list(span)),
+                  max([ext[1]] + ticks + list(span)))
         got = dr._dash_range_hull(rng)
         # A bar is one x unit wide: its outer half-width is in the hull.
         half = 0.5 if letter == "x" and ptype in ("bar", "rbar") else 0.0

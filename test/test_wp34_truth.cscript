@@ -207,6 +207,102 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w34_run' {
 }
 * ==== end S00 ====
 
+python:
+def _q34_has(page, kind, want):
+    """q34_bad: "" when the saved page *page* holds a FixedTicker whose
+    ticks are *want* (Stata values of a *kind* axis: "" a number), else
+    the tick lists it holds (WP-31's _u45_has, renamed for WP-34)."""
+    import re
+    import json
+    from sfi import Macro
+    want = [float(v) for v in str(want).split()]
+    if kind:
+        import pandas as pd
+        import dash_render as dr
+        want = [float(v) for v in dr._stata_dates_to_datetime(
+            pd.Series(want), kind).astype("int64")]
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    lists = [json.loads("[" + m + "]") for m in re.findall(
+        r'"name":"FixedTicker","id":"[^"]+","attributes":\{"tags":\[[^\]]*\],"ticks":\[([^\]]*)\]', html)]
+    ok = any([float(v) for v in t] == want for t in lists)
+    Macro.setGlobal("q34_bad", "" if ok else ("want %s, page %s" % (want, lists))[:1500])
+end
+
+capture program drop _q34_drawn
+program define _q34_drawn
+    // q34_t: the ticks twoway drew on axis <ax> (x1, y1) of <graph object>
+    // (WP-31's _u45_drawn, renamed for WP-34)
+    args p ax
+    local d = substr("`ax'", 1, 1)
+    local k = substr("`ax'", 2, 1)
+    local a "`p'.`d'axis`k'"
+    local nt "`.`a'.major.dlg_tickpos.arrnels'"
+    if "`nt'" == "" | "`nt'" == "." local nt 0
+    local v ""
+    forvalues i = 1/`nt' {
+        local v "`v' `.`a'.major.dlg_tickpos[`i']'"
+    }
+    global q34_t "`v'"
+end
+
+* ==== S01 AX-4: histogram bin axis over the midpoints ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w34_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01d "`w34_work'/s01ax4"
+    capture mkdir "`q01d'"
+
+    // Q3401-1: the bin axis dash draws is the one twoway draws, ticked
+    // over the first and last bin midpoints (histogram mpg 15(5)40).
+    local i 0
+    foreach c in "mpg|x1" "price, width(2000)|x1" "rep78, discrete|x1" "mpg, horizontal|y1" {
+        local ++i
+        gettoken cmd ax : c, parse("|")
+        local ax = substr("`ax'", 2, .)
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway histogram `cmd'
+        _q34_drawn .Graph `ax'
+        local comma = cond(strpos("`cmd'", ","), "", ",")
+        capture erase "`q01d'/h`i'.html"
+        capture noisily dash histogram `cmd'`comma' saving("`q01d'/h`i'.html", replace)
+        _w34_expect Q3401-1 "(_rc == 0)" "dash histogram `cmd' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q34_has(r"`q01d'/h`i'.html", "", "${q34_t}")
+        _w34_expect Q3401-1 `"("${q34_bad}" == "")"' `"`cmd' (twoway ${q34_t}): ${q34_bad}"'
+    }
+    _w34_done Q3401-1 "histogram mpg, price width(2000), rep78 discrete and mpg horizontal: twoway's bin-axis ticks"
+
+    // Q3401-2: gap() and baroffset() move the bars, not the ticks.
+    sysuse auto, clear
+    capture graph drop _all
+    quietly twoway histogram mpg, gap(50) baroffset(1)
+    _q34_drawn .Graph x1
+    capture erase "`q01d'/g.html"
+    capture noisily dash histogram mpg, gap(50) baroffset(1) saving("`q01d'/g.html", replace)
+    _w34_expect Q3401-2 "(_rc == 0)" "dash histogram mpg, gap(50) baroffset(1) rc `=_rc'"
+    python: import __main__ as _q34_m; _q34_m._q34_has(r"`q01d'/g.html", "", "${q34_t}")
+    _w34_expect Q3401-2 `"("${q34_bad}" == "")"' `"gap(50) baroffset(1) (twoway ${q34_t}): ${q34_bad}"'
+    _w34_done Q3401-2 "histogram mpg, gap(50) baroffset(1): twoway's ticks; the bars are no tick input"
+
+    // Q3401-3: a qualifier's rows are binned and ticked as twoway does.
+    sysuse auto, clear
+    capture graph drop _all
+    quietly twoway histogram mpg if foreign
+    _q34_drawn .Graph x1
+    capture erase "`q01d'/f.html"
+    capture noisily dash histogram mpg if foreign, saving("`q01d'/f.html", replace)
+    _w34_expect Q3401-3 "(_rc == 0)" "dash histogram mpg if foreign rc `=_rc'"
+    python: import __main__ as _q34_m; _q34_m._q34_has(r"`q01d'/f.html", "", "${q34_t}")
+    _w34_expect Q3401-3 `"("${q34_bad}" == "")"' `"if foreign (twoway ${q34_t}): ${q34_bad}"'
+    _w34_done Q3401-3 "histogram mpg if foreign: twoway's bin-axis ticks"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

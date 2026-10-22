@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "41d6e10c803d01051f103fcf3c90ff8ed1e5c9ed",
-  "extracted": " 7 Oct 2026",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "cd6aa395135fd48236c40230680853ddc0873a2f",
+  "extracted": "22 Oct 2026",
   "source": "scripts/extract_default_axes_truth.do",
   "stata_version": "19.5",
   "units": "SVG 720 units per inch; margin_rel = edge-to-curmin distance / min(canvas W, H)"
@@ -807,6 +807,369 @@
       ],
       "max": 41.0,
       "min": 12.0
+     }
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false
+  },
+  "H01": {
+   "cmd": "twoway histogram price,",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     3291.0,
+     15906.0
+    ],
+    "major": [
+     5000.0,
+     5000.0,
+     15000.0
+    ],
+    "max": 15117.5625,
+    "min": 4079.4375
+   },
+   "y": {
+    "cur": [
+     0.0,
+     0.0003
+    ],
+    "major": [
+     0.0,
+     0.0001,
+     0.0003
+    ],
+    "max": 0.000299943232676,
+    "min": 0.0
+   }
+  },
+  "H02": {
+   "cmd": "twoway histogram price, bin(8)",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     3291.0,
+     15906.0
+    ],
+    "major": [
+     5000.0,
+     5000.0,
+     15000.0
+    ],
+    "max": 15117.5625,
+    "min": 4079.4375
+   },
+   "y": {
+    "cur": [
+     0.0,
+     0.0003
+    ],
+    "major": [
+     0.0,
+     0.0001,
+     0.0003
+    ],
+    "max": 0.000299943232676,
+    "min": 0.0
+   }
+  },
+  "H03": {
+   "cmd": "twoway histogram price, width(2000)",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     3291.0,
+     17291.0
+    ],
+    "major": [
+     5000.0,
+     5000.0,
+     15000.0
+    ],
+    "max": 16291.0,
+    "min": 4291.0
+   },
+   "y": {
+    "cur": [
+     0.0,
+     0.0003
+    ],
+    "major": [
+     0.0,
+     0.0001,
+     0.0003
+    ],
+    "max": 0.0002837837964762,
+    "min": 0.0
+   }
+  },
+  "H04": {
+   "cmd": "twoway histogram rep78, discrete",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     0.5,
+     5.5
+    ],
+    "major": [
+     1.0,
+     1.0,
+     5.0
+    ],
+    "max": 5.0,
+    "min": 1.0
+   },
+   "y": {
+    "cur": [
+     0.0,
+     0.4347825944423676
+    ],
+    "major": [
+     0.0,
+     0.1,
+     0.4000000000000002
+    ],
+    "max": 0.4347825944423676,
+    "min": 0.0
+   }
+  },
+  "H05": {
+   "cmd": "twoway histogram weight, frequency",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     1760.0,
+     4840.0
+    ],
+    "major": [
+     2000.0,
+     500.0,
+     4500.0
+    ],
+    "max": 4647.5,
+    "min": 1952.5
+   },
+   "y": {
+    "cur": [
+     0.0,
+     15.0
+    ],
+    "major": [
+     0.0,
+     5.0,
+     15.0
+    ],
+    "max": 14.0,
+    "min": 0.0
+   }
+  },
+  "H06": {
+   "cmd": "twoway histogram length, percent",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     140.0,
+     233.0
+    ],
+    "major": [
+     140.0,
+     20.0,
+     220.0
+    ],
+    "max": 227.3125,
+    "min": 147.6875
+   },
+   "y": {
+    "cur": [
+     0.0,
+     20.2702693939209
+    ],
+    "major": [
+     0.0,
+     5.0,
+     20.0
+    ],
+    "max": 20.2702693939209,
+    "min": 0.0
+   }
+  },
+  "H07": {
+   "cmd": "twoway histogram mpg, horizontal",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     0.0,
+     0.1
+    ],
+    "major": [
+     0.0,
+     0.02,
+     0.1
+    ],
+    "max": 0.0931966453790665,
+    "min": 0.0
+   },
+   "y": {
+    "cur": [
+     12.0,
+     41.0
+    ],
+    "major": [
+     15.0,
+     5.0,
+     40.0
+    ],
+    "max": 39.1875,
+    "min": 13.8125
+   }
+  },
+  "H08": {
+   "cmd": "twoway histogram c,",
+   "data": "c5",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     4.5,
+     6.5
+    ],
+    "major": [
+     4.5,
+     2.0,
+     6.5
+    ],
+    "max": 5.5,
+    "min": 5.5
+   },
+   "y": {
+    "cur": [
+     0.0,
+     1.0
+    ],
+    "major": [
+     0.0,
+     0.2,
+     1.0
+    ],
+    "max": 1.0,
+    "min": 0.0
+   }
+  },
+  "H09": {
+   "cmd": "twoway histogram mpg, gap(50) baroffset(1)",
+   "data": "auto",
+   "rc": 0,
+   "scheme": "stcolor",
+   "svg": false,
+   "x": {
+    "cur": [
+     11.09375,
+     41.90625
+    ],
+    "major": [
+     15.0,
+     5.0,
+     40.0
+    ],
+    "max": 39.1875,
+    "min": 13.8125
+   },
+   "y": {
+    "cur": [
+     0.0,
+     0.1
+    ],
+    "major": [
+     0.0,
+     0.02,
+     0.1
+    ],
+    "max": 0.0931966453790665,
+    "min": 0.0
+   }
+  },
+  "H10": {
+   "cmd": "twoway histogram mpg, by(foreign)",
+   "data": "auto",
+   "gmetric": 0.85,
+   "panels": [
+    {
+     "x": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ],
+      "max": 41.0,
+      "min": 11.99999972752163
+     },
+     "y": {
+      "cur": [
+       0.0,
+       0.085664339363575
+      ],
+      "major": [
+       0.0,
+       0.02,
+       0.08
+      ],
+      "max": 0.085664339363575,
+      "min": 0.0
+     }
+    },
+    {
+     "x": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ],
+      "max": 41.0,
+      "min": 11.99999972752163
+     },
+     "y": {
+      "cur": [
+       0.0,
+       0.085664339363575
+      ],
+      "major": [
+       0.0,
+       0.02,
+       0.08
+      ],
+      "max": 0.085664339363575,
+      "min": 0.0
      }
     }
    ],

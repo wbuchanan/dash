@@ -715,10 +715,14 @@ _PLAIN_DIGESTS = {
     # the WP-32 merge of D-31.a, D-53d/e, the empty-axis finish and the fit
     # extents (each confirmed by its masked model diff); the same under both
     # Pythons.
+    # d68dfa44... -> 9653c56a... saved, 35cb03e3... -> 4fd310cb... served:
+    # WP-34 AX-4, every axis-plan layer carries hfields and the finish and
+    # filter code read a histogram's midpoint and span columns; the same
+    # under both Pythons.
     ("saved", "plain"):
-        "d68dfa4483cbd5ceb422527e2d9bed679f527fba3da8f7fee2bf62c45bdbc0cd",
+        "9653c56aa7dd065688a7ae16b76d85c05ac14980793cf5149c9b13c393e630de",
     ("saved", "yaxis2"):
-        "d68dfa4483cbd5ceb422527e2d9bed679f527fba3da8f7fee2bf62c45bdbc0cd",
+        "9653c56aa7dd065688a7ae16b76d85c05ac14980793cf5149c9b13c393e630de",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -733,9 +737,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "35cb03e37fcdd523d7330be8585d9aac8b7e514d6c4cf984258eb7e8e437952c",
+        "4fd310cb85fa192b73054a05bb2298b064b8cbe04531fe96cd5d8babc898f4b3",
     ("served", "yaxis2"):
-        "35cb03e37fcdd523d7330be8585d9aac8b7e514d6c4cf984258eb7e8e437952c",
+        "4fd310cb85fa192b73054a05bb2298b064b8cbe04531fe96cd5d8babc898f4b3",
 }
 
 

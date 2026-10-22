@@ -73,6 +73,9 @@ program _ns_data
         quietly generate double t = clock("2001-01-01 00:00:00", "YMDhms") + _n * 7 * 3600000
         format t %tc
     }
+    else if "`which'" == "c5" {
+        quietly generate c = 5
+    }
     else if substr("`which'", 1, 1) == "g" {
         local G = substr("`which'", 2, .)
         quietly generate g = mod(_n, `G')
@@ -137,6 +140,18 @@ _ns_rec P03  stcolor  auto 0 `"`T' (scatter price mpg) (lfit price mpg),"'
 _ns_rec P05  stcolor  auto 0 `"`T' (scatter mpg weight) (scatteri 50 1000),"'
 _ns_rec P06  stcolor  auto 0 `"`T' scatter price weight, yscale(log)"'
 _ns_rec P08  stcolor  auto 0 `"`T' histogram mpg,"'
+* WP-34 AX-4: twoway ticks a histogram's bin axis over its first and last
+* bin midpoints (H01-H10).
+_ns_rec H01  stcolor  auto 0 `"`T' histogram price,"'
+_ns_rec H02  stcolor  auto 0 `"`T' histogram price, bin(8)"'
+_ns_rec H03  stcolor  auto 0 `"`T' histogram price, width(2000)"'
+_ns_rec H04  stcolor  auto 0 `"`T' histogram rep78, discrete"'
+_ns_rec H05  stcolor  auto 0 `"`T' histogram weight, frequency"'
+_ns_rec H06  stcolor  auto 0 `"`T' histogram length, percent"'
+_ns_rec H07  stcolor  auto 0 `"`T' histogram mpg, horizontal"'
+_ns_rec H08  stcolor  c5   0 `"`T' histogram c,"'
+_ns_rec H09  stcolor  auto 0 `"`T' histogram mpg, gap(50) baroffset(1)"'
+_ns_rec H10  stcolor  auto 0 `"`T' histogram mpg, by(foreign)"'
 _ns_rec P09  stcolor  auto 0 `"`T' bar price rep78,"'
 _ns_rec P12  stcolor  auto 0 `"`T' function y=x^2, range(0 3)"'
 _ns_rec P14  stcolor  auto 0 `"`T' (scatter mpg weight) (lfit mpg weight),"'

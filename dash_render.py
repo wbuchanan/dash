@@ -22104,9 +22104,31 @@ class GlyphMapper:
             return _first
         if _bin_rows is not None:
             hist_source.data["__dash_bin_rows"] = _bin_rows
+        _mwpx = self._hist_mwidth_px(options, h)
+        if _mwpx is None:
+            # WP-34 AX-4: twoway ticks the bin axis over the first and
+            # last bin midpoints (twoway__histogram_gen's x; P08 min/max
+            # 13.8125/39.1875), and its scale runs over each midpoint
+            # plus or minus half a bar and |baroffset()| bars, whichever
+            # way the bars move (measured 22oct2026: gap(50) baroffset(1)
+            # and baroffset(-1) both 11.09375-41.90625).  The tick input
+            # and the span are columns, so the saved rebin rewrites them.
+            _ae = np.asarray(axis_edges[i0:i1 + 1], dtype=float)
+            _mid = (_ae[:-1] + _ae[1:]) / 2.0
+            _pad = ((_ae[1:] - _ae[:-1]) * (100.0 - _hgap) / 100.0
+                    * (0.5 + abs(_hoff)))
+            hist_source.data["__dash_mid"] = [float(v) for v in _mid]
+            hist_source.data["__dash_span_lo"] = [float(v)
+                                                  for v in _mid - _pad]
+            hist_source.data["__dash_span_hi"] = [float(v)
+                                                  for v in _mid + _pad]
         r = _tag(self._histogram_quads(
             fig, hist_source, options, color_idx, yvar,
-            mwidth_px=self._hist_mwidth_px(options, h)))
+            mwidth_px=_mwpx))
+        if _mwpx is None:
+            r._dash_tick_fields = {"x": ("__dash_mid",)}
+            r._dash_span_fields = {"x": ("__dash_span_lo",
+                                         "__dash_span_hi")}
         if "__dash_bin_rows" in hist_source.data:
             r._dash_bin_raw = source
         if i1 <= i0:
@@ -34405,6 +34427,21 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 _hl.push(c - bw / 2); _hr.push(c + bw / 2);
             }
         }
+        // WP-34 AX-4: the bin midpoints (the axis's tick input) and the
+        // scale's span, each midpoint plus or minus half a bar and
+        // |baroffset| bars (GlyphMapper.map_histogram), over the kept grid.
+        const _hmid = !_mw && !!(src.data && src.data.__dash_mid !== undefined);
+        const _hspan = (d) => {
+            if (!_hmid) return d;
+            const mids = [], slo = [], shi = [];
+            for (let k = 0; k < n_bins; k++) {
+                const m = (edges[k] + edges[k + 1]) / 2;
+                const pad = (edges[k + 1] - edges[k]) * (100 - _gap) / 100 * (0.5 + Math.abs(_off));
+                mids.push(m); slo.push(m - pad); shi.push(m + pad);
+            }
+            d.__dash_mid = mids; d.__dash_span_lo = slo; d.__dash_span_hi = shi;
+            return d;
+        };
         // WP-29 P0.8: a date is counted on the full unit grid (ac.bin bars
         // from ac.start) and the kept run of bars from ac.bin_first is
         // drawn; densities divide by the bar's width in units.  A config
@@ -34434,11 +34471,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         if (vals.length === 0) {
             // No rows pass the filter — clear histogram to zero rather than
             // leaving stale bars from the previous data visible.
-            src.data = {
+            src.data = _hspan({
                 top:   new Array(n_bins).fill(0),
                 left:  _hl,
                 right: _mw ? _hl.slice() : _hr,
-            };
+            });
             if (_mw) src.data.__dash_mw = _mw_px();
             if (ac.recast_cols) {
                 // WP-31 C16: the recast layer's midpoints and heights.
@@ -34475,11 +34512,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         // else: the page never generates a config with a non-positive
         // width; leave every count at zero rather than derive one.
-        src.data = {
+        src.data = _hspan({
             top:   dash_scale(counts),
             left:  _hl,
             right: _mw ? _hl.slice() : _hr,
-        };
+        });
         if (_mw) src.data.__dash_mw = _mw_px();
         if (ac.recast_cols) {
             // WP-31 C16: midpoints and heights, as the recast target
@@ -43003,6 +43040,28 @@ function dash_axis_hull(a, ticks, lo, hi, models, bases) {
     const placed = (a.xnr && ticks && ticks.dash_base) ? ticks.dash_base : ticks;
     if (a.mode === "count") for (const v of placed) if (ok(v)) vals.push(v);
     for (const v of a.held) if (ok(v)) vals.push(v);
+    // WP-34 AX-4: a histogram's span columns join the hull only.
+    for (const L of a.layers) {
+        if (!L.hfields || !L.hfields.length) continue;
+        const src = models[L.src];
+        if (!src) continue;
+        const data = src.data;
+        const keys = Object.keys(data);
+        const n = keys.length ? data[keys[0]].length : 0;
+        const rows = dash_axis_rows(L, models, n);
+        for (const fld of L.hfields) {
+            const col = dash_axis_col(data, fld);
+            if (col === null) continue;
+            const u = dash_axis_unit_of(L.units, fld);
+            const at = (i) => dash_axis_num(u ? dash_date_units(col[i], u) : col[i]);
+            const put = (v) => { if (v !== null && ok(v)) vals.push(v); };
+            if (rows === null) {
+                for (let i = 0; i < col.length; i++) put(at(i));
+            } else {
+                for (const i of rows) if (i < col.length) put(at(i));
+            }
+        }
+    }
     for (const B of a.bars) {
         const src = models[B.src];
         if (!src) continue;
@@ -45690,6 +45749,12 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
         if hf:
             r._dash_hull_fields = {("y" if k == "x" else "x"): v
                                    for k, v in hf.items()}
+        # WP-34 AX-4: a histogram's tick input and span columns too.
+        for _att in ("_dash_tick_fields", "_dash_span_fields"):
+            tf = getattr(r, _att, None)
+            if tf:
+                setattr(r, _att, {("y" if k == "x" else "x"): v
+                                  for k, v in tf.items()})
         inc = getattr(r, "_dash_axis_include", None)
         if inc:
             r._dash_axis_include = {("y" if k == "x" else "x"): v
@@ -45940,6 +46005,13 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
     explicit ``base()`` (``_dash_base``) is no tick input either -- twoway
     ticks ``bar mpg weight, base(5)`` 10(10)40 over a scale from 5 -- so
     it is skipped too, and read alone with *role* ``"base"`` for the hull.
+
+    WP-34 AX-4: a renderer stamped ``_dash_tick_fields`` (a histogram's
+    bars: ``{"x": ("__dash_mid",)}``) is read through those columns in
+    place of its coordinate fields on that letter, so twoway's bin
+    midpoints, not the bar edges, are the tick input; its
+    ``_dash_span_fields`` columns (the scale's span) are read alone with
+    *role* ``"hull"``, which reads nothing else.
     """
     fields = _DASH_Y_COORDS if range_attr == "y_range_name" else _DASH_X_COORDS
     lo = hi = None
@@ -45957,6 +46029,13 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         data = src.data
         first = next(iter(data), None)
         n = len(data[first]) if first else 0
+        tick = (getattr(r, "_dash_tick_fields", None) or {}).get(
+            range_attr[0])
+        if role == "hull":
+            tick = (getattr(r, "_dash_span_fields", None) or {}).get(
+                range_attr[0])
+            if not tick:
+                continue
         if role == "base":
             # WP-31 B5a: a base() that is no glyph property (dot's), read
             # as an explicit bar base() is, on a layer with rows.
@@ -45985,12 +46064,18 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
                 rows = np.asarray(list(idx), dtype=np.int64)
                 rows = rows[(rows >= 0) & (rows < n)]
         props = g.properties()
-        for attr in fields:
-            if attr not in props or attr in skip:
-                continue
-            if role == "base" and attr not in based:
-                continue
-            v = getattr(g, attr)
+        # WP-34 AX-4: the tick (or span) columns in place of the glyph's.
+        reads = (fields if role == "base" or not tick
+                 else tuple((None, str(t)) for t in tick))
+        for attr in reads:
+            if isinstance(attr, tuple):
+                v = attr[1]
+            else:
+                if attr not in props or attr in skip:
+                    continue
+                if role == "base" and attr not in based:
+                    continue
+                v = getattr(g, attr)
             field = (v if isinstance(v, str)
                      else v.get("field") if isinstance(v, dict)
                      else getattr(v, "field", None))
@@ -46021,6 +46106,8 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
             a, b = float(col.min()), float(col.max())
             lo = a if lo is None else min(lo, a)
             hi = b if hi is None else max(hi, b)
+        if role == "hull":
+            continue
         # WP-32: what the layer evaluates, drawn or not.
         if role != "base":
             ev = [v for v in _dash_eval_values(r, range_attr[0])
@@ -46416,9 +46503,21 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                 "src": si, "field": str(fld),
                                 "zero": _dash_base_spec(r)["zero"]})
                     props = g.properties()
-                    lf, lc, bf, bc, units = [], [], [], [], []
+                    lf, lc, bf, bc, units, hf = [], [], [], [], [], []
+                    # WP-34 AX-4: a histogram's tick input is its
+                    # midpoint column, its span columns join the hull
+                    # only (hfields, dash_axis_hull).
+                    _tick = (getattr(r, "_dash_tick_fields", None)
+                             or {}).get(letter)
+                    if _tick:
+                        lf += [str(t) for t in _tick if t in src.data]
+                        hf += [str(t) for t in (getattr(
+                            r, "_dash_span_fields", None) or {}).get(
+                                letter, ()) if t in src.data]
                     for attr in fields:
                         if attr not in props or attr in skip:
+                            continue
+                        if _tick and attr not in based:
                             continue
                         v = getattr(g, attr)
                         fld = (v if isinstance(v, str)
@@ -46454,11 +46553,11 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                             and not isinstance(_inc, bool) \
                             and math.isfinite(float(_inc)):
                         bc.append(float(_inc))
-                    if lf or lc or bf or bc:
+                    if lf or lc or bf or bc or hf:
                         layers.append({"src": si, "filt": fi, "fk": fk_,
                                        "fields": lf, "consts": lc,
                                        "bfields": bf, "bconsts": bc,
-                                       "units": units})
+                                       "units": units, "hfields": hf})
                     # WP-32: what the layer evaluates, drawn or not, on a
                     # source of its own the page's refit writes.
                     _ev = getattr(r, "_dash_eval_extent", None)
@@ -46471,7 +46570,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         layers.append({"src": ei, "filt": -1, "fk": "",
                                        "fields": ["v"], "consts": [],
                                        "bfields": [], "bconsts": [],
-                                       "units": []})
+                                       "units": [], "hfields": []})
                 ok = (lambda v: isinstance(v, (int, float))
                       and not isinstance(v, bool)
                       and math.isfinite(float(v)))
@@ -47027,6 +47126,9 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                 ext = _dash_layer_extent(pool, range_attr, name, kind)
                 bext = _dash_layer_extent(pool, range_attr, name, kind,
                                           role="base")
+                # WP-34 AX-4: a histogram's span (hull only).
+                sext = _dash_layer_extent(pool, range_attr, name, kind,
+                                          role="hull")
                 if kind is None:
                     # WP-30 P1.3b (D-44c): a date beside a number is
                     # ticked on its calendar, in Stata units.
@@ -47045,6 +47147,7 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                             "lo": ext[0] if ext else None,
                             "hi": ext[1] if ext else None,
                             "bases": list(bext) if bext else [],
+                            "span": list(sext) if sext else [],
                             # WP-31 D15: Stata's answers for the page.
                             "stata": getattr(fig, "_dash_stata_ticks",
                                              None)})
@@ -47299,6 +47402,9 @@ def _dash_axis_hull(fig, e):
     vals += [float(v) for v in (e.get("lo"), e.get("hi"))
              if v is not None and ok(v)]
     vals += [float(v) for v in e.get("bases") or () if ok(v)]
+    # WP-34 AX-4: a histogram's span -- its midpoints plus or minus half a
+    # bar and |baroffset()| bars -- joins the hull, not the tick input.
+    vals += [float(v) for v in e.get("span") or () if ok(v)]
     # The #N ticks twoway places over the widened scale reach the axis.
     t = ax.ticker
     if e.get("base") is not None:

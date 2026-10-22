@@ -327,7 +327,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20 Tracked:** Closed in WP-33, BUGS.md "About 89 options' abbreviation bindings are unmeasured; abbrev_truth wrongly says twoway has no bgcolor()", commit 1563d38.
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
-- **AX-4 Tracked:** Open (WP-34 section 34-01).
+- **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit pending.
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
 - **AX-1 Tracked:** Open (WP-34 section 34-03).
 - **VF-2 Tracked:** Open (WP-34 section 34-02).

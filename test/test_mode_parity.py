@@ -2839,6 +2839,11 @@ CORPUS = [
           bo={"formats": {"when": "%td", "__dashm1": "%tm"},
               "frame_cols": {"g2": {"when": {"col": "__dashm1",
                                              "frame": "f2"}}}}),
+    # WP-34 AX-4: the bin axis ticked over the bin midpoints.
+    _case("histogram gap baroffset",
+          [plot_for("histogram", {"gap": "50", "baroffset": "1"})]),
+    _case("histogram horizontal ticks",
+          [plot_for("histogram", {"horizontal": "horizontal"})]),
 ]
 
 
@@ -4026,6 +4031,9 @@ MOVE_CORPUS = [
                graphs=[("g1", [_sc()]), ("g2", [_sc()]), ("g3", [_sc()]),
                        ("g4", [_sc()])],
                bo={"link": "g1 g2 || g3 g4"}),
+    # WP-34 AX-4: the rebinned bars keep their midpoint ticks.
+    _move_case("histogram mid ticks after a range move", _MOVES[1],
+               [plot_for("histogram")]),
 ]
 
 #: WP-31 H6 (S60 D-60f): a slider move with a layer on the second y axis,

@@ -2871,7 +2871,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'AX-4': 'The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints',
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
     'AX-1': 'xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data',
     'VF-2': "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)",

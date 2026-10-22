@@ -61,6 +61,8 @@ def _frame(which="auto"):
     if which.startswith("g"):
         g = int(which[1:])
         df = df.assign(g=[float((i + 1) % g) for i in range(len(df))])
+    elif which == "c5":
+        df = df.assign(c=[5.0] * len(df))
     elif which == "tc":
         base = (pd.Timestamp("2001-01-01") - pd.Timestamp("1960-01-01")
                 ).total_seconds() * 1000.0
@@ -178,6 +180,25 @@ _PROBES = {
     "P06": ([P("scatter", "price", "weight")], {"yscale": "log"}, "", "auto",
             "", None),
     "P08": ([P("histogram", "mpg")], {}, "", "auto", "", None),
+    # WP-34 AX-4: twoway ticks a histogram's bin axis over its first and
+    # last bin midpoints.
+    "H01": ([P("histogram", "price")], {}, "", "auto", "", None),
+    "H02": ([P("histogram", "price", bin="8")], {}, "", "auto", "", None),
+    "H03": ([P("histogram", "price", width="2000")], {}, "", "auto", "",
+            None),
+    "H04": ([P("histogram", "rep78", discrete="discrete")], {}, "", "auto",
+            "", None),
+    "H05": ([P("histogram", "weight", frequency="frequency")], {}, "",
+            "auto", "", None),
+    "H06": ([P("histogram", "length", percent="percent")], {}, "", "auto",
+            "", None),
+    "H07": ([P("histogram", "mpg", horizontal="horizontal")], {}, "",
+            "auto", "", None),
+    "H08": ([P("histogram", "c")], {}, "", "c5", "", None),
+    "H09": ([P("histogram", "mpg", gap="50", baroffset="1")], {}, "",
+            "auto", "", None),
+    "H10": ([P("histogram", "mpg")], {"by": "foreign"}, "", "auto", "",
+            None),
     "P09": ([P("bar", "price", "rep78")], {}, "", "auto", "", None),
     "P12": ([{"type": "function", "expr": "x^2",
               "options": {"range": "0 3"}}], {}, "", "auto", "", None),
@@ -228,10 +249,12 @@ def _probe_spec(pid):
     return _spec(plots, go, scheme, if_expr=if_expr, formats=formats), which
 
 
-#: twoway's histogram draws its own x axis (15(5)40 over 12-41 on auto's
-#: mpg), not #5 over its scale: not this section's rule (BR-21.1 claims
-#: the histogram's y axis only).
-_NOT_DEFAULT = {("P08", "x")}
+#: Flipped (WP-34 AX-4): twoway's histogram is ticked over its bin
+#: midpoints, P08 is compared now.  H10's x is left out: twoway's by()
+#: panels tick x at #4 (10(10)40 over the midpoints 13.8125-39.1875), dash
+#: at the scheme's #5 (15(5)40) -- GAPS4 AX-2, section 34-02, which removes
+#: this entry.
+_NOT_DEFAULT = {("H10", "x")}
 
 
 def _compare(pid, row, figs, bad):
