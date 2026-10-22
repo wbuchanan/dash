@@ -111,7 +111,11 @@ class TestTheMakefileRunsIt:
         recipe = mk.split("\ntest-release:", 1)[1].split("\n\n", 1)[0]
         assert "DASH_TEST_TIER=release" in recipe
         assert "-m pytest test/ -m release" in recipe
-        release = [ln for ln in mk.splitlines() if ln.startswith("release:")]
+        # Flipped: the prerequisite line, not the first release: line --
+        # `release: GATE_CERT_TIER = release` (the cert release tier,
+        # 22oct2026) is a target variable above it.
+        release = [ln for ln in mk.splitlines()
+                   if ln.startswith("release:") and "=" not in ln]
         assert release and "test-release" in release[0].split()
         phony = [ln for ln in mk.splitlines() if ln.startswith(".PHONY:")]
         assert phony and "test-release" in phony[0].split()
@@ -170,5 +174,9 @@ class TestTheBatchTier:
         recipe = mk.split("\ntest-batch:", 1)[1].split("\n\n", 1)[0]
         assert "DASH_TEST_TIER=batch" in recipe
         assert "-m pytest test/ -m batch" in recipe
-        release = [ln for ln in mk.splitlines() if ln.startswith("release:")]
+        # Flipped: the prerequisite line, not the first release: line --
+        # `release: GATE_CERT_TIER = release` (the cert release tier,
+        # 22oct2026) is a target variable above it.
+        release = [ln for ln in mk.splitlines()
+                   if ln.startswith("release:") and "=" not in ln]
         assert release and "test-batch" in release[0].split()
