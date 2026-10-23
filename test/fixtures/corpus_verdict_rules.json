@@ -1,16 +1,16 @@
 {
-  "T_close": 0.73,
+  "T_close": 0.725,
   "T_same": null,
   "_meta": {
     "born_date": "23 Oct 2026",
-    "dash_commit": "dbcea32da58ca2d4155b13e3edf9c98c556ecf14",
+    "dash_commit": "e7e3263583473634946f7bbeaff823ba596ba104",
     "extracted": "23 Oct 2026",
     "source": "scripts/corpus/calibrate.py",
     "stata_version": "19.5",
     "table": "scripts/corpus/calibration.tsv"
   },
   "aspect_abs": 0.05,
-  "aspect_close": 0.115,
+  "aspect_close": 1.67,
   "calibration": [
     {
       "aspect_diff": -0.0527,
@@ -460,6 +460,88 @@
       "label": "Differs",
       "ssim": 0.7996,
       "verdict": "Differs"
+    },
+    {
+      "aspect_diff": 0.0106,
+      "checks_differing": [
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "audit-MS-11-e3a418b0",
+      "label": "Close",
+      "ssim": 0.7598,
+      "verdict": "Close"
+    },
+    {
+      "aspect_diff": -0.0389,
+      "checks_differing": [
+        "margins",
+        "marker_labels",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "audit-MS-5-2b6b8d80",
+      "label": "Close",
+      "ssim": 0.8389,
+      "verdict": "Close"
+    },
+    {
+      "aspect_diff": 0.0182,
+      "checks_differing": [
+        "legend",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "audit-RH-13-e4e13ee5",
+      "label": "Differs",
+      "ssim": 0.7498,
+      "verdict": "Differs"
+    },
+    {
+      "aspect_diff": -0.0553,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "ex-feature_tour-e157f410",
+      "label": "Close",
+      "ssim": 0.7741,
+      "verdict": "Close"
+    },
+    {
+      "aspect_diff": 1.6652,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "marker_size",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "ex-geometry_responsive-5e987a70",
+      "label": "Close",
+      "ssim": 0.7544,
+      "verdict": "Close"
+    },
+    {
+      "aspect_diff": -0.0527,
+      "checks_differing": [
+        "frame_aspect",
+        "margins",
+        "text_size"
+      ],
+      "colour_dist": 0,
+      "id": "gpdf-advanced_options-50f8456c",
+      "label": "Close",
+      "ssim": 0.7285,
+      "verdict": "Close"
     }
   ],
   "close_only": [
@@ -477,7 +559,6 @@
   "extent_rel": 0.01,
   "inset_abs": 0.005,
   "line_abs": 0.0007,
-  "size_close": 0.35,
   "size_rel": 0.05,
   "text_rel": 0.05,
   "tick_rel": 1e-06

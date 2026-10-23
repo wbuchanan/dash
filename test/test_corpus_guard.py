@@ -31,10 +31,11 @@ _RECORD_KEYS = {"id", "source", "sources", "file", "line", "entry", "finding", "
 
 def _rec(i, plottype="scatter", cmd=None, setup=("sysuse auto, clear",),
          source="help", ds=("auto",), sig=None):
-    cmd = cmd or "%s mpg weight" % plottype
+    # D58: a record's command is written twoway <rest>, its twin dash <rest>.
+    cmd = cmd or "twoway %s mpg weight" % plottype
     return {"id": i, "source": source, "sources": [source], "file": "base/x.sthlp",
             "line": 1, "entry": None, "finding": None, "setup": list(setup),
-            "cmd": cmd, "dash_cmd": "dash " + cmd, "plottype": plottype,
+            "cmd": cmd, "dash_cmd": "dash " + cmd[len("twoway "):], "plottype": plottype,
             "datasets": list(ds), "stripped": [],
             "signature": sig or "%s|" % plottype, "duplicates": []}
 
@@ -307,7 +308,7 @@ class TestMain:
                               _rec("help-a-1", "scatter")])
         assert guard.main(["--select", run]) == 0
         out = capsys.readouterr().out.splitlines()
-        assert out[0] == "help-a-1  # scatter: scatter mpg weight"
+        assert out[0] == "help-a-1  # scatter: twoway scatter mpg weight"  # D58: twoway first
         assert out[1] == "help-z-1  # line: line mpg weight, sort"
         assert out[2].startswith("skipped: ") and "contour" in out[2].split()
         assert len(out) == 3

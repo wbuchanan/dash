@@ -68,6 +68,7 @@ class TestThresholds:
         t = calibrate.thresholds(rows)
         assert t["aspect_close"] == 0.115
         assert t["close_only"] == ["line_width", "margins", "marker_size", "text_size"]
+        assert "size_close" not in t  # D58: size is Close at any ratio
         sl = t["colour_slight"]
         assert set(sl) == {"hue_deg", "light", "grey_sat"}
         # mcolor(red) against the scheme's blue is no slight shift.
@@ -85,6 +86,16 @@ class TestThresholds:
 
 
 class TestPrepare:
+
+    def test_a_labelled_differs_row(self, tmp_path):
+        # D58: a corpus pair the maintainer labelled Differs needs no mutation.
+        table = tmp_path / "calibration.tsv"
+        table.write_text("A\tDiffers\t-\nB\tClose\tmsymbol(T)\n", encoding="utf-8")
+        import pytest
+        with pytest.raises(ValueError):
+            calibrate.read_table(str(table))
+        table.write_text("A\tDiffers\t-\n", encoding="utf-8")
+        assert calibrate.read_table(str(table))[0]["case"] == "A"
 
     def test_mutated_copies(self, tmp_path):
         assert calibrate.mutate("dash scatter mpg weight", 'title("Mutated")') == \
@@ -106,6 +117,7 @@ class TestPrepare:
         cal = got[-1]
         assert cal["id"] == "cal-A-1" and cal["cmd"] == "twoway scatter mpg weight"
         assert cal["dash_cmd"] == "dash scatter mpg weight, msymbol(T)"
+        assert cal["mutation"] == "msymbol(T)"
 
     def test_write_rules_and_main(self, tmp_path, monkeypatch, capsys):
         seen = []
@@ -133,12 +145,13 @@ class TestTheFixture:
             d = json.load(fh)
         for k in ("_meta", "T_same", "T_close", "tick_rel", "extent_rel", "aspect_abs",
                   "colour_tol", "text_rel", "inset_abs", "size_rel", "calibration",
-                  "aspect_close", "close_only", "colour_slight", "line_abs", "size_close"):
+                  "aspect_close", "close_only", "colour_slight", "line_abs"):
             assert k in d, k
         assert d["T_same"] is None or 0 < d["T_same"] <= 1
         assert d["aspect_abs"] <= 0.05
         assert isinstance(d["colour_tol"], int) and 0 <= d["colour_tol"] <= 32
-        assert len(d["calibration"]) == 32
+        # 32 -> 38: D58 adds the second review's six labelled corpus pairs.
+        assert len(d["calibration"]) == 38
         table = calibrate.read_table()
         assert [r["case"] for r in table] == [c["id"] for c in d["calibration"]]
         # Flipped: the set held Same rows; the maintainer relabelled every

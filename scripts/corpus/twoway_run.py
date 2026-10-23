@@ -50,9 +50,18 @@ INVALID = "invalid pair: the commands differ beyond twoway/dash (D57)"
 def invalid_pairs(examples):
     """D57: {id: reason} of every example whose twoway and dash commands differ
     by more than the leading word; neither runner runs them."""
-    from scripts.corpus import extract
-    return {e["id"]: INVALID for e in examples
-            if extract.twin_mismatch(e["cmd"], e.get("dash_cmd") or "")}
+    from scripts.corpus import calibrate, extract
+    out = {}
+    for e in examples:
+        dash_cmd = e.get("dash_cmd") or ""
+        if e.get("mutation"):
+            # A calibration copy: its twin plus the recorded mutation, nothing else.
+            twin = extract.to_dash(e["cmd"])
+            if calibrate.mutate(twin, e["mutation"]) == dash_cmd:
+                dash_cmd = twin
+        if extract.twin_mismatch(e["cmd"], dash_cmd):
+            out[e["id"]] = INVALID
+    return out
 
 
 def do_text(examples, out_dir, cache):

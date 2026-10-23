@@ -1054,14 +1054,47 @@ def _keys_drawn(tw, da):
     return True
 
 
-def compare(tw, da, rules):
-    """One dict per check outside tolerance: check, twoway, dash, within_tol."""
+def _number(t):
+    """D58: a text's canonical form: the value of a number however it is
+    formatted (22.00 and 22, 2,000 and 2000), else the text."""
+    v = _label_value(t) if isinstance(t, str) else None
+    return ("#", round(float(v), 9)) if v is not None else ("", t)
+
+
+def _same_texts(a, b):
+    """D58: two lists of texts that differ at most in number formatting."""
+    return len(a) == len(b) and all(_number(x) == _number(y) for x, y in zip(a, b))
+
+
+#: D58: the default axis titles a fit's prediction carries (lfit's
+#: pred(resid) is titled Residuals by twoway and Fitted values by dash).
+_PREDICTION_TITLES = {"Fitted values", "Residuals", "Standardized residuals",
+                      "Standard error of the forecast", "Standard error of the prediction"}
+
+
+def _same_title(a, b, example):
+    """D58: axis titles that name the same thing: equal; one the other
+    shortened with an ellipsis; or, for a fit with pred(), two of the
+    prediction's default titles."""
+    if a == b:
+        return True
+    for x, y in ((a, b), (b, a)):
+        if x.endswith("...") and y.startswith(x[:-3].rstrip()) and x[:-3].strip():
+            return True
+    cmd = (example or {}).get("cmd") or ""
+    return bool(re.search(r"\bpred(?:opts)?\(", cmd)) and \
+        a in _PREDICTION_TITLES and b in _PREDICTION_TITLES
+
+
+def compare(tw, da, rules, example=None):
+    """One dict per check outside tolerance: check, twoway, dash, within_tol.
+    example (its cmd) lets the D58 rules see pred() and jitter()."""
     out = []
     for ax in ("x", "y"):
         a, b = tw.get(ax + "_ticks") or [], da.get(ax + "_ticks") or []
         n = tw.get(ax + "_tick_n")
         la = tw.get(ax + "_labels") or []
-        if la and la == (da.get(ax + "_labels") or []):
+        if la and _same_texts(la, da.get(ax + "_labels") or []):
             # D56: the same labels at the ticks show the same values (twoway's
             # are read from the label text, xlabel(-10 "10") among them).
             continue
@@ -1086,12 +1119,16 @@ def compare(tw, da, rules):
             # D56: no tick to read twoway's labels by (xsca(noline) with no
             # ticks), but every label dash draws is drawn by twoway too.
             continue
-        if a != b:
+        if not _same_texts(a, b):
             # twoway leaving an axis unlabelled is its own check (D48, BY-32).
             out.append(_diff(ax + ("_labels_none" if not a else "_labels"), a, b))
     for k in ("axis_titles", "titles", "legend"):
         if (tw.get(k) or []) != (da.get(k) or []):
             if k == "legend" and _keys_drawn(tw, da):
+                continue
+            ta, tb = tw.get(k) or [], da.get(k) or []
+            if k == "axis_titles" and len(ta) == len(tb) and \
+                    all(_same_title(x, y, example) for x, y in zip(ta, tb)):
                 continue
             out.append(_diff(k, tw.get(k) or [], da.get(k) or []))
     if "drawn" in tw and "drawn" in da:
@@ -1102,9 +1139,12 @@ def compare(tw, da, rules):
         for side in (tw, da):
             for k in ("x_labels", "y_labels", "axis_titles", "titles", "legend", "axis_texts"):
                 known.update(side.get(k) or [])
-        a = collections.Counter(t for t in tw["drawn"] if t not in known)
-        b = collections.Counter(t for t in da["drawn"] if t not in known)
-        if a != b:
+        known = {_number(t) for t in known}
+        a = collections.Counter(t for t in tw["drawn"] if _number(t) not in known)
+        b = collections.Counter(t for t in da["drawn"] if _number(t) not in known)
+        # D58: the same number formatted otherwise (22.00, 22) is the same text.
+        if collections.Counter(map(_number, a.elements())) != \
+                collections.Counter(map(_number, b.elements())):
             out.append(_diff("texts", sorted((a - b).elements()), sorted((b - a).elements())))
     if tw.get("glyphs") and da.get("glyphs"):
         a, b = tw.get("glyph_counts") or [], da.get("glyph_counts") or []
@@ -1118,6 +1158,8 @@ def compare(tw, da, rules):
     if a is not None and b is not None and a != b:
         out.append(_diff("marker_labels", a, b))
     te, de = tw.get("glyph_extents"), da.get("glyph_extents")
+    if re.search(r"\bjitter\(", (example or {}).get("cmd") or ""):
+        te = None  # D58: jitter()'s offsets are random; counts are compared
     if te and de:
         for ax in ("x", "y"):
             if max(tw.get(ax + "_axes") or 1, da.get(ax + "_axes") or 1) > 1:
@@ -1191,27 +1233,11 @@ def explain(diffs, example, ledger, states):
 CLOSE_ONLY = ("text_size", "margins", "marker_size", "line_width", "image")
 
 
-def _far(a, b, rel):
-    """True when some size on one side is more than rel (a share of the
-    larger) from every size on the other; a and b are numbers or lists."""
-    a = a if isinstance(a, list) else [a]
-    b = b if isinstance(b, list) else [b]
-    a = [x for x in a if isinstance(x, (int, float)) and x > 0]
-    b = [x for x in b if isinstance(x, (int, float)) and x > 0]
-    if not a or not b:
-        return False
-    return any(not any(abs(x - y) <= rel * max(x, y) for y in b) for x in a) or \
-        any(not any(abs(x - y) <= rel * max(x, y) for x in a) for y in b)
-
-
 def fundamental(d, rules):
     """D56: True when difference d alone can make a pair Differ: not a
     Close-only check, not a plot region shape within aspect_close, not
     colours of one hue family within colour_slight."""
     c = d["check"]
-    big = rules.get("size_close")
-    if big and c in ("text_size", "marker_size") and _far(d["twoway"], d["dash"], big):
-        return True  # D56: only slight size differences are Close
     if c in CLOSE_ONLY or c in (rules.get("close_only") or ()):
         return False
     if c == "frame_aspect":
@@ -1227,12 +1253,7 @@ def fundamental(d, rules):
 
 def verdict(rc_tw, rc_da, first_tw, first_da, diffs, s, rules):
     """Same, Close or Differs by D-33-05.a and D56; diffs are explain()'s."""
-    # D56: a size ledger row (VF-4: 0.889x) does not explain a size far
-    # beyond slight.
-    far = [d for d in diffs if d["check"] in ("text_size", "marker_size")
-           and rules.get("size_close") and _far(d["twoway"], d["dash"], rules["size_close"])]
-    unexplained = [d for d in diffs if (d.get("gaps4") is None or any(d is f for f in far))
-                   and fundamental(d, rules)]
+    unexplained = [d for d in diffs if d.get("gaps4") is None and fundamental(d, rules)]
     explained = [d for d in diffs if d.get("gaps4") is not None]
     if rc_tw != 0 and rc_da != 0:
         return "Same" if not diffs else ("Close" if not unexplained else "Differs")
@@ -1388,7 +1409,7 @@ def judge(example, tw, da, run_dir, rules, ledger, states, probe=None):
         g_tw = twoway_geometry(os.path.join(run_dir, tw["svg"]))
         with open(os.path.join(run_dir, da["view"]), encoding="utf-8") as fh:
             g_da = dash_geometry(json.load(fh), os.path.join(run_dir, da["svg"]))
-        diffs = compare(g_tw, g_da, rules)
+        diffs = compare(g_tw, g_da, rules, example)
         row["panels"] = "1 of %d" % max(g_tw["panels"], g_da["panels"], 1)
         row["size_matched"] = da.get("size_matched")
         row["colours"] = {"twoway": g_tw["colours"]["set"], "dash": g_da["colours"]["set"],

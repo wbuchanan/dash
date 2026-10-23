@@ -289,14 +289,22 @@ DASH_ONLY = "uses an option twoway does not have"
 _DASH_ONLY_RE = re.compile(r"(?<![\w.])(?:hover|colpalette)\s*\(|(?<![\w.])table(?![\w(])")
 
 
-def twin_mismatch(cmd, dash_cmd):
-    """D57: None when dash_cmd is cmd with its twoway prefix (or none) replaced by
-    the word dash, else a one-line description of the difference."""
+def twoway_form(cmd):
+    """D58: cmd written explicitly as `twoway <rest>' (from `scatter ...',
+    `tw ...', `graph twoway ...' or `twoway ...')."""
     rest, _ = _strip_prefix(cmd)
-    if not dash_cmd.startswith("dash ") and dash_cmd != "dash":
+    return "twoway " + rest.strip()
+
+
+def twin_mismatch(cmd, dash_cmd):
+    """D57/D58: None when cmd is `twoway <rest>' and dash_cmd is `dash <rest>',
+    else a one-line description of the difference."""
+    if not cmd.startswith("twoway "):
+        return "the twoway command does not start with the word twoway"
+    if not dash_cmd.startswith("dash "):
         return "the dash command does not start with the word dash"
-    if " ".join(rest.split()) != " ".join(dash_cmd[5:].split()):
-        return "twoway runs %r, dash runs %r" % (rest.strip(), dash_cmd[5:].strip())
+    if cmd[len("twoway "):] != dash_cmd[len("dash "):]:
+        return "twoway runs %r, dash runs %r" % (cmd[7:], dash_cmd[5:])
     return None
 
 
@@ -1197,7 +1205,10 @@ def dedupe(records):
         groups.setdefault(r["signature"], []).append(r)
     kept, pairs = [], []
     for sig, rs in groups.items():
-        rs.sort(key=lambda r: (SOURCE_RANK.get(r["source"], 9), len(r["cmd"]), r["id"]))
+        # The shorter command as its source wrote it wins a tie (D58: the
+        # written twoway prefix does not move which duplicate is kept).
+        rs.sort(key=lambda r: (SOURCE_RANK.get(r["source"], 9),
+                               len(r.get("source_cmd") or r["cmd"]), r["id"]))
         k = rs[0]
         k["duplicates"] = sorted(r["id"] for r in rs[1:])
         srcs = set(k.get("sources") or [k["source"]])
@@ -1259,8 +1270,11 @@ def extract(stata_dir, repo, out, pdftotext=None):
             dropped.append((r["src"], where, "a plot type dash does not draw", cmd))
             continue
         cmd, stripped = strip_registry_options(cmd)
-        dash_cmd, _ = strip_registry_options(r["dash_cmd"])
+        # The id is the source form's (D-33-02.a); the command is written
+        # twoway <rest>, its twin dash <rest> (D58).
         rid = example_id(r["src"], r["stem"], r["setup"], cmd)
+        source_cmd, cmd = cmd, twoway_form(cmd)
+        dash_cmd = to_dash(cmd)
         if rid in byid:
             continue
         counts[r["src"]] += 1
@@ -1269,7 +1283,7 @@ def extract(stata_dir, repo, out, pdftotext=None):
                      "finding": r["finding"], "setup": r["setup"], "cmd": cmd,
                      "dash_cmd": dash_cmd, "plottype": pt,
                      "datasets": datasets.datasets_of(r["setup"]),
-                     "stripped": stripped}
+                     "stripped": stripped, "source_cmd": source_cmd}
     kept, pairs = dedupe(list(byid.values()))
     with open(os.path.join(out, "examples.jsonl"), "w", encoding="utf-8") as fh:
         for r in kept:

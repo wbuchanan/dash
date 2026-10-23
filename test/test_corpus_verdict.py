@@ -542,10 +542,14 @@ class TestTexts:
     # difference no label, title or legend check sees.
 
     def test_text_drawn_on_one_side_only(self):
+        # Flipped (D58): 22.00 against 22 is number formatting, Close; a
+        # different value or a missing label is still a text difference.
         tw = _geo(drawn=["0", "10", "x", "y", "22.00", "17.00"])
         da = _geo(drawn=["0", "10", "x", "y", "22", "17"])
+        assert verdict.compare(tw, da, _RULES) == []
+        da = _geo(drawn=["0", "10", "x", "y", "22", "Honda"])
         d = verdict.compare(tw, da, _RULES)
-        assert d == [{"check": "texts", "twoway": ["17.00", "22.00"], "dash": ["17", "22"],
+        assert d == [{"check": "texts", "twoway": ["17.00", "22.00"], "dash": ["22", "Honda"],
                       "within_tol": False}]
         assert verdict.summary(d) == "text"
         # The axis labels are the label checks' own.
@@ -770,10 +774,11 @@ class TestCompare:
         off = _geo(x_ticks=[0.1, 10.0], frame_aspect=1.6, x_labels=["0.1", "10"])
         assert {d["check"] for d in verdict.compare(tw, off, _RULES)} == {
             "x_ticks", "x_labels", "frame_aspect"}
+        # Flipped (D58): 2000 and 2,000 are one value formatted two ways.
         big = _geo(x_labels=["2,000"])
-        d = verdict.compare(_geo(x_labels=["2000"]), big, _RULES)
-        assert [x["check"] for x in d] == ["x_labels"]
-        assert d[0] == {"check": "x_labels", "twoway": ["2000"], "dash": ["2,000"],
+        assert verdict.compare(_geo(x_labels=["2000"]), big, _RULES) == []
+        d = verdict.compare(_geo(x_labels=["2000"]), _geo(x_labels=["2,500"]), _RULES)
+        assert d[0] == {"check": "x_labels", "twoway": ["2000"], "dash": ["2,500"],
                         "within_tol": False}
 
     def test_labels_twoway_leaves_off(self):
@@ -935,19 +940,12 @@ class TestTiers:
               "gaps4": None}]
         assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Differs"
 
-    def test_a_large_size_difference_differs(self):
-        # help-scatter scheme(economist): dash's text and markers are three
-        # times twoway's -- no slight difference.
-        rules = dict(self._T, size_close=0.35)
-        for c, a, b in (("text_size", 0.02, 0.0695), ("marker_size", [0.008], [0.025])):
-            d = [{"check": c, "twoway": a, "dash": b, "within_tol": False, "gaps4": None}]
-            assert verdict.verdict(0, 0, None, None, d, None, rules) == "Differs", c
-        d = [{"check": "text_size", "twoway": 0.0208, "dash": 0.0185, "within_tol": False,
+    def test_a_large_size_difference_is_close(self):
+        # Flipped (D58): text and markers scaled differently (xsize()/ysize(),
+        # scheme(economist)) are Close at any ratio; the 35% bound is gone.
+        d = [{"check": "text_size", "twoway": 0.02, "dash": 0.0695, "within_tol": False,
               "gaps4": "VF-4"}]
-        assert verdict.verdict(0, 0, None, None, d, None, rules) == "Close"
-        # VF-4 explains 0.889x, not three times.
-        d = [dict(d[0], dash=0.0695)]
-        assert verdict.verdict(0, 0, None, None, d, None, rules) == "Differs"
+        assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Close"
 
     def test_fundamental(self):
         f = verdict.fundamental
@@ -983,6 +981,53 @@ class TestTiers:
     def test_the_summary_leads_with_what_differs(self):
         d = [{"check": "text_size"}, {"check": "margins"}, {"check": "legend"}]
         assert verdict.summary(d, self._T) == "legend keys, text size, margins"
+
+
+class TestD58Rules:
+    # D58 (the second baseline review): number formatting, an ellipsis, a
+    # fit's prediction named differently, jitter()'s random offsets and
+    # size are Close; a legend entry that differs is not.
+
+    def test_number_formatting(self):
+        tw = _geo(x_labels=["2,000", "3,000"], drawn=["2,000", "3,000", "22.00", "17.00"])
+        da = _geo(x_labels=["2000", "3000"], drawn=["2000", "3000", "22", "17"])
+        assert verdict.compare(tw, da, _RULES) == []
+        # audit-MS-5: twoway's y labels read 20.00 and 22.00, dash's marker
+        # labels 20 and 22: an axis label's value, formatted otherwise.
+        tw2 = _geo(y_labels=["20.00", "22.00"], drawn=["20.00", "22.00", "22.00"])
+        da2 = _geo(y_labels=["20.00", "22.00"], drawn=["20.00", "22.00", "22"])
+        assert verdict.compare(tw2, da2, _RULES) == []
+        da = _geo(x_labels=["2000", "3500"], drawn=["2000", "3500", "22", "17"])
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["x_labels"]
+
+    def test_an_ellipsis(self):
+        tw = _geo(axis_titles=["Weight (lbs.)...", "Mileage (mpg)"])
+        da = _geo(axis_titles=["Weight (lbs.)", "Mileage (mpg)"])
+        assert verdict.compare(tw, da, _RULES) == []
+        da = _geo(axis_titles=["Mileage (mpg)"])
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["axis_titles"]
+
+    def test_a_fit_prediction_named_differently(self):
+        tw = _geo(axis_titles=["Weight (lbs.)", "Residuals"])
+        da = _geo(axis_titles=["Weight (lbs.)", "Fitted values"])
+        ex = {"cmd": "twoway lfit mpg weight, pred(resid)"}
+        assert verdict.compare(tw, da, _RULES, ex) == []
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["axis_titles"]
+        tw, da = _geo(legend=["Residuals"]), _geo(legend=["Fitted values"])
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES, ex)] == ["legend"]
+
+    def test_jitter_positions(self):
+        tw = _geo(glyphs=3, glyph_counts=[3], marker_shape=["circle"],
+                  glyph_extents={"x": [0.0, 10.0], "y": [0.0, 5.0]})
+        da = dict(tw, glyph_extents={"x": [0.5, 10.4], "y": [0.0, 5.0]})
+        assert verdict.compare(tw, da, _RULES, {"cmd": "twoway scatter y x, jitter(4)"}) == []
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["glyph_extents"]
+
+    def test_size_of_any_ratio_is_close(self):
+        rules = dict(_RULES, close_only=["text_size", "marker_size"])
+        for c, a, b in (("text_size", 0.02, 0.0695), ("marker_size", [0.008], [0.025])):
+            d = [{"check": c, "twoway": a, "dash": b, "within_tol": False, "gaps4": None}]
+            assert verdict.verdict(0, 0, None, None, d, None, rules) == "Close", c
 
 
 class TestSummary:

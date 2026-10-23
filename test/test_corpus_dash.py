@@ -86,7 +86,9 @@ class TestCommandIdentity:
     # (measured 23oct2026).
 
     _PAIRS = (("twoway scatter mpg weight, ms(oh) ||", "dash scatter mpg weight, ms(oh) ||"),
-              ("scatter open close, msize(*.25) ||", "dash scatter open close, msize(*.25) ||"),
+              # D58: every command is written with twoway first.
+              ("twoway scatter open close, msize(*.25) ||",
+               "dash scatter open close, msize(*.25) ||"),
               ('twoway line le year, title("a, b")', 'dash line le year, title("a, b")'),
               ("twoway (scatter mpg weight) (lfit mpg weight)",
                "dash (scatter mpg weight) (lfit mpg weight)"))
@@ -110,6 +112,14 @@ class TestCommandIdentity:
             assert re.sub(r"^(?:graph twoway|twoway)\s+", "", t) == d[len("dash "):], (t, d)
         assert dash_run.with_saving("dash scatter mpg weight, ms(oh) ||", "p") == \
             'dash scatter mpg weight, ms(oh) || , saving("p", replace)'
+
+    def test_a_calibration_mutation_is_the_only_allowed_difference(self):
+        # A calibration copy's dash command is its twin plus the recorded
+        # mutation (calibrate.py --prepare); any other difference is refused.
+        e = dict(_ex("cal-x-1", cmd="dash scatter mpg weight, msymbol(T)"),
+                 cmd="twoway scatter mpg weight", mutation="msymbol(T)")
+        assert twoway_run.invalid_pairs([e]) == {}
+        assert twoway_run.invalid_pairs([dict(e, mutation="title(x)")]) != {}
 
     def test_a_session_only_python(self, tmp_path, monkeypatch):
         ex = [_ex("e1")]

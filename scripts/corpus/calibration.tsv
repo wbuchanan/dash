@@ -37,3 +37,11 @@ help-graph_intro-213d475d	Differs	legend(off)
 help-twoway_lfit-02972943	Differs	legend(off)
 help-graph_editor-88374bfd	Differs	mcolor(red)
 help-title_options-6d902dbd	Differs	mcolor(red)
+# D58 (23oct2026), the second baseline review: corpus pairs as they are,
+# with the maintainer's labels.
+audit-MS-11-e3a418b0	Close	-
+audit-MS-5-2b6b8d80	Close	-
+audit-RH-13-e4e13ee5	Differs	-
+ex-feature_tour-e157f410	Close	-
+ex-geometry_responsive-5e987a70	Close	-
+gpdf-advanced_options-50f8456c	Close	-

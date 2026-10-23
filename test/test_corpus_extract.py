@@ -255,6 +255,21 @@ class TestExamples:
         assert ex[1]["line"] == 5 and ex[0]["file"] == "examples/x.do"
 
 
+class TestDedupeBySourceForm:
+
+    def test_the_written_prefix_does_not_pick_the_kept_duplicate(self):
+        # D58: help-twoway_lfit's `scatter mpg weight || lfit mpg weight'
+        # stays the kept example though `twoway' is now written before it.
+        a = {"id": "help-a-1", "source": "help", "signature": "s",
+             "cmd": "twoway scatter mpg weight || lfit mpg weight",
+             "source_cmd": "scatter mpg weight || lfit mpg weight"}
+        b = {"id": "help-b-2", "source": "help", "signature": "s",
+             "cmd": "twoway (scatter mpg weight) (lfit mpg weight)",
+             "source_cmd": "twoway (scatter mpg weight) (lfit mpg weight)"}
+        kept, _ = extract.dedupe([b, a])
+        assert [k["id"] for k in kept] == ["help-a-1"]
+
+
 class TestTwinIdentity:
     # D57: a pair's two commands differ only in the word twoway (or its
     # absence) against dash.
@@ -263,8 +278,13 @@ class TestTwinIdentity:
         m = extract.twin_mismatch
         assert m("twoway scatter mpg weight, ms(oh) ||", "dash scatter mpg weight, ms(oh) ||") \
             is None
-        assert m("scatter mpg weight", "dash scatter mpg weight") is None
-        assert m("graph twoway line le year", "dash line le year") is None
+        # Flipped (D58): a pair is exactly twoway <rest> and dash <rest>.
+        assert m("twoway scatter mpg weight", "dash scatter mpg weight") is None
+        assert m("scatter mpg weight", "dash scatter mpg weight")
+        assert m("graph twoway line le year", "dash line le year")
+        assert extract.twoway_form("graph twoway line le year") == "twoway line le year"
+        assert extract.twoway_form("tw (scatter y x)") == "twoway (scatter y x)"
+        assert extract.twoway_form("scatter y x") == "twoway scatter y x"
         # The two defects of the 23oct2026 run.
         assert m("twoway scatter mpg weight, colorvar(price) colorlevels(8)",
                  "dash scatter mpg weight, colorvar(price) colpalette(viridis) colorlevels(8)")
@@ -509,6 +529,15 @@ class TestExtract:
         for ln in (out / "extract_duplicates.tsv").read_text(encoding="utf-8").splitlines()[1:]:
             assert ln.split("\t")[1] in kept
         assert res["kept"] == len(recs)
+        # D58: every command is written twoway <rest>, its twin dash <rest>;
+        # the id stays the source form's (D-33-02.a), so ids do not move.
+        assert all(r["cmd"].startswith("twoway ") for r in recs)
+        assert all(r["dash_cmd"] == "dash " + r["cmd"][len("twoway "):] for r in recs)
+        price = [r for r in recs if r["cmd"].endswith("price length, mc(red)")]
+        assert price and price[0]["cmd"] == "twoway scatter price length, mc(red)"
+        assert "source_cmd" not in price[0]
+        assert price[0]["id"] == extract.example_id(
+            "help", "twoway_scatter", price[0]["setup"], "scatter price length, mc(red)")
 
 
 # ------------------------------------------- each example's own data (D52)
@@ -692,6 +721,7 @@ class TestOwnData:
         recs = [json.loads(l) for l in (out / "examples.jsonl").read_text().splitlines()]
         g = [r for r in recs if r["source"] == "gpdf"]
         assert [(r["cmd"], r["setup"]) for r in g] == [
-            ("scatter mpg weight, ms(O)", ["sysuse auto, clear"])]
+            # Flipped (D58): written explicitly with twoway.
+            ("twoway scatter mpg weight, ms(O)", ["sysuse auto, clear"])]
         dropped = (out / "extract_dropped.tsv").read_text(encoding="utf-8")
         assert "no dataset holds its variables\tscatter y1 y2 x, ms(O Oh)" in dropped

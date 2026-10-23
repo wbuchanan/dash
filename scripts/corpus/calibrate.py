@@ -41,9 +41,6 @@ SIZE_REL = 0.05
 #: D56: line widths closer than half a pixel of a 720-pixel-wide picture
 #: (as a share of the canvas width) look the same.
 LINE_ABS = 0.0007
-#: D56: text and marker sizes within this share of twoway's are a slight
-#: difference (the calibration pairs' are 0.889x, VF-4); farther is not.
-SIZE_CLOSE = 0.35
 INSET_ABS = 0.005
 #: A colour farther than this from every colour on the other side is a
 #: colour difference, never agreement (an eighth of a channel's range).
@@ -79,8 +76,10 @@ def read_table(path=TABLE_PATH):
                                  % (os.path.basename(path), k))
             mut = parts[2].strip()
             mut = None if mut in ("", "-") else mut
-            if (parts[1] == "Differs") != (mut is not None):
-                raise ValueError("%s line %d: a Differs row, and only one, has a mutation"
+            # A mutation makes a Differs row; a corpus pair the maintainer
+            # labelled Differs (D58) needs none.
+            if mut is not None and parts[1] != "Differs":
+                raise ValueError("%s line %d: only a Differs row has a mutation"
                                  % (os.path.basename(path), k))
             case = parts[0]
             if mut is not None:
@@ -118,6 +117,7 @@ def prepare(run_dir, table_path=TABLE_PATH):
             e = dict(have[r["id"]])
             e["id"] = r["case"]
             e["dash_cmd"] = mutate(e["dash_cmd"], r["mutation"])
+            e["mutation"] = r["mutation"]  # the one difference the runners allow (D57)
             e["duplicates"] = []
             fh.write(json.dumps(e) + "\n")
             added += 1
@@ -160,7 +160,7 @@ def thresholds(rows):
             "extent_rel": EXTENT_REL, "aspect_abs": aspect_abs, "colour_tol": colour_tol,
             "text_rel": TEXT_REL, "inset_abs": INSET_ABS, "size_rel": SIZE_REL,
             "aspect_close": max(aspect_close, aspect_abs), "close_only": list(CLOSE_ONLY),
-            "line_abs": LINE_ABS, "size_close": SIZE_CLOSE,
+            "line_abs": LINE_ABS,
             "colour_slight": dict(COLOUR_SLIGHT)}
 
 
@@ -199,7 +199,7 @@ def write_rules(run_dir, out_path=OUT_PATH, table_path=TABLE_PATH):
     base = {"T_same": None, "T_close": None, "tick_rel": TICK_REL, "extent_rel": EXTENT_REL,
             "aspect_abs": ASPECT_MAX, "colour_tol": 0, "text_rel": TEXT_REL,
             "inset_abs": INSET_ABS, "size_rel": SIZE_REL, "aspect_close": None,
-            "line_abs": LINE_ABS, "size_close": SIZE_CLOSE,
+            "line_abs": LINE_ABS,
             "close_only": list(CLOSE_ONLY), "colour_slight": dict(COLOUR_SLIGHT)}
     try:
         probe = verdict._open_probe(run_dir)
