@@ -174,21 +174,24 @@ dash scatter mpg weight, colorvar(foreign) colordiscrete ///
      name(m1) title("MPG vs Weight: Color-Coded by Car Origin") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
+// m2-m5: the CI areas are filled in grey, orange, maroon and gold, never
+// in the markers' colorvar() blue or green (D58), so each band stays
+// apart from the markers it covers.
 // m2: OLS fit with 95% CI band  (scatter + lfitci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete)     ///
-     (lfitci  mpg weight, fc(ltblue%30)),     ///
+     (lfitci  mpg weight, fc(gs12%30)),     ///
      name(m2) title("OLS Fit with 95% CI (lfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m3: quadratic fit with 95% CI  (scatter + qfitci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete)   ///
-     (qfitci  mpg weight, fc(lavender%30)),   ///
+     (qfitci  mpg weight, fc(orange%30)),   ///
      name(m3) title("Quadratic Fit with 95% CI (qfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m4: local polynomial with 95% CI  (scatter + lpolyci)
 dash (scatter mpg weight, colorvar(foreign) colordiscrete) ///
-     (lpolyci mpg weight, fc(lime%30)),            ///
+     (lpolyci mpg weight, fc(maroon%30)),            ///
      name(m4) title("Local Poly with 95% CI (lpolyci)")  ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
