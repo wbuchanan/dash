@@ -103,6 +103,473 @@ class TestTwowayGeometry:
         assert "#f0f0f0" not in c["set"] and "#ffffff" not in c["set"]
 
 
+def _no_region_svg():
+    """plotregion(style(none)) xsca(noline) yline(0, lstyle(foreground)): no
+    plot-region rect, a black yline at 0 longer than any other black line."""
+    st = "font-family:'Helvetica';font-size:112.56px;fill:#000000"
+    out = ['<svg version="1.1" viewBox="0 0 5400 3240">',
+           '<rect x="0" y="0" width="5400" height="3240" style="fill:#FFFFFF"/>',
+           '<line x1="532" y1="113" x2="532" y2="2774" style="stroke:#000000;stroke-width:5"/>',
+           '<line x1="532" y1="1858" x2="5287" y2="1858" style="stroke:#000000;stroke-width:5"/>']
+    for y, lab in ((2694, "-.5"), (1858, "0"), (1022, ".5"), (186, "1")):
+        out.append('<line x1="492" y1="%d" x2="532" y2="%d" style="stroke:#000000;'
+                   'stroke-width:5"/>' % (y, y))
+        out.append('<text x="465" y="%d" style="%s" text-anchor="end">%s</text>'
+                   % (y + 40, st, lab))
+    for x, lab in ((603, "0"), (1756, "&#960;"), (2908, "2&#960;"), (4060, "3&#960;"),
+                   (5215, "4&#960;")):
+        out.append('<line x1="%d" y1="2774" x2="%d" y2="2814" style="stroke:#000000;'
+                   'stroke-width:5"/>' % (x, x))
+        out.append('<text x="%d" y="2913" style="%s" text-anchor="middle">%s</text>'
+                   % (x, st, lab))
+    out.append('<text x="2909" y="3070" style="%s" text-anchor="middle">x</text>' % st)
+    out.append('<text x="215" y="1440" style="%s" transform="rotate(-90 215,1440)" '
+               'text-anchor="middle">y</text>' % st)
+    out.append("</svg>")
+    return "\n".join(out)
+
+
+class TestNoPlotRegionRect:
+    # D56 (row 1 of the 23oct2026 review): with no plot-region rect the
+    # region was read from the longest black horizontal line -- a yline --
+    # so the region ended at y = 0, the y axis's 0 label was read as the x
+    # axis's only label and the real x labels as titles.
+
+    def test_the_region_spans_the_y_axis(self, tmp_path):
+        p = tmp_path / "f.svg"
+        p.write_text(_no_region_svg(), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["x_labels"] == ["0", "\u03c0", "2\u03c0", "3\u03c0", "4\u03c0"]
+        assert g["y_ticks"] == [-0.5, 0.0, 0.5, 1.0]
+        assert g["axis_titles"] == ["x", "y"]
+        assert g["titles"] == []
+
+
+class TestOverlappingMarkers:
+    # D56 (audit-CV-6): two markers of different colours drawn at one spot
+    # fall in one group; each is a marker, whatever its colour.
+
+    def test_each_colour_at_one_spot_counts(self, tmp_path):
+        text = open(_SMOKE, encoding="utf-8").read()
+        red = ('<circle cx="1897.59" cy="1846.80" r="21.74" style="fill:#D41159"/>\n'
+               '<circle cx="1897.59" cy="1846.80" r="16.88" style="fill:none;'
+               'stroke:#D41159;stroke-width:9.72"/>\n')
+        first = '<circle cx="2365.71" cy="2039.68"'
+        p = tmp_path / "o.svg"
+        p.write_text(text.replace(first, red + first, 1), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["glyphs"] == 75
+        assert sum(g["glyph_counts"]) == 75
+        # audit-MS-11: half a pixel apart, still two markers.
+        p.write_text(text.replace(first, red.replace("1897.59", "1898.09") + first, 1),
+                     encoding="utf-8")
+        assert verdict.twoway_geometry(str(p))["glyphs"] == 75
+
+
+class TestTwoYAxes:
+    # D56 (audit-MS-11): with a second y axis dash's view gives every
+    # renderer's data in its own axis's units, and twoway's markers are
+    # read on the first axis only: the y extents are not comparable.
+
+    def test_no_y_extents_on_two_y_axes(self):
+        v = _view([_rdr(x=(1, 3), y=(2, 4)), _rdr(x=(1, 3), y=(100, 900))])
+        ax = v["figures"][0]["axes"]
+        ax.append(dict(ax[1], side="right"))
+        g = verdict.dash_geometry(v)
+        assert g["y_axes"] == 2
+        tw = _geo(glyphs=6, glyph_counts=[3, 3], marker_shape=["circle"],
+                  glyph_extents={"x": [1.0, 3.0], "y": [2.0, 4.0]})
+        da = dict(tw, glyph_extents=g["glyph_extents"], y_axes=2)
+        assert verdict.compare(tw, da, _RULES) == []
+
+
+class TestCapsAreNoMarkers:
+    # D56 (rows 2 and 4 of the 23oct2026 review): dash draws an rcap's or
+    # rpcap's caps as Scatter glyphs with Bokeh's "dash" marker; twoway draws
+    # them as lines, which no reader takes for a marker.  They are no
+    # markers: not counted, no symbol, no position.
+
+    def test_dash_marker_is_left_out(self):
+        g = verdict.dash_geometry(_view([
+            _rdr(n=74, x=(1760, 4840), y=(12, 41)),
+            _rdr(n=74, marker="dash", x=(1760, 4840), y=(9, 41)),
+            _rdr(n=74, marker="dash", x=(1760, 4840), y=(12, 44))]))
+        assert g["glyphs"] == 74 and g["glyph_counts"] == [74]
+        assert g["marker_shape"] == ["circle"]
+        assert g["glyph_extents"] == {"x": [1760, 4840], "y": [12, 41]}
+        caps = verdict.dash_geometry(_view([_rdr(n=5, marker="dash")]))
+        assert caps["glyphs"] is None and caps["marker_shape"] == []
+        # ex-comprehensive_demo rcap: a cap's fill is not drawn.
+        caps = verdict.dash_geometry(_view([_rdr(n=5, marker="dash", fill="#1a85ff",
+                                                 line="#1a476f")]))
+        assert caps["colours"]["set"] == ["#1a476f"]
+
+
+class TestHiddenAxis:
+    # D56 (row 3 of the 23oct2026 review): ysca(off) hides dash's y axis,
+    # but the view dump still lists its ticks, labels and title.  An axis
+    # whose labels the picture does not draw has none.
+
+    def test_an_axis_not_drawn_has_no_labels(self, tmp_path):
+        svg = tmp_path / "d.svg"
+        svg.write_text("<svg>" + "".join("<text x='%d'>%s</text>" % (k, t) for k, t in
+                                         enumerate(["2,000", "3,000", "4,000", "5,000",
+                                                    "Weight (lbs.)"])) + "</svg>",
+                       encoding="utf-8")
+        g = verdict.dash_geometry(_view(legend=()), str(svg))
+        assert g["x_labels"] == ["2,000", "3,000", "4,000", "5,000"]
+        assert g["y_labels"] == [] and g["y_ticks"] == []
+        assert g["axis_titles"] == ["Weight (lbs.)"]
+
+
+class TestRegionFromGridlines:
+    # D56 (help-twoway_function): plotregion(style(none)) ysca(off)
+    # xsca(noline) leaves no region rect and no axis line; the dashed
+    # gridlines span the region.
+
+    def test_labels_under_gridlines(self, tmp_path):
+        st = "font-family:'Helvetica';font-size:112.56px;fill:#000000"
+        out = ['<svg version="1.1" viewBox="0 0 5400 3240">',
+               '<rect x="0" y="0" width="5400" height="3240" style="fill:#FFFFFF"/>']
+        for x, lab in ((600, "-4 SD"), (2900, "Mean"), (5200, "4 SD")):
+            for y in range(120, 2800, 97):
+                out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:#F0F0F0;'
+                           'stroke-width:9.72"/>' % (x, y, x, y + 65))
+            out.append('<line x1="%d" y1="2810" x2="%d" y2="2850" style="stroke:#000000;'
+                       'stroke-width:5"/>' % (x, x))
+            out.append('<text x="%d" y="2950" style="%s" text-anchor="middle">%s</text>'
+                       % (x, st, lab))
+        out.append("</svg>")
+        p = tmp_path / "g.svg"
+        p.write_text("\n".join(out), encoding="utf-8")
+        assert verdict.twoway_geometry(str(p))["x_labels"] == ["-4 SD", "Mean", "4 SD"]
+
+
+class TestLabelsWithoutTicks:
+    # D56 (gpdf-graph_twoway_bar): xsca(noline) and no tick marks leave
+    # twoway's reader no tick to read the labels by; the labels are there.
+
+    def test_labels_drawn_by_both(self):
+        tw = _geo(x_labels=[], x_ticks=[], x_tick_n=0, drawn=["12", "10", "10", "12", "x"])
+        da = _geo(x_labels=["12", "10", "10", "12"], drawn=[])
+        assert verdict.compare(tw, da, _RULES) == []
+        tw = dict(tw, drawn=["12", "10", "x"])
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["x_labels_none"]
+
+
+class TestASmallBoxIsNoRegion:
+    # D56 (help-scatter scheme(economist)): the scheme draws no plot-region
+    # rect; the first solid rect is note("1")'s small box.  The long solid
+    # gridlines and the axis line span the region instead.
+
+    def test_a_note_box_is_not_the_region(self, tmp_path):
+        st = "font-family:'Helvetica';font-size:30px;fill:#000000"
+        out = ['<svg version="1.1" viewBox="0 0 1584 1584">',
+               '<rect x="0" y="0" width="1584" height="1584" style="fill:#C6D3DF"/>',
+               '<rect x="1286" y="55" width="56" height="85" style="fill:#7B92A8"/>',
+               '<text x="1333" y="121" style="%s" text-anchor="end">1</text>' % st]
+        for y, lab in ((1243, "40"), (896, "50"), (549, "60")):
+            out.append('<line x1="55" y1="%d" x2="1342" y2="%d" style="stroke:#FFFFFF;'
+                       'stroke-width:3"/>' % (y - 20, y - 20))
+            out.append('<text x="1364" y="%d" style="%s">%s</text>' % (y, st, lab))
+        out.append('<line x1="55" y1="1263" x2="1342" y2="1263" style="stroke:#000000;'
+                   'stroke-width:3"/>')
+        for x, lab in ((65, "1900"), (699, "1920"), (1333, "1940")):
+            out.append('<line x1="%d" y1="1263" x2="%d" y2="1285" style="stroke:#000000;'
+                       'stroke-width:3"/>' % (x, x))
+            out.append('<text x="%d" y="1316" style="%s" text-anchor="middle">%s</text>'
+                       % (x, st, lab))
+        out.append('<text x="699" y="1382" style="%s" text-anchor="middle">Year</text>' % st)
+        out.append("</svg>")
+        p = tmp_path / "e.svg"
+        p.write_text("\n".join(out), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["x_labels"] == ["1900", "1920", "1940"]
+        assert "Year" in g["axis_titles"] and "Year" not in g["titles"]
+
+
+class TestANoteIsNoYLabel:
+    # D56 (help-twoway_bar): ylabel(none) leaves no y labels; the note at
+    # the bottom left is not one.
+
+    def test_a_note_below_the_region(self, tmp_path):
+        st = "font-family:'Helvetica';font-size:89.94px;fill:#000000"
+        out = ['<svg version="1.1" viewBox="0 0 5400 3240">',
+               '<rect x="0" y="0" width="5400" height="3240" style="fill:#FFFFFF"/>',
+               '<rect x="621" y="2629" width="1653" height="140" style="fill:#489DFF"/>']
+        for x in (600, 2400, 4200):
+            out += ['<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:#F0F0F0;'
+                    'stroke-width:9.72"/>' % (x, y, x, y + 65) for y in range(310, 2780, 97)]
+        out += ['<line x1="%d" y1="2841" x2="%d" y2="2841" style="stroke:#F0F0F0;'
+                'stroke-width:9.72"/>' % (x, x + 65) for x in range(252, 4250, 97)]
+        out.append('<text x="200" y="3080" style="%s">Source: a note</text>' % st)
+        out.append("</svg>")
+        p = tmp_path / "n.svg"
+        p.write_text("\n".join(out), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["y_labels"] == []
+        # The bar (the first solid rect, 1.3% of the canvas) is not the region.
+        assert abs(g["frame_aspect"] - (4250 - 252) / (2841 - 310)) < 0.1
+
+
+class TestTicksWithTextLabels:
+    # D56 (row 1): xlabel(0 3.14 "{&pi}" ...) labels ticks with text; only
+    # the numeric labels give twoway tick values, so the values cannot be
+    # compared -- the number of ticks can.
+
+    def test_count_only(self, tmp_path):
+        p = tmp_path / "f.svg"
+        p.write_text(_no_region_svg(), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["x_ticks"] == [0.0] and g["x_tick_n"] == 5
+        da = dict(g, x_ticks=[0, 3.14, 6.28, 9.42, 12.57])
+        assert verdict.compare(g, da, _RULES) == []
+        four = dict(g, x_ticks=[0, 3.14, 6.28, 9.42], x_labels=["0", "a", "b", "c"])
+        assert [d["check"] for d in verdict.compare(g, four, _RULES)] == ["x_ticks",
+                                                                          "x_labels"]
+
+    def test_minor_ticks_are_not_counted(self, tmp_path):
+        # help-axis_label_options: xmtick() draws unlabelled tick marks;
+        # dash's view lists major ticks only.
+        text = _no_region_svg()
+        minor = "".join('<line x1="%d" y1="2774" x2="%d" y2="2794" style="stroke:#000000;'
+                        'stroke-width:3"/>' % (x, x) for x in (1180, 2330, 3480, 4630))
+        p = tmp_path / "m.svg"
+        p.write_text(text.replace("</svg>", minor + "</svg>"), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["x_tick_n"] == 5
+
+    def test_same_labels_same_ticks(self):
+        # help-twoway_bar: xlabel(-10 "10" -5 "5" ...) shows the same labels
+        # as dash; the values twoway's reader parses from them are not the
+        # ticks' values.
+        tw = _geo(x_ticks=[10.0, 5.0, 5.0, 10.0], x_labels=["10", "5", "5", "10"])
+        da = _geo(x_ticks=[-10, -5, 5, 10], x_labels=["10", "5", "5", "10"])
+        assert verdict.compare(tw, da, _RULES) == []
+
+
+class TestTextBoxes:
+    # D56 (help-added_text_options): text(..., box bcolor(gs15)) draws a
+    # filled box behind added text; it is no glyph, and its fill is no
+    # glyph colour (dash draws it as a label background, not a renderer).
+
+    def test_a_box_behind_text_is_no_glyph(self, tmp_path):
+        text = open(_SMOKE, encoding="utf-8").read()
+        box = ('<rect x="1000.00" y="1000.00" width="800.00" height="300.00" '
+               'style="fill:#F0F0F0"/>\n<rect x="1000.00" y="1000.00" width="800.00" '
+               'height="300.00" style="fill:none;stroke:#F0F0F0;stroke-width:12.96"/>\n'
+               '<text x="1050.00" y="1150.00" style="font-family:'
+               '\'Helvetica\';font-size:112.56px;fill:#000000">The 1918 influenza</text>\n')
+        p = tmp_path / "box.svg"
+        p.write_text(text.replace("</svg>", box + "</svg>"), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert g["colours"]["set"] == ["#1a85ff", "#d41159"]
+
+    def test_bars_carrying_labels_are_glyphs(self, tmp_path):
+        # gpdf-graph_twoway_bar: a pyramid's bars of one colour hold the age
+        # labels; they are bars, not boxes.
+        bars = "".join('<rect x="2400.00" y="%d.00" width="600.00" height="100.00" '
+                       'style="fill:#D41159"/>\n<text x="2410.00" y="%d.00" style="'
+                       'font-size:89.94px;fill:#000000">%d to %d</text>\n'
+                       % (y, y + 70, k, k + 4) for k, y in ((0, 600), (5, 800), (10, 1000),
+                                                            (15, 1200)))
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, bars))
+        assert "#d41159" in g["colours"]["set"]
+
+    def test_a_line_over_marker_labels_is_a_glyph(self, tmp_path):
+        # help-graph_intro: a fitted line runs over marker labels; it is no box.
+        line = ('<path d=" M600.00 2600.00 L2000.00 1500.00 L4200.00 400.00" style="fill:none;'
+                'stroke:#00FF00;stroke-width:9.72"/>\n<text x="1500.00" y="1500.00" '
+                'style="font-size:89.94px;fill:#1A85FF">Haiti</text>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, line))
+        assert "#00ff00" in g["colours"]["set"]
+
+
+class TestInsideTicks:
+    # D56 (help-tsline): ttick(..., tpos(in)) draws black tick marks inside
+    # the region from its bottom edge; they are ticks, not glyphs.
+
+    def test_inside_ticks_are_no_glyph_colour(self, tmp_path):
+        t = ('<line x1="3000.00" y1="2726.66" x2="3000.00" y2="2766.66" style="stroke:'
+             '#000000;stroke-width:5.76"/>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, t))
+        assert g["colours"]["set"] == ["#1a85ff", "#d41159"]
+
+
+class TestNumericTitles:
+    # D56 (help-graph_display): note("1") draws "1" in both pictures;
+    # twoway's reader cannot tell a lone number from an axis label, so
+    # neither side reads it as a title.
+
+    def test_a_number_is_no_title(self):
+        v = _view()
+        v["figures"][0]["titles"].append({"text": "1", "align": "left", "side": "below"})
+        assert verdict.dash_geometry(v)["titles"] == ["Smoke  title"]
+
+
+class TestRaisedText:
+    # D56 (gpdf-graph_twoway_pci, help-graph_text): twoway writes
+    # {superscript:2} as a raised <tspan>; dash writes "x\u00b2".  The
+    # same characters are the same title.
+
+    def test_tspans_are_read_as_their_characters(self, tmp_path):
+        text = open(_SMOKE, encoding="utf-8").read()
+        sup = ('<text x="2700.00" y="150.00" style="font-family:\'Helvetica\';'
+               'font-size:157.44px;fill:#000000" text-anchor="middle">\n\t\t<tspan style='
+               '"font-size:157.44px">Characteristics of y = -x</tspan>\n\t\t<tspan '
+               'dy="-82.47px" style="font-size:91.79px">2</tspan>\n\t</text>\n')
+        p = tmp_path / "sup.svg"
+        p.write_text(text.replace("</svg>", sup + "</svg>"), encoding="utf-8")
+        g = verdict.twoway_geometry(str(p))
+        assert "Characteristics of y = -x2" in g["titles"]
+        v = _view()
+        v["figures"][0]["titles"].append({"text": "Characteristics of y = -x\u00b2",
+                                          "align": "center", "side": "above"})
+        assert "Characteristics of y = -x2" in verdict.dash_geometry(v)["titles"]
+
+
+class TestDrawnPoints:
+    # D56 (ex-kelly22ex_categorical): scatter ... if rep78==1 keeps every
+    # row in its source and filters it in its view; the markers drawn are
+    # the dump's "drawn" count, with their own extents.
+
+    def test_drawn_count_and_extents(self):
+        r = _rdr(n=74, x=(142, 233), y=(12, 41))
+        r["drawn"] = {"n": 2, "x": [149, 199], "y": [18, 24]}
+        g = verdict.dash_geometry(_view([r]))
+        assert g["glyphs"] == 2 and g["glyph_counts"] == [2]
+        assert g["glyph_extents"] == {"x": [149, 199], "y": [18, 24]}
+        r["drawn"] = {"n": 0, "x": None, "y": None}
+        assert verdict.dash_geometry(_view([r]))["glyphs"] is None
+
+
+def _smoke_plus(tmp_path, extra, name="x.svg", replace=()):
+    text = open(_SMOKE, encoding="utf-8").read()
+    for a, b in replace:
+        text = text.replace(a, b)
+    p = tmp_path / name
+    p.write_text(text.replace("</svg>", extra + "</svg>"), encoding="utf-8")
+    return str(p)
+
+
+_ST = "style=\"font-family:'Helvetica';font-size:112.56px;fill:#000000\""
+
+
+class TestTitlesOutsideTheTitleArea:
+    # D56 (help-graph_intro, gpdf-Graph_intro, audit-RH-13): an x axis drawn
+    # above the plot region has its labels and title there -- the title is
+    # an axis title, not a title.  help-axis_label_options: a yline's label
+    # beside the region is added text, not a title.
+
+    def test_a_top_axis_title(self, tmp_path):
+        top = "".join('<text x="%s" y="270.00" %s text-anchor="middle">%s</text>'
+                      % (x, _ST, v) for x, v in (("861.47", "0"), ("4204.41", "1")))
+        top += '<text x="2399.12" y="200.00" %s text-anchor="middle">Top axis</text>' % _ST
+        p = _smoke_plus(tmp_path, top, replace=(('y="243.10"', 'y="60.00"'),))
+        assert verdict.twoway_geometry(p)["titles"] == ["Smoke  title"]
+
+    def test_text_beside_the_region(self, tmp_path):
+        side = '<text x="4300.00" y="1500.00" %s>12,321 (mean)</text>' % _ST
+        assert verdict.twoway_geometry(_smoke_plus(tmp_path, side))["titles"] == [
+            "Smoke  title"]
+
+
+class TestLabelsOfTheOtherAxis:
+    # D56 (help-region_options): the y axis's 0 label sits just below the
+    # plot region's bottom edge; it is the y axis's, not the x axis's.
+
+    def test_y_labels_are_not_x_labels(self, tmp_path):
+        lab = ('<line x1="522.79" y1="2766.66" x2="477.73" y2="2766.66" style="stroke:'
+               '#000000;stroke-width:6.48"/><text x="455.29" y="2806.00" %s '
+               'text-anchor="end">0</text>' % _ST)
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, lab))
+        assert g["x_labels"] == ["2,000", "3,000", "4,000", "5,000"]
+        assert g["y_labels"][0] == "0"
+
+
+class TestMarkerReading:
+
+    def test_big_circles_are_markers(self, tmp_path):
+        # gpdf-graph_twoway_scatter [aw=pop]: weighted markers grow past the
+        # small-group bound; a circle is still a marker.
+        big = ('<circle cx="2000.00" cy="1000.00" r="200.00" style="fill:none;'
+               'stroke:#1A85FF;stroke-width:9.72"/>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, big))
+        assert g["glyphs"] == 75
+
+    def test_two_collinear_lines_are_no_plus(self, tmp_path):
+        # ex-plot_types_tour contourline: two short contour segments about
+        # one centre are not a plus marker; a plus's two lines cross.
+        seg = ('<line x1="2000.00" y1="1000.00" x2="2010.00" y2="1002.00" style="stroke:'
+               '#000000;stroke-width:4"/>\n<line x1="2010.00" y1="1002.00" x2="2000.00" '
+               'y2="1000.00" style="stroke:#000000;stroke-width:4"/>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, seg))
+        assert g["glyphs"] == 74 and g["marker_shape"] == ["circle"]
+        plus = ('<line x1="1990.00" y1="1000.00" x2="2010.00" y2="1000.00" style="stroke:'
+                '#000000;stroke-width:4"/>\n<line x1="2000.00" y1="990.00" x2="2000.00" '
+                'y2="1010.00" style="stroke:#000000;stroke-width:4"/>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, plus, "p.svg"))
+        assert g["marker_shape"] == ["circle", "plus"]
+
+    def test_a_big_x_is_a_marker(self, tmp_path):
+        # gpdf-graph_twoway_pci: msize(huge) x markers.
+        x = ('<line x1="1800.00" y1="800.00" x2="2200.00" y2="1200.00" style="stroke:'
+             '#D41159;stroke-width:9"/>\n<line x1="1800.00" y1="1200.00" x2="2200.00" '
+             'y2="800.00" style="stroke:#D41159;stroke-width:9"/>\n')
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, x))
+        assert g["glyphs"] == 75 and "x" in g["marker_shape"]
+
+    def test_an_invisible_scatter_is_no_marker(self):
+        # contourline: dash's hover points are a Scatter drawn with alpha 0.
+        g = verdict.dash_geometry(_view([_rdr(n=2, fill_alpha={"value": 0},
+                                              line_alpha={"value": 0})]))
+        assert g["glyphs"] is None and g["marker_shape"] == []
+
+
+class TestTexts:
+    # D56 (audit-MS-5): mlabel() with format(%9.2f) labels the markers
+    # 22.00 in twoway and 22 in dash: different text, a fundamental
+    # difference no label, title or legend check sees.
+
+    def test_text_drawn_on_one_side_only(self):
+        tw = _geo(drawn=["0", "10", "x", "y", "22.00", "17.00"])
+        da = _geo(drawn=["0", "10", "x", "y", "22", "17"])
+        d = verdict.compare(tw, da, _RULES)
+        assert d == [{"check": "texts", "twoway": ["17.00", "22.00"], "dash": ["17", "22"],
+                      "within_tol": False}]
+        assert verdict.summary(d) == "text"
+        # The axis labels are the label checks' own.
+        tw = _geo(drawn=["0", "10", "x", "y"])
+        da = _geo(x_labels=["0", "10", "20"], drawn=["0", "10", "20", "x", "y"])
+        assert [x["check"] for x in verdict.compare(tw, da, _RULES)] == ["x_labels"]
+        # help-twoway_histogram: a label in the x labels' row the tick reader
+        # did not pair is an axis label too.
+        tw = _geo(drawn=["0", "10", "50", "x", "y"], axis_texts=["50"])
+        assert verdict.compare(tw, _geo(drawn=["0", "10", "x", "y"]), _RULES) == []
+
+
+class TestColoursAndLegendsByWhatIsDrawn:
+
+    def test_colours_dash_maps_from_data(self):
+        # ex-comprehensive_demo colorvar(): dash colours the markers from a
+        # column, which the view does not read; twoway's colours for them
+        # have no counterpart to judge against.
+        tw = _geo(colours={"set": ["#0000ff", "#00ff00", "#1a85ff"], "unread": 0})
+        da = _geo(colours={"set": ["#1a85ff"], "unread": 2})
+        assert verdict.compare(tw, da, _RULES) == []
+        da = _geo(colours={"set": ["#1a85ff", "#ff0000"], "unread": 2})
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["colours"]
+
+    def test_legend_text_drawn_elsewhere(self):
+        # help-clegend_option: twoway's contour legend labels Low, Medium,
+        # High; dash draws them on a colour bar, which is no Legend model.
+        tw = _geo(legend=["Low", "Medium", "High"], drawn=["Low", "Medium", "High", "Depth"])
+        da = _geo(legend=[], drawn=["Low", "Medium", "High", "Depth"])
+        assert verdict.compare(tw, da, _RULES) == []
+        da = _geo(legend=[], drawn=["Low", "High", "Depth"])
+        assert [d["check"] for d in verdict.compare(tw, da, _RULES)] == ["legend"]
+
+
 class TestSizesAndMargins:
     # D49: text size, the plot region's outer insets, marker size and line
     # width, each relative to the figure, on both sides.
@@ -143,6 +610,15 @@ class TestSizesAndMargins:
             "text_size", "margins", "marker_size", "line_width"]
         assert verdict.summary(verdict.compare(tw, off, _RULES)) == \
             "text size, margins, marker size, line width"
+
+    def test_line_widths_under_half_a_pixel(self):
+        # D56 (row 1): 1.3 px against 1.15 px on a 720-px picture is no
+        # visible difference; 1.3 px against 2.6 px is.
+        tw = _geo(line_widths=[0.0018])
+        rules = dict(_RULES, line_abs=0.0007)
+        assert verdict.compare(tw, _geo(line_widths=[0.0016]), rules) == []
+        assert [d["check"] for d in verdict.compare(tw, _geo(line_widths=[0.0036]),
+                                                     rules)] == ["line_width"]
 
     def test_colour_opacity(self):
         assert verdict.rgb("#1a85ff80") == (26, 133, 255, 128)
@@ -279,9 +755,11 @@ class TestCompare:
         tw = _geo(x_ticks=[0.0, 10.0], x_span=10.0, frame_aspect=1.5)
         same = _geo(x_ticks=[0.000001, 10.0], frame_aspect=1.504)
         assert verdict.compare(tw, same, _RULES) == []
-        off = _geo(x_ticks=[0.1, 10.0], frame_aspect=1.6, x_labels=["0", "10"])
-        assert {d["check"] for d in verdict.compare(tw, off, _RULES)} == {"x_ticks",
-                                                                          "frame_aspect"}
+        # Flipped: ticks under the same labels are not compared (D56), so
+        # the moved tick is labelled 0.1.
+        off = _geo(x_ticks=[0.1, 10.0], frame_aspect=1.6, x_labels=["0.1", "10"])
+        assert {d["check"] for d in verdict.compare(tw, off, _RULES)} == {
+            "x_ticks", "x_labels", "frame_aspect"}
         big = _geo(x_labels=["2,000"])
         d = verdict.compare(_geo(x_labels=["2000"]), big, _RULES)
         assert [x["check"] for x in d] == ["x_labels"]
@@ -317,8 +795,9 @@ class TestCompare:
         assert verdict.colour_distances(["#1a85ff"], ["#1b86fe"]) == [1, 1]
         tw = _geo(colours={"set": ["#1a85ff"], "unread": 0})
         d = verdict.compare(tw, _geo(colours={"set": ["#ff0000"], "unread": 0}), _RULES)
+        # Flipped: a colours difference also says whether it is slight (D56).
         assert d == [{"check": "colours", "twoway": ["#1a85ff"], "dash": ["#ff0000"],
-                      "within_tol": False}]
+                      "within_tol": False, "slight": False}]
         assert verdict.compare(tw, _geo(colours={"set": [], "unread": 2}), _RULES) == []
 
     def test_marker_shape_and_extents(self):
@@ -427,6 +906,73 @@ class TestVerdict:
         assert v(0, 0, None, None, [], 0.5, _RULES) == "Close"
         assert v(0, 0, None, None, [], None, _RULES) == "Close"
         assert v(0, 0, None, None, [], 0.1, dict(_RULES, T_same=None)) == "Same"
+
+
+class TestTiers:
+    # D56: text size, margins, marker size and line width, a plot region
+    # shape within aspect_close and colours of one hue family within
+    # colour_slight can make a pair Close, never Differs.
+
+    _T = dict(_RULES, aspect_close=0.12,
+              colour_slight={"hue_deg": 30, "light": 0.2, "grey_sat": 0.15},
+              close_only=["text_size", "margins", "marker_size", "line_width"])
+
+    def test_close_only_checks(self):
+        for c in ("text_size", "margins", "marker_size", "line_width"):
+            d = [{"check": c, "twoway": 1, "dash": 2, "within_tol": False, "gaps4": None}]
+            assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Close", c
+        d = [{"check": "x_labels", "twoway": ["1"], "dash": ["2"], "within_tol": False,
+              "gaps4": None}]
+        assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Differs"
+
+    def test_a_large_size_difference_differs(self):
+        # help-scatter scheme(economist): dash's text and markers are three
+        # times twoway's -- no slight difference.
+        rules = dict(self._T, size_close=0.35)
+        for c, a, b in (("text_size", 0.02, 0.0695), ("marker_size", [0.008], [0.025])):
+            d = [{"check": c, "twoway": a, "dash": b, "within_tol": False, "gaps4": None}]
+            assert verdict.verdict(0, 0, None, None, d, None, rules) == "Differs", c
+        d = [{"check": "text_size", "twoway": 0.0208, "dash": 0.0185, "within_tol": False,
+              "gaps4": "VF-4"}]
+        assert verdict.verdict(0, 0, None, None, d, None, rules) == "Close"
+        # VF-4 explains 0.889x, not three times.
+        d = [dict(d[0], dash=0.0695)]
+        assert verdict.verdict(0, 0, None, None, d, None, rules) == "Differs"
+
+    def test_fundamental(self):
+        f = verdict.fundamental
+        assert not f({"check": "margins", "twoway": [0.1], "dash": [0.2]}, self._T)
+        assert f({"check": "legend", "twoway": ["a"], "dash": []}, self._T)
+        assert not f({"check": "colours", "twoway": ["#1a85ff"], "dash": ["#3a8fff"],
+                      "slight": True}, self._T)
+        assert f({"check": "frame_aspect", "twoway": 1.5, "dash": 2.2}, self._T)
+
+    def test_plot_region_shape(self):
+        def v(a, b):
+            d = [{"check": "frame_aspect", "twoway": a, "dash": b, "within_tol": False,
+                  "gaps4": None}]
+            return verdict.verdict(0, 0, None, None, d, None, self._T)
+        assert v(1.5, 1.6) == "Close"
+        assert v(1.5, 2.2) == "Differs"
+
+    def test_slight_colours(self):
+        assert verdict.slight_colour("#1a85ff", "#3a8fff", self._T["colour_slight"])
+        assert verdict.slight_colour("#1a85ff", "#1a85ffb3", self._T["colour_slight"])
+        assert not verdict.slight_colour("#1a85ff", "#ff0000", self._T["colour_slight"])
+        assert not verdict.slight_colour("#1a85ff", "#000000", self._T["colour_slight"])
+        assert verdict.slight_colour("#808080", "#8c8c8c", self._T["colour_slight"])
+        tw = _geo(colours={"set": ["#1a85ff", "#d41159"], "unread": 0})
+        da = _geo(colours={"set": ["#3a8fff", "#d41159"], "unread": 0})
+        d = verdict.explain(verdict.compare(tw, da, self._T), {}, [], {})
+        assert [x["check"] for x in d] == ["colours"]
+        assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Close"
+        red = _geo(colours={"set": ["#ff0000", "#d41159"], "unread": 0})
+        d = verdict.explain(verdict.compare(tw, red, self._T), {}, [], {})
+        assert verdict.verdict(0, 0, None, None, d, None, self._T) == "Differs"
+
+    def test_the_summary_leads_with_what_differs(self):
+        d = [{"check": "text_size"}, {"check": "margins"}, {"check": "legend"}]
+        assert verdict.summary(d, self._T) == "legend keys, text size, margins"
 
 
 class TestSummary:

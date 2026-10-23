@@ -45,6 +45,7 @@ STATA_TERMS = {
     "y_labels_none": "y-axis labels", "text_size": "text size", "margins": "margins",
     "marker_size": "marker size", "line_width": "line width",
     "marker_labels": "marker labels", "outline_extra": "bar outline",
+    "texts": "text",
 }
 
 #: The keys of one verdicts.jsonl row, in order.
@@ -83,8 +84,27 @@ _HEX3 = re.compile(r"^#([0-9a-f]{3})$")
 _RGBF = re.compile(r"^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$")
 
 
+#: Super- and subscript characters read as the plain characters they raise
+#: or lower: twoway draws {superscript:2} as a raised <tspan>, dash as "²".
+_SCRIPTS = str.maketrans("\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079"
+                         "\u207a\u207b\u2080\u2081\u2082\u2083\u2084\u2085\u2086"
+                         "\u2087\u2088\u2089\u208a\u208b",
+                         "0123456789+-0123456789+-")
+
+
+def _plain(s):
+    """D56: a text as its characters: <tspan> runs joined, tags dropped,
+    super- and subscripts read as plain characters."""
+    if s is None:
+        return None
+    s = str(s)
+    if "<" in s:
+        s = re.sub(r"<[^>]*>", "", re.sub(r">\s+<", "><", s.strip()))
+    return s.translate(_SCRIPTS)
+
+
 def _blank(s):
-    return " ".join(str(s).split()) if s is not None else None
+    return " ".join(_plain(s).split()) if s is not None else None
 
 
 # ---- colours ----------------------------------------------------------------
@@ -150,6 +170,33 @@ def colour_diff(tw, da, tol):
     return left, right
 
 
+def _on_white(c):
+    """c as drawn over white: its opacity blended in, (r, g, b) in 0..1."""
+    c = _rgba(c)
+    a = c[3] / 255.0
+    return tuple((a * x + (1 - a) * 255) / 255.0 for x in c[:3])
+
+
+def slight_colour(a, b, rule):
+    """D56: True when colours a and b (as drawn over white) are of one hue
+    family -- hues within rule["hue_deg"] degrees, or both greys
+    (saturation below rule["grey_sat"]) -- and their lightness differs by
+    at most rule["light"]."""
+    import colorsys
+    ca, cb = rgb(a) if isinstance(a, str) else a, rgb(b) if isinstance(b, str) else b
+    if ca is None or cb is None:
+        return False
+    ha, la, sa = colorsys.rgb_to_hls(*_on_white(ca))
+    hb, lb, sb = colorsys.rgb_to_hls(*_on_white(cb))
+    if abs(la - lb) > rule["light"]:
+        return False
+    grey_a, grey_b = sa < rule["grey_sat"], sb < rule["grey_sat"]
+    if grey_a or grey_b:
+        return grey_a and grey_b
+    dh = abs(ha - hb) * 360.0
+    return min(dh, 360.0 - dh) <= rule["hue_deg"]
+
+
 def colour_distances(tw, da):
     """Every readable colour's distance to its nearest colour on the other side."""
     a = {rgb(c) for c in tw} - {None}
@@ -209,11 +256,57 @@ def _region_box(e, regions):
     return False
 
 
+def _paint(e):
+    return e["fill"] if e["fill"] not in (None, "none") else e["stroke"]
+
+
+def _text_box(e, texts, paints=None):
+    """D56: True when e is the box (fill or outline) behind added text
+    (text(..., box)): a rectangle holding a text's anchor, no taller than
+    three lines per text, whose colour few other shapes share (bars of one
+    colour carry marker labels, gpdf-graph_twoway_bar's pyramid)."""
+    if e["kind"] not in ("rect", "path", "polygon") or not e["points"]:
+        return False
+    if paints is not None and paints[_paint(e)] > 3:
+        return False
+    xs, ys = [p[0] for p in e["points"]], [p[1] for p in e["points"]]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    # A box is a rectangle: every corner on its bounding box's corners.
+    if any(min(abs(x - x0), abs(x - x1)) > 0.5 or min(abs(y - y0), abs(y - y1)) > 0.5
+           for x, y in e["points"]):
+        return False
+    inside = [t for t in texts if x0 <= t["x"] <= x1 and y0 <= t["y"] <= y1]
+    if not inside:
+        return False
+    return y1 - y0 <= 3 * max(t["size"] or 0 for t in inside) * len(inside)
+
+
+def _tick_mark(e, pr):
+    """D56: True for a tick mark drawn inside the region (tposition(inside),
+    ttick(, tpos(in))): a short line square to an edge, one end on it."""
+    if e["kind"] != "line" or len(e["points"]) != 2:
+        return False
+    (x1, y1), (x2, y2) = e["points"]
+    w, h = pr["right"] - pr["left"], pr["bottom"] - pr["top"]
+    if abs(x1 - x2) < 0.01 and abs(y1 - y2) <= 0.03 * h:
+        return any(min(abs(y1 - edge), abs(y2 - edge)) <= 2.5
+                   for edge in (pr["top"], pr["bottom"]))
+    if abs(y1 - y2) < 0.01 and abs(x1 - x2) <= 0.03 * w:
+        return any(min(abs(x1 - edge), abs(x2 - edge)) <= 2.5
+                   for edge in (pr["left"], pr["right"]))
+    return False
+
+
 def _glyph_elements(path, pr, elements, regions):
     """The drawn elements inside the plot region that are glyphs: not the
     region's own fill or outline, not a grid or axis line (D-33-05.b)."""
     grid = _grid_lines(path, pr)
     w, h = pr["right"] - pr["left"], pr["bottom"] - pr["top"]
+    texts = [t for t in svg_truth.svg_document(path)["texts"]
+             if t["x"] is not None and t["y"] is not None and t["text"].strip()]
+    paints = collections.Counter(_paint(e) for e in elements
+                                 if e["kind"] in ("rect", "path", "polygon")
+                                 and _inside(pr, *e["center"]))
     out = []
     for e in elements:
         cx, cy = e["center"]
@@ -221,7 +314,11 @@ def _glyph_elements(path, pr, elements, regions):
             continue
         if e["kind"] == "rect" and e["fill"] == pr.get("fill") or _region_box(e, regions):
             continue
+        if _text_box(e, texts, paints):
+            continue
         pts = e["points"]
+        if _tick_mark(e, pr):
+            continue
         if e["kind"] == "line" and len(pts) == 2:
             (x1, y1), (x2, y2) = pts
             if round(y1, 2) == round(y2, 2) and ("h", round(y1, 2), e["stroke"],
@@ -281,10 +378,16 @@ def _axis(path, doc, axis):
     pr = r.get("plotregion")
     if pr is None:
         return {"ticks": [], "labels": [], "fit": None, "label_objs": [], "near": None,
-                "side": None, "scale": None, "pos": []}
+                "side": None, "scale": None, "pos": [], "n": 0}
     lo, hi = (pr["left"], pr["right"]) if axis == "x" else (pr["top"], pr["bottom"])
     keep = [k for k, px in enumerate(r["tick_px"]) if lo - 2.5 <= px <= hi + 2.5] \
         if len(r["labels"]) == len(r["tick_px"]) else list(range(len(r["labels"])))
+    if axis == "y":
+        # D56: a y label sits beside the region, not under it (a note's text
+        # at the bottom left is no label; help-twoway_bar's pyramid).
+        keep = [k for k in keep if r["label_objs"][k] is None
+                or pr["top"] - 2 * (r["label_objs"][k]["size"] or 0) <= r["label_objs"][k]["y"]
+                <= pr["bottom"] + 2 * (r["label_objs"][k]["size"] or 0)]
     labels = [r["labels"][k] for k in keep]
     objs = [r["label_objs"][k] for k in keep]
     pxs = [r["tick_px"][k] for k in keep] if len(r["labels"]) == len(r["tick_px"]) else []
@@ -307,6 +410,7 @@ def _axis(path, doc, axis):
     if flip:
         ticks, texts, pos = ticks[::-1], texts[::-1], pos[::-1]
     return {"ticks": ticks, "labels": texts, "fit": fit, "scale": scale, "pos": pos,
+            "n": len(texts),
             "label_objs": [o for o in objs if o is not None],
             "near": r["label_offaxis_px"], "side": r["tick_side"]}
 
@@ -322,6 +426,20 @@ def _squarish(g):
     return True
 
 
+def _crossing(g):
+    """False for a plus or x group whose two lines do not cross at right
+    angles with like lengths: two contour segments about one centre (D56)."""
+    lines = [e for e in g if e["kind"] == "line"]
+    if svg_layer.marker_shape(g) not in ("plus", "x") or len(lines) != 2:
+        return True
+    (a0, a1), (b0, b1) = lines[0]["points"][:2], lines[1]["points"][:2]
+    ax, ay, bx, by = a1[0] - a0[0], a1[1] - a0[1], b1[0] - b0[0], b1[1] - b0[1]
+    la, lb = (ax * ax + ay * ay) ** 0.5, (bx * bx + by * by) ** 0.5
+    if not la or not lb or abs(la - lb) > 0.25 * max(la, lb):
+        return False
+    return abs(ax * bx + ay * by) / (la * lb) < 0.3
+
+
 def _in_box(r, x, y):
     return r["left"] <= x <= r["right"] and r["top"] <= y <= r["bottom"]
 
@@ -330,10 +448,48 @@ def _turned(t):
     return t["rotate"] is not None and abs(abs(t["rotate"]) - 90) < 1
 
 
+def _region_from_axes(doc):
+    """D56: a plot region read from the axis lines (no region rect) spans
+    the y axis line top to bottom; the longest black horizontal line can be
+    a yline() inside the region, not the region's bottom edge.  With no
+    axis line either, the gridlines' bounding box is the region."""
+    pr, ax, cv = doc["plotregion"], doc["axis_line"], doc["canvas"]
+    if pr is not None and pr.get("fill") is not None and cv and \
+            (pr["right"] - pr["left"]) * (pr["bottom"] - pr["top"]) < 0.02 * cv["w"] * cv["h"]:
+        # scheme(economist) draws no region rect: the first small solid rect
+        # is a note's box (help-scatter), not the plot region.
+        pr = doc["plotregion"] = None
+    if pr is None:
+        # No region rect and no axis lines (plotregion(style(none)) ysca(off)
+        # xsca(noline)): the gridlines -- dashed, or solid and long -- and
+        # long axis lines span the region.
+        cw, ch = (cv["w"], cv["h"]) if cv else (0, 0)
+        hs = [g for g in svg_truth.line_groups(doc["hlines"], "y1")
+              if g["n_segments"] > 3 or g["span_to"] - g["span_from"] >= 0.3 * cw]
+        vs = [g for g in svg_truth.line_groups(doc["vlines"], "x1")
+              if g["n_segments"] > 3 or g["span_to"] - g["span_from"] >= 0.3 * ch]
+        if len(hs) + len(vs) >= 2:
+            doc["plotregion"] = {
+                "left": min([g["span_from"] for g in hs] + [g["px"] for g in vs]),
+                "right": max([g["span_to"] for g in hs] + [g["px"] for g in vs]),
+                "top": min([g["span_from"] for g in vs] + [g["px"] for g in hs]),
+                "bottom": max([g["span_to"] for g in vs] + [g["px"] for g in hs]),
+                "fill": None, "source": "gridline bounding box (D56)"}
+        return
+    if pr.get("fill") is not None or not ax or \
+            not str(pr.get("source", "")).startswith("axis-line"):
+        return
+    pr["top"] = min(pr["top"], ax["v_y_from"])
+    pr["bottom"] = max(pr["bottom"], ax["v_y_to"])
+
+
 def twoway_geometry(svg_path):
     """The checks' values read from twoway's SVG (D-33-05.b); a by() graph's
     first panel only."""
     doc = svg_truth.svg_document(svg_path)
+    _region_from_axes(doc)
+    for t in doc["texts"]:
+        t["text"] = _plain(t["text"])
     pr = doc["plotregion"]
     out = {"panels": _panels(doc), "x_ticks": [], "y_ticks": [], "x_labels": [],
            "y_labels": [], "axis_titles": [], "titles": [], "legend": [], "glyphs": None,
@@ -345,10 +501,14 @@ def twoway_geometry(svg_path):
            "line_widths_lines": [], "outlined": None}
     if pr is None:
         return out
-    x, y = _axis(svg_path, doc, "x"), _axis(svg_path, doc, "y")
+    # D56: the y axis is read first and its labels are no candidates for the
+    # x axis's (a 0 label just below the region's bottom edge).
+    y = _axis(svg_path, doc, "y")
+    ylabs = {id(o) for o in y["label_objs"]}
+    x = _axis(svg_path, dict(doc, texts=[t for t in doc["texts"] if id(t) not in ylabs]), "x")
     out.update(x_ticks=x["ticks"], y_ticks=y["ticks"], x_labels=x["labels"],
                y_labels=y["labels"], x_scale=x["scale"], y_scale=y["scale"],
-               x_tick_pos=x["pos"], y_tick_pos=y["pos"])
+               x_tick_pos=x["pos"], y_tick_pos=y["pos"], x_tick_n=x["n"], y_tick_n=y["n"])
     for k, a in (("x_span", x), ("y_span", y)):
         if a["fit"]:
             out[k] = a["fit"]["high"] - a["fit"]["low"]
@@ -370,22 +530,63 @@ def twoway_geometry(svg_path):
           and not any(_in_box(r, t["x"], t["y"]) for r in others)]
     xt = [t for t in sorted(xt, key=lambda t: t["y"])[:1]
           if out["panels"] > 1 or t["y"] - below <= 4 * (t["size"] or 0)]
+    # D56: an x axis drawn above the region (xaxis alternate, a second x
+    # axis) has its title above its labels: the nearest centred text above
+    # the top row of numeric labels.
+    tops = [t["y"] for t in texts if t["y"] < pr["top"] and not _turned(t)
+            and _label_value(t["text"]) is not None]
+    top_title = []
+    if x["side"] == "above plotregion" or len(tops) >= 2:
+        row = min(tops) if tops else pr["top"]
+        cand = [t for t in texts if t["rotate"] is None and t["anchor"] == "middle"
+                and _label_value(t["text"]) is None and t["y"] < row
+                and row - t["y"] <= 4 * (t["size"] or 0)]
+        top_title = sorted(cand, key=lambda t: -t["y"])[:1]
+    if x["side"] == "above plotregion" and not xt:
+        xt = top_title
     right = y["side"] == "right of plotregion"
-    yt = [t for t in texts if _turned(t)
-          and (t["x"] > pr["right"] if right else t["x"] < pr["left"])]
-    yt = sorted(yt, key=lambda t: abs(t["x"] - (pr["right"] if right else pr["left"])))[:1]
+    if y["side"] is None:
+        # D56: no y tick marks to tell the side (scheme(economist)): the
+        # turned text nearest either side of the region.
+        yt = [t for t in texts if _turned(t) and (t["x"] > pr["right"] or t["x"] < pr["left"])]
+        yt = sorted(yt, key=lambda t: min(abs(t["x"] - pr["right"]),
+                                          abs(t["x"] - pr["left"])))[:1]
+    else:
+        yt = [t for t in texts if _turned(t)
+              and (t["x"] > pr["right"] if right else t["x"] < pr["left"])]
+        yt = sorted(yt, key=lambda t: abs(t["x"] - (pr["right"] if right else pr["left"])))[:1]
     out["axis_titles"] = [_blank(t["text"]) for t in xt + yt]
-    taken = {id(t) for t in xt + yt}
+    taken = {id(t) for t in xt + yt + top_title}
     legend, titles = [], []
     for t in texts:
         if id(t) in taken or _in_box(pr, t["x"], t["y"]):
             continue
         boxed = any(_in_box(r, t["x"], t["y"]) for r in others)
+        # D56: text beside the plot region (a yline's label, added text) is
+        # no title.
+        beside = pr["top"] <= t["y"] <= pr["bottom"] and \
+            (t["x"] > pr["right"] or t["x"] < pr["left"])
         if t["anchor"] is None and boxed:
             legend.append(_blank(t["text"]))
-        elif not boxed and not _turned(t) and _label_value(t["text"]) is None:
+        elif not boxed and not beside and not _turned(t) and _label_value(t["text"]) is None:
             titles.append(t)
     out["legend"] = legend
+    out["drawn"] = [_blank(t["text"]) for t in doc["texts"] if t["text"].strip()]
+    # The texts in the x labels' row and the y labels' column: axis labels
+    # the tick reader did not pair (a label past the region's edge); in a
+    # by() graph, every row or column of numbers is another panel's axis.
+    def axis_text(t):
+        if x["near"] is not None and abs(t["y"] - x["near"]) <= 1 or \
+                y["near"] is not None and abs(t["x"] - y["near"]) <= 1:
+            return True
+        if out["panels"] < 2 or _label_value(t["text"]) is None:
+            return False
+        return sum(1 for o in doc["texts"] if o is not t and _label_value(o["text"]) is not None
+                   and o["y"] is not None and o["x"] is not None
+                   and (abs(o["y"] - t["y"]) <= 1 or abs(o["x"] - t["x"]) <= 1)) >= 2
+    out["axis_texts"] = sorted({_blank(t["text"]) for t in doc["texts"] if t["text"].strip()
+                                and t["x"] is not None and t["y"] is not None
+                                and axis_text(t)})
     # Marker labels (texts anchored inside the plot region): does any run
     # past it?  twoway lets them (D50, MS-15).
     labs = [t for t in texts if id(t) not in taken and _in_box(pr, t["x"], t["y"])]
@@ -399,24 +600,39 @@ def twoway_geometry(svg_path):
     els = svg_layer.svg_elements(svg_path)
     small = 0.05 * min(w, h)
     inside = [e for e in els if _inside(pr, *e["center"]) and not _region_box(e, [pr])]
+    # D56: a circle is a marker at any size (weighted markers grow past the
+    # small bound); a plus or an x is two lines that cross.
+    # (A crossing plus or x is a marker up to a quarter of the region.)
+    def bound(g):
+        shape = svg_layer.marker_shape(g)
+        return float("inf") if shape == "circle" else \
+            (0.25 * min(w, h) if shape in ("plus", "x") else small)
     groups = [g for g in svg_layer.markers(inside) if svg_layer.marker_shape(g)
-              and max(e["extent"] for e in g) <= small and _squarish(g)]
+              and max(e["extent"] for e in g) <= bound(g)
+              and _squarish(g) and _crossing(g)]
     by_colour = {}
     total = 0
     for g in groups:
         # Markers drawn at one spot fall in one group: count its copies of
         # the group's first element.
+        # the group's first element, in any colour (D56: markers of two
+        # colours at one spot are two markers).
         k0 = g[0]
-        copies = sum(1 for e in g if (e["kind"], e["fill"], e["stroke"], e["points"]) ==
-                     (k0["kind"], k0["fill"], k0["stroke"], k0["points"]))
-        total += copies
+
+        def role(e):
+            return (e["kind"], e["fill"] in (None, "none"), e["stroke"] in (None, "none"))
+        # ... drawn within a pixel of it at its size (two cars a pixel apart).
+        copies = [e for e in g if role(e) == role(k0) and abs(e["extent"] - k0["extent"]) <= 1]
+        if svg_layer.marker_shape(g) in ("plus", "x"):
+            copies = copies[::2]  # a plus or an x is two lines
+        total += len(copies)
         cx, cy = g[0]["center"]
         dx = _to_data(x["fit"], cx, pr["left"], pr["right"])
         dy = _to_data(y["fit"], cy, pr["bottom"], pr["top"])
         out["markers"].append((dx, dy, svg_layer.marker_shape(g)))
-        col = next((e["fill"] for e in g if e["fill"] not in (None, "none")),
-                   next((e["stroke"] for e in g if e["stroke"] not in (None, "none")), None))
-        by_colour[col] = by_colour.get(col, 0) + copies
+        for e in copies:
+            col = e["fill"] if e["fill"] not in (None, "none") else e["stroke"]
+            by_colour[col] = by_colour.get(col, 0) + 1
     out["glyphs"] = total or None
     out["glyph_counts"] = sorted(by_colour.values(), reverse=True)
     out["marker_shape"] = sorted({m[2] for m in out["markers"]})
@@ -431,6 +647,10 @@ def twoway_geometry(svg_path):
     if cv and cv["w"] and cv["h"]:
         cw, ch = cv["w"], cv["h"]
         sizes = sorted(o["size"] for o in x["label_objs"] + y["label_objs"] if o.get("size"))
+        if not sizes:
+            # D56: no label read by its tick: the numeric texts are the labels.
+            sizes = sorted(t["size"] for t in doc["texts"] if t.get("size")
+                           and _label_value(t["text"]) is not None)
         if sizes:
             out["text_size"] = round(sizes[len(sizes) // 2] / cw, 5)
         out["insets"] = [round(pr["left"] / cw, 4), round(pr["top"] / ch, 4),
@@ -524,6 +744,36 @@ _AREA_GLYPHS = ("VBar", "HBar", "Quad", "Rect", "Block", "Patch", "Patches", "VA
                 "VAreaStep", "HAreaStep", "VStrip", "HStrip")
 
 
+#: Bokeh markers that draw a line, not a marker: an rcap's caps (and
+#: msymbol(pipe)); twoway draws them as lines, which svg_layer reads as no
+#: marker either (D56).
+LINE_MARKERS = ("dash",)
+
+
+def _drawn(r):
+    """(count, x extent, y extent) of the points a renderer draws: the
+    dump's "drawn" (D56: rows its view keeps with x and y both numbers),
+    else every row of its source."""
+    d = r.get("drawn")
+    if isinstance(d, dict) and isinstance(d.get("n"), int):
+        return d["n"], d.get("x"), d.get("y")
+    return r.get("n") or 0, r.get("x"), r.get("y")
+
+
+def _is_marker(r):
+    """True for a Scatter renderer with points that draws markers."""
+    if r.get("glyph") != "Scatter" or not _drawn(r)[0] > 0:
+        return False
+    # D56: a Scatter drawn with no visible fill or line (hover points) is
+    # no marker.
+    if all(_written(r.get(k))[0] == "none" or _alpha_zero(r.get(a))
+           for k, a in (("fill", "fill_alpha"), ("line", "line_alpha"))):
+        return False
+    m = r.get("marker")
+    names = [n for n in (m if isinstance(m, list) else [m]) if isinstance(n, str)]
+    return not names or any(n not in LINE_MARKERS for n in names)
+
+
 def _dash_sizes(out, f, figs, svg_path):
     """D49: text size, outer insets, marker size and line width of figure f,
     each relative to the page the figures fill."""
@@ -555,9 +805,9 @@ def _dash_sizes(out, f, figs, svg_path):
             continue
         lw = _num(r.get("line_width")) or 0.0
         drawn = _written(r.get("line"))[0] == "value" and not _alpha_zero(r.get("line_alpha"))
-        if r.get("glyph") == "Scatter":
+        if _is_marker(r):
             size = _num(r.get("size"))
-            if size and (r.get("n") or 0) > 0:
+            if size:
                 marks.add(round((size + (lw if drawn else 0.0)) / pw, 5))
         elif r.get("glyph") in _AREA_GLYPHS and \
                 _written(r.get("fill"))[0] != "none" and not _alpha_zero(r.get("fill_alpha")):
@@ -590,6 +840,8 @@ def dash_geometry(view, svg_path=None):
         return out
     f = next((g for g in figs if g.get("axes")), figs[0])
     axes = f.get("axes") or []
+    for k, dim in (("x_axes", 0), ("y_axes", 1)):
+        out[k] = sum(1 for a in axes if a.get("dim") == dim)
     xa, ya = _pick_axis(axes, 0, "below"), _pick_axis(axes, 1, "left")
     for k, a in (("x", xa), ("y", ya)):
         if a:
@@ -604,6 +856,23 @@ def dash_geometry(view, svg_path=None):
                 out[k + "_tick_pos"] = [
                     round((p - fr[0]) / fr[2] if k == "x" else (fr[1] + fr[3] - p) / fr[3], 4)
                     for p in px if isinstance(p, (int, float))]
+    if svg_path is not None:
+        # D56: an axis none of whose labels the picture draws (ysca(off))
+        # has no ticks, labels or title, whatever the view lists.
+        drawn = collections.Counter(_blank(svg_truth.normalise_text(t))
+                                    for t in _SVG_TEXT.findall(_read(svg_path)))
+        for k, a in (("x", xa), ("y", ya)):
+            labs = out[k + "_labels"]
+            if a and labs and not any(drawn[lb] > 0 for lb in labs):
+                out[k + "_ticks"], out[k + "_labels"], out[k + "_tick_pos"] = [], [], []
+                if a.get("title") and not drawn[_blank(a["title"])]:
+                    if k == "x":
+                        xa = dict(xa, title=None)
+                    else:
+                        ya = dict(ya, title=None)
+            else:
+                drawn.subtract(labs)
+
     def texts(g):
         return [t for t in (g.get("titles") or [])
                 if isinstance(t.get("text"), str) and t["text"].strip()]
@@ -641,8 +910,11 @@ def dash_geometry(view, svg_path=None):
                 rest.append(t)
     out["axis_titles"] = [_blank(t) for t in (x_title, y_title) if t and _blank(t)]
     # One title per drawn line (dash keeps a multi-line title as one text).
+    # D56: a title that reads as a number (note("1")) is left out, as
+    # twoway's reader must leave it out among the axis labels.
     out["titles"] = list(dict.fromkeys(
-        ln.strip() for t in own + rest for ln in t["text"].split("\n") if ln.strip()))
+        _plain(ln.strip()) for t in own + rest for ln in t["text"].split("\n")
+        if ln.strip() and _label_value(_plain(ln.strip())) is None))
     legend = [_blank(it["label"]) for it in (f.get("legend") or [])
               if it.get("label") is not None and _blank(it["label"])]
     if svg_path is not None and legend:
@@ -661,6 +933,9 @@ def dash_geometry(view, svg_path=None):
                 kept.append(lb)
         legend = kept
     out["legend"] = legend
+    if svg_path is not None:
+        out["drawn"] = [_blank(svg_truth.normalise_text(t))
+                        for t in _SVG_TEXT.findall(_read(svg_path)) if t.strip()]
     fr = f.get("frame")
     if fr and len(fr) == 4 and fr[2] and fr[3]:
         out["frame_aspect"] = fr[2] / fr[3]
@@ -669,7 +944,12 @@ def dash_geometry(view, svg_path=None):
     for r in f.get("renderers") or []:
         if r.get("visible") is False:
             continue
+        m = r.get("marker")
+        line_only = r.get("glyph") == "Scatter" and m is not None and \
+            all(n in LINE_MARKERS for n in (m if isinstance(m, list) else [m]))
         for key, alpha in (("fill", "fill_alpha"), ("line", "line_alpha")):
+            if key == "fill" and line_only:
+                continue  # D56: a cap (a "dash" marker) is a line; no fill shows
             k, c = _written(r.get(key))
             if k == "field":
                 unread += 1
@@ -679,15 +959,16 @@ def dash_geometry(view, svg_path=None):
                 else:
                     ka, a = _written(r.get(alpha))
                     seen.append(_with_alpha(c, a if ka == "value" else None))
-        if r.get("glyph") == "Scatter" and (r.get("n") or 0) > 0:
-            counts.append(r["n"])
+        if _is_marker(r):
+            n, rx, ry = _drawn(r)
+            counts.append(n)
             m = r.get("marker")
             for name in (m if isinstance(m, list) else [m]):
                 if isinstance(name, str):
                     shapes.add(BOKEH_SHAPES.get(name, name))
-            if r.get("x") and r.get("y"):
-                xs += list(r["x"])
-                ys += list(r["y"])
+            if rx and ry:
+                xs += list(rx)
+                ys += list(ry)
     out["colours"] = {"set": sorted(set(seen)), "unread": unread}
     out["glyphs"] = sum(counts) if counts else None
     out["glyph_counts"] = sorted(counts, reverse=True)
@@ -712,9 +993,9 @@ def _span(vals, given):
     return s or 1.0
 
 
-def _sizes_differ(a, b, rel):
-    return any(not any(abs(x - y) <= rel * x for y in b) for x in a) or \
-        any(not any(abs(x - y) <= rel * y for x in a) for y in b)
+def _sizes_differ(a, b, rel, floor=0.0):
+    return any(not any(abs(x - y) <= max(rel * x, floor) for y in b) for x in a) or \
+        any(not any(abs(x - y) <= max(rel * y, floor) for x in a) for y in b)
 
 
 def _size_checks(tw, da, rules):
@@ -734,9 +1015,26 @@ def _size_checks(tw, da, rules):
         if extra and k == "line_widths":
             # dash's extra outline is outline_extra's, not a line width.
             b = da.get("line_widths_lines") or []
-        if a and b and _sizes_differ(a, b, rules.get("size_rel", 0.05)):
+        # D56: a line width difference under line_abs of the canvas width
+        # (half a pixel on a 720-pixel picture) cannot be seen.
+        floor = rules.get("line_abs", 0.0) if k == "line_widths" else 0.0
+        if a and b and _sizes_differ(a, b, rules.get("size_rel", 0.05), floor):
             out.append(_diff(check, a, b))
     return out
+
+
+def _keys_drawn(tw, da):
+    """D56: True when each side's legend texts are all drawn as text on the
+    other side (dash draws a contour legend on a colour bar, no Legend)."""
+    if "drawn" not in tw or "drawn" not in da:
+        return False
+    for mine, theirs in ((tw.get("legend") or [], da["drawn"]),
+                         (da.get("legend") or [], tw["drawn"])):
+        left = collections.Counter(theirs)
+        left.subtract(mine)
+        if any(n < 0 for n in left.values()):
+            return False
+    return True
 
 
 def compare(tw, da, rules):
@@ -744,7 +1042,18 @@ def compare(tw, da, rules):
     out = []
     for ax in ("x", "y"):
         a, b = tw.get(ax + "_ticks") or [], da.get(ax + "_ticks") or []
-        if a and b:
+        n = tw.get(ax + "_tick_n")
+        la = tw.get(ax + "_labels") or []
+        if la and la == (da.get(ax + "_labels") or []):
+            # D56: the same labels at the ticks show the same values (twoway's
+            # are read from the label text, xlabel(-10 "10") among them).
+            continue
+        if n and len(a) < n and b:
+            # D56: ticks labelled with text give twoway no values: the
+            # number of ticks is compared, the labels by their own check.
+            if len(b) != n:
+                out.append(_diff(ax + "_ticks", n, len(b)))
+        elif a and b:
             span = _span(a, tw.get(ax + "_span"))
             tol = rules["tick_rel"] * span
             if len(a) != len(b) or any(abs(p - q) > tol for p, q in zip(a, b)):
@@ -755,12 +1064,31 @@ def compare(tw, da, rules):
             out.append(_diff(ax + "_scale", a, b))
     for ax in ("x", "y"):
         a, b = tw.get(ax + "_labels") or [], da.get(ax + "_labels") or []
+        if not a and b and "drawn" in tw and not tw.get(ax + "_tick_n") and \
+                not (collections.Counter(b) - collections.Counter(tw["drawn"])):
+            # D56: no tick to read twoway's labels by (xsca(noline) with no
+            # ticks), but every label dash draws is drawn by twoway too.
+            continue
         if a != b:
             # twoway leaving an axis unlabelled is its own check (D48, BY-32).
             out.append(_diff(ax + ("_labels_none" if not a else "_labels"), a, b))
     for k in ("axis_titles", "titles", "legend"):
         if (tw.get(k) or []) != (da.get(k) or []):
+            if k == "legend" and _keys_drawn(tw, da):
+                continue
             out.append(_diff(k, tw.get(k) or [], da.get(k) or []))
+    if "drawn" in tw and "drawn" in da:
+        # D56: text one picture draws and the other does not (marker
+        # labels, added text, a contour legend's values and title); the
+        # texts the label, title and legend checks compare are theirs.
+        known = set()
+        for side in (tw, da):
+            for k in ("x_labels", "y_labels", "axis_titles", "titles", "legend", "axis_texts"):
+                known.update(side.get(k) or [])
+        a = collections.Counter(t for t in tw["drawn"] if t not in known)
+        b = collections.Counter(t for t in da["drawn"] if t not in known)
+        if a != b:
+            out.append(_diff("texts", sorted((a - b).elements()), sorted((b - a).elements())))
     if tw.get("glyphs") and da.get("glyphs"):
         a, b = tw.get("glyph_counts") or [], da.get("glyph_counts") or []
         if len(a) == len(b) and len(a) > 1:
@@ -775,6 +1103,8 @@ def compare(tw, da, rules):
     te, de = tw.get("glyph_extents"), da.get("glyph_extents")
     if te and de:
         for ax in ("x", "y"):
+            if max(tw.get(ax + "_axes") or 1, da.get(ax + "_axes") or 1) > 1:
+                continue  # D56: a second axis's data is in its own units
             span = _span(te[ax], tw.get(ax + "_span"))
             tol = rules["extent_rel"] * span
             if any(abs(p - q) > tol for p, q in zip(te[ax], de[ax])):
@@ -790,8 +1120,21 @@ def compare(tw, da, rules):
     cb = (da.get("colours") or {}).get("set") or []
     if ca and cb:
         left, right = colour_diff(ca, cb, rules.get("colour_tol", 0))
+        # D56: colours one side maps from data (unread) may be any of the
+        # other side's unmatched colours: those are not judged.
+        if (da.get("colours") or {}).get("unread"):
+            left = []
+        if (tw.get("colours") or {}).get("unread"):
+            right = []
         if left or right:
-            out.append(_diff("colours", left, right))
+            d = _diff("colours", left, right)
+            # D56: each colour without a match has one of its hue family
+            # on the other side, a little lighter or darker.
+            sl = rules.get("colour_slight")
+            d["slight"] = bool(sl) and \
+                all(any(slight_colour(c, o, sl) for o in cb) for c in left) and \
+                all(any(slight_colour(c, o, sl) for o in ca) for c in right)
+            out.append(d)
     return out
 
 
@@ -827,9 +1170,52 @@ def explain(diffs, example, ledger, states):
 
 # ---- the verdict ------------------------------------------------------------
 
+#: D56: checks that can make a pair Close, never Differs, by themselves.
+CLOSE_ONLY = ("text_size", "margins", "marker_size", "line_width", "image")
+
+
+def _far(a, b, rel):
+    """True when some size on one side is more than rel (a share of the
+    larger) from every size on the other; a and b are numbers or lists."""
+    a = a if isinstance(a, list) else [a]
+    b = b if isinstance(b, list) else [b]
+    a = [x for x in a if isinstance(x, (int, float)) and x > 0]
+    b = [x for x in b if isinstance(x, (int, float)) and x > 0]
+    if not a or not b:
+        return False
+    return any(not any(abs(x - y) <= rel * max(x, y) for y in b) for x in a) or \
+        any(not any(abs(x - y) <= rel * max(x, y) for x in a) for y in b)
+
+
+def fundamental(d, rules):
+    """D56: True when difference d alone can make a pair Differ: not a
+    Close-only check, not a plot region shape within aspect_close, not
+    colours of one hue family within colour_slight."""
+    c = d["check"]
+    big = rules.get("size_close")
+    if big and c in ("text_size", "marker_size") and _far(d["twoway"], d["dash"], big):
+        return True  # D56: only slight size differences are Close
+    if c in CLOSE_ONLY or c in (rules.get("close_only") or ()):
+        return False
+    if c == "frame_aspect":
+        lim = rules.get("aspect_close")
+        try:
+            return lim is None or abs(d["twoway"] - d["dash"]) > lim
+        except TypeError:
+            return True
+    if c == "colours":
+        return not d.get("slight")
+    return True
+
+
 def verdict(rc_tw, rc_da, first_tw, first_da, diffs, s, rules):
-    """Same, Close or Differs by D-33-05.a; diffs are explain()'s."""
-    unexplained = [d for d in diffs if d.get("gaps4") is None and d["check"] != "image"]
+    """Same, Close or Differs by D-33-05.a and D56; diffs are explain()'s."""
+    # D56: a size ledger row (VF-4: 0.889x) does not explain a size far
+    # beyond slight.
+    far = [d for d in diffs if d["check"] in ("text_size", "marker_size")
+           and rules.get("size_close") and _far(d["twoway"], d["dash"], rules["size_close"])]
+    unexplained = [d for d in diffs if (d.get("gaps4") is None or any(d is f for f in far))
+                   and fundamental(d, rules)]
     explained = [d for d in diffs if d.get("gaps4") is not None]
     if rc_tw != 0 and rc_da != 0:
         return "Same" if not diffs else ("Close" if not unexplained else "Differs")
@@ -837,20 +1223,22 @@ def verdict(rc_tw, rc_da, first_tw, first_da, diffs, s, rules):
         return "Close" if not unexplained else "Differs"
     if unexplained:
         return "Differs"
-    if explained:
-        return "Close"
+    if explained or any(d["check"] != "image" for d in diffs):
+        return "Close"  # D56: Close-only differences make Close
     t_same = rules.get("T_same")
     if t_same is None:
         return "Same"
     return "Same" if s is not None and s >= t_same else "Close"
 
 
-def summary(diffs):
-    """The caption line: "Same", or the differences in Stata terms (A-24)."""
+def summary(diffs, rules=None):
+    """The caption line: "Same", or the differences in Stata terms (A-24),
+    those that can make a pair Differ first (D56)."""
     if not diffs:
         return "Same"
     terms = []
-    for d in diffs:
+    rules = rules or {}
+    for d in sorted(diffs, key=lambda d: not fundamental(d, rules)):
         t = STATA_TERMS[d["check"]]
         if t not in terms:
             terms.append(t)
@@ -996,7 +1384,7 @@ def judge(example, tw, da, run_dir, rules, ledger, states, probe=None):
                checks=sorted({d["check"] for d in diffs}),
                ledger=sorted({re.sub(r"\s*\(.*\)$", "", d["gaps4"]) for d in diffs
                               if d["gaps4"]}),
-               summary=summary(diffs))
+               summary=summary(diffs, rules))
     row["gallery"] = gallery(row)
     return row
 

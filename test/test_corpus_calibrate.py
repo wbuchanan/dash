@@ -60,6 +60,19 @@ class TestThresholds:
         assert calibrate.thresholds([_r(), _r(), _r()])["colour_tol"] == 0
         assert "calibrate: colour_tol 0:" in capsys.readouterr().out
 
+    def test_d56_tiers(self):
+        # D56: the plot region shapes the Close rows show are Close at most;
+        # the Close-only checks and the slight colour rule are recorded.
+        rows = [_r("Close", aspect=-0.0527), _r("Close", aspect=0.1147),
+                _r("Differs", aspect=0.6895)]
+        t = calibrate.thresholds(rows)
+        assert t["aspect_close"] == 0.115
+        assert t["close_only"] == ["line_width", "margins", "marker_size", "text_size"]
+        sl = t["colour_slight"]
+        assert set(sl) == {"hue_deg", "light", "grey_sat"}
+        # mcolor(red) against the scheme's blue is no slight shift.
+        assert not verdict.slight_colour("#1a85ff", "#ff0000", sl)
+
     def test_no_stop_rule(self, capsys):
         rows = [_r(ssim=0.80), _r(ssim=0.81), _r(ssim=0.82),
                 _r("Differs", ssim=0.99, checks=["titles"])]
@@ -96,7 +109,7 @@ class TestPrepare:
 
     def test_write_rules_and_main(self, tmp_path, monkeypatch, capsys):
         seen = []
-        monkeypatch.setattr(calibrate, "_measure", lambda run, table, rules, probe: (
+        monkeypatch.setattr(calibrate, "_measure", lambda run, table, rules, probe, *a: (
             seen.append(rules) or [dict(_r(ssim=0.9), id=t["case"]) for t in table]))
         monkeypatch.setattr(verdict, "_open_probe", lambda run: (_ for _ in ()).throw(
             RuntimeError("no Chrome")))
@@ -119,7 +132,8 @@ class TestTheFixture:
         with open(_FIXTURE, encoding="utf-8") as fh:
             d = json.load(fh)
         for k in ("_meta", "T_same", "T_close", "tick_rel", "extent_rel", "aspect_abs",
-                  "colour_tol", "text_rel", "inset_abs", "size_rel", "calibration"):
+                  "colour_tol", "text_rel", "inset_abs", "size_rel", "calibration",
+                  "aspect_close", "close_only", "colour_slight", "line_abs", "size_close"):
             assert k in d, k
         assert d["T_same"] is None or 0 < d["T_same"] <= 1
         assert d["aspect_abs"] <= 0.05
@@ -131,3 +145,5 @@ class TestTheFixture:
         # unmutated pair Close (D49), so T_same is recorded null.
         assert sorted({r["label"] for r in table}) == ["Close", "Differs"]
         assert d["T_same"] is None
+        # D56: every calibration pair is judged as its label says.
+        assert [c["id"] for c in d["calibration"] if c["verdict"] != c["label"]] == []

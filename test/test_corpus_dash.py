@@ -370,8 +370,9 @@ def _two_scatters():
 
 _ROOT_SVG = re.compile(r"<svg\b[^>]*>")
 # D49: a Scatter's marker size joins the dump ("size", null for other glyphs).
+# D56: a Scatter's drawn points ("drawn": their count and extents) join it.
 _RENDERER_KEYS = {"glyph", "n", "x", "y", "marker", "fill", "line", "line_width",
-                  "fill_alpha", "line_alpha", "visible", "size"}
+                  "fill_alpha", "line_alpha", "visible", "size", "drawn"}
 
 
 @pytest.mark.release
@@ -405,6 +406,17 @@ class TestInChrome:
         assert all(r["visible"] is True for r in rs)
         sizes = [r["size"] for r in rs if r["glyph"] == "Scatter"]
         assert sizes and all(isinstance(z, dict) and z["value"] > 0 for z in sizes), sizes
+
+    def test_a_scatter_counts_the_points_it_draws(self, tmp_path):
+        # D56: rep78 is missing for five cars; the source holds 74 rows, the
+        # scatter draws 69 markers.
+        import test_default_axes as tda
+        page = _page(tmp_path, tda._spec([tda.P("scatter", "rep78", "weight")]))
+        with dash_run.CorpusProbe(page, timeout=120) as p:
+            got = dash_run.export_page(p, page, 720, 432)
+        sc = [r for r in got["view"]["figures"][0]["renderers"] if r["glyph"] == "Scatter"]
+        assert [r["drawn"]["n"] for r in sc] == [69], sc
+        assert sc[0]["drawn"]["y"] == [1, 5]
 
     def test_each_axis_has_its_scale_and_tick_pixels(self, tmp_path):
         # D46: the dump names each axis's scale and where its ticks are drawn.

@@ -376,9 +376,24 @@ DUMP_JS = r"""() => {
       } else if (m && v.glyph !== undefined && m.data_source !== undefined) {
         const gm = safe(() => v.glyph.model);
         const src = safe(() => m.data_source);
+        // D56: the points a Scatter draws -- the rows its view keeps whose
+        // x and y are both numbers -- and their extents.
+        const drawn = safe(() => {
+          if (gm.type !== "Scatter") return null;
+          const xs = column(src, gm.x), ys = column(src, gm.y);
+          if (!xs || !ys) return null;
+          const keep = safe(() => Array.from(m.view.indices)) ||
+            Array.from({length: xs.length}, (_, i) => i);
+          const ok = keep.filter((i) => typeof xs[i] === "number" && isFinite(xs[i]) &&
+                                        typeof ys[i] === "number" && isFinite(ys[i]));
+          const ext = (a) => ok.length ? [Math.min(...ok.map((i) => a[i])),
+                                          Math.max(...ok.map((i) => a[i]))] : null;
+          return {n: ok.length, x: ext(xs), y: ext(ys)};
+        });
         renderers.push({
           glyph: safe(() => gm.type),
           n: safe(() => src.get_length()),
+          drawn: drawn,
           x: safe(() => extent(src, gm, gm.x !== undefined ? ["x"] : ["left", "right"])),
           y: safe(() => extent(src, gm, gm.y !== undefined ? ["y"] : ["top", "bottom"])),
           marker: safe(() => markerOf(gm, src)),
