@@ -91,7 +91,9 @@ dash scatter mpg weight, by(foreign)   ///
     name(facets)
 
 dash scatter mpg weight,               ///
-    colorvar(price) colpalette(viridis) colorlevels(8)   ///
+    colorvar(price) colorlevels(8)                       ///
+    colorlist("68 1 84" "70 50 126" "54 92 141" "39 127 142"   ///
+              "31 161 135" "74 193 109" "160 218 57" "253 231 37")   ///
     title("Coloured by a third variable")                ///
     name(cvar)
 

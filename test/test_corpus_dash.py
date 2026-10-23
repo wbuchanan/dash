@@ -67,14 +67,67 @@ class TestWithSaving:
             ('dash scatter y x if s == "a, b"', 'dash scatter y x if s == "a, b", ' + s),
             ("dash scatter y x if s == `\"a, b\"'", "dash scatter y x if s == `\"a, b\"', " + s),
             ("dash scatter y x  ", "dash scatter y x, " + s),
-            # || plots: only the last plot's comma counts; a trailing || goes.
+            # || plots: only the last plot's comma counts.  Flipped (D57): a
+            # trailing || stays, saving() follows it as twoway's grammar takes it.
             ("dash line a y, || line b y || lfit d y", "dash line a y, || line b y || lfit d y, "
              + s),
-            ("dash spike c d || bar v d, yaxis(2) ||", "dash spike c d || bar v d, yaxis(2) " + s),
+            ("dash spike c d || bar v d, yaxis(2) ||",
+             "dash spike c d || bar v d, yaxis(2) || , " + s),
             ('dash scatter y x, title("a || b")', 'dash scatter y x, title("a || b") ' + s),
         ]
         for cmd, want in cases:
             assert dash_run.with_saving(cmd, p) == want, cmd
+
+
+class TestCommandIdentity:
+    # D57: the runners pass each command through unchanged; dash's gets only
+    # saving(), where twoway's grammar puts a graph option.  A command ending
+    # in || keeps it: twoway and dash both take `... || , saving(...)`
+    # (measured 23oct2026).
+
+    _PAIRS = (("twoway scatter mpg weight, ms(oh) ||", "dash scatter mpg weight, ms(oh) ||"),
+              ("scatter open close, msize(*.25) ||", "dash scatter open close, msize(*.25) ||"),
+              ('twoway line le year, title("a, b")', 'dash line le year, title("a, b")'),
+              ("twoway (scatter mpg weight) (lfit mpg weight)",
+               "dash (scatter mpg weight) (lfit mpg weight)"))
+
+    def _cmds(self, tmp_path, ex):
+        tw = [ln[len("capture noisily "):] for ln in
+              twoway_run.do_text(ex, str(tmp_path), str(tmp_path)).split("\n")
+              if ln.startswith("capture noisily ") and "graph export" not in ln
+              and not ln.startswith("capture noisily {")]
+        da = [ln[len("capture noisily "):] for ln in
+              dash_run.do_text(ex, str(tmp_path), str(tmp_path), _ROOT).split("\n")
+              if ln.startswith("capture noisily ") and not ln.startswith("capture noisily {")]
+        return tw, da
+
+    def test_the_runners_change_nothing_but_saving(self, tmp_path):
+        ex = [dict(_ex("e%d" % k, cmd=d), cmd=t) for k, (t, d) in enumerate(self._PAIRS)]
+        tw, da = self._cmds(tmp_path, ex)
+        assert len(tw) == len(da) == len(self._PAIRS)
+        for t, d in zip(tw, da):
+            d = re.sub(r'\s*,?\s*saving\("[^"]*", replace\)$', "", d)
+            assert re.sub(r"^(?:graph twoway|twoway)\s+", "", t) == d[len("dash "):], (t, d)
+        assert dash_run.with_saving("dash scatter mpg weight, ms(oh) ||", "p") == \
+            'dash scatter mpg weight, ms(oh) || , saving("p", replace)'
+
+    def test_a_session_only_python(self, tmp_path, monkeypatch):
+        ex = [_ex("e1")]
+        monkeypatch.delenv("DASH_CORPUS_PYTHON_EXEC", raising=False)
+        assert "python_exec" not in dash_run.do_text(ex, str(tmp_path), str(tmp_path), _ROOT)
+        monkeypatch.setenv("DASH_CORPUS_PYTHON_EXEC", "/opt/anaconda3/bin/python3")
+        text = dash_run.do_text(ex, str(tmp_path), str(tmp_path), _ROOT)
+        assert 'set python_exec "/opt/anaconda3/bin/python3"' in text.split("\n")
+        assert "permanently" not in text
+
+    def test_a_mismatched_pair_is_refused(self, tmp_path):
+        bad = [dict(_ex("e1", cmd="dash scatter open close"), cmd="twoway scatter open close ||")]
+        with pytest.raises(ValueError):
+            twoway_run.do_text(bad, str(tmp_path), str(tmp_path))
+        with pytest.raises(ValueError):
+            dash_run.do_text(bad, str(tmp_path), str(tmp_path), _ROOT)
+        assert twoway_run.invalid_pairs(bad) == {
+            "e1": "invalid pair: the commands differ beyond twoway/dash (D57)"}
 
 
 class TestDoText:

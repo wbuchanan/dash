@@ -1360,6 +1360,9 @@ def judge(example, tw, da, run_dir, rules, ledger, states, probe=None):
                colours={"twoway": [], "dash": [], "unread": 0}, gallery=False)
     row["rc_pair"] = [row["rc_twoway"], row["rc_dash"]]
     skip = tw.get("skip") or da.get("skip")
+    from scripts.corpus import twoway_run
+    if example.get("cmd") and twoway_run.invalid_pairs([dict(example, id=example["id"])]):
+        skip = twoway_run.INVALID  # D57: no comparison
     if not tw:
         skip = skip or "no twoway record"
     elif not da:

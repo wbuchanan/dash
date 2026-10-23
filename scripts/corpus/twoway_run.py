@@ -44,8 +44,23 @@ def _row(i, **kw):
     return r
 
 
+INVALID = "invalid pair: the commands differ beyond twoway/dash (D57)"
+
+
+def invalid_pairs(examples):
+    """D57: {id: reason} of every example whose twoway and dash commands differ
+    by more than the leading word; neither runner runs them."""
+    from scripts.corpus import extract
+    return {e["id"]: INVALID for e in examples
+            if extract.twin_mismatch(e["cmd"], e.get("dash_cmd") or "")}
+
+
 def do_text(examples, out_dir, cache):
-    """The do-file that runs one chunk of examples between ## markers."""
+    """The do-file that runs one chunk of examples between ## markers; refuses
+    (ValueError) an example whose pair differs beyond twoway/dash (D57)."""
+    bad = invalid_pairs(examples)
+    if bad:
+        raise ValueError("%s: %s" % (INVALID, ", ".join(sorted(bad))))
     out = ["version 19", "set more off", "set linesize 255",
            'display "##VERSION " c(stata_version)']
     for e in examples:
@@ -236,6 +251,9 @@ def run(run_dir, jobs=3, timeout=1800, only=None):
     for name in miss:
         print("skip: dataset %s not cached" % name)
     rows = skip_rows(examples, cache)
+    bad = invalid_pairs(examples)
+    rows += [_row(i, skip=why) for i, why in sorted(bad.items())
+             if i not in {r["id"] for r in rows}]
     aside = {r["id"] for r in rows}
     todo = chunks([e for e in examples if e["id"] not in aside])
     pending = []

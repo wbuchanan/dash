@@ -1042,7 +1042,7 @@ class TestJudge:
             _rdr(n=52, x=(1760, 4840), y=(12, 41)),
             _rdr(n=22, fill="#d41159", line="#d41159", x=(1760, 4840), y=(12, 41))])))
         ex = {"id": "e1", "plottype": "scatter", "source": "help",
-              "cmd": "twoway scatter mpg weight"}
+              "cmd": "twoway scatter mpg weight", "dash_cmd": "dash scatter mpg weight"}
         tw = {"id": "e1", "rc": 0, "first_line": None, "svg": "twoway/e1.svg",
               "width_in": 0.5, "height_in": 0.25, "skip": None}
         da = {"id": "e1", "rc": 0, "first_line": None, "svg": "dash/e1.svg",
@@ -1085,6 +1085,16 @@ class TestJudge:
                               "note": "n"}], {"GW-6": "open"}, probe=_StubProbe(48, 24))
         assert row["verdict"] == "Close" and row["ledger"] == ["GW-6"]
         assert row["summary"] == "plot region shape"
+
+    def test_a_mismatched_pair_is_invalid(self, tmp_path):
+        # D57: a pair whose commands differ beyond twoway/dash is no
+        # comparison: no verdict.
+        ex, tw, da = self._run(tmp_path)
+        ex = dict(ex, dash_cmd="dash scatter mpg weight, colpalette(viridis)")
+        row = verdict.judge(ex, tw, da, str(tmp_path), _RULES, [], {},
+                            probe=_StubProbe(48, 24))
+        assert row["verdict"] is None
+        assert row["skip"] == "invalid pair: the commands differ beyond twoway/dash (D57)"
 
     def test_a_refusal_pair(self, tmp_path):
         ex, tw, da = self._run(tmp_path)

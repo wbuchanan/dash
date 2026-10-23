@@ -91,25 +91,34 @@ def _top_level(cmd):
 
 def with_saving(cmd, path):
     """cmd with saving("<path>", replace) appended as its last option
-    (D-33-04.a): after the last plot's top-level comma, or after a new one;
-    a trailing || is dropped first (twoway reads the options after the last
-    || plot as the whole graph's)."""
+    (D-33-04.a): after the last plot's top-level comma, or after a new one.
+    D57: nothing else changes; a command ending in || gets `|| , saving(...)`,
+    which twoway and dash both take (measured 23oct2026)."""
     cmd = cmd.rstrip()
-    while cmd.endswith("||"):
-        cmd = cmd[:-2].rstrip()
+    opt = 'saving("%s", replace)' % path
+    if cmd.endswith("||"):
+        return "%s , %s" % (cmd, opt)
     last, comma = 0, False
     for i, c in _top_level(cmd):
         if c == "|" and cmd.startswith("||", i):
             last, comma = i + 2, False
         elif c == "," and i >= last:
             comma = True
-    opt = 'saving("%s", replace)' % path
     return "%s %s" % (cmd, opt) if comma else "%s, %s" % (cmd, opt)
 
 
 def do_text(examples, out_dir, cache, repo):
-    """The do-file that runs one chunk of dash commands between ## markers."""
-    out = ["version 19", 'adopath ++ "%s/"' % repo.rstrip("/"), "global dash_nobrowser 1",
+    """The do-file that runs one chunk of dash commands between ## markers;
+    refuses (ValueError) an example whose pair differs beyond twoway/dash (D57)."""
+    bad = twoway_run.invalid_pairs(examples)
+    if bad:
+        raise ValueError("%s: %s" % (twoway_run.INVALID, ", ".join(sorted(bad))))
+    out = ["version 19"]
+    # A session-only python_exec when the console's own setting is missing
+    # (DASH_CORPUS_PYTHON_EXEC); never `permanently' (no persistent preference).
+    if os.environ.get("DASH_CORPUS_PYTHON_EXEC"):
+        out.append('set python_exec "%s"' % os.environ["DASH_CORPUS_PYTHON_EXEC"])
+    out += ['adopath ++ "%s/"' % repo.rstrip("/"), "global dash_nobrowser 1",
            "set more off", "set linesize 255", 'display "##VERSION " c(stata_version)']
     for e in examples:
         i = e["id"]
@@ -181,6 +190,8 @@ def run_stata(run_dir, jobs=3, timeout=1800, only=None):
     for name in twoway_run.missing_datasets(examples, cache):
         print("skip: dataset %s not cached" % name)
     rows = [_row(r["id"], skip=r["skip"]) for r in twoway_run.skip_rows(examples, cache)]
+    rows += [_row(i, skip=why) for i, why in sorted(twoway_run.invalid_pairs(examples).items())
+             if i not in {r["id"] for r in rows}]
     aside = {r["id"] for r in rows}
     left = [e for e in examples if e["id"] not in aside]
     unrun = {e["id"] for e in left if e["id"] not in tw or tw[e["id"]].get("skip")}

@@ -278,6 +278,28 @@ def plot_type(cmd):
     return _expand_plottype(w)
 
 
+def _masked(s):
+    """s with every quoted character blanked (option words are read outside quotes)."""
+    sc = _scan(s)
+    return "".join(" " if sc[i][1] else ch for i, ch in enumerate(s))
+
+
+#: D57: the reason an examples/ line with a dash-only option is dropped.
+DASH_ONLY = "uses an option twoway does not have"
+_DASH_ONLY_RE = re.compile(r"(?<![\w.])(?:hover|colpalette)\s*\(|(?<![\w.])table(?![\w(])")
+
+
+def twin_mismatch(cmd, dash_cmd):
+    """D57: None when dash_cmd is cmd with its twoway prefix (or none) replaced by
+    the word dash, else a one-line description of the difference."""
+    rest, _ = _strip_prefix(cmd)
+    if not dash_cmd.startswith("dash ") and dash_cmd != "dash":
+        return "the dash command does not start with the word dash"
+    if " ".join(rest.split()) != " ".join(dash_cmd[5:].split()):
+        return "twoway runs %r, dash runs %r" % (rest.strip(), dash_cmd[5:].strip())
+    return None
+
+
 def to_dash(cmd):
     """The dash command: the twoway prefix replaced by dash (never dash twoway)."""
     rest, prefixed = _strip_prefix(cmd)
@@ -928,10 +950,13 @@ def example_commands(text, fname):
             rest = ln[5:].strip()
             if not (rest.startswith("(") or plot_type("twoway " + rest)):
                 continue
-            twin, _ = _remove_words("twoway " + rest, paren_words=("hover", "colpalette"),
-                                    bare_words=("table",), top_only=False)
-            out.append({"dash_cmd": ln, "cmd": _tidy(twin), "setup": list(setup),
-                        "file": fname, "line": n})
+            # D57: the twin is the line with dash replaced by twoway, never
+            # edited; a line using a dash-only option is no comparison.
+            e = {"dash_cmd": ln, "cmd": "twoway " + rest, "setup": list(setup),
+                 "file": fname, "line": n}
+            if _DASH_ONLY_RE.search(_masked(rest)):
+                e["dropped"] = DASH_ONLY
+            out.append(e)
             continue
         if setup and _is_setup(ln):
             setup.append(ln)
@@ -1145,8 +1170,11 @@ def _example_records(repo):
         relf = _rel(f, repo)
         stem = os.path.splitext(os.path.basename(f))[0]
         for e in example_commands(_read(f), relf):
-            recs.append(_record("ex", stem, e["setup"], e["cmd"], dash_cmd=e["dash_cmd"],
-                                file=relf, line=e["line"]))
+            r = _record("ex", stem, e["setup"], e["cmd"], dash_cmd=e["dash_cmd"],
+                        file=relf, line=e["line"])
+            if e.get("dropped"):
+                r["dropped"] = e["dropped"]
+            recs.append(r)
     return recs
 
 
@@ -1211,6 +1239,9 @@ def extract(stata_dir, repo, out, pdftotext=None):
     for r in raw:
         where = "%s:%s" % (r["file"], r["line"])
         cmd = r["cmd"]
+        if r.get("dropped"):
+            dropped.append((r["src"], where, r["dropped"], cmd))
+            continue
         if is_schematic(cmd):
             dropped.append((r["src"], where, "schematic", cmd))
             continue

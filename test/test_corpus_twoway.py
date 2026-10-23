@@ -16,13 +16,15 @@ import sys
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 
-from scripts.corpus import twoway_run  # noqa: E402
+from scripts.corpus import extract, twoway_run  # noqa: E402
 
 _SMOKE = os.path.join(_ROOT, "test", "fixtures", "svg_truth_smoke.svg")
 
 
 def _ex(i, cmd="twoway scatter mpg weight", setup=("sysuse auto, clear",), plottype="scatter"):
-    return {"id": i, "cmd": cmd, "setup": list(setup), "plottype": plottype}
+    # D57: every example carries its dash twin (extract.py writes both).
+    return {"id": i, "cmd": cmd, "dash_cmd": extract.to_dash(cmd), "setup": list(setup),
+            "plottype": plottype}
 
 
 def _write_examples(run, examples):

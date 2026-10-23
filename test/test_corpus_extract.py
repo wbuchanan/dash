@@ -244,10 +244,31 @@ class TestExamples:
             "colpalette(tableau) table name(pt02)",
             "dash tsline close"]
         assert ex[0]["cmd"] == 'twoway scatter mpg weight, title("scatter") name(pt01)'
-        assert ex[1]["cmd"] == "twoway (scatter mpg weight) (lfit mpg weight), name(pt02)"
+        # Flipped (D57): a twin is never edited; a line with an option twoway
+        # does not have (hover(), colpalette(), table) is no comparison.
+        assert ex[1]["cmd"] == ("twoway (scatter mpg weight, hover(make)) (lfit mpg weight), "
+                                "colpalette(tableau) table name(pt02)")
+        assert [e.get("dropped") for e in ex] == [
+            None, "uses an option twoway does not have", None]
         assert ex[0]["setup"] == ["sysuse auto, clear", "generate double mpg_lo = mpg - 3"]
         assert ex[2]["setup"] == ["sysuse sp500, clear", "tsset date"]
         assert ex[1]["line"] == 5 and ex[0]["file"] == "examples/x.do"
+
+
+class TestTwinIdentity:
+    # D57: a pair's two commands differ only in the word twoway (or its
+    # absence) against dash.
+
+    def test_twin_mismatch(self):
+        m = extract.twin_mismatch
+        assert m("twoway scatter mpg weight, ms(oh) ||", "dash scatter mpg weight, ms(oh) ||") \
+            is None
+        assert m("scatter mpg weight", "dash scatter mpg weight") is None
+        assert m("graph twoway line le year", "dash line le year") is None
+        # The two defects of the 23oct2026 run.
+        assert m("twoway scatter mpg weight, colorvar(price) colorlevels(8)",
+                 "dash scatter mpg weight, colorvar(price) colpalette(viridis) colorlevels(8)")
+        assert m("twoway scatter open close ||", "dash scatter open close")
 
 
 # ------------------------------------------------------------ audit probes
