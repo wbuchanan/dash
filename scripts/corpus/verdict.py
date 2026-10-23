@@ -380,6 +380,23 @@ def _axis(path, doc, axis):
         return {"ticks": [], "labels": [], "fit": None, "label_objs": [], "near": None,
                 "side": None, "scale": None, "pos": [], "n": 0}
     lo, hi = (pr["left"], pr["right"]) if axis == "x" else (pr["top"], pr["bottom"])
+    if len(r["labels"]) == len(r["tick_px"]) and \
+            sum(o is not None for o in r["label_objs"]) < len(r["tick_px"]):
+        # D56: minor ticks (xmtick(##10)) lie between the labelled ones; the
+        # reader gives each tick its nearest label in turn, so a minor tick
+        # can take a major tick's label.  Give each label its nearest tick.
+        objs = [o for o in r["label_objs"] if o is not None]
+
+        def at(o):
+            return o["x"] if axis == "x" else o["y"] - 0.35 * (o["size"] or 0)
+        mine = {}
+        for o in objs:
+            k = min(range(len(r["tick_px"])), key=lambda k: abs(r["tick_px"][k] - at(o)))
+            if k not in mine or abs(r["tick_px"][k] - at(o)) < abs(r["tick_px"][k] - at(mine[k])):
+                mine[k] = o
+        r = dict(r, label_objs=[mine.get(k) for k in range(len(r["tick_px"]))],
+                 labels=[mine[k]["text"] if k in mine else None
+                         for k in range(len(r["tick_px"]))])
     keep = [k for k, px in enumerate(r["tick_px"]) if lo - 2.5 <= px <= hi + 2.5] \
         if len(r["labels"]) == len(r["tick_px"]) else list(range(len(r["labels"])))
     if axis == "y":

@@ -339,6 +339,16 @@ class TestTicksWithTextLabels:
         g = verdict.twoway_geometry(str(p))
         assert g["x_tick_n"] == 5
 
+    def test_labels_pair_with_their_own_ticks(self, tmp_path):
+        # help-axis_label_options xmtick(##10): a minor tick 111 px left of
+        # the 2,000 label took that label, so the x fit and every marker's
+        # x position moved by a minor step.
+        minor = "".join('<line x1="%s" y1="2766.66" x2="%s" y2="2790.00" style="stroke:'
+                        '#000000;stroke-width:4"/>' % (x, x) for x in ("750.04", "972.90"))
+        g = verdict.twoway_geometry(_smoke_plus(tmp_path, minor))
+        assert g["x_tick_pos"] == [0.0902, 0.3872, 0.6841, 0.981]
+        assert abs(g["glyph_extents"]["x"][0] - 1760) < 5
+
     def test_same_labels_same_ticks(self):
         # help-twoway_bar: xlabel(-10 "10" -5 "5" ...) shows the same labels
         # as dash; the values twoway's reader parses from them are not the

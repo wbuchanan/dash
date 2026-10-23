@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "dbcea32da58ca2d4155b13e3edf9c98c556ecf14",
-    "extracted": "23 Oct 2026 05:53:41",
+    "dash_commit": "5cb00a7aacbe1b6a68e84e97fd86633bc9737d07",
+    "extracted": "23 Oct 2026 06:12:13",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -102,7 +102,6 @@
     "help-axis_label_options-045ec53a": {
       "checks": [
         "frame_aspect",
-        "glyph_extents",
         "margins",
         "marker_size",
         "text_size",
@@ -142,7 +141,7 @@
       },
       "size_matched": true,
       "ssim": 0.8104,
-      "summary": "y-axis ticks, y-axis labels, marker positions, text size, margins, marker size, plot region shape",
+      "summary": "y-axis ticks, y-axis labels, text size, margins, marker size, plot region shape",
       "verdict": "Differs"
     },
     "help-axis_label_options-21f6f276": {
