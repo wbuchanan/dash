@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import argparse
 import json
 
-from scripts.corpus import twoway_run, dash_run, verdict, datasets
+from scripts.corpus import twoway_run, dash_run, verdict, datasets, extract
 from scripts.corpus import ledger as corpus_ledger
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -171,7 +171,11 @@ def records_from_run(run_dir, ids, fixture=None):
     out, need = {}, []
     for i in ids:
         if i in frozen:
-            out[i] = frozen[i]["record"]
+            # D58: a record frozen before D58 is read twoway-first.
+            rec = dict(frozen[i]["record"])
+            rec["cmd"] = extract.twoway_form(rec["cmd"])
+            rec["dash_cmd"] = extract.to_dash(rec["cmd"])
+            out[i] = rec
         else:
             need.append(i)
     if need:

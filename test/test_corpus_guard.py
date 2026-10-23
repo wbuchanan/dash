@@ -125,10 +125,13 @@ class TestRecordsFromRun:
         _jsonl(run / "examples.jsonl", [_rec("a", cmd="scatter run x"), _rec("b")])
         fixture = {"examples": {"a": {"record": _rec("a", cmd="scatter frozen x")}}}
         got = guard.records_from_run(str(run), ["a", "b"], fixture)
-        assert got["a"]["cmd"] == "scatter frozen x"
+        # Flipped (D58): a frozen record from before D58 is read twoway-first,
+        # its twin dash <rest>.
+        assert got["a"]["cmd"] == "twoway scatter frozen x"
+        assert got["a"]["dash_cmd"] == "dash scatter frozen x"
         assert got["b"]["id"] == "b"
         got = guard.records_from_run(None, ["a"], fixture)
-        assert got["a"]["cmd"] == "scatter frozen x"
+        assert got["a"]["cmd"] == "twoway scatter frozen x"
         got = guard.records_from_run(str(tmp_path / "absent"), ["a"], fixture)
         assert list(got) == ["a"]
 

@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "5cb00a7aacbe1b6a68e84e97fd86633bc9737d07",
-    "extracted": "23 Oct 2026 06:12:13",
+    "dash_commit": "e8cf4e473ab5fc1cb09722e1f7ff3104bc35bc86",
+    "extracted": "23 Oct 2026 12:57:54",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -117,7 +117,7 @@
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "scatter mpg weight, ymlabel(##5) xmtick(##10)",
+        "cmd": "twoway scatter mpg weight, ymlabel(##5) xmtick(##10)",
         "dash_cmd": "dash scatter mpg weight, ymlabel(##5) xmtick(##10)",
         "datasets": [
           "auto"
@@ -160,7 +160,7 @@
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogrid)",
+        "cmd": "twoway scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogrid)",
         "dash_cmd": "dash scatter mpg weight, by(foreign) ylabel(,nogrid) xlabel(,nogrid)",
         "datasets": [
           "auto"
@@ -229,7 +229,7 @@
       },
       "size_matched": false,
       "ssim": 0.6357,
-      "summary": "text, plot region shape, text size, margins",
+      "summary": "text, text size, margins, plot region shape",
       "verdict": "Differs"
     },
     "help-graph_intro-724684a2": {
@@ -380,7 +380,7 @@
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "scatter mpg weight || lfit mpg weight ||, legend(order(2)) by(foreign, total legend(pos(4)))",
+        "cmd": "twoway scatter mpg weight || lfit mpg weight ||, legend(order(2)) by(foreign, total legend(pos(4)))",
         "dash_cmd": "dash scatter mpg weight || lfit mpg weight ||, legend(order(2)) by(foreign, total legend(pos(4)))",
         "datasets": [
           "auto"
@@ -406,23 +406,25 @@
       },
       "size_matched": false,
       "ssim": 0.7893,
-      "summary": "legend keys, plot region shape, text size, margins, marker size",
+      "summary": "legend keys, text size, margins, marker size, plot region shape",
       "verdict": "Differs"
     },
     "help-tsline-16ade7ec": {
       "checks": [
         "frame_aspect",
-        "margins"
+        "margins",
+        "text_size"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6"
+        "GW-6",
+        "VF-4"
       ],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "tsline ar ma",
+        "cmd": "twoway tsline ar ma",
         "dash_cmd": "dash tsline ar ma",
         "datasets": [
           "tsline1"
@@ -449,8 +451,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6073,
-      "summary": "plot region shape, margins",
+      "ssim": 0.6926,
+      "summary": "text size, margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_area-17337f6e": {
@@ -493,7 +495,7 @@
       },
       "size_matched": true,
       "ssim": 0.5611,
-      "summary": "plot region shape, text size, margins, line width",
+      "summary": "text size, margins, line width, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_bar-129aaf18": {
@@ -537,7 +539,7 @@
       },
       "size_matched": true,
       "ssim": 0.6052,
-      "summary": "plot region shape, text size, margins",
+      "summary": "text size, margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_dot-11245001": {
@@ -644,7 +646,7 @@
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "tw histogram lexp, color(*.5) || kdensity lexp ||, by(region)",
+        "cmd": "twoway histogram lexp, color(*.5) || kdensity lexp ||, by(region)",
         "dash_cmd": "dash histogram lexp, color(*.5) || kdensity lexp ||, by(region)",
         "datasets": [
           "lifeexp"
@@ -670,7 +672,7 @@
       },
       "size_matched": false,
       "ssim": 0.7933,
-      "summary": "x-axis labels, plot region shape, text size, margins",
+      "summary": "x-axis labels, text size, margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_lfitci-0dd9d812": {
@@ -730,7 +732,7 @@
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
-        "cmd": "tw scatter mpg weight || lfit mpg weight || lowess mpg weight ||, by(foreign)",
+        "cmd": "twoway scatter mpg weight || lfit mpg weight || lowess mpg weight ||, by(foreign)",
         "dash_cmd": "dash scatter mpg weight || lfit mpg weight || lowess mpg weight ||, by(foreign)",
         "datasets": [
           "auto"
@@ -797,7 +799,7 @@
       },
       "size_matched": true,
       "ssim": 0.7922,
-      "summary": "plot region shape, text size, margins, marker size",
+      "summary": "text size, margins, marker size, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_rarea-2d21b873": {
