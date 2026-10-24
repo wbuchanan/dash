@@ -12,7 +12,11 @@
 *! storage types of every serset it draws.  For the probes the renderer
 *! tests read (flag X) it also records the spec and data file dash writes
 *! for the same command (_dash_prepare_spec), so the pytest suite draws
-*! exactly what dash exports.
+*! exactly what dash exports.  Flag T (WP-34 TR-4) records twoway's x axis:
+*! every major tick it places (.Graph.xaxis1.major.dlg_tickpos) and the
+*! plot region's x range (.Graph.plotregion1.xscale.curmin/curmax).  A
+*! probe's sixth argument is a command run on its data before both twoway
+*! and dash (replace gnp96 = . in 1, sort gnp96, tsset, clear).
 *!
 *! Output: test/fixtures/ts_operator_truth.json
 *!
@@ -98,6 +102,7 @@ if _rc {
 //   nt   sp500 with t and no tsset
 //   xt   2 panels x 10 periods, xtset id tt
 //   au   auto, t = _n, tsset t
+//   gn   gnp96, tsset date (quarterly, %tq)
 // ---------------------------------------------------------------------------
 capture program drop _zt_data
 program define _zt_data
@@ -138,11 +143,34 @@ program define _zt_data
         quietly gen t = _n
         quietly tsset t
     }
+    else if "`ds'" == "gn" {
+        sysuse gnp96, clear
+        quietly tsset date
+    }
+end
+
+// twoway's x axis (flag T): every major tick, then the plot region's range,
+// one line "<ticks>|<curmin>|<curmax>" (the reader of
+// scripts/extract_date_axes_truth.do's _dt_axis).
+capture program drop _zt_axis
+program _zt_axis
+    args id
+    local a ".Graph.xaxis1"
+    local s ".Graph.plotregion1.xscale"
+    local n "`.`a'.major.dlg_tickpos.arrnels'"
+    if "`n'" == "" | "`n'" == "." local n 0
+    local v ""
+    forvalues i = 1/`n' {
+        local v "`v' `.`a'.major.dlg_tickpos[`i']'"
+    }
+    local v = strtrim("`v'")
+    mata: _zt_put(st_global("ZT_WORK") + "/" + st_local("id") + "_xt.txt", st_local("v") + "|" + "`.`s'.curmin'" + "|" + "`.`s'.curmax'")
 end
 
 // ---------------------------------------------------------------------------
 // Registration: id, data set, body, options, flags (S: the SVG's keys; X:
-// the serset values and dash's export)
+// the serset values and dash's export; T: twoway's x ticks and range),
+// and a command run on the data first (optional)
 // ---------------------------------------------------------------------------
 global ZT_N = 0
 capture program drop zt
@@ -153,6 +181,7 @@ program define zt
     global ZT_BODY_${ZT_N} `"`3'"'
     global ZT_OPTS_${ZT_N} `"`4'"'
     global ZT_FL_${ZT_N}   `"`5'"'
+    global ZT_PRE_${ZT_N}  `"`6'"'
 end
 
 // Accepted types (E2)
@@ -234,6 +263,30 @@ foreach p in pcspike pcarrow pcbarrow pcscatter pccapsym {
 zt O28 sp "tsline D.close" "sort" ""
 zt O29 sp "tsrline L.low L.high" "sort" ""
 zt Y01 sp "line D.close t" "sort" ""
+// A date axis with a missing y at an end row (WP-34 TR-4; research S
+// section 4, 20oct2026): gnp96 tsset date, and sp500 tsset date
+zt N01 gn "line gnp96 date" "" "TX"
+zt N02 gn "line D.gnp96 date" "" "TX"
+zt N03 gn "area d.gnp96 date" "" "TX"
+zt N04 gn "line L.gnp96 date" "" "TX"
+zt N05 gn "line L.gnp96 gnp96" "" "TX"
+zt N06 gn "line gnp96 date" "" "TX" "replace gnp96 = . in 1"
+zt N07 gn "line gnp96 date" "" "TX" "replace gnp96 = . in L"
+zt N08 gn "area gnp96 date" "" "TX" "replace gnp96 = . in 1"
+zt N09 gn "scatter D.gnp96 date" "" "TX"
+zt N10 gn "line D.gnp96 L.gnp96" "" "TX"
+zt N11 gn "tsline D.gnp96" "" "TX"
+zt N12 gn "line D.gnp96 date" "" "" "sort gnp96"
+zt N13 gn "line D.gnp96 date" "" "" "tsset, clear"
+zt N14 gn "line gnp96 date" "" "TX" "tsset, clear"
+zt N15 gn "line D.gnp96 date if date >= tq(1970q1)" "" "TX"
+zt N16 gn "line F.gnp96 date" "" "TX"
+zt N17 gn "line S4.gnp96 date" "" "TX"
+zt N18 gn "line D.gnp96 date" "sort" "TX"
+zt N19 gn "rarea L.gnp96 gnp96 date" "" "TX"
+zt N20 gn "bar D.gnp96 date" "" "TX"
+zt S01 spd "line D.close L.close" "" "TX"
+zt S02 spd "line D.close date" "" "TX"
 
 // ---------------------------------------------------------------------------
 // Mata writers
@@ -284,7 +337,9 @@ forvalues i = 1/`N' {
     local body `"${ZT_BODY_`i'}"'
     local opts `"${ZT_OPTS_`i'}"'
     local fl   "${ZT_FL_`i'}"
+    local pre  `"${ZT_PRE_`i'}"'
     _zt_data `ds'
+    if `"`pre'"' != "" quietly `pre'
 
     // 1. twoway: its rc and error lines, its axis objects' titles
     capture graph drop Graph
@@ -299,6 +354,8 @@ forvalues i = 1/`N' {
     if `rc' == 0 {
         capture local y1 `"`.Graph.yaxis1.title.text[1]'"'
         capture local x1 `"`.Graph.xaxis1.title.text[1]'"'
+        capture erase "${ZT_WORK}/`id'_xt.txt"
+        if strpos("`fl'", "T") _zt_axis `id'
         if strpos("`fl'", "S") {
             capture graph export "${ZT_WORK}/`id'_tw.svg", name(Graph) replace
             capture graph drop Graph
@@ -328,6 +385,7 @@ forvalues i = 1/`N' {
     local drc ""
     if `rc' == 0 & strpos("`fl'", "X") {
         _zt_data `ds'
+        if `"`pre'"' != "" quietly `pre'
         capture dash clear
         local dopts `"`opts' name(zt`i')"'
         capture noisily dash `body', `dopts'
@@ -349,7 +407,7 @@ tempname tfh
 file open `tfh' using "${ZT_WORK}/probes.txt", write text replace
 file close `tfh'
 forvalues i = 1/`N' {
-    mata: _ztfh = fopen(st_global("ZT_WORK") + "/probes.txt", "a"); fput(_ztfh, st_global("ZT_ID_" + st_local("i")) + char(9) + st_global("ZT_DS_" + st_local("i")) + char(9) + st_global("ZT_BODY_" + st_local("i")) + char(9) + st_global("ZT_OPTS_" + st_local("i")) + char(9) + st_global("ZT_FL_" + st_local("i"))); fclose(_ztfh)
+    mata: _ztfh = fopen(st_global("ZT_WORK") + "/probes.txt", "a"); fput(_ztfh, st_global("ZT_ID_" + st_local("i")) + char(9) + st_global("ZT_DS_" + st_local("i")) + char(9) + st_global("ZT_BODY_" + st_local("i")) + char(9) + st_global("ZT_OPTS_" + st_local("i")) + char(9) + st_global("ZT_FL_" + st_local("i")) + char(9) + st_global("ZT_PRE_" + st_local("i"))); fclose(_ztfh)
 }
 
 // ===========================================================================
@@ -454,7 +512,7 @@ def _portable_spec(spec):
 
 probes = {}
 for line in _read("probes.txt").splitlines():
-    pid, ds, body, opts, fl = (line.split("\t") + [""] * 5)[:5]
+    pid, ds, body, opts, fl, pre = (line.split("\t") + [""] * 6)[:6]
     rc = int(_read(pid + "_twrc.txt") or 0)
     tw = {"rc": rc,
           "err": _err(_read(pid + "_tw.log")) if rc else [],
@@ -468,7 +526,13 @@ for line in _read("probes.txt").splitlines():
         tw["sersets"] = [json.loads(_num(_read("%s_ser%d.txt" % (pid, k))))
                          for k in range(10)
                          if _read("%s_ser%d.txt" % (pid, k))]
+    if "T" in fl and rc == 0:
+        ticks, lo, hi = (_read(pid + "_xt.txt").split("|") + ["", ""])[:3]
+        tw["xticks"] = [float(v) for v in ticks.split()]
+        tw["xcur"] = [float(lo), float(hi)]
     rec = {"ds": ds, "body": body, "opts": opts, "flags": fl, "twoway": tw}
+    if pre:
+        rec["pre"] = pre
     drc = _read(pid + "_dashrc.txt")
     if drc != "":
         rec["dash"] = {"rc": int(drc),
@@ -494,7 +558,11 @@ doc = {
                    "twoway drew (serset use), its variables' names, storage "
                    "types, formats and values (null for missing); dash is "
                    "the spec and data file _dash_prepare_spec writes for "
-                   "the same command."),
+                   "the same command; xticks are twoway's x major ticks "
+                   "(.Graph.xaxis1.major.dlg_tickpos) and xcur its plot "
+                   "region's x range (.Graph.plotregion1.xscale.curmin, "
+                   "curmax), flag T; pre is the command run on the data "
+                   "before both twoway and dash."),
     },
     "probes": probes,
 }

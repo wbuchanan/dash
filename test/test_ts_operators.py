@@ -60,7 +60,13 @@ with open(os.path.join(HERE, "fixtures", "ts_operator_truth.json"),
     _FIX = json.load(_fh)
 _P = _FIX["probes"]
 #: The probes dash exported (spec and data): the renderer's cases.
-_X = sorted(p for p in _P if "dash" in _P[p])
+_X = sorted(p for p in _P if "dash" in _P[p] and "T" not in _P[p]["flags"])
+#: The probes of a date axis with a missing y at an end row (WP-34 TR-4,
+#: flag T): twoway's x ticks, read by TestTheDateAxisTicks.  They are not
+#: _X's cases: N01, N06-N08 and N14 draw no operator, and _drawn_pairs
+#: reads a date as days, where gnp96's date is quarterly.
+_T = sorted(p for p in _P if "T" in _P[p]["flags"]
+            and _P[p]["twoway"]["rc"] == 0)
 _TMP = tempfile.mkdtemp(prefix="dash_tso_")
 _SEQ = iter(range(1, 10 ** 6))
 
@@ -270,7 +276,9 @@ class TestTheFixture:
             assert m.get(k), k
         assert m["stata_version"].startswith("19.")
         fams = {re.sub(r"[0-9]+$", "", p) for p in _P}
-        assert fams == {"A", "R", "T", "V", "F", "G", "E", "B", "O", "Y"}
+        # old -> new: N and S, the 22 probes of 20oct2026 (WP-34 TR-4).
+        assert fams == {"A", "R", "T", "V", "F", "G", "E", "B", "O", "Y",
+                        "N", "S"}
         assert [p for p in _P if p[0] == "A" and _P[p]["twoway"]["rc"]] == []
         assert {_P[p]["twoway"]["rc"] for p in _P if p[0] == "R"} == {101}
         assert all(_P[p]["dash"]["rc"] == 0 for p in _X)
@@ -432,9 +440,16 @@ class TestAFilterMoveKeepsTheComputedSeries:
             # The probe's data hold no t; t is _n in the extractor's data.
             data["variableNames"].remove("__dashq1")
             data["variableNames"].append("t")
-            data["values"] = [dict({k: v for k, v in r.items()
-                                    if k != "__dashq1"}, t=float(i + 1))
-                              for i, r in enumerate(data["values"])]
+            if "columns" in data:
+                # WP-34 TR-4: the regenerated fixture's data are the
+                # column layout dash writes now (dataFormat dash-columns-1).
+                data["columns"].pop("__dashq1")
+                data["columns"]["t"] = dr._dash_pack_column(
+                    [float(i + 1) for i in range(data["numberOfRecords"])])
+            else:
+                data["values"] = [dict({k: v for k, v in r.items()
+                                        if k != "__dashq1"}, t=float(i + 1))
+                                  for i, r in enumerate(data["values"])]
             move = ("Slider", 101.0)
         else:
             spec, data = _moved_spec(pid, "t, type(range)")
