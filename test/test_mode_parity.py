@@ -241,11 +241,19 @@ def _write(spec):
     tag = next(_SEQ)
     sp = os.path.join(_TMP, f"spec_{tag}.json")
     dp = os.path.join(_TMP, f"data_{tag}.json")
+    # WP-34 TR-4: build_options' "_parity_frame" (never written to the
+    # spec) names a variant of _DF: "missing_first_y", mpg missing in row 1.
+    bo = dict(spec.get("build_options") or {})
+    variant = bo.pop("_parity_frame", "")
+    if variant:
+        spec = dict(spec, build_options=bo)
     with open(sp, "w") as fh:
         json.dump(spec, fh)
     # WP-33 33-07: a spec mapping a split column gets its frame's own
     # copy of `when', the %tm month of each %td day.
     df = _DF
+    if variant == "missing_first_y":
+        df = _DF.assign(mpg=[float("nan")] + list(_DF["mpg"][1:]))
     if (spec.get("build_options") or {}).get("frame_cols"):
         day = pd.Timestamp("1960-01-01") + pd.to_timedelta(_DF["when"],
                                                            unit="D")
@@ -2859,6 +2867,15 @@ CORPUS = [
           [plot_for("lfitci", {"nofit": "nofit"}), plot_for("scatter")]),
     # WP-34 DG-3: a rule crossing zero ticks exactly 0 in both modes.
     _case("ylabel crossing zero", [_sc()], go={"ylabel": "-.3(.1).3"}),
+    # WP-34 TR-4: a missing first y counts for no axis; the table's range
+    # is the drawn rows' (when 15341-15349), so both modes take its ticks.
+    _case("line with a missing first y on a date axis",
+          [plot_for("line", {}, yvar="mpg", xvar="when")],
+          {"formats": {"when": "%td"}, "_parity_frame": "missing_first_y",
+           "stata_ticks": [[15341.0, 15349.0, 5, "d",
+                            [15341.0, 15343.0, 15345.0, 15347.0,
+                             15349.0]]]},
+          if_expr=""),
 ]
 
 

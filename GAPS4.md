@@ -335,7 +335,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.
 - **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
 - **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit d2c69f5.
-- **TR-4 Tracked:** Open (WP-34 section 34-07).
+- **TR-4 Tracked:** Closed in WP-34, BUGS.md "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)", commit pending.
 - **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit 6953587.
 - **AX-3 Tracked:** Open (WP-34 section 34-09).
 - **plot:PT-13 Tracked:** Open (WP-34 section 34-09).

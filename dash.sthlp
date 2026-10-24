@@ -4747,6 +4747,10 @@ with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
 scheme's tick count) by {cmd:twoway}'s calendar rule as {cmd:dash} models
 it, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
 01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
+Each axis is asked of Stata over the rows a layer draws, so a series whose
+first or last value is missing -- every {cmd:L.} or {cmd:D.} series -- is
+ticked as {cmd:twoway} ticks it ({cmd:area d.gnp96 date} labels 1970q1 ...
+2000q1).
 The model agrees with Stata on about 58-66% of daily to half-yearly ranges
 and 98% of yearly ones; otherwise it chooses another calendar step or end
 tick.  A date that shares an axis with a plain number is ticked on the

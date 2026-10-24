@@ -793,6 +793,89 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w34_run' {
 }
 * ==== end S06 ====
 
+python:
+def _w34s07_has(page, kind, want):
+    """q34_bad: "" when the saved page *page* holds a FixedTicker (tagged
+    or not) whose ticks are *want*, Stata values of a *kind* axis ("tq"
+    for gnp96's date), else the tick lists it holds (WP-34 TR-4)."""
+    import re
+    import json
+    from sfi import Macro
+    want = [float(v) for v in str(want).split()]
+    if kind == "tq":
+        # A quarter's first day, in ms since 1970 (the page's date axis).
+        import datetime
+        e = datetime.date(1970, 1, 1)
+        want = [float((datetime.date(1960 + int(q) // 4, 3 * (int(q) % 4)
+                                     + 1, 1) - e).days * 86400000)
+                for q in want]
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    lists = [json.loads("[" + m + "]") for m in re.findall(
+        r'"name":"FixedTicker","id":"[^"]+","attributes":\{(?:"tags":\[[^\]]*\],)?"ticks":\[([^\]]*)\]', html)]
+    ok = any([float(v) for v in t] == want for t in lists)
+    Macro.setGlobal("q34_bad", "" if ok else ("want %s, page %s" % (want, lists))[:1500])
+end
+
+* ==== S07 TR-4: a date axis ticked over the rows each series draws ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S07") & `: list posof "S07" in w34_run' {
+    display as text "S07 start " c(current_date) " " c(current_time)
+    local q07d "`w34_work'/s07tr4"
+    capture mkdir "`q07d'"
+
+    // Q3407-1: on gnp96 (tsset date, %tq) a series with a missing first or
+    // last value -- D., d. under area, or a value set missing -- has the
+    // x ticks twoway draws (1970q1(40)2000q1), not the model's.
+    local i 0
+    foreach c in "|line D.gnp96 date" "|area d.gnp96 date" "replace gnp96 = . in 1|line gnp96 date" "replace gnp96 = . in L|line gnp96 date" {
+        local ++i
+        gettoken pre cmd : c, parse("|")
+        if "`pre'" == "|" local pre ""
+        local cmd = strtrim(subinstr("`cmd'", "|", "", 1))
+        quietly sysuse gnp96, clear
+        quietly tsset date
+        if "`pre'" != "" quietly `pre'
+        capture graph drop _all
+        quietly twoway `cmd'
+        _q34_drawn .Graph x1
+        _w34_expect Q3407-1 `"("${q34_t}" != "")"' "twoway drew no x tick for `cmd'"
+        capture dash clear
+        capture erase "`q07d'/a`i'.html"
+        capture noisily dash `cmd', saving("`q07d'/a`i'.html", replace)
+        _w34_expect Q3407-1 "(_rc == 0)" "dash `cmd' (`pre') rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._w34s07_has(r"`q07d'/a`i'.html", "tq", "${q34_t}")
+        _w34_expect Q3407-1 `"("${q34_bad}" == "")"' `"`pre' `cmd' (twoway ${q34_t}): ${q34_bad}"'
+        capture erase "`q07d'/a`i'.html"
+    }
+    _w34_done Q3407-1 "line D.gnp96 date, area d.gnp96 date and a missing first or last gnp96: twoway's x ticks"
+
+    // Q3407-2: two series missing at opposite ends, and a range layer.
+    local i 0
+    foreach cmd in "scatter D.gnp96 L.gnp96 date" "rarea L.gnp96 gnp96 date" {
+        local ++i
+        quietly sysuse gnp96, clear
+        quietly tsset date
+        capture graph drop _all
+        quietly twoway `cmd'
+        _q34_drawn .Graph x1
+        _w34_expect Q3407-2 `"("${q34_t}" != "")"' "twoway drew no x tick for `cmd'"
+        capture dash clear
+        capture erase "`q07d'/b`i'.html"
+        capture noisily dash `cmd', saving("`q07d'/b`i'.html", replace)
+        _w34_expect Q3407-2 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._w34s07_has(r"`q07d'/b`i'.html", "tq", "${q34_t}")
+        _w34_expect Q3407-2 `"("${q34_bad}" == "")"' `"`cmd' (twoway ${q34_t}): ${q34_bad}"'
+        capture erase "`q07d'/b`i'.html"
+    }
+    _w34_done Q3407-2 "scatter D.gnp96 L.gnp96 date and rarea L.gnp96 gnp96 date: twoway's x ticks"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S07 end " c(current_date) " " c(current_time)
+}
+* ==== end S07 ====
+
 * ==== S08 DG-3: a(b)c rules crossing zero label 0 ====
 local only : env WP34_ONLY
 if inlist("`only'", "", "S08") & `: list posof "S08" in w34_run' {

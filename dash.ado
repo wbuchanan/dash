@@ -7363,11 +7363,15 @@ end
 // _dash_stata_tick_requests names.  <unit> is - for _natscale (a number,
 // %tc or %tC) or d w m q h y for _tsnatscale; <byvar> is - or the by()
 // variable, whose groups are asked for one by one (a rescaled panel);
-// each <layer> is <var>[+<var>...]:[<mark>[+<mark>...]] -- the layer's
-// variables on the axis and the __dashq<k> columns that select its rows.
-// Every word is a Stata name dash wrote or a variable's: the qualifier
-// TEXT is never read here (DECISIONS A25); a row is the layer's when each
-// of its marker columns is 1, as both renderers select it.
+// each <layer> is <var>[+<var>...]:[<mark>[+<mark>...]][:<cc>[+<cc>...]]
+// -- the series' variables on the axis, the __dashq<k> columns that
+// select its rows, and (WP-34 TR-4) its complete-case variables: every
+// variable the series draws a point from.  Every word is a Stata name
+// dash wrote or a variable's: the qualifier TEXT is never read here
+// (DECISIONS A25); a row is the series' when each of its marker columns
+// is 1 and none of its complete-case variables is missing (. or .a-.z),
+// the rows both renderers draw -- so a missing y in the first or last row
+// counts for no axis.  A layer of two parts (no cc) keeps every marked row.
 //
 // For each group g: r(lo<g>) and r(hi<g>), the least and greatest value
 // summarize finds over every layer's variables and rows, and the
@@ -7402,12 +7406,18 @@ program define _dash_axis_ticks_stata, rclass
     }
     foreach L of local layers {
         local vs = subinstr(substr("`L'", 1, strpos("`L'", ":") - 1), "+", " ", .)
-        local ms = subinstr(substr("`L'", strpos("`L'", ":") + 1, .), "+", " ", .)
+        local r1 = substr("`L'", strpos("`L'", ":") + 1, .)
+        local ms = subinstr(cond(strpos("`r1'", ":"), substr("`r1'", 1, strpos("`r1'", ":") - 1), "`r1'"), "+", " ", .)
+        local cs = cond(strpos("`r1'", ":"), subinstr(substr("`r1'", strpos("`r1'", ":") + 1, .), "+", " ", .), "")
         capture drop `lu'
         quietly generate byte `lu' = 1
         foreach m of local ms {
             confirm numeric variable `m', exact
             quietly replace `lu' = 0 if `m' != 1
+        }
+        foreach c of local cs {
+            confirm numeric variable `c', exact
+            quietly replace `lu' = 0 if missing(`c')
         }
         foreach v of local vs {
             confirm numeric variable `v', exact

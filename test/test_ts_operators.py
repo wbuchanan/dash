@@ -50,6 +50,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, REPO)
 
 import dash_render as dr  # noqa: E402
+import js_runner  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from conftest import load_app, render_models  # noqa: E402
 from test_saved_filter_layers import _move  # noqa: E402
@@ -467,6 +468,84 @@ class TestAFilterMoveKeepsTheComputedSeries:
             got = _drawn_pairs(figs, dr._dash_tsop_cols_named(spec))
             assert got[("t", "D_close")] == _kept(pid, "t", "D_close",
                                                   50, 100)
+
+
+# ---------------------------------------------------------------------------
+# A date axis with a missing y at an end row (WP-34 TR-4)
+# ---------------------------------------------------------------------------
+#: The unit of each T probe's data set's date (gnp96 %tq, sp500 %td).
+_DATE_UNIT = {"gn": "q", "spd": "d"}
+
+
+def _x_ticks(figs, pid):
+    """The x axis's major ticks in Stata units of the probe's x."""
+    from test_by_scales import _major_ticks
+    ax = [a for f in figs for a in f.below if hasattr(a, "ticker")][0]
+    ticks = _major_ticks(ax)
+    if ticks is None:
+        return None
+    if isinstance(ax, DatetimeAxis):
+        u = _DATE_UNIT[_P[pid]["ds"]]
+        return [round(dr._dash_unix_ms_to_unit(t, u), 6) for t in ticks]
+    return [float(t) for t in ticks]
+
+
+class TestTheDateAxisTicks:
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_every_tick_probe(self, mode):
+        """Both modes draw twoway's x ticks on every probe of 20oct2026
+        that twoway draws (flag T): a missing y in the first or last row
+        (D., L., F., S4., or a missing value) counts for no axis, so the
+        export's range is the drawn range and Stata's ticks are drawn."""
+        assert len(_T) == 20
+        bad = []
+        for pid in _T:
+            spec, data = _inputs(pid)
+            got = _x_ticks(_figs(mode, spec, data), pid)
+            want = _P[pid]["twoway"]["xticks"]
+            if got != want:
+                bad.append("%s %s: dash %r, twoway %r"
+                           % (pid, _P[pid]["body"], got, want))
+        assert not bad, "\n".join(bad)
+
+    @js_runner.requires_node
+    @pytest.mark.parametrize("pid", ["N06", "N07"])
+    def test_move_back(self, pid):
+        """The saved page restores Stata's ticks after a move back to all
+        the rows (the JS extent reads the rows the export summarized)."""
+        import test_default_axes as tda
+        spec, data = _moved_spec(pid, "gnp96, type(range)")
+        _, sp, dp = _write(spec, data)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp)
+            render_models(r)
+        want = _P[pid]["twoway"]["xticks"]
+        assert _x_ticks(list(r.figures.values()), pid) == want
+        w = [x for x in r.filter_widgets
+             if type(x).__name__ == "RangeSlider"][0]
+        lo, hi = w.start, w.end
+        figs = tda._move_saved(r, "RangeSlider", (lo, (lo + hi) / 2))
+        assert _x_ticks(figs, pid) != want
+        figs = tda._move_saved(r, "RangeSlider", (lo, hi))
+        assert _x_ticks(figs, pid) == want
+
+
+class TestTheHelp:
+    def test_the_rows_sentence(self):
+        """WP-34 TR-4: the date-axis paragraph says an axis is asked of Stata
+        over the rows a layer draws, with twoway's help example."""
+        from test_help_claims_1 import _between, _help
+        para = " ".join(_between(
+            _help(), "A {cmd:%td}, {cmd:%tw}", "The model agrees").split())
+        assert ("Each axis is asked of Stata over the rows a layer draws, "
+                "so a series whose first or last value is missing -- every "
+                "{cmd:L.} or {cmd:D.} series -- is ticked as {cmd:twoway} "
+                "ticks it ({cmd:area d.gnp96 date} labels 1970q1 ... "
+                "2000q1).") in para
+        # The example's ticks are twoway's (N03, flag T).
+        assert _P["N03"]["body"] == "area d.gnp96 date"
+        assert _P["N03"]["twoway"]["xticks"] == [40.0, 80.0, 120.0, 160.0]
 
 
 # ---------------------------------------------------------------------------

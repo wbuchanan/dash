@@ -3964,6 +3964,19 @@ if `"`c(python_exec)'"' != "" {
     dash clear
     display "TSO-07 PASS: by() with an operator r(5) with dash's hint; a bare sort with an operated x r(198) on the 18 types, as twoway"
 
+    // Q3407-3 (WP-34 TR-4): the refusals among the 22 probes of 20oct2026
+    // -- N12 (sort gnp96 first, r(5)) and N13 (tsset, clear first,
+    // r(111)) -- are twoway's rc and first line, read from the fixture.
+    foreach pid in N12 N13 {
+        python: _tq = _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]; _ts.Macro.setLocal("tso_b", _tq["body"]); _ts.Macro.setLocal("tso_pre", _tq.get("pre") or "")
+        quietly sysuse gnp96, clear
+        quietly tsset date
+        quietly `tso_pre'
+        _tso_vs Q3407-3 `pid' gn `"dash `tso_b', name(q3407)"'
+    }
+    dash clear
+    display "Q3407-3 PASS: N12 r(5) and N13 r(111) are refused with twoway's rc and first line"
+
     // TSO-10: a user variable __dasht1 is refused r(110), naming __dasht#.
     _tso_data sp
     quietly gen __dasht1 = 1

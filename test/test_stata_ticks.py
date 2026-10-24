@@ -249,7 +249,10 @@ class TestTheRequests:
                         "options": {"yaxis": "2"}}], "graph_options": {}}
         ys = [r["layers"] for r in dr._dash_stata_tick_requests([g], {})
               if r["layers"][0][0] in (("a",), ("b",))]
-        assert [(("a",), ())] in ys and [(("b",), ())] in ys
+        # Flipped (WP-34 TR-4): a layer's token carries the variables its
+        # rows need, so a row with a missing y counts for no axis.
+        assert [(("a",), (), ("a", "t"))] in ys \
+            and [(("b",), (), ("b", "t"))] in ys
 
     def test_by_panels_are_asked(self):
         g = {"plots": [{"type": "scatter", "yvar": "price",
@@ -267,6 +270,116 @@ class TestTheRequests:
         assert dr._dash_stata_tick_requests([g], {}) == []
 
 
+class TestTheCompleteCaseTokens:
+    def test_complete_case_tokens(self):
+        """WP-34 TR-4: each series of a layer carries the variables its rows
+        need, the rows the renderers draw (TestTheRowRule): one token per y
+        of a multi-y layer or of rline (that y and the x); one with every
+        variable for rarea and a pc layer; none for rcap, whose axes read
+        each variable over its own rows."""
+        g = {"plots": [{"type": "scatter", "yvar": "a b", "xvar": "t",
+                        "options": {}},
+                       {"type": "rarea", "yvar1": "lo", "yvar2": "hi",
+                        "xvar": "t", "options": {}},
+                       {"type": "pcspike", "y1var": "p", "x1var": "q",
+                        "y2var": "r", "x2var": "s", "options": {}},
+                       {"type": "rline", "yvar1": "m", "yvar2": "n",
+                        "xvar": "t", "options": {}},
+                       {"type": "rcap", "yvar1": "u", "yvar2": "v",
+                        "xvar": "t", "options": {}}],
+             "graph_options": {}}
+        got = {}
+        for r in dr._dash_stata_tick_requests([g], {}):
+            got.setdefault(r["layers"][0][0] in (("t",), ("q", "s"))
+                           and "x" or "y", set()).update(r["layers"])
+        assert got["y"] >= {(("a",), (), ("a", "t")),
+                            (("b",), (), ("b", "t")),
+                            (("lo", "hi"), (), ("lo", "hi", "t")),
+                            (("p", "r"), (), ("p", "r", "q", "s")),
+                            (("m",), (), ("m", "t")), (("n",), (), ("n", "t")),
+                            (("u", "v"), (), ())}
+        assert got["x"] >= {(("t",), (), ("a", "t")),
+                            (("t",), (), ("b", "t")),
+                            (("t",), (), ("lo", "hi", "t")),
+                            (("q", "s"), (), ("p", "r", "q", "s")),
+                            (("t",), (), ("m", "t")), (("t",), (), ())}
+
+
+#: WP-34 TR-4: a frame whose first y and last x are missing (y2's least
+#: value is in the first row, so a series of y2 alone reaches it).
+_RR_N = 40
+_RR = pd.DataFrame({
+    "y": [float("nan")] + [1.3 * i + 0.7 for i in range(1, _RR_N)],
+    "y2": [2.1 * i - 5.3 for i in range(_RR_N)],
+    "x": [3.7 * i + 1.9 for i in range(_RR_N - 1)] + [float("nan")],
+    "x2": [3.7 * i + 4.1 for i in range(_RR_N)]})
+_RR_FMT = {v: "%9.0g" for v in _RR.columns}
+_RR_FAMILY = {
+    "scatter": _L("scatter", "y", "x"), "line": _L("line", "y", "x"),
+    "connected": _L("connected", "y", "x"), "area": _L("area", "y", "x"),
+    "bar": _L("bar", "y", "x"), "spike": _L("spike", "y", "x"),
+    "dropline": _L("dropline", "y", "x"), "tsline": _L("tsline", "y", "x"),
+    "rarea": {"type": "rarea", "yvar1": "y", "yvar2": "y2", "xvar": "x",
+              "options": {}},
+    "rline": {"type": "rline", "yvar1": "y", "yvar2": "y2", "xvar": "x",
+              "options": {}},
+    "rcap": {"type": "rcap", "yvar1": "y", "yvar2": "y2", "xvar": "x",
+             "options": {}},
+    "pcspike": {"type": "pcspike", "y1var": "y", "x1var": "x",
+                "y2var": "y2", "x2var": "x2", "options": {}},
+    "pcscatter": {"type": "pcscatter", "y1var": "y", "x1var": "x",
+                  "y2var": "y2", "x2var": "x2", "options": {}}}
+# The other range and pc types: each of the three row rules is held.
+_RR_FAMILY.update({t: dict(_RR_FAMILY["rcap"], type=t) for t in (
+    "rbar", "rspike", "rcapsym", "rconnected", "rscatter", "tsrline")})
+_RR_FAMILY.update({t: dict(_RR_FAMILY["pcspike"], type=t) for t in (
+    "pcarrow", "pcbarrow", "pccapsym")})
+
+
+def _cc_table(plot):
+    """The table the export writes under the complete-case rule, computed
+    here: per request, the range of its axis variables over the rows where
+    every complete-case variable of the layer is non-missing; each entry's
+    ticks are four values no model draws (thirds of the range)."""
+    g = {"plots": [plot], "graph_options": {}}
+    out = {}
+    for rq in dr._dash_stata_tick_requests([g], _RR_FMT):
+        lo = hi = None
+        for vs, _ms, cc in rq["layers"]:
+            keep = _RR[list(cc)].notna().all(axis=1)
+            for v in vs:
+                col = _RR.loc[keep, v]
+                lo = col.min() if lo is None else min(lo, col.min())
+                hi = col.max() if hi is None else max(hi, col.max())
+        letter = "x" if set(rq["layers"][0][0]) <= {"x", "x2"} else "y"
+        out[letter] = [float(lo), float(hi), 5, "",
+                       [float("%.12g" % (lo + k * (hi - lo) / 3))
+                        for k in range(4)]]
+    return out
+
+
+class TestTheRowRule:
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("family", sorted(_RR_FAMILY))
+    def test_matches_the_drawn_range(self, tmp_path, mode, family):
+        """The complete-case rule's range is the range the renderer draws
+        on both axes: the pick finds the table's entry and the axis takes
+        its ticks (D-34-07.b)."""
+        tab = _cc_table(_RR_FAMILY[family])
+        assert set(tab) == {"x", "y"}
+        spec = _spec([_RR_FAMILY[family]], formats=_RR_FMT)
+        spec["build_options"]["stata_ticks"] = list(tab.values())
+        if mode == "saved":
+            r, _w = _saved(tmp_path, spec, _RR)
+            figs = tda.tb._panels(list(r.figures.values()))
+        else:
+            doc, _w = _served(tmp_path, spec, _RR)
+            figs = tda.tb._panels(tda.tb._figs_of(doc.roots))
+        for letter in ("x", "y"):
+            assert _major_ticks(_axis(figs[0], letter)) == tab[letter][4], \
+                letter
+
+
 class TestHorizontal:
     def test_swapped_words(self):
         """Under horizontal the y variables are drawn on x: their range is
@@ -275,8 +388,11 @@ class TestHorizontal:
                         "xvar": "weight", "options": {"horizontal": "1"}}],
              "graph_options": {}}
         rq = dr._dash_stata_tick_requests([g], {})
-        assert rq and all(r["layers"] in ([(("mpg", "mpg"), ())],
-                                          [(("weight",), ())]) for r in rq)
+        # Flipped (WP-34 TR-4): the token gains its complete-case part,
+        # empty for rcap, whose axes read each variable over its own rows.
+        assert rq and all(r["layers"] in ([(("mpg", "mpg"), (), ())],
+                                          [(("weight",), (), ())])
+                          for r in rq)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_drawn_x_takes_the_y_variables_ticks(self, tmp_path, mode):
@@ -390,8 +506,10 @@ class TestTheExportHelpers:
         line = dr._dash_stata_tick_plan("_qg_1", json.dumps(
             {"date": "%td"}))
         reqs = line.split(";")
-        assert "4 d - date:__dashq1" in reqs and "5 - - close:__dashq1" \
-            in reqs
+        # Flipped (WP-34 TR-4): a layer's token carries the variables its
+        # rows need, so a row with a missing y counts for no axis.
+        assert "4 d - date:__dashq1:close+date" in reqs \
+            and "5 - - close:__dashq1:close+date" in reqs
         assert re.fullmatch(r"[A-Za-z0-9_ ;:+-]+", line)
         assert dr._dash_stata_tick_plan("_qg_9", "{}") == ""
 

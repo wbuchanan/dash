@@ -928,6 +928,7 @@ and now matches Stata.
 - yscale(range(0)) and other range() values beyond the data no longer widen a default axis's ticks (scatter mpg weight, yscale(range(0)): 0(10)40 -> 10(10)40) (WP-34, AX-1)
 - A ci fit with nofit counts as one plot, so the layers after it take twoway's p# styles and legend numbers ((lfitci, nofit) (scatter): the scatter p3 -> p2) (WP-34, PIC-3)
 - A label or tick rule that crosses zero labels its zero tick 0 (ylabel(-.3(.1).3): 5.55e-17 -> 0) (WP-34, DG-3)
+- A date axis whose layer has a missing y in its first or last row takes Stata's ticks (area d.gnp96 date: 1967q2 ... 2002q2 -> 1970q1 ... 2000q1) (WP-34, TR-4)
 
 ### Fixed in WP-33
 

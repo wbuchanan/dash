@@ -18764,6 +18764,11 @@ class GlyphMapper:
             _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
+        if x_field == self._BAR_XC and not _bar_off and xvar in df:
+            # WP-34 TR-4: on a period axis (%tw-%ty) a bar is drawn from its
+            # period's middle; its tick input is its date, as twoway ticks
+            # bar D.gnp96 date over the dates (1970q1(40)2000q1).
+            r._dash_tick_fields = {"x": (xvar,)}
         # The named style first, then the user's colours (D-32e), each read
         # per role: the fill from the area's options, the outline from its.
         self._style_restyle(r, options, ("area", "aline"))
@@ -41817,15 +41822,31 @@ _DASH_STATA_TICK_SKIP = frozenset((
     "histogram", "kdensity", "function", "scatteri", "pci", "pcarrowi"))
 
 
+#: WP-34 TR-4: range types the renderers draw one series per y of (a row
+#: counts for an axis when that y and the x are present), and those whose
+#: axes read each variable over its own rows (TestTheRowRule).
+_DASH_STATA_TICK_PER_Y = frozenset(("rline", "rconnected", "rscatter",
+                                    "tsrline"))
+_DASH_STATA_TICK_OWN_ROWS = frozenset(("rbar", "rspike", "rcap", "rcapsym"))
+
+
 def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
     """The ranges whose Stata ticks the export asks for (WP-31 D15): per
     graph and drawn axis (letter and axis numbers; ``horizontal`` swaps the
-    letters), the layers on it as ``(variables, qualifier columns)``, each
-    unit its variables' formats give ("" for a number or %tc/%tC, d-y for
-    %td-%ty) and each count the graph's options name (``#N``) besides 5.
-    A by() graph's panels are asked for each (the by() variable).  Only
-    Stata names and dash's ``__dashq<k>`` columns are returned: the
-    qualifier text is never read (DECISIONS A25)."""
+    letters), the series on it as ``(variables, qualifier columns,
+    complete-case variables)``, each unit its variables' formats give (""
+    for a number or %tc/%tC, d-y for %td-%ty) and each count the graph's
+    options name (``#N``) besides 5.  A by() graph's panels are asked for
+    each (the by() variable).  Only Stata names and dash's ``__dashq<k>``
+    columns are returned: the qualifier text is never read (DECISIONS A25).
+
+    WP-34 TR-4: a row counts for an axis only when every variable of its
+    series is non-missing -- the rows the renderers draw (measured on both,
+    test_stata_ticks.py::TestTheRowRule): a ``yvar``/``xvar`` layer, and
+    rline, rconnected, rscatter and tsrline, is one series per y (that y
+    and the x variables); rarea and the pc types one series of every
+    variable they name; rbar, rspike, rcap and rcapsym read each variable
+    over its own rows (no complete-case variable)."""
     out = []
     fm = formats if isinstance(formats, dict) else {}
     fcols = frame_cols if isinstance(frame_cols, dict) else {}
@@ -41872,17 +41893,30 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
             hz = _dash_is_horizontal(p)
             marks = [q for q in (gq, p.get("qual_col"))
                      if isinstance(q, str) and _DASH_QUAL_NAME_RE.match(q)]
-            for letter, vs in (("y", ys), ("x", xs)):
-                if not vs:
-                    continue
-                drawn = {"y": "x", "x": "y"}[letter] if hz else letter
-                axn = str(o.get(letter + "axis", "") or "1").split()[:1] \
-                    or ["1"]
-                key = (drawn, axn[0])
-                groups.setdefault(key, []).append((tuple(vs), tuple(marks)))
+            # WP-34 TR-4: the series and the variables each one's rows need.
+            pt = str(p.get("type", "")).strip().lower()
+            simple = not any(str(p.get(k, "") or "").strip() for k in
+                             ("yvar1", "yvar2", "y1var", "y2var",
+                              "x1var", "x2var"))
+            if ys and (simple or pt in _DASH_STATA_TICK_PER_Y):
+                series = [((y,), tuple(xs), (y,) + tuple(xs)) for y in ys]
+            elif pt in _DASH_STATA_TICK_OWN_ROWS:
+                series = [(tuple(ys), tuple(xs), ())]
+            else:
+                series = [(tuple(ys), tuple(xs), tuple(ys + xs))]
+            for sy, sx, cc in series:
+                for letter, vs in (("y", sy), ("x", sx)):
+                    if not vs:
+                        continue
+                    drawn = {"y": "x", "x": "y"}[letter] if hz else letter
+                    axn = str(o.get(letter + "axis", "") or "1").split()[:1] \
+                        or ["1"]
+                    key = (drawn, axn[0])
+                    groups.setdefault(key, []).append(
+                        (tuple(vs), tuple(marks), cc))
         for key in sorted(groups):
             layers = groups[key]
-            units = sorted({_dash_stata_unit_of(fm.get(v)) for vs, _m
+            units = sorted({_dash_stata_unit_of(fm.get(v)) for vs, _m, _c
                             in layers for v in vs})
             for unit in units:
                 for n in sorted(counts):
@@ -41929,8 +41963,9 @@ def _dash_stata_tick_plan(names, formats_text, frame_cols_text=""):
         _fc = {}
     out = []
     for rq in _dash_stata_tick_requests(graphs, formats, _fc):
-        layers = " ".join("+".join(vs) + ":" + "+".join(ms)
-                          for vs, ms in rq["layers"])
+        # WP-34 TR-4: <axis vars>:<marks>:<complete-case vars>.
+        layers = " ".join("+".join(vs) + ":" + "+".join(ms) + ":"
+                          + "+".join(cc) for vs, ms, cc in rq["layers"])
         line = "%d %s %s %s" % (rq["n"], rq["unit"] or "-",
                                 rq["by"] or "-", layers)
         if line not in out:
