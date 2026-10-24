@@ -227,6 +227,8 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | AX-14 | tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named | S2 | 44-02 | Fix | dash.sthlp:4568-4572; F12 | Read the style files; draw nogextend with Grid bounds |
 | AX-15 | Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build (also AX-17, AX-19) | S2 | 44-02 | Fix | dash.sthlp:4868-4870, 5098-5107, 4741-4751, 4818-4820 | Per M11 (section 44-02): draw each part as twoway draws it with Bokeh's shipped models and CustomJS, no custom glyph model; the dates past the browser's range and the reference line off the canvas stay documented differences, and the item closes Documented (A-5). |
 | AX-18 | A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear (also stat:PT-20, VF-12) | S2 | 44-04 | Fix | dash.sthlp:4723-4731, 4815-4820 | Label with numbers as twoway does; draw log date axes |
+| AX-19 | A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis | S2 | 44-03 | Fix | WP-34 34-07 (TR-4, 24oct2026), measured in both modes against twoway: each axis reads every variable over its own rows, so an x on a row with both bounds missing still sets the axis range (dash_render.py _dash_stata_tick_requests row rule, D-34-07.b) | Leave a row with both bounds missing out of the x axis range and its ticks, as twoway does, in both modes |
+| AX-20 | A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date | S2 | 44-04 | Fix | WP-34 34-07 (TR-4, 24oct2026): an un-offset bar on a %tw-%ty axis now uses its date (map_bar _dash_tick_fields); with baroffset() the drawn centre is still read | Use the bar's date as the tick input under baroffset() too, in both modes |
 | MS-14 | xscale(range()) on a log axis adds a tick at the range end | S2 | 44-03 | Fix | B04 FixedTicker [1000..5000]; b2_log_range renders 20000 | Do not add range ends to log default ticks; compare drawn_ticks |
 | MS-12 | A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none | S2 | 44-05 | Fix | _dash_lone_second_axes (dash_render.py:5003-5017); E14, C10 | Keep axis k's grid default when renumbering |
 | MS-11 | twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn (also RH-17) | S2 | 44-01 | Fix | dash_render.py:39809-39841; E12, E13, C04, P36; test_horizontal.py:378 skips; dash.sthlp:3630-3632 | Measure and apply the rule in both modes |
@@ -287,6 +289,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | PIC-10 | dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row | S3 | 47-06 | Fix | yxview_dot_draw.ado draw_full_dots; dash_render.py:23766-23770 | Draw rows for every non-missing x |
 | DG-12 | Markers with missing or zero weight are invisible; twoway still draws a dot | S3 | 47-06 | Fix | t_EM03.svg; dash.sthlp:4192-4194 | Draw twoway's minimal dot |
 | PIC-16 | Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels (also PIC-17) | S3 | 47-06 | Fix | dash_render.py:23733-23735; dash.sthlp:3811, 1287-1289 | Floor fill plus outline; patterns limited by Bokeh |
+| PIC-17 | rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there | S2 | 47-06 | Fix | WP-34 34-07 (TR-4, 24oct2026), measured in both modes: the complete-case rule is exact for missing values at the ends only | Break the area at a row where either bound is missing, as twoway does, in both modes |
 | MS-15 | dash clips marker labels at the plot region; twoway lets them extend over the axis area | S2 | 47-06 | Fix | WP-33 33-05 calibration run: help-marker_label_options-9b377083 (scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000))): twoway's Honduras label runs left over the y-axis labels, dash's stops at the plot region; registered by D50 | Let marker labels draw outside the plot region as twoway does |
 | DG-7 | Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x') | S3 | 47-02 | Fix | D03, E04, D05 | Use twoway's names in those cases |
 | basic:PT-15 | Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys (also DT-23, DT-24, sil:SD-23) | S3 | 47-06 | Fix | dash.sthlp:449-455, 655-661, 3443-3517, 4305-4307, 6069-6225 | Case by case |
@@ -488,6 +491,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-14 Tracked:** Open (WP-44 section 44-02).
 - **AX-15 Tracked:** Open (WP-44 section 44-02).
 - **AX-18 Tracked:** Open (WP-44 section 44-04).
+- **AX-19 Tracked:** Open (WP-44 section 44-03).
+- **AX-20 Tracked:** Open (WP-44 section 44-04).
 - **MS-14 Tracked:** Open (WP-44 section 44-03).
 - **MS-12 Tracked:** Open (WP-44 section 44-05).
 - **MS-11 Tracked:** Open (WP-44 section 44-01).
@@ -533,6 +538,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-10 Tracked:** Open (WP-47 section 47-06).
 - **DG-12 Tracked:** Open (WP-47 section 47-06).
 - **PIC-16 Tracked:** Open (WP-47 section 47-06).
+- **PIC-17 Tracked:** Open (WP-47 section 47-06).
 - **MS-15 Tracked:** Open (WP-47 section 47-06).
 - **DG-7 Tracked:** Open (WP-47 section 47-02).
 - **basic:PT-15 Tracked:** Open (WP-47 section 47-06).

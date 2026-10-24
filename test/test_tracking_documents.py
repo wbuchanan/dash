@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 231 registered items, by lead id, with its
+#: BUGS.md entry of each of the 234 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -3022,6 +3022,8 @@ GAPS4_OPEN = {
     'AX-14': 'tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named',
     'AX-15': 'Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build',
     'AX-18': 'A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear',
+    'AX-20': 'A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date',
+    'AX-19': 'A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis',
     'MS-14': 'xscale(range()) on a log axis adds a tick at the range end',
     'MS-12': 'A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none',
     'MS-11': "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn",
@@ -3067,6 +3069,7 @@ GAPS4_OPEN = {
     'PIC-10': 'dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row',
     'DG-12': 'Markers with missing or zero weight are invisible; twoway still draws a dot',
     'PIC-16': 'Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels',
+    'PIC-17': 'rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there',
     'MS-15': 'dash clips marker labels at the plot region; twoway lets them extend over the axis area',
     'DG-7': "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')",
     'basic:PT-15': 'Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys',
@@ -3256,6 +3259,8 @@ GAPS4_WP = {
     'AX-14': 'WP-44',
     'AX-15': 'WP-44',
     'AX-18': 'WP-44',
+    'AX-20': 'WP-44',
+    'AX-19': 'WP-44',
     'MS-14': 'WP-44',
     'MS-12': 'WP-44',
     'MS-11': 'WP-44',
@@ -3301,6 +3306,7 @@ GAPS4_WP = {
     'PIC-10': 'WP-47',
     'DG-12': 'WP-47',
     'PIC-16': 'WP-47',
+    'PIC-17': 'WP-47',
     'MS-15': 'WP-47',
     'DG-7': 'WP-47',
     'basic:PT-15': 'WP-47',
@@ -3490,6 +3496,8 @@ GAPS4_SECTION = {
     'AX-14': '44-02',
     'AX-15': '44-02',
     'AX-18': '44-04',
+    'AX-20': '44-04',
+    'AX-19': '44-03',
     'MS-14': '44-03',
     'MS-12': '44-05',
     'MS-11': '44-01',
@@ -3535,6 +3543,7 @@ GAPS4_SECTION = {
     'PIC-10': '47-06',
     'DG-12': '47-06',
     'PIC-16': '47-06',
+    'PIC-17': '47-06',
     'MS-15': '47-06',
     'DG-7': '47-02',
     'basic:PT-15': '47-06',
@@ -3768,7 +3777,9 @@ class TestGaps4Tracking:
         # contour with levels() ignoring options it does not know (D54)
         # old -> new: 230 -> 231: the D58 corpus run registered CV-17,
         # colorlist() with quoted RGB colours not applied under colorvar()
-        assert len(GAPS4_ALL) == 231
+        # old -> new: 231 -> 234: 34-07 (TR-4) measured AX-19, AX-20 and
+        # PIC-17, three range/bar rows rules no item covered (24oct2026)
+        assert len(GAPS4_ALL) == 234
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

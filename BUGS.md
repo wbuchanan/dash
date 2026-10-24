@@ -5863,3 +5863,21 @@
   - Description: Measured by WP-33 section 33-05 (corpus verdict engine): twoway draws a marker label past the plot region, over the y-axis label area (Honduras at clock 9); dash clips it at the plot region's edge. A difference no audit item covers, registered by the maintainer ruling D50 (22oct2026). Registered as GAPS4 MS-15 (WP-47, section 47-06, Fix).
   - Suggested fix: Let marker labels draw outside the plot region as twoway does
   - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S2 (WP-47): a marker label is cut off where twoway shows it whole.
+
+- [ ] Title: A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis
+  - File Names and Line Numbers: dash_render.py (the range-type axis rows)
+  - Description: WP-34 34-07 (TR-4, 24oct2026), measured in both modes against twoway: each axis reads every variable over its own rows, so an x on a row with both bounds missing still sets the axis range (dash_render.py _dash_stata_tick_requests row rule, D-34-07.b).
+  - Suggested fix: Leave a row with both bounds missing out of the x axis range and its ticks, as twoway does, in both modes.
+  - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): twoway draws it differently, no refusal.
+
+- [ ] Title: A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date
+  - File Names and Line Numbers: dash_render.py (map_bar)
+  - Description: WP-34 34-07 (TR-4, 24oct2026): an un-offset bar on a %tw-%ty axis now uses its date (map_bar _dash_tick_fields); with baroffset() the drawn centre is still read.
+  - Suggested fix: Use the bar's date as the tick input under baroffset() too, in both modes.
+  - Resolution: Not fixed because WP-44 section 44-04 has not landed. Graded S2 (WP-44): twoway draws it differently, no refusal.
+
+- [ ] Title: rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there
+  - File Names and Line Numbers: dash_render.py (map_rarea)
+  - Description: WP-34 34-07 (TR-4, 24oct2026), measured in both modes: the complete-case rule is exact for missing values at the ends only.
+  - Suggested fix: Break the area at a row where either bound is missing, as twoway does, in both modes.
+  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S2 (WP-47): twoway draws it differently, no refusal.
