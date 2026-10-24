@@ -329,13 +329,13 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
 - **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit 06c46ea.
-- **AX-2 Tracked:** Closed in WP-34, BUGS.md "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)", commit pending.
+- **AX-2 Tracked:** Closed in WP-34, BUGS.md "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)", commit 5abdd8c.
 - **AX-1 Tracked:** Closed in WP-34, BUGS.md "xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data", commit a44b1ac.
-- **VF-2 Tracked:** Closed in WP-34, BUGS.md "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)", commit pending.
+- **VF-2 Tracked:** Closed in WP-34, BUGS.md "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)", commit be56c0c.
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.
 - **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
 - **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit d2c69f5.
-- **TR-4 Tracked:** Closed in WP-34, BUGS.md "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)", commit pending.
+- **TR-4 Tracked:** Closed in WP-34, BUGS.md "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)", commit c229f49.
 - **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit 6953587.
 - **AX-3 Tracked:** Open (WP-34 section 34-09).
 - **plot:PT-13 Tracked:** Open (WP-34 section 34-09).
