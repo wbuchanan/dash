@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "cd6aa395135fd48236c40230680853ddc0873a2f",
-    "extracted": "22 Oct 2026",
+    "dash_commit": "a014c61c1fa955d54d92ac8283a73c12afd4ed6a",
+    "extracted": "24 Oct 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
@@ -142,6 +142,33 @@
       "note": "twoway contour with levels() ignores options it does not know; dash refuses them (D54, 35-06)",
       "plottype": "contour",
       "when": "\\blevels?\\("
+    },
+    {
+      "check": "legend",
+      "form": "plain",
+      "gaps4_id": "CV-17",
+      "id": "CV-17",
+      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
+      "plottype": "*",
+      "when": "\\bcolorlist\\("
+    },
+    {
+      "check": "texts",
+      "form": "plain",
+      "gaps4_id": "CV-17",
+      "id": "CV-17",
+      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
+      "plottype": "*",
+      "when": "\\bcolorlist\\("
+    },
+    {
+      "check": "colours",
+      "form": "plain",
+      "gaps4_id": "CV-17",
+      "id": "CV-17",
+      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
+      "plottype": "*",
+      "when": "\\bcolorlist\\("
     }
   ]
 }

@@ -179,6 +179,7 @@ One row per item, keyed by its first id (the lead id); the item's other ids foll
 | LT-12 | clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options | S2 | 42-03 | Fix | dash_render.py:53271-53272, 16898-16899; C_ti, C_cbx | Parse it as a textbox and draw it above the key, keeping ztitle |
 | AX-12 | The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list (also syn:SD-4) | S2 | 42-03 | Fix | twowaygraph_g.class:122-123; dash.ado:995, 1324; dash_parse.mata:8151-8156; Z01-Z32 | Accept the plurals; draw the ticks and labels on the key (M11: every P6-P10 item is drawn). |
 | sil:SD-4 | The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read (also sil:SD-14) | S2 | 42-01 | Fix | dash_render.py:16751, 24622; scheme-s2color.scheme:56, 185, 2239-2241 | Read clegend_width/height and the four contour keys |
+| CV-17 | colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar | S2 | 42-01 | Fix | WP-33 corpus (D58 run, 23oct2026): ex-feature_tour-eaf70b99, twoway scatter mpg weight, colorvar(price) colorlevels(8) colorlist("68 1 84" "70 50 126" ... "253 231 37"): twoway rc 0, markers in the eight listed colours with a colour bar; dash rc 0 with the note 'named style "68 not found in class color, default attributes used', 74 black markers (rgb 0,0,0) and a legend of price ranges; dash_render.py:16165-16172 reads colorlist() word by word | Read each quoted colour of colorlist() whole, as twoway does, and draw the levels in them under the stepped key |
 | LT-22 | contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line | S2 | 42-03 | Fix | dash.sthlp:592-593, 5527-5533; CL_ctl, CL_cl | Build the level legend under colorlines; drop the note on plain contourline |
 
 ## WP-43 · Legend, titles and added text (P8)
@@ -449,6 +450,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
 - **AX-12 Tracked:** Open (WP-42 section 42-03).
 - **sil:SD-4 Tracked:** Open (WP-42 section 42-01).
+- **CV-17 Tracked:** Open (WP-42 section 42-01).
 - **LT-22 Tracked:** Open (WP-42 section 42-03).
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
 - **LT-4 Tracked:** Open (WP-43 section 43-02).

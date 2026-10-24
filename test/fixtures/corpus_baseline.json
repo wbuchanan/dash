@@ -1,7 +1,7 @@
 {
   "_meta": {
     "born_date": "23 Oct 2026",
-    "dash_commit": "e8cf4e473ab5fc1cb09722e1f7ff3104bc35bc86",
+    "dash_commit": "a014c61c1fa955d54d92ac8283a73c12afd4ed6a",
     "extracted": "23 Oct 2026",
     "source": "scripts/corpus/summary.py",
     "stata_version": "19.5"
@@ -281,8 +281,8 @@
       "skipped": 0
     },
     "scatter": {
-      "Close": 100,
-      "Differs": 24,
+      "Close": 101,
+      "Differs": 23,
       "Same": 0,
       "examples": 124,
       "skipped": 0
@@ -323,6 +323,7 @@
     "AX-1": 4,
     "AX-2": 5,
     "BY-32": 3,
+    "CV-17": 1,
     "GW-6": 336,
     "MS-15": 9,
     "VF-4": 335,
@@ -336,10 +337,10 @@
     "axis_titles": 4,
     "colours": 4,
     "glyphs": 2,
-    "legend": 22,
+    "legend": 21,
     "marker_shape": 1,
     "rc": 2,
-    "texts": 21,
+    "texts": 20,
     "titles": 1,
     "x_labels": 3,
     "x_ticks": 2,
@@ -347,8 +348,8 @@
     "y_ticks": 13
   },
   "verdicts": {
-    "Close": 284,
-    "Differs": 55,
+    "Close": 285,
+    "Differs": 54,
     "Same": 0,
     "skipped": 0
   }

@@ -2866,7 +2866,7 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 230 registered items, by lead id, with its
+#: BUGS.md entry of each of the 231 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
@@ -2990,6 +2990,7 @@ GAPS4_OPEN = {
     'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
     'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',
     'sil:SD-4': "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read",
+    'CV-17': 'colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar',
     'LT-22': 'contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line',
     'LT-1': "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles",
     'LT-4': 'legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read',
@@ -3223,6 +3224,7 @@ GAPS4_WP = {
     'LT-12': 'WP-42',
     'AX-12': 'WP-42',
     'sil:SD-4': 'WP-42',
+    'CV-17': 'WP-42',
     'LT-22': 'WP-42',
     'LT-1': 'WP-43',
     'LT-4': 'WP-43',
@@ -3456,6 +3458,7 @@ GAPS4_SECTION = {
     'LT-12': '42-03',
     'AX-12': '42-03',
     'sil:SD-4': '42-01',
+    'CV-17': '42-01',
     'LT-22': '42-03',
     'LT-1': '43-01',
     'LT-4': '43-02',
@@ -3769,7 +3772,9 @@ class TestGaps4Tracking:
         # marker labels clipped at the plot region (D50)
         # old -> new: 229 -> 230: 33-14's corpus run registered syn:SD-22,
         # contour with levels() ignoring options it does not know (D54)
-        assert len(GAPS4_ALL) == 230
+        # old -> new: 230 -> 231: the D58 corpus run registered CV-17,
+        # colorlist() with quoted RGB colours not applied under colorvar()
+        assert len(GAPS4_ALL) == 231
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.
