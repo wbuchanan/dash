@@ -39921,14 +39921,54 @@ _DASH_AXIS_COLON_RE = re.compile(
     r"\A" + _DASH_AXIS_NUM + ":" + _DASH_AXIS_NUM + r"\Z")
 
 
+#: WP-34 DG-3: numlist's relative tolerance, 100 DBL_EPSILON (measured
+#: 20oct2026 and 24oct2026, test/fixtures/numlist_truth.json).
+_DASH_NUMLIST_TOL = 100.0 * 2.220446049250313e-16
+
+
+def _dash_numlist_value(v):
+    """The double Stata's numlist writes for *v* (WP-34 DG-3): the value
+    as %15.0g text, read back (measured, numlist_truth.json): the fixed
+    form for a decimal exponent e of -5 to 13, with 13 decimals when
+    e < 0 and 12 - e (none past 12) otherwise; else the exponent form,
+    8 mantissa decimals, 7 when |e| >= 100.  A value that is no finite
+    number is returned as it is; -0 is 0."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError, OverflowError):
+        return v
+    if not math.isfinite(v):
+        return v
+    if v == 0.0:
+        return 0.0
+    e = int(("%.16e" % abs(v)).split("e")[1])
+    if -5 <= e <= 13:
+        d = 13 if e < 0 else max(0, 12 - e)
+        return float("%.*f" % (d, v)) or 0.0
+    return float(("%.8e" if abs(e) < 100 else "%.7e") % v)
+
+
+def _dash_numlist_step(start, step, k):
+    """``start + k*step`` as numlist makes it (WP-34 DG-3): 0 when its
+    magnitude is below ``_DASH_NUMLIST_TOL * |start|`` (measured:
+    -1(.250000000000002)1 writes 0), then :func:`_dash_numlist_value`."""
+    v = start + step * k
+    if abs(v) < _DASH_NUMLIST_TOL * abs(start):
+        v = 0.0
+    return _dash_numlist_value(v)
+
+
 def _dash_expand_numlist(tokens, limit=None):
     """Expand one run of bare axis-label tokens by Stata's numlist forms
     ([U] 11.1.8; TR-14.1, WP-28 S14): a plain number; ``a/b`` (step +-1
     toward b, inclusive); ``a(b)c``/``a[b]c`` (from a by b while <= c for
     b > 0, >= c for b < 0, ``a + i*b`` never accumulated, inclusive within
-    a 1e-9 tolerance); ``x y to z``/``x y:z`` (also ``x y : z`` and
-    ``y:z`` split from one token): step = y - x from the two values
-    immediately before the word.
+    100 DBL_EPSILON of the count, as numlist counts); ``x y to z``/``x y:z``
+    (also ``x y : z`` and ``y:z`` split from one token): step = y - x from
+    the two values immediately before the word.  Each value is the double
+    Stata's numlist makes (:func:`_dash_numlist_step`,
+    :func:`_dash_numlist_value`; WP-34 DG-3), so a rule crossing zero
+    makes exactly 0.
 
     Every count is found before any value of that span is made, and the
     whole run stops with *too_many* set the moment the running total
@@ -40003,7 +40043,7 @@ def _dash_expand_numlist(tokens, limit=None):
                 bad.append(tok)
                 i += 2
                 continue
-            span = (z - y) / step + 1e-9
+            span = (z - y) / step * (1.0 + _DASH_NUMLIST_TOL)
             if not math.isfinite(span):
                 values.extend([x, y])
                 bad.append(tok)
@@ -40014,9 +40054,10 @@ def _dash_expand_numlist(tokens, limit=None):
                 values.extend([x, y])
                 i += 2
                 continue
-            values.append(x)
-            values.append(y)
-            values.extend(y + step * k for k in range(1, n_steps + 1))
+            values.append(_dash_numlist_value(x))
+            values.append(_dash_numlist_value(y))
+            values.extend(_dash_numlist_step(y, step, k)
+                          for k in range(1, n_steps + 1))
             i += 2
             continue
         m = _DASH_AXIS_INCR_RE.match(tok)
@@ -40032,7 +40073,7 @@ def _dash_expand_numlist(tokens, limit=None):
                 bad.append(tok)
                 i += 1
                 continue
-            span = (c - a) / b + 1e-9
+            span = (c - a) / b * (1.0 + _DASH_NUMLIST_TOL)
             if not math.isfinite(span):
                 bad.append(tok)
                 i += 1
@@ -40041,7 +40082,8 @@ def _dash_expand_numlist(tokens, limit=None):
             if not _reserve(n_steps + 1):
                 i += 1
                 continue
-            values.extend(a + b * k for k in range(n_steps + 1))
+            values.extend(_dash_numlist_step(a, b, k)
+                          for k in range(n_steps + 1))
             i += 1
             continue
         m = _DASH_AXIS_SLASH_RE.match(tok)
@@ -40061,7 +40103,8 @@ def _dash_expand_numlist(tokens, limit=None):
             if not _reserve(n_steps + 1):
                 i += 1
                 continue
-            values.extend(a + step * k for k in range(n_steps + 1))
+            values.extend(_dash_numlist_step(a, step, k)
+                          for k in range(n_steps + 1))
             i += 1
             continue
         m = _DASH_AXIS_COLON_RE.match(tok)
@@ -40073,7 +40116,7 @@ def _dash_expand_numlist(tokens, limit=None):
                 bad.append(tok)
                 i += 1
                 continue
-            span = (z - y) / step + 1e-9
+            span = (z - y) / step * (1.0 + _DASH_NUMLIST_TOL)
             if not math.isfinite(span):
                 bad.append(tok)
                 i += 1
@@ -40082,7 +40125,8 @@ def _dash_expand_numlist(tokens, limit=None):
             if not _reserve(n_steps + 1):
                 i += 1
                 continue
-            values.extend(y + step * k for k in range(n_steps + 1))
+            values.extend(_dash_numlist_step(y, step, k)
+                          for k in range(n_steps + 1))
             i += 1
             continue
         try:
@@ -40098,7 +40142,7 @@ def _dash_expand_numlist(tokens, limit=None):
         if not _reserve(1):
             i += 1
             continue
-        values.append(v)
+        values.append(_dash_numlist_value(v))
         i += 1
 
     if too_many:
@@ -67585,6 +67629,8 @@ class ServerAppBuilder:
                       "_DASH_RBO_JS",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
+                      # WP-34 DG-3: numlist's relative tolerance.
+                      "_DASH_NUMLIST_TOL",
                       # WP-32: the empty axis's extent.
                       "_DASH_EMPTY_SCALE",
                       # WP-32: the served stale cue's texts.
@@ -67935,6 +67981,8 @@ class ServerAppBuilder:
                          # _dash_parse_axis_spec calls before it.
                          "_dash_axis_tokens", "_dash_axis_head_split",
                          "_dash_expand_numlist", "_dash_axis_too_many",
+                         # WP-34 DG-3: each numlist value as Stata's.
+                         "_dash_numlist_value", "_dash_numlist_step",
                          # WP-28 S14 (G16): the one label-set lookup five
                          # sites used to write for themselves, and the
                          # hover text column it feeds.

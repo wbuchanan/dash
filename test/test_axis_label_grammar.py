@@ -17,6 +17,7 @@ dash's own choice -- drawn gracefully, the bad token named.
 """
 import itertools
 import json
+import math
 import os
 import sys
 import time
@@ -363,3 +364,128 @@ class TestHostileLabels:
         assert dict(ax.major_label_overrides)[1.0] == bad
         assert "alert" not in ax.formatter.code
         assert bad in ax.formatter.args["labels"]
+
+
+# ---------------------------------------------------------------------------
+# WP-34 DG-3 (section 34-08): each value a numlist rule makes is the double
+# Stata's numlist makes (the value written as %15.0g and read back), so a
+# rule that crosses zero ticks exactly 0 and labels it 0.  Truth:
+# test/fixtures/numlist_truth.json (scripts/extract_numlist_truth.do).
+# ---------------------------------------------------------------------------
+_NUMLIST_FIXTURE = os.path.join(_HERE, "fixtures", "numlist_truth.json")
+_HELP_FILE = os.path.join(_HERE, "..", "dash.sthlp")
+
+
+@pytest.fixture(scope="module")
+def numlist_truth():
+    with open(_NUMLIST_FIXTURE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _zero_frame():
+    n = 11
+    return pd.DataFrame({"x": np.arange(1, n + 1, dtype=float),
+                         "y": [(i - 6) / 10 * 7 for i in range(1, n + 1)]})
+
+
+def _yaxis(fig):
+    return [a for a in fig.yaxis
+            if getattr(a, "y_range_name", "default") == "default"][0]
+
+
+class TestTheNumlistRule:
+    def test_the_fixture_holds_every_rule(self, numlist_truth):
+        m = numlist_truth["_meta"]
+        for k in ("stata_version", "born_date", "dash_commit", "extracted",
+                  "source"):
+            assert k in m, k
+        assert len(numlist_truth["rules"]) == 33
+        assert set(numlist_truth["drawn"]) == {"-.3(.1).3", "-.7(.1).7",
+                                               "-.6(.2).6"}
+
+    def test_every_rule_reads_back_as_statas(self, numlist_truth):
+        bad = []
+        for rule, rec in sorted(numlist_truth["rules"].items()):
+            got, too_many, nbad = dr._dash_expand_numlist(rule.split())
+            if got != rec["values"] or too_many or nbad:
+                bad.append((rule, got, rec["values"]))
+            if any(math.copysign(1.0, v) < 0 for v in got if v == 0):
+                bad.append((rule, "negative zero"))
+        assert not bad, bad
+
+    def test_the_helper(self, numlist_truth):
+        f = dr._dash_numlist_value
+        bad = []
+        for rule, rec in numlist_truth["rules"].items():
+            for word, v in zip(rec["text"].split(), rec["values"]):
+                if f(float(word)) != v or f(v) != v:
+                    bad.append((rule, word, f(float(word)), v))
+        assert not bad, bad
+        assert f(0.0) == 0.0 and math.copysign(1.0, f(-0.0)) == 1.0
+        assert math.copysign(1.0, f(-4e-14)) == -1.0
+        assert math.isnan(f(float("nan")))
+        assert f(float("inf")) == float("inf")
+        assert f(-0.19999999999999998) == -0.2
+        assert f(0.30000000000000004) == 0.3
+        assert f("x") == "x"
+
+    def test_the_step_writes_zero_below_the_bound(self):
+        # 100 DBL_EPSILON of |start| (measured: -1(.250000000000002)1).
+        assert dr._DASH_NUMLIST_TOL == 100.0 * 2.220446049250313e-16
+        assert dr._dash_numlist_step(-1.0, 0.250000000000002, 4) == 0.0
+        assert dr._dash_numlist_step(-1.0, 1.000000000000025, 1) == \
+            2.50910404e-14
+        assert dr._dash_numlist_step(-0.3, 0.1, 3) == 0.0
+
+
+class TestZeroLabel:
+    # Measured 24oct2026 (numlist_truth.json drawn): twoway's dlg_tickpos
+    # for -.3(.1).3 and -.7(.1).7 are numlist's values; for -.6(.2).6 the
+    # class writes .2000000000000001 .4000000000000001 .6000000000000001,
+    # within a few ulps of numlist's .2 .4 .6, and labels them .2 .4 .6.
+    # The ticks are therefore held to 1e-15 of each value, the zero tick
+    # exactly, and the labels exactly.
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_ticks_are_twoways(self, mode, numlist_truth, tmp_path):
+        for rule, rec in sorted(numlist_truth["drawn"].items()):
+            fig = _figures(mode, tmp_path, _zero_frame(),
+                           [_sc(y="y", x="x")], {"ylabel": rule})[0]
+            got = _ticks(_yaxis(fig))
+            want = rec["ticks"]
+            assert got == pytest.approx(want, rel=1e-15, abs=0), rule
+            assert got[want.index(0.0)] == 0.0, (rule, got)
+            if rule != "-.6(.2).6":
+                assert got == want, rule
+
+    def test_the_label_is_0(self, numlist_truth, tmp_path):
+        from js_runner import run_js
+        for rule, rec in sorted(numlist_truth["drawn"].items()):
+            fig = _figures("saved", tmp_path, _zero_frame(),
+                           [_sc(y="y", x="x")], {"ylabel": rule})[0]
+            ax = _yaxis(fig)
+            ticks = _ticks(ax)
+            args = dict(ax.formatter.args)
+            src = ("'use strict';\nconst _a = %s;\n"
+                   "const _f = function (tick, fmt, kind, storage, dp) {\n"
+                   "%s\n};\nconsole.log(JSON.stringify(%s.map((t) => "
+                   "_f(t, _a.fmt, _a.kind, _a.storage, _a.dp))));\n"
+                   % (json.dumps(args), ax.formatter.code,
+                      json.dumps(ticks)))
+            got = [s.replace("−", "-") for s in run_js(src)]
+            assert got == [s.replace("−", "-") for s in rec["labels"]], \
+                (rule, got)
+            assert got[ticks.index(0.0)] == "0", (rule, got)
+
+    def test_the_help_sentence(self):
+        with open(_HELP_FILE, encoding="utf-8") as fh:
+            text = fh.read()
+        para = _between(text, "The forms mix freely", "{pstd}")
+        assert ("Each value is the one {cmd:numlist} makes, so a rule that "
+                "crosses zero, such as {cmd:ylabel(-.3(.1).3)}, labels its "
+                "middle tick 0.") in " ".join(para.split())
+
+
+def _between(text, start, end):
+    i = text.index(start)
+    j = text.index(end, i + len(start))
+    return text[i:j]

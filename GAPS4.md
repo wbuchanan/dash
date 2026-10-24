@@ -336,7 +336,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
 - **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit pending.
 - **TR-4 Tracked:** Open (WP-34 section 34-07).
-- **DG-3 Tracked:** Open (WP-34 section 34-08).
+- **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit pending.
 - **AX-3 Tracked:** Open (WP-34 section 34-09).
 - **plot:PT-13 Tracked:** Open (WP-34 section 34-09).
 - **MS-1 Tracked:** Open (WP-35 section 35-01).

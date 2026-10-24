@@ -927,6 +927,7 @@ and now matches Stata.
 - A default area plot and its legend key are outlined as twoway outlines them -- the whole polygon, top, base and end edges -- in the scheme's area line style (WP-34, PIC-1)
 - yscale(range(0)) and other range() values beyond the data no longer widen a default axis's ticks (scatter mpg weight, yscale(range(0)): 0(10)40 -> 10(10)40) (WP-34, AX-1)
 - A ci fit with nofit counts as one plot, so the layers after it take twoway's p# styles and legend numbers ((lfitci, nofit) (scatter): the scatter p3 -> p2) (WP-34, PIC-3)
+- A label or tick rule that crosses zero labels its zero tick 0 (ylabel(-.3(.1).3): 5.55e-17 -> 0) (WP-34, DG-3)
 
 ### Fixed in WP-33
 

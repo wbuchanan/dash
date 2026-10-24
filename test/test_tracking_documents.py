@@ -2874,7 +2874,6 @@ GAPS4_OPEN = {
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
     'VF-2': "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)",
     'TR-4': "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)",
-    'DG-3': "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label",
     'AX-3': "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels",
     'plot:PT-13': 'Open entry: the natscale model misses 3 of 264 axes after a filter move or without embedded ticks',
     'MS-1': 'Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns',

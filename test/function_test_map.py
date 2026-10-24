@@ -426,6 +426,8 @@ FUNCTIONS = {
  '_dash_axis_tokens': 'test/test_axis_label_grammar.py::TestTheTokenizer::test_compound_quotes_nest',
  '_dash_axis_too_many': 'test/test_axis_label_grammar.py::TestTheBound::test_between_numlists_cap_and_the_bound_the_renderer_expands',
  '_dash_expand_numlist': 'test/test_axis_label_grammar.py::TestTheExpander::test_forms',
+ '_dash_numlist_value': 'test/test_axis_label_grammar.py::TestTheNumlistRule::test_the_helper',
+ '_dash_numlist_step': 'test/test_axis_label_grammar.py::TestTheNumlistRule::test_every_rule_reads_back_as_statas',
  '_dash_expand_numlist.<locals>._reserve': 'test/test_axis_label_grammar.py::TestTheExpander::test_the_count_is_taken_before_any_value_is_made',
  '_dash_parse_axis_label_opt.<locals>._flush': 'test/test_axis_label_grammar.py::TestLabelledTicks::test_a_string_labels_the_last_value_of_its_run',
  '_dash_bs_cell_classes': 'test/test_served_bs_layout.py::TestTheBsGridStylesheet::test_the_class_helper',

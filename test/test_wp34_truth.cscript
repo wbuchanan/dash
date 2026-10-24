@@ -793,6 +793,41 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w34_run' {
 }
 * ==== end S06 ====
 
+* ==== S08 DG-3: a(b)c rules crossing zero label 0 ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S08") & `: list posof "S08" in w34_run' {
+    display as text "S08 start " c(current_date) " " c(current_time)
+    local q08d "`w34_work'/s08dg3"
+    capture mkdir "`q08d'"
+
+    // Q3408-1: for ylabel(-.3(.1).3) and ylabel(-.7(.1).7) the saved
+    // page's y ticks are the ticks twoway draws, so the middle tick is 0.
+    local i 0
+    foreach r in "-.3(.1).3" "-.7(.1).7" {
+        local ++i
+        clear
+        quietly set obs 11
+        quietly gen x = _n
+        quietly gen y = (_n - 6) / 10 * 7
+        capture graph drop _all
+        quietly twoway scatter y x, ylabel(`r')
+        _q34_drawn .Graph y1
+        _w34_expect Q3408-1 `"(strpos(" ${q34_t} ", " 0 ") > 0)"' `"twoway ylabel(`r') ticks ${q34_t}: no tick at 0"'
+        capture erase "`q08d'/z`i'.html"
+        capture noisily dash scatter y x, ylabel(`r') saving("`q08d'/z`i'.html", replace)
+        _w34_expect Q3408-1 "(_rc == 0)" "dash scatter y x, ylabel(`r') rc `=_rc'"
+        // The y ticker carries no tags, which _q34_has's pattern needs.
+        python: import re, json; from sfi import Macro; _q08h = open(r"`q08d'/z`i'.html", encoding="utf-8").read(); _q08l = [json.loads("[" + m + "]") for m in re.findall(r'"name":"FixedTicker","id":"[^"]+","attributes":\{(?:"tags":\[[^\]]*\],)?"ticks":\[([^\]]*)\]', _q08h)]; _q08w = [float(v) for v in "${q34_t}".split()]; Macro.setGlobal("q34_bad", "" if _q08w in _q08l else ("want %s, page %s" % (_q08w, _q08l))[:1500])
+        _w34_expect Q3408-1 `"("${q34_bad}" == "")"' `"ylabel(`r') (twoway ${q34_t}): ${q34_bad}"'
+    }
+    _w34_done Q3408-1 "ylabel(-.3(.1).3) and ylabel(-.7(.1).7): twoway's ticks, the middle one 0"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S08 end " c(current_date) " " c(current_time)
+}
+* ==== end S08 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

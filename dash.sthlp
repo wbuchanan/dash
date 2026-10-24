@@ -4579,7 +4579,9 @@ the list with Stata's own {cmd:numlist} before the dashboard is drawn, and
 the renderer reads the same grammar for a spec written by hand; a single
 quote is a character, not a string delimiter, and a word that is no value,
 form, rule or label is named in the note.  More than 2,000 ticks in any
-form keep the axis's default ticks, with a note.
+form keep the axis's default ticks, with a note.  Each value is the one
+{cmd:numlist} makes, so a rule that crosses zero, such as
+{cmd:ylabel(-.3(.1).3)}, labels its middle tick 0.
 
 {pstd}
 A default axis, or one labelled {cmd:#}{it:N}, is ticked where Stata's own {cmd:_natscale} and {cmd:_tsnatscale} tick it, asked of Stata over the rows each layer draws when the data are exported; after a filter move the saved page and the served app place {cmd:twoway}'s rule with a fitted model that agrees with Stata on 58-98% of ranges (measured), and a move back to all the data restores Stata's ticks. {cmd:xtick(#}{it:N}{cmd:)} and {cmd:xlabel(minmax)} follow a move the same way. As in {cmd:twoway}, the rows a layer draws include what it evaluates where it draws no point: a {cmd:lowess}, {cmd:qfit}, {cmd:fpfit}, {cmd:lpoly} or {cmd:lpolyci} whose smooth is missing (one or two observations, or a bandwidth that leaves the grid missing) still spans its observations' x on the x axis, and a {cmd:histogram} of no observations runs its y axis from -1 to 1; the other axis is left empty.  A layer with {cmd:range()}, {cmd:recast()} or a date variable spans only the points it draws.

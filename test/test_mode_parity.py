@@ -2857,6 +2857,8 @@ CORPUS = [
     # WP-34 PIC-3: a nofit ci fit is one plot; the scatter after it is p2.
     _case("lfitci nofit then scatter",
           [plot_for("lfitci", {"nofit": "nofit"}), plot_for("scatter")]),
+    # WP-34 DG-3: a rule crossing zero ticks exactly 0 in both modes.
+    _case("ylabel crossing zero", [_sc()], go={"ylabel": "-.3(.1).3"}),
 ]
 
 

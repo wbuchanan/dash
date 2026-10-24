@@ -4580,11 +4580,11 @@
   - Suggested fix: Summarise only rows where all of the layer's variables are non-missing (twoway's omit rule); add operator and plain-missing rows to ts_operator_truth
   - Resolution: Not fixed because WP-34 section 34-07 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
 
-- [ ] Title: a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label
+- [x] Title: a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label
   - File Names and Line Numbers: _dash_expand_numlist (dash_render.py:40061-40082) computes a+b*k in plain floats; ylabel(-.3(.1).3) and -.7(.1).7
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids DG-3; confirmed; tracked: untracked. Registered as GAPS4 DG-3 (WP-34, section 34-08, Fix).
   - Suggested fix: Reproduce Stata numlist's rounding (snap to 0, round relative to b); add a truth probe
-  - Resolution: Not fixed because WP-34 section 34-08 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+  - Resolution: Fixed 24oct2026 (WP-34, DG-3). _dash_expand_numlist makes each value of every numlist form (a(b)c, a[b]c, x y to z, x y:z, y:z, a/b and a plain number) as Stata's numlist makes it, both modes: it counts floor(q * (1 + 100 DBL_EPSILON)) steps (_DASH_NUMLIST_TOL), writes 0 for a + k*b below 100 DBL_EPSILON of |a| (_dash_numlist_step) and rounds each value as %15.0g read back (_dash_numlist_value), so ylabel(-.3(.1).3) ticks -.3 -.2 -.1 0 .1 .2 .3 and labels the middle tick 0 (was 5.55e-17). Pinned by test/test_axis_label_grammar.py::TestTheNumlistRule::test_every_rule_reads_back_as_statas, test/test_axis_label_grammar.py::TestZeroLabel::test_the_label_is_0, Q3408-1; fixture test/fixtures/numlist_truth.json. Closes GAPS4 DG-3 (WP-34, DG-3).
 
 - [ ] Title: Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels
   - File Names and Line Numbers: Stata is asked only for counts {5} plus #N matched by the label/tick regex (dash_render.py:41832-41838); skip set at 41811; build-time misses B2, C42, B6, B4, E2; qfitci||scatter draws y 0(10)40 where twoway draws 10(10)40; colour-key tick calls pass no table (16773, 29219, 52420): zlabel(#3) gives 3 colours where twoway gives 2; BUGS.md:4139-4143 and ROADMAP.md:5153 say the drawing is 'exact at build'
