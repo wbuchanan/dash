@@ -330,13 +330,13 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
 - **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit 06c46ea.
 - **AX-2 Tracked:** Open (WP-34 section 34-02).
-- **AX-1 Tracked:** Closed in WP-34, BUGS.md "xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data", commit pending.
+- **AX-1 Tracked:** Closed in WP-34, BUGS.md "xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data", commit a44b1ac.
 - **VF-2 Tracked:** Open (WP-34 section 34-02).
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.
 - **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
-- **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit pending.
+- **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit d2c69f5.
 - **TR-4 Tracked:** Open (WP-34 section 34-07).
-- **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit pending.
+- **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit 6953587.
 - **AX-3 Tracked:** Open (WP-34 section 34-09).
 - **plot:PT-13 Tracked:** Open (WP-34 section 34-09).
 - **MS-1 Tracked:** Open (WP-35 section 35-01).
