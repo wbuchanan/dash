@@ -2881,6 +2881,8 @@ CORPUS = [
     _case("by foreign x ticks", [plot_for("scatter", {}, yvar="mpg",
                                           xvar="price")],
           go={"by": "foreign"}),
+    # WP-34 VF-2: the shared y title's cell fills its track in both modes.
+    _case("by ytitle cell", [_sc()], go={"by": "foreign", "ytitle": "Price"}),
 ]
 
 

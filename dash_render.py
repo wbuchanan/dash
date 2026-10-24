@@ -55580,7 +55580,11 @@ def _dash_by_cell(scheme, name, frame=(1, 1)):
     ``dash_by_ytitle``, ``dash_by_xtitle``, ``dash_by_legend``,
     ``dash_by_clegend`` -- with a frame of
     ``(width, height)`` px; a 1-px dimension fits its content, the other
-    fills the grid track."""
+    fills the grid track.  A ``(width, None)`` cell fills its track's
+    height with no frame height; every other cell keeps the 1-px frame
+    its content fits (WP-34 VF-2: the left y title, a vertical legend and
+    the default colour key kept ``_dash_by_text_cell``'s frame_height 1,
+    so their canvas was 1 px tall and the title was never painted)."""
     cell = _dash_by_text_cell(scheme, name)
     # Built after the canvas-text pass: the cell's own empty title is
     # finished as it stands (it holds no text to finish).
@@ -55591,6 +55595,8 @@ def _dash_by_cell(scheme, name, frame=(1, 1)):
         cell.frame_width = int(fw)
         cell.width_policy = "fit"
         cell.height_policy = "max" if fh is None else "fit"
+        if fh is None:
+            cell.frame_height = None
     if fh:
         cell.frame_height = int(fh)
     return cell

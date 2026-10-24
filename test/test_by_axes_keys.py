@@ -420,6 +420,14 @@ class TestTheUnitFunctions:
         assert cell.frame_width == 1 and cell.toolbar_location is None
         assert dr._dash_by_cell(None, "dash_by_xtitle",
                                 (None, 1)).frame_height == 1
+        # WP-34 VF-2: a (width, None) cell fills its track's height with
+        # no frame height (frame_height 1 left the y title 1 px tall);
+        # every other cell keeps the 1-px frame its content fits.
+        fill = dr._dash_by_cell(None, "dash_by_ytitle", (1, None))
+        assert fill.frame_height is None and fill.height_policy == "max"
+        for frame in ((None, None), (None, 1)):
+            c = dr._dash_by_cell(None, "dash_by_clegend", frame)
+            assert c.frame_height == 1 and c.height_policy == "fit", frame
 
     def test__dash_by_title_cell(self):
         from bokeh.models import LinearAxis
