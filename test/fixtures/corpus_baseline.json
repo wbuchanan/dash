@@ -1,22 +1,22 @@
 {
   "_meta": {
-    "born_date": "22 Oct 2026",
-    "dash_commit": "81ea31cf0affb9d49c1fa55c36df7d1814afb319",
-    "extracted": "22 Oct 2026",
+    "born_date": "23 Oct 2026",
+    "dash_commit": "e8cf4e473ab5fc1cb09722e1f7ff3104bc35bc86",
+    "extracted": "23 Oct 2026",
     "source": "scripts/corpus/summary.py",
     "stata_version": "19.5"
   },
   "by_plottype": {
     "area": {
-      "Close": 0,
-      "Differs": 4,
+      "Close": 3,
+      "Differs": 1,
       "Same": 0,
       "examples": 4,
       "skipped": 0
     },
     "bar": {
-      "Close": 4,
-      "Differs": 3,
+      "Close": 7,
+      "Differs": 0,
       "Same": 0,
       "examples": 7,
       "skipped": 0
@@ -29,15 +29,15 @@
       "skipped": 0
     },
     "contour": {
-      "Close": 15,
-      "Differs": 2,
+      "Close": 11,
+      "Differs": 6,
       "Same": 0,
       "examples": 17,
       "skipped": 0
     },
     "contourline": {
-      "Close": 0,
-      "Differs": 6,
+      "Close": 2,
+      "Differs": 4,
       "Same": 0,
       "examples": 6,
       "skipped": 0
@@ -71,15 +71,15 @@
       "skipped": 0
     },
     "function": {
-      "Close": 4,
-      "Differs": 6,
+      "Close": 9,
+      "Differs": 1,
       "Same": 0,
       "examples": 10,
       "skipped": 0
     },
     "histogram": {
-      "Close": 14,
-      "Differs": 3,
+      "Close": 17,
+      "Differs": 0,
       "Same": 0,
       "examples": 17,
       "skipped": 0
@@ -92,8 +92,8 @@
       "skipped": 0
     },
     "lfit": {
-      "Close": 2,
-      "Differs": 2,
+      "Close": 4,
+      "Differs": 0,
       "Same": 0,
       "examples": 4,
       "skipped": 0
@@ -106,8 +106,8 @@
       "skipped": 0
     },
     "line": {
-      "Close": 22,
-      "Differs": 6,
+      "Close": 27,
+      "Differs": 1,
       "Same": 0,
       "examples": 28,
       "skipped": 0
@@ -162,8 +162,8 @@
       "skipped": 0
     },
     "pcbarrow": {
-      "Close": 1,
-      "Differs": 1,
+      "Close": 2,
+      "Differs": 0,
       "Same": 0,
       "examples": 2,
       "skipped": 0
@@ -190,8 +190,8 @@
       "skipped": 0
     },
     "pcspike": {
-      "Close": 3,
-      "Differs": 1,
+      "Close": 4,
+      "Differs": 0,
       "Same": 0,
       "examples": 4,
       "skipped": 0
@@ -225,8 +225,8 @@
       "skipped": 0
     },
     "rcap": {
-      "Close": 2,
-      "Differs": 4,
+      "Close": 6,
+      "Differs": 0,
       "Same": 0,
       "examples": 6,
       "skipped": 0
@@ -253,8 +253,8 @@
       "skipped": 0
     },
     "rpcap": {
-      "Close": 0,
-      "Differs": 3,
+      "Close": 3,
+      "Differs": 0,
       "Same": 0,
       "examples": 3,
       "skipped": 0
@@ -281,8 +281,8 @@
       "skipped": 0
     },
     "scatter": {
-      "Close": 80,
-      "Differs": 44,
+      "Close": 100,
+      "Differs": 24,
       "Same": 0,
       "examples": 124,
       "skipped": 0
@@ -302,8 +302,8 @@
       "skipped": 0
     },
     "tsline": {
-      "Close": 3,
-      "Differs": 2,
+      "Close": 4,
+      "Differs": 1,
       "Same": 0,
       "examples": 5,
       "skipped": 0
@@ -321,12 +321,11 @@
   "gallery": 338,
   "ledger": {
     "AX-1": 4,
-    "AX-2": 4,
-    "AX-4": 4,
-    "BY-32": 6,
-    "GW-6": 335,
-    "MS-15": 10,
-    "VF-4": 328,
+    "AX-2": 5,
+    "BY-32": 3,
+    "GW-6": 336,
+    "MS-15": 9,
+    "VF-4": 335,
     "syn:SD-22": 1
   },
   "refused": {
@@ -334,24 +333,22 @@
   },
   "twoway_refuses": 0,
   "unexplained": {
-    "axis_titles": 17,
-    "colours": 19,
-    "glyph_extents": 14,
-    "glyphs": 32,
-    "legend": 25,
-    "marker_shape": 12,
+    "axis_titles": 4,
+    "colours": 4,
+    "glyphs": 2,
+    "legend": 22,
+    "marker_shape": 1,
     "rc": 2,
-    "titles": 13,
-    "x_labels": 7,
-    "x_labels_none": 6,
-    "x_ticks": 4,
-    "y_labels": 14,
-    "y_labels_none": 6,
-    "y_ticks": 12
+    "texts": 21,
+    "titles": 1,
+    "x_labels": 3,
+    "x_ticks": 2,
+    "y_labels": 13,
+    "y_ticks": 13
   },
   "verdicts": {
-    "Close": 235,
-    "Differs": 104,
+    "Close": 284,
+    "Differs": 55,
     "Same": 0,
     "skipped": 0
   }
