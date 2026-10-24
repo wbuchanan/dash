@@ -40795,17 +40795,22 @@ def _dash_inner_box(fig):
 def _dash_by_numticks(scheme, graph_opts):
     """The default tick count of a graph's axes, ``{"x": n, "y": n}``
     (WP-30 P1.3a): the scheme's ``numticks_g`` (5 in every shipped
-    scheme), one fewer on the y axes of a by() graph's panels -- fitted to
-    twoway's own drawings (by_scales_truth.json c02, c04, f01: by(foreign,
-    yrescale) draws 10(10)40 on panels whose data run 12-34 and 14-41,
-    where #5 is 10(5)35 and 15(5)40 and #4 is 10(10)40 on both; f02's x2
-    is #5's 140(20)240, c17's y2 #5's 4000(2000)14000: the second axes
-    keep the scheme's count, ``"x2"``/``"y2"``).  An explicit ``#N`` is N
-    either way (c28)."""
+    scheme), one fewer on the first x and y axes of a by() graph's panels,
+    as twoway's by() styles set them (bygraphstyle-default, -compact,
+    -altleg and -econ.style: ``xlabels #4``, ``ylabels #4``; WP-34 AX-2:
+    by_scales_truth.json x01-x05, ``scatter mpg length, by(foreign)``
+    draws x 150 200 250, #4, where #5 is 140(20)240) -- fitted to twoway's
+    own drawings (c02, c04, f01: by(foreign, yrescale) draws 10(10)40 on
+    panels whose data run 12-34 and 14-41, where #5 is 10(5)35 and
+    15(5)40 and #4 is 10(10)40 on both; f02's x2 is #5's 140(20)240,
+    c17's y2 #5's 4000(2000)14000: the second axes keep the scheme's
+    count, ``"x2"``/``"y2"``).  An explicit ``#N`` is N either way
+    (c28)."""
     nx = getattr(scheme, "numticks_x", 5) or 5
     ny = getattr(scheme, "numticks_y", 5) or 5
     out = {"x": nx, "y": ny, "x2": nx, "y2": ny}
     if str((graph_opts or {}).get("by", "") or "").strip():
+        out["x"] = max(1, nx - 1)
         out["y"] = max(1, ny - 1)
     return out
 

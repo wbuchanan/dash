@@ -1,31 +1,13 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "e501552c4fb1c5b2702bfb5a9cc88e61933aab84",
+    "dash_commit": "d1f55f3a626b9eeef99c80db354c11bbb533455d",
     "extracted": "24 Oct 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
   },
   "rows": [
-    {
-      "check": "x_ticks",
-      "form": "plain",
-      "gaps4_id": "AX-2",
-      "id": "AX-2",
-      "note": "by() panels tick x at the scheme's #5; twoway's by() styles use #4",
-      "plottype": "*",
-      "when": "\\bby\\("
-    },
-    {
-      "check": "x_labels",
-      "form": "plain",
-      "gaps4_id": "AX-2",
-      "id": "AX-2",
-      "note": "by() panels' x labels follow their ticks (AX-2)",
-      "plottype": "*",
-      "when": "\\bby\\("
-    },
     {
       "check": "frame_aspect",
       "form": "plain",

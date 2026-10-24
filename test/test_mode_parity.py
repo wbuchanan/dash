@@ -2876,6 +2876,11 @@ CORPUS = [
                             [15341.0, 15343.0, 15345.0, 15347.0,
                              15349.0]]]},
           if_expr=""),
+    # WP-34 AX-2: a by() panel's first x axis is ticked at #4 in both modes
+    # (_DF has no length column; price is the x it holds).
+    _case("by foreign x ticks", [plot_for("scatter", {}, yvar="mpg",
+                                          xvar="price")],
+          go={"by": "foreign"}),
 ]
 
 

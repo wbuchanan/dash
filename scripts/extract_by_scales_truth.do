@@ -199,6 +199,13 @@ _bsc_run m04 auto `"`S', by(foreign, compact style(rescale))"'
 _bsc_run m06 auto `"`S', by(foreign, style(rescale) nor)"'
 _bsc_run m07 auto `"`S', by(foreign, yrescale) ylabel(#5) yscale(range(0))"'
 
+* ---- by() first x axes at #4 (WP-34 AX-2: bygraphstyle xlabels(#4)) ----
+_bsc_run x01 auto `"twoway scatter mpg length, by(foreign)"'
+_bsc_run x02 auto `"twoway scatter mpg length, by(foreign, cols(1))"'
+_bsc_run x03 auto `"twoway scatter mpg length, by(rep78)"'
+_bsc_run x04 auto `"twoway scatter mpg length, by(foreign) xsize(10)"'
+_bsc_run x05 auto `"twoway scatter mpg displacement, by(foreign)"'
+
 * ---- the rescale rule, one probe per spelling (rule ids) ----
 local k = 0
 foreach s in ///
@@ -222,7 +229,7 @@ file close bscrec
 
 * ---- the data the probes were measured on ----
 sysuse auto, clear
-keep mpg weight price turn rep78 foreign length
+keep mpg weight price turn rep78 foreign length displacement
 global BSC_AUTO "`work'/by_scales_auto.csv"
 quietly export delimited using "${BSC_AUTO}", replace nolabel
 _bsc_data td

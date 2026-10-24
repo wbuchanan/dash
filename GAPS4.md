@@ -329,7 +329,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-11 Tracked:** Closed in WP-33, BUGS.md "scale() frame geometry is never compared with truth; the help wrongly says gaps are not scaled", commit 3093c85.
 - **BY-24 Tracked:** Closed in WP-33, BUGS.md "by() title/note/caption under position() has truth only for caption pos(5)", commit e8923f6.
 - **AX-4 Tracked:** Closed in WP-34, BUGS.md "The histogram bin axis is ticked over the bar edges; twoway ticks it over the first and last bin midpoints", commit 06c46ea.
-- **AX-2 Tracked:** Open (WP-34 section 34-02).
+- **AX-2 Tracked:** Closed in WP-34, BUGS.md "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)", commit pending.
 - **AX-1 Tracked:** Closed in WP-34, BUGS.md "xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data", commit a44b1ac.
 - **VF-2 Tracked:** Open (WP-34 section 34-02).
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.

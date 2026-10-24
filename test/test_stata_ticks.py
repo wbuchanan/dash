@@ -588,7 +588,9 @@ class TestPanels:
         """by(g, xrescale): each panel's x axis takes the entry for its
         own rows' range (dash.ado asks each by() group)."""
         halves = [_DF.loc[_DF["g"] == k, "price"] for k in (0.0, 1.0)]
-        table = [[float(h.min()), float(h.max()), 5, "",
+        # Flipped (WP-34 AX-2): twoway's by() styles set xlabels(#4) as
+        # well as ylabels(#4), so a by() panel's x axis looks up count 4.
+        table = [[float(h.min()), float(h.max()), 4, "",
                   _marker_ticks(float(h.min()), float(h.max()))]
                  for h in halves]
         _r, figs = _build(tmp_path, mode, [_L("scatter", "obs", "price")],

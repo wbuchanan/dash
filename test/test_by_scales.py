@@ -374,10 +374,14 @@ class TestPanelsShareOneScale:
         # spans its ticks (P1.3b, M1).  The span is dash's model's: twoway's
         # c23 runs to 01jan2003 (curmax 15706); the model ticks half-yearly
         # to 01jul2002, inside the data.
+        # Flipped (WP-34 AX-2): twoway's by() styles set xlabels(#4) as well
+        # as ylabels(#4); at #4 the model ticks yearly to 01jan2003, the
+        # span twoway draws (c23 curmin 14610, curmax 15706).
         c23 = _probe("c23")["panels"][0]["x"]
-        t = dr._dash_tsnatscale_ticks(c23["min"], c23["max"], 5, "d")
+        t = dr._dash_tsnatscale_ticks(c23["min"], c23["max"], 4, "d")
         assert t[0] == c23["curmin"]
         assert _close(days, (min(t[0], c23["min"]), max(t[-1], c23["max"])))
+        assert _close(days, (c23["curmin"], c23["curmax"]))
         figs, _ = _draw(mode, _spec(SC, {"by": "foreign",
                                          "yscale": "log"}))
         assert _one_object(figs, "y")

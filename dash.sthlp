@@ -4736,7 +4736,8 @@ ticked over its own data, as {cmd:twoway} ticks it.
 With no {cmd:xlabel()} or {cmd:ylabel()} rule, a numeric, log or {cmd:%tc}
 axis, and a second axis with no {cmd:ylabel2()} or {cmd:xlabel2()}, is ticked
 as {cmd:#5} (the scheme's tick count; a {cmd:by()} graph's panels take one
-fewer on y, as {cmd:twoway} draws them), with no minor ticks, so
+fewer on their first x and y axes, as {cmd:twoway}'s by() styles set them),
+with no minor ticks, so
 {cmd:scatter mpg weight} labels 10 20 30 40 and 2,000 3,000 4,000 5,000.  A
 zoom or pan ticks the visible range by the same rule, and Reset returns to
 the current extent.

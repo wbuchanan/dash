@@ -303,6 +303,39 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w34_run' {
 }
 * ==== end S01 ====
 
+* ==== S02 AX-2: by() panels tick x at the scheme's count less one ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w34_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02d "`w34_work'/s02ax2"
+    capture mkdir "`q02d'"
+
+    // Q3402-1: a by() panel's first x axis is ticked at #4, as twoway's
+    // by() styles set it (scatter mpg length, by(foreign): 150 200 250;
+    // scatter mpg displacement, by(foreign): 100(100)400).
+    local i 0
+    foreach x in length displacement {
+        local ++i
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway scatter mpg `x', by(foreign)
+        _q34_drawn .Graph.graphs[1] x1
+        local tw "${q34_t}"
+        _w34_expect Q3402-1 `"("`tw'" != "")"' "twoway drew no x tick for `x'"
+        capture erase "`q02d'/b`i'.html"
+        capture noisily dash scatter mpg `x', by(foreign) saving("`q02d'/b`i'.html", replace)
+        _w34_expect Q3402-1 "(_rc == 0)" "dash scatter mpg `x', by(foreign) rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q34_has(r"`q02d'/b`i'.html", "", "`tw'")
+        _w34_expect Q3402-1 `"("${q34_bad}" == "")"' `"`x' (twoway `tw'): ${q34_bad}"'
+    }
+    _w34_done Q3402-1 "scatter mpg length and mpg displacement, by(foreign): twoway's panel x ticks at #4"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== S03 AX-1: range() widens the axis, not its default ticks ====
 local only : env WP34_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w34_run' {

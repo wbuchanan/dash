@@ -250,11 +250,11 @@ def _probe_spec(pid):
 
 
 #: Flipped (WP-34 AX-4): twoway's histogram is ticked over its bin
-#: midpoints, P08 is compared now.  H10's x is left out: twoway's by()
-#: panels tick x at #4 (10(10)40 over the midpoints 13.8125-39.1875), dash
-#: at the scheme's #5 (15(5)40) -- GAPS4 AX-2, section 34-02, which removes
-#: this entry.
-_NOT_DEFAULT = {("H10", "x")}
+#: midpoints, P08 is compared now.
+#: Flipped (WP-34 AX-2): twoway's by() styles set xlabels(#4) as well as
+#: ylabels(#4); H10's x (10(10)40 over the midpoints 13.8125-39.1875,
+#: where dash drew #5's 15(5)40) is compared now, so nothing is left out.
+_NOT_DEFAULT = set()
 
 
 def _compare(pid, row, figs, bad):
@@ -399,8 +399,10 @@ class TestTheHelpers:
         sch = dr.SchemeParser("stcolor")
         assert dr._dash_by_numticks(sch, {}) == {"x": 5, "y": 5, "x2": 5,
                                                  "y2": 5}
+        # Flipped (WP-34 AX-2): twoway's by() styles set xlabels(#4) as
+        # well as ylabels(#4).
         assert dr._dash_by_numticks(sch, {"by": "foreign"}) == {
-            "x": 5, "y": 4, "x2": 5, "y2": 5}
+            "x": 4, "y": 4, "x2": 5, "y2": 5}
 
     def test_a_hostile_size_is_bounded(self):
         sch = dr.SchemeParser("stcolor")

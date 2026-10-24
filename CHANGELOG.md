@@ -929,6 +929,7 @@ and now matches Stata.
 - A ci fit with nofit counts as one plot, so the layers after it take twoway's p# styles and legend numbers ((lfitci, nofit) (scatter): the scatter p3 -> p2) (WP-34, PIC-3)
 - A label or tick rule that crosses zero labels its zero tick 0 (ylabel(-.3(.1).3): 5.55e-17 -> 0) (WP-34, DG-3)
 - A date axis whose layer has a missing y in its first or last row takes Stata's ticks (area d.gnp96 date: 1967q2 ... 2002q2 -> 1970q1 ... 2000q1) (WP-34, TR-4)
+- A by() graph's first x axes are ticked at the scheme's count less one, as twoway's by() styles set them (scatter mpg length, by(foreign): 140(20)240 -> 150 200 250) (WP-34, AX-2)
 
 ### Fixed in WP-33
 
