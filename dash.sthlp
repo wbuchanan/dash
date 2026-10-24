@@ -4494,7 +4494,9 @@ line, so {cmd:label(1 "top" "bottom")} is two; a string in compound
 quotes keeps the quotes it holds, nested compound quotes included; and
 text with no double quote is one line.
 Keys are numbered as {cmd:twoway} numbers its plots: a confidence-interval
-fit such as {cmd:lfitci} is two, its band {it:n} and its line {it:n}+1.
+fit such as {cmd:lfitci} is two, its band {it:n} and its line {it:n}+1,
+and one under {cmd:nofit}, which draws its band alone, as {cmd:twoway}
+numbers it.
 {cmd:label(}{it:#}{cmd:)} names plot {it:#} wherever {cmd:order()} puts it;
 text after a number in {cmd:order()} wins over {cmd:label()}; and
 {cmd:lastlabel(}{it:#}{cmd:)} is applied last, to the {it:#}th row drawn, a

@@ -39368,7 +39368,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             _plot_of, _pn = {}, 1
             for _pl, _r in live:
                 _plot_of[_pn] = _pl
-                if str(_pl.get("type", "")).lower() in _DASH_CI_TYPES:
+                # A nofit ci layer is one plot (WP-34 PIC-3).
+                if _dash_ci_plot_count(_pl) == 2:
                     _plot_of[_pn + 1] = _pl
                     _pn += 2
                 else:
@@ -57844,6 +57845,21 @@ _DASH_FIT_KEYS = {"lfit": "Fitted values", "qfit": "Fitted values",
                   "mband": "Median bands", "mspline": "Median spline"}
 
 
+def _dash_ci_plot_count(plot):
+    """How many plots twoway numbers for one layer (WP-34 PIC-3): 2 for a
+    ci fit (_DASH_CI_TYPES), its band and its line, and 1 under nofit,
+    which draws the band alone (twoway_lfitci_parse.class sets .n = 1
+    without .fit); 1 for any other layer or a plot that is no dict."""
+    if not isinstance(plot, dict):
+        return 1
+    ptype = plot.get("type")
+    if not (isinstance(ptype, str) and ptype.strip().lower() in _DASH_CI_TYPES):
+        return 1
+    o = plot.get("options")
+    nofit = isinstance(o, dict) and bool(str(o.get("nofit", "") or "").strip())
+    return 1 if nofit else 2
+
+
 def _dash_plot_style_indices(plots, pcycle=None):
     """The zero-based p# index each layer of *plots* draws in, as twoway
     numbers them.
@@ -57856,7 +57872,10 @@ def _dash_plot_style_indices(plots, pcycle=None):
     ``lfitci || lfitci || lfit`` draws p1, p3 and p5; 14 scatters then
     lfitci draw its line in p1; test/fixtures/ci_plot_index_truth.json).
     dash gave each layer its layer index.  Anything that is not a dict
-    with a ci type counts as one plot, and the pass is linear.
+    with a ci type counts as one plot, and the pass is linear.  A ci fit
+    with nofit draws its band alone, one plot in its own place in the cycle
+    (``_dash_ci_plot_count``; WP-34 PIC-3: ``(lfitci, nofit) (scatter)
+    (lfit)`` draws the scatter p2 and the lfit p3).
 
     A layer whose ``p()``, else ``pstyle()``, is exactly ``p1``-``p15``
     draws in that p# instead, and only it: the plots after it keep their
@@ -57883,9 +57902,7 @@ def _dash_plot_style_indices(plots, pcycle=None):
     out = []
     n = 0                                   # plots drawn before this layer
     for plot in (plots or ()):
-        ptype = plot.get("type") if isinstance(plot, dict) else None
-        is_ci = (isinstance(ptype, str)
-                 and ptype.strip().lower() in _DASH_CI_TYPES)
+        is_ci = _dash_ci_plot_count(plot) == 2
         if is_ci:
             line_series = _p(n + 1) + 1     # the line is plot n + 2
             out.append(max(line_series - 1, 1) - 1)
@@ -58321,7 +58338,8 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
 
     ``n`` starts at 1.  A ci layer (``_DASH_CI_TYPES``) is two plots, its
     band ``n`` ("``lvl``% CI") and its line ``n + 1`` (the fit's own text), as
-    ``_dash_plot_style_indices`` numbers them; any other layer is plot
+    ``_dash_plot_style_indices`` numbers them, and one under nofit, its band
+    ``n`` (``_dash_ci_plot_count``, WP-34 PIC-3); any other layer is plot
     ``n``.  A layer whose renderers are empty or all swatches has no key but
     still consumes its number, so ``order()`` names the same key twoway's
     does (GAPS2 B5).
@@ -58369,7 +58387,8 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                     out.append((n, ser[0][0], bkey or band))
                 if line:
                     out.append((n + 1, ser[-1][0], lkey or line))
-            n += 2
+            # Under nofit the band is the layer's one plot (WP-34 PIC-3).
+            n += _dash_ci_plot_count(plot)
             continue
         if keyed and rends:
             rends = keyed
@@ -67829,6 +67848,8 @@ class ServerAppBuilder:
                          # twoway's label-or-name rule (WP-29 P0.3).
                          "_dash_var_label", "_dash_clean_var_labels",
                          "_dash_legend_keys", "_dash_parse_legend_order",
+                         # a nofit ci fit is one plot (WP-34 PIC-3).
+                         "_dash_ci_plot_count",
                          # layout(name:row,col), one parser for one spec,
                          # and layout(rows cols), one reading of the grid.
                          "_dash_placement_map", "_dash_grid_dims",

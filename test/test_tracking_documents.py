@@ -2873,7 +2873,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
     'VF-2': "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)",
-    'PIC-3': 'A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style',
     'TR-4': "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)",
     'DG-3': "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label",
     'AX-3': "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels",

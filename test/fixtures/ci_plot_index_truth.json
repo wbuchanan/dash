@@ -398,14 +398,173 @@
     "p1",
     "p2"
    ]
+  },
+  {
+   "id": "lfitcinf_scatter_lfit",
+   "scheme": "stcolor",
+   "layers": [
+    "lfitcinf",
+    "scatter",
+    "lfit"
+   ],
+   "pstyle": [
+    1,
+    2,
+    3
+   ],
+   "styles": [
+    "ci",
+    "p2",
+    "p3line"
+   ]
+  },
+  {
+   "id": "lfitcinf_scatter_lfit_s2",
+   "scheme": "s2color",
+   "layers": [
+    "lfitcinf",
+    "scatter",
+    "lfit"
+   ],
+   "pstyle": [
+    1,
+    2,
+    3
+   ],
+   "styles": [
+    "ci",
+    "p2",
+    "p3line"
+   ]
+  },
+  {
+   "id": "qfitcinf_scatter",
+   "scheme": "s2color",
+   "layers": [
+    "qfitcinf",
+    "scatter"
+   ],
+   "pstyle": [
+    1,
+    2
+   ],
+   "styles": [
+    "ci",
+    "p2"
+   ]
+  },
+  {
+   "id": "lpolycinf_line",
+   "scheme": "s2color",
+   "layers": [
+    "lpolycinf",
+    "line"
+   ],
+   "pstyle": [
+    1,
+    2
+   ],
+   "styles": [
+    "ci",
+    "p2line"
+   ]
+  },
+  {
+   "id": "fpfitcinf_connected",
+   "scheme": "s2color",
+   "layers": [
+    "fpfitcinf",
+    "connected"
+   ],
+   "pstyle": [
+    1,
+    2
+   ],
+   "styles": [
+    "ci",
+    "p2"
+   ]
+  },
+  {
+   "id": "scatter_lfitcinf_scatter",
+   "scheme": "s2color",
+   "layers": [
+    "scatter",
+    "lfitcinf",
+    "scatter"
+   ],
+   "pstyle": [
+    1,
+    2,
+    3
+   ],
+   "styles": [
+    "p1",
+    "ci",
+    "p3"
+   ]
+  },
+  {
+   "id": "lfitcinf_lfitci_lfit",
+   "scheme": "s2color",
+   "layers": [
+    "lfitcinf",
+    "lfitci",
+    "lfit"
+   ],
+   "pstyle": [
+    1,
+    2,
+    4
+   ],
+   "styles": [
+    "ci",
+    "p2line",
+    "p4line"
+   ]
+  },
+  {
+   "id": "lfitcinfr_scatter",
+   "scheme": "s2color",
+   "layers": [
+    "lfitcinfr",
+    "scatter"
+   ],
+   "pstyle": [
+    1,
+    2
+   ],
+   "styles": [
+    "ci",
+    "p2"
+   ]
   }
  ],
+ "legend_nofit": {
+  "cmd": "twoway (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), legend(order(2 3))",
+  "scheme": "s2color",
+  "keys": [
+   "Mileage (mpg)",
+   "Fitted values"
+  ]
+ },
+ "pcycle_nofit": {
+  "nofit": {
+   "cmd": "twoway (lfitci mpg weight, nofit) (scatter mpg weight), pcycle(1.5)",
+   "rc": 0
+  },
+  "fit": {
+   "cmd": "twoway (lfitci mpg weight) (scatter mpg weight), pcycle(1.5)",
+   "rc": 198
+  }
+ },
+ "_nofit_note": "WP-34 PIC-3: a layer named <type>nf is that ci type with nofit, lfitcinfr lfitci with nofit ciplot(rline); it draws its band alone, one plot, whose style is not a p# and takes its plot number's place in the cycle.  legend_nofit's keys are the bare SVG's non-numeric texts minus its legend(off) twin's; pcycle_nofit is twoway's rc for pcycle(1.5) over the two layers.",
  "_cases_note": "An 'N*scatter' entry is N scatter layers whose pstyles are 1..N cycling through 15 (measured, checked by the generator, not listed); 'pstyle' then lists only the layers after them.",
  "_meta": {
   "stata_version": "19.5",
-  "born_date": "12 Aug 2026",
-  "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
-  "extracted": "18 Oct 2026 10:37:35",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "e501552c4fb1c5b2702bfb5a9cc88e61933aab84",
+  "extracted": "24 Oct 2026 10:29:11",
   "source": "scripts/extract_ci_plot_index_truth.do"
  }
 }

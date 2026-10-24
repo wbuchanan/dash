@@ -702,6 +702,7 @@ FUNCTIONS = {
  '_dash_legend_key': 'test/test_series_labels.py::TestTheLegendKeys::test_the_key_is_the_last_series_y_label',
  '_dash_key_signature': 'test/test_legend_histogram_only.py::TestKeySignature::test_equal_glyphs_sign_alike',
  '_dash_legend_keys': 'test/test_legend_order.py::TestKeysAreNumberedByPlot::test_numbers_unit',
+ '_dash_ci_plot_count': 'test/test_ci_plot_index.py::TestTheNofitCount::test_the_count',
  '_dash_legend_parts': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_parts',
  '_dash_legend_unsupported': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
  '_dash_limit_hint': 'test/test_resource_limits.py::TestTheLimitsTable::test_the_hint_names_the_global_and_its_ceiling',

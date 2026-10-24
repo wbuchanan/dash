@@ -2854,6 +2854,9 @@ CORPUS = [
           [plot_for("area", {"nodropbase": "nodropbase"})]),
     # WP-34 AX-1: range() widens a default axis, not its ticks.
     _case("yscale range 0 default ticks", [_sc()], go={"yscale": "range(0)"}),
+    # WP-34 PIC-3: a nofit ci fit is one plot; the scatter after it is p2.
+    _case("lfitci nofit then scatter",
+          [plot_for("lfitci", {"nofit": "nofit"}), plot_for("scatter")]),
 ]
 
 

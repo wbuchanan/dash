@@ -1585,26 +1585,43 @@ void _dash_note(string scalar before, string scalar value,
 // series, 2.2 on three, 0.5 on any number).  plots is the graph's plots
 // JSON as dash.ado writes it, each plot an object opening {"type":"<t>";
 // the series are counted from those openings (an option object that
-// opens with a "type" key follows "options": and is skipped).  Returns
-// 1 when twoway refuses.
+// opens with a "type" key follows "options": and is skipped).  A ci fit
+// with nofit draws its band alone, one series (WP-34 PIC-3,
+// ci_plot_index_truth.json pcycle_nofit: (lfitci, nofit) (scatter) is
+// drawn under pcycle(1.5)); its plot's text, up to the next plot's
+// opening, holds a non-empty "nofit" key.  Returns 1 when twoway refuses.
 // ============================================================
 real scalar _dash_pcycle_bad(string scalar plots, real scalar p)
 {
-    real scalar   n, pos, at, k, v
-    string scalar t, rest
+    real scalar   n, pos, at, k, v, i, q
+    real rowvector st
+    string rowvector ty
+    string scalar t, rest, seg
 
     if (p >= . | p <= 0) return(1)
-    n = 0
+    st = J(1, 0, .)
+    ty = J(1, 0, "")
     rest = plots
     at = 0
     while ((pos = strpos(rest, `"{"type":""')) > 0) {
         if (!(at + pos > 10 & substr(plots, at + pos - 10, 10) == `""options":"')) {
             t = substr(rest, pos + 9, .)
             t = substr(t, 1, strpos(t, `"""') - 1)
-            n = n + (anyof(("lfitci", "qfitci", "lpolyci", "fpfitci"), t) ? 2 : 1)
+            st = st, at + pos
+            ty = ty, t
         }
         at = at + pos
         rest = substr(rest, pos + 1, .)
+    }
+    n = 0
+    for (i = 1; i <= cols(st); i++) {
+        if (!anyof(("lfitci", "qfitci", "lpolyci", "fpfitci"), ty[i])) {
+            n = n + 1
+            continue
+        }
+        seg = substr(plots, st[i], (i < cols(st) ? st[i + 1] - st[i] : .))
+        q = strpos(seg, `""nofit":""')
+        n = n + ((q > 0 & substr(seg, q + 9, 1) != `"""') ? 1 : 2)
     }
     for (k = 0; k < n; k++) {
         v = mod(k, p) + 1

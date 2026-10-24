@@ -679,6 +679,120 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w34_run' {
 }
 * ==== end S05 ====
 
+// S06 helper (WP-34 section 34-06, PIC-3): _w34s06_dash reads a saved
+// dash page's Scatter fill colours and legend item labels into globals
+// <p>_fill (space-separated hex) and <p>_keys (labels joined by "|").
+python:
+import json as _w34s06_json
+import re as _w34s06_re
+from sfi import Macro as _w34s06_M
+
+
+def _w34s06_dash(path, p):
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, Legend, Scatter
+    page = open(path, encoding="utf-8").read()
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    blocks = _w34s06_re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _w34s06_re.S)
+    docs = [d for b in blocks for d in _w34s06_json.loads(
+        _w34s06_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                       lambda m: ents[m.group(1)], b)).values()]
+    doc = Document.from_json(docs[0])
+    fills = []
+    for m in doc.models:
+        if isinstance(m, GlyphRenderer) and isinstance(m.glyph, Scatter):
+            fc = m.glyph.fill_color
+            if isinstance(fc, dict):
+                fc = fc.get("value")
+            else:
+                fc = getattr(fc, "value", fc)
+            fills.append(str(fc).lower())
+    keys = []
+    for lg in (m for m in doc.models if isinstance(m, Legend)):
+        for it in lg.items:
+            lab = it.label
+            if isinstance(lab, dict):
+                lab = lab.get("value")
+            else:
+                lab = getattr(lab, "value", lab)
+            keys.append(str(lab))
+    _w34s06_M.setGlobal(p + "_fill", " ".join(fills))
+    _w34s06_M.setGlobal(p + "_keys", "|".join(keys))
+end
+
+* ==== S06 PIC-3: a ci fit with nofit is one plot ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w34_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3406-1: (lfitci, nofit) (scatter) (lfit) under stcolor -- the
+    // scatter is twoway's plot 2, and dash's saved page fills it in
+    // the named graph's plotregion1.plot2 marker colour.
+    // ------------------------------------------------------------
+    capture dash clear
+    sysuse auto, clear
+    quietly twoway (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), scheme(stcolor) nodraw name(w34s06, replace)
+    local s06_rgb "`.w34s06.plotregion1.plot2.style.marker.fillcolor.rgb'"
+    capture graph drop w34s06
+    local s06_tw ""
+    if wordcount("`s06_rgb'") >= 3 {
+        python: _w34s06_M.setLocal("s06_tw", "#" + "".join("%02x" % int(v) for v in _w34s06_M.getLocal("s06_rgb").split()[:3]))
+    }
+    capture erase "`w34_work'/s06_a.html"
+    capture noisily dash (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), scheme(stcolor) saving("`w34_work'/s06_a.html", replace)
+    _w34_expect Q3406-1 "(_rc == 0)" "dash (lfitci, nofit) (scatter) (lfit) refused: rc `=_rc'"
+    python: _w34s06_dash(r"`w34_work'/s06_a.html", "w34s06")
+    _w34_expect Q3406-1 `"("`s06_tw'" != "")"' "twoway's plot2 has no marker colour (`s06_rgb')"
+    _w34_expect Q3406-1 `"("${w34s06_fill}" == "`s06_tw'")"' "twoway fills the scatter `s06_tw', dash ${w34s06_fill}"
+    capture erase "`w34_work'/s06_a.html"
+    _w34_done Q3406-1 "the scatter after lfitci, nofit takes twoway's p2 colour"
+
+    // ------------------------------------------------------------
+    // Q3406-2: legend(order(2 3)) after the nofit layer keys the scatter
+    // and the lfit, twoway's keys (ci_plot_index_truth.json
+    // legend_nofit, from the bare SVG minus its legend(off) twin).
+    // ------------------------------------------------------------
+    capture dash clear
+    sysuse auto, clear
+    python: _w34s06_M.setGlobal("w34s06_want", "|".join(_w34s06_json.load(open(r"fixtures/ci_plot_index_truth.json", encoding="utf-8"))["legend_nofit"]["keys"]))
+    capture erase "`w34_work'/s06_b.html"
+    capture noisily dash (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), legend(order(2 3)) saving("`w34_work'/s06_b.html", replace)
+    _w34_expect Q3406-2 "(_rc == 0)" "dash ..., legend(order(2 3)) refused: rc `=_rc'"
+    python: _w34s06_dash(r"`w34_work'/s06_b.html", "w34s06")
+    _w34_expect Q3406-2 `"("${w34s06_want}" == "Mileage (mpg)|Fitted values")"' "the fixture's keys are ${w34s06_want}"
+    _w34_expect Q3406-2 `"(`"${w34s06_keys}"' == `"${w34s06_want}"')"' "twoway keys ${w34s06_want}, dash ${w34s06_keys}"
+    capture erase "`w34_work'/s06_b.html"
+    _w34_done Q3406-2 "order(2 3) after lfitci, nofit keys twoway's plots"
+
+    // ------------------------------------------------------------
+    // Q3406-3: pcycle(1.5) counts a nofit layer as one series -- drawn
+    // with nofit (two series), refused without (three), as twoway does
+    // (ci_plot_index_truth.json pcycle_nofit; _dash_pcycle_bad).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach f in "nofit" "" {
+        capture quietly twoway (lfitci mpg weight, `f') (scatter mpg weight), pcycle(1.5) nodraw name(w34s06, replace)
+        local s06_trc = _rc
+        capture graph drop w34s06
+        capture dash clear
+        capture erase "`w34_work'/s06_c.html"
+        capture quietly dash (lfitci mpg weight, `f') (scatter mpg weight), pcycle(1.5) saving("`w34_work'/s06_c.html", replace)
+        local s06_drc = _rc
+        capture erase "`w34_work'/s06_c.html"
+        _w34_expect Q3406-3 "(`s06_trc' == `s06_drc')" "lfitci `f' pcycle(1.5): twoway rc `s06_trc', dash rc `s06_drc'"
+    }
+    _w34_done Q3406-3 "pcycle(1.5) is drawn and refused where twoway draws and refuses it around a nofit layer"
+    macro drop w34s06_fill w34s06_keys w34s06_want
+    capture dash clear
+
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

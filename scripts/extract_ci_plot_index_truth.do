@@ -89,6 +89,14 @@ local cmd_pcarrow   "pcarrow lo weight hi weight"
 local cmd_histogram "histogram price"
 local cmd_kdensity  "kdensity price"
 local ci_types "lfitci qfitci lpolyci fpfitci"
+* WP-34 PIC-3: a ci fit with nofit draws its band alone, one plot
+* (twoway_lfitci_parse.class sets .n = 1 without .fit).
+local cmd_lfitcinf  "lfitci mpg weight, nofit"
+local cmd_qfitcinf  "qfitci mpg weight, nofit"
+local cmd_lpolycinf "lpolyci mpg weight, nofit"
+local cmd_fpfitcinf "fpfitci mpg weight, nofit"
+local cmd_lfitcinfr "lfitci mpg weight, nofit ciplot(rline)"
+local ci_nofit "lfitcinf qfitcinf lpolycinf fpfitcinf lfitcinfr"
 
 * Each case: id|scheme|layers ("N*scatter" is N scatter layers).
 local ncase 0
@@ -111,7 +119,15 @@ foreach c in ///
     "z1_14_scatters_lfitci_scatter|z1|14*scatter lfitci scatter" ///
     "z1_15_scatters_lfitci_scatter|z1|15*scatter lfitci scatter" ///
     "z1_28_scatters_lfitci_scatter|z1|28*scatter lfitci scatter" ///
-    "z1_29_scatters_lfitci_scatter|z1|29*scatter lfitci scatter" {
+    "z1_29_scatters_lfitci_scatter|z1|29*scatter lfitci scatter" ///
+    "lfitcinf_scatter_lfit|stcolor|lfitcinf scatter lfit" ///
+    "lfitcinf_scatter_lfit_s2|s2color|lfitcinf scatter lfit" ///
+    "qfitcinf_scatter|s2color|qfitcinf scatter" ///
+    "lpolycinf_line|s2color|lpolycinf line" ///
+    "fpfitcinf_connected|s2color|fpfitcinf connected" ///
+    "scatter_lfitcinf_scatter|s2color|scatter lfitcinf scatter" ///
+    "lfitcinf_lfitci_lfit|s2color|lfitcinf lfitci lfit" ///
+    "lfitcinfr_scatter|s2color|lfitcinfr scatter" {
     local ++ncase
     gettoken id rest : c, parse("|")
     gettoken bar rest : rest, parse("|")
@@ -135,6 +151,7 @@ foreach c in ///
     foreach t of local types {
         local cmd `"`cmd' (`cmd_`t'')"'
         if `: list t in ci_types' local plot = `plot' + 2
+        else if `: list t in ci_nofit' local plot = `plot' + 1
         else local plot = `plot' + 1
         local which "`which' `plot'"
     }
@@ -165,9 +182,36 @@ forvalues j = 1/15 {
 }
 global ZC_RGB "`rgb'"
 
+* WP-34 PIC-3: the legend's numbers after a nofit layer.  The keys are the
+* bare SVG's non-numeric texts minus its legend(off) twin's (as
+* scripts/extract_ts_operator_truth.do reads them).
+set scheme s2color
+global ZC_LCMD "(lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), legend(order(2 3))"
+capture erase "${ZC_WORK}/legend_nofit_tw.svg"
+capture erase "${ZC_WORK}/legend_nofit_off.svg"
+quietly twoway (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), legend(order(2 3)) name(Graph, replace)
+quietly graph export "${ZC_WORK}/legend_nofit_tw.svg", name(Graph) replace
+quietly twoway (lfitci mpg weight, nofit) (scatter mpg weight) (lfit mpg weight), legend(off) name(Graph, replace)
+quietly graph export "${ZC_WORK}/legend_nofit_off.svg", name(Graph) replace
+capture graph drop Graph
+
+* WP-34 PIC-3: pcycle(1.5) is refused when a series number k - 1 has
+* mod(k - 1, 1.5) not whole, the third series (pcycle_fraction_truth.json);
+* a nofit layer is one series, so the pair below has two series with nofit
+* and three without.
+quietly sysuse auto, clear
+sort weight
+capture twoway (lfitci mpg weight, nofit) (scatter mpg weight), pcycle(1.5) nodraw
+global ZC_PCNF = _rc
+capture twoway (lfitci mpg weight) (scatter mpg weight), pcycle(1.5) nodraw
+global ZC_PCCI = _rc
+
 python:
-import json, os, re
+import collections, json, os, re, sys
 from sfi import Macro
+
+sys.path.insert(0, os.path.join(Macro.getGlobal("ZC_REPO"), "scripts"))
+import svg_truth
 
 
 def G(k):
@@ -204,6 +248,37 @@ cols = []
 for r in G("ZC_RGB").strip("|").split("|"):
     cols.append("".join("%02x" % int(v) for v in r.split()[:3]))
 
+def _texts(path):
+    doc = svg_truth.svg_document(path)
+    return [e for e in doc["texts"]
+            if svg_truth.label_value(e["text"]) is None
+            and e["text"].strip() != ""]
+
+
+def _keys(bare, off):
+    cnt = collections.Counter(e["text"] for e in bare)
+    cnt.subtract(collections.Counter(e["text"] for e in off))
+    seen, keys = collections.Counter(), []
+    for e in sorted(bare, key=lambda e: (float(e.get("y") or 0.0),
+                                         float(e.get("x") or 0.0))):
+        t = e["text"]
+        if seen[t] < cnt.get(t, 0):
+            seen[t] += 1
+            keys.append(t)
+    return keys
+
+
+W = G("ZC_WORK")
+legend_nofit = {
+    "cmd": "twoway " + G("ZC_LCMD"), "scheme": "s2color",
+    "keys": _keys(_texts(os.path.join(W, "legend_nofit_tw.svg")),
+                  _texts(os.path.join(W, "legend_nofit_off.svg")))}
+pcycle_nofit = {
+    "nofit": {"cmd": "twoway (lfitci mpg weight, nofit) (scatter mpg weight), pcycle(1.5)",
+              "rc": int(G("ZC_PCNF"))},
+    "fit": {"cmd": "twoway (lfitci mpg weight) (scatter mpg weight), pcycle(1.5)",
+            "rc": int(G("ZC_PCCI"))}}
+
 out = {
     "_about": ("Measured with " + G("ZC_VERSION") + " (console, batch) on "
                "sysuse auto (lo = price - 1000, hi = price + 1000): each graph "
@@ -223,6 +298,15 @@ out = {
                "number in the fifteen-plot cycle."),
     "p_colors": {"s2color": cols},
     "cases": cases,
+    "legend_nofit": legend_nofit,
+    "pcycle_nofit": pcycle_nofit,
+    "_nofit_note": ("WP-34 PIC-3: a layer named <type>nf is that ci type "
+                    "with nofit, lfitcinfr lfitci with nofit ciplot(rline); "
+                    "it draws its band alone, one plot, whose style is not "
+                    "a p# and takes its plot number's place in the cycle.  "
+                    "legend_nofit's keys are the bare SVG's non-numeric "
+                    "texts minus its legend(off) twin's; pcycle_nofit is "
+                    "twoway's rc for pcycle(1.5) over the two layers."),
     "_cases_note": ("An 'N*scatter' entry is N scatter layers whose pstyles "
                     "are 1..N cycling through 15 (measured, checked by the "
                     "generator, not listed); 'pstyle' then lists only the "
@@ -240,7 +324,8 @@ out["_meta"] = {"stata_version": G("ZC_VERSION"), "born_date": G("ZC_BORN"),
 with open(G("ZC_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1)
     fh.write("\n")
-for f in ("git_head.txt", "scheme-z1.scheme"):
+for f in ("git_head.txt", "scheme-z1.scheme", "legend_nofit_tw.svg",
+          "legend_nofit_off.svg"):
     try:
         os.remove(os.path.join(work, f))
     except OSError:

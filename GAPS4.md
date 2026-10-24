@@ -334,7 +334,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **VF-2 Tracked:** Open (WP-34 section 34-02).
 - **VF-3 Tracked:** Closed in WP-34, BUGS.md "aspectratio() with xsize()/ysize(): the fixed frame is ignored by BokehJS (aspectratio(2) xsize(8) ysize(4) draws a 0 px plot), and a Bokeh E-1023 ERROR line is printed", commit 7726c55.
 - **PIC-1 Tracked:** Closed in WP-34, BUGS.md "A default area plot (and its legend key) has no outline in any scheme", commit f1f8ec8.
-- **PIC-3 Tracked:** Open (WP-34 section 34-06).
+- **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit pending.
 - **TR-4 Tracked:** Open (WP-34 section 34-07).
 - **DG-3 Tracked:** Open (WP-34 section 34-08).
 - **AX-3 Tracked:** Open (WP-34 section 34-09).

@@ -14,6 +14,13 @@ seriesid of 0 draws as p1.  A layer that is plot n draws in p((n-1) mod 15
 + 1); a ci layer whose line is plot n in that less one, p1 where it is 0.
 Everything keyed on the plot index follows: colour, line width, pattern,
 symbol, marker size.
+
+WP-34 PIC-3 (BUGS.md "A ci type with nofit still uses two plot numbers, so
+every later layer takes the wrong p# style"): under nofit a ci fit draws
+its band alone, one plot (twoway_lfitci_parse.class sets .n = 1 without
+.fit), for the p# cycle and the legend's numbers.  The fixture's
+'<type>nf' layers are that type with nofit ('lfitcinfr' adds
+ciplot(rline)), measured 24oct2026.
 """
 import itertools
 import json
@@ -62,6 +69,23 @@ def _want(case):
     return types, [i % 15 for i in range(lead)] + [p - 1 for p in case["pstyle"]]
 
 
+#: The fixture's nofit layer names (WP-34 PIC-3): the type and the options
+#: the extract drew it with.
+_NOFIT = {"lfitcinf": ("lfitci", {"nofit": "nofit"}),
+          "qfitcinf": ("qfitci", {"nofit": "nofit"}),
+          "lpolycinf": ("lpolyci", {"nofit": "nofit"}),
+          "fpfitcinf": ("fpfitci", {"nofit": "nofit"}),
+          "lfitcinfr": ("lfitci", {"nofit": "nofit", "ciplot": "rline"})}
+
+
+def _bare(t):
+    """A plot dict of the fixture's layer name *t* with no variables."""
+    if t in _NOFIT:
+        typ, opts = _NOFIT[t]
+        return {"type": typ, "options": dict(opts)}
+    return {"type": t}
+
+
 _IDS = [c["id"] for c in _T["cases"]]
 
 
@@ -69,8 +93,17 @@ class TestTheIndexAgainstStata:
     @pytest.mark.parametrize("case", _T["cases"], ids=_IDS)
     def test_each_measured_sequence(self, case):
         types, want = _want(case)
-        plots = [{"type": t} for t in types]
+        plots = [_bare(t) for t in types]
         assert dr._dash_plot_style_indices(plots) == want
+
+    def test_the_nofit_cases_were_measured(self):
+        """The extract measured the nofit sequences and twoway numbered
+        the nofit layer as one plot: in lfitcinf scatter lfit the scatter
+        is p2 and the lfit p3 (WP-34 PIC-3)."""
+        got = {c["id"]: c["pstyle"] for c in _T["cases"] if "nf" in c["id"]}
+        assert len(got) == 8
+        assert got["lfitcinf_scatter_lfit"] == [1, 2, 3]
+        assert got["lfitcinf_lfitci_lfit"] == [1, 2, 4]
 
     def test_the_fixture_colours_are_s2colors(self):
         sp = SchemeParser("s2color")
@@ -89,6 +122,54 @@ class TestTheIndexAgainstStata:
         plots = [{"type": "scatter"}] * 40
         assert dr._dash_plot_style_indices(plots) == [
             i % 15 for i in range(40)]
+
+
+class TestTheNofitCount:
+    def test_the_count(self):
+        """_dash_ci_plot_count (WP-34 PIC-3): 2 for a ci fit, 1 under
+        nofit, 1 for any other layer or anything that is no dict."""
+        c = dr._dash_ci_plot_count
+        for t in ("lfitci", "qfitci", "lpolyci", "fpfitci", " LFITCI "):
+            assert c({"type": t}) == 2
+            assert c({"type": t, "options": {}}) == 2
+            assert c({"type": t, "options": {"nofit": ""}}) == 2
+            assert c({"type": t, "options": {"nofit": "  "}}) == 2
+            assert c({"type": t, "options": {"nofit": None}}) == 2
+            assert c({"type": t, "options": {"nofit": "nofit"}}) == 1
+            assert c({"type": t, "options": {"nofit": "nofit",
+                                             "ciplot": "rline"}}) == 1
+            # options that are no dict are no nofit.
+            assert c({"type": t, "options": "nofit"}) == 2
+        for t in ("scatter", "lfit", "line", "", None, 5, ["lfitci"]):
+            assert c({"type": t}) == 1
+            assert c({"type": t, "options": {"nofit": "nofit"}}) == 1
+        for bad in (None, 7, "lfitci", ["lfitci"], ("lfitci",)):
+            assert c(bad) == 1
+
+    def test_the_counters_agree(self):
+        """The p# pass, the legend's numbers and _dash_apply_legend's map
+        count a nofit layer as one plot: lfitci nofit then scatter is p1,
+        p2 (WP-34 PIC-3)."""
+        from bokeh.models import (ColumnDataSource, GlyphRenderer, Line,
+                                  Scatter, VArea)
+        plots = [{"type": "lfitci", "yvar": "mpg", "xvar": "weight",
+                  "options": {"nofit": "nofit"}},
+                 {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                  "options": {}},
+                 {"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                  "options": {}}]
+        assert dr._dash_plot_style_indices(plots) == [0, 1, 2]
+        src = ColumnDataSource({"x": [1, 2], "y": [1, 2], "y2": [2, 3]})
+
+        def gr(g):
+            return GlyphRenderer(glyph=g, data_source=src)
+        band, s1, fit = (gr(VArea(x="x", y1="y", y2="y2")),
+                         gr(Scatter(x="x", y="y")), gr(Line(x="x", y="y")))
+        got = dr._dash_legend_keys(
+            [(plots[0], [band]), (plots[1], [s1]), (plots[2], [fit])],
+            {}, 95)
+        assert [(n, t) for n, t, _ in got] == [
+            (1, "95% CI"), (2, "mpg"), (3, "Fitted values")]
 
 
 class TestAdversarial:
@@ -138,6 +219,9 @@ _DF = pd.DataFrame({
 
 def _layer(t, k):
     y = "y" if k % 2 == 0 else "y2"
+    if t in _NOFIT:
+        typ, opts = _NOFIT[t]
+        return {"type": typ, "yvar": y, "xvar": "x", "options": dict(opts)}
     if t in ("rarea", "rcap", "rcapsym"):
         return {"type": t, "yvar1": "lo", "yvar2": "hi", "xvar": "x",
                 "options": {}}
@@ -210,7 +294,11 @@ _DRAWS = {"scatter": [("Scatter", "scatter")], "line": [("Line", "line")],
           # marker of its msize, so dash draws them as dash Scatters.
           "rcap": [("Segment", "rcap"), ("Scatter", "rcap")],
           "rcapsym": [("Segment", "rcapsym"), ("Scatter", "scatter")],
-          "pcarrow": [("Segment", "pcarrow")], "rarea": [("VArea", "area")]}
+          "pcarrow": [("Segment", "pcarrow")], "rarea": [("VArea", "area")],
+          # WP-34 PIC-3: a nofit layer draws its band alone, in pstyle ci;
+          # the layers after it carry the p# it counts for.
+          "lfitcinf": [], "qfitcinf": [], "lpolycinf": [], "fpfitcinf": [],
+          "lfitcinfr": []}
 
 
 def _drawn(fig, glyph):
@@ -218,6 +306,11 @@ def _drawn(fig, glyph):
     for r in fig.renderers:
         g = getattr(r, "glyph", None)
         if type(g).__name__ != glyph:
+            continue
+        # A ci band drawn as a line by ciplot(rline) is pstyle ci, no p#;
+        # a nofit layer's hidden fit line (kept for the refit) is no plot.
+        if getattr(r, "_dash_ci_band", False) \
+                or getattr(r, "_dash_nofit", False):
             continue
         c = getattr(g, "fill_color" if glyph in ("Scatter", "VArea")
                     else "line_color")
@@ -301,6 +394,29 @@ class TestBothModes:
                        or getattr(g, "line_color"))
                 assert _hex(col) == _hex(c), (opt, it.label, col, c)
 
+    def test_order_counts_nofit_as_one(self, mode, wd):
+        """WP-34 PIC-3: (lfitci, nofit) (scatter) (lfit), legend(order(2
+        3)) keys the scatter and the lfit, as twoway does
+        (ci_plot_index_truth.json legend_nofit: "Mileage (mpg)", the
+        scatter's y, then "Fitted values"); the scatter's key in p2's
+        colour and the fit's in p3's."""
+        want = _T["legend_nofit"]["keys"]
+        assert want == ["Mileage (mpg)", "Fitted values"]
+        plots = [_layer("lfitcinf", 0), _layer("scatter", 1),
+                 _layer("lfit", 2)]
+        sp = SchemeParser("s2color")
+        fig = _figure(mode, wd, plots, "s2color", "order(2 3)")
+        items = [it for lg in fig.legend for it in lg.items]
+        labels = [it.label.get("value") if isinstance(it.label, dict)
+                  else getattr(it.label, "value", it.label) for it in items]
+        # The scatter's y here is y2, unlabelled: its key is its name.
+        assert labels == ["y2", want[1]], labels
+        for it, c in zip(items, [sp.default_color(1, "scatter"),
+                                 sp.default_color(2, "line")]):
+            g = it.renderers[0].glyph
+            col = getattr(g, "fill_color", None) or getattr(g, "line_color")
+            assert _hex(col) == _hex(c), (it.label, col, c)
+
     def test_the_legend_keeps_its_keys_in_order(self, mode, wd):
         """scatter || lfitci || scatter: four keys in layer order -- the
         first scatter, the band, the fit, the second scatter -- each key's
@@ -319,3 +435,16 @@ class TestBothModes:
             g = it.renderers[0].glyph
             col = getattr(g, "fill_color", None) or getattr(g, "line_color")
             assert _hex(col) == _hex(c), (it.label, col, c)
+
+
+class TestTheHelp:
+    def test_the_nofit_sentence(self):
+        """WP-34 PIC-3: the legend's numbering sentence says a nofit ci fit
+        is one plot (dash.sthlp, the legend section)."""
+        from test_help_claims_1 import _between, _help
+        text = " ".join(_between(_help(), "Keys are numbered as",
+                                 "{cmd:label(}").split())
+        assert ("a confidence-interval fit such as {cmd:lfitci} is two, its "
+                "band {it:n} and its line {it:n}+1, and one under "
+                "{cmd:nofit}, which draws its band alone, as {cmd:twoway} "
+                "numbers it.") in text
