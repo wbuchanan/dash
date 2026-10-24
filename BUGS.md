@@ -4544,11 +4544,11 @@
   - Suggested fix: Use nx-1 on x1 (x2/y2 keep the scheme count, f02/c17); request n=4 from Stata's tick table; add truth rows whose x has #4 different from #5; correct dash.sthlp:4679
   - Resolution: Not fixed because WP-34 section 34-02 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
 
-- [ ] Title: xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data
+- [x] Title: xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data
   - File Names and Line Numbers: Probes R1-R3 and C63; axis_truth b2_range_0/_100/_three draw 10..40; dash_render.py:47748-47768; exclusion test_bar_range_geometry.py:653-656; dash.sthlp:4529 says range() widens the ticks
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 1 (blocker): ids AX-1; confirmed; tracked: untracked (misattributed residual in closed BUGS P1.17b). Registered as GAPS4 AX-1 (WP-34, section 34-03, Fix).
   - Suggested fix: On a default numeric axis, tick over the data and keep range() in the hull only (build, served, saved refit); keep widening for #N and by(); pin R1-R3
-  - Resolution: Not fixed because WP-34 section 34-03 has not landed. Graded S1 (WP-34): drop-in audit package 1, blocker.
+  - Resolution: Fixed 24oct2026 (WP-34, AX-1). _dash_finish_count_ticks (Python, build and served refit) and dash_axis_compute (_DASH_AXIS_FINISH_JS, the saved page after a move) leave range() out of a default axis's tick range outside by(); range() still widens the hull; fig._dash_by_graph is stamped in both modes (_make_figure_body, the served builder) and the axis plan carries it as byg; #N and by() keep the join. scatter mpg weight, yscale(range(0)) labels 10(10)40 over 0-41 in both modes. Pinned by test/test_range_ticks.py::TestAgainstStata::test_probes, Q3403-1; fixture test/fixtures/range_ticks_truth.json. Closes GAPS4 AX-1 (WP-34, AX-1).
 
 - [ ] Title: A by() graph's shared y title is never painted (its cell canvas is 1 px tall)
   - File Names and Line Numbers: Title visible=true, bbox 28x560, canvas 28x1 with 0 inked px; _dash_by_text_cell frame_height=1 (dash_render.py:55040) is never cleared in _dash_by_cell (55398-55405); the browser tests check bboxes and visibility only

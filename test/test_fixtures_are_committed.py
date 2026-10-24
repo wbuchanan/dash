@@ -354,6 +354,7 @@ GENERATORS = {
     "pcycle_fraction_truth.json": "scripts/extract_pcycle_fraction_truth.do",
     "pip_refusals.json": "scripts/extract_pip_refusals.py",
     "qualified_stat_truth.json": "scripts/extract_qualified_stat_truth.do",
+    "range_ticks_truth.json": "scripts/extract_range_ticks_truth.do",
     "rangept_truth.json": "scripts/extract_rangept_truth.do",
     "rbar_dot_truth.json": "scripts/extract_rbar_dot_truth.do",
     "recast_truth.json": "scripts/extract_recast_truth.do",

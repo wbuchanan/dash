@@ -303,6 +303,58 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w34_run' {
 }
 * ==== end S01 ====
 
+* ==== S03 AX-1: range() widens the axis, not its default ticks ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w34_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w34_work'/s03ax1"
+    capture mkdir "`q03d'"
+
+    // Q3403-1: on an axis with no label rule range() widens the scale,
+    // not the ticks (scatter mpg weight, yscale(range(0)): 10(10)40).
+    local i 0
+    foreach c in "yscale(range(0))|y1" "yscale(range(100))|y1" "xscale(range(0 6000))|x1" "xscale(range(1000 6100))|x1" "ylabel(, angle(0)) yscale(range(0))|y1" {
+        local ++i
+        gettoken opt ax : c, parse("|")
+        local ax = substr("`ax'", 2, .)
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway scatter mpg weight, `opt'
+        _q34_drawn .Graph `ax'
+        capture erase "`q03d'/r`i'.html"
+        capture noisily dash scatter mpg weight, `opt' saving("`q03d'/r`i'.html", replace)
+        _w34_expect Q3403-1 "(_rc == 0)" "dash scatter mpg weight, `opt' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q34_has(r"`q03d'/r`i'.html", "", "${q34_t}")
+        _w34_expect Q3403-1 `"("${q34_bad}" == "")"' `"`opt' (twoway ${q34_t}): ${q34_bad}"'
+    }
+    _w34_done Q3403-1 "range(0), range(100), xscale(range(0 6000)), xscale(range(1000 6100)) and ylabel(, angle(0)): twoway's ticks over the data"
+
+    // Q3403-2: under #N, and in a by() graph, the ticks are placed over
+    // the data and the range together, as twoway places them.
+    local i 0
+    foreach c in "ylabel(#5) yscale(range(100))|.Graph" "by(foreign) yscale(range(0))|.Graph.graphs[1]" {
+        local ++i
+        gettoken opt p : c, parse("|")
+        local p = substr("`p'", 2, .)
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway scatter mpg weight, `opt'
+        _q34_drawn `p' y1
+        capture erase "`q03d'/w`i'.html"
+        capture noisily dash scatter mpg weight, `opt' saving("`q03d'/w`i'.html", replace)
+        _w34_expect Q3403-2 "(_rc == 0)" "dash scatter mpg weight, `opt' rc `=_rc'"
+        _w34_expect Q3403-2 `"("${q34_t}" != "")"' "twoway drew no y tick under `opt'"
+        python: import __main__ as _q34_m; _q34_m._q34_has(r"`q03d'/w`i'.html", "", "${q34_t}")
+        _w34_expect Q3403-2 `"("${q34_bad}" == "")"' `"`opt' (twoway ${q34_t}): ${q34_bad}"'
+    }
+    _w34_done Q3403-2 "ylabel(#5) yscale(range(100)) and by(foreign) yscale(range(0)): the widened ticks twoway draws"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 python:
 def _q3404_cmp(svg, page, ar):
     """q3404_bad: "" when twoway's plot region in *svg* and dash's frame on

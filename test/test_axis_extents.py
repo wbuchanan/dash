@@ -218,7 +218,11 @@ class TestRangeOnlyWidens:
         fig = _one(mode, tmp_path, {"yscale": "range(100)"})
         assert fig.y_range.start < fig.y_range.end, (
             fig.y_range.start, fig.y_range.end)
-        assert _approx(hull(fig.y_range), (12.0, 100.0))
+        # Flipped (WP-34 AX-1): range() widens only the scale on a default
+        # axis, so the ticks stay 10(10)40 and the 10 joins the hull
+        # (axis_truth b2_range_100: curmin 10, curmax 100); 12 was the
+        # data minimum under the old 20(20)100 ticks.
+        assert _approx(hull(fig.y_range), (10.0, 100.0))
 
     def test_range_20_30_never_narrows(self, mode, tmp_path):
         fig = _one(mode, tmp_path, {"yscale": "range(20 30)"})

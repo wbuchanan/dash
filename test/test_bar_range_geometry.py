@@ -650,10 +650,10 @@ _DB_CASES = {
                    _db_p("bar", "ypos", yaxis="2")], {"by": "g"}, ""),
 }
 _DB_PROPS = {"VBar": "bottom", "VArea": "y1", "Segment": "y0"}
-#: yscale(range(0)): twoway ticks 10(1)14 over [0, 14], dash 0(5)15 over
-#: [0, 15] -- S21's #N-over-range() rule, not the base; the base (0) is
-#: checked, the scale and ticks are not.
-_DB_TICKS_ELSEWHERE = {"bar_range0"}
+#: Cases whose scale and ticks are checked elsewhere (none).
+# Flipped (WP-34 AX-1): twoway ticks bar_range0 over its data (10(1)14
+# over 0-14), dash now does; it was skipped while dash drew 0(5)15.
+_DB_TICKS_ELSEWHERE = set()
 
 
 def _db_figs(mode, tmp_path, plots, go=None, if_expr="", df=None, bo=None):

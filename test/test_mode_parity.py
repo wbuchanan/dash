@@ -2852,6 +2852,8 @@ CORPUS = [
     _case("area cmissing outline", [plot_for("area", {"cmissing": "n"})]),
     _case("area nodropbase outline",
           [plot_for("area", {"nodropbase": "nodropbase"})]),
+    # WP-34 AX-1: range() widens a default axis, not its ticks.
+    _case("yscale range 0 default ticks", [_sc()], go={"yscale": "range(0)"}),
 ]
 
 
@@ -4157,6 +4159,9 @@ MOVE_CORPUS.extend(_CVAR_MOVES)
 # WP-34 PIC-1: the outline ring follows the fill through a range move.
 MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
                               [plot_for("area")]))
+# WP-34 AX-1: the default ticks stay over the kept data after a move.
+MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
+                              [_sc()], go={"yscale": "range(0)"}))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

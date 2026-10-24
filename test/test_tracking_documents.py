@@ -2872,7 +2872,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'AX-2': "by() panels tick x1 at the scheme's #5; twoway's by() styles set xlabels(#4) ylabels(#4)",
-    'AX-1': 'xscale/yscale(range()) beyond the data widens the default ticks; twoway ticks only the data',
     'VF-2': "A by() graph's shared y title is never painted (its cell canvas is 1 px tall)",
     'PIC-3': 'A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style',
     'TR-4': "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)",

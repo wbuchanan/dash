@@ -43435,7 +43435,8 @@ function dash_axis_compute(plan, models) {
                     && (Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, a.kind)
                         || (a.kind.indexOf("su:") === 0
                             && Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, a.kind.slice(3))));
-                const sc = tsd ? [] : a.scale.filter((v) => a.kind !== "log" || v > 0);
+                // WP-34 AX-1: a default axis outside by() is ticked over its data alone.
+                const sc = (tsd || (a.dflt && !a.byg)) ? [] : a.scale.filter((v) => a.kind !== "log" || v > 0);
                 if (sc.length) {
                     lo = dash_axis_min(sc.concat(lo !== null ? [lo] : []));
                     hi = dash_axis_max(sc.concat(hi !== null ? [hi] : []));
@@ -46720,6 +46721,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     "key": "%s:%d" % e["key"], "mode": mode,
                     "dflt": bool(mode == "count" and _DASH_DEFAULT_TAG in (
                         getattr(base, "tags", None) or ())),
+                    # WP-34 AX-1: the graph has by() (the finish's join).
+                    "byg": bool(getattr(f, "_dash_by_graph", False)),
                     "n": int(_dash_count_of(base) or 0) if mode == "count"
                     else 0,
                     "hold": bool(base is not None
@@ -47847,7 +47850,12 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
                  else list(scale_vals2.get(e["name"], [])))
         if e["kind"] == "log":
             extra = [v for v in extra if v > 0]
-        if e.get("default") and _dash_ts_kind(e["kind"]):
+        # WP-34 AX-1: a default axis is ticked over its data alone; range()
+        # widens only its scale (axis_truth b2_range_*: yscale(range(0))
+        # labels 10(10)40 over 0-41); under #N or by() the range joins the
+        # ticks (b2_hash5_range100, b2_by_range0).
+        if e.get("default") and (_dash_ts_kind(e["kind"]) or not getattr(
+                fig, "_dash_by_graph", False)):
             # WP-30 P1.3b (measured 08oct2026): a default date axis is
             # ticked over its data alone; range() widens only its scale
             # (`yscale(range(14900 15500) axis(2))' over 15007-15370 keeps
@@ -63834,6 +63842,7 @@ class DashRenderer:
         fig._dash_margin = _dash_plot_margin(self.scheme, graph_opts)
         fig._dash_margin_args = (self.scheme, graph_opts)
         fig._dash_numticks = _dash_by_numticks(self.scheme, graph_opts)
+        fig._dash_by_graph = bool(str((graph_opts or {}).get("by", "") or "").strip())
         # The axes' date kinds, for the axis options below: a number given
         # for a date axis is a Stata date in the variable's unit.
         _dash_mark_date_axes(fig, _x_date, _y_date, _x2_date, _y2_date)
@@ -70818,6 +70827,7 @@ class ServerAppBuilder:
             "        fig._dash_margin = _dash_plot_margin(_dash_cur_scheme(), go)",
             "        fig._dash_margin_args = (_dash_cur_scheme(), go)",
             "        fig._dash_numticks = _dash_by_numticks(_dash_cur_scheme(), go)",
+            "        fig._dash_by_graph = bool(str((go or {}).get('by', '') or '').strip())",
             "        _dash_mark_date_axes(fig, _x_date, _y_date, _x2_date, _y2_date)",
             "        for _axis, _kind, _avar in ((fig.xaxis, _x_date, _xa),",
             "                                    (fig.yaxis, _y_date, _ya)):",

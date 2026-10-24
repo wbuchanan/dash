@@ -2,10 +2,6 @@
 # when is a Python regex searched in the twoway command, or *; the first live row whose check, plottype and when match explains a difference (WP-33 33-05, D-33-05.e)
 AX-2	x_ticks	*	\bby\(	by() panels tick x at the scheme's #5; twoway's by() styles use #4
 AX-2	x_labels	*	\bby\(	by() panels' x labels follow their ticks (AX-2)
-AX-1	x_ticks	*	\b[xy]sc(?:a|al|ale)?\([^)]*\br(?:a|an|ang|ange)?\(	xscale(range()) beyond the data widens the default ticks; twoway ticks only the data
-AX-1	x_labels	*	\b[xy]sc(?:a|al|ale)?\([^)]*\br(?:a|an|ang|ange)?\(	the x labels follow the widened ticks (AX-1)
-AX-1	y_ticks	*	\b[xy]sc(?:a|al|ale)?\([^)]*\br(?:a|an|ang|ange)?\(	yscale(range()) beyond the data widens the default ticks; twoway ticks only the data
-AX-1	y_labels	*	\b[xy]sc(?:a|al|ale)?\([^)]*\br(?:a|an|ang|ange)?\(	the y labels follow the widened ticks (AX-1)
 GW-6	frame_aspect	*	*	default plot-region margins differ (45-04)
 BY-32	x_labels_none	*	\bby\(	by() labels x on every panel; twoway only on the bottom row (D48)
 VF-4	text_size	*	*	text is drawn at a fixed 2.88 pt relative size, 0.889x twoway's under stcolor (45-04)

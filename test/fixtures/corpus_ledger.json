@@ -1,7 +1,7 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "a014c61c1fa955d54d92ac8283a73c12afd4ed6a",
+    "dash_commit": "e501552c4fb1c5b2702bfb5a9cc88e61933aab84",
     "extracted": "24 Oct 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
@@ -25,42 +25,6 @@
       "note": "by() panels' x labels follow their ticks (AX-2)",
       "plottype": "*",
       "when": "\\bby\\("
-    },
-    {
-      "check": "x_ticks",
-      "form": "plain",
-      "gaps4_id": "AX-1",
-      "id": "AX-1",
-      "note": "xscale(range()) beyond the data widens the default ticks; twoway ticks only the data",
-      "plottype": "*",
-      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
-    },
-    {
-      "check": "x_labels",
-      "form": "plain",
-      "gaps4_id": "AX-1",
-      "id": "AX-1",
-      "note": "the x labels follow the widened ticks (AX-1)",
-      "plottype": "*",
-      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
-    },
-    {
-      "check": "y_ticks",
-      "form": "plain",
-      "gaps4_id": "AX-1",
-      "id": "AX-1",
-      "note": "yscale(range()) beyond the data widens the default ticks; twoway ticks only the data",
-      "plottype": "*",
-      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
-    },
-    {
-      "check": "y_labels",
-      "form": "plain",
-      "gaps4_id": "AX-1",
-      "id": "AX-1",
-      "note": "the y labels follow the widened ticks (AX-1)",
-      "plottype": "*",
-      "when": "\\b[xy]sc(?:a|al|ale)?\\([^)]*\\br(?:a|an|ang|ange)?\\("
     },
     {
       "check": "frame_aspect",

@@ -1731,9 +1731,12 @@ class TestXrangeYrange:
         # WP-30 P1.3a: the hull padded 5% (and a DataRange1d on y) was
         # wrong because every axis spans its hull and natscale ticks plus
         # twoway's plot-region margin: -37 and 99 reach -50(50)100's ends.
+        # Flipped (WP-34 AX-1): range() widens only the scale on a default
+        # axis, so the ticks stay over the data (1-20) and -37 and 99 are
+        # the span's ends; -50(50)100 was the old widened ticks.
         name, (lo, hi) = _page_inner(html, spec, data, "x_range")
         assert name == "Range1d"
-        assert (lo, hi) == pytest.approx((-50.0, 100.0))
+        assert (lo, hi) == pytest.approx((-37.0, 99.0))
         assert _page_inner(html, spec, data, "y_range")[0] == "Range1d"
 
     def test_yrange_embeds_unique_end_value(self):
@@ -1750,9 +1753,12 @@ class TestXrangeYrange:
         # so the document writes it.
         # WP-30 P1.3a: natscale ticks 0(2000)10000 reach past 9999 and the
         # margin is twoway's (was 5%; the x axis was a DataRange1d).
+        # Flipped (WP-34 AX-1): range() widens only the scale on a default
+        # axis, so the ticks stay over the data (1-20) and 9999 is the
+        # span's top; 10000 was the old widened 0(2000)10000 ticks.
         name, (lo, hi) = _page_inner(html, spec, data, "y_range")
         assert name == "Range1d"
-        assert (lo, hi) == pytest.approx((0.0, 10000.0), abs=1e-6)
+        assert (lo, hi) == pytest.approx((0.0, 9999.0), abs=1e-6)
         assert _page_inner(html, spec, data, "x_range")[0] == "Range1d"
 
     def test_xrange_invalid_ignores_gracefully(self):

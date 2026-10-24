@@ -719,10 +719,14 @@ _PLAIN_DIGESTS = {
     # WP-34 AX-4, every axis-plan layer carries hfields and the finish and
     # filter code read a histogram's midpoint and span columns; the same
     # under both Pythons.
+    # 9653c56a... -> a4bad736... saved, 4fd310cb... -> 8d1ef2de... served:
+    # WP-34 AX-1, the axis plan's byg key and the finish code's
+    # default-axis condition (plan key and finish JS text only); the same
+    # under both Pythons.
     ("saved", "plain"):
-        "9653c56aa7dd065688a7ae16b76d85c05ac14980793cf5149c9b13c393e630de",
+        "a4bad7369eaf1735cdb8ea64c3cff11bff9a7a87ac54ab2dee0817849a480354",
     ("saved", "yaxis2"):
-        "9653c56aa7dd065688a7ae16b76d85c05ac14980793cf5149c9b13c393e630de",
+        "a4bad7369eaf1735cdb8ea64c3cff11bff9a7a87ac54ab2dee0817849a480354",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -737,9 +741,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "4fd310cb85fa192b73054a05bb2298b064b8cbe04531fe96cd5d8babc898f4b3",
+        "8d1ef2de9f34f5c41a5af7d092b93defcb3fd9b155f8688cf27da3ee9a4cadac",
     ("served", "yaxis2"):
-        "4fd310cb85fa192b73054a05bb2298b064b8cbe04531fe96cd5d8babc898f4b3",
+        "8d1ef2de9f34f5c41a5af7d092b93defcb3fd9b155f8688cf27da3ee9a4cadac",
 }
 
 

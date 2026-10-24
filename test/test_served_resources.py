@@ -585,7 +585,11 @@ _SAVED_DIGEST = (
     # carries hfields and the finish and filter code read a histogram's
     # midpoint and span columns (code and plan keys only); the same under
     # both Pythons.
-    "0c62765f169ab823551b82ba0509308f5d36bbea6ea3ccef2c6076ad8729200c")
+    # 0c62765f... -> 691b97a8...: WP-34 AX-1, the axis plan's byg key and
+    # the finish code's default-axis condition (plan key and finish JS
+    # text only: the base's two give the old digest); the same under both
+    # Pythons.
+    "691b97a8fe95f6e1d6d73605d1d329bed8488130f7ca7f5d41a5a31b08fc9260")
 
 
 # ===========================================================================
