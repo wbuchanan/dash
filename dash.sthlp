@@ -6681,7 +6681,8 @@ in either direction.
     {opt nologging}, {opt refscheme}, {opt norefscheme}, {opt rescaling},
     {opt norescaling}, {opt titling} and {opt notitling} -- settings of
     {cmd:twoway}'s graph object with nothing for {cmd:dash} to draw; it
-    names them.  {cmd:maxaxes()} is checked as {cmd:twoway} checks it -- a
+    names them; {cmd:notitling} with a title, subtitle, note or caption is
+    refused as {cmd:twoway} refuses it.  {cmd:maxaxes()} is checked as {cmd:twoway} checks it -- a
     value that is no integer, or an axis numbered above it, is refused --
     and is otherwise taken in silence.
 

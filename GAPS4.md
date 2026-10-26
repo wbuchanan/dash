@@ -368,7 +368,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit pending.
 - **GW-3 Tracked:** Closed in WP-35, BUGS.md "maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn", commit pending.
 - **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit pending.
-- **sil:SD-8 Tracked:** Open (WP-35 section 35-06).
+- **sil:SD-8 Tracked:** Closed in WP-35, BUGS.md "title() with notitling is accepted with a note; twoway fails r(4018)", commit pending.
 - **syn:SD-22 Tracked:** Open (WP-35 section 35-06).
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
 - **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit 7b5083e.

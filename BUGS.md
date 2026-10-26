@@ -4724,11 +4724,11 @@
   - Suggested fix: Declare FXSIZe/FYSIZe
   - Resolution: Fixed 26oct2026 (WP-35, GW-4). fxsize() and fysize() are declared FXSIZe() and FYSIZe() in _dash_parse_graph_opts and _dash_parse_plot_opts, twoway's minimums (graph.ado), so fxsiz() and fysiz() register the spec of fxsize() and fysize() after a plot's comma and after the plot groups' comma, in both modes, and are no longer named; fxsi(), fxs() and fysi() stay refused as twoway refuses them. ABBREV_KNOWN's four GW-4 rows are gone (abbrev_truth.json re-extracted). Pinned by test/test_graph_refusals.py::TestFxsize::test_twoways_minimum_declared, test_wp35_truth.cscript Q3506-4; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 GW-4 (WP-35, GW-4).
 
-- [ ] Title: title() with notitling is accepted with a note; twoway fails r(4018)
+- [x] Title: title() with notitling is accepted with a note; twoway fails r(4018)
   - File Names and Line Numbers: twowaygraph_g.class:577-582
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids sil:SD-8; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-8 (WP-35, section 35-06, Fix).
   - Suggested fix: Refuse the pair as measured
-  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, sil:SD-8). notitling with title(), subtitle(), note() or caption() anywhere in the command is refused, r(4018), in twoway's words, '<kind>.edit , mtextq(<the option's text before its comma, in compound quotes>) : class type not found', the first of note, caption, subtitle, title given (measured; not the typed order), in _dash_plot after the merge, before any spec, so in both modes; the text is echoed by value through _dash_say, cut to 200 characters. notitling alone is still named. Pinned by test_option_validation.cscript Q3506-5; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 sil:SD-8 (WP-35, sil:SD-8).
 
 - [ ] Title: twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere
   - File Names and Line Numbers: scripts/corpus/ledger.tsv syn:SD-22 row; the 33-14 corpus run's gpdf-clegend_option-e6dbcac1 (g.pdf p.544: twoway contour depth northing easting, levels(10) zlabel(7600 "Low" 7800 "Medium" 8000 "High") region(fcolor(gs15))))

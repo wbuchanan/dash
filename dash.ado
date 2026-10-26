@@ -8947,6 +8947,23 @@ program define _dash_plot
         exit 198
     }
 
+    // ---- A title with notitling (WP-35 sil:SD-8) ----
+    // twoway fails, r(4018), on notitling with title(), subtitle(), note()
+    // or caption() anywhere in the command, naming the first of note,
+    // caption, subtitle, title given and its text before its comma as
+    // typed (twowaygraph_g.class; graph_refusal_truth.json notitling.*).
+    // The text is the user's: read by value and cut to 200 characters.
+    mata: st_local("_ntl", strofreal(anyof(_dash_opt_tokens(st_local("_g_omraw") + " " + st_local("_gopts_axraw")), "notitling")))
+    if `_ntl' {
+        foreach _ntk in note caption subtitle title {
+            if !`: length local g_`_ntk'' continue
+            mata: _dash_comma_pos(st_local("g_`_ntk'"), "_ntc")
+            mata: st_local("_ntx", usubstr(strtrim(`_ntc' ? substr(st_local("g_`_ntk'"), 1, `_ntc' - 1) : st_local("g_`_ntk'")), 1, 200))
+            mata: _dash_say("err", "`_ntk'.edit , mtextq(" + char(96) + char(34), st_local("_ntx"), char(34) + char(39) + ") : class type not found")
+            exit 4018
+        }
+    }
+
     // ---- axis(#) as twoway checks it (WP-29 P0.5) ----
     // twoway's ParseAndLogAxes refuses an axis option whose axis(#) names
     // an axis no layer is drawn on, an axis() in capitals or given twice,

@@ -397,6 +397,8 @@
 *!          r(198) in twoway's words; one drawn as twoway draws it
 *!   Q3506-3 (GW-3) maxaxes() checked as twoway checks it: no integer
 *!          r(198), an axis above it r(125); a valid one drawn, not named
+*!   Q3506-5 (sil:SD-8) a title, subtitle, note or caption with notitling
+*!          refused r(4018) in twoway's words; notitling alone named
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -3471,6 +3473,16 @@ quietly log close _ovlog
 _ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
 _ov_assert Q3506-3 "(`_q3rc' == 0 & r(n) == 0)" "maxaxes(2) taken and not named (rc `_q3rc')"
 capture dash clear
+
+// Q3506-5 (sil:SD-8): title(), subtitle(), note() or caption() with
+// notitling -- in a list or after the comma, in either order -- is refused,
+// r(4018), "<kind>.edit , mtextq(`"<its text>"') : class type not found",
+// the first of note, caption, subtitle, title given; notitling alone is
+// drawn: every notitling.* key of the fixture.
+python: _q3506_keys("notitling.")
+foreach _q5k of local q_keys {
+    _q3506 Q3506-5 `_q5k'
+}
 
 // Summary
 // ----------------------------------------------------------------
