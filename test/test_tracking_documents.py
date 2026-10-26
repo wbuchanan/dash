@@ -2901,7 +2901,6 @@ GAPS4_OPEN = {
     'sil:SD-8': 'title() with notitling is accepted with a note; twoway fails r(4018)',
     'syn:SD-22': 'twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere',
     'DT-19': "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)",
-    'syn:SD-13': "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both",
     'plat:PT-1': 'dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal',
     'plat:PT-5': 'Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh',
     'plat:PT-4': "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help",

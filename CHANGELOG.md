@@ -860,6 +860,7 @@ and now matches Stata.
 - Plot-type names are read in lower case only, as twoway's abbreviations are: SC, Hist and Scatter are refused, r(198), "<word> is not a twoway plot type"; dash read them in any case. (WP-35, plot:PT-3)
 - The graph with no plot (dash, title(T)) is drawn with no axes, as twoway draws it, and an axis option on it is refused in twoway's words (xlabel(1 2): "xlabels(1 2) not allowed, xaxis1 does not exist"); dash drew two axes and took the options. (WP-35, plot:PT-4)
 - A bare plot after a parenthesised group, (scatter mpg weight) line mpg weight, is drawn as twoway draws it; dash refused it, r(198). (WP-35, syn:SD-1)
+- || inside one group with no options, (scatter mpg weight || line mpg weight), draws both plots, as twoway does; dash refused it, r(198). A group whose || piece holds options, (scatter mpg weight, mcolor(red) || line mpg weight), is refused in twoway's words, "option | not allowed" (dash said "option line not allowed"). (WP-35, syn:SD-13)
 
 ### Removed
 

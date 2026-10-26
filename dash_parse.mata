@@ -3387,7 +3387,8 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 void _dash_split_segs(string scalar input, | real scalar allow_empty) {
     real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt, p
     real   scalar  seg_start, n_segs, ae
-    string scalar  piece
+    real   scalar  g_close, g_bars, g_comma
+    string scalar  piece, g_rest
     string vector  pieces, segs
     string scalar  graph_opts_raw, graph_qual
 
@@ -3414,6 +3415,66 @@ void _dash_split_segs(string scalar input, | real scalar allow_empty) {
         }
         errprintf("dash: empty plot specification.\n")
         exit(198)
+    }
+
+    // ---- || inside the command's first group (WP-35 syn:SD-13) ----
+    // twoway draws `(scatter y x || line y x)', with nothing after the
+    // group but a comma, as the same plots without the parentheses (rc 0,
+    // test/fixtures/command_grammar_truth.json inner.bare, inner.comma),
+    // and refuses every other form whose first group holds || at its own
+    // depth, r(198): a || piece holding its own comma is "option | not
+    // allowed" (inner.piece_comma), options or another group after the
+    // group "| invalid name" (inner.title, inner.then_group).  Quotes are
+    // opaque; nothing typed is echoed.
+    if (substr(input, 1, 1) == "(") {
+        depth   = 0
+        in_dq   = 0
+        in_cq   = 0
+        g_close = 0
+        g_bars  = 0
+        g_comma = 0
+        i       = 1
+        while (i <= len) {
+            nxt = _dash_quote_step(input, len, i, in_dq, in_cq)
+            if (nxt) {
+                i = nxt
+                continue
+            }
+            c_code = ascii(substr(input, i, 1))
+            if (c_code == 40) depth++
+            else if (c_code == 41) {
+                depth--
+                if (depth == 0) {
+                    g_close = i
+                    break
+                }
+            }
+            else if (depth == 1 & c_code == 124 & i + 1 <= len &
+                     ascii(substr(input, i+1, 1)) == 124) {
+                g_bars = 1
+                i = i + 2
+                continue
+            }
+            else if (depth == 1 & c_code == 44) g_comma = 1
+            i++
+        }
+        if (g_close & g_bars) {
+            g_rest = strtrim(substr(input, g_close + 1, .))
+            if (!g_comma & (g_rest == "" | g_rest == ",")) {
+                input = strtrim(substr(input, 2, g_close - 2))
+                len   = strlen(input)
+            }
+            else if (g_comma) {
+                // command_grammar_truth.json inner.piece_comma
+                _dash_say("err", "", "option | not allowed", "")
+                exit(198)
+            }
+            else {
+                // command_grammar_truth.json inner.title, inner.then_group
+                _dash_say("err", "", "| invalid name", "")
+                exit(198)
+            }
+        }
     }
 
     // ---- split at "||" outside quotes and parentheses ----

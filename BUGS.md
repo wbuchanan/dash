@@ -4760,11 +4760,11 @@
   - Suggested fix: Follow twoway's _parse expand: text up to the next || is another plot; give twoway's '<word> is not a twoway plot type' and r(111) cases
   - Resolution: Fixed 26oct2026 (WP-35, syn:SD-1). dash_parse.mata's _dash_split_groups reads the text after a parenthesised group, to the end of its || piece, as one more bare plot, as twoway's _parse expand does: (scatter mpg weight) line mpg weight draws two plots, and (a) junk (b), (a) 123 and (a) | (b) are "<word> is not a twoway plot type", r(198), and (a) line mpg weight (line price weight) "variable line not found", r(111), as in twoway; dash.sthlp's Syntax says so; Stata-side, so both modes alike. Pinned by test_wp35_truth.cscript Q3509-6, test_parser.cscript Q3509-7, test_parser_integrity.cscript P1B-16 and P1B-37; fixture test/fixtures/command_grammar_truth.json. Closes GAPS4 syn:SD-1 (WP-35, syn:SD-1).
 
-- [ ] Title: A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both
+- [x] Title: A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both
   - File Names and Line Numbers: p2out S13; probe v1
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids syn:SD-13; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-13 (WP-35, section 35-09, Fix).
   - Suggested fix: Per M7: accept the option-less form, as twoway draws it.
-  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-13). dash_parse.mata's _dash_split_segs reads a command that is one parenthesised group holding || at its own depth, with nothing after it but a comma, as the same plots without the parentheses, as twoway does: (scatter mpg weight || line mpg weight) draws both; every other form whose first group holds || is refused with twoway's rc and first line, "option | not allowed" when a || piece holds its own comma and "| invalid name" when options or another group follow, r(198); dash.sthlp's Syntax says so; Stata-side, so both modes alike. Pinned by test_wp35_truth.cscript Q3509-8, test_parser.cscript Q3509-9; fixture test/fixtures/command_grammar_truth.json. Closes GAPS4 syn:SD-13 (WP-35, syn:SD-13).
 
 - [ ] Title: dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal
   - File Names and Line Numbers: fresh-HOME probe: c(python_exec) is empty while python query gives r(execpath)=/usr/local/bin/python3 and initialized=0; dash.ado:290-319; dash_setup.ado:96-107; dash_setup_lib.py:829-834

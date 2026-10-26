@@ -156,6 +156,8 @@ to the plot it is written in.  A {cmd:||} piece that holds no plot --
 are graph options only, and a plot option there is refused, r(198).  A
 plot written after a parenthesised group,
 {cmd:(scatter mpg weight) line mpg weight}, is one more plot, as in
+{cmd:twoway}.  {cmd:||} inside one group with no options,
+{cmd:(scatter mpg weight || line mpg weight)}, draws both plots, as in
 {cmd:twoway}.  A
 {it:weight} belongs to a plot, too:
 {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]} or

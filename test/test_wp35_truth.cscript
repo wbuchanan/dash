@@ -642,6 +642,28 @@ def _q3509_drawn(key, name):
         got = [repr(e)[:80]]
     Macro.setGlobal("q3509_bad", "" if got == want else
                     "%s: dash %s, twoway %s" % (key, got, want))
+
+
+def _q3509_glyphs(path, out):
+    """The glyph kinds a saved page's renderers draw, sorted, into global
+    out (a one-line page: the forms of Q3509-8 take no option)."""
+    import json, re
+    from sfi import Macro
+    try:
+        text = open(path, encoding="utf-8").read()
+        docs = [json.loads(m) for m in re.findall(
+            r'<script type="application/json"[^>]*>\s*(.*?)\s*</script>',
+            text, re.S)]
+        objs = []
+        _q3509_walk(docs, objs)
+        kinds = []
+        for o in objs:
+            if o["name"] == "GlyphRenderer":
+                g = (o.get("attributes") or {}).get("glyph") or {}
+                kinds.append(g.get("name", "?"))
+        Macro.setGlobal(out, " ".join(sorted(kinds)))
+    except Exception as e:
+        Macro.setGlobal(out, "error " + repr(e)[:100])
 end
 
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
@@ -761,6 +783,52 @@ if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
     _w35_expect Q3509-6 "(`q96n' == 5)" "`q96n' forms read, 5 expected"
     _w35_done Q3509-6 "the `q96n' group forms twoway draws register its plots"
     macro drop q3509_keys q3509_cmd q3509_bad
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
+* ==== S09 syn:SD-13: || inside one group ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3509-8: every inner.* form twoway draws (rc 0) -- || inside the
+    // command's one group, with no option -- draws what the same plots
+    // without the parentheses draw (twoway: the fixture's plot count).
+    // No option may be added (twoway refuses one there), so each is
+    // drawn on the one-line route and its page read.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    python: import __main__ as _q9m; _q9m._q3509_forms("inner.")
+    local q98n 0
+    foreach k of global q3509_keys {
+        python: import json as _q9j; from sfi import Macro as _q9M; _q9M.setLocal("q98cmd", "dash" + _q9j.load(open("fixtures/command_grammar_truth.json", encoding="utf-8"))[_q9M.getLocal("k")]["cmd"][len("twoway"):])
+        python: from sfi import Macro as _q9M; _q9M.setLocal("q98flat", _q9M.getLocal("q98cmd").replace("dash (", "dash ", 1).rstrip().rstrip(",").rstrip()[:-1])
+        dash clear
+        capture noisily `q98cmd'
+        local rc = _rc
+        local f1 "`r(filename)'"
+        _w35_expect Q3509-8 "(`rc' == 0)" `"`q98cmd': rc `rc'"'
+        capture noisily `q98flat'
+        local f2 "`r(filename)'"
+        global q3509_g1 ""
+        global q3509_g2 ""
+        if !`rc' {
+            python: import __main__ as _q9m; _q9m._q3509_glyphs(r"`f1'", "q3509_g1")
+            python: import __main__ as _q9m; _q9m._q3509_glyphs(r"`f2'", "q3509_g2")
+        }
+        _w35_expect Q3509-8 `"("${q3509_g1}" == "${q3509_g2}" & "${q3509_g1}" != "")"' `"`q98cmd': glyphs [${q3509_g1}], `q98flat' [${q3509_g2}]"'
+        python: import json as _q9j; from sfi import Macro as _q9M; _q9M.setLocal("q98np", str(_q9j.load(open("fixtures/command_grammar_truth.json", encoding="utf-8"))[_q9M.getLocal("k")]["nplots"]))
+        _w35_expect Q3509-8 "(`q98np' == 2)" "`k': twoway draws `q98np' plots"
+        capture erase "`f1'"
+        capture erase "`f2'"
+        local ++q98n
+    }
+    _w35_expect Q3509-8 "(`q98n' == 2)" "`q98n' forms read, 2 expected"
+    _w35_done Q3509-8 "the `q98n' option-less || groups draw the plots twoway draws"
+    macro drop q3509_keys q3509_g1 q3509_g2
     dash clear
     display as text "S09 end " c(current_date) " " c(current_time)
 }
