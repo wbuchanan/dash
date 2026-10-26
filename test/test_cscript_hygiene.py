@@ -300,7 +300,8 @@ class TestTheChecksReachEveryScript:
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
         # 70 -> 71: test_wp34_truth.cscript (WP-34 W0).
-        assert len(_CSCRIPTS) == 71, (
+        # 71 -> 72: test_wp35_truth.cscript (WP-35 W0).
+        assert len(_CSCRIPTS) == 72, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -323,7 +324,8 @@ class TestTheChecksReachEveryScript:
         # gates the same way, so 51.
         # 51 -> 52: test_wp33_truth gates on c(python_exec) (WP-33 33-01)
         # 52 -> 53: test_wp34_truth gates on c(python_exec) (WP-34 W0)
-        assert len(names) == 53, f"{len(names)}: {sorted(names)}"
+        # 53 -> 54: test_wp35_truth gates on c(python_exec) (WP-35 W0)
+        assert len(names) == 54, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
