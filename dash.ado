@@ -511,6 +511,7 @@ program define _dash_require_mata
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_play_find _dash_grec_ok _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
+        _dash_p_take _dash_p_seg _dash_p_unknown ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -6525,6 +6526,9 @@ program define _dash_process_segment, rclass
             }
         }
     }
+    // WP-35 syn:SD-3: the plot's own p<j>() and the graph's p<k>() for it,
+    // merged into its options as twoway applies them (_dash_p_apply).
+    _dash_p_apply `ptype' `: word count `yvarlist'' `"`macval(opts_raw)'"'
     sreturn clear
     local _rp_gund_out ""
     local _ptype_typed "`ptype'"
@@ -6912,6 +6916,7 @@ program define _dash_process_segment, rclass
     // type is taken as twoway takes it, without a note (WP-32,
     // _dash_silent_drop).
     mata: st_local("_seg_ign", _dash_pending_note(_dash_silent_drop(st_global("s(_pending)"), st_local("ptype"))) + " " + st_global("s(_unknown)"))
+    if `: length local _pa_named' mata: st_local("_seg_ign", st_local("_seg_ign") + " " + st_local("_pa_named"))
     c_local _seg_ignored_out : copy local _seg_ign
     // The graph-wide options dash does not declare that this segment gave
     // (clegend(), pcycle(), notitling, ...): twoway takes each once from
@@ -8304,6 +8309,9 @@ program define _dash_plot
     // WP-32: no earlier command's held refusal (_dash_pend).
     global dash__pend ""
     global dash__pend_msg ""
+    // WP-35 syn:SD-3: no earlier command's p#() pairs (_dash_p_seg).
+    global dash__pnum ""
+    global dash__poff ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -8408,6 +8416,14 @@ program define _dash_plot
     // command -- after the comma, in any plot group or || segment.
     local _gund_acc ""
     local _rp_gund_out ""
+    // WP-35 syn:SD-3: p1() .. p20() after the comma go to the plot of that
+    // number, taken out before the graph options are parsed and handed to
+    // each segment in $dash__pnum (_dash_p_seg); p21() and above are
+    // refused after the segment loop, as twoway refuses them after every
+    // plot group's refusal (test/fixtures/pnum_truth.json order_p21).
+    mata: st_local("gopts_raw", _dash_p_take(st_local("gopts_raw")))
+    local _pt_gbad : copy local _pt_bad
+    mata: st_global("dash__pnum", st_local("_pt_pairs"))
     local _gopts_axraw : copy local gopts_raw
     if `: length local gopts_raw' {
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
@@ -8552,6 +8568,7 @@ program define _dash_plot
             local _sg_`gk' ""
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
+        global dash__poff `_dash_nplots'
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
         // twoway draws one colorvar() layer a graph: a later one is
         // refused unless it says colorallowmultiple itself (WP-31 C8b,
@@ -8671,6 +8688,8 @@ program define _dash_plot
         if `k' > 1 local plots_json `"`plots_json',"'
         local plots_json `"`plots_json'`_json_k'"'
     }
+    global dash__pnum ""
+    global dash__poff ""
 
     // WP-32: the refusals twoway gives only once every plot's options are
     // read -- held by _dash_pend -- before any function layer is evaluated;
@@ -8857,6 +8876,12 @@ program define _dash_plot
     // every plot's and after the function layers are evaluated, as twoway
     // refuses a graph option (test_parser.cscript FX-02: a runiform()
     // layer advances the random-number state).
+    if `: length local _pt_gbad' {
+        // pnum_truth.json g_p21: scatter mpg weight, p21(mcolor(red)) is
+        // "p21(mcolor(red)):  too many arguments", r(103).
+        mata: _dash_say("err", "", st_local("_pt_gbad"), ":  too many arguments")
+        exit 103
+    }
     if 0`_gac_rc' {
         sreturn clear
         _dash_parse_graph_opts , `macval(gopts_raw)'
@@ -11201,6 +11226,30 @@ program define _dash_refuse_unknown
     }
     else display as error "      twoway does not take this option here."
     exit 198
+end
+
+
+// _dash_p_apply <ptype> <number of ys> <option text> -- WP-35 syn:SD-3:
+// the plot's own p<j>() and the graph's p<k>() for this plot merged into
+// its option text (_dash_p_seg, dash_parse.mata), read by value
+// (_dash_text_args).  An option of a p#() value that twoway does not
+// take is refused as twoway refuses it (_dash_p_unknown).  Hands back the
+// caller's opts_raw and _pa_named (the p#() words not drawn, for the
+// note).
+program define _dash_p_apply
+    version 19
+    mata: _dash_text_args(2, 0, 0)
+    local ptype : copy local _dash_a1
+    local n : copy local _dash_a2
+    mata: st_local("_pa_opts", _dash_p_seg(st_local("_dash_txt"), st_local("ptype"), strtoreal(st_local("n"))))
+    forvalues i = 1/`_pa_nv' {
+        sreturn clear
+        capture _dash_parse_plot_opts , `macval(_pa_v`i')'
+        if !_rc mata: _dash_p_unknown(st_global("s(_unknown)"), st_local("ptype"))
+        sreturn clear
+    }
+    c_local opts_raw : copy local _pa_opts
+    c_local _pa_named : copy local _pa_named
 end
 
 

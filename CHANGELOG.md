@@ -855,6 +855,7 @@ and now matches Stata.
 - A quoted string standing alone among the options -- dash scatter mpg weight, "abc" -- is refused as twoway refuses it, r(198), "quotes unbalanced" (or "invalid syntax" or "parentheses do not balance", as twoway answers where the string stands); dash kept it and named it in the note. (WP-31, D16b)
 - lal() was dash's lalpha(), so lal(outside) was refused ("must be a number"); it is lalign(), as twoway reads it, and lalpha() is shortened to no less than lalp(): a do-file writing lal(50) for the line opacity writes lalp(50) (WP-31, C17b)
 - A dashboard has no size cap: `$dash_max_cells` (5,000,000 values) and `$dash_max_bytes` (50,000,000 bytes of text) are gone in both modes, so a build dash refused with r(134) for its size now draws, and the two globals are no longer read (a value dash refused with r(198) changes nothing). Every count cap is unchanged. (WP-33, 33-15)
+- p1() to p20() are drawn on the plot of that number, each y of a varlist counted, and p<j>() inside a plot on its j-th y, as twoway draws them (p3() to p19() were refused, p1(), p2(), p20() named and not drawn); p21() and above are refused as twoway refuses them, r(103), "p21(mcolor(red)):  too many arguments" (was r(198)), and an option twoway does not take inside one, r(198), "option(s) nosuch(1) not allowed". (WP-35, syn:SD-3)
 
 ### Removed
 

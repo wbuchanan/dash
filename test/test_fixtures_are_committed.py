@@ -354,6 +354,7 @@ GENERATORS = {
     "parser_twoway_truth.json": "scripts/extract_twoway_oracle_truth.do",
     "pcycle_fraction_truth.json": "scripts/extract_pcycle_fraction_truth.do",
     "pip_refusals.json": "scripts/extract_pip_refusals.py",
+    "pnum_truth.json": "scripts/extract_pnum_truth.do",
     "qualified_stat_truth.json": "scripts/extract_qualified_stat_truth.do",
     "range_ticks_truth.json": "scripts/extract_range_ticks_truth.do",
     "rangept_truth.json": "scripts/extract_rangept_truth.do",

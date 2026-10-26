@@ -92,14 +92,15 @@ display as result "  [2/4] paren mode names it: PASS"
 // scatter and dash now refuses as twoway does (BUGS.md "In a few mixed
 // lists dash names another word than twoway names first ..."); p1(),
 // which twoway takes and dash names, carries a several-word argument.
+// Flipped: WP-35 syn:SD-3 -- p1() is drawn now, so a noted option with a several-word value is used.
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(m1) p1(mcolor(red) msize(small))"' "`logfile'"
-cert_file_has "`logfile'", needle("p1()")
+_dash_note_for `"dash scatter mpg weight, name(m1) zvarlabel("first label")"' "`logfile'"
+cert_file_has "`logfile'", needle("zvarlabel()")
 assert r(found) == 1
 // the argument's words must NOT appear as option names
-cert_file_has "`logfile'", needle("msize()")
+cert_file_has "`logfile'", needle("first")
 assert r(found) == 0
-cert_file_has "`logfile'", needle("small))()")
+cert_file_has "`logfile'", needle(`"label")"')
 assert r(found) == 0
 
 display as result "  [3/4] an argument is not reported as options: PASS"
@@ -107,9 +108,10 @@ display as result "  [3/4] an argument is not reported as options: PASS"
 // ---------------------------------------------------------------
 // 4. a quoted argument containing a paren cannot unbalance the scan
 // ---------------------------------------------------------------
+// Flipped: WP-35 syn:SD-3 -- p1() is drawn now, so a noted option with a several-word value is used.
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(q1) p1(mcolor(red) msize(small)) maxaxes(2)"' "`logfile'"
-cert_file_has "`logfile'", needle("p1()")
+_dash_note_for `"dash scatter mpg weight, name(q1) zvarlabel("a (b") maxaxes(2)"' "`logfile'"
+cert_file_has "`logfile'", needle("zvarlabel()")
 assert r(found) == 1
 cert_file_has "`logfile'", needle("maxaxes()")
 assert r(found) == 1

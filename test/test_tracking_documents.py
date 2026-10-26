@@ -2871,7 +2871,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'syn:SD-3': 'p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn',
     'stat:PT-7': "lowess m (twoway's documented minimum of mean) is refused",
     'syn:SD-5': 'bwi() is refused on lowess, kdensity, lpoly and lpolyci',
     'stat:PT-1': 'histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses',

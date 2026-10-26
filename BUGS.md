@@ -4604,11 +4604,11 @@
   - Suggested fix: Keep only the last copy before the combined syntax; keep refusing repeated flags; add TP-14a rows
   - Resolution: Fixed 26oct2026 (WP-35, MS-1). _dash_label_split and _dash_contour_split keep each valued option's last copy (dash_parse.mata _dash_rightmost_keep); flags keep every copy and are still refused twice; the spec is shared by both modes. Pinned by test/test_repeat_rightmost.py::TestTheHelper::test_the_helper_is_defined_and_needed, test_wp35_truth.cscript Q3501-1, Q3501-2, Q3501-3. Closes GAPS4 MS-1 (WP-35, MS-1).
 
-- [ ] Title: p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn
+- [x] Title: p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn
   - File Names and Line Numbers: twowaygraph_g.class:145-152; dash_parse.mata:8114-8115; p1.svg; v1out.log
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-3; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-3 (WP-35, section 35-02, Fix).
   - Suggested fix: Map p#(opts) onto the #th plot; regenerate the takes table over p1-p20
-  - Resolution: Not fixed because WP-35 section 35-02 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-3). _dash_plot takes p1() .. p20() out of the options after the comma before they are parsed (_dash_p_take) and hands each to the plot of that number, each y of a varlist counted and a ci fit once (measured); _dash_process_segment merges them and the plot's own p<j>() into its option text (_dash_p_apply, _dash_p_seg, _dash_p_merge): one y takes the values before its own options, several take one stylelist copy per style option, the plot's own elements kept, as twoway draws them (its own option wins, the rightmost p#() wins); a p#() past the plot's ys changes nothing; p21() and above are refused r(103) in twoway's words, after every plot group's refusal when after the comma; an option twoway does not take inside one, r(198), "option(s) nosuch(1) not allowed"; the generated takes table no longer holds p rows; both modes draw the merged spec. Pinned by test/test_pnum.py::TestTheParser::test_take_and_merge_are_defined, test/test_wp35_truth.cscript Q3502-1, Q3502-2, Q3502-3; fixture test/fixtures/pnum_truth.json. Closes GAPS4 syn:SD-3 (WP-35, syn:SD-3).
 
 - [ ] Title: lowess m (twoway's documented minimum of mean) is refused
   - File Names and Line Numbers: dash.ado:1274, 1664-1671; lowm.log

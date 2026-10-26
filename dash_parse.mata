@@ -249,6 +249,18 @@
 *!   _dash_stylelist_keys()
 *!       The style options read as stylelists across an expanded varlist.
 *!
+*!   _dash_p_take(opts)
+*!       opts less its p1() .. p20() words, each kept in the caller's
+*!       locals _pt_n and _pt_pairs; _pt_bad the first above p20().
+*!
+*!   _dash_p_seg(opts, ptype, n)
+*!       A plot's options with its own p<j>() and the graph's p<k>() for
+*!       it applied, as twoway applies them; _pa_named the words not drawn.
+*!
+*!   _dash_p_unknown(unk, ptype)
+*!       Refuses the options of p#() values twoway does not take, in its
+*!       words.
+*!
 *!   _dash_stylelist_norm(raw)
 *!       "" when a style value holds only empty quotes; else raw unchanged.
 *!
@@ -8583,8 +8595,6 @@ string matrix _dash_tw_takes_tab()
     t = t \ ("omitdupmiss", "omitdup", "0", "*", "1")
     t = t \ ("omitnothing", "omitn", "0", "*", "1")
     t = t \ ("onepanel", "onep", "0", "tsline tsrline", "0")
-    t = t \ ("p1", "p1", "1", "*", "1")
-    t = t \ ("p20", "p2", "1", "*", "1")
     t = t \ ("parzen", "par", "0", "lpoly lpolyci kdensity", "0")
     t = t \ ("pcycle", "pcyc", "1", "*", "1")
     t = t \ ("play", "play", "1", "", "1")
@@ -8694,6 +8704,257 @@ string matrix _dash_tw_refuses_tab()
     t = t \ ("mlabwidth", "mlabw", "*", "0")
     // END tw_refuses
     return(t)
+}
+
+// ============================================================
+// p1() .. p20() (WP-35 syn:SD-3).  twoway hands p<k>() after the plot
+// groups' comma to its k-th plot, each y of a varlist counted, a ci fit
+// once (twowaygraph_g.class get_plot_count), and p<j>() inside one plot's
+// options to that plot's j-th y (twoway_yxview_parse.class); a number
+// above 20 is "p21(...):  too many arguments", r(103), after the comma
+// and inside a plot (measured 26oct2026, test/fixtures/pnum_truth.json
+// g_p3, multi_y, ci_p2, g_p21, g_p100, own_p21).  dash noted p1(), p2()
+// and p20() and drew nothing, and refused p3() .. p19().
+
+// _dash_p_take(opts) -- opts less its p<k>() words: p, a number from 1
+// with no leading zero, then a value in parentheses, lower case only (so
+// the whole-plot p() is left alone).  Sets the caller's locals _pt_n (how
+// many were taken), _pt_pairs ("<k>:<value>" for each, in the order
+// typed, joined by char(1)) and _pt_bad (the first word whose number is
+// above 20, as typed, cut to 80 characters; "" for none).  opts comes
+// back unchanged when it holds no such word, else its other words joined
+// by one blank.
+string scalar _dash_p_take(string scalar opts)
+{
+    string rowvector toks
+    string scalar    out, pairs, bad, t
+    real scalar      i, k, n, p
+
+    st_local("_pt_n", "0")
+    st_local("_pt_pairs", "")
+    st_local("_pt_bad", "")
+    if (!ustrregexm(opts, "(^|\s)p[1-9][0-9]*\(")) return(opts)
+    toks  = _dash_opt_tokens(opts)
+    out   = ""
+    pairs = ""
+    bad   = ""
+    n     = 0
+    for (i = 1; i <= cols(toks); i++) {
+        t = toks[i]
+        if (!ustrregexm(t, "^p([1-9][0-9]*)\(") | substr(t, strlen(t), 1) != ")") {
+            out = out + (out == "" ? "" : " ") + t
+            continue
+        }
+        k = strtoreal(ustrregexs(1))
+        p = strpos(t, "(")
+        if (k > 20) {
+            if (bad == "") bad = substr(t, 1, 80)
+            continue
+        }
+        n++
+        pairs = pairs + (pairs == "" ? "" : char(1)) + strofreal(k) + ":" +
+                substr(t, p + 1, strlen(t) - p - 1)
+    }
+    st_local("_pt_n", strofreal(n))
+    st_local("_pt_pairs", pairs)
+    st_local("_pt_bad", bad)
+    return(out)
+}
+
+// _dash_p_key(tok) -- the stylelist option (_dash_stylelist_keys) the
+// option word tok binds to, or "": its name of length L matches a row
+// when L is at least the row's minimum and the full name starts with it.
+// The minimums are the capitals of _dash_parse_plot_opts's declarations
+// (test/test_pnum.py checks them).
+string scalar _dash_p_key(string scalar tok)
+{
+    string matrix t
+    string scalar nm
+    real scalar   r, L
+
+    nm = _dash_rep_optname(tok)
+    L  = strlen(nm)
+    if (!L) return("")
+    t = ("mcolor", "mc" \ "msymbol", "m" \ "msize", "msi" \
+         "msangle", "msa" \ "mfcolor", "mfc" \ "mlcolor", "mlc" \
+         "mlwidth", "mlw" \ "mlpattern", "mlp" \ "mlabcolor", "mlabc" \
+         "mlabsize", "mlabs" \ "mlabposition", "mlabp" \
+         "mlabgap", "mlabg" \ "mlabangle", "mlabang" \
+         "mlabformat", "mlabf" \ "lcolor", "lc" \ "lwidth", "lw" \
+         "lpattern", "lp" \ "clcolor", "clc" \ "clpattern", "clp" \
+         "clwidth", "clw" \ "color", "col" \ "fcolor", "fc" \
+         "fintensity", "fi" \ "bfcolor", "bfc" \ "blcolor", "blc" \
+         "acolor", "ac" \ "alcolor", "alc" \ "alwidth", "alw" \
+         "alpattern", "alp" \ "mlabel", "ml" \ "jitter", "jitter" \
+         "base", "base" \ "barwidth", "barw" \ "pstyle", "psty" \
+         "lstyle", "ls" \ "clstyle", "cls" \ "mstyle", "mst" \
+         "mlstyle", "mls" \ "astyle", "ast" \ "alstyle", "al" \
+         "bstyle", "bst" \ "blstyle", "bl" \ "dstyle", "dst" \
+         "dlstyle", "dl" \ "bmlinestyle", "bml" \
+         "mlabtextstyle", "mlabt" \ "connect", "c" \ "cmissing", "cmiss")
+    for (r = 1; r <= rows(t); r++) {
+        if (L >= strlen(t[r, 2]) & L <= strlen(t[r, 1]) &
+            substr(t[r, 1], 1, L) == nm) return(t[r, 1])
+    }
+    return("")
+}
+
+// _dash_p_merge(segopts, P, n) -- the plot's option text segopts with the
+// p#() values P (one row each: the y it is for, 1 .. n, and its text, in
+// the order twoway applies them -- the plot's own, then the graph's)
+// applied.  The plot's own options win and, among the p#() values, the
+// rightmost (pnum_truth.json prec_own and prec_grp draw blue, twice and
+// own_vs_grp the last one).  One y: the values go whole before segopts.
+// Several: each stylelist option of a value is one copy K(e1 .. en)
+// after segopts, e_i the plot's own element for y_i (from its last copy
+// of K), else the last value given for y_i, else "." (multi_own,
+// multi_short); any other option of a value is added to the caller's
+// local _pm_named as p<j>(<name>), as not drawn.
+string scalar _dash_p_merge(string scalar segopts, string matrix P,
+                            real scalar n)
+{
+    string rowvector st, pt, keys
+    string matrix    vals
+    string scalar    out, named, nm, key, own, e, cp
+    real scalar      r, a, b, i, j, kk
+
+    if (n <= 1) {
+        out = ""
+        for (r = 1; r <= rows(P); r++) out = out + " " + P[r, 2]
+        return(strtrim(out + " " + segopts))
+    }
+    named = st_local("_pm_named")
+    keys  = J(1, 0, "")
+    vals  = J(0, n, "")
+    for (r = 1; r <= rows(P); r++) {
+        j  = strtoreal(P[r, 1])
+        pt = _dash_opt_tokens(P[r, 2])
+        for (a = 1; a <= cols(pt); a++) {
+            key = _dash_p_key(pt[a])
+            if (key == "") {
+                nm = _dash_rep_optname(pt[a])
+                if (nm == "") nm = pt[a]
+                else if (strpos(pt[a], "(")) nm = nm + "()"
+                named = named + " p" + strofreal(j) + "(" + nm + ")"
+                continue
+            }
+            kk = 0
+            for (b = 1; b <= cols(keys); b++) if (keys[b] == key) kk = b
+            if (!kk) {
+                keys = keys, key
+                vals = vals \ J(1, n, "")
+                kk   = cols(keys)
+            }
+            vals[kk, j] = _dash_stylelist_pick(_dash_rep_value(pt[a]), 1)
+        }
+    }
+    st_local("_pm_named", strtrim(named))
+    out = segopts
+    st  = _dash_opt_tokens(segopts)
+    for (b = 1; b <= cols(keys); b++) {
+        own = ""
+        for (a = 1; a <= cols(st); a++) {
+            if (_dash_p_key(st[a]) == keys[b]) own = _dash_rep_value(st[a])
+        }
+        cp = ""
+        for (i = 1; i <= n; i++) {
+            e = _dash_stylelist_pick(own, i)
+            if (e == "") e = vals[b, i]
+            if (e == "") e = "."
+            else if (strpos(e, char(34))) e = char(96) + char(34) + e + char(34) + char(39)
+            else if (strpos(e, " ")) e = char(34) + e + char(34)
+            cp = cp + (i > 1 ? " " : "") + e
+        }
+        out = out + (out == "" ? "" : " ") + keys[b] + "(" + cp + ")"
+    }
+    return(out)
+}
+
+// _dash_p_seg(opts, ptype, n) -- a plot's option text opts with its own
+// p<j>() and the graph's p<k>() for it ($dash__pnum, _dash_plot's pairs;
+// $dash__poff the plot numbers before this plot) applied
+// (_dash_p_merge); n is its number of ys.  A p<j>() past the plot's ys,
+// and a graph p<k>() for no y of it, change nothing, silently, as twoway
+// draws them (pnum_truth.json plot_n1, plot_over, g_p20).  On a ci fit
+// (lfitci qfitci fpfitci lpolyci) a p#() is named in the note as not
+// drawn (ci_p1_band).  Sets the caller's locals _pa_named (the p#() words
+// not drawn), _pa_nv and _pa_v1 .. (each value applied, for
+// _dash_p_apply's check of its options; one at a time, as twoway reads
+// each).  p21() and above inside a plot are refused here.
+string scalar _dash_p_seg(string scalar opts, string scalar ptype,
+                          real scalar n)
+{
+    string matrix P
+    string scalar rest, gp, named, pr, one
+    real scalar   pass, k, c, off, ci, q
+
+    st_local("_pa_named", "")
+    st_local("_pa_nv", "0")
+    if (n < 1 | n >= .) n = 1
+    rest = _dash_p_take(opts)
+    if (st_local("_pt_bad") != "") {
+        // pnum_truth.json own_p21: (scatter mpg weight, p21(mcolor(red)))
+        // is "p21(mcolor(red)):  too many arguments", r(103).
+        _dash_say("err", "", st_local("_pt_bad"), ":  too many arguments")
+        exit(103)
+    }
+    gp = st_global("dash__pnum")
+    if (st_local("_pt_n") == "0" & gp == "") return(opts)
+    ci  = anyof(("lfitci", "qfitci", "fpfitci", "lpolyci"), ptype)
+    off = strtoreal(st_global("dash__poff"))
+    if (off >= .) off = 0
+    P     = J(0, 2, "")
+    named = ""
+    for (pass = 1; pass <= 2; pass++) {
+        pr = (pass == 1 ? st_local("_pt_pairs") : gp)
+        while (pr != "") {
+            q = strpos(pr, char(1))
+            if (q) {
+                one = substr(pr, 1, q - 1)
+                pr  = substr(pr, q + 1, .)
+            }
+            else {
+                one = pr
+                pr  = ""
+            }
+            c = strpos(one, ":")
+            k = strtoreal(substr(one, 1, c - 1)) - (pass == 2 ? off : 0)
+            if (k < 1 | k > n) continue
+            if (ci) {
+                named = named + " p" + strofreal(k + (pass == 2 ? off : 0)) + "()"
+                continue
+            }
+            P = P \ (strofreal(k), substr(one, c + 1, .))
+        }
+    }
+    for (k = 1; k <= rows(P); k++) st_local("_pa_v" + strofreal(k), P[k, 2])
+    st_local("_pa_nv", strofreal(rows(P)))
+    st_local("_pm_named", "")
+    if (rows(P)) rest = _dash_p_merge(rest, P, n)
+    st_local("_pa_named", strtrim(named + " " + st_local("_pm_named")))
+    return(rest)
+}
+
+// _dash_p_unknown(unk, ptype) -- refuses the options of the p#() values
+// that twoway does not take on ptype (unk: what _dash_parse_plot_opts's
+// catch-all kept of them) as twoway refuses them, all named as typed:
+// pnum_truth.json bad_inner, p1(nosuch(1)) is "option(s) nosuch(1) not
+// allowed", r(198).
+void _dash_p_unknown(string scalar unk, string scalar ptype)
+{
+    string rowvector u
+    string scalar    bad
+    real scalar      i
+
+    u   = _dash_rep_toks(unk, 0)
+    bad = ""
+    for (i = 1; i <= cols(u); i++) {
+        if (_dash_tw_takes(u[i], ptype, 0)) continue
+        bad = bad + (bad == "" ? "" : " ") + u[i]
+    }
+    if (bad == "") return
+    _dash_say("err", "option(s) ", substr(bad, 1, 80), " not allowed")
+    exit(198)
 }
 
 // _dash_tw_silent_tab() -- the options dash names in its note as not

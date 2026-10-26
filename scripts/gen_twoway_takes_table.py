@@ -34,6 +34,7 @@ dash takes each there without a note.  sort is the types both its probes
 import argparse
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,6 +67,9 @@ def rows(fx):
         if p["twoway_rc"] not in TAKEN:
             continue
         opt = p["option"]
+        # p1() .. p20() are read by _dash_p_take before the catch-all (WP-35 syn:SD-3).
+        if re.match(r"^p[0-9]+\(", opt):
+            continue
         full = opt.split("(", 1)[0]
         value = "1" if "(" in opt else "0"
         sp = p["spellings_rc"]

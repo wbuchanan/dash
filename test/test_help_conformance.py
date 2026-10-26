@@ -921,8 +921,9 @@ class TestTheParsersFoundSomething:
         # 466 -> 464: the $dash_max_cells and $dash_max_bytes rows removed (WP-33 33-15)
         # 464 -> 467: dash image's syntax line, Image panels section and $dash_max_images row (WP-33 33-06)
         # 467 -> 474: the Graphs from several frames paragraph (WP-33 33-07)
-        assert len(defs) == 474, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 474 "
+        # 474 -> 475: syn:SD-3 the p1() to p20() Differences entry (WP-35 35-02)
+        assert len(defs) == 475, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 475 "
             f"measured 21oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1389,4 +1390,6 @@ class TestInternalLinksResolve:
         # twoway for dash's measured scale() differences (WP-33 GW-11).
         # 123 -> 124 links: the Jump To entry for Graphs from several
         # frames (WP-33 33-07, batch 33.3 gate).
-        assert len(refs) == 124 and len(set(refs)) == 46
+        # 124 -> 125 links, 46 -> 47 targets: syn:SD-3 the Differences entry
+        # links the p1() to p20() sentence, dash##pnum (WP-35 35-02).
+        assert len(refs) == 125 and len(set(refs)) == 47

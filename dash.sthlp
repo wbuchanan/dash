@@ -1399,6 +1399,8 @@ there, is an invalid point.  The literal is read as data and never run.
     to 100 or to positive, which {cmd:twoway} does not check; elements past
     the last y are not checked.
 
+{phang2}    {cmd:p}{it:#}{cmd:()} for one y of several: style options only, and none on a confidence-interval fit; see {help dash##pnum:p1() to p20()}.
+
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (they title the axes, key the legend,
     name the tooltip rows and the colour key, and title filter widgets)
@@ -5562,6 +5564,17 @@ fraction is drawn while every {it:m} is whole -- {cmd:pcycle(1.5)} on one or
 two series, {cmd:pcycle(0.5)} on any number, all in {cmd:p1} -- and
 refused, as {cmd:twoway} refuses it ("option seriesid() not allowed"),
 where one is not, or when {it:#} is 0 or less.
+{marker pnum}{cmd:p1()} to {cmd:p20()} after the comma give their options to
+the plot of that number, each y of a varlist counted and a
+confidence-interval fit counted once, and {cmd:p}{it:#}{cmd:()} inside a
+plot gives them to its {it:#}th y, as {cmd:twoway} draws them: the plot's
+own options win over them, a later one wins over an earlier one, a number
+with no such plot or y changes nothing, and {cmd:p21()} and above are
+refused as {cmd:twoway} refuses them
+({cmd:p21(mcolor(red)):  too many arguments}, r(103)); for one y of
+several only the style options are drawn, and any other, or a
+{cmd:p}{it:#}{cmd:()} that names a confidence-interval fit's own band or
+line, is named in the note.
 {cmd:colorvar(i.}{it:varname}{cmd:)} is
 {cmd:colorvar(}{it:varname}{cmd:) colordiscrete coloruseplegend}, as in {cmd:twoway}.
 

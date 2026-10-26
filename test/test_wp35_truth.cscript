@@ -383,6 +383,181 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w35_run' {
 }
 * ==== end S01 ====
 
+// S02 helpers (WP-35 section 35-02, syn:SD-3): _w35s02_run runs one dash
+// command into a log (inside a program, so the command is not echoed);
+// _w35s02_read reads that log's first error line and note, and the named
+// graph's plot <k> mcolor from its registered spec; _w35s02_page counts
+// a page's red Scatter fills and the largest y of each.
+capture program drop _w35s02_run
+program define _w35s02_run
+    version 19
+    args log cmd
+    capture erase "`log'"
+    quietly log using "`log'", replace text name(w35s02)
+    capture noisily dash `cmd'
+    global w35s02_rc = _rc
+    quietly log close w35s02
+end
+
+python:
+import json as _w35s02_json
+import re as _w35s02_re
+from sfi import Macro as _w35s02_M
+
+
+def _w35s02_read(log, name, k):
+    try:
+        text = open(log, encoding="utf-8", errors="replace").read()
+    except OSError:
+        text = ""
+    lines = [s.strip() for s in text.replace("\n> ", "").splitlines()]
+    msg = [s for s in lines if s and not s.startswith("r(")
+           and not s.startswith(("name:", "log:", "log type:", "opened on:",
+                                 "closed on:")) and set(s) != {"-"}]
+    note = " ".join(s for s in msg if "ignoring unsupported" in s)
+    _w35s02_M.setGlobal("w35s02_first", msg[0] if msg else "")
+    _w35s02_M.setGlobal("w35s02_pnote", "1" if _w35s02_re.search(
+        r"\bp[0-9]+\(", note) else "0")
+    mc = ""
+    try:
+        spec = _w35s02_json.loads(_w35s02_M.getGlobal("dash_json_" + name))
+        mc = str(spec["plots"][int(k) - 1]["options"].get("mcolor", ""))
+    except Exception as e:
+        mc = "?" + str(e)[:60]
+    _w35s02_M.setGlobal("w35s02_mc", mc)
+
+
+def _w35s02_page(path, app=None):
+    """Global w35s02_red: the largest y of each Scatter filled red, and
+    w35s02_n the number of Scatter renderers, on the saved page path (or
+    on the served app's document, built from app, when app is given)."""
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, Scatter
+    try:
+        if app is not None:
+            from bokeh.io.doc import patch_curdoc
+            doc = Document()
+            with patch_curdoc(doc):
+                exec(compile(open(app, encoding="utf-8").read(), app, "exec"),
+                     {"__name__": "_w35s02_app", "_DASH_TRIAL": True})
+        else:
+            page = open(path, encoding="utf-8").read()
+            ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+                    "#x27": chr(39), "#x60": chr(96)}
+            blocks = _w35s02_re.findall(
+                r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+                page, _w35s02_re.S)
+            docs = [d for b in blocks for d in _w35s02_json.loads(
+                _w35s02_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                               lambda m: ents[m.group(1)], b)).values()]
+            doc = Document.from_json(docs[0])
+        red, n = [], 0
+        for m in doc.models:
+            if isinstance(m, GlyphRenderer) and isinstance(m.glyph, Scatter):
+                n += 1
+                fc = m.glyph.fill_color
+                fc = fc.get("value") if isinstance(fc, dict) else getattr(fc, "value", fc)
+                if str(fc).lower() in ("red", "#ff0000", "#f00"):
+                    y = m.glyph.y
+                    y = y.get("field") if isinstance(y, dict) else getattr(y, "field", y)
+                    vals = [v for v in m.data_source.data.get(y, [])
+                            if v is not None and v == v]
+                    red.append("%g" % max(vals) if vals else "none")
+        _w35s02_M.setGlobal("w35s02_red", " ".join(red))
+        _w35s02_M.setGlobal("w35s02_n", str(n))
+    except Exception as e:
+        _w35s02_M.setGlobal("w35s02_red", "error " + str(e)[:200])
+        _w35s02_M.setGlobal("w35s02_n", "0")
+end
+
+* ==== S02 syn:SD-3: p1() .. p20() mapped onto their plots ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w35_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // Each probe twoway draws (test/fixtures/pnum_truth.json, from
+    // scripts/extract_pnum_truth.do): its key, the place in dash's plots
+    // of the plot it styles, and whether twoway drew it red.
+    local s02_keys g_p1:1 g_p3:3 g_p19:1 g_p20:1 multi_y:2 multi_own:2 ///
+        multi_short:2 plot_level:2 prec_own:1 prec_grp:1 twice:1 ///
+        ci_after:2 ci_nofit_after:2 ci_p2:2 plot_n1:1 plot_over:1 ///
+        own_prec:1 own_vs_grp:1 own_twice:1 g_empty:1 bars_p2:2 bars_p1:1
+    python: _w35s02_M.setGlobal("w35s02_fx", _w35s02_json.dumps(_w35s02_json.load(open(r"fixtures/pnum_truth.json", encoding="utf-8"))["probes"]))
+
+    // ------------------------------------------------------------
+    // Q3502-1: dash draws each p#() on the plot twoway draws it on -- red
+    // where twoway counts red markers, not red where it counts none --
+    // and names no p#() in its note.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach kk of local s02_keys {
+        gettoken key k : kk, parse(":")
+        local k = substr("`k'", 2, .)
+        python: _w35s02_fxp = _w35s02_json.loads(_w35s02_M.getGlobal("w35s02_fx"))["`key'"]; _w35s02_M.setLocal("s02_cmd", _w35s02_fxp["cmd"][len("twoway "):]); _w35s02_M.setLocal("s02_trc", str(_w35s02_fxp["rc"])); _w35s02_M.setLocal("s02_tred", str(_w35s02_fxp["red"] or 0))
+        _w35_expect Q3502-1 "(`s02_trc' == 0)" "`key': the fixture's twoway rc is `s02_trc'"
+        // name() after the graph's comma, or after a new one when the
+        // command (its last || segment) has none.
+        mata: _s02c = st_local("s02_cmd"); if (strpos(_s02c, "||")) _s02c = substr(_s02c, strrpos(_s02c, "||") + 2, .); st_local("s02_sep", (ustrregexm(_s02c, "^\s*\(") & !strpos(_s02c, "), ")) | !strpos(_s02c, ",") ? "," : "")
+        capture dash clear
+        _w35s02_run "`w35_work'/s02.log" `"`s02_cmd'`s02_sep' name(s02)"'
+        python: _w35s02_read(r"`w35_work'/s02.log", "s02", "`k'")
+        _w35_expect Q3502-1 "(${w35s02_rc} == 0)" `"`key': dash `s02_cmd' rc ${w35s02_rc} (${w35s02_first})"'
+        _w35_expect Q3502-1 "(${w35s02_pnote} == 0)" "`key': dash named a p#() in its note"
+        if `s02_tred' > 0 {
+            _w35_expect Q3502-1 `"("${w35s02_mc}" == "red")"' "`key': twoway draws plot `k' red, dash's mcolor is ${w35s02_mc}"
+        }
+        else {
+            _w35_expect Q3502-1 `"("${w35s02_mc}" != "red")"' "`key': twoway draws plot `k' with no red, dash's mcolor is red"
+        }
+    }
+    capture erase "`w35_work'/s02.log"
+    _w35_done Q3502-1 "p#() after the comma and inside a plot styles the plot twoway styles"
+
+    // ------------------------------------------------------------
+    // Q3502-2: the refusals -- p21() and above after the comma and inside
+    // a plot, an option twoway does not take inside p1(), and a plot's own
+    // refusal before the comma's p21() -- in twoway's rc and first line.
+    // ------------------------------------------------------------
+    foreach key in g_p21 g_p100 own_p21 bad_inner order_p21 {
+        python: _w35s02_fxp = _w35s02_json.loads(_w35s02_M.getGlobal("w35s02_fx"))["`key'"]; _w35s02_M.setLocal("s02_cmd", _w35s02_fxp["cmd"][len("twoway "):]); _w35s02_M.setLocal("s02_trc", str(_w35s02_fxp["rc"])); _w35s02_M.setLocal("s02_tl", _w35s02_fxp["first_line"])
+        capture dash clear
+        _w35s02_run "`w35_work'/s02.log" `"`s02_cmd'"'
+        python: _w35s02_read(r"`w35_work'/s02.log", "s02", "1")
+        _w35_expect Q3502-2 "(${w35s02_rc} == `s02_trc')" "`key': twoway rc `s02_trc', dash rc ${w35s02_rc}"
+        _w35_expect Q3502-2 `"(`"${w35s02_first}"' == `"`s02_tl'"')"' `"`key': twoway `s02_tl', dash ${w35s02_first}"'
+    }
+    capture erase "`w35_work'/s02.log"
+    _w35_done Q3502-2 "p21(), p100(), p1(nosuch(1)) and a plot's own refusal are twoway's"
+
+    // ------------------------------------------------------------
+    // Q3502-3: g_p3 -- the saved page and the served app draw the third
+    // plot (trunk, largest y 23) red and no other.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture dash clear
+    quietly dash (scatter mpg weight) (scatter price weight) (scatter trunk weight), p3(mcolor(red)) name(g3)
+    capture erase "`w35_work'/s02_g3.html"
+    capture noisily dash build, saving("`w35_work'/s02_g3.html") replace nobrowser
+    _w35_expect Q3502-3 "(_rc == 0)" "dash build rc `=_rc'"
+    python: _w35s02_page(r"`w35_work'/s02_g3.html")
+    _w35_expect Q3502-3 `"("${w35s02_red}" == "23")"' "saved page: red scatters' largest y ${w35s02_red} (want 23)"
+    _w35_expect Q3502-3 "(${w35s02_n} == 3)" "saved page: ${w35s02_n} scatters"
+    capture erase "`w35_work'/s02_g3.py"
+    capture noisily dash build, server saving("`w35_work'/s02_g3.py") replace nobrowser
+    _w35_expect Q3502-3 "(_rc == 0)" "dash build, server rc `=_rc'"
+    python: _w35s02_page(None, r"`w35_work'/s02_g3.py")
+    _w35_expect Q3502-3 `"("${w35s02_red}" == "23")"' "served app: red scatters' largest y ${w35s02_red} (want 23)"
+    _w35_expect Q3502-3 "(${w35s02_n} == 3)" "served app: ${w35s02_n} scatters"
+    capture erase "`w35_work'/s02_g3.html"
+    capture erase "`w35_work'/s02_g3.py"
+    _w35_done Q3502-3 "p3() draws the third plot red on the saved page and in the served app"
+    macro drop w35s02_*
+    capture dash clear
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

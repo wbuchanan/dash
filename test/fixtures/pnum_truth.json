@@ -1,0 +1,254 @@
+{
+ "_about": "Measured with 19.5 (console, batch, scheme stcolor) on sysuse auto: each probe is 'capture noisily twoway <cmd>'; rc and its error lines (first_line the first) are recorded, and when it draws, 'red' and 'blue' count the marker fills equal to #ff0000 and #0000ff in its graph export SVG (scripts/svg_truth.py svg_marker_fills: circles, paths and polygons, so a legend key's marker counts with its plot's). p<k>() after the comma goes to the k-th plot, each y of a varlist counted (twowaygraph_g.class); p<j>() inside a plot goes to its j-th y (twoway_yxview_parse.class).",
+ "probes": {
+  "g_p1": {
+   "cmd": "twoway scatter mpg weight, p1(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 74,
+   "blue": 0
+  },
+  "g_p3": {
+   "cmd": "twoway (scatter mpg weight) (scatter price weight) (scatter trunk weight), p3(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 0
+  },
+  "g_p19": {
+   "cmd": "twoway scatter mpg weight, p19(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "g_p20": {
+   "cmd": "twoway scatter mpg weight, p20(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "g_p21": {
+   "cmd": "twoway scatter mpg weight, p21(mcolor(red))",
+   "rc": 103,
+   "first_line": "p21(mcolor(red)):  too many arguments",
+   "lines": [
+    "p21(mcolor(red)):  too many arguments"
+   ],
+   "red": null,
+   "blue": null
+  },
+  "multi_y": {
+   "cmd": "twoway scatter mpg trunk weight, p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 0
+  },
+  "multi_own": {
+   "cmd": "twoway scatter mpg trunk weight, mcolor(blue green) p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 75
+  },
+  "plot_level": {
+   "cmd": "twoway (scatter mpg trunk weight, p2(mcolor(red)))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 0
+  },
+  "prec_own": {
+   "cmd": "twoway scatter mpg weight, mcolor(blue) p1(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 74
+  },
+  "prec_grp": {
+   "cmd": "twoway (scatter mpg weight, mcolor(blue)), p1(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 74
+  },
+  "twice": {
+   "cmd": "twoway scatter mpg weight, p1(mcolor(red)) p1(mcolor(blue))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 74
+  },
+  "bad_inner": {
+   "cmd": "twoway scatter mpg weight, p1(nosuch(1))",
+   "rc": 198,
+   "first_line": "option(s) nosuch(1) not allowed",
+   "lines": [
+    "option(s) nosuch(1) not allowed"
+   ],
+   "red": null,
+   "blue": null
+  },
+  "ci_after": {
+   "cmd": "twoway (lfitci mpg weight) (scatter mpg weight), p3(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "ci_nofit_after": {
+   "cmd": "twoway (lfitci mpg weight, nofit) (scatter mpg weight), p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 0
+  },
+  "plot_n1": {
+   "cmd": "twoway (scatter mpg weight, p2(mcolor(red)))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "plot_over": {
+   "cmd": "twoway (scatter mpg weight, p3(mcolor(red)))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "order_p21": {
+   "cmd": "twoway (scatter mpg weight, bogus), p21(mcolor(red))",
+   "rc": 198,
+   "first_line": "option bogus not allowed",
+   "lines": [
+    "option bogus not allowed"
+   ],
+   "red": null,
+   "blue": null
+  },
+  "ci_p2": {
+   "cmd": "twoway (lfitci mpg weight) (scatter mpg weight), p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 0
+  },
+  "ci_p1_band": {
+   "cmd": "twoway (lfitci mpg weight), p1(fcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "ci_p2_band": {
+   "cmd": "twoway (lfitci mpg weight), p2(fcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "own_prec": {
+   "cmd": "twoway (scatter mpg weight, mcolor(blue) p1(mcolor(red)))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 74
+  },
+  "own_vs_grp": {
+   "cmd": "twoway (scatter mpg weight, p1(mcolor(blue))), p1(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 74,
+   "blue": 0
+  },
+  "own_twice": {
+   "cmd": "twoway (scatter mpg weight, p1(mcolor(red)) p1(mcolor(blue)))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 74
+  },
+  "own_p21": {
+   "cmd": "twoway (scatter mpg weight, p21(mcolor(red)))",
+   "rc": 103,
+   "first_line": "p21(mcolor(red)):  too many arguments",
+   "lines": [
+    "p21(mcolor(red)):  too many arguments"
+   ],
+   "red": null,
+   "blue": null
+  },
+  "g_p100": {
+   "cmd": "twoway scatter mpg weight, p100(mcolor(red))",
+   "rc": 103,
+   "first_line": "p100(mcolor(red)):  too many arguments",
+   "lines": [
+    "p100(mcolor(red)):  too many arguments"
+   ],
+   "red": null,
+   "blue": null
+  },
+  "g_empty": {
+   "cmd": "twoway scatter mpg weight, p1()",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "multi_short": {
+   "cmd": "twoway scatter mpg trunk weight, mcolor(blue) p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 75,
+   "blue": 75
+  },
+  "bars_p2": {
+   "cmd": "twoway scatter mpg weight || scatter price weight, p2(mcolor(red))",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  },
+  "bars_p1": {
+   "cmd": "twoway scatter mpg weight, p2(mcolor(red)) || scatter price weight",
+   "rc": 0,
+   "first_line": "",
+   "lines": [],
+   "red": 0,
+   "blue": 0
+  }
+ },
+ "_meta": {
+  "stata_version": "19.5",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0fcf028a99d0285cb7fc7d16b34b602984f598c2",
+  "extracted": "26 Oct 2026 09:41:55",
+  "source": "scripts/extract_pnum_truth.do"
+ }
+}
