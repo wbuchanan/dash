@@ -12,7 +12,7 @@ Scope: current working tree, especially `dash.ado`, `dash_parse.mata`, `dash_ren
 - The current parser and renderer implement **40 canonical `twoway` plot types** in eight families.
 - The documented `twoway` universe in this project contains **45 types**, so type-level coverage is **40/45, or about 89%**.
 - Four plot types are recognized and explicitly refused: `contour`, `contourline`, `rpcap`, and `rpspike`. [WP-31 B1: corrected -- `rpcap` and `rpspike` drawn; 42 plot types] [WP-31 B4b: corrected -- `contour` and `contourline` drawn; 44 plot types]
-- The command accepts the familiar layered `twoway` syntax, `||`, multiple y variables, `if`/`in`, plot abbreviations, graph-level options, per-layer options, `by()` facets, weights on supported statistical layers, immediate-coordinate plots, and no-data `function` plots.
+- The command accepts the familiar layered `twoway` syntax, `||`, multiple y variables, `if`/`in`, plot abbreviations, graph-level options, per-layer options, `by()` facets, weights on supported statistical layers, immediate-coordinate plots, and no-data `function` plots. [WP-35 plot:PT-3: corrected -- plot-type names and their abbreviations are read in lower case only, as twoway reads them]
 - The live parser currently declares **176 option names**. Tests track **48 known accepted-but-not-generally-honored names**, although some of those are conditionally honored on particular graph types and some are not genuine `twoway` options in the position where `dash` accepts them. The test that pins the older total at 171 is stale relative to the current parser.
 - Unknown option names are normally accepted and reported as ignored. Therefore, “the command runs” is not evidence that an option has been implemented.
 

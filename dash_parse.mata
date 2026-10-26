@@ -2593,8 +2593,10 @@ string scalar _dash_expand_plottype_str(string scalar name) {
     return("")   // no plot type dash draws
 }
 
+// The word as typed: a capital letter makes it no plot type, as twoway
+// reads it (WP-35 plot:PT-3).
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
-    st_local(out_macro, _dash_expand_plottype_str(strlower(strtrim(abbrev))))
+    st_local(out_macro, _dash_expand_plottype_str(strtrim(abbrev)))
 }
 
 

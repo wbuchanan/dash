@@ -558,6 +558,57 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w35_run' {
 }
 * ==== end S02 ====
 
+* ==== S09 plot:PT-3: plot-type names in lower case only ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3509-1 (a guard): the lower-case spelling of every case.* word of
+    // fixtures/command_grammar_truth.json that twoway takes (lc_rc 0)
+    // registers, rc 0, as the plot type it names; only capitals change.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly gen yl = mpg - 1
+    quietly gen yh = mpg + 1
+    quietly gen gx = mod(_n - 1, 9) + 1 if _n <= 72
+    quietly gen gy = floor((_n - 1) / 9) + 1 if _n <= 72
+    quietly gen gz = gx * gy + gy
+    python: import json as _q9j, sfi as _q9s
+    python: _q9T = _q9j.load(open("fixtures/command_grammar_truth.json", encoding="utf-8"))
+    python: _q9s.Macro.setLocal("q9keys", " ".join(k[5:] for k in sorted(_q9T) if k.startswith("case.") and _q9T[k]["lc_rc"] == 0))
+    // The type each spelling names, lower-cased.
+    local q9full Area:area BAR:bar Bar:bar Con:connected Connected:connected ///
+        Contour:contour Fn:function Fun:function Function:function ///
+        Hist:histogram Histogram:histogram Kdensity:kdensity LFIT:lfit ///
+        Li:line Line:line Lowess:lowess Mband:mband Mbands:mband ///
+        Pcarrowi:pcarrowi Rcap:rcap Rcon:rconnected Rl:rline Rsc:rscatter ///
+        SCATTER:scatter Sc:scatter Scatter:scatter Scatteri:scatteri
+    local q91n 0
+    foreach w of local q9keys {
+        local want ""
+        foreach pr of local q9full {
+            if substr("`pr'", 1, strpos("`pr'", ":") - 1) == "`w'" local want = substr("`pr'", strpos("`pr'", ":") + 1, .)
+        }
+        python: _q9c = _q9T["case." + _q9s.Macro.getLocal("w")]["cmd"].split(" ", 2); _q9s.Macro.setLocal("q9cmd", "dash " + _q9c[1].lower() + " " + _q9c[2] + ("" if "," in _q9c[2] else ","))
+        dash clear
+        capture noisily `q9cmd' name(q3509a)
+        local rc = _rc
+        local got ""
+        if !`rc' {
+            python: _q9s.Macro.setLocal("got", " ".join(p["type"] for p in _q9j.loads(_q9s.Macro.getGlobal("dash_json_q3509a"))["plots"]))
+        }
+        local ok = (`rc' == 0 & "`got'" == "`want'" & "`want'" != "")
+        _w35_expect Q3509-1 "(`ok')" `"`q9cmd': rc `rc', registered [`got'], want `want'"'
+        local ++q91n
+    }
+    _w35_expect Q3509-1 "(`q91n' == 27)" "`q91n' lower-case spellings read, 27 expected"
+    _w35_done Q3509-1 "the `q91n' lower-case spellings register as the types they name"
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

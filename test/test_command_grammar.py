@@ -50,6 +50,25 @@ class TestTheFixture:
             198, "nosuchtype is not a twoway plot type")
 
 
+class TestCase:
+
+    def test_no_strlower_on_the_type(self):
+        """The plot-type word is matched as typed: neither the caller in
+        _dash_process_segment nor the Mata wrapper lower-cases it (M7:
+        lower case only; twoway refuses Sc, Hist, Rsc ...)."""
+        ado = _read("dash.ado")
+        assert 'mata: _dash_expand_plottype(st_local("plottype"), "_pt_exp")' \
+            in ado
+        assert "_dash_expand_plottype(strlower(" not in ado
+        mata = _read("dash_parse.mata")
+        start = mata.index("void _dash_expand_plottype(")
+        body = mata[start:mata.index("\n}\n", start)]
+        assert "strlower" not in body
+        start = mata.index("string scalar _dash_expand_plottype_str(")
+        body = mata[start:mata.index("\n}\n", start)]
+        assert "strlower" not in body
+
+
 class TestGeneric:
 
     def test_no_by_name_refusal(self):

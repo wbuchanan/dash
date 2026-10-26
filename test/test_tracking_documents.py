@@ -2901,7 +2901,6 @@ GAPS4_OPEN = {
     'sil:SD-8': 'title() with notitling is accepted with a note; twoway fails r(4018)',
     'syn:SD-22': 'twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere',
     'DT-19': "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)",
-    'plot:PT-3': 'Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations',
     'plot:PT-4': "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')",
     'syn:SD-1': "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it",
     'syn:SD-13': "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both",

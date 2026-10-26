@@ -922,9 +922,11 @@ class TestTheParsersFoundSomething:
         # 464 -> 467: dash image's syntax line, Image panels section and $dash_max_images row (WP-33 33-06)
         # 467 -> 474: the Graphs from several frames paragraph (WP-33 33-07)
         # 474 -> 475: syn:SD-3 the p1() to p20() Differences entry (WP-35 35-02)
-        assert len(defs) == 475, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 475 "
-            f"measured 21oct2026")
+        # 475 -> 476: the Differences entry Plot-type names in lower case
+        # only (WP-35 plot:PT-3)
+        assert len(defs) == 476, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 476 "
+            f"measured 26oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -1392,4 +1394,6 @@ class TestInternalLinksResolve:
         # frames (WP-33 33-07, batch 33.3 gate).
         # 124 -> 125 links, 46 -> 47 targets: syn:SD-3 the Differences entry
         # links the p1() to p20() sentence, dash##pnum (WP-35 35-02).
-        assert len(refs) == 125 and len(set(refs)) == 47
+        # 125 -> 126 links: the Differences entry Plot-type names in lower
+        # case only links Plot types (WP-35 plot:PT-3).
+        assert len(refs) == 126 and len(set(refs)) == 47

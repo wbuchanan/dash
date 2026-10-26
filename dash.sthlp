@@ -543,9 +543,10 @@ graph".
 {pstd}
 {ul:Case.}  {cmd:dash} takes no plot-type name shorter than {cmd:twoway}'s:
 {cmd:ar}, {cmd:lfi} or {cmd:kde} is refused, "{it:word} is not a twoway plot
-type", {cmd:r(198)}, as {cmd:twoway} refuses it.  It reads a plot type
-without regard to case: {cmd:SC} and {cmd:Hist} draw a scatter and a
-histogram, where {cmd:twoway} refuses both.
+type", {cmd:r(198)}, as {cmd:twoway} refuses it.  A plot type is read in
+lower case, as {cmd:twoway}'s abbreviations are: {cmd:SC}, {cmd:Hist} and
+{cmd:Scatter} are refused, "{it:word} is not a twoway plot type",
+{cmd:r(198)}.
 
 {pstd}
 {ul:pccapsym.}  {cmd:pccapsym} draws each spike with the same marker at
@@ -867,6 +868,10 @@ there, is an invalid point.  The literal is read as data and never run.
     other word it is read as a plot type and refused, "unrecognised plot
     type 'graph'", {cmd:r(198)}, where {cmd:graph} followed by a word that
     is not one of its subcommands gives {cmd:r(4023)}.
+
+{phang2}    {ul:Plot-type names in lower case only.}  Capitalised plot-type
+    names twoway takes on a case-insensitive file system ({cmd:Scatter})
+    are refused; see {help dash##plottypes:Plot types}.
 
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name

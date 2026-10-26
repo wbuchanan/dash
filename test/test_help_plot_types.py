@@ -104,7 +104,9 @@ class TestThePlotTypesSection:
                 section = m.group(1)
             if link in ln:
                 where[section] = where.get(section, 0) + ln.count(link)
-        assert where == {"syntax": 1, "differences": 1,
+        # old -> new: differences 1 -> 2: the entry Plot-type names in
+        # lower case only links the section (WP-35 plot:PT-3).
+        assert where == {"syntax": 1, "differences": 2,
                          "marker_labels": 1}, (
             f"links to the Plot types section, by the section that holds "
             f"them: {where}; the Syntax and the differences must each "

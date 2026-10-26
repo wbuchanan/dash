@@ -47,9 +47,10 @@
 *!           lpo, fp, kde, dr, tsl, tsrl, msp and their longer prefixes
 *!           short of twoway's full name -- are refused by dash, r(198),
 *!           with the line twoway logs in the same run ("<word> is not a
-*!           twoway plot type"); a name in capitals (SC, Hist) is still
-*!           read by dash as the type named, which twoway refuses.
+*!           twoway plot type"); a name in capitals (SC, Hist) is refused
+*!           by both, r(198), in the same words.
 *!           Flipped (WP-31 A2): dash took the shorter spellings.
+*!           Flipped (WP-35 plot:PT-3): dash read SC and Hist as types.
 *!   HC1-09  tsline and tsrline draw against the time variable tsset set,
 *!           as twoway does.  MEASURED FALSE: `tsline mpg turn' on tsset
 *!           data drew mpg against turn; twoway draws two series, mpg and
@@ -602,7 +603,7 @@ else display as text "HC1-07 PASS: all `n7' plot-type spellings twoway takes, mb
 
 // ================================================================
 // HC1-08 -- the shorter spellings are refused as twoway refuses them;
-// a name in capitals is dash's own
+// so is a name in capitals (WP-35 plot:PT-3)
 // Flipped (WP-31 A2): dash took ar .. tsrlin as the types they begin;
 // twoway refuses each, "<word> is not a twoway plot type", r(198), and so
 // does dash now, in the same words.
@@ -662,30 +663,38 @@ foreach pair of local syn {
     }
 }
 capture erase "`lg8'"
-// A name in capitals: dash lower-cases the type, twoway refuses it.
+// A name in capitals: refused by both, in the same words.
+// Flipped (WP-35 plot:PT-3): reading SC as scatter was wrong because
+// twoway refuses it (Q7); dash matches the word as typed.
 foreach pair in SC:scatter Hist:histogram {
     gettoken sp full : pair, parse(":")
     local full = substr("`full'", 2, .)
     local a = cond("`full'" == "histogram", "mpg", "mpg weight")
     graph drop _all
-    capture twoway `sp' `a', nodraw
+    capture log close _hc08
+    quietly log using "`lg8'", text replace name(_hc08)
+    capture noisily twoway `sp' `a', nodraw
     local twrc = _rc
+    quietly log close _hc08
+    mata: _hc_ptline(st_local("lg8"), "twl")
     dash clear
-    capture dash `sp' `a', name(hc08)
+    quietly log using "`lg8'", text replace name(_hc08)
+    capture noisily dash `sp' `a', name(hc08)
     local drc = _rc
-    local _hc_t ""
-    if `drc' == 0 mata: _hc_types("hc08")
-    if `twrc' != 198 | `drc' != 0 | "`_hc_t'" != "`full'" {
-        local bad8 `"`bad8' [`sp': twoway `twrc' dash `drc' `_hc_t']"'
+    quietly log close _hc08
+    mata: _hc_ptline(st_local("lg8"), "dl")
+    if `twrc' != 198 | `drc' != 198 | `"`twl'"' == "" | `"`dl'"' != `"`twl'"' | `"${dash_graph_registry}"' != "" {
+        local bad8 `"`bad8' [`sp': twoway `twrc' "`twl'" dash `drc' "`dl'"]"'
     }
 }
+capture erase "`lg8'"
 dash clear
 if `"`bad8'"' != "" | `n8' != 37 {
     display as error `"HC1-08 FAIL (`n8' spellings):`bad8'"'
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-08"'
 }
-else display as text "HC1-08 PASS: the `n8' shorter spellings are refused, r(198), in twoway's words; SC and Hist are dash's own"
+else display as text "HC1-08 PASS: the `n8' shorter spellings, SC and Hist are refused, r(198), in twoway's words"
 
 // ================================================================
 // HC1-09 -- tsline and tsrline draw against the tsset time variable

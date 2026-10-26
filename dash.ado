@@ -5798,8 +5798,12 @@ program define _dash_process_segment, rclass
     // its comma glued on said "unrecognised plot type 'scatteri,'", r(198)
     // (measured 24sep2026; test_parser.cscript P1A-68).  The comma is left
     // in `rest', where it ends the varlist.
+    //
+    // The word is matched as typed, in lower case only (WP-35 plot:PT-3,
+    // M7): twoway refuses Sc, Hist and Rsc, "<word> is not a twoway plot
+    // type", r(198), and dash read them in any case.
     gettoken plottype rest : seg_text, parse(" ,")
-    mata: _dash_expand_plottype(strlower(st_local("plottype")), "_pt_exp")
+    mata: _dash_expand_plottype(st_local("plottype"), "_pt_exp")
     local ptype "`_pt_exp'"
 
     if "`ptype'" == "" {

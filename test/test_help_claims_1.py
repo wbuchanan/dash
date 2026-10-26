@@ -389,22 +389,26 @@ class TestThePlotTypeSpellings:
         assert '"{it:word} is not a twoway plot' in _plot_types()
 
     def test_the_case_examples_are_spellings_read_lower_cased(self):
-        """dash reads the name through strlower(); the capitals the help
-        gives -- SC and Hist, which twoway refuses (HC1-08) -- are that,
-        each a dash spelling once lower-cased, of the type it is said to
-        draw."""
+        """The capitals the help gives -- SC, Hist and Scatter -- are
+        refused, as twoway refuses them (M7); their lower-case spellings
+        are dash's, of the types they name."""
         # Flipped (WP-31 A2): the paragraph is Case, after the Synonyms
         # table went.
+        # Flipped (WP-35 plot:PT-3): reading SC as scatter was wrong
+        # because twoway refuses it (Q7); dash no longer lower-cases the
+        # word, and the paragraph says the capitals are refused.
         tail = _between(_plot_types(), "{ul:Case.}", "{ul:pccapsym.}")
         caps = [c for c in re.findall(r"\{cmd:([A-Za-z]+)\}", tail)
                 if not c.islower()]
-        assert set(caps) == {"SC", "Hist"}, caps
+        assert set(caps) == {"SC", "Hist", "Scatter"}, caps
         dash = _dash_spellings()
         assert dash.get("sc") == "scatter" and dash.get("hist") == "histogram"
-        assert "a scatter and a histogram" in _prose(tail)
+        assert "SC" not in dash and "Hist" not in dash
+        assert "are refused" in _prose(tail)
         ado = _read(_ADO)
-        assert ('_dash_expand_plottype(strlower(st_local("plottype"))'
+        assert ('_dash_expand_plottype(st_local("plottype"), "_pt_exp")'
                 in ado)
+        assert "_dash_expand_plottype(strlower(" not in ado
 
 
 class TestThePlotTypesSection:

@@ -4742,11 +4742,11 @@
   - Suggested fix: Use tempnames or a frame for working columns
   - Resolution: Not fixed because WP-35 section 35-08 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
-- [ ] Title: Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations
+- [x] Title: Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations
   - File Names and Line Numbers: dash.ado:5869; dash_parse.mata:2526-2528; dash.sthlp:528-532
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids plot:PT-3, basic:PT-14, DT-14; confirmed; tracked: dash.sthlp 'Case'. Registered as GAPS4 plot:PT-3 (WP-35, section 35-09, Fix).
   - Suggested fix: Per M7: plot-type names are read in lower case only; capitalised spellings are refused as twoway refuses them.
-  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+  - Resolution: Fixed 26oct2026 (WP-35, plot:PT-3). dash.ado's _dash_process_segment and dash_parse.mata's _dash_expand_plottype match the plot-type word as typed, no longer through strlower(), so a capitalised name or abbreviation (Sc, Hist, Scatter, BAR) is refused, r(198), "<word> is not a twoway plot type", as twoway refuses it (M7: lower case only, whatever the file system); the help's Case paragraph and a Differences line say so; Stata-side, so both modes alike. Pinned by test/test_command_grammar.py::TestCase::test_no_strlower_on_the_type, test_parser.cscript Q3509-2, test_wp35_truth.cscript Q3509-1; fixture test/fixtures/command_grammar_truth.json. Closes GAPS4 plot:PT-3 (WP-35, plot:PT-3).
 
 - [ ] Title: The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')
   - File Names and Line Numbers: empty_tw.svg has no axes; dash_render.py:63570-63576; test_bare_dash.py:74-80; p3out E20-E51; dash.sthlp:164-166

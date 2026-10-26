@@ -857,6 +857,7 @@ and now matches Stata.
 - A dashboard has no size cap: `$dash_max_cells` (5,000,000 values) and `$dash_max_bytes` (50,000,000 bytes of text) are gone in both modes, so a build dash refused with r(134) for its size now draws, and the two globals are no longer read (a value dash refused with r(198) changes nothing). Every count cap is unchanged. (WP-33, 33-15)
 - p1() to p20() are drawn on the plot of that number, each y of a varlist counted, and p<j>() inside a plot on its j-th y, as twoway draws them (p3() to p19() were refused, p1(), p2(), p20() named and not drawn); p21() and above are refused as twoway refuses them, r(103), "p21(mcolor(red)):  too many arguments" (was r(198)), and an option twoway does not take inside one, r(198), "option(s) nosuch(1) not allowed". (WP-35, syn:SD-3)
 - Every word that is not a plot type is refused alike, r(198), "<word> is not a twoway plot type"; no word gets its own advice. (WP-35, PD-10)
+- Plot-type names are read in lower case only, as twoway's abbreviations are: SC, Hist and Scatter are refused, r(198), "<word> is not a twoway plot type"; dash read them in any case. (WP-35, plot:PT-3)
 
 ### Removed
 

@@ -21,6 +21,8 @@
 *! with twoway asked, and DASH_CERT_REMEASURE=1 asks twoway in the run again
 *! and fails on any answer that is no longer the fixture's (the release run).
 *!
+*! Q3509-2 (WP-35 35-09, plot:PT-3): a plot-type word with a capital letter
+*! is refused, r(198), "<word> is not a twoway plot type" (M7).
 *! Q3509-3 (WP-35 35-09, PD-10): a word that is no plot type is refused
 *! with twoway's rc and first line (command_grammar_truth.json), and no
 *! word gets advice of its own.
@@ -333,12 +335,20 @@ dash clear
 display "P1A-50 PASS: twoway contourline registers z y x (drawn since WP-31 B4b)"
 
 // ================================================================
-// P1A-51 -- the names in any case and inside a multi-plot command; no
+// P1A-51 -- the names in lower case and inside a multi-plot command; no
 // prefix is taken, as twoway takes none
 // ================================================================
 // Flipped (WP-31 B4b): the upper-case name and the multi-plot command
 // were refused by name; both draw now.  The prefix part stands.
+// Flipped (WP-35 plot:PT-3): the upper-case name drawing was wrong
+// because twoway refuses it (M7); it is refused, r(198), and the lower-
+// case name draws.
 _p1a_logrun "dash CONTOUR mpg weight length, name(p1a51)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("CONTOUR is not a twoway plot type")
+assert r(found) == 1
+dash clear
+_p1a_logrun "dash contour mpg weight length, name(p1a51)"
 assert r(rc) == 0
 dash clear
 _p1a_logrun "dash (scatter mpg weight) (contourline mpg weight length), name(p1a51b)"
@@ -355,7 +365,7 @@ assert r(rc) == 198
 cert_file_has "`r(log)'", needle("contou is not a twoway plot type")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
-display "P1A-51 PASS: contour and contourline draw in any case and inside a multi-plot command; their prefixes stay unrecognised"
+display "P1A-51 PASS: contour and contourline draw in lower case and inside a multi-plot command; CONTOUR and their prefixes stay unrecognised"
 
 // ================================================================
 // P1A-52 -- pccapsym: four variables, the paired-coordinate keys
@@ -557,8 +567,10 @@ foreach t in pccapsym pcarrowi pcarrow pci scatteri pcspike {
     mata: _dash_expand_plottype("`t'", "_pt57")
     assert "`_pt57'" == "`t'"
 }
+// Flipped (WP-35 plot:PT-3): reading PCCAPSYM as pccapsym was wrong
+// because twoway refuses capitals (M7); it names no plot type.
 mata: _dash_expand_plottype("PCCAPSYM", "_pt57")
-assert "`_pt57'" == "pccapsym"
+assert "`_pt57'" == ""
 // Flipped (WP-31 B4b): contour and contourline expand to themselves
 // now that dash draws them; their prefixes stay unrecognised.
 foreach t in contour contourline {
@@ -1366,7 +1378,9 @@ foreach seg in "scatteri,name(p1a68)" "scatteri, name(p1a68)" ///
     "pci, name(p1a68)" "pcarrowi,mcolor(red)" "function, range(0 1)" ///
     "scatter, name(p1a68)" "histogram,name(p1a68)" "rcap, name(p1a68)" ///
     "pcspike, name(p1a68)" "(scatteri, name(p1a68))" ///
-    "scatteri 1 2 || pci, name(p1a68)" "SC, name(p1a68)" "fn, name(p1a68)" {
+    "scatteri 1 2 || pci, name(p1a68)" "sc, name(p1a68)" "fn, name(p1a68)" {
+    // Flipped (WP-35 plot:PT-3): SC was read as sc; capitals name no plot
+    // type now (Q3509-2), so the lower-case spelling stands in for it.
     _p1a_logrun `"dash `seg'"'
     local rc68 = r(rc)
     // Flipped (WP-31 A2): the generic refusal is twoway's sentence.
@@ -4039,6 +4053,40 @@ def _q9_no_advice(path):
     _q9M.setLocal("q9bad", "" if at and at[-1] == len(got) - 1
                   else "a line follows the Supported list: %r" % got[-1:])
 end
+
+// The data every Q3509 case reads.
+quietly sysuse auto, clear
+quietly gen yl = mpg - 1
+quietly gen yh = mpg + 1
+quietly gen gx = mod(_n - 1, 9) + 1 if _n <= 72
+quietly gen gy = floor((_n - 1) / 9) + 1 if _n <= 72
+quietly gen gz = gx * gy + gy
+
+// ----------------------------------------------------------------
+// Q3509-2 (plot:PT-3): every case.* word -- a plot-type name or
+// abbreviation with a capital letter -- is refused, r(198), "<word> is
+// not a twoway plot type" (M7 decides the keys a case-insensitive file
+// system lets twoway draw: all capitals are refused).
+// ----------------------------------------------------------------
+python: _q9M.setLocal("q9keys", " ".join(k[5:] for k in sorted(_q9T) if k.startswith("case.")))
+local q92bad ""
+local q92n 0
+foreach w of local q9keys {
+    python: _q9M.setLocal("q9cmd", "dash" + _q9T["case." + _q9M.getLocal("w")]["cmd"][len("twoway"):])
+    dash clear
+    _p1a_logrun `"`q9cmd'"'
+    local rc_q9 = r(rc)
+    local lg_q9 "`r(log)'"
+    python: _q9_lines_l = _q9_lines(_q9M.getLocal("lg_q9")); _q9M.setLocal("q9first", _q9_lines_l[0] if _q9_lines_l else "")
+    if `rc_q9' != 198 | `"`q9first'"' != "`w' is not a twoway plot type" | "${dash_graph_registry}" != "" {
+        local q92bad `"`q92bad' [`w': r(`rc_q9') `q9first']"'
+    }
+    local ++q92n
+}
+dash clear
+if `"`q92bad'"' != "" display as error `"Q3509-2 FAIL:`q92bad'"'
+assert `"`q92bad'"' == "" & `q92n' == 27
+display "Q3509-2 PASS: the `q92n' capitalised plot-type words are refused, r(198), as twoway refuses them"
 
 // ----------------------------------------------------------------
 // Q3509-3 (PD-10): a word that is no plot type is refused as twoway
