@@ -866,6 +866,7 @@ and now matches Stata.
 - contour and contourline take twoway's shorter spellings i() and int() for interp(), clp() for clpatterns(), clw() for clwidths() and colorl for colorlines; dash refused them or read clp() and clw() as clpattern() and clwidth(). (WP-35, stat:PT-13)
 - function subchar() names the expression's variable, as twoway reads it: function y = t^2, subchar(t) is drawn (dash refused it, r(111)), and subchar(1t) is refused, r(198), "1t invalid name" (dash refused it with r(111), "error in expression"). (WP-35, stat:PT-6)
 - mspline bands(-1), fpfitci n(0) and lfit n(-1) are accepted and drawn as twoway draws them; dash refused them, r(198). lfit, qfit, lfitci and qfitci n(0) is refused in twoway's words, "'0' invalid observation number". (WP-35, stat:PT-9)
+- ty() on lfitci, qfitci, fpfitci and lpolyci is accepted, as twoway accepts it (only type() in full is refused); dash refused it, r(198). (WP-35, syn:SD-7)
 
 ### Removed
 

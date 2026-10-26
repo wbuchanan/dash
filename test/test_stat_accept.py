@@ -144,3 +144,22 @@ class TestTheEmptyFit:
         _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
             t, {"estopts": "noconstant", "points": dict(pts)})])
         assert [m for m in w if "drew nothing" in m], w
+
+
+class TestTheRecast:
+    def test_only_type_in_full_is_refused(self):
+        """syn:SD-7: twoway's ci parsers declare TYPE in capitals, so only
+        type() in full is refused; ty(line) draws ciplot(line)'s SVG
+        (stat_accept_truth.json).  _dash_fold_stat_words reads the typed
+        spelling and moves any shorter one to ciplot() before
+        _dash_recast_opt refuses what is left."""
+        d = _truth()
+        for t in ("lfitci", "qfitci", "fpfitci", "lpolyci"):
+            assert d["ty." + t]["rc"] == 0, t
+            assert d["ty." + t]["svg_md5"] == d["ciplot." + t]["svg_md5"], t
+            assert (d["type." + t]["rc"], d["type." + t]["message"]) == (
+                198, "type() option not allowed"), t
+        body = _program_body(_read(_ADO), "_dash_fold_stat_words")
+        assert body is not None
+        assert re.search(r'_fsw_tn\b.*!= "type"', body), (
+            "the fold does not read type()'s typed spelling")

@@ -3687,8 +3687,11 @@ class prints {cmd:twoway}'s two notes and falls back -- a yx type to
 {cmd:pcspike}, {cmd:function} to its own line.  On {cmd:dot},
 {cmd:recast()} is taken and named in the note: {cmd:twoway} reads it
 there and draws the dot graph unchanged.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
-{cmd:fpfitci} the three are refused, r(198), as {cmd:twoway} refuses
-them, and so is a spelling of {cmd:recast()} shorter than its name.
+{cmd:fpfitci} {cmd:recast()} and {cmd:recastas()}, and {cmd:type()}
+typed in full, are refused, r(198), as {cmd:twoway} refuses them, and so
+is a spelling of {cmd:recast()} shorter than its name; the shorter
+spellings {cmd:ty} and {cmd:typ} of {cmd:type()} are taken there and drawn
+as {cmd:ciplot()} draws them, as in {cmd:twoway}.
 
 {pstd}
 {it:Legend keys and default axis titles.}  Each layer is keyed as

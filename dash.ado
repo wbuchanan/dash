@@ -500,7 +500,7 @@ program define _dash_require_mata
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
-        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_zyx_abbrev _dash_lpolyci_opts ///
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_zyx_abbrev _dash_rep_optname _dash_lpolyci_opts ///
         _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
@@ -2230,8 +2230,35 @@ program define _dash_fold_stat_words, sclass
             if _rc c_local _fsw_subc "bad"
         }
     }
+    // ty() and typ() on the ci types (syn:SD-7): their parse classes
+    // declare TYPE and RECASTas, so only type() in full is refused
+    // ("type() option not allowed", by _dash_recast_opt); a shorter
+    // spelling draws as ciplot() does (stat_accept_truth.json ty.<type>,
+    // ciplot.<type>: one SVG), so it is read as ciplot() when no
+    // ciplot() is given.  The spelling is read from the option text, by
+    // value.
+    mata: _dash_text_args(1, 0, 0)
+    mata: st_local("_fsw_ty", strtrim(st_global("s(type)")))
+    mata: st_local("_fsw_r", strtrim(st_global("s(recast)")))
+    if inlist("`ptype'", "lfitci", "qfitci", "fpfitci", "lpolyci") & `: length local _fsw_ty' & !`: length local _fsw_r' {
+        mata: _fsw_u = _dash_opt_tokens(st_local("_dash_txt"))
+        mata: st_local("_fsw_k", strofreal(cols(_fsw_u)))
+        local _fsw_tn ""
+        local _fsw_full 0
+        forvalues _fi = 1/`_fsw_k' {
+            mata: st_local("_fsw_nm", _dash_rep_optname(_fsw_u[`_fi']))
+            if inlist("`_fsw_nm'", "ty", "typ") local _fsw_tn "`_fsw_nm'"
+            if "`_fsw_nm'" == "type" local _fsw_full 1
+        }
+        capture mata: mata drop _fsw_u
+        if `_fsw_full' local _fsw_tn "type"
+        if "`_fsw_tn'" != "" & "`_fsw_tn'" != "type" {
+            mata: st_local("_fsw_c", st_global("s(ciplot)"))
+            if !`: length local _fsw_c' sreturn local ciplot : copy local _fsw_ty
+            sreturn local type ""
+        }
+    }
     if inlist("`ptype'", "contour", "contourline") {
-        mata: _dash_text_args(1, 0, 0)
         mata: _dash_zyx_abbrev(st_global("s(_unknown)"), st_local("_dash_txt"))
         if `_za_iset' sreturn local interp : copy local _za_interp
         if `_za_cl' sreturn local colorlines "colorlines"

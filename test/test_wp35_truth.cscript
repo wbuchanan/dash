@@ -790,6 +790,29 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 syn:SD-7: ty() on the ci types ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-6: the ci types' parse classes declare TYPE and RECASTas, so
+    // only type() in full (and recast() .. recastas()) is refused, "type()
+    // option not allowed", r(198); ty() and typ() draw as ciplot() does
+    // (stat_accept_truth.json ty.<type> and ciplot.<type>: one SVG).
+    // ------------------------------------------------------------
+    foreach t in lfitci qfitci fpfitci lpolyci {
+        _s03_same Q3503-6 "`w35_work'" auto "`t' mpg weight, ty(line)" "`t' mpg weight, ciplot(line)"
+        _s03_rc Q3503-6 "`w35_work'" auto "`t' mpg weight, type(line)" 198 "type() option not allowed"
+    }
+    _s03_same Q3503-6 "`w35_work'" auto "lfitci mpg weight, typ(line)" "lfitci mpg weight, ciplot(line)"
+    _s03_rc Q3503-6 "`w35_work'" auto "lfitci mpg weight, recastas(line)" 198 "recastas() option not allowed"
+    _w35_done Q3503-6 "ty() is read on the ci types, and only type() in full is refused"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // _q3509_axes <page or app> <kind>: every axis and grid model of a saved
 // page (kind "page") or of the document a served app builds (kind "app")
 // is hidden, and a title T is drawn; the problems go to global q3509_bad.

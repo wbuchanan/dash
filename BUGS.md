@@ -4694,11 +4694,11 @@
   - Suggested fix: Per the maintainer's per-word ruling (P4-7): the 25 second-axis forms (ytitle2() ... ttitle2()), malpha(), lalpha(), falpha(), marker(), jseed(), mlg(), plotbgcolor(), pbgc() and bw() read as barwidth() are refused with twoway's words and a second line naming twoway's spelling (P4-9); kernel() is read case-sensitively and xsize(()) is refused as twoway refuses them; a colorvar() layer whose if keeps no observation is answered as twoway answers it; hover() and table stay, listed as dash-only options in one help paragraph.
   - Resolution: Not fixed because WP-35 section 35-07 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
-- [ ] Title: ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type
+- [x] Title: ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type
   - File Names and Line Numbers: twoway_lfitci_parse.class:34-37; dash.ado:3248-3252
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-7; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-7 (WP-35, section 35-03, Fix).
   - Suggested fix: Refuse only exact type/recastas; measure what ty() draws
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-7). On lfitci, qfitci, fpfitci and lpolyci _dash_fold_stat_words reads type()'s typed spelling from the option text (by value): ty() and typ() are read as ciplot() (twoway draws ty(line) as ciplot(line), one SVG), and only type() in full is left to _dash_recast_opt's refusal, "type() option not allowed", r(198), as twoway's ci parsers (TYPE, RECASTas) refuse it; dash.sthlp's Recast paragraph says so; both modes draw the spec. Pinned by test/test_stat_accept.py::TestTheRecast::test_only_type_in_full_is_refused, test/test_wp35_truth.cscript Q3503-6; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 syn:SD-7 (WP-35, syn:SD-7).
 
 - [ ] Title: Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)
   - File Names and Line Numbers: dash.ado:4300-4321; F01-F05; v3

@@ -363,7 +363,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
 - **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
-- **syn:SD-7 Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit pending.
 - **syn:SD-8 Tracked:** Open (WP-35 section 35-06).
 - **GW-2 Tracked:** Open (WP-35 section 35-06).
 - **GW-3 Tracked:** Open (WP-35 section 35-06).

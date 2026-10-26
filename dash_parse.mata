@@ -341,6 +341,10 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_rep_optname(tok)
+*!       The name an option word was typed with, or "" when the word is
+*!       not an option.
+*!
 *!   _dash_zyx_abbrev(unk, raw)
 *!       contour's i() .. inter() and colorl .. colorline, which the plot
 *!       parser leaves to its catch-all unk, read as interp() and
