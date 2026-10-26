@@ -1232,7 +1232,9 @@ _W31_HEAD = re.compile(r"^(scaffold|[A-K]\d{1,2}[a-gkltx]?): \S")
 
 
 _W_MARK = "* ==== append new blocks above this line ===="
-_W_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}"
+# A row a ruling split off another takes a letter (D42: syn:SD-20a .. e;
+# D44: BY-24a).
+_W_GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}[a-z]?"
 _W_HEAD = re.compile(r"^(scaffold|tool|%s): \S" % _W_GAPS4_ID)
 
 
