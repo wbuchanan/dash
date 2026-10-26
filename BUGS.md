@@ -4640,11 +4640,11 @@
   - Suggested fix: Bound at 500 levels and 499 cuts in twoway's words; re-measure drawn
   - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
-- [ ] Title: contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options
+- [x] Title: contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options
   - File Names and Line Numbers: twoway_contourline.sthlp:44-58; contour_truth abbrev.*; dash.sthlp:599-601
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-13; confirmed; tracked: documented as full spellings required. Registered as GAPS4 stat:PT-13 (WP-35, section 35-03, Fix).
   - Suggested fix: Resolve them to the contour options first
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, stat:PT-13). On contour and contourline _dash_fold_stat_words (dash.ado) reads i() .. inter() as interp() (the rightmost interp() spelling of the list wins, as twoway's _parse combop does), colorl .. colorline as colorlines (_dash_zyx_abbrev, dash_parse.mata, by value), and clp() .. clpattern() and clw() .. clwidth() as clpatterns() and clwidths(), as twoway_zyx2view_parse.class declares them; dash.sthlp's contour paragraph names the shorter spellings; both modes draw the spec. Pinned by test/test_wp35_truth.cscript Q3503-3; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 stat:PT-13 (WP-35, stat:PT-13).
 
 - [ ] Title: function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note
   - File Names and Line Numbers: twoway_function_parse.class:55-71; dash.ado:10448 hard-codes x(x)

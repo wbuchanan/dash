@@ -791,6 +791,7 @@ COVERAGE = {
         # direct and e2e: TP-16 calls it on its own, and holds the kernel a
         # flag registers to twoway's serset of kernel(<name>), in the run.
         "_dash_kernel_flag": ("test_twoway_option_parity.cscript:TP-16",),
+        "_dash_zyx_abbrev": ("test_wp35_truth.cscript:Q3503-3",),
         # WP-29 P0.9: lpolyci's pwidth() and var(), and their helpers.
         "_dash_lpo_isint": ("test_statistical_options.cscript:LB-18",),
         "_dash_lpo_onenum": ("test_statistical_options.cscript:LB-14",),

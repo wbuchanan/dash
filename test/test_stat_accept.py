@@ -60,8 +60,9 @@ class TestTheFold:
         _dash_refuse_unknown (which would refuse m): _dash_refuse_unbound
         parses the list again whenever the catch-all holds another word,
         which would put m back.  It runs again directly after
-        _dash_refuse_asp, because _dash_refuse_unknown's re-parse clears
-        what the first call wrote."""
+        _dash_opts_repeats, because _dash_refuse_unknown,
+        _dash_refuse_foreign and _dash_opts_repeats parse the list again,
+        which clears what the first call wrote."""
         src = _read(_ADO)
         body = _program_body(src, "_dash_fold_stat_words")
         assert body is not None, "_dash_fold_stat_words is not defined"
@@ -75,11 +76,13 @@ class TestTheFold:
         call = at(lambda ln: ln.startswith("_dash_fold_stat_words "))
         unbound = at(lambda ln: ln.startswith("_dash_refuse_unbound "))
         unknown = at(lambda ln: ln.startswith("_dash_refuse_unknown "))
-        asp = at(lambda ln: ln == "_dash_refuse_asp")
+        rep = at(lambda ln: ln.startswith("_dash_opts_repeats "))
         assert len(call) == 2 and len(unbound) == 1 and len(unknown) == 1, (
             call, unbound, unknown)
         assert unbound[0] < call[0] < unknown[0], (unbound, call, unknown)
-        assert len(asp) == 1 and call[1] == asp[0] + 1, (asp, call)
+        assert len(rep) == 1, rep
+        rest = [ln for ln in lines[rep[0] + 1:call[1]] if not ln.startswith("//")]
+        assert call[1] > rep[0] and rest == [], (rep, call, rest)
 
 
 class TestDeclarations:

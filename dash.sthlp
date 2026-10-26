@@ -620,9 +620,9 @@ which
 {opt le()} is refused, as {cmd:twoway} refuses it, and {opt levels()} above
 1,000 is refused by {cmd:dash} (a bound of its own; {cmd:twoway} takes any
 integer);
-{opt interp()}, {opt clwidths()}, {opt clpatterns()} and {opt colorlines}
-are typed in full, as {cmd:dash} reads their shorter spellings as other
-options.
+{opt interp()} ({opt i()} and longer), {opt clwidths()} ({opt clw()}),
+{opt clpatterns()} ({opt clp()}) and {opt colorlines} ({opt colorl}) take
+{cmd:twoway}'s shorter spellings on these two types.
 
 {phang2}{opt heatmap} -- {cmd:contour}: the surface's cells in their
 levels' colours in place of the bands, as {cmd:twoway} draws them.{p_end}

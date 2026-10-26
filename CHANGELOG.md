@@ -863,6 +863,7 @@ and now matches Stata.
 - || inside one group with no options, (scatter mpg weight || line mpg weight), draws both plots, as twoway does; dash refused it, r(198). A group whose || piece holds options, (scatter mpg weight, mcolor(red) || line mpg weight), is refused in twoway's words, "option | not allowed" (dash said "option line not allowed"). (WP-35, syn:SD-13)
 - lowess m is read as mean, as twoway reads it; dash refused it, r(198). (WP-35, stat:PT-7)
 - bwi() is read as bwidth() on lowess, kdensity, lpoly and lpolyci, as twoway reads it; dash refused it, r(198). (WP-35, syn:SD-5)
+- contour and contourline take twoway's shorter spellings i() and int() for interp(), clp() for clpatterns(), clw() for clwidths() and colorl for colorlines; dash refused them or read clp() and clw() as clpattern() and clwidth(). (WP-35, stat:PT-13)
 
 ### Removed
 

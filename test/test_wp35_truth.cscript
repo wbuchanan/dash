@@ -650,6 +650,32 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 stat:PT-13: contour's documented abbreviations ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-3: on contour and contourline twoway reads i() .. interp() as
+    // interp(), colorl .. colorlines as colorlines, clp() .. clpatterns()
+    // as clpatterns() and clw() .. clwidths() as clwidths()
+    // (twoway_zyx2view_parse.class Interp, COLORLines, CLPatterns,
+    // CLWidths; stat_accept_truth.json contour.*): dash registers the full
+    // spelling's spec.
+    // ------------------------------------------------------------
+    _s03_same Q3503-3 "`w35_work'" sandstone "contour depth northing easting, i(none)" "contour depth northing easting, interp(none)"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contour depth northing easting, int(none)" "contour depth northing easting, interp(none)"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contourline depth northing easting, colorl" "contourline depth northing easting, colorlines"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contourline depth northing easting, colorli" "contourline depth northing easting, colorlines"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contourline depth northing easting, clp(dash)" "contourline depth northing easting, clpatterns(dash)"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contourline depth northing easting, clw(thick)" "contourline depth northing easting, clwidths(thick)"
+    _s03_same Q3503-3 "`w35_work'" sandstone "contour depth northing easting, interp(thinplatespline) i(none)" "contour depth northing easting, interp(none)"
+    _w35_done Q3503-3 "contour's documented abbreviations are read as twoway reads them"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // _q3509_axes <page or app> <kind>: every axis and grid model of a saved
 // page (kind "page") or of the document a served app builds (kind "app")
 // is hidden, and a title T is drawn; the problems go to global q3509_bad.

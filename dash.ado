@@ -500,7 +500,7 @@ program define _dash_require_mata
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
-        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
+        _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_zyx_abbrev _dash_lpolyci_opts ///
         _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
@@ -2157,16 +2157,18 @@ end
 // _dash_fold_stat_words <ptype> `"<options>"'  -- the statistical types'
 // spellings twoway reads and dash's declarations do not (WP-35 35-03).
 //
+// Each branch is one item's; the words are read by value.
+//
 // lowess m (stat:PT-7): twoway_lowess_parse.class declares Mean, so a bare
 // m is mean (measured: the serset of lowess mpg weight, m is mean's,
 // test/fixtures/stat_accept_truth.json lowess_m); dash declares MEan,
 // one letter longer, so that m stays MColor()'s spelling elsewhere.  The
 // word is taken out of the catch-all, by value, and recorded as mean.
 // Called directly after _dash_refuse_unbound, before _dash_refuse_unknown
-// would refuse the word, and again after _dash_refuse_asp, because
-// _dash_refuse_unknown re-parses the list when it classes any word, which
-// undoes what the first call wrote; it only rewrites s(), so the second
-// call changes nothing the first one kept.
+// would refuse the word, and again after _dash_opts_repeats, because
+// _dash_refuse_unknown, _dash_refuse_foreign and _dash_opts_repeats parse
+// the list again, which undoes what the first call wrote; it only
+// rewrites s(), so the second call changes nothing the first one kept.
 // ================================================================
 program define _dash_fold_stat_words, sclass
     version 19
@@ -2180,6 +2182,27 @@ program define _dash_fold_stat_words, sclass
             capture mata: mata drop _fsw_u
             sreturn local mean "mean"
             sreturn local _unknown : copy local _fsw_rest
+        }
+    }
+    // contour and contourline (stat:PT-13): twoway_zyx2view_parse.class
+    // declares Interp, CLPatterns, CLWidths and COLORLines, so i() ..
+    // inter() are interp(), colorl .. colorline colorlines, and clp() ..
+    // clpattern() and clw() .. clwidth() -- which this parser binds to
+    // the connecting line's clpattern() and clwidth() -- clpatterns() and
+    // clwidths() (stat_accept_truth.json contour.*).
+    if inlist("`ptype'", "contour", "contourline") {
+        mata: _dash_text_args(1, 0, 0)
+        mata: _dash_zyx_abbrev(st_global("s(_unknown)"), st_local("_dash_txt"))
+        if `_za_iset' sreturn local interp : copy local _za_interp
+        if `_za_cl' sreturn local colorlines "colorlines"
+        sreturn local _unknown : copy local _za_rest
+        foreach w in pattern width {
+            mata: st_local("_fsw_v", st_global("s(cl`w')"))
+            mata: st_local("_fsw_p", strofreal(st_global("s(cl`w's)") == ""))
+            if `: length local _fsw_v' & `_fsw_p' {
+                sreturn local cl`w's : copy local _fsw_v
+                sreturn local cl`w' ""
+            }
         }
     }
 end
@@ -6564,7 +6587,6 @@ program define _dash_process_segment, rclass
         _dash_refuse_nam
         // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
         _dash_refuse_asp
-        _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
         // A second name() in this option list: -syntax- binds the first to
         // NAME() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
@@ -6577,6 +6599,10 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // Again: _dash_refuse_unknown, _dash_refuse_foreign and
+        // _dash_opts_repeats parse the list again, which undoes the first
+        // call's rewrites (WP-35 35-03).
+        _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
         // Two kernels, mlabfontface() (MLF-01) and a graph option given
         // twice, in that order, which twoway refuses only once every
         // plot's own options are read: each is held as the graph's pending

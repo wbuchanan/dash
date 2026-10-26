@@ -349,7 +349,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-1 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
-- **stat:PT-13 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit pending.
 - **syn:SD-20a Tracked:** Open (WP-35 section 35-03).
 - **syn:SD-20b Tracked:** Open (WP-35 section 35-03).
 - **syn:SD-20c Tracked:** Open (WP-35 section 35-03).

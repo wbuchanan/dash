@@ -2877,7 +2877,6 @@ GAPS4_OPEN = {
     'stat:PT-1': 'histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses',
     'stat:PT-2': 'density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram',
     'stat:PT-5': 'contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer',
-    'stat:PT-13': 'contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options',
     'syn:SD-20a': "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe",
     'syn:SD-20b': "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()",
     'syn:SD-20c': 'lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key',

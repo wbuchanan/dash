@@ -341,6 +341,12 @@
 *!       lpoly, lpolyci or kdensity, read as kernel(<name>): the full
 *!       name into the caller's local _kf_name, unk less it into _kf_rest.
 *!
+*!   _dash_zyx_abbrev(unk, raw)
+*!       contour's i() .. inter() and colorl .. colorline, which the plot
+*!       parser leaves to its catch-all unk, read as interp() and
+*!       colorlines: _za_iset, _za_interp, _za_cl and _za_rest (unk less
+*!       them) into the caller's locals.
+*!
 *!   _dash_bcal_json(cal, lo, hi)
 *!       A business calendar's days lo..hi, {"min":lo,"td":[...]}, read by
 *!       dofb() at registration (WP-31 G7).
@@ -9193,6 +9199,61 @@ string scalar _dash_kernel_clash(string scalar opts, string scalar ptype)
     if (cols(seen) & kfun) return("old")
     if (cols(seen) > 1) return("one")
     return("")
+}
+
+// _dash_zyx_abbrev(unk, raw) -- contour's and contourline's spellings
+// twoway reads and the plot parser leaves to its catch-all unk (WP-35
+// stat:PT-13; twoway_zyx2view_parse.class Interp and COLORLines): i() ..
+// inter() are interp() (interp() itself is _dash_contour_split's), and a
+// bare colorl .. colorline is colorlines (measured 26oct2026,
+// test/fixtures/stat_accept_truth.json contour.*).  Sets the caller's
+// locals _za_iset (1 when an interp() spelling is in unk), _za_interp (the
+// value of the rightmost interp() spelling of the option text raw, in
+// order, twoway's _parse combop ... rightmost), _za_cl (1 for a colorlines
+// spelling) and _za_rest (unk less those words).  Read by value; the words
+// are the user's.
+void _dash_zyx_abbrev(string scalar unk, string scalar raw)
+{
+    string rowvector u, t
+    string scalar    nm, rest, v
+    real scalar      i, ab, cl, p
+
+    st_local("_za_iset", "0")
+    st_local("_za_cl", "0")
+    st_local("_za_interp", "")
+    st_local("_za_rest", unk)
+    u = _dash_opt_tokens(unk)
+    rest = ""
+    ab = 0
+    cl = 0
+    for (i = 1; i <= cols(u); i++) {
+        nm = _dash_rep_optname(u[i])
+        if (anyof(("i", "in", "int", "inte", "inter"), nm) & strpos(u[i], "(")) {
+            ab = 1
+            continue
+        }
+        if (anyof(("colorl", "colorli", "colorlin", "colorline"), nm) &
+            !strpos(u[i], "(")) {
+            cl = 1
+            continue
+        }
+        rest = rest + (rest == "" ? "" : " ") + u[i]
+    }
+    if (!ab & !cl) return
+    st_local("_za_rest", rest)
+    st_local("_za_cl", strofreal(cl))
+    if (!ab) return
+    t = _dash_opt_tokens(raw)
+    v = ""
+    for (i = 1; i <= cols(t); i++) {
+        nm = _dash_rep_optname(t[i])
+        p = strpos(t[i], "(")
+        if (p & anyof(("i", "in", "int", "inte", "inter", "interp"), nm)) {
+            v = substr(t[i], p + 1, strlen(t[i]) - p - 1)
+        }
+    }
+    st_local("_za_iset", "1")
+    st_local("_za_interp", v)
 }
 
 // _dash_kernel_flag(unk, ptype) -- a kernel written as an option of its
