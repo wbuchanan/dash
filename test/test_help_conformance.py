@@ -814,7 +814,8 @@ class TestTheParsersFoundSomething:
         # (catchall_options_truth.json re-extracted).
         # 59 -> 58: WP-35 stat:PT-6 subchar() drawn on function
         # 58 -> 57: WP-35 syn:SD-20c symbol() read as msymbol()
-        assert len(_unsupported_section()) == 57
+        # 57 -> 56: WP-35 GW-3 maxaxes() checked
+        assert len(_unsupported_section()) == 56
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -1009,6 +1010,9 @@ class TestEveryDocumentedOptionIsAccepted:
         # WP-31 J1: the twoway options measured reaching the catch-all are
         # documented as accepted and named, never declared.
         subopts |= _catchall_options()
+        # WP-35 GW-3: maxaxes() is read out of the options as typed and
+        # checked as twoway checks it (_dash_maxaxes_val), never declared.
+        subopts |= {"maxaxes"}
         missing = sorted(set(documented) - set(declared) - subopts)
         assert not missing, (
             f"{len(missing)} options the help documents are not declared by "

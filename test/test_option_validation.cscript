@@ -395,6 +395,8 @@
 *! each command on the one-line route and with name():
 *!   Q3506-1 (basic:PT-8) two omit options anywhere in one command refused
 *!          r(198) in twoway's words; one drawn as twoway draws it
+*!   Q3506-3 (GW-3) maxaxes() checked as twoway checks it: no integer
+*!          r(198), an axis above it r(125); a valid one drawn, not named
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2953,7 +2955,7 @@ local _u51n 0
 foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "scatter mpg weight, afcolor(red) below|afcolor() below)" ///
     "scatter mpg weight, logging afintensity(50)|logging afintensity())" ///
-    "scatter mpg weight, maxaxes(2)|maxaxes())" ///
+    "scatter mpg weight, zmtick(5)|zmtick())" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, logging|logging)" ///
     "bar mpg weight, omitallmiss|omitallmiss)" ///
@@ -2974,6 +2976,9 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
 // scatter and bar, drawn in sort order now and named by nothing (U55);
 // maxaxes(), logging and omitallmiss, which twoway takes and dash names,
 // carry the cases.
+// Flipped (WP-35 GW-3): U51-4 was maxaxes(2), which is checked and taken
+// in silence now (Q3506-3); zmtick(), which twoway takes on scatter and
+// dash names, carries the case.
 // Flipped (WP-32): U51-8's bare headlabel on pcspike is taken in silence,
 // Flipped (WP-32): the bare heatmap on contour is drawn now (U55-11), so a
 // bare nologging carries U51-8.
@@ -3446,6 +3451,26 @@ python: _q3506_keys("omit.")
 foreach _q1k of local q_keys {
     _q3506 Q3506-1 `_q1k'
 }
+
+// Q3506-3 (GW-3): maxaxes() is checked as twoway checks it -- a value that
+// is no integer refused, r(198), "option maxaxes() not allowed"; a
+// yaxis() or xaxis() number above it, in any list, r(125), in twoway's
+// words, the layers in order and xaxis() before yaxis() in one; any
+// integer drawn when no axis is above it; only the full spelling: every
+// maxaxes.* key of the fixture.  A valid maxaxes() is not named.
+python: _q3506_keys("maxaxes.")
+foreach _q3k of local q_keys {
+    _q3506 Q3506-3 `_q3k'
+}
+capture dash clear
+capture log close _ovlog
+quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+capture noisily dash scatter mpg weight, maxaxes(2) name(q3506n)
+local _q3rc = _rc
+quietly log close _ovlog
+_ov_count "`c(tmpdir)'dash_ov.log" "ignoring unsupported"
+_ov_assert Q3506-3 "(`_q3rc' == 0 & r(n) == 0)" "maxaxes(2) taken and not named (rc `_q3rc')"
+capture dash clear
 
 // Summary
 // ----------------------------------------------------------------

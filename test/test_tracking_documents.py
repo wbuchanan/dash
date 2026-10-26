@@ -2883,7 +2883,6 @@ GAPS4_OPEN = {
     'basic:PT-13': "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses",
     'DT-15': 'Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)',
     'syn:SD-8': 'Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)',
-    'GW-3': 'maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn',
     'GW-4': "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied",
     'sil:SD-8': 'title() with notitling is accepted with a note; twoway fails r(4018)',
     'syn:SD-22': 'twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere',

@@ -501,14 +501,16 @@ foreach nm of local p_honoured {
 }
 _hc_expect "HC8-02" "(`nnamed' == 0)" "`nnamed' honoured plot-level option(s) named"
 // Graph level, after the paren-mode comma: the 22 of _dash_parse_graph_opts.
-local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l) maxaxes(2) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l) zmtick(5) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-31 D1): the four minor options are drawn, given and not
 // named (see the plot level).
 // Flipped (WP-31 D2): the eight edge titles are drawn, given and not
 // named; title2() and subtitle2() refused, not given (see the plot level).
 // Flipped (WP-32): play() -> maxaxes(), which twoway takes after the
 // comma and dash names; play() is refused (U54).
-local g_names "maxaxes"
+// Flipped (WP-35 GW-3): maxaxes() -> zmtick(); a valid maxaxes() is
+// checked and taken in silence (test_option_validation.cscript Q3506-3).
+local g_names "zmtick"
 _hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"

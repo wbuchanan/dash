@@ -512,7 +512,7 @@ program define _dash_require_mata
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_play_find _dash_grec_ok _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_p_take _dash_p_seg _dash_p_unknown ///
-        _dash_omit_pair ///
+        _dash_omit_pair _dash_maxaxes_val ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -8772,6 +8772,7 @@ program define _dash_plot
         // Its options as typed and its type, for the graph-wide omit
         // check after the loop (WP-35 basic:PT-8).
         mata: st_local("_g_omraw", st_local("_g_omraw") + " " + st_local("_seg_axreq_raw"))
+        local _g_axraw_`k' : copy local _seg_axreq_raw
         local _g_ompt `_g_ompt' `_pt_k'
         local _g_ys `_g_ys' `_seg_yaxes_out'
         local _g_ys : list uniq _g_ys
@@ -8909,6 +8910,32 @@ program define _dash_plot
     if `: length local _omp' {
         mata: _dash_say("err", "option ", st_local("_omp"), " not allowed")
         exit 198
+    }
+
+    // ---- maxaxes() as twoway checks it (WP-35 GW-3) ----
+    // The last maxaxes() of the command: one that is no integer is refused,
+    // r(198); a yaxis() or xaxis() number above it, in any list, r(125),
+    // the layers in order and xaxis() before yaxis() in one; any integer is
+    // taken, and not named, when no axis given is above it (measured,
+    // graph_refusal_truth.json maxaxes.*).
+    mata: st_local("_mxa", _dash_maxaxes_val(st_local("_g_omraw") + " " + st_local("_gopts_axraw"), "maxaxes"))
+    if `: length local _mxa' {
+        mata: st_local("_mxok", strofreal(ustrregexm(st_local("_mxa"), "^[+-]?[0-9]+$")))
+        if !`_mxok' {
+            display as error "option maxaxes() not allowed"
+            exit 198
+        }
+        forvalues k = 1/`n_segs' {
+            foreach _mxw in xaxis yaxis {
+                mata: st_local("_mxn", _dash_maxaxes_val(st_local("_g_axraw_`k'"), "`_mxw'"))
+                mata: st_local("_mxhi", st_local("_mxn") == "" ? "." : strofreal(max(strtoreal(tokens(st_local("_mxn"))))))
+                if `_mxhi' < . & `_mxhi' > `_mxa' {
+                    display as error "`_mxw'() invalid -- invalid numlist has elements outside of allowed range"
+                    exit 125
+                }
+            }
+        }
+        mata: st_local("_dash_ignored_acc", _dash_maxaxes_val(st_local("_dash_ignored_acc"), "drop"))
     }
 
     // ---- aspectratio() with an overhang (WP-35 GW-2) ----

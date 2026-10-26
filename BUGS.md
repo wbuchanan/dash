@@ -4712,11 +4712,11 @@
   - Suggested fix: Refuse in twoway's words after the merge
   - Resolution: Fixed 26oct2026 (WP-35, GW-2). aspectratio() with xoverhangs or yoverhangs, wherever each is given -- after the comma, in a group, in two groups, across ||, under by(), aspect() -- is refused, r(198), 'may not combine option aspectratio() with xoverhangs or yoverhangs', in _dash_plot once the segments and the options after the comma are merged, before any spec, so in both modes. Pinned by test_twoway_option_parity.cscript Q3506-2; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 GW-2 (WP-35, GW-2).
 
-- [ ] Title: maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn
+- [x] Title: maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn
   - File Names and Line Numbers: twowaygraph_g.class:136
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids GW-3; confirmed; tracked: untracked. Registered as GAPS4 GW-3 (WP-35, section 35-06, Fix).
   - Suggested fix: Validate it; refuse axis numbers above it with r(125)
-  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, GW-3). The command's last maxaxes() is checked as twoway checks it: a value that is no integer is refused, r(198), 'option maxaxes() not allowed'; a yaxis() or xaxis() number above it, in any list, r(125), '<yaxis|xaxis>() invalid -- invalid numlist has elements outside of allowed range', the layers in order and xaxis() before yaxis() in one; a valid one is taken and no longer named in the note (dash_parse.mata _dash_maxaxes_val, read in _dash_plot after the merge); before any spec, so in both modes. Pinned by test/test_graph_refusals.py::TestMaxaxes::test_reader_defined_and_needed, test_option_validation.cscript Q3506-3; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 GW-3 (WP-35, GW-3).
 
 - [ ] Title: fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied
   - File Names and Line Numbers: graph.ado:161; dash.ado:980, 1309

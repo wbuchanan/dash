@@ -6676,11 +6676,13 @@ in either direction.
     draws it without them, and names them.
 
 {phang2}{ul:Graph-wide settings.}
-    {opt below}, {opt copyscheme}, {opt maxaxes(#)}, {opt logging},
+    {opt below}, {opt copyscheme}, {opt logging},
     {opt nologging}, {opt refscheme}, {opt norefscheme}, {opt rescaling},
     {opt norescaling}, {opt titling} and {opt notitling} -- settings of
     {cmd:twoway}'s graph object with nothing for {cmd:dash} to draw; it
-    names them.
+    names them.  {cmd:maxaxes()} is checked as {cmd:twoway} checks it -- a
+    value that is no integer, or an axis numbered above it, is refused --
+    and is otherwise taken in silence.
 
 {phang2}{ul:Marker back-line style.}
     {opt bmlinestyle(linestyle)} -- a marker's back line; {cmd:dash}

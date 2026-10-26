@@ -73,3 +73,8 @@ class TestTheFixture:
 class TestOmit:
     def test_pair_reader_defined_and_needed(self):
         _defined_and_needed("_dash_omit_pair")
+
+
+class TestMaxaxes:
+    def test_reader_defined_and_needed(self):
+        _defined_and_needed("_dash_maxaxes_val")

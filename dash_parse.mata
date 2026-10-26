@@ -114,6 +114,11 @@
 *!       (omitanymissomitallmiss), "" when it takes them (WP-35
 *!       basic:PT-8).
 *!
+*!   _dash_maxaxes_val(text, opt)
+*!       The value of the last maxaxes(), yaxis() or xaxis() in an option
+*!       text, "" when absent; with opt "drop", the text less its
+*!       maxaxes() copies (WP-35 GW-3).
+*!
 *!   _dash_rightmost_keep(names, flags)
 *!       1 for each option token kept, 0 for an earlier copy of a valued
 *!       option twoway takes rightmost; flags keep every copy (WP-35 MS-1).
@@ -8726,6 +8731,38 @@ string scalar _dash_omit_pair(string scalar opts, string scalar ptypes)
     out = ""
     for (j = 1; j <= 4; j++) if (seen[j]) out = out + w[j]
     return(out)
+}
+
+// _dash_maxaxes_val(text, opt) -- the value of the last top-level copy of
+// opt -- maxaxes (full spelling only, as twoway's MAXAXES()), yaxis or
+// xaxis (yax and longer) -- in the option text text, trimmed; "" when it
+// is not there (WP-35 GW-3; graph_refusal_truth.json maxaxes.*).  With opt
+// "drop": text less every maxaxes() copy, its other options as typed, one
+// blank between them (a valid maxaxes() is taken out of the note).
+string scalar _dash_maxaxes_val(string scalar text, string scalar opt)
+{
+    string rowvector tok
+    string scalar    t, nm, out, kept, o
+    real scalar      i, p, L, lo
+
+    o    = (opt == "drop" ? "maxaxes" : opt)
+    lo   = (o == "maxaxes" ? 7 : 3)
+    out  = ""
+    kept = ""
+    tok  = _dash_opt_tokens(text)
+    for (i = 1; i <= cols(tok); i++) {
+        t = tok[i]
+        p = strpos(t, "(")
+        nm = (p ? substr(t, 1, p - 1) : "")
+        L  = strlen(nm)
+        if (!p | substr(t, strlen(t), 1) != ")" | L < lo | L > strlen(o) |
+            substr(o, 1, L) != nm) {
+            kept = kept + (kept == "" ? "" : " ") + t
+            continue
+        }
+        out = strtrim(substr(t, p + 1, strlen(t) - p - 1))
+    }
+    return(opt == "drop" ? kept : out)
 }
 
 // _dash_tw_refuses_tab() -- the options dash declares that twoway refuses

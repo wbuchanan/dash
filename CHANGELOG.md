@@ -873,6 +873,7 @@ and now matches Stata.
 - clcolor(), clpattern(), clstyle() and clwidth() on scatter are recorded for its connecting line, as twoway reads them; dash dropped them. (WP-35, syn:SD-20e)
 - Two omit options in one command (omitanymiss omitallmiss, and any other pair of omitanymiss, omitallmiss, omitdupmiss and omitnothing, in one plot or in two) are refused, r(198), "option omitanymissomitallmiss not allowed", as twoway refuses them; dash named them in the note. (WP-35, basic:PT-8)
 - aspectratio() with xoverhangs or yoverhangs is refused, r(198), "may not combine option aspectratio() with xoverhangs or yoverhangs", as twoway refuses it; dash drew it. (WP-35, GW-2)
+- maxaxes() is checked as twoway checks it: maxaxes(x) and maxaxes(2.5) are refused, r(198), and a layer on an axis numbered above it, r(125); a valid maxaxes() is taken with no note (dash named it in the note and drew the axis). (WP-35, GW-3)
 
 ### Removed
 

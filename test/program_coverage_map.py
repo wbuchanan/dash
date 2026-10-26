@@ -773,6 +773,7 @@ COVERAGE = {
         "_dash_tw_takes_tab": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_tw_takes": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_omit_pair": ("test_option_validation.cscript:Q3506-1",),
+        "_dash_maxaxes_val": ("test_option_validation.cscript:Q3506-3",),
         "_dash_tw_refuses_tab": ("test_option_validation.cscript:U52-0",),
         "_dash_tw_refuses": ("test_option_validation.cscript:U52-0",),
         "_dash_p_take": ("test_wp35_truth.cscript:Q3502-1",),
