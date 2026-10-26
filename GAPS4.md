@@ -340,8 +340,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-3 Tracked:** Closed in WP-34, BUGS.md "A ci type with nofit still uses two plot numbers, so every later layer takes the wrong p# style", commit d2c69f5.
 - **TR-4 Tracked:** Closed in WP-34, BUGS.md "A date axis loses Stata's ticks when the layer's first or last row has a missing y (every L./D. operator, any series with a missing end)", commit c229f49.
 - **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit 6953587.
-- **AX-3 Tracked:** Closed in WP-34, BUGS.md "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels", commit pending.
-- **plot:PT-13 Tracked:** Partly closed in WP-34 (section 34-09, commit pending): every axis at build is Stata's own; open: the after-move misses (BUGS.md "The natscale model misses three of the 264 axes twoway drew").
+- **AX-3 Tracked:** Closed in WP-34, BUGS.md "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels", commit b0d3c81.
+- **plot:PT-13 Tracked:** Partly closed in WP-34 (section 34-09, commit 95919b5): every axis at build is Stata's own; open: the after-move misses (BUGS.md "The natscale model misses three of the 264 axes twoway drew").
 - **MS-1 Tracked:** Open (WP-35 section 35-01).
 - **syn:SD-3 Tracked:** Open (WP-35 section 35-02).
 - **stat:PT-7 Tracked:** Open (WP-35 section 35-03).
