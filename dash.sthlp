@@ -5815,7 +5815,8 @@ nothing; a word is refused, r(198), as {cmd:twoway} refuses it.{p_end}
 {phang2}{opt xoverhangs} and {opt yoverhangs} keep the first and last tick labels
 inside the figure, as {helpb twoway} narrows the plot region for them: the
 figure's border on each side is raised to half the widest end label, never
-lowered.{p_end}
+lowered.  {cmd:aspectratio()} with {cmd:xoverhangs} or {cmd:yoverhangs} is
+refused, as {cmd:twoway} refuses it.{p_end}
 
 {pstd}
 {it:The size reference.}  As in {helpb twoway}, a relative size -- a number,

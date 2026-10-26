@@ -8911,6 +8911,15 @@ program define _dash_plot
         exit 198
     }
 
+    // ---- aspectratio() with an overhang (WP-35 GW-2) ----
+    // twoway refuses aspectratio() with xoverhangs or yoverhangs wherever
+    // each is given, r(198) (twowaygraph_g.class; graph_refusal_truth.json
+    // asp.*).
+    if `: length local g_aspectratio' & (`: length local g_xoverhangs' | `: length local g_yoverhangs') {
+        display as error "may not combine option aspectratio() with xoverhangs or yoverhangs"
+        exit 198
+    }
+
     // ---- axis(#) as twoway checks it (WP-29 P0.5) ----
     // twoway's ParseAndLogAxes refuses an axis option whose axis(#) names
     // an axis no layer is drawn on, an axis() in capitals or given twice,

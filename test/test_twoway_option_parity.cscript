@@ -85,6 +85,8 @@
 *!          and after the paren-mode comma, as twoway reads each -- and
 *!          clwidth() and lwidth() take 0 and 10000 and refuse -0.001 and
 *!          10000.001, where twoway draws them.
+*!   Q3506-2 (WP-35 GW-2) aspectratio() with xoverhangs or yoverhangs
+*!          refused as twoway refuses it, on both routes
 *!   TP-14  an option given more than once (BUGS.md, S3): each command
 *!          twoway draws as another -- mcolor(red) mcolor(blue) as
 *!          mcolor(blue), title(A) title(, color(red)) as title(A,
@@ -1881,6 +1883,58 @@ foreach o in "sort(mpg) sort" "sort sort(mpg)" {
         local bad = 1
     }
 }
+
+// Q3506-2 (WP-35 GW-2): aspectratio() with xoverhangs or yoverhangs --
+// after the comma, in a group, in two groups, across ||, under by(), the
+// shortest aspect() -- is refused as twoway refuses it, r(198), "may not
+// combine option aspectratio() with xoverhangs or yoverhangs", on the
+// one-line route and with name(), and nothing is registered; either alone
+// is drawn.  twoway's rc and first line are the fixture's
+// (test/fixtures/graph_refusal_truth.json asp.*, every key).  Its own
+// tally, beside TP-14's.
+python:
+import json as _q35062_json
+from sfi import Macro as _q35062_M
+_q35062_fx = _q35062_json.load(open("fixtures/graph_refusal_truth.json", encoding="utf-8"))
+_q35062_M.setLocal("q2keys", " ".join(sorted(k for k in _q35062_fx if k.startswith("asp."))))
+
+
+def _q35062_take(key):
+    r = _q35062_fx[key]
+    c = r["cmd"].strip()
+    if c.startswith("twoway "):
+        c = c[len("twoway "):]
+    _q35062_M.setLocal("q2c", c.replace(" name(zg1, replace)", "").rstrip())
+    _q35062_M.setLocal("q2tw", str(r["rc"]))
+    _q35062_M.setLocal("q2m", r["first"])
+end
+local q2bad 0
+foreach q2k of local q2keys {
+    python: import __main__ as _q35062_main; _q35062_main._q35062_take("`q2k'")
+    foreach q2r in line named {
+        if "`q2r'" == "line" {
+            _ztp_run `"dash `q2c' nodraw"' "`logfile'"
+        }
+        else _ztp_run `"dash `q2c' name(zq3506)"' "`logfile'"
+        local rc = r(rc)
+        local said 0
+        if `q2tw' {
+            _ztp_logged "`logfile'" "`q2m'"
+            local said = r(found)
+        }
+        if `rc' != `q2tw' | (`q2tw' & (!`said' | "${dash_graph_registry}" != "")) {
+            display as error `"Q3506-2 FAIL `q2k' (`q2r'): twoway r(`q2tw'), dash r(`rc'), said `said'"'
+            local q2bad 1
+        }
+        else display as text `"Q3506-2 `q2k' (`q2r'): r(`rc') as twoway"'
+    }
+}
+capture dash clear
+if `q2bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q3506-2"
+}
+else display as text "Q3506-2 PASS: aspectratio() with an overhang refused as twoway refuses it"
 
 // TP-14c: both routes.  The command drawn at once saves the page of the
 // last title(); the command registered with name() and drawn by dash build
