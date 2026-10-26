@@ -786,6 +786,26 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
     }
     _w35_done Q3503-5 "the edge n() and bands() values twoway takes are drawn as twoway draws them"
 
+    // ------------------------------------------------------------
+    // Q3503-12: twoway's whole n() rule on the fit types
+    // (stat_accept_truth.json nr.<type>.<v>): from -1 to minus the
+    // dataset's observations an empty fit, drawn silently; below that
+    // "'<n>' invalid observation number"; no upper bound; a number that
+    // is no integer, or missing, "option n() not allowed", r(198), as is
+    // fpfitci's; fpfitci takes any integer.
+    // ------------------------------------------------------------
+    _s03_quiet Q3503-12 "`w35_work'" "lfit mpg weight, n(-74)"
+    _s03_quiet Q3503-12 "`w35_work'" "qfitci mpg weight, n(-5)"
+    _s03_rc Q3503-12 "`w35_work'" auto "lfit mpg weight, n(-75)" 198 "'-75' invalid observation number"
+    _s03_rc Q3503-12 "`w35_work'" auto "lfitci mpg weight, n(-100)" 198 "'-100' invalid observation number"
+    _s03_rc Q3503-12 "`w35_work'" auto "lfit mpg weight, n(10001)" 0 ""
+    _s03_rc Q3503-12 "`w35_work'" auto "qfit mpg weight, n(1e3)" 0 ""
+    _s03_rc Q3503-12 "`w35_work'" auto "lfit mpg weight, n(2.5)" 198 "option n() not allowed"
+    _s03_rc Q3503-12 "`w35_work'" auto "qfitci mpg weight, n(.)" 198 "option n() not allowed"
+    _s03_rc Q3503-12 "`w35_work'" auto "fpfitci mpg weight, n(2.5)" 198 "option n() not allowed"
+    _s03_same Q3503-12 "`w35_work'" auto "fpfitci mpg weight, n(-1000000)" "fpfitci mpg weight,"
+    _w35_done Q3503-12 "every n() twoway takes on the fit types is taken, and the rest refused in its words"
+
     display as text "S03 end " c(current_date) " " c(current_time)
 }
 * ==== end S03 ====

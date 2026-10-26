@@ -138,9 +138,10 @@ class TestTheEmptyFit:
         d = _truth()
         assert d["n.%s.-1" % t]["rc"] == 0 and d["n.%s.-1" % t]["notes"] == []
         pts = _EMPTY_CI if t.endswith("ci") else _EMPTY
-        _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
-            t, {"n": "-1", "points": dict(pts)})])
-        assert not [m for m in w if "drew nothing" in m], w
+        for n in ("-1", "-5"):
+            _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
+                t, {"n": n, "points": dict(pts)})])
+            assert not [m for m in w if "drew nothing" in m], (n, w)
         _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
             t, {"estopts": "noconstant", "points": dict(pts)})])
         assert [m for m in w if "drew nothing" in m], w
@@ -163,3 +164,44 @@ class TestTheRecast:
         assert body is not None
         assert re.search(r'_fsw_tn\b.*!= "type"', body), (
             "the fold does not read type()'s typed spelling")
+
+
+class TestTheNRule:
+    def test_the_measured_rule(self):
+        """stat:PT-9: twoway's whole n() rule on the fit types
+        (stat_accept_truth.json nr.<type>.<v>): on lfit, qfit, lfitci and
+        qfitci an integer from 1 up draws that many points (no upper
+        bound), 0 and one below minus the dataset's observations (74) are
+        "'<n>' invalid observation number", one from -1 to -74 is an empty
+        fit; fpfitci takes any integer; a number that is no integer, or
+        missing, is "option n() not allowed" on all five, r(198).  dash's
+        rule table holds no bound for these types: _dash_fold_stat_words
+        gives twoway's refusals."""
+        d = _truth()
+        for t in ("lfit", "qfit", "lfitci", "qfitci"):
+            for v in ("-5", "-2"):
+                assert d["nr.%s.%s" % (t, v)]["rc"] == 0, (t, v)
+                assert len(d["nr.%s.%s" % (t, v)]["serset"]["weight"]) == 0
+            for v in ("1", "2", "10000", "10001", "100000", "1e3"):
+                assert d["nr.%s.%s" % (t, v)]["rc"] == 0, (t, v)
+            for v in ("-100", "-1000000"):
+                assert (d["nr.%s.%s" % (t, v)]["rc"],
+                        d["nr.%s.%s" % (t, v)]["message"]) == (
+                    198, "'%s' invalid observation number" % v), (t, v)
+            for v in ("2.5", "-1.5", "."):
+                assert d["nr.%s.%s" % (t, v)]["message"] == \
+                    "option n() not allowed", (t, v)
+        for v in ("-1000000", "-5", "1", "100000", "1e3"):
+            assert d["nr.fpfitci." + v]["rc"] == 0, v
+        for v in ("2.5", "-1.5", "."):
+            assert d["nr.fpfitci." + v]["message"] == "option n() not allowed"
+        src = _read(_ADO)
+        rules = _program_body(src, "_dash_option_rules")
+        assert "n=int@lfit|qfit|lfitci|qfitci" in rules
+        assert "n=int@fpfitci" in rules
+        body = _program_body(src, "_dash_fold_stat_words")
+        assert "c(N)" in body and '_fsw_n0 "obs"' in body
+        assert '_fsw_n0 "bad"' in body
+        seg = _program_body(src, "_dash_process_segment")
+        assert "' invalid observation number\")" in seg
+        assert 'display as error "option n() not allowed"' in seg

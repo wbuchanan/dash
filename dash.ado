@@ -2201,25 +2201,29 @@ program define _dash_fold_stat_words, sclass
     // an unknown word before it (subchar.order).
     c_local _fsw_subc ""
     // The edge values twoway takes (stat:PT-9; stat_accept_truth.json
-    // bands.<type>.-1, n.<type>.<v>): bands(-1) on mspline and mband is
-    // Bands(integer -1), the default, and draws as without it; fpfitci
-    // takes any integer n() and does not use it; on lfit, qfit, lfitci
-    // and qfitci n(-1) is an empty fit (drawn by twoway's own generator,
-    // _dash_fit_points) and n(0) "'0' invalid observation number", r(198),
-    // recorded in the caller's _fsw_n0 and refused there.
+    // bands.<type>.-1, n.<type>.<v>, nr.<type>.<v>): bands(-1) on mspline
+    // and mband is Bands(integer -1), the default, and draws as without
+    // it.  n() on the fit types is an integer, else "option n() not
+    // allowed", r(198) (2.5, -1.5, .); fpfitci takes any integer and does
+    // not use it; on lfit, qfit, lfitci and qfitci an integer from 1 up
+    // draws that many points, with no upper bound, one from -1 down to
+    // minus the dataset's observations (c(N), whatever the if) is an
+    // empty fit, drawn by twoway's own generator (_dash_fit_points), and
+    // 0 or one below that is "'<n>' invalid observation number", r(198).
+    // The refusals are recorded in the caller's _fsw_n0 (obs or bad) and
+    // given there; the value is read by value and echoed as typed.
     c_local _fsw_n0 ""
     mata: st_local("_fsw_v", strtrim(st_global("s(bands)")))
     if inlist("`ptype'", "mspline", "mband") & "`_fsw_v'" == "-1" sreturn local bands ""
     mata: st_local("_fsw_v", strtrim(st_global("s(n)")))
-    if "`ptype'" == "fpfitci" & `: length local _fsw_v' {
-        capture confirm integer number `_fsw_v'
-        if !_rc sreturn local n ""
-    }
-    if inlist("`ptype'", "lfit", "qfit", "lfitci", "qfitci") & `: length local _fsw_v' {
-        capture confirm integer number `_fsw_v'
-        if !_rc {
-            if `_fsw_v' == 0 c_local _fsw_n0 "`_fsw_v'"
-        }
+    if inlist("`ptype'", "fpfitci", "lfit", "qfit", "lfitci", "qfitci") & `: length local _fsw_v' {
+        mata: _fsw_x = strtoreal(st_local("_fsw_v"))
+        mata: st_local("_fsw_ni", strofreal(_fsw_x < . & _fsw_x == floor(_fsw_x)))
+        mata: st_local("_fsw_nlo", strofreal(_fsw_x == 0 | _fsw_x < -st_numscalar("c(N)")))
+        capture mata: mata drop _fsw_x
+        if !`_fsw_ni' c_local _fsw_n0 "bad"
+        else if "`ptype'" == "fpfitci" sreturn local n ""
+        else if `_fsw_nlo' c_local _fsw_n0 "obs"
     }
     mata: st_local("_fsw_v", st_global("s(subchar)"))
     if `: length local _fsw_v' {
@@ -3890,7 +3894,7 @@ program define _dash_option_rules
         base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
         degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
-        n=int,1,300@mspline  n=int,-1,10000@lfit|qfit|lfitci|qfitci  n=int@fpfitci  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
@@ -6713,8 +6717,12 @@ program define _dash_process_segment, rclass
             mata: _dash_say("err", "", st_global("s(subchar)"), " invalid name")
             exit 198
         }
-        if "`_fsw_n0'" != "" {
-            display as error "'`_fsw_n0'' invalid observation number"
+        if "`_fsw_n0'" == "bad" {
+            display as error "option n() not allowed"
+            exit 198
+        }
+        if "`_fsw_n0'" == "obs" {
+            mata: _dash_say("err", "'", strtrim(st_global("s(n)")), "' invalid observation number")
             exit 198
         }
         // Two kernels, mlabfontface() (MLF-01) and a graph option given
@@ -7300,9 +7308,10 @@ program define _dash_process_segment, rclass
     // into the string scalar _dash_plot names in $dash__ftsc.  Last: the
     // generator leaves s() empty, and the JSON above reads it.
     local _ft_types "lfit qfit lfitci qfitci fpfit fpfitci"
-    // n(-1) on lfit, qfit, lfitci and qfitci (WP-35 stat:PT-9): twoway's
-    // generator makes the empty fit twoway draws.
-    mata: st_local("_ft_on", strofreal(st_global("dash__ftsc") != "" & ((st_global("s(estopts)") + st_global("s(predopts)") + st_global("s(estcmd)")) != "" | (strtrim(st_global("s(n)")) == "-1" & anyof(("lfit", "qfit", "lfitci", "qfitci"), st_local("ptype"))))))
+    // A negative n() on lfit, qfit, lfitci and qfitci, and one above the
+    // renderers' own 10,000-point grid (WP-35 stat:PT-9): twoway's
+    // generator makes the points twoway draws -- none for a negative one.
+    mata: st_local("_ft_on", strofreal(st_global("dash__ftsc") != "" & ((st_global("s(estopts)") + st_global("s(predopts)") + st_global("s(estcmd)")) != "" | ((strtoreal(st_global("s(n)")) < 0 | (strtoreal(st_global("s(n)")) > 10000 & strtoreal(st_global("s(n)")) < .)) & anyof(("lfit", "qfit", "lfitci", "qfitci"), st_local("ptype"))))))
     if `_ft_on' & `: list ptype in _ft_types' {
         mata: st_local("_ft_e", st_global("s(estopts)"))
         mata: st_local("_ft_p", st_global("s(predopts)"))

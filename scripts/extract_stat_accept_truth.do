@@ -149,6 +149,13 @@ foreach t in lfit qfit lfitci qfitci fpfit fpfitci {
         _zs_probe n.`t'.`v' auto `t' mpg weight, n(`v')
     }
 }
+* The whole n() rule on the fit types that take it (WP-35 stat:PT-9
+* follow-up): negative, 0, 1, large, non-integer and missing values.
+foreach t in lfit qfit lfitci qfitci fpfitci {
+    foreach v in -1000000 -100 -5 -2 -1.5 1 2 3 2.5 1e3 10000 10001 100000 . {
+        _zs_probe nr.`t'.`v' auto `t' mpg weight, n(`v')
+    }
+}
 _zs_probe lfit_nm1.legend auto (scatter mpg weight) (lfit mpg weight, n(-1)),
 _zs_probe lfit_n1.legend auto (scatter mpg weight) (lfit mpg weight),
 foreach t in mspline mband {

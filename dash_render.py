@@ -20041,9 +20041,11 @@ class GlyphMapper:
             if _r is not None:
                 _r._dash_points_frozen = True
                 _r._dash_points_stale = _stale
-        # n(-1) on lfit, qfit, lfitci and qfitci (WP-35 stat:PT-9): the
-        # generator makes no point and twoway prints nothing.
-        if len(px) == 0 and str(options.get("n", "")).strip() == "-1":
+        # A negative n() on lfit, qfit, lfitci and qfitci (WP-35
+        # stat:PT-9): the generator makes no point and twoway prints
+        # nothing.
+        if len(px) == 0 and re.fullmatch(r"-[0-9]+",
+                                         str(options.get("n", "")).strip()):
             self._mark_silent([_r for _r in (out if isinstance(out, list)
                                              else [out]) if _r is not None])
         return out

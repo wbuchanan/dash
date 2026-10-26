@@ -3796,14 +3796,18 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     point draws no line, as in {cmd:twoway});
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  On {cmd:lfit}, {cmd:qfit},
-    {cmd:lfitci} and {cmd:qfitci} both also take {cmd:n(-1)}, an empty
-    fit drawn by {cmd:twoway}'s own generator with its legend key, and
-    refuse {cmd:n(0)}, r(198), "'0' invalid observation number".
+    {cmd:lfitci} and {cmd:qfitci} both take any whole number from 1 up
+    (above 10000 the points are made by {cmd:twoway}'s own generator),
+    and one from -1 down to minus the dataset's observations, an empty
+    fit drawn with its legend key; 0, or a number below that, is refused,
+    r(198), "'{it:#}' invalid observation number", and a number that is
+    not whole "option n() not allowed".
     {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in
     {cmd:twoway}.  {cmd:twoway}'s {cmd:fpfitci} and {cmd:mband} accept
     {cmd:n()} and draw the same points without it, and so does
-    {cmd:dash}; on {cmd:fpfitci} any whole number is taken{p_end}
+    {cmd:dash}; on {cmd:fpfitci} any whole number is taken, and a number
+    that is not whole is refused as {cmd:twoway} refuses it{p_end}
 {synopt:{opt bands(#)}}{cmd:mspline} and {cmd:mband}: the number of
     equal-width bands the range of x is cut into, 1 to 200, as in
     {cmd:twoway}; {cmd:bands(-1)} is the default, as in {cmd:twoway}.  The default is {cmd:twoway}'s:

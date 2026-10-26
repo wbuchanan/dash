@@ -94,7 +94,7 @@ malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
 degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
-n=int,1,300@mspline  n=int,-1,10000@lfit|qfit|lfitci|qfitci  n=int@fpfitci
+n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci
 n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
 colornlevels=int,2,256
@@ -252,7 +252,10 @@ class TestTheTableIsWellFormed:
         # old -> new: 43 -> 45: stat:PT-9 edge n() and bands() -- n()
         # typed on the lfit family (-1, an empty fit, is drawn) and on
         # fpfitci (any integer; n() is not used there), measured
-        # (test/fixtures/stat_accept_truth.json n.<type>.<v>).
+        # (test/fixtures/stat_accept_truth.json n.<type>.<v>).  The lfit
+        # family's token then lost its bounds: twoway's rule there depends
+        # on the dataset's observations and has no upper end (nr.<type>.<v>),
+        # so _dash_fold_stat_words gives its refusals.
         assert len(want) == 45, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
