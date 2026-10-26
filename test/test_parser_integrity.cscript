@@ -34,8 +34,9 @@
 *! (P1B-33), and its inner matcher only for an unbalanced '(' inside the
 *! filter's own quoted label (P1B-34).  P1B-35 to P1B-37 hold AC-01.1, AC-01.3
 *! and AC-01.4 as ROADMAP writes them, through dash itself: the cases above
-*! call the scanners, and P1B-13 and P1B-16 ask only for a non-zero return
-*! code where the criteria ask for r(198) and a message.
+*! call the scanners, and P1B-13 asks only for a non-zero return code
+*! where the criteria ask for r(198) and a message (P1B-16, flipped by
+*! WP-35 syn:SD-1, reads the text after a group as one more plot).
 *!
 *! P1B-39 to P1B-47 (24sep2026) hold every scanner that shares
 *! _dash_quote_step to Stata's nesting of compound quotes -- `"a `"b"' c"'
@@ -248,11 +249,18 @@ assert _rc == 198
 display "P1B-15b PASS: an unmatched ')' in flat mode is an error"
 
 // ----------------------------------------------------------------
-// P1B-16 — stray text between paren groups is an error
+// P1B-16 — text after a paren group is one more (bare) plot
 // ----------------------------------------------------------------
+// Flipped (WP-35 syn:SD-1): the splitter refusing the text was wrong
+// because twoway's _parse expand reads it, to the end of the piece, as
+// one more plot; the word is refused later, as any word that is no plot
+// type is (P1B-37, test_parser.cscript Q3509-7).
 capture mata: _dash_split_segs("(scatter mpg weight) junk (line mpg weight)")
-assert _rc == 198
-display "P1B-16 PASS: stray text between paren groups is an error"
+assert _rc == 0
+assert "`_n_segs'" == "2"
+assert "`_seg_1'" == "scatter mpg weight"
+assert "`_seg_2'" == "junk (line mpg weight)"
+display "P1B-16 PASS: text after a paren group is read as one more plot, as twoway reads it"
 
 // ----------------------------------------------------------------
 // P1B-17 — a plot group after the top-level comma is an error
@@ -667,10 +675,13 @@ local rc37 = r(rc)
 local lg37 "`r(log)'"
 assert `tw37' == 198
 assert `rc37' == 198
-mata: st_local("p37m", strofreal(_p1b_log_has(st_local("lg37"), "unexpected text between plot groups: 'junk'")))
+// Flipped (WP-35 syn:SD-1): dash's own words were wrong because twoway
+// reads the text after a group as one more plot and refuses the word as
+// any word that is no plot type (command_grammar_truth.json group.junk).
+mata: st_local("p37m", strofreal(_p1b_log_has(st_local("lg37"), "junk is not a twoway plot type")))
 assert `p37m' == 1
 assert "${dash_graph_registry}" == ""
-display "P1B-37 PASS: AC-01.4 -- (a) junk (b) exits 198, as twoway does, naming the stray word"
+display "P1B-37 PASS: AC-01.4 -- (a) junk (b) exits 198, as twoway does, in its words"
 
 // ----------------------------------------------------------------
 // P1B-38 -- the qualifier of P1B-31's shape, through dash

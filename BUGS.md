@@ -4754,11 +4754,11 @@
   - Suggested fix: Draw no axes when there is no layer; refuse axis, scale and line options there in twoway's words (plural names); add an SVG truth for twoway, title(T)
   - Resolution: Fixed 26oct2026 (WP-35, plot:PT-4). A graph with no plot draws no axis, tick, label or grid, as twoway draws it: dash_render.py's _dash_hide_empty_axes hides every axis and grid in _make_figure_body's empty branch and in the served app's (copied into it), both modes; dash.ado's _dash_plot refuses an axis, scale, line, tick or title option, or by(), on that graph with twoway's rc and first line, in twoway's order ("xlabels(1 2) not allowed, xaxis1 does not exist", r(198)); dash.sthlp's Syntax says so. Pinned by test/test_command_grammar.py::TestEmpty::test_no_axis_visible, test_parser.cscript Q3509-5, test_wp35_truth.cscript Q3509-4, test_mode_parity.py (WP-35 plot:PT-4: empty graph); fixture test/fixtures/command_grammar_truth.json. Closes GAPS4 plot:PT-4 (WP-35, plot:PT-4).
 
-- [ ] Title: A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it
+- [x] Title: A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it
   - File Names and Line Numbers: dash_parse.mata:3622-3640 (the comment at 3627-3630 is false); p2/p11 logs; P1B-37 pins dash's message
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 4 (major): ids syn:SD-1; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-1 (WP-35, section 35-09, Fix).
   - Suggested fix: Follow twoway's _parse expand: text up to the next || is another plot; give twoway's '<word> is not a twoway plot type' and r(111) cases
-  - Resolution: Not fixed because WP-35 section 35-09 has not landed. Graded S2 (WP-35): drop-in audit package 4, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-1). dash_parse.mata's _dash_split_groups reads the text after a parenthesised group, to the end of its || piece, as one more bare plot, as twoway's _parse expand does: (scatter mpg weight) line mpg weight draws two plots, and (a) junk (b), (a) 123 and (a) | (b) are "<word> is not a twoway plot type", r(198), and (a) line mpg weight (line price weight) "variable line not found", r(111), as in twoway; dash.sthlp's Syntax says so; Stata-side, so both modes alike. Pinned by test_wp35_truth.cscript Q3509-6, test_parser.cscript Q3509-7, test_parser_integrity.cscript P1B-16 and P1B-37; fixture test/fixtures/command_grammar_truth.json. Closes GAPS4 syn:SD-1 (WP-35, syn:SD-1).
 
 - [ ] Title: A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both
   - File Names and Line Numbers: p2out S13; probe v1

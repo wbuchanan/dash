@@ -26,6 +26,8 @@
 *! Q3509-5 (WP-35 35-09, plot:PT-4): an axis option, or by(), on the graph
 *! with no plot is refused with twoway's rc and first line, one-line and
 *! with name().
+*! Q3509-7 (WP-35 35-09, syn:SD-1): a form with text after a parenthesised
+*! group that twoway refuses is refused with its rc and first line.
 *! Q3509-3 (WP-35 35-09, PD-10): a word that is no plot type is refused
 *! with twoway's rc and first line (command_grammar_truth.json), and no
 *! word gets advice of its own.
@@ -2836,7 +2838,10 @@ display "TW-02 PASS: dash, dash, title(T), dash if foreign==1 and dash || draw t
 // plot type ','" -- for every option, and refused a bare plot after a
 // parenthesised one, `(a) || line b', as text between plot groups; WP-30
 // S51 wrote c45 as `tsline y || line y2 t, tlabel(...)' to get round it.
-// It accepted `(a) | (b)', which twoway refuses.
+// It accepted `(a) | (b)', which twoway refuses.  Flipped (WP-35 syn:SD-1):
+// `(a) line b' with no `||' is one more plot too, as twoway's _parse
+// expand reads it, and `(a) | (b)' is refused in twoway's words
+// (test_parser.cscript Q3509-6/-7, command_grammar_truth.json group.*).
 dash clear
 cert_truth_ctx "P1A-85 auto"
 local _sm "scatter mpg weight"
@@ -4133,6 +4138,30 @@ dash clear
 if `"`q95bad'"' != "" display as error `"Q3509-5 FAIL:`q95bad'"'
 assert `"`q95bad'"' == "" & `q95n' == 42
 display "Q3509-5 PASS: the `q95n' axis options and by() on the graph with no plot are twoway's rc and first line"
+
+// ----------------------------------------------------------------
+// Q3509-7 (syn:SD-1): every group.* form twoway refuses -- text after a
+// parenthesised group that is no plot -- is refused with twoway's rc and
+// first line.
+// ----------------------------------------------------------------
+quietly sysuse auto, clear
+python: _q9M.setLocal("q9keys", " ".join(k for k in sorted(_q9T) if k.startswith("group.") and _q9T[k]["rc"]))
+local q97bad ""
+local q97n 0
+foreach k of local q9keys {
+    python: _q9M.setLocal("q9cmd", "dash" + _q9T[_q9M.getLocal("k")]["cmd"][len("twoway"):])
+    dash clear
+    _p1a_logrun `"`q9cmd'"'
+    local rc_q9 = r(rc)
+    local lg_q9 "`r(log)'"
+    python: _q9_vs(_q9M.getLocal("k"), _q9M.getLocal("rc_q9"), _q9M.getLocal("lg_q9"))
+    if `"`q9bad'"' != "" | "${dash_graph_registry}" != "" local q97bad `"`q97bad' [`q9bad']"'
+    local ++q97n
+}
+dash clear
+if `"`q97bad'"' != "" display as error `"Q3509-7 FAIL:`q97bad'"'
+assert `"`q97bad'"' == "" & `q97n' == 4
+display "Q3509-7 PASS: the `q97n' group forms twoway refuses are its rc and first line"
 
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.

@@ -373,7 +373,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
 - **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit pending.
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit pending.
-- **syn:SD-1 Tracked:** Open (WP-35 section 35-09).
+- **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit pending.
 - **syn:SD-13 Tracked:** Open (WP-35 section 35-09).
 - **plat:PT-1 Tracked:** Open (WP-36 section 36-01).
 - **plat:PT-5 Tracked:** Open (WP-36 section 36-04).

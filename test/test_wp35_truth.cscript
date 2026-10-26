@@ -608,6 +608,40 @@ def _q3509_axes(path, kind):
     except Exception as e:
         bad.append(repr(e)[:200])
     Macro.setGlobal("q3509_bad", "; ".join(bad)[:400])
+
+
+def _q3509_forms(prefix):
+    """The rc-0 keys of command_grammar_truth.json under prefix, into
+    global q3509_keys."""
+    import json
+    from sfi import Macro
+    t = json.load(open("fixtures/command_grammar_truth.json",
+                       encoding="utf-8"))
+    Macro.setGlobal("q3509_keys", " ".join(
+        k for k in sorted(t) if k.startswith(prefix) and t[k]["rc"] == 0))
+
+
+def _q3509_drawn(key, name):
+    """dash's command for a fixture key, into global q3509_cmd; then, when
+    name is given, its registered plots against twoway's (count, and line
+    or scatter by twoway's style name), the problem into q3509_bad."""
+    import json
+    from sfi import Macro
+    row = json.load(open("fixtures/command_grammar_truth.json",
+                         encoding="utf-8"))[key]
+    cmd = "dash" + row["cmd"][len("twoway"):]
+    Macro.setGlobal("q3509_cmd", cmd + (" name(q3509g)" if "," in cmd
+                                        else ", name(q3509g)"))
+    if not name:
+        return
+    want = ["line" if p.endswith("line") else "scatter" for p in row["plots"]]
+    try:
+        got = [p["type"] for p in json.loads(
+            Macro.getGlobal("dash_json_" + name))["plots"]]
+    except Exception as e:
+        got = [repr(e)[:80]]
+    Macro.setGlobal("q3509_bad", "" if got == want else
+                    "%s: dash %s, twoway %s" % (key, got, want))
 end
 
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
@@ -693,6 +727,40 @@ if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
     capture erase "`q94d'/e.html"
     capture erase "`q94d'/e.py"
     capture rmdir "`q94d'"
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
+* ==== S09 syn:SD-1: a bare plot after a group ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3509-6: every group.* form twoway draws (rc 0) registers with
+    // twoway's plots -- a bare plot after a parenthesised group is one
+    // more plot (command_grammar_truth.json group.*).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    python: import __main__ as _q9m; _q9m._q3509_forms("group.")
+    local q96n 0
+    foreach k of global q3509_keys {
+        python: import __main__ as _q9m; _q9m._q3509_drawn("`k'", "")
+        dash clear
+        capture noisily ${q3509_cmd}
+        local rc = _rc
+        _w35_expect Q3509-6 "(`rc' == 0)" `"${q3509_cmd}: rc `rc'"'
+        global q3509_bad ""
+        if !`rc' {
+            python: import __main__ as _q9m; _q9m._q3509_drawn("`k'", "q3509g")
+        }
+        _w35_expect Q3509-6 `"("${q3509_bad}" == "")"' `"${q3509_bad}"'
+        local ++q96n
+    }
+    _w35_expect Q3509-6 "(`q96n' == 5)" "`q96n' forms read, 5 expected"
+    _w35_done Q3509-6 "the `q96n' group forms twoway draws register its plots"
+    macro drop q3509_keys q3509_cmd q3509_bad
     dash clear
     display as text "S09 end " c(current_date) " " c(current_time)
 }

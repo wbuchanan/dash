@@ -3539,7 +3539,7 @@ void _dash_split_groups(string scalar s,
 {
     real   scalar i, len, depth, in_dq, in_cq, c_code, nxt
     real   scalar seg_start, qual_seen, qual_start, qnext
-    string scalar seg_text, stray, qword, go
+    string scalar seg_text, qword, go
 
     len        = strlen(s)
     depth      = 0
@@ -3637,21 +3637,16 @@ void _dash_split_groups(string scalar s,
                 continue
             }
 
-            // Text between top-level groups, which twoway rejects --
-            // `(a) junk (b)' and `(a) | (b)' are r(198) there; dash
-            // discarded `junk' and skipped a single `|', rc 0.  Report the
-            // whole word, not the one character the scan happened to stop
-            // on.  A bare plot after a group needs `||' before it, as in
-            // twoway: `(a) || line y x'.
-            stray = substr(s, i, .)
-            if (strpos(stray, " ") > 0) {
-                stray = substr(stray, 1, strpos(stray, " ") - 1)
-            }
-            errprintf("dash: unexpected text between plot groups: '%s'\n",
-                      stray)
-            errprintf(
-              "      Each plot must be its own parenthesised group.\n")
-            exit(198)
+            // twoway's _parse expand: text after a group, to the end of
+            // the piece, is one more plot (WP-35 syn:SD-1;
+            // command_grammar_truth.json group.*): `(a) line y x' draws
+            // two plots, its comma and options belonging to that plot as
+            // a bare plot's do.  It is read as any bare plot is, so `(a)
+            // junk (b)' is "junk is not a twoway plot type", r(198), and
+            // `(a) | (b)' "| is not a twoway plot type", as in twoway.
+            seg_text = strtrim(substr(s, i, .))
+            segs = segs, seg_text
+            return
         }
         i++
     }
