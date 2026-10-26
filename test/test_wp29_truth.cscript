@@ -295,6 +295,10 @@ def _jo_doc_xs(doc):
     for f in _jo_figs(doc):
         for g in f.renderers:
             gl = getattr(g, "glyph", None)
+            # Flipped (WP-34 PIC-1): an area's outline ring is a Line of
+            # its own, drawn from the fill's rows; the fill carries the join.
+            if "dash_area_outline" in (getattr(g, "tags", None) or []):
+                continue
             if isinstance(gl, (_JoLine, _JoVArea)):
                 col = _jo_field(gl.x)
                 data = g.data_source.data

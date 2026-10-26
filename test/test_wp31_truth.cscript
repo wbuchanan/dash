@@ -2304,6 +2304,12 @@ def _u12_draw(sp, dp, app):
                 if t not in ("Quad", "Line", "Segment", "VBar", "Patch",
                              "VArea"):
                     continue
+                # Flipped (WP-34 PIC-1): an area's outline ring (a Line)
+                # and its legend key (a Quad at NaN) are not the fill.
+                if "dash_area_outline" in (getattr(r, "tags", None) or []):
+                    continue
+                if str(getattr(r, "name", "") or "").startswith("_clegend_"):
+                    continue
                 out["k"].append(t)
                 if t == "Quad":
                     for lo, hi in zip(d["left"], d["right"]):
