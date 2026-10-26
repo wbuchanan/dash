@@ -6651,7 +6651,8 @@ in either direction.
     {opt omitallmiss}, {opt omitanymiss}, {opt omitdupmiss},
     {opt omitnothing} -- {cmd:twoway}'s rules for which observations with
     missing values a plot omits; {cmd:dash} omits as its plot types say,
-    and names them.  {opt numkeys(#)} -- the number of legend keys a plot
+    and names them.  Two of them in one command, in one plot or in two,
+    are refused, r(198), as {cmd:twoway} refuses them.  {opt numkeys(#)} -- the number of legend keys a plot
     contributes; {cmd:dash} draws one key per series, and names it.
 
 {phang2}{ul:Bar-family settings.}

@@ -871,6 +871,7 @@ and now matches Stata.
 - s() and symbol() are read as msymbol(), as twoway reads them (dash named them as not drawn); smoothplot() is kept under its own key. (WP-35, syn:SD-20c)
 - colorvar zl() and zt() are read as zlabel() and ztitle(), as twoway reads them; dash named them as not drawn. (WP-35, syn:SD-20d)
 - clcolor(), clpattern(), clstyle() and clwidth() on scatter are recorded for its connecting line, as twoway reads them; dash dropped them. (WP-35, syn:SD-20e)
+- Two omit options in one command (omitanymiss omitallmiss, and any other pair of omitanymiss, omitallmiss, omitdupmiss and omitnothing, in one plot or in two) are refused, r(198), "option omitanymissomitallmiss not allowed", as twoway refuses them; dash named them in the note. (WP-35, basic:PT-8)
 
 ### Removed
 

@@ -512,6 +512,7 @@ program define _dash_require_mata
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_prefix_word _dash_seg_saving _dash_play_find _dash_grec_ok _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_p_take _dash_p_seg _dash_p_unknown ///
+        _dash_omit_pair ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -6683,6 +6684,13 @@ program define _dash_process_segment, rclass
         // (WP-32): an unknown word, one in upper case, a spelling short of
         // twoway's minimum, title2().
         _dash_refuse_unknown _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // Two omit options in this list, as twoway refuses them (WP-35
+        // basic:PT-8; _dash_plot checks the whole command).
+        mata: st_local("_omp", _dash_omit_pair(st_local("opts_raw"), st_local("ptype")))
+        if `: length local _omp' {
+            mata: _dash_say("err", "option ", st_local("_omp"), " not allowed")
+            exit 198
+        }
         // jitter() spelled shorter than twoway's minimum (WP-31 A3d).
         _dash_refuse_jit
         // name() spelled shorter than twoway's minimum (WP-31 A3b).
@@ -8761,6 +8769,10 @@ program define _dash_plot
         // This segment's axis options, as typed, and its layers' axes, for
         // twoway's axis check after the loop (WP-29 P0.5).
         mata: _dash_axreq_add(st_local("_seg_axreq_raw"), `k')
+        // Its options as typed and its type, for the graph-wide omit
+        // check after the loop (WP-35 basic:PT-8).
+        mata: st_local("_g_omraw", st_local("_g_omraw") + " " + st_local("_seg_axreq_raw"))
+        local _g_ompt `_g_ompt' `_pt_k'
         local _g_ys `_g_ys' `_seg_yaxes_out'
         local _g_ys : list uniq _g_ys
         local _g_xs `_g_xs' `_seg_xaxes_out'
@@ -8884,6 +8896,19 @@ program define _dash_plot
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
+    }
+
+    // ---- Two omit options in one command (WP-35 basic:PT-8) ----
+    // twoway refuses omitanymiss, omitallmiss, omitdupmiss and omitnothing
+    // given twice or more anywhere in the command -- one list, two lists,
+    // after the comma -- r(198), "option omitanymissomitallmiss not
+    // allowed", unless every plot is one that takes them (lfit, qfit,
+    // fpfit and their ci forms, scatteri, pci, pcarrowi; measured,
+    // test/fixtures/graph_refusal_truth.json omit.*).
+    mata: st_local("_omp", _dash_omit_pair(st_local("_g_omraw") + " " + st_local("_gopts_axraw"), st_local("_g_ompt")))
+    if `: length local _omp' {
+        mata: _dash_say("err", "option ", st_local("_omp"), " not allowed")
+        exit 198
     }
 
     // ---- axis(#) as twoway checks it (WP-29 P0.5) ----

@@ -323,6 +323,7 @@ GENERATORS = {
     "geometry_truth.json": "scripts/extract_geometry_truth.do",
     "global_text_truth.json": "scripts/extract_global_text_truth.do",
     "graph_export_truth.json": "scripts/extract_graph_export_truth.do",
+    "graph_refusal_truth.json": "scripts/extract_graph_refusal_truth.do",
     "graph_text_truth.json": "scripts/extract_graph_text_truth.do",
     "help_claims_6_truth.json": "scripts/extract_twoway_oracle_truth.do",
     "help_examples.txt": HAND_WRITTEN,

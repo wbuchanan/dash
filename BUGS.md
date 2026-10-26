@@ -4670,11 +4670,11 @@
   - Suggested fix: Refuse it outside lowess, lpoly, lpolyci and kdensity
   - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
-- [ ] Title: Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'
+- [x] Title: Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'
   - File Names and Line Numbers: twoway_yxview_parse.class:238-243
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids basic:PT-8, syn:SD-10; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-8 (WP-35, section 35-06, Fix).
   - Suggested fix: Refuse in twoway's words
-  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, basic:PT-8). Two or more omit options (omitanymiss, omitallmiss, omitdupmiss, omitnothing, from their minimum spellings) anywhere in one command -- one list, two lists, after the comma, the same word twice -- are refused, r(198), 'option omitanymissomitallmiss not allowed', the distinct words in twoway's order, unless every plot is lfit, lfitci, qfit, qfitci, fpfit, fpfitci, scatteri, pci or pcarrowi, which twoway draws with them (dash_parse.mata _dash_omit_pair, read in _dash_process_segment for one list and in _dash_plot for the whole command); the refusal comes before any spec, so in both modes. Pinned by test/test_graph_refusals.py::TestOmit::test_pair_reader_defined_and_needed, test_option_validation.cscript Q3506-1; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 basic:PT-8 (WP-35, basic:PT-8).
 
 - [ ] Title: Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111
   - File Names and Line Numbers: value_truth.json; OV-42 and PS-06 pin dash's codes; DROPIN P2.64

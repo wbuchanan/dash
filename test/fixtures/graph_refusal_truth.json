@@ -1,0 +1,1281 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "32a7816bf0e6887cfd79c4cf7c0e76e591f3afc6",
+  "extracted": "26 Oct 2026 12:36:44",
+  "source": "scripts/extract_graph_refusal_truth.do",
+  "stata_version": "19.5"
+ },
+ "asp.abbrev": {
+  "cmd": " twoway scatter mpg weight, aspect(1) xoverhangs name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.alone_a": {
+  "cmd": " twoway scatter mpg weight, aspectratio(1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "asp.alone_x": {
+  "cmd": " twoway scatter mpg weight, xoverhangs name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "asp.bars": {
+  "cmd": " twoway scatter mpg weight, aspectratio(1) || line mpg weight, xoverhangs name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.by": {
+  "cmd": " twoway scatter mpg weight, by(foreign) aspectratio(1) xoverhangs name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.comma": {
+  "cmd": " twoway scatter mpg weight, aspectratio(1) xoverhangs name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.group": {
+  "cmd": " twoway (scatter mpg weight, aspectratio(1) xoverhangs), name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.split_groups": {
+  "cmd": " twoway (scatter mpg weight, aspectratio(1)) (line mpg weight, xoverhangs), name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "asp.yoverhangs": {
+  "cmd": " twoway scatter mpg weight, aspectratio(1) yoverhangs name(zg1, replace)",
+  "first": "may not combine option aspectratio() with xoverhangs or yoverhangs",
+  "lines": [
+   "may not combine option aspectratio() with xoverhangs or yoverhangs"
+  ],
+  "rc": 198
+ },
+ "contour.bogus": {
+  "cmd": " twoway contour gz gy gx, bogus(1) name(zg1, replace)",
+  "first": "option bogus() not allowed",
+  "lines": [
+   "option bogus() not allowed"
+  ],
+  "rc": 198
+ },
+ "contour.levels_bogus": {
+  "cmd": " twoway contour gz gy gx, levels(10) bogus(1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "contour.levels_region": {
+  "cmd": " twoway contour gz gy gx, levels(10) region(fcolor(red)) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "contourline.bogus": {
+  "cmd": " twoway contourline gz gy gx, bogus(1) name(zg1, replace)",
+  "first": "option bogus() not allowed",
+  "lines": [
+   "option bogus() not allowed"
+  ],
+  "rc": 198
+ },
+ "contourline.levels_bogus": {
+  "cmd": " twoway contourline gz gy gx, levels(10) bogus(1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "fv.by_1_foreign": {
+  "cmd": " twoway scatter mpg weight, by(1.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_L_foreign": {
+  "cmd": " twoway scatter mpg weight, by(L.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_c_foreign": {
+  "cmd": " twoway scatter mpg weight, by(c.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_foreign_hash_rep78": {
+  "cmd": " twoway scatter mpg weight, by(foreign#rep78) name(zg1, replace)",
+  "first": "interactions not allowed",
+  "lines": [
+   "interactions not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_foreign_hh_rep78": {
+  "cmd": " twoway scatter mpg weight, by(foreign##rep78) name(zg1, replace)",
+  "first": "interactions not allowed",
+  "lines": [
+   "interactions not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_foreign_i_rep78": {
+  "cmd": " twoway scatter mpg weight, by(foreign i.rep78) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_i_foreign": {
+  "cmd": " twoway scatter mpg weight, by(i.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_ib1_foreign": {
+  "cmd": " twoway scatter mpg weight, by(ib1.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.by_o_foreign": {
+  "cmd": " twoway scatter mpg weight, by(o.foreign) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.colorvar_c_price": {
+  "cmd": " twoway scatter mpg weight, colorvar(c.price) name(zg1, replace)",
+  "first": "factor-variable and time-series operators not allowed",
+  "lines": [
+   "factor-variable and time-series operators not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.colorvar_i_foreign": {
+  "cmd": " twoway scatter mpg weight, colorvar(i.foreign) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "fv.colorvar_price_hash_foreign": {
+  "cmd": " twoway scatter mpg weight, colorvar(price#foreign) name(zg1, replace)",
+  "first": "interactions not allowed",
+  "lines": [
+   "interactions not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.mlabel_45": {
+  "cmd": " twoway scatter mpg weight, mlabel(45) name(zg1, replace)",
+  "first": "45 invalid name",
+  "lines": [
+   "45 invalid name"
+  ],
+  "rc": 198
+ },
+ "fv.mlabel_c_make": {
+  "cmd": " twoway scatter mpg weight, mlabel(c.make) name(zg1, replace)",
+  "first": "variable c not found",
+  "lines": [
+   "variable c not found"
+  ],
+  "rc": 111
+ },
+ "fv.mlabel_fmt": {
+  "cmd": " twoway scatter mpg weight, mlabel(%9.1f) name(zg1, replace)",
+  "first": "invalid '%'",
+  "lines": [
+   "invalid '%'"
+  ],
+  "rc": 198
+ },
+ "fv.mlabel_hash": {
+  "cmd": " twoway scatter mpg weight, mlabel(make#foreign) name(zg1, replace)",
+  "first": "interactions not allowed",
+  "lines": [
+   "interactions not allowed"
+  ],
+  "rc": 101
+ },
+ "fv.mlabel_i_foreign": {
+  "cmd": " twoway scatter mpg weight, mlabel(i.foreign) name(zg1, replace)",
+  "first": "variable i not found",
+  "lines": [
+   "variable i not found"
+  ],
+  "rc": 111
+ },
+ "fx.base": {
+  "cmd": " twoway scatter mpg weight, plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "",
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "lines": [],
+  "plot": {
+   "bottom": 2489.19,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0
+ },
+ "fx.fxs": {
+  "cmd": " twoway scatter mpg weight, fxs(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "option fxs() not allowed",
+  "lines": [
+   "option fxs() not allowed"
+  ],
+  "rc": 198
+ },
+ "fx.fxsi": {
+  "cmd": " twoway scatter mpg weight, fxsi(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "option fxsi() not allowed",
+  "lines": [
+   "option fxsi() not allowed"
+  ],
+  "rc": 198
+ },
+ "fx.fxsiz": {
+  "cmd": " twoway scatter mpg weight, fxsiz(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "",
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "lines": [],
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1549.97,
+   "right": 2699.98,
+   "top": 100.86
+  },
+  "rc": 0
+ },
+ "fx.fxsize": {
+  "cmd": " twoway scatter mpg weight, fxsize(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "",
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "lines": [],
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1549.97,
+   "right": 2699.98,
+   "top": 100.86
+  },
+  "rc": 0
+ },
+ "fx.fysi": {
+  "cmd": " twoway scatter mpg weight, fysi(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "option fysi() not allowed",
+  "lines": [
+   "option fysi() not allowed"
+  ],
+  "rc": 198
+ },
+ "fx.fysiz": {
+  "cmd": " twoway scatter mpg weight, fysiz(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "",
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "lines": [],
+  "plot": {
+   "bottom": 1870.04,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 720.0
+  },
+  "rc": 0
+ },
+ "fx.fysize": {
+  "cmd": " twoway scatter mpg weight, fysize(50) plotregion(lcolor(\"1 2 3\")) graphregion(lcolor(\"4 5 6\")) name(zg1, replace)",
+  "first": "",
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "lines": [],
+  "plot": {
+   "bottom": 1870.04,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 720.0
+  },
+  "rc": 0
+ },
+ "maxaxes.0": {
+  "cmd": " twoway scatter mpg weight, maxaxes(0) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.0_y1": {
+  "cmd": " twoway (scatter mpg weight, yaxis(1)), maxaxes(0) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.10": {
+  "cmd": " twoway scatter mpg weight, maxaxes(10) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.1_x2": {
+  "cmd": " twoway (scatter mpg weight) (scatter mpg price, xaxis(2)), maxaxes(1) name(zg1, replace)",
+  "first": "xaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "xaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_x2y2": {
+  "cmd": " twoway (scatter price weight, xaxis(2)) (scatter mpg weight, yaxis(2)), maxaxes(1) name(zg1, replace)",
+  "first": "xaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "xaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_y1": {
+  "cmd": " twoway scatter mpg weight, maxaxes(1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.1_y12": {
+  "cmd": " twoway (scatter mpg weight, yaxis(1 2)), maxaxes(1) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_y2": {
+  "cmd": " twoway (scatter mpg weight) (scatter price weight, yaxis(2)), maxaxes(1) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_y2_one": {
+  "cmd": " twoway scatter mpg weight, yaxis(2) maxaxes(1) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_y2_then_x2": {
+  "cmd": " twoway (scatter mpg weight, yaxis(2)) (scatter price weight, xaxis(2)), maxaxes(1) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_y2x2": {
+  "cmd": " twoway (scatter mpg weight, yaxis(2) xaxis(2)), maxaxes(1) name(zg1, replace)",
+  "first": "xaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "xaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.1_ytitle2": {
+  "cmd": " twoway scatter mpg weight, ytitle(T, axis(2)) maxaxes(1) name(zg1, replace)",
+  "first": "ytitle(T, axis(2)) not allowed, yaxis2 does not exist",
+  "lines": [
+   "ytitle(T, axis(2)) not allowed, yaxis2 does not exist"
+  ],
+  "rc": 198
+ },
+ "maxaxes.2_5": {
+  "cmd": " twoway scatter mpg weight, maxaxes(2.5) name(zg1, replace)",
+  "first": "option maxaxes() not allowed",
+  "lines": [
+   "option maxaxes() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.2_y2": {
+  "cmd": " twoway (scatter mpg weight) (scatter price weight, yaxis(2)), maxaxes(2) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.2_y3": {
+  "cmd": " twoway (scatter mpg weight) (scatter price weight, yaxis(3)), maxaxes(2) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.9": {
+  "cmd": " twoway scatter mpg weight, maxaxes(9) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.group_1_y2": {
+  "cmd": " twoway (scatter mpg weight, maxaxes(1)) (scatter price weight, yaxis(2)), name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "maxaxes.in_group": {
+  "cmd": " twoway (scatter mpg weight, maxaxes(x)) (line mpg weight), name(zg1, replace)",
+  "first": "option maxaxes() not allowed",
+  "lines": [
+   "option maxaxes() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.neg": {
+  "cmd": " twoway scatter mpg weight, maxaxes(-1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.spell_maxa": {
+  "cmd": " twoway scatter mpg weight, maxa(1) name(zg1, replace)",
+  "first": "option maxa() not allowed",
+  "lines": [
+   "option maxa() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.spell_maxax": {
+  "cmd": " twoway scatter mpg weight, maxax(1) name(zg1, replace)",
+  "first": "option maxax() not allowed",
+  "lines": [
+   "option maxax() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.spell_maxaxe": {
+  "cmd": " twoway scatter mpg weight, maxaxe(1) name(zg1, replace)",
+  "first": "option maxaxe() not allowed",
+  "lines": [
+   "option maxaxe() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.spell_maxaxes": {
+  "cmd": " twoway scatter mpg weight, maxaxes(1) name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "maxaxes.x": {
+  "cmd": " twoway scatter mpg weight, maxaxes(x) name(zg1, replace)",
+  "first": "option maxaxes() not allowed",
+  "lines": [
+   "option maxaxes() not allowed"
+  ],
+  "rc": 198
+ },
+ "maxaxes.y10": {
+  "cmd": " twoway scatter mpg weight, yaxis(10) name(zg1, replace)",
+  "first": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "lines": [
+   "yaxis() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "notitling.alone": {
+  "cmd": " twoway scatter mpg weight, notitling name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "notitling.bare": {
+  "cmd": " twoway scatter mpg weight, title(T x) notitling name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"T x\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"T x\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.caption": {
+  "cmd": " twoway scatter mpg weight, caption(\"T\") notitling name(zg1, replace)",
+  "first": "caption.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "caption.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.caption_note": {
+  "cmd": " twoway scatter mpg weight, caption(\"C\") note(\"N\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"N\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"N\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.caption_subtitle": {
+  "cmd": " twoway scatter mpg weight, caption(\"C\") subtitle(\"S\") notitling name(zg1, replace)",
+  "first": "caption.edit , mtextq(`\"\"C\"\"') : class type not found",
+  "lines": [
+   "caption.edit , mtextq(`\"\"C\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.first": {
+  "cmd": " twoway scatter mpg weight, notitling title(\"T\") name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.in_group": {
+  "cmd": " twoway (scatter mpg weight, title(\"T\") notitling), name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.note": {
+  "cmd": " twoway scatter mpg weight, note(\"T\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.note_caption": {
+  "cmd": " twoway scatter mpg weight, note(\"N\") caption(\"C\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"N\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"N\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.note_title": {
+  "cmd": " twoway scatter mpg weight, note(\"N\") title(\"T\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"N\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"N\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.spell_notitl": {
+  "cmd": " twoway scatter mpg weight, title(\"T\") notitl name(zg1, replace)",
+  "first": "option notitl not allowed",
+  "lines": [
+   "option notitl not allowed"
+  ],
+  "rc": 198
+ },
+ "notitling.subtitle": {
+  "cmd": " twoway scatter mpg weight, subtitle(\"T\") notitling name(zg1, replace)",
+  "first": "subtitle.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "subtitle.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.subtitle_note": {
+  "cmd": " twoway scatter mpg weight, subtitle(\"S\") note(\"N\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"N\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"N\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.subtitle_title": {
+  "cmd": " twoway scatter mpg weight, subtitle(\"S\") title(\"T\") notitling name(zg1, replace)",
+  "first": "subtitle.edit , mtextq(`\"\"S\"\"') : class type not found",
+  "lines": [
+   "subtitle.edit , mtextq(`\"\"S\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.title": {
+  "cmd": " twoway scatter mpg weight, title(\"T\") notitling name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.title_caption": {
+  "cmd": " twoway scatter mpg weight, title(\"T\") caption(\"C\") notitling name(zg1, replace)",
+  "first": "caption.edit , mtextq(`\"\"C\"\"') : class type not found",
+  "lines": [
+   "caption.edit , mtextq(`\"\"C\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.title_note": {
+  "cmd": " twoway scatter mpg weight, title(\"T\") note(\"N\") notitling name(zg1, replace)",
+  "first": "note.edit , mtextq(`\"\"N\"\"') : class type not found",
+  "lines": [
+   "note.edit , mtextq(`\"\"N\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.title_opts": {
+  "cmd": " twoway scatter mpg weight, title(\"T\", size(small)) notitling name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"\"T\"\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"\"T\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.title_subtitle": {
+  "cmd": " twoway scatter mpg weight, title(\"T\") subtitle(\"S\") notitling name(zg1, replace)",
+  "first": "subtitle.edit , mtextq(`\"\"S\"\"') : class type not found",
+  "lines": [
+   "subtitle.edit , mtextq(`\"\"S\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "notitling.two_strings": {
+  "cmd": " twoway scatter mpg weight, title(\"A\" \"B\") notitling name(zg1, replace)",
+  "first": "title.edit , mtextq(`\"\"A\" \"B\"\"') : class type not found",
+  "lines": [
+   "title.edit , mtextq(`\"\"A\" \"B\"\"') : class type not found"
+  ],
+  "rc": 4018
+ },
+ "omit.after_comma": {
+  "cmd": " twoway (scatter mpg weight), omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.alone": {
+  "cmd": " twoway scatter mpg weight, omitanymiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.bars": {
+  "cmd": " twoway scatter mpg weight || line mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.bars_two_lists": {
+  "cmd": " twoway scatter mpg weight, omitanymiss || line mpg weight, omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.between": {
+  "cmd": " twoway scatter mpg weight, omitanymiss msymbol(O) omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.histogram": {
+  "cmd": " twoway histogram mpg, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.lfit": {
+  "cmd": " twoway lfit mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.lfit_scatter": {
+  "cmd": " twoway (lfit mpg weight, omitanymiss) (scatter mpg weight, omitallmiss), name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.line": {
+  "cmd": " twoway line mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.list_and_comma": {
+  "cmd": " twoway (scatter mpg weight, omitanymiss), omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitallm_omitdup": {
+  "cmd": " twoway scatter mpg weight, omitallm omitdup name(zg1, replace)",
+  "first": "option omitallmissomitdupmiss not allowed",
+  "lines": [
+   "option omitallmissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitallm_omitn": {
+  "cmd": " twoway scatter mpg weight, omitallm omitn name(zg1, replace)",
+  "first": "option omitallmissomitnothing not allowed",
+  "lines": [
+   "option omitallmissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitanym_omitallm": {
+  "cmd": " twoway scatter mpg weight, omitanym omitallm name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitanym_omitdup": {
+  "cmd": " twoway scatter mpg weight, omitanym omitdup name(zg1, replace)",
+  "first": "option omitanymissomitdupmiss not allowed",
+  "lines": [
+   "option omitanymissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitanym_omitn": {
+  "cmd": " twoway scatter mpg weight, omitanym omitn name(zg1, replace)",
+  "first": "option omitanymissomitnothing not allowed",
+  "lines": [
+   "option omitanymissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.min_omitdup_omitn": {
+  "cmd": " twoway scatter mpg weight, omitdup omitn name(zg1, replace)",
+  "first": "option omitdupmissomitnothing not allowed",
+  "lines": [
+   "option omitdupmissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.mixed": {
+  "cmd": " twoway scatter mpg weight, omitanym omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.nodraw": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitdupmiss nodraw",
+  "first": "option omitanymissomitdupmiss not allowed",
+  "lines": [
+   "option omitanymissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitallmiss_omitdupmiss": {
+  "cmd": " twoway scatter mpg weight, omitallmiss omitdupmiss name(zg1, replace)",
+  "first": "option omitallmissomitdupmiss not allowed",
+  "lines": [
+   "option omitallmissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitallmiss_omitnothing": {
+  "cmd": " twoway scatter mpg weight, omitallmiss omitnothing name(zg1, replace)",
+  "first": "option omitallmissomitnothing not allowed",
+  "lines": [
+   "option omitallmissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitanymiss_omitallmiss": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitanymiss_omitdupmiss": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitdupmiss name(zg1, replace)",
+  "first": "option omitanymissomitdupmiss not allowed",
+  "lines": [
+   "option omitanymissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitanymiss_omitnothing": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitnothing name(zg1, replace)",
+  "first": "option omitanymissomitnothing not allowed",
+  "lines": [
+   "option omitanymissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.omitdupmiss_omitnothing": {
+  "cmd": " twoway scatter mpg weight, omitdupmiss omitnothing name(zg1, replace)",
+  "first": "option omitdupmissomitnothing not allowed",
+  "lines": [
+   "option omitdupmissomitnothing not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.reversed": {
+  "cmd": " twoway scatter mpg weight, omitallmiss omitanymiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.scatter_lfit": {
+  "cmd": " twoway (scatter mpg weight, omitallmiss) (lfit mpg weight, omitanymiss), name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.three": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitallmiss omitdupmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmissomitdupmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmissomitdupmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.twice": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitanymiss name(zg1, replace)",
+  "first": "option omitanymiss not allowed",
+  "lines": [
+   "option omitanymiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.two_lists": {
+  "cmd": " twoway (scatter mpg weight, omitanymiss) (line mpg weight, omitallmiss), name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.two_lists_reversed": {
+  "cmd": " twoway (scatter mpg weight, omitallmiss) (line mpg weight, omitanymiss), name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.two_lists_same": {
+  "cmd": " twoway (scatter mpg weight, omitanymiss) (line mpg weight, omitanymiss), name(zg1, replace)",
+  "first": "option omitanymiss not allowed",
+  "lines": [
+   "option omitanymiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_area": {
+  "cmd": " twoway area mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_bar": {
+  "cmd": " twoway bar mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_connected": {
+  "cmd": " twoway connected mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_contour": {
+  "cmd": " twoway contour gz gy gx, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_contourline": {
+  "cmd": " twoway contourline gz gy gx, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_dot": {
+  "cmd": " twoway dot mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_dropline": {
+  "cmd": " twoway dropline mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_fpfit": {
+  "cmd": " twoway fpfit mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_fpfitci": {
+  "cmd": " twoway fpfitci mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_function": {
+  "cmd": " twoway function y = x, range(0 1) omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_histogram": {
+  "cmd": " twoway histogram mpg, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_kdensity": {
+  "cmd": " twoway kdensity mpg, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_lfit": {
+  "cmd": " twoway lfit mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_lfitci": {
+  "cmd": " twoway lfitci mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_line": {
+  "cmd": " twoway line mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_lowess": {
+  "cmd": " twoway lowess mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_lpoly": {
+  "cmd": " twoway lpoly mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_lpolyci": {
+  "cmd": " twoway lpolyci mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_mband": {
+  "cmd": " twoway mband mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_mspline": {
+  "cmd": " twoway mspline mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_pcarrow": {
+  "cmd": " twoway pcarrow mpg weight trunk turn, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_pcarrowi": {
+  "cmd": " twoway pcarrowi 20 2000 30 4000, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_pcbarrow": {
+  "cmd": " twoway pcbarrow mpg weight trunk turn, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_pccapsym": {
+  "cmd": " twoway pccapsym mpg weight trunk turn, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_pci": {
+  "cmd": " twoway pci 20 2000 30 4000, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_pcscatter": {
+  "cmd": " twoway pcscatter mpg weight trunk turn, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_pcspike": {
+  "cmd": " twoway pcspike mpg weight trunk turn, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_qfit": {
+  "cmd": " twoway qfit mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_qfitci": {
+  "cmd": " twoway qfitci mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_rarea": {
+  "cmd": " twoway rarea yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rbar": {
+  "cmd": " twoway rbar yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rcap": {
+  "cmd": " twoway rcap yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rcapsym": {
+  "cmd": " twoway rcapsym yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rconnected": {
+  "cmd": " twoway rconnected yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rline": {
+  "cmd": " twoway rline yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rpcap": {
+  "cmd": " twoway rpcap yl yh mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rpspike": {
+  "cmd": " twoway rpspike yl yh mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rscatter": {
+  "cmd": " twoway rscatter yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_rspike": {
+  "cmd": " twoway rspike yl yh weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_scatter": {
+  "cmd": " twoway scatter mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_scatteri": {
+  "cmd": " twoway scatteri 20 2000, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "",
+  "lines": [],
+  "rc": 0
+ },
+ "omit.type_spike": {
+  "cmd": " twoway spike mpg weight, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_tsline": {
+  "cmd": " twoway tsline mpg, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ },
+ "omit.type_tsrline": {
+  "cmd": " twoway tsrline yl yh, omitanymiss omitallmiss name(zg1, replace)",
+  "first": "option omitanymissomitallmiss not allowed",
+  "lines": [
+   "option omitanymissomitallmiss not allowed"
+  ],
+  "rc": 198
+ }
+}

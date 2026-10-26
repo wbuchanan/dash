@@ -109,6 +109,11 @@
 *!       blanks outside parentheses, "quotes" and compound quotes (WP-31
 *!       B4b, read by dash.ado's _dash_contour_split).
 *!
+*!   _dash_omit_pair(opts, ptypes)
+*!       twoway's message word for two omit options in one command
+*!       (omitanymissomitallmiss), "" when it takes them (WP-35
+*!       basic:PT-8).
+*!
 *!   _dash_rightmost_keep(names, flags)
 *!       1 for each option token kept, 0 for an earlier copy of a valued
 *!       option twoway takes rightmost; flags keep every copy (WP-35 MS-1).
@@ -8675,6 +8680,52 @@ real scalar _dash_tw_takes(string scalar tok, string scalar ptype,
     t  = _dash_rep_und_tab()
     ok = _dash_rep_und_rows(t, graph ? "" : ptype)
     return(_dash_rep_und_row(tok, t, ok) > 0)
+}
+
+// _dash_omit_pair(opts, ptypes) -- twoway's refusal of two omit options
+// in one command (WP-35 basic:PT-8): "" unless the bare words of the
+// option text opts that reach omitanymiss, omitallmiss, omitdupmiss or
+// omitnothing from their minimum (omitanym, omitallm, omitdup, omitn)
+// occur twice or more and one of the plot types ptypes is a type twoway
+// checks them on; then the message word, the distinct words in full, in
+// that order, joined with no blank -- "omitanymissomitallmiss" for
+// omitallmiss omitanymiss, "omitanymiss" for the word twice (measured,
+// test/fixtures/graph_refusal_truth.json omit.*).  lfit, lfitci, qfit,
+// qfitci, fpfit, fpfitci, scatteri, pci and pcarrowi alone take a pair.
+string scalar _dash_omit_pair(string scalar opts, string scalar ptypes)
+{
+    string rowvector tok, w, m, pt
+    string scalar    t, out
+    real rowvector   seen
+    real scalar      i, j, n, L, chk
+
+    pt  = tokens(ptypes)
+    chk = 0
+    for (i = 1; i <= cols(pt); i++) {
+        if (!anyof(("lfit", "lfitci", "qfit", "qfitci", "fpfit", "fpfitci",
+                    "scatteri", "pci", "pcarrowi"), pt[i])) chk = 1
+    }
+    if (!chk) return("")
+    w    = ("omitanymiss", "omitallmiss", "omitdupmiss", "omitnothing")
+    m    = ("omitanym", "omitallm", "omitdup", "omitn")
+    seen = J(1, 4, 0)
+    n    = 0
+    tok  = _dash_opt_tokens(opts)
+    for (i = 1; i <= cols(tok); i++) {
+        t = tok[i]
+        L = strlen(t)
+        for (j = 1; j <= 4; j++) {
+            if (L >= strlen(m[j]) & L <= strlen(w[j]) &
+                substr(w[j], 1, L) == t) {
+                seen[j] = 1
+                n++
+            }
+        }
+    }
+    if (n < 2) return("")
+    out = ""
+    for (j = 1; j <= 4; j++) if (seen[j]) out = out + w[j]
+    return(out)
 }
 
 // _dash_tw_refuses_tab() -- the options dash declares that twoway refuses

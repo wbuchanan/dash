@@ -391,6 +391,10 @@
 *!   U32-11 (WP-31 C8d) pcycle() with a fraction on 1, 2, 3, 4 and 16
 *!          series, and a ci fit counted as two: dash's rc is twoway's
 *!          (pcycle_fraction_truth.json)
+*! Graph-wide refusals (WP-35 section 35-06; graph_refusal_truth.json),
+*! each command on the one-line route and with name():
+*!   Q3506-1 (basic:PT-8) two omit options anywhere in one command refused
+*!          r(198) in twoway's words; one drawn as twoway draws it
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -3351,6 +3355,97 @@ _ov_assert Q3307-4 "(`_q4ok' == 1)" "a registration after a refused one records 
 drop zz
 frame drop cars
 capture dash clear
+
+// ----------------------------------------------------------------
+// Q3506 (WP-35 section 35-06): graph-wide refusals in twoway's words.
+// Each key of test/fixtures/graph_refusal_truth.json is run through dash
+// on the one-line route and with name(): dash's rc must be the fixture's,
+// and for a refusal its first printed line the fixture's first line.
+// The helpers are reached through __main__ from inside the program
+// (cert_svg.do's TRAP note).
+// ----------------------------------------------------------------
+python:
+import json as _q3506_json
+from sfi import Macro as _q3506_M
+_q3506_fx = _q3506_json.load(open("fixtures/graph_refusal_truth.json", encoding="utf-8"))
+
+
+def _q3506_keys(prefix):
+    _q3506_M.setLocal("q_keys", " ".join(sorted(k for k in _q3506_fx if k.startswith(prefix))))
+
+
+def _q3506_take(key):
+    r = _q3506_fx[key]
+    c = r["cmd"].strip()
+    if c.startswith("twoway "):
+        c = c[len("twoway "):]
+    c = c.replace(" name(zg1, replace)", "").rstrip()
+    _q3506_M.setLocal("q_cmd", c)
+    _q3506_M.setLocal("q_rc", str(r["rc"]))
+
+
+def _q3506_judge(key, path, rc):
+    r = _q3506_fx[key]
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        text = ""
+    lines = [ln.strip() for ln in text.replace("\n> ", "").splitlines()
+             if ln.strip() and not ln.lstrip().startswith(("(note:", "log:", "log type:", "opened on:", "closed on:", "name:"))
+             and not ln.startswith("---")]
+    got = lines[0] if lines else ""
+    ok = int(rc) == r["rc"] and (r["rc"] == 0 or got == r["first"])
+    _q3506_M.setLocal("q_ok", "1" if ok else "0")
+    _q3506_M.setLocal("q_got", got[:200])
+    _q3506_M.setLocal("q_want", r["first"][:200])
+end
+
+capture program drop _q3506
+program define _q3506
+    version 16.0
+    args id key
+    local logfile "`c(tmpdir)'dash_ov.log"
+    python: import __main__ as _q3506_main; _q3506_main._q3506_take("`key'")
+    foreach route in line named {
+        local c `"`macval(q_cmd)'"'
+        if "`route'" == "line" {
+            if substr(`"`macval(c)'"', -1, 1) == "," local c = substr(`"`macval(c)'"', 1, strlen(`"`macval(c)'"') - 1)
+        }
+        else local c `"`macval(c)' name(q3506r)"'
+        set linesize 255
+        capture dash clear
+        capture log close _ovlog
+        capture erase "`logfile'"
+        quietly log using "`logfile'", name(_ovlog) text replace
+        capture noisily dash `macval(c)'
+        local rc = _rc
+        quietly log close _ovlog
+        python: import __main__ as _q3506_main; _q3506_main._q3506_judge("`key'", r"`logfile'", "`rc'")
+        _ov_assert `id' "(`q_ok' == 1)" `"`key' (`route'): rc `rc' (twoway `q_rc'); dash said: `macval(q_got)'; twoway: `macval(q_want)'"'
+    }
+    capture dash clear
+end
+
+// Q3506-1 (basic:PT-8, syn:SD-10): two omit options anywhere in one
+// command -- one list, two lists, after the comma, the same word twice --
+// refused, r(198), naming twoway's words in its order; one drawn; a pair
+// on each of the forty-four types, drawn where twoway draws it (the fits
+// lfit, qfit, fpfit and their ci forms, scatteri, pci, pcarrowi): every
+// omit.* key of the fixture.
+// The data the fixture's commands were run on (extract_graph_refusal_truth.do).
+quietly sysuse auto, clear
+quietly generate yl = mpg - 1
+quietly generate yh = mpg + 1
+quietly generate t = _n
+quietly tsset t
+quietly generate gx = mod(_n - 1, 9) + 1 if _n <= 72
+quietly generate gy = floor((_n - 1) / 9) + 1 if _n <= 72
+quietly generate gz = gx * gy + gy
+python: _q3506_keys("omit.")
+foreach _q1k of local q_keys {
+    _q3506 Q3506-1 `_q1k'
+}
 
 // Summary
 // ----------------------------------------------------------------

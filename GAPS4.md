@@ -359,7 +359,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit pending.
 - **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
-- **basic:PT-8 Tracked:** Open (WP-35 section 35-06).
+- **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit pending.
 - **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
 - **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
