@@ -867,6 +867,10 @@ and now matches Stata.
 - function subchar() names the expression's variable, as twoway reads it: function y = t^2, subchar(t) is drawn (dash refused it, r(111)), and subchar(1t) is refused, r(198), "1t invalid name" (dash refused it with r(111), "error in expression"). (WP-35, stat:PT-6)
 - mspline bands(-1), fpfitci n(0) and lfit n(-1) are accepted and drawn as twoway draws them; dash refused them, r(198). lfit, qfit, lfitci and qfitci n(0) is refused in twoway's words, "'0' invalid observation number". (WP-35, stat:PT-9)
 - ty() on lfitci, qfitci, fpfitci and lpolyci is accepted, as twoway accepts it (only type() in full is refused); dash refused it, r(198). (WP-35, syn:SD-7)
+- dot dsi() is read as dsize(), as twoway reads it; dash named it as not drawn. (WP-35, syn:SD-20a)
+- s() and symbol() are read as msymbol(), as twoway reads them (dash named them as not drawn); smoothplot() is kept under its own key. (WP-35, syn:SD-20c)
+- colorvar zl() and zt() are read as zlabel() and ztitle(), as twoway reads them; dash named them as not drawn. (WP-35, syn:SD-20d)
+- clcolor(), clpattern(), clstyle() and clwidth() on scatter are recorded for its connecting line, as twoway reads them; dash dropped them. (WP-35, syn:SD-20e)
 
 ### Removed
 

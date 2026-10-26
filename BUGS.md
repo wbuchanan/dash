@@ -5816,35 +5816,35 @@
   - Suggested fix: Skip the run when the library exists, or suppress its output; add a cscript with discard
   - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
 
-- [ ] Title: dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe
+- [x] Title: dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe
   - File Names and Line Numbers: abbrev_truth options.dsize (dot mpg weight, dsi(small)); dash.ado _dash_parse_plot_opts
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20a (WP-35, section 35-03, Fix).
   - Suggested fix: Declare dsize() with twoway's minimum dsi
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-20a). _dash_parse_plot_opts declares DSIze, twoway's minimum dsi, so dot dsi() is dsize() (it was noted and dropped); abbrev_truth.json is re-extracted and both ABBREV_KNOWN rows are gone; both modes draw the spec. Pinned by test/test_abbreviations.py::test_declared_minimums_cover_stata_minimums, test/test_abbreviations.py::TestTheLivePin::test_every_declared_option_is_taken_at_twoways_minimum, test/test_wp35_truth.cscript Q3503-7; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20a (WP-35, syn:SD-20a).
 
-- [ ] Title: fpfit est(), twoway's minimum of estcmd(), is bound to estopts()
+- [x] Title: fpfit est(), twoway's minimum of estcmd(), is bound to estopts()
   - File Names and Line Numbers: abbrev_truth options.estcmd (fpfit mpg weight, est(fp)); dash.ado _dash_parse_plot_opts
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20b (WP-35, section 35-03, Fix).
   - Suggested fix: Declare estcmd() with twoway's minimum est, so est() reaches estcmd()
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-20b). Measured again with a value that tells the two apart (glm; stat_accept_truth.json sd20b.*): twoway_fpfit_parse.class's ESTopts takes est(), so fpfit est(glm) draws estopts(glm)'s graph and estcmd()'s minimum is estc -- dash already read both so; the record was wrong (est(fp) fails under either). scripts/extract_abbrev_truth.do probes estcmd() with glm, abbrev_truth.json is re-extracted and both ABBREV_KNOWN rows are gone. Pinned by test/test_abbreviations.py::test_declared_minimums_cover_stata_minimums, test/test_wp35_truth.cscript Q3503-8; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20b (WP-35, syn:SD-20b).
 
-- [ ] Title: lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key
+- [x] Title: lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key
   - File Names and Line Numbers: abbrev_truth options.smoothplot (lpolyci mpg weight, s(line))
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20c (WP-35, section 35-03, Fix).
   - Suggested fix: Measure what twoway binds s() to on the ci types and read it the same way
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-20c). Measured (stat_accept_truth.json sd20c.*): twoway reads s() as symbol(), twoway_yxview_parse.class's older spelling of msymbol(), on every plot type (lpolyci s(line) is msymbol(line); scatter s(Oh) draws msymbol(Oh)), and smoothplot()'s minimum is smoothp. _dash_fold_stat_words reads s() .. symbol() as msymbol() (the generated _dash_tw_takes_tab loses its symbol row; catchall_options_truth.json re-extracted; dash.sthlp's Older spellings entry says so), _dash_fit_opts_check keeps smoothplot() in the spec under its key, and extract_abbrev_truth.do's return-code-only oracle takes a prefix only when it too leaves no trace; abbrev_truth.json re-extracted, both ABBREV_KNOWN rows gone. Pinned by test/test_abbreviations.py::TestTheLivePin::test_every_declared_option_is_taken_at_twoways_minimum, test/test_wp35_truth.cscript Q3503-9; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20c (WP-35, syn:SD-20c).
 
-- [ ] Title: colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle
+- [x] Title: colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle
   - File Names and Line Numbers: abbrev_truth options.zlabel, options.ztitle (scatter mpg weight, colorvar(turn) zl(10(10)50))
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20d (WP-35, section 35-03, Fix).
   - Suggested fix: Declare zlabel() and ztitle() with twoway's minimums zl and zt
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-20d). Both parsers declare ZLabel and ZTitle, twoway's minimums zl and zt, so colorvar zl() and zt() are zlabel() and ztitle() (they were noted); dash.sthlp's entries show the minimums; abbrev_truth.json re-extracted, the four ABBREV_KNOWN rows gone; both modes draw the spec. Pinned by test/test_abbreviations.py::test_declared_minimums_cover_stata_minimums, test/test_wp35_truth.cscript Q3503-10; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20d (WP-35, syn:SD-20d).
 
-- [ ] Title: clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated
+- [x] Title: clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated
   - File Names and Line Numbers: abbrev_truth options.clcolor, clpattern, clstyle, clwidth (scatter mpg weight, clc(red))
   - Description: Measured by WP-33 section 33-10 (syn:SD-20) in test/fixtures/abbrev_truth.json (scripts/extract_abbrev_truth.do); a binding difference no audit item covers, registered by the maintainer ruling D42 (21oct2026). Registered as GAPS4 syn:SD-20e (WP-35, section 35-03, Fix).
   - Suggested fix: Record them for scatter's connecting line as twoway reads them
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): an abbreviation twoway reads is not read as twoway reads it.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-20e). _dash_fold_cl keeps clcolor(), clpattern(), clstyle() and clwidth() on scatter, whose connecting line twoway styles with them (drawn with connect(); without it twoway draws nothing for them, so neither does dash), and clwidth()'s rule takes any width there (clwidth=style@scatter), as twoway never evaluates it; abbrev_truth.json re-extracted, the four ABBREV_KNOWN rows gone. Pinned by test/test_abbreviations.py::TestTheLivePin::test_every_declared_option_is_taken_at_twoways_minimum, test/test_wp35_truth.cscript Q3503-11; fixture test/fixtures/abbrev_truth.json. Closes GAPS4 syn:SD-20e (WP-35, syn:SD-20e).
 
 - [ ] Title: by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them
   - File Names and Line Numbers: test/fixtures/by_text_truth.json bp43-bp45 (twoway scatter mpg weight, by(foreign, title("X", position(5|6|7)))); test/test_by_text.py BY_POSITION_KNOWN

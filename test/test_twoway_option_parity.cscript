@@ -375,11 +375,15 @@ foreach tt of local types {
         display as error "TP-01 FAIL `tt': clcolor()/clpattern()/clwidth() named in the note"
         local bad = 1
     }
-    else if `draws' & `nkeys' != 3 {
+    // Flipped (WP-35 syn:SD-20e, ruling D42): scatter's connecting line,
+    // drawn with connect(), is what twoway reads the three for, so dash
+    // records them there too (the renderer draws no line without
+    // connect()); dropping them was wrong because twoway reads them.
+    else if (`draws' | "`tt'" == "scatter") & `nkeys' != 3 {
         display as error "TP-01 FAIL `tt': twoway draws the connecting line, but the spec carries `nkeys' of the three keys"
         local bad = 1
     }
-    else if !`draws' & `nkeys' != 0 {
+    else if !`draws' & "`tt'" != "scatter" & `nkeys' != 0 {
         display as error "TP-01 FAIL `tt': twoway draws no connecting line (clX draws nothing), but the spec carries `nkeys' of the three keys"
         local bad = 1
     }

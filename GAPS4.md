@@ -350,11 +350,11 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit pending.
-- **syn:SD-20a Tracked:** Open (WP-35 section 35-03).
-- **syn:SD-20b Tracked:** Open (WP-35 section 35-03).
-- **syn:SD-20c Tracked:** Open (WP-35 section 35-03).
-- **syn:SD-20d Tracked:** Open (WP-35 section 35-03).
-- **syn:SD-20e Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-20a Tracked:** Closed in WP-35, BUGS.md "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe", commit pending.
+- **syn:SD-20b Tracked:** Closed in WP-35, BUGS.md "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()", commit pending.
+- **syn:SD-20c Tracked:** Closed in WP-35, BUGS.md "lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key", commit pending.
+- **syn:SD-20d Tracked:** Closed in WP-35, BUGS.md "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle", commit pending.
+- **syn:SD-20e Tracked:** Closed in WP-35, BUGS.md "clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated", commit pending.
 - **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit pending.
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit pending.

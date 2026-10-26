@@ -644,7 +644,10 @@ class TestTheParsersFoundSomething:
         # 265 -> 265: WP-32 heatmap and outlines leave the Unsupported
         # entries for two entries of the contour paragraph.
         # 265 -> 266: dash image's alt() (WP-33 33-06).
-        assert len(found) == 266, (
+        # 266 -> 265: WP-35 syn:SD-20c symbol() leaves the Unsupported
+        # list (read as msymbol()); subchar() left it and joined the
+        # synopts (stat:PT-6), one for one.
+        assert len(found) == 265, (
             f"{len(found)} options parsed out of dash.sthlp, 266 measured "
             f"21oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -810,7 +813,8 @@ class TestTheParsersFoundSomething:
         # 60 -> 59: WP-32 baroffset() on rbar beside mwidth drawn
         # (catchall_options_truth.json re-extracted).
         # 59 -> 58: WP-35 stat:PT-6 subchar() drawn on function
-        assert len(_unsupported_section()) == 58
+        # 58 -> 57: WP-35 syn:SD-20c symbol() read as msymbol()
+        assert len(_unsupported_section()) == 57
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared

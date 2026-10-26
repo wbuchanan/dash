@@ -4455,8 +4455,8 @@ the plot specification).
 {synopt:{cmdab:xl:abel(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
-{synopt:{cmdab:zti:tle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
-{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...][{cmd:, format(}{it:%fmt}{cmd:)}]{cmd:)}}colour-key ticks and number format; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zt:itle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zl:abel(}{it:#}[{it:#} ...][{cmd:, format(}{it:%fmt}{cmd:)}]{cmd:)}}colour-key ticks and number format; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:zsc:ale(}{it:range() log reverse}{cmd:)}}colour-bar range, scale and direction; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:xli:ne(}{it:linearg}{cmd:)}}vertical reference lines; see
     {it:Reference lines} below{p_end}
@@ -6630,10 +6630,12 @@ in either direction.
     on every plot type; {cmd:dash} draws no back marker, and names them.
 
 {phang2}{ul:Older spellings.}
-    {opt symbol(symbolstyle)}, {opt msymangle(anglestyle)} and
+    {opt msymangle(anglestyle)} and
     {opt mlabels(varname)} -- spellings {cmd:twoway} also takes for
-    {cmd:msymbol()}, {cmd:msangle()} and {cmd:mlabel()}.  {cmd:dash} takes
+    {cmd:msangle()} and {cmd:mlabel()}.  {cmd:dash} takes
     the names in this file, draws the default for these, and names them.
+    (The older spelling symbol, s at its shortest, is read as
+    {cmd:msymbol()}, as {cmd:twoway} reads it.)
 
 {phang2}{ul:Marker-label text layout.}
     {opt mlabalignment(alignmentstyle)},

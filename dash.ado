@@ -1001,7 +1001,7 @@ program define _dash_parse_graph_opts, sclass
         YTI2(string asis) ///
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
-        ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        ZLabel(string asis)       ZTitle(string asis)       ZSCale(string asis) ///
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
@@ -1293,7 +1293,7 @@ program define _dash_parse_plot_opts, sclass
         ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
         DSTyle(string asis)       DLstyle(string asis)      BMLinestyle(string asis) ///
         DOTEXtend(string) NDOTs(string) Dsymbol(string asis) DColor(string asis) ///
-        DFColor(string asis) DSIZe(string asis) DLColor(string asis) ///
+        DFColor(string asis) DSIze(string asis) DLColor(string asis) ///
         DLWidth(string asis) DLAlign(string asis) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
@@ -1330,7 +1330,7 @@ program define _dash_parse_plot_opts, sclass
         YSC2(string asis)         YTI2(string asis) ///
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
-        ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        ZLabel(string asis)       ZTitle(string asis)       ZSCale(string asis) ///
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
@@ -2230,6 +2230,31 @@ program define _dash_fold_stat_words, sclass
             if _rc c_local _fsw_subc "bad"
         }
     }
+    // s() .. symbol() (syn:SD-20c): twoway_yxview_parse.class's Symbol,
+    // factored as msymbol() is, on every plot type -- lpolyci s(line) is
+    // msymbol(line), and scatter s(Oh) draws msymbol(Oh)'s SVG
+    // (stat_accept_truth.json sd20c.*) -- read as msymbol() when no
+    // msymbol() is given, the rightmost copy kept, and taken out of the
+    // catch-all, by value.
+    mata: _fsw_u = _dash_opt_tokens(st_global("s(_unknown)"))
+    mata: st_local("_fsw_k", strofreal(cols(_fsw_u)))
+    local _fsw_sy ""
+    local _fsw_rest ""
+    forvalues _fi = 1/`_fsw_k' {
+        mata: st_local("_fsw_nm", _dash_rep_optname(_fsw_u[`_fi']))
+        mata: st_local("_fsw_p", strofreal(strpos(_fsw_u[`_fi'], "(") > 0))
+        if `_fsw_p' & inlist("`_fsw_nm'", "s", "sy", "sym", "symb", "symbo", "symbol") {
+            mata: st_local("_fsw_sy", substr(_fsw_u[`_fi'], strpos(_fsw_u[`_fi'], "(") + 1, strlen(_fsw_u[`_fi']) - strpos(_fsw_u[`_fi'], "(") - 1))
+            local _fsw_hit 1
+        }
+        else mata: st_local("_fsw_rest", st_local("_fsw_rest") + (st_local("_fsw_rest") == "" ? "" : " ") + _fsw_u[`_fi'])
+    }
+    capture mata: mata drop _fsw_u
+    if "`_fsw_hit'" == "1" {
+        mata: st_local("_fsw_m", strofreal(strtrim(st_global("s(msymbol)")) == ""))
+        if `_fsw_m' sreturn local msymbol : copy local _fsw_sy
+        sreturn local _unknown : copy local _fsw_rest
+    }
     // ty() and typ() on the ci types (syn:SD-7): their parse classes
     // declare TYPE and RECASTas, so only type() in full is refused
     // ("type() option not allowed", by _dash_recast_opt); a shorter
@@ -2306,7 +2331,11 @@ end
 program define _dash_fold_cl, sclass
     version 19
     args ptype
-    local cl_types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci"
+    // scatter (WP-35 syn:SD-20e): twoway reads the four for scatter's
+    // connecting line, drawn when connect() is given, and draws nothing
+    // for them without it; they are kept, so the spec records what twoway
+    // reads, and the renderer draws no line for them.
+    local cl_types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci scatter"
     if `: list ptype in cl_types' exit
     sreturn local clcolor   ""
     sreturn local clpattern ""
@@ -3868,7 +3897,7 @@ program define _dash_option_rules
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var ///
         range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2 ///
-        clwidth=style,0,10000,u ///
+        clwidth=style@scatter  clwidth=style,0,10000,u ///
         alwidth=style,0,10000,u@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
         mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri ///
         mcolor=colour mfcolor=colour mlcolor=colour mlabcolor=colour lcolor=colour fcolor=colour color=colour acolor=colour alcolor=colour bfcolor=colour blcolor=colour clcolor=colour
@@ -5491,7 +5520,7 @@ program define _dash_plot_opts_to_json, rclass
                    mlabprefix mlabsuffix lalign mlabstyle ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
-                   atobs estopts predopts estcmd fitplot ciplot nofit ///
+                   atobs estopts predopts estcmd fitplot ciplot smoothplot nofit ///
                    gap baroffset area boundary droplines nodropbase ///
                    ccuts levels minmax crule scolor ecolor ccolors clabels ///
                    format interp clwidths clpatterns reversekey colorlines ///
@@ -10616,9 +10645,10 @@ end
 //     other name prints twoway's two notes and draws the default line,
 //     or for ciplot() a line at the lower limit; smoothplot() is declared
 //     by twoway_lpolyci_parse.class and never read (the graph is the one
-//     without it), so it is taken and dropped.
+//     without it), so it is taken, kept in the spec under its own key
+//     (WP-35 syn:SD-20c) and drawn as nothing.
 // Called by _dash_process_segment after _dash_validate_opts, with s() in
-// place; it sets s(fitplot), s(ciplot) and s(smoothplot) and nothing
+// place; it sets s(fitplot) and s(ciplot) and nothing
 // else.  Names are echoed through _dash_note, never as SMCL.
 program define _dash_fit_opts_check, sclass
     version 19
@@ -10688,7 +10718,6 @@ program define _dash_fit_opts_check, sclass
         }
         sreturn local ciplot "`_fo_c'"
     }
-    sreturn local smoothplot ""
 end
 
 // ================================================================

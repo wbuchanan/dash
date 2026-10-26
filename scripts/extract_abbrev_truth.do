@@ -306,7 +306,7 @@ zq_opt, opt(logit)                         ctxs(lowess)
 zq_opt, opt(atobs)                         ctxs(lfit lfitci)
 zq_opt, opt(estopts)       value(nocons)   ctxs(lfit lfitci)
 zq_opt, opt(predopts)      value(xb)       ctxs(lfit lfitci)
-zq_opt, opt(estcmd)        value(fp)       ctxs(fpfit)
+zq_opt, opt(estcmd)        value(glm)      ctxs(fpfit)
 zq_opt, opt(fitplot)       value(line)     ctxs(lfitci lpolyci)
 zq_opt, opt(ciplot)        value(rarea)    ctxs(lfitci lpolyci)
 zq_opt, opt(smoothplot)    value(line)     ctxs(lfitci lpolyci)
@@ -932,9 +932,12 @@ for name, meta in sorted(opt_rows.items()):
     minab, probe_cmd, oracle = name, full_cmd, "gph-identity"
     if degenerate:
         oracle = "return-code-only (option leaves no trace in the .gph)"
+        # A prefix is this option's only when it too leaves no trace: one
+        # that does resolved to another option (WP-35 syn:SD-20c: s() on
+        # lpolyci is symbol(), not smoothplot()).
         for k in sorted(cand_by[name]):
             r = cand_by[name][k]
-            if r["rc"] == 0:
+            if r["rc"] == 0 and gph(r["path"]) is not None and gph(r["path"]) == ref:
                 minab = r["pre"]
                 pstr = r["pre"] if val == "" else r["pre"] + "(" + val + ")"
                 probe_cmd = "twoway " + meta["ctxcmd"] + ", " + wpre + pstr + " nodraw"

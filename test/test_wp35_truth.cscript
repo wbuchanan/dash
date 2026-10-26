@@ -813,6 +813,107 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 syn:SD-20a: dot dsi() read as dsize() ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-7: twoway's minimum of dsize() is dsi (abbrev_truth.json
+    // options.dsize; stat_accept_truth.json sd20a.dsi draws dsize()'s SVG).
+    // ------------------------------------------------------------
+    _s03_same Q3503-7 "`w35_work'" auto "dot mpg weight, dsi(small)" "dot mpg weight, dsize(small)"
+    _w35_done Q3503-7 "dsi() is read as dsize()"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 syn:SD-20b: fpfit est() read as twoway reads it ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-8: on fpfit twoway reads est() as estopts() (ESTopts, minimum
+    // est; estcmd()'s is estc): est(glm) draws estopts(glm)'s SVG, not
+    // estcmd(glm)'s (stat_accept_truth.json sd20b.*).
+    // ------------------------------------------------------------
+    _s03_same Q3503-8 "`w35_work'" auto "fpfit mpg weight, est(glm)" "fpfit mpg weight, estopts(glm)"
+    _s03_same Q3503-8 "`w35_work'" auto "fpfit mpg weight, estc(glm)" "fpfit mpg weight, estcmd(glm)"
+    _w35_done Q3503-8 "est() is estopts() and estc() estcmd(), as twoway reads them"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 syn:SD-20c: s() read as symbol() ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-9: twoway reads s() as symbol(), msymbol()'s older spelling,
+    // on lpolyci and scatter alike (stat_accept_truth.json sd20c.*); its
+    // smoothplot() is smoothp() at the shortest, kept in the spec.
+    // ------------------------------------------------------------
+    _s03_same Q3503-9 "`w35_work'" auto "scatter mpg weight, s(Oh)" "scatter mpg weight, msymbol(Oh)"
+    _s03_same Q3503-9 "`w35_work'" auto "scatter mpg weight, symbol(Oh)" "scatter mpg weight, msymbol(Oh)"
+    _s03_same Q3503-9 "`w35_work'" auto "lpolyci mpg weight, s(line)" "lpolyci mpg weight, msymbol(line)"
+    _s03_same Q3503-9 "`w35_work'" auto "lpolyci mpg weight, smoothp(line)" "lpolyci mpg weight, smoothplot(line)"
+    quietly sysuse auto, clear
+    capture dash lpolyci mpg weight, smoothp(line) name(s03g)
+    mata: st_local("s03_k", strofreal(strpos(st_global("dash_json_s03g"), char(34) + "smoothplot" + char(34)) > 0))
+    capture dash clear
+    _w35_expect Q3503-9 "(`s03_k' == 1)" "dash's spec for smoothp() holds no smoothplot"
+    _w35_done Q3503-9 "s() is symbol(), read as msymbol(), and smoothplot() keeps its key"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 syn:SD-20d: colorvar zl() and zt() ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-10: twoway's minimums of zlabel() and ztitle() are zl and zt
+    // (abbrev_truth.json; stat_accept_truth.json sd20d.*).
+    // ------------------------------------------------------------
+    _s03_same Q3503-10 "`w35_work'" auto "scatter mpg weight, colorvar(turn) zl(30(5)50)" "scatter mpg weight, colorvar(turn) zlabel(30(5)50)"
+    _s03_same Q3503-10 "`w35_work'" auto "scatter mpg weight, colorvar(turn) zt(Z)" "scatter mpg weight, colorvar(turn) ztitle(Z)"
+    _w35_done Q3503-10 "zl() and zt() are zlabel() and ztitle()"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 syn:SD-20e: scatter's cl options recorded ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-11: twoway reads clcolor(), clpattern(), clstyle() and
+    // clwidth() on scatter for its connecting line (clc() .. at its
+    // minimum); without connect() it draws nothing for them
+    // (stat_accept_truth.json sd20e.*).  dash records them.
+    // ------------------------------------------------------------
+    _s03_same Q3503-11 "`w35_work'" auto "scatter mpg weight, clc(red)" "scatter mpg weight, clcolor(red)"
+    _s03_same Q3503-11 "`w35_work'" auto "scatter mpg weight, clw(-1)" "scatter mpg weight, clwidth(-1)"
+    quietly sysuse auto, clear
+    capture dash scatter mpg weight, clc(red) clp(dash) cls(p2) clw(thick) name(s03g)
+    local s03_rc = _rc
+    mata: st_local("s03_k", strofreal(strpos(st_global("dash_json_s03g"), char(34) + "clcolor" + char(34)) > 0 & strpos(st_global("dash_json_s03g"), char(34) + "clpattern" + char(34)) > 0 & strpos(st_global("dash_json_s03g"), char(34) + "clstyle" + char(34)) > 0 & strpos(st_global("dash_json_s03g"), char(34) + "clwidth" + char(34)) > 0))
+    capture dash clear
+    _w35_expect Q3503-11 "(`s03_rc' == 0 & `s03_k' == 1)" "dash did not record the four cl options on scatter (rc `s03_rc')"
+    _w35_done Q3503-11 "scatter's clcolor(), clpattern(), clstyle() and clwidth() are recorded"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // _q3509_axes <page or app> <kind>: every axis and grid model of a saved
 // page (kind "page") or of the document a served app builds (kind "app")
 // is hidden, and a title T is drawn; the problems go to global q3509_bad.

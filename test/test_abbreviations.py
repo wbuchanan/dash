@@ -549,24 +549,10 @@ _SHARED_SPELLINGS = {
 #: over it passes deliberate=ABBREV_DELIBERATE, the differences a ruling
 #: keeps ({"<key>": "<ruling id>: <what is kept>"}).
 ABBREV_KNOWN = {
-    "land:clcolor": "syn:SD-20e",  # twoway clc() on scatter / dash records no key
-    "land:clpattern": "syn:SD-20e",  # twoway clp() on scatter / dash records no key
-    "land:clstyle": "syn:SD-20e",  # twoway cls() on scatter / dash records no key
-    "land:clwidth": "syn:SD-20e",  # twoway clw() on scatter / dash records no key
-    "land:dsize": "syn:SD-20a",  # twoway dsi() is dsize() / dash notes it, no key
-    "land:estcmd": "syn:SD-20b",  # twoway est() is estcmd() / dash estopts
     "land:fxsize": "GW-4",  # twoway fxsiz() / dash noted, no key
     "land:fysize": "GW-4",  # twoway fysiz() / dash noted, no key
-    "land:smoothplot": "syn:SD-20c",  # twoway s() accepted / dash records no key
-    "land:zlabel": "syn:SD-20d",  # twoway zl() is zlabel() / dash records no key
-    "land:ztitle": "syn:SD-20d",  # twoway zt() is ztitle() / dash records no key
-    "min:dsize": "syn:SD-20a",  # twoway dsi / dash declares dsiz
-    "min:estcmd": "syn:SD-20b",  # twoway est / dash declares estc
     "min:fxsize": "GW-4",  # twoway fxsiz / dash declares fxsize in full
     "min:fysize": "GW-4",  # twoway fysiz / dash declares fysize in full
-    "min:smoothplot": "syn:SD-20c",  # twoway s / dash declares smoothp
-    "min:zlabel": "syn:SD-20d",  # twoway zl / dash declares zlab
-    "min:ztitle": "syn:SD-20d",  # twoway zt / dash declares zti
 }
 
 ABBREV_DELIBERATE = {
