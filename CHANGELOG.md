@@ -931,6 +931,7 @@ and now matches Stata.
 - A date axis whose layer has a missing y in its first or last row takes Stata's ticks (area d.gnp96 date: 1967q2 ... 2002q2 -> 1970q1 ... 2000q1) (WP-34, TR-4)
 - A by() graph's first x axes are ticked at the scheme's count less one, as twoway's by() styles set them (scatter mpg length, by(foreign): 140(20)240 -> 150 200 250) (WP-34, AX-2)
 - A by() graph's shared y title is painted; its cell was 1 px tall (WP-34, VF-2)
+- Every count axis and colour key of a page built in Stata is ticked by Stata itself, in the saved page and the served app (scatter price mpg, by(foreign): y 0(5000)15000 -> 5,000 10,000 15,000; colorvar(trunk) zlabel(#3): 0 10 20 -> 0 20; qfitci mpg weight, stdf || scatter mpg weight: y 0(10)40 -> 10(10)40) (WP-34, AX-3)
 
 ### Fixed in WP-33
 

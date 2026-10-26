@@ -2883,6 +2883,20 @@ CORPUS = [
           go={"by": "foreign"}),
     # WP-34 VF-2: the shared y title's cell fills its track in both modes.
     _case("by ytitle cell", [_sc()], go={"by": "foreign", "ytitle": "Price"}),
+    # WP-34 AX-3: the rows the build-time oracle records for a by() graph
+    # (here an answer of the range's ends, which no model gives), so both
+    # modes draw the panels from one table; and the colour keys read the
+    # drawing figure's table in both modes (DECISIONS A-16).  3799-11385 is
+    # price's range in _DF, 14-30 mpg's.
+    _case("by price stata ticks",
+          [plot_for("scatter", {}, yvar="price", xvar="mpg")],
+          bo={"stata_ticks": [[3799.0, 11385.0, 4, "", [3799.0, 11385.0]],
+                              [14.0, 30.0, 4, "", [14.0, 30.0]]]},
+          go={"by": "foreign"}),
+    _case("colorvar key stata ticks", [_sc(colorvar="price")],
+          bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
+    _case("contour key stata ticks", [plot_for("contour")],
+          bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
 ]
 
 

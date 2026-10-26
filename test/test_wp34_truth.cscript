@@ -944,6 +944,440 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w34_run' {
 }
 * ==== end S08 ====
 
+python:
+import os as _q09_os, sys as _q09_sys
+_q09_p = _q09_os.path.abspath("..")
+if _q09_p not in _q09_sys.path:
+    _q09_sys.path.insert(0, _q09_p)
+
+
+def _q3409_objs(page):
+    """Every Bokeh model object of a page's embedded documents, by id."""
+    import re
+    import json
+    with open(page, encoding="utf-8") as fh:
+        html = fh.read()
+    objs = {}
+
+    def walk(o):
+        if isinstance(o, dict):
+            if o.get("type") == "object" and "id" in o and "name" in o:
+                objs.setdefault(o["id"], o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.findall(r'<script type="application/json"[^>]*>(.*?)</script>', html, re.S):
+        try:
+            walk(json.loads(m))
+        except ValueError:
+            continue
+    return objs
+
+
+def _q3409_ref(objs, v):
+    if isinstance(v, dict) and "id" in v and "attributes" not in v:
+        return objs.get(v["id"], v)
+    return v
+
+
+def _q34_cvar(page, glob):
+    """<glob>: the page's colour-key ticks (numbers %.10g) and, after "|",
+    the distinct line colours of its Line glyphs other than the grey
+    #808080 base line (WP-34 AX-3, CV-13)."""
+    from sfi import Macro
+    objs = _q3409_objs(page)
+    ticks, cols = [], set()
+    for o in objs.values():
+        a = o.get("attributes") or {}
+        if o["name"] in ("ColorBar", "ContourColorBar"):
+            t = _q3409_ref(objs, a.get("ticker"))
+            for v in ((t or {}).get("attributes") or {}).get("ticks") or ():
+                ticks.append(format(float(v), ".10g"))
+        if o["name"] == "Line":
+            c = a.get("line_color")
+            if isinstance(c, dict):
+                c = c.get("value")
+            if isinstance(c, str) and c.lower() != "#808080":
+                cols.add(c.lower())
+    Macro.setGlobal(glob, " ".join(ticks) + "|" + " ".join(sorted(cols)))
+
+
+def _q3409_has(page, kind, want):
+    """q34_bad: "" when the page holds a FixedTicker (tagged or not) whose
+    ticks are *want* (Stata values of a *kind* axis, "" a number)."""
+    from sfi import Macro
+    want = [float(v) for v in str(want).split()]
+    if kind:
+        import pandas as pd
+        import dash_render as dr
+        want = [float(v) for v in dr._stata_dates_to_datetime(
+            pd.Series(want), kind).astype("int64")]
+    objs = _q3409_objs(page)
+    lists = [[float(v) for v in (o.get("attributes") or {}).get("ticks") or ()]
+             for o in objs.values() if o["name"] == "FixedTicker"]
+    ok = want in lists
+    Macro.setGlobal("q34_bad", "" if ok else ("want %s, page %s" % (want, lists))[:1500])
+
+
+def _q3409_minor(page):
+    """q3409_m: the minor positions (mextra) of the page's CustomJSTickers,
+    %.10g, sorted."""
+    from sfi import Macro
+    objs = _q3409_objs(page)
+    out = set()
+    for o in objs.values():
+        if o["name"] != "CustomJSTicker":
+            continue
+        args = (o.get("attributes") or {}).get("args") or {}
+        ent = args.get("entries") if isinstance(args, dict) and "entries" in args else list(args.items())
+        for k, v in ent or ():
+            if k == "mextra":
+                out.update(float(x) for x in v or ())
+    Macro.setGlobal("q3409_m", " ".join(format(v, ".10g") for v in sorted(out)))
+
+
+def _q3409_spec_rows(app, lo, hi, n):
+    """q3409_8: "stata_ticks", "stata_ticks_build" or "" -- the key of the
+    app's embedded spec holding a row over lo..hi at count n."""
+    import re
+    import json
+    import base64
+    from sfi import Macro
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    m = re.search(r'^_SPEC_B64 = "([^"]*)"', src, re.M)
+    bo = json.loads(base64.b64decode(m.group(1)).decode("utf-8")).get("build_options", {}) if m else {}
+    got = ""
+    for key in ("stata_ticks", "stata_ticks_build"):
+        for r in bo.get(key) or ():
+            if len(r) == 5 and int(r[2]) == int(n) and r[3] == "" and abs(r[0] - lo) < 1e-6 and abs(r[1] - hi) < 1e-6:
+                got = got or key
+    Macro.setGlobal("q3409_8", got)
+
+
+def _q3409_cost(spec, data):
+    from sfi import Macro
+    import time
+    dr = None
+    try:
+        import dash_render as dr
+        dr._DASH_STATA_ORACLE.update(on=True, calls=0, cache={}, rows=[])
+        t0 = time.perf_counter()
+        dr.DashRenderer(spec, data).render(page=False)
+        t1 = time.perf_counter()
+        calls = dr._DASH_STATA_ORACLE["calls"]
+        dr._DASH_STATA_ORACLE.update(on=False, calls=0, cache={}, rows=[])
+        t2 = time.perf_counter()
+        dr.DashRenderer(spec, data).render(page=False)
+        t3 = time.perf_counter()
+        Macro.setGlobal("q3409_7_dt", repr((t1 - t0) - (t3 - t2)))
+        Macro.setGlobal("q3409_7_calls", str(calls))
+    except Exception as e:
+        Macro.setGlobal("q3409_7_bad", str(e)[:300])
+    finally:
+        if getattr(dr, "_DASH_STATA_ORACLE", None) is not None:
+            dr._DASH_STATA_ORACLE["on"] = False
+
+
+def _q3409_served(spec, data, app, out):
+    from sfi import Macro
+    import time
+    dr = None
+    try:
+        import dash_render as dr
+        t0 = time.perf_counter()
+        dr.main(spec, data, app, mode="server")
+        b = time.perf_counter() - t0
+        dr._DASH_STATA_ORACLE.update(on=True, calls=0, cache={}, rows=[])
+        t0 = time.perf_counter()
+        dr.DashRenderer(spec, data).render(page=False)
+        t = time.perf_counter() - t0
+        dr._DASH_STATA_ORACLE["on"] = False
+        line = "Q3409-10 served build %.1f s, pre-pass %.1f s" % (b, t)
+        print(line)
+        with open(out, "w", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+        Macro.setGlobal("q3409_10_b", repr(b))
+        Macro.setGlobal("q3409_10_t", repr(t))
+    except Exception as e:
+        Macro.setGlobal("q3409_10_bad", str(e)[:300])
+    finally:
+        if getattr(dr, "_DASH_STATA_ORACLE", None) is not None:
+            dr._DASH_STATA_ORACLE["on"] = False
+
+
+def _q3409_served_key(app, out):
+    from sfi import Macro
+    try:
+        from bokeh.document import Document
+        from bokeh.io.doc import patch_curdoc
+        from bokeh.embed import file_html
+        from bokeh.resources import CDN
+        ns = {"__name__": "_q3409_app", "_DASH_TRIAL": True}
+        doc = Document()
+        with patch_curdoc(doc):
+            exec(compile(open(app, encoding="utf-8").read(), app, "exec"), ns)
+        open(out, "w", encoding="utf-8").write(file_html(doc, CDN, "q3409-9"))
+    except Exception as e:
+        Macro.setGlobal("q3409_9_bad", str(e)[:300])
+end
+
+capture program drop _q3409_tw
+program define _q3409_tw
+    // _q3409_tw <axis> <set>: twoway's positions on .Graph's tickset
+    // (test_wp31_truth.cscript's _u24_tw), into global q3409_tw.
+    version 19
+    args axis set
+    local p ".Graph.`axis'.`set'"
+    local out ""
+    if 0``p'.use_rule.istrue' & "``p'.delta'" != "0" & "``p'.min'" != "." {
+        local lo = ``p'.min'
+        local hi = ``p'.max'
+        local d = ``p'.delta'
+        if abs(`lo') < 1e299 & abs(`hi') < 1e299 {
+            local n = floor((`hi' + .48 * `d' - `lo') / `d')
+            forvalues i = 0/`n' {
+                local x = `lo' + `i' * `d'
+                if abs(`x') < `d' * 1e-6 local x 0
+                local out "`out' `=strtrim(string(`x', "%18.10g"))'"
+            }
+        }
+    }
+    else {
+        forvalues i = 1/0``p'.ticks.arrnels' {
+            local out "`out' `=strtrim(string(``p'.ticks[`i'][1]', "%18.10g"))'"
+        }
+    }
+    global q3409_tw = strtrim("`out'")
+end
+
+* ==== S09 AX-3: Stata's own ticks at build ====
+local only : env WP34_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w34_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+    local q09d "`w34_work'/s09ax3"
+    capture mkdir "`q09d'"
+
+    // Q3409-1: by() panels at their own count: price on y (shared, by
+    // rep78, and each panel of by(foreign, yrescale)) and on x (34-02's
+    // deferred row): twoway's panel ticks are the saved page's.
+    local i 0
+    foreach c in "scatter price mpg, by(foreign)|graphs[1] y1" "scatter price mpg, by(rep78)|graphs[1] y1" "scatter price mpg, by(foreign, yrescale)|graphs[1] y1" "scatter price mpg, by(foreign, yrescale)|graphs[2] y1" "scatter mpg price, by(foreign)|graphs[1] x1" {
+        local ++i
+        gettoken cmd ax : c, parse("|")
+        local ax = subinstr("`ax'", "|", "", 1)
+        local obj : word 1 of `ax'
+        local axn : word 2 of `ax'
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway `cmd'
+        _q34_drawn .Graph.`obj' `axn'
+        local tw "${q34_t}"
+        _w34_expect Q3409-1 `"("`tw'" != "")"' "twoway drew no tick for `cmd' `ax'"
+        capture dash clear
+        capture erase "`q09d'/a`i'.html"
+        capture noisily dash `cmd' saving("`q09d'/a`i'.html", replace)
+        _w34_expect Q3409-1 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q3409_has(r"`q09d'/a`i'.html", "", "`tw'")
+        _w34_expect Q3409-1 `"("${q34_bad}" == "")"' `"`cmd' `ax' (twoway `tw'): ${q34_bad}"'
+        capture erase "`q09d'/a`i'.html"
+    }
+    _w34_done Q3409-1 "by() panels on price, y and x, shared and rescaled: twoway's ticks at build"
+
+    // Q3409-2: computed and immediate layers' axes.
+    local i 0
+    foreach c in "kdensity price, by(foreign)|graphs[1] x1" "histogram mpg,|x1" "function y = x^2, range(0 10)|y1" "lfit mpg weight,|y1" "(scatteri 50 1000) (scatter mpg weight),|y1" {
+        local ++i
+        gettoken cmd ax : c, parse("|")
+        local ax = subinstr("`ax'", "|", "", 1)
+        local obj : word 1 of `ax'
+        local axn : word 2 of `ax'
+        if "`axn'" == "" {
+            local axn "`obj'"
+            local obj ""
+        }
+        local gobj = cond("`obj'" == "", ".Graph", ".Graph.`obj'")
+        sysuse auto, clear
+        capture graph drop _all
+        local twc = cond(substr("`cmd'", -1, 1) == ",", substr("`cmd'", 1, strlen("`cmd'") - 1), "`cmd'")
+        quietly twoway `twc'
+        _q34_drawn `gobj' `axn'
+        local tw "${q34_t}"
+        _w34_expect Q3409-2 `"("`tw'" != "")"' "twoway drew no tick for `twc' `ax'"
+        capture dash clear
+        capture erase "`q09d'/b`i'.html"
+        local sep = cond(strpos("`cmd'", ",") > 0, "", ",")
+        capture noisily dash `cmd'`sep' saving("`q09d'/b`i'.html", replace)
+        _w34_expect Q3409-2 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q3409_has(r"`q09d'/b`i'.html", "", "`tw'")
+        _w34_expect Q3409-2 `"("${q34_bad}" == "")"' `"`twc' `ax' (twoway `tw'): ${q34_bad}"'
+        capture erase "`q09d'/b`i'.html"
+    }
+    _w34_done Q3409-2 "kdensity by(), histogram, function, lfit and scatteri axes: twoway's ticks at build"
+
+    // Q3409-3: a range()-widened #4 date axis (sp500, unit d).
+    sysuse sp500, clear
+    capture graph drop _all
+    quietly twoway line close date, xlabel(#4) xscale(range(14700 15600))
+    _q34_drawn .Graph x1
+    local tw "${q34_t}"
+    _w34_expect Q3409-3 `"("`tw'" != "")"' "twoway drew no x tick"
+    capture dash clear
+    capture erase "`q09d'/c.html"
+    capture noisily dash line close date, xlabel(#4) xscale(range(14700 15600)) saving("`q09d'/c.html", replace)
+    _w34_expect Q3409-3 "(_rc == 0)" "dash line close date rc `=_rc'"
+    python: import __main__ as _q34_m; _q34_m._q3409_has(r"`q09d'/c.html", "td", "`tw'")
+    _w34_expect Q3409-3 `"("${q34_bad}" == "")"' `"line close date, xlabel(#4) xscale(range(14700 15600)) (twoway `tw'): ${q34_bad}"'
+    capture erase "`q09d'/c.html"
+    _w34_done Q3409-3 "line close date, xlabel(#4) xscale(range(14700 15600)): twoway's x ticks"
+
+    // Q3409-4: ymtick(#4) and ymlabel(#4): the minor positions are
+    // twoway's minor tickset.
+    foreach o in ymtick ymlabel {
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway scatter price mpg, `o'(#4)
+        // ymtick's rule is the axis's minornl tickset, ymlabel's its minor.
+        _q3409_tw yaxis1 `=cond("`o'" == "ymtick", "minornl", "minor")'
+        local tw "${q3409_tw}"
+        _w34_expect Q3409-4 `"("`tw'" != "")"' "twoway drew no minor tick under `o'(#4)"
+        capture dash clear
+        capture erase "`q09d'/d`o'.html"
+        capture noisily dash scatter price mpg, `o'(#4) saving("`q09d'/d`o'.html", replace)
+        _w34_expect Q3409-4 "(_rc == 0)" "dash scatter price mpg, `o'(#4) rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q3409_minor(r"`q09d'/d`o'.html")
+        _w34_expect Q3409-4 `"("${q3409_m}" == "`tw'")"' `"`o'(#4): twoway `tw', dash ${q3409_m}"'
+        capture erase "`q09d'/d`o'.html"
+    }
+    _w34_done Q3409-4 "scatter price mpg, ymtick(#4) and ymlabel(#4): twoway's minor positions"
+
+    // Q3409-5: the colour key of line mpg weight, colorvar(trunk)
+    // zlabel(#3) sort: twoway keys 0 20 and draws two colours (CV-13 N1).
+    sysuse auto, clear
+    capture dash clear
+    capture erase "`q09d'/e.html"
+    capture noisily dash line mpg weight, colorvar(trunk) zlabel(#3) sort saving("`q09d'/e.html", replace)
+    _w34_expect Q3409-5 "(_rc == 0)" "dash line mpg weight, colorvar(trunk) rc `=_rc'"
+    python: import __main__ as _q34_m; _q34_m._q34_cvar(r"`q09d'/e.html", "q3409_5")
+    _w34_expect Q3409-5 `"("${q3409_5}" == "0 20|#0000ff #ff0000")"' `"key|colours ${q3409_5}, twoway 0 20|#0000ff #ff0000"'
+    capture erase "`q09d'/e.html"
+    _w34_done Q3409-5 "colorvar(trunk) zlabel(#3): the key 0 20 and two colours, as twoway"
+
+    // Q3409-6: the qfitci overlay (TR-5) and the three graphs beside it:
+    // twoway's y ticks at build.  tr5.txt keeps twoway's y scale for
+    // 34-09-01's checkpoint.
+    capture erase "`q09d'/tr5.txt"
+    tempname q09fh
+    file open `q09fh' using "`q09d'/tr5.txt", write text replace
+    local i 0
+    foreach cmd in "qfitci mpg weight, stdf || scatter mpg weight" "qfitci mpg weight, stdf" "scatter mpg weight || qfitci mpg weight, stdf" "scatter mpg weight" {
+        local ++i
+        sysuse auto, clear
+        capture graph drop _all
+        quietly twoway `cmd'
+        _q34_drawn .Graph y1
+        local tw "${q34_t}"
+        file write `q09fh' `"`cmd' | min `.Graph.plotregion1.yscale.min' max `.Graph.plotregion1.yscale.max' | ticks `tw'"' _n
+        capture dash clear
+        capture erase "`q09d'/f`i'.html"
+        local sep = cond(strpos(subinstr("`cmd'", "||", "", .), ",") > 0 & `i' != 1 & `i' != 4, "", ",")
+        if `i' == 1 local sep ","
+        capture noisily dash `cmd'`sep' saving("`q09d'/f`i'.html", replace)
+        _w34_expect Q3409-6 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        python: import __main__ as _q34_m; _q34_m._q3409_has(r"`q09d'/f`i'.html", "", "`tw'")
+        _w34_expect Q3409-6 `"("${q34_bad}" == "")"' `"`cmd' (twoway `tw'): ${q34_bad}"'
+        capture erase "`q09d'/f`i'.html"
+    }
+    file close `q09fh'
+    _w34_done Q3409-6 "qfitci mpg weight, stdf || scatter mpg weight and its three neighbours: twoway's y ticks"
+
+    // Q3409-7: the oracle's cost on scatter price mpg, by(rep78, yrescale).
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter price mpg, by(rep78, yrescale) name(g7)
+    capture erase "`q09d'/g7.json"
+    capture erase "`q09d'/g7d.json"
+    _dash_prepare_spec, specpath("`q09d'/g7.json") datapath("`q09d'/g7d.json")
+    global q3409_7_bad ""
+    global q3409_7_dt ""
+    global q3409_7_calls ""
+    python: import __main__ as _q34_m; _q34_m._q3409_cost(r"`q09d'/g7.json", r"`q09d'/g7d.json")
+    if `"${q3409_7_bad}"' != "" {
+        _w34_expect Q3409-7 0 `"the timing block raised: ${q3409_7_bad}"'
+    }
+    else {
+        _w34_expect Q3409-7 "(${q3409_7_dt} < 1)" "the oracle added ${q3409_7_dt} s"
+        _w34_expect Q3409-7 "(${q3409_7_calls} >= 1)" "the oracle asked Stata ${q3409_7_calls} times"
+    }
+    _w34_done Q3409-7 "by(rep78, yrescale): the oracle added ${q3409_7_dt} s over ${q3409_7_calls} calls"
+
+    // Q3409-8: the served app embeds a row over the by() panels' y range
+    // at count 4.
+    sysuse auto, clear
+    capture dash clear
+    quietly dash scatter price mpg, by(foreign) name(g8)
+    capture erase "`q09d'/app8.py"
+    capture noisily dash build, server saving("`q09d'/app8.py") replace nobrowser
+    _w34_expect Q3409-8 "(_rc == 0)" "dash build, server rc `=_rc'"
+    quietly summarize price
+    global q3409_8 ""
+    python: import __main__ as _q34_m; _q34_m._q3409_spec_rows(r"`q09d'/app8.py", `r(min)', `r(max)', 4)
+    _w34_expect Q3409-8 `"("${q3409_8}" != "")"' "the app's spec holds no row over price at #4"
+    _w34_done Q3409-8 "the served app embeds Stata's by() answer (${q3409_8})"
+
+    // Q3409-9: the served app's colour key is the saved page's at build.
+    sysuse auto, clear
+    capture dash clear
+    quietly dash line mpg weight, colorvar(trunk) zlabel(#3) sort name(g9)
+    capture erase "`q09d'/g9.html"
+    capture noisily dash build, saving("`q09d'/g9.html") replace nobrowser
+    _w34_expect Q3409-9 "(_rc == 0)" "dash build rc `=_rc'"
+    capture erase "`q09d'/app9.py"
+    capture noisily dash build, server saving("`q09d'/app9.py") replace nobrowser
+    _w34_expect Q3409-9 "(_rc == 0)" "dash build, server rc `=_rc'"
+    global q3409_9_bad ""
+    capture erase "`q09d'/app9_doc.html"
+    python: import __main__ as _q34_m; _q34_m._q3409_served_key(r"`q09d'/app9.py", r"`q09d'/app9_doc.html")
+    _w34_expect Q3409-9 `"(`"${q3409_9_bad}"' == "")"' `"the served app did not draw: ${q3409_9_bad}"'
+    python: import __main__ as _q34_m; _q34_m._q34_cvar(r"`q09d'/g9.html", "q3409_9s")
+    python: import __main__ as _q34_m; _q34_m._q34_cvar(r"`q09d'/app9_doc.html", "q3409_9v")
+    _w34_expect Q3409-9 `"("${q3409_9v}" == "${q3409_9s}")"' `"served ${q3409_9v}, saved ${q3409_9s}"'
+    _w34_expect Q3409-9 `"("${q3409_9s}" == "0 20|#0000ff #ff0000")"' `"saved ${q3409_9s}, twoway 0 20|#0000ff #ff0000"'
+    _w34_done Q3409-9 "the served colour key equals the saved page's, twoway's 0 20"
+
+    // Q3409-10: a served build's cost on 1,000,000 rows, and its pre-pass's.
+    clear
+    quietly set obs 1000000
+    set seed 3409
+    quietly generate x = rnormal()
+    quietly generate y = x + rnormal()
+    quietly generate byte g = mod(_n, 2)
+    capture dash clear
+    quietly dash scatter y x, by(g) name(g10)
+    capture erase "`q09d'/g10.json"
+    capture erase "`q09d'/g10d.json"
+    _dash_prepare_spec, specpath("`q09d'/g10.json") datapath("`q09d'/g10d.json")
+    global q3409_10_bad ""
+    global q3409_10_b ""
+    global q3409_10_t ""
+    capture erase "`q09d'/app10.py"
+    python: import __main__ as _q34_m; _q34_m._q3409_served(r"`q09d'/g10.json", r"`q09d'/g10d.json", r"`q09d'/app10.py", r"`q09d'/q10.txt")
+    if `"${q3409_10_bad}"' != "" {
+        _w34_expect Q3409-10 0 `"the timing block raised: ${q3409_10_bad}"'
+    }
+    else {
+        _w34_expect Q3409-10 "(${q3409_10_b} > 0 & ${q3409_10_t} > 0 & ${q3409_10_t} < ${q3409_10_b})" "build ${q3409_10_b} s, pre-pass ${q3409_10_t} s"
+    }
+    _w34_done Q3409-10 "a served build of 1,000,000 rows took ${q3409_10_b} s, its pre-pass ${q3409_10_t} s"
+
+    capture graph drop _all
+    capture dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

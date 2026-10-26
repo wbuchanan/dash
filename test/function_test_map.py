@@ -555,6 +555,7 @@ FUNCTIONS = {
  '_dash_minor_pool_size': 'test/test_minor_label_pool_d1d.py::TestThePoolSize::test_bound_holds_over_any_scale',
  '_dash_renumber_text_axes': 'test/test_axis_order_d9b.py::TestTextFollowsItsAxis::test_renumbered',
  '_dash_stata_or_model': 'test/test_stata_ticks.py::TestTheRangeRule::test_mismatch_falls_to_model',
+ '_dash_stata_oracle': 'test/test_stata_ticks.py::TestTheOracle::test_command_order_and_restore',
  '_dash_stata_num': 'test/test_stata_ticks.py::TestTheRangeRule::test_a_bad_table_is_none',
  '_dash_stata_unit_of': 'test/test_stata_ticks.py::TestTheRequests::test_counts_units_and_markers',
  '_dash_stata_tick_table': 'test/test_stata_ticks.py::TestTheRangeRule::test_a_bad_table_is_none',
@@ -1038,6 +1039,7 @@ FUNCTIONS = {
  'app:make_document.<locals>._make_filter_cb.<locals>._on_filter_change': 'test/test_help_claims_4.py::TestEveryStatisticIsStatas::test_every_card',
  'app:make_document.<locals>._dash_reset_filters': 'test/test_filter_widgets_ext.py::TestTheResetButton::test_served_reset_runs_one_move',
  'app:make_document.<locals>._send_csv': 'test/test_function_audit.py::TestTheServedDownloadWritesCalendarDates::test_a_missing_or_absurd_date_is_empty_not_an_error',
+ '_dash_main_body': 'test/test_stata_ticks.py::TestTheOracle::test_main_needs_a_callable_toolkit',
  'main': 'test/test_server.py::TestCLIServeFlagsAccepted::test_main_raises_on_serve_mode',
  # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
  '_dash_csp_served': 'test/test_csp.py::TestTheNonce::test_the_served_policy_names_the_nonce_and_no_unsafe_inline',

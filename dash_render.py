@@ -16619,8 +16619,10 @@ class GlyphMapper:
                 if _fin.size:
                     _lo_s, _hi_s = float(_fin.min()), float(_fin.max())
                     _units = (_lo_s, _hi_s)
-                    _kt = list(_dash_axis_count_ticks(_lo_s, _hi_s, 5, None)
-                               or [_lo_s])
+                    _kt = list(_dash_axis_count_ticks(
+                        _lo_s, _hi_s, 5, None,
+                        table=getattr(fig, "_dash_stata_ticks", None))
+                        or [_lo_s])
                     if minmax:
                         _kt = sorted(set(_kt) | {_lo_s, _hi_s})
                     _pos, _ovr = _dash_key_ticks(_kt, _cv_kind, _key_fmt,
@@ -24292,8 +24294,9 @@ class GlyphMapper:
                                        options)[0]
         zmin = float(np.min(uz)) if uz.size else float("nan")
         zmax = float(np.max(uz)) if uz.size else float("nan")
-        cuts, ticks = _dash_contour_cuts(options, zmin, zmax,
-                                         self.z_options)
+        cuts, ticks = _dash_contour_cuts(
+            options, zmin, zmax, self.z_options,
+            table=getattr(fig, "_dash_stata_ticks", None))
         gx, gy, gz = surf["gx"], surf["gy"], surf["gz"]
         if surf["capped"]:
             _dash_warn_once(
@@ -29149,7 +29152,7 @@ def _dash_contour_surface(x, y, z, interp="thinplatespline",
 # (test/fixtures/contour_truth.json draw.*, line.*; zyx2view_g.class
 # reset_dserset and set_ccuts_from_levels, zyx2style.class).
 
-def _dash_contour_zticks(zopts, zmin, zmax):
+def _dash_contour_zticks(zopts, zmin, zmax, table=None):
     """``(ticks, is_rule)``: the z axis's major ticks twoway cuts at when
     neither ccuts() nor levels() is given.
 
@@ -29157,6 +29160,8 @@ def _dash_contour_zticks(zopts, zmin, zmax):
     mpg 12-41 ticks 10 20 30 40; the plan's #7 was not it).  zlabel()'s
     own ``#n`` and ``minmax`` are rules, as is a numlist with a ``(``
     step (``15(5)35``); a plain list of values is not (draw.zlabel_plain).
+    *table*: Stata's answers for the figure, :func:`_dash_stata_tick_table`;
+    None: the model (WP-34 AX-3).
     """
     raw = str((zopts or {}).get("zlabel", "") or "").strip()
     if raw:
@@ -29164,17 +29169,19 @@ def _dash_contour_zticks(zopts, zmin, zmax):
         mode = spec.get("mode")
         if mode == "count" and spec.get("count"):
             return (list(_dash_axis_count_ticks(zmin, zmax, int(spec["count"]),
-                                                None) or []), True)
+                                                None, table=table) or []),
+                    True)
         if mode == "minmax":
             return ([zmin, zmax], True)
         if mode == "explicit" and spec.get("ticks"):
             head = raw.split(",", 1)[0]
             return (sorted(float(t) for t in spec["ticks"]),
                     bool(re.search(r"\(", head)))
-    return (list(_dash_axis_count_ticks(zmin, zmax, 5, None) or []), True)
+    return (list(_dash_axis_count_ticks(zmin, zmax, 5, None, table=table)
+                 or []), True)
 
 
-def _dash_contour_cuts(options, zmin, zmax, zopts=None):
+def _dash_contour_cuts(options, zmin, zmax, zopts=None, table=None):
     """``(cuts, ticks)`` twoway contour draws at, as zyx2view_g.class's
     reset_dserset and set_ccuts_from_levels choose them (WP-31 B4b).
 
@@ -29184,7 +29191,9 @@ def _dash_contour_cuts(options, zmin, zmax, zopts=None):
     measured); else the z axis's ticks (:func:`_dash_contour_zticks`),
     the first and last dropped when they come from a rule and there are
     more than two, and ``[zmax]`` when that leaves none.  *ticks* are the
-    colour key's: the cuts themselves under ccuts() or levels().
+    colour key's: the cuts themselves under ccuts() or levels().  *table*:
+    Stata's answers for the figure, :func:`_dash_stata_tick_table`; None:
+    the model (WP-34 AX-3).
     """
     opts = options or {}
     raw = str(opts.get("ccuts", "") or "").strip()
@@ -29201,7 +29210,7 @@ def _dash_contour_cuts(options, zmin, zmax, zopts=None):
         if str(opts.get("minmax", "") or "").strip():
             cuts = [zmin] + cuts + [zmax]
         return cuts, list(cuts)
-    ticks, rule = _dash_contour_zticks(zopts, zmin, zmax)
+    ticks, rule = _dash_contour_zticks(zopts, zmin, zmax, table=table)
     if rule:
         cuts = list(ticks[1:-1]) if len(ticks) > 2 else []
     else:
@@ -38289,7 +38298,8 @@ def _dash_page_settings(mapper, cache, build_options):
         mapper._dash_gt_fonts = _dash_gt_fonts_of(build_options)
         # WP-31 D15: Stata's own ticks for the ranges the export summarized,
         # stamped on each figure before its axes are finished.
-        mapper._dash_stata_ticks = _dash_stata_tick_table(build_options)
+        mapper._dash_stata_ticks = _dash_stata_tick_table(build_options) \
+            or ([] if _DASH_STATA_ORACLE.get("on") else None)
     if isinstance(cache, dict):
         cache["dp"] = dp
         # WP-31 G7: the business calendars dash.ado embedded, for the
@@ -41694,15 +41704,102 @@ _DASH_STATA_TICK_UNITS = ("", "d", "w", "m", "q", "h", "y")
 #: _tsnatscale's option word for each unit (B/_/_tsnatscale.sthlp).
 _DASH_STATA_TS_WORDS = {"d": "daily", "w": "weekly", "m": "monthly",
                         "q": "quarterly", "h": "halfyearly", "y": "yearly"}
+#: WP-34 AX-3: the most ranges one build asks Stata's routines for while
+#: the page is built (:func:`_dash_stata_oracle`); further ranges take the
+#: model.  The served pre-pass's answers are kept to as many rows.
+_DASH_STATA_ORACLE_MAX = 256
+#: WP-34 AX-3: the build-time oracle's state.  ``on`` only inside main()
+#: under Stata (an sfi with a callable SFIToolkit.stata); ``calls`` counts
+#: the Stata calls of this build, ``cache`` keeps each range's answer and
+#: ``rows`` every answer given, as ``[lo, hi, n, unit, ticks]`` (the served
+#: pre-pass embeds them).  The served app's copy is written switched off.
+_DASH_STATA_ORACLE = {"on": False, "calls": 0, "cache": {}, "rows": []}
+
+
+def _dash_stata_oracle(lo, hi, n, unit):
+    """Stata's own _natscale/_tsnatscale ticks for #n over lo..hi in unit,
+    asked while dash builds the page inside Stata (WP-34 AX-3), or None:
+    off outside main() in Stata, past _DASH_STATA_ORACLE_MAX calls, for a
+    range of no width, or when Stata gives no answer (a non-zero rc, a
+    missing or absent value).  Numbers only reach Stata (%.17g); r() is
+    held and restored around the call.  Each answer is appended to the
+    build's rows; the funnel keeps it in the asking graph's table."""
+    st = _DASH_STATA_ORACLE
+    if not st.get("on"):
+        return None
+    try:
+        lo, hi, n = float(lo), float(hi), int(n)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not (math.isfinite(lo) and math.isfinite(hi)) or lo >= hi \
+            or not 1 <= n <= 99 or unit not in _DASH_STATA_TICK_UNITS:
+        return None
+    key = (lo, hi, n, unit)
+    if key in st["cache"]:
+        return st["cache"][key]
+    if st["calls"] >= _DASH_STATA_ORACLE_MAX:
+        return None
+    st["calls"] += 1
+    ticks = None
+    try:
+        import secrets as _secrets
+        import sfi
+        tk = sfi.SFIToolkit
+        tag = _secrets.token_hex(4)
+        hold, rcname = "__dashrh" + tag, "__dashrc" + tag
+        tk.stata("_return hold " + hold)
+        try:
+            if unit == "":
+                tk.stata("capture _natscale %.17g %.17g %d" % (lo, hi, n))
+            else:
+                tk.stata("capture _tsnatscale %.17g %.17g %d, %s"
+                         % (lo, hi, n, _DASH_STATA_TS_WORDS[unit]))
+            tk.stata("scalar %s = _rc" % rcname)
+            rc = sfi.Scalar.getValue(rcname)
+            sv = [sfi.Scalar.getValue("r(%s)" % k)
+                  for k in ("min", "max", "delta", "n")]
+            listed = sfi.Macro.getGlobal("r(list)")
+        finally:
+            tk.stata("capture scalar drop " + rcname)
+            tk.stata("_return restore " + hold)
+        # _tsnatscale answers in r(list) and leaves no r(delta) (measured
+        # on sp500, 26oct2026); a number's answer needs all four values.
+        sv = [None if v is None or sfi.Missing.isMissing(v) else float(v)
+              for v in sv]
+        need = sv if unit == "" or not str(listed or "").split() else []
+        bad = (rc is None or sfi.Missing.isMissing(rc) or rc != 0
+               or any(v is None for v in need))
+        if not bad:
+            mn, mx, delta, cnt = (0.0 if v is None else v for v in sv)
+            ticks = _dash_stata_ticks_of(unit, lo, hi, mn, mx, delta,
+                                         cnt if math.isfinite(cnt) else 0,
+                                         listed)
+    except Exception:  # noqa: BLE001 -- no answer: the model draws
+        ticks = None
+    st["cache"][key] = ticks
+    if ticks:
+        st["rows"].append([lo, hi, n, unit, list(ticks)])
+    return ticks
 
 
 def _dash_stata_or_model(table, lo, hi, n, unit):
-    """Stata's ticks for ``#n`` over *lo* to *hi* in *unit* from *table*
-    (:func:`_dash_stata_pick`), else the model's: natscale for unit "",
-    the _tsnatscale model for a date unit (WP-31 D15)."""
-    return (_dash_stata_pick(table, lo, hi, n, unit)
-            or (_dash_natscale_ticks(lo, hi, n) if unit == ""
-                else _dash_tsnatscale_ticks(lo, hi, n, unit)))
+    """Stata's ticks for ``#n`` over *lo* to *hi* in *unit*, from three
+    sources in order: *table* (:func:`_dash_stata_pick`, the export's rows
+    and the graph's own answers), else Stata asked as the page is built
+    (:func:`_dash_stata_oracle`, WP-34 AX-3; its answer is kept in *table*
+    when *table* is a list, the asking graph's own), else the model's:
+    natscale for unit "", the _tsnatscale model for a date unit (WP-31
+    D15)."""
+    got = _dash_stata_pick(table, lo, hi, n, unit)
+    if got:
+        return got
+    got = _dash_stata_oracle(lo, hi, n, unit)
+    if got:
+        if isinstance(table, list):
+            table.append((float(lo), float(hi), int(n), unit, tuple(got)))
+        return got
+    return (_dash_natscale_ticks(lo, hi, n) if unit == ""
+            else _dash_tsnatscale_ticks(lo, hi, n, unit))
 
 
 def _dash_stata_num(v):
@@ -41751,16 +41848,22 @@ def _dash_stata_tick_table(build_options):
     unit, ticks)``, or None: entries dash.ado wrote at export from Stata's
     ``_natscale``/``_tsnatscale`` over each axis's rows
     (:func:`_dash_stata_ticks_take`).  Numbers and unit letters only; an
-    entry of any other shape is dropped, at most ``_DASH_STATA_TICK_MAX``
-    entries of at most ``_MAX_AXIS_TICKS + 1`` ticks are kept."""
-    raw = (build_options or {}).get("stata_ticks") if isinstance(
-        build_options, dict) else None
-    if not isinstance(raw, list):
+    entry of any other shape is dropped; at most ``_DASH_STATA_TICK_MAX``
+    rows of ``stata_ticks`` (the export's), then at most
+    ``_DASH_STATA_ORACLE_MAX`` rows of ``stata_ticks_build`` (the answers
+    the served pre-pass asked at build, WP-34 AX-3), each of at most
+    ``_MAX_AXIS_TICKS + 1`` ticks, are kept."""
+    bo = build_options if isinstance(build_options, dict) else {}
+    raw, built = bo.get("stata_ticks"), bo.get("stata_ticks_build")
+    if not isinstance(raw, list) and not isinstance(built, list):
         return None
+    rows = ((raw[:_DASH_STATA_TICK_MAX] if isinstance(raw, list) else [])
+            + (built[:_DASH_STATA_ORACLE_MAX] if isinstance(built, list)
+               else []))
 
     num = _dash_stata_num
     out = []
-    for row in raw[:_DASH_STATA_TICK_MAX]:
+    for row in rows:
         if not (isinstance(row, list) and len(row) == 5):
             continue
         lo, hi, n, unit, ticks = row
@@ -41841,7 +41944,8 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
     letters), the series on it as ``(variables, qualifier columns,
     complete-case variables)``, each unit its variables' formats give (""
     for a number or %tc/%tC, d-y for %td-%ty) and each count the graph's
-    options name (``#N``) besides 5.  A by() graph's panels are asked for
+    options name (``#N``, xmtick and xmlabel included) besides 5, and 4
+    for a by() graph (WP-34 AX-3).  A by() graph's panels are asked for
     each (the by() variable).  Only Stata names and dash's ``__dashq<k>``
     columns are returned: the qualifier text is never read (DECISIONS A25).
 
@@ -41867,7 +41971,8 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
                  (fcols.get(go.get("name", "")) or {}).items()}
         counts = {5}
         for k, v in go.items():
-            if isinstance(v, str) and re.match(r"[xy]\d?(label|tick)\Z",
+            # WP-34 AX-3: xmtick(#N) and xmlabel(#N) are asked too.
+            if isinstance(v, str) and re.match(r"[xy]\d?m?(label|tick)\Z",
                                                str(k)):
                 for m in re.finditer(r"#\s*(\d{1,3})", v):
                     if 2 <= int(m.group(1)) <= 99:
@@ -41878,6 +41983,10 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
                       str(go.get("by", "") or ""))
         if bm:
             by = bm.group(1)
+            # WP-34 AX-3: a by() panel is ticked at the scheme's count less
+            # one (4 in every shipped scheme, _dash_by_numticks); another
+            # scheme's count is asked as the page is built.
+            counts.add(4)
         groups: dict = {}
         for p in g.get("plots") or ():
             if not isinstance(p, dict):
@@ -45166,8 +45275,9 @@ def _dash_place_minor_counts(entries):
             continue
         t = ax.ticker
         for role, n in mn["every"]:
+            # WP-34 AX-3: the axis entry's Stata table, as its majors.
             pos = [float(v) for v in (_dash_axis_count_ticks(
-                lo, hi, n, e.get("kind")) or [])]
+                lo, hi, n, e.get("kind"), table=e.get("stata")) or [])]
             if isinstance(t, CustomJSTicker):
                 a = dict(t.args or {})
                 a["mextra"] = sorted(set(list(a.get("mextra") or []) + pos))
@@ -57121,9 +57231,11 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
                 if spec["mode"] == "minmax":
                     _ticks = [_ulo, _uhi]
                 elif spec["mode"] == "count":
+                    # WP-34 AX-3: the drawing figure's Stata table.
                     _ticks = sorted(
-                        set(_dash_axis_count_ticks(_ulo, _uhi,
-                                                   spec["count"], None)
+                        set(_dash_axis_count_ticks(
+                            _ulo, _uhi, spec["count"], None,
+                            table=getattr(fig, "_dash_stata_ticks", None))
                             or []) | set(spec["ticks"] or []))
                 elif spec["mode"] == "explicit" and spec["ticks"]:
                     _ticks = list(spec["ticks"])
@@ -63946,6 +64058,12 @@ class DashRenderer:
         fig = bokeh_figure(**fig_kwargs)
         # WP-31 K6: the figure's host is named from its graph.
         _dash_name_figure(fig, graph_opts, plots)
+        # WP-34 AX-3: the graph's Stata table, stamped before its layers so its colour keys read it (A-16).
+        _t = getattr(self.mapper, "_dash_stata_ticks", None)
+        if _DASH_STATA_ORACLE.get("on") and isinstance(_t, list):
+            _t = self.__dict__.setdefault("_dash_stata_tables", {}) \
+                .setdefault(_gkey or id(graph_spec), list(_t))
+        fig._dash_stata_ticks = _t
         # WP-30 P1.3a: twoway's plot-region margin and the scheme's tick
         # counts, for the finisher (Python attributes, never serialised).
         fig._dash_margin = _dash_plot_margin(self.scheme, graph_opts)
@@ -64436,8 +64554,6 @@ class DashRenderer:
         _dash_keep_primary_ranges(fig)
         # #N ticks where twoway puts them, over what the layers drew: Stata's
         # own for a range the export summarized (WP-31 D15).
-        fig._dash_stata_ticks = getattr(self.mapper, "_dash_stata_ticks",
-                                        None)
         _dash_finish_count_ticks(fig)
 
         # ---- The figure's one HoverTool ----
@@ -66591,8 +66707,12 @@ class DashRenderer:
         build: dict,
         title_text: str,
         subtitle_text: str,
+        page: bool = True,
     ) -> str:
         """Phase 6 of render(): assemble the Bokeh layout and return standalone HTML.
+
+        With *page* False the layout is assembled and "" returned before
+        the page is serialised (WP-34 AX-3).
 
         Handles both Bootstrap-grid and standard Bokeh-gridplot layouts, with
         optional title/subtitle header and tab groups (Bootstrap mode only).
@@ -66629,6 +66749,9 @@ class DashRenderer:
             # no single Bokeh layout root, so the parity guard reads this
             # page's grid from its markup (test_mode_parity.py).
             self._last_layout_root = None
+            if not page:
+                # WP-34 AX-3: the figures are finished; no page is wanted.
+                return ""
             return self._render_bootstrap_html(
                 layout_opt=layout_opt,
                 all_names=all_names,
@@ -66782,6 +66905,9 @@ class DashRenderer:
             _hook_doc = _HookDoc()
             _hook_doc.add_root(layout_root)
             _hook_doc.js_on_event("document_ready", *_hooks)
+        if not page:
+            # WP-34 AX-3: every model is built; the page is not serialised.
+            return ""
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
         # Every script on this page is Bokeh's, hashed here, before the
         # head below is spliced in (WP-30 P1.29).
@@ -66803,8 +66929,12 @@ class DashRenderer:
     # Main render method
     # ------------------------------------------------------------------
 
-    def render(self) -> str:
+    def render(self, page: bool = True) -> str:
         """Build the complete dashboard and return standalone HTML.
+
+        With *page* False every phase runs as it does for the page and the
+        page itself is not serialised: "" is returned (the served pre-pass,
+        WP-34 AX-3, needs the figures only).
 
         Orchestrates six phases in order:
           1. Collect all variable names referenced across graphs, KPIs, and filters.
@@ -67011,6 +67141,7 @@ class DashRenderer:
             build=build,
             title_text=title_text,
             subtitle_text=subtitle_text,
+            page=page,
         )
 
 
@@ -67675,6 +67806,8 @@ class ServerAppBuilder:
                       "_DASH_RBO_JS",
                       # _dash_parse_axis_spec's tick bound (WP-20).
                       "_MAX_AXIS_TICKS",
+                      # WP-34 AX-3: the build-time oracle (off in the app).
+                      "_DASH_STATA_ORACLE", "_DASH_STATA_ORACLE_MAX",
                       # WP-34 DG-3: numlist's relative tolerance.
                       "_DASH_NUMLIST_TOL",
                       # WP-32: the empty axis's extent.
@@ -67776,6 +67909,12 @@ class ServerAppBuilder:
                 continue
             if _name == "_DASH_STYLE_FILE_MEMO":
                 out.append("%s = {}" % (_name,))
+                continue
+            if _name == "_DASH_STATA_ORACLE":
+                # WP-34 AX-3: the app starts with the oracle off and none
+                # of the build's answers (no main() there turns it on).
+                out.append('_DASH_STATA_ORACLE = {"on": False, "calls": 0, '
+                           '"cache": {}, "rows": []}')
                 continue
             if isinstance(_val, pd.Timestamp):
                 # repr() is Timestamp('...'), a name the app has not got.
@@ -68311,6 +68450,7 @@ class ServerAppBuilder:
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
+                         "_dash_stata_oracle", "_dash_stata_ticks_of",
                          # D1d: the outer axes' minor-label pool.
                          "_dash_minor_pool_size",
 
@@ -70938,6 +71078,8 @@ class ServerAppBuilder:
             "        fig = bokeh_figure(**_fig_kw)",
             "        # WP-31 K6: the figure's host is an image named from its graph.",
             "        _dash_name_figure(fig, go, plots)",
+            "        # WP-34 AX-3: the page's Stata table, stamped before the layers so the colour keys read it (A-16).",
+            "        fig._dash_stata_ticks = getattr(_dash_cur_mapper(), '_dash_stata_ticks', None)",
             "        # WP-30 P1.3a: twoway's margin and the scheme's tick counts.",
             "        fig._dash_margin = _dash_plot_margin(_dash_cur_scheme(), go)",
             "        fig._dash_margin_args = (_dash_cur_scheme(), go)",
@@ -71201,7 +71343,6 @@ class ServerAppBuilder:
             "        _dash_keep_primary_ranges(fig)",
             "        # #N ticks where twoway puts them, as the saved figure's are:",
             "        # Stata's own for a range the export summarized (WP-31 D15).",
-            "        fig._dash_stata_ticks = getattr(_dash_cur_mapper(), '_dash_stata_ticks', None)",
             "        _dash_finish_count_ticks(fig)",
             "",
             '        # ---- Build the legend ----',
@@ -73229,6 +73370,30 @@ def main(
         )
 
     _validate_output_path(output_path, mode, launch=launch)
+    # WP-34 AX-3: inside Stata (an sfi whose SFIToolkit.stata is callable)
+    # every count axis asks Stata's own routine as the page is built
+    # (_dash_stata_oracle); off again however main() ends.
+    _dash_oracle_on = False
+    try:
+        import sfi  # noqa: F401 -- Stata's interface, present only in Stata
+        _dash_oracle_on = callable(getattr(getattr(sfi, "SFIToolkit", None),
+                                           "stata", None))
+    except ImportError:
+        pass
+    _DASH_STATA_ORACLE.update(on=_dash_oracle_on, calls=0, cache={},
+                              rows=[])
+    try:
+        return _dash_main_body(master_spec_path, data_json_path,
+                               output_path, mode, port, launch,
+                               private_output)
+    finally:
+        _DASH_STATA_ORACLE["on"] = False
+
+
+def _dash_main_body(master_spec_path, data_json_path, output_path, mode,
+                    port, launch, private_output):
+    """:func:`main`'s build, run with the oracle switched as main() set it
+    (WP-34 AX-3)."""
     # WP-30 P1.30 (M9): the bokeh this runs under.  Under Stata the refusal
     # fires earlier (_dash_dep_versions, on every load); this covers a
     # direct call.  The note prints once per command through S06's scope,
@@ -73252,6 +73417,18 @@ def main(
         # server' followed by `python app.py' -- the documented non-blocking
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
+        if _DASH_STATA_ORACLE["on"]:
+            # WP-34 AX-3: the served pre-pass.  The figures are drawn once
+            # here, inside Stata, so every range the saved page would ask
+            # Stata for is asked; the answers ride in the app's spec under
+            # a key of their own (the export's stata_ticks unchanged), and
+            # the frozen spec text the app embeds is made again.  The
+            # user's spec file is never rewritten.
+            DashRenderer(master_spec_path, data_json_path).render(page=False)
+            builder.spec.setdefault("build_options", {})[
+                "stata_ticks_build"] = [list(r) for r in
+                                        _DASH_STATA_ORACLE["rows"]]
+            builder._spec_str = json.dumps(builder.spec)
         written = builder.build(output_path, port=_dash_port_value(port),
                                 private=True, trial=not launch)
         # The app embeds the spec and data (_SPEC_B64, _DATA_B64), so dash

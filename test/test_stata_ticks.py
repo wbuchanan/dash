@@ -261,6 +261,17 @@ class TestTheRequests:
         assert {r["by"] for r in dr._dash_stata_tick_requests([g], {})} \
             == {"foreign"}
 
+    def test_by_and_minor_counts(self):
+        """The export asks a by() graph's count (4) and ymtick(#N)'s."""
+        g = {"plots": [{"type": "scatter", "yvar": "price", "xvar": "mpg",
+                        "options": {}}],
+             "graph_options": {"by": "foreign", "ymtick": "#3"}}
+        ns = {r["n"] for r in dr._dash_stata_tick_requests([g], {})}
+        assert ns == {3, 4, 5}
+        g["graph_options"] = {"ymlabel": "#6"}
+        ns = {r["n"] for r in dr._dash_stata_tick_requests([g], {})}
+        assert ns == {5, 6}
+
     def test_names_only(self):
         """A variable or column that is not a Stata name, or a qualifier
         column dash does not write, is never passed to Stata."""
@@ -642,3 +653,542 @@ class TestTickMinmaxAndSharedTicks:
         khi = float(_DF.loc[_DF["pv"] <= 10000.0, "price"].max())
         want = dr._dash_axis_count_ticks(lo, khi, 4)
         assert [_efix(_axis(f, "y")) for f in figs] == [want, want]
+
+
+# ---------------------------------------------------------------------------
+# WP-34 AX-3: Stata's own ticks for every count axis, asked as the page is
+# built inside Stata (_dash_stata_oracle behind _dash_stata_or_model).
+# ---------------------------------------------------------------------------
+
+#: The smallest value sfi reads as a Stata missing value.
+_STATA_MISSING = 8.98846567431158e307
+
+
+class _FakeStata:
+    """A stand-in ``sfi`` whose ``SFIToolkit.stata`` is callable: it records
+    each command and answers ``capture _natscale a b n`` with *answer(a, b,
+    n)* -- ``(r(min), r(max), r(delta), r(n))``, or None for rc 459 with
+    r() cleared.  *fail* raises inside ``stata`` for a command holding it."""
+
+    def __init__(self, answer=None, fail=None):
+        self.cmds = []
+        sc, gl, st = {}, {}, {"rc": 0}
+        me = self
+
+        def stata(cmd):
+            me.cmds.append(cmd)
+            if fail and fail in cmd:
+                raise RuntimeError("stata failed")
+            m = re.match(r"capture _natscale (\S+) (\S+) (\d+)\Z", cmd)
+            if m or cmd.startswith("capture _tsnatscale "):
+                for k in ("min", "max", "delta", "n"):
+                    sc.pop("r(%s)" % k, None)
+                gl.pop("r(list)", None)
+                got = (answer(float(m.group(1)), float(m.group(2)),
+                              int(m.group(3))) if m and answer else None)
+                st["rc"] = 459 if got is None else 0
+                if got is not None:
+                    sc.update(zip(("r(min)", "r(max)", "r(delta)", "r(n)"),
+                                  got))
+                return
+            m = re.match(r"scalar (__dashrc[0-9a-f]+) = _rc\Z", cmd)
+            if m:
+                sc[m.group(1)] = float(st["rc"])
+                return
+            m = re.match(r"capture scalar drop (\S+)\Z", cmd)
+            if m:
+                sc.pop(m.group(1), None)
+
+        class SFIToolkit:
+            pass
+
+        SFIToolkit.stata = staticmethod(stata)
+
+        class Scalar:
+            getValue = staticmethod(lambda n: sc.get(n))
+
+        class Macro:
+            getGlobal = staticmethod(lambda n: gl.get(n, ""))
+            getLocal = staticmethod(lambda n: "")
+            setGlobal = staticmethod(lambda n, v: gl.__setitem__(n, v))
+
+        class Missing:
+            isMissing = staticmethod(
+                lambda v: v is not None and abs(v) >= _STATA_MISSING)
+
+        self.SFIToolkit, self.Scalar, self.Macro = SFIToolkit, Scalar, Macro
+        self.Missing = Missing
+        self._sc, self._gl, self._st = sc, gl, st
+
+
+def _ends(a, b, n):
+    """An answer no model gives: the range's two ends."""
+    return (a, b, b - a, 2.0)
+
+
+def _oracle_reset(on=False):
+    dr._DASH_STATA_ORACLE.update(on=on, calls=0, cache={}, rows=[])
+
+
+@pytest.fixture
+def oracle(monkeypatch):
+    """Turn the build-time oracle on over a fake Stata that answers every
+    _natscale with the range's ends; off again after the test."""
+    fake = _FakeStata(_ends)
+    monkeypatch.setitem(sys.modules, "sfi", fake)
+    _oracle_reset(True)
+    try:
+        yield fake
+    finally:
+        _oracle_reset(False)
+
+
+class TestTheOracle:
+    def test_command_order_and_restore(self, monkeypatch):
+        """Hold r(), ask with %.17g numbers, read the rc, drop its scalar,
+        restore r(): in that order; the answer is _dash_stata_ticks_of's."""
+        p = _P["P4"]
+        r = p["routine"]
+        fake = _FakeStata(lambda a, b, n: (r["min"], r["max"], r["delta"],
+                                           r["n"]))
+        monkeypatch.setitem(sys.modules, "sfi", fake)
+        _oracle_reset(True)
+        try:
+            got = dr._dash_stata_oracle(p["data_lo"], p["data_hi"], 4, "")
+        finally:
+            _oracle_reset(False)
+        assert got == p["drawn_ticks"]
+        c = fake.cmds
+        assert len(c) == 5
+        hold = re.fullmatch(r"_return hold (__dashrh[0-9a-f]{8})", c[0])
+        assert hold
+        assert c[1] == "capture _natscale %.17g %.17g 4" % (
+            p["data_lo"], p["data_hi"])
+        rc = re.fullmatch(r"scalar (__dashrc[0-9a-f]{8}) = _rc", c[2])
+        assert rc and c[3] == "capture scalar drop " + rc.group(1)
+        assert c[4] == "_return restore " + hold.group(1)
+
+    def test_a_failed_or_missing_answer_is_none(self, monkeypatch):
+        for answer in (lambda a, b, n: None,
+                       lambda a, b, n: (_STATA_MISSING, b, 1.0, 2.0),
+                       lambda a, b, n: (None, b, 1.0, 2.0)):
+            fake = _FakeStata(answer)
+            monkeypatch.setitem(sys.modules, "sfi", fake)
+            _oracle_reset(True)
+            try:
+                assert dr._dash_stata_oracle(1.0, 9.0, 5, "") is None
+            finally:
+                _oracle_reset(False)
+            assert fake.cmds[-1].startswith("_return restore __dashrh")
+
+    def test_a_date_answer_is_its_list(self, monkeypatch):
+        """_tsnatscale answers in r(list) and leaves no r(delta) (measured on
+        sp500: `_tsnatscale 14700 15600 4, daily' gives r(min) 14610,
+        r(max) 15522, r(n) 6 and the list); the list is the answer."""
+        fake = _FakeStata()
+        monkeypatch.setitem(sys.modules, "sfi", fake)
+        orig = fake.SFIToolkit.stata
+
+        def stata(cmd):
+            orig(cmd)
+            if cmd.startswith("capture _tsnatscale "):
+                fake._sc.update({"r(min)": 14610.0, "r(max)": 15522.0,
+                            "r(n)": 6.0})
+                fake._gl["r(list)"] = "14610 14792 14976 15157 15341 15522 "
+                fake._st["rc"] = 0
+        fake.SFIToolkit.stata = staticmethod(stata)
+        _oracle_reset(True)
+        try:
+            got = dr._dash_stata_oracle(14700.0, 15600.0, 4, "d")
+        finally:
+            _oracle_reset(False)
+        assert got == [14610.0, 14792.0, 14976.0, 15157.0, 15341.0, 15522.0]
+        assert "capture _tsnatscale 14700 15600 4, daily" in fake.cmds
+
+    def test_switch_cache_bound_and_failure(self, monkeypatch):
+        fake = _FakeStata(_ends)
+        monkeypatch.setitem(sys.modules, "sfi", fake)
+        assert dr._dash_stata_oracle(1.0, 9.0, 5, "") is None  # off
+        assert fake.cmds == []
+        _oracle_reset(True)
+        try:
+            assert dr._dash_stata_oracle(1.0, 9.0, 5, "") == [1.0, 9.0]
+            n = len(fake.cmds)
+            assert dr._dash_stata_oracle(1.0, 9.0, 5, "") == [1.0, 9.0]
+            assert len(fake.cmds) == n  # cached
+            assert dr._DASH_STATA_ORACLE["rows"] == [
+                [1.0, 9.0, 5, "", [1.0, 9.0]]]
+            assert dr._dash_stata_oracle(3.0, 3.0, 5, "") is None
+            dr._DASH_STATA_ORACLE["calls"] = dr._DASH_STATA_ORACLE_MAX
+            assert dr._dash_stata_oracle(2.0, 9.0, 5, "") is None  # bound
+            _oracle_reset(True)
+            monkeypatch.setitem(sys.modules, "sfi",
+                                _FakeStata(_ends, fail="_natscale"))
+            assert dr._dash_stata_oracle(1.0, 9.0, 5, "") is None
+        finally:
+            _oracle_reset(False)
+        assert dr._DASH_STATA_ORACLE_MAX == 256
+
+    @pytest.mark.parametrize("fake_kind", ["toolkit", "plain", "raises"])
+    def test_main_needs_a_callable_toolkit(self, tmp_path, monkeypatch,
+                                           fake_kind):
+        """main() turns the oracle on only under an sfi whose
+        SFIToolkit.stata is callable, and off again when it returns or
+        raises."""
+        seen = []
+        real = dr.DashRenderer.render
+
+        def spy(self, *a, **k):
+            seen.append(dr._DASH_STATA_ORACLE["on"])
+            if fake_kind == "raises":
+                raise RuntimeError("boom")
+            return real(self, *a, **k)
+
+        monkeypatch.setattr(dr.DashRenderer, "render", spy)
+        monkeypatch.setitem(sys.modules, "sfi", _FakeSfi()
+                            if fake_kind == "plain" else _FakeStata(_ends))
+        _tag, sp, dp = tda._write(tda._spec(tda.tb.SC))
+        out = str(tmp_path / "o.html")
+        with _quiet():
+            if fake_kind == "raises":
+                with pytest.raises(RuntimeError):
+                    dr.main(sp, dp, out)
+            else:
+                dr.main(sp, dp, out)
+        assert seen == [fake_kind != "plain"]
+        assert dr._DASH_STATA_ORACLE["on"] is False
+
+    def test_the_funnel_order(self, oracle):
+        tab = [(1.0, 9.0, 5, "", (2.0, 4.0))]
+        assert dr._dash_stata_or_model(tab, 1.0, 9.0, 5, "") == [2.0, 4.0]
+        mine = []
+        assert dr._dash_stata_or_model(mine, 1.0, 7.0, 5, "") == [1.0, 7.0]
+        assert mine == [(1.0, 7.0, 5, "", (1.0, 7.0))]
+        _oracle_reset(False)
+        assert dr._dash_stata_or_model(None, 1.0, 7.0, 5, "") == \
+            dr._dash_natscale_ticks(1.0, 7.0, 5)
+
+
+def _quiet():
+    import warnings as _w
+    cm = _w.catch_warnings()
+
+    class _Q:
+        def __enter__(self):
+            cm.__enter__()
+            _w.simplefilter("ignore")
+
+        def __exit__(self, *a):
+            return cm.__exit__(*a)
+    return _Q()
+
+
+def _plan_stata(o):
+    """Every [lo, hi, unit, ticks] row of a saved plan's ``stata`` fields."""
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if k == "stata" and isinstance(v, list):
+                yield from v
+            else:
+                yield from _plan_stata(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from _plan_stata(v)
+
+
+def _auto_lohi(var):
+    s = tda._frame("auto")[var]
+    return float(s.min()), float(s.max())
+
+
+def _count_entry(f, letter):
+    return [e for e in f._dash_count_entries if e["letter"] == letter
+            and e["name"] == "default"][0]
+
+
+def _ends_of(e):
+    return [float("%.15g" % e["tick_lo"]), float("%.15g" % e["tick_hi"])]
+
+
+def _keys(figs):
+    """Each colour key's ticks, figure by figure (a ColorBar or a contour's
+    ContourColorBar)."""
+    from bokeh.models.annotations.legends import BaseColorBar
+    return [list(m.ticker.ticks) for f in figs for m in f.right + f.left
+            + f.above + f.below + f.center if isinstance(m, BaseColorBar)]
+
+
+def _minor_pos(f, letter):
+    from bokeh.models import CustomJSTicker
+    sides = (f.left + f.right) if letter == "y" else (f.below + f.above)
+    out = []
+    for ax in sides:
+        t = getattr(ax, "ticker", None)
+        if isinstance(t, CustomJSTicker):
+            out += list(dict(t.args or {}).get("mextra") or [])
+    return sorted(set(float(v) for v in out))
+
+
+def _served_main(tmp_path, monkeypatch, spec, fake):
+    """main(mode="server") under *fake* (the oracle on, as in Stata), then
+    the written app drawn with no sfi, as the served process runs it:
+    (document, the app's decoded spec, the app's source)."""
+    import base64
+    from bokeh.document import Document
+    from conftest import load_app
+    _tag, sp, dp = tda._write(spec)
+    ap = str(tmp_path / ("app_%d.py" % _tag))
+    monkeypatch.setitem(sys.modules, "sfi", fake)
+    with _quiet():
+        dr.main(sp, dp, ap, mode="server")
+    monkeypatch.delitem(sys.modules, "sfi", raising=False)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    b64 = re.search(r'^_SPEC_B64 = "([^"]*)"', src, re.M).group(1)
+    app_spec = json.loads(base64.b64decode(b64).decode("utf-8"))
+    with _quiet():
+        mod = load_app(ap, "_ax3_app_%d" % _tag)
+        doc = Document()
+        mod.make_document(doc)
+    return doc, app_spec, src
+
+
+def _saved_on(spec):
+    """The saved renderer, built with the oracle on (as main() runs it)."""
+    _oracle_reset(True)
+    try:
+        r = tda._saved(spec)
+    finally:
+        _oracle_reset(False)
+    return r
+
+
+_P_ = tda.P
+_KEY_SPECS = {
+    "colorvar": ([_P_("line", "mpg", "weight", colorvar="turn",
+                      sort="sort")], {}, "turn"),
+    "zlabel": ([_P_("line", "mpg", "weight", colorvar="turn",
+                    sort="sort")], {"zlabel": "#3"}, "turn"),
+    "contour": ([{"type": "contour", "zvar": "price", "yvar": "mpg",
+                  "xvar": "weight", "options": {}}], {}, "price"),
+    "contour-zlabel": ([{"type": "contour", "zvar": "price", "yvar": "mpg",
+                         "xvar": "weight", "options": {}}],
+                       {"zlabel": "#3"}, "price"),
+}
+
+
+class TestBuildTicksAskStata:
+    @pytest.mark.parametrize("case", ["by", "histogram", "colorvar"])
+    def test_saved(self, oracle, case):
+        """With the oracle on, a by() y axis, a histogram's x axis and a
+        colour key draw Stata's answer (here the range's ends), and the
+        plan carries it."""
+        if case == "by":
+            r = tda._saved(tda._spec([_P_("scatter", "price", "mpg")],
+                                     {"by": "foreign"}))
+            figs = tda.tb._panels(list(r.figures.values()))
+            e = _count_entry(figs[0], "y")
+            assert tda._ticks(figs[0], "y") == _ends_of(e)
+        elif case == "histogram":
+            r = tda._saved(tda._spec([_P_("histogram", "mpg")]))
+            figs = tda.tb._panels(list(r.figures.values()))
+            e = _count_entry(figs[0], "x")
+            assert tda._ticks(figs[0], "x") == _ends_of(e)
+        else:
+            r = tda._saved(tda._spec(*_KEY_SPECS["colorvar"][:2]))
+            figs = list(r.figures.values())
+            assert _keys(figs) == [list(_auto_lohi("turn"))]
+        if case != "colorvar":
+            plan = dr._dash_axis_plan(r.figures, r._facet_map, zoom=False)[0]
+            want = _ends_of(e)
+            assert [want[0], want[1], "", want] in [
+                st for st in _plan_stata(json.loads(plan))]
+
+    def test_move_back(self, oracle):
+        """A move falls to the model; a move back to all rows restores the
+        oracle's answer the plan carries (the saved page, under node)."""
+        spec = tda._spec([_P_("scatter", "price", "mpg")],
+                         filt="price, type(range)")
+        r = tda._saved(spec)
+        _oracle_reset(False)
+        f = tda.tb._panels(list(r.figures.values()))[0]
+        want = _ends_of(_count_entry(f, "y"))
+        assert tda._ticks(f, "y") == want
+        figs = tda._move_saved(r, "RangeSlider", (3291.0, 7075.5))
+        assert tda._ticks(figs[0], "y") != want
+        figs = tda._move_saved(r, "RangeSlider", _auto_lohi("price"))
+        assert tda._ticks(figs[0], "y") == want
+
+    def test_served_prepass(self, tmp_path, monkeypatch):
+        """main(mode="server") under Stata embeds the pre-pass's answers in
+        the app's spec, under stata_ticks_build (stata_ticks as written),
+        and the served document draws the saved page's ticks; the app
+        starts with its oracle off."""
+        spec = tda._spec([_P_("scatter", "price", "mpg")], {"by": "foreign"})
+        doc, app_spec, src = _served_main(tmp_path, monkeypatch, spec,
+                                          _FakeStata(_ends))
+        bo = app_spec["build_options"]
+        assert "stata_ticks" not in bo
+        rows = bo["stata_ticks_build"]
+        assert rows and all(len(r) == 5 and r[4] == [r[0], r[1]]
+                            for r in rows)
+        assert '_DASH_STATA_ORACLE = {"on": False, "calls": 0, ' \
+            '"cache": {}, "rows": []}' in src
+        assert "'on': True" not in src
+        served = tda.tb._panels(tda.tb._figs_of(doc.roots))
+        monkeypatch.setitem(sys.modules, "sfi", _FakeStata(_ends))
+        saved = tda.tb._panels(list(_saved_on(spec).figures.values()))
+        assert [tda._ticks(f, "y") for f in served] == \
+            [tda._ticks(f, "y") for f in saved]
+        assert tda._ticks(served[0], "y") == _ends_of(
+            _count_entry(saved[0], "y"))
+
+    def test_each_graph_keeps_its_own_rows(self, oracle):
+        g1 = tda.tb._graph("g1", [_P_("scatter", "price", "mpg")])
+        g2 = tda.tb._graph("g2", [_P_("scatter", "turn", "weight")])
+        r = tda._saved(tda.tb._spec(graphs=[g1, g2]))
+        lo = {g: [] for g in ("g1", "g2")}
+        for name, f in r.figures.items():
+            for e in f._dash_count_entries:
+                lo[name] += [row[0] for row in (e.get("stata") or ())]
+        pr, tu = _auto_lohi("price"), _auto_lohi("turn")
+        assert pr[0] in lo["g1"] and tu[0] not in lo["g1"]
+        assert tu[0] in lo["g2"] and pr[0] not in lo["g2"]
+
+    @pytest.mark.parametrize("case", sorted(_KEY_SPECS))
+    def test_served_colour_keys_match_saved(self, tmp_path, monkeypatch,
+                                            case):
+        """At build the served app's colour keys draw the saved page's
+        Stata answers (DECISIONS A-16, A-19)."""
+        plots, go, var = _KEY_SPECS[case]
+        spec = tda._spec(plots, go)
+        doc, _s, _src = _served_main(tmp_path, monkeypatch, spec,
+                                     _FakeStata(_ends))
+        monkeypatch.setitem(sys.modules, "sfi", _FakeStata(_ends))
+        saved = _keys(list(_saved_on(spec).figures.values()))
+        assert saved == [list(_auto_lohi(var))]
+        assert _keys(tda.tb._figs_of(doc.roots)) == saved
+
+    def test_served_minor_counts_match_saved(self, tmp_path, monkeypatch):
+        spec = tda._spec([_P_("scatter", "price", "mpg")], {"ymtick": "#4"})
+        doc, _s, _src = _served_main(tmp_path, monkeypatch, spec,
+                                     _FakeStata(_ends))
+        monkeypatch.setitem(sys.modules, "sfi", _FakeStata(_ends))
+        saved = tda.tb._panels(list(_saved_on(spec).figures.values()))
+        assert _minor_pos(saved[0], "y") == list(_auto_lohi("price"))
+        served = tda.tb._panels(tda.tb._figs_of(doc.roots))
+        assert _minor_pos(served[0], "y") == _minor_pos(saved[0], "y")
+
+    @pytest.mark.parametrize("case", ["colorvar", "contour"])
+    def test_colour_keys_keep_the_model_after_a_move(self, tmp_path,
+                                                     monkeypatch, case):
+        """After a served move and a move back to all rows, a colour key is
+        the model's (as the saved page's dash_cvar_ticks and
+        dash_contour_cuts draw it), not Stata's (BR-34-09.3)."""
+        plots, go, var = _KEY_SPECS[case]
+        spec = tda._spec(plots, go, filt="foreign, type(dropdown)")
+        doc, _s, _src = _served_main(tmp_path, monkeypatch, spec,
+                                     _FakeStata(_ends))
+        tda._move_served(doc, "Select", "Foreign")
+        figs = tda._move_served(doc, "Select", "All")
+        lo, hi = _auto_lohi(var)
+        model = dr._dash_axis_count_ticks(lo, hi, 5)
+        got = _keys(figs)
+        assert got and got[0] != [lo, hi]
+        if case == "colorvar":
+            assert got == [model]
+
+
+class TestTheKeyTables:
+    @pytest.mark.parametrize("case", ["apply_colorvar", "z_options",
+                                      "contour_cuts", "contour_zticks",
+                                      "minor_counts"])
+    def test_each_call_reads_the_table(self, case):
+        """Each colour-key and minor-count call reads the table of the
+        figure it draws on; with none it draws the model."""
+        if case in ("contour_cuts", "contour_zticks"):
+            row = [(3291.0, 15906.0, 3, "", (3291.0, 15906.0))]
+            zo = {"zlabel": "#3"}
+            if case == "contour_cuts":
+                got = dr._dash_contour_cuts({}, 3291.0, 15906.0, zo,
+                                            table=row)[1]
+                none = dr._dash_contour_cuts({}, 3291.0, 15906.0, zo)[1]
+            else:
+                got = dr._dash_contour_zticks(zo, 3291.0, 15906.0,
+                                              table=row)[0]
+                none = dr._dash_contour_zticks(zo, 3291.0, 15906.0)[0]
+            assert got == [3291.0, 15906.0]
+            assert none == dr._dash_axis_count_ticks(3291.0, 15906.0, 3)
+            return
+        if case == "minor_counts":
+            plots, go, var, n = ([_P_("scatter", "price", "mpg")],
+                                 {"ymtick": "#4"}, "price", 4)
+        else:
+            plots, go, var = _KEY_SPECS["colorvar" if case ==
+                                        "apply_colorvar" else "zlabel"]
+            n = 5 if case == "apply_colorvar" else 3
+        lo, hi = _auto_lohi(var)
+        spec = tda._spec(plots, go)
+        spec["build_options"]["stata_ticks"] = [[lo, hi, n, "", [lo, hi]]]
+        figs = list(tda._saved(spec).figures.values())
+        bare = list(tda._saved(tda._spec(plots, go)).figures.values())
+        if case == "minor_counts":
+            assert _minor_pos(figs[0], "y") == [lo, hi]
+            assert _minor_pos(bare[0], "y") == \
+                dr._dash_axis_count_ticks(lo, hi, 4)
+        else:
+            assert _keys(figs) == [[lo, hi]]
+            assert _keys(bare) != [[lo, hi]]
+
+
+class TestTheTable:
+    def test_the_served_merge_keeps_every_row(self):
+        ex = [[float(i), float(i) + 1.0, 5, "", [float(i)]]
+              for i in range(600)]
+        bu = [[1000.0 + i, 1001.0 + i, 5, "", [1000.0 + i]]
+              for i in range(10)]
+        tab = dr._dash_stata_tick_table({"stata_ticks": ex,
+                                         "stata_ticks_build": bu})
+        assert len(tab) == 522
+        assert [r[0] for r in tab] == [float(i) for i in range(512)] + \
+            [1000.0 + i for i in range(10)]
+        assert len(dr._dash_stata_tick_table(
+            {"stata_ticks_build": bu})) == 10
+
+
+def _help_text():
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8") as fh:
+        return " ".join(fh.read().split())
+
+
+class TestTheHelp:
+    def test_the_build_sentences(self):
+        """The help says every count axis is asked of Stata at build, in
+        both modes, and that the model draws after a filter move, outside
+        Stata and past the 256-range bound (WP-34 AX-3, HR-10)."""
+        h = _help_text()
+        assert ("asked of Stata over the range each layer draws when "
+                "{cmd:dash} builds the page;") in h
+        assert ("Every count axis is asked so at build -- a {cmd:by()} panel "
+                "at its own count,") in h
+        assert ("so the served app opens with the same ticks and colour "
+                "keys. At most 256 ranges are asked a build; a page "
+                "rendered outside Stata, and any range past that bound, use "
+                "the model.") in h
+        assert ("asks Stata for it when the page is built, and after a "
+                "filter move follows a model fitted to Stata's answers that "
+                "agrees with 261 of 264 axes") in h
+        assert ("{cmd:dash} asks Stata for it when the page is built and, "
+                "after a filter move, follows a model of it fitted to "
+                "12,000 of Stata's answers") in h
+        assert ("by {cmd:twoway}'s calendar rule, asked of Stata when the "
+                "page is built and modelled after a filter move,") in h
+        assert re.search(
+            r"Building a page inside Stata asks Stata's own tick routine for "
+            r"at most 256 axis ranges; any further range is ticked by the "
+            r"model\. \{cmd:dash serve\} and \{cmd:dash build, server\} draw "
+            r"the figures once more inside Stata to ask for them, which adds "
+            r"[0-9.]+ seconds to a served build of 1,000,000 observations "
+            r"\([0-9.]+ seconds in all\)", h)
+        assert h.count("follows a model of it fitted to 12,000") == 1
+        assert "takes the model at once" not in h
