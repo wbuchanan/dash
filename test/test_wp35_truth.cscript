@@ -608,6 +608,36 @@ program define _s03_rc
     _w35_expect `id' "(`same' == 1)" `"dash said "`macval(dline)'", twoway "`macval(line)'": `cmd'"'
 end
 
+// _s03_samefp id work A B: dash takes the function commands A and B and
+// stores the same function points for both (global dash_fpts_<name>).
+capture program drop _s03_samefp
+program define _s03_samefp
+    version 19
+    args id work A B
+    quietly sysuse auto, clear
+    capture dash clear
+    capture log close s03log
+    capture erase "`work'/s03_fp.log"
+    quietly log using "`work'/s03_fp.log", text replace name(s03log) nomsg
+    capture noisily dash `A' name(s03g)
+    local drc_A = _rc
+    mata: _s03_fp = st_global("dash_fpts_s03g")
+    capture dash clear
+    quietly sysuse auto, clear
+    capture noisily dash `B' name(s03g)
+    local drc_B = _rc
+    quietly log close s03log
+    mata: st_local("same", strofreal(_s03_fp == st_global("dash_fpts_s03g") & _s03_fp != ""))
+    capture dash clear
+    capture mata: mata drop _s03_fp
+    _w35_expect `id' "(`drc_A' == 0)" `"dash refused (rc `drc_A'): `A'"'
+    _w35_expect `id' "(`drc_B' == 0)" `"dash refused (rc `drc_B'): `B'"'
+    _w35_expect `id' "(`same' == 1)" `"dash's points for `A' are not those of `B'"'
+    cert_log_has "`work'/s03_fp.log", needle("ignoring unsupported")
+    _w35_expect `id' "(r(found) == 0)" `"dash named an option unsupported: `A'"'
+    capture erase "`work'/s03_fp.log"
+end
+
 * ==== S03 stat:PT-7: lowess m read as mean ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
@@ -671,6 +701,33 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
     _s03_same Q3503-3 "`w35_work'" sandstone "contourline depth northing easting, clw(thick)" "contourline depth northing easting, clwidths(thick)"
     _s03_same Q3503-3 "`w35_work'" sandstone "contour depth northing easting, interp(thinplatespline) i(none)" "contour depth northing easting, interp(none)"
     _w35_done Q3503-3 "contour's documented abbreviations are read as twoway reads them"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 stat:PT-6: function subchar() honoured ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-4: twoway_function_parse.class SUBChar(name) names the
+    // expression's variable (stat_accept_truth.json subchar.*): t^2 with
+    // subchar(t) draws x^2's points (0 .25 1 2.25 4), subc() is its
+    // minimum, the last of two copies is read; a value that is not a name,
+    // two names, the option off function and sub() are refused in
+    // twoway's words, and an unknown word before it is named first.
+    // ------------------------------------------------------------
+    _s03_samefp Q3503-4 "`w35_work'" "function y = t^2, subchar(t) range(0 2) n(5)" "function y = x^2, range(0 2) n(5)"
+    _s03_samefp Q3503-4 "`w35_work'" "function y = t^2, subc(t) range(0 2) n(5)" "function y = x^2, range(0 2) n(5)"
+    _s03_samefp Q3503-4 "`w35_work'" "function y = t^2, subchar(s) subchar(t) range(0 2) n(5)" "function y = x^2, range(0 2) n(5)"
+    _s03_rc Q3503-4 "`w35_work'" auto "function y = t^2, subchar(1t) range(0 2) n(5)" 198 "1t invalid name"
+    _s03_rc Q3503-4 "`w35_work'" auto "function y = t^2, subchar(t t) range(0 2) n(5)" 103 "option subchar():  too many names specified"
+    _s03_rc Q3503-4 "`w35_work'" auto "scatter mpg weight, subchar(t)" 198 "option subchar() not allowed"
+    _s03_rc Q3503-4 "`w35_work'" auto "scatter mpg weight, bogus subchar(t)" 198 "option bogus not allowed"
+    _s03_rc Q3503-4 "`w35_work'" auto "function y = t^2, sub(t) range(0 2) n(5)" 111 "error in expression:  t^2"
+    _w35_done Q3503-4 "function subchar() names the expression's variable, as twoway reads it"
 
     display as text "S03 end " c(current_date) " " c(current_time)
 }

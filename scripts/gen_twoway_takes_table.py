@@ -58,6 +58,12 @@ DECLARED = {"at": "at", "blabel": "blabel", "ciopts": "ciopts",
             "headlabel": "head"}
 
 
+#: Options dash now reads itself, left out of the table: subchar() is
+#: read by _dash_label_split and checked by _dash_fold_stat_words (WP-35
+#: stat:PT-6).
+HANDLED = {"subchar"}
+
+
 def rows(fx):
     """(full, shortest, value, types, after_comma) for each taken probe."""
     out = []
@@ -71,6 +77,8 @@ def rows(fx):
         if re.match(r"^p[0-9]+\(", opt):
             continue
         full = opt.split("(", 1)[0]
+        if full in HANDLED:
+            continue
         value = "1" if "(" in opt else "0"
         sp = p["spellings_rc"]
         L = len(full)

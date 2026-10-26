@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "37c96b5efbbf4bdafa91f335ac04b6731da8bd54",
-  "extracted": "19 Oct 2026 07:04:08",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "62be9a3ca7e0112464f5ed3481645f816d59c152",
+  "extracted": "26 Oct 2026 12:59:08",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
@@ -51,7 +51,6 @@
   "onepanel",
   "refscheme",
   "rescaling",
-  "subchar",
   "symbol",
   "titling",
   "weight",
@@ -937,9 +936,7 @@
    "cmd": "function y = x, range(0 1) subchar(x)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "subchar"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },

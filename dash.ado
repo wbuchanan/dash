@@ -1668,6 +1668,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mlabsuffix       : copy local mlabsuffix
     sreturn local lalign           : copy local lalign
     sreturn local mlabstyle        : copy local mlabstyle
+    sreturn local subchar          : copy local subchar
     sreturn local xvarlabel        : copy local xvarlabel
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -2190,6 +2191,24 @@ program define _dash_fold_stat_words, sclass
     // clpattern() and clw() .. clwidth() -- which this parser binds to
     // the connecting line's clpattern() and clwidth() -- clpatterns() and
     // clwidths() (stat_accept_truth.json contour.*).
+    // function's subchar() (stat:PT-6), read by _dash_label_split:
+    // twoway_function_parse.class declares SUBChar(name), so off function
+    // it is "option subchar() not allowed", two words are "option
+    // subchar():  too many names specified", r(103), and a word that is
+    // no name "<word> invalid name", r(198) (stat_accept_truth.json
+    // subchar.*).  Recorded in the caller's _fsw_subc (off, many or bad)
+    // and refused there after the list's other refusals, as twoway names
+    // an unknown word before it (subchar.order).
+    c_local _fsw_subc ""
+    mata: st_local("_fsw_v", st_global("s(subchar)"))
+    if `: length local _fsw_v' {
+        if "`ptype'" != "function" c_local _fsw_subc "off"
+        else if `: word count `_fsw_v'' > 1 c_local _fsw_subc "many"
+        else {
+            capture confirm name `_fsw_v'
+            if _rc c_local _fsw_subc "bad"
+        }
+    }
     if inlist("`ptype'", "contour", "contourline") {
         mata: _dash_text_args(1, 0, 0)
         mata: _dash_zyx_abbrev(st_global("s(_unknown)"), st_local("_dash_txt"))
@@ -2593,16 +2612,18 @@ end
 // xvarl; measured: twoway takes yvarl("Q") xvarl("R"), rc 0).  Each value
 // is kept as typed, quotes and all, so xvarlabel("") -- no x title, as
 // twoway draws it (test/fixtures/varlabel_mlabel_truth.json
-// varlabel.x_empty) -- is a value and not an absent option.  Sets the
+// varlabel.x_empty) -- is a value and not an absent option.  function's
+// subchar() (WP-35 stat:PT-6; twoway_function_parse.class SUBChar, minimum
+// subc) is read here too; _dash_fold_stat_words checks it.  Sets the
 // caller's locals of the same names, by value.
 // ================================================================
 program define _dash_label_split
     version 19
-    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle table table2"
+    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle table table2 subchar"
     foreach o of local lo {
         c_local `o' ""
     }
-    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal|table)")))
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal|table|subc)")))
     if !`_lb_any' exit
     mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
     mata: _dash_lb_in = ""
@@ -2623,7 +2644,7 @@ program define _dash_label_split
         // parser's LALPha.
         capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
             MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-            MLABSTyle(string asis) TABLE TABLE2(string asis) ]
+            MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ]
         local _rc_lb = _rc
         // A second table (WP-31 H2t) goes on with the rest, as typed: the
         // repeat check then refuses it as a second name() is refused.
@@ -2649,7 +2670,7 @@ program define _dash_label_split
     mata: st_local("0", ", " + _dash_lb_in)
     syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
         MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-        MLABSTyle(string asis) TABLE TABLE2(string asis) ]
+        MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ]
     foreach o of local lo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -6603,6 +6624,18 @@ program define _dash_process_segment, rclass
         // _dash_opts_repeats parse the list again, which undoes the first
         // call's rewrites (WP-35 35-03).
         _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
+        if "`_fsw_subc'" == "off" {
+            display as error "option subchar() not allowed"
+            exit 198
+        }
+        if "`_fsw_subc'" == "many" {
+            display as error "option subchar():  too many names specified"
+            exit 103
+        }
+        if "`_fsw_subc'" == "bad" {
+            mata: _dash_say("err", "", st_global("s(subchar)"), " invalid name")
+            exit 198
+        }
         // Two kernels, mlabfontface() (MLF-01) and a graph option given
         // twice, in that order, which twoway refuses only once every
         // plot's own options are read: each is held as the graph's pending
@@ -7169,6 +7202,10 @@ program define _dash_process_segment, rclass
         local _fn_n 300
         if "`_fn_nval'" != "" local _fn_n `_fn_nval'
         c_local _seg_fnraw_out : copy local _fn_raw
+        // subchar(): the expression's variable (WP-35 stat:PT-6).
+        mata: st_local("_fn_x", st_global("s(subchar)"))
+        if !`: length local _fn_x' local _fn_x "x"
+        c_local _seg_fnx_out "`_fn_x'"
         c_local _seg_fnlo_out `_fn_lo'
         c_local _seg_fnhi_out `_fn_hi'
         c_local _seg_fnn_out `_fn_n'
@@ -8575,6 +8612,7 @@ program define _dash_plot
         local _seg_vars_out    ""
         local _seg_wvar_out    ""
         local _seg_fnraw_out   ""
+        local _seg_fnx_out     ""
         local _seg_fnlo_out    ""
         local _seg_fnhi_out    ""
         local _seg_fnn_out     ""
@@ -8674,6 +8712,7 @@ program define _dash_plot
             local ++_fn_m
             local _fn_k_`_fn_m' `_dash_nplots'
             local _fn_raw_`_fn_m' : copy local _seg_fnraw_out
+            local _fn_x_`_fn_m' "`_seg_fnx_out'"
             local _fn_lo_`_fn_m' : copy local _seg_fnlo_out
             local _fn_hi_`_fn_m' : copy local _seg_fnhi_out
             local _fn_n_`_fn_m' : copy local _seg_fnn_out
@@ -8901,7 +8940,7 @@ program define _dash_plot
         forvalues _p = 1/`_fn_np' {
             forvalues _m = 1/`_fn_m' {
                 mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
-                _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `=`_p'-1' `_fpl_`_m'' "`_fn_d_`_m''"
+                _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `=`_p'-1' `_fpl_`_m'' "`_fn_d_`_m''" `_fn_x_`_m''
             }
         }
         forvalues _m = 1/`_fn_m' {
@@ -8914,7 +8953,7 @@ program define _dash_plot
     else {
         forvalues _m = 1/`_fn_m' {
             mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
-            _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc' "`_fn_d_`_m''"
+            _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc' "`_fn_d_`_m''" `_fn_x_`_m''
         }
     }
     // The fit layers' points join the function layers' (WP-31 C4).
@@ -10383,7 +10422,7 @@ end
 
 
 // ================================================================
-// _dash_fn_points raw_sc lo hi n k obj_sc  -- evaluate one function layer
+// _dash_fn_points raw_sc lo hi n k obj_sc [drops [xname]]  -- evaluate one function layer
 //                                            with twoway's own generator
 // ================================================================
 // dash evaluated `function' itself, in Python, and lost Stata's grammar: ^
@@ -10423,7 +10462,10 @@ end
 //     generator's code.  Break (r(1)) ends the command at once, unechoed.
 program define _dash_fn_points
     version 19
-    args raw_sc lo hi n k obj_sc drops
+    args raw_sc lo hi n k obj_sc drops xname
+    // xname: the expression's variable, subchar() (WP-35 stat:PT-6); x
+    // when it is not given.
+    if "`xname'" == "" local xname x
     mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
     mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
         "^([A-Za-z_][A-Za-z0-9_]*)?[ \t]*=") ? ///
@@ -10484,7 +10526,7 @@ program define _dash_fn_points
         local _fx_dopt "droplines(`drops')"
     }
     tempvar fy fx
-    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx') `_fx_dopt'
+    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(`xname') n(`n') generate(`fy' `fx') `_fx_dopt'
     local rc = _rc
     if `rc' == 1 exit 1
     if `rc' {

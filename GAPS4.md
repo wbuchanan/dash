@@ -355,7 +355,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20c Tracked:** Open (WP-35 section 35-03).
 - **syn:SD-20d Tracked:** Open (WP-35 section 35-03).
 - **syn:SD-20e Tracked:** Open (WP-35 section 35-03).
-- **stat:PT-6 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit pending.
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-9 Tracked:** Open (WP-35 section 35-03).
 - **stat:PT-14 Tracked:** Open (WP-35 section 35-04).

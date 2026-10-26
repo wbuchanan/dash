@@ -864,6 +864,7 @@ and now matches Stata.
 - lowess m is read as mean, as twoway reads it; dash refused it, r(198). (WP-35, stat:PT-7)
 - bwi() is read as bwidth() on lowess, kdensity, lpoly and lpolyci, as twoway reads it; dash refused it, r(198). (WP-35, syn:SD-5)
 - contour and contourline take twoway's shorter spellings i() and int() for interp(), clp() for clpatterns(), clw() for clwidths() and colorl for colorlines; dash refused them or read clp() and clw() as clpattern() and clwidth(). (WP-35, stat:PT-13)
+- function subchar() names the expression's variable, as twoway reads it: function y = t^2, subchar(t) is drawn (dash refused it, r(111)), and subchar(1t) is refused, r(198), "1t invalid name" (dash refused it with r(111), "error in expression"). (WP-35, stat:PT-6)
 
 ### Removed
 

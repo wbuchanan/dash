@@ -737,7 +737,8 @@ class TestTheParsersFoundSomething:
         # _dash_label_split)
         # 277 -> 278: H2l brush() declared by dash build's syntaxes
         # 278 -> 279: dash image's alt() (WP-33 33-06).
-        assert len(_ado_declarations()) == 279
+        # 279 -> 280: WP-35 stat:PT-6 function's subchar() declared
+        assert len(_ado_declarations()) == 280
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -808,7 +809,8 @@ class TestTheParsersFoundSomething:
         # outlines drawn).
         # 60 -> 59: WP-32 baroffset() on rbar beside mwidth drawn
         # (catchall_options_truth.json re-extracted).
-        assert len(_unsupported_section()) == 59
+        # 59 -> 58: WP-35 stat:PT-6 subchar() drawn on function
+        assert len(_unsupported_section()) == 58
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -924,7 +926,8 @@ class TestTheParsersFoundSomething:
         # 474 -> 475: syn:SD-3 the p1() to p20() Differences entry (WP-35 35-02)
         # 475 -> 476: the Differences entry Plot-type names in lower case
         # only (WP-35 plot:PT-3)
-        assert len(defs) == 476, (  # 352 -> 361: P1.14a Named styles
+        # 476 -> 477: WP-35 stat:PT-6 the subchar(name) synopt
+        assert len(defs) == 477, (  # 352 -> 361: P1.14a Named styles
             f"{len(defs)} definition entries cut out of dash.sthlp, 476 "
             f"measured 26oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))

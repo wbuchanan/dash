@@ -21,6 +21,7 @@ from test_abbreviations import _program_body  # noqa: E402
 
 _ROOT = os.path.join(_HERE, "..")
 _ADO = os.path.join(_ROOT, "dash.ado")
+_MATA = os.path.join(_ROOT, "dash_parse.mata")
 _FIX = os.path.join(_HERE, "fixtures", "stat_accept_truth.json")
 
 
@@ -98,3 +99,19 @@ class TestDeclarations:
         assert re.search(r"\bBWIdth\(string\)", body), "BWIdth not declared"
         assert not re.search(r"\bBWIDth\(", body)
         assert re.search(r"\bBW\(string\)", body)
+
+
+class TestTheTakesTable:
+    def test_no_subchar_row(self):
+        """stat:PT-6: subchar() is read (_dash_label_split), so the
+        generated table of words twoway takes and dash leaves to its
+        catch-all holds no subchar row; twoway draws subchar(t)'s t^2 as
+        x^2 (stat_accept_truth.json subchar.ok)."""
+        d = _truth()
+        assert d["subchar.ok"]["serset"]["__000000"] == [0.0, 0.25, 1.0,
+                                                          2.25, 4.0]
+        assert d["subchar.twice"]["serset"] == d["subchar.ok"]["serset"]
+        assert (d["subchar.bad"]["rc"], d["subchar.bad"]["message"]) == (
+            198, "1t invalid name")
+        assert d["subchar.order"]["message"] == "option bogus not allowed"
+        assert '("subchar",' not in _read(_MATA)

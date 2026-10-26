@@ -4646,11 +4646,11 @@
   - Suggested fix: Resolve them to the contour options first
   - Resolution: Fixed 26oct2026 (WP-35, stat:PT-13). On contour and contourline _dash_fold_stat_words (dash.ado) reads i() .. inter() as interp() (the rightmost interp() spelling of the list wins, as twoway's _parse combop does), colorl .. colorline as colorlines (_dash_zyx_abbrev, dash_parse.mata, by value), and clp() .. clpattern() and clw() .. clwidth() as clpatterns() and clwidths(), as twoway_zyx2view_parse.class declares them; dash.sthlp's contour paragraph names the shorter spellings; both modes draw the spec. Pinned by test/test_wp35_truth.cscript Q3503-3; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 stat:PT-13 (WP-35, stat:PT-13).
 
-- [ ] Title: function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note
+- [x] Title: function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note
   - File Names and Line Numbers: twoway_function_parse.class:55-71; dash.ado:10448 hard-codes x(x)
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-6; confirmed; tracked: help claim inaccurate. Registered as GAPS4 stat:PT-6 (WP-35, section 35-03, Fix).
   - Suggested fix: Validate it as a name and pass it as x()
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, stat:PT-6). _dash_label_split reads subchar() (SUBChar, minimum subc, its last copy kept); _dash_fold_stat_words checks it and _dash_process_segment refuses it as twoway does: off function "option subchar() not allowed", r(198), two words "option subchar():  too many names specified", r(103), a word that is no name "<word> invalid name", r(198), after the list's other refusals; on function the name is handed to _dash_fn_points as twoway__function_gen's x(); the generated _dash_tw_takes_tab has no subchar row; dash.sthlp documents it and its Unsupported list no longer names it; both modes draw the stored points. Pinned by test/test_stat_accept.py::TestTheTakesTable::test_no_subchar_row, test/test_wp35_truth.cscript Q3503-4; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 stat:PT-6 (WP-35, stat:PT-6).
 
 - [ ] Title: lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes
   - File Names and Line Numbers: twoway_lowess_parse.class:37-47; probe1 #77-#78

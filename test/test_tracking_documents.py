@@ -2882,7 +2882,6 @@ GAPS4_OPEN = {
     'syn:SD-20c': 'lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key',
     'syn:SD-20d': "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle",
     'syn:SD-20e': 'clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated',
-    'stat:PT-6': 'function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note',
     'stat:PT-8': "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes",
     'stat:PT-9': 'Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)',
     'stat:PT-14': 'bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types',
