@@ -399,6 +399,8 @@
 *!          r(198), an axis above it r(125); a valid one drawn, not named
 *!   Q3506-5 (sil:SD-8) a title, subtitle, note or caption with notitling
 *!          refused r(4018) in twoway's words; notitling alone named
+*!   Q3506-7 (syn:SD-22, documented) contour and contourline refuse an
+*!          option they do not know with levels() too, which twoway ignores
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -3483,6 +3485,25 @@ python: _q3506_keys("notitling.")
 foreach _q5k of local q_keys {
     _q3506 Q3506-5 `_q5k'
 }
+
+// Q3506-7 (syn:SD-22, ruling D54, documented): twoway's contour and
+// contourline with levels() ignore an option they do not know (fixture
+// contour.levels_bogus, contourline.levels_bogus: rc 0); dash refuses it
+// as it does without levels(), r(198), "option bogus() not allowed", as
+// the help says (dash.sthlp "An option contour does not know").
+foreach _q7t in contour contourline {
+    foreach _q7o in "levels(10) bogus(1)" "bogus(1)" {
+        capture dash clear
+        capture log close _ovlog
+        quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+        capture noisily dash `_q7t' gz gy gx, `_q7o' name(q3506c)
+        local _q7rc = _rc
+        quietly log close _ovlog
+        _ov_count "`c(tmpdir)'dash_ov.log" "option bogus() not allowed"
+        _ov_assert Q3506-7 "(`_q7rc' == 198 & r(n) >= 1)" "`_q7t', `_q7o': rc `_q7rc' (expected 198, option bogus() not allowed)"
+    }
+}
+capture dash clear
 
 // Summary
 // ----------------------------------------------------------------

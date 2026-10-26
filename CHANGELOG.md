@@ -945,6 +945,7 @@ and now matches Stata.
 
 - fxsiz() and fysiz(), twoway's shortest spellings of fxsize() and fysize(), are applied; dash named them in the note. (WP-35, GW-4)
 - Factor-variable notation in by() and colorvar() is refused, r(101), "factor-variable and time-series operators not allowed" ("interactions not allowed" for #), and mlabel(45) and mlabel(%9.1f) r(198), in twoway's words; dash gave r(111). (WP-35, syn:SD-8)
+- The help says that twoway's contour and contourline with levels() ignore an option they do not know, and that dash refuses it with or without levels(), as twoway does elsewhere. (WP-35, syn:SD-22)
 
 ### Fixed in WP-34
 

@@ -629,6 +629,15 @@ integer);
 {opt clpatterns()} ({opt clp()}) and {opt colorlines} ({opt colorl}) take
 {cmd:twoway}'s shorter spellings on these two types.
 
+{pstd}
+{marker contour_unknown}{ul:An option contour does not know.}  With
+{opt levels()}, {cmd:twoway}'s {cmd:contour} and {cmd:contourline} take an
+option they do not know and draw nothing of it ({cmd:levels(10) bogus(1)}
+draws); without {opt levels()} they refuse it, "option bogus() not
+allowed", {cmd:r(198)}.  {cmd:dash} refuses it with or without
+{opt levels()}, in those words, as {cmd:twoway} refuses an unknown option
+on every other plot type.
+
 {phang2}{opt heatmap} -- {cmd:contour}: the surface's cells in their
 levels' colours in place of the bands, as {cmd:twoway} draws them.{p_end}
 {phang2}{opt outlines} -- {cmd:contour}: the bands' boundaries black at
@@ -1411,6 +1420,8 @@ there, is an invalid point.  The literal is read as data and never run.
     the last y are not checked.
 
 {phang2}    {cmd:p}{it:#}{cmd:()} for one y of several: style options only, and none on a confidence-interval fit; see {help dash##pnum:p1() to p20()}.
+
+{phang2}    {cmd:contour} with {opt levels()} refuses an option it does not know, which {cmd:twoway} ignores there; see {help dash##contour_unknown:An option contour does not know}.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (they title the axes, key the legend,

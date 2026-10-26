@@ -2882,7 +2882,6 @@ GAPS4_OPEN = {
     'basic:PT-9': 'Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111',
     'basic:PT-13': "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses",
     'DT-15': 'Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)',
-    'syn:SD-22': 'twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere',
     'DT-19': "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)",
     'plat:PT-1': 'dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal',
     'plat:PT-5': 'Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh',

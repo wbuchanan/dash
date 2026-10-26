@@ -92,3 +92,37 @@ class TestFxsize:
             body = _program_body(_read(_ADO), prog)
             assert "FXSIZe(string)" in body and "FYSIZe(string)" in body, prog
             assert "FXSIZE(" not in body and "FYSIZE(" not in body, prog
+
+
+def _help():
+    with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _between(text, a, b):
+    i = text.index(a)
+    return text[i:text.index(b, i + len(a))]
+
+
+class TestContourLeniency:
+    """syn:SD-22 (ruling D54): twoway's contour with levels() ignores an
+    option it does not know; dash keeps refusing it, and the help says so."""
+
+    def test_the_fixture_shows_twoways_leniency(self):
+        f = _fix()
+        for t in ("contour", "contourline"):
+            assert f[t + ".levels_bogus"]["rc"] == 0, t
+            assert (f[t + ".bogus"]["rc"], f[t + ".bogus"]["first"]) == (
+                198, "option bogus() not allowed"), t
+        assert f["contour.levels_region"]["rc"] == 0
+
+    def test_the_help_states_it(self):
+        note = " ".join(_between(_help(), "{marker contour_unknown}",
+                                 "{phang2}").split())
+        assert "With {opt levels()}, {cmd:twoway}'s {cmd:contour}" in note
+        assert "{cmd:dash} refuses it with or without {opt levels()}" in note
+        diff = " ".join(_between(_help(), "{marker differences}",
+                                 "{marker subcommands}").split())
+        assert ("{cmd:contour} with {opt levels()} refuses an option it does "
+                "not know, which {cmd:twoway} ignores there; see "
+                "{help dash##contour_unknown:") in diff

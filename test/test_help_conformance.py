@@ -647,7 +647,8 @@ class TestTheParsersFoundSomething:
         # 266 -> 265: WP-35 syn:SD-20c symbol() leaves the Unsupported
         # list (read as msymbol()); subchar() left it and joined the
         # synopts (stat:PT-6), one for one.
-        assert len(found) == 265, (
+        # 265 -> 266: syn:SD-22 the contour note defines levels() (WP-35 35-06).
+        assert len(found) == 266, (
             f"{len(found)} options parsed out of dash.sthlp, 266 measured "
             f"21oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
@@ -932,8 +933,10 @@ class TestTheParsersFoundSomething:
         # 475 -> 476: the Differences entry Plot-type names in lower case
         # only (WP-35 plot:PT-3)
         # 476 -> 477: WP-35 stat:PT-6 the subchar(name) synopt
-        assert len(defs) == 477, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 476 "
+        # 477 -> 478: syn:SD-22 the Differences entry contour with levels()
+        # (WP-35 35-06)
+        assert len(defs) == 478, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 478 "
             f"measured 26oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1407,4 +1410,6 @@ class TestInternalLinksResolve:
         # links the p1() to p20() sentence, dash##pnum (WP-35 35-02).
         # 125 -> 126 links: the Differences entry Plot-type names in lower
         # case only links Plot types (WP-35 plot:PT-3).
-        assert len(refs) == 126 and len(set(refs)) == 47
+        # 126 -> 127 links, 47 -> 48 targets: syn:SD-22 the Differences
+        # entry links its contour note, dash##contour_unknown (WP-35 35-06).
+        assert len(refs) == 127 and len(set(refs)) == 48

@@ -369,7 +369,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-3 Tracked:** Closed in WP-35, BUGS.md "maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn", commit pending.
 - **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit pending.
 - **sil:SD-8 Tracked:** Closed in WP-35, BUGS.md "title() with notitling is accepted with a note; twoway fails r(4018)", commit pending.
-- **syn:SD-22 Tracked:** Open (WP-35 section 35-06).
+- **syn:SD-22 Tracked:** Documented in WP-35, BUGS.md "twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere", commit pending.
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
 - **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit 7b5083e.
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
