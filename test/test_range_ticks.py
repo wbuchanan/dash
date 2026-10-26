@@ -213,7 +213,9 @@ class TestTheHelp:
         says range() widens the ticks."""
         import test_help_claims_1 as hc
         text = " ".join(hc._between(
-            hc._help(), "An axis whose drawn range is not its variables'",
+            # Flipped (WP-34 AX-3): 34-09 reworded the paragraph's opening
+            # ("Every count axis is asked so at build"); the rule is unchanged.
+            hc._help(), "Every count axis is asked so at build",
             "{marker").split())
         assert "a {cmd:range()} that widens the ticks" not in text
         assert ("On an axis with no rule, {cmd:range()} widens the axis but "

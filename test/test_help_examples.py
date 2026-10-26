@@ -543,7 +543,9 @@ class TestTheShownCommands:
         # refusal sentence's inline dash scatter y x, colorvar(z) went.
         # 11 -> 12: WP-31 H2k, the weights sentence's dash kpi mean(mpg)
         # [aw=weight], which the example below it runs.
-        assert forms.count(("dash.sthlp", "inline")) == 12
+        # 12 -> 13: WP-34 AX-3, the Resource limits sentence's
+        # dash build, server (the served app's ticks asked at build).
+        assert forms.count(("dash.sthlp", "inline")) == 13
         # 7 -> 8: WP-32 I3, the hash-checked pip line naming the lock.
         assert forms.count(("dash_setup.sthlp", "line")) == 8
         # dash_setup.sthlp once also named `python set exec` inline, in the
