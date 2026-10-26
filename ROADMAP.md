@@ -5177,6 +5177,25 @@ Summarised from .ultraplan/sections/index.md (M1-M14, PD-1..PD-18) and .ultrapla
 - **Left open:** none of WP-33's items. The batches registered nine measured differences for later work packages (D42, D44, D48, D50, D54).
 - **Gate (22oct2026):** `make test-all` -- pytest 39,112 passed, 1 failed (1,051 s; a two-second timing bound under a loaded machine, converted to a ratio check in 6d07e30 and re-run green); cert 67 of 67 (506 s). `make cert-all` -- 70 of 70 passed.
 
+## WP-34 · Default drawing of common graphs (P1) — DONE
+
+**GAPS4 closed:** AX-4, AX-2, AX-1, VF-2, VF-3, PIC-1, PIC-3, TR-4, DG-3, AX-3; **partly closed:** plot:PT-13
+
+As a Stata user who pastes a common twoway graph into dash, I want its axes, ticks, labels, frame and default outlines drawn as twoway draws them, in the saved page and the served app and after a filter move, so that the everyday graphs look like Stata's without any option.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M6) and .ultraplan/review/DECISIONS.md (A-1, A-6, A-16, A-18, A-19, D41, D55), which hold them in full.
+
+- **Ticks (M6, A-16, A-19).** Every count axis is asked of Stata as the page is built, in both modes: by() panels at their own count, histogram bin axes over their bin midpoints, range() widening an axis but not its ticks, a date axis over the rows each series draws, colour keys included; the zero label is `0`. dash's natscale model draws only after a filter move or for a page rendered outside Stata (D41 keeps those misses open).
+- **Frame (M6, A-1, D55).** aspectratio() with xsize()/ysize() draws the exact frame, never 0 px, counting the graph's title; a by() graph's shared y title is painted at its full height.
+- **Defaults (A-6).** An area plot is outlined all round as twoway outlines it, with its key; a ci fit with nofit counts as one plot, so the layers after it take twoway's colours.
+- **Time-series operators (PD-16, D41).** Re-measured first: all 99 earlier probes gave twoway's 18oct2026 answers and the 22 new ones the expected codes.
+
+- **Entries.** 11 WP-34 entries; 10 closed, 0 documented, 1 partly closed; BUGS.md holds 215 open entries.
+- **Left open:** the natscale model's after-move misses, the residual of plot:PT-13 (BUGS.md "The natscale model misses three of the 264 axes twoway drew"). The batches also registered AX-19, AX-20 and PIC-17 (34-07's measured rows rules) for WP-44 and WP-47.
+- **Gate (26oct2026):** `make test-all` -- pytest 39,625 passed, 2 failed, 1 skipped (902 s; two help pins 34-09's wording moved, fixed in 767b4e0 and re-run green; the skip was ruff missing from a changed PATH, run green with ruff found); cert 68 of 68 (461 s). `make cert-all` -- 69 of 71 (the closed WP-29/31 truth readers counted 34-05's area outline ring; fixed in 2de7cc9 and those blocks re-run green).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
