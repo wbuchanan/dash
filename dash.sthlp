@@ -428,6 +428,11 @@ sorted", r(5).  In an option's variable an operator is refused as
 "variable L not found", r(111); {cmd:colorvar(L.mpg)} and
 {cmd:by(L.foreign)} "factor-variable and time-series operators not
 allowed", r(101); {cmd:mlabvposition(L.pos)} "L.pos invalid name", r(198).
+Factor-variable notation is refused the same way: {cmd:by(i.foreign)} and
+{cmd:colorvar(c.price)} "factor-variable and time-series operators not
+allowed", r(101), a {cmd:#} "interactions not allowed", r(101), and
+{cmd:mlabel(i.foreign)} "variable i not found", r(111); {cmd:mlabel(45)}
+is "45 invalid name" and {cmd:mlabel(%9.1f)} "invalid '%'", r(198).
 In a weight, {cmd:[aw=L.price]}, it is computed as in a plot variable.
 {cmd:by()} with an operated plot variable in any layer is
 "not sorted", r(5), as in {cmd:twoway}, and {cmd:dash} adds how to

@@ -7,6 +7,8 @@
 *!
 *! Tests: V2-01 through V2-12, SL-01 through SL-25, PS-01 through PS-16,
 *!        NP-46 through NP-48 (WP-30 P1.14a: named styles per y)
+*!        Q3506-6 (WP-35 syn:SD-8: factor-variable notation in by(),
+*!        colorvar() and mlabel() refused in twoway's words)
 *!
 *!   V2-01  HEADLINE  `dash scatter mpg price weight` must draw TWO series
 *!                    (colour census of the generated HTML).
@@ -1528,6 +1530,81 @@ _ps_tally NP-48 `ok' "pstyle(p3 ..) on three y is p3 on each"
 dash clear
 local nfail = `nfail' + ${ps_nfail}
 local faillist `"`faillist'${ps_faillist}"'
+
+// ----------------------------------------------------------------
+// Q3506-6 (WP-35 syn:SD-8): factor-variable notation in by(), colorvar()
+// and mlabel() is refused as twoway refuses it -- by(i.foreign),
+// by(c.foreign), colorvar(c.price) r(101) "factor-variable and
+// time-series operators not allowed", a # r(101) "interactions not
+// allowed", mlabel(c.make) r(111) "variable c not found", mlabel(45)
+// r(198) "45 invalid name", mlabel(%9.1f) r(198) "invalid '%'";
+// colorvar(i.foreign) drawn: every fv.* key of
+// test/fixtures/graph_refusal_truth.json, rc and first line, on the
+// one-line route and with name().  The helpers are reached through
+// __main__ (cert_svg.do's TRAP note).
+// ----------------------------------------------------------------
+python:
+import json as _q35066_json
+from sfi import Macro as _q35066_M
+_q35066_fx = _q35066_json.load(open("fixtures/graph_refusal_truth.json", encoding="utf-8"))
+_q35066_M.setLocal("q6keys", " ".join(sorted(k for k in _q35066_fx if k.startswith("fv."))))
+
+
+def _q35066_take(key):
+    r = _q35066_fx[key]
+    c = r["cmd"].strip()
+    if c.startswith("twoway "):
+        c = c[len("twoway "):]
+    _q35066_M.setLocal("q6c", c.replace(" name(zg1, replace)", "").rstrip())
+    _q35066_M.setLocal("q6tw", str(r["rc"]))
+
+
+def _q35066_judge(key, path, rc):
+    r = _q35066_fx[key]
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        text = ""
+    lines = [ln.strip() for ln in text.replace("\n> ", "").splitlines()
+             if ln.strip() and not ln.lstrip().startswith(("(note:", "log:", "log type:", "opened on:", "closed on:", "name:"))
+             and not ln.startswith("---")]
+    got = lines[0] if lines else ""
+    ok = int(rc) == r["rc"] and (r["rc"] == 0 or got == r["first"])
+    _q35066_M.setLocal("q6ok", "1" if ok else "0")
+    _q35066_M.setLocal("q6got", got[:200])
+    _q35066_M.setLocal("q6want", r["first"][:200])
+end
+quietly sysuse auto, clear
+local q6bad 0
+foreach q6k of local q6keys {
+    python: import __main__ as _q35066_main; _q35066_main._q35066_take("`q6k'")
+    foreach q6r in line named {
+        local q6d `"`q6c'"'
+        if "`q6r'" == "named" local q6d `"`q6c' name(q3506v)"'
+        set linesize 255
+        dash clear
+        capture log close _q6log
+        capture erase "`c(tmpdir)'dash_q35066.log"
+        quietly log using "`c(tmpdir)'dash_q35066.log", name(_q6log) text replace
+        capture noisily dash `q6d'
+        local q6rc = _rc
+        quietly log close _q6log
+        python: import __main__ as _q35066_main; _q35066_main._q35066_judge("`q6k'", r"`c(tmpdir)'dash_q35066.log", "`q6rc'")
+        if !`q6ok' {
+            display as error `"Q3506-6 FAIL `q6k' (`q6r'): rc `q6rc' (twoway `q6tw'); dash said: `macval(q6got)'; twoway: `macval(q6want)'"'
+            local q6bad 1
+        }
+        else display as text `"Q3506-6 `q6k' (`q6r'): rc `q6rc' as twoway"'
+    }
+}
+dash clear
+capture erase "`c(tmpdir)'dash_q35066.log"
+if `q6bad' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' Q3506-6"'
+}
+else display as text "Q3506-6 PASS: factor-variable notation refused in twoway's words"
 
 // ----------------------------------------------------------------
 // Summary

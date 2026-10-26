@@ -4490,6 +4490,7 @@ program define _dash_validate_value, rclass
             local ists = (_rc == 0)
             mata: st_local("badvar", strtrim(st_local("head")))
             local tsop = 0
+            local fvop = 0
             // Token by token, only when the head holds no double quote: a
             // quoted head is no varlist and is named whole, as it was
             // (by("foreign") names "foreign").  A token is tested through a
@@ -4505,9 +4506,30 @@ program define _dash_validate_value, rclass
                         // ustrregexm: regexm's engine follows the caller's
                         // version.
                         if ustrregexm(scalar(`K'), "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
+                        // Factor-variable notation (WP-35 syn:SD-8;
+                        // graph_refusal_truth.json fv.*): a # is an
+                        // interaction; i. c. o. ib#. #. are operators, read
+                        // as the time-series ones are; in mlabel() a name
+                        // starting with a digit or with % is no name.
+                        else if ustrregexm(scalar(`K'), "#") local fvop = 2
+                        else if ustrregexm(scalar(`K'), "^([iIcCoO]|[iI]?[bB][0-9]+|[0-9]+[bB]?|[iI][bB]?\(.*\))+\.[A-Za-z_]") local tsop = 1
+                        else if ustrregexm(scalar(`K'), "^[0-9]") local fvop = 3
+                        else if ustrregexm(scalar(`K'), "^%") local fvop = 4
                         continue, break
                     }
                 }
+            }
+            if `fvop' == 2 & inlist("`opt'", "colorvar", "by", "mlabel") {
+                display as error "interactions not allowed"
+                exit 101
+            }
+            if `fvop' == 3 & "`opt'" == "mlabel" {
+                mata: _dash_say("err", "", st_local("badvar"), " invalid name")
+                exit 198
+            }
+            if `fvop' == 4 & "`opt'" == "mlabel" {
+                display as error "invalid '%'"
+                exit 198
             }
             if `tsop' & "`opt'" == "mlabel" {
                 // The operators before the dot: a token the operator test

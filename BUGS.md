@@ -4700,11 +4700,11 @@
   - Suggested fix: Refuse only exact type/recastas; measure what ty() draws
   - Resolution: Fixed 26oct2026 (WP-35, syn:SD-7). On lfitci, qfitci, fpfitci and lpolyci _dash_fold_stat_words reads type()'s typed spelling from the option text (by value): ty() and typ() are read as ciplot() (twoway draws ty(line) as ciplot(line), one SVG), and only type() in full is left to _dash_recast_opt's refusal, "type() option not allowed", r(198), as twoway's ci parsers (TYPE, RECASTas) refuse it; dash.sthlp's Recast paragraph says so; both modes draw the spec. Pinned by test/test_stat_accept.py::TestTheRecast::test_only_type_in_full_is_refused, test/test_wp35_truth.cscript Q3503-6; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 syn:SD-7 (WP-35, syn:SD-7).
 
-- [ ] Title: Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)
+- [x] Title: Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)
   - File Names and Line Numbers: dash.ado:4300-4321; F01-F05; v3
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-8; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-8 (WP-35, section 35-06, Fix).
   - Suggested fix: Refuse with twoway's rc and words
-  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-8). The var kind of _dash_validate_value reads factor-variable notation as twoway does: by() and colorvar() with i., c., o., ib#., #. refuse r(101) 'factor-variable and time-series operators not allowed', a # r(101) 'interactions not allowed' (mlabel() too); mlabel(c.make) r(111) 'variable c not found'; mlabel(45) r(198) '45 invalid name'; mlabel(%9.1f) r(198) 'invalid '%''; colorvar(i.foreign) is folded and drawn as before. Before any spec, so in both modes. Pinned by test_varlist_expansion.cscript Q3506-6; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 syn:SD-8 (WP-35, syn:SD-8).
 
 - [x] Title: aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)
   - File Names and Line Numbers: twowaygraph_g.class:155-161
