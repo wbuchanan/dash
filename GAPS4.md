@@ -344,32 +344,32 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plot:PT-13 Tracked:** Partly closed in WP-34 (section 34-09, commit 95919b5): every axis at build is Stata's own; open: the after-move misses (BUGS.md "The natscale model misses three of the 264 axes twoway drew").
 - **MS-1 Tracked:** Closed in WP-35, BUGS.md "Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns", commit 86f9f92.
 - **syn:SD-3 Tracked:** Closed in WP-35, BUGS.md "p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn", commit c298e8e.
-- **stat:PT-7 Tracked:** Closed in WP-35, BUGS.md "lowess m (twoway's documented minimum of mean) is refused", commit pending.
-- **syn:SD-5 Tracked:** Closed in WP-35, BUGS.md "bwi() is refused on lowess, kdensity, lpoly and lpolyci", commit pending.
+- **stat:PT-7 Tracked:** Closed in WP-35, BUGS.md "lowess m (twoway's documented minimum of mean) is refused", commit a5d3970.
+- **syn:SD-5 Tracked:** Closed in WP-35, BUGS.md "bwi() is refused on lowess, kdensity, lpoly and lpolyci", commit 3649d26.
 - **stat:PT-1 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
-- **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit pending.
-- **syn:SD-20a Tracked:** Closed in WP-35, BUGS.md "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe", commit pending.
-- **syn:SD-20b Tracked:** Closed in WP-35, BUGS.md "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()", commit pending.
-- **syn:SD-20c Tracked:** Closed in WP-35, BUGS.md "lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key", commit pending.
-- **syn:SD-20d Tracked:** Closed in WP-35, BUGS.md "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle", commit pending.
-- **syn:SD-20e Tracked:** Closed in WP-35, BUGS.md "clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated", commit pending.
-- **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit pending.
+- **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit 362513c.
+- **syn:SD-20a Tracked:** Closed in WP-35, BUGS.md "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe", commit 7a115b1.
+- **syn:SD-20b Tracked:** Closed in WP-35, BUGS.md "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()", commit 7a115b1.
+- **syn:SD-20c Tracked:** Closed in WP-35, BUGS.md "lpolyci s() is accepted by twoway (return-code-only measurement) and records nothing in dash; smoothplot() itself records no key", commit 7a115b1.
+- **syn:SD-20d Tracked:** Closed in WP-35, BUGS.md "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle", commit 7a115b1.
+- **syn:SD-20e Tracked:** Closed in WP-35, BUGS.md "clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated", commit 7a115b1.
+- **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit 3d8a9d1.
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
-- **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit pending.
+- **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit 8355f24.
 - **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
-- **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit pending.
+- **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
 - **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
 - **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
-- **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit pending.
-- **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit pending.
-- **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit pending.
-- **GW-3 Tracked:** Closed in WP-35, BUGS.md "maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn", commit pending.
-- **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit pending.
-- **sil:SD-8 Tracked:** Closed in WP-35, BUGS.md "title() with notitling is accepted with a note; twoway fails r(4018)", commit pending.
-- **syn:SD-22 Tracked:** Documented in WP-35, BUGS.md "twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere", commit pending.
+- **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.
+- **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit 5e1901e.
+- **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit 9ca400a.
+- **GW-3 Tracked:** Closed in WP-35, BUGS.md "maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn", commit f8d5215.
+- **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit 44c1161.
+- **sil:SD-8 Tracked:** Closed in WP-35, BUGS.md "title() with notitling is accepted with a note; twoway fails r(4018)", commit ca17150.
+- **syn:SD-22 Tracked:** Documented in WP-35, BUGS.md "twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere", commit 877bd28.
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
 - **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit 7b5083e.
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
