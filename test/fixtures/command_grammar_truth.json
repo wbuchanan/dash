@@ -1,0 +1,586 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0fcf028a99d0285cb7fc7d16b34b602984f598c2",
+  "extracted": "26 Oct 2026 09:38:46",
+  "source": "scripts/extract_command_grammar_truth.do",
+  "stata_version": "19.5"
+ },
+ "case.Area": {
+  "cmd": "twoway Area mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1area"
+  ],
+  "rc": 0
+ },
+ "case.BAR": {
+  "cmd": "twoway BAR mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Bar": {
+  "cmd": "twoway Bar mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Con": {
+  "cmd": "twoway Con mpg weight",
+  "lc_rc": 0,
+  "message": "Con is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Connected": {
+  "cmd": "twoway Connected mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Contour": {
+  "cmd": "twoway Contour gz gy gx",
+  "lc_rc": 0,
+  "message": ">80 invalid name",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Fn": {
+  "cmd": "twoway Fn y = x, range(0 1)",
+  "lc_rc": 0,
+  "message": "Fn is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Fun": {
+  "cmd": "twoway Fun y = x, range(0 1)",
+  "lc_rc": 0,
+  "message": "Fun is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Function": {
+  "cmd": "twoway Function y = x, range(0 1)",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1line"
+  ],
+  "rc": 0
+ },
+ "case.Hist": {
+  "cmd": "twoway Hist mpg",
+  "lc_rc": 0,
+  "message": "Hist is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Histogram": {
+  "cmd": "twoway Histogram mpg",
+  "lc_rc": 0,
+  "message": "twoway_Histogram_parse.new: class member function not found",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Kdensity": {
+  "cmd": "twoway Kdensity mpg",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1line"
+  ],
+  "rc": 0
+ },
+ "case.LFIT": {
+  "cmd": "twoway LFIT mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1line"
+  ],
+  "rc": 0
+ },
+ "case.Li": {
+  "cmd": "twoway Li mpg weight",
+  "lc_rc": 0,
+  "message": "Li is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Line": {
+  "cmd": "twoway Line mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Lowess": {
+  "cmd": "twoway Lowess mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1line"
+  ],
+  "rc": 0
+ },
+ "case.Mband": {
+  "cmd": "twoway Mband mpg weight",
+  "lc_rc": 0,
+  "message": "Mband is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Mbands": {
+  "cmd": "twoway Mbands mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Pcarrowi": {
+  "cmd": "twoway Pcarrowi 20 2000 30 4000",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1arrow"
+  ],
+  "rc": 0
+ },
+ "case.Rcap": {
+  "cmd": "twoway Rcap yl yh weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Rcon": {
+  "cmd": "twoway Rcon yl yh weight",
+  "lc_rc": 0,
+  "message": "Rcon is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Rl": {
+  "cmd": "twoway Rl yl yh weight",
+  "lc_rc": 0,
+  "message": "Rl is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Rsc": {
+  "cmd": "twoway Rsc yl yh weight",
+  "lc_rc": 0,
+  "message": "Rsc is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.SCATTER": {
+  "cmd": "twoway SCATTER mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Sc": {
+  "cmd": "twoway Sc mpg weight",
+  "lc_rc": 0,
+  "message": "Sc is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "case.Scatter": {
+  "cmd": "twoway Scatter mpg weight",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "case.Scatteri": {
+  "cmd": "twoway Scatteri 20 2000",
+  "lc_rc": 0,
+  "message": "",
+  "nplots": 1,
+  "plots": [
+   "p1"
+  ],
+  "rc": 0
+ },
+ "empty.bars": {
+  "cmd": "twoway ||, xlabel(1 2)",
+  "message": "xlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.by_foreign": {
+  "cmd": "twoway, by(foreign)",
+  "message": "xlabels(#4) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.if": {
+  "cmd": "twoway if foreign, xlabel(1 2)",
+  "message": "xlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.keys": [
+  "xlabel_1_2",
+  "ylabel_1_2",
+  "xtitle_T",
+  "ytitle_T",
+  "xscale_range",
+  "yscale_range",
+  "xline_1",
+  "yline_1",
+  "xtick_1_2",
+  "xmlabel_1_2",
+  "ylabel_angle",
+  "xlabel_n3",
+  "ytitle_blank",
+  "yscale_off",
+  "xscale_alt",
+  "tlabel_1_2",
+  "ttitle_T",
+  "by_foreign"
+ ],
+ "empty.order": {
+  "cmd": "twoway, ytitle(T) xlabel(1 2)",
+  "message": "xlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.order_names": [
+  "xscale",
+  "xlabel",
+  "by",
+  "xmlabel",
+  "xtick",
+  "xtitle",
+  "xline",
+  "tlabel",
+  "ttitle",
+  "yscale",
+  "ylabel",
+  "ytitle",
+  "yline"
+ ],
+ "empty.svg.bare": {
+  "cmd": "twoway",
+  "lines": 0,
+  "message": "",
+  "nplots": 0,
+  "plots": [],
+  "rc": 0,
+  "texts": []
+ },
+ "empty.svg.title": {
+  "cmd": "twoway, title(T)",
+  "lines": 0,
+  "message": "",
+  "nplots": 0,
+  "plots": [],
+  "rc": 0,
+  "texts": [
+   "T"
+  ]
+ },
+ "empty.tlabel_1_2": {
+  "cmd": "twoway, tlabel(1 2)",
+  "message": "tlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.ttitle_T": {
+  "cmd": "twoway, ttitle(T)",
+  "message": "ttitle(T) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xlabel_1_2": {
+  "cmd": "twoway, xlabel(1 2)",
+  "message": "xlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xlabel_n3": {
+  "cmd": "twoway, xlabel(#3)",
+  "message": "xlabels(#3) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xline_1": {
+  "cmd": "twoway, xline(1)",
+  "message": "xlines(1) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xmlabel_1_2": {
+  "cmd": "twoway, xmlabel(1 2)",
+  "message": "xmlabels(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xscale_alt": {
+  "cmd": "twoway, xscale(alt)",
+  "message": "xscale(alt) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xscale_range": {
+  "cmd": "twoway, xscale(range(1 2))",
+  "message": "xscale(range(1 2)) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xtick_1_2": {
+  "cmd": "twoway, xtick(1 2)",
+  "message": "xticks(1 2) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.xtitle_T": {
+  "cmd": "twoway, xtitle(T)",
+  "message": "xtitle(T) not allowed, xaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.ylabel_1_2": {
+  "cmd": "twoway, ylabel(1 2)",
+  "message": "ylabels(1 2) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.ylabel_angle": {
+  "cmd": "twoway, ylabel(, angle(0))",
+  "message": "ylabels(, angle(0)) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.yline_1": {
+  "cmd": "twoway, yline(1)",
+  "message": "ylines(1) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.yscale_off": {
+  "cmd": "twoway, yscale(off)",
+  "message": "yscale(off) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.yscale_range": {
+  "cmd": "twoway, yscale(range(1 2))",
+  "message": "yscale(range(1 2)) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.ytitle_T": {
+  "cmd": "twoway, ytitle(T)",
+  "message": "ytitle(T) not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "empty.ytitle_blank": {
+  "cmd": "twoway, ytitle(\"\")",
+  "message": "ytitle() not allowed, yaxis1 does not exist",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "generic.nosuchtype": {
+  "cmd": "twoway nosuchtype mpg weight",
+  "message": "nosuchtype is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "group.bare_after": {
+  "cmd": "twoway (scatter mpg weight) line mpg weight",
+  "message": "",
+  "nplots": 2,
+  "plots": [
+   "p1",
+   "p2line"
+  ],
+  "rc": 0
+ },
+ "group.bare_after_bars": {
+  "cmd": "twoway (scatter mpg weight) line mpg weight || scatter price weight",
+  "message": "",
+  "nplots": 3,
+  "plots": [
+   "p1",
+   "p2line",
+   "p3"
+  ],
+  "rc": 0
+ },
+ "group.bare_then_group": {
+  "cmd": "twoway (scatter mpg weight) line mpg weight (line price weight)",
+  "message": "variable line not found",
+  "nplots": 0,
+  "plots": [],
+  "rc": 111
+ },
+ "group.bare_title": {
+  "cmd": "twoway (scatter mpg weight) line mpg weight, title(T)",
+  "message": "",
+  "nplots": 2,
+  "plots": [
+   "p1",
+   "p2line"
+  ],
+  "rc": 0
+ },
+ "group.bars_group_bare": {
+  "cmd": "twoway scatter mpg weight || (line mpg weight) scatter price weight",
+  "message": "",
+  "nplots": 3,
+  "plots": [
+   "p1",
+   "p2line",
+   "p3"
+  ],
+  "rc": 0
+ },
+ "group.junk": {
+  "cmd": "twoway (scatter mpg weight) junk (line mpg weight)",
+  "message": "junk is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "group.number": {
+  "cmd": "twoway (scatter mpg weight) 123",
+  "message": "123 is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "group.pipe": {
+  "cmd": "twoway (scatter mpg weight) | (line mpg weight)",
+  "message": "| is not a twoway plot type",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "group.two_then_bare": {
+  "cmd": "twoway (scatter mpg weight) (line mpg weight) scatter price weight",
+  "message": "",
+  "nplots": 3,
+  "plots": [
+   "p1",
+   "p2line",
+   "p3"
+  ],
+  "rc": 0
+ },
+ "inner.bare": {
+  "cmd": "twoway (scatter mpg weight || line mpg weight)",
+  "message": "",
+  "nplots": 2,
+  "plots": [
+   "p1",
+   "p2line"
+  ],
+  "rc": 0
+ },
+ "inner.comma": {
+  "cmd": "twoway (scatter mpg weight || line mpg weight),",
+  "message": "",
+  "nplots": 2,
+  "plots": [
+   "p1",
+   "p2line"
+  ],
+  "rc": 0
+ },
+ "inner.piece_comma": {
+  "cmd": "twoway (scatter mpg weight, mcolor(red) || line mpg weight)",
+  "message": "option | not allowed",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "inner.then_group": {
+  "cmd": "twoway (scatter mpg weight || line mpg weight) (scatter price weight)",
+  "message": "| invalid name",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ },
+ "inner.title": {
+  "cmd": "twoway (scatter mpg weight || line mpg weight), title(T)",
+  "message": "| invalid name",
+  "nplots": 0,
+  "plots": [],
+  "rc": 198
+ }
+}

@@ -22,12 +22,9 @@ sys.path.insert(0, _ROOT)
 
 import dash_render as dr
 
-#: twoway plot types dash does not draw: a surface interpolated over a grid
-#: (contour, contourline) and a point on a range (rpcap, rpspike) -- the
-#: last two new in StataNow 19.5.
-# Flipped (WP-31 B1): rpcap and rpspike are drawn.  WP-31 B2 and B3:
-# sunflower and matamatrix() are refused by name.  Flipped (WP-31 B4b):
-# contour and contourline are drawn.
+#: Words WP-31 B2 and B3 refused by name.  Flipped (WP-35 PD-10): no word
+#: is refused by name; each is test input only, refused as any word that
+#: is no plot type is.
 _REFUSED = ("sunflower", "matamatrix")
 
 
@@ -66,38 +63,31 @@ class TestThePlotTypesSection:
             f"plot types the table lists that dash does not draw: {extra}")
 
     def test_the_types_dash_refuses_are_named_as_not_drawn(self):
+        # Flipped (WP-35 PD-10): the section named these words as twoway
+        # plot types dash does not draw; that was wrong (M1).  It names
+        # neither, and dash draws neither.
         section = _section()
-        tail = section.split("{synoptline}")[-1]
         for name in _REFUSED:
-            # matamatrix() is written as the option it is (WP-31 B3).
-            assert (f"{{cmd:{name}}}" in tail
-                    or f"{{cmd:{name}(}}" in tail), (
-                f"{name} is not named after the table as a type dash does "
-                f"not draw")
+            assert name not in section, name
             assert name not in dr._dash_plot_type_names()
+        assert "is not a twoway plot type" in section
 
     def test_dash_ado_refuses_them_by_name(self):
-        """dash.ado refuses a type the Mata helper _dash_undrawn_plottype
-        names, with a reason of its own (test_parser.cscript P1A-49..59);
-        the helper is where the list is kept."""
+        """Flipped (WP-35 PD-10): dash.ado refuses no word by name; the
+        by-name Mata helpers are gone, so every word that is no plot type
+        reaches the one generic refusal."""
         with open(os.path.join(_ROOT, "dash_parse.mata"),
                   encoding="utf-8") as fh:
             mata = fh.read()
-        start = mata.index("string scalar _dash_undrawn_plottype(")
-        body = mata[start:mata.index("\n}\n", start)]
-        for name in _REFUSED:
-            if name == "matamatrix":
-                continue
-            assert f'"{name}"' in body, (
-                f"_dash_undrawn_plottype does not refuse {name}")
-        # matamatrix() is a varlist's head, not a type: its own helper
-        # (WP-31 B3).
-        start = mata.index("string scalar _dash_matamatrix_typed(")
-        assert '"matamatrix("' in mata[start:mata.index("\n}\n", start)]
         with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
             ado = fh.read()
-        assert "_dash_undrawn_plottype(" in ado
-        assert "_dash_matamatrix_typed(" in ado
+        for helper in ("_dash_undrawn_" + "plottype",
+                       "_dash_" + "matamatrix_typed"):
+            assert helper not in mata, helper
+            assert helper not in ado, helper
+        for name in _REFUSED:
+            assert f'"{name}"' not in ado
+            assert f'"{name}("' not in ado
 
     def test_the_syntax_and_the_differences_point_to_it(self):
         text = _help()

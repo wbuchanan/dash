@@ -750,16 +750,11 @@ and is refused without them, as {cmd:twoway} refuses it:
 {cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
-{ul:Not drawn.}  Two {cmd:twoway} plot types are not drawn by {cmd:dash}:
-{cmd:sunflower}, which bins points into density petals; and
-{cmd:matamatrix(}{it:name}{cmd:)}, which plots a Mata matrix.  Each is
-refused with {cmd:r(198)} and a message naming what to use instead:
-Stata's {cmd:sunflower} command, which Stata recommends over
-{cmd:twoway sunflower}, for the first, and {cmd:getmata} into variables
-for the second.  Any other word that
-is not a plot type is refused too, and the message lists the plot
-types above.  A plot type cannot be handled as an unknown option is --
-named in a note and drawn around -- because it is what would be drawn.
+{ul:Not a plot type.}  Any word that is not a plot type is refused,
+"{it:word} is not a twoway plot type", {cmd:r(198)}, and the message lists
+the plot types above.  A plot type cannot be handled as an unknown option
+is -- named in a note and drawn around -- because it is what would be
+drawn.
 
 {marker added_text}{...}
 {pstd}
@@ -1014,9 +1009,8 @@ there, is an invalid point.  The literal is read as data and never run.
     own options before any kernel, and the options after the groups' comma
     last.
     So a command copy-pasted from a do-file runs whenever
-    {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
-    names the two {cmd:twoway} plot types it refuses -- and can draw the
-    values it is given: a few values {cmd:twoway} accepts, such as
+    {cmd:dash} draws its plot type ({help dash##plottypes:Plot types})
+    and can draw the values it is given: a few values {cmd:twoway} accepts, such as
     {cmd:bin(2000)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}
     cannot honour is named once per command, in a single note:

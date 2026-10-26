@@ -411,16 +411,18 @@ class TestThePlotTypesSection:
 
     def test_it_says_four_types_are_refused_and_so_does_item_5(self):
         # Flipped (WP-31 B1): rpcap and rpspike are drawn; four -> two.
-        # WP-31 B2: sunflower refused by name; two -> three.
-        # WP-31 B3: matamatrix() refused by name; three -> four.
         # Flipped (WP-31 B4b): contour and contourline are drawn; four ->
         # two.
+        # Flipped (WP-35 PD-10): two -> none.  The two words were named as
+        # twoway plot types dash refuses; that was wrong (M1): no word is
+        # refused by name, and neither section names one.
         refused = ("sunflower", "matamatrix")
-        assert "Two {cmd:twoway} plot types are not drawn" in _plot_types()
+        assert "plot types are not drawn" not in _plot_types()
         diff = _prose(_differences())
-        assert "the two twoway plot types it refuses" in diff
+        assert "twoway plot types it refuses" not in diff
         assert "the four twoway plot types" not in diff
         for name in refused:
+            assert name not in _plot_types()
             assert name not in dr._dash_plot_type_names()
 
     def test_the_unrecognised_message_lists_the_table(self):

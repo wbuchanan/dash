@@ -491,14 +491,14 @@ program define _dash_require_mata
         _dash_filter_exclude_add _dash_link_split _dash_blank_words ///
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
-        _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
+        _dash_text_args _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
-        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
+        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
@@ -5803,26 +5803,6 @@ program define _dash_process_segment, rclass
     local ptype "`_pt_exp'"
 
     if "`ptype'" == "" {
-        // contour and contourline are twoway plot types, and dash does not
-        // draw them: each interpolates a surface over a grid of z values,
-        // a data model no dash plot has.  They were answered "unrecognised
-        // plot type", as if twoway had no such type; they are named for
-        // what they are now, with what to use instead (WP-22 TR-22.1).
-        // rpcap and rpspike were refused the same way until WP-31 B1 drew
-        // them (_pt_rangept), contour and contourline until WP-31 B4b
-        // (_pt_contour).
-        // _pt_nodraw is one of those names or "": never user text.
-        mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
-        if "`_pt_nodraw'" != "" {
-            // WP-31 B2: twoway draws sunflower, and its manual recommends
-            // the sunflower command over it (twoway_sunflower.sthlp;
-            // test/fixtures/rangept_truth.json advice.sunflower).
-            if "`_pt_nodraw'" == "sunflower" {
-                local _pt_why "it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."
-            }
-            mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
-            exit(198)
-        }
         // twoway's line for a word that is no plot type (WP-31 A2): dash
         // printed a sentence of its own, and took lfi, ar and eleven more
         // shorter spellings that twoway refuses with this line.  The
@@ -5852,21 +5832,6 @@ program define _dash_process_segment, rclass
     else {
         mata: st_local("varpart", strtrim(st_local("rest")))
         local opts_raw ""
-    }
-
-    // ---- matamatrix() (WP-31 B3) ----
-    // twoway plots a Mata matrix's columns when the varlist begins
-    // matamatrix( (twoway_yxview_parse.class; rc 0 with the matrix
-    // defined).  dash read it as a varlist and refused it as a variable
-    // not found, r(111).  It does not draw it (PRD section 7), and refuses
-    // it by name, with what to use instead, on every plot type.  The
-    // token is echoed through _dash_say.
-    // The token is tested by its length, never expanded in quotes (it may
-    // hold a quote).
-    mata: st_local("_pt_mm", _dash_matamatrix_typed(st_local("varpart")))
-    if `: length local _pt_mm' {
-        mata: _dash_say("err", "dash: ", st_local("_pt_mm"), " is a twoway mata matrix plot, which dash does not draw. Use Stata's own twoway " + st_local("ptype") + " matamatrix(), or getmata the columns into variables and draw them: dash " + st_local("ptype") + " y x.")
-        exit(198)
     }
 
     // ---- the option text is handed to -syntax- as typed ----

@@ -1,32 +1,25 @@
 """
-test_sunflower_refusal.py -- twoway sunflower refused by name (WP-31 B2,
-section 21).
+test_sunflower_refusal.py -- no word is refused by name (WP-31 B2,
+flipped by WP-35 PD-10).
 
-The defect (measured at a4fb89c): ``dash sunflower mpg weight`` was
-answered "sunflower is not a twoway plot type" with the Supported: list,
-as if twoway had no such type, and dash.sthlp's Not-drawn paragraph did
-not name it.  twoway draws it (test/fixtures/rangept_truth.json
-draw.sunflower: rc 0); its manual recommends the sunflower command over
-twoway sunflower (twoway_sunflower.sthlp, advice.sunflower).  dash does
-not draw it (PRD section 7) and refuses it by name, r(198), with that
-advice (DECISIONS M4).
+WP-31 B2 refused one word by name, r(198), with advice of its own,
+through a Mata helper and a branch in _dash_process_segment.  PD-10
+(maintainer rulings M1, A2; DECISIONS A-9) removes both: the word gets
+the refusal any word that is no plot type gets, "<word> is not a twoway
+plot type", r(198), with dash's Supported: list
+(test_parser.cscript Q3509-3, test_help_claims_1.cscript HC1-19 and
+U56-1, test_wp31_truth.cscript U21-9 run it).  These tests hold the
+source to it; the word appears only as test input.
 """
-import json
 import os
 import re
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_HERE, "..")
 
-with open(os.path.join(_HERE, "fixtures", "rangept_truth.json"),
-          encoding="utf-8") as _fh:
-    _T = json.load(_fh)
-
-#: The sentence dash.ado prints after "dash: 'sunflower' is a twoway plot
-#: type dash does not draw: ".
-_WHY = ("it bins points into density petals. Use Stata's own sunflower "
-        "command, which Stata recommends over twoway sunflower, or dash "
-        "scatter y x with jitter() or colorvar().")
+#: The helper WP-31 B2 added, spelled in two parts so this file names no
+#: function of the tree.
+_HELPER = "_dash_undrawn_" + "plottype"
 
 
 def _read(name):
@@ -37,28 +30,26 @@ def _read(name):
 class TestSunflowerRefused:
 
     def test_tuple(self):
-        """_dash_undrawn_plottype names sunflower, the full name only, as
-        twoway takes it (sunflow is "not a twoway plot type")."""
+        # Flipped (WP-35 PD-10): the helper that named one word to refuse
+        # was wrong because every word that is no plot type is refused
+        # alike; the word is no entry of the plot-type table either.
         mata = _read("dash_parse.mata")
-        start = mata.index("string scalar _dash_undrawn_plottype(")
+        assert _HELPER not in mata
+        start = mata.index("string scalar _dash_expand_plottype_str(")
         body = mata[start:mata.index("\n}\n", start)]
-        assert '"sunflower"' in body
-        assert _T["probes"]["draw.sunflower"]["rc"] == 0
-        assert _T["probes"]["abbrev.sunflow"]["message"] == \
-            "sunflow is not a twoway plot type"
+        assert '"sunflower"' not in body
 
     def test_sentence(self):
+        # Flipped (WP-35 PD-10): no advice sentence, no branch on the word.
         ado = _read("dash.ado")
-        assert _WHY in ado
-        assert re.search(r'"`_pt_nodraw\'" == "sunflower"', ado)
-        # The manual's words the sentence paraphrases.
-        lines = " ".join(_T["advice"]["sunflower"])
-        assert "We" in lines and "recommend the {cmd:sunflower} command" \
-            in lines
+        assert _HELPER not in ado
+        assert "density petals" not in ado
+        assert not re.search(r'== "sunflower"', ado)
 
     def test_help(self):
+        # Flipped (WP-35 PD-10): the help names the word nowhere as a plot
+        # type (it stays among Stata's style-file names).
         help_text = _read("dash.sthlp")
-        para = help_text[help_text.index("{ul:Not drawn.}"):]
-        para = para[:para.index("{marker ")]
-        assert "{cmd:sunflower}" in para
-        assert "Stata's {cmd:sunflower} command" in para
+        assert "{ul:Not drawn.}  Two" not in help_text
+        assert "{cmd:sunflower} command" not in help_text
+        assert "{cmd:twoway sunflower}" not in help_text

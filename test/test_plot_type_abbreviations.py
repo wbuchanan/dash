@@ -88,7 +88,9 @@ class TestTheRefusal:
     def test_twoways_sentence_and_the_supported_line(self):
         src = _read(ADO)
         i = src.index('"Supported: scatter line connected')
-        head = src[src.rindex("_dash_undrawn_plottype", 0, i):i]
+        # Flipped (WP-35 PD-10): the by-name branch above the sentence is
+        # gone; the sentence opens the branch for a word that is no type.
+        head = src[src.rindex("if \"`ptype'\" == \"\" {", 0, i):i]
         assert ('mata: _dash_say("err", "", st_local("plottype"), '
                 '" is not a twoway plot type")') in head, head
         assert "unrecognised plot type" not in head

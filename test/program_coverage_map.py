@@ -552,8 +552,6 @@ COVERAGE = {
                                  "test_parser.cscript:P1A-57"),
         "_dash_expand_plottype": ("test_parser.cscript:P1A-40",
                                   "test_parser.cscript:P1A-57"),
-        "_dash_undrawn_plottype": ("test_parser.cscript:P1A-58",
-                                   "test_parser.cscript:P1A-59"),
         # e2e: every prefix of every kernel name, its rc held to twoway's
         # and the full name it registers asserted.
         "_dash_kernel_full": ("test_help_claims_6.cscript:HC6-57",
@@ -856,8 +854,6 @@ COVERAGE = {
         "_dash_spec_has_plots": ("test_parser.cscript:TW-02",),
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
-        # WP-31 B3: matamatrix() refused by name.
-        "_dash_matamatrix_typed": ("test_wp31_truth.cscript:U21-10",),
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
         "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)

@@ -112,17 +112,19 @@ class TestTheMarkerAngle:
 
 class TestTheUndrawnTypes:
     def test_not_drawn_names_every_refused_type(self):
+        # Flipped (WP-35 PD-10): the paragraph named two words as twoway
+        # plot types dash does not draw; that was wrong (M1).  It now says
+        # that any word that is no plot type is refused alike, and the
+        # by-name helpers are gone.
         h = _flat(_help())
-        i = h.index("{ul:Not drawn.}")
+        i = h.index("{ul:Not a plot type.}")
         para = h[i:h.index("{pstd}", i)]
-        assert "Two {cmd:twoway} plot types are not drawn" in para
-        assert "{cmd:sunflower}" in para
-        assert "{cmd:matamatrix(}" in para
+        assert "Any word that is not a plot type is refused" in para
+        assert "is not a twoway plot type" in para
+        assert "sunflower" not in para and "matamatrix" not in para
         src = _mata()
-        body = _between(src, "string scalar _dash_undrawn_plottype(",
-                        "\n}\n")
-        assert re.findall(r'anyof\(\("([a-z]+)"\)', body) == ["sunflower"]
-        assert "string scalar _dash_matamatrix_typed(" in src
+        assert "_dash_undrawn_" + "plottype" not in src
+        assert "_dash_" + "matamatrix_typed" not in src
 
 
 class TestTheDotRow:

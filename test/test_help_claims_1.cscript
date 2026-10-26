@@ -79,8 +79,7 @@
 *!   HC1-18  link(), filter(), layout() and theme() are dash's own: twoway
 *!           refuses each, dash build takes each.
 *!   HC1-19  A word that is no plot type is refused, r(198), with a list of
-*!           the plot types; the four twoway types dash does not draw are
-*!           refused by name, each r(198).
+*!           the plot types; no word is refused by name (WP-35 PD-10).
 *!   HC1-20  A graph-level option is honoured inside a segment or after the
 *!           comma, in both forms, and the one that wins is twoway's: after
 *!           the comma beats a segment, the last segment beats an earlier
@@ -103,10 +102,9 @@
 *!           from the Title to the Option values item holds no brace.
 *!           MEASURED FALSE: the Description's `{it:if}/{in}' printed
 *!           "if/{in}", {in} being no SMCL directive.
-*!   U56-1   (WP-31 J2) Each type the Plot types' "Not drawn" paragraph
-*!           names is refused by name, r(198), with the advice it gives:
-*!           sunflower (Stata's own sunflower command) and matamatrix()
-*!           (getmata into variables); twoway draws both, rc 0.
+*!   U56-1   (WP-31 J2; flipped WP-35 PD-10) No word and no varlist form
+*!           is refused by name: each gets the generic refusal, the one a
+*!           made-up word or function name gets.
 *!   U56-2   (WP-31 J2; DECISIONS D13) A twoway prefix is refused as twoway
 *!           refuses twoway twoway: dash twoway scatter mpg weight is
 *!           r(198) "twoway is not a twoway plot type", as twoway's is.
@@ -227,6 +225,25 @@ void _hc_supported(string scalar fn)
     }
     fclose(fh)
     st_local("_hc_sup", strtrim(stritrim(words)))
+}
+end
+
+// The first line a logged command printed (U56-1): the log holds no echo.
+capture mata: mata drop _hc1_errline()
+mata:
+string scalar _hc1_errline(string scalar fn)
+{
+    real scalar   fh
+    string scalar line
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strtrim(line) != "" & substr(line, 1, 2) != ". ") {
+            fclose(fh)
+            return(strtrim(line))
+        }
+    }
+    fclose(fh)
+    return("")
 }
 end
 
@@ -1014,7 +1031,7 @@ else display as text "HC1-18 PASS: twoway refuses link(), filter(), layout(), th
 dash clear
 
 // ================================================================
-// HC1-19 -- no plot type: r(198) with the list; the undrawn by name
+// HC1-19 -- no plot type: r(198) with the list; none refused by name
 // ================================================================
 _hc_logged 19 dash zqnotaplottype mpg weight, name(hc19)
 local rc = r(rc)
@@ -1033,20 +1050,19 @@ local miss19 "`miss19' `extra19'"
 local miss19 = strtrim("`miss19'")
 local bad19 ""
 // Flipped (WP-31 B1): rpcap and rpspike are drawn, no longer refused.
-// WP-31 B2: sunflower (two variables) is refused by name.
 // Flipped (WP-31 B4b): contour and contourline are drawn, no longer
 // refused.
+// Flipped (WP-35 PD-10): no word is refused by name; the word below gets
+// the generic refusal, "<word> is not a twoway plot type", r(198).
 foreach t in sunflower {
-    local a "mpg weight turn"
-    if "`t'" == "sunflower" local a "mpg weight"
-    graph drop _all
-    capture twoway `t' `a', nodraw
-    local twrc = _rc
     dash clear
-    _hc_logged 19b dash `t' `a', name(hc19)
+    _hc_logged 19b dash `t' mpg weight, name(hc19)
     local drc = r(rc)
-    cert_log_has "`r(logfile)'", needle("'`t'' is a twoway plot type dash does not draw")
-    if `twrc' != 0 | `drc' != 198 | !r(found) local bad19 `"`bad19' [`t': twoway `twrc' dash `drc']"'
+    local lf19 "`r(logfile)'"
+    cert_log_has "`lf19'", needle("`t' is not a twoway plot type")
+    local f1 = r(found)
+    cert_log_has "`lf19'", needle("plot type dash does not draw")
+    if `drc' != 198 | !`f1' | r(found) local bad19 `"`bad19' [`t': dash `drc']"'
 }
 capture {
     assert `rc' == 198 & "`miss19'" == "" & `"`bad19'"' == ""
@@ -1056,7 +1072,7 @@ if _rc {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-19"'
 }
-else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 44 plot types listed; the undrawn twoway types are refused by name"
+else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 44 plot types listed; none is refused by name"
 dash clear
 
 // ================================================================
@@ -1384,30 +1400,33 @@ else display as text "HC1-24 PASS: the Title to Differences sections render with
 // U56-1 -- the Not-drawn paragraph's types are refused with its advice
 // U56-2 -- a twoway prefix is refused as twoway refuses it (D13)
 // ================================================================
-// Measured 18oct2026: twoway sunflower mpg weight and twoway scatter
-// matamatrix(M) draw (rc 0); dash refuses each by name, r(198).
+// Flipped (WP-35 PD-10): neither input below is refused by name.  The
+// word gets the refusal a made-up word gets (nosuchtype), the varlist
+// form the one a made-up function name gets (nosuchfn(M)), each with the
+// typed word in its place.
 mata: _u56_M = (1, 2 \ 3, 4)
 local bad561 ""
-graph drop _all
-capture twoway sunflower mpg weight, nodraw
-local tw1 = _rc
 _hc_logged 561a dash sunflower mpg weight
 local d1 = r(rc)
-cert_log_has "`r(logfile)'", needle("Use Stata's own sunflower command")
-if `tw1' != 0 | `d1' != 198 | !r(found) local bad561 `"`bad561' [sunflower: twoway `tw1' dash `d1']"'
-capture twoway scatter matamatrix(_u56_M), nodraw
-local tw2 = _rc
+mata: st_local("l1", _hc1_errline(st_global("r(logfile)")))
+_hc_logged 561c dash nosuchtype mpg weight
+local g1 = r(rc)
+mata: st_local("m1", subinstr(_hc1_errline(st_global("r(logfile)")), "nosuchtype", "sunflower"))
+if `d1' != 198 | `d1' != `g1' | `"`l1'"' != `"`m1'"' | `"`l1'"' == "" local bad561 `"`bad561' [word: dash `d1' `l1', generic `g1' `m1']"'
 _hc_logged 561b dash scatter matamatrix(_u56_M)
 local d2 = r(rc)
-cert_log_has "`r(logfile)'", needle("getmata the columns into variables")
-if `tw2' != 0 | `d2' != 198 | !r(found) local bad561 `"`bad561' [matamatrix: twoway `tw2' dash `d2']"'
+mata: st_local("l2", _hc1_errline(st_global("r(logfile)")))
+_hc_logged 561d dash scatter nosuchfn(_u56_M)
+local g2 = r(rc)
+mata: st_local("m2", _hc1_errline(st_global("r(logfile)")))
+if `d2' != `g2' | `"`l2'"' != `"`m2'"' | `"`l2'"' == "" local bad561 `"`bad561' [varlist: dash `d2' `l2', generic `g2' `m2']"'
 capture mata: mata drop _u56_M
 if `"`bad561'"' != "" {
     display as error `"U56-1 FAIL:`bad561'"'
     local nfail = `nfail' + 1
     local faillist `"`faillist' U56-1"'
 }
-else display as text "U56-1 PASS: sunflower and matamatrix() are refused by name, r(198), with the help's advice; twoway draws both"
+else display as text "U56-1 PASS: no word and no varlist form is refused by name; each gets the generic refusal"
 dash clear
 
 capture twoway twoway scatter mpg weight, nodraw

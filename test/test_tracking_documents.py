@@ -2034,8 +2034,11 @@ WP31_LISTS = {
     "F1d": ("Results that change",),
     "C9": ("Results that change",),
     "B1": ("Fixed in WP-31",),
-    "B2": ("Fixed in WP-31",),
-    "B3": ("Fixed in WP-31",),
+    # old -> new: ("Fixed in WP-31",) -> (): WP-35 PD-10 (DECISIONS A-9)
+    # deleted B2's and B3's CHANGELOG lines, which named a by-name refusal
+    # of twoway features that do not exist (M1); no list holds them now.
+    "B2": (),
+    "B3": (),
     "F1e": ("Results that change",),
     "B4a": ("Fixed in WP-31",),
     "D1": ("Results that change",),

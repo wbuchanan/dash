@@ -21,6 +21,10 @@
 *! with twoway asked, and DASH_CERT_REMEASURE=1 asks twoway in the run again
 *! and fails on any answer that is no longer the fixture's (the release run).
 *!
+*! Q3509-3 (WP-35 35-09, PD-10): a word that is no plot type is refused
+*! with twoway's rc and first line (command_grammar_truth.json), and no
+*! word gets advice of its own.
+*!
 *! NP-40..NP-42 (WP-30 P1.14a): the named styles and p() reach the spec by
 *! value; p()'s drop list holds per series.
 *!
@@ -574,20 +578,19 @@ display "P1A-57 PASS: pccapsym and pcarrowi expand by their full names only, as 
 mata:
 bs = char(92)
 q  = char(34)
-// _dash_undrawn_plottype: the names, any case, and nothing else.
-// Flipped (WP-31 B1): rpcap and rpspike are drawn, so no longer named.
-// Flipped (WP-31 B4b): contour and contourline are drawn too.
-assert(_dash_undrawn_plottype("contour") == "")
-assert(_dash_undrawn_plottype(" CONTOURLINE ") == "")
-assert(_dash_undrawn_plottype("RPCAP") == "")
-assert(_dash_undrawn_plottype("rpspike") == "")
-// WP-31 B2: sunflower, its full name only.
-assert(_dash_undrawn_plottype("Sunflower") == "sunflower")
-assert(_dash_undrawn_plottype("sunflow") == "")
-assert(_dash_undrawn_plottype("contourl") == "")
-assert(_dash_undrawn_plottype("rpca") == "")
-assert(_dash_undrawn_plottype("scatter") == "")
-assert(_dash_undrawn_plottype("") == "")
+// Flipped (WP-35 PD-10): no word is refused by name any more; a word that
+// is no plot type expands to "" and gets the one generic refusal, "<word>
+// is not a twoway plot type" (Q3509-3).  The by-name helper is gone.
+assert(_dash_expand_plottype_str("contour") == "contour")
+assert(_dash_expand_plottype_str("contourline") == "contourline")
+assert(_dash_expand_plottype_str("rpcap") == "rpcap")
+assert(_dash_expand_plottype_str("rpspike") == "rpspike")
+assert(_dash_expand_plottype_str("sunflower") == "")
+assert(_dash_expand_plottype_str("sunflow") == "")
+assert(_dash_expand_plottype_str("contourl") == "")
+assert(_dash_expand_plottype_str("rpca") == "")
+assert(_dash_expand_plottype_str("scatter") == "scatter")
+assert(_dash_expand_plottype_str("") == "")
 // _dash_json_escape: the backslash first, the quote, the five short forms,
 // the rest of C0 as u00XX, and the three a macro could misread.
 assert(_dash_json_escape("a" + bs + "b") == "a" + bs + bs + "b")
@@ -3993,6 +3996,65 @@ if `"`c(python_exec)'"' != "" {
     }
     capture erase "`tsopg'"
 }
+
+// ================================================================
+// Q3509 (WP-35 35-09): the command grammar's refusals, each dash's rc and
+// first line against twoway's, read from fixtures/
+// command_grammar_truth.json (scripts/extract_command_grammar_truth.do).
+// _q9_vs compares the log _p1a_logrun wrote with the fixture's row and
+// sets the local q9bad ("" when they agree).
+// ================================================================
+python:
+import json as _q9j, re as _q9re
+from sfi import Macro as _q9M
+_q9T = _q9j.load(open("fixtures/command_grammar_truth.json", encoding="utf-8"))
+
+
+def _q9_lines(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read().replace("\n> ", "")
+    except OSError:
+        return []
+    return [ln.strip() for ln in text.splitlines()
+            if ln.strip() and not ln.strip().startswith(". ")
+            and not _q9re.match(r"^r\(\d+\);$", ln.strip())]
+
+
+def _q9_vs(key, rc, path):
+    row = _q9T[key]
+    got = _q9_lines(path)
+    first = got[0] if got else ""
+    bad = ""
+    if int(rc) != row["rc"] or first != row["message"]:
+        bad = "%s: dash r(%s) %r, twoway r(%d) %r" % (
+            key, rc, first[:120], row["rc"], row["message"])
+    _q9M.setLocal("q9bad", bad)
+
+
+def _q9_no_advice(path):
+    """Nothing follows the Supported: list's last line."""
+    got = _q9_lines(path)
+    at = [i for i, ln in enumerate(got) if ln.startswith("rscatter function")]
+    _q9M.setLocal("q9bad", "" if at and at[-1] == len(got) - 1
+                  else "a line follows the Supported list: %r" % got[-1:])
+end
+
+// ----------------------------------------------------------------
+// Q3509-3 (PD-10): a word that is no plot type is refused as twoway
+// refuses it, and nothing follows dash's Supported: list.
+// ----------------------------------------------------------------
+dash clear
+_p1a_logrun "dash nosuchtype mpg weight"
+local rc_q9 = r(rc)
+local lg_q9 "`r(log)'"
+python: _q9_vs("generic.nosuchtype", _q9M.getLocal("rc_q9"), _q9M.getLocal("lg_q9"))
+if `"`q9bad'"' != "" display as error `"Q3509-3: `q9bad'"'
+assert `"`q9bad'"' == ""
+python: _q9_no_advice(_q9M.getLocal("lg_q9"))
+if `"`q9bad'"' != "" display as error `"Q3509-3: `q9bad'"'
+assert `"`q9bad'"' == ""
+display "Q3509-3 PASS: nosuchtype mpg weight is twoway's r(198) and first line, with no advice after the Supported list"
 
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.

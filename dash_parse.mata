@@ -166,15 +166,6 @@
 *!       The plot type abbrev names, abbreviated as twoway allows, into
 *!       out_macro; "" when it names no type dash draws.
 *!
-*!   _dash_matamatrix_typed(varpart)
-*!       The matamatrix(...) a plot's varlist begins with, as typed (at most
-*!       80 characters), else "" (WP-31 B3).
-*!
-*!   _dash_undrawn_plottype(name)
-*!       name, lower case, when it is a twoway plot type dash refuses by
-*!       name -- sunflower (contour and contourline until WP-31 B4b) --
-*!       else "".
-*!
 *!   _dash_kernel_full(word)
 *!       The full kernel name, lower case, for a word twoway's kernel()
 *!       takes (gau is gaussian, ep and epan epanechnikov); any other
@@ -2604,63 +2595,6 @@ string scalar _dash_expand_plottype_str(string scalar name) {
 
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
     st_local(out_macro, _dash_expand_plottype_str(strlower(strtrim(abbrev))))
-}
-
-
-// ============================================================
-// 2b. TWOWAY PLOT TYPES DASH DOES NOT DRAW
-// ============================================================
-//
-// contour and contourline are twoway plot types (graph_twoway.sthlp) that
-// draw a surface interpolated over a grid of z values -- a data model no
-// dash plot has (twoway builds them on zyx2view_g, measured from the .gph).
-// dash.ado refuses each by name, with what to use instead, rather than as
-// an unrecognised plot type (WP-22 TR-22.1, BR-22.1).  twoway takes no
-// abbreviation of either -- measured 23sep2026: cont .. contou and
-// contourl .. contourlin are "not a twoway plot type", and con is
-// connected -- so only the full names match.  rpcap and rpspike were
-// refused here too until WP-31 B1 drew them, contour and contourline
-// until WP-31 B4b.  sunflower (WP-31 B2) is a
-// twoway plot type too (twoway sunflower mpg weight: rc 0), which dash
-// does not draw (PRD section 7): it was answered "not a twoway plot
-// type"; twoway takes no shorter name (sunflow is "not a twoway plot
-// type", test/fixtures/rangept_truth.json abbrev.sunflow).
-// Returns the name, lower case, or "".
-string scalar _dash_undrawn_plottype(string scalar name) {
-    string scalar s
-
-    s = strlower(strtrim(name))
-    if (anyof(("sunflower"), s)) {
-        return(s)
-    }
-    return("")
-}
-
-
-// twoway plots the columns of a Mata matrix when a plot's varlist begins
-// matamatrix( -- lower case, after leading blanks, as
-// twoway_yxview_parse.class tests it: bsubstr(anything, 1, 11) ==
-// "matamatrix(" (MATAMATRIX(M) is a varlist there, "variable M not
-// found", r(111); test/fixtures/rangept_truth.json matamatrix.*).  dash
-// does not draw it (PRD section 7); dash.ado refuses it by name (WP-31
-// B3).  Returns the token up to its first ")" as typed, cut to 80
-// characters for the message, or "".
-string scalar _dash_matamatrix_typed(string scalar varpart) {
-    string scalar s
-    real scalar e
-
-    s = strtrim(varpart)
-    if (substr(s, 1, 11) != "matamatrix(") {
-        return("")
-    }
-    e = strpos(s, ")")
-    if (e > 0) {
-        s = substr(s, 1, e)
-    }
-    if (ustrlen(s) > 80) {
-        s = usubstr(s, 1, 77) + "..."
-    }
-    return(s)
 }
 
 

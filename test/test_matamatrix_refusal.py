@@ -1,31 +1,24 @@
 """
-test_matamatrix_refusal.py -- twoway's matamatrix() refused by name (WP-31
-B3, section 21).
+test_matamatrix_refusal.py -- no varlist form is refused by name (WP-31
+B3, flipped by WP-35 PD-10).
 
-The defect (measured at 7470c65): ``dash scatter matamatrix(M)`` was read
-as a varlist and refused "variable matamatrix not found" style, r(101) or
-r(111), naming matamatrix(M) as if it were a variable.  twoway plots the
-columns of a Mata matrix (twoway_mata.sthlp, "Two-way graphs of mata
-matrices"; test/fixtures/rangept_truth.json matamatrix.defined: rc 0),
-detected by a varlist that begins, lower case, with ``matamatrix(``
-(twoway_yxview_parse.class: ``bsubstr(anything, 1, 11) ==
-"matamatrix("``; MATAMATRIX(M) is read as a varlist, matamatrix.upper:
-"variable M not found", r(111)).  dash does not draw it (PRD section 7)
-and refuses it by name, r(198), with advice (DECISIONS M4).
+WP-31 B3 refused one varlist form by name, r(198), with advice of its
+own, through a Mata helper and a block in _dash_process_segment.  PD-10
+(maintainer rulings M1, A2; DECISIONS A-9) removes both: the form gets
+the refusal any unknown token at the head of a varlist gets -- for
+``scatter nosuchfn(M)`` "variable M not found", r(111) -- which
+test_help_claims_1.cscript U56-1 and test_wp31_truth.cscript U21-10
+certify by running both.  These tests hold the source to it; the word
+appears only as test input.
 """
-import json
 import os
-import re
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_HERE, "..")
 
-with open(os.path.join(_HERE, "fixtures", "rangept_truth.json"),
-          encoding="utf-8") as _fh:
-    _T = json.load(_fh)
-
-_SENTENCE = (" is a twoway mata matrix plot, which dash does not draw. Use "
-             "Stata's own twoway ")
+#: The helper WP-31 B3 added, spelled in two parts so this file names no
+#: function of the tree.
+_HELPER = "_dash_" + "matamatrix_typed"
 
 
 def _read(name):
@@ -36,37 +29,27 @@ def _read(name):
 class TestMatamatrixRefused:
 
     def test_function_and_needed(self):
+        # Flipped (WP-35 PD-10): the by-name helper, its header-index line
+        # and its _needed entry were wrong because no varlist form is
+        # refused by name.
         mata = _read("dash_parse.mata")
-        assert "string scalar _dash_matamatrix_typed(" in mata
-        start = mata.index("string scalar _dash_matamatrix_typed(")
-        body = mata[start:mata.index("\n}\n", start)]
-        # twoway's own test: the first eleven characters, case-sensitive.
-        assert '"matamatrix("' in body and "strlower" not in body
-        assert "*!   _dash_matamatrix_typed(" in mata
+        assert _HELPER not in mata
         ado = _read("dash.ado")
         req = ado[ado.index("program define _dash_require_mata"):]
         req = req[:req.index("\nend\n")]
-        assert "_dash_matamatrix_typed" in req
-        p = _T["probes"]
-        assert p["matamatrix.defined"]["rc"] == 0
-        assert (p["matamatrix.upper"]["rc"],
-                p["matamatrix.upper"]["message"]) == (
-            111, "variable M not found")
-        assert p["advice.matamatrix"]["message"] == \
-            "nosuch is not a mata matrix"
+        assert _HELPER not in req
+        assert _HELPER not in ado
 
     def test_sentence(self):
+        # Flipped (WP-35 PD-10): the advice sentence is gone; no branch of
+        # _dash_process_segment tests the varlist for one form.
         ado = _read("dash.ado")
-        assert _SENTENCE in ado
-        assert "getmata the columns into variables" in ado
-        # The check reads the varpart before any varlist parser does.
-        call = ado.index("_dash_matamatrix_typed(st_local(\"varpart\"))")
-        parse = ado.index("if `: list ptype in _pt_univar' {", call - 4000)
-        assert call < parse
+        assert "is a twoway mata matrix plot" not in ado
+        assert "getmata the columns into variables" not in ado
+        assert '"matamatrix("' not in ado
 
     def test_help(self):
+        # Flipped (WP-35 PD-10): the help names no such form.
         help_text = _read("dash.sthlp")
-        para = help_text[help_text.index("{ul:Not drawn.}"):]
-        para = para[:para.index("{marker ")]
-        assert "{cmd:matamatrix(}" in para
-        assert "{cmd:getmata}" in para
+        assert "matamatrix" not in help_text
+        assert "{cmd:getmata}" not in help_text

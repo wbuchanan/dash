@@ -295,6 +295,7 @@ GENERATORS = {
     "colorvar_types_truth.json": "scripts/extract_colorvar_types_truth.do",
     "colour_grammar_truth.json": "scripts/extract_colour_grammar_truth.do",
     "colour_width_edges_truth.json": "scripts/extract_colour_width_edges_truth.do",
+    "command_grammar_truth.json": "scripts/extract_command_grammar_truth.do",
     "conformance_corpus.txt": HAND_WRITTEN,
     "connect_truth.json": "scripts/extract_connect_truth.do",
     "contour_truth.json": "scripts/extract_contour_truth.do",

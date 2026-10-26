@@ -111,12 +111,12 @@ class TestTheFixture:
         for t in ("rpcap", "rpspike"):
             for n in range(1, 6):
                 assert "counts.%s_%d" % (t, n) in _T["probes"]
-        for k in ("abbrev.rpca", "abbrev.rpspik", "abbrev.sunflow",
-                  "draw.sunflower", "barwidth.rpcap", "advice.matamatrix",
-                  "matamatrix.defined", "matamatrix.upper"):
+        # Flipped (WP-35 PD-10): the fixture's readings for the two words
+        # WP-31 B2 and B3 refused by name are no longer read (no word is
+        # refused by name); the rpcap and rpspike readings stay.
+        for k in ("abbrev.rpca", "abbrev.rpspik", "barwidth.rpcap"):
             assert k in _T["probes"], k
         assert set(_T["title"]) >= {"differs", "same"}
-        assert _T["advice"]["sunflower"] and _T["advice"]["matamatrix"]
 
     def test_twoways_values(self):
         d = _T["draw"]
