@@ -3918,7 +3918,7 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     are {cmd:stdf} and {cmd:stdr} on {cmd:fpfitci}
     ({cmd:stdf not allowed}){p_end}
 {synopt:{opt mean}}{cmd:lowess} only: a running mean rather than a
-    running line{p_end}
+    running line ({opt m} is its shortest spelling, as in {cmd:twoway}){p_end}
 {synopt:{opt noweight}}{cmd:lowess} only: the tricube weights are
     dropped{p_end}
 {synopt:{opt adjust}}{cmd:lowess} only: the smooth is rescaled so that

@@ -558,6 +558,78 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w35_run' {
 }
 * ==== end S02 ====
 
+// ----------------------------------------------------------------
+// S03 helpers (WP-35 section 35-03).  _s03_same id work data A B: on a
+// fresh copy of data (auto or sandstone), dash takes A and B (twoway
+// syntax without the leading "twoway"), registers one spec for both and
+// names nothing as unsupported.  _s03_rc id work data cmd rc line: dash
+// gives cmd's rc and first line as twoway gives them
+// (stat_accept_truth.json).
+// ----------------------------------------------------------------
+capture program drop _s03_same
+program define _s03_same
+    version 19
+    args id work data A B
+    capture dash clear
+    capture log close s03log
+    capture erase "`work'/s03_same.log"
+    quietly log using "`work'/s03_same.log", text replace name(s03log) nomsg
+    quietly sysuse `data', clear
+    capture noisily dash `A' name(s03g)
+    local drc_A = _rc
+    mata: _s03_json = st_global("dash_json_s03g")
+    capture dash clear
+    quietly sysuse `data', clear
+    capture noisily dash `B' name(s03g)
+    local drc_B = _rc
+    quietly log close s03log
+    mata: st_local("same", strofreal(_s03_json == st_global("dash_json_s03g") & _s03_json != ""))
+    capture dash clear
+    capture mata: mata drop _s03_json
+    _w35_expect `id' "(`drc_A' == 0)" `"dash refused (rc `drc_A'): `A'"'
+    _w35_expect `id' "(`drc_B' == 0)" `"dash refused (rc `drc_B'): `B'"'
+    _w35_expect `id' "(`same' == 1)" `"dash registered another spec for `A' than for `B'"'
+    cert_log_has "`work'/s03_same.log", needle("ignoring unsupported")
+    _w35_expect `id' "(r(found) == 0)" `"dash named an option unsupported: `A'"'
+    capture erase "`work'/s03_same.log"
+end
+
+capture program drop _s03_rc
+program define _s03_rc
+    version 19
+    args id work data cmd rc line
+    quietly sysuse `data', clear
+    _s01_first "`work'" `"dash `cmd' name(s03g)"'
+    local drc = r(rc)
+    local dline `"`r(line)'"'
+    if `rc' == 0 local dline ""
+    _w35_expect `id' "(`drc' == `rc')" `"dash rc `drc', twoway `rc': `cmd'"'
+    mata: st_local("same", strofreal(st_local("dline") == st_local("line")))
+    _w35_expect `id' "(`same' == 1)" `"dash said "`macval(dline)'", twoway "`macval(line)'": `cmd'"'
+end
+
+* ==== S03 stat:PT-7: lowess m read as mean ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-1: lowess m is lowess mean (twoway_lowess_parse.class Mean;
+    // stat_accept_truth.json lowess_m and lowess_mean draw one curve):
+    // dash takes it and registers mean's spec.
+    // ------------------------------------------------------------
+    _s03_same Q3503-1 "`w35_work'" auto "lowess mpg weight, m" "lowess mpg weight, mean"
+    quietly sysuse auto, clear
+    capture dash lowess mpg weight, m name(s03g)
+    mata: st_local("s03_mean", strofreal(strpos(st_global("dash_json_s03g"), char(34) + "mean" + char(34)) > 0))
+    capture dash clear
+    _w35_expect Q3503-1 "(`s03_mean' == 1)" "dash's spec for lowess m holds no mean"
+    _w35_done Q3503-1 "lowess m is read as mean"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // _q3509_axes <page or app> <kind>: every axis and grid model of a saved
 // page (kind "page") or of the document a served app builds (kind "app")
 // is hidden, and a title T is drawn; the problems go to global q3509_bad.

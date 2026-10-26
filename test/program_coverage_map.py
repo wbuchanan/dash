@@ -104,6 +104,7 @@ COVERAGE = {
         "_dash_fold_bw": ("test_alias_semantics.cscript:AS-01",
                           "test_alias_semantics.cscript:AS-02",
                           "test_help_claims_6.cscript:HC6-06"),
+        "_dash_fold_stat_words": ("test_wp35_truth.cscript:Q3503-1",),
         # e2e: the cl triple kept or dropped per plot type.
         "_dash_fold_cl": ("test_twoway_option_parity.cscript:TP-01",),
         # e2e: mlabel() refused or dropped exactly where twoway does.

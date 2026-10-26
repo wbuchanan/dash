@@ -2154,6 +2154,37 @@ program define _dash_fold_bw, sclass
 end
 
 // ================================================================
+// _dash_fold_stat_words <ptype> `"<options>"'  -- the statistical types'
+// spellings twoway reads and dash's declarations do not (WP-35 35-03).
+//
+// lowess m (stat:PT-7): twoway_lowess_parse.class declares Mean, so a bare
+// m is mean (measured: the serset of lowess mpg weight, m is mean's,
+// test/fixtures/stat_accept_truth.json lowess_m); dash declares MEan,
+// one letter longer, so that m stays MColor()'s spelling elsewhere.  The
+// word is taken out of the catch-all, by value, and recorded as mean.
+// Called directly after _dash_refuse_unbound, before _dash_refuse_unknown
+// would refuse the word, and again after _dash_refuse_asp, because
+// _dash_refuse_unknown re-parses the list when it classes any word, which
+// undoes what the first call wrote; it only rewrites s(), so the second
+// call changes nothing the first one kept.
+// ================================================================
+program define _dash_fold_stat_words, sclass
+    version 19
+    args ptype
+    if "`ptype'" == "lowess" {
+        mata: st_local("_fsw_t", strofreal(anyof(_dash_opt_tokens(st_global("s(_unknown)")), "m")))
+        if `_fsw_t' {
+            mata: _fsw_u = _dash_opt_tokens(st_global("s(_unknown)"))
+            mata: _fsw_u = select(_fsw_u, _fsw_u :!= "m")
+            mata: st_local("_fsw_rest", cols(_fsw_u) ? invtokens(_fsw_u) : "")
+            capture mata: mata drop _fsw_u
+            sreturn local mean "mean"
+            sreturn local _unknown : copy local _fsw_rest
+        }
+    }
+end
+
+// ================================================================
 // _dash_fold_cl  -- keep clcolor(), clpattern() and clwidth() on the plot
 //                   types whose CONNECTING line twoway styles with them.
 //
@@ -6521,6 +6552,8 @@ program define _dash_process_segment, rclass
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
+        // The statistical types' spellings twoway reads (WP-35 35-03).
+        _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
         // The first word twoway does not take, in the list's order
         // (WP-32): an unknown word, one in upper case, a spelling short of
         // twoway's minimum, title2().
@@ -6531,6 +6564,7 @@ program define _dash_process_segment, rclass
         _dash_refuse_nam
         // aspectratio() spelled shorter than twoway's minimum (WP-31 A3c).
         _dash_refuse_asp
+        _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
         // A second name() in this option list: -syntax- binds the first to
         // NAME() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.

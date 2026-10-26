@@ -378,6 +378,7 @@ GENERATORS = {
     "sizing_truth.json": "scripts/extract_sizing_truth.do",
     "smcl_more_truth.json": "scripts/extract_smcl_more_truth.do",
     "smcl_text_truth.json": "scripts/extract_smcl_text_truth.do",
+    "stat_accept_truth.json": "scripts/extract_stat_accept_truth.do",
     "stat_truth.json": "scripts/extract_stat_truth.do",
     "stata_ticks_truth.json": "scripts/extract_stata_ticks_truth.do",
     "style_files_truth.json": "scripts/extract_style_files_truth.do",
