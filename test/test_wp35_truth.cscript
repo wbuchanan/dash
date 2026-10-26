@@ -638,6 +638,36 @@ program define _s03_samefp
     capture erase "`work'/s03_fp.log"
 end
 
+// _s03_quiet id work cmd: dash takes cmd, stores twoway's generator's
+// points for it (global dash_fpts_<name>), and prints no line but its
+// registration line, as twoway prints none (stat_accept_truth.json
+// n.<type>.-1 notes).
+capture program drop _s03_quiet
+program define _s03_quiet
+    version 19
+    args id work cmd
+    quietly sysuse auto, clear
+    capture dash clear
+    capture log close s03log
+    capture erase "`work'/s03_q.log"
+    quietly log using "`work'/s03_q.log", text replace name(s03log) nomsg
+    capture noisily dash `cmd' name(s03g)
+    local drc = _rc
+    quietly log close s03log
+    mata: st_local("fp", strofreal(st_global("dash_fpts_s03g") != ""))
+    capture dash clear
+    mata: _s03_l = cat(st_local("work") + "/s03_q.log")
+    mata: _s03_l = select(_s03_l, strtrim(_s03_l) :!= "")
+    mata: _s03_l = select(_s03_l, !strmatch(_s03_l, "dash: graph '*' registered."))
+    mata: st_local("extra", strofreal(rows(_s03_l)))
+    mata: st_local("first", rows(_s03_l) ? _s03_l[1] : "")
+    capture mata: mata drop _s03_l
+    _w35_expect `id' "(`drc' == 0)" `"dash refused (rc `drc'): `cmd'"'
+    _w35_expect `id' "(`fp' == 1)" `"dash stored no generator points for: `cmd'"'
+    _w35_expect `id' "(`extra' == 0)" `"dash printed "`macval(first)'", twoway nothing: `cmd'"'
+    capture erase "`work'/s03_q.log"
+end
+
 * ==== S03 stat:PT-7: lowess m read as mean ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
@@ -728,6 +758,33 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
     _s03_rc Q3503-4 "`w35_work'" auto "scatter mpg weight, bogus subchar(t)" 198 "option bogus not allowed"
     _s03_rc Q3503-4 "`w35_work'" auto "function y = t^2, sub(t) range(0 2) n(5)" 111 "error in expression:  t^2"
     _w35_done Q3503-4 "function subchar() names the expression's variable, as twoway reads it"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 stat:PT-9: edge n() and bands() values ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-5: the edge values twoway takes (stat_accept_truth.json):
+    // bands(-1) on mspline and mband draws the default (the same SVG as
+    // none), fpfitci takes any integer n() and draws as without it, and
+    // n(-1) on lfit, qfit, lfitci and qfitci is drawn by twoway's own
+    // generator (an empty fit, its legend key kept), silently; n(0) there
+    // is "'0' invalid observation number", r(198).
+    // ------------------------------------------------------------
+    _s03_same Q3503-5 "`w35_work'" auto "mspline mpg weight, bands(-1)" "mspline mpg weight,"
+    _s03_same Q3503-5 "`w35_work'" auto "mband mpg weight, bands(-1)" "mband mpg weight,"
+    _s03_same Q3503-5 "`w35_work'" auto "fpfitci mpg weight, n(0)" "fpfitci mpg weight,"
+    _s03_same Q3503-5 "`w35_work'" auto "fpfitci mpg weight, n(-1)" "fpfitci mpg weight,"
+    foreach t in lfit qfit lfitci qfitci {
+        _s03_quiet Q3503-5 "`w35_work'" "`t' mpg weight, n(-1)"
+        _s03_rc Q3503-5 "`w35_work'" auto "`t' mpg weight, n(0)" 198 "'0' invalid observation number"
+    }
+    _w35_done Q3503-5 "the edge n() and bands() values twoway takes are drawn as twoway draws them"
 
     display as text "S03 end " c(current_date) " " c(current_time)
 }

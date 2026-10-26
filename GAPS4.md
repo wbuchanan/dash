@@ -357,7 +357,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20e Tracked:** Open (WP-35 section 35-03).
 - **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit pending.
 - **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
-- **stat:PT-9 Tracked:** Open (WP-35 section 35-03).
+- **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit pending.
 - **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
 - **basic:PT-8 Tracked:** Open (WP-35 section 35-06).
 - **basic:PT-9 Tracked:** Open (WP-35 section 35-05).

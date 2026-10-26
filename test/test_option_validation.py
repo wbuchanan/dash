@@ -94,7 +94,8 @@ malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
 degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
-n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
+n=int,1,300@mspline  n=int,-1,10000@lfit|qfit|lfitci|qfitci  n=int@fpfitci
+n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
 colornlevels=int,2,256
 colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
@@ -248,7 +249,11 @@ class TestTheTableIsWellFormed:
         # number; range typed, with missingok on the four fits; kdensity
         # bwidth 0.  43 unchanged (WP-31 C10b: the axes kind and degree 7
         # replace their tokens one for one).
-        assert len(want) == 43, "the contract text above lost a token"
+        # old -> new: 43 -> 45: stat:PT-9 edge n() and bands() -- n()
+        # typed on the lfit family (-1, an empty fit, is drawn) and on
+        # fpfitci (any integer; n() is not used there), measured
+        # (test/fixtures/stat_accept_truth.json n.<type>.<v>).
+        assert len(want) == 45, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 

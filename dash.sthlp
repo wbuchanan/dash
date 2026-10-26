@@ -3792,14 +3792,18 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     with {cmd:r(134)}.  On these types {cmd:dash} takes 1 to 10000 (one
     point draws no line, as in {cmd:twoway});
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
-    ({cmd:lpoly} reads 1 as 50).  {cmd:mspline}: the number of points
+    ({cmd:lpoly} reads 1 as 50).  On {cmd:lfit}, {cmd:qfit},
+    {cmd:lfitci} and {cmd:qfitci} both also take {cmd:n(-1)}, an empty
+    fit drawn by {cmd:twoway}'s own generator with its legend key, and
+    refuse {cmd:n(0)}, r(198), "'0' invalid observation number".
+    {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in
     {cmd:twoway}.  {cmd:twoway}'s {cmd:fpfitci} and {cmd:mband} accept
     {cmd:n()} and draw the same points without it, and so does
-    {cmd:dash}{p_end}
+    {cmd:dash}; on {cmd:fpfitci} any whole number is taken{p_end}
 {synopt:{opt bands(#)}}{cmd:mspline} and {cmd:mband}: the number of
     equal-width bands the range of x is cut into, 1 to 200, as in
-    {cmd:twoway}.  The default is {cmd:twoway}'s:
+    {cmd:twoway}; {cmd:bands(-1)} is the default, as in {cmd:twoway}.  The default is {cmd:twoway}'s:
     round(min(10 log10 {it:N}, sqrt {it:N})), and at least
     min({it:N}, 2), {it:N} the plot's observations{p_end}
 {synopt:{opt range(# #)}}the span of x a layer is drawn over.  On

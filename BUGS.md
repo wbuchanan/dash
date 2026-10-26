@@ -4658,11 +4658,11 @@
   - Suggested fix: Treat the pair in the repeat check; take weight silently
   - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
 
-- [ ] Title: Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)
+- [x] Title: Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)
   - File Names and Line Numbers: twoway_mspline_parse.class:35; probe1 #114
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-9; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-9 (WP-35, section 35-03, Fix).
   - Suggested fix: Accept them as twoway does
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, stat:PT-9). _dash_option_rules types n() on the lfit family (-1 to 10000) and on fpfitci (any integer); _dash_fold_stat_words drops mspline's and mband's bands(-1) (the default) and fpfitci's integer n() (not used), and records n(0) on the lfit family, refused "'0' invalid observation number", r(198), as twoway refuses it; n(-1) there is drawn from twoway's own generator (_dash_fit_points, a new alternative of _dash_process_segment's _ft_on), and GlyphMapper._fit_points_draw marks the empty layer silent, so neither mode prints a note twoway does not print; dash.sthlp's n() and bands() entries say so. Pinned by test/test_stat_accept.py::TestTheEmptyFit::test_no_note_for_n_minus_one, test/test_option_validation.py::TestTheTableIsWellFormed::test_the_contract_tokens_are_all_there, test/test_wp35_truth.cscript Q3503-5; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 stat:PT-9 (WP-35, stat:PT-9).
 
 - [ ] Title: bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types
   - File Names and Line Numbers: _dash_fold_bw (dash.ado:2125-2145); dash.sthlp:3655-3658

@@ -2883,7 +2883,6 @@ GAPS4_OPEN = {
     'syn:SD-20d': "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle",
     'syn:SD-20e': 'clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated',
     'stat:PT-8': "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes",
-    'stat:PT-9': 'Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)',
     'stat:PT-14': 'bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types',
     'basic:PT-8': "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'",
     'basic:PT-9': 'Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111',

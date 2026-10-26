@@ -14,6 +14,8 @@ import os
 import re
 import sys
 
+import pytest
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 
@@ -115,3 +117,30 @@ class TestTheTakesTable:
             198, "1t invalid name")
         assert d["subchar.order"]["message"] == "option bogus not allowed"
         assert '("subchar",' not in _read(_MATA)
+
+
+_EMPTY = {"x": [], "y": [], "nobs": 74}
+_EMPTY_CI = {"x": [], "y": [], "lo": [], "hi": [], "nobs": 74}
+
+
+class TestTheEmptyFit:
+    """stat:PT-9: n(-1) on lfit, qfit, lfitci and qfitci is drawn from the
+    points twoway's generator makes -- none -- and twoway prints nothing
+    (stat_accept_truth.json n.<type>.-1 notes), so neither mode prints
+    "drew nothing" for it; stored points with no row and any other n()
+    still do."""
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("t", ["lfit", "qfit", "lfitci", "qfitci"])
+    def test_no_note_for_n_minus_one(self, mode, t):
+        from test_fit_options import _layer
+        from test_server_layer_defects import plot_for
+        d = _truth()
+        assert d["n.%s.-1" % t]["rc"] == 0 and d["n.%s.-1" % t]["notes"] == []
+        pts = _EMPTY_CI if t.endswith("ci") else _EMPTY
+        _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
+            t, {"n": "-1", "points": dict(pts)})])
+        assert not [m for m in w if "drew nothing" in m], w
+        _r, _l, w = _layer(mode, [plot_for("scatter"), plot_for(
+            t, {"estopts": "noconstant", "points": dict(pts)})])
+        assert [m for m in w if "drew nothing" in m], w
