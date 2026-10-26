@@ -518,8 +518,10 @@ _hc2_dash "HC2-12i" 0 `"dash scatter mpg weight, xaxis(3) name(hc)"'
 _hc2_dash "HC2-12j" 125 `"dash scatter mpg weight, xaxis(10) name(hc)"' "xaxis() invalid -- invalid numlist has elements outside of allowed range"
 // Flipped (WP-31 C10a): n(1) is twoway's; n(0) is refused with no
 // second sentence, its lower bound being twoway's.
-_hc2_dash "HC2-12k" 198 `"dash lfit mpg weight, n(0) name(hc)"'
-_hc2_tail "HC2-12l" n "" 0
+// Flipped (WP-35 stat:PT-9): n(0) is refused in twoway's own words, not
+// dash's "n() must be" line (stat_accept_truth.json nr.lfit.0).
+_hc2_dash "HC2-12k" 198 `"dash lfit mpg weight, n(0) name(hc)"' "'0' invalid observation number"
+_hc2_dash "HC2-12l" 198 `"dash qfit mpg weight, n(0) name(hc)"' "'0' invalid observation number"
 _hc2_expect "HC2-12m" 0 `"twoway lpoly mpg weight, degree(8)"'
 _hc2_expect "HC2-12n" 0 `"twoway histogram mpg, bin(5000)"'
 _hc2_expect "HC2-12o" 0 `"twoway kdensity mpg, n(20000)"'

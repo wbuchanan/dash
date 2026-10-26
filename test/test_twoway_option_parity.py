@@ -278,7 +278,10 @@ class TestTheDeclarations:
         body = _program_body(_ado(), "_dash_fold_cl") or ""
         m = __import__("re").search(r'local cl_types\s+"([^"]+)"', body)
         assert m, "_dash_fold_cl no longer holds its type list"
-        assert sorted(m.group(1).split()) == sorted(_CL_TYPES + _CI_TYPES)
+        # Flipped (WP-35 syn:SD-20e, D42): scatter keeps clcolor(),
+        # clpattern(), clstyle() and clwidth(), as twoway reads them there.
+        assert sorted(m.group(1).split()) == sorted(_CL_TYPES + _CI_TYPES
+                                                    + ["scatter"])
 
     def test_the_mlabangle_rule_names_the_types_twoway_refuses_it_on(self):
         """Measured: twoway refuses mlabangle(400), r(198), on scatter

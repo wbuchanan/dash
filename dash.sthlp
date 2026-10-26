@@ -3846,8 +3846,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     {cmd:lpoly}, {cmd:lpolyci}, {cmd:lowess}, {cmd:mspline}, {cmd:mband},
     {cmd:histogram}, {cmd:scatter} and {cmd:line}{p_end}
 {synopt:{opt subchar(name)}}{cmd:function} only: the name the expression
-    uses for x, {cmd:x} by default, as in {cmd:twoway}:
-    {cmd:dash function y = t^2, subchar(t)} draws {it:t} squared.  A value
+    uses for x, {cmd:x} by default, as in {cmd:twoway}: with
+    {cmd:subchar(t)}, the expression {cmd:y = t^2} draws {it:t} squared.  A value
     that is not a name is refused, r(198), as {cmd:twoway} refuses it{p_end}
 {synopt:{opt base(#)}}{cmd:bar}, {cmd:spike}, {cmd:dropline} and
     {cmd:area}: the value the bars, spikes, drops and area are drawn from;

@@ -2215,9 +2215,11 @@ program define _dash_fold_stat_words, sclass
     // given there; the value is read by value and echoed as typed.
     c_local _fsw_n0 ""
     mata: st_local("_fsw_v", strtrim(st_global("s(bands)")))
-    if inlist("`ptype'", "mspline", "mband") & "`_fsw_v'" == "-1" sreturn local bands ""
+    local _fsw_band "mspline mband"
+    if `: list ptype in _fsw_band' & "`_fsw_v'" == "-1" sreturn local bands ""
     mata: st_local("_fsw_v", strtrim(st_global("s(n)")))
-    if inlist("`ptype'", "fpfitci", "lfit", "qfit", "lfitci", "qfitci") & `: length local _fsw_v' {
+    local _fsw_ntypes "fpfitci lfit qfit lfitci qfitci"
+    if `: list ptype in _fsw_ntypes' & `: length local _fsw_v' {
         mata: _fsw_x = strtoreal(st_local("_fsw_v"))
         mata: st_local("_fsw_ni", strofreal(_fsw_x < . & _fsw_x == floor(_fsw_x)))
         mata: st_local("_fsw_nlo", strofreal(_fsw_x == 0 | _fsw_x < -st_numscalar("c(N)")))
@@ -2270,7 +2272,8 @@ program define _dash_fold_stat_words, sclass
     mata: _dash_text_args(1, 0, 0)
     mata: st_local("_fsw_ty", strtrim(st_global("s(type)")))
     mata: st_local("_fsw_r", strtrim(st_global("s(recast)")))
-    if inlist("`ptype'", "lfitci", "qfitci", "fpfitci", "lpolyci") & `: length local _fsw_ty' & !`: length local _fsw_r' {
+    local _fsw_ci "lfitci qfitci fpfitci lpolyci"
+    if `: list ptype in _fsw_ci' & `: length local _fsw_ty' & !`: length local _fsw_r' {
         mata: _fsw_u = _dash_opt_tokens(st_local("_dash_txt"))
         mata: st_local("_fsw_k", strofreal(cols(_fsw_u)))
         local _fsw_tn ""
@@ -2288,7 +2291,8 @@ program define _dash_fold_stat_words, sclass
             sreturn local type ""
         }
     }
-    if inlist("`ptype'", "contour", "contourline") {
+    local _fsw_ct "contour contourline"
+    if `: list ptype in _fsw_ct' {
         mata: _dash_zyx_abbrev(st_global("s(_unknown)"), st_local("_dash_txt"))
         if `_za_iset' sreturn local interp : copy local _za_interp
         if `_za_cl' sreturn local colorlines "colorlines"

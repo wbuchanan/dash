@@ -293,7 +293,11 @@ class TestDeclaredOptionsReachTheSpec:
         allowed = {"sort1": "read by _dash_sort_opt, never written",
                    "bw": "folded by _dash_fold_bw",
                    # WP-31 C4: twoway declares it and never reads it.
-                   "smoothplot": "taken and emptied by _dash_fit_opts_check"}
+                   "smoothplot": "taken and emptied by _dash_fit_opts_check",
+                   # WP-35 stat:PT-6: function's subchar() is read by
+                   # _dash_fold_stat_words and _dash_label_split, never
+                   # written to the spec.
+                   "subchar": "read by _dash_fold_stat_words and _dash_label_split"}
         plain = set(re.findall(r"sreturn local ([a-z0-9]+)\b", body))
         missing = sorted(n for n in plain
                          if n not in keys and n not in allowed

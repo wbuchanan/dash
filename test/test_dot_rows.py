@@ -448,7 +448,7 @@ class TestTheAdoText:
             ado = fh.read()
         for decl in ("DOTEXtend(string)", "NDOTs(string)",
                      "Dsymbol(string asis)", "DColor(string asis)",
-                     "DFColor(string asis)", "DSIZe(string asis)",
+                     "DFColor(string asis)", "DSIze(string asis)",  # Flipped (WP-35 syn:SD-20a): twoway's minimum is dsi
                      "DLColor(string asis)", "DLWidth(string asis)",
                      "DLAlign(string asis)"):
             assert ado.count(decl) == 1, decl
