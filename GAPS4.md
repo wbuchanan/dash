@@ -342,8 +342,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-3 Tracked:** Closed in WP-34, BUGS.md "a(b)c label and tick rules that cross zero print floating-point residue ('5.551e-17') as the zero label", commit 6953587.
 - **AX-3 Tracked:** Closed in WP-34, BUGS.md "Axes drawn at build from dash's natscale model, not Stata's: the by() count 4, mtick/mlabel #N, fit/kdensity/function/immediate ranges, the qfitci||scatter overlay, and the colour key's levels", commit b0d3c81.
 - **plot:PT-13 Tracked:** Partly closed in WP-34 (section 34-09, commit 95919b5): every axis at build is Stata's own; open: the after-move misses (BUGS.md "The natscale model misses three of the 264 axes twoway drew").
-- **MS-1 Tracked:** Closed in WP-35, BUGS.md "Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns", commit pending.
-- **syn:SD-3 Tracked:** Closed in WP-35, BUGS.md "p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn", commit pending.
+- **MS-1 Tracked:** Closed in WP-35, BUGS.md "Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns", commit 86f9f92.
+- **syn:SD-3 Tracked:** Closed in WP-35, BUGS.md "p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn", commit c298e8e.
 - **stat:PT-7 Tracked:** Open (WP-35 section 35-03).
 - **syn:SD-5 Tracked:** Open (WP-35 section 35-03).
 - **stat:PT-1 Tracked:** Open (WP-35 section 35-04).
@@ -371,10 +371,10 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-8 Tracked:** Open (WP-35 section 35-06).
 - **syn:SD-22 Tracked:** Open (WP-35 section 35-06).
 - **DT-19 Tracked:** Open (WP-35 section 35-08).
-- **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit pending.
-- **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit pending.
-- **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit pending.
-- **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit pending.
+- **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit 7b5083e.
+- **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
+- **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
+- **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit 2e22ede.
 - **plat:PT-1 Tracked:** Open (WP-36 section 36-01).
 - **plat:PT-5 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-4 Tracked:** Open (WP-36 section 36-03).
