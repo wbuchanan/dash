@@ -473,6 +473,7 @@ program define _dash_require_mata
     // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_links _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_rightmost_keep ///
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
@@ -2481,6 +2482,12 @@ program define _dash_contour_split
     mata: _dash_zyx_in = ""
     mata: _dash_zyx_out = ""
     mata: st_local("_zn", strofreal(cols(_dash_zyx_tok)))
+    // WP-35 MS-1: each token read is named by the option it binds to, and
+    // only the last copy of a valued option is parsed -- twoway takes the
+    // rightmost (twoway_zyx2view_parse.class, _parse combop ...
+    // rightmost); a flag keeps every copy, so the syntax below refuses a
+    // flag given twice, as twoway's does (_dash_rightmost_keep).
+    mata: _dash_zyx_nm = J(1, `_zn', "")
     forvalues _zi = 1/`_zn' {
         mata: st_local("0", ", " + _dash_zyx_tok[`_zi'])
         capture syntax [, CCUTs(string asis) LEVELS(string) MINMAX ///
@@ -2489,8 +2496,21 @@ program define _dash_contour_split
             INTERP(string asis) CLWIDTHS(string asis) ///
             CLPATTERNS(string asis) REVersekey HEATMAP OUTlines COLORLINES ]
         if _rc mata: _dash_zyx_out = _dash_zyx_out + " " + _dash_zyx_tok[`_zi']
-        else  mata: _dash_zyx_in = _dash_zyx_in + " " + _dash_zyx_tok[`_zi']
+        else {
+            local _zyx_in_`_zi' 1
+            foreach o of local zo {
+                if `: length local `o'' mata: _dash_zyx_nm[`_zi'] = "`o'"
+            }
+        }
     }
+    mata: _dash_zyx_keep = _dash_rightmost_keep(_dash_zyx_nm, "minmax reversekey heatmap outlines colorlines")
+    forvalues _zi = 1/`_zn' {
+        if "`_zyx_in_`_zi''" == "1" {
+            mata: st_local("_k", strofreal(_dash_zyx_keep[`_zi']))
+            if `_k' mata: _dash_zyx_in = _dash_zyx_in + " " + _dash_zyx_tok[`_zi']
+        }
+    }
+    mata: mata drop _dash_zyx_nm _dash_zyx_keep
     mata: st_local("0", ", " + _dash_zyx_in)
     syntax [, CCUTs(string asis) LEVELS(string) MINMAX CRULE(string asis) ///
         SColor(string asis) EColor(string asis) CColors(string asis) ///
@@ -2534,6 +2554,11 @@ program define _dash_label_split
     mata: _dash_lb_out = ""
     mata: st_local("_ln", strofreal(cols(_dash_lb_tok)))
     local _lb_tab 0
+    // WP-35 MS-1: each token read is named by the option it binds to, and
+    // only the last copy of each is parsed, as twoway takes yvarlabel(),
+    // xvarlabel(), mlabprefix(), mlabsuffix() rightmost
+    // (advanced_options.sthlp; _dash_rightmost_keep).
+    mata: _dash_lb_nm = J(1, `_ln', "")
     forvalues _li = 1/`_ln' {
         mata: st_local("0", ", " + _dash_lb_tok[`_li'])
         // la(), lal() .. lalign() are lalign(), as twoway reads them
@@ -2552,7 +2577,19 @@ program define _dash_label_split
             local _lb_tab 1
         }
         if `_rc_lb' mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
-        else  mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
+        else {
+            local _lb_in_`_li' 1
+            foreach o of local lo {
+                if `: length local `o'' mata: _dash_lb_nm[`_li'] = "`o'"
+            }
+        }
+    }
+    mata: _dash_lb_keep = _dash_rightmost_keep(_dash_lb_nm, "table")
+    forvalues _li = 1/`_ln' {
+        if "`_lb_in_`_li''" == "1" {
+            mata: st_local("_k", strofreal(_dash_lb_keep[`_li']))
+            if `_k' mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
+        }
     }
     mata: st_local("0", ", " + _dash_lb_in)
     syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
@@ -2562,7 +2599,7 @@ program define _dash_label_split
         c_local `o' `"`macval(`o')'"'
     }
     mata: _dash_zyx_text = strtrim(_dash_lb_out)
-    mata: mata drop _dash_lb_tok _dash_lb_in _dash_lb_out
+    mata: mata drop _dash_lb_tok _dash_lb_in _dash_lb_out _dash_lb_nm _dash_lb_keep
 end
 
 // ================================================================

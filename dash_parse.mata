@@ -109,6 +109,10 @@
 *!       blanks outside parentheses, "quotes" and compound quotes (WP-31
 *!       B4b, read by dash.ado's _dash_contour_split).
 *!
+*!   _dash_rightmost_keep(names, flags)
+*!       1 for each option token kept, 0 for an earlier copy of a valued
+*!       option twoway takes rightmost; flags keep every copy (WP-35 MS-1).
+*!
 *!   _dash_pcycle_bad(plots, p)
 *!       1 when pcycle(p) leaves a series of the plots JSON no whole p#,
 *!       as twoway refuses it "option seriesid() not allowed" (WP-31 C8d).
@@ -1644,6 +1648,38 @@ real scalar _dash_pcycle_bad(string scalar plots, real scalar p)
 // caller's locals _crc ("", "spec" or "rule"), _crn (the rule) and _crf
 // (the value with an abbreviated rule written in full, else "").  The
 // renderer's twin is dash_render.py's _dash_colorrule_parse.
+// ============================================================
+// _dash_rightmost_keep(names, flags)
+//
+// Which copies of the options an option text holds are kept, as twoway
+// keeps them (WP-35 MS-1): names[i] is the option token i binds to ("" for
+// a token the caller does not read).  1 for a token whose name is "",
+// whose name is one of the blank-separated flags (every copy is kept, so
+// -syntax- refuses a flag given twice, as twoway refuses it), or whose
+// name no later token has; 0 for an earlier copy of a valued option --
+// twoway takes the rightmost (twoway_zyx2view_parse.class, _parse combop
+// ... rightmost; advanced_options.sthlp).  The names are option names
+// dash.ado's _dash_label_split and _dash_contour_split write themselves.
+// ============================================================
+real rowvector _dash_rightmost_keep(string rowvector names, string scalar flags)
+{
+    real rowvector k
+    real scalar    i, j, n
+
+    n = cols(names)
+    k = J(1, n, 1)
+    for (i = 1; i <= n; i++) {
+        if (names[i] == "" | anyof(tokens(flags), names[i])) continue
+        for (j = i + 1; j <= n; j++) {
+            if (names[j] == names[i]) {
+                k[i] = 0
+                break
+            }
+        }
+    }
+    return(k)
+}
+
 // ============================================================
 // _dash_opt_tokens(s)
 //

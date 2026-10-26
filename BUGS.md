@@ -4598,11 +4598,11 @@
   - Suggested fix: Partly closed by ruling (D41, PD-9): Stata's own ticks at build (34-09); the natscale misses after a filter move stay open as the re-scoped natscale entry.
   - Resolution: Fixed 26oct2026 (WP-34, plot:PT-13). Every axis a page built in Stata draws is Stata's own at build, in both modes (WP-34 AX-3: _dash_stata_oracle behind _dash_stata_or_model, main()'s switch and the served pre-pass); the after-move misses stay open as BUGS.md "The natscale model misses three of the 264 axes twoway drew" (D41, PD-9). Pinned by test/test_stata_ticks.py::TestBuildTicksAskStata::test_served_prepass and test/test_natscale.py::TestTheRuleAgainstStata::test_the_three_known_misses_are_still_missed. Closes GAPS4 plot:PT-13 (WP-34, plot:PT-13).
 
-- [ ] Title: Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns
+- [x] Title: Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns
   - File Names and Line Numbers: _dash_label_split (dash.ado:2517-2560, syntax at 2551); _dash_contour_split (2447-2499); twoway_zyx2view_parse.class:89-106; runs G01-G06, run3 #101-#119
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids MS-1, stat:PT-3; confirmed; tracked: untracked. Registered as GAPS4 MS-1 (WP-35, section 35-01, Fix).
   - Suggested fix: Keep only the last copy before the combined syntax; keep refusing repeated flags; add TP-14a rows
-  - Resolution: Not fixed because WP-35 section 35-01 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, MS-1). _dash_label_split and _dash_contour_split keep each valued option's last copy (dash_parse.mata _dash_rightmost_keep); flags keep every copy and are still refused twice; the spec is shared by both modes. Pinned by test/test_repeat_rightmost.py::TestTheHelper::test_the_helper_is_defined_and_needed, test_wp35_truth.cscript Q3501-1, Q3501-2, Q3501-3. Closes GAPS4 MS-1 (WP-35, MS-1).
 
 - [ ] Title: p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn
   - File Names and Line Numbers: twowaygraph_g.class:145-152; dash_parse.mata:8114-8115; p1.svg; v1out.log

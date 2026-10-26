@@ -207,6 +207,182 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w35_run' {
 }
 * ==== end S00 ====
 
+// ----------------------------------------------------------------
+// S01 helpers (WP-35 MS-1).  _s01_pair id work R E: R is a command with
+// an option given twice, E the same command with only its last copy
+// (twoway syntax without the leading "twoway").  twoway must draw R and E
+// alike (equal SVG text, ids aside; a pair twoway draws differently is a wrong
+// probe), and dash must take both, register one spec for both, and name
+// nothing as unsupported.
+// _s01_first work cmd: runs cmd under a log of its own and returns its
+// rc in r(rc) and the first line it printed in r(line).
+// ----------------------------------------------------------------
+capture program drop _s01_pair
+program define _s01_pair
+    version 19
+    args id work R E
+    foreach w in R E {
+        capture graph drop _all
+        capture twoway ``w''
+        local trc_`w' = _rc
+        mata: _s01_svg_`w' = J(0, 1, "")
+        if !`trc_`w'' {
+            capture erase "`work'/s01_`w'.svg"
+            quietly graph export "`work'/s01_`w'.svg", replace as(svg)
+            mata: _s01_svg_`w' = _s01_svg(st_local("work") + "/s01_`w'.svg")
+            capture erase "`work'/s01_`w'.svg"
+        }
+    }
+    capture graph drop _all
+    mata: st_local("tsame", strofreal(_s01_svg_same(_s01_svg_R, _s01_svg_E)))
+    capture mata: mata drop _s01_svg_R _s01_svg_E
+    _w35_expect `id' "(`trc_R' == 0 & `trc_E' == 0)" ///
+        `"twoway refused the pair (rc `trc_R', `trc_E'): `R'"'
+    _w35_expect `id' "(`tsame' == 1)" ///
+        `"wrong pair: twoway draws R and E differently: `R'"'
+    capture dash clear
+    capture log close s01log
+    capture erase "`work'/s01_dash.log"
+    quietly log using "`work'/s01_dash.log", text replace name(s01log) nomsg
+    capture noisily dash `R' name(s01g)
+    local drc_R = _rc
+    mata: _s01_json = st_global("dash_json_s01g")
+    capture dash clear
+    capture noisily dash `E' name(s01g)
+    local drc_E = _rc
+    quietly log close s01log
+    mata: st_local("same", strofreal(_s01_json == st_global("dash_json_s01g") & _s01_json != ""))
+    capture dash clear
+    capture mata: mata drop _s01_json
+    _w35_expect `id' "(`drc_R' == 0)" `"dash refused (rc `drc_R'): `R'"'
+    _w35_expect `id' "(`drc_E' == 0)" `"dash refused (rc `drc_E'): `E'"'
+    _w35_expect `id' "(`same' == 1)" `"dash registered another spec for: `R'"'
+    cert_log_has "`work'/s01_dash.log", needle("ignoring unsupported")
+    _w35_expect `id' "(r(found) == 0)" `"dash named an option unsupported: `R'"'
+    capture erase "`work'/s01_dash.log"
+end
+
+capture program drop _s01_first
+program define _s01_first, rclass
+    version 19
+    args work cmd
+    capture log close s01log
+    capture erase "`work'/s01_first.log"
+    quietly log using "`work'/s01_first.log", text replace name(s01log) nomsg
+    capture noisily `cmd'
+    local rc = _rc
+    quietly log close s01log
+    mata: st_local("line", _s01_first_line(st_local("work") + "/s01_first.log"))
+    capture erase "`work'/s01_first.log"
+    capture graph drop _all
+    capture dash clear
+    return scalar rc = `rc'
+    return local line `"`macval(line)'"'
+end
+
+capture mata: mata drop _s01_first_line()
+capture mata: mata drop _s01_svg()
+capture mata: mata drop _s01_svg_same()
+mata:
+// An SVG's text with the clip-path ids Stata draws at random each export
+// (path_<8 letters>, clipPath_<8 letters>) written as one id, so two
+// exports of one drawing compare equal.
+string colvector _s01_svg(string scalar file)
+{
+    string colvector l
+    real scalar i
+    l = cat(file)
+    for (i = 1; i <= rows(l); i++) {
+        l[i] = ustrregexra(ustrregexra(l[i], "path_[A-Za-z]{8}", "path_X"),
+                           "Path_[A-Za-z]{8}", "Path_X")
+    }
+    return(l)
+}
+
+// 1 when two SVGs' lines (from _s01_svg) are the same, and not empty.
+real scalar _s01_svg_same(string colvector a, string colvector b)
+{
+    if (rows(a) == 0 | rows(a) != rows(b)) return(0)
+    return(all(a :== b))
+}
+
+// The first non-blank line of a log, trimmed.
+string scalar _s01_first_line(string scalar file)
+{
+    string colvector l
+    real scalar i
+    l = cat(file)
+    for (i = 1; i <= rows(l); i++) if (strtrim(l[i]) != "") return(strtrim(l[i]))
+    return("")
+}
+end
+
+* ==== S01 MS-1: repeated options taken rightmost ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w35_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3501-1: yvarlabel(), xvarlabel(), mlabprefix(), mlabsuffix(),
+    // lalign(), mlabstyle() given twice draw their last copy, as twoway
+    // draws it (yvarl() is yvarlabel()).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    // Sorted by weight and mpg once, so line draws ties in one order: the
+    // sort option leaves the order of equal weights to chance.
+    sort weight mpg
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, yvarlabel("Q") yvarlabel("R")"' `"scatter mpg weight, yvarlabel("R")"'
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, xvarlabel("Q") xvarlabel("R")"' `"scatter mpg weight, xvarlabel("R")"'
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, mlabel(make) mlabprefix("[") mlabprefix("<")"' `"scatter mpg weight, mlabel(make) mlabprefix("<")"'
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, mlabel(make) mlabsuffix("]") mlabsuffix(">")"' `"scatter mpg weight, mlabel(make) mlabsuffix(">")"'
+    _s01_pair Q3501-1 "`w35_work'" `"line mpg weight, lalign(inside) lalign(center)"' `"line mpg weight, lalign(center)"'
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, mlabel(make) mlabstyle(p1) mlabstyle(p2)"' `"scatter mpg weight, mlabel(make) mlabstyle(p2)"'
+    _s01_pair Q3501-1 "`w35_work'" `"scatter mpg weight, yvarlabel("Q") yvarl("R")"' `"scatter mpg weight, yvarlabel("R")"'
+    _w35_done Q3501-1 "seven repeated label options drawn as their last copy, as twoway draws them"
+
+    // ------------------------------------------------------------
+    // Q3501-2: contour's valued options given twice draw their last
+    // copy (twoway_zyx2view_parse.class: _parse combop ... rightmost).
+    // ------------------------------------------------------------
+    sysuse sandstone, clear
+    local c "contour depth northing easting"
+    local cl "contourline depth northing easting"
+    _s01_pair Q3501-2 "`w35_work'" `"`c', levels(5) levels(6)"' `"`c', levels(6)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', ccuts(7600 7800) ccuts(7500 7700 7900)"' `"`c', ccuts(7500 7700 7900)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', scolor(red) scolor(blue)"' `"`c', scolor(blue)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', ecolor(red) ecolor(green)"' `"`c', ecolor(green)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', crule(hue) crule(linear)"' `"`c', crule(linear)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', interp(none) interp(thinplatespline)"' `"`c', interp(thinplatespline)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', levels(3) ccolors(red green blue yellow) ccolors(navy maroon olive teal)"' `"`c', levels(3) ccolors(navy maroon olive teal)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`c', format(%9.0f) format(%9.2f)"' `"`c', format(%9.2f)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`cl', clwidths(thin) clwidths(thick)"' `"`cl', clwidths(thick)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`cl', clpatterns(dash) clpatterns(solid)"' `"`cl', clpatterns(solid)"'
+    _s01_pair Q3501-2 "`w35_work'" `"`cl', ccuts(7600 7800) clabels("a" "b" "c") clabels("x" "y" "z")"' `"`cl', ccuts(7600 7800) clabels("x" "y" "z")"'
+    _w35_done Q3501-2 "eleven repeated contour options drawn as their last copy, as twoway draws them"
+
+    // ------------------------------------------------------------
+    // Q3501-3: a contour flag given twice is refused, with twoway's
+    // return code and first line.
+    // ------------------------------------------------------------
+    foreach f in "`c', minmax minmax" "`c', reversekey reversekey" "`c', heatmap heatmap" "`c', outlines outlines" "`cl', colorlines colorlines" {
+        _s01_first "`w35_work'" `"twoway `f'"'
+        local trc = r(rc)
+        local tln `"`r(line)'"'
+        _s01_first "`w35_work'" `"dash `f' name(s01g)"'
+        local drc = r(rc)
+        local dln `"`r(line)'"'
+        _w35_expect Q3501-3 "(`trc' != 0)" `"twoway took `f'"'
+        _w35_expect Q3501-3 "(`drc' == `trc')" `"`f': dash rc `drc', twoway rc `trc'"'
+        mata: st_local("same", strofreal(st_local("dln") == st_local("tln")))
+        _w35_expect Q3501-3 "(`same' == 1)" `"`f': dash said [`dln'], twoway said [`tln']"'
+    }
+    _w35_done Q3501-3 "five repeated contour flags refused as twoway refuses them"
+
+    sysuse auto, clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

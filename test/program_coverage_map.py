@@ -812,6 +812,7 @@ COVERAGE = {
         "_dash_pcycle_bad": ("test_option_validation.cscript:U32-11",),
         # WP-31 B4b: the top-level options of an option text, as typed.
         "_dash_opt_tokens": ("test_parser.cscript:U26-12",),
+        "_dash_rightmost_keep": ("test_wp35_truth.cscript:Q3501-1",),
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
         "_dash_so_canon": ("test_suboption_reporting.cscript:SA-04",),
         "_dash_so_family": ("test_suboption_reporting.cscript:SA-04",),

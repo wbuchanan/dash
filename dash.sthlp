@@ -962,7 +962,13 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps both labels;
     {cmd:rows()} beats {cmd:cols()} in and across copies, and within one
     copy a word beats its {cmd:no} form ({cmd:legend(on off)} draws the
-    legend).  An option {cmd:twoway} takes once --
+    legend).
+    {cmd:yvarlabel()}, {cmd:xvarlabel()}, {cmd:mlabprefix()},
+    {cmd:mlabsuffix()}, {cmd:lalign()}, {cmd:mlabstyle()} and the valued
+    options of {cmd:contour} and {cmd:contourline} draw their last copy, as
+    {cmd:twoway} draws it; a {cmd:contour} switch given twice
+    ({cmd:minmax minmax}) is refused as {cmd:twoway} refuses it.
+    An option {cmd:twoway} takes once --
     {cmd:name()}, {cmd:saving()}, {cmd:scheme()}, {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, a bare {cmd:sort},
     {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity},
