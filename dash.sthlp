@@ -170,7 +170,9 @@ plot, alone or before options.  To use a command copied from a do-file,
 replace its {cmd:twoway} (or {cmd:graph twoway}) with {cmd:dash}.
 With no plot, {cmd:dash} draws the empty graph {cmd:twoway} draws:
 {cmd:dash}, {cmd:dash, title(T)}, {cmd:dash if foreign==1} and
-{cmd:dash ||} each register a graph with axes and no plot.
+{cmd:dash ||} each register a graph with no plot and no axes, as {cmd:twoway}
+draws it; an axis option there is refused as {cmd:twoway} refuses it,
+"xlabels(1 2) not allowed, xaxis1 does not exist", {cmd:r(198)}.
 
 
 {marker description}

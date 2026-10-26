@@ -40263,6 +40263,20 @@ _MAX_AXIS_TICKS = 2000
 #: DataRange1d.  Nothing is drawn on it, so the numbers are never seen.
 _DASH_EMPTY_SCALE = {"linear": (0.0, 1.0), "log": (1.0, 10.0)}
 
+
+def _dash_hide_empty_axes(fig):
+    """Hide every axis and grid of a figure that draws no plot.
+
+    ``twoway, title(T)`` draws the plot region and the title and no axis,
+    tick, label or grid (WP-35 plot:PT-4; command_grammar_truth.json
+    empty.svg.title: no <line>, the text T alone); dash drew two black
+    axes.  Called on the figure of a graph with no plot by both renderers
+    (copied into the served app).
+    """
+    for model in (list(fig.axis) + list(fig.grid) + list(fig.xgrid)
+                  + list(fig.ygrid)):
+        model.visible = False
+
 #: twoway's #N rule, as dash reproduces it (_dash_natscale_ticks).  An
 #: uncovered stretch of data beyond the outermost tick costs twice a
 #: stretch of axis beyond the data; a tick fewer or more than N costs
@@ -64171,6 +64185,8 @@ class DashRenderer:
             from bokeh.models import BoxAnnotation
             fig.add_layout(BoxAnnotation(visible=False,
                                          name="dash_empty_graph"))
+            # ... and no axis: twoway draws none (WP-35 plot:PT-4).
+            _dash_hide_empty_axes(fig)
         for pi, plot in enumerate(plots):
             ptype = plot.get("type", "scatter")
             pxvar = plot.get("xvar", xvar)
@@ -68016,6 +68032,9 @@ class ServerAppBuilder:
                          "_dash_function_drops", "_dash_numlist_floats",
                          # The p# each layer draws in (a ci fit is two).
                          "_dash_plot_style_indices",
+                         # The graph with no plot draws no axis (WP-35
+                         # plot:PT-4).
+                         "_dash_hide_empty_axes",
                          "_dash_glyph_dispatch",
                          "_dash_pc_dispatch", "_dash_add_glyph",
                          "_dash_add_pc_glyph", "_dash_note_no_second_y",
@@ -71165,6 +71184,8 @@ class ServerAppBuilder:
             "            from bokeh.models import BoxAnnotation",
             "            fig.add_layout(BoxAnnotation(visible=False,",
             "                                         name='dash_empty_graph'))",
+            "            # ... and no axis, as twoway draws none (WP-35 plot:PT-4).",
+            '            _dash_hide_empty_axes(fig)',
             '        for pi, plot in enumerate(plots):',
             "            # Lower-cased, exactly as _dash_draw_layer and the saved",
             "            # renderer read it.  `hist' was re-spelled `histogram'",

@@ -744,6 +744,7 @@ FUNCTIONS = {
  '_dash_page_fonts': 'test/test_locale.py::TestGraphSetFontsDrawn::test_page_fonts',
  '_dash_keep_jitter': 'test/test_saved_filter_layers.py::TestAnUnlinkedJitteredScatterServed::test_a_move_keeps_its_rows_where_they_were',
  '_dash_plot_style_indices': 'test/test_ci_plot_index.py::TestTheIndexAgainstStata::test_each_measured_sequence',
+ '_dash_hide_empty_axes': 'test/test_command_grammar.py::TestEmpty::test_no_axis_visible',
  '_dash_note_hover_unreached': 'test/test_mode_parity.py::TestHoverReachesEveryLayerOrIsReported::test_honoured_or_reported',
  '_dash_note_hover_missing': 'test/test_mode_parity.py::TestHoverReachesEveryLayerOrIsReported::test_a_hover_variable_not_in_the_data_is_named',
  '_dash_qual_cols_named': 'test/test_qualifier_columns.py::TestTheNamesASpecCarries::test_each_name_once_in_order',

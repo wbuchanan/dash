@@ -558,6 +558,58 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w35_run' {
 }
 * ==== end S02 ====
 
+// _q3509_axes <page or app> <kind>: every axis and grid model of a saved
+// page (kind "page") or of the document a served app builds (kind "app")
+// is hidden, and a title T is drawn; the problems go to global q3509_bad.
+python:
+def _q3509_walk(obj, out):
+    if isinstance(obj, dict):
+        if obj.get("type") == "object" and isinstance(obj.get("name"), str):
+            out.append(obj)
+        for v in obj.values():
+            _q3509_walk(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            _q3509_walk(v, out)
+
+
+def _q3509_axes(path, kind):
+    import json, re
+    from sfi import Macro
+    bad = []
+    try:
+        if kind == "page":
+            text = open(path, encoding="utf-8").read()
+            docs = [json.loads(m) for m in re.findall(
+                r'<script type="application/json"[^>]*>\s*(.*?)\s*</script>',
+                text, re.S)]
+        else:
+            from bokeh.document import Document
+            from bokeh.io.doc import patch_curdoc
+            ns = {"__name__": "_q3509_app", "_DASH_TRIAL": True}
+            doc = Document()
+            with patch_curdoc(doc):
+                exec(compile(open(path, encoding="utf-8").read(), path,
+                             "exec"), ns)
+            docs = [doc.to_json()]
+        objs = []
+        _q3509_walk(docs, objs)
+        axes = [o for o in objs if o["name"].endswith("Axis")]
+        grids = [o for o in objs if o["name"] == "Grid"]
+        if not axes or not grids:
+            bad.append("%d axes, %d grids found" % (len(axes), len(grids)))
+        for o in axes + grids:
+            if (o.get("attributes") or {}).get("visible", True) is not False:
+                bad.append("%s %s visible" % (o["name"], o.get("id")))
+        titles = [o for o in objs if o["name"] == "Title"
+                  and (o.get("attributes") or {}).get("text") == "T"]
+        if not titles:
+            bad.append("no title T")
+    except Exception as e:
+        bad.append(repr(e)[:200])
+    Macro.setGlobal("q3509_bad", "; ".join(bad)[:400])
+end
+
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
@@ -604,6 +656,43 @@ if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
     }
     _w35_expect Q3509-1 "(`q91n' == 27)" "`q91n' lower-case spellings read, 27 expected"
     _w35_done Q3509-1 "the `q91n' lower-case spellings register as the types they name"
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
+* ==== S09 plot:PT-4: the empty graph ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3509-4: twoway, title(T) draws no axis (command_grammar_truth.json
+    // empty.svg.title: no <line>, the text T alone); the saved page and
+    // the served app of dash, title(T) hide every axis and grid and draw
+    // the title.
+    // ------------------------------------------------------------
+    local q94d "`w35_work'/s09pt4"
+    capture mkdir "`q94d'"
+    sysuse auto, clear
+    capture dash clear
+    capture noisily dash, title(T) name(q3509e)
+    _w35_expect Q3509-4 "(_rc == 0)" "dash, title(T) name() rc `=_rc'"
+    capture erase "`q94d'/e.html"
+    capture noisily dash build, saving("`q94d'/e.html") replace nobrowser
+    _w35_expect Q3509-4 "(_rc == 0)" "dash build rc `=_rc'"
+    python: import __main__ as _q9m; _q9m._q3509_axes(r"`q94d'/e.html", "page")
+    _w35_expect Q3509-4 `"("${q3509_bad}" == "")"' `"saved: ${q3509_bad}"'
+    capture erase "`q94d'/e.py"
+    capture noisily dash build, server saving("`q94d'/e.py") replace nobrowser
+    _w35_expect Q3509-4 "(_rc == 0)" "dash build, server rc `=_rc'"
+    python: import __main__ as _q9m; _q9m._q3509_axes(r"`q94d'/e.py", "app")
+    _w35_expect Q3509-4 `"("${q3509_bad}" == "")"' `"served: ${q3509_bad}"'
+    _w35_done Q3509-4 "the empty graph: no axis or grid shown, the title drawn, saved and served"
+    macro drop q3509_bad
+    capture erase "`q94d'/e.html"
+    capture erase "`q94d'/e.py"
+    capture rmdir "`q94d'"
     dash clear
     display as text "S09 end " c(current_date) " " c(current_time)
 }

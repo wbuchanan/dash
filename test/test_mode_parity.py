@@ -696,9 +696,18 @@ def _annotations(fig):
                                         .items()))
                                 if r.name == "dash_by_label_box" else None)})
         elif isinstance(r, BoxAnnotation):
+            # WP-35 plot:PT-4: an edge left at Bokeh's default is a Node of
+            # the frame, a model of its own in each document; it is
+            # recorded by what it points at, as a Label's is.
+            def _edge(v):
+                if isinstance(v, Node):
+                    return ("node", type(v.target).__name__
+                            if not isinstance(v.target, str) else v.target,
+                            v.symbol, v.offset)
+                return _num(v)
             out.append({"kind": "BoxAnnotation",
-                        "left": _num(r.left), "right": _num(r.right),
-                        "top": _num(r.top), "bottom": _num(r.bottom),
+                        "left": _edge(r.left), "right": _edge(r.right),
+                        "top": _edge(r.top), "bottom": _edge(r.bottom),
                         "fill": r.fill_color, "alpha": r.fill_alpha})
         elif isinstance(r, Band):
             out.append({"kind": "Band"})
@@ -2897,6 +2906,8 @@ CORPUS = [
           bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
     _case("contour key stata ticks", [plot_for("contour")],
           bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
+    # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
+    _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
 ]
 
 
@@ -3183,6 +3194,11 @@ class _Agree:
         pair = _render_pair(name, spec)
         figs = pair["std"]["figures"]
         assert figs, f"{name}: no figures collected, so nothing was compared"
+        # WP-35 plot:PT-4: a graph with no plot draws a figure with no
+        # glyph, as twoway draws it; its axes and title are what compare.
+        if not any(g.get("plots") for g in spec.get("graphs", [])):
+            assert all(not f["glyphs"] for f in figs), name
+            return
         for f in figs:
             assert f["glyphs"], f"{name}: a figure with no glyphs"
             for g in f["glyphs"]:

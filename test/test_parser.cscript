@@ -23,6 +23,9 @@
 *!
 *! Q3509-2 (WP-35 35-09, plot:PT-3): a plot-type word with a capital letter
 *! is refused, r(198), "<word> is not a twoway plot type" (M7).
+*! Q3509-5 (WP-35 35-09, plot:PT-4): an axis option, or by(), on the graph
+*! with no plot is refused with twoway's rc and first line, one-line and
+*! with name().
 *! Q3509-3 (WP-35 35-09, PD-10): a word that is no plot type is refused
 *! with twoway's rc and first line (command_grammar_truth.json), and no
 *! word gets advice of its own.
@@ -4103,6 +4106,33 @@ python: _q9_no_advice(_q9M.getLocal("lg_q9"))
 if `"`q9bad'"' != "" display as error `"Q3509-3: `q9bad'"'
 assert `"`q9bad'"' == ""
 display "Q3509-3 PASS: nosuchtype mpg weight is twoway's r(198) and first line, with no advice after the Supported list"
+
+// ----------------------------------------------------------------
+// Q3509-5 (plot:PT-4): every empty.* key twoway refuses -- an axis,
+// scale, line, tick or title option, or by(), on the graph with no plot
+// -- is refused with twoway's rc and first line, on the one-line route
+// and with name().
+// ----------------------------------------------------------------
+quietly sysuse auto, clear
+python: _q9M.setLocal("q9keys", " ".join(k for k in sorted(_q9T) if k.startswith("empty.") and isinstance(_q9T[k], dict) and _q9T[k]["rc"]))
+local q95bad ""
+local q95n 0
+foreach k of local q9keys {
+    foreach how in one named {
+        python: _q9c = "dash" + _q9T[_q9M.getLocal("k")]["cmd"][len("twoway"):]; _q9M.setLocal("q9cmd", _q9c + (" name(q3509n)" if _q9M.getLocal("how") == "named" else ""))
+        dash clear
+        _p1a_logrun `"`q9cmd'"'
+        local rc_q9 = r(rc)
+        local lg_q9 "`r(log)'"
+        python: _q9_vs(_q9M.getLocal("k"), _q9M.getLocal("rc_q9"), _q9M.getLocal("lg_q9"))
+        if `"`q9bad'"' != "" | "${dash_graph_registry}" != "" local q95bad `"`q95bad' [`how' `q9bad']"'
+        local ++q95n
+    }
+}
+dash clear
+if `"`q95bad'"' != "" display as error `"Q3509-5 FAIL:`q95bad'"'
+assert `"`q95bad'"' == "" & `q95n' == 42
+display "Q3509-5 PASS: the `q95n' axis options and by() on the graph with no plot are twoway's rc and first line"
 
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.

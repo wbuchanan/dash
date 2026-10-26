@@ -11,7 +11,8 @@ or "dash: no plot specifications found."  (`dash twoway' and `dash tw' are
 
 _dash_plot passes allow_empty to _dash_split_segs (dash_parse.mata), which
 then returns no segment instead of refusing; the graph registers with
-"plots":[] and both renderers draw one figure with its axes and no layer.
+"plots":[] and both renderers draw one figure with no layer and, as twoway
+draws it, no axis (WP-35 plot:PT-4: the axes are hidden).
 test_parser.cscript TW-02 runs it through Stata against twoway.
 """
 import json
@@ -72,12 +73,18 @@ class TestTheEmptyGraph:
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_axes_and_no_layer(self, tmp_path, mode):
-        from bokeh.models import GlyphRenderer
+        # Flipped (WP-35 plot:PT-4): two visible axes on the empty graph
+        # were wrong because twoway draws none (command_grammar_truth.json
+        # empty.svg.*: no <line>); every axis and grid is hidden.
+        from bokeh.models import Axis, GlyphRenderer, Grid
         figs = _figures(tmp_path, mode)
         assert len(figs) == 1, figs
         f = figs[0]
         assert list(f.select({"type": GlyphRenderer})) == []
-        assert len(f.left) >= 1 and len(f.below) >= 1, (f.left, f.below)
+        axes = list(f.select({"type": Axis}))
+        grids = list(f.select({"type": Grid}))
+        assert axes and grids, (axes, grids)
+        assert not any(m.visible for m in axes + grids), (axes, grids)
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_bokeh_logs_no_missing_renderers(self, tmp_path, mode):

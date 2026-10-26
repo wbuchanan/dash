@@ -8714,6 +8714,29 @@ program define _dash_plot
         mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
     }
     if `_axrc' exit `_axrc'
+    // ---- The graph with no plot has no axis (WP-35 plot:PT-4) ----
+    // twoway draws no axis when no plot is given, and refuses an axis,
+    // scale, line, tick or title option there, or by(), r(198), "xlabels(1
+    // 2) not allowed, xaxis1 does not exist" -- the option as twoway names
+    // it, its text, the axis -- the first in this order whatever the order
+    // typed (test/fixtures/command_grammar_truth.json empty.*,
+    // empty.order_names).  by() is refused for the x labels it sets.  The
+    // text is read by value and cut to 80 characters.
+    if `n_segs' == 0 {
+        foreach _ek in xscale xlabel by xmlabel xtick xtitle xline tlabel ttitle yscale ylabel ytitle yline {
+            if !`: length local g_`_ek'' continue
+            if "`_ek'" == "by" {
+                mata: _dash_say("err", "", "", "xlabels(#4) not allowed, xaxis1 does not exist")
+                exit 198
+            }
+            local _en "`_ek'"
+            if inlist("`_ek'", "xlabel", "ylabel", "xline", "yline", "xtick", "xmlabel", "tlabel") local _en "`_ek's"
+            local _eax = cond(substr("`_ek'", 1, 1) == "y", "yaxis1", "xaxis1")
+            mata: st_local("_ea", st_local("g_`_ek'") == char(34) + char(34) ? "" : usubstr(st_local("g_`_ek'"), 1, 80))
+            mata: _dash_say("err", st_local("_en") + "(", st_local("_ea"), ") not allowed, " + st_local("_eax") + " does not exist")
+            exit 198
+        }
+    }
     foreach _lx in g_xline g_yline g_xline2 g_yline2 {
         if `"`macval(`_lx')'"' != "" _dash_line_expand `_lx' `"`macval(`_lx')'"'
     }

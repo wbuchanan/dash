@@ -12,6 +12,9 @@ refusals are certified in test/test_parser.cscript (Q3509-2, -3, -5, -7,
 import json
 import os
 import re
+import sys
+
+import pytest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_HERE, "..")
@@ -67,6 +70,35 @@ class TestCase:
         start = mata.index("string scalar _dash_expand_plottype_str(")
         body = mata[start:mata.index("\n}\n", start)]
         assert "strlower" not in body
+
+
+def _figures(tmp_path, mode, title=""):
+    """The figures one mode draws for a graph with no plot
+    (test_bare_dash.py's reader)."""
+    sys.path.insert(0, _HERE)
+    from test_bare_dash import _figures as _bare_figures
+    return _bare_figures(tmp_path, mode, title=title)
+
+
+class TestEmpty:
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_no_axis_visible(self, tmp_path, mode):
+        """twoway, title(T) draws no axis, tick, label or grid
+        (command_grammar_truth.json empty.svg.title: no <line>, the text
+        T alone); both modes draw the figure with every axis and grid
+        hidden, and the title (plot:PT-4)."""
+        from bokeh.models import Axis, Grid
+        figs = _figures(tmp_path, mode, title="T")
+        assert len(figs) == 1, figs
+        f = figs[0]
+        axes = list(f.select({"type": Axis}))
+        grids = list(f.select({"type": Grid}))
+        assert axes and grids, (axes, grids)
+        assert [a for a in axes if a.visible] == []
+        assert [g for g in grids if g.visible] == []
+        assert f.title is not None and f.title.text == "T"
+        assert _T["empty.svg.title"]["lines"] == 0
 
 
 class TestGeneric:
