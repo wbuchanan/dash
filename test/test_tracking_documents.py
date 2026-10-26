@@ -2871,7 +2871,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'plot:PT-13': 'Open entry: the natscale model misses 3 of 264 axes after a filter move or without embedded ticks',
     'MS-1': 'Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns',
     'syn:SD-3': 'p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn',
     'stat:PT-7': "lowess m (twoway's documented minimum of mean) is refused",
