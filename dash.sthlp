@@ -5810,7 +5810,8 @@ every size at 0 and a negative {it:#} is refused, r(198), in
 gives it.  {helpb twoway} keeps a graph drawn alone at its size and draws
 the plot in {it:#} percent of four inches, centred; on a dashboard the cell
 is what shrinks.  A value of 0 or less, or of 100 and more, changes
-nothing; a word is refused, r(198), as {cmd:twoway} refuses it.{p_end}
+nothing; a word is refused, r(198), as {cmd:twoway} refuses it.  Both
+may be shortened to five letters, as in {cmd:twoway}.{p_end}
 
 {phang2}{opt xoverhangs} and {opt yoverhangs} keep the first and last tick labels
 inside the figure, as {helpb twoway} narrows the plot region for them: the

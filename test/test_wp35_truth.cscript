@@ -1042,6 +1042,59 @@ def _q3509_glyphs(path, out):
         Macro.setGlobal(out, "error " + repr(e)[:100])
 end
 
+* ==== S06 GW-4: fxsiz() and fysiz() applied ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3506-4 (WP-35 GW-4): twoway reads fxsiz() and fysiz() as fxsize()
+    // and fysize() (graph_refusal_truth.json fx.fxsiz and fx.fysiz draw
+    // the plot region of fx.fxsize and fx.fysize; fxsi(), fxs() and fysi()
+    // are refused).  dash registers the spec of the full spelling for the
+    // shortest one, after a plot's comma and after the plot groups'
+    // comma, and names neither; fxsi() is refused as twoway refuses it.
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    foreach s06p in "scatter mpg weight, @(50)" "(scatter mpg weight), @(50)" {
+        foreach s06o in fxsiz fysiz {
+            local s06f = cond("`s06o'" == "fxsiz", "fxsize", "fysize")
+            local s06s : subinstr local s06p "@" "`s06o'"
+            local s06l : subinstr local s06p "@" "`s06f'"
+            capture dash clear
+            capture log close s06log
+            capture erase "`c(tmpdir)'dash_s06.log"
+            quietly log using "`c(tmpdir)'dash_s06.log", text replace name(s06log) nomsg
+            capture noisily dash `s06s' name(s06g)
+            local s06rs = _rc
+            quietly log close s06log
+            mata: _s06_json = st_global("dash_json_s06g")
+            capture dash clear
+            capture noisily dash `s06l' name(s06g)
+            local s06rl = _rc
+            mata: st_local("s06same", strofreal(_s06_json == st_global("dash_json_s06g") & _s06_json != ""))
+            capture mata: mata drop _s06_json
+            capture dash clear
+            _w35_expect Q3506-4 "(`s06rs' == 0 & `s06rl' == 0)" `"`s06s': dash rc `s06rs', `s06l' rc `s06rl'"'
+            _w35_expect Q3506-4 "(`s06same' == 1)" `"`s06s' registered another spec than `s06l'"'
+            cert_log_has "`c(tmpdir)'dash_s06.log", needle("ignoring unsupported")
+            _w35_expect Q3506-4 "(r(found) == 0)" `"`s06s': dash named it in the note"'
+        }
+    }
+    foreach s06o in fxsi fxs fysi {
+        capture dash clear
+        capture noisily dash scatter mpg weight, `s06o'(50) name(s06g)
+        local s06r = _rc
+        _w35_expect Q3506-4 "(`s06r' == 198)" "`s06o'(50): dash rc `s06r', twoway r(198)"
+    }
+    capture dash clear
+    capture erase "`c(tmpdir)'dash_s06.log"
+    _w35_done Q3506-4 "fxsiz() and fysiz() register fxsize()'s and fysize()'s spec"
+
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {

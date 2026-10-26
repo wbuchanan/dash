@@ -78,3 +78,17 @@ class TestOmit:
 class TestMaxaxes:
     def test_reader_defined_and_needed(self):
         _defined_and_needed("_dash_maxaxes_val")
+
+
+class TestFxsize:
+    def test_twoways_minimum_declared(self):
+        # twoway's graph.ado declares FXSIZe() and FYSIZe(): fxsiz() and
+        # fysiz() are fxsize() and fysize() (graph_refusal_truth.json fx.*).
+        f = _fix()
+        assert f["fx.fxsiz"]["plot"] == f["fx.fxsize"]["plot"]
+        assert f["fx.fysiz"]["plot"] == f["fx.fysize"]["plot"]
+        assert f["fx.fxsi"]["rc"] == 198
+        for prog in ("_dash_parse_graph_opts", "_dash_parse_plot_opts"):
+            body = _program_body(_read(_ADO), prog)
+            assert "FXSIZe(string)" in body and "FYSIZe(string)" in body, prog
+            assert "FXSIZE(" not in body and "FYSIZE(" not in body, prog

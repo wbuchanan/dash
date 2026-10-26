@@ -942,6 +942,8 @@ and now matches Stata.
 
 ### Fixed in WP-35
 
+- fxsiz() and fysiz(), twoway's shortest spellings of fxsize() and fysize(), are applied; dash named them in the note. (WP-35, GW-4)
+
 ### Fixed in WP-34
 
 - A histogram's bin axis is ticked over its first and last bin midpoints, as twoway ticks it (histogram mpg: 10(10)40 -> 15(5)40) (WP-34, AX-4)

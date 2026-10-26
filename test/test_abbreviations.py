@@ -549,10 +549,6 @@ _SHARED_SPELLINGS = {
 #: over it passes deliberate=ABBREV_DELIBERATE, the differences a ruling
 #: keeps ({"<key>": "<ruling id>: <what is kept>"}).
 ABBREV_KNOWN = {
-    "land:fxsize": "GW-4",  # twoway fxsiz() / dash noted, no key
-    "land:fysize": "GW-4",  # twoway fysiz() / dash noted, no key
-    "min:fxsize": "GW-4",  # twoway fxsiz / dash declares fxsize in full
-    "min:fysize": "GW-4",  # twoway fysiz / dash declares fysize in full
 }
 
 ABBREV_DELIBERATE = {

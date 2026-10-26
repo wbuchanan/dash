@@ -987,8 +987,8 @@ program define _dash_parse_graph_opts, sclass
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
         xmlabel2(string asis)     ymlabel2(string asis)     xmtick2(string asis) ///
         ymtick2(string asis) ///
-        XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
-        FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
+        XSIZe(string)             YSIZe(string)             FXSIZe(string) ///
+        FYSIZe(string)            SCALE(string)             TEXT(string asis) ///
         HOVer(string)             TTEXT(string asis) ///
         XTICk(string asis)        YTICk(string asis)        XMTick(string asis) ///
         YMTick(string asis)       XMLabel(string asis)      YMLabel(string asis) ///
@@ -1316,7 +1316,7 @@ program define _dash_parse_plot_opts, sclass
         xmlabel2(string asis)     ymlabel2(string asis)     xmtick2(string asis) ///
         ymtick2(string asis) ///
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
-        FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
+        FXSIZe(string)            FYSIZe(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
         HOVer(string)             TTEXT(string asis) ///
         XMTick(string asis)       YMTick(string asis)       XMLabel(string asis) ///

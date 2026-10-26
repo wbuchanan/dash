@@ -367,7 +367,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-8 Tracked:** Open (WP-35 section 35-06).
 - **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit pending.
 - **GW-3 Tracked:** Closed in WP-35, BUGS.md "maxaxes() is never checked: maxaxes(x)/(2.5) accepted, maxaxes(1) with yaxis(2) drawn", commit pending.
-- **GW-4 Tracked:** Open (WP-35 section 35-06).
+- **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit pending.
 - **sil:SD-8 Tracked:** Open (WP-35 section 35-06).
 - **syn:SD-22 Tracked:** Open (WP-35 section 35-06).
 - **DT-19 Tracked:** Open (WP-35 section 35-08).

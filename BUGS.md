@@ -4718,11 +4718,11 @@
   - Suggested fix: Validate it; refuse axis numbers above it with r(125)
   - Resolution: Fixed 26oct2026 (WP-35, GW-3). The command's last maxaxes() is checked as twoway checks it: a value that is no integer is refused, r(198), 'option maxaxes() not allowed'; a yaxis() or xaxis() number above it, in any list, r(125), '<yaxis|xaxis>() invalid -- invalid numlist has elements outside of allowed range', the layers in order and xaxis() before yaxis() in one; a valid one is taken and no longer named in the note (dash_parse.mata _dash_maxaxes_val, read in _dash_plot after the merge); before any spec, so in both modes. Pinned by test/test_graph_refusals.py::TestMaxaxes::test_reader_defined_and_needed, test_option_validation.cscript Q3506-3; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 GW-3 (WP-35, GW-3).
 
-- [ ] Title: fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied
+- [x] Title: fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied
   - File Names and Line Numbers: graph.ado:161; dash.ado:980, 1309
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids GW-4; confirmed; tracked: untracked. Registered as GAPS4 GW-4 (WP-35, section 35-06, Fix).
   - Suggested fix: Declare FXSIZe/FYSIZe
-  - Resolution: Not fixed because WP-35 section 35-06 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, GW-4). fxsize() and fysize() are declared FXSIZe() and FYSIZe() in _dash_parse_graph_opts and _dash_parse_plot_opts, twoway's minimums (graph.ado), so fxsiz() and fysiz() register the spec of fxsize() and fysize() after a plot's comma and after the plot groups' comma, in both modes, and are no longer named; fxsi(), fxs() and fysi() stay refused as twoway refuses them. ABBREV_KNOWN's four GW-4 rows are gone (abbrev_truth.json re-extracted). Pinned by test/test_graph_refusals.py::TestFxsize::test_twoways_minimum_declared, test_wp35_truth.cscript Q3506-4; fixture test/fixtures/graph_refusal_truth.json. Closes GAPS4 GW-4 (WP-35, GW-4).
 
 - [ ] Title: title() with notitling is accepted with a note; twoway fails r(4018)
   - File Names and Line Numbers: twowaygraph_g.class:577-582
