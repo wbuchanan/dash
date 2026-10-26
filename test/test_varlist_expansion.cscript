@@ -1576,6 +1576,9 @@ def _q35066_judge(key, path, rc):
     _q35066_M.setLocal("q6want", r["first"][:200])
 end
 quietly sysuse auto, clear
+// cscript drops every global: a route twoway draws builds a page here,
+// so no browser may open (Q3506-6).
+global dash_nobrowser 1
 local q6bad 0
 foreach q6k of local q6keys {
     python: import __main__ as _q35066_main; _q35066_main._q35066_take("`q6k'")
