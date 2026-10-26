@@ -37,7 +37,8 @@ def _rows(probe):
     """A probe's serset as its rows, sorted: lowess writes the same
     values in another order from one run to the next."""
     s = probe["serset"]
-    return sorted(zip(*[s[k] for k in sorted(s)]))
+    return sorted(zip(*[s[k] for k in sorted(s)]),
+                  key=lambda r: [(v is not None, v) for v in r])
 
 
 class TestTheFixture:
@@ -79,3 +80,18 @@ class TestTheFold:
             call, unbound, unknown)
         assert unbound[0] < call[0] < unknown[0], (unbound, call, unknown)
         assert len(asp) == 1 and call[1] == asp[0] + 1, (asp, call)
+
+
+class TestDeclarations:
+    def test_bwidth_minimum_is_bwi(self):
+        """syn:SD-5: each bandwidth type's parse class declares BWidth, and
+        twoway draws bwi() as bwidth() (stat_accept_truth.json bwi.<type>);
+        the plot parser declares BWIdth, and bw() stays the exact BW()."""
+        d = _truth()
+        for t in ("lowess", "kdensity", "lpoly", "lpolyci"):
+            assert d["bwi." + t]["rc"] == 0, t
+            assert _rows(d["bwi." + t]) == _rows(d["bwidth." + t]), t
+        body = _program_body(_read(_ADO), "_dash_parse_plot_opts")
+        assert re.search(r"\bBWIdth\(string\)", body), "BWIdth not declared"
+        assert not re.search(r"\bBWIDth\(", body)
+        assert re.search(r"\bBW\(string\)", body)

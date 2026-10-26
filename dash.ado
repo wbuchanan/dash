@@ -957,7 +957,7 @@ program define _dash_parse_graph_opts, sclass
     // own where twoway has the option (measured, abbrev_truth.json) --
     // ASPECTratio and NAME are twoway's minimums since WP-31 A3c and A3b
     // (asp() and nam() were shorter, kept from dash's old table),
-    // and MEan and BWIDth longer -- and dash's own choice where it has not.
+    // and MEan longer -- and dash's own choice where it has not.
     // -syntax- ends the run of capitals at a digit, so T1title's minimum is
     // t, and YTITLE2's is ytitle -- which YTitle, declared first, takes.
     // The trailing * is Stata's own catch-all: any option not declared
@@ -1272,7 +1272,7 @@ program define _dash_parse_plot_opts, sclass
         COLORFILLONLY             COLORFORMISSing(string)   COLORKEYSRANge ///
         COLORKEYSREVerse          COLORALLOWMULTIPLE        COLOROTHERLABel(string) ///
         CLEGend(string asis)      PLEGend(string asis)      PCYCle(string) ///
-        BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
+        BWIdth(string)            DEGree(string)            PSTYle(string asis) ///
         CMISSing(string asis)     RECAST(string)            Connect(string asis) ///
         CMISSINGS(string asis)    RECASTAs(string)          TYpe(string) ///
         BIN(string)               BINS(string)              Width(string) ///

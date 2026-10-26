@@ -3726,8 +3726,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     reading one of 0 or less, or of 1 or more, as 0.8, as {cmd:twoway}
     does.
     On {cmd:kdensity}, {opt width(#)} is a synonym, as in {cmd:twoway},
-    and the two together are refused, r(198).  {cmd:bw()} abbreviates
-    {cmd:bwidth()} on these four types, as in {cmd:twoway}; on {cmd:bar},
+    and the two together are refused, r(198).  {cmd:bw()} and {opt bwi()} ..
+    {opt bwidth()} are its spellings on these four types, as in {cmd:twoway}; on {cmd:bar},
     {cmd:rbar}, {cmd:histogram}, {cmd:dot} and {cmd:spike} {cmd:dash}
     reads {cmd:bw()} as {cmd:barwidth()}, a synonym of its own
     ({cmd:twoway} refuses {cmd:bw()} there), and on any other plot type

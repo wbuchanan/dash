@@ -862,6 +862,7 @@ and now matches Stata.
 - A bare plot after a parenthesised group, (scatter mpg weight) line mpg weight, is drawn as twoway draws it; dash refused it, r(198). (WP-35, syn:SD-1)
 - || inside one group with no options, (scatter mpg weight || line mpg weight), draws both plots, as twoway does; dash refused it, r(198). A group whose || piece holds options, (scatter mpg weight, mcolor(red) || line mpg weight), is refused in twoway's words, "option | not allowed" (dash said "option line not allowed"). (WP-35, syn:SD-13)
 - lowess m is read as mean, as twoway reads it; dash refused it, r(198). (WP-35, stat:PT-7)
+- bwi() is read as bwidth() on lowess, kdensity, lpoly and lpolyci, as twoway reads it; dash refused it, r(198). (WP-35, syn:SD-5)
 
 ### Removed
 

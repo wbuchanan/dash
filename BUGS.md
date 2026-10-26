@@ -4616,11 +4616,11 @@
   - Suggested fix: On lowess, read a bare m as mean
   - Resolution: Fixed 26oct2026 (WP-35, stat:PT-7). _dash_fold_stat_words (dash.ado), called in _dash_process_segment after _dash_refuse_unbound and again after _dash_refuse_asp, takes a bare m out of lowess's catch-all by value and records it as mean, as twoway_lowess_parse.class reads it (Mean); both modes draw the spec. Pinned by test/test_stat_accept.py::TestTheFold::test_fold_is_defined_and_called_before_the_refusal, test/test_wp35_truth.cscript Q3503-1; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 stat:PT-7 (WP-35, stat:PT-7).
 
-- [ ] Title: bwi() is refused on lowess, kdensity, lpoly and lpolyci
+- [x] Title: bwi() is refused on lowess, kdensity, lpoly and lpolyci
   - File Names and Line Numbers: dash.ado:1266, 1318; abbrev_truth unprobeable.bwidth
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids syn:SD-5; confirmed; tracked: untracked. Registered as GAPS4 syn:SD-5 (WP-35, section 35-03, Fix).
   - Suggested fix: Declare BWidth with twoway's minimum on those types
-  - Resolution: Not fixed because WP-35 section 35-03 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, syn:SD-5). _dash_parse_plot_opts declares BWIdth (minimum bwi, as each bandwidth type's parse class declares BWidth), so bwi() .. bwidth() are bwidth() on lowess, kdensity, lpoly and lpolyci; bw() stays the exact BW(); both modes draw the spec. Pinned by test/test_stat_accept.py::TestDeclarations::test_bwidth_minimum_is_bwi, test/test_wp35_truth.cscript Q3503-2; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 syn:SD-5 (WP-35, syn:SD-5).
 
 - [ ] Title: histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses
   - File Names and Line Numbers: twoway__histogram_gen.ado:27-51; dash.ado:4788-4848; value_truth histogram_freqpct_1

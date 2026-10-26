@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'syn:SD-5': 'bwi() is refused on lowess, kdensity, lpoly and lpolyci',
     'stat:PT-1': 'histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses',
     'stat:PT-2': 'density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram',
     'stat:PT-5': 'contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer',

@@ -630,6 +630,26 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 syn:SD-5: bwi() read as bwidth() ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w35_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3503-2: bwi() is bwidth() on lowess, kdensity, lpoly and lpolyci
+    // (each parse class declares BWidth; stat_accept_truth.json bwi.<type>
+    // draws bwidth.<type>'s serset): dash registers bwidth()'s spec.
+    // ------------------------------------------------------------
+    _s03_same Q3503-2 "`w35_work'" auto "lowess mpg weight, bwi(.5)" "lowess mpg weight, bwidth(.5)"
+    _s03_same Q3503-2 "`w35_work'" auto "kdensity mpg, bwi(2)" "kdensity mpg, bwidth(2)"
+    _s03_same Q3503-2 "`w35_work'" auto "lpoly mpg weight, bwi(500)" "lpoly mpg weight, bwidth(500)"
+    _s03_same Q3503-2 "`w35_work'" auto "lpolyci mpg weight, bwi(500)" "lpolyci mpg weight, bwidth(500)"
+    _w35_done Q3503-2 "bwi() is read as bwidth() on the four bandwidth types"
+
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // _q3509_axes <page or app> <kind>: every axis and grid model of a saved
 // page (kind "page") or of the document a served app builds (kind "app")
 // is hidden, and a title T is drawn; the problems go to global q3509_bad.

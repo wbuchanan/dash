@@ -345,7 +345,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **MS-1 Tracked:** Closed in WP-35, BUGS.md "Repeated options twoway takes rightmost are refused r(198): yvarlabel, xvarlabel, mlabprefix, mlabsuffix, lalign, mlabstyle (and yvarl) given twice, and repeated contour levels(), ccuts(), ccolors(), clabels(), format(), scolor/ecolor/crule/interp, clwidths/clpatterns", commit 86f9f92.
 - **syn:SD-3 Tracked:** Closed in WP-35, BUGS.md "p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn", commit c298e8e.
 - **stat:PT-7 Tracked:** Closed in WP-35, BUGS.md "lowess m (twoway's documented minimum of mean) is refused", commit pending.
-- **syn:SD-5 Tracked:** Open (WP-35 section 35-03).
+- **syn:SD-5 Tracked:** Closed in WP-35, BUGS.md "bwi() is refused on lowess, kdensity, lpoly and lpolyci", commit pending.
 - **stat:PT-1 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
