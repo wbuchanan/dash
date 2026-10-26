@@ -2731,25 +2731,41 @@ foreach form in u a k {
         local bad15 = 1
     }
 }
+// dash's time is judged as a ratio, not a wall-clock bound: 200 words take
+// under 8 times what 50 take (linear is about 4), with half a second of
+// slack and a 60-second ceiling; an absolute 10-second bound failed at
+// 10.69 s on a loaded machine (26oct2026).
 foreach form in a c {
-    local many ""
-    forvalues i = 1/200 {
-        local many "`many' zqbogus"
+    foreach z15n in 50 200 {
+        local many ""
+        forvalues i = 1/`z15n' {
+            local many "`many' zqbogus"
+        }
+        if "`form'" == "a" local cmd15 "(lfit mpg weight),`many' atobs"
+        else local cmd15 "lfit mpg weight,`many' ATOBS"
+        // twoway is asked the recorded 200-word command only (its answers
+        // replay from the truth record); dash is timed at both sizes.
+        local tw = 198
+        if `z15n' == 200 {
+            capture cert_tw twoway `cmd15' nodraw
+            local tw = _rc
+        }
+        timer clear 15
+        timer on 15
+        _ztp_run `"dash `cmd15' name(zq15)"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "option zqbogus not allowed"
+        local said = r(found)
+        timer off 15
+        quietly timer list 15
+        local z15t`z15n' = r(t15)
+        if `tw' != 198 | `rc' != 198 | !`said' | "${dash_graph_registry}" != "" {
+            display as error "TP-15e FAIL `z15n' words then a refusal (`form'): twoway r(`tw'), dash r(`rc'), said `said'"
+            local bad15 = 1
+        }
     }
-    if "`form'" == "a" local cmd15 "(lfit mpg weight),`many' atobs"
-    else local cmd15 "lfit mpg weight,`many' ATOBS"
-    timer clear 15
-    timer on 15
-    capture cert_tw twoway `cmd15' nodraw
-    local tw = _rc
-    _ztp_run `"dash `cmd15' name(zq15)"' "`logfile'"
-    local rc = r(rc)
-    _ztp_logged "`logfile'" "option zqbogus not allowed"
-    local said = r(found)
-    timer off 15
-    quietly timer list 15
-    if `tw' != 198 | `rc' != 198 | !`said' | r(t15) >= 10 | "${dash_graph_registry}" != "" {
-        display as error "TP-15e FAIL 200 words then a refusal (`form'): twoway r(`tw'), dash r(`rc'), said `said', `r(t15)' s"
+    if `z15t200' >= 8 * `z15t50' + 0.5 | `z15t200' >= 60 {
+        display as error "TP-15e FAIL 200 words then a refusal (`form'): `z15t200' s against `z15t50' s for 50 words"
         local bad15 = 1
     }
 }
