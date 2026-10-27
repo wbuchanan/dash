@@ -1306,7 +1306,8 @@ there, is an invalid point.  The literal is read as data and never run.
     does not have; {help dash##scheme:Stata scheme support} says more.
 
 {phang2}    A switch that belongs to one plot type is refused on every
-    other, as {cmd:twoway} refuses it, with r(198): {cmd:discrete} on
+    other, as {cmd:twoway} refuses it, with r(198): {cmd:discrete},
+    {cmd:density}, {cmd:fraction}, {cmd:frequency} and {cmd:percent} on
     {cmd:histogram}; {cmd:stdp}, {cmd:stdf} and {cmd:stdr} on
     {cmd:lfitci} and {cmd:qfitci}; {cmd:mean}, {cmd:noweight},
     {cmd:adjust} and {cmd:logit} on {cmd:lowess}.  Two of {cmd:stdp},

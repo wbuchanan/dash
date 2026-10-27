@@ -3975,8 +3975,12 @@ program define _dash_option_rules
     // band is the stdp band -- and refuses stdf and stdr in its own words,
     // which _dash_validate_opts reproduces (measured 23sep2026: stdp rc 0;
     // stdf, stdr r(198) "stdf not allowed").  dash refused stdp there.
+    // density, fraction, frequency and percent are histogram's alone:
+    // twoway refuses each elsewhere, r(198) "option frequency not
+    // allowed" (WP-35 stat:PT-2; stat_refusal_truth.json flag.*).
     local flags ///
-        discrete@histogram  stdp|stdf|stdr@lfitci|qfitci|fpfitci ///
+        discrete@histogram  density|fraction|frequency|percent@histogram ///
+        stdp|stdf|stdr@lfitci|qfitci|fpfitci ///
         mean|noweight|adjust|logit@lowess
     // Value lists (WP-30 P1.1b): plot rules twoway reads one element per
     // y of an expanded varlist, checked by _dash_value_list element by

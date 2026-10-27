@@ -347,7 +347,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-7 Tracked:** Closed in WP-35, BUGS.md "lowess m (twoway's documented minimum of mean) is refused", commit a5d3970.
 - **syn:SD-5 Tracked:** Closed in WP-35, BUGS.md "bwi() is refused on lowess, kdensity, lpoly and lpolyci", commit 3649d26.
 - **stat:PT-1 Tracked:** Closed in WP-35, BUGS.md "histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses", commit pending.
-- **stat:PT-2 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-2 Tracked:** Closed in WP-35, BUGS.md "density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram", commit pending.
 - **stat:PT-5 Tracked:** Open (WP-35 section 35-04).
 - **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit 362513c.
 - **syn:SD-20a Tracked:** Closed in WP-35, BUGS.md "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe", commit 7a115b1.

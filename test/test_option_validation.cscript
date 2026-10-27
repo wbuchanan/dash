@@ -405,6 +405,8 @@
 *!   Q3504-1 (stat:PT-1) histogram's bins() with width(), and two of
 *!          density, fraction, frequency and percent, refused r(198) in
 *!          twoway's words
+*!   Q3504-2 (stat:PT-2) density, fraction, frequency and percent refused
+*!          off histogram, r(198), "option <word> not allowed"
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -3589,6 +3591,14 @@ end
 // may not be combined" (twoway's order); discrete with bin() still first.
 foreach _q1k in hist.bins_width hist.density_fraction hist.fraction_percent hist.frequency_density hist.percent_frequency hist.density_fraction_frequency hist.discrete_bin_width {
     _q3504 Q3504-1 `_q1k'
+}
+
+// Q3504-2 (stat:PT-2): density, fraction, frequency and percent on
+// scatter, line, lfit, kdensity, function and bar refused, r(198),
+// "option <word> not allowed", as twoway refuses them; on histogram drawn.
+python: _q3504_keys("flag.")
+foreach _q2k of local q_keys {
+    _q3504 Q3504-2 `_q2k'
 }
 
 // Summary

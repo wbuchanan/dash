@@ -88,3 +88,19 @@ class TestTheHistogramPairs:
         assert -1 < dbin < bw < words < scale, (dbin, bw, words, scale)
         seg = body[dbin:scale]
         assert '"`ptype\'" == "histogram"' in seg
+
+
+class TestTheFlags:
+    def test_scale_words_are_histograms(self):
+        """density, fraction, frequency and percent are histogram's
+        switches: twoway refuses each on every other type, r(198),
+        "option <word> not allowed" (fixture flag.<type>.<word>), as the
+        flag rules of _dash_option_rules refuse them (stat:PT-2)."""
+        d = _truth()
+        for k, r in d.items():
+            if k.startswith("flag.") and not k.startswith("flag.histogram."):
+                f = k.split(".")[2]
+                assert (r["rc"], r["message"]) == \
+                    (198, "option %s not allowed" % f), k
+        body = _program_body(_read(_ADO), "_dash_option_rules")
+        assert "density|fraction|frequency|percent@histogram" in body
