@@ -2947,6 +2947,10 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w30_run' {
     _w30_done LN-26 "the served widths of LN-20 to LN-25 are unchanged by a filter move"
 
     // LN-27: the refusal corpus, dash's rc against twoway's.
+    // Flipped (WP-35 basic:PT-13): scatter lwidth(*-1) is drawn, as twoway
+    // draws it (scatter draws no line), and line lwidth(*40000) is refused,
+    // as twoway refuses it -- dash's own width bounds now apply only where
+    // twoway draws the line.
     local s13_n 0
     foreach c in "line lwidth *-1 198 198" "line lwidth -1pt 198 198" ///
         "line lwidth -0.5in 198 198" "line lwidth 1e5rs 198 198" ///
@@ -2955,8 +2959,8 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w30_run' {
         "scatter mlwidth *-1 198 198" "scatter mlwidth -1pt 198 198" ///
         "line clwidth *-1 198 198" "lfitci alwidth *-1 198 198" ///
         "lfitci alwidth -1pt 198 198" "bar lwidth *-1 198 198" ///
-        "scatter lwidth *-1 0 198" "line alwidth *-1 0 0" ///
-        "line lwidth *40000 198 0" "line lwidth 20000pt 198 0 economist" {
+        "scatter lwidth *-1 0 0" "line alwidth *-1 0 0" ///
+        "line lwidth *40000 198 198" "line lwidth 20000pt 198 0 economist" {
         local ty : word 1 of `c'
         local op : word 2 of `c'
         local va : word 3 of `c'
@@ -2973,7 +2977,7 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w30_run' {
         _w30_expect LN-27 "(`trc' == `tw' & `drc' == `dw')" "`ty' `op'(`va') `so': twoway `trc' (want `tw'), dash `drc' (want `dw')"
         local ++s13_n
     }
-    _w30_done LN-27 "dash refuses what twoway refuses, `s13_n' probes, except the D-13b controls and scatter lwidth(*-1) (D-13c)"
+    _w30_done LN-27 "dash refuses what twoway refuses, `s13_n' probes, except the D-13b controls; scatter lwidth(*-1) drawn and line lwidth(*40000) refused since WP-35 basic:PT-13"
 
     capture dash clear
     graph drop _all
