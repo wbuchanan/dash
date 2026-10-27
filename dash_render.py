@@ -27710,6 +27710,62 @@ def _dash_overhangs(fig, graph_opts):
                 raise_to(side, half)
 
 
+def _dash_drawn_rows(source, facet_view=None, row_id=None):
+    """The rows a figure draws (WP-36 DG-14): those *facet_view*'s filter
+    keeps -- the True values of a BooleanFilter's booleans, the indices
+    of an IndexFilter -- else every row *source* carries, counted on its
+    row-id column *row_id* (the spec's, ``_dash_row_id``) when the
+    source has it.  The figure's source is already the graph's qualified
+    rows, or a by() panel's (DashRenderer.render, 'Handle by()
+    faceting')."""
+    f = getattr(facet_view, "filter", None)
+    b = getattr(f, "booleans", None)
+    if b is not None:
+        return int(np.count_nonzero(np.asarray(b, dtype=bool)))
+    ix = getattr(f, "indices", None)
+    if ix is not None:
+        return len(list(ix))
+    data = getattr(source, "data", None) or {}
+    if row_id and row_id in data:
+        return len(data[row_id])
+    return max((len(v) for v in data.values()), default=0)
+
+
+def _dash_dashes_on_canvas(fig):
+    """Keep a WebGL figure on canvas when it draws a dashed line (WP-36
+    DG-14): Bokeh's WebGL line shader breaks dashes and dots up (ink IoU
+    0.44-0.80 against canvas at 20,000 vertices, measured on the GPU and
+    on SwiftShader), and a backend is a figure's, not a renderer's.  A
+    Line, MultiLine or Step glyph with a dash pattern decides: Line and
+    Step store it as a list ("solid" is ``[]``), MultiLine as the spec's
+    text or value ("solid", "dashed", "4 4"; a field of per-line patterns
+    counts as dashed); returns *fig*."""
+    if getattr(fig, "output_backend", "canvas") != "webgl":
+        return fig
+    from bokeh.models import GlyphRenderer, Line, MultiLine, Step
+
+    def dashed(d):
+        d = getattr(d, "value", d)
+        if isinstance(d, dict):
+            if "value" not in d:
+                return True
+            d = d["value"]
+        if d is None:
+            return False
+        if isinstance(d, str):
+            return d.strip() not in ("", "solid")
+        if isinstance(d, (list, tuple)):
+            return len(d) > 0
+        return True
+
+    for r in list(getattr(fig, "renderers", None) or []):
+        g = getattr(r, "glyph", None) if isinstance(r, GlyphRenderer) else None
+        if isinstance(g, (Line, MultiLine, Step)) and dashed(g.line_dash):
+            fig.output_backend = "canvas"
+            break
+    return fig
+
+
 def _stat_option_float(
     options: dict,
     key: str,
@@ -64200,8 +64256,9 @@ class DashRenderer:
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
                                              self.variable_labels, _seen, _gkey)
 
-        # Enable WebGL for large datasets
-        n_rows = len(self.df)
+        # The rows this figure draws, not the dataset's (WP-36 DG-14).
+        n_rows = _dash_drawn_rows(source, facet_view,
+                                  _dash_row_id(self.master_spec))
         backend = "webgl" if n_rows > _WEBGL_THRESHOLD else "canvas"
 
         # Figure proportions.  Precedence, documented in dash.sthlp:
@@ -64818,6 +64875,8 @@ class DashRenderer:
         # borders and aspectratio()'s frame (with xsize()/ysize()), last.
         _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
         _dash_overhangs(fig, graph_opts)
+        # WP-36 DG-14: a dashed line keeps the figure on canvas.
+        _dash_dashes_on_canvas(fig)
         if facet_view is None:
             _dash_apply_frame_aspect(
                 fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
@@ -69016,6 +69075,7 @@ class ServerAppBuilder:
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
                     _dash_frame_borders, _dash_frame_sizes,
                     _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,
+                    _dash_dashes_on_canvas,
                     _fit_grid,
                     # WP-31 C10a: range(. #) on the fits, and the t of a
                     # confidence level twoway draws at any value.
@@ -71266,7 +71326,8 @@ class ServerAppBuilder:
             "        x_label, y_label = _dash_axis_labels(plots, go, var_labels,",
             "                                             _reported_subopts, gname)",
             "",
-            "        n_rows = len(df)",
+            "        # The rows this figure draws, not the dataset's (WP-36 DG-14).",
+            "        n_rows = len(g_df)",
             "        backend = 'webgl' if n_rows > _WEBGL_THRESHOLD else 'canvas'",
             "        _fig_kw = dict(",
             "            title=_parse_textbox_opt(go.get('title', '') or '')[0],",
@@ -71689,6 +71750,7 @@ class ServerAppBuilder:
             "        # frame, last, as the saved renderer applies them.",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
             "        _dash_overhangs(fig, go)",
+            "        _dash_dashes_on_canvas(fig)",
             "        if _fac_label is None:",
             "            _dash_apply_frame_aspect(fig, go, _SCHEME_GRAPHSIZE_X,",
             "                                     _SCHEME_GRAPHSIZE_Y)",

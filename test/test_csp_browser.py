@@ -199,7 +199,7 @@ class _CspProbe(range_probe.RangeProbe):
         self._proc = subprocess.Popen(
             responsive_probe.chrome_argv(self.chrome) + [
              "--headless=new", "--no-first-run",
-             "--no-default-browser-check", "--disable-gpu",
+             "--no-default-browser-check", *self.CHROME_GPU_FLAGS,
              "--user-data-dir=" + self._profile,
              "--remote-debugging-port=%d" % port,
              "--window-size=1400,1000", "about:blank"],

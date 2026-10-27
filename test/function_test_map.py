@@ -619,6 +619,9 @@ FUNCTIONS = {
  '_dash_apply_frame_aspect': 'test/test_sizing.py::TestAspect::test_survives_sizes',
  '_dash_overhangs': 'test/test_sizing.py::TestOverhangs::test_never_lowers',
  '_dash_overhangs.<locals>.raise_to': 'test/test_sizing.py::TestOverhangs::test_never_lowers',
+ '_dash_drawn_rows': 'test/test_webgl_backend.py::TestTheSwitchCountsDrawnRows::test_a_view_counts_its_kept_rows',
+ '_dash_dashes_on_canvas': 'test/test_webgl_backend.py::TestDashedLinesStayOnCanvas::test_the_helper',
+ '_dash_dashes_on_canvas.<locals>.dashed': 'test/test_webgl_backend.py::TestDashedLinesStayOnCanvas::test_the_helper',
  '_dash_fxy_size': 'test/test_sizing.py::TestFxFy::test_out_of_range_changes_nothing',
  'GlyphMapper._colorvar_key_place': 'test/test_colorvar_options.py::TestClegend::test_position_width',
  'GlyphMapper._colorvar_key_place.<locals>._inside': 'test/test_scheme_key_readers.py::test_the_ring_orders_the_key_beside_the_legend',
@@ -1596,10 +1599,6 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
-    "_dash_row_id": (
-        "WP-35 DT-19 (TR-35-08.4) keeps it under WP-26's seam rule: the row-identity column of a spec's prefix, "
-        "the seam 36-02 reads the row-id column through; production names it "
-        "_ROW_ID_COLUMN in the module of the spec's prefix (_dash_module_for)."),
     "_dash_finish_text_value": (
         "WP-30 P1.11b keeps it under WP-26's seam rule: S09's (new, changed) form of "
         "_dash_finish_text_runs, which _dash_finish_graph_text now calls; "

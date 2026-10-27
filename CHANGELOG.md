@@ -992,6 +992,8 @@ and now matches Stata.
 
 ### Fixed in WP-36
 
+- A dashed or dotted line in a graph of more than 10,000 rows drew broken up under WebGL, and a small graph of a large dataset used WebGL; such graphs are drawn on canvas, and the switch counts the rows a graph draws (WP-36, DG-14)
+
 ### Fixed in WP-35
 
 - Bad option values are refused with twoway's return codes and words: base(abc) r(4026), bin() r(125), r(121) or r(126), width() r(125) or r(121), start() r(121), mlabel(make..) r(101), rbar barwidth(.) r(199), mlabangle(1e308) r(111) (dash gave r(198) in its own words); lpoly with n() above the data's rows prints twoway's "(n() set to N)". (WP-35, basic:PT-9)

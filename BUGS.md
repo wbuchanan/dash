@@ -4820,11 +4820,11 @@
   - Suggested fix: Documented only (Q31, M8): page columns stay JSON number lists; the help states the measured timings and memory (about 6-8 s and 1.4 GB of Stata memory per million rows).
   - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
 
-- [ ] Title: WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's
+- [x] Title: WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's
   - File Names and Line Numbers: dash_render.py:5567, 63396, 70285; px_L02.png (SwiftShader only)
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids DG-14; partly (unverified on GPU WebGL); tracked: untracked. Registered as GAPS4 DG-14 (WP-36, section 36-02, Fix).
   - Suggested fix: Keep dashed lines on the canvas backend; base the threshold on the drawn rows; add a WebGL-vs-canvas pixel check
-  - Resolution: Not fixed because WP-36 section 36-02 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Fixed 27oct2026 (WP-36, DG-14). Both modes choose WebGL from the rows a figure draws -- the saved renderer counts its source's rows, or the rows its view keeps (_dash_drawn_rows: a link() graph's qualifier view, a linked by() panel's), the served app the graph's or panel's qualified rows (len(g_df)) -- not the dataset's, and a figure drawing a Line, MultiLine or Step glyph with a dash pattern stays on canvas (_dash_dashes_on_canvas, in _make_figure_body and the served figure body); measured with WebGL on (headless Chrome, SwiftShader), line y x, lpattern(dash) lwidth(thick) on 20,000 rows drew with ink IoU 0.644 against canvas before and 1.0 after. The help's Resource limits states the rule. Pinned by test/test_webgl_backend.py (TestTheSwitchCountsDrawnRows, TestDashedLinesStayOnCanvas, both modes; TestTheHelp::test_the_webgl_paragraph), test/test_webgl_backend_browser.py::TestWebglPixels::test_a_dashed_line_matches_a_canvas_reference, test_wp36_truth.cscript Q3602-1..3. Closes GAPS4 DG-14 (WP-36, DG-14).
 
 - [ ] Title: contour over zero observations crashes with a Python traceback, r(7102)
   - File Names and Line Numbers: map_contour (dash_render.py:24350-24425) passes NaN levels to fig.contour

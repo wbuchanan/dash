@@ -384,7 +384,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-6 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-16 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-14 Tracked:** Open (WP-36 section 36-04).
-- **DG-14 Tracked:** Open (WP-36 section 36-02).
+- **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit pending.
 - **DG-1 Tracked:** Open (WP-37 section 37-01).
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
 - **TR-13 Tracked:** Open (WP-37 section 37-03).

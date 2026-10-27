@@ -2882,7 +2882,6 @@ GAPS4_OPEN = {
     'plat:PT-6': "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\\' as relative",
     'plat:PT-16': "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified",
     'plat:PT-14': 'Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size',
-    'DG-14': "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's",
     'DG-1': 'contour over zero observations crashes with a Python traceback, r(7102)',
     'DG-5': 'rarea with cmissing(n) draws its bound outlines across the gaps',
     'TR-13': 'contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter',

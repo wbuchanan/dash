@@ -203,6 +203,93 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w36_run' {
 }
 * ==== end S00 ====
 
+python:
+import json as _w36s02_json
+import re as _w36s02_re
+from html import unescape as _w36s02_unescape
+from sfi import Macro as _w36s02_M
+
+
+def _w36s02_backends(path):
+    """Global w36s02_be: each Figure's output_backend on the saved page
+    path, "canvas" where the document writes none (Bokeh's default)."""
+    out = []
+    try:
+        page = open(path, encoding="utf-8").read()
+        m = _w36s02_re.search(
+            r'<script[^>]+type=["\']application/json["\'][^>]*>', page)
+        body = page[m.end():page.index("</script>", m.end())]
+
+        def walk(node):
+            if isinstance(node, dict):
+                attrs = node.get("attributes")
+                if node.get("name") == "Figure" and isinstance(attrs, dict):
+                    out.append(str(attrs.get("output_backend", "canvas")))
+                for v in node.values():
+                    walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v)
+
+        walk(_w36s02_json.loads(_w36s02_unescape(body)))
+        _w36s02_M.setGlobal("w36s02_be", " ".join(out))
+    except Exception as e:
+        _w36s02_M.setGlobal("w36s02_be", "error " + str(e)[:200])
+end
+
+* ==== S02 DG-14: WebGL on the rows a graph draws, dashes on canvas ====
+local only : env WP36_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w36_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // twoway has one renderer: the rule is dash's own (research [B]
+    // section 4.7).  20,000 rows, past _WEBGL_THRESHOLD (10,000).
+    clear
+    quietly set obs 20000
+    quietly gen x = _n
+    quietly gen y = mod(_n, 97)
+
+    // ------------------------------------------------------------
+    // Q3602-1: a dashed line over 20,000 rows is drawn on canvas.
+    // ------------------------------------------------------------
+    capture erase "`w36_work'/s02_1.html"
+    capture noisily dash line y x, lpattern(dash) saving("`w36_work'/s02_1.html", replace)
+    _w36_expect Q3602-1 "(_rc == 0)" "dash line ... lpattern(dash) rc `=_rc'"
+    python: _w36s02_backends(r"`w36_work'/s02_1.html")
+    _w36_expect Q3602-1 `"("${w36s02_be}" == "canvas")"' "backends: ${w36s02_be}"
+    _w36_done Q3602-1 "lpattern(dash) on 20,000 rows: ${w36s02_be}"
+    capture erase "`w36_work'/s02_1.html"
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // Q3602-2: a graph of in 1/100 draws 100 rows: canvas.
+    // ------------------------------------------------------------
+    capture erase "`w36_work'/s02_2.html"
+    capture noisily dash scatter y x in 1/100, saving("`w36_work'/s02_2.html", replace)
+    _w36_expect Q3602-2 "(_rc == 0)" "dash scatter ... in 1/100 rc `=_rc'"
+    python: _w36s02_backends(r"`w36_work'/s02_2.html")
+    _w36_expect Q3602-2 `"("${w36s02_be}" == "canvas")"' "backends: ${w36s02_be}"
+    _w36_done Q3602-2 "scatter in 1/100 of 20,000 rows: ${w36s02_be}"
+    capture erase "`w36_work'/s02_2.html"
+    capture dash clear
+
+    // ------------------------------------------------------------
+    // Q3602-3: a solid scatter of all 20,000 rows keeps WebGL.
+    // ------------------------------------------------------------
+    capture erase "`w36_work'/s02_3.html"
+    capture noisily dash scatter y x, saving("`w36_work'/s02_3.html", replace)
+    _w36_expect Q3602-3 "(_rc == 0)" "dash scatter rc `=_rc'"
+    python: _w36s02_backends(r"`w36_work'/s02_3.html")
+    _w36_expect Q3602-3 `"("${w36s02_be}" == "webgl")"' "backends: ${w36s02_be}"
+    _w36_done Q3602-3 "scatter of 20,000 rows: ${w36s02_be}"
+    capture erase "`w36_work'/s02_3.html"
+    capture dash clear
+
+    macro drop w36s02_be
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

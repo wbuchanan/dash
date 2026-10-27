@@ -132,6 +132,10 @@ def _free_port():
 class RangeProbe:
     """One page held open in headless Chrome, read over DevTools."""
 
+    #: Chrome's GPU flags (WP-36 DG-14): ``--disable-gpu`` turns WebGL off
+    #: completely; a probe that needs WebGL on overrides this in a subclass.
+    CHROME_GPU_FLAGS = ("--disable-gpu",)
+
     def __init__(self, path, chrome=None, timeout=60):
         self.path = os.path.abspath(path)
         self.chrome = chrome or responsive_probe.find_chrome()
@@ -152,7 +156,7 @@ class RangeProbe:
         self._proc = subprocess.Popen(
             responsive_probe.chrome_argv(self.chrome) + [
              "--headless=new", "--no-first-run",
-             "--no-default-browser-check", "--disable-gpu",
+             "--no-default-browser-check", *self.CHROME_GPU_FLAGS,
              "--user-data-dir=" + self._profile,
              "--remote-debugging-port=%d" % port,
              "--window-size=1200,900", "about:blank"],

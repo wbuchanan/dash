@@ -2418,6 +2418,7 @@ CORPUS = [
           [_sc(mcolor="navy*.5", mfcolor="hsv 240 1 1", mlcolor="bg")]),
     _case("line, an unknown colour drawn black",
           [plot_for("line", {"lcolor": "bogus"})]),
+    _case("DG-14: a dashed line", [plot_for("line", {"lpattern": "dash"})]),
     _case("bar, an unknown fill", [plot_for("bar", {"fcolor": "bogus"})]),
     _case("s1rcolor, fg", [_sc(mcolor="fg*.5")], {"scheme": "s1rcolor"}),
     # WP-30 P1.18a: the axis look sub-options

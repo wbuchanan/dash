@@ -3149,6 +3149,13 @@ data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or {cmd:collapse},
 inside {cmd:preserve} and {cmd:restore}.
 
 {pstd}
+{ul:WebGL.}  A graph that draws more than 10,000 rows is drawn with WebGL,
+which is faster for many points, unless it draws a dashed, dotted or
+patterned line, which WebGL breaks up: such a graph is drawn on the
+ordinary canvas.  The rows counted are the graph's own -- the rows its
+qualifiers select, or its {cmd:by()} panel's -- not the dataset's.
+
+{pstd}
 {ul:A served dashboard} has rate limits of its own; see
 {help dash##server_mode:Server Mode}.
 
