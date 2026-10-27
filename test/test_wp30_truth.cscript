@@ -466,7 +466,8 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w30_run' {
     local sf03rc = _rc
     local sf03cv "`._Gr_Global.callerver'"
     local sf03cvok = ("`sf03cv'" == "16")
-    mata: st_local("sf03pts", strofreal(strpos(st_global("dash_fpts_sf03"), "0.053990966513188049,0.24197072451914334,0.39894228040143265") > 0))
+    // Flipped (WP-36 plat:PT-4): read through _dash_fpts_get.
+    mata: st_local("sf03pts", strofreal(strpos(_dash_fpts_get("sf03"), "0.053990966513188049,0.24197072451914334,0.39894228040143265") > 0))
     _w30_expect SF-03 "(`sf03rc' == 0)" "version 16: dash function gave rc `sf03rc'"
     _w30_expect SF-03 "(`sf03cvok' == 1)" "the function layer ran at callerver `sf03cv', not 16"
     _w30_expect SF-03 "(`sf03pts' == 1)" "the normalden points were not the measured ones"
@@ -6443,7 +6444,8 @@ capture program drop _s26_stored
 program define _s26_stored
     version 19
     args name
-    mata: _s = st_global("dash_fpts_" + st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("s26_dy", strtoreal(_v))
+    // Flipped (WP-36 plat:PT-4): read through _dash_fpts_get.
+    mata: _s = _dash_fpts_get(st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("s26_dy", strtoreal(_v))
 end
 
 * ==== S26 P1.22: function: closed by disposition ====

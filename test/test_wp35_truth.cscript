@@ -605,7 +605,8 @@ program define _s03_rc
 end
 
 // _s03_samefp id work A B: dash takes the function commands A and B and
-// stores the same function points for both (global dash_fpts_<name>).
+// stores the same function points for both (the graph's point file,
+// _dash_fpts_get; WP-36 plat:PT-4).
 capture program drop _s03_samefp
 program define _s03_samefp
     version 19
@@ -617,13 +618,14 @@ program define _s03_samefp
     quietly log using "`work'/s03_fp.log", text replace name(s03log) nomsg
     capture noisily dash `A' name(s03g)
     local drc_A = _rc
-    mata: _s03_fp = st_global("dash_fpts_s03g")
+    // Flipped (WP-36 plat:PT-4): read through _dash_fpts_get.
+    mata: _s03_fp = _dash_fpts_get("s03g")
     capture dash clear
     quietly sysuse auto, clear
     capture noisily dash `B' name(s03g)
     local drc_B = _rc
     quietly log close s03log
-    mata: st_local("same", strofreal(_s03_fp == st_global("dash_fpts_s03g") & _s03_fp != ""))
+    mata: st_local("same", strofreal(_s03_fp == _dash_fpts_get("s03g") & _s03_fp != ""))
     capture dash clear
     capture mata: mata drop _s03_fp
     _w35_expect `id' "(`drc_A' == 0)" `"dash refused (rc `drc_A'): `A'"'
@@ -635,7 +637,7 @@ program define _s03_samefp
 end
 
 // _s03_quiet id work cmd: dash takes cmd, stores twoway's generator's
-// points for it (global dash_fpts_<name>), and prints no line but its
+// points for it (its point file; WP-36 plat:PT-4), and prints no line but its
 // registration line, as twoway prints none (stat_accept_truth.json
 // n.<type>.-1 notes).
 capture program drop _s03_quiet
@@ -650,7 +652,8 @@ program define _s03_quiet
     capture noisily dash `cmd' name(s03g)
     local drc = _rc
     quietly log close s03log
-    mata: st_local("fp", strofreal(st_global("dash_fpts_s03g") != ""))
+    // Flipped (WP-36 plat:PT-4): read through _dash_fpts_get.
+    mata: st_local("fp", strofreal(_dash_fpts_get("s03g") != ""))
     capture dash clear
     mata: _s03_l = cat(st_local("work") + "/s03_q.log")
     mata: _s03_l = select(_s03_l, strtrim(_s03_l) :!= "")

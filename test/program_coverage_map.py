@@ -207,6 +207,8 @@ COVERAGE = {
         "_dash_tmp_close": ("test_wp29_truth.cscript:PF-06",
                             "test_serve_launch.cscript:PF-07"),
         "_dash_tmp_clear": ("test_wp29_truth.cscript:PF-02",),
+        # WP-36 plat:PT-4: a named graph's point file and its folder.
+        "_dash_fpts_open": ("test_wp36_truth.cscript:Q3603-2",),
         # direct: each distinct qualifier's column holds Stata's answer, a
         # reserved name is refused, a qualifier the data no longer answer
         # is refused with Stata's error, nothing is left in the data.
@@ -309,6 +311,7 @@ COVERAGE = {
         "_dash_refuse_pendmsg": ("test_option_validation.cscript:U50-0",),
         "_dash_refuse_gunique": ("test_option_validation.cscript:U50-0",),
         "_dash_register_graph": ("test_varlist_expansion.cscript:V2-08",
+                                 "test_wp36_truth.cscript:Q3603-2",
                                  "test_registry_collision.cscript:REG-01"),
         # QL-14/15: each layer's own if and in select its rows, and the
         # export carries every row they need.
@@ -318,6 +321,7 @@ COVERAGE = {
                                    "test_qualifier_literals.cscript:QL-14",
                                    "test_qualifier_literals.cscript:QL-15"),
         "_dash_clear": ("test_clear_registry.cscript:CLR-01",
+                        "test_wp36_truth.cscript:Q3603-3",
                         "test_clear_registry.cscript:CLR-04"),
         # e2e: the card's value in the page.
         # WP-33 33-06: dash image registers, refuses and is bounded.
@@ -716,6 +720,12 @@ COVERAGE = {
         "_dash_recast_canon": ("test_wp31_truth.cscript:U11-04",),
         "_dash_fn_spec_tail": ("test_parser.cscript:FX-10",
                                "test_parser.cscript:FX-08"),
+        # WP-36 plat:PT-4: a named graph's point file.
+        "_dash_fpts_path": ("test_wp36_truth.cscript:Q3603-1",),
+        "_dash_fpts_put": ("test_wp36_truth.cscript:Q3603-1",),
+        "_dash_fpts_get": ("test_wp36_truth.cscript:Q3603-1",),
+        "_dash_fpts_drop": ("test_wp36_truth.cscript:Q3603-1",),
+        "_dash_fpts_clear": ("test_wp36_truth.cscript:Q3603-1",),
         # e2e: y = strlen("'x") refused r(198) as twoway refuses it.
         "_dash_fn_stray_close": ("test_json_escaping.cscript:JSE-47",),
         "_dash_fn_points_ok": ("test_parser.cscript:FX-08",

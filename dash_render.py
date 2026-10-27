@@ -3847,6 +3847,84 @@ def _dash_tmp_write_text(path, text):
     return ""
 
 
+#: A Stata session's folder of named graphs' function points (WP-36
+#: plat:PT-4, DECISIONS A-7): <root>/points-<pid>.
+_DASH_POINTS_RE = re.compile(r"^points-(\d+)$")
+
+
+def _dash_points_sweep(root, now=None):
+    """Remove the points folders of Stata sessions that have ended; return
+    how many.  A ``points-<pid>`` folder goes when its pid is dead
+    (POSIX) or, on Windows, where liveness is never probed, when it was
+    last modified more than ``_DASH_STALE_AGE_S`` ago -- never the running
+    process's own folder, whose files the session's graphs still need.
+    Links and non-folders at such a name are unlinked, never followed.
+    Every OSError is ignored."""
+    now = time.time() if now is None else now
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    removed = 0
+    for name in names:
+        m = _DASH_POINTS_RE.match(name)
+        if not m:
+            continue
+        path = os.path.join(root, name)
+        try:
+            pid = int(m.group(1))
+            if pid == os.getpid():
+                continue
+            lst = os.lstat(path)
+            if os.name == "nt":
+                drop = now - lst.st_mtime > _DASH_STALE_AGE_S
+            else:
+                drop = not _dash_pid_alive(pid)
+            if not drop:
+                continue
+            if stat.S_ISDIR(lst.st_mode):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.unlink(path)
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
+def _dash_fpts_dir(tmpdir):
+    """This Stata session's points folder; the dict dash.ado reads.
+
+    ``{"dir", "err", "note"}``: ``<root>/points-<pid>`` (0700), the root as
+    ``_dash_private_root`` gives it, the root's ended sessions' folders
+    swept first.  ``note`` and ``err`` are built as ``_dash_run_open``
+    builds them (an OSError gives ``dir`` "" and ``err`` the reason, which
+    dash.ado ends with r(603)); a ``_DashUnsafePath`` from the folder's own
+    check is not caught (r(7102))."""
+    out = {"dir": "", "err": "", "note": ""}
+    note = ""
+    try:
+        root, note = _dash_private_root(tmpdir)
+        _dash_points_sweep(root)
+        d = os.path.join(root, "points-%d" % os.getpid())
+        try:
+            os.mkdir(d, 0o700)
+        except FileExistsError:
+            pass
+        why = _dash_private_dir_ok(d)
+        if why and "could not be made private" not in note:
+            note = "  ".join(x for x in (note, _DASH_NOTE_LOOSE % (d, why))
+                             if x)
+    except OSError as exc:
+        out["err"] = ("dash: dash could not make its temporary folder in "
+                      "%s: %s." % (tmpdir, getattr(exc, "strerror", None)
+                                   or exc))
+        out["note"] = ("dash: note: " + note) if note else ""
+        return out
+    out.update(dir=d, note=("dash: note: " + note) if note else "")
+    return out
+
+
 def _dash_tmp_clear(tmpdir):
     """``dash clear``'s pruning: in each of this account's roots in
     *tmpdir* -- ``dash-<uid>`` and every fallback root, each accepted by
@@ -3866,6 +3944,7 @@ def _dash_tmp_clear(tmpdir):
         if not _dash_own_root(root, tmpdir):
             continue
         _dash_run_sweep(root)
+        _dash_points_sweep(root)
         prev = os.path.join(root, "previews")
         if os.path.lexists(prev):
             try:
@@ -3973,6 +4052,7 @@ def _dash_run_renderer(path, init_globals=None):
 _DASH_ADO_ENTRY_POINTS = (_dash_write_stata_data, _dash_run_open,
                           _dash_run_close, _dash_preview_path,
                           _dash_tmp_write_text, _dash_tmp_clear,
+                          _dash_fpts_dir,
                           _dash_run_renderer, _dash_dep_versions)
 
 

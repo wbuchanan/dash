@@ -1266,7 +1266,8 @@ if inlist("`only'", "", "S04") {
 
     // A function layer's points are Stata's own (section 04): dash runs
     // twoway__function_gen at registration and stores x0, dx and y in
-    // $dash_fpts_<name>; both renderers draw those numbers.  Each case
+    // the graph's point file (WP-36 plat:PT-4; it was $dash_fpts_<name>);
+    // both renderers draw those numbers.  Each case
     // compares them with twoway's serset, read live, then builds the
     // saved page and the served app and reads the drawn source back.
 
@@ -1289,7 +1290,8 @@ if inlist("`only'", "", "S04") {
     program define _fx_stored
         version 16.0
         args name
-        mata: _s = st_global("dash_fpts_" + st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("fx_dy", strtoreal(_v)); _b = strpos(_s, `""x0":"') + 5; st_local("_x0", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1)); _b = strpos(_s, `""dx":"') + 5; st_local("_dx", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1))
+        // Flipped (WP-36 plat:PT-4): read through _dash_fpts_get.
+        mata: _s = _dash_fpts_get(st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("fx_dy", strtoreal(_v)); _b = strpos(_s, `""x0":"') + 5; st_local("_x0", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1)); _b = strpos(_s, `""dx":"') + 5; st_local("_dx", substr(_s, _b, strpos(substr(_s, _b, .), ",") - 1))
         c_local fx_x0 `_x0'
         c_local fx_dx `_dx'
     end
@@ -1510,9 +1512,12 @@ end
     matrix fx23_want_1 = fx_sy
     matrix fx23_wantx_1 = fx_sx
     dash function y = x^2, range(2 0) n(3) name(fx23_1) title("fx23_1")
-    _w29_expect FX-23 `"(strpos(`"${dash_fpts_fx23_1}"', `""x0":2,"dx":-1,"y":[4,1,0]"') > 0)"' `"stored ${dash_fpts_fx23_1}"'
+    // Flipped (WP-36 plat:PT-4): the points are read from the point file.
+    mata: st_local("fx23_p", _dash_fpts_get("fx23_1"))
+    _w29_expect FX-23 `"(strpos(`"`fx23_p'"', `""x0":2,"dx":-1,"y":[4,1,0]"') > 0)"' `"stored `fx23_p'"'
     dash function y = x, range(0 0.123456789012345678) n(3) name(fx23_2)
-    _w29_expect FX-23 `"(strpos(`"${dash_fpts_fx23_2}"', "0.12345678901234568]") > 0)"' `"stored ${dash_fpts_fx23_2}"'
+    mata: st_local("fx23_p", _dash_fpts_get("fx23_2"))
+    _w29_expect FX-23 `"(strpos(`"`fx23_p'"', "0.12345678901234568]") > 0)"' `"stored `fx23_p'"'
     local fx23_html "`w29_work'/fx23.html"
     local fx23_app  "`w29_work'/fx23_app.py"
     quietly dash build, saving("`fx23_html'") replace nobrowser

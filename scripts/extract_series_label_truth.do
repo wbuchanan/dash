@@ -362,7 +362,8 @@ forvalues i = 1/`N' {
     local drc "`=_rc'"
     mata: _zk_put(st_global("ZK_WORK") + "/" + st_local("id") + "_dashrc.txt", st_local("drc"))
     mata: _zk_put(st_global("ZK_WORK") + "/" + st_local("id") + "_dash.txt", st_global("dash_json_zk" + st_local("i")))
-    mata: _zk_put(st_global("ZK_WORK") + "/" + st_local("id") + "_fpts.txt", st_global("dash_fpts_zk" + st_local("i")))
+    // WP-36 plat:PT-4: a named graph's points are its point file.
+    mata: _zk_put(st_global("ZK_WORK") + "/" + st_local("id") + "_fpts.txt", _dash_fpts_get("zk" + st_local("i")))
     capture dash clear
     display as text "probe `id' twoway rc=`rc' dash rc=`drc'"
 }

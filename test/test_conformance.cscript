@@ -210,7 +210,7 @@ file close `fh'
 // form of the renderer's report (_dash_report_empty_layer, through the one
 // rule both modes run, _dash_note_empty_layer):
 //   ctl   a function layer whose stored points are not drawable -- a
-//         registered `function y = x', its $dash_fpts_ctl then set by hand
+//         registered `function y = x', its point file then set by hand
 //         to a points object with no y value, which passes the spec
 //         writer's character check and is refused where it is drawn
 //         (_dash_function_points) -- reported whatever the data:
@@ -242,7 +242,8 @@ file close `fh'
 quietly generate double allmiss = .
 capture noisily dash function y = x, range(0 10) name(ctl)
 local ctl_rc = _rc
-mata: st_global("dash_fpts_ctl", `"{"1":{"x0":0,"dx":1,"y":[]}}"')
+// Flipped (WP-36 plat:PT-4): the points are a file, set by its accessor.
+mata: _dash_fpts_put("ctl", `"{"1":{"x0":0,"dx":1,"y":[]}}"')
 capture noisily dash line allmiss weight, name(ctl2)
 local ctl_rc = max(`ctl_rc', _rc)
 

@@ -636,7 +636,9 @@ class TestDashAdoUsesTheWriter:
             # 10 -> 11: E10 the spec writer embeds the style rows.
             "_dash_embed_style_rows",
             # 11 -> 13: WP-33 33-06 dash image's file and link() checks.
-            "_dash_image_check", "_dash_image_link_ok"}
+            "_dash_image_check", "_dash_image_link_ok",
+            # 13 -> 14: WP-36 plat:PT-4 the session's points folder.
+            "_dash_fpts_dir"}
 
     def test_names_and_path_reach_python_by_value(self):
         """The path and the variable names are read by Macro.getLocal(),

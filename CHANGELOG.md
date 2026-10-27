@@ -924,6 +924,7 @@ and now matches Stata.
 - kernel() with a capital letter (kernel(GAUSSIAN)) is refused, r(198), "invalid kernel function", as twoway refuses it; write it in lower case, as the refusal's second line says. (WP-35, DT-15)
 - xsize(()) and ysize(()) are refused, r(198), as twoway refuses them; dash drew the default size with a note. (WP-35, DT-15)
 - colorvar() naming a string variable is refused, r(7), as twoway refuses it; dash drew a colour per value. (WP-35, DT-15)
+- A named graph whose function points exceeded c(macrolen) was refused r(134); it is registered and built, its points kept in a private file of dash's temporary folder, which clear all keeps (WP-36, plat:PT-4)
 
 ### Removed
 

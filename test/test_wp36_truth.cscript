@@ -290,6 +290,109 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w36_run' {
 }
 * ==== end S02 ====
 
+* ==== S03 plat:PT-4: function points of a named graph off the macro ====
+local only : env WP36_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w36_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w36_work'/s03"
+    capture mkdir "`s03d'"
+
+    // ------------------------------------------------------------
+    // Q3603-1: the five accessors and _dash_fpts_open on a scratch
+    // folder: a shorter text replaces a longer one, G and g are two
+    // files, a second drop is no error, clear empties the folder.  The
+    // session's $dash__fpdir is put back afterwards.
+    // ------------------------------------------------------------
+    mata: st_local("s03_keep", st_global("dash__fpdir"))
+    local s03f "`s03d'/q1"
+    capture mkdir "`s03f'"
+    global dash__fpdir "`s03f'"
+    capture noisily _dash_fpts_open q1
+    _w36_expect Q3603-1 "(_rc == 0)" "_dash_fpts_open q1 rc `=_rc'"
+    capture noisily mata: _dash_fpts_put("q1", "abc")
+    _w36_expect Q3603-1 "(_rc == 0)" "_dash_fpts_put rc `=_rc'"
+    capture mata: st_local("s03_g", _dash_fpts_get("q1"))
+    _w36_expect Q3603-1 `"("`s03_g'" == "abc")"' "get after put abc read `s03_g'"
+    capture mata: _dash_fpts_put("q1", "x")
+    capture mata: st_local("s03_g", _dash_fpts_get("q1"))
+    _w36_expect Q3603-1 `"("`s03_g'" == "x")"' "get after put x read `s03_g'"
+    capture mata: st_local("s03_two", strofreal(_dash_fpts_path("Q1") != _dash_fpts_path("q1") & _dash_fpts_path("q1") != ""))
+    _w36_expect Q3603-1 "(0`s03_two' == 1)" "Q1 and q1 share a path"
+    capture mata: _dash_fpts_drop("q1")
+    capture mata: st_local("s03_g", _dash_fpts_get("q1"))
+    _w36_expect Q3603-1 `"("`s03_g'" == "")"' "get after drop read `s03_g'"
+    capture noisily mata: _dash_fpts_drop("q1")
+    _w36_expect Q3603-1 "(_rc == 0)" "a second drop rc `=_rc'"
+    capture _dash_fpts_open q1
+    capture _dash_fpts_open Q1
+    capture mata: st_local("s03_n", strofreal(rows(dir(st_global("dash__fpdir"), "files", "fp-*.txt"))))
+    _w36_expect Q3603-1 "(0`s03_n' == 2)" "two files expected, `s03_n' found"
+    capture mata: _dash_fpts_clear()
+    capture mata: st_local("s03_n", strofreal(rows(dir(st_global("dash__fpdir"), "files", "fp-*.txt"))))
+    _w36_expect Q3603-1 `"("`s03_n'" == "0")"' "clear left `s03_n' files"
+    mata: st_global("dash__fpdir", st_local("s03_keep"))
+    capture rmdir "`s03f'"
+    _w36_done Q3603-1 "the accessors write, replace, read, drop and clear one private file a graph"
+
+    // ------------------------------------------------------------
+    // Q3603-2: four 10,000-point function layers, past one macro at
+    // this session's c(macrolen), with name(): twoway draws them and
+    // dash registers and builds them with all 40,000 points; with a
+    // variable that moves the working-column prefix too.  No set maxvar.
+    // ------------------------------------------------------------
+    display as text "Q3603-2: c(macrolen) is " %12.0fc c(macrolen)
+    sysuse auto, clear
+    capture dash clear
+    local s03l "(function y = sin(x)/x, range(-100 100) n(10000))"
+    capture noisily twoway `s03l' `s03l' `s03l' `s03l', nodraw
+    local s03_trc = _rc
+    capture noisily dash `s03l' `s03l' `s03l' `s03l', name(q2)
+    local s03_drc = _rc
+    _w36_expect Q3603-2 "(`s03_trc' == 0 & `s03_drc' == 0)" "twoway rc `s03_trc', dash rc `s03_drc'"
+    capture mata: st_local("s03_len", strofreal(strlen(_dash_fpts_get("q2"))))
+    _w36_expect Q3603-2 "(0`s03_len' > c(macrolen))" "the stored points are `s03_len' characters, not past c(macrolen)"
+    local s03h "`s03d'/q2.html"
+    capture erase "`s03h'"
+    capture noisily dash build, saving("`s03h'") replace nobrowser
+    _w36_expect Q3603-2 "(_rc == 0)" "dash build rc `=_rc'"
+    capture confirm file "`s03h'"
+    _w36_expect Q3603-2 "(_rc == 0)" "no page at `s03h'"
+    forvalues s03k = 1/2 {
+        if `s03k' == 2 quietly generate byte __dashz = 1
+        local s03sp "`s03d'/q2s`s03k'.json"
+        capture erase "`s03sp'"
+        capture noisily _dash_serve_spec, specpath("`s03sp'") datapath("`s03d'/q2d`s03k'.json")
+        _w36_expect Q3603-2 "(_rc == 0)" "the spec seam (pass `s03k') rc `=_rc'"
+        local s03np ""
+        python: import json, sfi; _s03j = json.load(open(sfi.Macro.getLocal("s03sp"), encoding="utf-8")); sfi.Macro.setLocal("s03np", str(sum(len(v.get("y", [])) for g in _s03j.get("function_points", {}).values() for v in g.values()))); del _s03j
+        _w36_expect Q3603-2 `"("`s03np'" == "40000")"' "the spec (pass `s03k') carries `s03np' function points, not 40000"
+        capture erase "`s03sp'"
+        capture erase "`s03d'/q2d`s03k'.json"
+    }
+    capture erase "`s03h'"
+    _w36_done Q3603-2 "four 10,000-point layers past c(macrolen): twoway rc 0, dash registers and builds all 40,000 points"
+
+    // ------------------------------------------------------------
+    // Q3603-3: replacing a function graph takes its file; dash clear
+    // empties the session's points folder.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily dash scatter mpg weight, name(q2, replace)
+    capture mata: st_local("s03_e", strofreal(fileexists(_dash_fpts_path("q2"))))
+    _w36_expect Q3603-3 `"("`s03_e'" == "0")"' "q2's file is still there after the scatter replaced it"
+    capture noisily dash function y = x, name(q3)
+    capture mata: st_local("s03_e", strofreal(fileexists(_dash_fpts_path("q3"))))
+    _w36_expect Q3603-3 `"("`s03_e'" == "1")"' "q3 has no file"
+    capture dash clear
+    capture mata: st_local("s03_n", strofreal(rows(dir(st_global("dash__fpdir"), "files", "fp-*.txt"))))
+    _w36_expect Q3603-3 `"("`s03_n'" == "0")"' "dash clear left `s03_n' point files"
+    _w36_done Q3603-3 "a replaced graph's file goes, and dash clear empties the points folder"
+
+    capture rmdir "`s03d'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

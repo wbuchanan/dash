@@ -680,6 +680,8 @@ FUNCTIONS = {
  '_dash_run_sweep': 'test/test_private_files.py::TestTheRunDir::test_open_sweeps_this_pids_stale_runs',
  '_dash_tmp_clear': 'test/test_private_files.py::TestThePreviews::test_clear_prunes_and_removes_an_emptied_fallback_root',
  '_dash_tmp_write_text': 'test/test_private_files.py::TestTheSpecWriter::test_text_is_written_exactly_and_0600',
+ '_dash_fpts_dir': 'test/test_function_points_file.py::TestTheFolder::test_made_0700_for_this_pid',
+ '_dash_points_sweep': 'test/test_function_points_file.py::TestTheSweep::test_ended_sessions_go_and_this_one_stays',
  # WP-29 P0.13 F2 (section 08, commit 2): the served app stops with the
  # program that started it.
  '_dash_watch_parent': 'test/test_serve_lifecycle.py::TestTheParentWatch::test_eof_on_stdin_asks_the_loop_to_stop',

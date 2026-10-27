@@ -2875,7 +2875,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'plat:PT-5': 'Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh',
-    'plat:PT-4': "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help",
     'plat:PT-2': 'The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later',
     'plat:PT-11': 'Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it',
     'plat:PT-12': 'The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route',

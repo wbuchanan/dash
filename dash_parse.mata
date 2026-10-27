@@ -225,9 +225,22 @@
 *!   _dash_fn_spec_tail(path, names, sc)
 *!       Closes the spec file at path, whose last "}" was left off, with
 *!       ,"function_points":{..}} -- the string scalar sc's points as the
-*!       one-line graph's, or each named graph's $dash_fpts_<name> -- or a
+*!       one-line graph's, or each named graph's point file -- or a
 *!       bare "}" when there are none; points that are not dash's are
 *!       skipped with a note.
+*!
+*!   _dash_fpts_path(name)
+*!       The path of graph name's point file, fp-<hex of name>.txt in the
+*!       session's points folder $dash__fpdir, or "" (WP-36 plat:PT-4).
+*!
+*!   _dash_fpts_put(name, text)
+*!       Replaces the contents of name's point file, when it exists.
+*!
+*!   _dash_fpts_drop(name)
+*!       Removes name's point file; none is no error.
+*!
+*!   _dash_fpts_clear()
+*!       Removes every point file of the session's points folder.
 *!
 *!   _dash_by_scan(scname)
 *!       twoway's three by() parse stages over the tail in the string
@@ -625,7 +638,7 @@
 *!
 *!   _dash_item_globals(name, out_macro)
 *!       The globals one registry item owns that Stata holds, by exact name:
-*!       dash_json_<name>, dash_spec_<name>, dash_fpts_<name>,
+*!       dash_json_<name>, dash_spec_<name>,
 *!       dash_kpi_<name> and dash_kpi_<name>__<field> for each field
 *!       _dash_kpi_fields() lists, and an image panel's dash_img_<name>
 *!       and dash_img_<name>__pth, __cap, __alt and __lnk.
@@ -6617,11 +6630,12 @@ string rowvector _dash_kpi_fields()
 // as the KPI, so the graph the user just registered would vanish.
 //
 // An item's globals are these EXACT names and no others: a graph's
-// dash_json_<name> and dash_spec_<name>, a function graph's points
-// dash_fpts_<name> (WP-29 P0.6: replacing or dropping the graph drops its
-// points with it), and a KPI's marker dash_kpi_<name> and its fields
-// dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the ones Stata holds
-// are returned; an empty field is no global at all.
+// dash_json_<name> and dash_spec_<name>, and a KPI's marker
+// dash_kpi_<name> and its fields dash_kpi_<name>__<field>
+// (_dash_kpi_fields).  Only the ones Stata holds are returned; an empty
+// field is no global at all.  A function graph's points are no global
+// (WP-36 plat:PT-4): _dash_drop_item removes their file with
+// _dash_fpts_drop.
 //
 // No prefix is safe.  `macro drop dash_kpi_g1*' also takes g10's globals,
 // and g1 and g10 may be registered at once.  This matched dash_kpi_<name>_*
@@ -6648,7 +6662,7 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tu_" + nm,
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_tu_" + nm,
            "dash_frm_" + nm, "dash_kpi_" + nm)
     // An image panel's marker and fields (WP-33 33-06).
     own = own, ("dash_img_" + nm, "dash_img_" + nm + "__pth",
@@ -6906,17 +6920,88 @@ real scalar _dash_fn_points_ok(string scalar txt)
     return(all(ok[b :+ 1]))
 }
 
+// A named graph's function points (WP-36 plat:PT-4, DECISIONS A-7): the
+// file fp-<hex of the name>.txt in this Stata session's points folder,
+// $dash__fpdir, which dash.ado's _dash_fpts_open makes (0700) and in
+// which it makes the file (0600, empty) through Python.  A file holds any
+// length -- a global holds c(macrolen) characters, and two 10,000-point
+// layers are more than half of that -- and outlives clear all, as the
+// registry's globals do.  Only these five read, write or remove it.  The
+// hex name keeps G and g apart on a file system that ignores case.
+string scalar _dash_fpts_path(string scalar nm)
+{
+    string scalar d
+
+    d = st_global("dash__fpdir")
+    if (d == "" | nm == "") return("")
+    return(pathjoin(d, "fp-" + invtokens(inbase(16, ascii(nm)), "") + ".txt"))
+}
+
+// Replaces the contents of the file _dash_fpts_open made; a graph with no
+// file (none made, or the folder gone) is left without points.
+void _dash_fpts_put(string scalar nm, string scalar txt)
+{
+    string scalar p
+    real scalar   fh
+
+    p = _dash_fpts_path(nm)
+    if (p == "") return
+    if (!fileexists(p)) return
+    fh = fopen(p, "rw")
+    ftruncate(fh)
+    if (txt != "") fwrite(fh, txt)
+    fclose(fh)
+}
+
+// The points of graph nm, or "" when it has no file.
+string scalar _dash_fpts_get(string scalar nm)
+{
+    string scalar p, txt, s
+    real scalar   fh
+
+    p = _dash_fpts_path(nm)
+    if (p == "") return("")
+    if (!fileexists(p)) return("")
+    fh = fopen(p, "r")
+    txt = ""
+    while ((s = fread(fh, 1048576)) != J(0, 0, "")) txt = txt + s
+    fclose(fh)
+    return(txt)
+}
+
+// Removes graph nm's file; none is no error.
+void _dash_fpts_drop(string scalar nm)
+{
+    string scalar p
+
+    p = _dash_fpts_path(nm)
+    if (p == "") return
+    if (fileexists(p)) (void) _unlink(p)
+}
+
+// Removes every graph's file of this session's points folder (dash clear).
+void _dash_fpts_clear()
+{
+    string colvector f
+    string scalar    d
+    real scalar      i
+
+    d = st_global("dash__fpdir")
+    if (d == "") return
+    f = dir(d, "files", "fp-*.txt")
+    for (i = 1; i <= rows(f); i++) (void) _unlink(pathjoin(d, f[i]))
+}
+
 // _dash_fn_spec_tail(path, names, sc) -- close the spec file at path with
 // the function points beside the graphs (WP-29 P0.6).
 //
 // The writers leave the spec's last } off and call this after closing the
-// file, so the points -- up to c(macrolen) characters a graph -- never
-// travel through a macro concatenation (a local past c(macrolen) is an
-// uncapturable r(920), and st_global() past it truncates in silence;
-// section 04 E6).  With sc != "", the string scalar sc holds the one-line
+// file, so the points -- of any length -- never travel through a macro
+// concatenation (a local past c(macrolen) is an uncapturable r(920), and
+// st_global() past it truncates in silence; section 04 E6).  With sc != "", the string scalar sc holds the one-line
 // graph's table and is the single entry, keyed "" (the graph has no name).
-// Otherwise there is one entry "<name>":$dash_fpts_<name> for each word of
-// names whose global is not empty.  An entry that is not dash's
+// Otherwise there is one entry "<name>":<points> for each word of names
+// whose point file (_dash_fpts_get; WP-36 plat:PT-4) is not empty.  An entry that is not dash's
 // (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
 // layer as a spec without points, and name what they cannot evaluate
 // (WP-30 P1.22).  Appends ,"function_points":{<entries>}} or,
@@ -6943,7 +7028,7 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
     else {
         nm = tokens(names)
         for (i = 1; i <= cols(nm); i++) {
-            txt = st_global("dash_fpts_" + nm[i])
+            txt = _dash_fpts_get(nm[i])
             if (txt == "") continue
             if (!_dash_fn_points_ok(txt)) {
                 _dash_note("dash: the function points stored for graph '",

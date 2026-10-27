@@ -502,6 +502,7 @@ program define _dash_require_mata
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
+        _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
@@ -8274,6 +8275,44 @@ program define _dash_tmp_clear
     python: _dash_tcl = _dash_xp(_dash_M.getLocal("_tcl_tmp")) if _dash_xp is not None else ""
 end
 
+// _dash_fpts_open name: makes graph name's point file, empty and 0600, in
+// this Stata session's points folder (WP-36 plat:PT-4, DECISIONS A-7),
+// making the folder (0700) first when $dash__fpdir names none.  The
+// folder is c(tmpdir)dash-<uid>/points-<pid>/ (dash_render.py's
+// _dash_fpts_dir), kept for the session -- through clear all, as the
+// registry's globals are -- emptied by dash clear and swept once its
+// Stata session has ended.  Mata writes, reads and removes the file
+// (_dash_fpts_put, _get, _drop, _clear), so the points never cross a
+// macro.  The note and the r(603) are _dash_tmp_open's; a link or another
+// account's file at the name is refused r(7102), as for every copy.
+program define _dash_fpts_open
+    version 19
+    args name
+    _dash_require_python
+    _dash_xm_load
+    python: import sys
+    python: from sfi import Macro as _dash_M
+    python: _dash_xm = sys.modules["_dash_render_export"]
+    mata: st_local("_fo_have", strofreal(st_global("dash__fpdir") != "" & direxists(st_global("dash__fpdir"))))
+    if "`_fo_have'" != "1" {
+        local _fo_tmp `"`c(tmpdir)'"'
+        python: _dash_fo = _dash_xm._dash_fpts_dir(_dash_M.getLocal("_fo_tmp"))
+        python: _dash_M.setLocal("_fo_err", _dash_fo["err"])
+        python: _dash_M.setLocal("_fo_note", _dash_fo["note"])
+        python: _dash_M.setLocal("_fo_dir", _dash_fo["dir"])
+        if `: length local _fo_note' {
+            mata: _dash_note("", st_local("_fo_note"), "")
+        }
+        if `: length local _fo_err' {
+            mata: _dash_say("err", "", st_local("_fo_err"), "")
+            exit 603
+        }
+        mata: st_global("dash__fpdir", st_local("_fo_dir"))
+    }
+    mata: st_local("_fo_path", _dash_fpts_path(st_local("name")))
+    python: _dash_fo = _dash_xm._dash_tmp_write_text(_dash_M.getLocal("_fo_path"), "")
+end
+
 
 // ================================================================
 // _dash_maxvar_room q s t w cmdname kx [frame]  -- room for the working
@@ -10984,6 +11023,9 @@ program define _dash_drop_item
     foreach _g of local _dash_item_kill {
         capture macro drop `_g'
     }
+    // A function graph's point file (WP-36 plat:PT-4): a KPI or image
+    // that replaces a function graph takes its points away.
+    mata: _dash_fpts_drop(st_local("name"))
 end
 
 
@@ -12130,18 +12172,9 @@ program define _dash_register_graph
         exit(198)
     }
 
-    // A function graph's points are kept in one global, which holds
-    // c(macrolen) characters; st_global() past that truncates in silence
-    // (WP-29 P0.6, section 04 E6).  Refused before anything is stored.
     local _fp_len 0
     if "`fp_sc'" != "" {
         mata: st_local("_fp_len", strofreal(strlen(st_strscalar(st_local("fp_sc")))))
-    }
-    if `_fp_len' > c(macrolen) {
-        _dash_count_fmt _fp_len_s `_fp_len'
-        display as error "dash: graph '`name'' holds `_fp_len_s' characters of function points, more than the `c(macrolen)' one Stata macro holds."
-        display as error "      Use a smaller n(), put the function layers in separate graphs, or raise c(macrolen) with set maxvar."
-        exit 134
     }
 
     // WP-19: the registry holds at most `graphs' graphs and KPI cards.  A
@@ -12160,14 +12193,17 @@ program define _dash_register_graph
     // was expanded again, and an =exp in it evaluated (JSE-67).
     mata: st_global("dash_spec_" + st_local("name"), st_local("raw_spec"))
     mata: st_global("dash_json_" + st_local("name"), st_local("json_spec"))
-    // The graph's function points (WP-29 P0.6), or none: a graph that
-    // replaced a function graph keeps no points of it.
+    // The graph's function points (WP-29 P0.6), off the macro (WP-36
+    // plat:PT-4, DECISIONS A-7): the file _dash_fpts_path names, made
+    // empty and private by _dash_fpts_open, written by Mata from the
+    // string scalar.  A graph that replaced a function graph keeps no
+    // points of it.  A $dash_fpts_<name> an older dash left is dropped.
+    mata: _dash_fpts_drop(st_local("name"))
     if `_fp_len' {
-        mata: st_global("dash_fpts_" + st_local("name"), st_strscalar(st_local("fp_sc")))
+        _dash_fpts_open `name'
+        mata: _dash_fpts_put(st_local("name"), st_strscalar(st_local("fp_sc")))
     }
-    else {
-        capture macro drop dash_fpts_`name'
-    }
+    capture macro drop dash_fpts_`name'
     // The unit the t-options' dates were read in (WP-30 P1.6,
     // _dash_taxis_fold), for dash build's note when it has changed.
     // dash_tu_<name> is 8 + 22 characters, within a global's 32
@@ -12756,6 +12792,8 @@ program define _dash_clear
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
     capture macro drop dash_img_*
+    // Function points an older dash kept in globals (WP-36 plat:PT-4
+    // keeps them in files, emptied below).
     capture macro drop dash_fpts_*
     capture macro drop dash_tu_*
     capture macro drop dash_frm_*
@@ -12764,6 +12802,10 @@ program define _dash_clear
     // Leading-underscore globals, if any command ever sets one.
     capture macro drop _dash_*
 
+    // The function graphs' point files (WP-36 plat:PT-4); with no Mata
+    // library loaded they stay, and nothing reads them once the registry
+    // is empty.
+    capture mata: _dash_fpts_clear()
     // The session's preview pages and stale run folders (WP-29 P0.14):
     // captured, so dash clear still clears the registry with no Python.
     capture _dash_tmp_clear

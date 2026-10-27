@@ -926,7 +926,9 @@ there, is an invalid point.  The literal is read as data and never run.
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
     item in Stata globals named after it: a graph in
     {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name} (and a
-    {cmd:function} graph's points in {cmd:$dash_fpts_}{it:name}), a KPI card
+    {cmd:function} graph's points in a private file of {cmd:dash}'s temporary
+    folder, kept until the graph is replaced, {cmd:dash clear} runs or Stata
+    exits; {cmd:clear all} keeps it, as it keeps the globals), a KPI card
     in {cmd:$dash_kpi_}{it:name} and in one global for each of its fields,
     {cmd:$dash_kpi_}{it:name}{cmd:__}{it:field}, a field being at most three
     letters (the card's statistic is {cmd:$dash_kpi_}{it:name}{cmd:__sta}).
@@ -1566,7 +1568,8 @@ discards the remembered options along with the registry.
 Empties the registry: every graph and KPI card goes, and so do the options
 remembered from the last {cmd:dash build} -- the globals
 {cmd:$dash_graph_registry}, {cmd:$dash_json_*}, {cmd:$dash_spec_*},
-{cmd:$dash_fpts_*}, {cmd:$dash_kpi_*} and {cmd:$dash_opts_*}.  Settings stay:
+{cmd:$dash_kpi_*} and {cmd:$dash_opts_*}, and the function graphs' point
+files.  Settings stay:
 {cmd:$dash_nobrowser} and the {cmd:$dash_max_*} limits remain until you drop
 them (see {help dash##limits:Resource limits}).  It also removes this
 session's preview pages, but one a browser was asked to open in the last
@@ -3014,6 +3017,14 @@ readable only by you.  The newest five of a session are kept, and
 to open in the last minute.
 
 {pstd}
+{ul:Function points.}  A named graph's {cmd:function} points go to a file
+in {cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/points-}{it:pid}{cmd:/}, a folder
+of the Stata session, readable only by you.  The file goes when the graph is
+replaced or {cmd:dash clear} runs; {cmd:clear all} keeps it, as it keeps the
+registry.  The folder of a Stata session that has ended is removed by the
+next session's {cmd:dash} (on Windows, after a day).
+
+{pstd}
 {ul:When a location is not private.}  dash never stops a command for
 privacy.  If {cmd:c(tmpdir)} can be changed by other accounts (others can
 write to it and it has no sticky bit, as a {cmd:STATATMP} folder made under
@@ -3823,11 +3834,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     {cmd:regress} omits x, so every point is at that x and the mean of
     {it:yvar}, as {cmd:twoway lfit} draws it, and the band of
     {cmd:lfitci} and {cmd:qfitci} is the mean's.  {cmd:function}: 300 by
-    default, over {cmd:range()}; one graph's {cmd:function} points must fit
-    in one Stata macro, {cmd:c(macrolen)} characters (645,200 by default,
-    about 21 a point; {cmd:set maxvar} raises it), or the graph is refused
-    with {cmd:r(134)}.  On these types {cmd:dash} takes 1 to 10000 (one
-    point draws no line, as in {cmd:twoway});
+    default, over {cmd:range()}.  On these types {cmd:dash} takes 1 to
+    10000 (one point draws no line, as in {cmd:twoway});
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  On {cmd:lfit}, {cmd:qfit},
     {cmd:lfitci} and {cmd:qfitci} both take any whole number from 1 up

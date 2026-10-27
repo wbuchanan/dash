@@ -3332,22 +3332,20 @@ display "FX-06 PASS: a generator option cannot be injected through the expressio
 
 // ================================================================
 // FX-07 -- no point is ever truncated: one graph past c(macrolen) is
-//          refused r(134); a dashboard past the old dash_max_bytes builds
-//          (WP-33 33-15: no size cap, P4-3)
+//          registered whole; a dashboard past the old dash_max_bytes
+//          builds (WP-33 33-15: no size cap, P4-3)
 // ================================================================
 sysuse auto, clear
 dash clear
 local reg07 "${dash_graph_registry}"
 local l07 "(function y = sin(x)/x, range(-100 100) n(10000))"
+// Flipped (WP-36 plat:PT-4): a named graph's points are a private file,
+// unbounded by c(macrolen); the graph was refused r(134).
 _p1a_logrun `"dash `l07' `l07' `l07' `l07', name(fx07)"'
-assert r(rc) == 134
-local lg07 "`r(log)'"
-cert_file_has "`lg07'", needle("n()")
-assert r(found) == 1
-cert_file_has "`lg07'", needle("`c(macrolen)'")
-assert r(found) == 1
-assert "${dash_graph_registry}" == "`reg07'"
-assert `"${dash_fpts_fx07}"' == ""
+assert r(rc) == 0
+mata: st_local("fp07", strofreal(strlen(_dash_fpts_get("fx07")) > c("macrolen")))
+assert "`fp07'" == "1"
+dash clear
 local h07 "`c(tmpdir)'dash_fx07.html"
 capture erase "`h07'"
 _p1a_logrun `"dash `l07' `l07' `l07' `l07', saving("`h07'", replace)"'
@@ -3380,30 +3378,41 @@ assert r(found) == 0
 confirm file "`h07'"
 capture erase "`h07'"
 dash clear
-display "FX-07 PASS: a graph whose points exceed one macro is refused r(134); a dashboard whose points pass 1,000 characters builds at dash_max_bytes 1000"
+display "FX-07 PASS: a graph whose points exceed one macro is registered whole; a dashboard whose points pass 1,000 characters builds at dash_max_bytes 1000"
 
 // ================================================================
-// FX-08 -- the points live in $dash_fpts_<name>, which goes with its graph
+// FX-08 -- the points live in the graph's point file, which goes with
+//          its graph
 // ================================================================
+// Flipped (WP-36 plat:PT-4): the points were read from $dash_fpts_<name>;
+// they are read through _dash_fpts_get, and forged through
+// _dash_fpts_put, as the global is no longer their home.
+capture program drop _fx08_has
+program define _fx08_has
+    version 19
+    args name want
+    mata: st_local("_p", strofreal(_dash_fpts_get(st_local("name")) != ""))
+    assert "`_p'" == "`want'"
+end
 sysuse auto, clear
 dash clear
 dash function y = x, name(fx08)
-assert `"${dash_fpts_fx08}"' != ""
+_fx08_has fx08 1
 dash scatter mpg weight, name(fx08, replace)
-assert `"${dash_fpts_fx08}"' == ""
+_fx08_has fx08 0
 dash function y = x, name(fx08, replace)
-assert `"${dash_fpts_fx08}"' != ""
+_fx08_has fx08 1
 dash kpi mean(price), name(fx08, replace) title("Price")
-assert `"${dash_fpts_fx08}"' == ""
+_fx08_has fx08 0
 dash scatter mpg weight, name(fx08s)
-assert `"${dash_fpts_fx08s}"' == ""
+_fx08_has fx08s 0
 dash function y = x, name(fx08g)
-assert `"${dash_fpts_fx08g}"' != ""
+_fx08_has fx08g 1
 dash clear
-assert `"${dash_fpts_fx08g}"' == ""
+_fx08_has fx08g 0
 // Points that are not dash's are skipped at build, with a note.
 dash function y = x, name(fx08g)
-mata: st_global("dash_fpts_fx08g", `"}],"graphs":["')
+mata: _dash_fpts_put("fx08g", `"}],"graphs":["')
 local h08 "`c(tmpdir)'dash_fx08.html"
 capture erase "`h08'"
 _p1a_logrun `"dash build, saving("`h08'") replace"'
@@ -3414,7 +3423,7 @@ capture confirm file "`h08'"
 assert _rc == 0
 capture erase "`h08'"
 dash clear
-display "FX-08 PASS: a function graph's points are stored in its own global, dropped with it, and skipped at build when they are not dash's"
+display "FX-08 PASS: a function graph's points are stored in its own file, dropped with it, and skipped at build when they are not dash's"
 
 // ================================================================
 // FX-09 -- one expansion, inside the generator; the caller's version
@@ -3424,7 +3433,9 @@ dash clear
 global FXG 3
 dash function y = \$FXG*x, range(0 2) n(3) name(fx09)
 macro drop FXG
-assert strpos(`"${dash_fpts_fx09}"', `""y":[0,3,6]"') > 0
+// Flipped (WP-36 plat:PT-4): read from the point file, not $dash_fpts_fx09.
+mata: st_local("fp09", strofreal(strpos(_dash_fpts_get("fx09"), `""y":[0,3,6]"') > 0))
+assert "`fp09'" == "1"
 version 17: dash function y = x, name(fx09v)
 assert "`._Gr_Global.callerver'" == "17"
 dash clear
@@ -3610,8 +3621,8 @@ display "KT-12 PASS: function _y = and function ü = are refused r(111) in twowa
 // ================================================================
 // FN-02..FN-05 (WP-30 P1.22) -- a function layer without Stata's points
 // says what it needs, saved and served, and stored points that are not
-// dash's are said to be unused.  Dropping $dash_fpts_<name> is the one
-// route from Stata into the points-free fallback (setting registry
+// dash's are said to be unused.  Dropping the graph's point file is the
+// one route from Stata into the points-free fallback (setting registry
 // macros by hand is unsupported, dash.sthlp; it stands in here for a
 // spec written by hand).
 // ================================================================
@@ -3621,7 +3632,8 @@ dash clear
 // Flipped (WP-31 F2): invlogit() is drawn by the fallback now;
 // invlogit(), which it still refuses, takes its place in FN-02..FN-04.
 dash function y = invlogit(x), range(-3 3) n(7) name(fn02)
-macro drop dash_fpts_fn02
+// Flipped (WP-36 plat:PT-4): the points are a file, dropped by its accessor.
+mata: _dash_fpts_drop("fn02")
 local h02 "`c(tmpdir)'dash_fn02.html"
 capture erase "`h02'"
 _p1a_logrun `"dash build, saving("`h02'") replace"'
@@ -3648,7 +3660,8 @@ dash clear
 display "FN-03 PASS: dash build, server prints the same note once, rc 0"
 
 dash function y = invlogit(x), range(-3 3) n(7) name(fn04)
-mata: st_global("dash_fpts_fn04", `"{"1":"abc"}"')
+// Flipped (WP-36 plat:PT-4): the points are a file, forged by its accessor.
+mata: _dash_fpts_put("fn04", `"{"1":"abc"}"')
 local h04 "`c(tmpdir)'dash_fn04.html"
 capture erase "`h04'"
 _p1a_logrun `"dash build, saving("`h04'") replace"'
@@ -3665,7 +3678,8 @@ dash clear
 display "FN-04 PASS: points that are not dash's are said to be unused, and the layer's note names invlogit()"
 
 dash function y = sin(x), range(0 2) n(5) name(fn05)
-macro drop dash_fpts_fn05
+// Flipped (WP-36 plat:PT-4): the points are a file, dropped by its accessor.
+mata: _dash_fpts_drop("fn05")
 local h05 "`c(tmpdir)'dash_fn05.html"
 capture erase "`h05'"
 _p1a_logrun `"dash build, saving("`h05'") replace"'

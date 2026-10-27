@@ -4778,11 +4778,11 @@
   - Suggested fix: Documented only (Q47, M8): README and help state the tested platform (macOS arm64, StataNow 19.5, console); no code changes.
   - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
 
-- [ ] Title: Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help
+- [x] Title: Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help
   - File Names and Line Numbers: probe3 r(134) at 408,235 characters; dash.ado:11366-11377; dash.sthlp:3713-3714
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-4; confirmed; tracked: n() refusal documented. Registered as GAPS4 plat:PT-4 (WP-36, section 36-03, Fix).
   - Suggested fix: Per A-7: the function points of a named graph go to a private file under dash's temp folder, keyed by graph name; fix the message and the help.
-  - Resolution: Not fixed because WP-36 section 36-03 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Fixed 27oct2026 (WP-36, plat:PT-4). A named graph's function points are kept in a private file, fp-<hex of the name>.txt in the Stata session's folder c(tmpdir)dash-<uid>/points-<pid>/ (0700, the file 0600), not in $dash_fpts_<name>: the five Mata accessors _dash_fpts_path, _put, _get, _drop and _clear (dash_parse.mata) and the ado program _dash_fpts_open, which makes the folder and the file through dash_render.py's _dash_fpts_dir and _dash_tmp_write_text; _dash_register_graph no longer refuses points longer than c(macrolen), r(134), and the help no longer advises set maxvar. Measured at c(macrolen) 645,200: four 10,000-point layers (869,169 characters) were refused r(134) where twoway draws them, rc 0; both are rc 0 now and the spec carries all 40,000 points. The file outlives clear all, as the registry's globals do; replacing the graph, a KPI or image in its place and dash clear remove it, and the folder of an ended Stata session is swept (_dash_points_sweep, from _dash_fpts_dir and dash clear's _dash_tmp_clear). Both modes read the same spec. Pinned by test/test_function_points_file.py::TestOffTheMacro, test/test_function_points_file.py::TestClearAll::test_points_survive_clear_all, test/test_wp36_truth.cscript Q3603-1, Q3603-2, Q3603-3. Closes GAPS4 plat:PT-4 (WP-36, plat:PT-4).
 
 - [ ] Title: The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later
   - File Names and Line Numbers: dash.ado:84-89, 438-447; dash.sthlp:6701-6707; README.md:32-33
