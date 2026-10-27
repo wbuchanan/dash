@@ -5322,11 +5322,13 @@ if inlist("`only'", "", "S20") & `: list posof "S20" in w30_run' {
         capture noisily dash `macval(a`i')' name(g1)
         local drc = _rc
         // Flipped (WP-31 C10b): a34, mlabel(t*), is drawn.
-        local dwant = cond(`i' == 33, 198, 0)
+        // Flipped (WP-35 basic:PT-13): a33, jitter(2 200), is drawn --
+        // dash's own jitter() bound of 100 is lifted, as twoway draws it.
+        local dwant 0
         _w30_expect PS-31 "(`trc' == 0 & `drc' == `dwant')" `"twoway `trc', dash `drc' (want `dwant'): `macval(a`i')'"'
     }
     capture dash clear
-    _w30_done PS-31 "33 lists twoway draws, dash draws (mlabel(t*) since WP-31 C10b); V06 refused as recorded"
+    _w30_done PS-31 "34 lists twoway draws, dash draws (mlabel(t*) since WP-31 C10b, jitter(2 200) since WP-35 basic:PT-13)"
 
     // PS-32: labels per series, both modes: twoway's label groups in
     // series order, first text and count, are dash's LabelSets.
