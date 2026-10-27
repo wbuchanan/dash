@@ -50,10 +50,6 @@ local work "`c(tmpdir)'dash_default_base_probe"
 capture mkdir "`work'"
 global ZB_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_default_base_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZB_REPO}" rev-parse HEAD > "${ZB_WORK}/git_head.txt"
 global ZB_VERSION "`c(stata_version)'"

@@ -42,10 +42,6 @@ local work "`c(tmpdir)'dash_varlabel_probe"
 capture mkdir "`work'"
 global VL_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_varlabel_mlabel_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${VL_REPO}" rev-parse HEAD > "${VL_WORK}/git_head.txt"
 global VL_VERSION "`c(stata_version)'"

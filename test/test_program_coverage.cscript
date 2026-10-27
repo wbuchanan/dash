@@ -80,10 +80,6 @@ if "`_cert_prof'" != "" {
     profiler on
 }
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 // Sets $dash_nobrowser (cscript dropped it) and defines cert_file_has.
 do "cert_helpers.do"
@@ -173,9 +169,9 @@ def _pep_vec(vecs):
     _pc_M.setGlobal("PC_SB_EXPECT", _pc_json.dumps(out))
 
 def _pep_oracle(name, *args):
-    import shlex
+    import shlex, sys
     from sfi import SFIToolkit
-    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'")
+    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable
     _pc_M.setLocal(name, shlex.join([exe] + list(args)))
 
 _pc_sys.path.insert(0, _pc_os.getcwd())

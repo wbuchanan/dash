@@ -457,7 +457,10 @@ class TestThePythonFloorIsOneNumber:
     def test_the_refusals_read_the_constant(self):
         text = _read("dash.ado")
         progs = _ado_programs(text)
-        for name in ("_dash_require_python", "_dash_require_deps"):
+        # Flipped (WP-36 plat:PT-1, M8): _dash_require_python refuses
+        # nothing now (an empty hook), so only _dash_require_deps names the
+        # floor.
+        for name in ("_dash_require_deps",):
             first, last = progs[name]
             body = "\n".join(ln for n, ln in _logical_lines(text)
                              if first < n < last)

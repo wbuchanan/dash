@@ -12,6 +12,13 @@ runner printed ``ALL TESTS PASSED (5 passed, 9 skipped)``.  The replacement
 reads ``c(python_exec)``, which is configuration rather than execution and so
 cannot fail for reasons unrelated to Python being configured.
 
+Under WP-36's ruling M8 (plat:PT-1) nothing decides whether Python is there
+at all: with no Python set, Stata finds one on the first ``python:`` line,
+so no script skips for want of a ``c(python_exec)`` value, and a script on a
+machine with no Python fails where it used to skip.  What stays is the rule
+against concluding "no Python" from running Python: no ``python query``, no
+decision from a bare ``capture python: pass``.
+
 **A line of HTML that ended a Stata string.** ``test_e2e_single.cscript``
 read the generated dashboard line by line and tested each with
 ``strpos(lower("`ln'"), "bokeh")``.  Bokeh's HTML contains ``"`` characters,
@@ -309,12 +316,6 @@ class TestTheChecksReachEveryScript:
     def test_every_script_that_skips_for_python_is_read(self):
         names = {_name(p) for p in _CSCRIPTS
                  if _SKIPS_FOR_PYTHON.search(_read(p))}
-        linked = {"test_custom_scheme.cscript", "test_help_claims_2.cscript",
-                  "test_help_claims_8.cscript", "test_nodraw_honoured.cscript",
-                  "test_option_validation.cscript",
-                  "test_statistical_options.cscript",
-                  "test_suboption_reporting.cscript"}
-        assert linked <= names, sorted(linked - names)
         # 42, and three of WP-24's new scripts: test_mata_library_guard
         # runs no Python.  And WP-27's test_qualifier_in_stata and
         # test_string_values.  WP-28's test_gaps2_truth gates on
@@ -327,7 +328,8 @@ class TestTheChecksReachEveryScript:
         # 52 -> 53: test_wp34_truth gates on c(python_exec) (WP-34 W0)
         # 53 -> 54: test_wp35_truth gates on c(python_exec) (WP-35 W0)
         # 54 -> 55: test_wp36_truth gates on c(python_exec) (WP-36 W0)
-        assert len(names) == 55, f"{len(names)}: {sorted(names)}"
+        # 55 -> 0: WP-36 plat:PT-1 -- no script skips for want of a Python setting (M8)
+        assert len(names) == 0, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -394,25 +396,18 @@ class TestTheAvailabilityGuardIsReliable:
         hit = _ANY_CAPTURED_PY.search(code)
         assert not hit, f"{_RUNNER}: {hit.group(0) if hit else ''}"
 
-    # Only the scripts that can skip for want of Python (46, pinned by
-    # TestTheChecksReachEveryScript): the others were 18 skips of this test.
-    # Either wording: seven scripts say "SKIP: no Python is linked to this
-    # Stata." and were skipped here while this read only "SKIP: Python not
-    # available".
-    @pytest.mark.parametrize(
-        "path", [p for p in _CSCRIPTS if _SKIPS_FOR_PYTHON.search(_read(p))],
-        ids=_name)
-    def test_a_script_that_needs_python_says_so_through_the_setting(self,
-                                                                    path):
-        """A lint over the certification scripts' text, deliberately: a
-        script that can skip for want of Python decides it from
-        c(python_exec), which is configuration -- the no-Python state
-        cannot be produced in a test (see the module docstring)."""
-        src = _read(path)
-        assert "c(python_exec)" in src, (
-            f"{_name(path)} reports Python as unavailable without consulting "
-            f"Stata's Python configuration"
-        )
+    # Flipped (WP-36 plat:PT-1, M8): was
+    # test_a_script_that_needs_python_says_so_through_the_setting,
+    # parametrised over the scripts that could skip for want of Python; none
+    # can now.  Not parametrised, so it never collects an empty set (which a
+    # strict run counts as a skip).
+    def test_no_script_skips_for_want_of_python(self):
+        """The count pin above reads test/*.cscript; this reads the two
+        files outside it, so no future truth script is born with the skip
+        (the template) and cert_svg.do cannot skip for its callers."""
+        for path in (_WP_TEMPLATE, os.path.join(_HERE, "cert_svg.do")):
+            hit = _SKIPS_FOR_PYTHON.search(_read(path))
+            assert not hit, (os.path.basename(path), hit.group(0) if hit else "")
 
 
 class TestNoFileReadMacroIsExpandedInPlainQuotes:
@@ -460,6 +455,11 @@ class TestTheShippedAdoFilesFollowTheSameRule:
 
     Availability is configuration. Running Python to ask whether Python is
     there can fail for reasons that have nothing to do with the answer.
+
+    WP-36 plat:PT-1 (M8): neither file refuses an empty ``c(python_exec)``
+    any more -- Stata finds its own Python on the first ``python:`` line --
+    but each still reads the setting (for the Python it names) and neither
+    runs ``python query`` or decides from a bare ``python: pass``.
     """
 
     @pytest.fixture(params=_ADOS, ids=lambda p: os.path.basename(p))
@@ -1037,7 +1037,8 @@ class TestTheWp29TruthScript:
 
     def test_the_scaffold_is_in_order(self):
         text = _read(_WP29_TRUTH)
-        order = ['cscript "WP-29 truth', "SKIP: Python not available.",
+        # Flipped (WP-36 plat:PT-1, M8): no Python skip gate.
+        order = ['cscript "WP-29 truth', 
                  'do "cert_helpers.do"', 'do "cert_svg.do"', "* ==== S01 ",
                  "local only : env WP29_ONLY", "* ==== end S01 ====",
                  _W29_MARK, "test_wp29_truth: ALL CHECKS PASSED"]
@@ -1162,7 +1163,8 @@ class TestTheWp30TruthScript:
 
     def test_the_scaffold_is_in_order(self):
         text = _read(_WP30_TRUTH)
-        order = ['cscript "WP-30 truth', "SKIP: Python not available.",
+        # Flipped (WP-36 plat:PT-1, M8): no Python skip gate.
+        order = ['cscript "WP-30 truth', 
                  'do "cert_helpers.do"', 'do "cert_svg.do"',
                  "// ---- parts: begin", "local w30_sh : environment "
                  "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
@@ -1304,7 +1306,8 @@ class TestTheWp31TruthScript:
 
     def test_the_scaffold_is_in_order(self):
         text = _read(_WP31_TRUTH)
-        order = ['cscript "WP-31 truth', "SKIP: Python not available.",
+        # Flipped (WP-36 plat:PT-1, M8): no Python skip gate.
+        order = ['cscript "WP-31 truth', 
                  'do "cert_helpers.do"', 'do "cert_svg.do"',
                  "// ---- parts: begin", "local w31_sh : environment "
                  "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
@@ -1383,7 +1386,8 @@ class TestTheWpTruthScripts:
     def test_the_scaffold_is_in_order(self, path):
         wp = _wp_of(path)
         text = _read(path)
-        order = ['cscript "WP-%s truth' % wp, "SKIP: Python not available.",
+        # Flipped (WP-36 plat:PT-1, M8): no Python skip gate.
+        order = ['cscript "WP-%s truth' % wp, 
                  'do "cert_helpers.do"', 'do "cert_svg.do"',
                  "// ---- parts: begin",
                  "local w%s_sh : environment DASH_CERT_SHARD" % wp,
@@ -1475,6 +1479,7 @@ class TestTheWpTruthScripts:
                       "    S10 300\n")
         assert u != t
         assert _head_and_tail(u) == _head_and_tail(t)
-        u2 = t.replace("SKIP: Python not available.", "SKIP: x.")
+        # WP-36 plat:PT-1: the template's head no longer holds a skip gate.
+        u2 = t.replace('do "cert_helpers.do"', 'do "x.do"')
         assert _head_and_tail(u2) != _head_and_tail(t)
         assert len(_SECS.findall(t)) == 1

@@ -85,25 +85,11 @@ program define dash_setup, rclass
     display as text "{hline 60}"
     display as text "  Stata .............. {res}OK{txt} (version `c(stata_version)')"
 
-    // Availability is CONFIGURATION, so it is read from configuration.
-    // `capture python query' ran Python to ask whether Python was there,
-    // and the certification suite has already paid for that mistake: the
-    // first python call of a session returns a nonzero rc under the runner
-    // on a machine where dash renders Bokeh output seconds later, so nine
-    // scripts skipped and the runner printed ALL TESTS PASSED.  The
-    // version is read below, from sys.version, once Python is known to be
-    // configured.
-    if `"`c(python_exec)'"' == "" {
-        display as error "Python is not available to Stata."
-        display as error "Please install Python `c_pymin' or later and link it to Stata:"
-        display as error "  help python"
-        local n_fail = `n_fail' + 1
-        local fail_items `"`fail_items' Python (not linked to Stata)"'
-        _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
-            items(`"`fail_items'"') warnitems(`"`warn_items'"') ///
-                installed(`"`installed_now'"')
-        exit 198
-    }
+    // WP-36 plat:PT-1 (M8, C5): no pre-check of Python.  With none set
+    // (c(python_exec) empty), Stata finds a Python itself on the first
+    // python: line (help python); _dash_setup_pystart runs the Python
+    // dash_setup checks, the one Stata runs.  Nothing here runs Python to
+    // ask whether Python is there (`capture python query').
 
     // Retrieve Python version string and compare it to the minimum.
     //
@@ -114,9 +100,10 @@ program define dash_setup, rclass
     // a message about neither Python nor dash.
     _dash_setup_pystart
     local pyver `"`r(pyver)'"'
+    local pyexe `"`r(pyexe)'"'
     if `"`pyver'"' == "" {
         display as error "  Python ............. could not be started:"
-        mata: display("    " + c("python_exec"), 1)
+        mata: display(c("python_exec") != "" ? "    " + c("python_exec") : "    (no Python is set; Stata could not start one it found by itself)", 1)
         if strpos(c(machine_type), "Mac") {
             mata: display("    Stata reports this computer as " + c("machine_type") + ".", 1)
             display as error "    On a Mac, Stata and Python must be built for the same processor:"
@@ -134,6 +121,11 @@ program define dash_setup, rclass
     local pyok = r(ok)
     if `pyok' == 1 {
         display as text "  Python ............. {res}OK{txt} (version `pyver')"
+        // With no Python set, the one Stata found (WP-36 plat:PT-1).
+        mata: st_local("pyfound", c("python_exec") == "" ? "1" : "0")
+        if "`pyfound'" == "1" {
+            mata: display("    the Python Stata found: " + st_local("pyexe"), 1)
+        }
     }
     else if `pyok' == 0 {
         display as error "  Python ............. version `pyver' is below the minimum `c_pymin'."
@@ -746,24 +738,29 @@ program define _dash_pyver_ok, rclass
 end
 
 /*
-   _dash_setup_pystart  — start the linked Python and read its version
+   _dash_setup_pystart  — start the Python Stata runs and read its version
    (WP-30 P1.32)
 
    Returns r(pyver), sys.version's first word, or "" when Python could not
-   be started, and r(tries), 1 or 2.  The first python call of a session
-   can fail where Python works, so a line that set nothing is run once
-   more; the value decides, never the return code.
+   be started, r(pyexe), sys.executable (the Python Stata runs: the one set,
+   or with none set the one Stata found; WP-36 plat:PT-1), and r(tries), 1
+   or 2.  The first python call of a session can fail where Python works,
+   so a line that set nothing is run once more, noisily, so that a Python
+   that still cannot start is shown in Stata's own words; the value
+   decides, never the return code.
 */
 program define _dash_setup_pystart, rclass
     version 19
     local pyver ""
-    capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+    local pyexe ""
+    capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0]); Macro.setLocal("pyexe", sys.executable)
     local tries 1
     if `"`pyver'"' == "" {
-        capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+        capture noisily python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0]); Macro.setLocal("pyexe", sys.executable)
         local tries 2
     }
     return local pyver `"`pyver'"'
+    return local pyexe `"`pyexe'"'
     return scalar tries = `tries'
 end
 

@@ -34,18 +34,13 @@ if "`_cert_prof'" != "" {
 // nonzero rc inside the runner even though the very same session renders
 // Bokeh output through `dash build' moments later, and it made 9 of the 14
 // scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
-// PASSED.  c(python_exec) is set by Stata's own Python configuration and
-// reads without executing anything, so it cannot fail for reasons unrelated
-// to Python being present.
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
+// PASSED.  Nothing decides whether Python is there (WP-36 plat:PT-1, M8):
+// with no Python set, Stata finds one on the first python: line.
 
 // Whether bokeh is importable can only be answered by importing it, so
 // this probe does run Python -- but the FIRST python call of a session
 // returns a nonzero rc under the runner for reasons that have nothing to do
-// with the import (see the c(python_exec) note above).  Spend that failure
+// with the import (see the note above).  Spend that failure
 // on a throwaway call, then ask the real question, then ask it once more.
 capture python: pass
 capture python: import bokeh

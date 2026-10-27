@@ -40,10 +40,6 @@ if "`_cert_prof'" != "" {
 // cscript drops every global, the runner's $dash_nobrowser with it.
 global dash_nobrowser 1
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 qui do "../dash_parse.mata"
 qui do "../dash.ado"

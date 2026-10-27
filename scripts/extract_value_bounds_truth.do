@@ -44,10 +44,6 @@ local work "`c(tmpdir)'dash_value_bounds_probe"
 capture mkdir "`work'"
 global ZV_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_value_bounds_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZV_REPO}" rev-parse HEAD > "${ZV_WORK}/git_head.txt"
 global ZV_VERSION "`c(stata_version)'"

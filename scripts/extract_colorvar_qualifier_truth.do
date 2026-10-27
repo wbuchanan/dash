@@ -58,10 +58,6 @@ local scratch "`c(tmpdir)'dash_colorvar_qualifier_probe"
 capture mkdir "`scratch'"
 global ZQ_WORK "`scratch'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_colorvar_qualifier_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 program define zq_data
     sysuse auto, clear

@@ -43,10 +43,6 @@ if "`_cert_prof'" != "" {
 }
 set more off
 
-if `"`c(python_exec)'"' == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 do "cert_helpers.do"
 quietly do "cert_svg.do"

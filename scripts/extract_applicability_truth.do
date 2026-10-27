@@ -46,10 +46,6 @@ local work "`c(tmpdir)'dash_applicability_probe"
 capture mkdir "`work'"
 global ZA_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_applicability_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZA_REPO}" rev-parse HEAD > "${ZA_WORK}/git_head.txt"
 global ZA_VERSION "`c(stata_version)'"

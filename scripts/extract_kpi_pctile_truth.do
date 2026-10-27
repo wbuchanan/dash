@@ -55,10 +55,6 @@ local work "`c(tmpdir)'dash_kpi_pctile_probe"
 capture mkdir "`work'"
 global ZP_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_kpi_pctile_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZP_REPO}" rev-parse HEAD > "${ZP_WORK}/git_head.txt"
 global ZP_VERSION "`c(stata_version)'"

@@ -3,7 +3,7 @@
 *!
 *! Usage:  do test/test_setup_version_gate.cscript
 *!
-*! Requires: Python configured (c(python_exec)); bokeh installed.
+*! Requires: a Python Stata runs (set, or found by Stata); bokeh installed.
 *! Version: 1.0.0  19sep2026
 *!
 *! WHY THIS EXISTS
@@ -35,10 +35,6 @@ if "`_cert_prof'" != "" {
     profiler on
 }
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 capture python: pass
 capture python: import bokeh

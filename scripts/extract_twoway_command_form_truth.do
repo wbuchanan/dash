@@ -50,10 +50,6 @@ global CF_OUT "${CF_REPO}/test/fixtures/twoway_command_form_truth.json"
 adopath ++ "${CF_REPO}"
 global dash_nobrowser 1
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_twoway_command_form_truth.do needs Python (c(python_exec) is empty)"
-    exit 198
-}
 
 tempfile cfbase
 local work "`cfbase'_cf"

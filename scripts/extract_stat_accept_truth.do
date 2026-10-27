@@ -52,10 +52,6 @@ local work "`c(tmpdir)'dash_stat_accept_probe"
 capture mkdir "`work'"
 global ZS_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_stat_accept_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZS_REPO}" rev-parse HEAD > "${ZS_WORK}/git_head.txt"
 global ZS_VERSION "`c(stata_version)'"

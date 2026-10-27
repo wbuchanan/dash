@@ -52,10 +52,6 @@ global dash_nobrowser 1
 version 19
 set graphics off
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_scheme_layer_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 * The work directory: tempfile-named, under c(tmpdir).
 tempfile _sk_name

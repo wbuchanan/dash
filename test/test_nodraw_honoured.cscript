@@ -42,10 +42,6 @@ if "`_cert_prof'" != "" {
 set more off
 
 // The immediate renders need the render pipeline.
-if `"`c(python_exec)'"' == "" {
-    display as text "SKIP: no Python is linked to this Stata."
-    exit 222
-}
 
 do "cert_helpers.do"
 qui do "../dash_parse.mata"

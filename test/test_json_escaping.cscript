@@ -91,10 +91,6 @@ if "`_cert_prof'" != "" {
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
 global dash_nobrowser 1
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 // WP-28 B7 (jg46l below) reads twoway's own SVG for the second axis's
 // title through the shared helper (S02); loaded here, before any `cd'.

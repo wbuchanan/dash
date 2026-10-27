@@ -6,7 +6,7 @@
 *!
 *! Usage:  do test/test_echo_text.cscript
 *!
-*! Requires: Python configured (c(python_exec)) for ECH-09 only.
+*! Requires: a Python Stata runs (set, or found by Stata) for ECH-09 only.
 *! Version: 1.0.0  23sep2026
 *!
 *! WHY THIS EXISTS
@@ -323,10 +323,6 @@ display "ECH-11 PASS: _dash_layout_refusal refuses what dash build cannot draw a
 // the automatic layout by its own.  If they disagreed, one side would
 // refuse what the other draws.
 // ================================================================
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available (ECH-09 needs dash_render.py)."
-    exit 222
-}
 // The first python call of a session fails under the runner whatever it
 // is (test_cscript_hygiene.py), so the warm-up is spent first and each
 // call that matters is retried once.

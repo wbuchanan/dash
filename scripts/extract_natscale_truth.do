@@ -44,10 +44,6 @@ if `_zn_rc' | _rc {
     display as error `"extract_natscale_truth.do: `_zn_show' is not a dash tree; set DASH_REPO to the repository root"'
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_natscale_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 global ZN_REPO "`repo'"
 global ZN_OUT "${ZN_REPO}/test/fixtures/natscale_truth.json"
 global dash_nobrowser 1

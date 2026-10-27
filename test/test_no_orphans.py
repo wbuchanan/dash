@@ -358,7 +358,9 @@ class TestTheReading:
         for edge in (
                 ("dash", "_dash_require_mata"),        # a bare command
                 ("dash", "_dash_plot"),                # macval() arguments
-                ("_dash_require_python", "_dash_python_ok"),
+                # Flipped (WP-36 plat:PT-1): _dash_require_python is an
+                # empty hook; _dash_python_failed reads the setting.
+                ("_dash_python_failed", "_dash_python_ok"),
                 # `if cond prog' and `else prog' (_dash_process_segment)
                 ("_dash_process_segment", "_dash_plot_cap_refuse"),
                 # a Mata call on a mata: line, inside st_local()

@@ -44,10 +44,6 @@ local work "`c(tmpdir)'dash_axisn_alt_probe"
 capture mkdir "`work'"
 global AA_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_axisn_alt_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${AA_REPO}" rev-parse HEAD > "${AA_WORK}/git_head.txt"
 global AA_VERSION "`c(stata_version)'"

@@ -45,10 +45,6 @@ local work "`c(tmpdir)'dash_graph_refusal_probe"
 capture mkdir "`work'"
 global ZG_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_graph_refusal_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZG_REPO}" rev-parse HEAD > "${ZG_WORK}/git_head.txt"
 global ZG_VERSION "`c(stata_version)'"

@@ -41,10 +41,6 @@ adopath ++ "${W29_REPO}/"
 global dash_nobrowser 1
 set more off
 set graphics off
-if "`c(python_exec)'" == "" {
-    display as error "python is not available (c(python_exec) is empty)"
-    exit 222
-}
 
 tempfile LC_GITREV
 capture shell cd "${W29_REPO}" && git rev-parse HEAD > "`LC_GITREV'"

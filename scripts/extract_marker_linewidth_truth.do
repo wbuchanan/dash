@@ -50,10 +50,6 @@ local work "`c(tmpdir)'dash_marker_linewidth_probe"
 capture mkdir "`work'"
 global ZM_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_marker_linewidth_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZM_REPO}" rev-parse HEAD > "${ZM_WORK}/git_head.txt"
 global ZM_VERSION "`c(stata_version)'"

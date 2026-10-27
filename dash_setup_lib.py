@@ -827,10 +827,15 @@ def below_floor_message(exe, pymin, kind):
 # ---------------------------------------------------------------------------
 
 def _linked():
-    """(resolved c(python_exec) or None, c(python_exec) as Stata holds it)."""
+    """(resolved interpreter or None, c(python_exec) as Stata holds it).
+    With no Python set, the one Stata found and is running: sys.executable
+    (WP-36 plat:PT-1)."""
     import sfi
+    import sys
     raw = sfi.SFIToolkit.macroExpand("\x60c(python_exec)'")
     pwd = sfi.SFIToolkit.macroExpand("\x60c(pwd)'")
+    if not raw:
+        return (sys.executable or None), raw
     return resolve_exe(raw, pwd), raw
 
 

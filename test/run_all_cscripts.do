@@ -253,14 +253,8 @@ local n_skip = 0
 // succession, on the machine running the tests.
 global dash_nobrowser 1
 
-// A machine without Python still runs the parser-only scripts; the
-// Python-dependent ones detect it for themselves through c(python_exec).
-// Do NOT probe here with `capture python: pass' -- measured, that reports a
-// nonzero rc in this context on a machine where Python works.
-if "`c(python_exec)'" == "" {
-    display as error "NOTE: Python is not configured; "                 ///
-                     "the Python-dependent scripts will skip."
-}
+// WP-36 plat:PT-1 (M8): no script decides whether Python is there; with no
+// Python set, Stata finds one on the first python: line.
 
 // Scripts run under -capture noisily-, not bare -capture-.  Quiet capture
 // suppresses everything the scripts display, which hid the SKIP: messages

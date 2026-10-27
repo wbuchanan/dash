@@ -43,10 +43,6 @@ if "`_cert_prof'" != "" {
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 qui sysuse auto, clear
 

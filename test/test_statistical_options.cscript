@@ -540,7 +540,6 @@ drop größe
 capture dash clear
 _so_tally "UN-01" `bad' "dash kpi mean(größe) equals summarize's mean; a 33-character Unicode name is refused, syntax is stat(varname)"
 
-if `"`c(python_exec)'"' != "" {
     // ------------------------------------------------------------
     // UN-02/UN-03 -- filter() accepts a Unicode variable name and
     // builds its widget in the saved page (G5, WP-28), where
@@ -631,11 +630,6 @@ end
     capture dash clear
     drop größe
     _so_tally "UN-03" `bad' "filter(größe, type(dropdown)) builds a Select titled größe"
-}
-else {
-    display as text "UN-02 SKIP: no Python is linked to this Stata"
-    display as text "UN-03 SKIP: no Python is linked to this Stata"
-}
 
 // Flipped (WP-31 C9): the expression sizes the markers, as in twoway.
 _so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "" `""wexp":"price+1""'
@@ -873,7 +867,6 @@ local bad = !`: list posof "price" in _sov'
 if `bad' display as error `"SO-73 FAIL: _dash_extract_vars listed `_sov' for a weighted lfit, without price"'
 _so_tally SO-73 `bad' `"_dash_extract_vars lists the weight variable: `_sov'"'
 
-if `"`c(python_exec)'"' != "" {
     local so_html "`c(tmpdir)'so74_weighted.html"
     local so_ctrl "`c(tmpdir)'so74_unweighted.html"
     capture erase "`so_html'"
@@ -911,8 +904,6 @@ if `"`c(python_exec)'"' != "" {
         capture erase "`so_ctrl'"
     }
     _so_tally SO-74 `bad' "a weighted immediate render carries the weight column, its unweighted twin does not"
-}
-else display as text "SO-74 SKIP: no Python is linked to this Stata"
 
 // ================================================================
 // WP-29 P0.9: lpolyci's pwidth(), var() and level() (LB-11..LB-20).

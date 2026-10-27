@@ -50,10 +50,6 @@ local work "`c(tmpdir)'dash_weight_operator_probe"
 capture mkdir "`work'"
 global ZW_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_weight_operator_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZW_REPO}" rev-parse HEAD > "${ZW_WORK}/git_head.txt"
 global ZW_VERSION "`c(stata_version)'"

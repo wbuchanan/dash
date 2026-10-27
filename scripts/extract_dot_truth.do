@@ -50,10 +50,6 @@ local work "`c(tmpdir)'dash_dot_probe"
 capture mkdir "`work'"
 global ZD_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_dot_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZD_REPO}" rev-parse HEAD > "${ZD_WORK}/git_head.txt"
 global ZD_VERSION "`c(stata_version)'"

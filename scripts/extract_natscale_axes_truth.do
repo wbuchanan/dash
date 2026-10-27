@@ -54,10 +54,6 @@ if `_za_rc' | _rc {
     display as error `"extract_natscale_axes_truth.do: `_za_show' is not a dash tree; set DASH_REPO to the repository root"'
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_natscale_axes_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 global ZA_REPO "`repo'"
 global ZA_OUT "${ZA_REPO}/test/fixtures/natscale_axes_truth.json"
 global dash_nobrowser 1

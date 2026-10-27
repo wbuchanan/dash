@@ -28,10 +28,6 @@ if "`_cert_prof'" != "" {
     profiler on
 }
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 qui sysuse auto, clear
 global dash_nobrowser 1

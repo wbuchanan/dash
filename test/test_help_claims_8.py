@@ -1771,7 +1771,8 @@ class TestDashSetupHelpMatchesTheAdo:
 
     def test_availability_is_the_setting_not_python_query(self):
         """The help said setup verified Python "via python query"; the ado
-        reads c(python_exec) and never runs python query.
+        never runs python query, and (WP-36 plat:PT-1, M8) does not refuse an
+        empty c(python_exec) either.
 
         A structural guard over dash_setup.ado's text, deliberately:
         availability is decided from configuration, and the no-Python state
@@ -1780,7 +1781,10 @@ class TestDashSetupHelpMatchesTheAdo:
         help_ = _flat(_read(_SETUP_HELP))
         code = "\n".join(ln.split("//", 1)[0]
                          for ln in _read(_SETUP_ADO).splitlines())
-        assert 'if `"`c(python_exec)\'"\' == ""' in code
+        # Flipped (WP-36 plat:PT-1, M8): dash_setup no longer stops on an
+        # empty setting -- Stata finds its own Python -- so the gate is gone;
+        # every python query assertion below stays.
+        assert 'if `"`c(python_exec)\'"\' == ""' not in code
         assert not re.search(r"^\s*(capture\s+)?python query", code, re.M)
         # The pattern above sees a bare or a capture'd `python query' at a
         # line's start.  Stata runs it under any prefix and takes `query'

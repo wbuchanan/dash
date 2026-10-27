@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'plat:PT-1': 'dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal',
     'plat:PT-5': 'Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh',
     'plat:PT-4': "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help",
     'plat:PT-2': 'The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later',

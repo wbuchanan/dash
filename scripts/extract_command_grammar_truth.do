@@ -48,10 +48,6 @@ if `_zg_rc' | _rc {
 global ZG_REPO "`repo'"
 global ZG_OUT "${ZG_REPO}/test/fixtures/command_grammar_truth.json"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_command_grammar_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local work "`c(tmpdir)'dash_grammar_probe"
 capture mkdir "`work'"

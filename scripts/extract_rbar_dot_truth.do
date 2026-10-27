@@ -54,10 +54,6 @@ local work "`c(tmpdir)'dash_rbar_dot_probe"
 capture mkdir "`work'"
 global ZR_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_rbar_dot_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZR_REPO}" rev-parse HEAD > "${ZR_WORK}/git_head.txt"
 global ZR_VERSION "`c(stata_version)'"

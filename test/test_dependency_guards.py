@@ -754,11 +754,20 @@ class TestTheGuardOrder:
     def test_the_guard_decides_from_values(self):
         body = _body("_dash_require_deps")
         py = [line for line in body if "python:" in line]
-        assert py and all(line.startswith("capture python:") for line in py), py
+        # Flipped (WP-36 plat:PT-1, M8): the version probe's retry is
+        # `capture noisily python:', so a Python that cannot start is shown
+        # in Stata's own words; every other python: line stays captured.
+        noisy = [line for line in py if line.startswith("capture noisily python:")]
+        assert len(noisy) == 1 and '"_dd_v"' in noisy[0], py
+        assert py and all(line.startswith("capture python:")
+                          for line in py if line not in noisy), py
         text = "\n".join(body)
         for name in ("_dd_v", "_dd_miss", "_dd_chk"):
             assert 'setLocal("%s"' % name in text, name
-        assert not _re_s25.search(r"\b_rc\b", text), text
+        # _rc is read once, only to hand Stata's code on; the decision is
+        # still made from _dd_v.
+        rc = [line for line in body if _re_s25.search(r"\b_rc\b", line)]
+        assert rc == ["local _dd_prc = _rc"], rc
 
 
 class TestTheBlockHelper:

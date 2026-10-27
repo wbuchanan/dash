@@ -3556,7 +3556,7 @@ else {
         local bad = 1
     }
 }
-if `"`c(python_exec)'"' != "" & !`bad' {
+if !`bad' {
     local h43 "`c(tmpdir)'dash_lb43.html"
     capture erase "`h43'"
     capture noisily dash build, saving("`h43'") replace nobrowser
@@ -3782,7 +3782,6 @@ program define _tso_spec
     _dash_prepare_spec, specpath("`c(tmpdir)'`stem'_s.json") datapath("`c(tmpdir)'`stem'_d.json")
 end
 
-if `"`c(python_exec)'"' != "" {
     quietly graph drop _all
     local tsotmp "`c(tmpdir)'"
     python: import json as _tj, sfi as _ts
@@ -4038,7 +4037,6 @@ if `"`c(python_exec)'"' != "" {
         capture erase "`c(tmpdir)'`f'_d.json"
     }
     capture erase "`tsopg'"
-}
 
 // ================================================================
 // Q3509 (WP-35 35-09): the command grammar's refusals, each dash's rc and

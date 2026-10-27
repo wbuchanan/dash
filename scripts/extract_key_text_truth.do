@@ -50,10 +50,6 @@ global KT_OUT  "${KT_REPO}/test/fixtures/key_text_truth.json"
 adopath ++ "${KT_REPO}/"
 global dash_nobrowser 1
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_key_text_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local scratch "`c(tmpdir)'dash_key_text_probe"
 capture mkdir "`scratch'"

@@ -48,6 +48,7 @@ COVERAGE = {
                  "test_clear_registry.cscript:CLR-01"),
         "_dash_python_ok": ("test_env_guards.cscript:ENV-01",
                             "test_env_guards.cscript:ENV-03"),
+        "_dash_python_failed": ("test_env_guards.cscript:Q3601-6", "test_env_guards.cscript:Q3601-7"),
         "_dash_require_python": ("test_env_guards.cscript:ENV-06",
                                  "test_env_guards.cscript:ENV-05"),
         "_dash_require_mata": ("test_env_guards.cscript:ENV-10",
@@ -514,6 +515,7 @@ COVERAGE = {
                             "test_echo_text.cscript:ECH-02"),
         "_dash_say": ("test_echo_text.cscript:ECH-03",
                       "test_echo_text.cscript:ECH-04"),
+        "_dash_pyname": ("test_env_guards.cscript:Q3601-8",),
         "_dash_is_digits": ("test_echo_text.cscript:ECH-05",),
         "_dash_ascii_in": ("test_echo_text.cscript:ECH-06",),
         # e2e: what a percentile is stored as, and every refusal.

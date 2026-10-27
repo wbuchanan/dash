@@ -56,10 +56,6 @@ local work "`c(tmpdir)'dash_gx_probe"
 capture mkdir "`work'"
 global GX_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_graph_export_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${GX_REPO}" rev-parse HEAD > "${GX_WORK}/git_head.txt"
 global GX_VERSION "`c(stata_version)'"

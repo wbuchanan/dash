@@ -72,10 +72,6 @@ if "`_cert_prof'" != "" {
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
 global dash_nobrowser 1
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 do "../dash_parse.mata"
 do "../dash.ado"

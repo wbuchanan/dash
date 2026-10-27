@@ -34,10 +34,8 @@
 *! wanted, through `real()' -- "." is Stata's own missing-value spelling,
 *! so a Python "." reads back as a Stata missing with no extra work.
 *!
-*! The Python availability gate lives HERE, so a script that loads only
-*! this file gains no "SKIP ... Python" line of its own (a script that also
-*! needs Python for something else supplies its own gate before this one,
-*! or shares this one -- test_gaps2_truth.cscript does the latter).  A
+*! No Python availability gate (WP-36 plat:PT-1, M8): with no Python set,
+*! Stata finds one on the first python: line below.  A
 *! `python:' block cannot sit inside `program define' (its `end' ends the
 *! program), so the four python-backed programs below are one-line calls
 *! into functions defined once, here, at load time.
@@ -66,10 +64,6 @@ if _rc {
     exit 601
 }
 
-if `"`c(python_exec)'"' == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 python:
 import json

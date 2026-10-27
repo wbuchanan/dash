@@ -49,10 +49,6 @@ local work "`c(tmpdir)'dash_kpi_weights_probe"
 capture mkdir "`work'"
 global KW_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_kpi_weights_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${KW_REPO}" rev-parse HEAD > "${KW_WORK}/git_head.txt"
 global KW_VERSION "`c(stata_version)'"

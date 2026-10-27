@@ -60,11 +60,6 @@ if `_zr_rc' | _rc {
 adopath ++ "`repo'/"
 global dash_nobrowser 1
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_corpus_guard_truth.do: Python is not available"
-    exit 198
-}
-
 * A fresh folder Stata has not handed out before.
 tempfile cgbase
 local work "`cgbase'_cg"

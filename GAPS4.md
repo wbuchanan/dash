@@ -375,7 +375,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
 - **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
 - **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit 2e22ede.
-- **plat:PT-1 Tracked:** Open (WP-36 section 36-01).
+- **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal", commit pending.
 - **plat:PT-5 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-4 Tracked:** Open (WP-36 section 36-03).
 - **plat:PT-2 Tracked:** Open (WP-36 section 36-04).

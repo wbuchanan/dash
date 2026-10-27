@@ -39,10 +39,6 @@ if "`_cert_prof'" != "" {
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 // cert_helpers.do sets $dash_nobrowser, which cscript dropped.
 do "cert_helpers.do"

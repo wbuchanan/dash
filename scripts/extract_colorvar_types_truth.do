@@ -66,10 +66,6 @@ local work "`c(tmpdir)'dash_colorvar_types_probe"
 capture mkdir "`work'"
 global ZC_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_colorvar_types_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZC_REPO}" rev-parse HEAD > "${ZC_WORK}/git_head.txt"
 global ZC_VERSION "`c(stata_version)'"

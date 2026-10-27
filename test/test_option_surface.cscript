@@ -164,13 +164,8 @@ if "`_cert_prof'" != "" {
 // nonzero rc inside the runner even though the very same session renders
 // Bokeh output through `dash build' moments later, and it made 9 of the 14
 // scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
-// PASSED.  c(python_exec) is set by Stata's own Python configuration and
-// reads without executing anything, so it cannot fail for reasons unrelated
-// to Python being present.
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
+// PASSED.  Nothing decides whether Python is there (WP-36 plat:PT-1, M8):
+// with no Python set, Stata finds one on the first python: line.
 
 // ----------------------------------------------------------------
 // Locate the repository root and the fixtures.
@@ -968,7 +963,6 @@ else display as text "O2-09 PASS: saving() on a named graph is named once and wr
 // O2-10 -- the immediate route still honours saving() and is not told
 // otherwise: the guard against reporting saving() from a static list.
 // ================================================================
-if `"`c(python_exec)'"' != "" {
     local o2_imm "`c(tmpdir)'o2_imm_saving.html"
     capture erase "`o2_imm'"
     tempfile immlg
@@ -998,8 +992,6 @@ if `"`c(python_exec)'"' != "" {
         local faillist `"`faillist' O2-10"'
     }
     else display as text "O2-10 PASS: the immediate render honours saving() with no note"
-}
-else display as text "O2-10 SKIP: the immediate render needs Python"
 
 // ================================================================
 // AC-13.1 -- a weight on a glyph layer is accepted and never named.

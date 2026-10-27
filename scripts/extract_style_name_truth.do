@@ -53,10 +53,6 @@ set linesize 255
 version 19
 set graphics off
 local entry_scheme "`c(scheme)'"
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_style_name_truth.do: python is not set up (c(python_exec) is empty)"
-    exit 601
-}
 local part : environment OS_PART
 timer clear 36
 timer on 36

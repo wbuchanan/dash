@@ -45,10 +45,6 @@ local work "`c(tmpdir)'dash_arrowhead_probe"
 capture mkdir "`work'"
 global ZH_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_arrowhead_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZH_REPO}" rev-parse HEAD > "${ZH_WORK}/git_head.txt"
 global ZH_VERSION "`c(stata_version)'"

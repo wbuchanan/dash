@@ -82,10 +82,6 @@ qui do "../dash.ado"
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 capture python: pass
 capture python: import bokeh
 if _rc != 0 capture python: import bokeh

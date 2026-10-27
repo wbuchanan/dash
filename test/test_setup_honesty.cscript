@@ -84,10 +84,6 @@ if "`_cert_prof'" != "" {
     profiler on
 }
 
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 qui do "../dash_setup.ado"
 // cert_log_has, for HON-16/17's captured log: it re-joins the lines a log
@@ -529,7 +525,7 @@ _hon_has "`h20log'" "(below minimum 3.8)" h20below
 // Q27: the upgrade line names the interpreter Stata is linked to, never
 // a bare `python'.  WP-29 P0.19: quoted for the shell (the shlex oracle).
 // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
-python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
+python: import shlex, sfi, sys; sfi.Macro.setLocal("h20wantcmd", shlex.join([(sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h20log'" `"`h20wantcmd'"' h20cmd
 _hon_has "`h20log'" "bokeh 2.4 (needs 3.8)" h20unmet
 _hon_has "`h20log'" "All dependencies are satisfied" h20ok
@@ -843,7 +839,7 @@ assert `h29m' == 1
 assert `h29rc' == 198
 _hon_has "`h29log'" "3.7.3 (below minimum 3.8)" h29below
 // Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
-python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
+python: import shlex, sfi, sys; sfi.Macro.setLocal("h29wantcmd", shlex.join([(sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h29log'" `"`h29wantcmd'"' h29cmd
 _hon_has "`h29log'" "Unmet:  bokeh 3.7.3 (needs 3.8)" h29unmet
 _hon_has "`h29log'" "All dependencies are satisfied" h29ok
@@ -894,7 +890,7 @@ local h50log "`r(log)'"
 if `h50m' != 1 {
     mata: printf("{err}HON-50: %s\n", st_global("HON_SB_WHY"))
 }
-python: import shlex, sfi; sfi.Macro.setLocal("h50wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
+python: import shlex, sfi, sys; sfi.Macro.setLocal("h50wantcmd", shlex.join([(sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 local h50s ""
 foreach nd in "3.10.0 (outside the verified range: 3.8 or later, before 3.10)" "with 1 warning(s)" "Warned:  bokeh 3.10.0 (outside the verified range)" `"`h50wantcmd'"' {
     _hon_has "`h50log'" `"`nd'"' _h50
@@ -959,7 +955,7 @@ def _pep19_probe():
     m = sys.modules["_dash_setup_lib"]
     with open("fixtures/pip_refusals.json", encoding="utf-8") as fh:
         hexb = json.load(fh)["externally_managed"]["stderr"].encode("utf-8").hex()
-    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'")
+    exe = SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable
     fake = [exe, "-c", "import sys; sys.stderr.buffer.write(bytes.fromhex(%r)); sys.exit(1)" % hexb]
     control = "ok"
     try:
@@ -1008,7 +1004,7 @@ local p18 "`c(tmpdir)'pep18 venv"
 python: import shutil, sfi; shutil.rmtree(sfi.Macro.getLocal("p18"), True)
 python: import os; _pep_pni = os.environ.get("PIP_NO_INDEX"); os.environ["PIP_NO_INDEX"] = "1"
 capture noisily {
-    python: import os, subprocess, sysconfig, sfi; _pep_p = sfi.Macro.getLocal("p18"); _pep_e = sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"); _pep_r = subprocess.run([_pep_e, "-m", "venv", _pep_p], capture_output=True); _pep_l = subprocess.run([os.path.join(_pep_p, "bin", "python"), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"], capture_output=True, text=True).stdout.strip(); open(os.path.join(_pep_l, "dash_base.pth"), "w").write(sysconfig.get_paths()["purelib"] + chr(10)); sfi.Macro.setLocal("mk18", str(_pep_r.returncode)); sfi.Macro.setLocal("py18", os.path.join(os.path.realpath(_pep_p), "bin", "python"))
+    python: import os, subprocess, sys, sysconfig, sfi; _pep_p = sfi.Macro.getLocal("p18"); _pep_e = (sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'") or sys.executable); _pep_r = subprocess.run([_pep_e, "-m", "venv", _pep_p], capture_output=True); _pep_l = subprocess.run([os.path.join(_pep_p, "bin", "python"), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"], capture_output=True, text=True).stdout.strip(); open(os.path.join(_pep_l, "dash_base.pth"), "w").write(sysconfig.get_paths()["purelib"] + chr(10)); sfi.Macro.setLocal("mk18", str(_pep_r.returncode)); sfi.Macro.setLocal("py18", os.path.join(os.path.realpath(_pep_p), "bin", "python"))
     assert "`mk18'" == "0"
     local lg "`c(tmpdir)'dash_pep18.log"
     capture erase "`lg'"

@@ -46,10 +46,6 @@ local work "`c(tmpdir)'dash_tabs_legend_probe"
 capture mkdir "`work'"
 global ZT_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_tabs_legend_edges_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZT_REPO}" rev-parse HEAD > "${ZT_WORK}/git_head.txt"
 global ZT_VERSION "`c(stata_version)'"

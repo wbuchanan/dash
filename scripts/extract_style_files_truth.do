@@ -45,10 +45,6 @@ set linesize 255
 version 19
 set graphics off
 local entry_scheme "`c(scheme)'"
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_style_files_truth.do: python is not set up (c(python_exec) is empty)"
-    exit 601
-}
 local stata_version = c(stata_version)
 local born_date "`c(born_date)'"
 tempfile gh

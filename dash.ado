@@ -272,22 +272,15 @@ end
 // mode defaults to "standalone" if omitted.
 // ================================================================
 // ================================================================
-// _dash_python_ok  — is Python configured?
+// _dash_python_ok  — is a Python set?
 // ================================================================
-// A pure function of its argument, so the failing state can be reached from
-// a certification script.  `c()' is read-only and `set python_exec' refuses
-// a path that does not exist -- measured, r(601) -- so a machine that HAS
-// Python cannot be made to look like one that has not, except by asking the
-// question this way.
-//
-// The probe is `c(python_exec)', which is CONFIGURATION rather than
-// execution.  `capture python query' and `capture python: pass' both run
-// Python, and the certification suite already learned what that costs:
-// measured, the first python call of a session returns a nonzero rc under
-// the runner on a machine where dash renders Bokeh output seconds later, so
-// nine scripts skipped and the runner printed ALL TESTS PASSED.
-// test_cscript_hygiene.py has enforced the rule for .cscript files since;
-// it now covers dash.ado and dash_setup.ado too.
+// A pure function of its argument: whether c(python_exec) names a Python
+// (`python set exec').  It decides nothing (WP-36 plat:PT-1, M8, C5): with
+// none set, Stata finds a Python itself on the first python: line (help
+// python), so an empty value is not a refusal.  It chooses the wording of
+// _dash_python_failed only.  Nothing in dash runs Python to ask whether
+// Python is there (`capture python query', `capture python: pass'); Python
+// runs only for the work dash needs anyway.
 //
 // Syntax:
 //   _dash_python_ok "<value of c(python_exec)>"   -> r(ok) 0 or 1
@@ -301,25 +294,41 @@ end
 
 
 // ================================================================
-// _dash_require_python  — refuse to start rather than fail inside Python
+// _dash_require_python  -- the entry every python: site passes
 // ================================================================
-// _dash_do_render and _dash_serve go straight to `python:'.  Without this a
-// user with no linked Python got a raw Stata Python error naming neither
-// dash nor the remedy -- while the jsonio check that stood a few lines away
-// gave them a sentence they could act on.  This was modelled on that
-// message.
+// WP-36 plat:PT-1 (M8, C5): no pre-check.  An empty c(python_exec) means
+// no Python is set and Stata finds one itself on the first python: line
+// (help python), so nothing is refused here.  A Python that cannot start
+// is reported by _dash_require_deps: Stata's own message, then dash's
+// advice (_dash_python_failed).  The program stays where it stands, an
+// empty hook before every python: site (test_env_guards.cscript ENV-12).
 // ================================================================
 program define _dash_require_python
     version 19
-    _dash_python_ok `"`c(python_exec)'"'
-    if r(ok) != 1 {
-        _dash_pyfloor
-        local _dd_floor "`r(pyfloor)'"
-        display as error "dash: Python is required but is not available to Stata."
-        display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
-            "Python `_dd_floor'+: {help python}"
-        exit 198
+end
+
+
+// _dash_python_failed <rc> "<c(python_exec)>"  -- Stata could not start
+// the Python it was given or found (WP-36 plat:PT-1).  Stata's own message
+// has been shown (capture noisily); this adds what to do, and stops with
+// Stata's code (198 when the code read is 0).  Pure in its arguments, so a
+// certification script reaches both wordings (Q3601-6, Q3601-7).
+program define _dash_python_failed
+    version 19
+    args rc exe
+    if "`rc'" == "" | "`rc'" == "0" local rc 198
+    _dash_python_ok `"`exe'"'
+    if r(ok) == 1 {
+        mata: _dash_say("err", "dash: the Python linked to Stata could not be started (", st_local("exe"), ").")
     }
+    else {
+        display as error "dash: no Python is set, and Stata could not start one it found by itself."
+    }
+    if strpos(c(machine_type), "Mac") {
+        mata: _dash_say("err", "      Stata reports this computer as ", c("machine_type"), "; on a Mac, Stata and Python must be built for the same processor, both arm64 (Apple Silicon) or both x86_64 (Intel).")
+    }
+    display as error "      Link Stata to a Python that starts here with {cmd:python set exec} ({help python}), then run {cmd:dash_setup}."
+    exit `rc'
 end
 
 
@@ -359,19 +368,18 @@ program define _dash_require_deps
     version 19
     _dash_require_python
     local _dd_v ""
-    capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    local _dd_x ""
+    local _dd_prc 0
+    capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3])); _dash_M.setLocal("_dd_x", sys.executable)
     if "`_dd_v'" == "" {
         // The first python call of a session can fail where Python works
-        // (test_cscript_hygiene.py's docstring): once more.
-        capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+        // (test_cscript_hygiene.py's docstring): once more, and this time
+        // Stata's own message is shown when it fails (WP-36 plat:PT-1).
+        capture noisily python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3])); _dash_M.setLocal("_dd_x", sys.executable)
+        local _dd_prc = _rc
     }
     if "`_dd_v'" == "" {
-        mata: _dash_say("err", "dash: the Python linked to Stata could not be started (", c("python_exec"), ").")
-        if strpos(c(machine_type), "Mac") {
-            mata: _dash_say("err", "      Stata reports this computer as ", c("machine_type"), "; on a Mac, Stata and Python must be built for the same processor, both arm64 (Apple Silicon) or both x86_64 (Intel).")
-        }
-        display as error "      Link Stata to a Python that starts here ({help python}), then run {cmd:dash_setup}."
-        exit 198
+        _dash_python_failed `_dd_prc' `"`c(python_exec)'"'
     }
     _dash_pyfloor
     local _dd_floor "`r(pyfloor)'"
@@ -383,7 +391,7 @@ program define _dash_require_deps
     local _dd_fmaj : word 1 of `_dd_fw'
     local _dd_fmin : word 2 of `_dd_fw'
     if (`_dd_vmaj' < `_dd_fmaj') | (`_dd_vmaj' == `_dd_fmaj' & `_dd_vmin' < `_dd_fmin') {
-        mata: _dash_say("err", "dash: Python " + st_local("_dd_v") + " is linked to Stata (", c("python_exec"), "); dash needs Python " + st_local("_dd_floor") + " or later.")
+        mata: _dash_say("err", "dash: Python " + st_local("_dd_v") + " is the Python Stata uses (", _dash_pyname(), "); dash needs Python " + st_local("_dd_floor") + " or later.")
         display as error "      Link a newer Python ({help python}), then run {cmd:dash_setup}."
         exit 198
     }
@@ -398,7 +406,7 @@ program define _dash_require_deps
     capture python: import sys; sys.path[:] = _dash_sp
     if "`_dd_chk'" == "1" & "`_dd_miss'" != "" {
         local _dd_list = subinstr("`_dd_miss'", " ", ", ", .)
-        mata: _dash_say("err", "dash: " + st_local("_dd_list") + " not installed for the Python Stata uses (", c("python_exec"), ").")
+        mata: _dash_say("err", "dash: " + st_local("_dd_list") + " not installed for the Python Stata uses (", _dash_pyname(), ").")
         display as error "      Run {cmd:dash_setup} to install what is missing."
         exit 198
     }
@@ -516,6 +524,7 @@ program define _dash_require_mata
         _dash_omit_pair _dash_maxaxes_val ///
         _dash_tw_value_msg ///
         _dash_reserved_prefix _dash_esample_sub _dash_expr_words ///
+        _dash_pyname ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8

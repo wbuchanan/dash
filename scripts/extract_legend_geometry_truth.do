@@ -42,10 +42,6 @@ if `_lg_rc' | _rc {
 global LG_REPO "`repo'"
 global LG_OUT "${LG_REPO}/test/fixtures/legend_geometry_truth.json"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_legend_geometry_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local work "`c(tmpdir)'dash_legend_geometry_probe"
 capture mkdir "`work'"

@@ -71,10 +71,6 @@ global dash_nobrowser 1
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 qui sysuse auto, clear
 do "../dash_parse.mata"

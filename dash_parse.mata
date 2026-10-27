@@ -100,6 +100,10 @@
 *!       Print before + value + after as one line in SMCL style "err",
 *!       "txt" or "res", every character shown as written.
 *!
+*!   _dash_pyname()
+*!       The Python dash names in its messages: c(python_exec) when set,
+*!       else "the Python Stata found, " + the caller's local _dd_x.
+*!
 *!   _dash_note(before, value, after)
 *!       Print before + value + after as one note, (note:  ...), in text
 *!       colour on Stata's error channel, as twoway prints its notes.
@@ -1601,6 +1605,22 @@ void _dash_say(string scalar style, string scalar before,
                string scalar value, string scalar after) {
     if (!anyof(("err", "txt", "res"), style)) style = "txt"
     printf("{%s}%s\n", style, _dash_smcl_text(before + value + after))
+}
+
+// ============================================================
+// _dash_pyname()
+//
+// The Python dash names in a message (WP-36 plat:PT-1, M8): the one set,
+// c(python_exec), or with none set the one Stata found by itself, whose
+// path the caller's local _dd_x holds (sys.executable, read by
+// _dash_require_deps's version probe).  Shown through _dash_say only.
+// ============================================================
+string scalar _dash_pyname() {
+    string scalar x
+    if (c("python_exec") != "") return(c("python_exec"))
+    x = st_local("_dd_x")
+    if (x != "") return("the Python Stata found, " + x)
+    return("the Python Stata found")
 }
 
 // ============================================================

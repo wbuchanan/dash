@@ -44,10 +44,6 @@ if `_tb_rc' | _rc {
 global TB_REPO "`repo'"
 global TB_OUT "${TB_REPO}/test/fixtures/textbox_truth.json"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_textbox_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local work "`c(tmpdir)'dash_textbox_probe"
 capture mkdir "`work'"

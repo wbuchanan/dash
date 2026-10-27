@@ -39,10 +39,6 @@ if `_et_rc' | _rc {
 global ET_REPO "`repo'"
 global ET_OUT "${ET_REPO}/test/fixtures/edge_title_truth.json"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_edge_title_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local work "`c(tmpdir)'dash_edge_title_probe"
 capture mkdir "`work'"

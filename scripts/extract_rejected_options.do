@@ -43,10 +43,6 @@ if `_zr_rc' | _rc {
     display as error `"extract_rejected_options.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_rejected_options.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 adopath ++ "`repo'"
 global dash_nobrowser 1
 

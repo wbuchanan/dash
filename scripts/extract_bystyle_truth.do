@@ -26,10 +26,6 @@ if _rc {
     display as error "extract_bystyle_truth.do: set DASH_REPO to the dash repository"
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_bystyle_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 tempfile wb
 local work "`wb'_zb"
 capture mkdir "`work'"

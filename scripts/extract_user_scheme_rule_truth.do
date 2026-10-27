@@ -29,10 +29,6 @@ if _rc {
     display as error "extract_user_scheme_rule_truth.do: set DASH_REPO to the dash repository"
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_user_scheme_rule_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 global ZU_OUT "`repo'/test/fixtures/user_scheme_rule_truth.json"
 tempfile wb
 local work "`wb'_zu"

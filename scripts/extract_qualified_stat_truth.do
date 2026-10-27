@@ -43,10 +43,6 @@ if `_zq_rc' | _rc {
     display as error `"extract_qualified_stat_truth.do: `_zq_show' is not a dash tree; set DASH_REPO to the repository root"'
     exit 601
 }
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_qualified_stat_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 global ZQ_REPO "`repo'"
 global ZQ_OUT "${ZQ_REPO}/test/fixtures/qualified_stat_truth.json"
 global dash_nobrowser 1

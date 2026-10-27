@@ -4,7 +4,7 @@
 *!
 *! Usage:  do test/test_setup_injection.cscript
 *!
-*! Requires: Python configured (c(python_exec)); the `packaging' module.
+*! Requires: a Python Stata runs (set, or found by Stata); the `packaging' module.
 *! Version: 1.0.0  23sep2026
 *!
 *! WHY THIS EXISTS
@@ -67,10 +67,6 @@ if "`_cert_prof'" != "" {
 global dash_nobrowser 1
 
 // Availability is CONFIGURATION: read it, do not run Python to ask.
-if "`c(python_exec)'" == "" {
-    display as error "SKIP: Python not available."
-    exit 222
-}
 
 // The gate's injectable line only runs when `packaging' is importable
 // (haspkg==1), which is the branch the vulnerability lived in.  Checking that

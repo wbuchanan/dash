@@ -54,10 +54,6 @@ if `_al_rc' | _rc {
 global AL_REPO "`repo'"
 global AL_OUT "${AL_REPO}/test/fixtures/axis_look_truth.json"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_axis_look_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 local work "`c(tmpdir)'dash_axis_look_probe"
 capture mkdir "`work'"

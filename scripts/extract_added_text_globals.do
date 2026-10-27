@@ -41,10 +41,6 @@ if `_ag_rc' | _rc {
 }
 global AG_REPO "`repo'"
 global AG_OUT "${AG_REPO}/test/fixtures/added_text_globals.json"
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_added_text_globals.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 adopath ++ "${AG_REPO}"
 quietly do "${AG_REPO}/dash_parse.mata"
 quietly do "${AG_REPO}/dash.ado"

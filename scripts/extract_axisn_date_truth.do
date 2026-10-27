@@ -45,10 +45,6 @@ local work "`c(tmpdir)'dash_axisn_date_probe"
 capture mkdir "`work'"
 global AD_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_axisn_date_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${AD_REPO}" rev-parse HEAD > "${AD_WORK}/git_head.txt"
 global AD_VERSION "`c(stata_version)'"

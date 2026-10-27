@@ -38,16 +38,17 @@ present but older than {cmd:dash} needs is reported, not upgraded.
 {pstd}
 {cmd:dash_setup} works through these steps in order:
 
-{phang2}1.  Python.  Whether Python is linked to Stata is read from the
-    setting {cmd:c(python_exec)}; with none, {cmd:dash_setup} stops at once,
-    r(198).  The linked interpreter's version is then compared with the
-    3.11 minimum, numerically per component, so 3.10 is correctly newer
-    than 3.9; a version below 3.11 is reported as such and counted as
-    unmet.  Python is started to read its version; a first start that
-    fails is tried once more, and a Python that still cannot be started is
-    reported in the summary with its path and, on a Mac, a reminder that
-    Stata and Python must be built for the same processor (both arm64 or
-    both x86_64), r(198).
+{phang2}1.  Python.  The Python {cmd:dash_setup} checks is the one Stata
+    runs: the one {cmd:python set exec} set ({cmd:c(python_exec)}), or,
+    with none set, the one Stata finds by itself the first time Python runs
+    (see {helpb python}).  Its version is compared with the 3.11 minimum,
+    numerically per component, so 3.10 is correctly newer than 3.9; a
+    version below 3.11 is reported as such and counted as unmet.  Python is
+    started to read its version; a first start that fails is tried once
+    more, and a Python that still cannot be started is reported with
+    Stata's own message and its path, and, on a Mac, a reminder that Stata
+    and Python must be built for the same processor (both arm64 or both
+    x86_64), r(198).
 
 {phang2}2.  {cmd:packaging}, which the version comparisons below use, is
     installed with {cmd:pip} if it is missing.  If it cannot be installed,
@@ -161,7 +162,8 @@ it stops at once with "dash requires Stata 19 or later; this is Stata
 
 {pstd}{ul:Python}
 
-{phang2}Python 3.11 or later must be installed and linked to Stata.
+{phang2}Python 3.11 or later must be installed; Stata either finds it or uses
+the one {cmd:python set exec} names.
 {cmd:dash_setup} does not install Python.  See {helpb python} for
 instructions on linking Python.
 
@@ -214,8 +216,8 @@ have is left as it is and not reported; only bokeh's ceiling is reported.
 
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
-manually.  The command {cmd:dash_setup} prints names the Python Stata is
-linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
+manually.  The command {cmd:dash_setup} prints names the Python Stata
+runs ({cmd:c(python_exec)}, or the one Stata found), quoted for your system; in a terminal it
 reads like this, with that path in place of {it:/path/to/python3}:
 
 {phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3,<2.5" "pandas>=2.3,<3.1"}
@@ -290,7 +292,7 @@ to Python 3.11 or later instead.
 
 {pstd}{ul:Python could not be started}
 
-{phang2}A Python linked to Stata that cannot be started is reported as
+{phang2}A Python Stata cannot start is reported as
 "Python ............. could not be started", with its path.  On a Mac with
 Apple Silicon an arm64 Stata cannot start an x86_64 Python, nor the
 reverse: link a Python built for the same processor ({helpb python}), then

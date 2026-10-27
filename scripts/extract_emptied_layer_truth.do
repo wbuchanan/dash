@@ -57,10 +57,6 @@ local work "`c(tmpdir)'dash_emptied_probe"
 capture mkdir "`work'"
 global ZE_WORK "`work'"
 
-if `"`c(python_exec)'"' == "" {
-    display as error "extract_emptied_layer_truth.do needs Python (c(python_exec) is empty)"
-    exit 601
-}
 
 quietly shell git -C "${ZE_REPO}" rev-parse HEAD > "${ZE_WORK}/git_head.txt"
 global ZE_VERSION "`c(stata_version)'"
