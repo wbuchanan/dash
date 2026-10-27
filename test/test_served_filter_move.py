@@ -816,9 +816,9 @@ class TestTheRedrawGeometry:
             assert not hasattr(src, "_dash_spacing")
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
-    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), 0.0, -1.0,
+    @pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1.0,
                                      "text", None],
-                             ids=["nan", "inf", "0", "-1", "text", "None"])
+                             ids=["nan", "inf", "-1", "text", "None"])
     def test_a_non_finite_or_non_positive_width_is_ignored(self, bad, mode):
         """A spec barwidth that is not a finite positive number draws one
         x unit with one note, and nothing raises.
@@ -831,6 +831,20 @@ class TestTheRedrawGeometry:
         widths, caught = _bar_widths_and_notes(mode, spec)
         assert widths == [1.0], widths
         assert sum("barwidth" in w for w in caught) == 1, caught
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_a_zero_width_is_drawn(self, mode):
+        """barwidth(0) draws bars of no width, with no note, as twoway draws
+        them.
+
+        Flipped (WP-35 basic:PT-13): 0 was ignored as non-positive; twoway
+        draws it (value_codes_truth.json barwidth_0).
+        """
+        spec = tp._spec([plot_for("bar", {"barwidth": "0"})],
+                        {"filter": _DROPDOWN})
+        widths, caught = _bar_widths_and_notes(mode, spec)
+        assert widths == [0.0], widths
+        assert not any("barwidth" in w for w in caught), caught
 
     def test_extra_glyphs_are_zipped_to_the_shorter(self):
         """A graph with a bar and an rbar keeps both widths after a served
