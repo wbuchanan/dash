@@ -5196,6 +5196,27 @@ Summarised from .ultraplan/sections/index.md (M6) and .ultraplan/review/DECISION
 - **Left open:** the natscale model's after-move misses, the residual of plot:PT-13 (BUGS.md "The natscale model misses three of the 264 axes twoway drew"). The batches also registered AX-19, AX-20 and PIC-17 (34-07's measured rows rules) for WP-44 and WP-47.
 - **Gate (26oct2026):** `make test-all` -- pytest 39,625 passed, 2 failed, 1 skipped (902 s; two help pins 34-09's wording moved, fixed in 767b4e0 and re-run green; the skip was ruff missing from a changed PATH, run green with ruff found); cert 68 of 68 (461 s). `make cert-all` -- 69 of 71 (the closed WP-29/31 truth readers counted 34-05's area outline ring; fixed in 2de7cc9 and those blocks re-run green).
 
+## WP-35 · Accepted syntax and refusals (P11, with P4's remaining items) — DONE
+
+**GAPS4 closed:** MS-1, syn:SD-3, stat:PT-7, syn:SD-5, stat:PT-13, syn:SD-20a, syn:SD-20b, syn:SD-20c, syn:SD-20d, syn:SD-20e, stat:PT-6, stat:PT-9, syn:SD-7, basic:PT-8, syn:SD-8, GW-2, GW-3, GW-4, sil:SD-8, stat:PT-1, stat:PT-2, stat:PT-5, stat:PT-8, stat:PT-14, basic:PT-9, basic:PT-13, DT-15, DT-19, plot:PT-3, plot:PT-4, syn:SD-1, syn:SD-13; **documented:** syn:SD-22
+
+As a Stata user who writes a twoway command into dash, I want dash to accept exactly what twoway accepts and to refuse what twoway refuses with twoway's return code and words, so that a do-file behaves the same under either command and a mistake is caught as Stata catches it.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M7) and .ultraplan/review/DECISIONS.md (P4-7, P4-9, PD-10, PD-18, A-17, A-20, D42-D45, D53, D54, D59-D63), which hold them in full.
+
+- **Repeated and p#() options (M7).** Options twoway takes rightmost are read rightmost; p1()..p20() are read as twoway reads them, marker() inside them as mstyle() (D62).
+- **Statistical types (M7).** The spellings twoway documents are taken; histogram's exclusive options, the scale words off histogram, contour levels() above 500, lowess noweight with weight and bw() off the bandwidth types are refused in twoway's words (bw() with a `use barwidth()` line, P4-9).
+- **Values (M7, D59-D61).** A bad value fails with twoway's rc and first line, from a table generated from Stata's answers; dash's own bounds are lifted where twoway draws the value, and widths and angles are bounded only on the types where twoway draws them. aspectratio() at or below 0 stays refused (D59).
+- **Dash-only words (P4-7, P4-9, D53).** Every dash-only spelling of a twoway option is refused with twoway's words and a line naming twoway's spelling; hover() and table are kept and listed in one help paragraph.
+- **Graph options and grammar (M7, PD-10, D54).** Graph-option refusals, omit pairs, maxaxes and the command grammar copy twoway; contour levels() leniency is documented (syn:SD-22).
+- **Working columns (A-17, A-20).** dash's working columns take a prefix no variable of the data uses, and are made in a frame when c(maxvar) leaves no room; the in-place export keeps e(sample).
+
+- **Entries.** 33 WP-35 entries; 32 closed, 1 documented, 0 partly closed; BUGS.md holds 182 open entries.
+- **Left open:** none of WP-35's rows. barwidth(-2) is drawn at the default width (Bokeh draws no negative width; twoway draws bars outside the axis), and `histogram ..., bin(0) width(2)` gives the pair's r(198) before twoway's r(125); both are named in their BUGS.md Resolutions.
+- **Gate (27oct2026):** `make test-all` -- pytest 39,766 passed (814 s), cert 69 of 69 (467 s), 1,291 s in all. `make cert-all` -- 80 of 82 script runs (both failures were parts of the closed test_wp30_truth: PS-31 held jitter(2 200) and LN-27 held scatter lwidth(*-1) and line lwidth(*40000) to dash's answers before basic:PT-13; flipped in 06a9531 and ea04f24, blocks S20 and S13 re-run green).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
