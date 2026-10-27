@@ -362,7 +362,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
 - **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit 5e80d70.
 - **basic:PT-13 Tracked:** Closed in WP-35, BUGS.md "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses", commit edc01a6.
-- **DT-15 Tracked:** Closed in WP-35, BUGS.md "Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)", commit pending.
+- **DT-15 Tracked:** Closed in WP-35, BUGS.md "Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)", commit 1eb55f9.
 - **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.
 - **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit 5e1901e.
 - **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit 9ca400a.
@@ -370,7 +370,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-4 Tracked:** Closed in WP-35, BUGS.md "fxsiz()/fysiz() (twoway's abbreviations) are noted and not applied", commit 44c1161.
 - **sil:SD-8 Tracked:** Closed in WP-35, BUGS.md "title() with notitling is accepted with a note; twoway fails r(4018)", commit ca17150.
 - **syn:SD-22 Tracked:** Documented in WP-35, BUGS.md "twoway contour with levels() silently ignores options it does not know; dash refuses them as twoway does elsewhere", commit 877bd28.
-- **DT-19 Tracked:** Closed in WP-35, BUGS.md "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)", commit pending.
+- **DT-19 Tracked:** Closed in WP-35, BUGS.md "Variables named __dash* give r(110); dash's working columns can give r(900) at c(maxvar)", commit 56c995d.
 - **plot:PT-3 Tracked:** Closed in WP-35, BUGS.md "Plot-type names are read in any case (SC, Hist, Contour) where twoway refuses capitalised abbreviations", commit 7b5083e.
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
 - **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
