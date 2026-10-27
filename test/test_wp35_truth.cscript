@@ -1141,6 +1141,105 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w35_run' {
 }
 * ==== end S05 ====
 
+* ==== S05 basic:PT-13: dash's own value bounds lifted ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w35_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3505-3 (WP-35 basic:PT-13): each value twoway draws that dash's own
+    // bound refused registers, rc 0 and not named in the note, and its
+    // spec is the reference's where twoway's picture is the reference's
+    // (value_codes_truth.json *_ref, per_type rc 0, mband_n_*, msize(1e400)
+    // drawn as msize(0), D60), and holds the value where it is not
+    // (jitter(150), barwidth(0), barwidth(-2)).  aspectratio(-1) stays
+    // refused (D59).
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    local s05n 0
+    foreach s05x in "scatter mpg weight, jitter(-3)|scatter mpg weight" ///
+        "scatter mpg weight, jitter(abc)|scatter mpg weight" ///
+        "scatter mpg weight, jitter(5) jitterseed(abc)|scatter mpg weight, jitter(5)" ///
+        "scatter mpg weight, jitter(5) jitterseed(-1)|scatter mpg weight, jitter(5)" ///
+        "bar mpg foreign, barwidth(-1)|bar mpg foreign" ///
+        "scatter mpg weight, lwidth(-1)|scatter mpg weight" ///
+        "line mpg weight, mlwidth(-1)|line mpg weight" ///
+        "line mpg weight, msangle(400)|line mpg weight" ///
+        "mband mpg weight, n(0)|mband mpg weight" ///
+        "mband mpg weight, n(-5)|mband mpg weight" ///
+        "scatter mpg weight, msize(1e400)|scatter mpg weight, msize(0)" {
+        local s05bar = strpos("`s05x'", "|")
+        local s05a = substr("`s05x'", 1, `s05bar' - 1)
+        local s05b = substr("`s05x'", `s05bar' + 1, .)
+        if !strpos("`s05b'", ",") local s05b "`s05b',"
+        capture dash clear
+        capture log close s05log
+        capture erase "`c(tmpdir)'dash_s05.log"
+        quietly log using "`c(tmpdir)'dash_s05.log", text replace name(s05log) nomsg
+        capture noisily dash `s05a' name(s05g)
+        local s05ra = _rc
+        quietly log close s05log
+        mata: _s05_json = st_global("dash_json_s05g")
+        capture dash clear
+        capture noisily dash `s05b' name(s05g)
+        local s05rb = _rc
+        mata: st_local("s05same", strofreal(_s05_json == st_global("dash_json_s05g") & _s05_json != ""))
+        capture mata: mata drop _s05_json
+        capture dash clear
+        cert_log_has "`c(tmpdir)'dash_s05.log", needle("ignoring unsupported")
+        local s05nt = r(found)
+        _w35_expect Q3505-3 "(`s05ra' == 0 & `s05rb' == 0 & `s05nt' == 0)" `"`s05a': rc `s05ra' (reference rc `s05rb'), named in the note `s05nt'"'
+        _w35_expect Q3505-3 "(`s05same' == 1)" `"`s05a' registered another spec than `s05b'"'
+    }
+    foreach s05c in "scatter mpg weight, jitter(150)|jitter|150" "bar mpg foreign, barwidth(0)|barwidth|0" "bar mpg foreign, barwidth(-2)|barwidth|-2" {
+        gettoken s05a s05r : s05c, parse("|")
+        gettoken s05o s05r : s05r, parse("|")
+        gettoken s05o s05r : s05r, parse("|")
+        local s05v = substr("`s05r'", 2, .)
+        capture dash clear
+        capture noisily dash `s05a' name(s05g)
+        local s05ra = _rc
+        mata: st_local("s05has", strofreal(strpos(st_global("dash_json_s05g"), char(34) + "`s05o'" + char(34) + ":" + char(34) + "`s05v'" + char(34)) > 0))
+        _w35_expect Q3505-3 "(`s05ra' == 0 & `s05has' == 1)" `"`s05a': rc `s05ra', the spec holds `s05o' `s05v' `s05has'"'
+    }
+    capture dash clear
+    capture noisily dash scatter mpg weight, aspectratio(-1) name(s05g)
+    local s05ra = _rc
+    _w35_expect Q3505-3 "(`s05ra' == 198)" "aspectratio(-1): rc `s05ra', refused as D59 rules"
+    capture dash clear
+    capture erase "`c(tmpdir)'dash_s05.log"
+    _w35_done Q3505-3 "the values twoway draws register as twoway draws them"
+
+    // ------------------------------------------------------------
+    // Q3505-4 (WP-35 basic:PT-13): lwidth(*#) on line refused as twoway
+    // refuses it, r(198) and its gm_linewidth line, from *33334
+    // (value_codes_truth.json lwidth_mult_line*: *30000 drawn, *35000 and
+    // *40000 refused); on scatter, which draws no line, never.
+    // ------------------------------------------------------------
+    foreach s05c in "line|40000|198" "line|35000|198" "line|30000|0" "scatter|40000|0" {
+        tokenize "`s05c'", parse("|")
+        capture dash clear
+        capture log close s05log
+        capture erase "`c(tmpdir)'dash_s05.log"
+        quietly log using "`c(tmpdir)'dash_s05.log", text replace name(s05log) nomsg
+        capture noisily dash `1' mpg weight, lwidth(*`3') name(s05g)
+        local s05r = _rc
+        quietly log close s05log
+        // The first words: twoway's line holds a run of blanks the
+        // fixture's joined message makes one.
+        cert_file_count "`c(tmpdir)'dash_s05.log", needle("gm_linewidth must be between 0.000 and")
+        local s05c2 = r(count)
+        local s05w = cond(`5' == 198, 1, 0)
+        _w35_expect Q3505-4 "(`s05r' == `5' & (`s05c2' >= 1) == `s05w')" `"`1' lwidth(*`3'): rc `s05r' (twoway `5'), the gm_linewidth line `s05c2' times"'
+    }
+    capture dash clear
+    capture erase "`c(tmpdir)'dash_s05.log"
+    _w35_done Q3505-4 "lwidth(*#) refused where twoway refuses it"
+
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== S06 GW-4: fxsiz() and fysiz() applied ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {

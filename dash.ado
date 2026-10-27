@@ -3922,15 +3922,17 @@ program define _dash_option_rules
     // Plot rules: validated once per segment, after _dash_fold_bw, from s().
     local plot ///
         msize=style  mlabsize=style  mlabgap=style ///
-        lwidth=style,0,10000,u  mlwidth=style,0,10000,u ///
-        msangle=style,-360,360  mlabposition=style  fintensity=style ///
-        jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
+        lwidth=style,0,10000,u@area|bar|connected|contour|dropline|fpfit|fpfitci|function|histogram|kdensity|lfit|lfitci|line|lowess|lpoly|lpolyci|mband|mspline|pcarrow|pcarrowi|pcbarrow|pccapsym|pci|pcscatter|pcspike|qfit|qfitci|rarea|rbar|rcap|rcapsym|rconnected|rline|rpcap|rpspike|rspike|spike|tsline|tsrline  lwidth=style ///
+        mlwidth=style,0,10000,u@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  mlwidth=style ///
+        msangle=style,-360,360@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  msangle=style ///
+        mlabposition=style  fintensity=style ///
+        jitter=style  jitterseed=style  jseed=int,0 ///
         yaxis=axes,1,9  xaxis=axes,1,9 ///
         malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
-        base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
+        base=num  barwidth=num  level=num@lfitci|qfitci|fpfitci ///
         degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
-        n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci  n=int,,10000@mband  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
@@ -3971,6 +3973,18 @@ program define _dash_option_rules
     // lwidth()'s 0..10000 bound stands (WP-31 S33, A15): S33's
     // measurement (sizing_truth.json lw_20000) is twoway's gm_linewidth
     // refusal the token already gives.
+    // WP-35 basic:PT-13 (test/fixtures/value_codes_truth.json): the bounds
+    // twoway does not have are gone.  jitter() and jitterseed() take any
+    // value (a word or a negative number twoway draws as none, and
+    // _dash_validate_opts drops it), barwidth() any number (-1, twoway's
+    // own default, dropped), mband's n() any integer up to dash's 10000
+    // (n(0) and n(-5) drawn as none, D61).  lwidth(), mlwidth() and
+    // msangle() are held to their bounds only on the types where twoway
+    // refuses a value outside them (per_type lwidth_neg, mlwidth_neg,
+    // msangle_400); on the others the value draws nothing different and
+    // is dropped.  aspectratio() keeps its lower bound: twoway's picture
+    // for aspectratio(-1) is a plot region overflowing the graph, which
+    // dash does not copy (D59).
     // scale(), fxsize(), fysize() (WP-31 D5, sizing_truth.json): scale()
     // takes 0 and above, a negative number is twoway's gm_linewidth
     // refusal and a word its note, drawn at 1 (mult); fxsize()/fysize()
@@ -4294,7 +4308,17 @@ program define _dash_validate_value, rclass
         // A token made of digits and exponent letters whose real() is
         // missing (1e400, 1e308) is an overflow, not a name: refused, as
         // twoway's "invalid syntax", so the renderer never sees inf.
-        if "`p3'" == "u" & "`p1'" != "" & "`p2'" != "" {
+        // A number beyond the machine's double range in msize() is drawn by
+        // twoway as msize(0) (WP-35 basic:PT-13, D60; value_codes_truth.json
+        // msize_1e400_vs0): read as 0.
+        local _sinf 0
+        if !`isnum' & regexm(scalar(`T'), "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)[eEdD]([-+]?[0-9]+)$") {
+            if real(regexs(1)) > 0 {
+                if log10(real(regexs(1))) + real(regexs(2)) > 308.2547 local _sinf 1
+            }
+        }
+        if `_sinf' & "`opt'" == "msize" local norm "0"
+        else if "`p3'" == "u" & "`p1'" != "" & "`p2'" != "" {
             // A line width (WP-30 P1.12b, M5).  twoway (measured
             // 03oct2026) refuses a negative number, *# or #pt/#in/#cm/#rs
             // and an rs value above 10000 with r(198) and its gm_linewidth
@@ -4306,6 +4330,11 @@ program define _dash_validate_value, rclass
             if regexm(scalar(`T'), "^\*([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?)$") {
                 scalar `LW' = real(regexs(1))
                 if scalar(`LW') < . & scalar(`LW') < 0 local lwout 1
+                // A multiplier past 10000 units of the default scheme's
+                // 0.3-unit line (WP-35 basic:PT-13; value_codes_truth.json
+                // lwidth_mult_line*: on line, connected and area *33333
+                // draws and *33334 is twoway's gm_linewidth refusal).
+                else if scalar(`LW') < . & scalar(`LW') * 0.3 > `p2' local lwout 1
             }
             else if regexm(scalar(`T'), "^([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?) *(pt|in|cm|rs)$") {
                 local lwunit = regexs(4)
@@ -5263,6 +5292,81 @@ program define _dash_validate_opts, sclass
             sreturn local `o' `"`macval(_dash_vnorm)'"'
             local _snap_`o' : copy local _dash_vnorm
         }
+    }
+
+    // Values twoway draws as it draws the plot without them (WP-35
+    // basic:PT-13; test/fixtures/value_codes_truth.json): dropped from s(),
+    // element by element of a value list, so the spec is the reference's.
+    // jitter() a word or below 0 (jitter_m3_ref, jitter_abc_ref);
+    // jitterseed() anything but a nonnegative integer (jitterseed_abc;
+    // jitterseed(-1) is a new seed each draw in twoway); barwidth(-1),
+    // twoway's own default (barwidth_m1_ref); mband's n() below 1
+    // (mband_n_0_ref, mband_n_m5, D61); lwidth(), mlwidth() and
+    // msangle() outside their bounds on a type whose rule has no bound
+    // (per_type rc 0: the picture is the reference's, read by rc alone on
+    // contourline and lowess, which twoway draws differently each time).
+    foreach _lo in jitter jitterseed barwidth n lwidth mlwidth msangle {
+        if "`_lo'" == "n" & "`ptype'" != "mband" continue
+        local _lb ""
+        if inlist("`_lo'", "lwidth", "mlwidth", "msangle") {
+            local _lbt 0
+            foreach tok of local _dash_rules_plot {
+                if substr("`tok'", 1, strlen("`_lo'") + 7) != "`_lo'=style," | !strpos("`tok'", "@") continue
+                local types = substr("`tok'", strpos("`tok'", "@") + 1, .)
+                local types : subinstr local types "|" " ", all
+                if `: list ptype in types' local _lbt 1
+            }
+            if `_lbt' continue
+            // A connecting line drawn on a marker type: twoway holds
+            // lwidth() to its bounds there (test_help_claims_2.cscript
+            // HC2-18m: scatter, connect(l) lwidth(-1) is r(198)).
+            mata: st_local("_lcn", strofreal("`_lo'" == "lwidth" & strtrim(st_global("s(connect)")) != ""))
+            if `_lcn' {
+                mata: st_local("_ln", strofreal(cols(tokens(st_global("s(lwidth)")))))
+                forvalues _li = 1/`_ln' {
+                    mata: st_local("_le", tokens(st_global("s(lwidth)"))[`_li'])
+                    _dash_validate_value "dash" "lwidth" "style,0,10000,u" `"`macval(_le)'"' "`ptype'"
+                }
+                continue
+            }
+            local _lb "0 10000"
+            if "`_lo'" == "msangle" local _lb "-360 360"
+        }
+        // A misplaced .. is left for _dash_stylelist_check, which refuses
+        // it in twoway's words.
+        mata: st_local("_ln", strpos(st_global("s(" + st_local("_lo") + ")"), "..") ? "0" : strofreal(cols(tokens(st_global("s(" + st_local("_lo") + ")")))))
+        if !`_ln' continue
+        // So is a value Stata's string cannot bind (twoway: r(109)).
+        mata: st_local("_lq", strofreal(strpos(st_global("s(" + st_local("_lo") + ")"), char(34)) > 0))
+        if `_lq' {
+            mata: st_local("_lv", st_global("s(" + st_local("_lo") + ")"))
+            capture _dash_stylelist_bind , v(`macval(_lv)')
+            if _rc == 1 exit 1
+            if _rc continue
+        }
+        local _lout ""
+        local _lany 0
+        forvalues _li = 1/`_ln' {
+            tempname _LS _LR
+            mata: st_strscalar(st_local("_LS"), tokens(st_global("s(" + st_local("_lo") + ")"))[`_li'])
+            scalar `_LR' = real(scalar(`_LS'))
+            local _ldrop 0
+            if "`_lo'" == "jitter" local _ldrop = (scalar(`_LR') >= . | scalar(`_LR') < 0)
+            else if "`_lo'" == "jitterseed" local _ldrop = (scalar(`_LR') >= . | scalar(`_LR') < 0 | scalar(`_LR') != int(scalar(`_LR')))
+            else if "`_lo'" == "barwidth" local _ldrop = (scalar(`_LR') == -1)
+            else if "`_lo'" == "n" local _ldrop = (scalar(`_LR') < 1)
+            else if "`_lb'" != "" local _ldrop = (scalar(`_LR') < . & (scalar(`_LR') < `: word 1 of `_lb'' | scalar(`_LR') > `: word 2 of `_lb''))
+            // A number Python cannot read back as written (1d1) goes on as
+            // the number Stata read.
+            if !`_ldrop' & !regexm(scalar(`_LS'), "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$") & scalar(`_LR') < . {
+                scalar `_LS' = strtrim(string(scalar(`_LR'), "%21.0g"))
+            }
+            mata: st_local("_lout", st_local("_lout") + " " + (`_ldrop' ? "." : st_strscalar(st_local("_LS"))))
+            if !`_ldrop' local _lany 1
+        }
+        if !`_lany' local _lout ""
+        mata: st_local("_lout", strtrim(st_local("_lout")))
+        sreturn local `_lo' `"`macval(_lout)'"'
     }
 
     // The graph rules, against what this segment wrote in parentheses.

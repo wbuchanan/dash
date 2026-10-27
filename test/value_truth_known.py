@@ -13,16 +13,8 @@ is kept>"``.
 """
 
 VALUE_KNOWN = {
-    "aspectratio_2": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "barwidth_2": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "barwidth_3": "basic:PT-13",  # twoway r(0) / dash r(198)
     "by_1": "plot:PT-7",  # twoway r(111) variable nosuchvar not found / dash r(111)
     "histogram_bin_4": "stat:PT-15 (documented)",  # twoway r(0) / dash r(198)
-    "jitter_1": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "jitter_4": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "jitterseed_1": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "jitterseed_2": "basic:PT-13",  # twoway r(0) / dash r(198)
-    "jitterseed_3": "basic:PT-13",  # twoway r(0) / dash r(198)
     "lpoly_n_3": "plot:PT-7",  # twoway r(198) option n() not allowed / dash r(198)
     "lpoly_n_5": "stat:PT-15 (documented)",  # twoway r(0) / dash r(198)
     "mlabel_1": "plot:PT-7",  # twoway r(111) variable nosuchvar not found / dash r(111)
@@ -44,4 +36,5 @@ VALUE_KNOWN = {
 }
 
 DELIBERATE = {
+    "aspectratio_2": "D59: aspectratio() below 0 refused; twoway draws aspectratio(-1) as a plot region overflowing the graph, a layout defect dash does not copy",
 }

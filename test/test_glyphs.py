@@ -2153,6 +2153,13 @@ class TestBarOptions:
         assert abs(r.glyph.width - 0.3) < 1e-9, \
             "barwidth option must override auto-computed width"
 
+    def test_barwidth_zero_is_drawn(self, fig, cds, gm):
+        """barwidth(0) draws bars of no width, as twoway draws it (WP-35
+        basic:PT-13, value_codes_truth.json barwidth_0); dash drew the
+        computed width."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"barwidth": "0"})
+        assert r.glyph.width == 0
+
     def test_width_alias_for_barwidth(self, fig, cds, gm):
         """width(0.5) must also set bar width to 0.5."""
         r = gm.map_bar(fig, cds, "mpg", "weight", {"width": "0.5"})

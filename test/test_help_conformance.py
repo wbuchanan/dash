@@ -1418,4 +1418,6 @@ class TestInternalLinksResolve:
         # case only links Plot types (WP-35 plot:PT-3).
         # 126 -> 127 links, 47 -> 48 targets: syn:SD-22 the Differences
         # entry links its contour note, dash##contour_unknown (WP-35 35-06).
-        assert len(refs) == 127 and len(set(refs)) == 48
+        # 127 -> 128 links: basic:PT-13 the Option values paragraph links
+        # Resource limits for bin() and n() (WP-35 35-05).
+        assert len(refs) == 128 and len(set(refs)) == 48

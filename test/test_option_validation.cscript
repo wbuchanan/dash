@@ -49,12 +49,12 @@
 *!   OV-21  fintensity(150)           rc 0   (drawn darker, as twoway draws it)
 *! Numeric kinds -- a word is refused, a number must sit in the range:
 *!   OV-22  jitter(5)                 rc 0
-*!   OV-23  jitter(abc)               rc 198 naming jitter()
-*!   OV-24  jitter(-3)                rc 198 naming jitter()
-*!   OV-25  jitter(101)               rc 198 naming jitter()
+*!   OV-23  jitter(abc)               rc 0 (drawn as none, WP-35 basic:PT-13)
+*!   OV-24  jitter(-3)                rc 0 (drawn as none, WP-35 basic:PT-13)
+*!   OV-25  jitter(101)               rc 0 (drawn, WP-35 basic:PT-13)
 *!   OV-26  jitterseed(20260920)      rc 0
-*!   OV-27  jitterseed(-1)            rc 198 naming jitterseed()
-*!   OV-28  jitterseed(2.5)           rc 198 naming jitterseed()
+*!   OV-27  jitterseed(-1)            rc 0 (WP-35 basic:PT-13)
+*!   OV-28  jitterseed(2.5)           rc 0 (WP-35 basic:PT-13)
 *!   OV-29  jseed(7)                  rc 0
 *!   OV-30  jseed(abc)                rc 198 naming jseed()
 *!   OV-31  yaxis(2)                  rc 0
@@ -70,7 +70,7 @@
 *!   OV-41  base(5)                   rc 0
 *!   OV-42  base(abc)                 rc 4026 in twoway's words (WP-35 basic:PT-9)
 *!   OV-43  barwidth(20)              rc 0
-*!   OV-44  barwidth(0)               rc 198 naming barwidth()
+*!   OV-44  barwidth(0)               rc 0 (drawn, WP-35 basic:PT-13)
 *!   OV-45  barwidth(abc)             rc 198 naming barwidth()
 *! level() -- the rule moved from _dash_parse_plot_opts into the table:
 *!   OV-46  level(90)                 rc 0
@@ -192,8 +192,8 @@
 *!   OV-129 kdensity range(0,10)      rc 0, registry carries "range":"0 10"
 *!   OV-130 yaxis(2.0)                rc 0, registry carries "yaxis":"2" (A5)
 *!   OV-131 kdensity n(1E3)           rc 0, registry carries "n":"1000"
-*!   OV-132 msize(1e400)              rc 198 naming msize() (A7: a token
-*!                                    that looks numeric but overflows)
+*!   OV-132 msize(1e400)              rc 0, read as msize(0) as twoway draws
+*!                                    it (WP-35 basic:PT-13, D60)
 *!   OV-133 jitter(<tab>5<tab>)       rc 0, registry carries "jitter":"5"
 *!                                    (A8: tabs are trimmed; twoway rc 0)
 *!   OV-134 by("foreign")             rc 111 naming by(), and the message
@@ -275,10 +275,11 @@
 *!   LN-07  lfitci alwidth(*-1)       rc 198 naming alwidth()
 *!   LN-08  line alwidth(*-1)         rc 0   (not on alwidth()'s type list)
 *!   LN-09  lwidth(10000rs|*0|0pt|-0) rc 0
-*!   LN-10  lwidth(20000pt|*40000)    rc 0   (the renderer notes them, D-13b)
+*!   LN-10  lwidth(20000pt)           rc 0   (the renderer notes it, D-13b);
+*!          lwidth(*40000) rc 198 as twoway (WP-35 basic:PT-13)
 *!   LN-11  lwidth(vvvthin|none|THICK|1PT|-1PT|*1e400)  rc 0 (names)
 *!   LN-12  lwidth(-1)                rc 198, twoway's line before dash's
-*!   LN-13  scatter lwidth(*-1)       rc 198 (dash refuses on every type)
+*!   LN-13  scatter lwidth(*-1)       rc 0 (no line drawn; WP-35 basic:PT-13)
 *!   LN-14  msize(-1pt|*-1), mlabgap(-2pt)  rc 0 (the ,u reading is the
 *!                                    line options' alone)
 *! The words the absence checks search for, each found where it must be
@@ -761,12 +762,22 @@ _ov_case OV-21 `"dash area mpg weight, sort fintensity(150) name(ov21)"' 0 ""
 // OV-22 .. OV-45: numeric kinds
 // ----------------------------------------------------------------
 _ov_case OV-22 `"dash scatter mpg weight, jitter(5) name(ov22)"' 0 ""
-_ov_case OV-23 `"dash scatter mpg weight, jitter(abc) name(ov23)"' 198 jitter
-_ov_case OV-24 `"dash scatter mpg weight, jitter(-3) name(ov24)"' 198 jitter
-_ov_case OV-25 `"dash scatter mpg weight, jitter(101) name(ov25)"' 198 jitter
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it as no jitter
+// (value_codes_truth.json jitter_abc_ref).
+_ov_case OV-23 `"dash scatter mpg weight, jitter(abc) name(ov23)"' 0
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it as no jitter
+// (value_codes_truth.json jitter_m3_ref).
+_ov_case OV-24 `"dash scatter mpg weight, jitter(-3) name(ov24)"' 0
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it beyond jitter(100)
+// (value_codes_truth.json jitter_150).
+_ov_case OV-25 `"dash scatter mpg weight, jitter(101) name(ov25)"' 0 "" `""jitter":"101""'
 _ov_case OV-26 `"dash scatter mpg weight, jitter(5) jitterseed(20260920) name(ov26)"' 0 ""
-_ov_case OV-27 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(ov27)"' 198 jitterseed
-_ov_case OV-28 `"dash scatter mpg weight, jitter(5) jitterseed(2.5) name(ov28)"' 198 jitterseed
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it with a new seed each draw
+// (value_codes_truth.json jitterseed_m1).
+_ov_case OV-27 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(ov27)"' 0
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it (value_truth.json jitterseed_3: rc 0)
+// (value_codes_truth.json jitterseed_abc).
+_ov_case OV-28 `"dash scatter mpg weight, jitter(5) jitterseed(2.5) name(ov28)"' 0
 _ov_case OV-29 `"dash scatter mpg weight, jitter(5) jseed(7) name(ov29)"' 0 ""
 _ov_case OV-30 `"dash scatter mpg weight, jitter(5) jseed(abc) name(ov30)"' 198 jseed
 _ov_case OV-31 `"dash scatter mpg weight, yaxis(2) name(ov31)"' 0 ""
@@ -789,7 +800,9 @@ _ov_case OV-41 `"dash area mpg weight, sort base(5) name(ov41)"' 0 ""
 _u46_rc OV-42 4026 `"dash area mpg weight, sort base(abc) name(ov42)"'
 _ov_said OV-42 "option base() incorrectly specified, abc is not a number"
 _ov_case OV-43 `"dash bar mpg weight, barwidth(20) name(ov43)"' 0 ""
-_ov_case OV-44 `"dash bar mpg weight, barwidth(0) name(ov44)"' 198 barwidth
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it as bars of no width
+// (value_codes_truth.json barwidth_0).
+_ov_case OV-44 `"dash bar mpg weight, barwidth(0) name(ov44)"' 0 "" `""barwidth":"0""'
 _ov_case OV-45 `"dash bar mpg weight, barwidth(abc) name(ov45)"' 198 barwidth
 
 // ----------------------------------------------------------------
@@ -1018,7 +1031,9 @@ _ov_case OV-130 `"dash scatter mpg weight, yaxis(2.0) name(ov130)"' 0 "" `""yaxi
 _ov_case OV-131 `"dash kdensity mpg, n(1E3) name(ov131)"' 0 "" `""n":"1000""'
 
 // A7 -- a token that looks numeric but overflows real() is not a name.
-_ov_case OV-132 `"dash scatter mpg weight, msize(1e400) name(ov132)"' 198 msize
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it as msize(0), D60
+// (value_codes_truth.json msize_1e400_vs0).
+_ov_case OV-132 `"dash scatter mpg weight, msize(1e400) name(ov132)"' 0 "" `""msize":"0""'
 
 // A8 -- tabs around a number are trimmed (twoway rc 0 for this one).
 local _ov_tab = char(9)
@@ -1216,7 +1231,10 @@ _ov_case LN-09 `"dash line mpg weight, lwidth(*0) name(ln09b)"' 0 ""
 _ov_case LN-09 `"dash line mpg weight, lwidth(0pt) name(ln09c)"' 0 ""
 _ov_case LN-09 `"dash line mpg weight, lwidth(-0) name(ln09d)"' 0 ""
 _ov_case LN-10 `"dash line mpg weight, lwidth(20000pt) name(ln10a)"' 0 ""
-_ov_case LN-10 `"dash line mpg weight, lwidth(*40000) name(ln10b)"' 0 ""
+// Flipped (WP-35 basic:PT-13): drawing it was wrong; twoway refuses
+// lwidth(*40000) on line (value_codes_truth.json lwidth_mult_line).
+_ov_case LN-10 `"dash line mpg weight, lwidth(*40000) name(ln10b)"' 198 lwidth
+_ov_said LN-10 "gm_linewidth must be between 0.000 and"
 _ov_case LN-11 `"dash line mpg weight, lwidth(vvvthin) name(ln11a)"' 0 ""
 _ov_case LN-11 `"dash line mpg weight, lwidth(none) name(ln11b)"' 0 ""
 _ov_case LN-11 `"dash line mpg weight, lwidth(THICK) name(ln11c)"' 0 ""
@@ -1226,9 +1244,10 @@ _ov_case LN-11 `"dash line mpg weight, lwidth(*1e400) name(ln11f)"' 0 ""
 _ov_case LN-12 `"dash line mpg weight, lwidth(-1) name(ln12)"' 198 lwidth
 _ov_said LN-12 "gm_linewidth must be between 0.000 and"
 _ov_said LN-12 "lwidth() must be a line width"
-_ov_case LN-13 `"dash scatter mpg weight, lwidth(*-1) name(ln13)"' 198 lwidth
-_ov_said LN-13 "gm_linewidth must be between 0.000 and"
-_ov_said LN-13 "lwidth() must be a line width"
+// Flipped (WP-35 basic:PT-13): refusing it was wrong; scatter draws no
+// line and twoway checks no width there (value_codes_truth.json
+// lwidth_neg.scatter rc 0).
+_ov_case LN-13 `"dash scatter mpg weight, lwidth(*-1) name(ln13)"' 0 ""
 _ov_case LN-14 `"dash scatter mpg weight, msize(-1pt) name(ln14a)"' 0 ""
 _ov_case LN-14 `"dash scatter mpg weight, msize(*-1) name(ln14b)"' 0 ""
 _ov_case LN-14 `"dash scatter mpg weight, mlabgap(-2pt) name(ln14c)"' 0 ""

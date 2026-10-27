@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "dbe46dc6da13a1a5afe23b018a4ee6c742335fcf",
-  "extracted": "26 Oct 2026",
+  "dash_commit": "e8c95fb39a9d2e2eeec38b46f49bb3cdb8553c9b",
+  "extracted": "27 Oct 2026",
   "how": "one `capture noisily twoway ...` per probe; first = the first non-blank output line; a probe with a reference is drawn under `set seed 1`, exported as SVG and its md5 (random clip-path names made one) compared with the reference's",
   "purpose": "twoway's rc and first line for the option values dash refused in its own words (basic:PT-9), and twoway's drawing of the values dash's own bounds refused (basic:PT-13). Read by scripts/gen_value_refusal_table.py and the Q3505 cases.",
   "source": "scripts/extract_value_codes_truth.do",
@@ -91,7 +91,7 @@
     "first": "",
     "message": "",
     "rc": 0,
-    "ref_md5": "f7fd5773087811d8aab77f088d56c84d",
+    "ref_md5": "a1e40bf5005131a53d5a9e3a080614ab",
     "reference": "twoway contourline mpg weight length",
     "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
    },
@@ -422,9 +422,9 @@
     "first": "",
     "message": "",
     "rc": 0,
-    "ref_md5": "bb137c3da4980f64bd17ac7cf3ad7efe",
+    "ref_md5": "a1e40bf5005131a53d5a9e3a080614ab",
     "reference": "twoway contourline mpg weight length",
-    "svg_md5": "a1e40bf5005131a53d5a9e3a080614ab"
+    "svg_md5": "f7fd5773087811d8aab77f088d56c84d"
    },
    "dot": {
     "command": "twoway dot mpg weight, mlwidth(-1)",
@@ -526,9 +526,9 @@
     "first": "",
     "message": "",
     "rc": 0,
-    "ref_md5": "e1daf9acca9099ac9944d3061fc3d66c",
+    "ref_md5": "82b01138c429886533b82b103d2fcf2a",
     "reference": "twoway lowess mpg weight",
-    "svg_md5": "379661ec7a244d55e4dccf6c354a6325"
+    "svg_md5": "f8fe0d1e60d35001926ddd72f8029bcf"
    },
    "lpoly": {
     "command": "twoway lpoly mpg weight, mlwidth(-1)",
@@ -816,9 +816,9 @@
     "first": "",
     "message": "",
     "rc": 0,
-    "ref_md5": "f7fd5773087811d8aab77f088d56c84d",
+    "ref_md5": "bb137c3da4980f64bd17ac7cf3ad7efe",
     "reference": "twoway contourline mpg weight length",
-    "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
+    "svg_md5": "685a5b461aa899464b282fc93c4d11d9"
    },
    "dot": {
     "command": "twoway dot mpg weight, msangle(400)",
@@ -920,9 +920,9 @@
     "first": "",
     "message": "",
     "rc": 0,
-    "ref_md5": "379661ec7a244d55e4dccf6c354a6325",
+    "ref_md5": "e2c905739d25a238c210cf66eba6bea5",
     "reference": "twoway lowess mpg weight",
-    "svg_md5": "4a8bed373f72752b3c13692b8ea35236"
+    "svg_md5": "0709940be84ff7075f8a3465d743ebef"
    },
    "lpoly": {
     "command": "twoway lpoly mpg weight, msangle(400)",
@@ -1227,7 +1227,7 @@
    "first": "",
    "message": "",
    "rc": 0,
-   "ref_md5": "685a5b461aa899464b282fc93c4d11d9",
+   "ref_md5": "f7fd5773087811d8aab77f088d56c84d",
    "reference": "twoway contourline mpg weight length",
    "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
   },
@@ -1337,6 +1337,24 @@
    "message": "",
    "rc": 0
   },
+  "lwidth_mult_line_25000": {
+   "command": "twoway line mpg weight, lwidth(*25000)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "lwidth_mult_line_30000": {
+   "command": "twoway line mpg weight, lwidth(*30000)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "lwidth_mult_line_35000": {
+   "command": "twoway line mpg weight, lwidth(*35000)",
+   "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+   "rc": 198
+  },
   "lwidth_mult_line_5000": {
    "command": "twoway line mpg weight, lwidth(*5000)",
    "first": "",
@@ -1348,6 +1366,38 @@
    "first": "",
    "message": "",
    "rc": 0
+  },
+  "mband_n_0_ref": {
+   "command": "twoway mband mpg weight, n(0)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "5ba56935b8be92fa32668829c85526c9",
+   "reference": "twoway mband mpg weight",
+   "svg_md5": "5ba56935b8be92fa32668829c85526c9"
+  },
+  "mband_n_2_5": {
+   "command": "twoway mband mpg weight, n(2.5)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "mband_n_abc": {
+   "command": "twoway mband mpg weight, n(abc)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "mband_n_m5": {
+   "command": "twoway mband mpg weight, n(-5)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "5ba56935b8be92fa32668829c85526c9",
+   "reference": "twoway mband mpg weight",
+   "svg_md5": "5ba56935b8be92fa32668829c85526c9"
   },
   "mlabel_dotdot": {
    "command": "twoway scatter mpg weight, mlabel(make..)",

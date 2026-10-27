@@ -1095,8 +1095,10 @@ capture noisily dash scatter mpg turn weight, msangle(0 500) name(sl19c)
 if _rc != 198 local ok 0
 capture noisily dash scatter mpg weight, msangle(0 500) name(sl19d)
 if _rc local ok 0
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it
+// (value_codes_truth.json msize_1e400_vs0: read as msize(0), D60).
 capture noisily dash scatter mpg turn weight, msize(small 1e400) name(sl19e)
-if _rc != 198 local ok 0
+if _rc local ok 0
 _sl_tally SL-19 `ok' "an element a y uses is held to the option's rule"
 
 // SL-20 repeats
@@ -1429,12 +1431,21 @@ _ps_tally PS-08 `ok' "jitter() one element per y; unused elements unchecked; jit
 
 // PS-09 jitter refusals
 local ok 1
-_ps_refuse PS-09 198 "dash: jitter() must be a number between 0 and 100 (got: 200)" |`two' jitter(2 200)
-_ps_refuse PS-09 198 "dash: jitter() must be a number between 0 and 100 (got: abc)" |`two' jitter(2 abc)
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it
+// (value_codes_truth.json jitter_150, jitter_abc_ref; twoway takes any jitter() text, rc 0).
+capture noisily dash `two' jitter(2 200) name(ps09a)
+local _r = _rc
+mata: st_local("_o", strofreal(_sl_spec("ps09a", "{'jitter':'2'}|{'jitter':'200'}")))
+if `_r' | !`_o' local ok 0
+capture noisily dash `two' jitter(2 abc) name(ps09b)
+local _r = _rc
+mata: st_local("_o", strofreal(_sl_spec("ps09b", "{'jitter':'2'}|{}") & !strpos(st_global("dash_json_ps09b"), "abc")))
+if `_r' | !`_o' local ok 0
 _ps_refuse PS-09 198 "jitter(2 .. 5):  invalid syntax" |`two' jitter(2 .. 5)
+// The text never reaches the spec: it is no number, so no jitter.
 capture noisily dash scatter mpg weight, jitter(5; import os) name(ps09)
-if _rc != 198 | `"${dash_json_ps09}"' != "" local ok 0
-_ps_tally PS-09 `ok' "a used jitter() element is held to 0-100; a misplaced .. in twoway's words"
+if _rc | strpos(`"${dash_json_ps09}"', "import") local ok 0
+_ps_tally PS-09 `ok' "jitter() elements twoway draws are taken, as it draws them; a misplaced .. in twoway's words"
 
 // PS-10 base and barwidth per series
 local ok 1
@@ -1467,12 +1478,16 @@ _ps_tally PS-10 `ok' "base() and barwidth() one element per y; bw() refused"
 // PS-11 base and barwidth refusals
 local ok 1
 _ps_refuse PS-11 198 "base(10 .. 20):  invalid syntax" |bar mpg turn weight, base(10 .. 20)
-_ps_refuse PS-11 198 "dash: barwidth() must be a positive number (got: -2)" |bar mpg turn weight, barwidth(1 -2)
-_ps_refuse PS-11 198 "" |bar mpg turn weight, barwidth(1 0)
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it
+// (value_codes_truth.json barwidth_m2_ref, barwidth_0).
+capture noisily dash bar mpg turn weight, barwidth(1 -2) name(ps11a)
+if _rc | !strpos(`"${dash_json_ps11a}"', char(34) + "-2" + char(34)) local ok 0
+capture noisily dash bar mpg turn weight, barwidth(1 0) name(ps11b)
+if _rc | !strpos(`"${dash_json_ps11b}"', char(34) + "0" + char(34)) local ok 0
 // Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong; twoway
 // refuses it r(4026) (value_list_truth.json B23).
 _ps_refuse PS-11 4026 "option base() incorrectly specified, abc is not a number" |bar mpg turn weight, base(10 abc)
-_ps_tally PS-11 `ok' "a used base() or barwidth() element is held to the rule"
+_ps_tally PS-11 `ok' "a used base() element is held to the rule; barwidth() elements twoway draws are taken"
 
 // PS-12 a list where twoway takes one value
 local ok 1
@@ -1510,9 +1525,13 @@ local ok 1
 _ps_refuse PS-15 111 "*not found" |`two' mlabel("\`jgnone'" rep78)
 mata: st_local("_o", strofreal(strpos(st_global("ps_line"), char(96) + "jgnone' not found") > 0))
 local ok = `ok' & `_o'
-_ps_refuse PS-15 198 "" |`two' jitter("\$G")
-mata: st_local("_o", strofreal(strpos(st_global("ps_line"), char(36) + "G") > 0))
-local ok = `ok' & `_o'
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it
+// (value_codes_truth.json twoway takes any jitter() text; jitter_abc_ref).
+// The text, no number, is dropped: it never reaches the spec.
+capture noisily dash `two' jitter("\$G") name(ps15j)
+local _r = _rc
+mata: st_local("_o", strofreal(!strpos(st_global("dash_json_ps15j"), char(36) + "G")))
+if `_r' | !`_o' local ok 0
 _ps_tally PS-15 `ok' "a backtick or dollar in an element stays literal"
 
 // PS-16 guard: one plain value on one y writes what it wrote

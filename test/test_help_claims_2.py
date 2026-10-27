@@ -244,7 +244,9 @@ class TestTheHelpSaysWhatWasMeasured:
                 "refuses it") not in v
         assert ("such as {cmd:msize(1e308)}, is refused as {cmd:twoway} "
                 "refuses it") in v
-        assert "{cmd:msize(1e400)}" in v      # named among dash's own
+        # Flipped (WP-35 basic:PT-13, D60): read as msize(0), as twoway
+        # draws it.
+        assert "{cmd:msize(1e400)}" in v
 
     def test_twoway_does_not_draw_a_time_series_label(self):
         """HC2-10d: twoway mlabel(L.mpg) is r(111)."""
@@ -273,10 +275,12 @@ class TestTheHelpSaysWhatWasMeasured:
         # P1.1b: twoway labels with the first variable (HC2-18a)
         # Flipped (WP-31 C10a): range(varname) on function and kdensity is
         # taken, as twoway takes it, so the help no longer names it here.
-        for s in ("an element of {cmd:mlabel()} that names several variables",
-                  "{cmd:scatter mpg weight, lwidth(-1)}, which {cmd:twoway} "
-                  "draws, is refused"):
-            assert s in v, s
+        # Flipped (WP-35 basic:PT-13): lwidth(-1) on scatter is drawn, as
+        # twoway draws it (value_codes_truth.json lwidth_neg.scatter), so
+        # the help no longer names it here.
+        assert ("{cmd:scatter mpg weight, lwidth(-1)}, which {cmd:twoway} "
+                "draws, is refused") not in v
+        assert "an element of {cmd:mlabel()} that names several variables" in v
 
     def test_the_values_dash_accepts_are_all_named(self):
         """HC2-16, and TestAStyleOptionGivenEmptyParenthesesIsReported,

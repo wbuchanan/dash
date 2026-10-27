@@ -84,18 +84,24 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
 # WP-30 P1.12b: the line-width rules read Stata units (,u)
 # Flipped (WP-31 C10c): yaxis()/xaxis() take twoway's 1-9 (axes,1,9).
 # Flipped (WP-31 D35): degree() takes every nonnegative integer (int,0).
+# Flipped (WP-35 basic:PT-13): dash's own bounds lifted -- jitter(),
+# jitterseed() and barwidth() take what twoway takes, mband's n() any
+# integer up to 10000 (D61) -- and lwidth(), mlwidth(), msangle() bounded
+# only where twoway refuses (value_codes_truth.json per_type).
 CONTRACT_PLOT_RULES = """
 msize=style  mlabsize=style  mlabgap=style
-lwidth=style,0,10000,u  mlwidth=style,0,10000,u
-msangle=style,-360,360  mlabposition=style  fintensity=style
-jitter=num,0,100  jitterseed=int,0  jseed=int,0
+lwidth=style,0,10000,u@area|bar|connected|contour|dropline|fpfit|fpfitci|function|histogram|kdensity|lfit|lfitci|line|lowess|lpoly|lpolyci|mband|mspline|pcarrow|pcarrowi|pcbarrow|pccapsym|pci|pcscatter|pcspike|qfit|qfitci|rarea|rbar|rcap|rcapsym|rconnected|rline|rpcap|rpspike|rspike|spike|tsline|tsrline  lwidth=style
+mlwidth=style,0,10000,u@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  mlwidth=style
+msangle=style,-360,360@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  msangle=style
+mlabposition=style  fintensity=style
+jitter=style  jitterseed=style  jseed=int,0
 yaxis=axes,1,9  xaxis=axes,1,9
 malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
-base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
+base=num  barwidth=num  level=num@lfitci|qfitci|fpfitci
 degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
 n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci
-n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
+n=int,,10000@mband  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
 colornlevels=int,2,256
 colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
@@ -256,7 +262,10 @@ class TestTheTableIsWellFormed:
         # family's token then lost its bounds: twoway's rule there depends
         # on the dataset's observations and has no upper end (nr.<type>.<v>),
         # so _dash_fold_stat_words gives its refusals.
-        assert len(want) == 45, "the contract text above lost a token"
+        # 45 -> 49: basic:PT-13 bounds lifted, widths where drawn (WP-35:
+        # lwidth, mlwidth and msangle each a where-drawn token and an
+        # unbounded one; mband's n() its own token).
+        assert len(want) == 49, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 
@@ -450,6 +459,9 @@ class TestTheNewProgramsKeepTheirConstraints:
         # line up in its generated table, the value handed on by value;
         # substr splits its "<rc>|<line>" answer.
         "_dash_tw_value_msg", "substr",
+        # WP-35 basic:PT-13: a value list's elements counted and moved by
+        # value (tokens, cols); each is read as a number by Stata's real().
+        "tokens", "cols",
     })
 
     @staticmethod
@@ -1502,6 +1514,12 @@ class TestTheOracleFixtureIsInStep:
                      if p["option"] == opt and p["value"] == "abc"]
             assert words, f"{opt}: no word probe"
             for p in words:
+                # WP-35 basic:PT-13: jitter() and jitterseed() take a word
+                # in silence, drawn as none (value_codes_truth.json
+                # jitter_abc_ref, jitterseed_abc); dash drops it.
+                if opt in ("jitter", "jitterseed"):
+                    assert p["rc"] == 0 and p["message"] == "", p
+                    continue
                 assert p["rc"] == 0 and "named style" in p["message"], p
 
     @_needs_table

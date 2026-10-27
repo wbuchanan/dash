@@ -686,12 +686,15 @@ class TestApplyJitter:
         np.testing.assert_array_equal(xj, x)
         np.testing.assert_array_equal(yj, y)
 
-    def test_clamp_over_100(self):
+    def test_over_100_is_drawn_as_given(self):
+        # Flipped (WP-35 basic:PT-13): clamping 150 to 100 was wrong;
+        # twoway draws jitter(150) wider than jitter(100)
+        # (value_codes_truth.json jitter_150).
         x = np.array([1.0, 2.0, 3.0])
         y = np.array([4.0, 5.0, 6.0])
-        # 150 should be clamped to 100 — shouldn't crash
-        xj, yj = _apply_jitter(x, y, 150, seed=0)
-        assert len(xj) == 3
+        x1, _ = _apply_jitter(x, y, 100, seed=0)
+        x15, _ = _apply_jitter(x, y, 150, seed=0)
+        np.testing.assert_allclose(x15 - x, (x1 - x) * 1.5)
 
     def test_negative_pct_clamps_to_zero(self):
         x = np.array([1.0, 2.0, 3.0])

@@ -361,7 +361,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-14 Tracked:** Closed in WP-35, BUGS.md "bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types", commit pending.
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
 - **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit pending.
-- **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
+- **basic:PT-13 Tracked:** Closed in WP-35, BUGS.md "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses", commit pending.
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
 - **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.
 - **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit 5e1901e.

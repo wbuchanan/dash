@@ -392,7 +392,8 @@ _hc2_reg  "HC2-03h" hc `""n":"1000""'
 // HC2-04 -- the listed bounds, at and just past each edge.
 _hc2_dash "HC2-04a" 0   `"dash scatter mpg weight, jitter(0) name(hc)"'
 _hc2_dash "HC2-04b" 0   `"dash scatter mpg weight, jitter(100) name(hc)"'
-_hc2_dash "HC2-04c" 198 `"dash scatter mpg weight, jitter(100.5) name(hc)"'
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash "HC2-04c" 0 `"dash scatter mpg weight, jitter(100.5) name(hc)"'
 _hc2_dash "HC2-04d" 0   `"dash scatter mpg weight, malpha(100) lalpha(0) falpha(100) name(hc)"'
 _hc2_dash "HC2-04e" 198 `"dash scatter mpg weight, lalpha(101) name(hc)"'
 _hc2_dash "HC2-04f" 198 `"dash scatter mpg weight, falpha(-1) name(hc)"'
@@ -442,8 +443,9 @@ _hc2_dash "HC2-04Q" 0   `"dash scatter mpg weight, colorvar(rep78) colorcuts(3) 
 // HC2-05 -- a word twoway would have swallowed.
 _hc2_expect "HC2-05a" 0   `"twoway scatter mpg weight, jitter(abc)"'
 _hc2_expect "HC2-05b" 0   `"twoway scatter mpg weight, jitter(5) jitterseed(abc)"'
-_hc2_dash   "HC2-05c" 198 `"dash scatter mpg weight, jitter(abc) name(hc)"' "jitter()"
-_hc2_dash   "HC2-05d" 198 `"dash scatter mpg weight, jitter(5) jitterseed(abc) name(hc)"' "jitterseed()"
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash   "HC2-05c" 0 `"dash scatter mpg weight, jitter(abc) name(hc)"'
+_hc2_dash   "HC2-05d" 0 `"dash scatter mpg weight, jitter(5) jitterseed(abc) name(hc)"'
 
 // HC2-06 -- a word that only looks like a number.
 _hc2_expect "HC2-06a" 198 `"twoway scatter mpg weight, msize(1e308)"' "invalid syntax"
@@ -451,7 +453,9 @@ _hc2_expect "HC2-06a" 198 `"twoway scatter mpg weight, msize(1e308)"' "invalid s
 // twoway's code and words (value_truth.json, value_codes_truth.json).
 _hc2_dash   "HC2-06b" 198 `"dash scatter mpg weight, msize(1e308) name(hc)"' "invalid syntax"
 _hc2_expect "HC2-06c" 0   `"twoway scatter mpg weight, msize(1e400)"'
-_hc2_dash   "HC2-06d" 198 `"dash scatter mpg weight, msize(1e400) name(hc)"' "msize()"
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash   "HC2-06d" 0 `"dash scatter mpg weight, msize(1e400) name(hc)"'
+_hc2_reg    "HC2-06e" hc `""msize":"0""'
 
 // HC2-07 -- start() on histogram, as twoway checks it.
 _hc2_expect "HC2-07a" 198 `"twoway histogram mpg, start(12.5)"' "option start() may not be larger than minimum of mpg"
@@ -544,17 +548,20 @@ _hc2_dash   "HC2-13d" 198 `"dash mspline mpg weight, n(301) name(hc)"' "n must b
 
 // HC2-14 -- dash's own bounds with no second sentence; twoway takes each
 // value, and has no such option at all for the rest.
-_hc2_dash "HC2-14a" 198 `"dash scatter mpg weight, jitter(101) name(hc)"'
-_hc2_tail "HC2-14b" jitter "" 101
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash "HC2-14a" 0 `"dash scatter mpg weight, jitter(101) name(hc)"'
+_hc2_reg  "HC2-14b" hc `""jitter":"101""'
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-14c" 0 `"dash lfitci mpg weight, level(100) name(hc)"'
 _hc2_dash "HC2-14d" 0 `"dash lfitci mpg weight, level(-1) name(hc)"'
-_hc2_dash "HC2-14e" 198 `"dash bar mpg weight, barwidth(0) name(hc)"'
-_hc2_tail "HC2-14f" barwidth "" 0
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash "HC2-14e" 0 `"dash bar mpg weight, barwidth(0) name(hc)"'
+_hc2_reg  "HC2-14f" hc `""barwidth":"0""'
 _hc2_dash "HC2-14g" 198 `"dash scatter mpg weight, aspectratio(-1) name(hc)"'
 _hc2_tail "HC2-14h" aspectratio "" -1
-_hc2_dash "HC2-14i" 198 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(hc)"'
-_hc2_tail "HC2-14j" jitterseed "" -1
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash "HC2-14i" 0 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(hc)"'
+_hc2_dash "HC2-14j" 198 `"dash scatter mpg weight, connect(l) lwidth(-1) name(hc)"' "gm_linewidth must be between"
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-14k" 0 `"dash kdensity mpg, bwidth(0) name(hc)"'
 _hc2_dash "HC2-14l" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"'
@@ -639,12 +646,15 @@ _hc2_expect "HC2-18w" 127 `"twoway kdensity mpg, range(. 50)"' "option range() r
 _hc2_expect "HC2-18x" 198 `"twoway bar mpg weight, lwidth(-1)"' "gm_linewidth must be between"
 _hc2_expect "HC2-18y" 198 `"twoway connected mpg weight, mlwidth(-1)"' "gm_linewidth must be between"
 _hc2_expect "HC2-18k" 0   `"twoway scatter mpg weight, lwidth(-1)"'
-_hc2_dash   "HC2-18l" 198 `"dash scatter mpg weight, lwidth(-1) name(hc)"' "lwidth()"
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash   "HC2-18l" 0 `"dash scatter mpg weight, lwidth(-1) name(hc)"'
 _hc2_expect "HC2-18m" 198 `"twoway scatter mpg weight, connect(l) lwidth(-1)"' "gm_linewidth must be between"
 _hc2_expect "HC2-18n" 0   `"twoway line mpg weight, mlwidth(-1)"'
-_hc2_dash   "HC2-18o" 198 `"dash line mpg weight, mlwidth(-1) name(hc)"' "mlwidth()"
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash   "HC2-18o" 0 `"dash line mpg weight, mlwidth(-1) name(hc)"'
 _hc2_expect "HC2-18p" 0   `"twoway line mpg weight, msangle(400)"'
-_hc2_dash   "HC2-18q" 198 `"dash line mpg weight, msangle(400) name(hc)"' "msangle()"
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
+_hc2_dash   "HC2-18q" 0 `"dash line mpg weight, msangle(400) name(hc)"'
 _hc2_expect "HC2-18r" 198 `"twoway connected mpg weight, msangle(400)"' "symbolangle must be between"
 
 // HC2-19 -- a switch belongs to its plot type, as in twoway.

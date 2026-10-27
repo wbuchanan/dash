@@ -70,3 +70,42 @@ class TestTheLookup:
             body = ado[ado.index("program define %s," % prog):]
             body = body[:body.index("\nend\n")]
             assert body.count("_dash_tw_value_msg(") == 1, prog
+
+
+def _plot_tokens():
+    ado = _read("dash.ado")
+    body = ado[ado.index("program define _dash_option_rules"):]
+    body = body[body.index("    local plot ///"):body.index("    // alwidth(), the outline")]
+    return body.replace("///", " ").split()[2:]
+
+
+class TestTheTokens:
+    def test_dash_own_bounds_lifted(self):
+        # basic:PT-13: the bounds twoway does not have are gone -- jitter()
+        # and jitterseed() take what twoway takes (a word or a negative
+        # number drawn as none), barwidth() any number, mband's n() any
+        # integer up to dash's 10,000 (D61) -- and aspectratio() keeps its
+        # lower bound (D59: twoway's picture for -1 is a broken region).
+        toks = _plot_tokens()
+        assert "jitter=style" in toks and "jitterseed=style" in toks
+        assert "barwidth=num" in toks
+        assert not [t for t in toks if t.startswith(("jitter=num", "jitterseed=int", "barwidth=pos"))]
+        assert "n=int,,10000@mband" in toks
+        ado = _read("dash.ado")
+        assert "aspectratio=num,0 " in ado
+
+    def test_where_drawn_lists(self):
+        # lwidth(), mlwidth() and msangle() are bounded only on the types
+        # where twoway refuses the value (value_codes_truth.json per_type),
+        # with an unbounded token for every other type.
+        with open(CODES, encoding="utf-8") as fh:
+            per = json.load(fh)["per_type"]
+        toks = _plot_tokens()
+        for opt, key, bound in (("lwidth", "lwidth_neg", "style,0,10000,u"),
+                                ("mlwidth", "mlwidth_neg", "style,0,10000,u"),
+                                ("msangle", "msangle_400", "style,-360,360")):
+            want = sorted(t for t, p in per[key].items() if p["rc"])
+            typed = [t for t in toks if t.startswith("%s=%s@" % (opt, bound))]
+            assert len(typed) == 1, (opt, typed)
+            assert sorted(typed[0].split("@", 1)[1].split("|")) == want
+            assert "%s=style" % opt in toks

@@ -1195,8 +1195,9 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang3}{cmd:. dash (histogram mpg, bin(2000))}{p_end}
 {phang3}{cmd:dash: bin() must be an integer between 1 and 1000 (got: 2000). dash draws up to 1000 bins.}{p_end}
 
-{phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
-    {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
+{phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} and
+    {cmd:jitterseed()} any value, as {cmd:twoway} takes them, a word or a
+    negative number drawn as none; {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
     {cmd:level()} any number on {cmd:lfitci}, {cmd:qfitci} and
     {cmd:fpfitci}, as {cmd:twoway} takes it (no band at 100 or more), and
     10 to 99.99 on {cmd:lpolyci}, as {cmd:twoway}; {cmd:aspectratio()} 0 or
@@ -1204,7 +1205,9 @@ there, is an invalid point.  The literal is read as data and never run.
     on {cmd:histogram} a {cmd:start()} above the variable's minimum is
     refused in {cmd:twoway}'s own words,
     {cmd:option start() may not be larger than minimum of mpg};
-    {cmd:barwidth()}, {cmd:width()} and {cmd:bwidth()} positive, except
+    {cmd:barwidth()} any number ({cmd:barwidth(-1)}, {cmd:twoway}'s own
+    default, draws the default width, and {cmd:barwidth(0)} bars of no
+    width); {cmd:width()} and {cmd:bwidth()} positive, except
     that {cmd:kdensity} takes {cmd:bwidth(0)}, its default rule, and
     {cmd:lowess} any number, one outside 0 to 1 drawn at .8, as
     {cmd:twoway} draws it.  Integers:
@@ -1214,27 +1217,34 @@ there, is an invalid point.  The literal is read as data and never run.
     drawn with a note that the result can differ from Stata's, fitted at
     most at degree 30 and never above the distinct x values less one, and
     on the saved page kept as built and marked after a filter move);
-    {cmd:n()} 1 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
+    {cmd:n()} 1 to 10000, 1 to 300 on {cmd:mspline}, and up to 10000 on
+    {cmd:mband}, where one below 1 draws its default; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
-    {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
-    0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
+    {cmd:colornlevels()} 2 to 256; {cmd:jseed()} 0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
     1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
     number, and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
     number with a unit ({cmd:4pt}, {cmd:.1in}) or a {cmd:*}{it:#}
-    multiplier; {cmd:lwidth()}, {cmd:mlwidth()} and {cmd:clwidth()} 0 to
+    multiplier, and {cmd:msize(1e400)}, a number past the machine's range,
+    is read as {cmd:msize(0)}, as {cmd:twoway} draws it; {cmd:lwidth()},
+    {cmd:mlwidth()} and {cmd:clwidth()} 0 to
     10000 Stata units, as a number, {it:#}{cmd:rs}, a non-negative
     {it:#}{cmd:pt}, {it:#}{cmd:in} or {it:#}{cmd:cm}, or {cmd:*}{it:#},
     refused with {cmd:twoway}'s message
     {cmd:gm_linewidth must be between 0.000 and 1.0e+04}, followed by
-    {cmd:dash}'s line naming the option;
+    {cmd:dash}'s line naming the option, and, as {cmd:twoway} holds them,
+    {cmd:lwidth()} only on a plot type that draws a line or an outline (on
+    {cmd:scatter} only when {cmd:connect()} draws one), {cmd:mlwidth()} only
+    where it draws markers, and a {cmd:*}{it:#} multiplier past 10000
+    units of the 0.3-unit default line ({cmd:lwidth(*40000)} on
+    {cmd:line});
     {cmd:alwidth()} the same, 0 to 10000 on the plot types where {cmd:twoway}
     refuses it outside that range (every type but {cmd:line},
     {cmd:connected}, the fits and smooths without a band, {cmd:kdensity},
     {cmd:function}, {cmd:tsline}, {cmd:scatter}, {cmd:dot},
     {cmd:rscatter} and {cmd:scatteri});
-    {cmd:msangle()} -360 to 360; {cmd:xsize()} and {cmd:ysize()} 1 to
+    {cmd:msangle()} -360 to 360 where it draws markers; {cmd:xsize()} and {cmd:ysize()} 1 to
     100; a word that only looks like a number, such as
     {cmd:msize(1e308)}, is refused as {cmd:twoway} refuses it
     ({cmd:invalid syntax}).  A word
@@ -1268,14 +1278,15 @@ there, is an invalid point.  The literal is read as data and never run.
     checked wherever they are written, inside a layer's parentheses or
     after the graph's comma.
 
-{phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
-    the value, and {cmd:dash} refuses it because it could not draw it.
-    Two say so in a second sentence of the message: {cmd:bin()} up to
-    1000, and {cmd:n()} up
-    to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound).
-    The others carry no second sentence: {cmd:jitter()} 0 to 100,
-    {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or more, and
-    {cmd:jitterseed()} 0 or more.  {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
+{phang2}    Two of those bounds are {cmd:dash}'s own resource limits:
+    {cmd:twoway} accepts the value, and {cmd:dash} refuses it, saying so
+    in a second sentence of the message: {cmd:bin()} up to 1000, and
+    {cmd:n()} up to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s
+    own bound); see {help dash##limits:Resource limits}.  The others are
+    {cmd:twoway}'s, but for one: {cmd:aspectratio()} below 0, which
+    {cmd:twoway} draws as a plot region overflowing the graph, a layout
+    defect {cmd:dash} does not copy, so it refuses the value, {cmd:r(198)}.
+    {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
     {cmd:jseed()}, {cmd:colornlevels()}, {cmd:colpalette()} and {cmd:hover()}
     are options {cmd:twoway} does not have, so every rule on them is
     {cmd:dash}'s own.  {cmd:bands()} 1 to 200 is {cmd:twoway}'s own bound
@@ -1283,15 +1294,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {cmd:dash} also refuses some forms {cmd:twoway} reads:
     an element of {cmd:mlabel()} that names several variables, such as
-    {cmd:t*} ({cmd:twoway} draws no labels for that y); a number too large for
-    Stata that {cmd:twoway} lets through, as in {cmd:msize(1e400)}; and a
-    width or an angle outside its bounds on a plot type that does not
-    draw what it styles.  {cmd:twoway} checks {cmd:lwidth()} only where
-    it draws a line or an outline, and {cmd:mlwidth()} and
-    {cmd:msangle()} only where it draws markers; {cmd:dash} checks them,
-    their unit and multiplier forms included,
-    on every plot type, so {cmd:scatter mpg weight, lwidth(-1)}, which
-    {cmd:twoway} draws, is refused.
+    {cmd:t*} ({cmd:twoway} draws no labels for that y).
 
 {phang2}    Some values {cmd:twoway} refuses, {cmd:dash} accepts:
     {cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}; a style

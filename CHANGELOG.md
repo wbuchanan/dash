@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- Values twoway draws are drawn: jitter(-3), jitter(150), jitter(abc), jitterseed(-1), barwidth(0), barwidth(-1), lwidth(-1) on scatter, msangle(400) on line, mband's n(0) and msize(1e400), read as msize(0) (dash refused them, r(198)); lwidth(*40000) is refused, r(198), as twoway refuses it (dash drew it with a note); aspectratio(-1) stays refused. (WP-35, basic:PT-13)
 - yvarlabel(), xvarlabel(), mlabprefix(), mlabsuffix(), lalign(), mlabstyle() and contour's valued options given twice draw the last copy, as twoway does; dash refused them, r(198). (WP-35, MS-1)
 - A graph registered with `name()` is drawn at `dash build` from the frame it was registered in (`frame cars: dash scatter mpg weight, name(g1)`), as twoway draws from the current frame, with its time-series operators, sort() and weights; it used to be drawn from the frame `dash build` ran in, and was refused with r(111) when its variables were not there. One dashboard can hold graphs of several frames, a variable two frames hold differently keeping each frame's own format and labels; graphs of different frames cannot share a `link()` group, and a filter skips only the graphs whose frame lacks its variable. (WP-33, 33-07)
 - The twenty shipped schemes are now `dash-<name>.scheme` files, installed in

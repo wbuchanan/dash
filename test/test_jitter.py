@@ -131,8 +131,22 @@ class TestMapScatterJitter:
         # float() will raise ValueError → treated as 0 → no jitter
         assert r.glyph.x == "weight"
 
+    def test_jitter_above_100_is_drawn_as_given(self, auto_df, gm):
+        """jitter(150) spreads the points wider than jitter(100), as twoway
+        draws it (WP-35 basic:PT-13, value_codes_truth.json jitter_150);
+        dash clamped it to 100."""
+        spread = {}
+        for v in ("100", "150"):
+            src = _make_source(auto_df, "weight", "mpg")
+            r = gm.map_scatter(figure(), src, "mpg", "weight",
+                               {"jitter": v, "jitterseed": "1"})
+            d = r.data_source.data
+            spread[v] = float(np.nanmax(np.abs(np.asarray(d[dr._DASH_JITTER_X], dtype=float)
+                                               - np.asarray(d["weight"], dtype=float))))
+        assert spread["150"] > spread["100"] * 1.2
+
     def test_extreme_jitter_value_no_crash(self, auto_df, gm):
-        """jitter(999999) is clamped to 100, no crash."""
+        """jitter(999999) is drawn as given, no crash."""
         fig = figure()
         src = _make_source(auto_df, "weight", "mpg")
         r = gm.map_scatter(fig, src, "mpg", "weight", {"jitter": "999999"})

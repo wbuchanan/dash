@@ -379,7 +379,7 @@ FUNCTIONS = {
  'ServerAppBuilder._shared_stat_lines': 'test/test_mode_parity.py::TestTheCopiedHelpersBringTheirCallees::test_every_global_a_copied_helper_calls_is_defined',
  'ServerAppBuilder._supply_missing_constants': 'test/test_help_claims_3.py::TestTheAutomaticGridIsOneRuleInBothModes::test_the_app_carries_the_rule_verbatim',
  'ServerAppBuilder.build': 'test/test_resource_limits.py::TestAnOversizedDatasetIsNotRefused::test_the_server_app_builds_past_the_old_cap',
- '_apply_jitter': 'test/test_scheme.py::TestApplyJitter::test_clamp_over_100',
+ '_apply_jitter': 'test/test_scheme.py::TestApplyJitter::test_over_100_is_drawn_as_given',
  '_betacf': 'test/test_statistical_defaults.py::TestStudentTQuantile::test_large_df_approaches_the_normal',
  '_betainc': 'test/test_statistical_defaults.py::TestStudentTQuantile::test_large_df_approaches_the_normal',
  '_cell_height_class': 'test/test_geometry.py::TestBootstrapLayout::test_a_kpi_cell_height_follows_its_span',

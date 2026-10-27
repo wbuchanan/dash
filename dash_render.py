@@ -13784,7 +13784,9 @@ def _apply_jitter(
     Args:
         x_arr:      1-D numeric array of x values.
         y_arr:      1-D numeric array of y values (same length).
-        jitter_pct: Percentage (1–100) of axis range used as jitter half-width.
+        jitter_pct: Percentage of axis range used as jitter half-width; any
+                    number from 0 up, as twoway draws jitter(150) (WP-35
+                    basic:PT-13).
         seed:       Optional integer RNG seed for reproducibility.
 
     Returns:
@@ -13793,7 +13795,7 @@ def _apply_jitter(
     """
     if len(x_arr) == 0:
         return x_arr.copy(), y_arr.copy()
-    pct = max(0.0, min(100.0, float(jitter_pct))) / 100.0
+    pct = max(0.0, float(jitter_pct)) / 100.0
     if pct == 0.0:
         return x_arr.copy(), y_arr.copy()
     rng = np.random.default_rng(seed)
@@ -13826,8 +13828,6 @@ _FN_EXPR_MAX_NEST = 40
 # GlyphMapper._ci_band_style (BUGS.md, S3, "A ci band is filled in its line's
 # colour, where Stata fills it in pstyle ci").  The 0.2 alpha that stood here
 # was dash's own; twoway draws s2color's band opaque gs12.
-
-_MIN_BAR_WIDTH = 1e-9
 
 # The largest number of median bands dash will draw.  The generated server
 # app has always clamped to this; the standalone renderer had no bound, so
@@ -14459,15 +14459,12 @@ class GlyphMapper:
         # Through _stat_option_float, as dropline's is: a word or a
         # negative number from a hand-written spec was dropped in silence
         # here while dropline named it.  (dash.ado refuses both before a
-        # command gets this far.)  A value above 100 is clamped, as it
-        # always was.
+        # command gets this far.)  A value above 100 is drawn as given, as
+        # twoway draws jitter(150) (WP-35 basic:PT-13); dash clamped it.
         jitter_pct = _stat_option_float(options, "jitter", 0.0, layer,
                                         lo=0.0)
         if jitter_pct is None or jitter_pct <= 0:
             return source, xvar, yvar
-
-        # Clamp to [1, 100]
-        jitter_pct = min(100.0, jitter_pct)
 
         seed_val: int | None = _jitter_seed(options)
 
@@ -18699,12 +18696,13 @@ class GlyphMapper:
         # Read through _stat_option_float so a value that is not a number, not
         # finite, or not positive is REPORTED and the computed width used.
         # A bare float() let barwidth(-5) through to Bokeh, which raised
-        # "Distances must be positive!" and lost the whole dashboard -- Stata
-        # itself rejects a negative barwidth with a clear r(198).
+        # "Distances must be positive!" and lost the whole dashboard.  0 is
+        # drawn, bars of no width, as twoway draws barwidth(0) (WP-35
+        # basic:PT-13); a negative width is named and the computed one used.
         for key in ("barwidth", "width"):
             if key in options:
                 _bw = _stat_option_float(options, key, 1.0, "bar",
-                                         lo=_MIN_BAR_WIDTH)
+                                         lo=0.0)
                 if _bw is not None:
                     bar_width = _bw
                 break
@@ -18907,7 +18905,9 @@ class GlyphMapper:
             w = float(width)
         except (TypeError, ValueError):
             w = 1.0
-        if not math.isfinite(w) or w <= 0:
+        # 0 is a width: twoway draws barwidth(0) as bars of no width (WP-35
+        # basic:PT-13).
+        if not math.isfinite(w) or w < 0:
             w = 1.0
         try:
             off = float(offset)
@@ -22986,7 +22986,7 @@ class GlyphMapper:
         for key in ("barwidth", "width"):
             if key in options:
                 _bw = _stat_option_float(options, key, 1.0, "rbar",
-                                         lo=_MIN_BAR_WIDTH)
+                                         lo=0.0)
                 if _bw is not None:
                     bar_width = _bw
                 break
@@ -23940,7 +23940,7 @@ class GlyphMapper:
         # _stat_option_float: a bare float() here raised out of the mapper
         # on jitter(abc) and took the whole render down.
         _jit = _stat_option_float(options, "jitter", 0.0, "dropline",
-                                  lo=0.0, hi=100.0)
+                                  lo=0.0)
         if _jit:
             x_plot, y_plot = _apply_jitter(x_arr, y_arr, _jit,
                                            _jitter_seed(options))
@@ -24640,7 +24640,7 @@ class GlyphMapper:
                                             "scatteri", lo=0.0)
             if jitter_pct is not None and jitter_pct > 0:
                 x_vals, y_vals = _apply_jitter(
-                    x_vals, y_vals, min(100.0, jitter_pct),
+                    x_vals, y_vals, jitter_pct,
                     _jitter_seed(options))
 
         # In date units on a date axis, past Stata's dates included; only
@@ -25221,16 +25221,16 @@ class GlyphMapper:
         ``_DASH_JITTER_Y`` -- *xcol* and *ycol* moved by ``_apply_jitter``
         within jitter()% of each axis's range, seeded by ``_jitter_seed``
         -- and True is returned; otherwise *cols* is left as it is.  The
-        value is read as dropline reads it (a bad one is named, 0 to 100)."""
+        value is read as dropline reads it (a bad one is named; any number
+        from 0 up, as twoway draws jitter(150), WP-35 basic:PT-13)."""
         if not str((options or {}).get("jitter", "") or "").strip():
             return False
-        jit = _stat_option_float(options, "jitter", 0.0, layer, lo=0.0,
-                                 hi=100.0)
+        jit = _stat_option_float(options, "jitter", 0.0, layer, lo=0.0)
         if not jit:
             return False
         xs = np.asarray(_dash_float_values(cols[xcol]), dtype=float)
         ys = np.asarray(_dash_float_values(cols[ycol]), dtype=float)
-        jx, jy = _apply_jitter(xs, ys, min(100.0, jit), _jitter_seed(options))
+        jx, jy = _apply_jitter(xs, ys, jit, _jitter_seed(options))
         cols[_DASH_JITTER_X] = jx.tolist()
         cols[_DASH_JITTER_Y] = jy.tolist()
         return True
@@ -67634,7 +67634,7 @@ class ServerAppBuilder:
                       # _dash_layer_all_missing's plain types (WP-32).
                       "_DASH_PLAIN_TYPES", "_DASH_LAYER_VAR_KEYS",
                       "_FP_GRID_MAX", "_MAX_MBANDS",
-                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
+                      "_MAX_EXPR_CHARS", "_FN_EXPR_MAX_NEST",
                       # _IF_EXPR_ALLOWED_NODES is deliberately absent: it is
                       # a frozenset of AST CLASSES, and repr() of a class is
                       # not source. It is written out by name below.

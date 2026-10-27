@@ -606,12 +606,16 @@ end
 qui sysuse auto, clear
 global dash_nobrowser 1
 
-// P9-01 — code after a number in jitter() → rc 198 naming jitter()
+// P9-01 — code after a number in jitter() never reaches the spec.
+// Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway takes any
+// jitter() text, rc 0 (measured 27oct2026), and dash drops what is no
+// number, so the spec holds no jitter and none of the text.
 _adv_p9_probe `"dash scatter mpg weight, jitter(5; import os) name(p901)"' jitter
-assert r(rc) == 198
-assert r(named) == 1 & r(ignored) == 0
-assert "${dash_graph_registry}" == ""
-display "P9-01 PASS: jitter(5; import os) → rc=198 naming jitter(), nothing registered"
+assert r(rc) == 0
+assert r(ignored) == 0
+mata: st_local("_p9j", strofreal(strpos(st_global("dash_json_p901"), "import") == 0 & strpos(st_global("dash_json_p901"), "jitter") == 0))
+assert `_p9j' == 1
+display "P9-01 PASS: jitter(5; import os) → rc=0, the text is not in the spec"
 
 // P9-02 — code after a number in level() → rc 198 naming level()
 _adv_p9_probe `"dash lfitci mpg weight, level(95; sysuse auto) name(p902)"' level
@@ -1374,13 +1378,15 @@ assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-01 PASS: an unrecognised plot type is echoed as text, not SMCL"
 
-// P20-02 — a numeric plot option (every num/int/pos rule shares the echo)
-_adv_p19_run "dash scatter mpg weight, jitter({bf:INJMARKJIT}) name(p2002)"
-assert r(rc) == 198
-cert_file_has "`r(log)'", needle("jitter() must be a number between 0 and 100 (got: {bf:INJMARKJIT})")
+// P20-02 — a numeric plot option (every num/int/pos rule shares the echo).
+// Flipped (WP-35 basic:PT-13): jitter() takes any text now, as twoway
+// does; base() echoes the value in twoway's words (r(4026)).
+_adv_p19_run "dash area mpg weight, base({bf:INJMARKJIT}) name(p2002)"
+assert r(rc) == 4026
+cert_file_has "`r(log)'", needle("option base() incorrectly specified, {bf:INJMARKJIT} is not a number")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
-display "P20-02 PASS: a refused jitter() value is echoed as text, not SMCL"
+display "P20-02 PASS: a refused base() value is echoed as text, not SMCL"
 
 // P20-03 — a keyword option (the enum rule).  Flipped (WP-35 basic:PT-9):
 // kernel() is refused in twoway's words, which do not echo the value
@@ -3630,7 +3636,7 @@ display "  P4-85: XSS in KPI title (server mode) → HTML-escaped in .py"
 display "  P4-86: Data/label with injection chars → .py compiles"
 display "  P8-86..88: Malformed UTF-8 in build/KPI/tabs titles → rc=198"
 display "  P8-89: Control byte in title() → escaped and built, not r(7102)"
-display "  P9-01..03: Code in a number-only option value → rc=198 naming it"
+display "  P9-01..03: Code in an option value → refused, or (jitter()) kept out of the spec"
 display "  P9-04: Backtick in n() → refused by Stata's own line parser, nothing registered"
 display "  P9-06..10: Resource-exhaustion counts and sizes → refused, in dash's or twoway's words"
 display "  P9-11..14: Code in KPI fmt() → rc=198 naming fmt(), no KPI registered"
