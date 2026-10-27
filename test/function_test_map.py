@@ -1382,6 +1382,8 @@ FUNCTIONS = {
  '_dash_col_display': 'test/test_ts_operators.py::TestTheNotes::test_the_display_rule',
  '_dash_take_tsop_columns': 'test/test_ts_operators.py::TestTakingTheColumnsIn::test_the_take_rule',
  '_dash_frame_cols_named': 'test/test_graph_frames.py::TestTheFrameColsSpec::test_entries_dash_writes',
+ '_dash_prefix_of': 'test/test_working_columns.py::TestTheRenderer::test_the_prefix_of_a_spec',
+ '_dash_col_name_re': 'test/test_working_columns.py::TestTheRenderer::test_the_name_patterns_read_the_prefix',
  '_dash_frame_view': 'test/test_graph_frames.py::TestTheFrameView::test_a_graph_reads_its_own_frame',
  '_dash_filter_frame_column': 'test/test_graph_frames.py::TestTheFrameView::test_a_filter_reads_each_graphs_own_column',
  '_dash_tsop_cols_named': 'test/test_ts_operators.py::TestTheColumnsAreNamedInTheSpec::test_the_map_rule',

@@ -505,6 +505,18 @@
 *!       The distinct by() orders of that table, into the caller's locals
 *!       _dq_nord and _dq_ord_j.
 *!
+*!   _dash_reserved_prefix(names)
+*!       The prefix an export names its working columns with: __dash, or
+*!       the first __dsh<k>_ no name of names starts with (WP-35 DT-19).
+*!
+*!   _dash_esample_sub(s, nm)
+*!       The expression s with each e(sample) outside its literals read as
+*!       the variable nm, the export's copy of e(sample) (WP-35 DT-19).
+*!
+*!   _dash_expr_words(s)
+*!       The words of the expression s outside its literals that could
+*!       name a variable, each once (WP-35 DT-19).
+*!
 *!   _dash_sort_reset()
 *!       Empty the join-order table (sort(varlist)'s rank columns).
 *!
@@ -4465,7 +4477,7 @@ string scalar _dash_qual_take_by(string scalar ifx, string scalar inx,
     if (!name_them) return("")
     key = (ifx, inx, order, _dash_frame_key_now())
     if (asarray_contains(_dash_qual_tab, key)) {
-        return("__dashq" + strofreal(asarray(_dash_qual_tab, key)))
+        return(_dash_col_pfx() + "q" + strofreal(asarray(_dash_qual_tab, key)))
     }
     if (rows(_dash_qual_list) >= 99999) {
         st_local(errmacro, "the dashboard holds more distinct qualifiers than dash evaluates (99,999)")
@@ -4474,7 +4486,7 @@ string scalar _dash_qual_take_by(string scalar ifx, string scalar inx,
     _dash_qual_list = _dash_qual_list \ key
     k = rows(_dash_qual_list)
     asarray(_dash_qual_tab, key, k)
-    return("__dashq" + strofreal(k))
+    return(_dash_col_pfx() + "q" + strofreal(k))
 }
 
 
@@ -4845,6 +4857,89 @@ void _dash_qual_orders()
 }
 
 
+// _dash_reserved_prefix(names) -- the prefix this export names its working
+// columns with (WP-35 DT-19): __dash when no name of names starts with it,
+// else the first __dsh<k>_ (k = 1, 2, ...) none starts with.  names are the
+// variable names (and, on the build route, the value-label set names) of
+// every frame the export reads, so no column dash makes -- qualifier,
+// join-order, time-series, weight, split column, label copy, or a column
+// the renderers make -- is a name the data hold, and every variable is
+// read as data, as twoway reads it.  The prefix is kept in the external
+// _dash_col_prefix for the name writers of this export (_dash_col_pfx).
+string scalar _dash_reserved_prefix(string rowvector names)
+{
+    external string scalar _dash_col_prefix
+    string scalar          p
+    real scalar            k, j, hit
+
+    p = "__dash"
+    for (k = 0; k < 100000; k++) {
+        if (k) p = "__dsh" + strofreal(k) + "_"
+        hit = 0
+        for (j = 1; j <= cols(names); j++) {
+            if (substr(names[j], 1, strlen(p)) == p) {
+                hit = 1
+                break
+            }
+        }
+        if (!hit) break
+    }
+    _dash_col_prefix = p
+    return(p)
+}
+
+// _dash_col_pfx() -- the prefix _dash_reserved_prefix chose for this
+// export, __dash before it has run.
+string scalar _dash_col_pfx()
+{
+    pointer() scalar p
+
+    p = findexternal("_dash_col_prefix")
+    if (p == NULL) return("__dash")
+    if (eltype(*p) != "string" | rows(*p) != 1 | cols(*p) != 1) return("__dash")
+    if (*p == "") return("__dash")
+    return(*p)
+}
+
+// _dash_esample_sub(s, nm) -- the expression s with each e(sample) outside
+// its string literals read as the variable nm, the copy of e(sample) an
+// export makes before it holds the estimates (WP-35 DT-19): twoway reads
+// e(sample) as the estimation sample, and a held estimate reads as 0.
+string scalar _dash_esample_sub(string scalar s, string scalar nm)
+{
+    string scalar b, m
+    real scalar   p
+
+    b = _dash_qual_blank_lits(s)
+    while (regexm(b, "e\( *sample *\)")) {
+        m = regexs(0)
+        p = strpos(b, m)
+        s = substr(s, 1, p - 1) + nm + substr(s, p + strlen(m), .)
+        b = substr(b, 1, p - 1) + nm + substr(b, p + strlen(m), .)
+    }
+    return(s)
+}
+
+// _dash_expr_words(s) -- the words of the expression s outside its string
+// literals that could name a variable, blank-separated, each once (WP-35
+// DT-19: the variables a temporary export frame must carry).
+string scalar _dash_expr_words(string scalar s)
+{
+    string scalar b, w, out
+    real scalar   p
+
+    b   = _dash_qual_blank_lits(s)
+    out = ""
+    while (regexm(b, "[A-Za-z_][A-Za-z0-9_]*")) {
+        w = regexs(0)
+        p = strpos(b, w)
+        if (!anyof(tokens(out), w)) out = out + (out != "" ? " " : "") + w
+        b = substr(b, p + strlen(w), .)
+    }
+    return(out)
+}
+
+
 // ------------------------------------------------------------
 // The join-order table (WP-29 P0.1).  Each distinct "sortvars" value a
 // dashboard's plots carry -- the names _dash_sort_opt took from
@@ -5107,7 +5202,7 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
             cap  = 2 * cap
         }
         part[++m] = substr(json, from, v - from)
-        part[++m] = char(34) + "__dasht" + strofreal(ix) + char(34)
+        part[++m] = char(34) + _dash_col_pfx() + "t" + strofreal(ix) + char(34)
         from = ve + 1
         i    = ve + 1
     }
@@ -5175,7 +5270,7 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
             sp = _dash_frames_split_of(_dash_tsop_frames[k], base)
             if (sp != "") base = sp
         }
-        nm   = "__dasht" + strofreal(k)
+        nm   = _dash_col_pfx() + "t" + strofreal(k)
         lab  = (_st_varindex(base, 0) < . ? st_varlabel(base) : "")
         lab  = (lab != "" ? lab + ", " + substr(e, 1, dot - 1) : e)
         out  = out + (k > 1 ? "," : "") + q + nm + q + ":{" + q + "expr" + q +
@@ -5193,7 +5288,7 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
     }
     for (k = 1; k <= rows(_dash_wexp_list); k++) {
         e   = _dash_wexp_list[k]
-        nm  = "__dashw" + strofreal(k)
+        nm  = _dash_col_pfx() + "w" + strofreal(k)
         out = out + (out != "" ? "," : "") + q + nm + q + ":{" + q + "expr" +
               q + ":" + q + _dash_json_escape(e) + q + "," + q + "label" + q +
               ":" + q + _dash_json_escape(e) + q + "}"
@@ -5348,7 +5443,7 @@ string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
             cap  = 2 * cap
         }
         part[++m] = substr(json, from, v - from)
-        part[++m] = char(34) + "__dashw" + strofreal(ix) + char(34)
+        part[++m] = char(34) + _dash_col_pfx() + "w" + strofreal(ix) + char(34)
         from = ve + 1
         i    = ve + 1
     }
@@ -5594,7 +5689,7 @@ string scalar _dash_frames_take(string scalar f, string scalar v)
     }
     else {
         _dash_frames_nsplit = _dash_frames_nsplit + 1
-        col = "__dashm" + strofreal(_dash_frames_nsplit)
+        col = _dash_col_pfx() + "m" + strofreal(_dash_frames_nsplit)
         asarray(_dash_frames_splitrec, rk, col)
     }
     asarray(_dash_frames_split, f + char(0) + v, col)
@@ -5620,7 +5715,7 @@ string scalar _dash_frames_lset(string scalar lab)
     k = lab + char(0) + h
     if (asarray_contains(_dash_frames_lsets, k)) return(asarray(_dash_frames_lsets, k))
     _dash_frames_nlset = _dash_frames_nlset + 1
-    nm = "__dashl" + strofreal(_dash_frames_nlset)
+    nm = _dash_col_pfx() + "l" + strofreal(_dash_frames_nlset)
     asarray(_dash_frames_lsets, k, nm)
     return(nm)
 }

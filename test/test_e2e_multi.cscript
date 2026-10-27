@@ -424,7 +424,10 @@ dash scatter price mpg, name(f5c)
 _dash_serve_spec, specpath("`q37s'") datapath("`q37d'") filter(foreign)
 python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal("q37d"), _q37M.getLocal("q37wd")))
 // sha256 of the single-frame spec and data at dc4078c (WP-33 33-07)
-local base_digest "97ad5d7d61b04b5ed65ffab76a8aa39b631d9d3c337d2c119dce69ec25aecaac"
+// 97ad5d7d... -> 11e9f17a...: the spec gains its top-level
+// "_dash_prefix":"__dash" (WP-35 DT-19); without that key the digest is
+// dc4078c's, byte for byte.
+local base_digest "11e9f17a791676814f504513e8623db4551e6ecb75e5dd0f2c703e1910f462eb"
 display "Q3307-5 digest `dig'"
 assert "`dig'" == "`base_digest'"
 display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"

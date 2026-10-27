@@ -21,21 +21,28 @@ class TestTheRoomIsCountedFirst:
     def test_both_routes_count_before_any_generator(self):
         lines = _ado()
         checks = [i for i, l in enumerate(lines)
-                  if re.match(r"\s*_dash_maxvar_room ", l)]
+                  if re.match(r"\s*(capture noisily )?_dash_maxvar_room "
+                              r"`_dq_n'", l)]
         gens = [i for i, l in enumerate(lines)
-                if re.match(r"\s*(capture noisily )?_dash_(qual|sort|tsop|wexp)"
-                            r"_gen \"", l)]
+                if re.match(r"\s*(capture noisily )?(`_xfp' )?"
+                            r"_dash_(qual|sort|tsop|wexp)_gen \"", l)]
         # 2 -> 3 checks, 8 -> 12 generators: WP-33 33-07's multi-frame
         # path (_dash_frames_one) makes the columns in each frame, after its
-        # own count.
+        # own count.  Flipped (WP-35 DT-19): 33-07's four generators moved
+        # into _dash_frames_part, which _dash_frames_one runs after its
+        # count (in place or in a temporary frame), and each route's
+        # generators run after its count, in place or prefixed `_xfp'; the
+        # gap grew by the frame branch's lines (12 -> 45).
         assert len(checks) == 3 and len(gens) == 12
         for c in checks:
             after = [g for g in gens if g > c]
             nearest = after[:4]
-            assert len(nearest) == 4 and nearest[0] - c < 12, c + 1
+            assert len(nearest) == 4 and nearest[0] - c < 45, c + 1
         for c in checks:
-            args = lines[c].split()
+            args = lines[c].replace("capture noisily ", "").split()
             assert args[1:5] == ["`_dq_n'", "`_ds_n'", "`_dts_n'", "`_dwx_n'"]
+            # WP-35 DT-19: the count of the variables the export reads.
+            assert args[6] == "`_mv_kx'", c + 1
 
     def test_the_refusal_is_r900_in_dashs_words(self):
         lines = _ado()

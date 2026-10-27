@@ -604,8 +604,11 @@ class TestDashAdoUsesTheWriter:
 
     def test_both_routes_call_the_writer_and_neither_calls_jsonio(self):
         code = "\n".join(l.split("//", 1)[0] for l in _ado().splitlines())
-        assert len(re.findall(r"^\s*capture noisily _dash_write_data\b",
-                              code, re.M)) == 2
+        # Flipped (WP-35 DT-19): each route's writer call runs in place
+        # or, prefixed `_xfp', in the temporary frame of the exported
+        # variables when the data leave no room for the working columns.
+        assert len(re.findall(r"^\s*capture noisily (`_xfp' )?"
+                              r"_dash_write_data\b", code, re.M)) == 2
         assert not re.search(r"\bjsonio\s+out\b", code)
         assert "which jsonio" not in code
 

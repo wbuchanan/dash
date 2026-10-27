@@ -224,16 +224,21 @@ The data keep their order and are not marked changed.  A qualifier the data no l
 answer -- a variable dropped since the graph was registered -- stops the
 build with Stata's own message.  Each distinct qualifier travels to the
 dashboard as a column of 0s and 1s (named {cmd:__dashq}{it:#}); no
-tooltip, filter or download shows it.  Names beginning with {cmd:__dash} are
-reserved for every column dash makes -- the qualifier columns
-{cmd:__dashq}{it:#}, the join-order columns {cmd:__dashs}{it:#}, the row
-identity {cmd:__dash_row__}, its marker-label and jitter columns, the
-alias {cmd:__dashu_}{it:var} under which a variable named like one of its
-own columns ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count} ...) reaches
-{cmd:hover()} and {cmd:mlabel()}, and the missing-code columns {cmd:__dashm_}{it:var} and display-text columns
-{cmd:__dasht_}{it:var} that carry {cmd:.a} to {cmd:.z} -- and data holding such a variable are
-refused with {cmd:r(110)} before anything is exported; every other Stata
-name, however dash-like it looks, is read as your data.  A graph registered in another frame
+tooltip, filter or download shows it.  dash names the columns it makes in
+Stata -- the qualifier, join-order, time-series and weight columns -- and,
+when graphs come from several frames, its copies of variables and value
+labels, with a prefix none of the data's names starts with: {cmd:__dash},
+or {cmd:__dsh1_}, {cmd:__dsh2_}, ... when a variable (or, on a build, a
+value-label set) of a frame the dashboard reads starts with
+{cmd:__dash}.  So no column dash makes is a name your data hold, and a
+variable named {cmd:__dashq1} is drawn as your data, as {cmd:twoway} draws
+it.  The columns the renderer makes for itself keep their {cmd:__dash}
+names -- the row identity {cmd:__dash_row__}, the marker-label and jitter
+columns, the alias {cmd:__dashu_}{it:var}, the missing-code columns
+{cmd:__dashm_}{it:var} and display-text columns {cmd:__dasht_}{it:var} --
+so a variable named exactly like one of them is drawn as a plot variable
+but is shadowed by it in {cmd:hover()} and {cmd:mlabel()}, as a variable
+named like a glyph field is (below).  A graph registered in another frame
 ({cmd:frame} {it:name}{cmd::} {cmd:dash} ...{cmd:, name()}) reads that frame
 instead; see {help dash##frames:Graphs from several frames}.
 
@@ -254,9 +259,11 @@ panels among every observation its graph's qualifier selects.  With
 
 {pstd}
 Two things this rule does not reach: the qualifier, {cmd:by()}-order and
-string-fix columns above are still generated in the data Stata holds in
-memory (dropped again before control returns), so a dataset already at
-{cmd:c(maxvar)} may fail with {cmd:r(900)}; and a variable named like a
+string-fix columns above are generated in the data Stata holds in memory
+(dropped again before control returns) -- or, when the data leave no room
+for them under {cmd:c(maxvar)}, in a temporary frame beside only the
+variables the dashboard exports, and {cmd:r(900)} is given only when even
+those leave no room; and a variable named like a
 glyph field a plot derives ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count},
 {cmd:density} and the like) draws its own values as a plot variable but is
 shadowed by the derived field in {cmd:hover()} and {cmd:mlabel()}.

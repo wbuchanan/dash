@@ -4016,16 +4016,23 @@ if `"`c(python_exec)'"' != "" {
     dash clear
     display "Q3407-3 PASS: N12 r(5) and N13 r(111) are refused with twoway's rc and first line"
 
-    // TSO-10: a user variable __dasht1 is refused r(110), naming __dasht#.
+    // TSO-10: a user variable __dasht1.  Flipped (WP-35 DT-19): it was
+    // refused r(110), naming __dasht#; refusing a __dash variable was
+    // wrong because twoway draws it.  dash now names its time-series
+    // column __dsh1_t1, and the user's variable is left as it was.
     _tso_data sp
     quietly gen __dasht1 = 1
     dash clear
     _p1a_logrun `"dash scatter D.close t, saving("`tsopg'", replace)"'
-    assert r(rc) == 110
+    assert r(rc) == 0
     cert_file_has "`r(log)'", needle("its time-series columns __dasht#")
-    assert r(found)
+    assert !r(found)
+    capture unab tso10_left : __dsh*
+    assert _rc != 0
+    quietly summarize __dasht1
+    assert r(min) == 1 & r(max) == 1
     drop __dasht1
-    display "TSO-10 PASS: a variable named __dasht1 is refused r(110), naming the time-series columns"
+    display "TSO-10 PASS: a variable named __dasht1 is data: the time-series column takes another name, and the variable is unchanged"
     foreach f in tso01 tso08b tso08s tso09 tso14 {
         capture erase "`c(tmpdir)'`f'_s.json"
         capture erase "`c(tmpdir)'`f'_d.json"

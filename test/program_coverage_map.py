@@ -383,6 +383,13 @@ COVERAGE = {
         "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
         # WP-31 G3d: the working columns counted against c(maxvar) first.
         "_dash_maxvar_room": ("test_qualifier_in_stata.cscript:U55-7",),
+        # WP-35 DT-19: in place, in a temporary frame, or refused.
+        "_dash_maxvar_plan": ("test_wp35_truth.cscript:Q3508-2",),
+        "_dash_frame_vars": ("test_wp35_truth.cscript:Q3508-2",),
+        "_dash_frame_put": ("test_wp35_truth.cscript:Q3508-2",),
+        "_dash_esample_copy": ("test_wp35_truth.cscript:Q3508-2",
+                               "test_wp35_truth.cscript:Q3508-3"),
+        "_dash_frames_part": ("test_wp35_truth.cscript:Q3508-3",),
         # WP-31 H7: the names a command put in Python's __main__, popped.
         "_dash_py_tidy": ("test_env_guards.cscript:U55-1",),
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
@@ -652,6 +659,11 @@ COVERAGE = {
                              "test_qualifier_in_stata.cscript:QS-20"),
         "_dash_qual_orders": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # WP-35 DT-19: the export's working-column prefix.
+        "_dash_reserved_prefix": ("test_wp35_truth.cscript:Q3508-1",),
+        "_dash_col_pfx": ("test_wp35_truth.cscript:Q3508-1",),
+        "_dash_esample_sub": ("test_wp35_truth.cscript:Q3508-2",),
+        "_dash_expr_words": ("test_wp35_truth.cscript:Q3508-2",),
         # e2e: the join-order table each sort(varlist) list is ranked from,
         # against twoway's serset (WP-29 P0.1).
         "_dash_sort_reset": ("test_wp29_truth.cscript:JO-01",),

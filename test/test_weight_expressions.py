@@ -242,7 +242,10 @@ class TestTheMataKeyLists:
         assert '"wexp"' in keys
         body = _mata_function("_dash_wexp_rewrite")
         assert re.search(r'"wexp"', body)
-        assert "__dashw" in body
+        # Flipped (WP-35 DT-19): the column is named from the export's
+        # prefix (_dash_col_pfx), not the __dashw literal -- a fixed
+        # __dash name clashed with a user variable so named.
+        assert '_dash_col_pfx() + "w"' in body
 
 
 class TestTheRegistries:

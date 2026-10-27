@@ -596,8 +596,15 @@ class TestTheDashPrefix:
         _root = os.path.dirname(_HERE)
         with open(os.path.join(_root, "dash.ado"), encoding="utf-8") as fh:
             ado_text = fh.read()
-        assert "unab _dq_clash : __dash*" in ado_text
+        # Flipped (WP-35 DT-19): dash.ado no longer refuses a variable
+        # named __dash... (twoway draws it); it names its columns with a
+        # prefix no variable starts with, __dash by default, which the
+        # spec carries and both renderers read -- the default is still
+        # the renderers' reserved prefix, and the help names it.
+        assert "unab _dq_clash" not in ado_text
+        assert "_dash_reserved_prefix(tokens(" in ado_text
         with open(os.path.join(_root, "dash.sthlp"), encoding="utf-8") as fh:
             sthlp_text = fh.read()
         assert "{cmd:__dash}" in sthlp_text
         assert dr._DASH_RESERVED_PREFIX == "__dash"
+        assert dr._dash_prefix_of({}) == dr._DASH_RESERVED_PREFIX

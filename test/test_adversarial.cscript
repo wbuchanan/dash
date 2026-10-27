@@ -2711,7 +2711,11 @@ if `bad' local ++jo_adv_nfail
 else display "JO-32 PASS: 1,000 names in sort() are answered in `t32' s, as twoway answers them"
 
 // JO-33: a variable under the join-order prefix, and a registry edited to
-// carry a sort() list that is not names.
+// carry a sort() list that is not names.  Flipped (WP-35 DT-19): the
+// variable __dashs1 was refused r(110); that was wrong because twoway
+// draws it.  dash now names its rank column with a prefix no variable
+// starts with (__dsh1_s1 here), so the page is written and the data are
+// left as they were.
 local bad = 0
 generate __dashs1 = 1
 quietly datasignature
@@ -2723,7 +2727,7 @@ quietly datasignature
 local sig1 "`r(datasignature)'"
 capture confirm file "`jo3page'"
 local pg = (_rc == 0)
-if `drc' != 110 | "`sig0'" != "`sig1'" | `pg' {
+if `drc' != 0 | "`sig0'" != "`sig1'" | !`pg' {
     display as error "JO-33 FAIL: a variable named __dashs1: dash r(`drc'), data changed `=("`sig0'" != "`sig1'")', page `pg'"
     local bad = 1
 }
@@ -2753,7 +2757,7 @@ capture erase "`jo3page'"
 capture dash clear
 drop zz
 if `bad' local ++jo_adv_nfail
-else display "JO-33 PASS: a __dashs variable is refused rc 110 and an edited sort() list r(198) at dash build, nothing exported"
+else display "JO-33 PASS: a __dashs variable is drawn as data, data unchanged, and an edited sort() list is refused r(198) at dash build, nothing exported"
 // ================================================================
 // P22 -- pcarrowi's immediate values (WP-22, a new input surface)
 // ================================================================

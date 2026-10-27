@@ -556,8 +556,12 @@ capture dash clear
 display "QS-05 PASS: each distinct qualifier is one 0/1 column holding Stata's answer; no text is shipped"
 
 // ----------------------------------------------------------------
-// QS-06 -- the prefix is reserved: data already holding a __dashq variable
-// are refused, on both routes, with the data left as they were.
+// QS-06 -- a variable named __dash... is data (WP-35 DT-19).  Flipped:
+// it was refused r(110) on both routes ("reserved for the columns dash
+// makes"); refusing a __dash variable was wrong because twoway draws it.
+// Now dash names its columns with a prefix no variable starts with
+// (__dsh1_ here), so the command runs, nothing is said, and the data are
+// left as they were.
 // ----------------------------------------------------------------
 gen byte __dashq1 = 1
 tempfile p
@@ -575,22 +579,25 @@ local rc6b = r(rc)
 cert_log_has "`r(log)'", needle("reserved")
 local m6b = r(found)
 display as text "  QS-06 one-line rc `rc6a' (message `m6a'), build rc `rc6b' (message `m6b')"
-assert `rc6a' == 110 & `rc6b' == 110 & `m6a' == 1 & `m6b' == 1
+assert `rc6a' == 0 & `rc6b' == 0 & `m6a' == 0 & `m6b' == 0
 confirm variable __dashq1
 assert __dashq1 == 1
+capture unab qs06_left : __dsh*
+assert _rc != 0
 drop __dashq1
 rename mpg __dashqz
 capture dash clear
+capture erase "`p'.html"
 _qs_run `"dash scatter __dashqz rowid, saving("`p'.html")"'
-assert r(rc) == 110
+assert r(rc) == 0
 rename __dashqz mpg
 
-// G1 (WP-28): the __dash prefix is reserved for every column dash makes,
-// not only __dashq -- a variable already named __dash_row__, dash's own
-// row identity, is refused rather than overwritten.
+// A variable already named __dash_row__ (G1, WP-28: dash's own row
+// identity) is kept as the user's data, as twoway keeps it.
 qui summarize price
 local price_mean = r(mean)
 rename price __dash_row__
+capture erase "`p'.html"
 _qs_run `"dash scatter mpg rowid, saving("`p'.html")"'
 local rc6c = r(rc)
 cert_log_has "`r(log)'", needle("prefix __dash")
@@ -602,24 +609,26 @@ local rc6d = r(rc)
 cert_log_has "`r(log)'", needle("prefix __dash")
 local m6d = r(found)
 display as text "  QS-06 __dash_row__: one-line rc `rc6c' (message `m6c'), build rc `rc6d' (message `m6d')"
-assert `rc6c' == 110 & `rc6d' == 110 & `m6c' == 1 & `m6d' == 1
+assert `rc6c' == 0 & `rc6d' == 0 & `m6c' == 0 & `m6d' == 0
 confirm variable __dash_row__
 qui summarize __dash_row__
 assert reldif(r(mean), `price_mean') < 1e-12
 rename __dash_row__ price
 capture dash clear
 
-// A hand-made __dash-prefixed variable is refused the same way, on the
+// A hand-made __dash-prefixed variable is data the same way, on the
 // one-line route.
 generate byte __dash_x = 1
+capture erase "`p'.html"
 _qs_run `"dash scatter mpg rowid, saving("`p'.html")"'
 local rc6e = r(rc)
 cert_log_has "`r(log)'", needle("prefix __dash")
 local m6e = r(found)
 display as text "  QS-06 __dash_x: rc `rc6e' (message `m6e')"
-assert `rc6e' == 110 & `m6e' == 1
+assert `rc6e' == 0 & `m6e' == 0
 drop __dash_x
 capture dash clear
+capture erase "`p'.html"
 
 // Every other Stata name -- even one that looks like a glyph field dash
 // derives, x or top -- is read as the user's own data (BR-07.3).
@@ -647,7 +656,7 @@ rename top mpg
 
 capture erase "`p'.html"
 capture dash clear
-display "QS-06 PASS: a variable named with the reserved prefix is refused, not overwritten, and every other name is drawn with its own values"
+display "QS-06 PASS: a variable named __dash... is drawn as data, not refused, and every other name is drawn with its own values"
 
 // ----------------------------------------------------------------
 // QS-07 -- a build leaves the data as it found them: no variable added,
@@ -1202,9 +1211,13 @@ display "QS-21 PASS: a by() graph's ordered qualifiers stay linear"
 
 // ----------------------------------------------------------------
 // U55-7 (WP-31 G3d) -- the working columns are counted against
-// c(maxvar) before any is made: with no room left, dash refuses in its
-// own words, r(900) as generate's "no room to add more variables" is, and
-// the data is untouched.  maxvar is set for this session only and put back
+// c(maxvar) before any is made, and the data is untouched.  Flipped
+// (WP-35 DT-19): with no room beside the data's variables dash refused,
+// r(900); that was wrong because twoway, which needs only its own few
+// temporary variables, draws it.  Now the columns are made in a temporary
+// frame of the variables the dashboard exports (_dash_maxvar_plan frame),
+// and r(900) is left for data whose exported variables leave no room
+// (test_wp35_truth.cscript Q3508-2 reads that refusal by value).  maxvar is set for this session only and put back
 // (set maxvar needs Mata and matrices cleared; dash's library and the
 // helpers are run again after each).
 // ----------------------------------------------------------------
@@ -1229,7 +1242,7 @@ capture dash clear
 _qs_run `"dash scatter mpg weight if foreign || scatter mpg weight if !foreign, saving("`p'.html", replace)"'
 local rc = r(rc)
 local qs_log "`r(log)'"
-cert_log_has "`qs_log'", needle("dash: the dashboard needs 3 working columns")
+cert_log_has "`qs_log'", needle("dash: the dashboard needs")
 local said = r(found)
 cert_log_has "`qs_log'", needle("no room to add more variables")
 local stata_said = r(found)
@@ -1238,6 +1251,7 @@ capture unab qs_left : __dash*
 local qs_none = (_rc != 0)
 capture confirm file "`p'.html"
 local qs_nofile = (_rc != 0)
+capture erase "`p'.html"
 // One qualifier column (and its row index) fits in two columns of room.
 drop qsz2047
 _qs_run `"dash scatter mpg weight if foreign, saving("`p'.html", replace)"'
@@ -1251,10 +1265,10 @@ clear mata
 quietly set maxvar `qs_maxvar0'
 quietly run "../dash_parse.mata"
 quietly run "cert_helpers.do"
-assert `rc' == 900 & `said' == 1 & `stata_said' == 0
-assert `qs_k2' == `qs_k1' & `qs_none' & `qs_nofile'
+assert `rc' == 0 & `said' == 0 & `stata_said' == 0
+assert `qs_k2' == `qs_k1' & `qs_none' & !`qs_nofile'
 assert `rc1' == 0 & `qs_k3' == `qs_k1' - 1
-display "U55-7 PASS: two working columns with room for one are refused in dash's words, r(900), before the data is touched"
+display "U55-7 PASS: two working columns with room for one are made beside the exported variables only, and the data are untouched"
 
 capture dash clear
 macro drop QS_*

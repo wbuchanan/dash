@@ -698,6 +698,7 @@ and now matches Stata.
 
 - Values twoway draws are drawn: jitter(-3), jitter(150), jitter(abc), jitterseed(-1), barwidth(0), barwidth(-1), lwidth(-1) on scatter, msangle(400) on line, mband's n(0) and msize(1e400), read as msize(0) (dash refused them, r(198)); lwidth(*40000) is refused, r(198), as twoway refuses it (dash drew it with a note); aspectratio(-1) stays refused. (WP-35, basic:PT-13)
 - yvarlabel(), xvarlabel(), mlabprefix(), mlabsuffix(), lalign(), mlabstyle() and contour's valued options given twice draw the last copy, as twoway does; dash refused them, r(198). (WP-35, MS-1)
+- Variables named __dash... are drawn as data (refused r(110)); a dataset near c(maxvar) is built when its exported variables leave room for dash's working columns (refused r(900)). (WP-35, DT-19)
 - A graph registered with `name()` is drawn at `dash build` from the frame it was registered in (`frame cars: dash scatter mpg weight, name(g1)`), as twoway draws from the current frame, with its time-series operators, sort() and weights; it used to be drawn from the frame `dash build` ran in, and was refused with r(111) when its variables were not there. One dashboard can hold graphs of several frames, a variable two frames hold differently keeping each frame's own format and labels; graphs of different frames cannot share a `link()` group, and a filter skips only the graphs whose frame lacks its variable. (WP-33, 33-07)
 - The twenty shipped schemes are now `dash-<name>.scheme` files, installed in
   `PLUS/d/` instead of `PLUS/s/<name>.scheme` and `PLUS/e/economist.scheme`.
@@ -994,6 +995,7 @@ and now matches Stata.
 - fxsiz() and fysiz(), twoway's shortest spellings of fxsize() and fysize(), are applied; dash named them in the note. (WP-35, GW-4)
 - Factor-variable notation in by() and colorvar() is refused, r(101), "factor-variable and time-series operators not allowed" ("interactions not allowed" for #), and mlabel(45) and mlabel(%9.1f) r(198), in twoway's words; dash gave r(111). (WP-35, syn:SD-8)
 - The help says that twoway's contour and contourline with levels() ignore an option they do not know, and that dash refuses it with or without levels(), as twoway does elsewhere. (WP-35, syn:SD-22)
+- A qualifier or weight naming e(sample) keeps the estimation sample, as twoway does (dash scatter mpg weight if e(sample) after regress mpg weight if foreign: 0 -> 22 points) (WP-35, DT-19)
 
 ### Fixed in WP-34
 

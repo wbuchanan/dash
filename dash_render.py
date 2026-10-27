@@ -19399,7 +19399,8 @@ class GlyphMapper:
         label, the expression as typed (``_dash_tsop_labels``); else None,
         and the note names the variable."""
         _wt, wexp = _dash_weight_spec(options)
-        if not wexp.startswith(_DASH_RESERVED_PREFIX):
+        _m = _DASH_ANY_COL_RE.match(str(wexp))
+        if _m is None or _m.group(1) not in ("t", "w"):
             return None
         lab = (getattr(self, "variable_labels", None) or {}).get(wexp)
         return str(lab) if lab else None
@@ -42027,7 +42028,9 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
                 continue
             hz = _dash_is_horizontal(p)
             marks = [q for q in (gq, p.get("qual_col"))
-                     if isinstance(q, str) and _DASH_QUAL_NAME_RE.match(q)]
+                     if isinstance(q, str) and (lambda _m: _m is not None
+                                                and _m.group(1) == "q")(
+                                                    _DASH_ANY_COL_RE.match(q))]
             # WP-34 TR-4: the series and the variables each one's rows need.
             pt = str(p.get("type", "")).strip().lower()
             simple = not any(str(p.get(k, "") or "").strip() for k in
@@ -42091,8 +42094,19 @@ def _dash_stata_tick_plan(names, formats_text, frame_cols_text=""):
     # object read as none.
     try:
         _fc = json.loads(frame_cols_text or "{}")
+        # WP-35 DT-19: the split columns' prefix, read off their names.
+        _fcp = "__dash"
+        if isinstance(_fc, dict):
+            for _fg in _fc.values():
+                for _fe in (_fg.values() if isinstance(_fg, dict) else ()):
+                    _fm = _DASH_ANY_COL_RE.match(str((_fe or {}).get("col", ""))
+                                                 if isinstance(_fe, dict)
+                                                 else "")
+                    if _fm is not None:
+                        _fcp = _fe["col"][:_fm.start(1)]
         _fc = _dash_frame_cols_named(
-            {"build_options": {"frame_cols": _fc}}) if isinstance(
+            {"_dash_prefix": _fcp,
+             "build_options": {"frame_cols": _fc}}) if isinstance(
                 _fc, dict) else {}
     except ValueError:
         _fc = {}
@@ -59787,6 +59801,9 @@ def _dash_qual_cols_named(spec):
         objs.extend(p for p in (g.get("plots") or []) if isinstance(p, dict))
     objs.extend(k for k in ((spec or {}).get("kpis") or [])
                 if isinstance(k, dict))
+    # WP-35 DT-19: the columns are <prefix>q<k> under the spec's prefix.
+    _pfx = _dash_prefix_of(spec)
+    _qre = _dash_col_name_re(spec, "q", 4)
     out = []
     for o in objs:
         # "qual_col_total": the column a by(, total) graph's Total panel
@@ -59795,10 +59812,10 @@ def _dash_qual_cols_named(spec):
             name = o.get(key, "")
             if name in ("", None):
                 continue
-            if not isinstance(name, str) or not _DASH_QUAL_NAME_RE.match(name):
+            if not isinstance(name, str) or not _qre.match(name):
                 raise ValueError(
                     "dash: the spec names %r as a qualifier column; dash "
-                    "writes only %s<k>." % (str(name)[:40], _DASH_QUAL_PREFIX))
+                    "writes only %sq<k>." % (str(name)[:40], _pfx))
             if name not in out:
                 out.append(name)
     return out
@@ -59831,16 +59848,18 @@ def _dash_tsop_cols_named(spec):
     bad = ValueError("dash: the spec's ts_cols entry is not one dash writes.")
     if not isinstance(raw, dict):
         raise bad
+    # WP-35 DT-19: <prefix>t<k> and <prefix>w<k> under the spec's prefix.
+    _tre = _dash_col_name_re(spec, "t", 3)
+    _wre = _dash_col_name_re(spec, "w", 3)
     out = {}
     for name, ent in raw.items():
         # A weight expression's column __dashw<k> (WP-31 A5,
         # _dash_wexp_gen): Stata's generate evaluated the expression, which
         # is text of at most 512 bytes holding none of the characters
         # _dash_wexp_ok refuses.
-        wcol = isinstance(name, str) and re.match(
-            r"__dashw[1-9][0-9]{0,3}\Z", name) is not None
+        wcol = isinstance(name, str) and _wre.match(name) is not None
         if not wcol and (not isinstance(name, str)
-                         or not _DASH_TSOP_NAME_RE.match(name)):
+                         or not _tre.match(name)):
             raise bad
         if not isinstance(ent, dict):
             raise bad
@@ -59891,6 +59910,44 @@ def _dash_take_tsop_columns(df, spec):
 #: WP-33 33-07: a split column's name, ``__dashm<k>`` (DECISIONS A-23).
 _DASH_FRAME_COL_RE = re.compile(r"__dashm[1-9][0-9]{0,3}\Z")
 
+#: WP-35 DT-19: the prefixes dash.ado names its working columns with --
+#: ``__dash``, or ``__dsh<k>_`` when a variable of the data (or, on a
+#: build, a value-label set) starts with ``__dash`` (_dash_reserved_prefix).
+_DASH_PREFIX_RE = re.compile(r"(?:__dash|__dsh[1-9][0-9]{0,5}_)\Z")
+#: Any working column of the four Stata-made families or a split column,
+#: under any prefix dash.ado writes; for a reader with no spec at hand.
+_DASH_ANY_COL_RE = re.compile(
+    r"(?:__dash|__dsh[1-9][0-9]{0,5}_)([qstwm])[1-9][0-9]{0,4}\Z")
+
+
+def _dash_prefix_of(spec):
+    """The working-column prefix *spec* names (WP-35 DT-19).
+
+    dash.ado writes the top-level ``"_dash_prefix"``: ``__dash``, or
+    ``__dsh<k>_`` when the data hold a variable named with ``__dash``, so
+    that no column dash makes is a name the data hold.  Absent (a spec of
+    an older dash, or one written by hand) it is ``__dash``.
+
+    Raises:
+        ValueError: A prefix dash.ado would not write.
+    """
+    p = spec.get("_dash_prefix", "") if isinstance(spec, dict) else ""
+    if p in (None, ""):
+        return "__dash"
+    if not isinstance(p, str) or not _DASH_PREFIX_RE.match(p):
+        raise ValueError(
+            "dash: the spec's _dash_prefix is not one dash writes.")
+    return p
+
+
+def _dash_col_name_re(spec, letter, digits):
+    """The whole name of one family of dash's working columns under
+    *spec*'s prefix: ``<prefix><letter><k>``, k of 1 to digits+1 digits
+    not led by 0 (WP-35 DT-19)."""
+    return re.compile(re.escape(_dash_prefix_of(spec)) + letter
+                      + r"[1-9][0-9]{0,%d}\Z" % int(digits))
+
+
 #: WP-33 33-07: the metadata maps a graph's frame view rewrites.
 _DASH_FRAME_META_KEYS = ("variable_labels", "value_labels",
                          "value_label_names", "formats", "numeric_formats",
@@ -59918,6 +59975,8 @@ def _dash_frame_cols_named(spec):
     bad = ValueError("dash: the spec's frame_cols entry is not one dash writes.")
     if not isinstance(raw, dict):
         raise bad
+    # WP-35 DT-19: a split column is <prefix>m<k> under the spec's prefix.
+    _fcre = _dash_col_name_re(spec, "m", 3)
     out = {}
     for g, ent in raw.items():
         if not isinstance(g, str) or not isinstance(ent, dict):
@@ -59929,7 +59988,7 @@ def _dash_frame_cols_named(spec):
             if not isinstance(c, dict) or set(c) != {"col", "frame"}:
                 raise bad
             col, fr = c.get("col"), c.get("frame")
-            if not isinstance(col, str) or not _DASH_FRAME_COL_RE.match(col):
+            if not isinstance(col, str) or not _fcre.match(col):
                 raise bad
             if not isinstance(fr, str) or not _dash_is_stata_name(fr):
                 raise bad
@@ -60040,14 +60099,18 @@ def _dash_take_qual_columns(df, spec, keep=()):
                   and c[len(_DASH_CODE_PREFIX):] in cols
                   and df[c].map(lambda x: x == "" or x in _DASH_CODE_LETTERS)
                   .all())
-    reserved = [c for c in cols if c.startswith(_DASH_RESERVED_PREFIX)
+    # WP-35 DT-19: the prefix is the spec's, which dash.ado chose so that
+    # no variable of the data starts with it; a column named __dash... is
+    # then the user's data, as twoway reads it.
+    _pfx = _dash_prefix_of(spec)
+    reserved = [c for c in cols if c.startswith(_pfx)
                 and c not in keep and c not in codes]
     for c in reserved:
         if c not in names:
             raise ValueError(
                 "dash: the data hold a column named %r; names beginning "
                 "with %s are reserved for the columns dash makes." %
-                (c[:40], _DASH_RESERVED_PREFIX))
+                (c[:40], _pfx))
     masks = {}
     for name in names:
         if name not in cols:
@@ -60117,14 +60180,16 @@ def _dash_sort_cols_named(spec):
         raise ValueError(
             "dash: the spec's sort_cols is not a map of sort() lists to the "
             "%s<k> columns dash writes." % _DASH_SORT_PREFIX)
+    # WP-35 DT-19: <prefix>s<k> under the spec's prefix.
+    _sre = _dash_col_name_re(spec, "s", 4)
     out = {}
     for key, col in cols.items():
-        if (not isinstance(col, str) or not _DASH_SORT_NAME_RE.match(col)
+        if (not isinstance(col, str) or not _sre.match(col)
                 or col in out.values()):
             raise ValueError(
                 "dash: the spec names %r as a join-order column; dash writes "
-                "only %s<k>, one per sort() list." % (str(col)[:40],
-                                                     _DASH_SORT_PREFIX))
+                "only %s<k>, one per sort() list." % (
+                    str(col)[:40], _dash_prefix_of(spec) + "s"))
         toks = key.split(" ") if isinstance(key, str) else []
         if (not toks or len(toks) > 120000
                 or not all(_dash_is_stata_name(t) for t in toks)):
@@ -67819,6 +67884,8 @@ class ServerAppBuilder:
                       "_DASH_TSOP_EXPR_RE", "_DASH_TSOP_LABEL_MAX",
                       # The split columns of several frames (WP-33 33-07).
                       "_DASH_FRAME_COL_RE", "_DASH_FRAME_META_KEYS",
+                      # WP-35 DT-19: the working-column prefixes.
+                      "_DASH_PREFIX_RE", "_DASH_ANY_COL_RE",
                       # The join-order columns and the joining types
                       # (WP-29 P0.1).
                       "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
@@ -68074,6 +68141,8 @@ class ServerAppBuilder:
                          # The qualifier columns Stata filled: validated,
                          # taken out of the frame, and read as masks.
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
+                         # WP-35 DT-19: the spec's working-column prefix.
+                         "_dash_prefix_of", "_dash_col_name_re",
                          # The time-series columns (WP-30 P1.7).
                          "_dash_tsop_cols_named", "_dash_take_tsop_columns",
                          "_dash_tsop_labels", "_dash_col_display",
@@ -69077,7 +69146,7 @@ class ServerAppBuilder:
         # user who built the app reads the refusal, and not first when a
         # session opens (the app validates them again as it loads).
         if _dash_qual_cols_named(self.spec) or (
-                _DASH_RESERVED_PREFIX in self._raw_data_str):
+                _dash_prefix_of(self.spec) in self._raw_data_str):
             self._frame()
 
         try:

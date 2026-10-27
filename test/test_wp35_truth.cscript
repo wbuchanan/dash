@@ -1330,6 +1330,347 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w35_run' {
 }
 * ==== end S07 ====
 
+// S08 helpers (WP-35 section 35-08, DT-19): _w35s08_spec reads a spec
+// file's _dash_prefix, a graph's qual_col and build_options.frame_cols;
+// _w35s08_data reads a data file's column names and one column's sum;
+// _w35s08_same compares two data files less variableIndices (the
+// variables' positions in the frame they were written from);
+// _w35s08_page reads each Scatter's point count and y sum, and the label
+// texts, on a saved page (or the served app's document built from a spec
+// and a data file).
+python:
+import json as _w35s08_json
+import re as _w35s08_re
+from sfi import Macro as _w35s08_M
+
+
+def _w35s08_spec(path, gname):
+    try:
+        spec = _w35s08_json.load(open(path, encoding="utf-8"))
+        g = [x for x in spec.get("graphs", [])
+             if x.get("graph_options", {}).get("name") == gname]
+        _w35s08_M.setGlobal("w35s08_pfx", str(spec.get("_dash_prefix", "")))
+        _w35s08_M.setGlobal("w35s08_qcol",
+                            str(g[0].get("qual_col", "")) if g else "")
+        fc = spec.get("build_options", {}).get("frame_cols", {})
+        _w35s08_M.setGlobal("w35s08_fcols", _w35s08_json.dumps(fc, sort_keys=True))
+    except Exception as e:
+        _w35s08_M.setGlobal("w35s08_pfx", "error " + str(e)[:100])
+
+
+def _w35s08_data(path, col):
+    import base64
+    import numpy as np
+    try:
+        d = _w35s08_json.load(open(path, encoding="utf-8"))
+        _w35s08_M.setGlobal("w35s08_cols", " ".join(d["columns"]))
+        v = d["columns"].get(col)
+        s = "none"
+        if v is not None:
+            a = np.frombuffer(base64.b64decode(v["base64"]), dtype=v["dtype"])
+            s = "%g" % float(np.nansum(a.astype(float)))
+        _w35s08_M.setGlobal("w35s08_sum", s)
+    except Exception as e:
+        _w35s08_M.setGlobal("w35s08_cols", "error " + str(e)[:100])
+        _w35s08_M.setGlobal("w35s08_sum", "error")
+
+
+def _w35s08_same(a, b):
+    try:
+        da = _w35s08_json.load(open(a, encoding="utf-8"))
+        db = _w35s08_json.load(open(b, encoding="utf-8"))
+        da.pop("variableIndices", None)
+        db.pop("variableIndices", None)
+        _w35s08_M.setGlobal("w35s08_same", "1" if da == db else "0")
+    except Exception:
+        _w35s08_M.setGlobal("w35s08_same", "0")
+
+
+def _w35s08_page(path, spec=None, data=None):
+    """Global w35s08_pts: "<n>:<y sum>" for each Scatter, in model order,
+    sorted; w35s08_txt: every string a source holds, blank-joined."""
+    from bokeh.document import Document
+    from bokeh.models import ColumnDataSource, GlyphRenderer, Scatter
+    try:
+        if spec is not None:
+            import os
+            import tempfile
+            import importlib.util
+            _sp = importlib.util.spec_from_file_location(
+                "_w35s08_dr", os.path.abspath(os.path.join("..", "dash_render.py")))
+            _dr = importlib.util.module_from_spec(_sp)
+            import sys as _w35s08_sys
+            _w35s08_sys.modules["_w35s08_dr"] = _dr
+            _sp.loader.exec_module(_dr)
+            app = os.path.join(tempfile.mkdtemp(), "w35s08_app.py")
+            _dr.ServerAppBuilder(spec, data).build(app)
+            from bokeh.io.doc import patch_curdoc
+            doc = Document()
+            with patch_curdoc(doc):
+                exec(compile(open(app, encoding="utf-8").read(), app, "exec"),
+                     {"__name__": "_w35s08_app", "_DASH_TRIAL": True})
+        else:
+            page = open(path, encoding="utf-8").read()
+            ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+                    "#x27": chr(39), "#x60": chr(96)}
+            blocks = _w35s08_re.findall(
+                r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+                page, _w35s08_re.S)
+            docs = [d for b in blocks for d in _w35s08_json.loads(
+                _w35s08_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                               lambda m: ents[m.group(1)], b)).values()]
+            doc = Document.from_json(docs[0])
+        pts, txt = [], set()
+        for m in doc.models:
+            if isinstance(m, GlyphRenderer) and isinstance(m.glyph, Scatter):
+                y = m.glyph.y
+                y = y.get("field") if isinstance(y, dict) else getattr(y, "field", y)
+                vals = [v for v in m.data_source.data.get(y, [])
+                        if v is not None and v == v]
+                pts.append("%d:%g" % (len(vals), sum(vals)))
+            if isinstance(m, ColumnDataSource):
+                for col in m.data.values():
+                    for v in list(col)[:200]:
+                        if isinstance(v, str):
+                            txt.add(v)
+        _w35s08_M.setGlobal("w35s08_pts", " ".join(sorted(pts)))
+        _w35s08_M.setGlobal("w35s08_txt", " ".join(sorted(txt)))
+    except Exception as e:
+        _w35s08_M.setGlobal("w35s08_pts", "error " + str(e)[:200])
+        _w35s08_M.setGlobal("w35s08_txt", "")
+end
+
+* ==== S08 DT-19: working columns never clash ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S08") & `: list posof "S08" in w35_run' {
+    display as text "S08 start " c(current_date) " " c(current_time)
+    local s08d "`w35_work'"
+
+    // ------------------------------------------------------------
+    // Q3508-1 (WP-35 DT-19): twoway draws data holding variables named
+    // __dashq1, __dashs1, __dash_row__ and __dashm_mpg; dash drew them too
+    // only under r(110).  Now the export's prefix is __dsh1_: the spec's
+    // qualifier column is __dsh1_q1, the data file holds it beside the
+    // user's __dashq1, and both modes draw the user's 22 values.
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    foreach s08v in __dashq1 __dashs1 __dash_row__ __dashm_mpg {
+        quietly generate `s08v' = mpg
+    }
+    capture noisily twoway scatter __dashq1 weight, nodraw
+    local s08tw = _rc
+    capture dash clear
+    capture noisily dash scatter __dashq1 weight if foreign, name(s08)
+    local s08r = _rc
+    _w35_expect Q3508-1 "(`s08tw' == 0 & `s08r' == 0)" "twoway rc `s08tw', dash rc `s08r'"
+    capture erase "`s08d'/q1.json"
+    capture erase "`s08d'/q1.csv"
+    capture noisily _dash_serve_spec, specpath("`s08d'/q1.json") datapath("`s08d'/q1.csv")
+    local s08r = _rc
+    python: _w35s08_spec(r"`s08d'/q1.json", "s08")
+    python: _w35s08_data(r"`s08d'/q1.csv", "__dashq1")
+    _w35_expect Q3508-1 "(`s08r' == 0)" "_dash_serve_spec rc `s08r'"
+    _w35_expect Q3508-1 `"("${w35s08_pfx}" == "__dsh1_" & "${w35s08_qcol}" == "__dsh1_q1")"' "prefix ${w35s08_pfx}, qual_col ${w35s08_qcol}"
+    local s08c "${w35s08_cols}"
+    _w35_expect Q3508-1 `"(`: list posof "__dsh1_q1" in s08c' > 0 & `: list posof "__dashq1" in s08c' > 0)"' "data columns `s08c'"
+    quietly summarize mpg
+    local s08all = r(sum)
+    _w35_expect Q3508-1 `"("${w35s08_sum}" == "`s08all'")"' "the user's __dashq1 sums ${w35s08_sum}, mpg `s08all'"
+    quietly summarize mpg if foreign
+    local s08want "22:`r(sum)'"
+    capture erase "`s08d'/q1.html"
+    capture noisily dash build, saving("`s08d'/q1.html") filter(__dashq1) nobrowser
+    local s08r = _rc
+    python: _w35s08_page(r"`s08d'/q1.html")
+    _w35_expect Q3508-1 `"(`s08r' == 0 & "${w35s08_pts}" == "`s08want'")"' "saved page: rc `s08r', points ${w35s08_pts}, want `s08want'"
+    python: _w35s08_page(None, r"`s08d'/q1.json", r"`s08d'/q1.csv")
+    _w35_expect Q3508-1 `"("${w35s08_pts}" == "`s08want'")"' "served app: points ${w35s08_pts}, want `s08want'"
+    capture dash clear
+    _w35_done Q3508-1 "a variable named __dash... is drawn as data in both modes"
+
+    // ------------------------------------------------------------
+    // Q3508-2: the plan by value (no set maxvar anywhere); the refusal's
+    // words; and three live builds whose data files are the same with the
+    // columns made in place and in a temporary frame ($dash__force_frame),
+    // the frame branch run (and only under the flag) per $dash__frame_trace.
+    // ------------------------------------------------------------
+    global dash__force_frame
+    _dash_maxvar_plan 2 10 3 12
+    local s08p1 "`_mv_plan'"
+    _dash_maxvar_plan 4 10 3 12
+    local s08p2 "`_mv_plan'"
+    _dash_maxvar_plan 10 10 3 12
+    local s08p3 "`_mv_plan'"
+    global dash__force_frame 1
+    _dash_maxvar_plan 2 10 3 12
+    local s08p4 "`_mv_plan'"
+    global dash__force_frame
+    _w35_expect Q3508-2 `"("`s08p1' `s08p2' `s08p3' `s08p4'" == "inplace frame refuse frame")"' "plans `s08p1' `s08p2' `s08p3' `s08p4'"
+    capture log close q3508
+    capture erase "`s08d'/q3508_2.log"
+    quietly log using "`s08d'/q3508_2.log", text replace name(q3508)
+    capture noisily _dash_maxvar_room 200000 0 0 0 "dash" 5 q8f
+    local s08ra = _rc
+    capture noisily _dash_maxvar_room 200000 0 0 0 "dash" 5
+    local s08rb = _rc
+    quietly log close q3508
+    _w35_expect Q3508-2 "(`s08ra' == 900 & `s08rb' == 900)" "refusal rc `s08ra' and `s08rb'"
+    cert_log_has "`s08d'/q3508_2.log", needle("variables in frame q8f, and set maxvar allows")
+    _w35_expect Q3508-2 "(r(found) == 1)" "the line naming the frame"
+    cert_log_has "`s08d'/q3508_2.log", needle("variables, and set maxvar allows")
+    _w35_expect Q3508-2 "(r(found) == 1)" "the line without a frame"
+    cert_log_has "`s08d'/q3508_2.log", needle("beside the 5 variables the dashboard exports")
+    _w35_expect Q3508-2 "(r(found) == 1)" "the room beside the exported variables"
+    forvalues s08b = 1/3 {
+        capture dash clear
+        if `s08b' == 1 {
+            clear
+            quietly set obs 20
+            quietly generate id = ceil(_n/10)
+            quietly generate t = mod(_n - 1, 10) + 1
+            quietly generate y = _n^1.5
+            quietly tsset id t
+            quietly dash line L.y t if id == 1, name(q8l)
+        }
+        else if `s08b' == 2 {
+            quietly sysuse auto, clear
+            quietly regress mpg weight if foreign
+            quietly dash scatter mpg weight if e(sample), name(q8e)
+        }
+        else {
+            quietly sysuse auto, clear
+            quietly dash scatter mpg weight, name(q8w)
+        }
+        local s08filt ""
+        if `s08b' == 3 local s08filt "filter(rep78)"
+        foreach s08f in 0 1 {
+            global dash__force_frame = cond(`s08f', "1", "")
+            global dash__frame_trace ""
+            capture erase "`s08d'/q2_`s08b'_`s08f'.json"
+            capture erase "`s08d'/q2_`s08b'_`s08f'.csv"
+            capture noisily _dash_serve_spec, specpath("`s08d'/q2_`s08b'_`s08f'.json") datapath("`s08d'/q2_`s08b'_`s08f'.csv") `s08filt'
+            local s08r_`s08f' = _rc
+            local s08t_`s08f' = strtrim("${dash__frame_trace}")
+        }
+        global dash__force_frame
+        python: _w35s08_same(r"`s08d'/q2_`s08b'_0.csv", r"`s08d'/q2_`s08b'_1.csv")
+        _w35_expect Q3508-2 "(`s08r_0' == 0 & `s08r_1' == 0 & ${w35s08_same} == 1)" "build `s08b': rc `s08r_0'/`s08r_1', same file ${w35s08_same}"
+        _w35_expect Q3508-2 `"("`s08t_1'" == "`c(frame)'" & "`s08t_0'" == "")"' "build `s08b': trace [`s08t_1'] under the flag, [`s08t_0'] without"
+        if `s08b' == 2 {
+            python: _w35s08_data(r"`s08d'/q2_2_1.csv", "__dashq1")
+            _w35_expect Q3508-2 `"("${w35s08_sum}" == "22")"' "e(sample)'s column holds ${w35s08_sum} ones, twoway's count 22"
+        }
+    }
+    global dash__frame_trace
+    capture dash clear
+    _w35_done Q3508-2 "the plan, its refusal, and the frame branch's data file"
+
+    // ------------------------------------------------------------
+    // Q3508-3: two frames (33-07's frame f: prefix).  One prefix over
+    // both frames' names; each frame's own temporary frame; e(sample)
+    // read in each frame as twoway reads it; 33-07's split columns and
+    // label copies named from the prefix, the user's label sets untouched.
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    capture frame drop q8f
+    frame create q8f
+    frame q8f: quietly sysuse auto, clear
+    frame q8f: quietly generate __dashq1 = mpg
+    capture dash clear
+    quietly dash scatter mpg weight if foreign, name(q8a)
+    quietly frame q8f: dash scatter __dashq1 weight, name(q8b)
+    foreach s08f in 0 1 {
+        global dash__force_frame = cond(`s08f', "1", "")
+        global dash__frame_trace ""
+        capture erase "`s08d'/q8_`s08f'.json"
+        capture erase "`s08d'/q8_`s08f'.csv"
+        capture noisily _dash_serve_spec, specpath("`s08d'/q8_`s08f'.json") datapath("`s08d'/q8_`s08f'.csv")
+        local s08r_`s08f' = _rc
+        local s08t_`s08f' = strtrim("${dash__frame_trace}")
+    }
+    global dash__force_frame
+    python: _w35s08_spec(r"`s08d'/q8_0.json", "q8b")
+    python: _w35s08_same(r"`s08d'/q8_0.csv", r"`s08d'/q8_1.csv")
+    _w35_expect Q3508-3 "(`s08r_0' == 0 & `s08r_1' == 0 & ${w35s08_same} == 1)" "two frames: rc `s08r_0'/`s08r_1', same file ${w35s08_same}"
+    _w35_expect Q3508-3 `"("${w35s08_pfx}" == "__dsh1_")"' "two frames: prefix ${w35s08_pfx}"
+    local s08tl "`s08t_1'"
+    _w35_expect Q3508-3 `"(`: word count `s08tl'' == 2 & `: list posof "`c(frame)'" in s08tl' > 0 & `: list posof "q8f" in s08tl' > 0 & "`s08t_0'" == "")"' "two frames: trace [`s08t_1'], [`s08t_0'] without the flag"
+    capture erase "`s08d'/q8.html"
+    capture noisily dash build, saving("`s08d'/q8.html") nobrowser
+    local s08r = _rc
+    python: _w35s08_page(r"`s08d'/q8.html")
+    quietly summarize mpg if foreign
+    local s08wa "22:`r(sum)'"
+    quietly summarize mpg
+    local s08wb "74:`r(sum)'"
+    local s08pts "${w35s08_pts}"
+    _w35_expect Q3508-3 `"(`s08r' == 0 & `: list posof "`s08wa'" in s08pts' > 0 & `: list posof "`s08wb'" in s08pts' > 0)"' "two frames: build rc `s08r', points `s08pts'"
+    // e(sample): 22 rows in the estimation frame, none in q8f (30 rows of
+    // rep78 == 3 there), with and without the flag.
+    capture dash clear
+    quietly regress mpg weight if foreign
+    quietly dash scatter mpg weight if e(sample), name(q8c)
+    quietly frame q8f: dash scatter mpg weight if e(sample) | rep78 == 3, name(q8d)
+    foreach s08f in 0 1 {
+        global dash__force_frame = cond(`s08f', "1", "")
+        capture erase "`s08d'/q8e_`s08f'.json"
+        capture erase "`s08d'/q8e_`s08f'.csv"
+        capture noisily _dash_serve_spec, specpath("`s08d'/q8e_`s08f'.json") datapath("`s08d'/q8e_`s08f'.csv")
+        local s08r_`s08f' = _rc
+    }
+    global dash__force_frame
+    python: _w35s08_same(r"`s08d'/q8e_0.csv", r"`s08d'/q8e_1.csv")
+    _w35_expect Q3508-3 "(`s08r_0' == 0 & `s08r_1' == 0 & ${w35s08_same} == 1)" "e(sample) in two frames: rc `s08r_0'/`s08r_1', same file ${w35s08_same}"
+    capture erase "`s08d'/q8e.html"
+    capture noisily dash build, saving("`s08d'/q8e.html") nobrowser
+    local s08r = _rc
+    python: _w35s08_page(r"`s08d'/q8e.html")
+    local s08pts "${w35s08_pts}"
+    local s08n ""
+    foreach s08w of local s08pts {
+        local s08n `s08n' `=substr("`s08w'", 1, strpos("`s08w'", ":") - 1)'
+    }
+    local s08n : list sort s08n
+    _w35_expect Q3508-3 `"(`s08r' == 0 & "`s08n'" == "22 30")"' "e(sample) in two frames: points `s08pts'"
+    // 33-07's split column and label copy, named from the prefix.
+    capture dash clear
+    capture frame drop q8g
+    frame create q8g
+    frame q8g: quietly sysuse auto, clear
+    frame q8g: label define origin 0 "US" 1 "Abroad", replace
+    frame q8g: label define __dashl1 1 "one"
+    quietly dash scatter mpg weight, mlabel(foreign) name(q8h)
+    quietly frame q8g: dash scatter mpg weight, mlabel(foreign) name(q8i)
+    capture erase "`s08d'/q8j.html"
+    capture noisily dash build, saving("`s08d'/q8j.html") nobrowser
+    local s08r = _rc
+    capture erase "`s08d'/q8j.json"
+    capture erase "`s08d'/q8j.csv"
+    capture noisily _dash_serve_spec, specpath("`s08d'/q8j.json") datapath("`s08d'/q8j.csv")
+    local s08r2 = _rc
+    python: _w35s08_spec(r"`s08d'/q8j.json", "q8i")
+    _w35_expect Q3508-3 `"(`s08r' == 0 & `s08r2' == 0 & "${w35s08_pfx}" == "__dsh1_")"' "label sets: rc `s08r'/`s08r2', prefix ${w35s08_pfx}"
+    _w35_expect Q3508-3 `"(strpos(`"${w35s08_fcols}"', `""q8i": {"foreign": {"col": "__dsh1_m1", "frame": "q8g"}}"') > 0)"' `"frame_cols ${w35s08_fcols}"'
+    python: _w35s08_page(r"`s08d'/q8j.html")
+    local s08tx "${w35s08_txt}"
+    _w35_expect Q3508-3 `"(`: list posof "Domestic" in s08tx' > 0 & `: list posof "Foreign" in s08tx' > 0 & `: list posof "US" in s08tx' > 0 & `: list posof "Abroad" in s08tx' > 0)"' "marker labels: `s08tx'"
+    frame q8g: quietly label list __dashl1
+    local s08l1 = r(min) == 1 & r(max) == 1
+    frame q8g: quietly label list origin
+    local s08l2 = r(min) == 0 & r(max) == 1
+    frame q8g: local s08o0 : label origin 0
+    _w35_expect Q3508-3 `"(`s08l1' & `s08l2' & "`s08o0'" == "US")"' "the user's label sets in q8g"
+    capture dash clear
+    capture frame drop q8g
+    capture frame drop q8f
+    global dash__force_frame
+    global dash__frame_trace
+    _w35_done Q3508-3 "one prefix over two frames, each frame's own temporary frame, e(sample) per frame"
+
+    display as text "S08 end " c(current_date) " " c(current_time)
+}
+* ==== end S08 ====
+
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {

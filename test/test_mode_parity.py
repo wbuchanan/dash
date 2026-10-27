@@ -2908,6 +2908,12 @@ CORPUS = [
           bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
     # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
     _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
+    # WP-35 DT-19: a spec whose working-column prefix is not the default
+    # (_case builds no top-level key, so the entry is written as _case
+    # writes it).
+    pytest.param("WP-35 DT-19: a spec whose working-column prefix is __dsh1_",
+                 {**_spec([_sc()]), "_dash_prefix": "__dsh1_"},
+                 id="WP-35 DT-19: a spec whose working-column prefix is __dsh1_"),
 ]
 
 
