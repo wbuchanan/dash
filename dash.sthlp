@@ -622,9 +622,10 @@ as {cmd:twoway} draws each; all four are redrawn after a move.
 which
 {opt clabels()} and {opt format()} label.  {opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
-{opt le()} is refused, as {cmd:twoway} refuses it, and {opt levels()} above
-1,000 is refused by {cmd:dash} (a bound of its own; {cmd:twoway} takes any
-integer);
+{opt le()} is refused, as {cmd:twoway} refuses it; {opt levels()} above
+500, and more than 499 values in {opt ccuts()}, are refused, as
+{cmd:twoway} refuses them when it draws
+({cmd:contour level must be between 0 and 500});
 {opt interp()} ({opt i()} and longer), {opt clwidths()} ({opt clw()}),
 {opt clpatterns()} ({opt clp()}) and {opt colorlines} ({opt colorl}) take
 {cmd:twoway}'s shorter spellings on these two types.

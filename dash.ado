@@ -2850,6 +2850,13 @@ program define _dash_contour_check, sclass
             display as error "ccuts() invalid -- invalid numlist"
             exit 121
         }
+        // twoway draws at most 499 cuts: 500 or more are refused when it
+        // draws, r(198) (WP-35 stat:PT-5; stat_refusal_truth.json
+        // contour.ccuts_499, contour.ccuts_500).
+        if `: word count `r(numlist)'' >= 500 {
+            display as error "contour level must be between 0 and 500"
+            exit 198
+        }
         sreturn local ccuts "`r(numlist)'"
     }
     mata: st_local("_zl", strtrim(st_global("s(levels)")))
@@ -2863,10 +2870,11 @@ program define _dash_contour_check, sclass
             display as error "invalid syntax"
             exit 198
         }
-        // dash's own bound, not twoway's (which takes any integer): at
-        // most 1,000 levels, as many cuts as the renderer can cut and key.
-        if `_zl' > 1000 {
-            mata: _dash_say("err", "dash: levels() must be an integer between 0 and 1000 (got: ", st_local("_zl"), ")")
+        // twoway's bound when it draws: at most 500 levels, r(198) (WP-35
+        // stat:PT-5; stat_refusal_truth.json contour.levels_500,
+        // contour.levels_501).
+        if `_zl' > 500 {
+            display as error "contour level must be between 0 and 500"
             exit 198
         }
     }

@@ -104,3 +104,23 @@ class TestTheFlags:
                     (198, "option %s not allowed" % f), k
         body = _program_body(_read(_ADO), "_dash_option_rules")
         assert "density|fraction|frequency|percent@histogram" in body
+
+
+class TestTheContourBound:
+    def test_500_and_499(self):
+        """twoway draws levels() up to 500 and ccuts() of up to 499 values,
+        and refuses more, r(198), "contour level must be between 0 and
+        500" (fixture contour.*, drawn); _dash_contour_check gives that
+        line for both, and dash's own 1,000 bound is gone (stat:PT-5)."""
+        d = _truth()
+        line = "contour level must be between 0 and 500"
+        for k in ("levels_501", "levels_1000", "ccuts_500"):
+            assert (d["contour." + k]["rc"], d["contour." + k]["message"]) \
+                == (198, line), k
+        for k in ("levels_500", "ccuts_499"):
+            assert d["contour." + k]["rc"] == 0, k
+        body = _program_body(_read(_ADO), "_dash_contour_check")
+        assert body.count('display as error "%s"' % line) == 2
+        assert "`_zl' > 500" in body
+        assert "`r(numlist)'' >= 500" in body
+        assert "1000" not in body

@@ -355,7 +355,7 @@ _zd_run abbrev.hor `c', hor `nm'
 _zd_run refuse.ccuts_levels `c', ccuts(15 20) levels(5)
 _zd_run refuse.levels0 `c', levels(0)
 _zd_run refuse.levelsneg `c', levels(-1)
-_zd_run refuse.levelsbig `c', levels(1001) nodraw
+_zd_run refuse.levelsbig `c', levels(1001)
 _zd_run refuse.levels_text `c', levels(a)
 _zd_run refuse.levels_real `c', levels(2.5)
 _zd_run refuse.ccuts_text `c', ccuts(a b)

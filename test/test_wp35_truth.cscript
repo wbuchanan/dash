@@ -1042,6 +1042,44 @@ def _q3509_glyphs(path, out):
         Macro.setGlobal(out, "error " + repr(e)[:100])
 end
 
+// ----------------------------------------------------------------
+// Section 35-04's helper: _s04_take key sets the locals s04_cmd (the
+// fixture's twoway command without its first word), s04_rc and s04_msg
+// (twoway's rc and first line) from test/fixtures/stat_refusal_truth.json.
+// ----------------------------------------------------------------
+python:
+def _s04_take(key):
+    import json
+    from sfi import Macro
+    r = json.load(open("fixtures/stat_refusal_truth.json",
+                       encoding="utf-8"))[key]
+    c = r["cmd"].strip()
+    Macro.setLocal("s04_cmd", c[len("twoway "):] if c.startswith("twoway ") else c)
+    Macro.setLocal("s04_rc", str(r["rc"]))
+    Macro.setLocal("s04_msg", r["message"])
+end
+
+* ==== S04 stat:PT-5: contour levels bounded at twoway's 500 ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w35_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3504-3: contour levels() up to 500 and ccuts() of 499 values are
+    // drawn; levels(501), levels(1000) and 500 ccuts() values are refused,
+    // r(198), "contour level must be between 0 and 500", as twoway
+    // refuses them when it draws (stat_refusal_truth.json contour.*).
+    // ------------------------------------------------------------
+    foreach _s04k in contour.levels_500 contour.levels_501 contour.levels_1000 contour.ccuts_499 contour.ccuts_500 {
+        python: _s04_take("`_s04k'")
+        _s03_rc Q3504-3 "`w35_work'" sandstone `"`macval(s04_cmd)'"' `s04_rc' `"`macval(s04_msg)'"'
+    }
+    _w35_done Q3504-3 "contour's levels() and ccuts() bounded at twoway's drawn 500"
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== S06 GW-4: fxsiz() and fysiz() applied ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {
