@@ -1420,7 +1420,7 @@ def _w35s08_page(path, spec=None, data=None):
                 _w35s08_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
                                lambda m: ents[m.group(1)], b)).values()]
             doc = Document.from_json(docs[0])
-        pts, txt = [], set()
+        pts, txt, hov = [], set(), []
         for m in doc.models:
             if isinstance(m, GlyphRenderer) and isinstance(m.glyph, Scatter):
                 y = m.glyph.y
@@ -1428,6 +1428,10 @@ def _w35s08_page(path, spec=None, data=None):
                 vals = [v for v in m.data_source.data.get(y, [])
                         if v is not None and v == v]
                 pts.append("%d:%g" % (len(vals), sum(vals)))
+                h = [v for v in m.data_source.data.get("__dash_row__", [])
+                     if v is not None and v == v]
+                if h:
+                    hov.append("%d:%g" % (len(h), sum(h)))
             if isinstance(m, ColumnDataSource):
                 for col in m.data.values():
                     for v in list(col)[:200]:
@@ -1435,6 +1439,7 @@ def _w35s08_page(path, spec=None, data=None):
                             txt.add(v)
         _w35s08_M.setGlobal("w35s08_pts", " ".join(sorted(pts)))
         _w35s08_M.setGlobal("w35s08_txt", " ".join(sorted(txt)))
+        _w35s08_M.setGlobal("w35s08_hov", " ".join(sorted(hov)))
     except Exception as e:
         _w35s08_M.setGlobal("w35s08_pts", "error " + str(e)[:200])
         _w35s08_M.setGlobal("w35s08_txt", "")
@@ -1451,7 +1456,9 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w35_run' {
     // __dashq1, __dashs1, __dash_row__ and __dashm_mpg; dash drew them too
     // only under r(110).  Now the export's prefix is __dsh1_: the spec's
     // qualifier column is __dsh1_q1, the data file holds it beside the
-    // user's __dashq1, and both modes draw the user's 22 values.
+    // user's __dashq1, and both modes draw the user's 22 values; the
+    // user's __dash_row__ (here mpg's values) is what hover() shows, the
+    // renderers' row identity being __dsh1__row__.
     // ------------------------------------------------------------
     quietly sysuse auto, clear
     foreach s08v in __dashq1 __dashs1 __dash_row__ __dashm_mpg {
@@ -1460,7 +1467,7 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w35_run' {
     capture noisily twoway scatter __dashq1 weight, nodraw
     local s08tw = _rc
     capture dash clear
-    capture noisily dash scatter __dashq1 weight if foreign, name(s08)
+    capture noisily dash scatter __dashq1 weight if foreign, hover(__dash_row__) name(s08)
     local s08r = _rc
     _w35_expect Q3508-1 "(`s08tw' == 0 & `s08r' == 0)" "twoway rc `s08tw', dash rc `s08r'"
     capture erase "`s08d'/q1.json"
@@ -1483,8 +1490,10 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w35_run' {
     local s08r = _rc
     python: _w35s08_page(r"`s08d'/q1.html")
     _w35_expect Q3508-1 `"(`s08r' == 0 & "${w35s08_pts}" == "`s08want'")"' "saved page: rc `s08r', points ${w35s08_pts}, want `s08want'"
+    _w35_expect Q3508-1 `"("${w35s08_hov}" == "`s08want'")"' "saved page: hover(__dash_row__) holds ${w35s08_hov}, the user's `s08want'"
     python: _w35s08_page(None, r"`s08d'/q1.json", r"`s08d'/q1.csv")
     _w35_expect Q3508-1 `"("${w35s08_pts}" == "`s08want'")"' "served app: points ${w35s08_pts}, want `s08want'"
+    _w35_expect Q3508-1 `"("${w35s08_hov}" == "`s08want'")"' "served app: hover(__dash_row__) holds ${w35s08_hov}, the user's `s08want'"
     capture dash clear
     _w35_done Q3508-1 "a variable named __dash... is drawn as data in both modes"
 

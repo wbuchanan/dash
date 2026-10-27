@@ -232,13 +232,13 @@ or {cmd:__dsh1_}, {cmd:__dsh2_}, ... when a variable (or, on a build, a
 value-label set) of a frame the dashboard reads starts with
 {cmd:__dash}.  So no column dash makes is a name your data hold, and a
 variable named {cmd:__dashq1} is drawn as your data, as {cmd:twoway} draws
-it.  The columns the renderer makes for itself keep their {cmd:__dash}
-names -- the row identity {cmd:__dash_row__}, the marker-label and jitter
-columns, the alias {cmd:__dashu_}{it:var}, the missing-code columns
-{cmd:__dashm_}{it:var} and display-text columns {cmd:__dasht_}{it:var} --
-so a variable named exactly like one of them is drawn as a plot variable
-but is shadowed by it in {cmd:hover()} and {cmd:mlabel()}, as a variable
-named like a glyph field is (below).  A graph registered in another frame
+it.  The columns the dashboard makes for itself take the same prefix --
+its row identity ({cmd:__dash_row__} under {cmd:__dash}), its marker-label,
+jitter and colour columns, the alias under which a variable named like one
+of its own fields ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count} ...) reaches
+{cmd:hover()} and {cmd:mlabel()}, and the columns that carry {cmd:.a} to
+{cmd:.z} -- so a variable named {cmd:__dash_row__} is drawn, shown by
+{cmd:hover()}, filtered and downloaded as your data too.  A graph registered in another frame
 ({cmd:frame} {it:name}{cmd::} {cmd:dash} ...{cmd:, name()}) reads that frame
 instead; see {help dash##frames:Graphs from several frames}.
 

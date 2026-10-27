@@ -207,3 +207,118 @@ class TestTheRenderer:
             {"_dash_prefix": "__dsh2_",
              "build_options": {"sort_cols": {"mpg": "__dsh2_s1"}}}) == {
                  "mpg": "__dsh2_s1"}
+
+
+# ---------------------------------------------------------------------------
+# The renderers' own columns (TR-35-08.4): every name a renderer makes is
+# formed from the spec's prefix, so a user variable named like one of them
+# under the default prefix is data in both modes.
+# ---------------------------------------------------------------------------
+
+def _clash_df():
+    return pd.DataFrame({
+        "mpg": [22.0, 17.0, 25.0, 30.0],
+        "weight": [2930.0, 3350.0, 2200.0, 1800.0],
+        "__dash_row__": [101.0, 102.0, 103.0, 104.0],
+        "__dash_mlabel_mpg": [1.0, 2.0, 3.0, 4.0],
+        "__dashu_x": [5.0, 6.0, 7.0, 8.0],
+    })
+
+
+def _clash_spec():
+    plot = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+            "options": {"mlabel": "mpg"}, "if_expr": "", "in_expr": ""}
+    return {"graphs": [{"plots": [plot],
+                        "graph_options": {"name": "s08", "title": "s08",
+                                          "hover": "__dash_row__ __dash_mlabel_mpg"},
+                        "if_expr": "", "in_expr": ""}],
+            "kpis": [], "_dash_prefix": "__dsh1_",
+            "build_options": {"layout": "auto", "link": "", "theme": "",
+                              "title": "", "subtitle": "", "tabs": "",
+                              "filter_position": "top", "registry": "s08"}}
+
+
+def _figure_of(tmp_path, mode, spec, df):
+    sp, dp = _write_inputs(tmp_path, spec, df=df)
+    if mode == "saved":
+        r = dr.DashRenderer(sp, dp)
+        render_models(r)
+        [fig] = list(r.figures.values())
+        return fig
+    ap = os.path.join(str(tmp_path), "app_%d.py" % next(_SEQ))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        ns = _load_app(fh.read(), "wc_%d" % next(_SEQ))
+    doc = Document()
+    ns["make_document"](doc)
+    [fig] = list(doc.select({"type": type(figure())}))
+    return fig
+
+
+class TestTheRendererNames:
+    def test_row_id_of_a_spec(self):
+        assert dr._dash_row_id({}) == "__dash_row__" == dr._ROW_ID_COLUMN
+        assert dr._dash_row_id({"_dash_prefix": "__dsh1_"}) == "__dsh1__row__"
+
+    def test_the_module_of_a_prefix(self):
+        m = dr._dash_module_for({"_dash_prefix": "__dsh1_"})
+        assert m is dr._dash_module_for({"_dash_prefix": "__dsh1_"})
+        assert dr._dash_module_for({}) is sys.modules[dr.__name__]
+        assert m._ROW_ID_COLUMN == "__dsh1__row__"
+        assert m._DASH_MLABEL_PREFIX == "__dsh1__mlabel_"
+        assert m._DASH_USER_ALIAS_PREFIX == "__dsh1_u_"
+        assert m._DASH_CODE_TEXT_PREFIX == "__dsh1_t_"
+        assert m._DASH_TABLE_PREFIX == "__dsh1__tbl_"
+        assert m._DASH_CVAR_PREFIX == "__dsh1__cvar"
+        assert m._DASH_JITTER_X == "__dsh1__xjit"
+        # One error class across the copies, so a caller catches either.
+        assert m.DashSpecError is dr.DashSpecError
+        assert m.DashLimitError is dr.DashLimitError
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_a_user_column_named_like_a_renderer_column(self, tmp_path,
+                                                          mode):
+        fig = _figure_of(tmp_path, mode, _clash_spec(), _clash_df())
+        [sc] = [x for x in fig.renderers
+                if type(x.glyph).__name__ == "Scatter"]
+        data = sc.data_source.data
+        # hover(__dash_row__) reads the user's values, not row ids.
+        assert list(data["__dash_row__"]) == [101.0, 102.0, 103.0, 104.0]
+        assert list(data["__dash_mlabel_mpg"]) == [1.0, 2.0, 3.0, 4.0]
+        # dash's own columns are named from the prefix.
+        assert "__dsh1__mlabel_mpg" in data
+        if mode == "saved":
+            assert "__dsh1__row__" in data
+        tips = [t for h in fig.select({"type": dr.HoverTool})
+                for t in (h.tooltips or [])]
+        assert any("@{__dash_row__}" in str(t) for t in tips)
+
+    def test_a_spec_whose_prefix_the_module_does_not_hold_is_refused(
+            self, tmp_path):
+        m = dr._dash_module_for({"_dash_prefix": "__dsh1_"})
+        spec = dict(_clash_spec(), _dash_prefix="__dsh2_")
+        sp, dp = _write_inputs(tmp_path, spec, df=_clash_df())
+        with pytest.raises(ValueError, match="_dash_prefix"):
+            m.DashRenderer.__init__(object.__new__(m.DashRenderer), sp, dp)
+
+
+class TestNoRendererLiteral:
+    def test_no_renderer_column_literal(self):
+        """Every column a renderer makes is formed from ``_DASH_RP``; no
+        quoted ``__dash`` literal and no JavaScript ``.__dash`` property
+        read is left, but the default itself, the filter script's own
+        default code prefix, and the page's hold flag
+        (``globalThis.__dash_filter_hold``, no column)."""
+        bad = []
+        for i, line in enumerate(_code_lines(_read("dash_render.py"), "#"),
+                                 1):
+            if "``" in line:              # a docstring's literal text
+                continue
+            s = (line.replace("globalThis.__dash_filter_hold", "")
+                 .replace("|| '__dashm_'", ""))   # the script's default
+            if re.search(r"[\"']__dash|\.__dash|\b__dash[a-z_]*\b\s*[:=]",
+                         s) and "_DASH_RP_DEFAULT = " not in s:
+                bad.append("dash_render.py:%d: %s" % (i, line.strip()))
+        assert bad == []

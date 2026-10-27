@@ -1312,16 +1312,26 @@ def _dash_columns_frame(sj):
     return pd.DataFrame({v: cols[v] for v in names}, columns=names)
 
 
+#: WP-35 DT-19: the default working-column prefix, and this module's own.
+#: dash.ado names its columns with a prefix no variable of the data starts
+#: with (``_dash_prefix`` in the spec); every column a renderer makes is
+#: formed from ``_DASH_RP`` below, and a spec whose prefix is not the
+#: default is rendered by a copy of this module run with ``_DASH_RP_SEED``
+#: set to it (``_dash_module_for``), so no column dash makes is a name the
+#: data hold.
+_DASH_RP_DEFAULT = "__dash"
+_DASH_RP = globals().get("_DASH_RP_SEED") or _DASH_RP_DEFAULT
+
 #: The text column an extended missing value's letter travels in beside its
 #: variable (WP-31 G1): ``__dashm_<var>``, "" or "a" to "z" in each row.
-_DASH_CODE_PREFIX = "__dashm_"
+_DASH_CODE_PREFIX = _DASH_RP + "m_"
 
 #: The column a carried user variable takes when a derived key of its name
 #: is taken (WP-31 G3): ``__dashu_<var>``.
-_DASH_USER_ALIAS_PREFIX = "__dashu_"
+_DASH_USER_ALIAS_PREFIX = _DASH_RP + "u_"
 
 #: The display-text column of a coded variable's tooltip (WP-31 G1).
-_DASH_CODE_TEXT_PREFIX = "__dasht_"
+_DASH_CODE_TEXT_PREFIX = _DASH_RP + "t_"
 
 _DASH_CODE_LETTERS = frozenset("abcdefghijklmnopqrstuvwxyz")
 
@@ -2496,7 +2506,7 @@ _DASH_SLIDER_NAMES_JS = (
 #: the note under a capped table is this fixed text; the toggle shows and
 #: hides the table and the note, then asks the table to lay itself out
 #: again (SlickGrid measures nothing while hidden).
-_DASH_TABLE_PREFIX = "__dash_tbl_"
+_DASH_TABLE_PREFIX = _DASH_RP + "_tbl_"
 _DASH_TABLE_CAP_NOTE = "The table lists at most {cap:,} rows of those drawn."
 _DASH_TABLE_TOGGLE_JS = (
     "dt.visible = cb_obj.active; note.visible = cb_obj.active && capped; "
@@ -2880,7 +2890,7 @@ def _dash_strl_first_binary(v, nobs, sfi):
     (:func:`_dash_is_stata_name`), so it is safe in the command.
     """
     tk = sfi.SFIToolkit
-    nm = "__dashbin" + secrets.token_hex(6)
+    nm = _DASH_RP + "bin" + secrets.token_hex(6)
     tk.stata(f'quietly mata: st_numscalar("{nm}", min((selectindex(strpos('
              f'st_sdata(., "{v}"), char(0)) :> 0) \\ st_nobs() + 1)))')
     try:
@@ -3006,7 +3016,7 @@ def _dash_write_stata_data(path, varnames, sfi=None):
             # Read through Stata's own ustrfix(), into a variable made for
             # the read and dropped at once: each invalid sequence becomes
             # U+FFFD, as jsonio wrote it, and the page is drawn.
-            tmp = "__dashfix" + secrets.token_hex(6)
+            tmp = _DASH_RP + "fix" + secrets.token_hex(6)
             tk.stata(f"quietly generate strL {tmp} = ustrfix({v})")
             try:
                 vals = _column(tmp)
@@ -5418,27 +5428,27 @@ _NONSELECTION_ALPHA = 0.15
 # than position is robust to a shorter or reordered source.  An integer is
 # enough; a string key would cost real bytes in a file already over a
 # megabyte.
-_ROW_ID_COLUMN = "__dash_row__"
+_ROW_ID_COLUMN = _DASH_RP + "_row__"
 # G1 (WP-28): every column a renderer makes up is named "__dash_<what>" --
 # a trailing "__" is kept only on the two legacy row-id names above and
 # below -- so a user's own variable of any other name (however dash-ish it
 # looks: __mlabel__y, _x_jit, x, top) is read as the user's data, never
 # overwritten.  Section 14's hover text column follows the same rule,
 # named __dash_hover_{var}.  test_internal_column_names.py guards it.
-_DASH_PC_ROW_COLUMN = "__dash_pc_row__"
-_DASH_MLABEL_PREFIX = "__dash_mlabel_"
+_DASH_PC_ROW_COLUMN = _DASH_RP + "_pc_row__"
+_DASH_MLABEL_PREFIX = _DASH_RP + "_mlabel_"
 #: The per-label style column of a marker label whose markup sets a whole
 #: label bold or italic (WP-30 P1.11b); never equal to a __dash_mlabel_ name
 #: (the two differ at their 12th character).
-_DASH_MLABSTYLE_PREFIX = "__dash_mlabstyle_"
-_DASH_MLABEL_VALUES = "__dash_mlabel_values"
-_DASH_MLABEL_X = "__dash_mlabel_x"
-_DASH_MLABEL_Y = "__dash_mlabel_y"
-_DASH_JITTER_X = "__dash_xjit"
-_DASH_JITTER_Y = "__dash_yjit"
+_DASH_MLABSTYLE_PREFIX = _DASH_RP + "_mlabstyle_"
+_DASH_MLABEL_VALUES = _DASH_RP + "_mlabel_values"
+_DASH_MLABEL_X = _DASH_RP + "_mlabel_x"
+_DASH_MLABEL_Y = _DASH_RP + "_mlabel_y"
+_DASH_JITTER_X = _DASH_RP + "_xjit"
+_DASH_JITTER_Y = _DASH_RP + "_yjit"
 # The colour bins of colorvar(), one column per layer: __dash_cvar<k>_<var>
 # (_dash_colorvar_field; WP-29 P0.16).
-_DASH_CVAR_PREFIX = "__dash_cvar"
+_DASH_CVAR_PREFIX = _DASH_RP + "_cvar"
 _DASH_LABEL_SUFFIX = "_label"
 # Marks the Legend that a discrete colorvar() builds, so the plot-legend
 # rebuild can leave it alone.  A colour key is not a series key: Stata
@@ -14355,7 +14365,7 @@ class GlyphMapper:
     # The reserved column a mapper that stacks or derives x/y columns
     # carries mlabvposition()'s values under (WP-30 P1.24), so a position
     # variable named x, y or y0 is never read as the coordinates.
-    _MLABVPOS_VALUES = "__dash_mlabvpos_values"
+    _MLABVPOS_VALUES = _DASH_RP + "_mlabvpos_values"
 
     def __init__(
         self,
@@ -14596,7 +14606,7 @@ class GlyphMapper:
                 # count ...) is carried under a reserved alias, so hover()
                 # and mlabel() still reach it (WP-31 G3, _user_field).
                 _key = _DASH_USER_ALIAS_PREFIX + str(_k)
-                if (_key in data or str(_k).startswith("__dash")
+                if (_key in data or str(_k).startswith(_DASH_RP)
                         or _k == "index"
                         or GlyphMapper._same_column(_v, data[_k],
                                                     selector)):
@@ -17653,7 +17663,7 @@ class GlyphMapper:
         d = float(distance)
         dk = int(round(d * 1e6))
         dks = f"m{-dk}" if dk < 0 else str(dk)
-        base = f"__dash_mlabvpos_{name}_p{fb}_d{dks}"
+        base = f"{_DASH_RP}_mlabvpos_{name}_p{fb}_d{dks}"
         names = (base + "_x", base + "_y", base + "_a", base + "_b")
         if names[0] not in source.data:
             xo = np.where(k == 0, 0.0, d * ux[k]).astype(np.float64)
@@ -18835,12 +18845,12 @@ class GlyphMapper:
         return r
 
     #: The reserved columns a bar on a period axis is drawn from (D-14c).
-    _BAR_XC = "__dash_bar_xc"
-    _BAR_W = "__dash_bar_w"
+    _BAR_XC = _DASH_RP + "_bar_xc"
+    _BAR_W = _DASH_RP + "_bar_w"
     #: The reserved column a default bar base is drawn from, and the glyph
     #: properties a base may sit in (WP-30 P1.17b; the x ones are a
     #: horizontal layer's).
-    _BASE_COL = "__dash_base"
+    _BASE_COL = _DASH_RP + "_base"
     _BASE_PROPS = ("bottom", "y0", "y1", "left", "x0", "x1")
 
     def _base_value(self, options, layer):
@@ -19193,10 +19203,10 @@ class GlyphMapper:
         sizes[drawn] = _dash_weighted_sizes(
             w[drawn], float(base),
             getattr(self.scheme, "max_wted_symsize", 10.0))
-        col, k = "__dash_wsize", 1
+        col, k = _DASH_RP + "_wsize", 1
         while col in src.data:
             k += 1
-            col = f"__dash_wsize{k}"
+            col = f"{_DASH_RP}_wsize{k}"
         src.data[col] = sizes
         glyph.size = col
         # A served move writes the kept rows into this source
@@ -21969,10 +21979,10 @@ class GlyphMapper:
         # it rewrites the quads' (_hist_mwidth_px).
         if mwidth_px is not None:
             _n = len(source.data.get("top", []))
-            source.data["__dash_mw"] = [float(mwidth_px)] * _n
+            source.data[_DASH_RP + "_mw"] = [float(mwidth_px)] * _n
             source.data["right"] = list(source.data.get("left", []))
         _shape = (dict(x="left", top="top", bottom=0,
-                       width="__dash_mw", width_units="screen")
+                       width=_DASH_RP + "_mw", width_units="screen")
                   if mwidth_px is not None else
                   dict(top="top", bottom=0, left="left", right="right"))
         _glyph = fig.vbar if mwidth_px is not None else fig.quad
@@ -22124,7 +22134,7 @@ class GlyphMapper:
                     continue
                 _bn = len(next(iter(_bd.data.values())))
                 if _bn == len(_bin_rows):
-                    _bd.data["__dash_bin_rows"] = list(_bin_rows)
+                    _bd.data[_DASH_RP + "_bin_rows"] = list(_bin_rows)
                     _br._dash_bin_raw = source
         # recast() to a range type (WP-31 C7): the bins drawn as the
         # range over (centre, 0, height), as twoway draws histogram's
@@ -22178,7 +22188,7 @@ class GlyphMapper:
             _bin_tag(_before)
             return _first
         if _bin_rows is not None:
-            hist_source.data["__dash_bin_rows"] = _bin_rows
+            hist_source.data[_DASH_RP + "_bin_rows"] = _bin_rows
         _mwpx = self._hist_mwidth_px(options, h)
         if _mwpx is None:
             # WP-34 AX-4: twoway ticks the bin axis over the first and
@@ -22192,19 +22202,19 @@ class GlyphMapper:
             _mid = (_ae[:-1] + _ae[1:]) / 2.0
             _pad = ((_ae[1:] - _ae[:-1]) * (100.0 - _hgap) / 100.0
                     * (0.5 + abs(_hoff)))
-            hist_source.data["__dash_mid"] = [float(v) for v in _mid]
-            hist_source.data["__dash_span_lo"] = [float(v)
+            hist_source.data[_DASH_RP + "_mid"] = [float(v) for v in _mid]
+            hist_source.data[_DASH_RP + "_span_lo"] = [float(v)
                                                   for v in _mid - _pad]
-            hist_source.data["__dash_span_hi"] = [float(v)
+            hist_source.data[_DASH_RP + "_span_hi"] = [float(v)
                                                   for v in _mid + _pad]
         r = _tag(self._histogram_quads(
             fig, hist_source, options, color_idx, yvar,
             mwidth_px=_mwpx))
         if _mwpx is None:
-            r._dash_tick_fields = {"x": ("__dash_mid",)}
-            r._dash_span_fields = {"x": ("__dash_span_lo",
-                                         "__dash_span_hi")}
-        if "__dash_bin_rows" in hist_source.data:
+            r._dash_tick_fields = {"x": (_DASH_RP + "_mid",)}
+            r._dash_span_fields = {"x": (_DASH_RP + "_span_lo",
+                                         _DASH_RP + "_span_hi")}
+        if _DASH_RP + "_bin_rows" in hist_source.data:
             r._dash_bin_raw = source
         if i1 <= i0:
             # No bar has a date on the axis: nothing for the page to
@@ -23113,10 +23123,10 @@ class GlyphMapper:
         self._apply_line_opts(r, options, role="aline")
 
     #: WP-32: the mwidth form's x moved by baroffset() in screen units.
-    _RBAR_XOFF = "__dash_rbo_x"
+    _RBAR_XOFF = _DASH_RP + "_rbo_x"
     #: The mwidth form's centre and height columns (WP-31 C2).
-    _RBAR_MID = "__dash_rbar_mid"
-    _RBAR_H = "__dash_rbar_h"
+    _RBAR_MID = _DASH_RP + "_rbar_mid"
+    _RBAR_H = _DASH_RP + "_rbar_h"
 
     def _rbar_mwidth_px(self, options: dict, color_idx: int) -> float:
         """The pixel width of an mwidth range bar: a marker of the layer's
@@ -25104,7 +25114,7 @@ class GlyphMapper:
     #: pixels (``msize()``, else the scheme's ``symbolsize parrow``), read
     #: per row by _DASH_ARROW_HEAD_JS, so a saved move and a served redraw
     #: carry it with the row.
-    _HEAD_PX = "__dash_head_px"
+    _HEAD_PX = _DASH_RP + "_head_px"
 
     def _arrow_head_px(self, options: dict, color_idx: int = 0) -> float:
         """The head's stroke length in pixels (WP-31 C1): ``msize()`` read
@@ -27449,7 +27459,7 @@ def _dash_scale_columns(sources, factor):
             continue
         new = {}
         for k, col in data.items():
-            if str(k).startswith("__dash_wsize"):
+            if str(k).startswith(_DASH_RP + "_wsize"):
                 try:
                     new[k] = [v * factor if isinstance(v, (int, float))
                               and not isinstance(v, bool) else v
@@ -27536,7 +27546,7 @@ def _dash_apply_scale(fig, factor):
                 fld = sz if isinstance(sz, str) else (
                     sz.get("field") if isinstance(sz, dict) else
                     getattr(sz, "field", None))
-                if isinstance(fld, str) and fld.startswith("__dash_wsize"):
+                if isinstance(fld, str) and fld.startswith(_DASH_RP + "_wsize"):
                     cols.append(m.data_source)
     _dash_scale_columns(cols, factor)
 
@@ -31663,7 +31673,7 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
         // "" -- the rows the "(missing)" option keeps.
         const ismiss = (v) => v === null || v === undefined || v === '' ||
             (typeof v === 'number' && Number.isNaN(v));
-        const cpre = '__dashm_' + fvar + '=';
+        const cpre = (spec.code_prefix || '__dashm_') + fvar + '=';
 
         if (ftype === 'multi') {
             // WP-31 H2f: nothing chosen keeps every row; chosen values
@@ -31694,7 +31704,7 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
                     texts.add(String(s));
                 }
             }
-            const cc = orig['__dashm_' + fvar] || [];
+            const cc = orig[(spec.code_prefix || '__dashm_') + fvar] || [];
             for (let i = 0; i < n_rows; i++) {
                 if (!active[i]) continue;
                 const v = col[i];
@@ -31721,7 +31731,7 @@ function dash_filter_mask(orig, filter_specs, all_widgets, use) {
             // whose code column holds its letter.
             if (typeof val === 'string' && val.startsWith(cpre)) {
                 const letter = val.slice(cpre.length);
-                const cc = orig['__dashm_' + fvar] || [];
+                const cc = orig[(spec.code_prefix || '__dashm_') + fvar] || [];
                 for (let i = 0; i < n_rows; i++) {
                     if (active[i] && cc[i] !== letter) active[i] = false;
                 }
@@ -34519,7 +34529,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const n_bins = edges.length - 1;
         // WP-31 H1 (A28): a source carrying its bins' member rows
         // (__dash_bin_rows, S51) has them recomputed for the kept rows.
-        const _bin_rows = !!(src.data && src.data.__dash_bin_rows !== undefined);
+        const _bin_rows = !!(src.data && src.data.@@DASH_RP@@_bin_rows !== undefined);
         const _bin_rows_of = () => dash_hist_bin_rows(ac, raw_col,
             _pick(_ac_data[ROW_ID]), (ac.wvar && _ac_data[ac.wvar]) ? _pick(_ac_data[ac.wvar]) : null, n_bins);
         // gap() and baroffset() (WP-31 C5, S12's keys): each bar is
@@ -34543,7 +34553,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // WP-34 AX-4: the bin midpoints (the axis's tick input) and the
         // scale's span, each midpoint plus or minus half a bar and
         // |baroffset| bars (GlyphMapper.map_histogram), over the kept grid.
-        const _hmid = !_mw && !!(src.data && src.data.__dash_mid !== undefined);
+        const _hmid = !_mw && !!(src.data && src.data.@@DASH_RP@@_mid !== undefined);
         const _hspan = (d) => {
             if (!_hmid) return d;
             const mids = [], slo = [], shi = [];
@@ -34552,7 +34562,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 const pad = (edges[k + 1] - edges[k]) * (100 - _gap) / 100 * (0.5 + Math.abs(_off));
                 mids.push(m); slo.push(m - pad); shi.push(m + pad);
             }
-            d.__dash_mid = mids; d.__dash_span_lo = slo; d.__dash_span_hi = shi;
+            d.@@DASH_RP@@_mid = mids; d.@@DASH_RP@@_span_lo = slo; d.@@DASH_RP@@_span_hi = shi;
             return d;
         };
         // WP-29 P0.8: a date is counted on the full unit grid (ac.bin bars
@@ -34589,14 +34599,14 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 left:  _hl,
                 right: _mw ? _hl.slice() : _hr,
             });
-            if (_mw) src.data.__dash_mw = _mw_px();
+            if (_mw) src.data.@@DASH_RP@@_mw = _mw_px();
             if (ac.recast_cols) {
                 // WP-31 C16: the recast layer's midpoints and heights.
                 const _mx = [];
                 for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
                 src.data = dash_recast_data(ac.recast_cols, _mx, new Array(n_bins).fill(0), _prev);
             }
-            if (_bin_rows) src.data.__dash_bin_rows = _bin_rows_of();
+            if (_bin_rows) src.data.@@DASH_RP@@_bin_rows = _bin_rows_of();
             src.change.emit();
             continue;
         }
@@ -34630,7 +34640,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             left:  _hl,
             right: _mw ? _hl.slice() : _hr,
         });
-        if (_mw) src.data.__dash_mw = _mw_px();
+        if (_mw) src.data.@@DASH_RP@@_mw = _mw_px();
         if (ac.recast_cols) {
             // WP-31 C16: midpoints and heights, as the recast target
             // reads them (map_histogram's recast source).
@@ -34638,7 +34648,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             for (let b = 0; b < n_bins; b++) _mx.push((edges[b] + edges[b + 1]) / 2);
             src.data = dash_recast_data(ac.recast_cols, _mx, src.data.top, _prev);
         }
-        if (_bin_rows) src.data.__dash_bin_rows = _bin_rows_of();
+        if (_bin_rows) src.data.@@DASH_RP@@_bin_rows = _bin_rows_of();
         src.change.emit();
 
     } else if (ac.type === 'kdensity') {
@@ -35220,7 +35230,7 @@ if (typeof stale_configs_json !== "undefined") {
         stale_status.text = _stl_any ? String(_stl_text.status_html || "") : "";
     }
 }
-""").replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN)).replace(
+""").replace("@@DASH_RP@@", _DASH_RP).replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN)).replace(
     # WP-31 F1d: lpoly's rule-of-thumb constants and kernel supports,
     # spliced from the Python tables, never transcribed.
     "__DASH_LPOLY_ROT_CONSTANTS__",
@@ -35253,7 +35263,7 @@ _BRUSH_JS = """
 const idx = (cb_obj && cb_obj.indices) ? cb_obj.indices : [];
 const src_data = brush_source.data;
 const cols = Object.keys(src_data);
-const _bins = src_data.__dash_bin_rows;
+const _bins = src_data.@@DASH_RP@@_bin_rows;
 
 if (_bins && typeof raw_source !== "undefined" && raw_source) {
     // WP-31 H2l: a selection on histogram bars selects the rows each bar
@@ -35343,7 +35353,7 @@ if (_bins && typeof raw_source !== "undefined" && raw_source) {
         }
     }
 }
-"""
+""".replace("@@DASH_RP@@", _DASH_RP)
 
 
 def _whole_number_step(arr: "np.ndarray", span: float) -> float:
@@ -41768,7 +41778,7 @@ def _dash_stata_oracle(lo, hi, n, unit):
         import sfi
         tk = sfi.SFIToolkit
         tag = _secrets.token_hex(4)
-        hold, rcname = "__dashrh" + tag, "__dashrc" + tag
+        hold, rcname = _DASH_RP + "rh" + tag, _DASH_RP + "rc" + tag
         tk.stata("_return hold " + hold)
         try:
             if unit == "":
@@ -42095,7 +42105,7 @@ def _dash_stata_tick_plan(names, formats_text, frame_cols_text=""):
     try:
         _fc = json.loads(frame_cols_text or "{}")
         # WP-35 DT-19: the split columns' prefix, read off their names.
-        _fcp = "__dash"
+        _fcp = _DASH_RP_DEFAULT
         if isinstance(_fc, dict):
             for _fg in _fc.values():
                 for _fe in (_fg.values() if isinstance(_fg, dict) else ()):
@@ -44250,7 +44260,7 @@ function dash_cvar_relevel_steps(pl, dom) {
   const inputs = pl.inputs || [];
   if (!inputs.length) return;
   const cols = Object.keys(inputs[0].data);
-  const key = pl.key || "__dash_row__";
+  const key = pl.key;
   const rows = new Map();
   for (const src of inputs) {
     const d = src.data;
@@ -44381,7 +44391,7 @@ function dash_cvar_relevel_bins(pl, kv) {
     const inputs = ln.inputs || [];
     if (!inputs.length) continue;
     const cols = Object.keys(inputs[0].data);
-    const [ids, rows] = dash_cvar_bin_rows(inputs, ln.key || "__dash_row__",
+    const [ids, rows] = dash_cvar_bin_rows(inputs, ln.key,
                                            ln.order, cols);
     lines.push([ln, cols, ids, rows]);
   }
@@ -58657,7 +58667,7 @@ def _dash_hover_text_column(var):
     """The derived hover-label column for *var* (TR-14.9, G16, WP-28 S14):
     the ``__dash`` prefix Section 07 reserves, so a user column of that
     name is refused before it could be silently overwritten (G1)."""
-    return f"__dash_hover_{var}"
+    return f"{_DASH_RP}_hover_{var}"
 
 
 def _dash_add_hover_text(source, var, vlabels):
@@ -59686,18 +59696,18 @@ def _dash_if_type_problem(expr, frame):
 #: qualifier columns, the join-order columns __dashs<k> (WP-29 P0.1), the
 #: row identity, the marker-label and jitter columns.  Data already holding a variable named with it are refused
 #: (rc 110) unless the spec names it as a qualifier column (below).
-_DASH_RESERVED_PREFIX = "__dash"
+_DASH_RESERVED_PREFIX = _DASH_RP
 #: The prefix dash.ado reserves for its qualifier columns; it refuses data
 #: that already hold a variable named with it (rc 110).
-_DASH_QUAL_PREFIX = "__dashq"
+_DASH_QUAL_PREFIX = _DASH_RP + "q"
 #: A qualifier column's whole name, as dash.ado writes it.
-_DASH_QUAL_NAME_RE = re.compile(r"__dashq[1-9][0-9]{0,4}\Z")
+_DASH_QUAL_NAME_RE = re.compile(re.escape(_DASH_RP) + r"q[1-9][0-9]{0,4}\Z")
 #: The prefix of the time-series columns dash.ado writes for an operated
 #: plot variable (L.close): one per distinct expression, filled by Stata's
 #: tsrevar at build (WP-30 P1.7, _dash_tsop_gen).
-_DASH_TSOP_PREFIX = "__dasht"
+_DASH_TSOP_PREFIX = _DASH_RP + "t"
 #: A time-series column's whole name, as dash.ado writes it.
-_DASH_TSOP_NAME_RE = re.compile(r"__dasht[1-9][0-9]{0,3}\Z")
+_DASH_TSOP_NAME_RE = re.compile(re.escape(_DASH_RP) + r"t[1-9][0-9]{0,3}\Z")
 #: An expression as dash.ado's _dash_tsop_canon admits it: operators L, F,
 #: D and S, each alone or with 1 to 4 digits not led by 0, a dot, a base.
 _DASH_TSOP_EXPR_RE = re.compile(
@@ -59706,9 +59716,9 @@ _DASH_TSOP_EXPR_RE = re.compile(
 _DASH_TSOP_LABEL_MAX = 244
 #: The prefix of the join-order columns dash.ado writes for sort(varlist):
 #: one rank per distinct varlist, made by Stata's own sort (WP-29 P0.1).
-_DASH_SORT_PREFIX = "__dashs"
+_DASH_SORT_PREFIX = _DASH_RP + "s"
 #: A join-order column's whole name, as dash.ado writes it.
-_DASH_SORT_NAME_RE = re.compile(r"__dashs[1-9][0-9]{0,4}\Z")
+_DASH_SORT_NAME_RE = re.compile(re.escape(_DASH_RP) + r"s[1-9][0-9]{0,4}\Z")
 #: The plot types twoway joins in the data's order, x order under sort and
 #: sort(varlist)'s order: the types a join key is handed to.
 #: WP-32: rbar mwidth's baroffset(), in screen units: each bar's x, the
@@ -59908,7 +59918,7 @@ def _dash_take_tsop_columns(df, spec):
 
 
 #: WP-33 33-07: a split column's name, ``__dashm<k>`` (DECISIONS A-23).
-_DASH_FRAME_COL_RE = re.compile(r"__dashm[1-9][0-9]{0,3}\Z")
+_DASH_FRAME_COL_RE = re.compile(re.escape(_DASH_RP) + r"m[1-9][0-9]{0,3}\Z")
 
 #: WP-35 DT-19: the prefixes dash.ado names its working columns with --
 #: ``__dash``, or ``__dsh<k>_`` when a variable of the data (or, on a
@@ -59933,11 +59943,120 @@ def _dash_prefix_of(spec):
     """
     p = spec.get("_dash_prefix", "") if isinstance(spec, dict) else ""
     if p in (None, ""):
-        return "__dash"
+        return _DASH_RP_DEFAULT
     if not isinstance(p, str) or not _DASH_PREFIX_RE.match(p):
         raise ValueError(
             "dash: the spec's _dash_prefix is not one dash writes.")
     return p
+
+
+def _dash_row_id(spec):
+    """The row-identity column of a render of *spec* (WP-35 DT-19):
+    ``<prefix>_row__``, ``__dash_row__`` under the default prefix."""
+    return _dash_prefix_of(spec) + "_row__"
+
+
+def _dash_filter_code_prefix():
+    """The extended-missing code prefix a saved page's filter reads from
+    its config (``code_prefix``, WP-35 DT-19): None under the default
+    prefix, where the script's own default holds, so a page of the default
+    prefix is written as before."""
+    return None if _DASH_RP == _DASH_RP_DEFAULT else _DASH_CODE_PREFIX
+
+
+def _dash_module_for(spec):
+    """The renderer module whose column names follow *spec*'s prefix
+    (WP-35 DT-19).
+
+    This module under the default prefix (or its own); else a copy of it
+    run with ``_DASH_RP_SEED`` set to the prefix, so every column a
+    renderer makes -- the row identity, the marker-label, jitter, alias,
+    missing-code, table and colour-bin columns -- is formed from it.  A
+    copy is made once per prefix and file version and never changed; the
+    error classes are this module's, so a caller catches either.
+
+    Raises:
+        ValueError: A prefix dash.ado would not write.
+    """
+    import sys as _sys
+    import types as _types
+
+    p = _dash_prefix_of(spec)
+    me = _sys.modules[__name__]
+    if p == _DASH_RP:
+        return me
+    base = globals().get("_DASH_RP_BASE") or me
+    if p == _DASH_RP_DEFAULT:
+        return base
+    if base is not me:
+        return base._dash_module_for(spec)
+    path = os.path.abspath(__file__)
+    st = os.stat(path)
+    stamp = (path, st.st_size, st.st_mtime_ns)
+    # One copy per prefix and file version, kept by the module it copies
+    # (each run of the file as a script is a module of its own, whose
+    # classes the copy shares).
+    copies = globals().setdefault("_DASH_RP_COPIES", {})
+    mod = copies.get(p)
+    if mod is not None and getattr(mod, "_DASH_RP_STAMP", None) == stamp:
+        return mod
+    with open(path, "rb") as fh:
+        code = compile(fh.read(), path, "exec", dont_inherit=True)
+    name = "_dash_render_rp_%s_%x" % (p.strip("_"), id(base))
+    mod = _types.ModuleType(name)
+    mod.__dict__.update(__file__=path, _DASH_RP_SEED=p,
+                        _DASH_RP_STAMP=stamp, _DASH_RP_BASE=base)
+    _sys.modules[name] = mod
+    try:
+        exec(code, mod.__dict__)
+    except BaseException:
+        _sys.modules.pop(name, None)
+        raise
+    copies[p] = mod
+    for nm in ("DashLimitError", "DashSpecError", "DashScriptPolicyError",
+               "_DashUnsafePath", "_DashServeInterrupted"):
+        if nm in base.__dict__:
+            setattr(mod, nm, base.__dict__[nm])
+    return mod
+
+
+def _dash_own_prefix(spec):
+    """Refuse *spec* unless its prefix is this module's (WP-35 DT-19): a
+    renderer names its own columns from ``_DASH_RP``, so a spec of another
+    prefix rendered here could meet a user column of one name.
+
+    Raises:
+        ValueError: The prefix is not one dash writes, or not this
+            module's.
+    """
+    p = _dash_prefix_of(spec)
+    if p != _DASH_RP:
+        raise ValueError(
+            "dash: the spec's _dash_prefix %s is not this renderer's (%s)."
+            % (p, _DASH_RP))
+
+
+def _dash_class_for(cls, spec_path):
+    """The class of *cls*'s name in the module *spec_path*'s prefix asks
+    for (``_dash_module_for``), or None when it is *cls*'s own module or the
+    spec cannot be read here (the class's ``__init__`` then reads it, and
+    refuses it as before)."""
+    try:
+        with open(spec_path, encoding="utf-8") as fh:
+            text = fh.read()
+    except (OSError, TypeError, ValueError):
+        return None
+    if '"_dash_prefix"' not in text:
+        return None
+    try:
+        spec = json.loads(text)
+        mod = _dash_module_for(spec)
+    except ValueError:
+        return None
+    alt = getattr(mod, cls.__name__, None)
+    if alt is None or alt is cls or mod.__dict__ is globals():
+        return None
+    return alt
 
 
 def _dash_col_name_re(spec, letter, digits):
@@ -62682,6 +62801,17 @@ class DashRenderer:
                      if c in df.columns and c not in seen]
         return seen
 
+    def __new__(cls, *args, **kwargs):
+        # WP-35 DT-19: a spec whose working-column prefix is not this
+        # module's is rendered by the module of that prefix.
+        alt = _dash_class_for(
+            cls, args[0] if args else kwargs.get("master_spec_path"))
+        if alt is not None:
+            obj = object.__new__(alt)
+            obj.__init__(*args, **kwargs)
+            return obj
+        return object.__new__(cls)
+
     def __init__(
         self,
         master_spec_path: str,
@@ -62709,6 +62839,7 @@ class DashRenderer:
 
         with open(master_spec_path, encoding="utf-8") as f:
             self.master_spec: dict = json.loads(f.read())
+        _dash_own_prefix(self.master_spec)
 
         with open(data_json_path, encoding="utf-8") as f:
             # Each number as Stata holds it (_dash_read_data_json).
@@ -66378,6 +66509,10 @@ class DashRenderer:
                 "type":     _fc.get("type", "dropdown"),
                 "sentinel": getattr(_w, "_dash_sentinel", "__all__"),
             }
+            # WP-35 DT-19: the code columns' prefix when not the default
+            # (dash_filter_mask reads it; absent, its own default).
+            if _dash_filter_code_prefix() is not None:
+                _entry["code_prefix"] = _dash_filter_code_prefix()
             if getattr(_w, "_dash_unit", ""):
                 # A period slider's unit: both masks compare its period
                 # numbers (WP-28 S12).
@@ -67520,6 +67655,16 @@ class ServerAppBuilder:
     * ``allow_websocket_origin`` is restricted to ``['localhost:{port}']``.
     """
 
+    def __new__(cls, *args, **kwargs):
+        # WP-35 DT-19: as DashRenderer, the module of the spec's prefix.
+        alt = _dash_class_for(
+            cls, args[0] if args else kwargs.get("spec_path"))
+        if alt is not None:
+            obj = object.__new__(alt)
+            obj.__init__(*args, **kwargs)
+            return obj
+        return object.__new__(cls)
+
     def __init__(self, spec_path: str, data_path: str) -> None:
         """Load and parse spec and data files.
 
@@ -67529,6 +67674,7 @@ class ServerAppBuilder:
         """
         with open(spec_path, "r", encoding="utf-8") as f:
             self.spec: dict = json.load(f)
+        _dash_own_prefix(self.spec)
         # The ado-path schemes are looked for along (WP-30 P1.25b), read
         # and dropped before the spec is embedded: the app receives scheme
         # properties, never a directory name.
@@ -67886,6 +68032,7 @@ class ServerAppBuilder:
                       "_DASH_FRAME_COL_RE", "_DASH_FRAME_META_KEYS",
                       # WP-35 DT-19: the working-column prefixes.
                       "_DASH_PREFIX_RE", "_DASH_ANY_COL_RE",
+                      "_DASH_RP_DEFAULT", "_DASH_RP",
                       # The join-order columns and the joining types
                       # (WP-29 P0.1).
                       "_DASH_SORT_PREFIX", "_DASH_SORT_NAME_RE",
@@ -68143,6 +68290,7 @@ class ServerAppBuilder:
                          "_dash_qual_cols_named", "_dash_take_qual_columns",
                          # WP-35 DT-19: the spec's working-column prefix.
                          "_dash_prefix_of", "_dash_col_name_re",
+                         "_dash_row_id",
                          # The time-series columns (WP-30 P1.7).
                          "_dash_tsop_cols_named", "_dash_take_tsop_columns",
                          "_dash_tsop_labels", "_dash_col_display",
@@ -72434,7 +72582,7 @@ class ServerAppBuilder:
             "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src, _raw=None):",
             "        def _on_selection_change(attr, old, new):",
             "            indices = new",
-            "            _bins = _src.data.get('__dash_bin_rows')",
+            "            _bins = _src.data.get(%r)" % (_DASH_RP + "_bin_rows"),
             "            if _bins is not None and _raw is not None:",
             "                # A selection on histogram bars selects the rows each",
             "                # bar counts in the layer's own source, whose own",

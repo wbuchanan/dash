@@ -96,8 +96,10 @@ class TestTheJsTwin:
     def test_the_filter_js_row_id_is_filled_from_the_constant(self):
         src = inspect.getsource(dr)
         start = src.index("_FILTER_JS = (")
-        end_marker = ('""").replace("__DASH_ROW_ID__", '
-                      'json.dumps(_ROW_ID_COLUMN))')
+        # Flipped (WP-35 DT-19): the script's renderer-made column reads
+        # (@@DASH_RP@@) are filled from the module's prefix first.
+        end_marker = ('""").replace("@@DASH_RP@@", _DASH_RP).replace('
+                      '"__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN))')
         end = src.index(end_marker, start) + len(end_marker)
         block = src[start:end]
         assert '"__dash_row__"' not in block

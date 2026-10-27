@@ -1384,6 +1384,13 @@ FUNCTIONS = {
  '_dash_frame_cols_named': 'test/test_graph_frames.py::TestTheFrameColsSpec::test_entries_dash_writes',
  '_dash_prefix_of': 'test/test_working_columns.py::TestTheRenderer::test_the_prefix_of_a_spec',
  '_dash_col_name_re': 'test/test_working_columns.py::TestTheRenderer::test_the_name_patterns_read_the_prefix',
+ '_dash_row_id': 'test/test_working_columns.py::TestTheRendererNames::test_row_id_of_a_spec',
+ '_dash_filter_code_prefix': 'test/test_working_columns_js.py::test_the_renderer_writes_the_code_prefix_only_when_not_the_default',
+ '_dash_module_for': 'test/test_working_columns.py::TestTheRendererNames::test_the_module_of_a_prefix',
+ '_dash_class_for': 'test/test_working_columns.py::TestTheRendererNames::test_a_user_column_named_like_a_renderer_column',
+ '_dash_own_prefix': 'test/test_working_columns.py::TestTheRendererNames::test_a_spec_whose_prefix_the_module_does_not_hold_is_refused',
+ 'DashRenderer.__new__': 'test/test_working_columns.py::TestTheRendererNames::test_a_user_column_named_like_a_renderer_column',
+ 'ServerAppBuilder.__new__': 'test/test_working_columns.py::TestTheRendererNames::test_a_user_column_named_like_a_renderer_column',
  '_dash_frame_view': 'test/test_graph_frames.py::TestTheFrameView::test_a_graph_reads_its_own_frame',
  '_dash_filter_frame_column': 'test/test_graph_frames.py::TestTheFrameView::test_a_filter_reads_each_graphs_own_column',
  '_dash_tsop_cols_named': 'test/test_ts_operators.py::TestTheColumnsAreNamedInTheSpec::test_the_map_rule',
@@ -1589,6 +1596,10 @@ DEAD = {}
 #: runs) -- and pointed their tests at the production functions.  Each kept
 #: one has its test in FUNCTIONS too.
 TEST_ONLY = {
+    "_dash_row_id": (
+        "WP-35 DT-19 (TR-35-08.4) keeps it under WP-26's seam rule: the row-identity column of a spec's prefix, "
+        "the seam 36-02 reads the row-id column through; production names it "
+        "_ROW_ID_COLUMN in the module of the spec's prefix (_dash_module_for)."),
     "_dash_finish_text_value": (
         "WP-30 P1.11b keeps it under WP-26's seam rule: S09's (new, changed) form of "
         "_dash_finish_text_runs, which _dash_finish_graph_text now calls; "

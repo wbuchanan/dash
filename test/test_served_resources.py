@@ -589,7 +589,12 @@ _SAVED_DIGEST = (
     # the finish code's default-axis condition (plan key and finish JS
     # text only: the base's two give the old digest); the same under both
     # Pythons.
-    "691b97a8fe95f6e1d6d73605d1d329bed8488130f7ca7f5d41a5a31b08fc9260")
+    # 691b97a8... -> ac323e8c...: WP-35 DT-19, the filter mask's code
+    # prefix read from its config and the relevel script's key without a
+    # row-id fallback (filter and relevel JS text only: the base's
+    # _DASH_FILTER_MASK_JS, _FILTER_JS, _DASH_CSV_SAVED_JS and
+    # _DASH_CVAR_RELEVEL_JS give the old digest on the new tree).
+    "ac323e8cb968112b72b483cf0c106bedadd3d49168304d1079ec5ef02d57e671")
 
 
 # ===========================================================================

@@ -90,7 +90,14 @@ class TestUserFieldShadowing:
     def test_reserved_alias_prefix_refused_in_ado(self):
         with open(_ADO, encoding="utf-8") as fh:
             ado = fh.read()
-        assert ado.count("its user-variable aliases __dashu_*") == 4
+        # Flipped (WP-35 DT-19): the four r(110) refusals named the alias
+        # prefix; refusing a __dash variable was wrong because twoway draws
+        # it.  The alias is now formed from the spec's prefix, so a user
+        # variable __dashu_x is data when the data hold it.
+        assert ado.count("its user-variable aliases __dashu_*") == 0
+        assert dr._DASH_USER_ALIAS_PREFIX == dr._DASH_RP + "u_" == "__dashu_"
+        m = dr._dash_module_for({"_dash_prefix": "__dsh1_"})
+        assert m._DASH_USER_ALIAS_PREFIX == "__dsh1_u_"
 
 
 class TestCellCap:
