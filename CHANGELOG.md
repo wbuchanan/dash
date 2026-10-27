@@ -996,6 +996,7 @@ and now matches Stata.
 - Factor-variable notation in by() and colorvar() is refused, r(101), "factor-variable and time-series operators not allowed" ("interactions not allowed" for #), and mlabel(45) and mlabel(%9.1f) r(198), in twoway's words; dash gave r(111). (WP-35, syn:SD-8)
 - The help says that twoway's contour and contourline with levels() ignore an option they do not know, and that dash refuses it with or without levels(), as twoway does elsewhere. (WP-35, syn:SD-22)
 - A qualifier or weight naming e(sample) keeps the estimation sample, as twoway does (dash scatter mpg weight if e(sample) after regress mpg weight if foreign: 0 -> 22 points) (WP-35, DT-19)
+- marker() inside p1() .. p20() is twoway's mstyle(), as twoway reads it there: p1(marker(O)) draws the default marker with the markerstyle note, p1(marker(p3)) p3's marker (dash drew msymbol(O)) (WP-35, D62)
 
 ### Fixed in WP-34
 

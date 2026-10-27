@@ -8,7 +8,11 @@
 *! moved into p1() (the p.<word> keys) and for the order in which twoway
 *! names a refused word when a command holds two (the order.* keys).
 *! For each probe: the return code, the first error line and every log
-*! line after the command line.  twoway only: the output is the same
+*! line after the command line; for the pmarker.* keys and p.marker (D62)
+*! also the drawn picture: "svg", a digest of the graph exported as SVG
+*! (its <desc> line, which names the graph, left out), and "marker", the
+*! SVG's first <circle> element -- marker() inside p1() is twoway's
+*! markerstyle option, mstyle().  twoway only: the output is the same
 *! before and after dash changes.
 *!
 *! Output: test/fixtures/dash_only_words_truth.json
@@ -78,6 +82,9 @@ program define _zd_probe
     local rc = _rc
     quietly log close zdp
     global ZD_RC_`k' `rc'
+    if !`rc' & (substr("`key'", 1, 8) == "pmarker." | "`key'" == "p.marker") {
+        quietly graph export "${ZD_WORK}/p`k'.svg", replace name(g)
+    }
     capture graph drop _all
     display as text "ZD `key': rc `rc'"
 end
@@ -128,6 +135,14 @@ _zd_probe p.pbgc scatter mpg weight, p1(pbgc(red))
 _zd_probe colpalette scatter mpg weight, colorvar(price) colpalette(viridis)
 _zd_probe p.colpalette scatter mpg weight, colorvar(price) p1(colpalette(viridis))
 
+* D62 (27oct2026): what twoway draws for marker() inside p1() -- the
+* picture of each beside the plain command's and mstyle()'s
+_zd_probe pmarker.plain scatter mpg weight,
+_zd_probe pmarker.mstyle_O scatter mpg weight, mstyle(O)
+_zd_probe pmarker.p3 scatter mpg weight, p1(marker(p3))
+_zd_probe pmarker.mstyle_p3 scatter mpg weight, mstyle(p3)
+_zd_probe pmarker.mark scatter mpg weight, p1(mark(O))
+
 * Rows 39-40: the kept words
 _zd_probe hover scatter mpg weight, hover(make)
 _zd_probe table scatter mpg weight, table
@@ -157,7 +172,7 @@ _zd_probe space.run scatter mpg weight, p1(ytitle2(a   b)   mlg( 2 ))
 _zd_probe space.quote scatter mpg weight, p1(ytitle2("a b" c))
 
 python:
-import json, os
+import hashlib, json, os
 from sfi import Macro
 
 
@@ -194,6 +209,16 @@ for k in range(1, int(G("ZD_N")) + 1):
         os.remove(os.path.join(work, "p%d.log" % k))
     except OSError:
         pass
+    svg = os.path.join(work, "p%d.svg" % k)
+    if os.path.exists(svg):
+        with open(svg, encoding="utf-8", errors="replace") as fh:
+            body = [ln for ln in fh.read().splitlines()
+                    if "<desc>" not in ln]
+        out[key]["svg"] = hashlib.sha256(
+            "\n".join(body).encode("utf-8")).hexdigest()[:16]
+        circ = [ln.strip() for ln in body if ln.strip().startswith("<circle")]
+        out[key]["marker"] = circ[0] if circ else ""
+        os.remove(svg)
 try:
     with open(os.path.join(work, "git_head.txt")) as fh:
         commit = fh.read().strip()

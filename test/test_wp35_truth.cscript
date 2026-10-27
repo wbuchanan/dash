@@ -1326,6 +1326,50 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w35_run' {
     capture dash clear
     _w35_done Q3507-2 "hover() and table kept; ytitle(T, axis(2)) drawn; ytitle2() refused"
 
+    // ------------------------------------------------------------
+    // Q3507-3 (D62, 27oct2026): inside p1() twoway reads marker() as its
+    // markerstyle option, mstyle() (dash_only_words_truth.json p.marker,
+    // pmarker.*: p1(marker(O)) draws mstyle(O)'s picture, the plain one,
+    // with "named style O not found in class markerstyle, default
+    // attributes used"; p1(marker(p3)) draws mstyle(p3)'s; p1(mark(O)) is
+    // refused).  dash registers p1(marker(<v>)) as mstyle(<v>), the same
+    // spec, prints the note when it draws and refuses p1(mark(O)).
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    foreach s07v in O p3 {
+        capture dash clear
+        capture noisily dash scatter mpg weight, mstyle(`s07v') name(s07g)
+        mata: _s07_json = st_global("dash_json_s07g")
+        capture dash clear
+        capture noisily dash scatter mpg weight, p1(marker(`s07v')) name(s07g)
+        local s07r = _rc
+        mata: st_local("s07same", strofreal(_s07_json == st_global("dash_json_s07g") & _s07_json != ""))
+        mata: st_local("s07m", strofreal(strpos(st_global("dash_json_s07g"), char(34) + "marker" + char(34)) > 0))
+        capture mata: mata drop _s07_json
+        _w35_expect Q3507-3 "(`s07r' == 0 & `s07same' == 1 & `s07m' == 0)" "p1(marker(`s07v')): dash rc `s07r', spec of mstyle(`s07v') `s07same', marker key `s07m'"
+    }
+    capture dash clear
+    tempfile s07h
+    capture erase "`s07h'.html"
+    capture log close s07log
+    capture erase "`c(tmpdir)'dash_s07.log"
+    local s07ls = c(linesize)
+    set linesize 255
+    quietly log using "`c(tmpdir)'dash_s07.log", text replace name(s07log) nomsg
+    capture noisily dash scatter mpg weight, p1(marker(O)) saving("`s07h'.html", replace)
+    local s07r = _rc
+    quietly log close s07log
+    set linesize `s07ls'
+    capture erase "`s07h'.html"
+    cert_log_has "`c(tmpdir)'dash_s07.log", needle("named style O not found in class markerstyle, default attributes used")
+    _w35_expect Q3507-3 "(`s07r' == 0 & r(found) == 1)" "p1(marker(O)) drawn: dash rc `s07r', twoway's markerstyle note found `r(found)'"
+    capture dash clear
+    capture noisily dash scatter mpg weight, p1(mark(O)) name(s07g)
+    local s07r = _rc
+    _w35_expect Q3507-3 "(`s07r' == 198)" "p1(mark(O)): dash rc `s07r', twoway r(198)"
+    capture dash clear
+    _w35_done Q3507-3 "p1(marker()) is mstyle(), as twoway reads it"
+
     display as text "S07 end " c(current_date) " " c(current_time)
 }
 * ==== end S07 ====

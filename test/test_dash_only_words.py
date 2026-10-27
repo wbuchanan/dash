@@ -158,6 +158,42 @@ class TestTheFixture:
             assert fx[k]["rc"] == 198 and fx[k]["message"] == line, k
 
 
+#: twoway's note for p1(marker(O)) and mstyle(O) (dash_only_words_truth.json).
+_PMARKER_NOTE = ("(note:  named style O not found in class markerstyle, "
+                 "default attributes used)")
+
+
+class TestMarkerInsideP:
+    """D62 (DECISIONS.md, 27oct2026): inside p1() twoway reads marker() as
+    its markerstyle option, mstyle(); dash drew it as msymbol()."""
+
+    def test_twoway_reads_it_as_mstyle(self):
+        """The pictures (SVG digests) and notes: p1(marker(O)) is mstyle(O)
+        and the plain graph, with the note; p1(marker(p3)) is mstyle(p3);
+        p1(mark(O)) is refused (marker() is taken in full only)."""
+        fx = _fixture()
+        plain, pm = fx["pmarker.plain"], fx["p.marker"]
+        mo, p3, mp3 = (fx["pmarker.mstyle_O"], fx["pmarker.p3"],
+                       fx["pmarker.mstyle_p3"])
+        assert pm["svg"] == mo["svg"] == plain["svg"]
+        assert pm["marker"] == plain["marker"]
+        assert pm["notes"] == mo["notes"] == [_PMARKER_NOTE]
+        assert plain["notes"] == [] and p3["notes"] == []
+        assert p3["svg"] == mp3["svg"] != plain["svg"]
+        assert (fx["pmarker.mark"]["rc"], fx["pmarker.mark"]["message"]) == (
+            198, "option(s) mark(O) not allowed")
+
+    def test_dash_writes_mstyle(self):
+        """_dash_p_seg writes each p#() value's marker() word as mstyle()
+        before the plot's parser reads it, so the plot's spec holds the
+        mstyle key (drawn as mstyle(), with its note) and no marker key."""
+        src = open(_MATA, encoding="utf-8").read()
+        i = src.index("string scalar _dash_p_seg(")
+        body = src[i:src.index("\n}\n", i)]
+        assert re.search(r'_dash_rep_optname\([^)]*\) == "marker"', body)
+        assert '"mstyle"' in body
+
+
 def _help_paragraph():
     txt = open(_HELP, encoding="utf-8").read()
     i = txt.index("{marker dashonly}")

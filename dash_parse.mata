@@ -9074,13 +9074,15 @@ string scalar _dash_p_merge(string scalar segopts, string matrix P,
 // drawn (ci_p1_band).  Sets the caller's locals _pa_named (the p#() words
 // not drawn), _pa_nv and _pa_v1 .. (each value applied, for
 // _dash_p_apply's check of its options; one at a time, as twoway reads
-// each).  p21() and above inside a plot are refused here.
+// each).  p21() and above inside a plot are refused here.  A value's
+// marker() is written mstyle(), as twoway reads it there (D62).
 string scalar _dash_p_seg(string scalar opts, string scalar ptype,
                           real scalar n)
 {
-    string matrix P
-    string scalar rest, gp, named, pr, one
-    real scalar   pass, k, c, off, ci, q
+    string matrix    P
+    string rowvector toks
+    string scalar    rest, gp, named, pr, one
+    real scalar      pass, k, c, off, ci, q, hit
 
     st_local("_pa_named", "")
     st_local("_pa_nv", "0")
@@ -9120,6 +9122,22 @@ string scalar _dash_p_seg(string scalar opts, string scalar ptype,
             }
             P = P \ (strofreal(k), substr(one, c + 1, .))
         }
+    }
+    // D62: inside a p#() value twoway reads marker() as its markerstyle
+    // option, mstyle() -- p1(marker(O)) draws mstyle(O)'s picture with its
+    // note, p1(marker(p3)) mstyle(p3)'s (dash_only_words_truth.json
+    // p.marker, pmarker.*) -- so the word is written as mstyle() here.
+    for (k = 1; k <= rows(P); k++) {
+        toks = _dash_rep_toks(P[k, 2], 0)
+        hit  = 0
+        for (c = 1; c <= cols(toks); c++) {
+            if (_dash_rep_optname(toks[c]) == "marker" &
+                substr(toks[c], 1, 7) == "marker(") {
+                toks[c] = "mstyle" + substr(toks[c], 7, .)
+                hit = 1
+            }
+        }
+        if (hit) P[k, 2] = invtokens(toks, " ")
     }
     for (k = 1; k <= rows(P); k++) st_local("_pa_v" + strofreal(k), P[k, 2])
     for (k = 1; k <= rows(P); k++) st_local("_pa_k" + strofreal(k), P[k, 1])

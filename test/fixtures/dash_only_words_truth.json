@@ -42,8 +42,8 @@
  },
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "ad5430bbee23f23aa589d6f18f1d2717e2eb5ddc",
-  "extracted": "27 Oct 2026 05:12:08",
+  "dash_commit": "cbda75c440d1ff0356802332e6febf0b8890a924",
+  "extracted": "27 Oct 2026 08:29:29",
   "source": "scripts/extract_dash_only_truth.do",
   "stata_version": "19.5"
  },
@@ -297,11 +297,13 @@
  },
  "p.marker": {
   "cmd": "twoway scatter mpg weight, p1(marker(O))",
+  "marker": "<circle cx=\"2262.77\" cy=\"1723.61\" r=\"21.74\" style=\"fill:#1A85FF\"/>",
   "message": "",
   "notes": [
    "(note:  named style O not found in class markerstyle, default attributes used)"
   ],
-  "rc": 0
+  "rc": 0,
+  "svg": "484784af78a288c2"
  },
  "p.mlg": {
   "cmd": "twoway scatter mpg weight, mlabel(make) p1(mlg(2))",
@@ -542,6 +544,48 @@
    "option plotbgcolor() not allowed"
   ],
   "rc": 198
+ },
+ "pmarker.mark": {
+  "cmd": "twoway scatter mpg weight, p1(mark(O))",
+  "message": "option(s) mark(O) not allowed",
+  "notes": [
+   "option(s) mark(O) not allowed"
+  ],
+  "rc": 198
+ },
+ "pmarker.mstyle_O": {
+  "cmd": "twoway scatter mpg weight, mstyle(O)",
+  "marker": "<circle cx=\"2262.77\" cy=\"1723.61\" r=\"21.74\" style=\"fill:#1A85FF\"/>",
+  "message": "",
+  "notes": [
+   "(note:  named style O not found in class markerstyle, default attributes used)"
+  ],
+  "rc": 0,
+  "svg": "484784af78a288c2"
+ },
+ "pmarker.mstyle_p3": {
+  "cmd": "twoway scatter mpg weight, mstyle(p3)",
+  "marker": "<circle cx=\"2262.77\" cy=\"1723.61\" r=\"21.74\" style=\"fill:#00BF7F\"/>",
+  "message": "",
+  "notes": [],
+  "rc": 0,
+  "svg": "8b7451f422654da6"
+ },
+ "pmarker.p3": {
+  "cmd": "twoway scatter mpg weight, p1(marker(p3))",
+  "marker": "<circle cx=\"2262.77\" cy=\"1723.61\" r=\"21.74\" style=\"fill:#00BF7F\"/>",
+  "message": "",
+  "notes": [],
+  "rc": 0,
+  "svg": "8b7451f422654da6"
+ },
+ "pmarker.plain": {
+  "cmd": "twoway scatter mpg weight,",
+  "marker": "<circle cx=\"2262.77\" cy=\"1723.61\" r=\"21.74\" style=\"fill:#1A85FF\"/>",
+  "message": "",
+  "notes": [],
+  "rc": 0,
+  "svg": "484784af78a288c2"
  },
  "space.quote": {
   "cmd": "twoway scatter mpg weight, p1(ytitle2(\"a b\" c))",
