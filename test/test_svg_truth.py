@@ -381,8 +381,8 @@ class TestScriptHygiene:
             pytest.fail(f"section 02 fixture missing: {GAPS2_CSCRIPT}")
         with open(GAPS2_CSCRIPT, encoding="utf-8") as fh:
             text = fh.read()
+        # old -> new: the Python skip gate is gone (WP-36 plat:PT-1, M8)
         order = [
-            "SKIP: Python not available.",
             'do "cert_helpers.do"',
             'do "cert_svg.do"',
             "* ==== S02 helper smoke: the cert_svg programs ====",
