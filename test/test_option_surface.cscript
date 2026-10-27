@@ -441,8 +441,14 @@ while r(eof) == 0 {
             // refuses as twoway does (BUGS.md "play() is named in the
             // note, where twoway refuses a recording it cannot find or
             // read").
+            // Flipped: WP-35 DT-15 -- the dash-only spellings twoway refuses
+            // (malpha() ... yscale2()) are refused as twoway refuses them,
+            // r(198), with a line naming twoway's spelling (DECISIONS.md
+            // P4-7, P4-9; BUGS.md "Accepted where twoway refuses").
+            local o2_dt15 "only_malpha only_lalpha only_falpha only_jseed only_colpalette only_colornlevels only_colormissing only_marker only_plotbgcolor only_ytitle2 only_ylabel2 only_yscale2"
             local o2_tw198 0
             if inlist("`pid'", "only_mlabwidth", "only_link", "only_filter") local o2_tw198 198
+            if `: list pid in o2_dt15' local o2_tw198 198
             if "`pid'" == "play" local o2_tw198 601
             if `o2_tw198' & `prc' != `o2_tw198' {
                 local nrcfail = `nrcfail' + 1

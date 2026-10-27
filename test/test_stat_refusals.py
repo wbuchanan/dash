@@ -145,7 +145,10 @@ class TestTheLowessWeight:
         assert "c_local _fsw_nowt 1" in fold
         seg = _program_body(src, "_dash_process_segment")
         clear = seg.index('local _fsw_nowt ""')
-        unknown = seg.index("_dash_refuse_unknown _dash_parse_plot_opts")
+        # The full list's refusal, not 35-07's on the words before a
+        # refused dash-only word (WP-35 DT-15).
+        unknown = seg.index("_dash_refuse_unknown _dash_parse_plot_opts "
+                            "`ptype' `\"`macval(opts_raw)'\"'")
         refuse = seg.index('display as error "option noweight not allowed"')
         assert clear < unknown < refuse
 

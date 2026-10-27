@@ -78,7 +78,10 @@ class TestTheFold:
 
         call = at(lambda ln: ln.startswith("_dash_fold_stat_words "))
         unbound = at(lambda ln: ln.startswith("_dash_refuse_unbound "))
-        unknown = at(lambda ln: ln.startswith("_dash_refuse_unknown "))
+        # The full list's refusal; 35-07 (WP-35 DT-15) adds one on the words
+        # typed before a refused dash-only word, inside its own branch.
+        unknown = at(lambda ln: ln.startswith("_dash_refuse_unknown ")
+                     and "macval(opts_raw)" in ln)
         rep = at(lambda ln: ln.startswith("_dash_opts_repeats "))
         assert len(call) == 2 and len(unbound) == 1 and len(unknown) == 1, (
             call, unbound, unknown)

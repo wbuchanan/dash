@@ -1750,10 +1750,12 @@ class TestTheDependenciesAreOneList:
         jsonio runs in test_help_claims_8.cscript -- HC8-17 on the
         immediate route and HC8-17b on dash build's."""
         ado = _read(_ADO)
+        # `_xfp' is the frame prefix 35-08 (WP-35 DT-19) puts on both
+        # routes' writer call when the working columns are made in a frame.
         assert "which jsonio" not in ado
         assert not re.search(r"^\s*capture noisily quietly jsonio out\b",
                              ado, re.M)
-        assert len(re.findall(r"^\s*capture noisily _dash_write_data\b",
+        assert len(re.findall(r"^\s*capture noisily (?:`_xfp' )?_dash_write_data\b",
                               ado, re.M)) == 2
         assert "dash: jsonio is required but not found." not in ado
         deps = _flat(_help_between("{marker dependencies}", "{marker author}"))
