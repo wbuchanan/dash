@@ -346,9 +346,9 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-3 Tracked:** Closed in WP-35, BUGS.md "p1()..p20(): p3()-p19() are refused, and p1(), p2() and p20() are noted and not drawn", commit c298e8e.
 - **stat:PT-7 Tracked:** Closed in WP-35, BUGS.md "lowess m (twoway's documented minimum of mean) is refused", commit a5d3970.
 - **syn:SD-5 Tracked:** Closed in WP-35, BUGS.md "bwi() is refused on lowess, kdensity, lpoly and lpolyci", commit 3649d26.
-- **stat:PT-1 Tracked:** Closed in WP-35, BUGS.md "histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses", commit pending.
-- **stat:PT-2 Tracked:** Closed in WP-35, BUGS.md "density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram", commit pending.
-- **stat:PT-5 Tracked:** Closed in WP-35, BUGS.md "contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer", commit pending.
+- **stat:PT-1 Tracked:** Closed in WP-35, BUGS.md "histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses", commit 0841021.
+- **stat:PT-2 Tracked:** Closed in WP-35, BUGS.md "density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram", commit 8bbad6e.
+- **stat:PT-5 Tracked:** Closed in WP-35, BUGS.md "contour levels() 501-1000 and 500+ ccuts() are accepted where twoway refuses at draw time; the help says twoway takes any integer", commit 7380a1b.
 - **stat:PT-13 Tracked:** Closed in WP-35, BUGS.md "contour abbreviations twoway documents (int(), i(), colorl, clp(), clw()) are refused or bound to other options", commit 362513c.
 - **syn:SD-20a Tracked:** Closed in WP-35, BUGS.md "dot dsi(), twoway's minimum of dsize(), is noted and dropped; dash declares DSIZe", commit 7a115b1.
 - **syn:SD-20b Tracked:** Closed in WP-35, BUGS.md "fpfit est(), twoway's minimum of estcmd(), is bound to estopts()", commit 7a115b1.
@@ -356,12 +356,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20d Tracked:** Closed in WP-35, BUGS.md "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle", commit 7a115b1.
 - **syn:SD-20e Tracked:** Closed in WP-35, BUGS.md "clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated", commit 7a115b1.
 - **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit 3d8a9d1.
-- **stat:PT-8 Tracked:** Closed in WP-35, BUGS.md "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes", commit pending.
+- **stat:PT-8 Tracked:** Closed in WP-35, BUGS.md "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes", commit 296ec94.
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit 8355f24.
-- **stat:PT-14 Tracked:** Closed in WP-35, BUGS.md "bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types", commit pending.
+- **stat:PT-14 Tracked:** Closed in WP-35, BUGS.md "bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types", commit d3b8b9f.
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
-- **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit pending.
-- **basic:PT-13 Tracked:** Closed in WP-35, BUGS.md "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses", commit pending.
+- **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit 5e80d70.
+- **basic:PT-13 Tracked:** Closed in WP-35, BUGS.md "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses", commit edc01a6.
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
 - **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.
 - **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit 5e1901e.
