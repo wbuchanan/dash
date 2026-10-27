@@ -875,6 +875,7 @@ and now matches Stata.
 - aspectratio() with xoverhangs or yoverhangs is refused, r(198), "may not combine option aspectratio() with xoverhangs or yoverhangs", as twoway refuses it; dash drew it. (WP-35, GW-2)
 - maxaxes() is checked as twoway checks it: maxaxes(x) and maxaxes(2.5) are refused, r(198), and a layer on an axis numbered above it, r(125); a valid maxaxes() is taken with no note (dash named it in the note and drew the axis). (WP-35, GW-3)
 - title(), subtitle(), note() or caption() with notitling is refused, r(4018), in twoway's words; dash drew the title and named notitling. (WP-35, sil:SD-8)
+- histogram with bin() and width(), or with two of density, fraction, frequency and percent, is refused, r(198), in twoway's words ("options bins() and width() may not be combined", "options density fraction may not be combined"); dash drew one of them. (WP-35, stat:PT-1)
 
 ### Removed
 

@@ -401,6 +401,10 @@
 *!          refused r(4018) in twoway's words; notitling alone named
 *!   Q3506-7 (syn:SD-22, documented) contour and contourline refuse an
 *!          option they do not know with levels() too, which twoway ignores
+*! Statistical-type refusals (WP-35 section 35-04; stat_refusal_truth.json):
+*!   Q3504-1 (stat:PT-1) histogram's bins() with width(), and two of
+*!          density, fraction, frequency and percent, refused r(198) in
+*!          twoway's words
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -3504,6 +3508,88 @@ foreach _q7t in contour contourline {
     }
 }
 capture dash clear
+
+// ----------------------------------------------------------------
+// Q3504 (WP-35 section 35-04): statistical-type refusals in twoway's
+// words.  Each key of test/fixtures/stat_refusal_truth.json named is run
+// through dash on the data the extractor ran it on: dash's rc must be the
+// fixture's; for a refusal its first printed line the fixture's first
+// line, and for a drawn probe the log names no option.  A second argument
+// is the line that must follow the refusal ("-" none may).
+// ----------------------------------------------------------------
+python:
+import json as _q3504_json
+from sfi import Macro as _q3504_M
+_q3504_fx = _q3504_json.load(open("fixtures/stat_refusal_truth.json", encoding="utf-8"))
+
+
+def _q3504_keys(prefix):
+    _q3504_M.setLocal("q_keys", " ".join(sorted(k for k in _q3504_fx if k.startswith(prefix))))
+
+
+def _q3504_take(key):
+    r = _q3504_fx[key]
+    c = r["cmd"].strip()
+    if c.startswith("twoway "):
+        c = c[len("twoway "):]
+    _q3504_M.setLocal("q_cmd", c)
+    _q3504_M.setLocal("q_rc", str(r["rc"]))
+    _q3504_M.setLocal("q_data", "sandstone" if key.startswith("contour.") else "auto")
+
+
+def _q3504_judge(key, path, rc, second):
+    r = _q3504_fx[key]
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        text = ""
+    lines = [ln.strip() for ln in text.replace("\n> ", "").splitlines()
+             if ln.strip() and not ln.lstrip().startswith(("(note:", "log:", "log type:", "opened on:", "closed on:", "name:"))
+             and not ln.startswith("---")]
+    got = lines[0] if lines else ""
+    nxt = lines[1] if len(lines) > 1 else ""
+    ok = int(rc) == r["rc"]
+    if r["rc"]:
+        ok = ok and got == r["message"]
+        if second == "-":
+            ok = ok and "use barwidth()" not in lines[1:]
+        elif second:
+            ok = ok and nxt == second
+    else:
+        ok = ok and "ignoring unsupported" not in text
+    _q3504_M.setLocal("q_ok", "1" if ok else "0")
+    _q3504_M.setLocal("q_got", (got + " / " + nxt)[:200])
+    _q3504_M.setLocal("q_want", (r["message"] + " / " + second)[:200])
+end
+
+capture program drop _q3504
+program define _q3504
+    version 16.0
+    args id key second
+    local logfile "`c(tmpdir)'dash_ov.log"
+    python: import __main__ as _q3504_main; _q3504_main._q3504_take("`key'")
+    quietly sysuse `q_data', clear
+    set linesize 255
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `macval(q_cmd)' name(q3504r)
+    local rc = _rc
+    quietly log close _ovlog
+    python: import __main__ as _q3504_main; _q3504_main._q3504_judge("`key'", r"`logfile'", "`rc'", r"""`second'""")
+    _ov_assert `id' "(`q_ok' == 1)" `"`key': rc `rc' (twoway `q_rc'); dash said: `macval(q_got)'; twoway: `macval(q_want)'"'
+    capture dash clear
+end
+
+// Q3504-1 (stat:PT-1): histogram with bin() and width(), or with two or
+// three of density, fraction, frequency and percent, refused r(198),
+// "options bins() and width() may not be combined" and "options <words>
+// may not be combined" (twoway's order); discrete with bin() still first.
+foreach _q1k in hist.bins_width hist.density_fraction hist.fraction_percent hist.frequency_density hist.percent_frequency hist.density_fraction_frequency hist.discrete_bin_width {
+    _q3504 Q3504-1 `_q1k'
+}
 
 // Summary
 // ----------------------------------------------------------------

@@ -27,7 +27,6 @@ VALUE_KNOWN = {
     "histogram_bin_3": "basic:PT-9",  # twoway r(126) bins() invalid -- invalid number, noninteger value / dash r(198)
     "histogram_bin_4": "stat:PT-15 (documented)",  # twoway r(0) / dash r(198)
     "histogram_bin_6": "basic:PT-9",  # twoway r(125) bins() invalid -- invalid number, outside of allow / dash r(198)
-    "histogram_freqpct_1": "stat:PT-1",  # twoway r(198) options frequency percent may not be combined / dash r(0) draws
     "histogram_start_1": "basic:PT-9",  # twoway r(121) start() invalid -- invalid number / dash r(198)
     "histogram_width_1": "basic:PT-9",  # twoway r(125) width() invalid -- invalid number, outside of allo / dash r(198)
     "histogram_width_2": "basic:PT-9",  # twoway r(121) width() invalid -- invalid number / dash r(198)

@@ -5074,6 +5074,24 @@ program define _dash_validate_opts, sclass
         display as error "options discrete and bins() may not be combined"
         exit 198
     }
+    // Then bins() with width(), and two of histogram's scale words, as
+    // twoway__histogram_gen.ado checks them, r(198), the words in its
+    // order whatever order they were typed in (WP-35 stat:PT-1;
+    // test/fixtures/stat_refusal_truth.json hist.*).
+    mata: st_local("_dbw", strofreal(st_global("s(bin)") != "" & st_global("s(width)") != ""))
+    if `_dbw' & "`ptype'" == "histogram" {
+        display as error "options bins() and width() may not be combined"
+        exit 198
+    }
+    local _htype ""
+    foreach f in density fraction frequency percent {
+        if `"`s(`f')'"' != "" local _htype "`_htype' `f'"
+    }
+    if `: word count `_htype'' > 1 {
+        local _htype : list retokenize _htype
+        display as error "options `_htype' may not be combined"
+        exit 198
+    }
     // colorcuts() and colorlevels() (GAPS2 X2, colorvar_options.sthlp:95-98)
     // "may not be combined": twoway refuses the pair with these words, r(198)
     // (measured 26sep2026, test/fixtures/colorvar_truth.json cuts_and_levels).

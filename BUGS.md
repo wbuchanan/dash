@@ -4622,11 +4622,11 @@
   - Suggested fix: Declare BWidth with twoway's minimum on those types
   - Resolution: Fixed 26oct2026 (WP-35, syn:SD-5). _dash_parse_plot_opts declares BWIdth (minimum bwi, as each bandwidth type's parse class declares BWidth), so bwi() .. bwidth() are bwidth() on lowess, kdensity, lpoly and lpolyci; bw() stays the exact BW(); both modes draw the spec. Pinned by test/test_stat_accept.py::TestDeclarations::test_bwidth_minimum_is_bwi, test/test_wp35_truth.cscript Q3503-2; fixture test/fixtures/stat_accept_truth.json. Closes GAPS4 syn:SD-5 (WP-35, syn:SD-5).
 
-- [ ] Title: histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses
+- [x] Title: histogram accepts bins()+width() and two of density/fraction/frequency/percent; twoway refuses
   - File Names and Line Numbers: twoway__histogram_gen.ado:27-51; dash.ado:4788-4848; value_truth histogram_freqpct_1
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 11 (major): ids stat:PT-1, TR-7; confirmed; tracked: untracked. Registered as GAPS4 stat:PT-1 (WP-35, section 35-04, Fix).
   - Suggested fix: Add both checks in twoway's words and order
-  - Resolution: Not fixed because WP-35 section 35-04 has not landed. Graded S2 (WP-35): drop-in audit package 11, major.
+  - Resolution: Fixed 26oct2026 (WP-35, stat:PT-1). _dash_validate_opts (dash.ado), after its discrete-with-bins() check, refuses on histogram bins() with width(), r(198), "options bins() and width() may not be combined", and two or more of density, fraction, frequency and percent, r(198), "options <words> may not be combined", the words in twoway's order (density fraction frequency percent) whatever order they were typed in, as twoway__histogram_gen.ado checks them; refused in Stata before any spec, so both modes are unchanged. A known order difference remains: twoway's syntax judges bins()'s and width()'s values first, so histogram mpg, bin(0) width(2) is r(125) "bins() invalid ..." in twoway and the pair line, r(198), in dash (stat_refusal_truth.json hist.bin0_width; the value codes are basic:PT-9's). dash.sthlp's histogram paragraph names both refusals. Pinned by test/test_stat_refusals.py::TestTheHistogramPairs::test_checks_in_twoways_order, test/test_stat_refusals.py::TestTheFixture::test_readings, test/test_option_validation.cscript Q3504-1; fixture test/fixtures/stat_refusal_truth.json. Closes GAPS4 stat:PT-1 (WP-35, stat:PT-1).
 
 - [ ] Title: density, fraction, frequency and percent are accepted on every type; twoway takes them only on histogram
   - File Names and Line Numbers: dash.ado:3772-3774; run3

@@ -4105,7 +4105,11 @@ counted in bar {cmd:floor((v - start)/width)}, a value at or past the
 last edge in the last bar and one below a tolerated {cmd:start()} in
 the first, exactly as {cmd:twoway__histogram_gen} counts them.
 {cmd:discrete} with {cmd:bin()} is refused, r(198), as {cmd:twoway}
-refuses it.  On any {cmd:histogram} a {cmd:start()} above the smallest
+refuses it, and so are {cmd:bin()} with {cmd:width()}
+({cmd:options bins() and width() may not be combined}) and two of
+{cmd:density}, {cmd:fraction}, {cmd:frequency} and {cmd:percent}
+({cmd:options density fraction may not be combined}, the words in that
+order).  On any {cmd:histogram} a {cmd:start()} above the smallest
 value of the plot's sample is refused, r(198), as {cmd:twoway} refuses
 it ({cmd:option start() may not be larger than minimum of} ...); a
 variable whose values are all equal is one bar, of width 1 from the
