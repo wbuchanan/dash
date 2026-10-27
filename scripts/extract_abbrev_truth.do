@@ -185,6 +185,10 @@ zq_opt, opt(lcolor)       value(red)
 zq_opt, opt(lwidth)       value(thick)
 zq_opt, opt(lpattern)     value(dash)
 zq_opt, opt(lalpha)       value(50)
+* D63 (27oct2026): lalign() itself, so that lal() -- dash's old table sent
+* it to lalpha(), which twoway does not have -- is resolved against the
+* option twoway binds it to.  outside, because inside is a line's default.
+zq_opt, opt(lalign)       value(outside)
 zq_opt, opt(fcolor)       value(red)
 zq_opt, opt(fintensity)   value(50)
 zq_opt, opt(falpha)       value(50)

@@ -34,21 +34,21 @@
       "dash_rejects_min_abbrev": 0,
       "dash_rejects_min_abbrev_option_declared_by_dash": 0,
       "dash_rejects_min_abbrev_option_not_in_dash": 0,
-      "options": 180,
+      "options": 181,
       "plottypes": 33,
-      "stata_rejects_dash_abbrev": 19,
+      "stata_rejects_dash_abbrev": 18,
       "unprobeable": 62
     },
-    "dash_commit": "877bd28ec64fbd8d2e9392e6bdb1a7fbe8ee0e5b",
+    "dash_commit": "cbda75c440d1ff0356802332e6febf0b8890a924",
     "dash_probe": "Every prefix is also fed to dash as dash <context>, <prefix>(<value>) name(zqdash), on the plot type twoway took the full name on; the entry for the measured minimum abbreviation is reported under \"dash\", with the landing key read back out of the registered spec.  abbrev_resolution's dash_maps_to is the key dash recorded for the spelling with the value of the option twoway binds it to, else the option dash's declarations bind it to.",
     "dataset": "sysuse auto, clear",
-    "extracted": "26 Oct 2026 13:57:35",
+    "extracted": "27 Oct 2026 08:26:00",
     "generated_by": "scripts/extract_abbrev_truth.do",
     "method": "For each option/plottype the shortest prefix P is sought such that twoway accepts P AND P resolves to the intended option.  The second half is enforced with a resolution oracle: each probe is saved to a live-format .gph (a plain-text graph-object script), the echoed command line and the per-run object ids are normalised away, and the text is compared with the .gph produced by the full option name.  Return code alone is NOT sufficient: twoway accepts xl(3000) and t(ZQSENTINEL), but they resolve to xlabel() and t1title().",
     "oracle_caveat": "Options whose .gph output is identical to the no-option baseline cannot use the identity oracle.  Those entries carry oracle=\"return-code-only ...\" or a dedicated side-effect oracle (graph-created-under-name, file-written) and are flagged as such.",
     "oracle_selfcheck": "the same twoway command run twice, more than a second apart, normalises to identical text: PASS",
     "record_file": "probe_records.txt",
-    "run_date": "26 Oct 2026",
+    "run_date": "27 Oct 2026",
     "source": "scripts/extract_abbrev_truth.do",
     "stata_born_date": "14 Oct 2026",
     "stata_edition": "MP",
@@ -231,11 +231,13 @@
     },
     "lal": {
       "candidates_in_non_reproducible_context": null,
-      "dash_maps_to": "(none)",
-      "stata_accepted_prefix_in_context_of": null,
-      "stata_identity_matches": [],
-      "stata_resolves_to": null,
-      "status": "twoway rejects this abbreviation"
+      "dash_maps_to": "lalign",
+      "stata_accepted_prefix_in_context_of": [
+        "lalign"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "lalign",
+      "status": "agrees"
     },
     "lc": {
       "candidates_in_non_reproducible_context": null,
@@ -665,7 +667,6 @@
     "fal: dash->falpha, stata rejects the abbreviation",
     "jit: dash->(none), stata rejects the abbreviation",
     "jse: dash->jseed, stata rejects the abbreviation",
-    "lal: dash->(none), stata rejects the abbreviation",
     "mal: dash->malpha, stata rejects the abbreviation",
     "mlg: dash->mlg, stata rejects the abbreviation",
     "nam: dash->(none), stata rejects the abbreviation",
@@ -1875,6 +1876,20 @@
       "plottype_context": "scatter",
       "probe_cmd": "twoway scatter mpg weight, l2(ZQSENTINEL) nodraw",
       "probe_value": "ZQSENTINEL"
+    },
+    "lalign": {
+      "dash": {
+        "accepts": true,
+        "key": "lalign",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, lalign(outside) nodraw",
+      "min_abbrev": "la",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, la(outside) nodraw",
+      "probe_value": "outside"
     },
     "lcolor": {
       "dash": {
