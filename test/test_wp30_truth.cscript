@@ -3184,8 +3184,11 @@ if inlist("`only'", "", "S14") & `: list posof "S14" in w30_run' {
     }
     _w30_done BG-01 "bar is twoway's bar_size wide at x spacing 1, .1, 5 and uneven, saved and served"
 
-    // BG-02 -- rbar default, barwidth(.3) and bw(.3), with no note.
-    foreach o in "" "barwidth(.3)" "bw(.3)" {
+    // BG-02 -- rbar default and barwidth(.3), with no note; bw(.3) refused.
+    // Flipped (WP-35 stat:PT-14): bw(.3) drawn as barwidth(.3) was wrong
+    // because twoway refuses bw() off the bandwidth types, r(198) "option
+    // bw() not allowed" (P4-7; stat_refusal_truth.json bw.rbar).
+    foreach o in "" "barwidth(.3)" {
         _bg_data
         local to = subinstr(`"`o'"', "bw(", "barwidth(", 1)
         quietly twoway rbar lo hi x1, `to' name(bgt, replace)
@@ -3204,7 +3207,13 @@ if inlist("`only'", "", "S14") & `: list posof "S14" in w30_run' {
         _w30_expect BG-02 `_nn' "rbar lo hi x1, `o' printed a note"
         capture erase "`lf'"
     }
-    _w30_done BG-02 "rbar takes barwidth() and bw() as twoway does, both modes, with no note"
+    _bg_data
+    dash clear
+    capture dash rbar lo hi x1, bw(.3) name(zbgbw)
+    local _bwrc = _rc
+    capture dash clear
+    _w30_expect BG-02 "(`_bwrc' == 198)" "rbar lo hi x1, bw(.3) gave rc `_bwrc', not twoway's 198"
+    _w30_done BG-02 "rbar takes barwidth() as twoway does, both modes, with no note; bw() refused"
 
     // BG-03 -- %td weekly and %tm, default and barwidth(), in the
     // variable's own units.

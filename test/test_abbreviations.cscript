@@ -693,13 +693,14 @@ for ab in sorted(MATA_OPT_ALIAS):
         if ab in D["dash_abbrev_unresolved"]:
             allowed = "barwidth bwidth"
         if ab == "bw":
-            # bw() is resolved by plot type since WP-13: barwidth on the
-            # bar family, bwidth on the bandwidth types, named elsewhere.
-            # test_alias_semantics.cscript certifies every type; here the
-            # bar context keeps the historical fold observable.
-            add("R3", ab + "() -> barwidth() on bar",
-                "bar mpg weight, bw(100) name(zqab)",
-                keys="barwidth", optname=ab, mode="nosilent")
+            # bw() is resolved by plot type since WP-13: bwidth on the
+            # bandwidth types, refused elsewhere, as twoway refuses it.
+            # test_alias_semantics.cscript certifies every type.
+            # Flipped (WP-35 stat:PT-14): "barwidth() on bar" was wrong
+            # because twoway refuses bw() off the bandwidth types (P4-7).
+            add("R3", ab + "() -> bwidth() on lpoly",
+                "lpoly mpg weight, bw(400) name(zqab)",
+                keys="bwidth", optname=ab, mode="nosilent")
             continue
         add("R3", ab + "() must never land anywhere but [" + allowed + "]",
             opt_cmd(ab, sr or tgt),

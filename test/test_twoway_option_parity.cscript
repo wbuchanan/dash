@@ -168,7 +168,8 @@
 *!          in comma mode, in a plot group and after || (WP-30 P1.17a).
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
 *!   BG-09  guards: bar, rbar and spike take barwidth(); quoted and nested
-*!          text is not read; rcap bw() keeps its note.
+*!          text is not read; rcap bw() is refused, r(198), "option bw()
+*!          not allowed", as twoway refuses it (WP-35 stat:PT-14).
 *!   NP-20  p(p3) p(p4) writes "p":"p3" (the first copy); under p() no
 *!          mcolor/lcolor/mlabcolor is written and mlabel() is kept.
 *!   NP-21  pstyle(p4) p(p3) writes p only.
@@ -3522,11 +3523,14 @@ foreach c in "bar y x1, barwidth(.5)" "rbar lo hi x1, barwidth(.5)" "spike y x1,
     }
     capture dash clear
 }
+// Flipped (WP-35 stat:PT-14): rc 0 with bw() in the note was wrong
+// because twoway refuses bw() off the bandwidth types, r(198) (P4-7;
+// stat_refusal_truth.json bw.<type>).
 _ztp_run `"dash rcap lo hi x1, bw(.5) name(zbg9)"' "`logfile'"
 local rc = r(rc)
-_ztp_logged "`logfile'" "bw"
-if `rc' != 0 | !r(found) {
-    display as error "BG-09 FAIL dash rcap bw(.5): r(`rc'), its note found `r(found)'"
+_ztp_logged "`logfile'" "option bw() not allowed"
+if `rc' != 198 | !r(found) {
+    display as error "BG-09 FAIL dash rcap bw(.5): r(`rc'), its refusal found `r(found)'"
     local bad09 = 1
 }
 capture dash clear
@@ -3534,7 +3538,7 @@ if `bad09' {
     local nfail = `nfail' + 1
     local faillist "`faillist' BG-09"
 }
-else display as text "BG-09 PASS: bar, rbar and spike take barwidth(), quoted text is not read, and rcap bw() keeps its note"
+else display as text "BG-09 PASS: bar, rbar and spike take barwidth(), quoted text is not read, and rcap bw() is refused"
 restore
 
 // ----------------------------------------------------------------

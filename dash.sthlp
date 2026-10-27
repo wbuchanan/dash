@@ -3748,11 +3748,11 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     does.
     On {cmd:kdensity}, {opt width(#)} is a synonym, as in {cmd:twoway},
     and the two together are refused, r(198).  {cmd:bw()} and {opt bwi()} ..
-    {opt bwidth()} are its spellings on these four types, as in {cmd:twoway}; on {cmd:bar},
-    {cmd:rbar}, {cmd:histogram}, {cmd:dot} and {cmd:spike} {cmd:dash}
-    reads {cmd:bw()} as {cmd:barwidth()}, a synonym of its own
-    ({cmd:twoway} refuses {cmd:bw()} there), and on any other plot type
-    names it in the note{p_end}
+    {opt bwidth()} are its spellings on {cmd:lowess}, {cmd:lpoly},
+    {cmd:lpolyci} and {cmd:kdensity}, as in {cmd:twoway}; elsewhere
+    {cmd:bw()} is refused, as {cmd:twoway} refuses it
+    ({cmd:option bw() not allowed}; {opt barwidth()} sets a bar's
+    width){p_end}
 {synopt:{opt pwidth(#)}}{cmd:lpolyci}: the pilot bandwidth of the
     band's variance estimate, in the units of x; by default 1.5 times the
     rule of thumb under {it:Default bandwidth}, even when {cmd:bwidth()}

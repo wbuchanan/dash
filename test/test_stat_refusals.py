@@ -148,3 +148,40 @@ class TestTheLowessWeight:
         unknown = seg.index("_dash_refuse_unknown _dash_parse_plot_opts")
         refuse = seg.index('display as error "option noweight not allowed"')
         assert clear < unknown < refuse
+
+
+class TestTheBw:
+    _BAR = ("bar", "rbar", "histogram", "dot", "spike")
+
+    def test_no_barwidth_fold(self):
+        """twoway takes bw() only as bwidth()'s abbreviation on lowess,
+        lpoly, lpolyci and kdensity, and refuses it on every other type,
+        r(198), "option bw() not allowed" (fixture bw.<type>, drawn);
+        _dash_fold_bw no longer reads it as barwidth() on the bar family
+        nor leaves it to the note elsewhere (P4-7; stat:PT-14)."""
+        d = _truth()
+        for k, r in d.items():
+            if not k.startswith("bw."):
+                continue
+            t = k[3:]
+            if t in ("lowess", "lpoly", "lpolyci", "kdensity"):
+                assert r["rc"] == 0, k
+            else:
+                assert (r["rc"], r["message"]) == \
+                    (198, "option bw() not allowed"), k
+        body = _program_body(_read(_ADO), "_dash_fold_bw")
+        assert "barwidth : copy local bw" not in body
+        assert 'st_global("s(_unknown)") + " bw("' not in body
+        assert 'display as error "option bw() not allowed"' in body
+
+    def test_the_hint_names_barwidth(self):
+        """Where dash read bw() as barwidth() -- bar, rbar, histogram, dot
+        and spike -- the refusal's second line names twoway's spelling
+        (P4-9), and only there."""
+        body = _program_body(_read(_ADO), "_dash_fold_bw")
+        assert 'local bar_types       "%s"' % " ".join(self._BAR) in body
+        first = body.index('display as error "option bw() not allowed"')
+        hint = body.index('display as error "      use barwidth()"')
+        assert first < hint
+        guard = body.rfind("if ", first, hint)
+        assert "`: list ptype in bar_types'" in body[guard:hint]

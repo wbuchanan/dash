@@ -879,6 +879,7 @@ and now matches Stata.
 - density, fraction, frequency and percent are refused off histogram, r(198), "option frequency not allowed", as twoway refuses them; dash accepted them. (WP-35, stat:PT-2)
 - contour levels() above 500 and ccuts() with 500 or more values are refused, r(198), "contour level must be between 0 and 500", as twoway refuses them when it draws; dash drew up to 1,000. (WP-35, stat:PT-5)
 - lowess noweight with weight is refused, r(198), "option noweight not allowed", as twoway refuses it; lowess weight alone is drawn with no note, as twoway draws it (dash named it in the note). (WP-35, stat:PT-8)
+- bw() off lowess, lpoly, lpolyci and kdensity is refused, r(198), "option bw() not allowed", as twoway refuses it; on bar, rbar, histogram, dot and spike dash read it as barwidth() (the refusal's second line now says "use barwidth()"), and elsewhere named it in the note. (WP-35, stat:PT-14)
 
 ### Removed
 

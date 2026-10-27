@@ -956,7 +956,10 @@ class TestTheParsersFoundSomething:
         assert len(aliases) == 12, f"{len(aliases)} folds found, 12 measured"
         assert aliases.get("mlg") == {"mlabgap"}
         assert aliases.get("bins") == {"bin"}
-        assert {"bwidth", "barwidth"} <= aliases.get("bw", set()), (
+        # Flipped (WP-35 stat:PT-14): bw() read as barwidth() was wrong
+        # because twoway refuses bw() off the bandwidth types (P4-7);
+        # _dash_fold_bw folds it into bwidth() alone.
+        assert aliases.get("bw") == {"bwidth"}, (
             "the s() fold of _dash_fold_bw was not read")
 
     def test_the_plot_type_table_was_found(self):

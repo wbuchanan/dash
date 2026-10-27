@@ -358,7 +358,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit 3d8a9d1.
 - **stat:PT-8 Tracked:** Closed in WP-35, BUGS.md "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes", commit pending.
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit 8355f24.
-- **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-14 Tracked:** Closed in WP-35, BUGS.md "bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types", commit pending.
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
 - **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
 - **basic:PT-13 Tracked:** Open (WP-35 section 35-05).

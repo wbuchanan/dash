@@ -18,16 +18,19 @@
 *!
 *!   AS-01  a bandwidth type (twoway rc 0):  dash records bwidth, not
 *!          barwidth, and emits no note.
-*!   AS-02  the bar family (twoway r(198), but barwidth() is the option
-*!          twoway does take there):  dash keeps its documented superset and
-*!          records barwidth, with no note.
-*!   AS-03  every other type (twoway r(198)):  dash accepts the command,
-*!          records neither key, and names bw() in its one note.
+*!   AS-02  the bar family (twoway r(198)):  dash refuses it in twoway's
+*!          words, r(198) "option bw() not allowed", and a second line says
+*!          "use barwidth()" (P4-9).  Flipped (WP-35 stat:PT-14): dash's
+*!          reading of bw() as barwidth() there was wrong because twoway
+*!          refuses bw() off the bandwidth types (P4-7).
+*!   AS-03  every other type (twoway r(198)):  dash refuses it in twoway's
+*!          words, with no barwidth() line.  Flipped (WP-35 stat:PT-14):
+*!          naming it in the note was wrong for the same reason.
 *!   AS-04  bw() together with bwidth() on a bandwidth type is the repeated
 *!          option twoway rejects; dash returns twoway's own rc.
 *!   AS-05  the other short forms still land on their targets: t("top")
-*!          records t1title, bins(5) records bin, bw(100) on bar records
-*!          barwidth.
+*!          records t1title, bins(5) records bin (bw(100) on bar, which
+*!          recorded barwidth, is refused since WP-35 stat:PT-14: AS-02).
 *!   AS-06  the side titles: every spelling of t1title() .. r2title(), and
 *!          t(), b(), l() and r(), lands where twoway puts it at plot level,
 *!          inside a plot's parentheses, after them and after ||; and a
@@ -101,9 +104,15 @@ program define _zas_probe, rclass
     local nnote = r(found)
     cert_file_has "`logpath'", needle("bw()")
     local named = r(found)
+    cert_file_has "`logpath'", needle("option bw() not allowed")
+    local refused = r(found)
+    cert_file_has "`logpath'", needle("use barwidth()")
+    local hint = r(found)
     return scalar rc    = `rc'
     return scalar nnote = `nnote'
     return scalar named = `named'
+    return scalar refused = `refused'
+    return scalar hint  = `hint'
 end
 
 local nfail = 0
@@ -149,14 +158,16 @@ foreach t of local types {
     local drc    = r(rc)
     local nnote  = r(nnote)
     local named  = r(named)
+    local refused = r(refused)
+    local hint   = r(hint)
     _zas_has zqas bwidth
     local has_bwidth = r(found)
     _zas_has zqas barwidth
     local has_barwidth = r(found)
 
     local bad = 0
-    if `drc' != 0 {
-        display as error "AS FAIL `t': dash rc=`drc'"
+    if `drc' != `tw_rc' {
+        display as error "AS FAIL `t': dash rc=`drc', twoway rc=`tw_rc'"
         local bad = 1
     }
     else if `tw_rc' == 0 {
@@ -168,21 +179,21 @@ foreach t of local types {
         else display as text "AS-01 PASS `t': bw(`bw') is bwidth, no note"
     }
     else if `: list t in barfamily' {
-        // AS-02: twoway rejects bw() on the bar family; dash's documented
-        // superset reads it as barwidth() there.
-        if `has_barwidth' != 1 | `has_bwidth' != 0 | `nnote' != 0 {
-            display as error "AS-02 FAIL `t': twoway r(`tw_rc') but dash recorded barwidth=`has_barwidth' bwidth=`has_bwidth' note=`nnote'"
+        // AS-02: twoway rejects bw() on the bar family; so does dash, in
+        // its words, and names barwidth() on a second line (P4-9).
+        if `refused' != 1 | `hint' != 1 | `nnote' != 0 {
+            display as error "AS-02 FAIL `t': twoway r(`tw_rc'); dash refused=`refused' hint=`hint' note=`nnote'"
             local bad = 1
         }
-        else display as text "AS-02 PASS `t': bw(`bw') is barwidth, no note"
+        else display as text "AS-02 PASS `t': bw(`bw') refused, use barwidth() named"
     }
     else {
-        // AS-03: twoway rejects it and dash has no reading for it: named.
-        if `has_barwidth' != 0 | `has_bwidth' != 0 | `nnote' != 1 | `named' != 1 {
-            display as error "AS-03 FAIL `t': twoway r(`tw_rc'); dash recorded barwidth=`has_barwidth' bwidth=`has_bwidth' note=`nnote' named_bw=`named'"
+        // AS-03: twoway rejects it; so does dash, with no barwidth() line.
+        if `refused' != 1 | `hint' != 0 | `nnote' != 0 {
+            display as error "AS-03 FAIL `t': twoway r(`tw_rc'); dash refused=`refused' hint=`hint' note=`nnote'"
             local bad = 1
         }
-        else display as text "AS-03 PASS `t': bw(`bw') named in the note, recorded nowhere"
+        else display as text "AS-03 PASS `t': bw(`bw') refused in twoway's words"
     }
     if `bad' {
         local nfail = `nfail' + 1
@@ -205,7 +216,10 @@ else display as text "AS-04 PASS: bw() with bwidth() gives twoway's rc `tw_rc'"
 
 // ----------------------------------------------------------------
 // AS-05 -- the other short forms are unchanged.  t() is T1title()'s own
-// minimum abbreviation, no longer a fold (AS-06); bins() and bw() are.
+// minimum abbreviation, no longer a fold (AS-06); bins() is.  Flipped
+// (WP-35 stat:PT-14): bar bw(100) recording barwidth was wrong because
+// twoway refuses bw() off the bandwidth types (P4-7); AS-02 pins the
+// refusal.
 // ----------------------------------------------------------------
 local bad = 0
 _zas_probe `"dash scatter mpg weight, t("top") name(zqas)"' "`logfile'"
@@ -220,17 +234,11 @@ if r(found) != 1 {
     display as error "AS-05 FAIL: bins(5) did not record bin"
     local bad = 1
 }
-_zas_probe `"dash bar mpg weight, bw(100) name(zqas)"' "`logfile'"
-_zas_has zqas barwidth
-if r(found) != 1 {
-    display as error "AS-05 FAIL: bw(100) on bar did not record barwidth"
-    local bad = 1
-}
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' AS-05"
 }
-else display as text "AS-05 PASS: t(), bins() and bar bw() still land on their targets"
+else display as text "AS-05 PASS: t() and bins() still land on their targets"
 
 // ----------------------------------------------------------------
 // AS-06 -- the side titles.  t(), b(), l(), r() and every spelling of

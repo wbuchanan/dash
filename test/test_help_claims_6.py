@@ -1182,10 +1182,13 @@ class TestTheEntriesSayWhatTakesThem:
     def test_the_synonyms_are_named_beside_their_options(self):
         e = _entries()
         # twoway takes bw() as bwidth()'s abbreviation on the bandwidth
-        # types and refuses it on the bar family, where dash reads it as
-        # barwidth(): a synonym dash alone has.
+        # types and refuses it elsewhere.
+        # Flipped (WP-35 stat:PT-14): "a synonym of its own" -- bw() read
+        # as barwidth() on the bar family -- was wrong because twoway
+        # refuses bw() off the bandwidth types (P4-7); dash refuses it too.
         assert "{cmd:bw()}" in e["bwidth"]
-        assert "a synonym of its own" in e["bwidth"]
+        assert "a synonym of its own" not in e["bwidth"]
+        assert "{cmd:option bw() not allowed}" in e["bwidth"]
         assert "{opt width(#)} is a synonym" in e["bwidth"]
         # twoway histogram's own name is bins(); bin() is its abbreviation
         # (twoway_histogram_parse.class: BINs(numlist ...)), and dash

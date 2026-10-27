@@ -1441,7 +1441,7 @@ local b "bar mpg turn weight,"
 foreach c in "`b' base(10 20) barwidth(1 2)|{'barwidth':'1','base':'10'}|{'barwidth':'2','base':'20'}" ///
     "`b' base(10 ..)|{'base':'10'}|{'base':'10'}" "`b' base(10 =)|{'base':'10'}|{'base':'10'}" ///
     "`b' barwidth(. 200)|{}|{'barwidth':'200'}" "`b' barwidth(1 ..)|{'barwidth':'1'}|{'barwidth':'1'}" ///
-    "`b' barwidth(.)|{}|{}" "`b' base(10)|{'base':'10'}|{}" "`b' bw(1 2)|{'barwidth':'1'}|{'barwidth':'2'}" ///
+    "`b' barwidth(.)|{}|{}" "`b' base(10)|{'base':'10'}|{}" ///
     "dropline mpg turn weight, base(10 20)|{'base':'10'}|{'base':'20'}" ///
     "spike mpg turn weight, base(10 20)|{'base':'10'}|{'base':'20'}" ///
     "area mpg turn weight, sort base(10 20)|{'base':'10','sort':'sort'}|{'base':'20','sort':'sort'}" ///
@@ -1456,7 +1456,11 @@ foreach c in "`b' base(10 20) barwidth(1 2)|{'barwidth':'1','base':'10'}|{'barwi
         local ok 0
     }
 }
-_ps_tally PS-10 `ok' "base() and barwidth() one element per y, bw() too"
+// Flipped (WP-35 stat:PT-14): bw(1 2) read as barwidth() per y was wrong
+// because twoway refuses bw() off the bandwidth types (P4-7); it is
+// refused, r(198), "option bw() not allowed".
+_ps_refuse PS-10 198 "option bw() not allowed" |`b' bw(1 2)
+_ps_tally PS-10 `ok' "base() and barwidth() one element per y; bw() refused"
 
 // PS-11 base and barwidth refusals
 local ok 1

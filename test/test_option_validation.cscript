@@ -90,7 +90,8 @@
 *!   OV-59  kdensity bwidth(2)        rc 0
 *!   OV-60  kdensity bwidth(abc)      rc 198 naming bwidth()
 *!   OV-61  lowess bw(0.3)            rc 0   (the fold lands on bwidth first)
-*!   OV-62  histogram bw(2)           rc 0   (the fold lands on barwidth first)
+*!   OV-62  histogram bw(2)           rc 198 "option bw() not allowed" (WP-35
+*!          stat:PT-14: twoway refuses bw() off the bandwidth types)
 *!   OV-63  kdensity kernel(gaussian) rc 0
 *!   OV-64  kdensity kernel(Epan2)    rc 0, registry carries "kernel":"epan2"
 *!   OV-65  kdensity kernel(bogus)    rc 198 naming kernel()
@@ -407,6 +408,9 @@
 *!          twoway's words
 *!   Q3504-2 (stat:PT-2) density, fraction, frequency and percent refused
 *!          off histogram, r(198), "option <word> not allowed"
+*!   Q3504-5 (stat:PT-14) bw() refused off lowess, lpoly, lpolyci and
+*!          kdensity, r(198), "option bw() not allowed", and on bar, rbar,
+*!          histogram, dot and spike a second line "use barwidth()"
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -808,7 +812,11 @@ _ov_said OV-58 "bwidth() must be a positive number"
 _ov_case OV-59 `"dash kdensity mpg, bwidth(2) name(ov59)"' 0 ""
 _ov_case OV-60 `"dash kdensity mpg, bwidth(abc) name(ov60)"' 198 bwidth
 _ov_case OV-61 `"dash lowess mpg weight, bw(0.3) name(ov61)"' 0 ""
-_ov_case OV-62 `"dash histogram mpg, bw(2) name(ov62)"' 0 ""
+// Flipped (WP-35 stat:PT-14): rc 0 -- bw() read as barwidth() -- was
+// wrong because twoway refuses bw() off the bandwidth types (P4-7;
+// stat_refusal_truth.json bw.histogram); Q3504-5 pins the second line.
+_u46_rc OV-62 198 `"dash histogram mpg, bw(2) name(ov62)"'
+_ov_said OV-62 "option bw() not allowed"
 _ov_case OV-63 `"dash kdensity mpg, kernel(gaussian) name(ov63)"' 0 ""
 _ov_case OV-64 `"dash kdensity mpg, kernel(Epan2) name(ov64)"' 0 "" `""kernel":"epan2""'
 _ov_case OV-65 `"dash kdensity mpg, kernel(bogus) name(ov65)"' 198 kernel
@@ -3599,6 +3607,22 @@ foreach _q1k in hist.bins_width hist.density_fraction hist.fraction_percent hist
 python: _q3504_keys("flag.")
 foreach _q2k of local q_keys {
     _q3504 Q3504-2 `_q2k'
+}
+
+// Q3504-5 (stat:PT-14; P4-7, P4-9): bw() off the bandwidth types is
+// refused, r(198), "option bw() not allowed", as twoway refuses it; on
+// bar, rbar, histogram, dot and spike, where dash read it as barwidth(),
+// the next line is "use barwidth()", and on scatter, line, lfit and fpfit
+// no such line follows; on lowess, lpoly, lpolyci and kdensity it is
+// bwidth(), drawn with no note.
+foreach _q5t in bar rbar histogram dot spike {
+    _q3504 Q3504-5 bw.`_q5t' "use barwidth()"
+}
+foreach _q5t in scatter line lfit fpfit {
+    _q3504 Q3504-5 bw.`_q5t' "-"
+}
+foreach _q5t in lowess lpoly lpolyci kdensity {
+    _q3504 Q3504-5 bw.`_q5t'
 }
 
 // Summary

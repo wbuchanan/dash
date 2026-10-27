@@ -2061,13 +2061,12 @@ end
 //
 // twoway accepts bw() only as an abbreviation of bwidth(), and only on the
 // bandwidth plot types (measured rc 0: lpoly, lpolyci, lowess, kdensity);
-// on bar, rbar, histogram, dot, spike, scatter, line and fpfit it is
-// r(198) "option bw() not allowed".  dash keeps its documented reading of
-// bw() as barwidth() on the bar family, where twoway takes barwidth() --
-// a superset that cannot change the meaning of a valid twoway command --
-// and names bw() in the note everywhere else, as an option it has no
-// reading for.  Called after _dash_parse_plot_opts, whose s() survives
-// this second sclass call.
+// on bar, rbar, histogram, dot, spike, scatter, line, lfit and fpfit it is
+// r(198) "option bw() not allowed" (stat_refusal_truth.json bw.<type>),
+// and dash refuses it the same way (WP-35 stat:PT-14, P4-7).  On the bar
+// family, where dash used to read it as barwidth(), a second line says
+// "use barwidth()" (P4-9).  Called after _dash_parse_plot_opts, whose s()
+// survives this second sclass call.
 //
 // It is also where the other options whose reading depends on the plot type
 // are resolved: clcolor(), clpattern() and clwidth() (WP-22), in
@@ -2144,13 +2143,13 @@ program define _dash_fold_bw, sclass
         }
         sreturn local bwidth : copy local bw
     }
-    else if `: list ptype in bar_types' {
-        mata: st_local("_fb", strofreal(st_global("s(barwidth)") == ""))
-        if `_fb' sreturn local barwidth : copy local bw
-    }
     else {
-        mata: st_local("_fb", st_global("s(_unknown)") + " bw(" + st_local("bw") + ")")
-        sreturn local _unknown : copy local _fb
+        // Off the bandwidth types twoway refuses it (WP-35 stat:PT-14,
+        // P4-7; stat_refusal_truth.json bw.<type>); where dash read it as
+        // barwidth(), a second line names twoway's spelling (P4-9).
+        display as error "option bw() not allowed"
+        if `: list ptype in bar_types' display as error "      use barwidth()"
+        exit 198
     }
     sreturn local bw ""
 end
