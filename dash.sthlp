@@ -3953,7 +3953,9 @@ a graph of histograms alone are still drawn by {cmd:dash}.
 {synopt:{opt mean}}{cmd:lowess} only: a running mean rather than a
     running line ({opt m} is its shortest spelling, as in {cmd:twoway}){p_end}
 {synopt:{opt noweight}}{cmd:lowess} only: the tricube weights are
-    dropped{p_end}
+    dropped; {opt weight}, the default, changes nothing, and beside
+    {opt noweight} is refused ({cmd:option noweight not allowed}), as in
+    {cmd:twoway}{p_end}
 {synopt:{opt adjust}}{cmd:lowess} only: the smooth is rescaled so that
     its mean equals the mean of {it:yvar} -- over every observation in
     the data, as {cmd:lowess} computes it, whatever the {cmd:if} or the
@@ -6691,7 +6693,7 @@ in either direction.
 
 {phang2}{ul:Type-specific options.}
     {opt xlog} and {opt xtransform(exp)} on {cmd:lfit} and the other fits,
-    which fit against a transformed {it:x}; {opt weight} on {cmd:lowess};
+    which fit against a transformed {it:x};
     {opt back} and {opt noback} on {cmd:mspline} and {cmd:mband};
     {opt onepanel} on {cmd:tsline} and {cmd:tsrline}; and
     {opt heatlabel}, {opt zvarlabel(string)}, {opt zvarformat(fmt)} on

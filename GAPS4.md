@@ -356,7 +356,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-20d Tracked:** Closed in WP-35, BUGS.md "colorvar zl() and zt(), twoway's minimums of zlabel() and ztitle(), are not read as those options; dash declares ZLABel and ZTItle", commit 7a115b1.
 - **syn:SD-20e Tracked:** Closed in WP-35, BUGS.md "clcolor(), clpattern(), clstyle() and clwidth() on scatter are accepted and record no key, in full or abbreviated", commit 7a115b1.
 - **stat:PT-6 Tracked:** Closed in WP-35, BUGS.md "function subchar() is not honoured: subchar(t) fails r(111), and subchar(1t) is accepted with a note", commit 3d8a9d1.
-- **stat:PT-8 Tracked:** Open (WP-35 section 35-04).
+- **stat:PT-8 Tracked:** Closed in WP-35, BUGS.md "lowess 'noweight weight' is accepted (twoway refuses), and bare weight is named although nothing changes", commit pending.
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit 8355f24.
 - **stat:PT-14 Tracked:** Open (WP-35 section 35-04).
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.

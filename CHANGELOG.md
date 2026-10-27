@@ -878,6 +878,7 @@ and now matches Stata.
 - histogram with bin() and width(), or with two of density, fraction, frequency and percent, is refused, r(198), in twoway's words ("options bins() and width() may not be combined", "options density fraction may not be combined"); dash drew one of them. (WP-35, stat:PT-1)
 - density, fraction, frequency and percent are refused off histogram, r(198), "option frequency not allowed", as twoway refuses them; dash accepted them. (WP-35, stat:PT-2)
 - contour levels() above 500 and ccuts() with 500 or more values are refused, r(198), "contour level must be between 0 and 500", as twoway refuses them when it draws; dash drew up to 1,000. (WP-35, stat:PT-5)
+- lowess noweight with weight is refused, r(198), "option noweight not allowed", as twoway refuses it; lowess weight alone is drawn with no note, as twoway draws it (dash named it in the note). (WP-35, stat:PT-8)
 
 ### Removed
 

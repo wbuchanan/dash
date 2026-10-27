@@ -124,3 +124,27 @@ class TestTheContourBound:
         assert "`_zl' > 500" in body
         assert "`r(numlist)'' >= 500" in body
         assert "1000" not in body
+
+
+class TestTheLowessWeight:
+    def test_weight_is_folded_and_the_pair_refused_after_unknown(self):
+        """lowess's bare weight is taken by _dash_fold_stat_words, not
+        named from the takes table, and noweight beside it is refused by
+        _dash_process_segment after _dash_refuse_unknown, so an unknown
+        word typed earlier is named first, as twoway names it (fixture
+        lowess.bogus_noweight_weight); stat:PT-8."""
+        d = _truth()
+        assert d["lowess.bogus_noweight_weight"]["message"] == \
+            "option bogus not allowed"
+        mata = _read(os.path.join(_ROOT, "dash_parse.mata"))
+        i = mata.index("string matrix _dash_tw_takes_tab()")
+        assert '("weight", ' not in mata[i:mata.index("return(t)", i)]
+        src = _read(_ADO)
+        fold = _program_body(src, "_dash_fold_stat_words")
+        assert 'substr("weight", 1,' in fold
+        assert "c_local _fsw_nowt 1" in fold
+        seg = _program_body(src, "_dash_process_segment")
+        clear = seg.index('local _fsw_nowt ""')
+        unknown = seg.index("_dash_refuse_unknown _dash_parse_plot_opts")
+        refuse = seg.index('display as error "option noweight not allowed"')
+        assert clear < unknown < refuse

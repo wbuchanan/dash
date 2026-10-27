@@ -1080,6 +1080,32 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w35_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 stat:PT-8: lowess weight taken silently, noweight weight refused ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w35_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3504-4: lowess weight draws as lowess with no weight (twoway's
+    // syntax declares noWeight, so a bare weight -- w and longer -- is
+    // its default; stat_refusal_truth.json lowess.weight and lowess.none
+    // hold one serset): dash registers the same spec and names nothing.
+    // noweight with weight, in either order, is refused, r(198), "option
+    // noweight not allowed"; an unknown word before them is named first.
+    // ------------------------------------------------------------
+    foreach _s04w in weight w wei {
+        _s03_same Q3504-4 "`w35_work'" auto "lowess mpg weight, `_s04w'" "lowess mpg weight,"
+    }
+    foreach _s04k in lowess.noweight_weight lowess.weight_noweight lowess.bogus_noweight_weight lowess.noweight {
+        python: _s04_take("`_s04k'")
+        _s03_rc Q3504-4 "`w35_work'" auto `"`macval(s04_cmd)'"' `s04_rc' `"`macval(s04_msg)'"'
+    }
+    _w35_done Q3504-4 "lowess weight taken silently; noweight with weight refused"
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== S06 GW-4: fxsiz() and fysiz() applied ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {

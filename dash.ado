@@ -2175,6 +2175,17 @@ end
 program define _dash_fold_stat_words, sclass
     version 19
     args ptype
+    // lowess weight (stat:PT-8): twoway_lowess_parse.class declares
+    // noWeight, so a bare weight -- w and longer -- is its default and
+    // draws as without it (stat_refusal_truth.json lowess.weight, the
+    // serset of lowess.none), and beside noweight it is "option noweight
+    // not allowed", r(198) (lowess.noweight_weight).  The word is taken
+    // out of the catch-all, by value, in silence; with noweight the pair
+    // is recorded in the caller's _fsw_nowt, which the caller clears
+    // before the first call (_dash_opts_repeats reads weight beside
+    // noweight as its other half, so the second call may not see the
+    // pair), and refused there, after the list's other refusals, as
+    // twoway names an unknown word before it.
     if "`ptype'" == "lowess" {
         mata: st_local("_fsw_t", strofreal(anyof(_dash_opt_tokens(st_global("s(_unknown)")), "m")))
         if `_fsw_t' {
@@ -2185,6 +2196,18 @@ program define _dash_fold_stat_words, sclass
             sreturn local mean "mean"
             sreturn local _unknown : copy local _fsw_rest
         }
+        mata: _fsw_u = _dash_opt_tokens(st_global("s(_unknown)"))
+        mata: _fsw_w = J(1, cols(_fsw_u), 0)
+        mata: for (_fsw_i = 1; _fsw_i <= cols(_fsw_u); _fsw_i++) _fsw_w[_fsw_i] = strlen(_fsw_u[_fsw_i]) >= 1 & strlen(_fsw_u[_fsw_i]) <= 6 & substr("weight", 1, strlen(_fsw_u[_fsw_i])) == _fsw_u[_fsw_i]
+        mata: st_local("_fsw_t", strofreal(any(_fsw_w)))
+        if `_fsw_t' {
+            mata: _fsw_u = select(_fsw_u, !_fsw_w)
+            mata: st_local("_fsw_rest", cols(_fsw_u) ? invtokens(_fsw_u) : "")
+            sreturn local _unknown : copy local _fsw_rest
+            mata: st_local("_fsw_v", st_global("s(noweight)"))
+            if `: length local _fsw_v' c_local _fsw_nowt 1
+        }
+        capture mata: mata drop _fsw_u _fsw_w _fsw_i
     }
     // contour and contourline (stat:PT-13): twoway_zyx2view_parse.class
     // declares Interp, CLPatterns, CLWidths and COLORLines, so i() ..
@@ -6735,6 +6758,7 @@ program define _dash_process_segment, rclass
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
         // The statistical types' spellings twoway reads (WP-35 35-03).
+        local _fsw_nowt ""
         _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
         // The first word twoway does not take, in the list's order
         // (WP-32): an unknown word, one in upper case, a spelling short of
@@ -6787,6 +6811,10 @@ program define _dash_process_segment, rclass
         }
         if "`_fsw_n0'" == "obs" {
             mata: _dash_say("err", "'", strtrim(st_global("s(n)")), "' invalid observation number")
+            exit 198
+        }
+        if "`_fsw_nowt'" == "1" {
+            display as error "option noweight not allowed"
             exit 198
         }
         // Two kernels, mlabfontface() (MLF-01) and a graph option given

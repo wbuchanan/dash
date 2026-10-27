@@ -648,8 +648,10 @@ class TestTheParsersFoundSomething:
         # list (read as msymbol()); subchar() left it and joined the
         # synopts (stat:PT-6), one for one.
         # 265 -> 266: syn:SD-22 the contour note defines levels() (WP-35 35-06).
-        assert len(found) == 266, (
-            f"{len(found)} options parsed out of dash.sthlp, 266 measured "
+        # 266 -> 265: WP-35 stat:PT-8 weight leaves the Unsupported list
+        # (lowess weight taken silently).
+        assert len(found) == 265, (
+            f"{len(found)} options parsed out of dash.sthlp, 265 measured "
             f"21oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -816,7 +818,8 @@ class TestTheParsersFoundSomething:
         # 59 -> 58: WP-35 stat:PT-6 subchar() drawn on function
         # 58 -> 57: WP-35 syn:SD-20c symbol() read as msymbol()
         # 57 -> 56: WP-35 GW-3 maxaxes() checked
-        assert len(_unsupported_section()) == 56
+        # 56 -> 55: WP-35 stat:PT-8 lowess weight taken
+        assert len(_unsupported_section()) == 55
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared

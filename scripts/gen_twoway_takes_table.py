@@ -60,8 +60,9 @@ DECLARED = {"at": "at", "blabel": "blabel", "ciopts": "ciopts",
 
 #: Options dash now reads itself, left out of the table: subchar() is
 #: read by _dash_label_split and checked by _dash_fold_stat_words (WP-35
-#: stat:PT-6); symbol() is read as msymbol() there (WP-35 syn:SD-20c).
-HANDLED = {"subchar", "symbol"}
+#: stat:PT-6); symbol() is read as msymbol() there (WP-35 syn:SD-20c);
+#: lowess's bare weight is taken there too, in silence (WP-35 stat:PT-8).
+HANDLED = {"subchar", "symbol", "weight"}
 
 
 def rows(fx):
