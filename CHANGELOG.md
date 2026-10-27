@@ -989,6 +989,8 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-36
+
 ### Fixed in WP-35
 
 - Bad option values are refused with twoway's return codes and words: base(abc) r(4026), bin() r(125), r(121) or r(126), width() r(125) or r(121), start() r(121), mlabel(make..) r(101), rbar barwidth(.) r(199), mlabangle(1e308) r(111) (dash gave r(198) in its own words); lpoly with n() above the data's rows prints twoway's "(n() set to N)". (WP-35, basic:PT-9)

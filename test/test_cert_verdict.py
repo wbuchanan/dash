@@ -299,7 +299,8 @@ class TestTheTiers:
         default = V.tier_scripts(text, "default")
         # old -> new: 67 -> 68: test_wp34_truth.cscript (WP-34 W0)
         # old -> new: 68 -> 69: test_wp35_truth.cscript (WP-35 W0)
-        assert len(default) == 69  # 72 registered, less the three
+        # old -> new: 69 -> 70: test_wp36_truth.cscript (WP-36 W0)
+        assert len(default) == 70  # 73 registered, less the three
         assert set(default) | set(V.release_scripts(text)) == set(
             V.registered_scripts(text))
 

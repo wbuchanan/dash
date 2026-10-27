@@ -42,7 +42,7 @@ class TestTheRealTable:
         rows = S.read_table(_runner())
         names = [r[0] for r in rows]
         assert sorted(names) == sorted(V.registered_scripts(_runner()))
-        assert len(names) == len(set(names)) == 72  # 71 -> 72: test_wp35_truth.cscript (WP-35 W0); 70 -> 71: test_wp34_truth.cscript (WP-34 W0); 68 -> 69: test_wp31_truth.cscript (WP-31 S01); 69 -> 70: test_wp33_truth.cscript (WP-33 33-01)
+        assert len(names) == len(set(names)) == 73  # 72 -> 73: test_wp36_truth.cscript (WP-36 W0); 71 -> 72: test_wp35_truth.cscript (WP-35 W0); 70 -> 71: test_wp34_truth.cscript (WP-34 W0); 68 -> 69: test_wp31_truth.cscript (WP-31 S01); 69 -> 70: test_wp33_truth.cscript (WP-33 33-01)
 
     def test_the_fixed_port_scripts_share_a_shard_for_every_n(self):
         rows = S.read_table(_runner())
@@ -100,7 +100,8 @@ class TestTheRealTable:
         assert [s for s, k in rows.items() if S.EVERY in k.values()] == [
             "test_wp30_truth.cscript", "test_wp31_truth.cscript",
             "test_wp33_truth.cscript", "test_wp34_truth.cscript",
-            "test_wp35_truth.cscript"]  # old -> new: plus wp35 (WP-35 W0)
+            "test_wp35_truth.cscript",  # old -> new: plus wp35 (WP-35 W0)
+            "test_wp36_truth.cscript"]  # old -> new: plus wp36 (WP-36 W0)
         with open(S.WP30, encoding="utf-8") as fh:
             text = fh.read()
         secs = S.wp30_seconds(text)
