@@ -26,8 +26,9 @@
 *!           msize(1e400): twoway accepts it, dash refuses it
 *!   HC2-07  start(): refused above the variable's minimum on histogram, with
 *!           twoway's own message; any number at or below it
-*!   HC2-08  kernel(), colpalette() and theme() are matched without regard to
-*!           case and normalised to lower case
+*!   HC2-08  kernel() with a capital and colpalette() are refused as twoway
+*!           refuses them (WP-35 DT-15); theme() is matched without regard
+*!           to case and normalised to lower case
 *!   HC2-09  scheme() takes a theme name, and an unknown scheme is refused
 *!           wherever it is written: on a graph, inside a segment, on
 *!           dash build and dash serve
@@ -41,8 +42,9 @@
 *!   HC2-14  the dash-own bounds with no second sentence, and twoway
 *!           accepting each value; the options twoway does not have
 *!   HC2-15  bands() 1 to 200 is twoway's own bound, twoway's message
-*!   HC2-16  values twoway refuses and dash accepts: kernel(GAUSSIAN),
-*!           a style option given (()), a string colorvar(); and a colour
+*!   HC2-16  values twoway refuses, which dash refuses too (WP-35 DT-15):
+*!           kernel(GAUSSIAN), a style option given (()), a string
+*!           colorvar(); and a colour
 *!           written with commas, which dash refuses, as twoway
 *!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
 *!           refuses; twoway has no theme() at all
@@ -394,10 +396,12 @@ _hc2_dash "HC2-04a" 0   `"dash scatter mpg weight, jitter(0) name(hc)"'
 _hc2_dash "HC2-04b" 0   `"dash scatter mpg weight, jitter(100) name(hc)"'
 // Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it.
 _hc2_dash "HC2-04c" 0 `"dash scatter mpg weight, jitter(100.5) name(hc)"'
-_hc2_dash "HC2-04d" 0   `"dash scatter mpg weight, malpha(100) lalpha(0) falpha(100) name(hc)"'
-_hc2_dash "HC2-04e" 198 `"dash scatter mpg weight, lalpha(101) name(hc)"'
-_hc2_dash "HC2-04f" 198 `"dash scatter mpg weight, falpha(-1) name(hc)"'
-_hc2_dash "HC2-04g" 198 `"dash scatter mpg weight, malpha(101) name(hc)"'
+// Flipped (WP-35 DT-15): a bound on malpha(), lalpha() and falpha() was wrong; twoway refuses the words themselves, and the maintainer
+// ruled that dash mirrors twoway (DECISIONS.md P4-7, P4-9).
+_hc2_dash "HC2-04d" 198 `"dash scatter mpg weight, malpha(100) lalpha(0) falpha(100) name(hc)"' "option malpha() not allowed"
+_hc2_dash "HC2-04e" 198 `"dash scatter mpg weight, lalpha(101) name(hc)"' "option lalpha() not allowed"
+_hc2_dash "HC2-04f" 198 `"dash scatter mpg weight, falpha(-1) name(hc)"' "option falpha() not allowed"
+_hc2_dash "HC2-04g" 198 `"dash scatter mpg weight, malpha(101) name(hc)"' "option malpha() not allowed"
 _hc2_dash "HC2-04h" 0   `"dash lfitci mpg weight, level(0.5) name(hc)"'
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-04i" 0   `"dash lfitci mpg weight, level(0) name(hc)"'
@@ -422,10 +426,12 @@ _hc2_dash "HC2-04x" 0   `"dash histogram mpg, bin(1000) name(hc)"'
 _hc2_dash "HC2-04y" 198 `"dash histogram mpg, bin(1001) name(hc)"'
 _hc2_dash "HC2-04z" 0   `"dash mband mpg weight, bands(1) name(hc)"'
 _hc2_dash "HC2-04A" 0   `"dash mband mpg weight, bands(200) name(hc)"'
-_hc2_dash "HC2-04B" 0   `"dash scatter mpg weight, colorvar(rep78) colornlevels(2) name(hc)"'
-_hc2_dash "HC2-04C" 0   `"dash scatter mpg weight, colorvar(rep78) colornlevels(256) name(hc)"'
-_hc2_dash "HC2-04D" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(257) name(hc)"'
-_hc2_dash "HC2-04E" 0   `"dash scatter mpg weight, jitter(1) jitterseed(0) jseed(0) name(hc)"'
+// Flipped (WP-35 DT-15): a bound on colornlevels() and jseed() was wrong; twoway refuses the words themselves, and the maintainer
+// ruled that dash mirrors twoway (DECISIONS.md P4-7, P4-9).
+_hc2_dash "HC2-04B" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(2) name(hc)"' "option colornlevels() not allowed"
+_hc2_dash "HC2-04C" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(256) name(hc)"' "option colornlevels() not allowed"
+_hc2_dash "HC2-04D" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(257) name(hc)"' "option colornlevels() not allowed"
+_hc2_dash "HC2-04E" 198 `"dash scatter mpg weight, jitter(1) jitterseed(0) jseed(0) name(hc)"' "option jseed() not allowed"
 _hc2_dash "HC2-04F" 0   `"dash scatter mpg weight, msize(-5) mlabel(make) mlabsize(-5) mlabgap(-5) mlabposition(-5) name(hc)"'
 _hc2_dash "HC2-04G" 0   `"dash bar mpg weight, fintensity(-5) name(hc)"'
 _hc2_dash "HC2-04H" 0   `"dash line mpg weight, lwidth(10000) name(hc)"'
@@ -465,10 +471,12 @@ _hc2_dash   "HC2-07d" 0   `"dash histogram mpg, start(12) name(hc)"'
 _hc2_dash   "HC2-07e" 0   `"dash histogram mpg, start(-1000) name(hc)"'
 
 // HC2-08 -- a word from a list, in any case.
-_hc2_dash "HC2-08a" 0 `"dash kdensity mpg, kernel(Epan2) name(hc)"'
-_hc2_reg  "HC2-08b" hc `""kernel":"epan2""'
-_hc2_dash "HC2-08c" 0 `"dash scatter mpg weight, colorvar(rep78) colpalette(MAGMA) name(hc)"'
-_hc2_reg  "HC2-08d" hc `""colpalette":"magma""'
+// Flipped (WP-35 DT-15): reading kernel(Epan2) and colpalette(MAGMA) in lower case was wrong; twoway refuses a capital in kernel() ("invalid kernel function") and colpalette() itself, and the maintainer
+// ruled that dash mirrors twoway (DECISIONS.md P4-7, P4-9).
+_hc2_dash "HC2-08a" 198 `"dash kdensity mpg, kernel(Epan2) name(hc)"' "invalid kernel function"
+_hc2_dash "HC2-08b" 198 `"dash kdensity mpg, kernel(Epan2) name(hc)"' "use kernel(epan2)"
+_hc2_dash "HC2-08c" 198 `"dash scatter mpg weight, colorvar(rep78) colpalette(MAGMA) name(hc)"' "option colpalette() not allowed"
+_hc2_dash "HC2-08d" 198 `"dash scatter mpg weight, colorvar(rep78) colpalette(MAGMA) name(hc)"' "use colorlist() or colorrule()"
 quietly dash clear
 quietly dash scatter mpg weight, name(hc)
 tempfile hc2mj hc2dj
@@ -568,10 +576,12 @@ _hc2_dash "HC2-14l" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"'
 // Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
 // twoway's code and words (value_truth.json, value_codes_truth.json).
 _hc2_dash "HC2-14E" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"' "bandwidth must be positive"
-_hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"'
-_hc2_tail "HC2-14n" colornlevels "" 1
-_hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"'
-_hc2_tail "HC2-14p" jseed "" -1
+// Flipped (WP-35 DT-15): dash's own bound on colornlevels() and jseed() was wrong; twoway refuses the words themselves, and the maintainer
+// ruled that dash mirrors twoway (DECISIONS.md P4-7, P4-9).
+_hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"' "option colornlevels() not allowed"
+_hc2_dash "HC2-14n" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"' "use colorlevels()"
+_hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"' "option jseed() not allowed"
+_hc2_dash "HC2-14p" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"' "use jitterseed()"
 _hc2_expect "HC2-14q" 0 `"twoway scatter mpg weight, jitter(101)"'
 _hc2_expect "HC2-14r" 0 `"twoway lfitci mpg weight, level(100)"'
 _hc2_expect "HC2-14s" 0 `"twoway lfitci mpg weight, level(0)"'
@@ -595,11 +605,14 @@ _hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
 // twoway's code and words (value_truth.json, value_codes_truth.json).
 _hc2_dash   "HC2-15d" 198 `"dash mband mpg weight, bands(201) name(hc)"' "bands must be between 1 and 200"
 
-// HC2-16 -- values twoway refuses and dash accepts (HC2-16a-n), and a
+// HC2-16 -- values twoway refuses, which dash refuses too since WP-35
+// DT-15 (HC2-16a-n), and a
 // colour written with commas, which dash refuses, as twoway (HC2-16o-q).
 _hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid kernel function"
-_hc2_dash   "HC2-16b" 0   `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"'
-_hc2_reg    "HC2-16c" hc `""kernel":"gaussian""'
+// Flipped (WP-35 DT-15): dash taking kernel(GAUSSIAN) was wrong; twoway refuses it, and the
+// maintainer ruled that dash refuses it as twoway does (DECISIONS.md P4-7).
+_hc2_dash   "HC2-16b" 198 `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"' "invalid kernel function"
+_hc2_dash   "HC2-16c" 198 `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"' "use kernel(gaussian)"
 _hc2_expect "HC2-16d" 198 `"twoway line mpg weight, lwidth(())"' "option(s) ( ) not allowed"
 // Flipped (WP-31 E4): an empty pair in a style list is refused in
 // twoway's words, as twoway refuses it (lwidth and msize are style lists).
@@ -608,11 +621,15 @@ _hc2_line_is "HC2-16f" "option(s) ( ) not allowed"
 _hc2_expect "HC2-16g" 198 `"twoway scatter mpg weight, msize(())"' "option(s) ( ) not allowed"
 _hc2_dash   "HC2-16h" 198 `"dash scatter mpg weight, msize(()) name(hc)"' "option(s) ( ) not allowed"
 _hc2_expect "HC2-16i" 198 `"twoway scatter mpg weight, xsize(())"' "option(s) ( ) not allowed"
-_hc2_dash   "HC2-16j" 0   `"dash scatter mpg weight, xsize(()) name(hc)"'
-_hc2_reg    "HC2-16k" hc `""xsize":"()""'
+// Flipped (WP-35 DT-15): dash taking xsize(()) was wrong; twoway refuses it, and the
+// maintainer ruled that dash refuses it as twoway does (DECISIONS.md P4-7).
+_hc2_dash   "HC2-16j" 198 `"dash scatter mpg weight, xsize(()) name(hc)"' "option(s) ( ) not allowed"
+_hc2_line_is "HC2-16k" "option(s) ( ) not allowed"
 _hc2_expect "HC2-16l" 7   `"twoway scatter mpg weight, colorvar(make)"' "found where numeric variable expected"
-_hc2_dash   "HC2-16m" 0   `"dash scatter mpg weight, colorvar(make) name(hc)"'
-_hc2_reg    "HC2-16n" hc `""colorvar":"make""'
+// Flipped (WP-35 DT-15): dash taking a string colorvar() was wrong; twoway refuses it, and the
+// maintainer ruled that dash refuses it as twoway does (DECISIONS.md P4-7).
+_hc2_dash   "HC2-16m" 7   `"dash scatter mpg weight, colorvar(make) name(hc)"' "found where numeric variable expected"
+_hc2_line_is "HC2-16n" "'make' found where numeric variable expected"
 _hc2_expect "HC2-16o" 198 `"twoway scatter mpg weight, mcolor(255,0,0)"'
 // WP-30 P1.13a: a colour written with commas is refused, as twoway
 // refuses it (invalid '0', r(198)), and no graph hc is registered.

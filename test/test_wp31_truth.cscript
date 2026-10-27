@@ -3409,16 +3409,18 @@ if inlist("`only'", "", "S17") & `: list posof "S17" in w31_run' {
     _w31_done U17-02 "colorlist(red blue) on five levels: red, then blue four times, as twoway draws"
 
     // ------------------------------------------------------------
-    // U17-03: colorformissing() is taken in silence; colormissing() is
-    // dash's own, which twoway refuses (R04).
+    // U17-03: colorformissing() is taken in silence; colormissing(),
+    // which twoway refuses (R04), dash refuses too (WP-35 DT-15).
     // ------------------------------------------------------------
     _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colorformissing(gray) name(zu3)
     _w31_expect U17-03 "(r(rc) == 0 & r(note) == 0)" "colorformissing(): dash rc `r(rc)', note `r(note)'"
+    // Flipped (WP-35 DT-15): dash taking colormissing() was wrong; twoway
+    // refuses it, and the maintainer ruled that dash mirrors twoway (P4-7).
     _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colormissing(gray) name(zu3)
-    _w31_expect U17-03 "(r(rc) == 0)" "colormissing(): dash rc `r(rc)'"
+    _w31_expect U17-03 "(r(rc) == 198)" "colormissing(): dash rc `r(rc)'"
     capture twoway scatter mpg weight, colorvar(rep78) colormissing(red) nodraw
     _w31_expect U17-03 "(_rc == 198)" "twoway colormissing(): r(`=_rc')"
-    _w31_done U17-03 "colorformissing() taken in silence; colormissing() dash's own, refused by twoway"
+    _w31_done U17-03 "colorformissing() taken in silence; colormissing() refused by twoway and dash"
 
     // ------------------------------------------------------------
     // U17-04: refusals in twoway's rc and words: coloruseplegend without
@@ -10846,7 +10848,7 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
 
     // U41-15: la() .. lalign() are lalign() in both (live twoway rc and
     // its align setting beside dash's rc and spec); lalp() is twoway's
-    // r(198) and dash's own lalpha().
+    // r(198) and dash's too (WP-35 DT-15).
     local bad ""
     local k 150
     foreach ab in la lal lali lalig lalign {
@@ -10866,12 +10868,14 @@ if inlist("`only'", "", "S41") & `: list posof "S41" in w31_run' {
     capture twoway line mpg weight, sort lalp(50)
     local trc = _rc
     dash clear
+    // Flipped (WP-35 DT-15): dash reading lalp() as its lalpha() was
+    // wrong; twoway refuses it, and the maintainer ruled that dash mirrors
+    // twoway (DECISIONS.md P4-7).
     capture dash line mpg weight, sort lalp(50) name(zu41159)
     local drc = _rc
-    mata: st_local("dhas", strofreal(strpos(st_global("dash_json_zu41159"), char(34) + "lalpha" + char(34) + ":" + char(34) + "50" + char(34)) > 0))
-    if `trc' != 198 | `drc' | !`dhas' local bad `"`bad' [lalp: twoway `trc', dash `drc' `dhas']"'
+    if `trc' != 198 | `drc' != 198 local bad `"`bad' [lalp: twoway `trc', dash `drc']"'
     _w31_expect U41-15 `"(`"`bad'"' == "")"' `"`bad'"'
-    _w31_done U41-15 "la() lal() lali() lalig() lalign() are lalign(), as twoway reads them; lalp() is dash's lalpha()"
+    _w31_done U41-15 "la() lal() lali() lalig() lalign() are lalign(), as twoway reads them; lalp() is refused by both"
     display as text "S41 end " c(current_date) " " c(current_time)
 }
 * ==== end S41 ====

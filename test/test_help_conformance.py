@@ -430,6 +430,21 @@ def _spelling_truth():
         return json.load(fh)
 
 
+def _dashonly_refused():
+    """Every spelling of _dash_dashonly_list() (dash_parse.mata), from its
+    minimum to its full name: the spellings twoway refuses that dash took,
+    refused since WP-35 DT-15 as twoway refuses them (DECISIONS.md P4-7,
+    D53).  The help names them only in the dashonly paragraph, to say so."""
+    src = open(_MATA, encoding="utf-8").read()
+    i = src.index("string matrix _dash_dashonly_list()")
+    body = src[i:src.index("\n}\n", i)]
+    out = set()
+    for full, mn in re.findall(
+            r'"([^"]*)", "([^"]*)", "[^"]*", "[^"]*", "[^"]*"', body):
+        out |= {full[:L] for L in range(len(mn), len(full) + 1)}
+    return out
+
+
 def _fold_aliases():
     """``{alias: {target, ...}}`` for every option dash.ado folds into another.
 
@@ -648,10 +663,14 @@ class TestTheParsersFoundSomething:
         # list (read as msymbol()); subchar() left it and joined the
         # synopts (stat:PT-6), one for one.
         # 265 -> 266: syn:SD-22 the contour note defines levels() (WP-35 35-06).
+        # 265 -> 237: WP-35 DT-15 the definitions of the 28 options twoway
+        # refuses that dash took (ytitle2() .. ttitle2(), malpha(), lalpha(),
+        # falpha(), jseed(), marker(), plotbgcolor(), colpalette(),
+        # colornlevels(), colormissing()) leave the help: dash refuses them.
         # 266 -> 265: WP-35 stat:PT-8 weight leaves the Unsupported list
         # (lowess weight taken silently).
-        assert len(found) == 265, (
-            f"{len(found)} options parsed out of dash.sthlp, 265 measured "
+        assert len(found) == 237, (
+            f"{len(found)} options parsed out of dash.sthlp, 237 measured "
             f"21oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -938,11 +957,15 @@ class TestTheParsersFoundSomething:
         # 476 -> 477: WP-35 stat:PT-6 the subchar(name) synopt
         # 477 -> 478: syn:SD-22 the Differences entry contour with levels()
         # (WP-35 35-06)
-        assert len(defs) == 478, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 478 "
+        # 478 -> 450: WP-35 DT-15 the entries of the 28 refused options leave.
+        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
             f"measured 26oct2026")
-        assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
-                   for t in defs), "no entry holds plotbgcolor() and pbgc()"
+        # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
+        # the help, as dash refuses both as twoway refuses them (P4-7).
+        assert not any("pbgc" in _option_tokens(t) for t in defs), (
+            "an entry still defines pbgc()")
+        assert any("plotregion" in _option_tokens(t) for t in defs)
         assert not any("dcount" in _option_tokens(t) for t in defs), (
             "the KPI statistic table was read as option entries")
         assert any(k == "prose" for k, _, _ in entries)
@@ -992,8 +1015,10 @@ class TestTheParsersFoundSomething:
         # 12 claims.  One written "Also {cmd:yti2()}" rather than
         # "Synonym: {cmd:yti2()}" is no claim the reader takes: 11, above
         # "8", and never checked against what dash takes.
-        assert len(claims) == 12, f"{len(claims)} synonym claims read, 12 measured"
-        assert ("pbgc", "plotbgcolor") in claims
+        # 12 -> 2: WP-35 DT-15 the synonym claims of yti2() .. xsc2(),
+        # cv(), colv(), pbgc() and jseed() leave the help: dash refuses them.
+        assert len(claims) == 2, f"{len(claims)} synonym claims read, 2 measured"
+        assert ("pbgc", "plotbgcolor") not in claims
         assert ("plotr", "plotregion") in claims
 
 
@@ -1097,6 +1122,9 @@ class TestEveryDashOnlyOptionIsDocumented:
         # argument form -- the user types table(rows(#) open), which the
         # Data tables entry defines; no command is written as table2().
         internal = {"table2"}
+        # WP-35 DT-15: the spellings twoway refuses that dash took are
+        # refused as twoway refuses them; the dashonly paragraph says so.
+        internal |= _dashonly_refused()
         h = _help_text()
         assert "{opt table(rows(#) open)}" in h
         sec = h[h.index("{marker unsupported}"):h.index("{marker dependencies}")]
@@ -1127,6 +1155,11 @@ class TestEveryDashOnlySpellingIsNamed:
     def test_every_fold_twoway_does_not_take_is_named_beside_its_option(self):
         bad, unmeasured = [], []
         for alias, targets in sorted(_fold_aliases().items()):
+            # WP-35 DT-15: a fold of a spelling dash refuses as twoway does
+            # is never reached by a typed word, so the help names it only
+            # as refused (the dashonly paragraph).
+            if alias in _dashonly_refused():
+                continue
             for target in sorted(targets):
                 verdict = _twoway_takes(alias, target)
                 if verdict is None:
@@ -1420,4 +1453,7 @@ class TestInternalLinksResolve:
         # entry links its contour note, dash##contour_unknown (WP-35 35-06).
         # 127 -> 128 links: basic:PT-13 the Option values paragraph links
         # Resource limits for bin() and n() (WP-35 35-05).
-        assert len(refs) == 128 and len(set(refs)) == 48
+        # 128 -> 132 links, 48 -> 49 targets: WP-35 DT-15 the Option values
+        # paragraph, the Differences entry, hover()'s entry and the Data
+        # tables section link dash's own options, dash##dashonly.
+        assert len(refs) == 132 and len(set(refs)) == 49

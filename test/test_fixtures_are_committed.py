@@ -303,6 +303,7 @@ GENERATORS = {
     "corpus_guard_truth.json": "scripts/extract_corpus_guard_truth.do",
     "corpus_ledger.json": "scripts/corpus/ledger.py",
     "corpus_verdict_rules.json": "scripts/corpus/calibrate.py",
+    "dash_only_words_truth.json": "scripts/extract_dash_only_truth.do",
     "data_locale_truth.json": "scripts/extract_data_locale_truth.do",
     "date_axes_truth.json": "scripts/extract_date_axes_truth.do",
     "date_axis_truth.json": "scripts/extract_date_axis_truth.do",

@@ -499,6 +499,19 @@ def a_mode(name):
     """The A1/A2 mode: a known landing difference runs unasserted."""
     return "known" if name in KNOWN_LAND else "ok"
 
+# WP-35 DT-15: the spellings twoway refuses that dash took are refused now,
+# r(198), as twoway refuses them (DECISIONS.md P4-7, D53): every spelling of
+# _dash_dashonly_list() (dash_parse.mata), from its minimum to its full name.
+with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(FX)))), "dash_parse.mata"), encoding="utf-8") as _fh:
+    _zqa_src = _fh.read()
+_zqa_i = _zqa_src.index("string matrix _dash_dashonly_list()")
+DASHONLY = set()
+for _full, _mn in re.findall(r'"([^"]*)", "([^"]*)", "[^"]*", "[^"]*", "[^"]*"',
+                             _zqa_src[_zqa_i:_zqa_src.index("\n}\n", _zqa_i)]):
+    for _L in range(len(_mn), len(_full) + 1):
+        DASHONLY.add(_full[:_L])
+
 CASES = []
 def add(grp, ident, cmd, keys="", ptype="", optname="", mode="ok"):
     CASES.append({"g": grp, "i": ident, "c": cmd, "k": keys,
@@ -669,8 +682,10 @@ for ab in sorted(RES):
 
 # ---- R1: every full option name ---------------------------------------
 for name in DASH_PLOT_KEYS + DASH_GRAPH_KEYS:
+    # Flipped (WP-35 DT-15): a spelling twoway refuses is refused, r(198).
     add("R1", name + "()", opt_cmd(name, name),
-        keys=spec_key(name), optname=name)
+        keys=spec_key(name), optname=name,
+        mode="refused" if name in DASHONLY else "ok")
 
 # recastas() and type() are recast()'s synonyms (WP-30 P1.8b): each
 # spelling twoway takes lands on recast (test_twoway_option_parity.cscript
@@ -685,7 +700,12 @@ for ab in sorted(MATA_OPT_ALIAS):
     tgt = MATA_OPT_ALIAS[ab]
     sr  = (RES.get(ab) or {}).get("stata_resolves_to")
     mismapped = bool(sr) and sr != tgt
-    if tgt.startswith(ab) and not mismapped:
+    if ab in DASHONLY:
+        # Flipped (WP-35 DT-15): dash's synonym of a twoway option, which
+        # twoway refuses, is refused, r(198), as twoway refuses it (P4-7).
+        add("R2", ab + "() refused", opt_cmd(ab, tgt), optname=tgt,
+            mode="refused")
+    elif tgt.startswith(ab) and not mismapped:
         add("R2", ab + "() -> " + tgt + "()", opt_cmd(ab, tgt),
             keys=spec_key(tgt), optname=tgt)
     else:
@@ -847,6 +867,9 @@ forvalues i = 1/`zqa_ncase' {
         // A known difference of test_abbreviations.py's ABBREV_KNOWN
         // (WP-33 syn:SD-20): run, not asserted; the pytest side holds the
         // list to the record.
+    }
+    else if "`mode'" == "refused" {
+        if `rc' != 198 local bad1 = 1
     }
     else if "`mode'" == "nosilent" {
         if `rc' == 0 {
@@ -1031,8 +1054,11 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
 // 170 -> 169: WP-31 A3b, nam() is dash kpi's only (A8), not a graph's.
 // 169 -> 171 (A4b 4 -> 6): WP-31 H2l documents dash build's br() and
 // brush().
-if ${ZQA_NDOC} != 171 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 6 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (171 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 171 -> 157: WP-35 DT-15, malpha() lalpha() falpha() jseed() colpalette()
+// colornlevels() colormissing() leave the help with their minimums (14):
+// dash refuses them as twoway refuses them (P4-7).
+if ${ZQA_NDOC} != 157 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 6 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (157 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }

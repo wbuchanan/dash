@@ -209,16 +209,24 @@ assert "`s(falpha)'"  == "0.4"
 display "P1A-44 PASS: fa and fc resolved by syntax to falpha/fcolor"
 
 // ================================================================
-// P1A-45 — fa() works on histogram in a compound spec (end-to-end)
+// P1A-45 — fa() on histogram in a compound spec (end-to-end)
 // (regression: histogram, fc(ltblue) fa(0.4) previously error-ed)
+// Flipped (WP-35 DT-15): fa() accepted was wrong; twoway refuses it,
+// "option fa() not allowed", and the maintainer ruled that dash mirrors
+// twoway (DECISIONS.md P4-7, D53); the parser still reads it (P1A-44),
+// so dash's own refusal comes before.  fcolor(ltblue%40) is twoway's.
 // ================================================================
 sysuse auto, clear
 dash clear
 capture {
     dash (histogram mpg, fc(ltblue) fa(0.4)) (kdensity mpg), name(u3)
 }
+assert _rc == 198
+capture {
+    dash (histogram mpg, fc(ltblue%40)) (kdensity mpg), name(u3)
+}
 assert _rc == 0
-display "P1A-45 PASS: fa() accepted on histogram in compound spec"
+display "P1A-45 PASS: fa() refused on histogram in a compound spec; fc(ltblue%40) accepted"
 dash clear
 
 // ================================================================

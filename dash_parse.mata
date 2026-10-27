@@ -109,6 +109,14 @@
 *!       blanks outside parentheses, "quotes" and compound quotes (WP-31
 *!       B4b, read by dash.ado's _dash_contour_split).
 *!
+*!   _dash_dashonly_typed(text, inp)
+*!       "<row>|<index>|<hint>|<name>|<word>" for the first spelling of
+*!       text that twoway refuses and dash once took (WP-35 DT-15), or "".
+*!
+*!   _dash_dashonly_say(hit, toks)
+*!       Refuses that hit as twoway refuses it, then names twoway's
+*!       spelling (P4-9); r(198).
+*!
 *!   _dash_omit_pair(opts, ptypes)
 *!       twoway's message word for two omit options in one command
 *!       (omitanymissomitallmiss), "" when it takes them (WP-35
@@ -9019,6 +9027,7 @@ string scalar _dash_p_seg(string scalar opts, string scalar ptype,
         }
     }
     for (k = 1; k <= rows(P); k++) st_local("_pa_v" + strofreal(k), P[k, 2])
+    for (k = 1; k <= rows(P); k++) st_local("_pa_k" + strofreal(k), P[k, 1])
     st_local("_pa_nv", strofreal(rows(P)))
     st_local("_pm_named", "")
     if (rows(P)) rest = _dash_p_merge(rest, P, n)
@@ -9046,6 +9055,185 @@ void _dash_p_unknown(string scalar unk, string scalar ptype)
     if (bad == "") return
     _dash_say("err", "option(s) ", substr(bad, 1, 80), " not allowed")
     exit(198)
+}
+
+// ============================================================
+// The spellings dash took and twoway refuses (WP-35 DT-15).  The
+// maintainer ruled (DECISIONS.md P4-7, D53): unless an option is specific
+// to what only dash does (hover(), table), its syntax mirrors twoway's, so
+// each spelling below is refused as twoway refuses it, "option <word>()
+// not allowed", r(198), and a second line names twoway's spelling (P4-9).
+// Measured 27oct2026, test/fixtures/dash_only_words_truth.json
+// (scripts/extract_dash_only_truth.do); the words are pinned to
+// test/dash_only_rulings.py by test/test_dash_only_words.py.
+
+// _dash_dashonly_list() -- one row per refused word: its full name, dash's
+// minimum spelling (the capitals of its declaration), "1" when it takes a
+// value, the hint line, and "1" when twoway refuses it inside a p<k>()
+// text too ("0": twoway takes marker() there as its markerstyle option,
+// the fixture's p.marker).  The declarations and folds stay:
+// _dash_route_axis2 writes ytitle2() .. for ytitle(..., axis(2)).
+string matrix _dash_dashonly_list()
+{
+    return(("ytitle2", "ytitle2", "1", "use ytitle(..., axis(2))", "1" \
+            "ylabel2", "ylabel2", "1", "use ylabel(..., axis(2))", "1" \
+            "yscale2", "yscale2", "1", "use yscale(..., axis(2))", "1" \
+            "xtitle2", "xtitle2", "1", "use xtitle(..., axis(2))", "1" \
+            "xlabel2", "xlabel2", "1", "use xlabel(..., axis(2))", "1" \
+            "xscale2", "xscale2", "1", "use xscale(..., axis(2))", "1" \
+            "yti2", "yti2", "1", "use ytitle(..., axis(2))", "1" \
+            "yla2", "yla2", "1", "use ylabel(..., axis(2))", "1" \
+            "ysc2", "ysc2", "1", "use yscale(..., axis(2))", "1" \
+            "xti2", "xti2", "1", "use xtitle(..., axis(2))", "1" \
+            "xla2", "xla2", "1", "use xlabel(..., axis(2))", "1" \
+            "xsc2", "xsc2", "1", "use xscale(..., axis(2))", "1" \
+            "ytick2", "ytick2", "1", "use ytick(..., axis(2))", "1" \
+            "xtick2", "xtick2", "1", "use xtick(..., axis(2))", "1" \
+            "yline2", "yline2", "1", "use yline(..., axis(2))", "1" \
+            "xline2", "xline2", "1", "use xline(..., axis(2))", "1" \
+            "ymtick2", "ymtick2", "1", "use ymtick(..., axis(2))", "1" \
+            "ymlabel2", "ymlabel2", "1", "use ymlabel(..., axis(2))", "1" \
+            "xmtick2", "xmtick2", "1", "use xmtick(..., axis(2))", "1" \
+            "xmlabel2", "xmlabel2", "1", "use xmlabel(..., axis(2))", "1" \
+            "tlabel2", "tlabel2", "1", "use tlabel(..., axis(2))", "1" \
+            "ttick2", "ttick2", "1", "use ttick(..., axis(2))", "1" \
+            "tline2", "tline2", "1", "use tline(..., axis(2))", "1" \
+            "tscale2", "tscale2", "1", "use tscale(..., axis(2))", "1" \
+            "ttitle2", "ttitle2", "1", "use ttitle(..., axis(2))", "1" \
+            "marker", "marker", "1", "use msymbol()", "0" \
+            "malpha", "mal", "1", "use mcolor(<color>%<#>)", "1" \
+            "lalpha", "lalp", "1", "use lcolor(<color>%<#>)", "1" \
+            "falpha", "fa", "1", "use fcolor(<color>%<#>)", "1" \
+            "jseed", "jse", "1", "use jitterseed()", "1" \
+            "mlg", "mlg", "1", "use mlabgap()", "1" \
+            "cv", "cv", "1", "use colorvar()", "1" \
+            "colv", "colv", "1", "use colorvar()", "1" \
+            "colornlevels", "colorn", "1", "use colorlevels()", "1" \
+            "colormissing", "colorm", "1", "use colorformissing()", "1" \
+            "plotbgcolor", "plotbgcolor", "1", "use plotregion(fcolor())", "1" \
+            "pbgc", "pbgc", "1", "use plotregion(fcolor())", "1" \
+            "colpalette", "colpal", "1", "use colorlist() or colorrule()", "1"))
+}
+
+// _dash_dashonly_typed(text, inp) -- the first word of the option text
+// text, as typed, that is a spelling of _dash_dashonly_list() (from its
+// minimum to its full name, lower case as twoway reads it), or "" for
+// none.  Read by value.  Counted are the option words (_dash_rep_optname
+// non-empty) other than p<k>() (taken out before the parse, so the count
+// is the same with or without them).  inp 1: text is a p<k>() text, and
+// the rows twoway takes there are skipped.  Returns "<row>|<index>|<hint>|
+// <name as twoway names it>|<word as typed>", <index> the hit's place
+// among the counted words, the word cut to 80 characters; sets the
+// caller's locals _do_pre (the counted words before the hit, one blank
+// between them) and _do_all (every hit word, cut to 80 characters, in
+// typed order, one blank between them; with inp 1 each written as
+// twoway's p# line writes it: a blank inside its parentheses between two
+// characters other than "(" and ")" doubled, the fixture's p.ylabel2 and
+// space.run).
+string scalar _dash_dashonly_typed(string scalar text, real scalar inp)
+{
+    string matrix    t
+    string rowvector toks
+    string scalar    nm, first, pre, all, w
+    real scalar      i, r, k, L, hit
+
+    st_local("_do_pre", "")
+    st_local("_do_all", "")
+    if (strtrim(text) == "") return("")
+    t     = _dash_dashonly_list()
+    toks  = _dash_rep_toks(text, 0)
+    first = ""
+    pre   = ""
+    all   = ""
+    k     = 0
+    for (i = 1; i <= cols(toks); i++) {
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "") continue
+        if (ustrregexm(toks[i], "^p[1-9][0-9]*\(")) continue
+        k++
+        L   = strlen(nm)
+        hit = 0
+        for (r = 1; r <= rows(t); r++) {
+            if (inp & t[r, 5] == "0") continue
+            if (L >= strlen(t[r, 2]) & L <= strlen(t[r, 1]) &
+                substr(t[r, 1], 1, L) == nm) {
+                hit = r
+                break
+            }
+        }
+        if (!hit) {
+            if (first == "") pre = pre + (pre == "" ? "" : " ") + toks[i]
+            continue
+        }
+        w = (inp ? _dash_dashonly_blanks(toks[i]) : toks[i])
+        all = all + (all == "" ? "" : " ") + substr(w, 1, 80)
+        if (first != "") continue
+        first = strofreal(hit) + "|" + strofreal(k) + "|" + t[hit, 4] + "|" +
+                nm + (strpos(toks[i], "(") ? "()" : "") + "|" +
+                substr(toks[i], 1, 80)
+    }
+    st_local("_do_pre", pre)
+    st_local("_do_all", all)
+    return(first)
+}
+
+// _dash_dashonly_say(hit, toks) -- refuses the hit _dash_dashonly_typed
+// returned, r(198): twoway's line, "option <name> not allowed", or with
+// toks (the p#() words, as twoway lists them) "option(s) <toks> not
+// allowed", then the hint line naming twoway's spelling (P4-9), and
+// nothing else.
+void _dash_dashonly_say(string scalar hit, string scalar toks)
+{
+    string rowvector f
+    string scalar    rest
+    real scalar      i, q
+
+    f    = J(1, 4, "")
+    rest = hit
+    for (i = 1; i <= 4; i++) {
+        q = strpos(rest, "|")
+        if (!q) break
+        f[i] = substr(rest, 1, q - 1)
+        rest = substr(rest, q + 1, .)
+    }
+    if (toks != "") _dash_say("err", "option(s) ", toks, " not allowed")
+    else _dash_say("err", "option ", f[4], " not allowed")
+    if (f[3] != "") _dash_say("err", "      ", f[3], "")
+    exit(198)
+}
+
+// _dash_dashonly_blanks(w) -- the option word w as twoway's p# line
+// writes it: each run of blanks inside its parentheses that lies between
+// two characters other than "(" and ")" gains one blank (measured
+// 27oct2026: ylabel2(10 20) is written ylabel2(10  20), ytitle2(a   b)
+// ytitle2(a    b), mlg( 2 ) as typed; dash_only_words_truth.json).
+string scalar _dash_dashonly_blanks(string scalar w)
+{
+    string scalar out, c, prev
+    real scalar   i, j, n, p
+
+    p = strpos(w, "(")
+    if (!p) return(w)
+    n    = strlen(w)
+    out  = substr(w, 1, p)
+    prev = "("
+    i    = p + 1
+    while (i <= n) {
+        c = substr(w, i, 1)
+        if (c != " ") {
+            out  = out + c
+            prev = c
+            i++
+            continue
+        }
+        j = i
+        while (j <= n & substr(w, j, 1) == " ") j++
+        out = out + substr(w, i, j - i)
+        if (prev != "(" & prev != ")" & j <= n & substr(w, j, 1) != ")" &
+            substr(w, j, 1) != "(") out = out + " "
+        i = j
+    }
+    return(out)
 }
 
 // _dash_tw_silent_tab() -- the options dash names in its note as not

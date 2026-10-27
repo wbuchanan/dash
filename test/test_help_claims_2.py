@@ -266,8 +266,11 @@ class TestTheHelpSaysWhatWasMeasured:
         hover() are not twoway options."""
         v = self._values()
         assert "{cmd:colornlevels()} 2 to 256, {cmd:jitter()}" not in v
-        assert ("{cmd:colornlevels()}, {cmd:colpalette()} and {cmd:hover()} "
-                "are options {cmd:twoway} does not have") in v
+        # Flipped (WP-35 DT-15): colornlevels(), colpalette(), jseed() and
+        # malpha() named as dash's own was wrong; twoway refuses them, and
+        # so does dash (DECISIONS.md P4-7); hover() is dash's own.
+        assert "{cmd:colornlevels()}" not in v
+        assert ("{cmd:hover()} is an option {cmd:twoway} does not have") in v
 
     def test_the_forms_dash_refuses_are_named(self):
         """HC2-18."""
@@ -288,11 +291,15 @@ class TestTheHelpSaysWhatWasMeasured:
         TestAColourWrittenWithCommasIsRefusedInStata."""
         v = self._values()
         assert "Two values {cmd:twoway} refuses" not in v
-        for s in ("{cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}",
-                  # Flipped (WP-31 E4): lwidth(()) and msize(()) are
-                  # style lists, refused as twoway refuses them.
-                  "as {cmd:xsize(())} ({cmd:twoway}:",
-                  "{cmd:colorvar()} takes a string variable",
+        # Flipped (WP-35 DT-15): kernel(GAUSSIAN), xsize(()) and a string
+        # colorvar() accepted was wrong; twoway refuses them, and so does
+        # dash now (DECISIONS.md P4-7).
+        assert "{cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}" not in v
+        assert "{cmd:colorvar()} takes a string variable" not in v
+        for s in ("These values are refused as {cmd:twoway} refuses them:",
+                  "{cmd:kernel(GAUSSIAN)}, {cmd:invalid kernel function}",
+                  "{cmd:xsize(())} and {cmd:ysize(())}",
+                  "a string {cmd:colorvar()}, r(7)",
                   "{cmd:mcolor(255,0,0)}"):
             assert s in v, s
 

@@ -88,23 +88,24 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
 # jitterseed() and barwidth() take what twoway takes, mband's n() any
 # integer up to 10000 (D61) -- and lwidth(), mlwidth(), msangle() bounded
 # only where twoway refuses (value_codes_truth.json per_type).
+# Flipped (WP-35 DT-15): the rules of jseed(), malpha(), lalpha(),
+# falpha(), colornlevels() and colpalette() leave the table -- twoway
+# refuses each word, and so does dash, before any value is read (P4-7).
 CONTRACT_PLOT_RULES = """
 msize=style  mlabsize=style  mlabgap=style
 lwidth=style,0,10000,u@area|bar|connected|contour|dropline|fpfit|fpfitci|function|histogram|kdensity|lfit|lfitci|line|lowess|lpoly|lpolyci|mband|mspline|pcarrow|pcarrowi|pcbarrow|pccapsym|pci|pcscatter|pcspike|qfit|qfitci|rarea|rbar|rcap|rcapsym|rconnected|rline|rpcap|rpspike|rspike|spike|tsline|tsrline  lwidth=style
 mlwidth=style,0,10000,u@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  mlwidth=style
 msangle=style,-360,360@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  msangle=style
 mlabposition=style  fintensity=style
-jitter=style  jitterseed=style  jseed=int,0
+jitter=style  jitterseed=style
 yaxis=axes,1,9  xaxis=axes,1,9
-malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=num  level=num@lfitci|qfitci|fpfitci
 degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
 n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci
 n=int,,10000@mband  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
-colornlevels=int,2,256
-colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
+colorlevels=int
 colorcuts=numlist,1  colorvar=var  mlabel=var
 range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2
 """
@@ -265,7 +266,10 @@ class TestTheTableIsWellFormed:
         # 45 -> 49: basic:PT-13 bounds lifted, widths where drawn (WP-35:
         # lwidth, mlwidth and msangle each a where-drawn token and an
         # unbounded one; mband's n() its own token).
-        assert len(want) == 49, "the contract text above lost a token"
+        # 49 -> 44: DT-15 refused words -- the six tokens of jseed(), malpha(),
+        # lalpha(), falpha(), colornlevels() and colpalette() leave (WP-35);
+        # colorlevels=int, already in dash.ado, joins the contract text.
+        assert len(want) == 44, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 
@@ -1424,8 +1428,9 @@ class TestUserTextIsEchoedThroughDashDisplay:
 _FIXTURE = os.path.join(_HERE, "fixtures", "value_truth.json")
 
 # Options twoway does not have, so the oracle cannot speak for them.
-_DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
-              "colpalette", "colorcuts", "colorvar", "hover",
+# Flipped (WP-35 DT-15): jseed, malpha, lalpha, falpha, colornlevels and
+# colpalette left with their rules -- dash refuses each word as twoway does.
+_DASH_ONLY = {"colorcuts", "colorvar", "hover",
               # dash's spellings of xlabel(..., axis(2)): the fixture's
               # xlabel2_1-3/ylabel2_1-3 record twoway's "option xlabel2()
               # not allowed" for every value (30sep2026).

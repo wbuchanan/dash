@@ -1293,6 +1293,43 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {
 }
 * ==== end S06 ====
 
+* ==== S07 DT-15: dash-only words per ruling ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S07") & `: list posof "S07" in w35_run' {
+    display as text "S07 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3507-2 (WP-35 DT-15; DECISIONS.md P4-7): hover() and table, which
+    // only a dashboard has, are kept -- twoway refuses both
+    // (dash_only_words_truth.json hover, table) and dash registers them,
+    // rc 0 -- and twoway's own spelling of a second axis's title,
+    // ytitle(T, axis(2)), registers and reaches the spec (ytitle2, the
+    // key _dash_route_axis2 writes), where ytitle2(T) is refused.
+    // ------------------------------------------------------------
+    quietly sysuse auto, clear
+    foreach s07c in "scatter mpg weight, hover(make)" "scatter mpg weight, table" "scatter mpg weight, hov(make price)" {
+        capture dash clear
+        capture noisily dash `s07c' name(s07g)
+        local s07r = _rc
+        mata: st_local("s07n", strofreal(st_global("dash_json_s07g") != ""))
+        _w35_expect Q3507-2 "(`s07r' == 0 & `s07n' == 1)" "`s07c': dash rc `s07r', registered `s07n'"
+    }
+    capture dash clear
+    capture noisily dash (line mpg weight) (line price weight, yaxis(2)), ytitle(T, axis(2)) name(s07g)
+    local s07r = _rc
+    mata: st_local("s07k", strofreal(strpos(st_global("dash_json_s07g"), char(34) + "ytitle2" + char(34) + ":") > 0))
+    _w35_expect Q3507-2 "(`s07r' == 0 & `s07k' == 1)" "ytitle(T, axis(2)): dash rc `s07r', ytitle2 in the spec `s07k'"
+    capture dash clear
+    capture noisily dash (line mpg weight) (line price weight, yaxis(2)), ytitle2(T) name(s07g)
+    local s07r = _rc
+    _w35_expect Q3507-2 "(`s07r' == 198)" "ytitle2(T): dash rc `s07r', twoway r(198)"
+    capture dash clear
+    _w35_done Q3507-2 "hover() and table kept; ytitle(T, axis(2)) drawn; ytitle2() refused"
+
+    display as text "S07 end " c(current_date) " " c(current_time)
+}
+* ==== end S07 ====
+
 * ==== S09 plot:PT-3: plot-type names in lower case only ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S09") & `: list posof "S09" in w35_run' {

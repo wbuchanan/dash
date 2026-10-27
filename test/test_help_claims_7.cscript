@@ -36,16 +36,15 @@
 *!   HC7-04  plotregion(color("255 0 0")) and graphregion(fcolor("0 0
 *!           255")) reach the spec with their quotes and the saved page
 *!           with the colour, and the render names no unknown colour.
-*!   HC7-05  the dash-only options and alias spellings of these sections
-*!           are refused by twoway (r(198)) and accepted by dash, which
-*!           writes the full option; bgcolor() and bgc(), colorv(),
+*!   HC7-05  the dash-only spellings of these sections are refused by
+*!           twoway (r(198)) and by dash (WP-35 DT-15), but hover(), which
+*!           dash keeps; bgcolor() and bgc(), colorv(),
 *!           plotr() and graphr() are twoway's own and accepted by both.
-*!   HC7-06  a string colorvar(): twoway refuses it (r(7)); dash draws one
-*!           colour per value on the saved page.
-*!   HC7-07  jitter(), jitterseed(), jseed(), msangle(), malpha(),
-*!           lalpha() and falpha() are never named in the note on the
-*!           types that draw them.
-*!   HC7-08  ylabel2(), yscale2(), xtick() beside xlabel() reach the spec
+*!   HC7-06  a string colorvar(): twoway and dash refuse it (r(7)).
+*!   HC7-07  jitter(), jitterseed(), msangle() and a colour's opacity
+*!           (mcolor(%50)) are never named in the note on the types that
+*!           draw them.
+*!   HC7-08  ylabel(, axis(2)), yscale(, axis(2)), xtick() beside xlabel() reach the spec
 *!           exactly as written, for the renderer's grammar.
 *!   HC7-09  adversarial (CLAUDE.md rule 18) for the legend() check: SMCL
 *!           in a label beside a refused keyword is not rendered, a legend()
@@ -310,12 +309,14 @@ foreach tt of local types {
 }
 quietly tsset, clear
 // The companions, kept with colorvar() and named nowhere ...
-_zh7_run `"dash line mpg weight, colorvar(price) colordiscrete colorcuts(5000 10000) colpalette(magma) colornlevels(4) colormissing(red) name(zq7)"' "`logfile'"
+// WP-35 DT-15: in twoway's spellings -- colpalette() and colornlevels()
+// are refused as twoway refuses them, colormissing() is colorformissing().
+_zh7_run `"dash line mpg weight, colorvar(price) colordiscrete colorcuts(5000 10000) colorformissing(red) name(zq7)"' "`logfile'"
 if r(rc) != 0 | r(note) {
     display as error "HC7-02 FAIL: the companions on line, rc `r(rc)', note `r(note)'"
     local bad = 1
 }
-foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing {
+foreach o in colorvar colordiscrete colorcuts colormissing {
     _zh7_has zq7 `o'
     if !r(found) {
         display as error "HC7-02 FAIL: `o'() on line is not in the spec"
@@ -323,21 +324,21 @@ foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissi
     }
 }
 // ... and, as twoway, nothing is said where colorvar() is not given ...
-_zh7_run `"dash scatter mpg weight, colpalette(magma) colornlevels(4) name(zq7)"' "`logfile'"
+_zh7_run `"dash scatter mpg weight, colorlevels(4) name(zq7)"' "`logfile'"
 if r(rc) != 0 | r(note) {
     display as error "HC7-02 FAIL: companions without colorvar(): rc `r(rc)', note `r(note)'"
     local bad = 1
 }
 // ... and kept, unnamed, beside colorvar() where it is drawn.
-_zh7_run `"dash scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(4) name(zq7)"' "`logfile'"
+_zh7_run `"dash scatter mpg weight, colorvar(price) colorlevels(4) name(zq7)"' "`logfile'"
 local rnote = r(note)
 local nk = 0
-foreach o in colorvar colpalette colornlevels {
+foreach o in colorvar colorlevels {
     _zh7_has zq7 `o'
     local nk = `nk' + r(found)
 }
-if `rnote' | `nk' != 3 {
-    display as error "HC7-02 FAIL: colorvar() and companions on scatter -- note `rnote', kept `nk' of 3"
+if `rnote' | `nk' != 2 {
+    display as error "HC7-02 FAIL: colorvar() and companions on scatter -- note `rnote', kept `nk' of 2"
     local bad = 1
 }
 // Flipped (WP-31 C8b): colorrule()/colorformissing() named was wrong,
@@ -510,8 +511,18 @@ foreach case in ///
     local drc = r(rc)
     local rnote = r(note)
     _zh7_has zq7 `key'
-    if `tw' != 198 | `drc' != 0 | `rnote' | r(found) != 1 {
-        display as error "HC7-05 FAIL `opt': twoway r(`tw') (want 198), dash rc `drc', noted `rnote', `key' in spec `r(found)'"
+    // Flipped (WP-35 DT-15): dash taking the spellings twoway refuses was
+    // wrong; the maintainer ruled that dash mirrors twoway (DECISIONS.md
+    // P4-7), so each is refused, r(198), as twoway refuses it.  hover(),
+    // which only a dashboard has, is kept.
+    if "`key'" == "hover" {
+        if `tw' != 198 | `drc' != 0 | `rnote' | r(found) != 1 {
+            display as error "HC7-05 FAIL `opt': twoway r(`tw') (want 198), dash rc `drc', noted `rnote', `key' in spec `r(found)'"
+            local bad = 1
+        }
+    }
+    else if `tw' != 198 | `drc' != 198 {
+        display as error "HC7-05 FAIL `opt': twoway r(`tw') (want 198), dash rc `drc' (want 198)"
         local bad = 1
     }
 }
@@ -535,7 +546,7 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-05"
 }
-else display as text "HC7-05 PASS: `k' dash-only spellings refused by twoway and written in full by dash; twoway's own accepted by both"
+else display as text "HC7-05 PASS: `k' dash-only spellings refused by twoway, refused by dash but hover(); twoway's own accepted by both"
 
 // ----------------------------------------------------------------
 // HC7-06 -- a string colorvar().
@@ -546,35 +557,31 @@ local tw = _rc
 capture erase "`htmlfile'"
 _zh7_run `"dash scatter mpg weight, colorvar(sv) saving("`htmlfile'")"' "`logfile'"
 local drc = r(rc)
-if `tw' != 7 | `drc' != 0 {
-    display as error "HC7-06 FAIL: colorvar(sv): twoway r(`tw') (want 7), dash rc `drc'"
+// Flipped (WP-35 DT-15): dash drawing a colour per value was wrong;
+// twoway refuses a string colorvar(), r(7), and the maintainer ruled that
+// dash mirrors twoway (DECISIONS.md P4-7).
+_zh7_logged "`logfile'" "'sv' found where numeric variable expected"
+if `tw' != 7 | `drc' != 7 | r(found) != 1 {
+    display as error "HC7-06 FAIL: colorvar(sv): twoway r(`tw') (want 7), dash rc `drc' (want 7), twoway's line `r(found)'"
     local bad = 1
-}
-else {
-    // One factor per value -- D and F -- not one per observation.
-    cert_file_has "`htmlfile'", needle(`""factors":["D","F"]"')
-    if r(found) != 1 {
-        display as error "HC7-06 FAIL: the saved page's colour key does not map D and F, one level each"
-        local bad = 1
-    }
 }
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-06"
 }
-else display as text "HC7-06 PASS: twoway refuses a string colorvar(); dash draws one colour per value"
+else display as text "HC7-06 PASS: twoway and dash refuse a string colorvar(), r(7)"
 
 // ----------------------------------------------------------------
 // HC7-07 -- the marker and transparency options are never in the note.
 // ----------------------------------------------------------------
 local bad = 0
 foreach cmd in ///
-    "scatter mpg weight, jitter(5) jitterseed(1) msangle(45) malpha(50)" ///
-    "scatter mpg weight, jitter(5) jseed(1) msa(30) mal(40)" ///
-    "connected mpg weight, msangle(45) lalpha(50)" ///
-    "line mpg weight, lalp(40)" ///
-    "area mpg weight, falpha(50)" "bar mpg weight, fa(50)" ///
-    "rscatter lo hi weight, msangle(45) malpha(20)" ///
+    "scatter mpg weight, jitter(5) jitterseed(1) msangle(45) mcolor(%50)" ///
+    "scatter mpg weight, jitter(5) jitterseed(1) msa(30) mcolor(%40)" ///
+    "connected mpg weight, msangle(45) lcolor(%50)" ///
+    "line mpg weight, lcolor(%40)" ///
+    "area mpg weight, fcolor(%50)" "bar mpg weight, fcolor(%50)" ///
+    "rscatter lo hi weight, msangle(45) mcolor(%20)" ///
     "pccapsym mpg weight turn length, msangle(45)" {
     _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
     if r(rc) != 0 | r(note) != 0 {
@@ -586,13 +593,15 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-07"
 }
-else display as text "HC7-07 PASS: jitter, jitterseed, jseed, msangle, malpha, lalpha and falpha are never named"
+else display as text "HC7-07 PASS: jitter, jitterseed, msangle and a colour's opacity are never named"
 
 // ----------------------------------------------------------------
 // HC7-08 -- the axis options reach the spec as written.
 // ----------------------------------------------------------------
 local bad = 0
-_zh7_run `"dash `y2' ylabel2(#5, format(%9.0fc) grid) yscale2(reverse range(0 20000)) name(zq7)"' "`logfile'"
+// WP-35 DT-15: in twoway's spelling, ylabel(..., axis(2)); dash writes
+// it as its right axis's ylabel2() and yscale2().
+_zh7_run `"dash `y2' ylabel(#5, format(%9.0fc) grid axis(2)) yscale(reverse range(0 20000) axis(2)) name(zq7)"' "`logfile'"
 mata: st_local("_a", strofreal(_zh7_value("zq7", "ylabel2", "#5, format(%9.0fc) grid")))
 mata: st_local("_b", strofreal(_zh7_value("zq7", "yscale2", "reverse range(0 20000)")))
 if r(rc) != 0 | r(note) | `_a' != 1 | `_b' != 1 {
@@ -611,7 +620,7 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-08"
 }
-else display as text "HC7-08 PASS: ylabel2(), yscale2(), xtick() and ytick() reach the spec as written"
+else display as text "HC7-08 PASS: ylabel(, axis(2)), yscale(, axis(2)), xtick() and ytick() reach the spec as written"
 
 // ----------------------------------------------------------------
 // HC7-09 -- adversarial: the legend() check.

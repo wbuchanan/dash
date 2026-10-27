@@ -722,7 +722,10 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # colorusepleg, cleg, pleg and pcyc (twoway's minimums).
     # 88 -> 89: WP-31 H2l documented br:ush(), dash's own option (twoway
     # has no brush), at the minimum its BRush() declaration takes.
-    assert len(seen) == 89, (
+    # 89 -> 82: WP-35 DT-15 mal:pha, lalp:ha, fa:lpha, jse:ed, colpal:ette,
+    # colorn:levels and colorm:issing leave the help: dash refuses them as
+    # twoway refuses them (P4-7).
+    assert len(seen) == 82, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -908,8 +911,11 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # the filter() line's (one).
     # 167 -> 172 and 75 -> 77: WP-32 the notes on the silent, play() and
     # replace refusals (c2's later commits).
-    assert comments == {"_dash_parse_plot_opts": 172,
-                        "_dash_parse_graph_opts": 77}, comments
+    # 172 -> 180 and 77 -> 79: WP-35 DT-15 the notes on kernel()'s case
+    # (three) and on xsize(()) (five in the plot parser, two in the graph
+    # parser).
+    assert comments == {"_dash_parse_plot_opts": 180,
+                        "_dash_parse_graph_opts": 79}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below

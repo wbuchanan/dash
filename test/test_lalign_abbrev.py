@@ -63,4 +63,6 @@ class TestLalignAbbreviations:
         assert "LALPha(string)" in src and "LALpha(string)" not in src
         with open(_HLP, encoding="utf-8") as fh:
             hlp = fh.read()
-        assert "{cmdab:lalp:ha(}" in hlp and "{cmdab:lal:pha(}" not in hlp
+        # Flipped (WP-35 DT-15): lalpha() documented was wrong; twoway
+        # refuses it, and so does dash (P4-7); the help names neither form.
+        assert "{cmdab:lalp:ha(}" not in hlp and "{cmdab:lal:pha(}" not in hlp

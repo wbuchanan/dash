@@ -368,6 +368,9 @@ class TestTheHelp:
         grp = _source("dash.sthlp")
         grp = grp[grp.index("{marker taxis}"):]
         grp = grp[:grp.index("{marker", 5)]
-        for word in ("axis(2)", "{opt tlabel2()}", "{opt tline2()}",
-                     "format()", "%-tm"):
+        # Flipped (WP-35 DT-15): tlabel2() and tline2() documented was
+        # wrong; twoway refuses them, and so does dash (P4-7).
+        for word in ("axis(2)", "format()", "%-tm"):
             assert word in grp, word
+        for word in ("{opt tlabel2()}", "{opt tline2()}"):
+            assert word not in grp, word

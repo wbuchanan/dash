@@ -425,10 +425,13 @@ class TestTheHelpSaysSo:
         for needle in ("{marker stylelists}",
                        "{cmd:mcolor(red .. blue): invalid syntax}",
                        "is refused when a y uses it",
-                       "padded with {cmd:.}",
-                       "{cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and "
-                       "{cmd:jseed()}"):
+                       "padded with {cmd:.}"):
             assert needle in h, needle
+        # Flipped (WP-35 DT-15): the paragraph naming malpha(), lalpha(),
+        # falpha() and jseed() as one value on every y was wrong; dash
+        # refuses them as twoway does (P4-7).
+        assert ("{cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and "
+                "{cmd:jseed()}") not in h
 
     def test_rgb_is_quoted(self):
         h = _read(_HLP)

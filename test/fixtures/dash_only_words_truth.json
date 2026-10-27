@@ -1,0 +1,770 @@
+{
+ "V1": {
+  "cmd": "twoway kdensity mpg, kernel(GAUSSIAN)",
+  "message": "invalid kernel function",
+  "notes": [
+   "invalid kernel function"
+  ],
+  "rc": 198
+ },
+ "V2": {
+  "cmd": "twoway scatter mpg weight, xsize(())",
+  "message": "option(s) ( ) not allowed",
+  "notes": [
+   "option(s) ( ) not allowed"
+  ],
+  "rc": 198
+ },
+ "V3": {
+  "cmd": "twoway scatter mpg weight, colorvar(make)",
+  "message": "'make' found where numeric variable expected",
+  "notes": [
+   "'make' found where numeric variable expected"
+  ],
+  "rc": 7
+ },
+ "V4": {
+  "cmd": "twoway scatter mpg weight if price < 0, colorvar(price)",
+  "message": "_calc_levels():  3001  incorrect number of arguments",
+  "notes": [
+   "          _calc_levels():  3001  incorrect number of arguments",
+   "                 <istmt>:     -  function returned error"
+  ],
+  "rc": 3001
+ },
+ "V5": {
+  "cmd": "twoway scatter mpg weight, title(\"'90s\")",
+  "message": ") required",
+  "notes": [
+   ") required"
+  ],
+  "rc": 100
+ },
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "ad5430bbee23f23aa589d6f18f1d2717e2eb5ddc",
+  "extracted": "27 Oct 2026 05:12:08",
+  "source": "scripts/extract_dash_only_truth.do",
+  "stata_version": "19.5"
+ },
+ "colormissing": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) colormissing(gray)",
+  "message": "option colormissing() not allowed",
+  "notes": [
+   "option colormissing() not allowed"
+  ],
+  "rc": 198
+ },
+ "colornlevels": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) colornlevels(4)",
+  "message": "option colornlevels() not allowed",
+  "notes": [
+   "option colornlevels() not allowed"
+  ],
+  "rc": 198
+ },
+ "colpalette": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) colpalette(viridis)",
+  "message": "option colpalette() not allowed",
+  "notes": [
+   "option colpalette() not allowed"
+  ],
+  "rc": 198
+ },
+ "colv": {
+  "cmd": "twoway scatter mpg weight, colv(price)",
+  "message": "option colv() not allowed",
+  "notes": [
+   "option colv() not allowed"
+  ],
+  "rc": 198
+ },
+ "cv": {
+  "cmd": "twoway scatter mpg weight, cv(price)",
+  "message": "option cv() not allowed",
+  "notes": [
+   "option cv() not allowed"
+  ],
+  "rc": 198
+ },
+ "falpha": {
+  "cmd": "twoway area mpg weight, falpha(50)",
+  "message": "option falpha() not allowed",
+  "notes": [
+   "option falpha() not allowed"
+  ],
+  "rc": 198
+ },
+ "hover": {
+  "cmd": "twoway scatter mpg weight, hover(make)",
+  "message": "option hover() not allowed",
+  "notes": [
+   "option hover() not allowed"
+  ],
+  "rc": 198
+ },
+ "jseed": {
+  "cmd": "twoway scatter mpg weight, jitter(5) jseed(3)",
+  "message": "option jseed() not allowed",
+  "notes": [
+   "option jseed() not allowed"
+  ],
+  "rc": 198
+ },
+ "lalpha": {
+  "cmd": "twoway line mpg weight, lalpha(50)",
+  "message": "option lalpha() not allowed",
+  "notes": [
+   "option lalpha() not allowed"
+  ],
+  "rc": 198
+ },
+ "malpha": {
+  "cmd": "twoway scatter mpg weight, malpha(50)",
+  "message": "option malpha() not allowed",
+  "notes": [
+   "option malpha() not allowed"
+  ],
+  "rc": 198
+ },
+ "marker": {
+  "cmd": "twoway scatter mpg weight, marker(O)",
+  "message": "option marker() not allowed",
+  "notes": [
+   "option marker() not allowed"
+  ],
+  "rc": 198
+ },
+ "mlg": {
+  "cmd": "twoway scatter mpg weight, mlabel(make) mlg(2)",
+  "message": "option mlg() not allowed",
+  "notes": [
+   "option mlg() not allowed"
+  ],
+  "rc": 198
+ },
+ "order.group_then_comma": {
+  "cmd": "twoway (scatter mpg weight, bogus), ytitle2(T)",
+  "message": "option bogus not allowed",
+  "notes": [
+   "option bogus not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_after_groups": {
+  "cmd": "twoway (scatter mpg weight) (scatter price weight, bogus), p1(malpha(50))",
+  "message": "option bogus not allowed",
+  "notes": [
+   "option bogus not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_before_comma": {
+  "cmd": "twoway (scatter mpg weight), bogus p1(malpha(50))",
+  "message": "option(s) malpha(50) not allowed",
+  "notes": [
+   "option(s) malpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_list": {
+  "cmd": "twoway scatter mpg weight, p1(malpha(50) mcolor(red) jseed(3))",
+  "message": "option(s) malpha(50) jseed(3) not allowed",
+  "notes": [
+   "option(s) malpha(50) jseed(3) not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_own_first": {
+  "cmd": "twoway scatter mpg weight, p1(malpha(50)) bogus",
+  "message": "option bogus not allowed",
+  "notes": [
+   "option bogus not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_own_then_graph": {
+  "cmd": "twoway (scatter mpg weight, p1(jseed(3))) (scatter price weight), p1(malpha(50))",
+  "message": "option(s) jseed(3) malpha(50) not allowed",
+  "notes": [
+   "option(s) jseed(3) malpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_own_word": {
+  "cmd": "twoway scatter mpg weight, p1(malpha(50)) ytitle2(T)",
+  "message": "option ytitle2() not allowed",
+  "notes": [
+   "option ytitle2() not allowed"
+  ],
+  "rc": 198
+ },
+ "order.p_plot_order": {
+  "cmd": "twoway (scatter mpg weight) (scatter price weight), p2(jseed(3)) p1(malpha(50))",
+  "message": "option(s) malpha(50) not allowed",
+  "notes": [
+   "option(s) malpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "order.unknown_first": {
+  "cmd": "twoway scatter mpg weight, bogus ytitle2(T)",
+  "message": "option bogus not allowed",
+  "notes": [
+   "option bogus not allowed"
+  ],
+  "rc": 198
+ },
+ "order.word_first": {
+  "cmd": "twoway scatter mpg weight, ytitle2(T) bogus",
+  "message": "option ytitle2() not allowed",
+  "notes": [
+   "option ytitle2() not allowed"
+  ],
+  "rc": 198
+ },
+ "p.colormissing": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) p1(colormissing(gray))",
+  "message": "option(s) colormissing(gray) not allowed",
+  "notes": [
+   "option(s) colormissing(gray) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.colornlevels": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) p1(colornlevels(4))",
+  "message": "option(s) colornlevels(4) not allowed",
+  "notes": [
+   "option(s) colornlevels(4) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.colpalette": {
+  "cmd": "twoway scatter mpg weight, colorvar(price) p1(colpalette(viridis))",
+  "message": "option(s) colpalette(viridis) not allowed",
+  "notes": [
+   "option(s) colpalette(viridis) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.colv": {
+  "cmd": "twoway scatter mpg weight, p1(colv(price))",
+  "message": "option(s) colv(price) not allowed",
+  "notes": [
+   "option(s) colv(price) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.cv": {
+  "cmd": "twoway scatter mpg weight, p1(cv(price))",
+  "message": "option(s) cv(price) not allowed",
+  "notes": [
+   "option(s) cv(price) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.falpha": {
+  "cmd": "twoway area mpg weight, p1(falpha(50))",
+  "message": "option(s) falpha(50) not allowed",
+  "notes": [
+   "option(s) falpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.jseed": {
+  "cmd": "twoway scatter mpg weight, jitter(5) p1(jseed(3))",
+  "message": "option(s) jseed(3) not allowed",
+  "notes": [
+   "option(s) jseed(3) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.lalpha": {
+  "cmd": "twoway line mpg weight, p1(lalpha(50))",
+  "message": "option(s) lalpha(50) not allowed",
+  "notes": [
+   "option(s) lalpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.malpha": {
+  "cmd": "twoway scatter mpg weight, p1(malpha(50))",
+  "message": "option(s) malpha(50) not allowed",
+  "notes": [
+   "option(s) malpha(50) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.marker": {
+  "cmd": "twoway scatter mpg weight, p1(marker(O))",
+  "message": "",
+  "notes": [
+   "(note:  named style O not found in class markerstyle, default attributes used)"
+  ],
+  "rc": 0
+ },
+ "p.mlg": {
+  "cmd": "twoway scatter mpg weight, mlabel(make) p1(mlg(2))",
+  "message": "option(s) mlg(2) not allowed",
+  "notes": [
+   "option(s) mlg(2) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.pbgc": {
+  "cmd": "twoway scatter mpg weight, p1(pbgc(red))",
+  "message": "option(s) pbgc(red) not allowed",
+  "notes": [
+   "option(s) pbgc(red) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.plotbgcolor": {
+  "cmd": "twoway scatter mpg weight, p1(plotbgcolor(red))",
+  "message": "option(s) plotbgcolor(red) not allowed",
+  "notes": [
+   "option(s) plotbgcolor(red) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.tlabel2": {
+  "cmd": "twoway scatter mpg weight, p1(tlabel2(10 20))",
+  "message": "option(s) tlabel2(10  20) not allowed",
+  "notes": [
+   "option(s) tlabel2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.tline2": {
+  "cmd": "twoway scatter mpg weight, p1(tline2(20))",
+  "message": "option(s) tline2(20) not allowed",
+  "notes": [
+   "option(s) tline2(20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.tscale2": {
+  "cmd": "twoway scatter mpg weight, p1(tscale2(range(0 50)))",
+  "message": "option(s) tscale2(range(0  50)) not allowed",
+  "notes": [
+   "option(s) tscale2(range(0  50)) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ttick2": {
+  "cmd": "twoway scatter mpg weight, p1(ttick2(10 20))",
+  "message": "option(s) ttick2(10  20) not allowed",
+  "notes": [
+   "option(s) ttick2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ttitle2": {
+  "cmd": "twoway scatter mpg weight, p1(ttitle2(T))",
+  "message": "option(s) ttitle2(T) not allowed",
+  "notes": [
+   "option(s) ttitle2(T) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xla2": {
+  "cmd": "twoway scatter mpg weight, p1(xla2(10 20))",
+  "message": "option(s) xla2(10  20) not allowed",
+  "notes": [
+   "option(s) xla2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xlabel2": {
+  "cmd": "twoway scatter mpg weight, p1(xlabel2(10 20))",
+  "message": "option(s) xlabel2(10  20) not allowed",
+  "notes": [
+   "option(s) xlabel2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xline2": {
+  "cmd": "twoway scatter mpg weight, p1(xline2(20))",
+  "message": "option(s) xline2(20) not allowed",
+  "notes": [
+   "option(s) xline2(20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xmlabel2": {
+  "cmd": "twoway scatter mpg weight, p1(xmlabel2(10 20))",
+  "message": "option(s) xmlabel2(10  20) not allowed",
+  "notes": [
+   "option(s) xmlabel2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xmtick2": {
+  "cmd": "twoway scatter mpg weight, p1(xmtick2(10 20))",
+  "message": "option(s) xmtick2(10  20) not allowed",
+  "notes": [
+   "option(s) xmtick2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xsc2": {
+  "cmd": "twoway scatter mpg weight, p1(xsc2(range(0 50)))",
+  "message": "option(s) xsc2(range(0  50)) not allowed",
+  "notes": [
+   "option(s) xsc2(range(0  50)) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xscale2": {
+  "cmd": "twoway scatter mpg weight, p1(xscale2(range(0 50)))",
+  "message": "option(s) xscale2(range(0  50)) not allowed",
+  "notes": [
+   "option(s) xscale2(range(0  50)) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xti2": {
+  "cmd": "twoway scatter mpg weight, p1(xti2(T))",
+  "message": "option(s) xti2(T) not allowed",
+  "notes": [
+   "option(s) xti2(T) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xtick2": {
+  "cmd": "twoway scatter mpg weight, p1(xtick2(10 20))",
+  "message": "option(s) xtick2(10  20) not allowed",
+  "notes": [
+   "option(s) xtick2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.xtitle2": {
+  "cmd": "twoway scatter mpg weight, p1(xtitle2(T))",
+  "message": "option(s) xtitle2(T) not allowed",
+  "notes": [
+   "option(s) xtitle2(T) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.yla2": {
+  "cmd": "twoway scatter mpg weight, p1(yla2(10 20))",
+  "message": "option(s) yla2(10  20) not allowed",
+  "notes": [
+   "option(s) yla2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ylabel2": {
+  "cmd": "twoway scatter mpg weight, p1(ylabel2(10 20))",
+  "message": "option(s) ylabel2(10  20) not allowed",
+  "notes": [
+   "option(s) ylabel2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.yline2": {
+  "cmd": "twoway scatter mpg weight, p1(yline2(20))",
+  "message": "option(s) yline2(20) not allowed",
+  "notes": [
+   "option(s) yline2(20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ymlabel2": {
+  "cmd": "twoway scatter mpg weight, p1(ymlabel2(10 20))",
+  "message": "option(s) ymlabel2(10  20) not allowed",
+  "notes": [
+   "option(s) ymlabel2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ymtick2": {
+  "cmd": "twoway scatter mpg weight, p1(ymtick2(10 20))",
+  "message": "option(s) ymtick2(10  20) not allowed",
+  "notes": [
+   "option(s) ymtick2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ysc2": {
+  "cmd": "twoway scatter mpg weight, p1(ysc2(range(0 50)))",
+  "message": "option(s) ysc2(range(0  50)) not allowed",
+  "notes": [
+   "option(s) ysc2(range(0  50)) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.yscale2": {
+  "cmd": "twoway scatter mpg weight, p1(yscale2(range(0 50)))",
+  "message": "option(s) yscale2(range(0  50)) not allowed",
+  "notes": [
+   "option(s) yscale2(range(0  50)) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.yti2": {
+  "cmd": "twoway scatter mpg weight, p1(yti2(T))",
+  "message": "option(s) yti2(T) not allowed",
+  "notes": [
+   "option(s) yti2(T) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ytick2": {
+  "cmd": "twoway scatter mpg weight, p1(ytick2(10 20))",
+  "message": "option(s) ytick2(10  20) not allowed",
+  "notes": [
+   "option(s) ytick2(10  20) not allowed"
+  ],
+  "rc": 198
+ },
+ "p.ytitle2": {
+  "cmd": "twoway scatter mpg weight, p1(ytitle2(T))",
+  "message": "option(s) ytitle2(T) not allowed",
+  "notes": [
+   "option(s) ytitle2(T) not allowed"
+  ],
+  "rc": 198
+ },
+ "pbgc": {
+  "cmd": "twoway scatter mpg weight, pbgc(red)",
+  "message": "option pbgc() not allowed",
+  "notes": [
+   "option pbgc() not allowed"
+  ],
+  "rc": 198
+ },
+ "plotbgcolor": {
+  "cmd": "twoway scatter mpg weight, plotbgcolor(red)",
+  "message": "option plotbgcolor() not allowed",
+  "notes": [
+   "option plotbgcolor() not allowed"
+  ],
+  "rc": 198
+ },
+ "space.quote": {
+  "cmd": "twoway scatter mpg weight, p1(ytitle2(\"a b\" c))",
+  "message": "option(s) ytitle2(a not found",
+  "notes": [
+   "option(s) ytitle2(a not found"
+  ],
+  "rc": 111
+ },
+ "space.run": {
+  "cmd": "twoway scatter mpg weight, p1(ytitle2(a   b)   mlg( 2 ))",
+  "message": "option(s) ytitle2(a    b) mlg( 2 ) not allowed",
+  "notes": [
+   "option(s) ytitle2(a    b) mlg( 2 ) not allowed"
+  ],
+  "rc": 198
+ },
+ "table": {
+  "cmd": "twoway scatter mpg weight, table",
+  "message": "option table not allowed",
+  "notes": [
+   "option table not allowed"
+  ],
+  "rc": 198
+ },
+ "tlabel2": {
+  "cmd": "twoway scatter mpg weight, tlabel2(10 20)",
+  "message": "option tlabel2() not allowed",
+  "notes": [
+   "option tlabel2() not allowed"
+  ],
+  "rc": 198
+ },
+ "tline2": {
+  "cmd": "twoway scatter mpg weight, tline2(20)",
+  "message": "option tline2() not allowed",
+  "notes": [
+   "option tline2() not allowed"
+  ],
+  "rc": 198
+ },
+ "tscale2": {
+  "cmd": "twoway scatter mpg weight, tscale2(range(0 50))",
+  "message": "option tscale2() not allowed",
+  "notes": [
+   "option tscale2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ttick2": {
+  "cmd": "twoway scatter mpg weight, ttick2(10 20)",
+  "message": "option ttick2() not allowed",
+  "notes": [
+   "option ttick2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ttitle2": {
+  "cmd": "twoway scatter mpg weight, ttitle2(T)",
+  "message": "option ttitle2() not allowed",
+  "notes": [
+   "option ttitle2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xla2": {
+  "cmd": "twoway scatter mpg weight, xla2(10 20)",
+  "message": "option xla2() not allowed",
+  "notes": [
+   "option xla2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xlabel2": {
+  "cmd": "twoway scatter mpg weight, xlabel2(10 20)",
+  "message": "option xlabel2() not allowed",
+  "notes": [
+   "option xlabel2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xline2": {
+  "cmd": "twoway scatter mpg weight, xline2(20)",
+  "message": "option xline2() not allowed",
+  "notes": [
+   "option xline2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xmlabel2": {
+  "cmd": "twoway scatter mpg weight, xmlabel2(10 20)",
+  "message": "option xmlabel2() not allowed",
+  "notes": [
+   "option xmlabel2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xmtick2": {
+  "cmd": "twoway scatter mpg weight, xmtick2(10 20)",
+  "message": "option xmtick2() not allowed",
+  "notes": [
+   "option xmtick2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xsc2": {
+  "cmd": "twoway scatter mpg weight, xsc2(range(0 50))",
+  "message": "option xsc2() not allowed",
+  "notes": [
+   "option xsc2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xscale2": {
+  "cmd": "twoway scatter mpg weight, xscale2(range(0 50))",
+  "message": "option xscale2() not allowed",
+  "notes": [
+   "option xscale2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xti2": {
+  "cmd": "twoway scatter mpg weight, xti2(T)",
+  "message": "option xti2() not allowed",
+  "notes": [
+   "option xti2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xtick2": {
+  "cmd": "twoway scatter mpg weight, xtick2(10 20)",
+  "message": "option xtick2() not allowed",
+  "notes": [
+   "option xtick2() not allowed"
+  ],
+  "rc": 198
+ },
+ "xtitle2": {
+  "cmd": "twoway scatter mpg weight, xtitle2(T)",
+  "message": "option xtitle2() not allowed",
+  "notes": [
+   "option xtitle2() not allowed"
+  ],
+  "rc": 198
+ },
+ "yla2": {
+  "cmd": "twoway scatter mpg weight, yla2(10 20)",
+  "message": "option yla2() not allowed",
+  "notes": [
+   "option yla2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ylabel2": {
+  "cmd": "twoway scatter mpg weight, ylabel2(10 20)",
+  "message": "option ylabel2() not allowed",
+  "notes": [
+   "option ylabel2() not allowed"
+  ],
+  "rc": 198
+ },
+ "yline2": {
+  "cmd": "twoway scatter mpg weight, yline2(20)",
+  "message": "option yline2() not allowed",
+  "notes": [
+   "option yline2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ymlabel2": {
+  "cmd": "twoway scatter mpg weight, ymlabel2(10 20)",
+  "message": "option ymlabel2() not allowed",
+  "notes": [
+   "option ymlabel2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ymtick2": {
+  "cmd": "twoway scatter mpg weight, ymtick2(10 20)",
+  "message": "option ymtick2() not allowed",
+  "notes": [
+   "option ymtick2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ysc2": {
+  "cmd": "twoway scatter mpg weight, ysc2(range(0 50))",
+  "message": "option ysc2() not allowed",
+  "notes": [
+   "option ysc2() not allowed"
+  ],
+  "rc": 198
+ },
+ "yscale2": {
+  "cmd": "twoway scatter mpg weight, yscale2(range(0 50))",
+  "message": "option yscale2() not allowed",
+  "notes": [
+   "option yscale2() not allowed"
+  ],
+  "rc": 198
+ },
+ "yti2": {
+  "cmd": "twoway scatter mpg weight, yti2(T)",
+  "message": "option yti2() not allowed",
+  "notes": [
+   "option yti2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ytick2": {
+  "cmd": "twoway scatter mpg weight, ytick2(10 20)",
+  "message": "option ytick2() not allowed",
+  "notes": [
+   "option ytick2() not allowed"
+  ],
+  "rc": 198
+ },
+ "ytitle2": {
+  "cmd": "twoway scatter mpg weight, ytitle2(T)",
+  "message": "option ytitle2() not allowed",
+  "notes": [
+   "option ytitle2() not allowed"
+  ],
+  "rc": 198
+ }
+}

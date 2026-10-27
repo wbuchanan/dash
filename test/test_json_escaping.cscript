@@ -1888,7 +1888,7 @@ capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 "'90
 local jg_r3 = _rc
 capture noisily dash scatter mpg weight, by(foreign, title("'90s by")) name(jg46d)
 local jg_r4 = _rc
-capture noisily dash scatter mpg weight, xla2(3000 "'3k") name(jg46f)
+capture noisily dash scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) name(jg46f)
 local jg_r6 = _rc
 local jg_l46 "`c(tmpdir)'dash_jse46.log"
 _jg_log_on "`jg_l46'"
@@ -2016,7 +2016,7 @@ capture noisily dash scatter mpg weight, ytitle("line 1" "line 2") xtitle(`"a "b
 local jg_t1 = _rc
 capture noisily dash scatter mpg weight, xtitle("'90s x") ytitle(`"'90s y"') t1title("'90s t1") b2title(`"'90s b2"') name(jg46j)
 local jg_t2 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight, yaxis(2)), ytitle2("line 1" "line 2") xtitle2(`"a "b" c"') name(jg46k)
+capture noisily dash (scatter mpg weight) (line mpg weight, yaxis(2) xaxis(2)), ytitle("line 1" "line 2", axis(2)) xtitle(`"a "b" c"', axis(2)) name(jg46k)
 local jg_t3 = _rc
 local jg_tk ""
 mata: st_global("JG_WANT", _jg_pq("line 1") + " " + _jg_pq("line 2"))
@@ -2065,11 +2065,11 @@ assert "`jg_ta'" == "211"
 display "JSE-46 PASS: subtitle, note, caption, a legend label, by()'s title, text(), an unknown option and the axis and side titles are stored as typed, drawn or named"
 capture dash clear
 
-// jg46l (WP-28 B7): dash's right axis reads ytitle2() the way twoway
+// jg46l (WP-28 B7): dash's right axis reads ytitle(..., axis(2)) the way twoway
 // reads ytitle(..., axis(2)) on its one axis -- no quotes, joined lines --
 // compared directly against twoway's own SVG through the shared helper.
 capture noisily dash (scatter mpg weight) (line price weight, yaxis(2)), ///
-    ytitle2("a" "b") name(jg46l)
+    ytitle("a" "b", axis(2)) name(jg46l)
 local jg_t4 = _rc
 _jg_build "`jg_p46'.html"
 local jg_rb4 = r(rc)
@@ -3575,8 +3575,10 @@ capture dash clear
 // ----------------------------------------------------------------
 // JSE-65 -- a macro in a title, the text options, a legend label and an
 // axis title, in comma mode: stored and drawn as typed, and nothing runs.
-// yti2() is folded into ytitle2() by the plot parser: the fold hands the
-// text on by value too (a copy through compound quotes expanded it again).
+// ytitle(..., axis(2)) is routed to ytitle2() (_dash_route_axis2): the
+// route hands the text on by value too (a copy through compound quotes
+// expanded it again).  WP-35 DT-15: it was yti2(), which dash refuses now
+// as twoway refuses it.
 // ----------------------------------------------------------------
 qui sysuse auto, clear
 global J6_G "Audi 5000"
@@ -3590,7 +3592,7 @@ mata: st_local("jg_M", "A" + "Audi 5000 B " + char(96) + "=1+1" + char(39) + " C
     char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))" + char(39) + ///
     " D " + char(96) + "jgnone" + char(39) + " E")
 capture dash clear
-capture noisily dash scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))' D \`jgnone' E") subtitle("s\$J6_G \`=1+1'") note(`"n\`jgnone' \$J6_G"') caption("c\$J6_G") legend(label(1 "l\$J6_G")) xtitle("x\$J6_G \`=1+1'") yti2("y2\$J6_G \`jgnone'") name(jg65a)
+capture noisily dash scatter mpg weight, yaxis(2) title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))' D \`jgnone' E") subtitle("s\$J6_G \`=1+1'") note(`"n\`jgnone' \$J6_G"') caption("c\$J6_G") legend(label(1 "l\$J6_G")) xtitle("x\$J6_G \`=1+1'") ytitle("y2\$J6_G \`jgnone'", axis(2)) name(jg65a)
 local jg_r1 = _rc
 local jg_ok ""
 mata: st_global("JG_WANT", _jg_pq(st_local("jg_M")))
@@ -3733,8 +3735,8 @@ macro drop J6_*
 // ----------------------------------------------------------------
 // JSE-67 -- a macro in a title in a plot group, after a paren command's
 // comma, in || mode and on the one-line form: stored and drawn as typed.
-// After the comma, xti2() is folded into xtitle2() by the graph parser,
-// by value.
+// After the comma, xtitle(..., axis(2)) is routed to xtitle2(), by value
+// (WP-35 DT-15: it was xti2(), which dash refuses now as twoway does).
 // ----------------------------------------------------------------
 global J6_G "Audi 5000"
 // Flipped (WP-31 D13b): the global is the value twoway draws (Audi
@@ -3751,7 +3753,7 @@ local jg_nl = r(N)
 capture dash clear
 capture noisily dash (scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E")) (line mpg weight), name(jg67a)
 local jg_r1 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight), title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") xti2("x2\$J6_G \`jgnone'") name(jg67b)
+capture noisily dash (scatter mpg weight) (line mpg weight, xaxis(2)), title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") xtitle("x2\$J6_G \`jgnone'", axis(2)) name(jg67b)
 local jg_r2 = _rc
 capture noisily dash scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") || line mpg weight, name(jg67c)
 local jg_r3 = _rc
@@ -3854,7 +3856,7 @@ macro drop J6_*
 
 // ----------------------------------------------------------------
 // JSE-69 -- a macro in the values dash checks or keeps: by()'s title, a
-// legend() word, text(), bw(), mlabel(), colormissing(), a weight and a
+// legend() word, text(), bw(), mlabel(), colorformissing(), a weight and a
 // weight expression, a scatteri label and mcolor()
 // ----------------------------------------------------------------
 // Each value is judged as typed: by()'s title and text() are kept, with no
@@ -3863,7 +3865,7 @@ macro drop J6_*
 // reads a text option again (flipped WP-31 D13b) (a bare legend(\$J6_T) word is refused since WP-30
 // P1.19, as twoway refuses a word it does not know); bw() and mlabel()
 // are refused showing the text, where both were expanded to nothing and
-// dropped with rc 0; colormissing() is named in the note; a weight
+// dropped with rc 0; colorformissing() is taken in silence; a weight
 // [aw=\$J6_W] is not the variable J6_W holds -- Stata's syntax refuses the
 // text as typed, "$J6_W invalid name", r(198) -- where it weighted by price
 // with rc 0; a weight expression is refused showing the text as typed,
@@ -3888,7 +3890,7 @@ capture noisily dash lpoly mpg weight, bw("\`jgnone'") name(jg69c)
 local jg_v3 = _rc
 capture noisily dash scatter mpg weight, mlabel("\`jgnone'") name(jg69d)
 local jg_v4 = _rc
-capture noisily dash line mpg weight, colormissing("\`jgnone'") name(jg69e)
+capture noisily dash line mpg weight, colorformissing("\`jgnone'") name(jg69e)
 local jg_v5 = _rc
 capture noisily dash lfit mpg weight [aw=\$J6_W], name(jg69f)
 local jg_v6 = _rc
@@ -3928,7 +3930,9 @@ local jg_w3 = `jg_w3' + r(count)
 // Flipped (WP-31 C8a): colormissing() without colorvar() is taken in
 // silence, as twoway takes it, so it is no longer named in the note; the
 // macro text is still never expanded (jg_ok, jg_ran below).
-cert_log_has "`jg_l69'", needle("ignoring unsupported option(s): colormissing()")
+// WP-35 DT-15: in twoway's spelling, colorformissing(); dash refuses
+// colormissing() as twoway refuses it.
+cert_log_has "`jg_l69'", needle("ignoring unsupported option(s): colorformissing()")
 local jg_w4 = (r(count) == 0)
 cert_log_has "`jg_l69'", needle("J6_W invalid name")
 local jg_w5 = r(count)

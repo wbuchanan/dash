@@ -1406,14 +1406,15 @@ class TestTheHelpSaysSo:
         return _help_section("{marker limits}", "{marker examples}")
 
     def test_mlg_is_documented_as_dashs_own_synonym(self):
-        """TR-23.3: dash folds mlg() into mlabgap(); twoway refuses it,
-        "option mlg() not allowed", r(198) (HC5-01).  Written inside
-        mlabgap()'s own entry."""
+        """TR-23.3: twoway refuses mlg(), "option mlg() not allowed",
+        r(198), and so does dash (HC5-01).
+
+        Flipped (WP-35 DT-15): mlabgap()'s entry naming mlg() as dash's
+        synonym was wrong; dash refuses it as twoway does (P4-7)."""
         sec = self._labels()
         entry = sec[sec.index("{cmdab:mlabg:ap("):]
         entry = entry[:entry.index("{p_end}")]
-        assert "a synonym, {cmd:mlg()}" in entry, entry
-        assert "which {cmd:twoway} does not accept" in entry, entry
+        assert "mlg()" not in entry, entry
 
     def test_the_clock_positions_are_described_as_drawn(self):
         sec = self._labels()

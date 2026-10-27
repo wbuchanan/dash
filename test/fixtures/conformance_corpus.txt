@@ -48,11 +48,11 @@ pcarrowi 20 3000 30 4000
 tsline mpg
 tsrline lo hi
 function y = x^2, range(0 10)
-scatter mpg weight, mcolor(navy) msymbol(triangle) msize(large) malpha(60)
+scatter mpg weight, mcolor(navy%60) msymbol(triangle) msize(large)
 scatter mpg weight, jitter(5) jitterseed(7) msangle(30)
 scatter mpg weight, mlabel(make) mlabsize(small) mlabposition(12)
 line mpg weight, sort lcolor(maroon) lwidth(thick) lpattern(dash)
-scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(6)
+scatter mpg weight, colorvar(price) colorlevels(6)
 scatter mpg weight, xtitle(Weight) ytitle(Mileage) title(T) subtitle(S)
 scatter mpg weight, xlabel(#8, grid) ylabel(10(5)45, format(%9.0f))
 scatter mpg weight, xline(3000) yline(20) note(N) caption(C)
@@ -60,7 +60,7 @@ scatter mpg weight, xscale(log) yscale(range(0 50)) legend(position(3))
 scatter mpg weight, by(foreign)
 scatter mpg weight, xsize(9) ysize(3)
 scatter mpg weight, plotregion(color(ltblue)) graphregion(color(white))
-area mpg weight, sort fcolor(ltblue) falpha(40) base(5)
+area mpg weight, sort fcolor(ltblue%40) base(5)
 bar mpg weight, barwidth(20) blcolor(navy) bfcolor(eltblue)
 lowess mpg weight
 lowess mpg weight, bwidth(.5) mean noweight

@@ -1390,7 +1390,9 @@ display "P20-02 PASS: a refused base() value is echoed as text, not SMCL"
 
 // P20-03 — a keyword option (the enum rule).  Flipped (WP-35 basic:PT-9):
 // kernel() is refused in twoway's words, which do not echo the value
-// ("invalid kernel function"); colpalette(), dash's own enum, still does.
+// ("invalid kernel function"); colpalette() is refused as a word twoway
+// does not take (WP-35 DT-15), "option colpalette() not allowed", which
+// does not echo the value either.
 _adv_p19_run "dash kdensity mpg, kernel({bf:INJMARKKER}) name(p2003)"
 assert r(rc) == 198
 cert_file_has "`r(log)'", needle("invalid kernel function")
@@ -1398,7 +1400,10 @@ assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 _adv_p19_run "dash scatter mpg weight, colorvar(price) colpalette({bf:INJMARKKER}) name(p2003)"
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("(got: {bf:INJMARKKER})")
+// Flipped (WP-35 DT-15): the value echoed in dash's enum refusal was
+// wrong; twoway refuses colpalette() itself, and the maintainer ruled that
+// dash mirrors twoway (DECISIONS.md P4-7).
+cert_file_has "`r(log)'", needle("option colpalette() not allowed")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-03 PASS: a refused enum keyword is echoed as text, not SMCL"

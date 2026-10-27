@@ -5070,7 +5070,12 @@ foreach a in "`two' tline(2002m1, axis(2))" "tsline y, tlabel(2001m1, axis(3))" 
     local bad `"`bad'`_zta_bad'"'
     if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
 }
-foreach c in "tline2(01jan2002)!xline2!15341" `"ttitle("A", axis(2))!xtitle2!\"A\""' {
+// Flipped (WP-35 DT-15): tline2(), dash's spelling of tline(, axis(2)),
+// taken was wrong; twoway refuses it, "option tline2() not allowed", and the
+// maintainer ruled that dash mirrors twoway (DECISIONS.md P4-7).
+_ztp_run `"dash `two' tline2(01jan2002) name(zta)"' "$zta_log"
+if r(rc) != 198 local bad `"`bad' [tline2(): rc `r(rc)', want 198]"'
+foreach c in `"ttitle("A", axis(2))!xtitle2!\"A\""' {
     gettoken a rest : c, parse("!")
     gettoken k v : rest, parse("!")
     gettoken k v : v, parse("!")

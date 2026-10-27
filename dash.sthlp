@@ -1134,8 +1134,8 @@ there, is an invalid point.  The literal is read as data and never run.
     copy winning, so {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps
     both labels.
     A textbox sub-option -- of {cmd:title()}, {cmd:subtitle()},
-    {cmd:note()}, {cmd:caption()}, {cmd:xtitle()}/{cmd:ytitle()} and
-    {cmd:xtitle2()}/{cmd:ytitle2()} -- is read under any of Stata's
+    {cmd:note()}, {cmd:caption()} and {cmd:xtitle()}/{cmd:ytitle()} on
+    either axis -- is read under any of Stata's
     spellings, from its minimum abbreviation to its full name:
     {cmd:c(red)} is {cmd:color(red)}, {cmd:s(large)} is
     {cmd:size(large)}, {cmd:a()} is {cmd:alignment()}, {cmd:lst()} is
@@ -1148,7 +1148,7 @@ there, is an invalid point.  The literal is read as data and never run.
     sub-option is named, never drawn as text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
     An axis title given with empty text -- {cmd:xtitle("")},
-    {cmd:ytitle("")}, {cmd:ytitle("", axis(2))} or {cmd:ytitle2("")} --
+    {cmd:ytitle("")} or {cmd:ytitle("", axis(2))} --
     removes that title, as in {cmd:twoway}; an option not given at all
     keeps the default title (see
     {it:Legend keys and default axis titles} under Statistical Layer
@@ -1197,7 +1197,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} and
     {cmd:jitterseed()} any value, as {cmd:twoway} takes them, a word or a
-    negative number drawn as none; {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
+    negative number drawn as none;
     {cmd:level()} any number on {cmd:lfitci}, {cmd:qfitci} and
     {cmd:fpfitci}, as {cmd:twoway} takes it (no band at 100 or more), and
     10 to 99.99 on {cmd:lpolyci}, as {cmd:twoway}; {cmd:aspectratio()} 0 or
@@ -1220,7 +1220,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:n()} 1 to 10000, 1 to 300 on {cmd:mspline}, and up to 10000 on
     {cmd:mband}, where one below 1 draws its default; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
-    {cmd:colornlevels()} 2 to 256; {cmd:jseed()} 0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
+    an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
     1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
@@ -1248,8 +1248,9 @@ there, is an invalid point.  The literal is read as data and never run.
     100; a word that only looks like a number, such as
     {cmd:msize(1e308)}, is refused as {cmd:twoway} refuses it
     ({cmd:invalid syntax}).  A word
-    from a list, matched without regard to case: {cmd:kernel()},
-    {cmd:colpalette()} and {cmd:theme()}.  A scheme name:
+    from a list: {cmd:kernel()} in lower case, as {cmd:twoway} reads it
+    ({cmd:kernel(GAUSSIAN)} is {cmd:invalid kernel function}), and
+    {cmd:theme()} without regard to case.  A scheme name:
     {cmd:scheme()} must be a shipped scheme, a {cmd:theme()} name or a
     scheme Stata finds along the ado-path,
     {cmd:scheme-}{it:name}{cmd:.scheme} or {it:name}{cmd:.scheme},
@@ -1286,9 +1287,8 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway}'s, but for one: {cmd:aspectratio()} below 0, which
     {cmd:twoway} draws as a plot region overflowing the graph, a layout
     defect {cmd:dash} does not copy, so it refuses the value, {cmd:r(198)}.
-    {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
-    {cmd:jseed()}, {cmd:colornlevels()}, {cmd:colpalette()} and {cmd:hover()}
-    are options {cmd:twoway} does not have, so every rule on them is
+    {cmd:hover()} is an option {cmd:twoway} does not have (see
+    {help dash##dashonly:dash's own options}), so every rule on it is
     {cmd:dash}'s own.  {cmd:bands()} 1 to 200 is {cmd:twoway}'s own bound
     ({cmd:bands must be between 1 and 200}).
 
@@ -1296,16 +1296,13 @@ there, is an invalid point.  The literal is read as data and never run.
     an element of {cmd:mlabel()} that names several variables, such as
     {cmd:t*} ({cmd:twoway} draws no labels for that y).
 
-{phang2}    Some values {cmd:twoway} refuses, {cmd:dash} accepts:
-    {cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}; a style
-    option given an empty pair of parentheses outside a style list, such
-    as {cmd:xsize(())} ({cmd:twoway}:
-    {cmd:option(s) ( ) not allowed}), passes as a name that the renderer
-    then reports (inside a style list, {cmd:lwidth(())} or
-    {cmd:msize(())}, it is refused in {cmd:twoway}'s words; see
-    {help dash##stylelists:Style lists}); and
-    {cmd:colorvar()} takes a string variable, drawn a colour for each
-    value, where {cmd:twoway} wants a numeric one.  An unknown
+{phang2}    These values are refused as {cmd:twoway} refuses them:
+    {cmd:kernel(GAUSSIAN)}, {cmd:invalid kernel function}, r(198), the
+    next line naming {cmd:kernel(gaussian)}; {cmd:xsize(())} and
+    {cmd:ysize(())}, {cmd:option(s) ( ) not allowed}, r(198) (inside a
+    style list, {cmd:lwidth(())} or {cmd:msize(())}, likewise; see
+    {help dash##stylelists:Style lists}); and a string {cmd:colorvar()},
+    r(7).  An unknown
     {cmd:scheme()} is refused where {cmd:twoway} draws {cmd:s2color} with
     a note, because a saved dashboard in the wrong scheme is not a note
     you see, and so is an unknown {cmd:theme()}, an option {cmd:twoway}
@@ -1403,9 +1400,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:mlabformat()}, {cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()},
     {cmd:clcolor()}, {cmd:clpattern()}, {cmd:clwidth()}, {cmd:color()},
     {cmd:fcolor()}, {cmd:fintensity()}, {cmd:bfcolor()}, {cmd:blcolor()},
-    {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()};
-    {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and {cmd:jseed()}, which
-    {cmd:twoway} does not have, apply one value to every y.
+    {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()}.
     {cmd:mlabel()}, {cmd:jitter()}, {cmd:base()} and {cmd:barwidth()} are
     read the same way, one element per y:
     {cmd:scatter mpg turn weight, mlabel(make rep78)} labels {cmd:mpg}'s
@@ -1437,7 +1432,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:by()} panels, marker labels, the legend of a discrete
     {cmd:colorvar()} and the CSV download) without any additional options.
     An axis is labelled with numbers, as in {cmd:twoway}, unless its
-    {cmd:xlabel()}/{cmd:ylabel()} (or {cmd:xlabel2()}/{cmd:ylabel2()})
+    {cmd:xlabel()}/{cmd:ylabel()}, on either axis,
     gives the sub-option {cmd:valuelabel} (minimum {cmd:val}): then each
     tick at a labelled code shows its label -- through the x variable's
     labels for x options and the first y variable's for y options, on every
@@ -1452,6 +1447,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
     {cmd:kdensity} {it:varname}, as in {cmd:twoway}.  Every other layer
     is keyed as {cmd:twoway} keys it (see Statistical Layer Options).
+
+{phang2}7.  {ul:Options dash takes that twoway refuses:} {cmd:hover()} and
+    {cmd:table}; see {help dash##dashonly:dash's own options}.
 
 
 {marker subcommands}
@@ -2102,7 +2100,7 @@ page's.  Your browser decides where the file goes.
 
 {pstd}
 {cmd:table} is a graph option of {cmd:dash}'s own ({cmd:twoway} draws no
-table).  It puts a {bf:Data table} button under the graph, or under the
+table; see {help dash##dashonly:dash's own options}).  It puts a {bf:Data table} button under the graph, or under the
 panels of a {cmd:by()} graph, and behind it a table of the observations
 the graph draws.  The table is folded away when the page opens, so the
 layout is the graph's alone until you press the button.
@@ -3105,8 +3103,8 @@ of the session:
 {synopt:{cmd:$dash_max_filters}}filter widgets; default 20, at most 200.
     The first are built.{p_end}
 {synopt:{cmd:$dash_max_reflines}}reference lines over the dashboard: the
-    positions of every {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
-    {cmd:yline2()} times the graph's {cmd:by()} panels, counted over every
+    positions of every {cmd:xline()} and {cmd:yline()}, on either axis,
+    times the graph's {cmd:by()} panels, counted over every
     observation; default 10,000, at most 100,000.  Refused with
     {cmd:r(134)}.{p_end}
 {synopt:{cmd:$dash_max_added_text}}added texts: the points of every
@@ -3531,8 +3529,7 @@ the per-plot specification (not to {cmd:dash build} options).
     ({cmd:msize()} when given), on {cmd:bar}, {cmd:pcarrow} and
     {cmd:pcbarrow} too, where no marker is drawn.  A negative gap moves the
     label toward the point, and at {cmd:mlabposition(0)} the label is
-    centred on its point.  {cmd:dash} also takes
-    a synonym, {cmd:mlg()}, which {cmd:twoway} does not accept{p_end}
+    centred on its point{p_end}
 {synopt:{cmdab:mlabang:le(}{it:anglestyle}{cmd:)}}angle of the label text,
     counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
     {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}, {cmd:forty_five},
@@ -4369,9 +4366,6 @@ full name, in lower case.
     fill and outline; the sub-options above, as in {cmd:plotregion()}{p_end}
 {synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}the canvas under the graph
     region{p_end}
-{synopt:{opt plotbgcolor(color)}}{cmd:dash}'s own: the plot region's
-    fill, before {cmd:plotregion()}; {cmd:twoway} refuses
-    {cmd:plotbgcolor()}.  Synonym: {cmd:pbgc()}{p_end}
 {synoptline}
 
 {pstd}
@@ -4547,8 +4541,8 @@ the plot specification).
 {synopt:{cmdab:ytic:k(}{it:#}[{it:#} ...]{cmd:)}}y-axis tick positions
     without labels{p_end}
 {synopt:{cmdab:hov:er(}{it:varlist}{cmd:)}}{cmd:dash}'s own: add the
-    variables' values to the tooltip; see {it:Tooltips} below.
-    {cmd:twoway} refuses it{p_end}
+    variables' values to the tooltip; see {it:Tooltips} below and
+    {help dash##dashonly:dash's own options}.  {cmd:twoway} refuses it{p_end}
 {synoptline}
 
 {pstd}
@@ -4783,7 +4777,7 @@ asks Stata for it when the page is built, and after a filter move follows a
 model fitted to Stata's answers that agrees with 261 of 264 axes
 {cmd:twoway} drew and with 98% of random ranges, and where it differs it
 draws a tick more or fewer at an end.  {cmd:xtick(#}{it:N}{cmd:)} and
-{cmd:ylabel2(#}{it:N}{cmd:)} use the same rule.  On a log axis the rule is
+{cmd:ylabel(#}{it:N}{cmd:, axis(2))} use the same rule.  On a log axis the rule is
 the same, over the data's own values, and a tick at or below zero, which a
 log axis cannot draw, is left out: {cmd:yscale(log) ylabel(#5)} on
 {cmd:price} labels 5,000 10,000 15,000.  A {cmd:%tc} axis takes the same
@@ -4801,7 +4795,7 @@ ticked over its own data, as {cmd:twoway} ticks it.
 
 {pstd}
 With no {cmd:xlabel()} or {cmd:ylabel()} rule, a numeric, log or {cmd:%tc}
-axis, and a second axis with no {cmd:ylabel2()} or {cmd:xlabel2()}, is ticked
+axis, and a second axis with no {cmd:ylabel()} or {cmd:xlabel()} of its own, is ticked
 as {cmd:#5} (the scheme's tick count; a {cmd:by()} graph's panels take one
 fewer on their first x and y axes, as {cmd:twoway}'s by() styles set them),
 with no minor ticks, so
@@ -4916,8 +4910,7 @@ the markers 45 degrees.
 silently; another word is named in {cmd:twoway}'s words, {cmd:named style}
 ... {cmd:not found in class alignstroke}, and the line drawn without it.
 As in {cmd:twoway}, {cmd:lalign} may be shortened to as little as
-{cmd:la}, so {cmd:lal} is {cmd:lalign} and not {cmd:dash}'s own
-{cmd:lalpha}, which is shortened to no less than {cmd:lalp}.
+{cmd:la}, so {cmd:lal} is {cmd:lalign}.
 
 {pstd}
 On a date axis a number is a date in the variable's own units, as
@@ -5000,8 +4993,7 @@ ticks is refused, {cmd:r(198)}, as on the first axis.  {cmd:grid} draws the mino
 an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
 the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long
 as 10 and 20.  With {cmd:axis(2)} the ticks and labels are on the second
-axis ({cmd:dash}'s own spellings are {opt xmtick2()}, {opt ymtick2()},
-{opt xmlabel2()} and {opt ymlabel2()}), and with {cmd:axis(3)} to
+axis, and with {cmd:axis(3)} to
 {cmd:axis(9)} on that axis, each label beside its own axis; labels placed
 by {cmd:##}{it:N} follow every filter move on every axis, in the saved
 page and the served app.  {opt tmtick()} and {opt tmlabel()} are drawn as
@@ -5077,57 +5069,30 @@ with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
 {cmd:ymlabel()} and {cmd:ymtick()} are checked the same way and drawn on
 the axis they name.  {cmd:add} on a label routed to the
 second axis ({cmd:ylabel(5000, axis(2) add)}) adds to that axis's default
-ticks.  The
-second axes also take the options below, which are {cmd:dash}'s own
-spellings of the {cmd:axis(2)} forms, as are their synonyms:
-{cmd:twoway} refuses all twenty, r(198).  Given on a graph with no layer
-on that second axis, they are named in a warning when the dashboard is
-built, saved or served.
+ticks.
 
 {pstd}
 When every layer of a graph is on {opt yaxis(2)}, {cmd:dash} draws one y
 axis, on the left, as {cmd:twoway} does; the {cmd:axis(2)} forms --
-{cmd:ytitle2()}, {cmd:ylabel2()}, {cmd:yscale2()}, {cmd:ytick2()} and
-{cmd:yline2()} -- style it, and the first axis's options are refused,
+{cmd:ytitle(..., axis(2))}, {cmd:ylabel(..., axis(2))},
+{cmd:yscale(..., axis(2))}, {cmd:ytick(..., axis(2))} and
+{cmd:yline(..., axis(2))} -- style it, and the first axis's options are refused,
 r(198), with {cmd:twoway}'s message ({cmd:ylabels(5000 10000) not allowed,}
 {cmd:yaxis1 does not exist}).  When every layer is on {opt xaxis(2)}, the
 one x axis is drawn at the bottom, styled the same way by the x forms.
 
-{synoptset 38}{...}
-{synopt:{opt ytitle2(tinfo)}}title for the right-hand y axis, in the
-    textbox grammar every text option takes: one or more quoted strings,
-    each its own line, and {cmd:size()}/{cmd:color()} honoured.
-    Synonym: {cmd:yti2()}{p_end}
-{synopt:{opt ylabel2(rule)}}labels for the right-hand y axis, in the
-    grammar {cmd:ylabel()} takes.  Synonym: {cmd:yla2()}{p_end}
-{synopt:{opt yscale2(log)}}log scale on the right-hand y axis.
-    Synonym: {cmd:ysc2()}{p_end}
-{synopt:{opt xtitle2(tinfo)}}title for the top x axis, in the same
-    textbox grammar.  Synonym: {cmd:xti2()}{p_end}
-{synopt:{opt xlabel2(rule)}}labels for the top x axis, in the grammar
-    {cmd:xlabel()} takes.  Synonym: {cmd:xla2()}{p_end}
-{synopt:{opt xscale2(log)}}log scale on the top x axis.
-    Synonym: {cmd:xsc2()}{p_end}
-{synopt:{opt ytick2(rule)}}ticks without labels on the right-hand y axis,
-    in the grammar {cmd:ytick()} takes; twoway writes it with the
-    sub-option axis(2).  No abbreviation.{p_end}
-{synopt:{opt xtick2(rule)}}ticks without labels on the top x axis.  No
-    abbreviation.{p_end}
-{synopt:{opt yline2(linelist)}}lines at the right-hand y axis's values, as
-    {cmd:yline()} draws them; twoway writes it with the sub-option
-    axis(2).  No abbreviation.{p_end}
-{synopt:{opt xline2(linelist)}}lines at the top x axis's values.  No
-    abbreviation.{p_end}
-{synopt:{opt ymtick2(rule)}}minor ticks on the right-hand y axis, in the
-    grammar {cmd:ymtick()} takes; twoway writes it with the sub-option
-    axis(2).  No abbreviation.{p_end}
-{synopt:{opt ymlabel2(rule)}}minor ticks with labels on the right-hand y
-    axis, in the grammar {cmd:ymlabel()} takes.  No abbreviation.{p_end}
-{synopt:{opt xmtick2(rule)}}minor ticks on the top x axis.  No
-    abbreviation.{p_end}
-{synopt:{opt xmlabel2(rule)}}minor ticks with labels on the top x axis.
-    No abbreviation.{p_end}
-{synoptline}
+{marker dashonly}{...}
+{pstd}
+{it:dash's own options.}  {cmd:dash} takes two options {cmd:twoway} does
+not have, because they control what only a dashboard does: {opt hover()},
+the variables a tooltip shows, and {opt table}, the data table folded
+under a graph; {cmd:twoway} refuses both ({cmd:option hover() not allowed}).
+The options of {cmd:dash}'s own subcommands ({cmd:dash build},
+{cmd:dash serve}, {cmd:dash kpi}) have no {cmd:twoway} counterpart.  Every
+other option is spelled as in {cmd:twoway}: a spelling {cmd:dash} once took
+in its place, such as {cmd:ytitle2()} or {cmd:malpha()}, is refused as
+{cmd:twoway} refuses it, and the refusal's second line names {cmd:twoway}'s
+spelling ({cmd:use ytitle(..., axis(2))}).
 
 {marker taxis}{...}
 {pstd}
@@ -5167,9 +5132,7 @@ registered; if the axis variable's date format changes before
 {pstd}
 As with the x options, {cmd:axis(2)} puts a time-axis option on the second
 x axis, whose dates are read in that axis's own unit (its first plot's
-format), and {cmd:dash}'s own spellings {opt tlabel2()}, {opt ttick2()},
-{opt tline2()}, {opt tscale2()} and {opt ttitle2()} do the same, as
-{cmd:xlabel2()} does; {cmd:twoway}'s plurals ({cmd:tlabels()},
+format); {cmd:twoway}'s plurals ({cmd:tlabels()},
 {cmd:tticks()}, {cmd:tlines()}) are read.  An {cmd:axis()} no layer uses is
 refused in {cmd:twoway}'s words, the x options' first, then the time
 axis's, then the y options' ({cmd:tlabels(2001m1, axis(3)) not allowed,}
@@ -5197,19 +5160,11 @@ numbers only, as in {cmd:twoway}.
     {cmd:range()} read as dates{p_end}
 {synopt:{cmdab:tli:ne(}{it:linearg}{cmd:)}}{cmd:xline()} with date
     literals{p_end}
-{synopt:{opt tlabel2(rule_or_values)}}{cmd:tlabel()} on the second x
-    axis; no abbreviation{p_end}
-{synopt:{opt ttick2(rule_or_values)}}{cmd:ttick()} on the second x
-    axis{p_end}
-{synopt:{opt tline2(linearg)}}{cmd:tline()} on the second x axis{p_end}
-{synopt:{opt tscale2(axis_suboptions)}}{cmd:tscale()} on the second x
-    axis{p_end}
-{synopt:{opt ttitle2(tinfo)}}{cmd:ttitle()} on the second x axis{p_end}
 {synoptline}
 
 {pstd}
-{it:Reference lines.}  {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
-{cmd:yline2()} take a {it:linearg}, {it:numlist} [{cmd:,} {it:suboptions}],
+{it:Reference lines.}  {cmd:xline()} and {cmd:yline()}, on either axis,
+take a {it:linearg}, {it:numlist} [{cmd:,} {it:suboptions}],
 as {cmd:twoway} does: the positions are expanded by Stata's own
 {cmd:numlist} ({cmd:2000(500)3000}, {cmd:2000/2002},
 {cmd:2000 2500 to 3500}), each value once within a copy and at most 2,500
@@ -5252,27 +5207,28 @@ margin through a zoom or a pan, on any axis; another {cmd:style()} name
 is drawn as the default with {cmd:twoway}'s note.
 
 {pstd}
-{cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other
-text option is: each quoted string is its own line, {cmd:size()} and
-{cmd:color()} are applied, and any other sub-option is named once.  An
-empty string ({cmd:ytitle2("")}) removes the title; without one, the
+{cmd:ytitle(..., axis(2))} and {cmd:xtitle(..., axis(2))} are read the
+same way every other text option is: each quoted string is its own line,
+{cmd:size()} and {cmd:color()} are applied, and any other sub-option is
+named once.  An empty string ({cmd:ytitle("", axis(2))}) removes the title; without one, the
 second axis is titled as {cmd:twoway} titles it -- by the rule of the
 first axis, over its own layers' series -- in the scheme's axis style, and
 sub-options alone style that title; under {cmd:by()} it has no default
 title, as in {cmd:twoway}.
 
 {pstd}
-{cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
-the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
+{cmd:ylabel(..., axis(2))} and {cmd:xlabel(..., axis(2))} read their rule
+and sub-options with the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:minmax}, {cmd:none}, value-label
 pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()}, {cmd:grid} (which
 draws gridlines at the second axis's ticks) and the label and tick look of
 {cmd:ylabel()}, under the same spellings; any other sub-option is named
-in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
+in a warning.  {cmd:yscale(..., axis(2))} and {cmd:xscale(..., axis(2))} take {cmd:log},
 {cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
 which widens the second axis only, as {cmd:yscale(range())} does, and the
 look of {cmd:yscale()}, where {cmd:alt} puts the second axis on the first
-axis's side, outside it; they name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
+axis's side, outside it; they name anything else; the second axis's label
+positions widen
 the second axis unless {cmd:norescale} is given.  With or without them, a
 second axis's ticks are written in the format of the first layer on it,
 as {cmd:twoway} writes them.
@@ -5281,7 +5237,7 @@ as {cmd:twoway} writes them.
 {it:Example:}
 
 {phang2}{cmd:. sysuse sp500, clear}{p_end}
-{phang2}{cmd:. dash (line close date) (line volume date, yaxis(2)), ytitle2(Volume (thousands))}{p_end}
+{phang2}{cmd:. dash (line close date) (line volume date, yaxis(2)), ytitle(Volume (thousands), axis(2))}{p_end}
 
 {marker graph_text}{...}
 {pstd}
@@ -5527,7 +5483,7 @@ layer; a line ({cmd:line}, {cmd:rline}'s bounds, {cmd:tsline},
 {cmd:rconnected}) is drawn as {cmd:twoway} draws it, one line a colour
 level joining that level's observations in the line's order, the
 observations missing the variable a line of their own in the
-{cmd:colormissing()} colour, before and after a filter move (a continuous
+{cmd:colorformissing()} colour, before and after a filter move (a continuous
 {cmd:colorvar()} takes {cmd:twoway}'s levels: its cuts are the key's labels,
 a label below the variable's minimum dropped, and each level, up to and
 including a cut, one colour of the key, on the line and on the markers of
@@ -5546,22 +5502,13 @@ With more than one y variable, {cmd:colorvar()} is refused on
 
 {synoptset 38}{...}
 {synopt:{cmdab:colorv:ar(}{it:varname}{cmd:)}}colour each observation by
-    {it:varname}.  Synonyms, {cmd:dash}'s own: {cmd:colv()}, {cmd:cv()}{p_end}
+    {it:varname}, a numeric variable, as in {cmd:twoway}{p_end}
 {synopt:{cmdab:colordis:crete}}treat {it:varname} as categorical: one
     colour per value{p_end}
 {synopt:{cmdab:colorcut:s(}{it:numlist}{cmd:)}}explicit break points for the
     colour bins{p_end}
-{synopt:{cmdab:colpal:ette(}{it:name}{cmd:)}}a palette to map through
-    instead of {cmd:colorrule()}'s colours: {cmd:viridis}, {cmd:magma},
-    {cmd:inferno}, {cmd:plasma}, {cmd:cividis}, {cmd:turbo}, {cmd:greys},
-    {cmd:blues} or {cmd:reds}{p_end}
-{synopt:{cmdab:colorn:levels(}{it:#}{cmd:)}}number of equal-width colour
-    bins for a numeric {it:varname}; an integer from 2 to 256{p_end}
-{synopt:{cmdab:colorm:issing(}{it:color}{cmd:)}}colour drawn for observations
-    where {it:varname} is missing{p_end}
 {synopt:{cmdab:colorlev:els(}{it:#}{cmd:)}}# levels: # - 1 equally spaced cuts
-    between the minimum and maximum (Stata's spelling; {cmd:colornlevels()} is
-    the same); as in {cmd:twoway}, 0 and 1 draw as if it were absent, and a
+    between the minimum and maximum; as in {cmd:twoway}, 0 and 1 draw as if it were absent, and a
     negative number or one over 100 draws 5 levels{p_end}
 {synopt:{cmdab:colorvarminm:ax}}add the minimum and maximum of {it:varname} to
     the cuts, and to the colour bar's ticks{p_end}
@@ -5579,9 +5526,8 @@ With more than one y variable, {cmd:colorvar()} is refused on
     a list shorter than the levels repeats its last colour{p_end}
 {synopt:{cmd:colorfillonly}}colour the fills only; outlines keep the series
     colour{p_end}
-{synopt:{cmdab:colorformiss:ing(}{it:color}{cmd:)}}{cmd:twoway}'s spelling
-    of {cmd:colormissing()}; given both, {cmd:colorformissing()} is
-    read{p_end}
+{synopt:{cmdab:colorformiss:ing(}{it:color}{cmd:)}}colour drawn for
+    observations where {it:varname} is missing{p_end}
 {synopt:{cmdab:colorkeysran:ge}}draw each key entry's swatch as a
     bar{p_end}
 {synopt:{cmdab:colorkeysrev:erse}}reverse the order of the key's levels{p_end}
@@ -5632,11 +5578,10 @@ line, is named in the note.
 {cmd:colorvar()}, {cmd:colordiscrete}, {cmd:colorcuts()},
 {cmd:colorlevels()} and {cmd:colorvarminmax} are Stata 18's own and drawn as
 Stata draws them: under {cmd:colordiscrete} the cuts are the levels and every
-other value is drawn in {cmd:colormissing()}'s colour with the missing
+other value is drawn in {cmd:colorformissing()}'s colour with the missing
 values; a cut below the minimum is ignored, and the minimum is used if all
 are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
-{cmd:colpalette()}, {cmd:colornlevels()} and {cmd:colormissing()} are
-{cmd:dash}'s, and {cmd:twoway} refuses them.  Every other
+Every other
 {cmd:colorvar} option {cmd:twoway} takes is drawn, in {cmd:twoway}'s
 colours (measured to 1/255 a channel): with no {cmd:colorrule()},
 {cmd:colorstart()} or {cmd:colorend()}, the scheme's rule -- hue from blue
@@ -5648,7 +5593,7 @@ includes, with its own {cmd:zyx2rule contour}, {cmd:color contour_begin},
 colour's saturation and value, so green to orange is drawn at green's
 darkness); {it:k} levels of {cmd:colordiscrete} take the first {it:k}
 of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
-{cmd:colpalette()}, then the rule.  A rule's name abbreviates as
+the rule.  A rule's name abbreviates as
 {cmd:twoway}'s does: {cmd:colorrule(lin)} is {cmd:colorrule(linear)},
 {cmd:colorrule(int)} {cmd:colorrule(intensity)} and {cmd:colorrule(revlin)}
 {cmd:colorrule(revlinear)}, in {cmd:crule()} too; a name {cmd:twoway} has
@@ -5671,12 +5616,11 @@ as in {cmd:twoway}'s colour key.  {cmd:twoway} turns the title to run up
 the key's right-hand side and draws an axis line on the side of its
 labels; {cmd:dash} draws the title above the bar and no axis line.
 {cmd:colordiscrete},
-{cmd:colorcuts()} and {cmd:colornlevels()} bin it, and a discrete key
+{cmd:colorcuts()} and {cmd:colorlevels()} bin it, and a discrete key
 entry is drawn per bin, in the rule's colours unless
-{cmd:colorlist()} or {cmd:colpalette()} names others.  {cmd:twoway} wants a numeric
-{it:varname} (a string one is r(7)); {cmd:dash} also takes a string
-variable, one colour and one key entry per value, an empty string drawn in
-{cmd:colormissing()}'s colour.
+{cmd:colorlist()} names others.  A string {it:varname} is refused as
+{cmd:twoway} refuses it ({cmd:'make' found where numeric variable expected},
+r(7)).
 
 {pstd}
 {ul:Which observations set the colours.}  The colours, the colour bar's
@@ -5741,7 +5685,7 @@ colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 {it:Example:}
 
 {phang2}{cmd:. sysuse auto, clear}{p_end}
-{phang2}{cmd:. dash scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(8)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, colorvar(price) colorlevels(8)}{p_end}
 
 {pstd}
 {ul:When a legend appears.}  As in {helpb twoway}, a legend is drawn only
@@ -5937,9 +5881,6 @@ name them there.
 {synopt:{opt jitterseed(#)}}random-number seed for {cmd:jitter()}, spelled as
     in Stata; {it:#} must be a non-negative integer.  With no seed the noise
     differs on every render{p_end}
-{synopt:{cmdab:jse:ed(}{it:#}{cmd:)}}a {cmd:dash} synonym for
-    {cmd:jitterseed()}, with the same bound; if both are given,
-    {cmd:jseed()} wins{p_end}
 {synopt:{cmdab:msa:ngle(}{it:#}{cmd:)}}rotate every marker in the layer
     {it:#} degrees counter-clockwise, as {cmd:twoway} does; {it:#} must lie
     between -360 and 360, as in {cmd:twoway}, or be one of Stata's
@@ -5949,28 +5890,19 @@ name them there.
     {cmd:dot}, {cmd:dropline}, {cmd:scatteri}, {cmd:rscatter},
     {cmd:rcapsym}, {cmd:rpcap}, {cmd:rpspike}, {cmd:pcscatter} and
     {cmd:pccapsym}{p_end}
-{synopt:{opt marker(symbol)}}{cmd:dash}'s own synonym for
-    {cmd:msymbol()}, which wins if both are given; {cmd:twoway} refuses
-    {cmd:marker()}{p_end}
 {synopt:{cmdab:col:or(}{it:color}{cmd:)}}the layer's colour -- its markers,
     lines and fills alike, as in {cmd:twoway}; {cmd:mcolor()},
     {cmd:lcolor()} and {cmd:fcolor()} win where given{p_end}
-{synopt:{cmdab:mal:pha(}{it:#}{cmd:)}}opacity of the markers, 0-100{p_end}
-{synopt:{cmdab:lalp:ha(}{it:#}{cmd:)}}opacity of the lines, 0-100{p_end}
-{synopt:{cmdab:fa:lpha(}{it:#}{cmd:)}}opacity of the fill, 0-100{p_end}
 {synoptline}
 
 {pstd}
-{cmd:malpha()},
-{cmd:lalpha()} and {cmd:falpha()} are {cmd:dash}'s own and {cmd:twoway}
-refuses them; its way is Stata's {cmd:color%alpha} notation, which works
-too, so {cmd:mcolor(red%50)} and {cmd:mcolor(red) malpha(50)} are the same
-thing.
+Opacity is Stata's {cmd:color%alpha} notation: {cmd:mcolor(red%50)},
+{cmd:lcolor(%40)} and {cmd:fcolor(ltblue%40)}.
 
 {pstd}
 Markers are drawn opaque, as {cmd:twoway} draws them, unless a colour's
-{cmd:%}{it:NN}, a scheme's declared opacity ({cmd:sttrans}'s {cmd:%20}) or
-{cmd:malpha()} asks for one.  A {cmd:bar}, {cmd:rbar}, {cmd:area} or
+{cmd:%}{it:NN} or a scheme's declared opacity ({cmd:sttrans}'s {cmd:%20})
+asks for one.  A {cmd:bar}, {cmd:rbar}, {cmd:area} or
 {cmd:rarea} fill is its colour at the layer's intensity (the scheme's
 {cmd:intensity p}{it:#}{cmd:bar} or {cmd:intensity p}{it:#}{cmd:area},
 {cmd:inten80} in the shipped schemes), opaque, so {cmd:s2color}'s bar is
@@ -5986,7 +5918,7 @@ value is refused.  A histogram is filled at full intensity.  A brushed-away
 fill is dimmed in its own colour.
 
 {pstd}
-The line options {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lalpha()} style a
+The line options {cmd:lcolor()} and {cmd:lwidth()} style a
 layer's lines -- a connecting line, a drop, a spike -- and never its
 markers, as in {cmd:twoway}: a marker's outline is {cmd:mlcolor()} and
 {cmd:mlwidth()}, and {cmd:color()} colours markers, lines and fills
@@ -6021,7 +5953,7 @@ noted and drawn at the default, where {cmd:twoway} refuses it.
 {it:Example:}
 
 {phang2}{cmd:. sysuse auto, clear}{p_end}
-{phang2}{cmd:. dash scatter mpg weight, jitter(5) jitterseed(12345) malpha(60)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, jitter(5) jitterseed(12345) mcolor(%60)}{p_end}
 
 {marker namedstyles}{...}
 {pstd}
@@ -6198,10 +6130,10 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     Stata draws it, except the confidence band, which {cmd:twoway} draws
     in {cmd:color ci_area} with no opacity; a colour you give without its
     own {cmd:%}{it:NN} keeps the scheme's opacity, and
-    {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()} still win.
+    {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} still wins.
     A symbol in the cycle, or one you give with {cmd:msymbol()}, is drawn
     with its own traits: a hollow symbol ({cmd:circle_hollow} and the
-    rest) as an outline, whatever a fill colour or {cmd:malpha()} say,
+    rest) as an outline, whatever a fill colour or its opacity say,
     and a small one ({cmd:smcircle}, {cmd:smdiamond}, {cmd:smsquare},
     {cmd:smplus}, {cmd:smx} and their hollow forms, and the shorthands
     {cmd:o}, {cmd:d}, {cmd:s}, {cmd:x} and {cmd:oh}, {cmd:dh}, {cmd:sh})

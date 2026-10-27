@@ -55,17 +55,17 @@
 *!   OV-26  jitterseed(20260920)      rc 0
 *!   OV-27  jitterseed(-1)            rc 0 (WP-35 basic:PT-13)
 *!   OV-28  jitterseed(2.5)           rc 0 (WP-35 basic:PT-13)
-*!   OV-29  jseed(7)                  rc 0
+*!   OV-29  jseed(7)                  rc 198 naming jseed() (DT-15)
 *!   OV-30  jseed(abc)                rc 198 naming jseed()
 *!   OV-31  yaxis(2)                  rc 0
 *!   OV-32  yaxis(3)                  rc 0 (WP-31 C10c: axes 3-9 drawn)
 *!   OV-33  xaxis(1)                  rc 0
 *!   OV-34  xaxis(3)                  rc 0 (WP-31 C10c: axes 3-9 drawn)
-*!   OV-35  malpha(60)                rc 0
+*!   OV-35  malpha(60)                rc 198 naming malpha() (DT-15)
 *!   OV-36  malpha(150)               rc 198 naming malpha()
-*!   OV-37  lalpha(50)                rc 0
+*!   OV-37  lalpha(50)                rc 198 naming lalpha() (DT-15)
 *!   OV-38  lalpha(abc)               rc 198 naming lalpha()
-*!   OV-39  falpha(40)                rc 0
+*!   OV-39  falpha(40)                rc 198 naming falpha() (DT-15)
 *!   OV-40  falpha(-1)                rc 198 naming falpha()
 *!   OV-41  base(5)                   rc 0
 *!   OV-42  base(abc)                 rc 4026 in twoway's words (WP-35 basic:PT-9)
@@ -93,9 +93,9 @@
 *!   OV-62  histogram bw(2)           rc 198 "option bw() not allowed" (WP-35
 *!          stat:PT-14: twoway refuses bw() off the bandwidth types)
 *!   OV-63  kdensity kernel(gaussian) rc 0
-*!   OV-64  kdensity kernel(Epan2)    rc 0, registry carries "kernel":"epan2"
+*!   OV-64  kdensity kernel(Epan2)    rc 198, "use kernel(epan2)" (DT-15)
 *!   OV-65  kdensity kernel(bogus)    rc 198 in twoway's words (WP-35 basic:PT-9)
-*!   OV-158..162 kernel(gau) and kernel(EPAN) registered in full;
+*!   OV-158..162 kernel(gau) registered in full, kernel(EPAN) refused (DT-15);
 *!          gaussianx, gau;rm and a 253-letter word refused (WP-27), in
 *!          twoway's words (WP-35 basic:PT-9)
 *!   OV-66  kdensity n(50)            rc 0
@@ -122,11 +122,11 @@
 *!   OV-87  function range(0 5 10)    rc 123 naming range()  (twoway's; WP-31 C10a)
 *!   OV-88  function range(abc)       rc 111 variable abc not found (twoway's)
 *! Colour mapping and variables:
-*!   OV-89  colornlevels(6)           rc 0
+*!   OV-89  colornlevels(6)           rc 198 naming colornlevels() (DT-15)
 *!   OV-90  colornlevels(1)           rc 198 naming colornlevels()
 *!   OV-91  colornlevels(abc)         rc 198 naming colornlevels()
-*!   OV-92  colpalette(magma)         rc 0
-*!   OV-93  colpalette(Viridis)       rc 0, registry carries "colpalette":"viridis"
+*!   OV-92  colpalette(magma)         rc 198 naming colpalette() (DT-15)
+*!   OV-93  colpalette(Viridis)       rc 198 naming colpalette() (DT-15)
 *!   OV-94  colpalette(bogus)         rc 198 naming colpalette()
 *!   OV-95  colorcuts(20 30)          rc 0
 *!   OV-96  colorcuts(abc)            rc 198 naming colorcuts()
@@ -419,6 +419,14 @@
 *!          first line twoway's: mlabel(make..), rbar barwidth(.), lfit
 *!          and kdensity and mspline n(), and lwidth(-1), mlwidth(-1) and
 *!          msangle(400) on each type twoway refuses them on
+*! The spellings twoway refuses that dash took (WP-35 section 35-07;
+*! dash_only_words_truth.json):
+*!   Q3507-1 (DT-15) ytitle2() .. ttitle2(), marker(), malpha(), lalpha(),
+*!          falpha(), jseed(), mlg(), cv(), colv(), colornlevels(),
+*!          colormissing(), plotbgcolor(), pbgc(), colpalette(),
+*!          kernel(GAUSSIAN), xsize(()) and a string colorvar() refused
+*!          with twoway's rc and line and a line naming twoway's spelling,
+*!          inside p1() too, in twoway's order
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -778,7 +786,9 @@ _ov_case OV-27 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(ov27)"' 
 // Flipped (WP-35 basic:PT-13): r(198) was wrong; twoway draws it (value_truth.json jitterseed_3: rc 0)
 // (value_codes_truth.json jitterseed_abc).
 _ov_case OV-28 `"dash scatter mpg weight, jitter(5) jitterseed(2.5) name(ov28)"' 0
-_ov_case OV-29 `"dash scatter mpg weight, jitter(5) jseed(7) name(ov29)"' 0 ""
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses jseed(), "option jseed() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-29 `"dash scatter mpg weight, jitter(5) jseed(7) name(ov29)"' 198 jseed
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses jseed() itself, "option jseed() not allowed", whatever its value (P4-7).
 _ov_case OV-30 `"dash scatter mpg weight, jitter(5) jseed(abc) name(ov30)"' 198 jseed
 _ov_case OV-31 `"dash scatter mpg weight, yaxis(2) name(ov31)"' 0 ""
 // Flipped (WP-31 C10c): twoway's rc -- dash draws axes 3-9.
@@ -788,11 +798,17 @@ _ov_case OV-33 `"dash scatter mpg weight, xaxis(1) name(ov33)"' 0 ""
 // invalid numlist", asked of twoway in U06-04; the case probes axis 3.
 // Flipped (WP-31 C10c): twoway's rc -- dash draws axes 3-9.
 _ov_case OV-34 `"dash scatter mpg weight, xaxis(3) name(ov34)"' 0 ""
-_ov_case OV-35 `"dash scatter mpg weight, malpha(60) name(ov35)"' 0 ""
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses malpha(), "option malpha() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-35 `"dash scatter mpg weight, malpha(60) name(ov35)"' 198 malpha
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses malpha() itself, "option malpha() not allowed", whatever its value (P4-7).
 _ov_case OV-36 `"dash scatter mpg weight, malpha(150) name(ov36)"' 198 malpha
-_ov_case OV-37 `"dash line mpg weight, sort lalpha(50) name(ov37)"' 0 ""
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses lalpha(), "option lalpha() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-37 `"dash line mpg weight, sort lalpha(50) name(ov37)"' 198 lalpha
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses lalpha() itself, "option lalpha() not allowed", whatever its value (P4-7).
 _ov_case OV-38 `"dash line mpg weight, sort lalpha(abc) name(ov38)"' 198 lalpha
-_ov_case OV-39 `"dash area mpg weight, sort falpha(40) name(ov39)"' 0 ""
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses falpha(), "option falpha() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-39 `"dash area mpg weight, sort falpha(40) name(ov39)"' 198 falpha
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses falpha() itself, "option falpha() not allowed", whatever its value (P4-7).
 _ov_case OV-40 `"dash area mpg weight, sort falpha(-1) name(ov40)"' 198 falpha
 _ov_case OV-41 `"dash area mpg weight, sort base(5) name(ov41)"' 0 ""
 // Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
@@ -844,7 +860,10 @@ _ov_case OV-61 `"dash lowess mpg weight, bw(0.3) name(ov61)"' 0 ""
 _u46_rc OV-62 198 `"dash histogram mpg, bw(2) name(ov62)"'
 _ov_said OV-62 "option bw() not allowed"
 _ov_case OV-63 `"dash kdensity mpg, kernel(gaussian) name(ov63)"' 0 ""
-_ov_case OV-64 `"dash kdensity mpg, kernel(Epan2) name(ov64)"' 0 "" `""kernel":"epan2""'
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway reads a kernel in lower case only,
+// "invalid kernel function" (dash_only_words_truth.json V1; DECISIONS.md P4-7).
+_u46_rc OV-64 198 `"dash kdensity mpg, kernel(Epan2) name(ov64)"'
+_ov_said OV-64 "use kernel(epan2)"
 // Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
 // twoway refuses it r(198) "invalid kernel function".
 _u46_rc OV-65 198 `"dash kdensity mpg, kernel(bogus) name(ov65)"'
@@ -903,11 +922,17 @@ _ov_refused OV-88 `"dash function y = x^2, range(abc) name(ov88)"' 111 "variable
 // ----------------------------------------------------------------
 // OV-89 .. OV-101: colour mapping and variables
 // ----------------------------------------------------------------
-_ov_case OV-89  `"dash scatter mpg weight, colorvar(price) colornlevels(6) name(ov89)"' 0 ""
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses colornlevels(), "option colornlevels() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-89  `"dash scatter mpg weight, colorvar(price) colornlevels(6) name(ov89)"' 198 colornlevels
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses colornlevels() itself, "option colornlevels() not allowed", whatever its value (P4-7).
 _ov_case OV-90  `"dash scatter mpg weight, colorvar(price) colornlevels(1) name(ov90)"' 198 colornlevels
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses colornlevels() itself, "option colornlevels() not allowed", whatever its value (P4-7).
 _ov_case OV-91  `"dash scatter mpg weight, colorvar(price) colornlevels(abc) name(ov91)"' 198 colornlevels
-_ov_case OV-92  `"dash scatter mpg weight, colorvar(price) colpalette(magma) name(ov92)"' 0 ""
-_ov_case OV-93  `"dash scatter mpg weight, colorvar(price) colpalette(Viridis) name(ov93)"' 0 "" `""colpalette":"viridis""'
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses colpalette(), "option colpalette() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-92  `"dash scatter mpg weight, colorvar(price) colpalette(magma) name(ov92)"' 198 colpalette
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway refuses colpalette(), "option colpalette() not allowed", and the maintainer ruled that dash mirrors twoway (P4-7).
+_ov_case OV-93  `"dash scatter mpg weight, colorvar(price) colpalette(Viridis) name(ov93)"' 198 colpalette
+// Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses colpalette() itself, "option colpalette() not allowed", whatever its value (P4-7).
 _ov_case OV-94  `"dash scatter mpg weight, colorvar(price) colpalette(bogus) name(ov94)"' 198 colpalette
 _ov_case OV-95  `"dash scatter mpg weight, colorvar(price) colorcuts(20 30) name(ov95)"' 0 ""
 _ov_case OV-96  `"dash scatter mpg weight, colorvar(price) colorcuts(abc) name(ov96)"' 198 colorcuts
@@ -1127,7 +1152,10 @@ _ov_said OV-157m "unsupported option"
 // twoway's return code.
 // ----------------------------------------------------------------
 _ov_case OV-158 `"dash lpoly mpg weight, kernel(gau) name(ov158)"' 0 "" `""kernel":"gaussian""'
-_ov_case OV-159 `"dash kdensity mpg, kernel(EPAN) name(ov159)"' 0 "" `""kernel":"epanechnikov""'
+// Flipped (WP-35 DT-15): rc 0 was wrong; twoway reads a kernel in lower case only,
+// "invalid kernel function" (dash_only_words_truth.json V1; DECISIONS.md P4-7).
+_u46_rc OV-159 198 `"dash kdensity mpg, kernel(EPAN) name(ov159)"'
+_ov_said OV-159 "invalid kernel function"
 // Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
 // twoway refuses it r(198) "invalid kernel function".
 _u46_rc OV-160 198 `"dash kdensity mpg, kernel(gaussianx) name(ov160)"'
@@ -3775,6 +3803,110 @@ foreach _q35k of local q_keys {
 }
 _ov_assert Q3505-1 "(`_q35n' >= 80)" "`_q35n' value_codes_truth refusals ran"
 capture dash clear
+set linesize 80
+
+// ----------------------------------------------------------------
+// Q3507-1 (WP-35 section 35-07, DT-15; DECISIONS.md P4-7, P4-9, D53):
+// every spelling twoway refuses that dash took -- ytitle2() .. ttitle2(),
+// marker(), malpha(), lalpha(), falpha(), jseed(), mlg(), cv(), colv(),
+// colornlevels(), colormissing(), plotbgcolor(), pbgc(), colpalette() --
+// and kernel(GAUSSIAN), xsize(()) and a string colorvar(), through dash
+// as test/fixtures/dash_only_words_truth.json ran them in twoway, on the
+// one-line route and with name(): the rc and first line are twoway's, the
+// second line names twoway's spelling (none for xsize(()) and a string
+// colorvar()), and no line follows.  Each word inside p1() (p.<word>):
+// twoway's p# line and the hint, or rc 0 where twoway takes it
+// (p.marker).  The order probes (order.*): dash names what twoway names
+// first.
+// ----------------------------------------------------------------
+python:
+import json as _q3507_json
+import re as _q3507_re
+from sfi import Macro as _q3507_M
+with open("fixtures/dash_only_words_truth.json", encoding="utf-8") as _q3507_fh:
+    _q3507_fx = _q3507_json.load(_q3507_fh)
+with open("../dash_parse.mata", encoding="utf-8") as _q3507_fh:
+    _q3507_src = _q3507_fh.read()
+_q3507_i = _q3507_src.index("string matrix _dash_dashonly_list()")
+_q3507_hint = {}
+for _q3507_r in _q3507_re.findall(r'"([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"', _q3507_src[_q3507_i:_q3507_src.index("\n}\n", _q3507_i)]):
+    _q3507_hint[_q3507_r[0]] = _q3507_r[3]
+_q3507_pkeys = ["p." + w for w in _q3507_hint]
+_q3507_hint["V1"] = "use kernel(gaussian)"
+_q3507_M.setLocal("q_words", " ".join(list(_q3507_hint) + ["V2", "V3"]))
+_q3507_M.setLocal("q_pkeys", " ".join(_q3507_pkeys))
+_q3507_M.setLocal("q_okeys", " ".join(sorted(k for k in _q3507_fx if k.startswith("order.")) + ["space.run"]))
+
+
+def _q3507_take(key, named):
+    c = _q3507_fx[key]["cmd"][len("twoway "):]
+    if named == "1":
+        c = c + " name(q3507n)"
+    _q3507_M.setLocal("q_cmd", c)
+    _q3507_M.setLocal("q_rc", str(_q3507_fx[key]["rc"]))
+
+
+def _q3507_judge(key, path, rc, mode):
+    r = _q3507_fx[key]
+    lines = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    lines.append(ln.rstrip())
+    except OSError:
+        pass
+    got = lines[0].strip() if lines else ""
+    nxt = lines[1].strip() if len(lines) > 1 else ""
+    ok = int(rc) == r["rc"]
+    want2 = ""
+    if r["rc"]:
+        ok = ok and got == r["message"]
+        if mode != "order":
+            w = key[2:] if key.startswith("p.") else key
+            want2 = _q3507_hint.get(w, "")
+            ok = ok and nxt == want2 and len(lines) == (2 if want2 else 1)
+    _q3507_M.setLocal("q_ok", "1" if ok else "0")
+    for name, text in (("q_got", got + " / " + nxt + " / " + str(len(lines))),
+                       ("q_want", r["message"] + " / " + want2)):
+        for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+            text = text.replace(ch, to)
+        _q3507_M.setLocal(name, text[:200])
+end
+capture program drop _q3507
+program define _q3507
+    version 16.0
+    args key named mode
+    python: import __main__ as _q3507_main; _q3507_main._q3507_take("`key'", "`named'")
+    quietly sysuse auto, clear
+    set linesize 255
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'dash_ov.log"
+    quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `macval(q_cmd)'
+    local rc = _rc
+    quietly log close _ovlog
+    python: import __main__ as _q3507_main; _q3507_main._q3507_judge("`key'", r"`c(tmpdir)'dash_ov.log", "`rc'", "`mode'")
+    _ov_assert Q3507-1 "(`q_ok' == 1)" `"`key' (name() `named'): rc `rc' (twoway `q_rc'); dash said: `macval(q_got)'; want: `macval(q_want)'"'
+    capture dash clear
+end
+local _q37n 0
+foreach _q37k of local q_words {
+    _q3507 `_q37k' 0 word
+    _q3507 `_q37k' 1 word
+    local _q37n = `_q37n' + 2
+}
+foreach _q37k of local q_pkeys {
+    _q3507 `_q37k' 0 p
+    local ++_q37n
+}
+foreach _q37k of local q_okeys {
+    _q3507 `_q37k' 0 order
+    local ++_q37n
+}
+// 41 rows on two routes, 38 p.<word> keys, ten order keys and space.run
+_ov_assert Q3507-1 "(`_q37n' == 131)" "`_q37n' dash_only_words_truth probes ran"
 set linesize 80
 
 // Summary

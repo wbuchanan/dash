@@ -9,8 +9,8 @@
 *! test_help_claims_5.py holds both render modes to what is measured here.
 *!
 *! Groups:
-*!   HC5-01  mlg(): twoway refuses it, r(198); dash takes it as mlabgap(),
-*!           as it takes mlabg(), and says nothing (TR-23.3).
+*!   HC5-01  mlg(): twoway refuses it, r(198), and so does dash (WP-35
+*!           DT-15); mlabg() and mlabgap() are mlabgap(), with no note.
 *!   HC5-02  the marker label options belong to a plot: dash build refuses
 *!           mlabel(), r(198).
 *!   HC5-03  a clock position twoway does not recognise -- 13, 2.5, 03,
@@ -235,14 +235,24 @@ program define _hc5_svg, rclass
 end
 
 // ================================================================
-// HC5-01 -- mlg(): twoway refuses it; dash folds it into mlabgap()
+// HC5-01 -- mlg(): twoway refuses it, and so does dash
 // ================================================================
 sysuse auto, clear
 capture twoway scatter mpg weight, mlabel(make) mlg(5) nodraw
 assert _rc == 198
 capture twoway scatter mpg weight, mlabel(make) mlabg(5) nodraw
 assert _rc == 0
-foreach o in mlg mlabg mlabgap {
+// Flipped (WP-35 DT-15): dash folding mlg() into mlabgap() was wrong;
+// twoway refuses mlg(), and the maintainer ruled that dash mirrors twoway
+// (DECISIONS.md P4-7): "option mlg() not allowed", then "use mlabgap()".
+capture dash clear
+_hc5_run `"dash scatter mpg weight, mlabel(make) mlg(5) name(hc1)"' "`logfile'"
+assert r(rc) == 198
+cert_log_has "`logfile'", needle("option mlg() not allowed")
+assert r(found) == 1
+cert_log_has "`logfile'", needle("use mlabgap()")
+assert r(found) == 1
+foreach o in mlabg mlabgap {
     capture dash clear
     _hc5_run `"dash scatter mpg weight, mlabel(make) `o'(5) name(hc1)"' "`logfile'"
     assert r(rc) == 0
@@ -256,7 +266,7 @@ foreach o in mlg mlabg mlabgap {
     assert r(found) == 0
 }
 capture dash clear
-display "HC5-01 PASS: twoway refuses mlg() r(198); dash takes mlg(), mlabg() and mlabgap() alike as mlabgap(), with no note"
+display "HC5-01 PASS: twoway and dash refuse mlg() r(198); dash takes mlabg() and mlabgap() alike as mlabgap(), with no note"
 
 // ================================================================
 // HC5-02 -- a marker label option is a plot's, not dash build's

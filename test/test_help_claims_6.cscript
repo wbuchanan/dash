@@ -470,11 +470,13 @@ mata: st_local("ja", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":
 _hc6_dash "dash kdensity mpg, kernel(epan) name(hc6)"
 local db = r(rc)
 mata: st_local("jb", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "epanechnikov" + char(34))))
+// Flipped (WP-35 DT-15): dash reading kernel(GAUSSIAN) as gaussian was
+// wrong; twoway refuses it, "invalid kernel function", and the maintainer
+// ruled that dash refuses it as twoway does (DECISIONS.md P4-7).
 _hc6_dash "dash lpoly mpg weight, kernel(GAUSSIAN) name(hc6)"
 local dc = r(rc)
-mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "gaussian" + char(34))))
-local bad = (`ta' != 0 | `tb' != 0 | `tc' != 198 | `da' != 0 | `ja' != 1 | `db' != 0 | `jb' != 1 | `dc' != 0 | `j' != 1)
-_hc6_tally HC6-09 `bad' "kernel(): twoway takes gau and epan and refuses GAUSSIAN; dash takes gau and epan as gaussian and epanechnikov, and reads GAUSSIAN as gaussian"
+local bad = (`ta' != 0 | `tb' != 0 | `tc' != 198 | `da' != 0 | `ja' != 1 | `db' != 0 | `jb' != 1 | `dc' != 198)
+_hc6_tally HC6-09 `bad' "kernel(): twoway takes gau and epan and refuses GAUSSIAN; dash takes gau and epan as gaussian and epanechnikov, and refuses GAUSSIAN as twoway does"
 
 // HC6-57 (WP-27): every prefix of every kernel name, on lpoly, lpolyci and
 // kdensity: dash takes what twoway takes, refuses what it refuses with

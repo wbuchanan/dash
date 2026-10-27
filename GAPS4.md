@@ -362,7 +362,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
 - **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit 5e80d70.
 - **basic:PT-13 Tracked:** Closed in WP-35, BUGS.md "Values twoway draws are refused by dash's bounds: jitter(-3/150/abc), jitterseed(-1), barwidth(0/-1), aspectratio(-1), lwidth(-1) on scatter, msangle(400) on line, msize(1e400); lwidth(*40000) noted where twoway refuses", commit edc01a6.
-- **DT-15 Tracked:** Open (WP-35 section 35-07).
+- **DT-15 Tracked:** Closed in WP-35, BUGS.md "Accepted where twoway refuses: kernel(GAUSSIAN), xsize(()), an empty-colorvar if, and about 35 dash-only words (ytitle2(), xlabel2(), mlg(), marker(), malpha(), jseed(), plotbgcolor(), hover(), table ...)", commit pending.
 - **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.
 - **syn:SD-8 Tracked:** Closed in WP-35, BUGS.md "Factor-variable notation in by()/colorvar(c.) gives r(111) where twoway gives r(101); mlabel(45) gives r(111) where twoway gives r(198)", commit 5e1901e.
 - **GW-2 Tracked:** Closed in WP-35, BUGS.md "aspectratio() with xoverhangs/yoverhangs is accepted; twoway refuses r(198)", commit 9ca400a.

@@ -473,6 +473,7 @@ program define _dash_require_mata
     // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_route_axis2 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_links _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_dashonly_typed _dash_dashonly_say ///
         _dash_rightmost_keep ///
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
@@ -1124,6 +1125,15 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xtick2       : copy local xtick2
     sreturn local yline2       : copy local yline2
     sreturn local xline2       : copy local xline2
+    // WP-35 DT-15: xsize(()) refused as twoway refuses it (V2; the same
+    // rule in _dash_parse_plot_opts).
+    foreach _xs in xsize ysize {
+        mata: st_local("_xs_e", (strpos(st_local("`_xs'"), "(") ? strtrim(stritrim(subinstr(subinstr(st_local("`_xs'"), "(", " ( ", .), ")", " ) ", .))) : ""))
+        if `: length local _xs_e' {
+            mata: _dash_say("err", "option(s) ", st_local("_xs_e"), " not allowed")
+            exit 198
+        }
+    }
     sreturn local xsize        : copy local xsize
     sreturn local ysize        : copy local ysize
     sreturn local fxsize       : copy local fxsize
@@ -1382,7 +1392,28 @@ program define _dash_parse_plot_opts, sclass
     // judges it and the renderer reads it.  It was refused, r(198).  Read
     // by value, in Mata.
     if `: length local kernel' {
+        // WP-35 DT-15: twoway reads a kernel's name in lower case only:
+        // kernel(GAUSSIAN) is "invalid kernel function", r(198)
+        // (dash_only_words_truth.json V1; DECISIONS.md P4-7, P4-9).
+        mata: st_local("_kn_uc", strofreal(ustrregexm(st_local("kernel"), "[A-Z]") & anyof(("epanechnikov", "epan2", "biweight", "cosine", "gaussian", "parzen", "rectangle", "triangle"), _dash_kernel_full(ustrlower(st_local("kernel"))))))
+        if `_kn_uc' {
+            display as error "invalid kernel function"
+            mata: _dash_say("err", "      use kernel(", ustrlower(strtrim(st_local("kernel"))), ")")
+            exit 198
+        }
         mata: st_local("kernel", _dash_kernel_full(st_local("kernel")))
+    }
+    // WP-35 DT-15: xsize() or ysize() holding a parenthesis is refused as
+    // twoway refuses it, its value written with a blank around each
+    // parenthesis: xsize(()) is "option(s) ( ) not allowed", xsize((5))
+    // "option(s) ( 5 ) not allowed", r(198) (dash_only_words_truth.json
+    // V2; DECISIONS.md P4-7).  Read by value.
+    foreach _xs in xsize ysize {
+        mata: st_local("_xs_e", (strpos(st_local("`_xs'"), "(") ? strtrim(stritrim(subinstr(subinstr(st_local("`_xs'"), "(", " ( ", .), ")", " ) ", .))) : ""))
+        if `: length local _xs_e' {
+            mata: _dash_say("err", "option(s) ", st_local("_xs_e"), " not allowed")
+            exit 198
+        }
     }
 
     // level() is no longer checked here: its rule (level=num,0,100,x) lives
@@ -3926,17 +3957,15 @@ program define _dash_option_rules
         mlwidth=style,0,10000,u@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  mlwidth=style ///
         msangle=style,-360,360@connected|contour|dot|dropline|pcarrow|pcarrowi|pcbarrow|pccapsym|pcscatter|rcapsym|rconnected|rpcap|rpspike|rscatter|scatter|scatteri  msangle=style ///
         mlabposition=style  fintensity=style ///
-        jitter=style  jitterseed=style  jseed=int,0 ///
+        jitter=style  jitterseed=style ///
         yaxis=axes,1,9  xaxis=axes,1,9 ///
-        malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
         base=num  barwidth=num  level=num@lfitci|qfitci|fpfitci ///
         degree=int,0  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int@lfit|qfit|lfitci|qfitci  n=int@fpfitci  n=int,,10000@mband  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
-        colornlevels=int,2,256  colorlevels=int ///
-        colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
+        colorlevels=int ///
         colorcuts=numlist,1  colorvar=var  mlabel=var ///
         range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2 ///
         clwidth=style@scatter  clwidth=style,0,10000,u ///
@@ -4620,6 +4649,16 @@ program define _dash_validate_value, rclass
         if "`kind'" == "var" & `: word count `vv'' > 1 {
             mata: _dash_say("err", "`prefix': `opt'() must name one variable (got: ", st_local("value"), ")")
             exit 198
+        }
+        // WP-35 DT-15: colorvar() naming a string variable is refused as
+        // twoway refuses it, r(7) (dash_only_words_truth.json V3;
+        // DECISIONS.md P4-7); dash drew a colour per value.
+        if "`opt'" == "colorvar" & `: word count `vv'' == 1 {
+            capture confirm string variable `vv', exact
+            if !_rc {
+                mata: _dash_say("err", "'", st_local("vv"), "' found where numeric variable expected")
+                exit 7
+            }
         }
         // by()'s sub-options, refused in twoway's stages, codes and words
         // (WP-30 P1.15b); the tail is read by value from a string scalar.
@@ -6884,6 +6923,12 @@ program define _dash_process_segment, rclass
             }
         }
     }
+    // WP-35 DT-15: the first spelling twoway refuses that dash once took
+    // (ytitle2(), malpha() ...), found on the options as typed and refused
+    // after _dash_refuse_unbound, once no word typed before it is refused
+    // first: twoway names the first word of a list it does not take.
+    mata: st_local("_do_w", _dash_dashonly_typed(st_local("opts_raw"), 0))
+    local _do_wpre : copy local _do_pre
     // WP-35 syn:SD-3: the plot's own p<j>() and the graph's p<k>() for it,
     // merged into its options as twoway applies them (_dash_p_apply).
     _dash_p_apply `ptype' `: word count `yvarlist'' `"`macval(opts_raw)'"'
@@ -6910,6 +6955,17 @@ program define _dash_process_segment, rclass
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
+        // WP-35 DT-15: the spelling found above, refused in twoway's words
+        // with a line naming twoway's spelling (DECISIONS.md P4-7, P4-9),
+        // after the refusal of any word typed before it.
+        if `: length local _do_w' {
+            if `: length local _do_wpre' {
+                sreturn clear
+                _dash_parse_plot_opts , `macval(_do_wpre)'
+                _dash_refuse_unknown _dash_parse_plot_opts `ptype' `"`macval(_do_wpre)'"'
+            }
+            mata: _dash_dashonly_say(st_local("_do_w"), "")
+        }
         // The statistical types' spellings twoway reads (WP-35 35-03).
         local _fsw_nowt ""
         _dash_fold_stat_words "`ptype'" `"`macval(opts_raw)'"'
@@ -8724,6 +8780,8 @@ program define _dash_plot
     // WP-35 syn:SD-3: no earlier command's p#() pairs (_dash_p_seg).
     global dash__pnum ""
     global dash__poff ""
+    // WP-35 DT-15: no earlier command's held p#() spelling (_dash_p_apply).
+    global dash__dop ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -8837,6 +8895,10 @@ program define _dash_plot
     local _pt_gbad : copy local _pt_bad
     mata: st_global("dash__pnum", st_local("_pt_pairs"))
     local _gopts_axraw : copy local gopts_raw
+    // WP-35 DT-15: the first spelling twoway refuses that dash once took,
+    // after the comma, as typed; refused after the segment loop.
+    mata: st_local("_do_g", _dash_dashonly_typed(st_local("gopts_raw"), 0))
+    local _do_gpre : copy local _do_pre
     if `: length local gopts_raw' {
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
@@ -9109,6 +9171,8 @@ program define _dash_plot
     }
     global dash__pnum ""
     global dash__poff ""
+    local _do_held : copy global dash__dop
+    global dash__dop ""
 
     // WP-32: the refusals twoway gives only once every plot's options are
     // read -- held by _dash_pend -- before any function layer is evaluated;
@@ -9383,11 +9447,28 @@ program define _dash_plot
     // every plot's and after the function layers are evaluated, as twoway
     // refuses a graph option (test_parser.cscript FX-02: a runiform()
     // layer advances the random-number state).
+    // WP-35 DT-15: a spelling twoway refuses inside a p#() text, held by
+    // _dash_p_apply ($dash__dop, taken into _do_held after the segment
+    // loop): after every plot group's refusal, before the options
+    // after the comma (dash_only_words_truth.json order.p_*).
+    if `: length local _do_held' {
+        mata: _dash_dashonly_say(substr(st_local("_do_held"), 1, strpos(st_local("_do_held"), char(1)) - 1), substr(st_local("_do_held"), strpos(st_local("_do_held"), char(1)) + 1, .))
+    }
     if `: length local _pt_gbad' {
         // pnum_truth.json g_p21: scatter mpg weight, p21(mcolor(red)) is
         // "p21(mcolor(red)):  too many arguments", r(103).
         mata: _dash_say("err", "", st_local("_pt_gbad"), ":  too many arguments")
         exit 103
+    }
+    // WP-35 DT-15: the spelling after the comma found before the loop,
+    // after the refusal of any word typed before it there.
+    if `: length local _do_g' {
+        if `: length local _do_gpre' {
+            sreturn clear
+            _dash_parse_graph_opts , `macval(_do_gpre)'
+            _dash_gopts_checks `"`macval(_do_gpre)'"'
+        }
+        mata: _dash_dashonly_say(st_local("_do_g"), "")
     }
     if 0`_gac_rc' {
         sreturn clear
@@ -11757,6 +11838,28 @@ program define _dash_p_apply
         capture _dash_parse_plot_opts , `macval(_pa_v`i')'
         if !_rc mata: _dash_p_unknown(st_global("s(_unknown)"), st_local("ptype"))
         sreturn clear
+    }
+    // WP-35 DT-15: a spelling twoway refuses inside a p#() text is
+    // refused after every plot group's own options and before the options
+    // after the comma, the lowest plot first, as twoway reads p#() texts
+    // (dash_only_words_truth.json order.p_*): the first plot's hit is held
+    // in $dash__dop, "<hit>" char(1) "<its p#() words, as twoway lists
+    // them>", for _dash_plot.  Each y's own p<j>() first, then the graph's.
+    if !`: length global dash__dop' & 0`_pa_nv' {
+        forvalues j = 1/`n' {
+            local _do_hit ""
+            local _do_toks ""
+            forvalues i = 1/`_pa_nv' {
+                if "`_pa_k`i''" != "`j'" continue
+                mata: st_local("_do_h", _dash_dashonly_typed(st_local("_pa_v`i'"), 1))
+                if `: length local _do_h' & !`: length local _do_hit' local _do_hit : copy local _do_h
+                mata: st_local("_do_toks", strtrim(st_local("_do_toks") + " " + st_local("_do_all")))
+            }
+            if `: length local _do_hit' {
+                mata: st_global("dash__dop", st_local("_do_hit") + char(1) + st_local("_do_toks"))
+                continue, break
+            }
+        }
     }
     c_local opts_raw : copy local _pa_opts
     c_local _pa_named : copy local _pa_named
