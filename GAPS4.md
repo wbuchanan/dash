@@ -375,16 +375,16 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plot:PT-4 Tracked:** Closed in WP-35, BUGS.md "The empty graph is drawn with two black axes and takes axis options twoway refuses ('xlabels() not allowed, xaxis1 does not exist')", commit fe448a2.
 - **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
 - **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit 2e22ede.
-- **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal", commit pending.
+- **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal", commit eb8a8f1.
 - **plat:PT-5 Tracked:** Open (WP-36 section 36-04).
-- **plat:PT-4 Tracked:** Closed in WP-36, BUGS.md "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help", commit pending.
+- **plat:PT-4 Tracked:** Closed in WP-36, BUGS.md "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help", commit c4ecfcc.
 - **plat:PT-2 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-11 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-12 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-6 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-16 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-14 Tracked:** Open (WP-36 section 36-04).
-- **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit pending.
+- **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
 - **DG-1 Tracked:** Open (WP-37 section 37-01).
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
 - **TR-13 Tracked:** Open (WP-37 section 37-03).
