@@ -1106,6 +1106,41 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w35_run' {
 }
 * ==== end S04 ====
 
+* ==== S05 basic:PT-9: value refusals in twoway's codes ====
+local only : env WP35_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w35_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3505-5 (WP-35 basic:PT-9): lpoly with n() above the rows in memory
+    // prints twoway's note, once, as text (value_codes_truth.json
+    // lpoly_n_100: "(n() set to 74)", rc 0); n(50) prints none.
+    // ------------------------------------------------------------
+    python: import json; from sfi import Macro; Macro.setLocal("s05note", json.load(open("fixtures/value_codes_truth.json", encoding="utf-8"))["probes"]["lpoly_n_100"]["first"])
+    quietly sysuse auto, clear
+    foreach s05t in lpoly lpolyci {
+        foreach s05n in 100 50 {
+            capture dash clear
+            capture log close s05log
+            capture erase "`c(tmpdir)'dash_s05.log"
+            quietly log using "`c(tmpdir)'dash_s05.log", text replace name(s05log) nomsg
+            capture noisily dash `s05t' mpg weight, n(`s05n') name(s05g)
+            local s05r = _rc
+            quietly log close s05log
+            cert_file_count "`c(tmpdir)'dash_s05.log", needle(`"`s05note'"')
+            local s05c = r(count)
+            local s05w = cond(`s05n' == 100, 1, 0)
+            _w35_expect Q3505-5 "(`s05r' == 0 & `s05c' == `s05w')" `"`s05t' n(`s05n'): rc `s05r', the note `s05note' `s05c' times (twoway `s05w')"'
+        }
+    }
+    capture dash clear
+    capture erase "`c(tmpdir)'dash_s05.log"
+    _w35_done Q3505-5 "lpoly and lpolyci print twoway's (n() set to N) note"
+
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== S06 GW-4: fxsiz() and fysiz() applied ====
 local only : env WP35_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w35_run' {

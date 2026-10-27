@@ -145,7 +145,7 @@
 *!     SO-66 histogram rep78, discrete width(2)  rc 0
 *!   mspline's n():
 *!     SO-67 mspline, n(1)              rc 0, "n":"1"
-*!     SO-68 mspline, n(0)              r(198) naming n()
+*!     SO-68 mspline, n(0)              r(198) in twoway's words
 *!     SO-69 kdensity mpg, n(10001)     r(198) naming n() (dash's own
 *!                                      bound, up to 10000, on the other types)
 *!     SO-70 mspline, bands(5) n(4)     rc 0, both in the registry
@@ -729,10 +729,12 @@ _so_case SO-66 `"dash histogram rep78, discrete width(2) name(so66)"' 0 "" `""di
 // mspline's n() may be 1; the other types keep dash's 2..10000.
 _so_case SO-67 `"dash mspline mpg weight, n(1) name(so67)"' 0 "" `""n":"1""'
 _so_case SO-68 `"dash mspline mpg weight, n(0) name(so68)"' 198
-_so_said SO-68w "n()"
-// SO-68m: "dash: n() must be an integer between 1 and 300 (got: 0)"
-// (measured 24sep2026) -- the positive control for the "must be" that
-// _so_probe requires absent from every accepted command.
+// Flipped (WP-35 basic:PT-9): "n()" in dash's sentence was wrong; twoway
+// refuses it "n must be between 1 and 300" (value_codes_truth.json
+// mspline_n_0).
+_so_said SO-68w "n must be between 1 and 300"
+// SO-68m: the positive control for the "must be" that _so_probe
+// requires absent from every accepted command.
 _so_said SO-68m "must be"
 // Flipped (WP-31 C10a): n(1) is twoway's and taken
 // (value_bounds_truth.json n.kdensity_one); dash's own bound is the upper
@@ -795,7 +797,9 @@ _so_case SO-86 `"dash fpfit mpg weight [aw=negw], name(so86)"' 0 "" `""weight":"
 // twoway mspline: "n must be between 1 and 300", r(198).
 _so_case SO-87 `"dash mspline mpg weight, n(300) name(so87)"' 0 "" `""n":"300""'
 _so_case SO-88 `"dash mspline mpg weight, n(301) name(so88)"' 198
-_so_said SO-88w "n()"
+// Flipped (WP-35 basic:PT-9): "n()" in dash's sentence was wrong; dash
+// prints twoway's line (value_codes_truth.json mspline_n_301).
+_so_said SO-88w "n must be between 1 and 300"
 // ... and the refusal does not claim the bound is dash's own.
 _so_count "`c(tmpdir)'dash_so.log" "dash evaluates up to"
 local bad = (r(n) > 0)

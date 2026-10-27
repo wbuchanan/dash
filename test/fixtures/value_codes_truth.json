@@ -1,0 +1,1492 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "dbe46dc6da13a1a5afe23b018a4ee6c742335fcf",
+  "extracted": "26 Oct 2026",
+  "how": "one `capture noisily twoway ...` per probe; first = the first non-blank output line; a probe with a reference is drawn under `set seed 1`, exported as SVG and its md5 (random clip-path names made one) compared with the reference's",
+  "purpose": "twoway's rc and first line for the option values dash refused in its own words (basic:PT-9), and twoway's drawing of the values dash's own bounds refused (basic:PT-13). Read by scripts/gen_value_refusal_table.py and the Q3505 cases.",
+  "source": "scripts/extract_value_codes_truth.do",
+  "stata": "console binary (stata_slot.sh), set graphics off, sysuse auto, drawn",
+  "stata_version": "19.5",
+  "types": [
+   "scatter",
+   "line",
+   "connected",
+   "area",
+   "bar",
+   "spike",
+   "dropline",
+   "dot",
+   "tsline",
+   "tsrline",
+   "rarea",
+   "rbar",
+   "rspike",
+   "rcap",
+   "rline",
+   "rconnected",
+   "rcapsym",
+   "rscatter",
+   "rpcap",
+   "rpspike",
+   "contour",
+   "contourline",
+   "pcspike",
+   "pccapsym",
+   "pcarrow",
+   "pcbarrow",
+   "pcscatter",
+   "pci",
+   "pcarrowi",
+   "scatteri",
+   "lfit",
+   "qfit",
+   "lfitci",
+   "qfitci",
+   "fpfit",
+   "fpfitci",
+   "lowess",
+   "lpoly",
+   "lpolyci",
+   "mspline",
+   "mband",
+   "kdensity",
+   "histogram",
+   "function"
+  ]
+ },
+ "per_type": {
+  "lwidth_neg": {
+   "area": {
+    "command": "twoway area mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway area mpg weight"
+   },
+   "bar": {
+    "command": "twoway bar mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway bar mpg weight"
+   },
+   "connected": {
+    "command": "twoway connected mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway connected mpg weight"
+   },
+   "contour": {
+    "command": "twoway contour mpg weight length, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway contour mpg weight length"
+   },
+   "contourline": {
+    "command": "twoway contourline mpg weight length, lwidth(-1)",
+    "equal": false,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "f7fd5773087811d8aab77f088d56c84d",
+    "reference": "twoway contourline mpg weight length",
+    "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
+   },
+   "dot": {
+    "command": "twoway dot mpg weight, lwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "0725e96df4716bd826ab4061a7d58cd8",
+    "reference": "twoway dot mpg weight",
+    "svg_md5": "0725e96df4716bd826ab4061a7d58cd8"
+   },
+   "dropline": {
+    "command": "twoway dropline mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway dropline mpg weight"
+   },
+   "fpfit": {
+    "command": "twoway fpfit mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway fpfit mpg weight"
+   },
+   "fpfitci": {
+    "command": "twoway fpfitci mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway fpfitci mpg weight"
+   },
+   "function": {
+    "command": "twoway function y = x, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway function y = x"
+   },
+   "histogram": {
+    "command": "twoway histogram mpg, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway histogram mpg"
+   },
+   "kdensity": {
+    "command": "twoway kdensity mpg, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway kdensity mpg"
+   },
+   "lfit": {
+    "command": "twoway lfit mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway lfit mpg weight"
+   },
+   "lfitci": {
+    "command": "twoway lfitci mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway lfitci mpg weight"
+   },
+   "line": {
+    "command": "twoway line mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway line mpg weight"
+   },
+   "lowess": {
+    "command": "twoway lowess mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway lowess mpg weight"
+   },
+   "lpoly": {
+    "command": "twoway lpoly mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway lpoly mpg weight"
+   },
+   "lpolyci": {
+    "command": "twoway lpolyci mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway lpolyci mpg weight"
+   },
+   "mband": {
+    "command": "twoway mband mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway mband mpg weight"
+   },
+   "mspline": {
+    "command": "twoway mspline mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway mspline mpg weight"
+   },
+   "pcarrow": {
+    "command": "twoway pcarrow mpg weight trunk turn, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcarrow mpg weight trunk turn"
+   },
+   "pcarrowi": {
+    "command": "twoway pcarrowi 20 2000 30 4000, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcarrowi 20 2000 30 4000"
+   },
+   "pcbarrow": {
+    "command": "twoway pcbarrow mpg weight trunk turn, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcbarrow mpg weight trunk turn"
+   },
+   "pccapsym": {
+    "command": "twoway pccapsym mpg weight trunk turn, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pccapsym mpg weight trunk turn"
+   },
+   "pci": {
+    "command": "twoway pci 20 2000 30 4000, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pci 20 2000 30 4000"
+   },
+   "pcscatter": {
+    "command": "twoway pcscatter mpg weight trunk turn, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcscatter mpg weight trunk turn"
+   },
+   "pcspike": {
+    "command": "twoway pcspike mpg weight trunk turn, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcspike mpg weight trunk turn"
+   },
+   "qfit": {
+    "command": "twoway qfit mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway qfit mpg weight"
+   },
+   "qfitci": {
+    "command": "twoway qfitci mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway qfitci mpg weight"
+   },
+   "rarea": {
+    "command": "twoway rarea yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rarea yl yh weight"
+   },
+   "rbar": {
+    "command": "twoway rbar yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rbar yl yh weight"
+   },
+   "rcap": {
+    "command": "twoway rcap yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rcap yl yh weight"
+   },
+   "rcapsym": {
+    "command": "twoway rcapsym yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rcapsym yl yh weight"
+   },
+   "rconnected": {
+    "command": "twoway rconnected yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rconnected yl yh weight"
+   },
+   "rline": {
+    "command": "twoway rline yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rline yl yh weight"
+   },
+   "rpcap": {
+    "command": "twoway rpcap yl yh mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rpcap yl yh mpg weight"
+   },
+   "rpspike": {
+    "command": "twoway rpspike yl yh mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rpspike yl yh mpg weight"
+   },
+   "rscatter": {
+    "command": "twoway rscatter yl yh weight, lwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "4b02c050e027c9d2181df29019114de3",
+    "reference": "twoway rscatter yl yh weight",
+    "svg_md5": "4b02c050e027c9d2181df29019114de3"
+   },
+   "rspike": {
+    "command": "twoway rspike yl yh weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rspike yl yh weight"
+   },
+   "scatter": {
+    "command": "twoway scatter mpg weight, lwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+    "reference": "twoway scatter mpg weight",
+    "svg_md5": "1c98d084866724a25fc0f0af6047108a"
+   },
+   "scatteri": {
+    "command": "twoway scatteri 20 2000, lwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "e6cb1d9d2868b643ed46175ce40d9648",
+    "reference": "twoway scatteri 20 2000",
+    "svg_md5": "e6cb1d9d2868b643ed46175ce40d9648"
+   },
+   "spike": {
+    "command": "twoway spike mpg weight, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway spike mpg weight"
+   },
+   "tsline": {
+    "command": "twoway tsline mpg, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway tsline mpg"
+   },
+   "tsrline": {
+    "command": "twoway tsrline yl yh, lwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway tsrline yl yh"
+   }
+  },
+  "mlwidth_neg": {
+   "area": {
+    "command": "twoway area mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "8fa76e4ef8eb7748759a347cd1b4ded1",
+    "reference": "twoway area mpg weight",
+    "svg_md5": "8fa76e4ef8eb7748759a347cd1b4ded1"
+   },
+   "bar": {
+    "command": "twoway bar mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "c6446c0f7a0d083f063a486e36d42a82",
+    "reference": "twoway bar mpg weight",
+    "svg_md5": "c6446c0f7a0d083f063a486e36d42a82"
+   },
+   "connected": {
+    "command": "twoway connected mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway connected mpg weight"
+   },
+   "contour": {
+    "command": "twoway contour mpg weight length, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway contour mpg weight length"
+   },
+   "contourline": {
+    "command": "twoway contourline mpg weight length, mlwidth(-1)",
+    "equal": false,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "bb137c3da4980f64bd17ac7cf3ad7efe",
+    "reference": "twoway contourline mpg weight length",
+    "svg_md5": "a1e40bf5005131a53d5a9e3a080614ab"
+   },
+   "dot": {
+    "command": "twoway dot mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway dot mpg weight"
+   },
+   "dropline": {
+    "command": "twoway dropline mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway dropline mpg weight"
+   },
+   "fpfit": {
+    "command": "twoway fpfit mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "32f5a11e1ddd76bfea47cf3e9cfc982e",
+    "reference": "twoway fpfit mpg weight",
+    "svg_md5": "32f5a11e1ddd76bfea47cf3e9cfc982e"
+   },
+   "fpfitci": {
+    "command": "twoway fpfitci mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5673eb6c008bcf45b6e4c57d066f5bff",
+    "reference": "twoway fpfitci mpg weight",
+    "svg_md5": "5673eb6c008bcf45b6e4c57d066f5bff"
+   },
+   "function": {
+    "command": "twoway function y = x, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "bb40cda9c78c6501786fff92e727fdd2",
+    "reference": "twoway function y = x",
+    "svg_md5": "bb40cda9c78c6501786fff92e727fdd2"
+   },
+   "histogram": {
+    "command": "twoway histogram mpg, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "8d5b480259e393e586feb73582490392",
+    "reference": "twoway histogram mpg",
+    "svg_md5": "8d5b480259e393e586feb73582490392"
+   },
+   "kdensity": {
+    "command": "twoway kdensity mpg, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "38f2a76079c68dab7c3b41400a550747",
+    "reference": "twoway kdensity mpg",
+    "svg_md5": "38f2a76079c68dab7c3b41400a550747"
+   },
+   "lfit": {
+    "command": "twoway lfit mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "23b10d2aede1cb3a2f00030b01921d92",
+    "reference": "twoway lfit mpg weight",
+    "svg_md5": "23b10d2aede1cb3a2f00030b01921d92"
+   },
+   "lfitci": {
+    "command": "twoway lfitci mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "c296030cda7a06aa6b8f2e9e06913680",
+    "reference": "twoway lfitci mpg weight",
+    "svg_md5": "c296030cda7a06aa6b8f2e9e06913680"
+   },
+   "line": {
+    "command": "twoway line mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "34c664946d18979d944a576f7a2878f2",
+    "reference": "twoway line mpg weight",
+    "svg_md5": "34c664946d18979d944a576f7a2878f2"
+   },
+   "lowess": {
+    "command": "twoway lowess mpg weight, mlwidth(-1)",
+    "equal": false,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "e1daf9acca9099ac9944d3061fc3d66c",
+    "reference": "twoway lowess mpg weight",
+    "svg_md5": "379661ec7a244d55e4dccf6c354a6325"
+   },
+   "lpoly": {
+    "command": "twoway lpoly mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5b0cd1be8d60bb91aca35d53f3090c5d",
+    "reference": "twoway lpoly mpg weight",
+    "svg_md5": "5b0cd1be8d60bb91aca35d53f3090c5d"
+   },
+   "lpolyci": {
+    "command": "twoway lpolyci mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "95c8dfc5eff989e174d64f2a0fe18146",
+    "reference": "twoway lpolyci mpg weight",
+    "svg_md5": "95c8dfc5eff989e174d64f2a0fe18146"
+   },
+   "mband": {
+    "command": "twoway mband mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5ba56935b8be92fa32668829c85526c9",
+    "reference": "twoway mband mpg weight",
+    "svg_md5": "5ba56935b8be92fa32668829c85526c9"
+   },
+   "mspline": {
+    "command": "twoway mspline mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "10108ed9abdf1b2280ff910df10b1344",
+    "reference": "twoway mspline mpg weight",
+    "svg_md5": "10108ed9abdf1b2280ff910df10b1344"
+   },
+   "pcarrow": {
+    "command": "twoway pcarrow mpg weight trunk turn, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcarrow mpg weight trunk turn"
+   },
+   "pcarrowi": {
+    "command": "twoway pcarrowi 20 2000 30 4000, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcarrowi 20 2000 30 4000"
+   },
+   "pcbarrow": {
+    "command": "twoway pcbarrow mpg weight trunk turn, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcbarrow mpg weight trunk turn"
+   },
+   "pccapsym": {
+    "command": "twoway pccapsym mpg weight trunk turn, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pccapsym mpg weight trunk turn"
+   },
+   "pci": {
+    "command": "twoway pci 20 2000 30 4000, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "487f49de3fdf6a68a0a9c5e35cfb6fd6",
+    "reference": "twoway pci 20 2000 30 4000",
+    "svg_md5": "487f49de3fdf6a68a0a9c5e35cfb6fd6"
+   },
+   "pcscatter": {
+    "command": "twoway pcscatter mpg weight trunk turn, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway pcscatter mpg weight trunk turn"
+   },
+   "pcspike": {
+    "command": "twoway pcspike mpg weight trunk turn, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "05bcee97e5398976b15d344e29544564",
+    "reference": "twoway pcspike mpg weight trunk turn",
+    "svg_md5": "05bcee97e5398976b15d344e29544564"
+   },
+   "qfit": {
+    "command": "twoway qfit mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "233b536ee0acc44ad047d9a2a6107e12",
+    "reference": "twoway qfit mpg weight",
+    "svg_md5": "233b536ee0acc44ad047d9a2a6107e12"
+   },
+   "qfitci": {
+    "command": "twoway qfitci mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "de464dcfa089c0d86a8e016b4cdabd0e",
+    "reference": "twoway qfitci mpg weight",
+    "svg_md5": "de464dcfa089c0d86a8e016b4cdabd0e"
+   },
+   "rarea": {
+    "command": "twoway rarea yl yh weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "9bc1c76c9259aecef6fc3199047d069b",
+    "reference": "twoway rarea yl yh weight",
+    "svg_md5": "9bc1c76c9259aecef6fc3199047d069b"
+   },
+   "rbar": {
+    "command": "twoway rbar yl yh weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "17506cc4a8cb107852a77174c10e3b28",
+    "reference": "twoway rbar yl yh weight",
+    "svg_md5": "17506cc4a8cb107852a77174c10e3b28"
+   },
+   "rcap": {
+    "command": "twoway rcap yl yh weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "a394e4355d0160bc9138a09901587317",
+    "reference": "twoway rcap yl yh weight",
+    "svg_md5": "a394e4355d0160bc9138a09901587317"
+   },
+   "rcapsym": {
+    "command": "twoway rcapsym yl yh weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rcapsym yl yh weight"
+   },
+   "rconnected": {
+    "command": "twoway rconnected yl yh weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rconnected yl yh weight"
+   },
+   "rline": {
+    "command": "twoway rline yl yh weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "95eeb00d526be51a126fde9c74020088",
+    "reference": "twoway rline yl yh weight",
+    "svg_md5": "95eeb00d526be51a126fde9c74020088"
+   },
+   "rpcap": {
+    "command": "twoway rpcap yl yh mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rpcap yl yh mpg weight"
+   },
+   "rpspike": {
+    "command": "twoway rpspike yl yh mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rpspike yl yh mpg weight"
+   },
+   "rscatter": {
+    "command": "twoway rscatter yl yh weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway rscatter yl yh weight"
+   },
+   "rspike": {
+    "command": "twoway rspike yl yh weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "4870b62c0f55c6ab2580e89e4bc2285c",
+    "reference": "twoway rspike yl yh weight",
+    "svg_md5": "4870b62c0f55c6ab2580e89e4bc2285c"
+   },
+   "scatter": {
+    "command": "twoway scatter mpg weight, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway scatter mpg weight"
+   },
+   "scatteri": {
+    "command": "twoway scatteri 20 2000, mlwidth(-1)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway scatteri 20 2000"
+   },
+   "spike": {
+    "command": "twoway spike mpg weight, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "05bb7b25e67def9964c0e418dc812145",
+    "reference": "twoway spike mpg weight",
+    "svg_md5": "05bb7b25e67def9964c0e418dc812145"
+   },
+   "tsline": {
+    "command": "twoway tsline mpg, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "4f02a1171d164c23e78542fb6f9c8542",
+    "reference": "twoway tsline mpg",
+    "svg_md5": "4f02a1171d164c23e78542fb6f9c8542"
+   },
+   "tsrline": {
+    "command": "twoway tsrline yl yh, mlwidth(-1)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "fe05859bb2c1061eabed738d46ef6e08",
+    "reference": "twoway tsrline yl yh",
+    "svg_md5": "fe05859bb2c1061eabed738d46ef6e08"
+   }
+  },
+  "msangle_400": {
+   "area": {
+    "command": "twoway area mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "8fa76e4ef8eb7748759a347cd1b4ded1",
+    "reference": "twoway area mpg weight",
+    "svg_md5": "8fa76e4ef8eb7748759a347cd1b4ded1"
+   },
+   "bar": {
+    "command": "twoway bar mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "c6446c0f7a0d083f063a486e36d42a82",
+    "reference": "twoway bar mpg weight",
+    "svg_md5": "c6446c0f7a0d083f063a486e36d42a82"
+   },
+   "connected": {
+    "command": "twoway connected mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway connected mpg weight"
+   },
+   "contour": {
+    "command": "twoway contour mpg weight length, msangle(400)",
+    "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+    "rc": 198,
+    "reference": "twoway contour mpg weight length"
+   },
+   "contourline": {
+    "command": "twoway contourline mpg weight length, msangle(400)",
+    "equal": false,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "f7fd5773087811d8aab77f088d56c84d",
+    "reference": "twoway contourline mpg weight length",
+    "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
+   },
+   "dot": {
+    "command": "twoway dot mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway dot mpg weight"
+   },
+   "dropline": {
+    "command": "twoway dropline mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway dropline mpg weight"
+   },
+   "fpfit": {
+    "command": "twoway fpfit mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "32f5a11e1ddd76bfea47cf3e9cfc982e",
+    "reference": "twoway fpfit mpg weight",
+    "svg_md5": "32f5a11e1ddd76bfea47cf3e9cfc982e"
+   },
+   "fpfitci": {
+    "command": "twoway fpfitci mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5673eb6c008bcf45b6e4c57d066f5bff",
+    "reference": "twoway fpfitci mpg weight",
+    "svg_md5": "5673eb6c008bcf45b6e4c57d066f5bff"
+   },
+   "function": {
+    "command": "twoway function y = x, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "bb40cda9c78c6501786fff92e727fdd2",
+    "reference": "twoway function y = x",
+    "svg_md5": "bb40cda9c78c6501786fff92e727fdd2"
+   },
+   "histogram": {
+    "command": "twoway histogram mpg, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "8d5b480259e393e586feb73582490392",
+    "reference": "twoway histogram mpg",
+    "svg_md5": "8d5b480259e393e586feb73582490392"
+   },
+   "kdensity": {
+    "command": "twoway kdensity mpg, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "38f2a76079c68dab7c3b41400a550747",
+    "reference": "twoway kdensity mpg",
+    "svg_md5": "38f2a76079c68dab7c3b41400a550747"
+   },
+   "lfit": {
+    "command": "twoway lfit mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "23b10d2aede1cb3a2f00030b01921d92",
+    "reference": "twoway lfit mpg weight",
+    "svg_md5": "23b10d2aede1cb3a2f00030b01921d92"
+   },
+   "lfitci": {
+    "command": "twoway lfitci mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "c296030cda7a06aa6b8f2e9e06913680",
+    "reference": "twoway lfitci mpg weight",
+    "svg_md5": "c296030cda7a06aa6b8f2e9e06913680"
+   },
+   "line": {
+    "command": "twoway line mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "34c664946d18979d944a576f7a2878f2",
+    "reference": "twoway line mpg weight",
+    "svg_md5": "34c664946d18979d944a576f7a2878f2"
+   },
+   "lowess": {
+    "command": "twoway lowess mpg weight, msangle(400)",
+    "equal": false,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "379661ec7a244d55e4dccf6c354a6325",
+    "reference": "twoway lowess mpg weight",
+    "svg_md5": "4a8bed373f72752b3c13692b8ea35236"
+   },
+   "lpoly": {
+    "command": "twoway lpoly mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5b0cd1be8d60bb91aca35d53f3090c5d",
+    "reference": "twoway lpoly mpg weight",
+    "svg_md5": "5b0cd1be8d60bb91aca35d53f3090c5d"
+   },
+   "lpolyci": {
+    "command": "twoway lpolyci mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "95c8dfc5eff989e174d64f2a0fe18146",
+    "reference": "twoway lpolyci mpg weight",
+    "svg_md5": "95c8dfc5eff989e174d64f2a0fe18146"
+   },
+   "mband": {
+    "command": "twoway mband mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "5ba56935b8be92fa32668829c85526c9",
+    "reference": "twoway mband mpg weight",
+    "svg_md5": "5ba56935b8be92fa32668829c85526c9"
+   },
+   "mspline": {
+    "command": "twoway mspline mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "10108ed9abdf1b2280ff910df10b1344",
+    "reference": "twoway mspline mpg weight",
+    "svg_md5": "10108ed9abdf1b2280ff910df10b1344"
+   },
+   "pcarrow": {
+    "command": "twoway pcarrow mpg weight trunk turn, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway pcarrow mpg weight trunk turn"
+   },
+   "pcarrowi": {
+    "command": "twoway pcarrowi 20 2000 30 4000, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway pcarrowi 20 2000 30 4000"
+   },
+   "pcbarrow": {
+    "command": "twoway pcbarrow mpg weight trunk turn, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway pcbarrow mpg weight trunk turn"
+   },
+   "pccapsym": {
+    "command": "twoway pccapsym mpg weight trunk turn, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway pccapsym mpg weight trunk turn"
+   },
+   "pci": {
+    "command": "twoway pci 20 2000 30 4000, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "487f49de3fdf6a68a0a9c5e35cfb6fd6",
+    "reference": "twoway pci 20 2000 30 4000",
+    "svg_md5": "487f49de3fdf6a68a0a9c5e35cfb6fd6"
+   },
+   "pcscatter": {
+    "command": "twoway pcscatter mpg weight trunk turn, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway pcscatter mpg weight trunk turn"
+   },
+   "pcspike": {
+    "command": "twoway pcspike mpg weight trunk turn, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "05bcee97e5398976b15d344e29544564",
+    "reference": "twoway pcspike mpg weight trunk turn",
+    "svg_md5": "05bcee97e5398976b15d344e29544564"
+   },
+   "qfit": {
+    "command": "twoway qfit mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "233b536ee0acc44ad047d9a2a6107e12",
+    "reference": "twoway qfit mpg weight",
+    "svg_md5": "233b536ee0acc44ad047d9a2a6107e12"
+   },
+   "qfitci": {
+    "command": "twoway qfitci mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "de464dcfa089c0d86a8e016b4cdabd0e",
+    "reference": "twoway qfitci mpg weight",
+    "svg_md5": "de464dcfa089c0d86a8e016b4cdabd0e"
+   },
+   "rarea": {
+    "command": "twoway rarea yl yh weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "9bc1c76c9259aecef6fc3199047d069b",
+    "reference": "twoway rarea yl yh weight",
+    "svg_md5": "9bc1c76c9259aecef6fc3199047d069b"
+   },
+   "rbar": {
+    "command": "twoway rbar yl yh weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "17506cc4a8cb107852a77174c10e3b28",
+    "reference": "twoway rbar yl yh weight",
+    "svg_md5": "17506cc4a8cb107852a77174c10e3b28"
+   },
+   "rcap": {
+    "command": "twoway rcap yl yh weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "a394e4355d0160bc9138a09901587317",
+    "reference": "twoway rcap yl yh weight",
+    "svg_md5": "a394e4355d0160bc9138a09901587317"
+   },
+   "rcapsym": {
+    "command": "twoway rcapsym yl yh weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway rcapsym yl yh weight"
+   },
+   "rconnected": {
+    "command": "twoway rconnected yl yh weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway rconnected yl yh weight"
+   },
+   "rline": {
+    "command": "twoway rline yl yh weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "95eeb00d526be51a126fde9c74020088",
+    "reference": "twoway rline yl yh weight",
+    "svg_md5": "95eeb00d526be51a126fde9c74020088"
+   },
+   "rpcap": {
+    "command": "twoway rpcap yl yh mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway rpcap yl yh mpg weight"
+   },
+   "rpspike": {
+    "command": "twoway rpspike yl yh mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway rpspike yl yh mpg weight"
+   },
+   "rscatter": {
+    "command": "twoway rscatter yl yh weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway rscatter yl yh weight"
+   },
+   "rspike": {
+    "command": "twoway rspike yl yh weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "4870b62c0f55c6ab2580e89e4bc2285c",
+    "reference": "twoway rspike yl yh weight",
+    "svg_md5": "4870b62c0f55c6ab2580e89e4bc2285c"
+   },
+   "scatter": {
+    "command": "twoway scatter mpg weight, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway scatter mpg weight"
+   },
+   "scatteri": {
+    "command": "twoway scatteri 20 2000, msangle(400)",
+    "first": "symbolangle must be between -360.000 and 360.000",
+    "message": "symbolangle must be between -360.000 and 360.000",
+    "rc": 198,
+    "reference": "twoway scatteri 20 2000"
+   },
+   "spike": {
+    "command": "twoway spike mpg weight, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "05bb7b25e67def9964c0e418dc812145",
+    "reference": "twoway spike mpg weight",
+    "svg_md5": "05bb7b25e67def9964c0e418dc812145"
+   },
+   "tsline": {
+    "command": "twoway tsline mpg, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "4f02a1171d164c23e78542fb6f9c8542",
+    "reference": "twoway tsline mpg",
+    "svg_md5": "4f02a1171d164c23e78542fb6f9c8542"
+   },
+   "tsrline": {
+    "command": "twoway tsrline yl yh, msangle(400)",
+    "equal": true,
+    "first": "",
+    "message": "",
+    "rc": 0,
+    "ref_md5": "fe05859bb2c1061eabed738d46ef6e08",
+    "reference": "twoway tsrline yl yh",
+    "svg_md5": "fe05859bb2c1061eabed738d46ef6e08"
+   }
+  }
+ },
+ "probes": {
+  "aspectratio_m1_ref": {
+   "command": "twoway scatter mpg weight, aspectratio(-1)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+   "reference": "twoway scatter mpg weight",
+   "svg_md5": "c76eb4dc2c15631a8d6ac89906fec782"
+  },
+  "aspectratio_m1_vs1": {
+   "command": "twoway scatter mpg weight, aspectratio(-1)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "18ba0c82b2d0a46b8e18b16667b5271b",
+   "reference": "twoway scatter mpg weight, aspectratio(1)",
+   "svg_md5": "c76eb4dc2c15631a8d6ac89906fec782"
+  },
+  "barwidth_0": {
+   "command": "twoway bar mpg foreign, barwidth(0)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "963d10aebc17792d06a9d172720d4acc",
+   "reference": "twoway bar mpg foreign",
+   "svg_md5": "4198cfaa267d3f1d91fec3ddac214ba6"
+  },
+  "barwidth_m1_ref": {
+   "command": "twoway bar mpg foreign, barwidth(-1)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "963d10aebc17792d06a9d172720d4acc",
+   "reference": "twoway bar mpg foreign",
+   "svg_md5": "963d10aebc17792d06a9d172720d4acc"
+  },
+  "barwidth_m2_ref": {
+   "command": "twoway bar mpg foreign, barwidth(-2)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "963d10aebc17792d06a9d172720d4acc",
+   "reference": "twoway bar mpg foreign",
+   "svg_md5": "268574b507527c7ad4ef3bed52ad5808"
+  },
+  "contourline_self": {
+   "command": "twoway contourline mpg weight length",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "685a5b461aa899464b282fc93c4d11d9",
+   "reference": "twoway contourline mpg weight length",
+   "svg_md5": "bb137c3da4980f64bd17ac7cf3ad7efe"
+  },
+  "jitter_150": {
+   "command": "twoway scatter mpg weight, jitter(150)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+   "reference": "twoway scatter mpg weight",
+   "svg_md5": "1b7a34da0593d24ace0bbc2ac66211ea"
+  },
+  "jitter_abc_ref": {
+   "command": "twoway scatter mpg weight, jitter(abc)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+   "reference": "twoway scatter mpg weight",
+   "svg_md5": "1c98d084866724a25fc0f0af6047108a"
+  },
+  "jitter_m3_ref": {
+   "command": "twoway scatter mpg weight, jitter(-3)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+   "reference": "twoway scatter mpg weight",
+   "svg_md5": "1c98d084866724a25fc0f0af6047108a"
+  },
+  "jitterseed_abc": {
+   "command": "twoway scatter mpg weight, jitter(5) jitterseed(abc)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "f92c1ba4d065afcaae7eec77250dec2f",
+   "reference": "twoway scatter mpg weight, jitter(5)",
+   "svg_md5": "f92c1ba4d065afcaae7eec77250dec2f"
+  },
+  "jitterseed_m1": {
+   "command": "twoway scatter mpg weight, jitter(5) jitterseed(-1)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "kdensity_n_0": {
+   "command": "twoway kdensity mpg, n(0)",
+   "first": "option n() requires a positive integer",
+   "message": "option n() requires a positive integer",
+   "rc": 198
+  },
+  "kdensity_n_2_5": {
+   "command": "twoway kdensity mpg, n(2.5)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "kdensity_n_abc": {
+   "command": "twoway kdensity mpg, n(abc)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "lfit_n_0": {
+   "command": "twoway lfit mpg weight, n(0)",
+   "first": "'0' invalid observation number",
+   "message": "'0' invalid observation number",
+   "rc": 198
+  },
+  "lfit_n_2_5": {
+   "command": "twoway lfit mpg weight, n(2.5)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "lfit_n_abc": {
+   "command": "twoway lfit mpg weight, n(abc)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "lpoly_n_100": {
+   "command": "twoway lpoly mpg weight, n(100)",
+   "first": "(n() set to 74)",
+   "message": "(n() set to 74)",
+   "rc": 0
+  },
+  "lwidth_mult_line": {
+   "command": "twoway line mpg weight, lwidth(*40000)",
+   "first": "gm_linewidth must be between 0.000 and 1.0e+04",
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04",
+   "rc": 198
+  },
+  "lwidth_mult_line_10001": {
+   "command": "twoway line mpg weight, lwidth(*10001)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "lwidth_mult_line_20000": {
+   "command": "twoway line mpg weight, lwidth(*20000)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "lwidth_mult_line_5000": {
+   "command": "twoway line mpg weight, lwidth(*5000)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "mband_n_0": {
+   "command": "twoway mband mpg weight, n(0)",
+   "first": "",
+   "message": "",
+   "rc": 0
+  },
+  "mlabel_dotdot": {
+   "command": "twoway scatter mpg weight, mlabel(make..)",
+   "first": "factor-variable and time-series operators not allowed",
+   "message": "factor-variable and time-series operators not allowed",
+   "rc": 101
+  },
+  "msize_1e400_ref": {
+   "command": "twoway scatter mpg weight, msize(1e400)",
+   "equal": false,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "1c98d084866724a25fc0f0af6047108a",
+   "reference": "twoway scatter mpg weight",
+   "svg_md5": "6054feff8a40117037dccced160b3a3c"
+  },
+  "msize_1e400_vs0": {
+   "command": "twoway scatter mpg weight, msize(1e400)",
+   "equal": true,
+   "first": "",
+   "message": "",
+   "rc": 0,
+   "ref_md5": "6054feff8a40117037dccced160b3a3c",
+   "reference": "twoway scatter mpg weight, msize(0)",
+   "svg_md5": "6054feff8a40117037dccced160b3a3c"
+  },
+  "mspline_n_0": {
+   "command": "twoway mspline mpg weight, n(0)",
+   "first": "n must be between 1 and 300",
+   "message": "n must be between 1 and 300",
+   "rc": 198
+  },
+  "mspline_n_2_5": {
+   "command": "twoway mspline mpg weight, n(2.5)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "mspline_n_301": {
+   "command": "twoway mspline mpg weight, n(301)",
+   "first": "n must be between 1 and 300",
+   "message": "n must be between 1 and 300",
+   "rc": 198
+  },
+  "mspline_n_abc": {
+   "command": "twoway mspline mpg weight, n(abc)",
+   "first": "option n() not allowed",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "rbar_barwidth_missing": {
+   "command": "twoway rbar mpg turn weight, barwidth(.)",
+   "first": "unrecognized command",
+   "message": "unrecognized command",
+   "rc": 199
+  }
+ },
+ "vt_first": {
+  "alwidth_12": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "alwidth_3": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "alwidth_8": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "aspectratio_1": "option aspectratio() incorrectly specified",
+  "barwidth_1": "option barwidth() incorrectly specified",
+  "base_1": "option base() incorrectly specified, abc is not a number",
+  "by_1": "variable nosuchvar not found",
+  "clwidth_3": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "colorlevels_1": "option colorlevels() incorrectly specified",
+  "colorlevels_8": "option colorlevels() incorrectly specified",
+  "degree_1": "option degree() not allowed",
+  "degree_2": "degree() must be a nonnegative number",
+  "degree_3": "option degree() not allowed",
+  "histogram_bin_1": "bins() invalid -- invalid number, outside of allowed range",
+  "histogram_bin_2": "bins() invalid -- invalid number",
+  "histogram_bin_3": "bins() invalid -- invalid number, noninteger value",
+  "histogram_bin_6": "bins() invalid -- invalid number, outside of allowed range",
+  "histogram_freqpct_1": "options frequency percent may not be combined",
+  "histogram_start_1": "start() invalid -- invalid number",
+  "histogram_start_3": "option start() may not be larger than minimum of mpg",
+  "histogram_width_1": "width() invalid -- invalid number, outside of allowed range",
+  "histogram_width_2": "width() invalid -- invalid number",
+  "histogram_width_3": "width() invalid -- invalid number, outside of allowed range",
+  "jitter_7": ".z_ invalid name",
+  "kdensity_bwidth_1": "bandwidth must be positive",
+  "kdensity_bwidth_3": "option bwidth() not allowed",
+  "kdensity_kernel_1": "invalid kernel function",
+  "kdensity_n_1": "option n() requires a positive integer",
+  "kdensity_range_1": "variable abc not found",
+  "kdensity_range_4": "option range() requires two numbers",
+  "legend_1": "option garbage not allowed",
+  "level_1": "option level() not allowed",
+  "lowess_bwidth_3": "option bwidth() not allowed",
+  "lpoly_bwidth_1": "bwidth() must be a positive number",
+  "lpoly_bwidth_2": "bwidth() must be a positive number",
+  "lpoly_bwidth_3": "variable abc not found",
+  "lpoly_kernel_1": "invalid kernel function",
+  "lpoly_n_1": "n() must be a positive number",
+  "lpoly_n_3": "option n() not allowed",
+  "lpoly_n_4": "option n() not allowed",
+  "lpoly_n_7": "n() must be a positive number",
+  "lwidth_3": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "mband_bands_1": "bands must be between 1 and 200",
+  "mband_bands_2": "option bands() not allowed",
+  "mband_bands_3": "option bands() not allowed",
+  "mband_bands_4": "bands must be between 1 and 200",
+  "mcolor_5": "invalid '0'",
+  "mlabangle_4": "textangle must be between -360.000 and 360.000",
+  "mlabangle_5": "variable z_ not found",
+  "mlabel_1": "variable nosuchvar not found",
+  "mlwidth_4": "gm_linewidth must be between 0.000 and 1.0e+04",
+  "msangle_4": "symbolangle must be between -360.000 and 360.000",
+  "msangle_5": ".z_ invalid name",
+  "msize_7": "invalid syntax",
+  "mspline_bands_1": "bands must be between 1 and 200",
+  "mspline_bands_2": "option bands() not allowed",
+  "xlabel2_1": "option xlabel2() not allowed",
+  "xlabel2_2": "option xlabel2() not allowed",
+  "xlabel2_3": "option xlabel2() not allowed",
+  "xlabel_1": "invalid label specifier, : abc:",
+  "xline_1": "invalid line argument, abc",
+  "xmlabel_1": "invalid label specifier, : abc:",
+  "xmtick_1": "invalid label specifier, : abc:",
+  "xscale_1": "option bogus not allowed",
+  "xsize_2": "graph xsize invalid;",
+  "xsize_3": "graph xsize invalid;",
+  "xsize_4": "graph xsize invalid;",
+  "xtick_1": "invalid label specifier, : abc:",
+  "yaxis_2": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "yaxis_3": "yaxis() invalid -- invalid numlist",
+  "yaxis_6": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+  "yaxis_7": "yaxis() invalid -- invalid numlist has noninteger elements",
+  "ylabel2_1": "option ylabel2() not allowed",
+  "ylabel2_2": "option ylabel2() not allowed",
+  "ylabel2_3": "option ylabel2() not allowed",
+  "ylabel_1": "invalid label specifier, : abc:",
+  "ymlabel_1": "invalid label specifier, : abc:",
+  "ymtick_1": "invalid label specifier, : abc:",
+  "ysize_1": "graph ysize invalid;",
+  "ysize_3": "graph ysize invalid;",
+  "ytick_1": "invalid label specifier, : abc:"
+ }
+}

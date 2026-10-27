@@ -404,6 +404,7 @@ GENERATORS = {
     "user_scheme_rule_truth.json": "scripts/extract_user_scheme_rule_truth.do",
     "utf8_cases.txt": "scripts/gen_utf8_cases.py",
     "value_bounds_truth.json": "scripts/extract_value_bounds_truth.do",
+    "value_codes_truth.json": "scripts/extract_value_codes_truth.do",
     "value_list_truth.json": "scripts/extract_value_list_truth.do",
     "value_truth.json": "scripts/extract_value_truth.do",
     "varlabel_mlabel_truth.json": "scripts/extract_varlabel_mlabel_truth.do",

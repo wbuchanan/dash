@@ -620,12 +620,14 @@ assert r(named) == 1 & r(ignored) == 0
 assert "${dash_graph_registry}" == ""
 display "P9-02 PASS: level(95; sysuse auto) → rc=198 naming level(), nothing registered"
 
-// P9-03 — a word after a number in bin() → rc 198 naming bin()
-_adv_p9_probe `"dash histogram mpg, bin(5 or 1) name(p903)"' bin
-assert r(rc) == 198
+// P9-03 — a word after a number in bin() → refused, naming bins()
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong; twoway's
+// is r(121) "bins() invalid -- invalid number".
+_adv_p9_probe `"dash histogram mpg, bin(5 or 1) name(p903)"' bins
+assert r(rc) == 121
 assert r(named) == 1 & r(ignored) == 0
 assert "${dash_graph_registry}" == ""
-display "P9-03 PASS: bin(5 or 1) → rc=198 naming bin(), nothing registered"
+display "P9-03 PASS: bin(5 or 1) → rc=121 naming bins(), nothing registered"
 
 // P9-04 — a backtick in n().  Built with char(96) and handed to Stata
 // through _stata(), so no macro expands it on the way.  Measured: Stata's
@@ -660,11 +662,13 @@ assert r(named) == 1 & r(ignored) == 0
 assert "${dash_graph_registry}" == ""
 display "P9-07 PASS: n(1000000000) → rc=198 naming n()"
 
+// Flipped (WP-35 basic:PT-9): twoway's words, "bands must be between 1
+// and 200", name no bands(); refused and nothing registered.
 _adv_p9_probe `"dash mband mpg weight, bands(1e9) name(p908)"' bands
 assert r(rc) == 198
-assert r(named) == 1 & r(ignored) == 0
+assert r(ignored) == 0
 assert "${dash_graph_registry}" == ""
-display "P9-08 PASS: bands(1e9) → rc=198 naming bands()"
+display "P9-08 PASS: bands(1e9) → rc=198 in twoway's words"
 
 _adv_p9_probe `"dash scatter mpg weight, colorvar(price) colornlevels(1e9) name(p909)"' colornlevels
 assert r(rc) == 198
@@ -672,11 +676,13 @@ assert r(named) == 1 & r(ignored) == 0
 assert "${dash_graph_registry}" == ""
 display "P9-09 PASS: colornlevels(1e9) → rc=198 naming colornlevels()"
 
+// Flipped (WP-35 basic:PT-9): twoway's words, "graph xsize invalid;",
+// name no xsize(); refused and nothing registered.
 _adv_p9_probe `"dash scatter mpg weight, xsize(1e9) name(p910)"' xsize
 assert r(rc) == 198
-assert r(named) == 1 & r(ignored) == 0
+assert r(ignored) == 0
 assert "${dash_graph_registry}" == ""
-display "P9-10 PASS: xsize(1e9) → rc=198 naming xsize()"
+display "P9-10 PASS: xsize(1e9) → rc=198 in twoway's words"
 
 // P9-11..P9-14 — code in the KPI fmt().  Before the gate, `: display'
 // ran the text: _request(x) asked for input, c(username) printed it, a
@@ -1376,13 +1382,20 @@ assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-02 PASS: a refused jitter() value is echoed as text, not SMCL"
 
-// P20-03 — a keyword option (the enum rule)
+// P20-03 — a keyword option (the enum rule).  Flipped (WP-35 basic:PT-9):
+// kernel() is refused in twoway's words, which do not echo the value
+// ("invalid kernel function"); colpalette(), dash's own enum, still does.
 _adv_p19_run "dash kdensity mpg, kernel({bf:INJMARKKER}) name(p2003)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("invalid kernel function")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+_adv_p19_run "dash scatter mpg weight, colorvar(price) colpalette({bf:INJMARKKER}) name(p2003)"
 assert r(rc) == 198
 cert_file_has "`r(log)'", needle("(got: {bf:INJMARKKER})")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
-display "P20-03 PASS: a refused kernel() keyword is echoed as text, not SMCL"
+display "P20-03 PASS: a refused enum keyword is echoed as text, not SMCL"
 
 // P20-04 — a variable option: mlabel(), the marker-label text source
 _adv_p19_run "dash scatter mpg weight, mlabel({bf:INJMARKML}) name(p2004)"
@@ -3619,7 +3632,7 @@ display "  P8-86..88: Malformed UTF-8 in build/KPI/tabs titles → rc=198"
 display "  P8-89: Control byte in title() → escaped and built, not r(7102)"
 display "  P9-01..03: Code in a number-only option value → rc=198 naming it"
 display "  P9-04: Backtick in n() → refused by Stata's own line parser, nothing registered"
-display "  P9-06..10: Resource-exhaustion counts and sizes → rc=198 naming the option"
+display "  P9-06..10: Resource-exhaustion counts and sizes → refused, in dash's or twoway's words"
 display "  P9-11..14: Code in KPI fmt() → rc=198 naming fmt(), no KPI registered"
 display "  P19-01..05: Registry cap (dash_max_graphs) → rc=134 for a new name; replace and dash clear still work"
 display "  P19-06..10: Plot cap (dash_max_plots) → rc=134, each y variable counted, nothing registered or written"

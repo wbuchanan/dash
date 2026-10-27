@@ -948,6 +948,7 @@ and now matches Stata.
 
 ### Fixed in WP-35
 
+- Bad option values are refused with twoway's return codes and words: base(abc) r(4026), bin() r(125), r(121) or r(126), width() r(125) or r(121), start() r(121), mlabel(make..) r(101), rbar barwidth(.) r(199), mlabangle(1e308) r(111) (dash gave r(198) in its own words); lpoly with n() above the data's rows prints twoway's "(n() set to N)". (WP-35, basic:PT-9)
 - fxsiz() and fysiz(), twoway's shortest spellings of fxsize() and fysize(), are applied; dash named them in the note. (WP-35, GW-4)
 - Factor-variable notation in by() and colorvar() is refused, r(101), "factor-variable and time-series operators not allowed" ("interactions not allowed" for #), and mlabel(45) and mlabel(%9.1f) r(198), in twoway's words; dash gave r(111). (WP-35, syn:SD-8)
 - The help says that twoway's contour and contourline with levels() ignore an option they do not know, and that dash refuses it with or without levels(), as twoway does elsewhere. (WP-35, syn:SD-22)

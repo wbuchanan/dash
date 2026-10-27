@@ -40,7 +40,7 @@
 *!   OV-12  mlwidth(-1)               rc 198 naming mlwidth() and twoway's gm_linewidth line
 *!   OV-13  msangle(30)               rc 0
 *!   OV-14  msangle(abc)              rc 0
-*!   OV-15  msangle(400)              rc 198 naming msangle()
+*!   OV-15  msangle(400)              rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-16  mlabposition(12)          rc 0
 *!   OV-17  mlabposition(13)          rc 0   (unbounded: the renderer notes it)
 *!   OV-18  mlabposition(2.5)         rc 0
@@ -68,7 +68,7 @@
 *!   OV-39  falpha(40)                rc 0
 *!   OV-40  falpha(-1)                rc 198 naming falpha()
 *!   OV-41  base(5)                   rc 0
-*!   OV-42  base(abc)                 rc 198 naming base()
+*!   OV-42  base(abc)                 rc 4026 in twoway's words (WP-35 basic:PT-9)
 *!   OV-43  barwidth(20)              rc 0
 *!   OV-44  barwidth(0)               rc 198 naming barwidth()
 *!   OV-45  barwidth(abc)             rc 198 naming barwidth()
@@ -94,28 +94,29 @@
 *!          stat:PT-14: twoway refuses bw() off the bandwidth types)
 *!   OV-63  kdensity kernel(gaussian) rc 0
 *!   OV-64  kdensity kernel(Epan2)    rc 0, registry carries "kernel":"epan2"
-*!   OV-65  kdensity kernel(bogus)    rc 198 naming kernel()
+*!   OV-65  kdensity kernel(bogus)    rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-158..162 kernel(gau) and kernel(EPAN) registered in full;
-*!          gaussianx, gau;rm and a 253-letter word refused (WP-27)
+*!          gaussianx, gau;rm and a 253-letter word refused (WP-27), in
+*!          twoway's words (WP-35 basic:PT-9)
 *!   OV-66  kdensity n(50)            rc 0
 *!   OV-67  kdensity n(1)             rc 0   (as twoway; WP-31 C10a)
 *!   OV-68  kdensity n(abc)           rc 198 naming n()
 *!   OV-69  kdensity n(20000)         rc 198 naming n()      (dash's own limit)
 *!   OV-70  histogram bin(12)         rc 0
-*!   OV-71  histogram bin(0)          rc 198 naming bin()
-*!   OV-72  histogram bin(2.5)        rc 198 naming bin()
-*!   OV-73  histogram bin(abc)        rc 198 naming bin()
+*!   OV-71  histogram bin(0)          rc 125 in twoway's words (WP-35 basic:PT-9)
+*!   OV-72  histogram bin(2.5)        rc 126 in twoway's words (WP-35 basic:PT-9)
+*!   OV-73  histogram bin(abc)        rc 121 in twoway's words (WP-35 basic:PT-9)
 *!   OV-74  histogram bin(5000)       rc 198 naming bin()    (dash's own limit)
 *!   OV-75  histogram width(3)        rc 0
-*!   OV-76  histogram width(0)        rc 198 naming width()
-*!   OV-77  histogram width(abc)      rc 198 naming width()
+*!   OV-76  histogram width(0)        rc 125 in twoway's words (WP-35 basic:PT-9)
+*!   OV-77  histogram width(abc)      rc 121 in twoway's words (WP-35 basic:PT-9)
 *!   OV-78  histogram start(10)       rc 0
-*!   OV-79  histogram start(abc)      rc 198 naming start()
+*!   OV-79  histogram start(abc)      rc 121 in twoway's words (WP-35 basic:PT-9)
 *!   OV-80  mband bands(6)            rc 0
-*!   OV-81  mband bands(0)            rc 198 naming bands()
+*!   OV-81  mband bands(0)            rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-82  mband bands(2.5)          rc 198 naming bands()
 *!   OV-83  mband bands(abc)          rc 198 naming bands()
-*!   OV-84  mband bands(201)          rc 198 naming bands()
+*!   OV-84  mband bands(201)          rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-85  function range(0 10)      rc 0
 *!   OV-86  function range(10)        rc 122 naming range()  (twoway's; WP-31 C10a)
 *!   OV-87  function range(0 5 10)    rc 123 naming range()  (twoway's; WP-31 C10a)
@@ -137,7 +138,7 @@
 *! Graph rules:
 *!   OV-102 xsize(9)                  rc 0
 *!   OV-103 xsize(abc)                rc 0   (a name)
-*!   OV-104 xsize(0)                  rc 198 naming xsize()
+*!   OV-104 xsize(0)                  rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-105 ysize(3)                  rc 0
 *!   OV-106 ysize(101)                rc 198 naming ysize()
 *!   OV-107 aspectratio(0.75)         rc 0
@@ -181,7 +182,7 @@
 *!          exists (A2: the replace used to drop the old KPI BEFORE the
 *!          checks, and the next build died on a corrupt registry)
 *!   OV-126 (scatter mpg weight, xsize(500)) , xsize(5)
-*!                                    rc 198 naming xsize() (A3: a graph
+*!                                    rc 198 in twoway's words (A3: a graph
 *!                                    option inside a segment is validated
 *!                                    even when a later value outranks it)
 *!   OV-127 (scatter mpg weight, by(nosuch)) , by(foreign)
@@ -247,7 +248,7 @@
 *!                                    (bar draws no connecting line, so
 *!                                    twoway never evaluates it: rc 0)
 *!   OV-153 mlabangle(45)             rc 0, registry carries "mlabangle":"45"
-*!   OV-154 mlabangle(400)            rc 198 naming mlabangle()
+*!   OV-154 mlabangle(400)            rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-155 mlabangle(abc)            rc 0   (a name: twoway notes it)
 *!   OV-156 line mlabangle(400)       rc 0   (twoway draws no marker
 *!                                    labels on line, so never evaluates it)
@@ -411,6 +412,12 @@
 *!   Q3504-5 (stat:PT-14) bw() refused off lowess, lpoly, lpolyci and
 *!          kdensity, r(198), "option bw() not allowed", and on bar, rbar,
 *!          histogram, dot and spike a second line "use barwidth()"
+*! Value refusals in twoway's codes (WP-35 section 35-05;
+*! value_codes_truth.json):
+*!   Q3505-1 (basic:PT-9) every probe twoway refuses there, dash's rc and
+*!          first line twoway's: mlabel(make..), rbar barwidth(.), lfit
+*!          and kdensity and mspline n(), and lwidth(-1), mlwidth(-1) and
+*!          msangle(400) on each type twoway refuses them on
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -739,7 +746,10 @@ _ov_case OV-11 `"dash scatter mpg weight, mlwidth(0.5) name(ov11)"' 0 ""
 _ov_case OV-12 `"dash scatter mpg weight, mlwidth(-1) name(ov12)"' 198 mlwidth
 _ov_case OV-13 `"dash scatter mpg weight, msangle(30) name(ov13)"' 0 ""
 _ov_case OV-14 `"dash scatter mpg weight, msangle(abc) name(ov14)"' 0 ""
-_ov_case OV-15 `"dash scatter mpg weight, msangle(400) name(ov15)"' 198 msangle
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "symbolangle must be between -360.000 and 360.000".
+_u46_rc OV-15 198 `"dash scatter mpg weight, msangle(400) name(ov15)"'
+_ov_said OV-15 "symbolangle must be between -360.000 and 360.000"
 _ov_case OV-16 `"dash scatter mpg weight, mlabel(make) mlabposition(12) name(ov16)"' 0 ""
 _ov_case OV-17 `"dash scatter mpg weight, mlabel(make) mlabposition(13) name(ov17)"' 0 ""
 _ov_case OV-18 `"dash scatter mpg weight, mlabel(make) mlabposition(2.5) name(ov18)"' 0 ""
@@ -774,7 +784,10 @@ _ov_case OV-38 `"dash line mpg weight, sort lalpha(abc) name(ov38)"' 198 lalpha
 _ov_case OV-39 `"dash area mpg weight, sort falpha(40) name(ov39)"' 0 ""
 _ov_case OV-40 `"dash area mpg weight, sort falpha(-1) name(ov40)"' 198 falpha
 _ov_case OV-41 `"dash area mpg weight, sort base(5) name(ov41)"' 0 ""
-_ov_case OV-42 `"dash area mpg weight, sort base(abc) name(ov42)"' 198 base
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(4026) "option base() incorrectly specified, abc is not a number".
+_u46_rc OV-42 4026 `"dash area mpg weight, sort base(abc) name(ov42)"'
+_ov_said OV-42 "option base() incorrectly specified, abc is not a number"
 _ov_case OV-43 `"dash bar mpg weight, barwidth(20) name(ov43)"' 0 ""
 _ov_case OV-44 `"dash bar mpg weight, barwidth(0) name(ov44)"' 198 barwidth
 _ov_case OV-45 `"dash bar mpg weight, barwidth(abc) name(ov45)"' 198 barwidth
@@ -819,27 +832,54 @@ _u46_rc OV-62 198 `"dash histogram mpg, bw(2) name(ov62)"'
 _ov_said OV-62 "option bw() not allowed"
 _ov_case OV-63 `"dash kdensity mpg, kernel(gaussian) name(ov63)"' 0 ""
 _ov_case OV-64 `"dash kdensity mpg, kernel(Epan2) name(ov64)"' 0 "" `""kernel":"epan2""'
-_ov_case OV-65 `"dash kdensity mpg, kernel(bogus) name(ov65)"' 198 kernel
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "invalid kernel function".
+_u46_rc OV-65 198 `"dash kdensity mpg, kernel(bogus) name(ov65)"'
+_ov_said OV-65 "invalid kernel function"
 _ov_case OV-66 `"dash kdensity mpg, n(50) name(ov66)"' 0 ""
 // Flipped (WP-31 C10a): twoway's rc (value_bounds_truth.json n.kdensity_one).
 _ov_case OV-67 `"dash kdensity mpg, n(1) name(ov67)"' 0 ""
 _ov_case OV-68 `"dash kdensity mpg, n(abc) name(ov68)"' 198 n
 _ov_case OV-69 `"dash kdensity mpg, n(20000) name(ov69)"' 198 n
 _ov_case OV-70 `"dash histogram mpg, bin(12) name(ov70)"' 0 ""
-_ov_case OV-71 `"dash histogram mpg, bin(0) name(ov71)"' 198 bin
-_ov_case OV-72 `"dash histogram mpg, bin(2.5) name(ov72)"' 198 bin
-_ov_case OV-73 `"dash histogram mpg, bin(abc) name(ov73)"' 198 bin
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(125) "bins() invalid -- invalid number, outside of allowed range".
+_u46_rc OV-71 125 `"dash histogram mpg, bin(0) name(ov71)"'
+_ov_said OV-71 "bins() invalid -- invalid number, outside of allowed range"
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(126) "bins() invalid -- invalid number, noninteger value".
+_u46_rc OV-72 126 `"dash histogram mpg, bin(2.5) name(ov72)"'
+_ov_said OV-72 "bins() invalid -- invalid number, noninteger value"
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(121) "bins() invalid -- invalid number".
+_u46_rc OV-73 121 `"dash histogram mpg, bin(abc) name(ov73)"'
+_ov_said OV-73 "bins() invalid -- invalid number"
 _ov_case OV-74 `"dash histogram mpg, bin(5000) name(ov74)"' 198 bin
 _ov_case OV-75 `"dash histogram mpg, width(3) name(ov75)"' 0 ""
-_ov_case OV-76 `"dash histogram mpg, width(0) name(ov76)"' 198 width
-_ov_case OV-77 `"dash histogram mpg, width(abc) name(ov77)"' 198 width
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(125) "width() invalid -- invalid number, outside of allowed range".
+_u46_rc OV-76 125 `"dash histogram mpg, width(0) name(ov76)"'
+_ov_said OV-76 "width() invalid -- invalid number, outside of allowed range"
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(121) "width() invalid -- invalid number".
+_u46_rc OV-77 121 `"dash histogram mpg, width(abc) name(ov77)"'
+_ov_said OV-77 "width() invalid -- invalid number"
 _ov_case OV-78 `"dash histogram mpg, width(3) start(10) name(ov78)"' 0 ""
-_ov_case OV-79 `"dash histogram mpg, width(3) start(abc) name(ov79)"' 198 start
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(121) "start() invalid -- invalid number".
+_u46_rc OV-79 121 `"dash histogram mpg, width(3) start(abc) name(ov79)"'
+_ov_said OV-79 "start() invalid -- invalid number"
 _ov_case OV-80 `"dash mband mpg weight, bands(6) name(ov80)"' 0 ""
-_ov_case OV-81 `"dash mband mpg weight, bands(0) name(ov81)"' 198 bands
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "bands must be between 1 and 200".
+_u46_rc OV-81 198 `"dash mband mpg weight, bands(0) name(ov81)"'
+_ov_said OV-81 "bands must be between 1 and 200"
 _ov_case OV-82 `"dash mband mpg weight, bands(2.5) name(ov82)"' 198 bands
 _ov_case OV-83 `"dash mband mpg weight, bands(abc) name(ov83)"' 198 bands
-_ov_case OV-84 `"dash mband mpg weight, bands(201) name(ov84)"' 198 bands
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "bands must be between 1 and 200".
+_u46_rc OV-84 198 `"dash mband mpg weight, bands(201) name(ov84)"'
+_ov_said OV-84 "bands must be between 1 and 200"
 _ov_case OV-85 `"dash function y = x^2, range(0 10) name(ov85)"' 0 ""
 // Flipped (WP-31 C10a): twoway's rc and line (value_bounds_truth.json
 // range.function_one, function_three, function_var_missing).
@@ -869,7 +909,10 @@ _ov_case OV-101 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"' 111 m
 // ----------------------------------------------------------------
 _ov_case OV-102 `"dash scatter mpg weight, xsize(9) name(ov102)"' 0 ""
 _ov_case OV-103 `"dash scatter mpg weight, xsize(abc) name(ov103)"' 0 ""
-_ov_case OV-104 `"dash scatter mpg weight, xsize(0) name(ov104)"' 198 xsize
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "graph xsize invalid;".
+_u46_rc OV-104 198 `"dash scatter mpg weight, xsize(0) name(ov104)"'
+_ov_said OV-104 "graph xsize invalid;"
 _ov_case OV-105 `"dash scatter mpg weight, ysize(3) name(ov105)"' 0 ""
 _ov_case OV-106 `"dash scatter mpg weight, ysize(101) name(ov106)"' 198 ysize
 _ov_case OV-107 `"dash scatter mpg weight, aspectratio(0.75) name(ov107)"' 0 ""
@@ -962,7 +1005,10 @@ capture erase "`_ov_html'"
 
 // A3 -- a graph-level option inside a segment is validated even when a
 // later value outranks it, as twoway refuses the whole command.
-_ov_case OV-126 `"dash (scatter mpg weight, xsize(500)) , xsize(5) name(ov126)"' 198 xsize
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "graph xsize invalid;".
+_u46_rc OV-126 198 `"dash (scatter mpg weight, xsize(500)) , xsize(5) name(ov126)"'
+_ov_said OV-126 "graph xsize invalid;"
 _ov_case OV-127 `"dash (scatter mpg weight, by(nosuch)) , by(foreign) name(ov127)"' 111 by
 
 // A4, A5 -- what the table accepts reaches the renderer in one spelling.
@@ -1037,7 +1083,10 @@ _ov_has ov152 `""clwidth":"'
 local _ov_found = r(found)
 _ov_assert OV-152b "(`_ov_found' == 0)" "bar draws no connecting line: clwidth() is not carried"
 _ov_case OV-153 `"dash scatter mpg weight, mlabel(make) mlabangle(45) name(ov153)"' 0 "" `""mlabangle":"45""'
-_ov_case OV-154 `"dash scatter mpg weight, mlabel(make) mlabangle(400) name(ov154)"' 198 mlabangle
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "textangle must be between -360.000 and 360.000".
+_u46_rc OV-154 198 `"dash scatter mpg weight, mlabel(make) mlabangle(400) name(ov154)"'
+_ov_said OV-154 "textangle must be between -360.000 and 360.000"
 _ov_case OV-155 `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(ov155)"' 0 ""
 _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"' 0 ""
 
@@ -1064,10 +1113,19 @@ _ov_said OV-157m "unsupported option"
 // ----------------------------------------------------------------
 _ov_case OV-158 `"dash lpoly mpg weight, kernel(gau) name(ov158)"' 0 "" `""kernel":"gaussian""'
 _ov_case OV-159 `"dash kdensity mpg, kernel(EPAN) name(ov159)"' 0 "" `""kernel":"epanechnikov""'
-_ov_case OV-160 `"dash kdensity mpg, kernel(gaussianx) name(ov160)"' 198 kernel
-_ov_case OV-161 `"dash kdensity mpg, kernel(gau;rm) name(ov161)"' 198 kernel
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "invalid kernel function".
+_u46_rc OV-160 198 `"dash kdensity mpg, kernel(gaussianx) name(ov160)"'
+_ov_said OV-160 "invalid kernel function"
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "invalid kernel function".
+_u46_rc OV-161 198 `"dash kdensity mpg, kernel(gau;rm) name(ov161)"'
+_ov_said OV-161 "invalid kernel function"
 local ov162 = "gau" + 50 * "ssian"
-_ov_case OV-162 `"dash kdensity mpg, kernel(`ov162') name(ov162)"' 198 kernel
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong;
+// twoway refuses it r(198) "invalid kernel function".
+_u46_rc OV-162 198 `"dash kdensity mpg, kernel(`ov162') name(ov162)"'
+_ov_said OV-162 "invalid kernel function"
 
 // ----------------------------------------------------------------
 // OV-163 .. OV-168 (WP-28 S04): confirm numeric format passes %21x, %16H
@@ -3624,6 +3682,81 @@ foreach _q5t in scatter line lfit fpfit {
 foreach _q5t in lowess lpoly lpolyci kdensity {
     _q3504 Q3504-5 bw.`_q5t'
 }
+
+// ----------------------------------------------------------------
+// Q3505-1 (WP-35 section 35-05, basic:PT-9): every probe of
+// test/fixtures/value_codes_truth.json that twoway refuses -- its
+// "probes" and each type of its "per_type" sets -- through dash: the rc
+// must be twoway's and the first printed line twoway's first line.
+// (value_truth.json's refused probes are test_wp33_truth.cscript's
+// Q3310-1; the lwidth(*#) multipliers are basic:PT-13's.)
+// ----------------------------------------------------------------
+python:
+import json as _q3505_json
+from sfi import Macro as _q3505_M
+with open("fixtures/value_codes_truth.json", encoding="utf-8") as _q3505_fh:
+    _q3505_fx = _q3505_json.load(_q3505_fh)
+_q3505_rows = {}
+for _q3505_k, _q3505_p in _q3505_fx["probes"].items():
+    if _q3505_p["rc"] and not _q3505_k.startswith("lwidth_mult_line"):
+        _q3505_rows[_q3505_k] = _q3505_p
+for _q3505_o, _q3505_tt in _q3505_fx["per_type"].items():
+    for _q3505_t, _q3505_p in _q3505_tt.items():
+        if _q3505_p["rc"]:
+            _q3505_rows[_q3505_o + "." + _q3505_t] = _q3505_p
+_q3505_M.setLocal("q_keys", " ".join(sorted(_q3505_rows)))
+
+
+def _q3505_take(key):
+    c = _q3505_rows[key]["command"]
+    _q3505_M.setLocal("q_cmd", c[len("twoway "):])
+    _q3505_M.setLocal("q_rc", str(_q3505_rows[key]["rc"]))
+
+
+def _q3505_judge(key, path, rc):
+    import re
+    r = _q3505_rows[key]
+    got = ""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    got = re.sub(r"\s+", " ", ln).strip()
+                    break
+    except OSError:
+        pass
+    ok = int(rc) == r["rc"] and got == r["first"]
+    _q3505_M.setLocal("q_ok", "1" if ok else "0")
+    for name, text in (("q_got", got), ("q_want", r["first"])):
+        for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+            text = text.replace(ch, to)
+        _q3505_M.setLocal(name, text[:200])
+end
+quietly sysuse auto, clear
+quietly generate yl = mpg - 1
+quietly generate yh = mpg + 1
+quietly generate t = _n
+quietly tsset t
+local _q35n 0
+foreach _q35k of local q_keys {
+    python: _q3505_take("`_q35k'")
+    // twoway rbar's barwidth(.) leaves the data changed; dash's refusal
+    // must not, but each probe starts from the fixture's data.
+    set linesize 255
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'dash_ov.log"
+    quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `q_cmd'
+    local _q35rc = _rc
+    quietly log close _ovlog
+    python: _q3505_judge("`_q35k'", r"`c(tmpdir)'dash_ov.log", "`_q35rc'")
+    _ov_assert Q3505-1 "(`q_ok' == 1)" `"`_q35k': rc `_q35rc' (twoway `q_rc'); dash said: `macval(q_got)'; twoway: `macval(q_want)'"'
+    local ++_q35n
+}
+_ov_assert Q3505-1 "(`_q35n' >= 80)" "`_q35n' value_codes_truth refusals ran"
+capture dash clear
+set linesize 80
 
 // Summary
 // ----------------------------------------------------------------

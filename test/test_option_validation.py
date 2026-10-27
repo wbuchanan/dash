@@ -446,6 +446,10 @@ class TestTheNewProgramsKeepTheirConstraints:
         # commas (BUGS.md "mcolor(255 0,0) is refused where twoway notes
         # the named style and draws").
         "_dash_colour_comma",
+        # WP-35 basic:PT-9: _dash_tw_value_msg looks twoway's rc and first
+        # line up in its generated table, the value handed on by value;
+        # substr splits its "<rc>|<line>" answer.
+        "_dash_tw_value_msg", "substr",
     })
 
     @staticmethod

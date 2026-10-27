@@ -513,6 +513,7 @@ program define _dash_require_mata
         _dash_prefix_word _dash_seg_saving _dash_play_find _dash_grec_ok _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_p_take _dash_p_seg _dash_p_unknown ///
         _dash_omit_pair _dash_maxaxes_val ///
+        _dash_tw_value_msg ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -4767,6 +4768,45 @@ program define _dash_validate_value, rclass
     // shown as written -- `jitter({bf:X})' printed a bold X (P20-02..06).
     // prefix, opt, bad and extra are this program's own words.
     if `"`bad'"' != "" {
+        // twoway's own rc and first line where it refuses the value (WP-35
+        // basic:PT-9; dash_parse.mata's _dash_tw_value_tab, measured in
+        // test/fixtures/value_truth.json and value_codes_truth.json), by
+        // the value's class: "." missing; not a number nan, or huge
+        // beyond c(maxdouble) and inf beyond the machine's double range
+        // (1e308 and 1e400, which twoway answers apart); nonint; below or
+        // above the rule's bounds.  A refusal twoway's table does not hold
+        // keeps dash's sentence, as lpoly's and lpolyci's do (their own
+        // refusals are above: text that is no number keeps dash's
+        // sentence there).
+        local _tvc ""
+        if scalar(`T') == "." local _tvc "missing"
+        else if "`kind'" == "enum" | !`isnum' {
+            local _tvc "nan"
+            if "`kind'" != "enum" & regexm(scalar(`T'), "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)[eEdD]([-+]?[0-9]+)$") {
+                if real(regexs(1)) > 0 {
+                    local _tvc "huge"
+                    if log10(real(regexs(1))) + real(regexs(2)) > 308.2547 local _tvc "inf"
+                }
+            }
+        }
+        else if inlist("`kind'", "int", "istyle") & `R' != int(`R') local _tvc "nonint"
+        else if "`kind'" == "pos" {
+            local _tvc "above"
+            if `R' <= 0 local _tvc "below"
+        }
+        else {
+            local _tvc "above"
+            if "`p1'" != "" {
+                if `R' < `p1' | ("`p3'" == "x" & `R' <= `p1') local _tvc "below"
+            }
+        }
+        if "`ptype'" != "" & `: list ptype in _lpf' local _tvc ""
+        mata: st_local("_twv", st_local("_tvc") == "" ? "" : _dash_tw_value_msg(st_local("opt"), st_local("ptype"), st_local("_tvc"), st_strscalar(st_local("T"))))
+        mata: st_local("_twrc", substr(st_local("_twv"), 1, strpos(st_local("_twv"), "|") - 1))
+        if "`_twrc'" != "" {
+            mata: _dash_say("err", "", substr(st_local("_twv"), strpos(st_local("_twv"), "|") + 1, .), "")
+            exit `_twrc'
+        }
         mata: _dash_say("err", "`prefix': `opt'() must be `bad' (got: ", st_local("value"), ")`extra'")
         exit 198
     }
@@ -4945,6 +4985,16 @@ program define _dash_mlabel_list, rclass
         exit 102
     }
     if "`dots'" != "" {
+        // A name written against its .. (mlabel(make..)) is twoway's
+        // operator refusal (WP-35 basic:PT-9; value_codes_truth.json
+        // mlabel_dotdot), from _dash_tw_value_msg's table; a .. standing
+        // alone keeps its words.
+        mata: st_local("_twv", ustrregexm(st_local("value"), "[A-Za-z0-9_]\.\.") ? _dash_tw_value_msg("mlabel", st_local("ptype"), "dots", st_local("value")) : "")
+        mata: st_local("_twrc", substr(st_local("_twv"), 1, strpos(st_local("_twv"), "|") - 1))
+        if "`_twrc'" != "" {
+            mata: _dash_say("err", "", substr(st_local("_twv"), strpos(st_local("_twv"), "|") + 1, .), "")
+            exit `_twrc'
+        }
         display as error "`dots' not allowed in option mlabel()"
         exit 198
     }
@@ -6943,6 +6993,15 @@ program define _dash_process_segment, rclass
         // WP-31 C8a: colorvar() dropped, unchecked, where twoway drops it.
         _dash_cv_drop "`_rc_own'" "`_cn_ptype'"
         _dash_validate_opts "`_rc_own'" `_sl_n'
+        // lpoly's note when n() passes the rows in memory (WP-35 basic:PT-9,
+        // value_codes_truth.json lpoly_n_100: twoway prints "(n() set to
+        // 74)"): the rule of the renderer's _lpoly_grid_plan, which caps
+        // the grid at the rows from 50 rows on.
+        local _lpn "lpoly lpolyci"
+        if `: list _rc_own in _lpn' {
+            mata: st_local("_lpn", strofreal(c("N") >= 50 & strtoreal(st_global("s(n)")) < . & strtoreal(st_global("s(n)")) > c("N")))
+            if `_lpn' display as text "(n() set to " c(N) ")"
+        }
         // The fit options (WP-31 C4): on the types twoway takes them on,
         // their pairs with range(), fitplot()/ciplot() canonicalised.
         _dash_fit_opts_check "`_rc_own'"

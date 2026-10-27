@@ -538,9 +538,11 @@ foreach tt of local lab_types {
         local bad = 1
     }
     else if `drc' == 198 {
-        _ztp_logged "`logfile'" "mlabangle()"
+        // Flipped (WP-35 basic:PT-9): dash's sentence naming mlabangle()
+        // was wrong; the refusal is twoway's own line.
+        _ztp_logged "`logfile'" "textangle must be between -360.000 and 360.000"
         if r(found) != 1 {
-            display as error "TP-04 FAIL `tt': mlabangle(400) refused without naming mlabangle()"
+            display as error "TP-04 FAIL `tt': mlabangle(400) refused without twoway's textangle line"
             local bad = 1
         }
     }

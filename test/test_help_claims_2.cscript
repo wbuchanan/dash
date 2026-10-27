@@ -403,7 +403,9 @@ _hc2_dash "HC2-04i" 0   `"dash lfitci mpg weight, level(0) name(hc)"'
 _hc2_dash "HC2-04j" 0   `"dash scatter mpg weight, aspectratio(0) name(hc)"'
 _hc2_dash "HC2-04k" 0   `"dash bar mpg weight, base(-1e10) name(hc)"'
 _hc2_dash "HC2-04l" 0   `"dash bar mpg weight, barwidth(0.001) name(hc)"'
-_hc2_dash "HC2-04m" 198 `"dash histogram mpg, width(-1) name(hc)"'
+// Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
+// twoway's code and words (value_truth.json, value_codes_truth.json).
+_hc2_dash "HC2-04m" 125 `"dash histogram mpg, width(-1) name(hc)"' "width() invalid -- invalid number, outside of allowed range"
 _hc2_dash "HC2-04n" 0   `"dash lowess mpg weight, bwidth(1) name(hc)"'
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-04o" 0   `"dash lowess mpg weight, bwidth(1.01) name(hc)"'
@@ -445,7 +447,9 @@ _hc2_dash   "HC2-05d" 198 `"dash scatter mpg weight, jitter(5) jitterseed(abc) n
 
 // HC2-06 -- a word that only looks like a number.
 _hc2_expect "HC2-06a" 198 `"twoway scatter mpg weight, msize(1e308)"' "invalid syntax"
-_hc2_dash   "HC2-06b" 198 `"dash scatter mpg weight, msize(1e308) name(hc)"' "msize()"
+// Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
+// twoway's code and words (value_truth.json, value_codes_truth.json).
+_hc2_dash   "HC2-06b" 198 `"dash scatter mpg weight, msize(1e308) name(hc)"' "invalid syntax"
 _hc2_expect "HC2-06c" 0   `"twoway scatter mpg weight, msize(1e400)"'
 _hc2_dash   "HC2-06d" 198 `"dash scatter mpg weight, msize(1e400) name(hc)"' "msize()"
 
@@ -534,7 +538,9 @@ _hc2_expect "HC2-12s" 125 `"twoway scatter mpg weight, xaxis(10)"'
 _hc2_expect "HC2-13a" 198 `"twoway mspline mpg weight, n(301)"' "n must be between 1 and 300"
 _hc2_expect "HC2-13b" 0   `"twoway mspline mpg weight, n(1)"'
 _hc2_dash   "HC2-13c" 198 `"dash mspline mpg weight, n(301) name(hc)"'
-_hc2_tail   "HC2-13d" n "" 301
+// Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
+// twoway's code and words (value_truth.json, value_codes_truth.json).
+_hc2_dash   "HC2-13d" 198 `"dash mspline mpg weight, n(301) name(hc)"' "n must be between 1 and 300"
 
 // HC2-14 -- dash's own bounds with no second sentence; twoway takes each
 // value, and has no such option at all for the rest.
@@ -552,7 +558,9 @@ _hc2_tail "HC2-14j" jitterseed "" -1
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-14k" 0 `"dash kdensity mpg, bwidth(0) name(hc)"'
 _hc2_dash "HC2-14l" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"'
-_hc2_tail "HC2-14E" bwidth "" -1
+// Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
+// twoway's code and words (value_truth.json, value_codes_truth.json).
+_hc2_dash "HC2-14E" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"' "bandwidth must be positive"
 _hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"'
 _hc2_tail "HC2-14n" colornlevels "" 1
 _hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"'
@@ -576,7 +584,9 @@ _hc2_expect "HC2-14D" 198 `"twoway lpoly mpg weight, bwidth(0)"' "bwidth() must 
 _hc2_expect "HC2-15a" 198 `"twoway mband mpg weight, bands(201)"' "bands must be between 1 and 200"
 _hc2_expect "HC2-15b" 198 `"twoway mband mpg weight, bands(0)"' "bands must be between 1 and 200"
 _hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
-_hc2_tail   "HC2-15d" bands "" 201
+// Flipped (WP-35 basic:PT-9): dash's own sentence was wrong; the refusal is
+// twoway's code and words (value_truth.json, value_codes_truth.json).
+_hc2_dash   "HC2-15d" 198 `"dash mband mpg weight, bands(201) name(hc)"' "bands must be between 1 and 200"
 
 // HC2-16 -- values twoway refuses and dash accepts (HC2-16a-n), and a
 // colour written with commas, which dash refuses, as twoway (HC2-16o-q).

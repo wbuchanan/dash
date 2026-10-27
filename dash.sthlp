@@ -1185,9 +1185,11 @@ there, is an invalid point.  The literal is read as data and never run.
     drawn black and reported in {cmd:twoway}'s own words, "dash: named
     style {it:name} not found in class color, default attributes used", as
     {cmd:twoway} draws and reports it (see {help dash##colours:Colours}).  A
-    refusal is one line naming the option and the value, printed before
-    any Python runs, with r(198), or r(111) for a variable that does not
-    exist:
+    refusal uses {cmd:twoway}'s return code and words (its first line),
+    printed before any Python runs: {cmd:base(abc)} is r(4026) and
+    {cmd:mlabel(make..)} r(101), as in {cmd:twoway}.  Where {cmd:twoway} draws the value and {cmd:dash} cannot,
+    the refusal is {cmd:dash}'s own line naming the option and the value,
+    r(198):
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
 {phang3}{cmd:. dash (histogram mpg, bin(2000))}{p_end}

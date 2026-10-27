@@ -360,7 +360,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-9 Tracked:** Closed in WP-35, BUGS.md "Edge values twoway takes are refused: mspline bands(-1), fpfitci n(0), lfit n(-1)", commit 8355f24.
 - **stat:PT-14 Tracked:** Closed in WP-35, BUGS.md "bw() is accepted with a note on scatter/line/lfit and read as barwidth() on the bar family; twoway refuses it off the bandwidth types", commit pending.
 - **basic:PT-8 Tracked:** Closed in WP-35, BUGS.md "Two omit* options are accepted with a note; twoway refuses 'option omitanymissomitallmiss not allowed'", commit c0976ee.
-- **basic:PT-9 Tracked:** Open (WP-35 section 35-05).
+- **basic:PT-9 Tracked:** Closed in WP-35, BUGS.md "Value refusals use r(198) where twoway uses another code: base(abc) 4026, bin() 125/121/126, width() 125/121, start() 121, mlabel(make..) 101, rbar barwidth(.) 199, mlabangle(1e308) 111", commit pending.
 - **basic:PT-13 Tracked:** Open (WP-35 section 35-05).
 - **DT-15 Tracked:** Open (WP-35 section 35-07).
 - **syn:SD-7 Tracked:** Closed in WP-35, BUGS.md "ty() on lfitci/qfitci/fpfitci/lpolyci is refused; twoway refuses only the full word type", commit a0e9ac1.

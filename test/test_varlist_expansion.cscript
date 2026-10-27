@@ -1382,7 +1382,9 @@ _ps_refuse PS-06 101 "=exp not allowed" |`two' mlabel(= nosuch)
 // Flipped (WP-31 C10b): mlabel(t*) is expanded as twoway expands it
 // (U06-02); a pattern naming nothing is twoway's r(111).
 _ps_refuse PS-06 111 "*variable zz* not found" |`two' mlabel(zz*)
-_ps_refuse PS-06 198 ".. not allowed in option mlabel()" |`two' mlabel(make..)
+// Flipped (WP-35 basic:PT-9): r(198) ".. not allowed" was wrong; twoway
+// reads make.. as an operator, r(101) (value_codes_truth.json mlabel_dotdot).
+_ps_refuse PS-06 101 "factor-variable and time-series operators not allowed" |`two' mlabel(make..)
 _ps_tally PS-06 `ok' "every mlabel variable is checked, past the last y too, before .."
 
 // PS-07 by plot type
@@ -1467,7 +1469,9 @@ local ok 1
 _ps_refuse PS-11 198 "base(10 .. 20):  invalid syntax" |bar mpg turn weight, base(10 .. 20)
 _ps_refuse PS-11 198 "dash: barwidth() must be a positive number (got: -2)" |bar mpg turn weight, barwidth(1 -2)
 _ps_refuse PS-11 198 "" |bar mpg turn weight, barwidth(1 0)
-_ps_refuse PS-11 198 "dash: base() must be a number (got: abc)" |bar mpg turn weight, base(10 abc)
+// Flipped (WP-35 basic:PT-9): r(198) in dash's words was wrong; twoway
+// refuses it r(4026) (value_list_truth.json B23).
+_ps_refuse PS-11 4026 "option base() incorrectly specified, abc is not a number" |bar mpg turn weight, base(10 abc)
 _ps_tally PS-11 `ok' "a used base() or barwidth() element is held to the rule"
 
 // PS-12 a list where twoway takes one value
