@@ -1,0 +1,2378 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "b34f4116d3e0d90d319f15d3da602230ca4e1ab0",
+  "extracted": "29 Oct 2026 13:46:16",
+  "source": "scripts/extract_zero_obs_truth.do",
+  "stata_version": "19.5"
+ },
+ "area.a": {
+  "cmd": "area mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "area.b1": {
+  "cmd": "(area mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "area.b2": {
+  "cmd": "(scatter mpg weight) (area mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "area.c": {
+  "cmd": "area mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "area.d": {
+  "cmd": "area mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "area.e1": {
+  "cmd": "area ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "area.e2": {
+  "cmd": "area mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "area.f": {
+  "cmd": "area ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.a": {
+  "cmd": "area mpg weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.b1": {
+  "cmd": "(area mpg weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.b2": {
+  "cmd": "(scatter mpg weight) (area mpg weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.c": {
+  "cmd": "area mpg weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.d": {
+  "cmd": "area mpg weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.e1": {
+  "cmd": "area ydom weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "area_h.e2": {
+  "cmd": "area mpg weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "area_h.f": {
+  "cmd": "area ymiss weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.a": {
+  "cmd": "bar mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.b1": {
+  "cmd": "(bar mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.b2": {
+  "cmd": "(scatter mpg weight) (bar mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.c": {
+  "cmd": "bar mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.d": {
+  "cmd": "bar mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.e1": {
+  "cmd": "bar ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar.e2": {
+  "cmd": "bar mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "bar.f": {
+  "cmd": "bar ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.a": {
+  "cmd": "bar mpg weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.b1": {
+  "cmd": "(bar mpg weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.b2": {
+  "cmd": "(scatter mpg weight) (bar mpg weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.c": {
+  "cmd": "bar mpg weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.d": {
+  "cmd": "bar mpg weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.e1": {
+  "cmd": "bar ydom weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "bar_h.e2": {
+  "cmd": "bar mpg weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "bar_h.f": {
+  "cmd": "bar ymiss weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.a": {
+  "cmd": "connected mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.b1": {
+  "cmd": "(connected mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.b2": {
+  "cmd": "(scatter mpg weight) (connected mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.c": {
+  "cmd": "connected mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.d": {
+  "cmd": "connected mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.e1": {
+  "cmd": "connected ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "connected.e2": {
+  "cmd": "connected mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "connected.f": {
+  "cmd": "connected ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "contour.a": {
+  "cmd": "contour mpg weight length if 0",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "Weight (lbs.)",
+   "Length (in.)",
+   "Mileage (mpg)"
+  ]
+ },
+ "contour.b1": {
+  "cmd": "(contour mpg weight length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2000",
+   "3000",
+   "4000",
+   "5000",
+   "Mileage (mpg)"
+  ]
+ },
+ "contour.b2": {
+  "cmd": "(scatter mpg weight) (contour mpg weight length if 0)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000",
+   "Mileage (mpg)"
+  ]
+ },
+ "contour.c": {
+  "cmd": "contour mpg weight length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "Mileage (mpg)"
+  ]
+ },
+ "contour.d": {
+  "cmd": "contour mpg weight length in 1 if foreign",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "Weight (lbs.)",
+   "Length (in.)",
+   "Mileage (mpg)"
+  ]
+ },
+ "contour.e1": {
+  "cmd": "contour ydom weight length, by(foreign)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000",
+   "150",
+   "200",
+   "250",
+   "150",
+   "200",
+   "250",
+   "Domestic",
+   "Foreign",
+   "Weight (lbs.)",
+   "Length (in.)",
+   "Graphs by Car origin"
+  ]
+ },
+ "contour.e2": {
+  "cmd": "contour mpg weight length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "contour.f": {
+  "cmd": "contour ymiss weight length",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000",
+   "Weight (lbs.)",
+   "140",
+   "160",
+   "180",
+   "200",
+   "220",
+   "240",
+   "Length (in.)",
+   "ymiss"
+  ]
+ },
+ "contourline.a": {
+  "cmd": "contourline mpg weight length if 0",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "Weight (lbs.)",
+   "Length (in.)"
+  ]
+ },
+ "contourline.b1": {
+  "cmd": "(contourline mpg weight length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2000",
+   "3000",
+   "4000",
+   "5000"
+  ]
+ },
+ "contourline.b2": {
+  "cmd": "(scatter mpg weight) (contourline mpg weight length if 0)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "10",
+   "20",
+   "30",
+   "40",
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000"
+  ]
+ },
+ "contourline.c": {
+  "cmd": "contourline mpg weight length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": []
+ },
+ "contourline.d": {
+  "cmd": "contourline mpg weight length in 1 if foreign",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "Weight (lbs.)",
+   "Length (in.)"
+  ]
+ },
+ "contourline.e1": {
+  "cmd": "contourline ydom weight length, by(foreign)",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000",
+   "150",
+   "200",
+   "250",
+   "150",
+   "200",
+   "250",
+   "Domestic",
+   "Foreign",
+   "Weight (lbs.)",
+   "Length (in.)",
+   "Graphs by Car origin"
+  ]
+ },
+ "contourline.e2": {
+  "cmd": "contourline mpg weight length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "contourline.f": {
+  "cmd": "contourline ymiss weight length",
+  "lines": [],
+  "rc": 0,
+  "svg_texts": [
+   "2,000",
+   "3,000",
+   "4,000",
+   "5,000",
+   "Weight (lbs.)",
+   "140",
+   "160",
+   "180",
+   "200",
+   "220",
+   "240",
+   "Length (in.)"
+  ]
+ },
+ "dot.a": {
+  "cmd": "dot mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.b1": {
+  "cmd": "(dot mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.b2": {
+  "cmd": "(scatter mpg weight) (dot mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.c": {
+  "cmd": "dot mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.d": {
+  "cmd": "dot mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.e1": {
+  "cmd": "dot ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "dot.e2": {
+  "cmd": "dot mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "dot.f": {
+  "cmd": "dot ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.a": {
+  "cmd": "dropline mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.b1": {
+  "cmd": "(dropline mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.b2": {
+  "cmd": "(scatter mpg weight) (dropline mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.c": {
+  "cmd": "dropline mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.d": {
+  "cmd": "dropline mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.e1": {
+  "cmd": "dropline ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline.e2": {
+  "cmd": "dropline mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "dropline.f": {
+  "cmd": "dropline ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.a": {
+  "cmd": "dropline mpg weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.b1": {
+  "cmd": "(dropline mpg weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.b2": {
+  "cmd": "(scatter mpg weight) (dropline mpg weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.c": {
+  "cmd": "dropline mpg weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.d": {
+  "cmd": "dropline mpg weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.e1": {
+  "cmd": "dropline ydom weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "dropline_h.e2": {
+  "cmd": "dropline mpg weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "dropline_h.f": {
+  "cmd": "dropline ymiss weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "fpfit.a": {
+  "cmd": "fpfit mpg weight if 0",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfit.b1": {
+  "cmd": "(fpfit mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfit.b2": {
+  "cmd": "(scatter mpg weight) (fpfit mpg weight if 0)",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfit.c": {
+  "cmd": "fpfit mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfit.d": {
+  "cmd": "fpfit mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfit.e1": {
+  "cmd": "fpfit ydom weight, by(foreign)",
+  "lines": [
+   "(note:  fracpoly could not fit model)"
+  ],
+  "rc": 0
+ },
+ "fpfit.e2": {
+  "cmd": "fpfit mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "fpfit.f": {
+  "cmd": "fpfit ymiss weight",
+  "lines": [
+   "(note:  fracpoly could not fit model)"
+  ],
+  "rc": 0
+ },
+ "fpfitci.a": {
+  "cmd": "fpfitci mpg weight if 0",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfitci.b1": {
+  "cmd": "(fpfitci mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfitci.b2": {
+  "cmd": "(scatter mpg weight) (fpfitci mpg weight if 0)",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfitci.c": {
+  "cmd": "fpfitci mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfitci.d": {
+  "cmd": "fpfitci mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  fracpoly could not fit model)",
+   "observation numbers out of range"
+  ],
+  "rc": 198
+ },
+ "fpfitci.e1": {
+  "cmd": "fpfitci ydom weight, by(foreign)",
+  "lines": [
+   "(note:  fracpoly could not fit model)"
+  ],
+  "rc": 0
+ },
+ "fpfitci.e2": {
+  "cmd": "fpfitci mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "fpfitci.f": {
+  "cmd": "fpfitci ymiss weight",
+  "lines": [
+   "(note:  fracpoly could not fit model)"
+  ],
+  "rc": 0
+ },
+ "function.a": {
+  "cmd": "function y = x if 0, range(0 1)",
+  "lines": [],
+  "rc": 0
+ },
+ "function.b1": {
+  "cmd": "(function y = x if 0, range(0 1)) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "function.c": {
+  "cmd": "function y = x, range(0 1) || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "function.e2": {
+  "cmd": "function y = x if 0, range(0 1) by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "histogram.a": {
+  "cmd": "histogram mpg if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.b1": {
+  "cmd": "(histogram mpg if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.b2": {
+  "cmd": "(scatter mpg weight) (histogram mpg if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.c": {
+  "cmd": "histogram mpg || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.d": {
+  "cmd": "histogram mpg in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.e1": {
+  "cmd": "histogram ydom, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram.e2": {
+  "cmd": "histogram mpg if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "histogram.f": {
+  "cmd": "histogram ymiss",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.a": {
+  "cmd": "histogram mpg if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.b1": {
+  "cmd": "(histogram mpg if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.b2": {
+  "cmd": "(scatter mpg weight) (histogram mpg if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.c": {
+  "cmd": "histogram mpg, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.d": {
+  "cmd": "histogram mpg in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.e1": {
+  "cmd": "histogram ydom, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "histogram_h.e2": {
+  "cmd": "histogram mpg if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "histogram_h.f": {
+  "cmd": "histogram ymiss, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.a": {
+  "cmd": "kdensity mpg if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.b1": {
+  "cmd": "(kdensity mpg if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.b2": {
+  "cmd": "(scatter mpg weight) (kdensity mpg if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.c": {
+  "cmd": "kdensity mpg || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.d": {
+  "cmd": "kdensity mpg in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.e1": {
+  "cmd": "kdensity ydom, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "kdensity.e2": {
+  "cmd": "kdensity mpg if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "kdensity.f": {
+  "cmd": "kdensity ymiss",
+  "lines": [],
+  "rc": 0
+ },
+ "lfit.a": {
+  "cmd": "lfit mpg weight if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.b1": {
+  "cmd": "(lfit mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.b2": {
+  "cmd": "(scatter mpg weight) (lfit mpg weight if 0)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.c": {
+  "cmd": "lfit mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.d": {
+  "cmd": "lfit mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.e1": {
+  "cmd": "lfit ydom weight, by(foreign)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfit.e2": {
+  "cmd": "lfit mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "lfit.f": {
+  "cmd": "lfit ymiss weight",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.a": {
+  "cmd": "lfitci mpg weight if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.b1": {
+  "cmd": "(lfitci mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.b2": {
+  "cmd": "(scatter mpg weight) (lfitci mpg weight if 0)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.c": {
+  "cmd": "lfitci mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.d": {
+  "cmd": "lfitci mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.e1": {
+  "cmd": "lfitci ydom weight, by(foreign)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "lfitci.e2": {
+  "cmd": "lfitci mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "lfitci.f": {
+  "cmd": "lfitci ymiss weight",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "line.a": {
+  "cmd": "line mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "line.b1": {
+  "cmd": "(line mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "line.b2": {
+  "cmd": "(scatter mpg weight) (line mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "line.c": {
+  "cmd": "line mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "line.d": {
+  "cmd": "line mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "line.e1": {
+  "cmd": "line ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "line.e2": {
+  "cmd": "line mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "line.f": {
+  "cmd": "line ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.a": {
+  "cmd": "lowess mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.b1": {
+  "cmd": "(lowess mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.b2": {
+  "cmd": "(scatter mpg weight) (lowess mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.c": {
+  "cmd": "lowess mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.d": {
+  "cmd": "lowess mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.e1": {
+  "cmd": "lowess ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "lowess.e2": {
+  "cmd": "lowess mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "lowess.f": {
+  "cmd": "lowess ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "lpoly.a": {
+  "cmd": "lpoly mpg weight if 0",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpoly.b1": {
+  "cmd": "(lpoly mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpoly.b2": {
+  "cmd": "(scatter mpg weight) (lpoly mpg weight if 0)",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpoly.c": {
+  "cmd": "lpoly mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpoly.d": {
+  "cmd": "lpoly mpg weight in 1 if foreign",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpoly.e1": {
+  "cmd": "lpoly ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "lpoly.e2": {
+  "cmd": "lpoly mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "lpoly.f": {
+  "cmd": "lpoly ymiss weight",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.a": {
+  "cmd": "lpolyci mpg weight if 0",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.b1": {
+  "cmd": "(lpolyci mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.b2": {
+  "cmd": "(scatter mpg weight) (lpolyci mpg weight if 0)",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.c": {
+  "cmd": "lpolyci mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.d": {
+  "cmd": "lpolyci mpg weight in 1 if foreign",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "lpolyci.e1": {
+  "cmd": "lpolyci ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "lpolyci.e2": {
+  "cmd": "lpolyci mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "lpolyci.f": {
+  "cmd": "lpolyci ymiss weight",
+  "lines": [
+   "no observations"
+  ],
+  "rc": 2000
+ },
+ "mband.a": {
+  "cmd": "mband mpg weight if 0",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mband.b1": {
+  "cmd": "(mband mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mband.b2": {
+  "cmd": "(scatter mpg weight) (mband mpg weight if 0)",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mband.c": {
+  "cmd": "mband mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mband.d": {
+  "cmd": "mband mpg weight in 1 if foreign",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mband.e1": {
+  "cmd": "mband ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "mband.e2": {
+  "cmd": "mband mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "mband.f": {
+  "cmd": "mband ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "mspline.a": {
+  "cmd": "mspline mpg weight if 0",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mspline.b1": {
+  "cmd": "(mspline mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mspline.b2": {
+  "cmd": "(scatter mpg weight) (mspline mpg weight if 0)",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mspline.c": {
+  "cmd": "mspline mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mspline.d": {
+  "cmd": "mspline mpg weight in 1 if foreign",
+  "lines": [
+   "bands must be between 1 and 200"
+  ],
+  "rc": 198
+ },
+ "mspline.e1": {
+  "cmd": "mspline ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "mspline.e2": {
+  "cmd": "mspline mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "mspline.f": {
+  "cmd": "mspline ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.a": {
+  "cmd": "pcarrow mpg weight turn length if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.b1": {
+  "cmd": "(pcarrow mpg weight turn length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.b2": {
+  "cmd": "(scatter mpg weight) (pcarrow mpg weight turn length if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.c": {
+  "cmd": "pcarrow mpg weight turn length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.d": {
+  "cmd": "pcarrow mpg weight turn length in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.e1": {
+  "cmd": "pcarrow ydom weight turn length, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrow.e2": {
+  "cmd": "pcarrow mpg weight turn length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcarrow.f": {
+  "cmd": "pcarrow ymiss weight turn length",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrowi.a": {
+  "cmd": "pcarrowi 1 2 3 4 if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrowi.b1": {
+  "cmd": "(pcarrowi 1 2 3 4 if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrowi.c": {
+  "cmd": "pcarrowi 1 2 3 4 || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcarrowi.e2": {
+  "cmd": "pcarrowi 1 2 3 4 if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcbarrow.a": {
+  "cmd": "pcbarrow mpg weight turn length if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.b1": {
+  "cmd": "(pcbarrow mpg weight turn length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.b2": {
+  "cmd": "(scatter mpg weight) (pcbarrow mpg weight turn length if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.c": {
+  "cmd": "pcbarrow mpg weight turn length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.d": {
+  "cmd": "pcbarrow mpg weight turn length in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.e1": {
+  "cmd": "pcbarrow ydom weight turn length, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcbarrow.e2": {
+  "cmd": "pcbarrow mpg weight turn length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcbarrow.f": {
+  "cmd": "pcbarrow ymiss weight turn length",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.a": {
+  "cmd": "pccapsym mpg weight turn length if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.b1": {
+  "cmd": "(pccapsym mpg weight turn length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.b2": {
+  "cmd": "(scatter mpg weight) (pccapsym mpg weight turn length if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.c": {
+  "cmd": "pccapsym mpg weight turn length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.d": {
+  "cmd": "pccapsym mpg weight turn length in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.e1": {
+  "cmd": "pccapsym ydom weight turn length, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "pccapsym.e2": {
+  "cmd": "pccapsym mpg weight turn length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pccapsym.f": {
+  "cmd": "pccapsym ymiss weight turn length",
+  "lines": [],
+  "rc": 0
+ },
+ "pci.a": {
+  "cmd": "pci 1 2 3 4 if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pci.b1": {
+  "cmd": "(pci 1 2 3 4 if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pci.c": {
+  "cmd": "pci 1 2 3 4 || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pci.e2": {
+  "cmd": "pci 1 2 3 4 if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcscatter.a": {
+  "cmd": "pcscatter mpg weight turn length if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.b1": {
+  "cmd": "(pcscatter mpg weight turn length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.b2": {
+  "cmd": "(scatter mpg weight) (pcscatter mpg weight turn length if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.c": {
+  "cmd": "pcscatter mpg weight turn length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.d": {
+  "cmd": "pcscatter mpg weight turn length in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.e1": {
+  "cmd": "pcscatter ydom weight turn length, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcscatter.e2": {
+  "cmd": "pcscatter mpg weight turn length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcscatter.f": {
+  "cmd": "pcscatter ymiss weight turn length",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.a": {
+  "cmd": "pcspike mpg weight turn length if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.b1": {
+  "cmd": "(pcspike mpg weight turn length if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.b2": {
+  "cmd": "(scatter mpg weight) (pcspike mpg weight turn length if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.c": {
+  "cmd": "pcspike mpg weight turn length || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.d": {
+  "cmd": "pcspike mpg weight turn length in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.e1": {
+  "cmd": "pcspike ydom weight turn length, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "pcspike.e2": {
+  "cmd": "pcspike mpg weight turn length if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "pcspike.f": {
+  "cmd": "pcspike ymiss weight turn length",
+  "lines": [],
+  "rc": 0
+ },
+ "qfit.a": {
+  "cmd": "qfit mpg weight if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.b1": {
+  "cmd": "(qfit mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.b2": {
+  "cmd": "(scatter mpg weight) (qfit mpg weight if 0)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.c": {
+  "cmd": "qfit mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.d": {
+  "cmd": "qfit mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.e1": {
+  "cmd": "qfit ydom weight, by(foreign)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfit.e2": {
+  "cmd": "qfit mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "qfit.f": {
+  "cmd": "qfit ymiss weight",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.a": {
+  "cmd": "qfitci mpg weight if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.b1": {
+  "cmd": "(qfitci mpg weight if 0) (scatter mpg weight)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.b2": {
+  "cmd": "(scatter mpg weight) (qfitci mpg weight if 0)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.c": {
+  "cmd": "qfitci mpg weight || scatter mpg weight || if 0",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.d": {
+  "cmd": "qfitci mpg weight in 1 if foreign",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.e1": {
+  "cmd": "qfitci ydom weight, by(foreign)",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "qfitci.e2": {
+  "cmd": "qfitci mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "qfitci.f": {
+  "cmd": "qfitci ymiss weight",
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "rc": 0
+ },
+ "rarea.a": {
+  "cmd": "rarea mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.b1": {
+  "cmd": "(rarea mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.b2": {
+  "cmd": "(scatter mpg weight) (rarea mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.c": {
+  "cmd": "rarea mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.d": {
+  "cmd": "rarea mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.e1": {
+  "cmd": "rarea ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea.e2": {
+  "cmd": "rarea mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rarea.f": {
+  "cmd": "rarea ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.a": {
+  "cmd": "rarea mpg turn weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.b1": {
+  "cmd": "(rarea mpg turn weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.b2": {
+  "cmd": "(scatter mpg weight) (rarea mpg turn weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.c": {
+  "cmd": "rarea mpg turn weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.d": {
+  "cmd": "rarea mpg turn weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.e1": {
+  "cmd": "rarea ydom turn weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rarea_h.e2": {
+  "cmd": "rarea mpg turn weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rarea_h.f": {
+  "cmd": "rarea ymiss turn weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.a": {
+  "cmd": "rbar mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.b1": {
+  "cmd": "(rbar mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.b2": {
+  "cmd": "(scatter mpg weight) (rbar mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.c": {
+  "cmd": "rbar mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.d": {
+  "cmd": "rbar mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.e1": {
+  "cmd": "rbar ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar.e2": {
+  "cmd": "rbar mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rbar.f": {
+  "cmd": "rbar ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.a": {
+  "cmd": "rbar mpg turn weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.b1": {
+  "cmd": "(rbar mpg turn weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.b2": {
+  "cmd": "(scatter mpg weight) (rbar mpg turn weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.c": {
+  "cmd": "rbar mpg turn weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.d": {
+  "cmd": "rbar mpg turn weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.e1": {
+  "cmd": "rbar ydom turn weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rbar_h.e2": {
+  "cmd": "rbar mpg turn weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rbar_h.f": {
+  "cmd": "rbar ymiss turn weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.a": {
+  "cmd": "rcap mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.b1": {
+  "cmd": "(rcap mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.b2": {
+  "cmd": "(scatter mpg weight) (rcap mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.c": {
+  "cmd": "rcap mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.d": {
+  "cmd": "rcap mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.e1": {
+  "cmd": "rcap ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap.e2": {
+  "cmd": "rcap mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rcap.f": {
+  "cmd": "rcap ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.a": {
+  "cmd": "rcap mpg turn weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.b1": {
+  "cmd": "(rcap mpg turn weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.b2": {
+  "cmd": "(scatter mpg weight) (rcap mpg turn weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.c": {
+  "cmd": "rcap mpg turn weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.d": {
+  "cmd": "rcap mpg turn weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.e1": {
+  "cmd": "rcap ydom turn weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcap_h.e2": {
+  "cmd": "rcap mpg turn weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rcap_h.f": {
+  "cmd": "rcap ymiss turn weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.a": {
+  "cmd": "rcapsym mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.b1": {
+  "cmd": "(rcapsym mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.b2": {
+  "cmd": "(scatter mpg weight) (rcapsym mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.c": {
+  "cmd": "rcapsym mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.d": {
+  "cmd": "rcapsym mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.e1": {
+  "cmd": "rcapsym ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rcapsym.e2": {
+  "cmd": "rcapsym mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rcapsym.f": {
+  "cmd": "rcapsym ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.a": {
+  "cmd": "rconnected mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.b1": {
+  "cmd": "(rconnected mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.b2": {
+  "cmd": "(scatter mpg weight) (rconnected mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.c": {
+  "cmd": "rconnected mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.d": {
+  "cmd": "rconnected mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.e1": {
+  "cmd": "rconnected ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rconnected.e2": {
+  "cmd": "rconnected mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rconnected.f": {
+  "cmd": "rconnected ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.a": {
+  "cmd": "rline mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.b1": {
+  "cmd": "(rline mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.b2": {
+  "cmd": "(scatter mpg weight) (rline mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.c": {
+  "cmd": "rline mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.d": {
+  "cmd": "rline mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.e1": {
+  "cmd": "rline ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rline.e2": {
+  "cmd": "rline mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rline.f": {
+  "cmd": "rline ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.a": {
+  "cmd": "rpcap mpg turn trunk weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.b1": {
+  "cmd": "(rpcap mpg turn trunk weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.b2": {
+  "cmd": "(scatter mpg weight) (rpcap mpg turn trunk weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.c": {
+  "cmd": "rpcap mpg turn trunk weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.d": {
+  "cmd": "rpcap mpg turn trunk weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.e1": {
+  "cmd": "rpcap ydom turn trunk weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpcap.e2": {
+  "cmd": "rpcap mpg turn trunk weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rpcap.f": {
+  "cmd": "rpcap ymiss turn trunk weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.a": {
+  "cmd": "rpspike mpg turn trunk weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.b1": {
+  "cmd": "(rpspike mpg turn trunk weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.b2": {
+  "cmd": "(scatter mpg weight) (rpspike mpg turn trunk weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.c": {
+  "cmd": "rpspike mpg turn trunk weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.d": {
+  "cmd": "rpspike mpg turn trunk weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.e1": {
+  "cmd": "rpspike ydom turn trunk weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rpspike.e2": {
+  "cmd": "rpspike mpg turn trunk weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rpspike.f": {
+  "cmd": "rpspike ymiss turn trunk weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.a": {
+  "cmd": "rscatter mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.b1": {
+  "cmd": "(rscatter mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.b2": {
+  "cmd": "(scatter mpg weight) (rscatter mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.c": {
+  "cmd": "rscatter mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.d": {
+  "cmd": "rscatter mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.e1": {
+  "cmd": "rscatter ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rscatter.e2": {
+  "cmd": "rscatter mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rscatter.f": {
+  "cmd": "rscatter ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.a": {
+  "cmd": "rspike mpg turn weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.b1": {
+  "cmd": "(rspike mpg turn weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.b2": {
+  "cmd": "(scatter mpg weight) (rspike mpg turn weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.c": {
+  "cmd": "rspike mpg turn weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.d": {
+  "cmd": "rspike mpg turn weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.e1": {
+  "cmd": "rspike ydom turn weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "rspike.e2": {
+  "cmd": "rspike mpg turn weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "rspike.f": {
+  "cmd": "rspike ymiss turn weight",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.a": {
+  "cmd": "scatter mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.b1": {
+  "cmd": "(scatter mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.b2": {
+  "cmd": "(scatter mpg weight) (scatter mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.c": {
+  "cmd": "scatter mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.d": {
+  "cmd": "scatter mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.e1": {
+  "cmd": "scatter ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "scatter.e2": {
+  "cmd": "scatter mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "scatter.f": {
+  "cmd": "scatter ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "scatteri.a": {
+  "cmd": "scatteri 1 2 3 4 if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "scatteri.b1": {
+  "cmd": "(scatteri 1 2 3 4 if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "scatteri.c": {
+  "cmd": "scatteri 1 2 3 4 || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "scatteri.e2": {
+  "cmd": "scatteri 1 2 3 4 if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "spike.a": {
+  "cmd": "spike mpg weight if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.b1": {
+  "cmd": "(spike mpg weight if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.b2": {
+  "cmd": "(scatter mpg weight) (spike mpg weight if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.c": {
+  "cmd": "spike mpg weight || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.d": {
+  "cmd": "spike mpg weight in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.e1": {
+  "cmd": "spike ydom weight, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike.e2": {
+  "cmd": "spike mpg weight if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "spike.f": {
+  "cmd": "spike ymiss weight",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.a": {
+  "cmd": "spike mpg weight if 0, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.b1": {
+  "cmd": "(spike mpg weight if 0, horizontal) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.b2": {
+  "cmd": "(scatter mpg weight) (spike mpg weight if 0, horizontal)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.c": {
+  "cmd": "spike mpg weight, horizontal || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.d": {
+  "cmd": "spike mpg weight in 1 if foreign, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.e1": {
+  "cmd": "spike ydom weight, horizontal by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "spike_h.e2": {
+  "cmd": "spike mpg weight if 0, horizontal by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "spike_h.f": {
+  "cmd": "spike ymiss weight, horizontal",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.a": {
+  "cmd": "tsline mpg if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.b1": {
+  "cmd": "(tsline mpg if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.b2": {
+  "cmd": "(scatter mpg weight) (tsline mpg if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.c": {
+  "cmd": "tsline mpg || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.d": {
+  "cmd": "tsline mpg in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.e1": {
+  "cmd": "tsline ydom, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsline.e2": {
+  "cmd": "tsline mpg if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "tsline.f": {
+  "cmd": "tsline ymiss",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.a": {
+  "cmd": "tsrline mpg turn if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.b1": {
+  "cmd": "(tsrline mpg turn if 0) (scatter mpg weight)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.b2": {
+  "cmd": "(scatter mpg weight) (tsrline mpg turn if 0)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.c": {
+  "cmd": "tsrline mpg turn || scatter mpg weight || if 0",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.d": {
+  "cmd": "tsrline mpg turn in 1 if foreign",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.e1": {
+  "cmd": "tsrline ydom turn, by(foreign)",
+  "lines": [],
+  "rc": 0
+ },
+ "tsrline.e2": {
+  "cmd": "tsrline mpg turn if 0, by(foreign)",
+  "lines": [
+   "nothing to graph"
+  ],
+  "rc": 198
+ },
+ "tsrline.f": {
+  "cmd": "tsrline ymiss turn",
+  "lines": [],
+  "rc": 0
+ }
+}

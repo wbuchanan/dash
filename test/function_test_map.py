@@ -299,6 +299,7 @@ FUNCTIONS = {
  'GlyphMapper.map_contour': 'test/test_contour_layers.py::TestContourDraws::test_renderer_levels_and_colours',
  'GlyphMapper.map_contourline': 'test/test_contour_layers.py::TestContourlineDraws::test_lines_only',
  'GlyphMapper._contour_key': 'test/test_contour_layers.py::TestTheKey::test_placement',
+ 'GlyphMapper._contour_key_empty': 'test/test_zero_obs.py::TestAnEmptyContour::test_the_key_is_titled_and_empty',
  'GlyphMapper._contour_refit_rule': 'test/test_contour_key_moves.py::TestSaved::test_contourline_levels_and_colours_follow',
  'GlyphMapper.map_rconnected': 'test/test_glyphs.py::TestMapRconnected::test_rconnected_has_lines',
  'GlyphMapper.map_rline': 'test/test_glyphs.py::TestLegendLabelCoverage::test_rline_legend',

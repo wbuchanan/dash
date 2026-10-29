@@ -526,6 +526,7 @@ program define _dash_require_mata
         _dash_tw_value_msg ///
         _dash_reserved_prefix _dash_esample_sub _dash_expr_words ///
         _dash_pyname ///
+        _dash_zero_obs_rule _dash_zo_records ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -7261,7 +7262,9 @@ program define _dash_process_segment, rclass
     // panel -- lfit with one car in a panel notes it and leaves the panel
     // out, rc 0 -- and _dash_plot answers it so, once the graph's by() is
     // known (P1A-83).  The qualifier is run as
-    // -syntax- read it, by value (macval), once per count.
+    // -syntax- read it, by value (macval), once per count.  A refusal for
+    // want of observations leaves its type in $dash__zo, so _dash_plot
+    // names the plot on the next line (WP-37 DG-1, ruling M9).
     mata: st_local("_ss_bands", st_global("s(bands)"))
     local _pt_fpfam "fpfit fpfitci"
     local _pt_bands "mspline mband"
@@ -7298,6 +7301,7 @@ program define _dash_process_segment, rclass
         if "`ptype'" == "histogram" {
             if _N == 0 {
                 display as error "observation numbers out of range"
+                global dash__zo "`ptype'"
                 exit 198
             }
         }
@@ -7312,6 +7316,7 @@ program define _dash_process_segment, rclass
                 else {
                     display as error "bands must be between 1 and 200"
                 }
+                global dash__zo "`ptype'"
                 exit 198
             }
         }
@@ -7328,6 +7333,7 @@ program define _dash_process_segment, rclass
             local _ss_n = r(N)
             if `_ss_n' == 0 & `: list ptype in _pt_lpfam' {
                 display as error "no observations"
+                global dash__zo "`ptype'"
                 exit 2000
             }
             if `_ss_n' == 1 {
@@ -8651,6 +8657,170 @@ program define _dash_qual_gen_by, sortpreserve
 end
 
 // ================================================================
+// Zero observations (WP-37 DG-1, ruling M9, PD-15)
+// ================================================================
+// _dash_zo_line <k> <types> <name> <byflag>  -- the line dash prints after
+// twoway's words when a plot has no observation: with byflag 0, plot k of
+// type <types> ("dash: plot 2 (lpoly) of graph 'g1' has no
+// observations."); with byflag 1, the by() graph's plots, every one of
+// them in order, the first five named.  <name> "" (the one-line form)
+// leaves out " of graph '<name>'".
+program define _dash_zo_line
+    version 19
+    args k types name byflag
+    local of ""
+    if `"`name'"' != "" local of " of graph '`name''"
+    local n : word count `types'
+    if "`byflag'" != "1" {
+        mata: _dash_say("err", "dash: plot `k' (", st_local("types"), ")" + st_local("of") + " has no observations.")
+        exit
+    }
+    if `n' == 1 {
+        mata: _dash_say("err", "dash: plot 1 (", st_local("types"), ")" + st_local("of") + " leaves no by() panel.")
+        exit
+    }
+    local list ""
+    forvalues j = 1/`=min(`n', 5)' {
+        local sep ""
+        if `j' > 1 local sep ", "
+        local list `"`list'`sep'plot `j' (`: word `j' of `types'')"'
+    }
+    if `n' > 5 local list `"`list' and `=`n' - 5' more"'
+    mata: _dash_say("err", "dash: no by() panel" + st_local("of") + " holds an observation of ", st_local("list"), ".")
+end
+
+// _dash_zero_obs_check <scalar> <name> <oneline> <frame>  -- twoway's
+// answer to a graph that has no observation to draw, given at export on
+// every route (the one-line form, dash build, dash serve), after every
+// working column is made and before the data are written: the data may
+// have changed since the graph was registered.  <scalar> is a string
+// scalar holding the graph's JSON as the spec carries it (each qualifier
+// replaced by its column); <frame> is the graph's own frame on a build of
+// several frames, "" otherwise; the check runs in the frame the data are
+// written from.  The answer per type and case is _dash_zero_obs_rule's
+// (dash_parse.mata), twoway's measured one: a by() graph is judged by its
+// panels alone (byempty: no row of the panel base holds the by()
+// variables); any other graph plot by plot -- nodata (the graph's data
+// hold no observation), none (no row passes the plot's and the graph's
+// qualifiers) or allmissing (lpoly and lpolyci: rows pass, none has its
+// variables and a weight above zero).  The literal types read no
+// observation and take no per-plot case.  A refusal prints twoway's
+// words, then the line naming the plot (_dash_zo_line).
+program define _dash_zero_obs_check
+    version 19
+    args sc name oneline frame
+    if "`oneline'" == "1" local name ""
+    tempname zr zp
+    mata: `zp' = 0
+    mata: `zr' = _dash_zo_records(st_strscalar("`sc'"), `zp')
+    mata: st_local("_zo_n", strofreal(rows(`zr')))
+    // The graph's own keys, read from the text after the plots array:
+    // every plot record holds keys of the same names.
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "qual_col", "_zo_gq")
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "qual_col_total", "_zo_gt")
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "by", "_zo_by")
+    local _zo_types ""
+    forvalues k = 1/`_zo_n' {
+        foreach key in type yvar xvar var qual_col wexp bands {
+            mata: _dash_json_get_str(`zr'[`k'], "`key'", "_zo_`key'_`k'")
+        }
+        local _zo_type_`k' = strlower("`_zo_type_`k''")
+        local _zo_types `_zo_types' `_zo_type_`k''
+    }
+    capture mata: mata drop `zr' `zp'
+    if `_zo_n' == 0 exit
+    // The graph's data: its own frame's on a build of several frames,
+    // where the stack holds every frame's rows.
+    if "`frame'" != "" {
+        frame `frame': quietly count
+        local _zo_nodata = (r(N) == 0)
+    }
+    else local _zo_nodata = (_N == 0)
+    _dash_plottype_families
+    local _zo_rc 0
+    if `: length local _zo_by' {
+        // byempty: no row of the panel base -- the graph's qualifier, or
+        // with one plot and none, that plot's -- holds the by()
+        // variables (unless missing), the Total panel's column counted.
+        local _zo_empty `_zo_nodata'
+        if !`_zo_empty' {
+            tempname _zo_bs
+            mata: st_strscalar("`_zo_bs'", st_local("_zo_by"))
+            _dash_by_parts `_zo_bs'
+            local _zo_base "`_zo_gq'"
+            if "`_zo_base'" == "" & `_zo_n' == 1 local _zo_base "`_zo_qual_col_1'"
+            local _zo_c "1"
+            if "`_zo_base'" != "" local _zo_c "`_zo_base' == 1"
+            if "`_zo_gt'" != "" local _zo_c "(`_zo_c' | `_zo_gt' == 1)"
+            if "`frame'" != "" & "`_zo_base'" == "" {
+                // On the stack, the graph's rows are its plots' columns'.
+                local _zo_or ""
+                forvalues k = 1/`_zo_n' {
+                    if "`_zo_qual_col_`k''" == "" continue
+                    if "`_zo_or'" != "" local _zo_or "`_zo_or' | "
+                    local _zo_or "`_zo_or'`_zo_qual_col_`k'' == 1"
+                }
+                if "`_zo_or'" != "" local _zo_c "(`_zo_or')"
+            }
+            if !`_by_miss' {
+                foreach v of local _by_vars {
+                    local _zo_c "`_zo_c' & !missing(`v')"
+                }
+            }
+            capture quietly count if `_zo_c'
+            if !_rc local _zo_empty = (r(N) == 0)
+        }
+        if `_zo_empty' {
+            mata: st_local("_zo_rc", _dash_zero_obs_rule("", "byempty")[1])
+            mata: st_local("_zo_note", _dash_zero_obs_rule("", "byempty")[2])
+            mata: st_local("_zo_err", _dash_zero_obs_rule("", "byempty")[3])
+            display as error "`_zo_err'"
+            _dash_zo_line 0 "`_zo_types'" "`name'" 1
+            exit `_zo_rc'
+        }
+        exit
+    }
+    local _zo_lp "lpoly lpolyci"
+    local _zo_bd "mband mspline"
+    forvalues k = 1/`_zo_n' {
+        local t `_zo_type_`k''
+        if `: list t in _pt_literal' continue
+        local _zo_case ""
+        if `_zo_nodata' local _zo_case "nodata"
+        else {
+            local _zo_c "1"
+            if "`_zo_qual_col_`k''" != "" local _zo_c "`_zo_c' & `_zo_qual_col_`k'' == 1"
+            if "`_zo_gq'" != "" local _zo_c "`_zo_c' & `_zo_gq' == 1"
+            capture quietly count if `_zo_c'
+            if _rc continue
+            if r(N) == 0 local _zo_case "none"
+            else if `: list t in _zo_lp' {
+                foreach v in `_zo_yvar_`k'' `_zo_xvar_`k'' {
+                    local _zo_c "`_zo_c' & !missing(`v')"
+                }
+                if "`_zo_wexp_`k''" != "" {
+                    local _zo_c "`_zo_c' & !missing(`_zo_wexp_`k'') & `_zo_wexp_`k'' > 0"
+                }
+                capture quietly count if `_zo_c'
+                if !_rc & r(N) == 0 local _zo_case "allmissing"
+            }
+        }
+        if "`_zo_case'" == "" continue
+        // mband and mspline with bands() draw (twoway refuses only the
+        // default bands on no row).
+        if `: list t in _zo_bd' & "`_zo_bands_`k''" != "" continue
+        mata: st_local("_zo_rc", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[1])
+        mata: st_local("_zo_note", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[2])
+        mata: st_local("_zo_err", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[3])
+        if `_zo_rc' == 0 continue
+        if "`_zo_note'" != "" display as text "`_zo_note'"
+        display as error "`_zo_err'"
+        _dash_zo_line `k' "`t'" "`name'" 0
+        exit `_zo_rc'
+    }
+end
+
+// ================================================================
 // _dash_sort_gen <cmdname>  -- sort(varlist)'s rank columns, made in Stata
 //
 // twoway joins line, connected, area, rline, rarea and rconnected in the
@@ -9226,7 +9396,22 @@ program define _dash_plot
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
         global dash__poff `_dash_nplots'
-        _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        // WP-37 DG-1: a refusal for want of observations names the plot on
+        // the next line; the flag is cleared first, so a value an earlier
+        // direct call left never names this one.
+        capture macro drop dash__zo
+        capture noisily _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        if _rc {
+            local _zo_rc = _rc
+            if `"$dash__zo"' != "" {
+                local _zo_gn : copy local _gafter_name
+                if !`: length local _zo_gn' local _zo_gn : copy local g_name
+                mata: st_local("_zo_gn", ustrregexm(st_local("_zo_gn"), "^[ ]*([A-Za-z_][A-Za-z0-9_]*)[ ]*(,.*)?$") ? ustrregexs(1) : "")
+                _dash_zo_line `=`_dash_nplots' + 1' `"$dash__zo"' `"`_zo_gn'"' 0
+                macro drop dash__zo
+            }
+            exit `_zo_rc'
+        }
         // twoway draws one colorvar() layer a graph: a later one is
         // refused unless it says colorallowmultiple itself (WP-31 C8b,
         // colorvar_options_truth.json R03, R03b, R03c).
@@ -9718,15 +9903,22 @@ program define _dash_plot
     // graph", r(198).  The renderer leaves the same panels out
     // (_dash_by_panel_dropped) and answers every other one
     // (GlyphMapper._mark_unfit, _mark_silent).  dash drew every panel, rc
-    // 0.  An immediate plot or a function reads no observations, and a
-    // graph holding one is left as it was.  The qualifiers are run as
-    // -syntax- read them, by value, once each.
+    // 0.  An immediate plot or a function reads no observations and takes
+    // no panel rule; its graph still has panels only where by()'s rows
+    // exist, as twoway answers it (WP-37 DG-1: `function y = x if 0,
+    // by(foreign)' is "nothing to graph").  Each refusal's next line names
+    // the plots (_dash_zo_line).  The qualifiers are run as -syntax- read
+    // them, by value, once each.
     _dash_plottype_families
-    local _by_lit 0
-    forvalues k = 1/`n_segs' {
-        if `: list _byq_pt_`k' in _pt_literal' local _by_lit 1
-    }
-    if `: length local g_by' & !`_by_lit' {
+    if `: length local g_by' {
+        // The graph's name and its plots' types, for the line after a
+        // refusal.
+        local _zo_gn : copy local g_name
+        mata: st_local("_zo_gn", ustrregexm(st_local("_zo_gn"), "^[ ]*([A-Za-z_][A-Za-z0-9_]*)[ ]*(,.*)?$") ? ustrregexs(1) : "")
+        local _zo_pts ""
+        forvalues k = 1/`n_segs' {
+            local _zo_pts `_zo_pts' `_byq_pt_`k''
+        }
         // The by() variables and missing, read from the validated value
         // through a string scalar (_dash_by_parts).
         tempname _by_txt
@@ -9759,6 +9951,7 @@ program define _dash_plot
         local _by_n1 "lfit lfitci"
         forvalues k = 1/`n_segs' {
             local _pk `_byq_pt_`k''
+            if `: list _pk in _pt_literal' continue
             local _rule ""
             if `: list _pk in _by_fpfam' local _rule "R"
             if `: list _pk in _by_bdfam' & !`_byq_bd_`k'' local _rule "R"
@@ -9829,6 +10022,7 @@ program define _dash_plot
         local _at_panels = max(r(kept), 1)
         if r(n) == 0 {
             display as error "nothing to graph"
+            _dash_zo_line 0 "`_zo_pts'" "`_zo_gn'" 1
             exit 198
         }
         if r(refuse) > 0 {
@@ -9840,6 +10034,7 @@ program define _dash_plot
             else {
                 display as error "bands must be between 1 and 200"
             }
+            _dash_zo_line `k' "`_byq_pt_`k''" "`_zo_gn'" 0
             exit 198
         }
         if r(kept) == 0 {
@@ -9849,6 +10044,7 @@ program define _dash_plot
                 display as text "insufficient observations"
             }
             display as error "nothing to graph"
+            _dash_zo_line 0 "`_zo_pts'" "`_zo_gn'" 1
             exit 198
         }
     }
@@ -12609,6 +12805,21 @@ program define _dash_render_immediate
             _dash_tmp_close, dir(`"`_dash_run'"')
             exit `_dt_rc'
         }
+        // WP-37 DG-1: a plot with no observation answered as twoway
+        // answers it, in the frame the data are written from, once every
+        // working column is made (_dash_zero_obs_check); its refusal
+        // drops what was made.
+        tempname _zo_sc
+        mata: st_strscalar(st_local("_zo_sc"), st_local("json_spec"))
+        capture noisily `_xfp' _dash_zero_obs_check `_zo_sc' "" 1 ""
+        if _rc {
+            local _dt_rc = _rc
+            capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            if "`_dash_es'" != "" capture drop `_dash_es'
+            capture frame drop `_dash_xf'
+            _dash_tmp_close, dir(`"`_dash_run'"')
+            exit `_dt_rc'
+        }
         local _dst_names json_spec
         local _dash_st_json ""
         // WP-31 D15: Stata's own #N ticks over each axis's rows, asked of
@@ -14481,6 +14692,20 @@ program define _dash_prepare_spec, rclass
             capture frame `_esg': drop `_dash_rp'esample
         }
         if `_es_rc' exit `_es_rc'
+        // WP-37 DG-1: each graph's plots with no observation answered as
+        // twoway answers them, in the stack the data are written from, a
+        // graph's no-data case read from its own frame
+        // (_dash_zero_obs_check).  The stack is dropped as this program
+        // ends.
+        tempname _zo_sc
+        forvalues _zok = 1/`ntok_reg' {
+            local _zo_g : word `_zok' of `registry'
+            if "${dash_img_`_zo_g'}" == "1" | "${dash_kpi_`_zo_g'}" == "1" continue
+            if !`: length local _qg_`_zok'' continue
+            mata: st_strscalar(st_local("_zo_sc"), st_local("_qg_`_zok'"))
+            capture noisily frame `_dash_stk': _dash_zero_obs_check `_zo_sc' "`_zo_g'" 0 "`_fof_`_zok''"
+            if _rc exit _rc
+        }
         frame `_dash_stk': _dash_formats_json "`all_vars' `_dash_split_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
         if `_dts_n' + `_dwx_n' > 0 {
             frame `_dash_stk': mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
@@ -14573,6 +14798,25 @@ program define _dash_prepare_spec, rclass
             if "`_dash_es'" != "" capture drop `_dash_es'
             capture frame drop `_dash_xf'
             exit `_dt_rc'
+        }
+        // WP-37 DG-1: each graph's plots with no observation answered as
+        // twoway answers them, against the data now in memory, in the
+        // frame the data are written from (_dash_zero_obs_check); a
+        // refusal drops what was made.
+        tempname _zo_sc
+        forvalues _zok = 1/`ntok_reg' {
+            local _zo_g : word `_zok' of `registry'
+            if "${dash_img_`_zo_g'}" == "1" | "${dash_kpi_`_zo_g'}" == "1" continue
+            if !`: length local _qg_`_zok'' continue
+            mata: st_strscalar(st_local("_zo_sc"), st_local("_qg_`_zok'"))
+            capture noisily `_xfp' _dash_zero_obs_check `_zo_sc' "`_zo_g'" 0 ""
+            if _rc {
+                local _dt_rc = _rc
+                capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+                if "`_dash_es'" != "" capture drop `_dash_es'
+                capture frame drop `_dash_xf'
+                exit `_dt_rc'
+            }
         }
         local _dst_names ""
         forvalues _dstk = 1/`ntok_reg' {

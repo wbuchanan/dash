@@ -244,6 +244,10 @@ COVERAGE = {
         "_dash_qual_gen_by": ("test_qualifier_in_stata.cscript:QS-16",
                               "test_qualifier_in_stata.cscript:QS-19",
                               "test_qualifier_in_stata.cscript:QS-21"),
+        # WP-37 DG-1: twoway's answer to a plot with no observation, at
+        # export, and the line that names the plot.
+        "_dash_zero_obs_check": ("test_wp37_truth.cscript:Q3701-3",),
+        "_dash_zo_line": ("test_wp37_truth.cscript:Q3701-3",),
         # e2e: sort(varlist)'s rank columns, against twoway's serset;
         # a dropped variable refused, and a __dashs variable (WP-29 P0.1).
         "_dash_sort_gen": ("test_wp29_truth.cscript:JO-09",
@@ -676,6 +680,9 @@ COVERAGE = {
         "_dash_sort_scan": ("test_wp29_truth.cscript:JO-01",),
         "_dash_sort_export": ("test_wp29_truth.cscript:JO-01",),
         "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
+        # WP-37 DG-1: the zero-observation rule table and the plots walker.
+        "_dash_zero_obs_rule": ("test_wp37_truth.cscript:Q3701-1",),
+        "_dash_zo_records": ("test_wp37_truth.cscript:Q3701-5",),
         "_dash_qual_rewrite": ("test_qualifier_in_stata.cscript:QS-05",
                                "test_qualifier_in_stata.cscript:QS-09",
                                "test_qualifier_in_stata.cscript:QS-14"),

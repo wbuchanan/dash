@@ -203,6 +203,416 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w37_run' {
 }
 * ==== end S00 ====
 
+// S01's helpers (WP-37 DG-1): the fixture read into the current frame,
+// each probe's one-line dash command, a command's message lines from its
+// log, and a saved page's contour keys.
+python:
+import json as _w37s01_json
+import re as _w37s01_re
+from html import unescape as _w37s01_unescape
+from sfi import Data as _w37s01_D
+from sfi import Macro as _w37s01_M
+
+_W37S01_CASE = {"a": "none", "b1": "none", "b2": "none", "c": "none",
+                "d": "none", "f": "allmissing", "e1": "", "e2": "byempty"}
+
+
+def _w37s01_safe(v):
+    """v with no character that ends or expands a Stata string."""
+    return str(v).replace('"', "'").replace("`", "'").replace("$", "S")[:400]
+
+
+def _w37s01_fx(path):
+    with open(path, encoding="utf-8") as fh:
+        return _w37s01_json.load(fh)
+
+
+def _w37s01_fill(path):
+    """The fixture's probes into the current (empty) frame: key, type
+    (the horizontal variants under their type), the rule's case, rc and
+    twoway's first two message lines."""
+    d = _w37s01_fx(path)
+    keys = sorted(k for k in d if k != "_meta")
+    for v in ("key", "type", "case", "line1", "line2"):
+        _w37s01_D.addVarStrL(v)
+    _w37s01_D.addVarLong("rc")
+    _w37s01_D.setObsTotal(len(keys))
+    for i, k in enumerate(keys):
+        t, c = k.rsplit(".", 1)
+        ls = list(d[k]["lines"]) + ["", ""]
+        _w37s01_D.storeAt("key", i, k)
+        _w37s01_D.storeAt("type", i, t[:-2] if t.endswith("_h") else t)
+        _w37s01_D.storeAt("case", i, _W37S01_CASE[c])
+        _w37s01_D.storeAt("line1", i, ls[0])
+        _w37s01_D.storeAt("line2", i, ls[1])
+        _w37s01_D.storeAt("rc", i, int(d[k]["rc"]))
+
+
+def _w37s01_dash(cmd, html):
+    """cmd as one dash command with saving(html, replace) among the
+    options of its last || segment."""
+    depth, seg_start, i = 0, 0, 0
+    while i < len(cmd):
+        ch = cmd[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and cmd.startswith("||", i):
+            seg_start = i + 2
+            i += 1
+        i += 1
+    last, depth, comma = cmd[seg_start:], 0, False
+    for ch in last:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            comma = True
+    sv = 'saving("%s", replace)' % html
+    return cmd + (" " + sv if comma else ", " + sv)
+
+
+def _w37s01_q2_list(path, html):
+    """Globals w37s01_q2n and, for each probe Q3701-2 runs (every one
+    twoway refuses, and every contour and contourline probe), w37s01_q2k_i
+    (its key) and w37s01_q2c_i (its one-line dash command)."""
+    d = _w37s01_fx(path)
+    keys = [k for k in sorted(d) if k != "_meta"
+            and (d[k]["rc"] or k.split(".")[0] in ("contour",
+                                                   "contourline"))]
+    for i, k in enumerate(keys, 1):
+        _w37s01_M.setGlobal("w37s01_q2k_%d" % i, k)
+        _w37s01_M.setGlobal("w37s01_q2c_%d" % i,
+                            _w37s01_dash(d[k]["cmd"], html))
+    _w37s01_M.setGlobal("w37s01_q2n", str(len(keys)))
+
+
+def _w37s01_lines(log):
+    try:
+        with open(log, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        return []
+    return [ln.rstrip() for ln in text.replace("\n> ", "").splitlines()
+            if ln.strip() and not ln.startswith(". ")]
+
+
+def _w37s01_q2(path, key, log, rc):
+    """Global w37s01_v: "" when dash's rc and first message line are
+    twoway's (key's), and, refused, the next line after twoway's names the
+    plot; else what differs."""
+    r = _w37s01_fx(path)[key]
+    got = _w37s01_lines(log)
+    t = key.split(".")[0]
+    t = t[:-2] if t.endswith("_h") else t
+    v = ""
+    if int(rc) != r["rc"]:
+        v = "rc %s, twoway %d (%s)" % (rc, r["rc"], " | ".join(got[:3]))
+    elif r["rc"]:
+        n = len(r["lines"])
+        if got[:n] != r["lines"]:
+            v = "lines %r, twoway %r" % (got[:n], r["lines"])
+        elif len(got) <= n or not _w37s01_re.match(
+                r"dash: plot [0-9]+ \(%s\)" % _w37s01_re.escape(t), got[n]):
+            v = "no plot line after twoway's: %r" % (got[n:n + 1],)
+    _w37s01_M.setGlobal("w37s01_v", _w37s01_safe(v))
+
+
+def _w37s01_after(twlog, dlog, line):
+    """Global w37s01_v: "" when the dash log's lines are the twoway log's,
+    then line; else what differs."""
+    tw, got = _w37s01_lines(twlog), _w37s01_lines(dlog)
+    want = tw + [line]
+    v = "" if got[:len(want)] == want else "dash %r, want %r" % (got[:4], want)
+    _w37s01_M.setGlobal("w37s01_v", _w37s01_safe(v))
+
+
+def _w37s01_keys(path):
+    """Global w37s01_keys: "<title>|<ticks>" for each ContourColorBar of
+    the saved page path, ";"-joined."""
+    out = []
+    try:
+        page = open(path, encoding="utf-8").read()
+        m = _w37s01_re.search(
+            r'<script[^>]+type=["\']application/json["\'][^>]*>', page)
+        body = page[m.end():page.index("</script>", m.end())]
+        objs, bars = {}, []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if "id" in node and "name" in node:
+                    objs[node["id"]] = node
+                    if node["name"] == "ContourColorBar":
+                        bars.append(node)
+                for v in node.values():
+                    walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v)
+
+        walk(_w37s01_json.loads(_w37s01_unescape(body)))
+        for b in bars:
+            a = b.get("attributes", {})
+            tk = a.get("ticker") or {}
+            tk = objs.get(tk.get("id"), tk) if isinstance(tk, dict) else {}
+            ticks = (tk.get("attributes") or {}).get("ticks", [])
+            if isinstance(ticks, dict):
+                ticks = ticks.get("array", ticks.get("value", []))
+            out.append("%s|%d" % (a.get("title", ""), len(ticks or [])))
+        _w37s01_M.setGlobal("w37s01_keys", _w37s01_safe(";".join(out)))
+    except Exception as e:
+        _w37s01_M.setGlobal("w37s01_keys", _w37s01_safe("error " + str(e)))
+end
+
+// _w37s01_log <log> <command>: the command run under a text log of its
+// output alone (a program's commands are not echoed); its rc in the
+// caller's local _w37s01_rc.
+capture program drop _w37s01_log
+program define _w37s01_log
+    version 19
+    gettoken f 0 : 0
+    capture erase "`f'"
+    quietly log using "`f'", text replace name(w37s01l) nomsg
+    capture noisily `0'
+    local rc = _rc
+    quietly log close w37s01l
+    c_local _w37s01_rc `rc'
+end
+
+capture mata: mata drop _w37s01_rules()
+mata:
+// The rows of the current frame (_w37s01_fill) _dash_zero_obs_rule
+// answers otherwise than the fixture; the first five are printed.
+real scalar _w37s01_rules()
+{
+    string matrix    S
+    real colvector   rc
+    string rowvector a
+    real scalar      i, bad, ok
+
+    S  = st_sdata(., ("key", "type", "case", "line1", "line2"))
+    rc = st_data(., "rc")
+    bad = 0
+    for (i = 1; i <= rows(S); i++) {
+        if (S[i, 3] == "") continue
+        a  = _dash_zero_obs_rule(S[i, 2], S[i, 3])
+        ok = (strtoreal(a[1]) == rc[i])
+        if (ok & rc[i] != 0) {
+            if (a[2] != "") ok = (a[2] == S[i, 4] & a[3] == S[i, 5])
+            else ok = (a[3] == S[i, 4])
+        }
+        if (!ok) {
+            bad++
+            if (bad <= 5) printf("{err}Q3701-1 FAIL: %s: rule (%s, %s, %s), twoway (%g, %s, %s)\n",
+                S[i, 1], a[1], a[2], a[3], rc[i], S[i, 4], S[i, 5])
+        }
+    }
+    return(bad)
+}
+end
+
+* ==== S01 DG-1: zero observations answered as twoway answers them ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w37_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local s01_fx "fixtures/zero_obs_truth.json"
+    local s01_h "`w37_work'/s01.html"
+    local s01_l "`w37_work'/s01_d.log"
+    local s01_t "`w37_work'/s01_t.log"
+
+    // ------------------------------------------------------------
+    // Q3701-1: the rule table equals twoway on every fixture probe
+    // (cases a-d none, f allmissing, e2 byempty; e1 is the renderer's).
+    // ------------------------------------------------------------
+    capture frame drop w37s01
+    frame create w37s01
+    frame w37s01: python: _w37s01_fill(r"`s01_fx'")
+    frame w37s01: quietly count
+    local s01_n = r(N)
+    local s01_bad -1
+    capture noisily frame w37s01: mata: st_local("s01_bad", strofreal(_w37s01_rules()))
+    _w37_expect Q3701-1 "(`s01_n' == 400)" "the fixture holds `s01_n' probes"
+    _w37_expect Q3701-1 "(`s01_bad' == 0)" "`s01_bad' probe(s) differ (-1: the rule did not run)"
+    _w37_done Q3701-1 "_dash_zero_obs_rule equals twoway on `s01_n' probes"
+    frame drop w37s01
+
+    // ------------------------------------------------------------
+    // Q3701-2: the one-line form gives twoway's rc and first lines on
+    // every probe twoway refuses and every contour probe; a refusal's
+    // next line names the plot.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly gen t = _n
+    quietly tsset t
+    quietly gen ymiss = .
+    quietly gen ydom = mpg if !foreign
+    tempfile s01_data
+    quietly save "`s01_data'"
+    python: _w37s01_q2_list(r"`s01_fx'", r"`s01_h'")
+    local s01_bad 0
+    local s01_q2n = ${w37s01_q2n}
+    forvalues i = 1/`s01_q2n' {
+        quietly use "`s01_data'", clear
+        capture erase "`s01_h'"
+        _w37s01_log "`s01_l'" dash ${w37s01_q2c_`i'}
+        python: _w37s01_q2(r"`s01_fx'", "${w37s01_q2k_`i'}", r"`s01_l'", "`_w37s01_rc'")
+        if `"${w37s01_v}"' != "" {
+            local ++s01_bad
+            _w37_expect Q3701-2 "0" `"${w37s01_q2k_`i'}: ${w37s01_v}"'
+        }
+    }
+    _w37_done Q3701-2 "${w37s01_q2n} one-line probes, `s01_bad' differ"
+
+    // ------------------------------------------------------------
+    // Q3701-4: an emptied contour draws its key's title and no level.
+    // ------------------------------------------------------------
+    foreach c in a d f {
+        quietly use "`s01_data'", clear
+        local s01_z "Mileage (mpg)"
+        if "`c'" == "f" local s01_z "ymiss"
+        local s01_cmd "contour mpg weight length if 0"
+        if "`c'" == "d" local s01_cmd "contour mpg weight length in 1 if foreign"
+        if "`c'" == "f" local s01_cmd "contour ymiss weight length"
+        capture erase "`s01_h'"
+        capture noisily dash `s01_cmd', saving("`s01_h'", replace)
+        _w37_expect Q3701-4 "(_rc == 0)" "`s01_cmd' rc `=_rc'"
+        python: _w37s01_keys(r"`s01_h'")
+        _w37_expect Q3701-4 `"("${w37s01_keys}" == "`s01_z'|0")"' "`c': keys ${w37s01_keys}"
+    }
+    sysuse auto, clear
+    capture erase "`s01_h'"
+    capture noisily dash contour price mpg weight if price < 0, saving("`s01_h'", replace)
+    _w37_expect Q3701-4 "(_rc == 0)" "contour price mpg weight if price < 0 rc `=_rc'"
+    python: _w37s01_keys(r"`s01_h'")
+    _w37_expect Q3701-4 `"("${w37s01_keys}" == "Price|0")"' "keys ${w37s01_keys}"
+    _w37_done Q3701-4 "an emptied contour draws, its key titled and empty"
+
+    // ------------------------------------------------------------
+    // Q3701-3: a graph registered on data that has none left at dash
+    // build is answered as twoway answers the same command on that data,
+    // run live beside it, and the next line names the plot and graph.
+    // ------------------------------------------------------------
+    local s01_c1 "lpoly mpg weight"
+    local s01_c2 "fpfit mpg weight"
+    local s01_c3 "mspline mpg weight"
+    local s01_c4 "histogram mpg"
+    local s01_c5 "scatter mpg weight, by(foreign)"
+    local s01_c6 "function y = x, by(foreign)"
+    forvalues k = 1/6 {
+        capture dash clear
+        sysuse auto, clear
+        local s01_o ","
+        if `k' >= 5 local s01_o ""
+        quietly dash `s01_c`k''`s01_o' name(z`k')
+        local s01_tp : word 1 of `s01_c`k''
+        local s01_want "dash: plot 1 (`s01_tp') of graph 'z`k'' has no observations."
+        if `k' >= 5 local s01_want "dash: plot 1 (`s01_tp') of graph 'z`k'' leaves no by() panel."
+        preserve
+        quietly keep if 0
+        local s01_tc "`s01_c`k''`s01_o' nodraw"
+        _w37s01_log "`s01_t'" twoway `s01_tc'
+        local s01_trc `_w37s01_rc'
+        capture erase "`s01_h'"
+        _w37s01_log "`s01_l'" dash build, saving("`s01_h'") replace nobrowser
+        local s01_drc `_w37s01_rc'
+        restore
+        _w37_expect Q3701-3 "(`s01_trc' != 0 & `s01_drc' == `s01_trc')" "z`k' (`s01_c`k''): dash rc `s01_drc', twoway rc `s01_trc'"
+        python: _w37s01_after(r"`s01_t'", r"`s01_l'", _w37s01_M.getLocal("s01_want"))
+        _w37_expect Q3701-3 `"("${w37s01_v}" == "")"' `"z`k': ${w37s01_v}"'
+    }
+    capture dash clear
+    _w37_done Q3701-3 "six graphs built on emptied data answered as twoway, the plot named"
+
+    // ------------------------------------------------------------
+    // Q3701-5: the plots walker and the graph's own keys read after the
+    // plots array; a by() refusal's line names every plot.
+    // ------------------------------------------------------------
+    capture dash clear
+    sysuse auto, clear
+    quietly dash (scatter mpg weight if foreign) (lpoly mpg weight) if price > 5000, by(rep78) name(z7)
+    mata: _dash_qual_reset()
+    mata: _w37s01_j = _dash_qual_rewrite(st_global("dash_json_z7"), "s01_e", 1)
+    mata: _w37s01_p = 0
+    mata: _w37s01_r = _dash_zo_records(_w37s01_j, _w37s01_p)
+    mata: st_local("s01_nr", strofreal(rows(_w37s01_r)))
+    mata: st_local("s01_at", substr(_w37s01_j, _w37s01_p, 1))
+    mata: _dash_json_get_str(substr(_w37s01_j, _w37s01_p + 1, .), "qual_col", "s01_gq")
+    mata: _dash_json_get_str(_w37s01_j, "qual_col", "s01_pq")
+    mata: _dash_json_get_str(substr(_w37s01_j, _w37s01_p + 1, .), "by", "s01_by")
+    mata: _dash_json_get_str(_w37s01_r[1], "qual_col", "s01_q1")
+    capture mata: mata drop _w37s01_j _w37s01_p _w37s01_r
+    mata: _dash_qual_reset()
+    _w37_expect Q3701-5 "(`s01_nr' == 2)" "`s01_nr' records"
+    _w37_expect Q3701-5 `"("`s01_at'" == "]")"' "the byte at pend is `s01_at'"
+    _w37_expect Q3701-5 `"("`s01_gq'" != "" & "`s01_pq'" != "" & "`s01_gq'" != "`s01_pq'" & "`s01_pq'" == "`s01_q1'")"' "graph column `s01_gq', first column `s01_pq', plot 1's `s01_q1'"
+    _w37_expect Q3701-5 `"("`s01_by'" == "rep78")"' "by is `s01_by'"
+    preserve
+    quietly replace price = 1
+    capture erase "`s01_h'"
+    _w37s01_log "`s01_l'" dash build, saving("`s01_h'") replace nobrowser
+    local s01_drc `_w37s01_rc'
+    restore
+    _w37_expect Q3701-5 "(`s01_drc' == 198)" "dash build rc `s01_drc'"
+    python: _w37s01_M.setGlobal("w37s01_v", "" if _w37s01_lines(_w37s01_M.getLocal("s01_l"))[:2] == ["nothing to graph", "dash: no by() panel of graph 'z7' holds an observation of plot 1 (scatter), plot 2 (lpoly)."] else _w37s01_safe(_w37s01_lines(_w37s01_M.getLocal("s01_l"))[:2]))
+    _w37_expect Q3701-5 `"("${w37s01_v}" == "")"' `"lines ${w37s01_v}"'
+    capture dash clear
+    _w37_done Q3701-5 "two records, the graph's keys after the plots, the by() line names both plots"
+
+    // ------------------------------------------------------------
+    // Q3701-6: the check in the frame the data are written from: a
+    // graph's own frame on a build of several frames, and 35-08's
+    // working frame, each beside twoway on the same data.
+    // ------------------------------------------------------------
+    capture frame drop q6f
+    frame create q6f
+    sysuse auto, clear
+    foreach s01_c in "lpoly mpg weight" "histogram mpg" {
+        capture dash clear
+        frame q6f: quietly sysuse auto, clear
+        quietly dash scatter mpg weight, name(z9)
+        frame q6f: quietly dash `s01_c', name(z8)
+        frame q6f: quietly drop if 1
+        local s01_tp : word 1 of `s01_c'
+        _w37s01_log "`s01_t'" frame q6f: twoway `s01_c', nodraw
+        local s01_trc `_w37s01_rc'
+        capture erase "`s01_h'"
+        _w37s01_log "`s01_l'" dash build, saving("`s01_h'") replace nobrowser
+        local s01_drc `_w37s01_rc'
+        _w37_expect Q3701-6 "(`s01_trc' != 0 & `s01_drc' == `s01_trc')" "frame q6f `s01_c': dash rc `s01_drc', twoway rc `s01_trc'"
+        local s01_want "dash: plot 1 (`s01_tp') of graph 'z8' has no observations."
+        python: _w37s01_after(r"`s01_t'", r"`s01_l'", _w37s01_M.getLocal("s01_want"))
+        _w37_expect Q3701-6 `"("${w37s01_v}" == "")"' `"frame q6f `s01_c': ${w37s01_v}"'
+    }
+    frame drop q6f
+    capture dash clear
+    sysuse auto, clear
+    quietly dash histogram mpg, name(z4)
+    global dash__force_frame 1
+    preserve
+    quietly keep if 0
+    _w37s01_log "`s01_t'" twoway histogram mpg, nodraw
+    local s01_trc `_w37s01_rc'
+    capture erase "`s01_h'"
+    _w37s01_log "`s01_l'" dash build, saving("`s01_h'") replace nobrowser
+    local s01_drc `_w37s01_rc'
+    restore
+    global dash__force_frame
+    _w37_expect Q3701-6 "(`s01_trc' != 0 & `s01_drc' == `s01_trc')" "working frame: dash rc `s01_drc', twoway rc `s01_trc'"
+    python: _w37s01_after(r"`s01_t'", r"`s01_l'", "dash: plot 1 (histogram) of graph 'z4' has no observations.")
+    _w37_expect Q3701-6 `"("${w37s01_v}" == "")"' `"working frame: ${w37s01_v}"'
+    capture dash clear
+    _w37_done Q3701-6 "a graph's own frame and the working frame answered as twoway"
+
+    capture erase "`s01_h'"
+    capture erase "`s01_l'"
+    capture erase "`s01_t'"
+    macro drop w37s01_*
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

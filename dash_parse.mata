@@ -797,6 +797,15 @@
 *!       the caller's locals _af_n, _af_raw<i>, _af_nw<i>, _af_w<i>_<j> and
 *!       _af_ok<i> (WP-30 P1.5).
 *!
+*!   _dash_zero_obs_rule(t, c)
+*!       twoway's answer when plot type t has no observation in case c
+*!       (nodata, none, allmissing, byempty): (rc, note line, error line);
+*!       rc "0" draws (WP-37 DG-1).
+*!
+*!   _dash_zo_records(json, pend)
+*!       The records of json's first "plots" array, each its own JSON text;
+*!       pend is set to the byte offset of the ] that closes the array.
+*!
 *! Version: 0.1.0  18oct2026
 
 // ============================================================
@@ -13677,6 +13686,85 @@ void _dash_axbound_list()
         st_local("_axb_v" + strofreal(k), last)
     }
     st_local("_axb_n", strofreal(k))
+}
+
+// ============================================================
+// Zero observations (WP-37 DG-1)
+// ============================================================
+
+// _dash_zero_obs_rule(t, c) -- twoway's answer when plot type t has no
+// observation in case c ("nodata", "none", "allmissing", "byempty"):
+// (rc, note line, error line); rc "0" draws.  Measured
+// (test/fixtures/zero_obs_truth.json, scripts/extract_zero_obs_truth.do);
+// "nodata" is the registration-time refusals' answer on no data,
+// compared with twoway live by test_wp37_truth.cscript Q3701-3.
+// mband and mspline refuse only without bands(): the caller asks.
+string rowvector _dash_zero_obs_rule(string scalar t, string scalar c)
+{
+    if (c == "byempty") return(("198", "", "nothing to graph"))
+    if (anyof(("lpoly", "lpolyci"), t))
+        return(("2000", "", "no observations"))
+    if (c == "allmissing") return(("0", "", ""))
+    if (anyof(("fpfit", "fpfitci"), t))
+        return(("198", "(note:  fracpoly could not fit model)",
+                "observation numbers out of range"))
+    if (anyof(("mband", "mspline"), t))
+        return(("198", "", "bands must be between 1 and 200"))
+    if (t == "histogram" & c == "nodata")
+        return(("198", "", "observation numbers out of range"))
+    return(("0", "", ""))
+}
+
+// _dash_zo_records(json, pend) -- the records of json's first "plots"
+// array, each its own JSON text, in order: split at depth 1 outside
+// strings.  pend is set to the byte offset of the ] that closes the
+// array (0 when json has none): the graph's own keys -- its qual_col,
+// qual_col_total, if_expr, in_expr and graph_options -- come after it
+// (_dash_plot writes {"plots":[...],"graph_options":...,"if_expr":
+// ...,"in_expr":...}, and _dash_qual_rewrite puts qual_col after
+// in_expr), while every plot record holds keys of the same names.
+string colvector _dash_zo_records(string scalar json, real scalar pend)
+{
+    real rowvector   b
+    real scalar      n, i, at, d, inq, from
+    string colvector out
+
+    out  = J(0, 1, "")
+    pend = 0
+    at   = strpos(json, char(34) + "plots" + char(34) + ":[")
+    if (at == 0) return(out)
+    b    = ascii(json)
+    n    = cols(b)
+    d    = 0
+    inq  = 0
+    from = 0
+    for (i = at + 9; i <= n; i++) {
+        if (inq) {
+            if (b[i] == 92) i++
+            else if (b[i] == 34) inq = 0
+            continue
+        }
+        if (b[i] == 34) {
+            inq = 1
+            continue
+        }
+        if (b[i] == 123 | b[i] == 91) {
+            d++
+            if (d == 1 & b[i] == 123) from = i
+        }
+        else if (b[i] == 125 | b[i] == 93) {
+            d--
+            if (d < 0) {
+                pend = i
+                return(out)
+            }
+            if (d == 0 & b[i] == 125 & from > 0) {
+                out  = out \ substr(json, from, i - from + 1)
+                from = 0
+            }
+        }
+    }
+    return(out)
 }
 
 end

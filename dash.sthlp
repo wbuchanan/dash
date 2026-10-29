@@ -373,7 +373,13 @@ r(2000)) or one, {cmd:lfit}, {cmd:lfitci} and {cmd:kdensity} with one
 ("insufficient observations", r(2001)), {cmd:fpfit} and {cmd:fpfitci}
 with none its {cmd:if} and {cmd:in} select, {cmd:mspline} and {cmd:mband}
 with none and no {cmd:bands()}, and {cmd:histogram} on a dataset with no
-observations (r(198)).  Where {cmd:twoway} draws an empty fit with a note
+observations (r(198)).  These are answered again when the dashboard is
+built -- {cmd:dash build}, {cmd:dash serve} or the one-line form --
+against the data then in memory, and the line after {cmd:twoway}'s words
+names the plot, for example {cmd:dash: plot 2 (lpoly) of graph 'g1' has no observations.}
+Every other type over no observations draws an empty plot, as
+{cmd:twoway} does: a {cmd:contour} its axis titles and its key's title.
+Where {cmd:twoway} draws an empty fit with a note
 -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} or {cmd:qfitci} on no
 observations, {cmd:qfit}, {cmd:qfitci}, {cmd:fpfit} or {cmd:fpfitci} on
 one -- {cmd:dash} gives the same note, "(note:  regress could not fit
@@ -555,7 +561,10 @@ with no {cmd:bands()}, are refused as above.  A panel in which
 {cmd:twoway} leaves it out -- after {cmd:regress}'s note and
 "insufficient observations" for {cmd:lfit} and {cmd:lfitci} -- and a
 graph whose every panel is left out is "nothing to graph".  Every other
-panel is drawn, with the notes above.  A {cmd:by()} given in any {cmd:||}
+panel is drawn, with the notes above.  A {cmd:by()} graph of
+{cmd:function}, {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi} is answered
+the same way: with no observation its qualifier selects it is "nothing
+to graph", r(198).  The line after a refusal names the graph's plots.  A {cmd:by()} given in any {cmd:||}
 segment or plot group is the graph's, and every plot, before or after it,
 is answered panel by panel.  The Total panel of {cmd:by(}{it:varlist}{cmd:,}
 {cmd:total)} is one more panel, answered as the others are: it is left

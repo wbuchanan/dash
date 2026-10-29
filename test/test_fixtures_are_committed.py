@@ -411,6 +411,7 @@ GENERATORS = {
     "varlabel_mlabel_truth.json": "scripts/extract_varlabel_mlabel_truth.do",
     "weight_operator_truth.json": "scripts/extract_weight_operator_truth.do",
     "weighted_markers_truth.json": "scripts/extract_weighted_markers_truth.do",
+    "zero_obs_truth.json": "scripts/extract_zero_obs_truth.do",
 }
 
 #: The five _meta keys every JSON fixture carries (WP-32 regenerated the 50

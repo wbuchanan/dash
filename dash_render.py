@@ -24395,6 +24395,9 @@ class GlyphMapper:
         cuts, ticks = _dash_contour_cuts(
             options, zmin, zmax, self.z_options,
             table=getattr(fig, "_dash_stata_ticks", None))
+        # WP-37 DG-1: no row to cut (an emptied sample) -- twoway draws
+        # the empty plot and the key's title, rc 0.
+        _no_rows = not math.isfinite(zmin)
         gx, gy, gz = surf["gx"], surf["gy"], surf["gz"]
         if surf["capped"]:
             _dash_warn_once(
@@ -24422,7 +24425,9 @@ class GlyphMapper:
         if lines_only:
             lcol, lwid = _dash_contour_line_style(options, colours, len(cuts))
             T = OptionTranslator
-            cr = fig.contour(x=gx, y=gy, z=gz, levels=[float(c) for c in cuts],
+            cr = fig.contour(x=gx, y=gy, z=gz,
+                             levels=[float(c) for c in cuts
+                                     if math.isfinite(c)] or [0.5],
                              line_color=lcol,
                              line_width=[T.translate_lwidth(w) for w in lwid])
             # twoway's key for the lines is its plot legend's level keys
@@ -24433,8 +24438,8 @@ class GlyphMapper:
                 "not drawn; clabels() and format() label them.")
             lo = hi = None
         else:
-            lv = _dash_contour_fill_levels(cuts, ticks, zmin, zmax) \
-                if math.isfinite(zmin) else [0.0] + list(cuts) + [1.0]
+            lv = [0.0, 1.0] if _no_rows else \
+                _dash_contour_fill_levels(cuts, ticks, zmin, zmax)
             lo, hi = lv[0], lv[-1]
             # The outer bands hold every node: a spline overshoots the
             # data's range, and twoway fills below the first cut and above
@@ -24447,7 +24452,8 @@ class GlyphMapper:
                 fl[0] = min(fl[0], float(fin.min()) - 1e-9 * (hi - lo))
                 fl[-1] = max(fl[-1], float(fin.max()) + 1e-9 * (hi - lo))
             cr = fig.contour(x=gx, y=gy, z=gz, levels=fl,
-                             fill_color=list(colours))
+                             fill_color=(list(colours)[:1] if _no_rows
+                                         else list(colours)))
             _parts = _dash_contour_parts(options)
         cr._dash_contour_sources = [cr.fill_renderer.data_source,
                                     cr.line_renderer.data_source]
@@ -24501,6 +24507,8 @@ class GlyphMapper:
                            tags=["dash_contour_extent"])
         if not lines_only and drawable:
             self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
+        elif not lines_only and _no_rows:
+            self._contour_key_empty(fig, cr, zvar)
         return [cr] + _extra + [hull]
 
     def _contour_parts(self, fig, cr, options, parts, colours, cuts, grid,
@@ -24657,6 +24665,32 @@ class GlyphMapper:
         _dash_apply_z_options(fig, cb, None, zo, *self.z_context,
                               units=(zmin, zmax),
                               dp=getattr(self, "dp", "period"))
+        self._colorvar_key_place(
+            fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
+
+    def _contour_key_empty(self, fig, cr, zvar) -> None:
+        """contour's key over no observations (WP-37 DG-1): twoway draws
+        the key's title and no level, so the bar is titled with z's label,
+        holds no tick or label, and its strip is not drawn.  Placed by
+        clegend() as :meth:`_contour_key` places the drawn key."""
+        from bokeh.models import FixedTicker
+        cb = cr.construct_color_bar(
+            title=_dash_var_label(self.variable_labels, zvar, zvar))
+        cr._dash_contour_bar = cb
+        for k, v in (self.scheme.colorbar_chrome() or {}).items():
+            try:
+                setattr(cb, k, v)
+            except (AttributeError, ValueError, TypeError):
+                pass
+        cb.width = 12
+        cb.ticker = FixedTicker(ticks=[])
+        cb.major_label_overrides = {}
+        # A ContourColorBar draws its strip in the bands' fill (it has no
+        # scale_alpha); the layer has no band to show, so the fill is
+        # made transparent, and the strip's outline with it.
+        cr.fill_renderer.glyph.fill_alpha = 0.0
+        cb.bar_line_alpha = 0.0
+        zo = dict(self.z_options or {})
         self._colorvar_key_place(
             fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
 

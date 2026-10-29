@@ -385,7 +385,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-16 Tracked:** Documented in WP-36, BUGS.md "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified", commit 110072b.
 - **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit 3a9c7cd.
 - **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
-- **DG-1 Tracked:** Open (WP-37 section 37-01).
+- **DG-1 Tracked:** Closed in WP-37, BUGS.md "contour over zero observations crashes with a Python traceback, r(7102)", commit pending.
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
 - **TR-13 Tracked:** Open (WP-37 section 37-03).
 - **DG-8 Tracked:** Open (WP-37 section 37-02).

@@ -2907,6 +2907,9 @@ CORPUS = [
           bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
     _case("contour key stata ticks", [plot_for("contour")],
           bo={"stata_ticks": [[3799.0, 11385.0, 5, "", [3799.0, 11385.0]]]}),
+    # WP-37 DG-1: a contour over no rows draws its empty layer and key.
+    _case("DG-1: contour over no rows", [plot_for("contour")],
+          if_expr="price < 0"),
     # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
     _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
     # WP-35 DT-19: a spec whose working-column prefix is not the default
