@@ -5217,6 +5217,25 @@ Summarised from .ultraplan/sections/index.md (M7) and .ultraplan/review/DECISION
 - **Left open:** none of WP-35's rows. barwidth(-2) is drawn at the default width (Bokeh draws no negative width; twoway draws bars outside the axis), and `histogram ..., bin(0) width(2)` gives the pair's r(198) before twoway's r(125); both are named in their BUGS.md Resolutions.
 - **Gate (27oct2026):** `make test-all` -- pytest 39,766 passed (814 s), cert 69 of 69 (467 s), 1,291 s in all. `make cert-all` -- 80 of 82 script runs (both failures were parts of the closed test_wp30_truth: PS-31 held jitter(2 200) and LN-27 held scatter lwidth(*-1) and line lwidth(*40000) to dash's answers before basic:PT-13; flipped in 06a9531 and ea04f24, blocks S20 and S13 re-run green).
 
+## WP-36 · Python discovery and environment (P2) — DONE
+
+**GAPS4 closed:** plat:PT-1, plat:PT-4, DG-14; **documented:** plat:PT-5, plat:PT-2, plat:PT-11, plat:PT-12, plat:PT-6, plat:PT-16, plat:PT-14
+
+As a Stata user installing and running dash, I want it to use the Python Stata already runs, to draw large and dashed graphs correctly, and to say plainly where it has been tested and what it needs, so that a working Stata setup is enough and I know the limits before I meet them.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M8) and .ultraplan/review/DECISIONS.md (A-2, A-7, A-8), which hold them in full.
+
+- **Python discovery (M8, A-8).** No pre-check of Python: with c(python_exec) empty, dash and dash_setup run the normal python: path, so Stata picks its own Python, and a Python that cannot start shows Stata's message followed by dash's advice. No script in the harness skips for want of a Python setting; a release-tier test starts Stata with a fresh HOME to prove it.
+- **WebGL (M8).** A dashed line keeps its figure on the canvas backend, and the switch to WebGL counts the rows the graph draws, not the dataset's.
+- **Function points (A-7).** A named graph's function points are kept in a private file under dash's temp folder, keyed by graph name, so c(macrolen) no longer caps them.
+- **Environment, documented (M8, A-2).** The help, README and package description state the tested platform (macOS arm64, StataNow 19.5, run from the console), that the drop-in claim is for Stata 19 and later, the full dependency list, the lock's Python and platform coverage, saving()'s tilde rule, Chrome as the tested browser, and the measured large-data cost (about 8 s cold, 6 s warm, 1.5 GB of Stata memory and a 48 MB page per million rows). The existing tested-release sentences are unchanged.
+
+- **Entries.** 10 WP-36 entries; 3 closed, 7 documented, 0 partly closed; BUGS.md holds 172 open entries.
+- **Left open:** none of WP-36's rows. Registering a graph with a function layer now starts Python (36-03 accepts this).
+- **Gate (29oct2026):** `make test-all` -- pytest 39,783 passed (842 s), cert 70 of 70 (495 s), 1,347 s in all. `make cert-all` -- 73 of 73 registered scripts passed (3 sessions, all tier).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
