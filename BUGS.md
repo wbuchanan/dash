@@ -4844,11 +4844,11 @@
   - Suggested fix: Per M9: contour comes from twoway__contour_gen, run at export, when the data is a full grid or interp(none); scattered data above 1,000 points keeps the subsample and its note.
   - Resolution: Not fixed because WP-37 section 37-03 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
 
-- [ ] Title: A contour with no surface (two observations) draws no colour key
+- [x] Title: A contour with no surface (two observations) draws no colour key
   - File Names and Line Numbers: map_contour not-drawable branch; C01
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids DG-8; confirmed; tracked: untracked. Registered as GAPS4 DG-8 (WP-37, section 37-02, Fix).
   - Suggested fix: Build the key from the levels anyway
-  - Resolution: Not fixed because WP-37 section 37-02 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+  - Resolution: Fixed 29oct2026 (WP-37, DG-8). A contour whose points make no surface but whose z has values draws its colour key from the levels it would cut at, in both modes (GlyphMapper.map_contour: the key is drawn whenever z's range is finite, not only for a drawable surface; zero rows keep DG-1's empty key, contourline draws none): contour price mpg weight in 1/2 is keyed 4,000 to 4,800 by 200 and titled Price, as twoway's SVG labels it. Pinned by test/test_contour_key_degenerate.py (TestTheKey, both modes), test_mode_parity.py "DG-8: contour over two observations", test_wp37_truth.cscript Q3702-2. Closes GAPS4 DG-8 (WP-37, DG-8).
 
 - [x] Title: xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x
   - File Names and Line Numbers: twoway_lfit_parse.class:75-88; sersets.log xtr

@@ -24527,7 +24527,12 @@ class GlyphMapper:
         ey = [float(np.min(y)), float(np.max(y))] if y.size else [np.nan] * 2
         hull = fig.scatter(x=ex, y=ey, size=0, fill_alpha=0, line_alpha=0,
                            tags=["dash_contour_extent"])
-        if not lines_only and drawable:
+        # The key whenever z has values (WP-37 DG-8): twoway keys a contour
+        # whose points make no surface -- two observations, points on one
+        # line -- from the levels it would cut at (contour price mpg
+        # weight in 1/2: 4,000 to 4,800, titled Price).
+        if (not lines_only and not _no_rows and math.isfinite(zmin)
+                and math.isfinite(zmax)):
             self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
         elif not lines_only and _no_rows:
             self._contour_key_empty(fig, cr, zvar)

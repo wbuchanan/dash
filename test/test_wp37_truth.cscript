@@ -728,6 +728,38 @@ def _w37s02_outline(path, fixture, key):
         v = "error " + str(e)
     _w37s02_M.setGlobal("w37s02_v", _w37s02_safe(v))
     _w37s02_M.setGlobal("w37s02_n", str(total))
+
+
+def _w37s02_bars(path):
+    """Global w37s02_bars: "<title>|<tick> <tick> ..." for each
+    ContourColorBar of the saved page *path*, ";"-joined (ticks %g)."""
+    out = []
+    try:
+        objs = _w37s02_objs(path)
+        for b in objs.values():
+            if b.get("name") != "ContourColorBar":
+                continue
+            a = b.get("attributes", {})
+            tk = _w37s02_ref(objs, a.get("ticker")).get("attributes", {})
+            ticks = _w37s02_dec(tk.get("ticks", []))
+            out.append("%s|%s" % (a.get("title", ""),
+                                  " ".join("%g" % t for t in ticks)))
+        _w37s02_M.setGlobal("w37s02_bars", _w37s02_safe(";".join(out)))
+    except Exception as e:
+        _w37s02_M.setGlobal("w37s02_bars", _w37s02_safe("error " + str(e)))
+
+
+def _w37s02_texts(listfile, want):
+    """Global w37s02_v: "" when every "|"-separated text of *want* is
+    one of the SVG texts cert_svg_texts listed in *listfile*."""
+    try:
+        have = [_w37s02_json.loads(ln)["text"]
+                for ln in open(listfile, encoding="utf-8") if ln.strip()]
+        miss = [w for w in want.split("|") if w not in have]
+        v = "missing %s of %s" % (miss, have) if miss else ""
+    except Exception as e:
+        v = "error " + str(e)
+    _w37s02_M.setGlobal("w37s02_v", _w37s02_safe(v))
 end
 
 * ==== S02 DG-5: rarea outlines break at gaps ====
@@ -755,6 +787,44 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w37_run' {
     _w37_expect Q3702-1 "(${w37s02_n} == 6)" "${w37s02_n} outline runs, not 6"
     _w37_done Q3702-1 "each rarea outline breaks where twoway's polygons do (${w37s02_n} runs)"
     capture erase "`s02_h'"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 DG-8: contour key without a surface ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w37_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02_h "`w37_work'/s02k.html"
+    local s02_s "`w37_work'/s02k.svg"
+
+    // ------------------------------------------------------------
+    // Q3702-2: contour price mpg weight in 1/2 -- two points, no
+    // surface; twoway draws its key, labelled 4,000 to 4,800 and titled
+    // Price (measured here); dash's saved page has one key, titled Price,
+    // with those five ticks.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture graph drop w37s02k
+    capture noisily twoway contour price mpg weight in 1/2, name(w37s02k)
+    _w37_expect Q3702-2 "(_rc == 0)" "twoway contour rc `=_rc'"
+    capture erase "`s02_s'"
+    cert_svg_export, name(w37s02k) file("`s02_s'")
+    cert_svg_texts, file("`s02_s'")
+    local s02_l "`r(list)'"
+    python: _w37s02_texts(r"`s02_l'", "4,000|4,200|4,400|4,600|4,800|Price")
+    _w37_expect Q3702-2 `"("${w37s02_v}" == "")"' "twoway's key: ${w37s02_v}"
+    capture dash clear
+    capture erase "`s02_h'"
+    capture noisily dash contour price mpg weight in 1/2, saving("`s02_h'", replace)
+    _w37_expect Q3702-2 "(_rc == 0)" "dash contour rc `=_rc'"
+    python: _w37s02_bars(r"`s02_h'")
+    _w37_expect Q3702-2 `"("${w37s02_bars}" == "Price|4000 4200 4400 4600 4800")"' "dash's keys: ${w37s02_bars}"
+    _w37_done Q3702-2 "two points: twoway's key and dash's (${w37s02_bars})"
+    capture erase "`s02_h'"
+    capture erase "`s02_s'"
+    capture erase "`s02_l'"
+    capture graph drop w37s02k
     display as text "S02 end " c(current_date) " " c(current_time)
 }
 * ==== end S02 ====

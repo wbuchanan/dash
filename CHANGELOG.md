@@ -1001,6 +1001,7 @@ and now matches Stata.
 - The estimators' numeric limits were stated in the help but not listed under Differences from twoway; they now are, each with its measured value: lpoly's default bandwidth at degree 2 and 3 (120.7932 against Stata's 120.7929 at degree(2)), at degree 6 and 7 (386.3 against 390.0) and at degree 8 (400.94 against 484.23), three exact-polynomial cases, fpfit on a date-time x and dot's dots above 2,000,000 (WP-37, DT-26)
 - The help said in one clause that tied sort keys keep the data's order; it now says twoway's order among ties changes from run to run, so no fixed order can match it, names where that shows (a lowess path through a tied x, sort under by(), cmissing(n) breaks) and lists the difference under Differences from twoway (WP-37, stat:PT-21)
 - rarea with cmissing(n) drew its outline across the gaps; the outline breaks where the fill does (WP-37, DG-5)
+- A contour over too few points for a surface drew no colour key; it draws the key from its levels, as twoway does (WP-37, DG-8)
 
 ### Fixed in WP-36
 

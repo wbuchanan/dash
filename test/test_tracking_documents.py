@@ -2875,7 +2875,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'TR-13': 'contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter',
-    'DG-8': 'A contour with no surface (two observations) draws no colour key',
     'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',
     'GW-12': 'A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)',
     'ECO-1': 'A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)',

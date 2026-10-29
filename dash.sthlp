@@ -611,7 +611,9 @@ observed cells only; cuts from {opt ccuts()}, {opt levels(#)} with
 the first and last dropped; colours from {opt crule()} between
 {opt scolor()} and {opt ecolor()}, the scheme's rule and ends by default,
 or from {opt ccolors()}; the colour key ticked as {cmd:twoway}'s z axis
-and placed by {opt clegend()}.  {cmd:contourline} draws black lines at the
+and placed by {opt clegend()}.  A {cmd:contour} over too few points to
+make a surface -- two observations, or points on one line -- draws its
+colour key from its levels, as {cmd:twoway} does.  {cmd:contourline} draws black lines at the
 cuts, or the levels' colours under {opt colorlines} or {opt ccolors()}
 with {opt clwidths()} under {opt colorlines}; {cmd:horizontal} turns
 either.  A second {cmd:contour}, or a second {cmd:contourline}, in one
