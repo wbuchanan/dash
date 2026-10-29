@@ -379,7 +379,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-5 Tracked:** Documented in WP-36, BUGS.md "Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh", commit pending.
 - **plat:PT-4 Tracked:** Closed in WP-36, BUGS.md "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help", commit c4ecfcc.
 - **plat:PT-2 Tracked:** Documented in WP-36, BUGS.md "The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later", commit pending.
-- **plat:PT-11 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-11 Tracked:** Documented in WP-36, BUGS.md "Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it", commit pending.
 - **plat:PT-12 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-6 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-16 Tracked:** Open (WP-36 section 36-04).

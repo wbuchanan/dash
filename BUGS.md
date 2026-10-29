@@ -4790,11 +4790,11 @@
   - Suggested fix: Documented only (Q46, M8): the Stata 19 floor stays; README and help state that the drop-in claim is for Stata 19 and later.
   - Resolution: Documented 29oct2026 (WP-36, plat:PT-2). dash.sthlp, Dependencies, the Stata item keeps the r(9) refusal of an older Stata and ends "The claim that {cmd:dash} takes {cmd:twoway}'s place is made for Stata 19 and later; {cmd:twoway} itself runs on older releases."; Differences from twoway item 9, Stata 19 or later, links Dependencies; README's drop-in sentence reads "(on Stata 19 and later)". The floor stays 19. Pinned by test/test_help_environment.py::TestTheFloor, test/test_wp36_truth.cscript Q3604-1. Closes GAPS4 plat:PT-2 (WP-36, plat:PT-2).
 
-- [ ] Title: Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it
+- [x] Title: Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it
   - File Names and Line Numbers: dash.ado:351-400; dash_setup.ado:439-507; dash.sthlp:6709-6719
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-11, ECO-17; partly (dash itself only notes an old numpy/pandas); tracked: dash.sthlp Dependencies. Registered as GAPS4 plat:PT-11 (WP-36, section 36-04, Document).
   - Suggested fix: Documented only (Q49, M8): the help lists the dependencies, and nothing else changes.
-  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Documented 29oct2026 (WP-36, plat:PT-11). dash.sthlp, Dependencies: the intro opens "These are all {cmd:dash} needs: no other program, package or service." and ends "a Python you install yourself -- Stata finds it, or uses the one {cmd:python set exec} names:"; the Python 3.11+ item reads "the one {cmd:python set exec} names, or, with none set, the one Stata finds"; the required-packages item (bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3) adds "{helpb dash_setup} reports a numpy or pandas older than its minimum and does not upgrade it."; no install advice beyond the list (Q49). Pinned by test/test_help_environment.py::TestTheDependencies. Closes GAPS4 plat:PT-11 (WP-36, plat:PT-11).
 
 - [ ] Title: The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route
   - File Names and Line Numbers: dash_requirements.txt:6-7, 11, 83, 600; dash_setup_lib.py:54, 430-437; no Python ceiling

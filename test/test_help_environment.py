@@ -148,3 +148,62 @@ class TestTheFloor:
         assert ("{cmd:dash} refuses an older Stata, {cmd:r(9)}, where "
                 "{cmd:twoway} runs; see "
                 "{help dash##dependencies:Dependencies}.") in entry, entry
+
+
+def _deps_intro():
+    return _flat(_between(_help(), "{title:Dependencies}",
+                          "{phang2}{ul:Stata}")[len("{title:Dependencies}"):])
+
+
+def _python_item():
+    return _flat(_between(_help(), "{phang2}{ul:Python 3.11+}",
+                          "{phang2}{ul:Python packages, required}"))
+
+
+def _packages_item():
+    return _flat(_between(_help(), "{phang2}{ul:Python packages, required}",
+                          "{phang2}{ul:Python packages, optional}"))
+
+
+class TestTheDependencies:
+    """plat:PT-11: the Dependencies section lists everything dash needs --
+    Python 3.11+ (the one Stata runs), bokeh>=3.8,<3.10, numpy>=2.3 and
+    pandas>=2.3 -- and says nothing else is needed (Q49, M8)."""
+
+    def test_nothing_else(self):
+        intro = _deps_intro()
+        assert intro.startswith(
+            "{pstd} These are all {cmd:dash} needs: no other program, "
+            "package or service. Run {helpb dash_setup} once"), intro
+        assert intro.endswith(
+            "; a Python you install yourself -- Stata finds it, or uses "
+            "the one {cmd:python set exec} names:"), intro
+        assert "link yourself" not in intro, intro
+
+    def test_no_upgrade(self):
+        item = _packages_item()
+        assert item.startswith("{phang2}{ul:Python packages, required} -- "
+                               "bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3."), \
+            item
+        assert ("{helpb dash_setup} reports a numpy or pandas older than "
+                "its minimum and does not upgrade it.") in item, item
+        h = _help()
+        order = [h.index(s) for s in ("{phang2}{ul:Stata}",
+                                      "{phang2}{ul:Python 3.11+}",
+                                      "{phang2}{ul:Python packages, required}",
+                                      "{phang2}{ul:Python packages, optional}")]
+        assert order == sorted(order), order
+
+    def test_the_python_item_follows_m8(self):
+        item = _python_item()
+        assert item.startswith(
+            "{phang2}{ul:Python 3.11+} -- the one {cmd:python set exec} "
+            "names, or, with none set, the one Stata finds; see "
+            "{helpb python}."), item
+        assert "linked to Stata" not in item, item
+
+    def test_readme_agrees(self):
+        assert ("Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3."
+                in _readme_requirements())
+        assert ("Requires: Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, "
+                "pandas>=2.3." in _pkg_description())

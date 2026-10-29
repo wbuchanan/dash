@@ -6808,11 +6808,12 @@ rejected: {cmd:titl(x)} abbreviates {cmd:title()} and works, while
 {title:Dependencies}
 
 {pstd}
-Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
-below and installs what it can -- the Python packages, each at the version
-and sha256 hash {cmd:dash_requirements.txt} pins
-({help dash_setup##lock:The hash-pinned lock}); a Python you install and
-link yourself:
+These are all {cmd:dash} needs: no other program, package or service.  Run
+{helpb dash_setup} once before using {cmd:dash}.  It checks everything below
+and installs what it can -- the Python packages, each at the version and
+sha256 hash {cmd:dash_requirements.txt} pins
+({help dash_setup##lock:The hash-pinned lock}); a Python you install
+yourself -- Stata finds it, or uses the one {cmd:python set exec} names:
 
 {phang2}{ul:Stata} -- Stata 19 or later; tested on StataNow 19.5 (MP), macOS
     arm64.  Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are
@@ -6828,7 +6829,8 @@ link yourself:
     {cmd:dash} takes {cmd:twoway}'s place is made for Stata 19 and later;
     {cmd:twoway} itself runs on older releases.
 
-{phang2}{ul:Python 3.11+} -- linked to Stata; see {helpb python}.  Both
+{phang2}{ul:Python 3.11+} -- the one {cmd:python set exec} names, or, with
+    none set, the one Stata finds; see {helpb python}.  Both
     test suites pass under Python 3.11, and a Stata session linked to 3.11
     or 3.12 builds and serves dashboards (measured 07oct2026); numpy 2.3 needs
     Python 3.11, so nothing older is supported.
@@ -6837,7 +6839,8 @@ link yourself:
     pandas>=2.3.  {cmd:dash} was verified on bokeh 3.8 and 3.9 (any patch
     release of either); under a newer bokeh it draws and prints a note, and
     under one older than 3.8 it stops and names {helpb dash_setup}.  Only
-    bokeh has a ceiling.
+    bokeh has a ceiling.  {helpb dash_setup} reports a numpy or pandas
+    older than its minimum and does not upgrade it.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical
     layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no
