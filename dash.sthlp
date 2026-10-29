@@ -619,15 +619,14 @@ with {opt clwidths()} under {opt colorlines}; {cmd:horizontal} turns
 either.  A second {cmd:contour}, or a second {cmd:contourline}, in one
 graph is refused as {cmd:twoway} refuses it, {cmd:r(198)}; so are
 {opt ccuts()} with {opt levels()}, a weight, and the options on other
-plot types.  {it:Differences from twoway:} at a repeated ({it:x}, {it:y})
-{cmd:dash} keeps the smallest {it:z} under every {opt interp()};
-{cmd:twoway} does so under {opt interp(none)} and otherwise keeps one that
-follows {cmd:set sortseed} (measured: rows (2,2,4) and (2,2,5) give the
-node 4 or 5 under seeds 1 to 5).  The surface is exact up to 1,000
-distinct points; above that a seeded subsample of 1,000 is fitted and
-drawn on a 100 x 100 grid over the data's range, and a note says so.  The
-polygons are cut by a different algorithm from {cmd:twoway}'s, so their
-vertices differ while the level sets agree.  The served app recomputes the
+plot types.  On a full grid -- every combination of the x and y values present once -- and with {cmd:interp(none)} on any data, {cmd:dash} runs Stata's own {cmd:twoway__contour_gen}, as {cmd:twoway} does, and draws {cmd:twoway}'s own polygons and cuts -- with {cmd:outlines}, {cmd:alpattern()} or {cmd:sort}, the bands' boundary lines from the same generator too -- for every {cmd:contour} example in {helpb twoway contour}.  {cmd:interp(none)} on many scattered points takes the time {cmd:twoway} takes.  On other scattered data the surface is {cmd:dash}'s own: exact up to 1,000 distinct points, and above that fitted on a seeded subsample of 1,000 on a 100 x 100 grid, with a note.  Under {cmd:by()} each panel is drawn by these rules from its own rows, as {cmd:twoway} runs its generator once per panel.  With {cmd:heatmap} the surface is {cmd:dash}'s own.  After a filter move that leaves out some of the rows a layer drawn from Stata's polygons was drawn from, the saved page and the served app draw {cmd:dash}'s own surface of the rows kept and mark the layer (unfiltered), and they draw Stata's polygons again, unmarked, once every row is back; with more than 1,000 distinct points kept, the saved page keeps Stata's polygons, marked.
+{it:Differences from twoway:} on {cmd:dash}'s own surface, at a repeated
+({it:x}, {it:y}) {cmd:dash} keeps the smallest {it:z} under every
+{opt interp()}; {cmd:twoway} does so under {opt interp(none)} and
+otherwise keeps one that follows {cmd:set sortseed} (measured: rows
+(2,2,4) and (2,2,5) give the node 4 or 5 under seeds 1 to 5).  The
+polygons of {cmd:dash}'s own surface are cut by a different algorithm from
+{cmd:twoway}'s, so their vertices differ while the level sets agree.  The served app recomputes the
 layer after a filter move, and a saved page recomputes the layer after a
 filter move up to 1,000 distinct points; above that it is marked (grid
 unfiltered), as is any layer the page cannot recompute.  After a move the

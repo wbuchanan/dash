@@ -1002,6 +1002,7 @@ and now matches Stata.
 - The help said in one clause that tied sort keys keep the data's order; it now says twoway's order among ties changes from run to run, so no fixed order can match it, names where that shows (a lowess path through a tied x, sort under by(), cmissing(n) breaks) and lists the difference under Differences from twoway (WP-37, stat:PT-21)
 - rarea with cmissing(n) drew its outline across the gaps; the outline breaks where the fill does (WP-37, DG-5)
 - A contour over too few points for a surface drew no colour key; it draws the key from its levels, as twoway does (WP-37, DG-8)
+- contour and contourline over more than 1,000 points drew an approximate surface even on a full grid (every sandstone example), under by() as well; on a full grid or with interp(none) they draw twoway's own polygons, in each by() panel from its own rows, and after a filter move that leaves rows out the saved page and the served app draw dash's own surface of the rows kept and mark it (unfiltered) (WP-37, TR-13)
 
 ### Fixed in WP-36
 

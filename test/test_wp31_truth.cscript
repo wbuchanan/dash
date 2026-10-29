@@ -6476,9 +6476,17 @@ if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
         sysuse auto, clear
         _u29_pair `u29d' `k' "foreign, type(dropdown)" "foreign == 1" `cmd'
         python: _u29_move("`u29d'/s`k'.json", "`u29d'/d`k'.json", "Select", "Foreign", "`u29d'/q`k'.json", "`u29d'/e`k'.json")
-        _w31_expect `id' "(${u29_agree} >= .99)" "`cmd' moved to Foreign: ${u29_agree} of the raster (or the lines) agree"
-        _w31_expect `id' "(${u29_area} <= .01)" "`cmd' moved to Foreign: band areas differ by ${u29_area}"
-        _w31_expect `id' "(${u29_cue} == 0)" "`cmd' moved to Foreign: the layer is marked"
+        // Flipped (WP-37 TR-13): interp(none) draws twoway__contour_gen's
+        // polygons, and after a move that leaves rows out the saved page
+        // draws dash's own fit of the kept rows and marks the layer, as
+        // the served app does (DECISIONS A-26).  The page of the kept
+        // rows now draws Stata's polygons of them, not dash's fit, so the
+        // two agree on most of the raster (measured 0.951) and not band
+        // for band in area: only the raster is held, at .9.
+        local u29_mark = (strpos("`cmd'", "interp(none)") > 0)
+        _w31_expect `id' "(${u29_agree} >= cond(`u29_mark', .9, .99))" "`cmd' moved to Foreign: ${u29_agree} of the raster (or the lines) agree"
+        if !`u29_mark' _w31_expect `id' "(${u29_area} <= .01)" "`cmd' moved to Foreign: band areas differ by ${u29_area}"
+        _w31_expect `id' "(${u29_cue} == `u29_mark')" "`cmd' moved to Foreign: the layer's mark is ${u29_cue}, expected `u29_mark'"
         if "`id'" == "U29-5" {
             quietly summarize weight if foreign == 1
             local wr = strtrim(string(r(min), "%18.10g")) + " " + strtrim(string(r(max), "%18.10g"))

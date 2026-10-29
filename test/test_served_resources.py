@@ -598,7 +598,11 @@ _SAVED_DIGEST = (
     # dash_fill_rebuild_kept writes NaN at a rarea outline's gap pairs
     # (spec.brk; filter JS text only: the base's _FILTER_JS gives the old
     # digest on the new tree); the same under both Pythons.
-    "0cc24f1305a275b8dd8f110dc5e70c829eaa91372db17d6e6a7a12f6d3fbc189")
+    # 0cc24f13... -> fefad145...: WP-37 TR-13, the filter code's contour
+    # branch writes a Stata-grid layer's build back (ac.stata_n; filter
+    # JS text only, the page draws no contour); the same under both
+    # Pythons.
+    "fefad145d18893d65122a50b272c8fbd065db7a6bd6f2f89afd5322c9488242f")
 
 
 # ===========================================================================

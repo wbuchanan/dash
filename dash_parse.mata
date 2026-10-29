@@ -815,6 +815,16 @@
 *!       The records of json's first "plots" array, each its own JSON text;
 *!       pend is set to the byte offset of the ] that closes the array.
 *!
+*!   _dash_cg_reset()
+*!       Empties the external table _dash_cg_list of contour grids (WP-37
+*!       TR-13), at the start of each export.
+*!
+*!   _dash_cg_take(name, k, key, cuts, line, frame, n, lframe)
+*!       Appends (name, k, key, object) to _dash_cg_list: object the JSON
+*!       {"cuts","line","x","y","z","levels","n"} of twoway__contour_gen's
+*!       rows (__cgx __cgy __cgz __cgl) in frame, null for missing, with
+*!       "lines" read the same way from lframe when it is not "".
+*!
 *! Version: 0.1.0  18oct2026
 
 // ============================================================
@@ -7080,13 +7090,16 @@ void _dash_fpts_clear()
 // (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
 // layer as a spec without points, and name what they cannot evaluate
 // (WP-30 P1.22).  Appends ,"function_points":{<entries>}} or,
-// with no entry, the bare }.
+// with no entry, the bare }.  WP-37 TR-13: the contour grids of
+// _dash_cg_list, when it has any, go before that } as
+// ,"contour_grids":{..} (see the comment in the body).
 void _dash_fn_spec_tail(string scalar path, string scalar names,
                         string scalar sc)
 {
-    string rowvector nm
-    string scalar    q, out, txt
-    real scalar      i, fh
+    external string matrix _dash_cg_list
+    string rowvector nm, nmu, ku
+    string scalar    q, out, txt, cgt, ent, val, pan, tot, tail
+    real scalar      i, fh, j, m, flat
 
     q   = char(34)
     out = ""
@@ -7115,10 +7128,109 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
             out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt
         }
     }
+    // WP-37 TR-13: the contour grids _dash_contour_gen made, as
+    // "contour_grids":{"<name>":{"<k>":<object>, ..}, ..}; under by() a
+    // layer's value is {"panels":[{"key":<key>,"grid":<object>}, ..],
+    // "total":<object>}, in by() group order.  The table is emptied once
+    // written.
+    cgt = ""
+    if (rows(_dash_cg_list) > 0 & cols(_dash_cg_list) == 4) {
+        nmu = J(1, 0, "")
+        for (i = 1; i <= rows(_dash_cg_list); i++) {
+            if (!anyof(nmu, _dash_cg_list[i, 1])) nmu = (nmu, _dash_cg_list[i, 1])
+        }
+        for (j = 1; j <= cols(nmu); j++) {
+            ku = J(1, 0, "")
+            for (i = 1; i <= rows(_dash_cg_list); i++) {
+                if (_dash_cg_list[i, 1] == nmu[j] & !anyof(ku, _dash_cg_list[i, 2])) {
+                    ku = (ku, _dash_cg_list[i, 2])
+                }
+            }
+            ent = ""
+            for (m = 1; m <= cols(ku); m++) {
+                val = ""
+                pan = ""
+                tot = ""
+                flat = 1
+                for (i = 1; i <= rows(_dash_cg_list); i++) {
+                    if (_dash_cg_list[i, 1] != nmu[j] | _dash_cg_list[i, 2] != ku[m]) continue
+                    if (_dash_cg_list[i, 3] == "") {
+                        if (val == "") val = _dash_cg_list[i, 4]
+                        continue
+                    }
+                    flat = 0
+                    if (_dash_cg_list[i, 3] == "total") tot = _dash_cg_list[i, 4]
+                    else pan = pan + (pan == "" ? "" : ",") + "{" + q + "key" + q + ":" +
+                               _dash_cg_list[i, 3] + "," + q + "grid" + q + ":" +
+                               _dash_cg_list[i, 4] + "}"
+                }
+                if (!flat) {
+                    val = "{" + q + "panels" + q + ":[" + pan + "]" +
+                          (tot == "" ? "" : "," + q + "total" + q + ":" + tot) + "}"
+                }
+                ent = ent + (ent == "" ? "" : ",") + q + ku[m] + q + ":" + val
+            }
+            cgt = cgt + (cgt == "" ? "" : ",") + q + nmu[j] + q + ":{" + ent + "}"
+        }
+    }
+    _dash_cg_list = J(0, 4, "")
+    tail = ""
+    if (out != "") tail = "," + q + "function_points" + q + ":{" + out + "}"
+    if (cgt != "") tail = tail + "," + q + "contour_grids" + q + ":{" + cgt + "}"
     fh = fopen(path, "a")
-    if (out == "") fwrite(fh, "}")
-    else fwrite(fh, "," + q + "function_points" + q + ":{" + out + "}}")
+    fwrite(fh, tail + "}")
     fclose(fh)
+}
+
+// _dash_cg_reset() -- empty the table of contour grids (WP-37 TR-13).
+void _dash_cg_reset()
+{
+    external string matrix _dash_cg_list
+    _dash_cg_list = J(0, 4, "")
+}
+
+// _dash_cg_take(name, k, key, cuts, line, frame, n, lframe) -- append the
+// contour grid twoway__contour_gen left in frame (columns __cgx __cgy
+// __cgz __cgl) to _dash_cg_list as (name, k, key, object), object
+// {"cuts":[..],"line":0|1,"x":[..],"y":[..],"z":[..],"levels":[..],
+// "n":n} with each value as _dash_json_number17 writes it (null for
+// missing), and "lines":{"x","y","z","levels"} from lframe, the
+// generator's line output for the boundary lines (D-37-03.h), when lframe
+// is not "".  The current frame is restored.
+void _dash_cg_take(string scalar name, real scalar k, string scalar key,
+                   string scalar cuts, real scalar line, string scalar frame,
+                   real scalar n, string scalar lframe)
+{
+    external string matrix _dash_cg_list
+    string scalar    q, cur, obj, part, f
+    string rowvector nm
+    real colvector   ct
+    real matrix      D
+    real scalar      i, j
+
+    if (cols(_dash_cg_list) != 4) _dash_cg_list = J(0, 4, "")
+    q   = char(34)
+    nm  = ("x", "y", "z", "levels")
+    ct  = strtoreal(tokens(cuts))'
+    cur = st_framecurrent()
+    obj = "{" + q + "cuts" + q + ":[" + invtokens(_dash_json_number17(ct)', ",") +
+          "]," + q + "line" + q + ":" + strofreal(line != 0)
+    for (j = 1; j <= 2; j++) {
+        f = (j == 1 ? frame : lframe)
+        if (f == "") continue
+        st_framecurrent(f)
+        D = st_data(., ("__cgx", "__cgy", "__cgz", "__cgl"))
+        st_framecurrent(cur)
+        part = ""
+        for (i = 1; i <= 4; i++) {
+            part = part + "," + q + nm[i] + q + ":[" +
+                   (rows(D) ? invtokens(_dash_json_number17(D[., i])', ",") : "") + "]"
+        }
+        if (j == 1) obj = obj + part
+        else obj = obj + "," + q + "lines" + q + ":{" + substr(part, 2, .) + "}"
+    }
+    obj = obj + "," + q + "n" + q + ":" + strofreal(n) + "}"
+    _dash_cg_list = _dash_cg_list \ (name, strofreal(k), key, obj)
 }
 
 // _dash_unbound_cands(raw, cap) -- the options of a parser's catch-all whose

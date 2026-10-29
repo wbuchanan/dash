@@ -4849,13 +4849,27 @@ def _dash_attach_function_points(spec):
     plot of another type, and a table that is not a dict are ignored.  The points themselves are checked where they are drawn
     (``_dash_function_points``).  The input is never mutated; the copy has
     no ``"function_points"``.
+
+    WP-37 TR-13: the top-level member ``"contour_grids"`` (``{<graph
+    name>: {<k>: object}}``, written after the points by
+    _dash_fn_spec_tail) holds the polygons twoway__contour_gen made for a
+    contour or contourline layer at export -- one object, or under by()
+    ``{"panels": [..], "total": ..}`` -- and goes to that layer's options
+    as ``"contour_gen"``, under the same key checks; the object itself is
+    checked where it is drawn (``_dash_contour_gen_of``).  The copy has no
+    ``"contour_grids"``.
     """
     if not isinstance(spec, dict):
         return spec
     out = dict(spec)
     fp = out.pop("function_points", None)
+    cgs = out.pop("contour_grids", None)
     graphs = out.get("graphs")
-    if not isinstance(fp, dict) or not isinstance(graphs, list):
+    if not isinstance(fp, dict):
+        fp = {}
+    if not isinstance(cgs, dict):
+        cgs = {}
+    if not (fp or cgs) or not isinstance(graphs, list):
         return out
     graphs = list(graphs)
     seen = set()
@@ -4870,11 +4884,25 @@ def _dash_attach_function_points(spec):
         seen.add(name)
         table = fp.get(name)
         plots = g.get("plots")
-        if not isinstance(table, dict) or not isinstance(plots, list):
+        if not isinstance(plots, list):
             continue
         plots = list(plots)
         changed = False
-        for key, val in table.items():
+        ctab = cgs.get(name)
+        for key, val in (ctab.items() if isinstance(ctab, dict) else ()):
+            if not isinstance(key, str) or not re.fullmatch(r"[0-9]{1,4}", key):
+                continue
+            k = int(key)
+            if not 1 <= k <= len(plots) or not isinstance(plots[k - 1], dict):
+                continue
+            p = plots[k - 1]
+            if str(p.get("type", "")).lower() not in _DASH_CONTOUR_TYPES:
+                continue
+            po = p.get("options")
+            plots[k - 1] = dict(p, options=dict(
+                po if isinstance(po, dict) else {}, contour_gen=val))
+            changed = True
+        for key, val in (table.items() if isinstance(table, dict) else ()):
             if not isinstance(key, str) or not re.fullmatch(r"[0-9]{1,4}", key):
                 continue
             k = int(key)
@@ -24406,8 +24434,22 @@ class GlyphMapper:
                                           units=units) if units
                       else (x, y, z))
         letters = ("y", "x") if horizontal else ("x", "y")
-        surf = _dash_contour_surface(ux, uy, uz, options.get("interp"))
-        if units:
+        # WP-37 TR-13: twoway's own polygons, when dash.ado ran
+        # twoway__contour_gen on this layer's rows at export (a full grid,
+        # or interp(none)).  Drawn only while the layer has every row the
+        # generator was given (its n); a served redraw on fewer rows fits
+        # as dash fits, and the layer is marked stale (D-37-03.g).
+        cg_given = _dash_contour_gen_of(options)
+        cg = (cg_given if cg_given is not None
+              and int(cg_given["n"]) == int(ux.size) else None)
+        if cg is not None:
+            surf = {"gx": np.array([0.0, 1.0]), "gy": np.array([0.0, 1.0]),
+                    "gz": np.full((2, 2), np.nan), "capped": False,
+                    "note": "", "n_unique": int(ux.size),
+                    "interp": _dash_contour_interp(options.get("interp"))}
+        else:
+            surf = _dash_contour_surface(ux, uy, uz, options.get("interp"))
+        if units and cg is None:
             surf["gx"] = self._on_axis(fig, surf["gx"], xvar, letters[0],
                                        options)[0]
             surf["gy"] = self._on_axis(fig, surf["gy"], yvar, letters[1],
@@ -24417,6 +24459,33 @@ class GlyphMapper:
         cuts, ticks = _dash_contour_cuts(
             options, zmin, zmax, self.z_options,
             table=getattr(fig, "_dash_stata_ticks", None))
+        cg_runs = []
+        if cg is not None:
+            # twoway's cuts; the key keeps dash's ticks when they are the
+            # same cuts, else it is labelled at twoway's (REVIEW R3-21:
+            # silent either way).
+            _gc = [float(c) for c in cg["cuts"]]
+            if not (len(_gc) == len(cuts) and all(
+                    abs(a - b) <= 1e-9 * max(1.0, abs(a), abs(b))
+                    for a, b in zip(_gc, cuts))):
+                ticks = list(_gc)
+            cuts = _gc
+            # The generator's runs: (level, x, y), each ended by a row
+            # whose x, y and z are all missing.
+            _X, _Y, _Z, _L = cg["x"], cg["y"], cg["z"], cg["levels"]
+            _rx, _ry, _rl = [], [], None
+            for _i in range(len(_X) + 1):
+                if _i == len(_X) or (_X[_i] is None and _Y[_i] is None
+                                     and _Z[_i] is None):
+                    if _rx and _rl is not None:
+                        cg_runs.append((int(_rl), np.asarray(_rx, float),
+                                        np.asarray(_ry, float)))
+                    _rx, _ry, _rl = [], [], None
+                    continue
+                if _rl is None:
+                    _rl = _L[_i]
+                _rx.append(np.nan if _X[_i] is None else float(_X[_i]))
+                _ry.append(np.nan if _Y[_i] is None else float(_Y[_i]))
         # WP-37 DG-1: no row to cut (an emptied sample) -- twoway draws
         # the empty plot and the key's title, rc 0.
         _no_rows = not math.isfinite(zmin)
@@ -24430,6 +24499,16 @@ class GlyphMapper:
         drawable = (surf["note"] != "degenerate" and gx.size >= 2
                     and gy.size >= 2 and np.isfinite(gz).any()
                     and math.isfinite(zmin))
+        if cg is not None:
+            drawable = bool(cg_runs) and math.isfinite(zmin)
+
+        def _cg_xy(rx, ry):
+            # A ring or line in Stata's units, on the layer's axes.
+            if units:
+                rx = self._on_axis(fig, rx, xvar, letters[0], options)[0]
+                ry = self._on_axis(fig, ry, yvar, letters[1], options)[0]
+            rx, ry = np.asarray(rx, float), np.asarray(ry, float)
+            return (ry, rx) if horizontal else (rx, ry)
         # The upright grid, for heatmap's cells, which the layer's
         # transpose turns with the layer (WP-32).
         _ugx, _ugy, _ugz = gx, gy, np.asarray(gz)
@@ -24452,6 +24531,16 @@ class GlyphMapper:
                                      if math.isfinite(c)] or [0.5],
                              line_color=lcol,
                              line_width=[T.translate_lwidth(w) for w in lwid])
+            _band_cols = {k: list(v) for k, v in
+                          cr.line_renderer.data_source.data.items()}
+            if cg is not None:
+                # WP-37 TR-13: Stata's lines, cut i's runs in item i.
+                from bokeh.plotting.contour import ContourData, LineData
+                _lx, _ly = _dash_contour_gen_lines(cg, len(cuts))
+                _pairs = [_cg_xy(a, b) for a, b in zip(_lx, _ly)]
+                cr.set_data(ContourData(fill_data=None, line_data=LineData(
+                    xs=[p[0] for p in _pairs], ys=[p[1] for p in _pairs],
+                    levels=[float(c) for c in cuts])))
             # twoway's key for the lines is its plot legend's level keys
             # (labelled by clabels() and format()); not drawn, named once.
             _dash_warn_once(
@@ -24477,6 +24566,10 @@ class GlyphMapper:
                              fill_color=(list(colours)[:1] if _no_rows
                                          else list(colours)))
             _parts = _dash_contour_parts(options)
+            _band_cols = {k: list(v) for k, v in
+                          cr.fill_renderer.data_source.data.items()}
+            if cg is not None:
+                self._contour_gen_fill(cr, cg_runs, fl, _cg_xy)
         cr._dash_contour_sources = [cr.fill_renderer.data_source,
                                     cr.line_renderer.data_source]
         # For the saved page's twin (WP-31 B4c): what it needs to cut the
@@ -24496,8 +24589,12 @@ class GlyphMapper:
                           if yvar in units else None),
             "fill_color": [] if lines_only else list(colours),
             "lo": lo, "hi": hi}
+        if cg is not None:
+            # WP-37 TR-13 (D-37-03.g): the saved page writes the build
+            # back while the layer keeps every one of these rows.
+            cr._dash_contour_config["stata_n"] = int(cg["n"])
         cr._dash_contour_capped = bool(surf["capped"])
-        if drawable and not surf["capped"]:
+        if drawable and (cg is not None or not surf["capped"]):
             # WP-31 B4c: the saved page refits the layer's one drawn
             # source (contour's bands, contourline's lines) from the kept
             # rows; its other columns are written back as built.  Above
@@ -24510,9 +24607,11 @@ class GlyphMapper:
             cr._dash_agg_config = dict(
                 cr._dash_contour_config,
                 part="line" if lines_only else "fill",
+                # The band (or level) columns of the build, one entry per
+                # band: read before Stata's polygons replaced them.
                 extra={k: [v.item() if hasattr(v, "item") else v
                            for v in col]
-                       for k, col in psrc.data.items() if k not in geo},
+                       for k, col in _band_cols.items() if k not in geo},
                 **self._contour_refit_rule(options, lines_only, len(cuts)))
             cr._dash_agg_rows = self._agg_member_ids(source, view)
         cr.tags = list(cr.tags or []) + ["dash_contour"]
@@ -24520,7 +24619,16 @@ class GlyphMapper:
         if not lines_only:
             _extra = self._contour_parts(
                 fig, cr, options, _parts, colours, cuts,
-                (gx, gy, gz), (_ugx, _ugy, _ugz), fl, drawable, source, view)
+                (gx, gy, gz), (_ugx, _ugy, _ugz), fl, drawable, source, view,
+                cg_lines=(cg.get("lines") if cg is not None else None),
+                cg_xy=_cg_xy)
+        if cg_given is not None:
+            # As a fit drawn from Stata's points is marked (WP-32): the
+            # served app registers the layer's cue from it at build, and
+            # shows it after a redraw that left the polygons out.
+            for _r in [cr] + list(_extra):
+                _r._dash_points_frozen = True
+                _r._dash_points_stale = cg is None
         # The layer's extent, upright (the transposer turns it with the
         # layer): the data's corners, drawn invisibly.
         ex = [float(np.min(x)), float(np.max(x))] if x.size else [np.nan] * 2
@@ -24539,7 +24647,8 @@ class GlyphMapper:
         return [cr] + _extra + [hull]
 
     def _contour_parts(self, fig, cr, options, parts, colours, cuts, grid,
-                       upright, levels, drawable, source, view) -> list:
+                       upright, levels, drawable, source, view,
+                       cg_lines=None, cg_xy=None) -> list:
         """contour's heatmap and boundary lines (WP-32), as twoway draws
         them (measured 19oct2026 on a grid, graph export SVG):
 
@@ -24556,7 +24665,13 @@ class GlyphMapper:
 
         Each part's source is refitted by the saved page after a move
         (``_dash_agg_config`` part "heat" or "line") and redrawn by the
-        served app, which pairs the layer's sources by position."""
+        served app, which pairs the layer's sources by position.
+
+        *cg_lines* (WP-37 TR-13, D-37-03.h): on a layer drawn from Stata's
+        polygons, the generator's lines at the layer's cuts; the boundary
+        renderer, built over the placeholder grid, then draws them, each
+        through *cg_xy* (the layer's axes and turn), keeping ``_style``'s
+        per-cut look."""
         out = []
         T = OptionTranslator
         rule = self._contour_refit_rule(options, False, len(cuts))
@@ -24631,8 +24746,49 @@ class GlyphMapper:
                            for k, col in lsrc.data.items() if k not in geo},
                     styles=styles)
                 lr._dash_agg_rows = self._agg_member_ids(source, view)
+            if cg_lines is not None:
+                from bokeh.plotting.contour import ContourData, LineData
+                _lx, _ly = _dash_contour_gen_lines(cg_lines, len(cuts))
+                _pairs = [cg_xy(a, b) if cg_xy else (a, b)
+                          for a, b in zip(_lx, _ly)]
+                lr.set_data(ContourData(fill_data=None, line_data=LineData(
+                    xs=[p[0] for p in _pairs], ys=[p[1] for p in _pairs],
+                    levels=[float(c) for c in cuts])))
             out.append(lr)
         return out
+
+    @staticmethod
+    def _contour_gen_fill(cr, runs, fl, xy) -> None:
+        """Put twoway__contour_gen's polygons in contour renderer *cr*
+        (WP-37 TR-13, D-37-03.d): *runs* ``[(level, x, y), ..]`` in
+        Stata's row order, *fl* the bands' levels, *xy* the ring's axes
+        and turn.  Band b's item holds every polygon of level b, in
+        Stata's order, so the renderer keeps one item per band.
+
+        The generator's runs are not in level order (measured on every
+        filled probe, contour_gen_truth.json levels_nondecreasing 0), but
+        they tile the plane -- each grid cell's piece of each band -- so
+        no polygon is painted over another and the band items draw
+        twoway's picture.  One item per polygon (D-37-03.d's row order)
+        was measured to break the colour key in the browser: BokehJS's
+        ContourColorBar paints from the fill items and throws
+        "Inconsistent number of filled contour levels" unless there is
+        one item per band (29oct2026, headless Chrome)."""
+        from bokeh.plotting.contour import ContourData, FillData, LineData
+        nb = max(len(fl) - 1, 1)
+        px = [[] for _ in range(nb)]
+        py = [[] for _ in range(nb)]
+        for lv, rx, ry in runs:
+            b = min(max(int(lv), 1), nb) - 1
+            a, c = xy(rx, ry)
+            px[b].append([a])
+            py[b].append([c])
+        cr.set_data(ContourData(
+            fill_data=FillData(xs=px, ys=py,
+                               lower_levels=[float(fl[b]) for b in range(nb)],
+                               upper_levels=[float(fl[b + 1])
+                                             for b in range(nb)]),
+            line_data=LineData(xs=[], ys=[], levels=[])))
 
     def _contour_refit_rule(self, options, lines_only, n_cuts) -> dict:
         """What the saved page needs to cut a contour again after a filter
@@ -29572,6 +29728,95 @@ def _dash_contour_parts(options):
     return {"heat": on("heatmap"),
             "lines": on("outlines") or bool(alp) or on("sort"),
             "outlines": on("outlines"), "dash": dash}
+
+
+def _dash_contour_gen_of(options):
+    """The polygons twoway__contour_gen made for a contour layer at export
+    (WP-37 TR-13), or None.
+
+    ``options["contour_gen"]`` is dash.ado's object (``_dash_cg_take``):
+    ``{"cuts": [..], "line": 0|1, "x", "y", "z", "levels": [..], "n": N}``
+    -- the generator's four columns, null where Stata has missing, and N
+    the rows it was given -- with, on a filled object whose layer draws
+    boundary lines (outlines, alpattern() or sort), ``"lines"``: the
+    generator's ``line`` output at the same cuts (D-37-03.h).  Returns it
+    when its columns are equal-length lists of numbers or None, its cuts a
+    list of numbers and its n a whole number; None when the layer has
+    none.  A malformed object -- or a by() panels object that reached the
+    mapper unpicked -- is None with one note, and dash's own fit draws the
+    layer.  Never with heatmap, which twoway draws from another generator.
+    """
+    o = options or {}
+    cg = o.get("contour_gen")
+    if cg is None:
+        return None
+    num = (int, float)
+
+    def _cols(d):
+        if not isinstance(d, dict):
+            return False
+        cols = [d.get(k) for k in ("x", "y", "z", "levels")]
+        if not all(isinstance(c, list) for c in cols):
+            return False
+        if len({len(c) for c in cols}) != 1:
+            return False
+        return all(v is None or (isinstance(v, num)
+                                 and not isinstance(v, bool))
+                   for c in cols for v in c)
+
+    ok = (isinstance(cg, dict) and "panels" not in cg and _cols(cg)
+          and isinstance(cg.get("cuts"), list) and cg["cuts"]
+          and all(isinstance(c, num) and not isinstance(c, bool)
+                  and math.isfinite(c) for c in cg["cuts"])
+          and isinstance(cg.get("n"), num)
+          and not isinstance(cg.get("n"), bool)
+          and float(cg["n"]) == int(cg["n"]) and cg.get("line") in (0, 1))
+    if ok and not cg["line"] and _dash_contour_parts(o)["lines"]:
+        ok = _cols(cg.get("lines"))
+    if ok and _dash_contour_parts(o)["heat"]:
+        ok = False
+    if not ok:
+        _dash_warn_once(("contour-gen-bad",),
+                        "dash: the contour polygons Stata computed for this "
+                        "layer cannot be read; dash's own fit is drawn")
+        return None
+    return cg
+
+
+def _dash_contour_gen_lines(cg, n):
+    """``(xs, ys)``: the lines of a twoway__contour_gen ``line`` output
+    (WP-37 TR-13) -- a ``line`` object, or a filled object's ``lines`` --
+    as *n* float arrays each, array i holding the runs whose ``levels`` is
+    i + 1 (cut i + 1), joined by one NaN; a run is its rows up to the next
+    row whose x, y and z are all None.  A cut with no run is an empty
+    array; rows of another level are skipped."""
+    xs = [[] for _ in range(max(int(n), 0))]
+    ys = [[] for _ in range(max(int(n), 0))]
+    X, Y, Z, L = cg["x"], cg["y"], cg["z"], cg["levels"]
+    run_x, run_y, run_l = [], [], None
+
+    def _flush():
+        if run_x and run_l is not None:
+            i = int(run_l) - 1
+            if 0 <= i < len(xs):
+                if xs[i]:
+                    xs[i].append(float("nan"))
+                    ys[i].append(float("nan"))
+                xs[i].extend(run_x)
+                ys[i].extend(run_y)
+
+    for i in range(len(X)):
+        if X[i] is None and Y[i] is None and Z[i] is None:
+            _flush()
+            run_x, run_y, run_l = [], [], None
+            continue
+        if run_l is None:
+            run_l = L[i]
+        run_x.append(float("nan") if X[i] is None else float(X[i]))
+        run_y.append(float("nan") if Y[i] is None else float(Y[i]))
+    _flush()
+    return ([np.asarray(a, dtype=float) for a in xs],
+            [np.asarray(a, dtype=float) for a in ys])
 
 
 def _dash_contour_heat_cells(gx, gy, gz, levels, colours):
@@ -35252,8 +35497,43 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             const u = (typeof v === "number" && isFinite(v)) ? dash_stata_value_of(v, k) : null;
             return u === null ? NaN : u; }) : col;
         const _zu = _su(_cz, ac.zdatekind);
+        // WP-37 TR-13 (D-37-03.g): a layer drawn from Stata's polygons
+        // (ac.stata_n, the rows twoway__contour_gen was given) keeps its
+        // build -- the source and the colour key -- while every one of
+        // those rows is kept, and above the cap; otherwise dash's own fit
+        // of the kept rows is drawn below (the frozen tag marks it).
+        const _sn = (typeof ac.stata_n === "number") ? ac.stata_n : null;
+        const _kb0 = (_sn !== null && typeof contour_keys !== "undefined" && contour_keys && ac.key !== undefined)
+            ? contour_keys[ac.key] : null;
+        if (_sn !== null && src._dash_built === undefined) {
+            src._dash_built = src.data;
+            if (_kb0 && _kb0._dash_built === undefined) {
+                _kb0._dash_built = {levels: _kb0.levels,
+                    ticks: _kb0.ticker ? _kb0.ticker.ticks : null,
+                    labels: _kb0.major_label_overrides};
+            }
+        }
+        const _cg_back = () => {
+            src.data = src._dash_built;
+            if (_kb0 && _kb0._dash_built) {
+                _kb0.levels = _kb0._dash_built.levels;
+                if (_kb0.ticker && _kb0._dash_built.ticks !== null) _kb0.ticker.ticks = _kb0._dash_built.ticks;
+                _kb0.major_label_overrides = _kb0._dash_built.labels;
+            }
+            src.change.emit();
+        };
+        if (_sn !== null) {
+            let _nk = 0;
+            for (let i = 0; i < _zu.length; i++) {
+                if (Number.isFinite(_cx[i]) && Number.isFinite(_cy[i]) && Number.isFinite(_zu[i])) _nk++;
+            }
+            if (_nk === _sn) { _cg_back(); continue; }
+        }
         let S = dash_contour_surface(_su(_cx, ac.xdatekind), _su(_cy, ac.ydatekind), _zu, ac.interp, ac.cap);
-        if (S === null) continue;
+        if (S === null) {
+            if (_sn !== null) _cg_back();
+            continue;
+        }
         if (ac.xaxiskind) S.gx = S.gx.map(v => dash_axis_value_of(v, ac.xaxiskind));
         if (ac.yaxiskind) S.gy = S.gy.map(v => dash_axis_value_of(v, ac.yaxiskind));
         // WP-32: heatmap's cells are drawn upright, turned with the layer.
@@ -61229,6 +61509,79 @@ def _dash_fit_panel_spec(g, key, total=False):
     return dict(g, plots=new)
 
 
+def _dash_contour_panel_spec(g, key, total=False):
+    """The graph *g* as one by() panel draws its contour layers (WP-37
+    TR-13).
+
+    Under by(), dash.ado runs twoway__contour_gen once per by() group, as
+    twoway runs it per panel, and writes the layer's ``contour_gen`` as
+    ``{"panels": [{"key": [..], "grid": ..}, ..], "total": ..}`` (keys
+    written by ``_dash_fit_panel_key``).  This is a copy of *g* whose
+    contour and contourline plots carrying such an object carry, as
+    ``options["contour_gen"]``, the grid of the entry whose key equals
+    *key* (``_dash_by_key_of``: numbers equal as floats, text as text) --
+    or, with *total*, the ``"total"`` grid -- and no ``contour_gen`` when
+    there is none, so dash's own fit draws that panel.  *g* itself when no
+    plot carries a panels object (a flat object is left as it is).  Both
+    render modes call it; the served app copies it by source.
+    """
+    if not isinstance(g, dict):
+        return g
+    plots = g.get("plots") or []
+
+    def _pan(p):
+        if not isinstance(p, dict) or str(
+                p.get("type", "")).lower() not in _DASH_CONTOUR_TYPES:
+            return None
+        o = p.get("options")
+        cg = o.get("contour_gen") if isinstance(o, dict) else None
+        return cg if isinstance(cg, dict) and "panels" in cg else None
+
+    def _same(stored, want):
+        if not isinstance(stored, list) or not isinstance(want, list) \
+                or len(stored) != len(want):
+            return False
+        for a, b in zip(stored, want):
+            if isinstance(a, dict):
+                raw = a.get("s")
+                if not isinstance(raw, list) or not all(
+                        isinstance(t, int) and not isinstance(t, bool)
+                        and 0 <= t < 256 for t in raw):
+                    return False
+                if not isinstance(b, str) or bytes(raw).decode(
+                        "utf-8", "replace") != b:
+                    return False
+            elif isinstance(a, (int, float)) and not isinstance(a, bool):
+                if isinstance(b, str) or float(a) != float(b):
+                    return False
+            else:
+                return False
+        return True
+
+    if not any(_pan(p) is not None for p in plots):
+        return g
+    new = []
+    for p in plots:
+        cg = _pan(p)
+        if cg is not None:
+            got = None
+            if total:
+                got = cg.get("total")
+            elif key is not None:
+                pan = cg.get("panels")
+                for e in pan if isinstance(pan, list) else []:
+                    if isinstance(e, dict) and _same(e.get("key"), key):
+                        got = e.get("grid")
+                        break
+            opts = {k: v for k, v in p["options"].items()
+                    if k != "contour_gen"}
+            if isinstance(got, dict):
+                opts["contour_gen"] = got
+            p = dict(p, options=opts)
+        new.append(p)
+    return dict(g, plots=new)
+
+
 def _dash_total_spec(g):
     """The graph *g* as its by(, total) Total panel draws it.
 
@@ -64951,10 +65304,12 @@ class DashRenderer:
                 if ptype.lower() in _DASH_CONTOUR_TYPES:
                     # WP-31 B4c: the saved page refits a contour within
                     # the cap; one drawn above it keeps its build and is
-                    # marked (decision D4).
+                    # marked (decision D4).  WP-37 TR-13: one drawn from
+                    # Stata's polygons keeps "fit" and is marked when a
+                    # move leaves out one of its rows (D-37-03.g).
                     _fkind = ("grid" if any(
                         getattr(_fr, "_dash_contour_capped", False)
-                        for _fr in _layer_renderers) else None)
+                        for _fr in _layer_renderers) else _fkind)
                 _ftag = self._frozen_layer_tag(ptype.lower(), popts,
                                                source_for_plot, _plot_view,
                                                _frozen_vars, kind=_fkind)
@@ -66190,6 +66545,10 @@ class DashRenderer:
                             g_panel = _dash_fn_panel_spec(g_panel, panel_idx_r)
                             # WP-37 stat:PT-12: the panel's own fit points.
                             g_panel = _dash_fit_panel_spec(
+                                g_panel, self._facet_keys.get(fkey),
+                                fkey in self._facet_total_keys)
+                            # WP-37 TR-13: the panel's own contour grid.
+                            g_panel = _dash_contour_panel_spec(
                                 g_panel, self._facet_keys.get(fkey),
                                 fkey in self._facet_total_keys)
                             fig = self._make_figure(g_panel, src,
@@ -69000,6 +69359,8 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         "_dash_contour_gen_of",
+                         "_dash_contour_gen_lines",
                          # WP-31 K6: accessible names and the tabs' keys.
                          "_dash_aria", "_dash_figure_name",
                          "_dash_name_figure", "_dash_tabs_keys_hook",
@@ -69029,6 +69390,7 @@ class ServerAppBuilder:
                          "_lpoly_fit_degree",
                          "_dash_fn_panel_spec",
                          "_dash_by_key_of", "_dash_fit_panel_spec",
+                         "_dash_contour_panel_spec",
                          "_dash_rarea_one_bound",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
@@ -72154,11 +72516,13 @@ class ServerAppBuilder:
             "                _g_pan = _dash_fn_panel_spec(g, _fi)",
             "                # WP-37 stat:PT-12: the panel's own fit points.",
             "                _g_pan = _dash_fit_panel_spec(_g_pan, _dash_by_key_of(_gdf, go.get('by', '')), _fi == _t_idx)",
+            "                _g_pan = _dash_contour_panel_spec(_g_pan, _dash_by_key_of(_gdf, go.get('by', '')), _fi == _t_idx)",
             "                if _fi == _t_idx and _g_tot is not g:",
             "                    # The Total panel: its own qualifier columns, drawn",
             "                    # and reapplied after a filter move (_total_quals).",
             "                    _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
             "                    _g_pan = _dash_fit_panel_spec(_g_pan, None, True)",
+            "                    _g_pan = _dash_contour_panel_spec(_g_pan, None, True)",
             "                    _total_quals[_fname] = {",
             "                        'if_expr': _g_if, 'in_expr': _g_in,",
             "                        'qual_col': str(_g_tot.get('qual_col') or '')}",

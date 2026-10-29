@@ -299,6 +299,7 @@ GENERATORS = {
     "conformance_corpus.txt": HAND_WRITTEN,
     "connect_truth.json": "scripts/extract_connect_truth.do",
     "contour_truth.json": "scripts/extract_contour_truth.do",
+    "contour_gen_truth.json": "scripts/extract_contour_gen_truth.do",
     "corpus_baseline.json": "scripts/corpus/summary.py",
     "corpus_guard_truth.json": "scripts/extract_corpus_guard_truth.do",
     "corpus_ledger.json": "scripts/corpus/ledger.py",

@@ -1508,6 +1508,21 @@ def _explain(name, what, diffs):
 # The corpus
 # ---------------------------------------------------------------------------
 
+def _tr13_grid(n):
+    """WP-37 TR-13: a contour_gen object of contour_gen_truth.json's
+    40 x 40 rows, *n* the rows the layer has."""
+    with open(os.path.join(_HERE, "fixtures", "contour_gen_truth.json"),
+              encoding="utf-8") as fh:
+        rows = json.load(fh)["grid40"]["rows"]
+    return {"cuts": [-1.0, 0.0, 1.0], "line": 0, "n": n,
+            "x": [r[0] for r in rows], "y": [r[1] for r in rows],
+            "z": [r[2] for r in rows], "levels": [r[3] for r in rows]}
+
+
+def _tr13_plot():
+    return plot_for("contour", {"contour_gen": _tr13_grid(10)})
+
+
 def _case(name, plots=None, bo=None, go=None, graphs=None, kpis=None,
           if_expr="", in_expr="", marks=(), images=None):
     spec = _spec(plots, bo, go, graphs, kpis, if_expr, in_expr, images)
@@ -2913,6 +2928,14 @@ CORPUS = [
     # WP-37 DG-8: two observations, no surface, the key drawn alike.
     _case("DG-8: contour over two observations", [plot_for("contour")],
           in_expr="1/2"),
+    # WP-37 TR-13: a contour drawn from Stata's polygons (the fixture's
+    # 40 x 40 rows, n the 10 rows of _DF), flat and per by() panel.
+    _case("TR-13: contour from Stata's polygons", [_tr13_plot()]),
+    _case("TR-13: contour from Stata's polygons per by() panel",
+          [plot_for("contour", {"contour_gen": {"panels": [
+              {"key": [0], "grid": _tr13_grid(5)},
+              {"key": [1], "grid": _tr13_grid(5)}]}})],
+          go={"by": "foreign"}),
     # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
     _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
     # WP-35 DT-19: a spec whose working-column prefix is not the default
@@ -4255,6 +4278,11 @@ MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
 # WP-34 AX-1: the default ticks stay over the kept data after a move.
 MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
                               [_sc()], go={"yscale": "range(0)"}))
+# WP-37 TR-13 (A-26): a contour drawn from Stata's polygons, moved: both
+# modes draw dash's own fit of the kept rows and the same cue.
+MOVE_CORPUS.append(_move_case(
+    "TR-13: contour from Stata's polygons, dropdown to Foreign", _MOVES[0],
+    [_tr13_plot()]))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 
@@ -6086,7 +6114,8 @@ def _without_stale_cue(notes):
 _NOTE_CASES = _JS_ORACLE_CASES | {
     "lpoly, dropdown to Foreign", "lpoly emptied, slider to 10000",
     "lfit recast scatter, dropdown (WP-30 P1.8b)",
-    "lfit with points after a move (WP-31 C4)"}
+    "lfit with points after a move (WP-31 C4)",
+    "TR-13: contour from Stata's polygons, dropdown to Foreign"}
 _NOTE_MOVES = [p for p in MOVE_CORPUS if p.values[0] in _NOTE_CASES] + [
     _move_case("lpoly degree(8), slider to 4500", _MOVES[2],
                [plot_for("lpoly", {"degree": "8"})]),

@@ -829,6 +829,320 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w37_run' {
 }
 * ==== end S02 ====
 
+// S03 helpers (WP-37 TR-13).  _w37s03_fill: the polygons per band of each
+// contour layer (ContourRenderer tagged dash_contour) of the saved page,
+// "b1 b2 .." per layer, ";"-joined, into global w37s03_v.  _w37s03_lines:
+// the NaN-separated runs per level of the line source of each
+// ContourRenderer tagged <tag>, and its first line colour, likewise.
+// _w37s03_spec: what the served spec's contour_grids holds for graph
+// <g>, layer 1 ("none" without the member), into global w37s03_v.
+// _w37s03_fix: a field of contour_gen_truth.json into global w37s03_f.
+python:
+def _w37s03_fill(path):
+    out = []
+    try:
+        objs = _w37s02_objs(path)
+        for o in objs.values():
+            a = o.get("attributes") or {}
+            if o.get("name") != "ContourRenderer" or "dash_contour" not in (a.get("tags") or []):
+                continue
+            lv = _w37s02_dec(a.get("levels", []))
+            fr = _w37s02_ref(objs, a.get("fill_renderer")).get("attributes", {})
+            src = _w37s02_ref(objs, fr.get("data_source")).get("attributes", {})
+            data = src.get("data", {})
+            cols = {e[0]: e[1] for e in data.get("entries", [])} \
+                if isinstance(data, dict) and "entries" in data else data
+            lows = _w37s02_dec(cols.get("lower_levels", []))
+            per = [0] * max(len(lv) - 1, 0)
+            for item, lo in zip(cols.get("xs", []), lows):
+                b = min(range(len(per)), key=lambda i: abs(lv[i] - lo))
+                per[b] += len(item)
+            out.append(" ".join(str(p) for p in per))
+        _w37s02_M.setGlobal("w37s03_v", _w37s02_safe(";".join(out)))
+    except Exception as e:
+        _w37s02_M.setGlobal("w37s03_v", _w37s02_safe("error " + str(e)))
+
+
+def _w37s03_lines(path, tag):
+    out = []
+    try:
+        objs = _w37s02_objs(path)
+        for o in objs.values():
+            a = o.get("attributes") or {}
+            if o.get("name") != "ContourRenderer" or tag not in (a.get("tags") or []):
+                continue
+            lr = _w37s02_ref(objs, a.get("line_renderer")).get("attributes", {})
+            src = _w37s02_ref(objs, lr.get("data_source")).get("attributes", {})
+            data = src.get("data", {})
+            cols = {e[0]: e[1] for e in data.get("entries", [])} \
+                if isinstance(data, dict) and "entries" in data else data
+            per = []
+            for xs in cols.get("xs", []):
+                runs, inrun = 0, False
+                for v in _w37s02_dec(xs):
+                    if v != v:
+                        inrun = False
+                    elif not inrun:
+                        runs, inrun = runs + 1, True
+                per.append(runs)
+            colr = cols.get("line_color", [""])
+            out.append(" ".join(str(p) for p in per) + "|" + str(colr[0] if colr else ""))
+        _w37s02_M.setGlobal("w37s03_v", _w37s02_safe(";".join(out)))
+    except Exception as e:
+        _w37s02_M.setGlobal("w37s03_v", _w37s02_safe("error " + str(e)))
+
+
+def _w37s03_spec(path, g):
+    try:
+        d = _w37s02_json.load(open(path, encoding="utf-8"))
+        cg = d.get("contour_grids")
+        if cg is None:
+            v = "none"
+        else:
+            o = cg[g]["1"]
+            if "panels" in o:
+                v = ";".join("%s %d %s" % (_w37s02_json.dumps(p["key"]), p["grid"]["n"],
+                                           " ".join("%g" % c for c in p["grid"]["cuts"]))
+                             for p in o["panels"])
+                if "total" in o:
+                    v += ";total %d" % o["total"]["n"]
+            else:
+                v = "%d %d %s" % (o["n"], len(o["x"]), " ".join("%g" % c for c in o["cuts"]))
+    except Exception as e:
+        v = "error " + str(e)
+    _w37s02_M.setGlobal("w37s03_v", _w37s02_safe(v))
+
+
+def _w37s03_fix(key, field):
+    try:
+        d = _w37s02_json.load(open("fixtures/contour_gen_truth.json", encoding="utf-8"))
+        v = d
+        for k in key.split("|"):
+            v = v[int(k)] if isinstance(v, list) else v[k]
+        v = " ".join("%g" % x for x in v[field]) if field else str(v)
+    except Exception as e:
+        v = "error " + str(e)
+    _w37s02_M.setGlobal("w37s03_f", _w37s02_safe(v))
+end
+
+* ==== S03 TR-13: contour from twoway's own generator ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w37_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03_h "`w37_work'/s03.html"
+    local s03_s "`w37_work'/s03.json"
+    local s03_d "`w37_work'/s03d.json"
+    local s03_l "`w37_work'/s03.log"
+
+    // ------------------------------------------------------------
+    // Q3703-1: sandstone, the default cuts: no approximation note,
+    // twoway's polygons per band (contour_gen_truth.json
+    // sandstone.default), the key at 7700 .. 8000; then the same layer
+    // registered under frame q3s: (A-17) and built with a graph of the
+    // current frame (the stack): the same polygons, both frames unchanged.
+    // The page's size is displayed (REVIEW R3-22, no cap).
+    // ------------------------------------------------------------
+    sysuse sandstone, clear
+    capture dash clear
+    capture erase "`s03_h'"
+    capture log close s03log
+    quietly log using "`s03_l'", text replace name(s03log)
+    capture noisily dash contour depth northing easting, saving("`s03_h'", replace)
+    local rc = _rc
+    quietly log close s03log
+    _w37_expect Q3703-1 "(`rc' == 0)" "dash contour rc `rc'"
+    cert_log_has "`s03_l'", needle("approximate surface")
+    _w37_expect Q3703-1 "(r(found) == 0)" "the approximation note was printed"
+    python: _w37s03_fill(r"`s03_h'")
+    local got "${w37s03_v}"
+    python: _w37s03_fix("sandstone.default", "polys_per_band")
+    _w37_expect Q3703-1 `"("`got'" == "${w37s03_f}")"' "polygons per band `got', twoway ${w37s03_f}"
+    python: _w37s02_bars(r"`s03_h'")
+    // The key is ticked at twoway's z axis ticks, 7600 .. 8100, whose
+    // interior are the cuts 7700 .. 8000 (measured: .zaxis major
+    // tick_values on the drawn graph).
+    _w37_expect Q3703-1 `"("${w37s02_bars}" == "Depth (ft.)|7600 7700 7800 7900 8000 8100")"' "key ${w37s02_bars}"
+    checksum "`s03_h'"
+    display as text "Q3703-1 page bytes `r(filelen)'"
+    capture frame drop q3s
+    frame create q3s
+    frame q3s: sysuse sandstone, clear
+    sysuse auto, clear
+    quietly datasignature
+    local sig0 "`r(datasignature)'"
+    frame q3s: quietly datasignature
+    local sig1 "`r(datasignature)'"
+    capture dash clear
+    frame q3s: dash contour depth northing easting, name(c1)
+    dash scatter mpg weight, name(c2)
+    capture erase "`s03_h'"
+    capture noisily dash build, saving("`s03_h'") replace nobrowser
+    _w37_expect Q3703-1 "(_rc == 0)" "framed build rc `=_rc'"
+    python: _w37s03_fill(r"`s03_h'")
+    local got "${w37s03_v}"
+    _w37_expect Q3703-1 `"("`got'" == "${w37s03_f}")"' "framed: polygons per band `got', twoway ${w37s03_f}"
+    quietly datasignature
+    _w37_expect Q3703-1 `"("`r(datasignature)'" == "`sig0'")"' "the current frame changed"
+    frame q3s: quietly datasignature
+    _w37_expect Q3703-1 `"("`r(datasignature)'" == "`sig1'")"' "frame q3s changed"
+    frame drop q3s
+    capture dash clear
+    _w37_done Q3703-1 "sandstone: twoway's polygons per band (`got'), in place and from a frame"
+
+    // ------------------------------------------------------------
+    // Q3703-2: levels(10), ccuts(7600(100)8000), contourline (polylines
+    // per cut) and the boundary lines from the generator (D-37-03.h).
+    // alpattern(dash) draws them: dash.ado's options writer does not
+    // carry outlines (found here; reported).
+    // ------------------------------------------------------------
+    sysuse sandstone, clear
+    foreach p in levels10 ccuts {
+        local o = cond("`p'" == "levels10", "levels(10)", "ccuts(7600(100)8000)")
+        capture erase "`s03_h'"
+        capture noisily dash contour depth northing easting, `o' saving("`s03_h'", replace)
+        _w37_expect Q3703-2 "(_rc == 0)" "`p' rc `=_rc'"
+        python: _w37s03_fill(r"`s03_h'")
+        local got "${w37s03_v}"
+        python: _w37s03_fix("sandstone.`p'", "polys_per_band")
+        _w37_expect Q3703-2 `"("`got'" == "${w37s03_f}")"' "`p': `got', twoway ${w37s03_f}"
+    }
+    capture erase "`s03_h'"
+    capture noisily dash contourline depth northing easting, saving("`s03_h'", replace)
+    _w37_expect Q3703-2 "(_rc == 0)" "contourline rc `=_rc'"
+    python: _w37s03_lines(r"`s03_h'", "dash_contour")
+    local got "${w37s03_v}"
+    python: _w37s03_fix("sandstone.default.line", "lines_per_cut")
+    _w37_expect Q3703-2 `"(strpos("`got'", "${w37s03_f}|") == 1)"' "contourline: `got', twoway ${w37s03_f}"
+    capture erase "`s03_h'"
+    capture noisily dash contour depth northing easting, alpattern(dash) saving("`s03_h'", replace)
+    _w37_expect Q3703-2 "(_rc == 0)" "alpattern rc `=_rc'"
+    python: _w37s03_lines(r"`s03_h'", "dash_contour_lines")
+    local got "${w37s03_v}"
+    _w37_expect Q3703-2 `"(strpos("`got'", "${w37s03_f}|") == 1)"' "boundary lines: `got', twoway ${w37s03_f}"
+    python: _w37s03_fill(r"`s03_h'")
+    python: _w37s03_fix("sandstone.default", "polys_per_band")
+    _w37_expect Q3703-2 `"("${w37s03_v}" == "${w37s03_f}")"' "alpattern bands ${w37s03_v}"
+    _w37_done Q3703-2 "levels(), ccuts(), contourline and boundary lines from the generator"
+
+    // ------------------------------------------------------------
+    // Q3703-3: 100 scattered points: interp(none) draws twoway's
+    // polygons; the default interp() keeps dash's own exact fit, with no
+    // contour_grids member in the spec.
+    // ------------------------------------------------------------
+    clear
+    set obs 100
+    set seed 20261020
+    generate double x = runiform()
+    generate double y = runiform()
+    generate double z = runiform()
+    capture erase "`s03_h'"
+    capture noisily dash contour z y x, interp(none) saving("`s03_h'", replace)
+    _w37_expect Q3703-3 "(_rc == 0)" "interp(none) rc `=_rc'"
+    python: _w37s03_fill(r"`s03_h'")
+    local got "${w37s03_v}"
+    python: _w37s03_fix("scatter100.none", "polys_per_band")
+    _w37_expect Q3703-3 `"("`got'" == "${w37s03_f}")"' "interp(none): `got', twoway ${w37s03_f}"
+    capture dash clear
+    dash contour z y x, name(q3c)
+    capture erase "`s03_s'"
+    _dash_serve_spec, specpath("`s03_s'") datapath("`s03_d'")
+    python: _w37s03_spec(r"`s03_s'", "q3c")
+    _w37_expect Q3703-3 `"("${w37s03_v}" == "none")"' "default interp(): ${w37s03_v}"
+    capture dash clear
+    _w37_done Q3703-3 "scattered points: interp(none) twoway's, the default dash's own"
+
+    // ------------------------------------------------------------
+    // Q3703-4: the data and the frames are unchanged by a build.
+    // ------------------------------------------------------------
+    sysuse sandstone, clear
+    quietly datasignature
+    local sig0 "`r(datasignature)'"
+    quietly frames dir
+    local fr0 "`r(frames)'"
+    capture erase "`s03_h'"
+    capture noisily dash contour depth northing easting, alpattern(dash) saving("`s03_h'", replace)
+    quietly datasignature
+    _w37_expect Q3703-4 `"("`r(datasignature)'" == "`sig0'")"' "the data changed"
+    quietly frames dir
+    _w37_expect Q3703-4 `"("`r(frames)'" == "`fr0'")"' "frames `r(frames)', were `fr0'"
+    _w37_done Q3703-4 "data and frames unchanged"
+
+    // ------------------------------------------------------------
+    // Q3703-5: by(half): each panel carries its own grid, n 3200, cut at
+    // the first panel's cuts (sandstone.by, first_panel_rule); each
+    // panel's polygons per band are twoway's; by(half, total) adds the
+    // Total panel's grid, n 6400.
+    // ------------------------------------------------------------
+    sysuse sandstone, clear
+    quietly summarize northing, detail
+    generate byte half = northing > r(p50)
+    capture dash clear
+    dash contour depth northing easting, by(half) name(q5)
+    capture erase "`s03_s'"
+    _dash_serve_spec, specpath("`s03_s'") datapath("`s03_d'")
+    python: _w37s03_spec(r"`s03_s'", "q5")
+    local got "${w37s03_v}"
+    python: _w37s03_fix("sandstone.by|panels|0", "cuts")
+    local c0 "${w37s03_f}"
+    python: _w37s03_fix("sandstone.by|panels|1", "cuts")
+    local c1 "${w37s03_f}"
+    _w37_expect Q3703-5 `"("`got'" == "[0] 3200 `c0';[1] 3200 `c1'")"' "panels `got'"
+    capture erase "`s03_h'"
+    capture noisily dash build, saving("`s03_h'") replace nobrowser
+    _w37_expect Q3703-5 "(_rc == 0)" "by() build rc `=_rc'"
+    python: _w37s03_fill(r"`s03_h'")
+    local got "${w37s03_v}"
+    python: _w37s03_fix("sandstone.by|panels|0", "polys_per_band")
+    local p0 "${w37s03_f}"
+    python: _w37s03_fix("sandstone.by|panels|1", "polys_per_band")
+    local p1 "${w37s03_f}"
+    _w37_expect Q3703-5 `"("`got'" == "`p0';`p1'" | "`got'" == "`p1';`p0'")"' "panels' polygons `got', twoway `p0';`p1'"
+    capture dash clear
+    dash contour depth northing easting, by(half, total) name(q5t)
+    capture erase "`s03_s'"
+    _dash_serve_spec, specpath("`s03_s'") datapath("`s03_d'")
+    python: _w37s03_spec(r"`s03_s'", "q5t")
+    _w37_expect Q3703-5 `"(strpos("${w37s03_v}", ";total 6400") > 0)"' "total: ${w37s03_v}"
+    capture dash clear
+    _w37_done Q3703-5 "by(): each panel twoway's own polygons"
+
+    // ------------------------------------------------------------
+    // Q3703-6: small layers never reach the generator (REVIEW R3-5):
+    // no rows, and two rows, under interp(none): twoway's rc and dash's
+    // equal, no contour_grids member, 37-01's empty key and 37-02's key.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local k 0
+    foreach q in "if price < 0" "in 1/2" {
+        local ++k
+        capture graph drop w37s03
+        capture noisily twoway contour price mpg weight `q', interp(none) nodraw name(w37s03)
+        local trc = _rc
+        capture erase "`s03_h'"
+        capture noisily dash contour price mpg weight `q', interp(none) saving("`s03_h'", replace)
+        local drc = _rc
+        _w37_expect Q3703-6 "(`trc' == `drc')" "`q': twoway rc `trc', dash rc `drc'"
+        python: _w37s02_bars(r"`s03_h'")
+        local want = cond(`k' == 1, "Price|", "Price|4000 4200 4400 4600 4800")
+        _w37_expect Q3703-6 `"("${w37s02_bars}" == "`want'")"' "`q': key ${w37s02_bars}"
+        capture dash clear
+        dash contour price mpg weight `q', interp(none) name(q6)
+        capture erase "`s03_s'"
+        _dash_serve_spec, specpath("`s03_s'") datapath("`s03_d'")
+        python: _w37s03_spec(r"`s03_s'", "q6")
+        _w37_expect Q3703-6 `"("${w37s03_v}" == "none")"' "`q': spec ${w37s03_v}"
+        capture dash clear
+    }
+    _w37_done Q3703-6 "small layers: twoway's rc, no generator"
+    capture erase "`s03_h'"
+    capture erase "`s03_s'"
+    capture erase "`s03_d'"
+    capture erase "`s03_l'"
+    capture graph drop w37s03
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S04 helpers (WP-37 stat:PT-12).  _q4_take: the data in memory (a
 // serset after serset use) appended to a JSON list in <out>, its columns
 // in order, missing as null.  _q4_cmp: the points dash stored for plot k

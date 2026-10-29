@@ -247,6 +247,7 @@ COVERAGE = {
         # WP-37 DG-1: twoway's answer to a plot with no observation, at
         # export, and the line that names the plot.
         "_dash_zero_obs_check": ("test_wp37_truth.cscript:Q3701-3",),
+        "_dash_contour_gen": ("test_wp37_truth.cscript:Q3703-1",),
         "_dash_zo_line": ("test_wp37_truth.cscript:Q3701-3",),
         # e2e: sort(varlist)'s rank columns, against twoway's serset;
         # a dropped variable refused, and a __dashs variable (WP-29 P0.1).
@@ -724,6 +725,8 @@ COVERAGE = {
         # check (U11-06), the plot-type spellings (U11-04, direct).
         "_dash_fit_points_json": ("test_wp31_truth.cscript:U11-03",),
         "_dash_fit_panel_key": ("test_wp37_truth.cscript:Q3704-5",),
+        "_dash_cg_reset": ("test_wp37_truth.cscript:Q3703-1",),
+        "_dash_cg_take": ("test_wp37_truth.cscript:Q3703-1",),
         "_dash_fit_panel_add": ("test_wp37_truth.cscript:Q3704-5",),
         "_dash_fit_opt_bad": ("test_wp31_truth.cscript:U11-06",),
         "_dash_recast_canon": ("test_wp31_truth.cscript:U11-04",),

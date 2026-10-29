@@ -528,6 +528,7 @@ program define _dash_require_mata
         _dash_reserved_prefix _dash_esample_sub _dash_expr_words ///
         _dash_pyname ///
         _dash_zero_obs_rule _dash_zo_records ///
+        _dash_cg_reset _dash_cg_take ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
@@ -8896,6 +8897,211 @@ program define _dash_zero_obs_check
     }
 end
 
+// _dash_contour_gen <scalar> <name>  -- twoway's own contour polygons
+// (WP-37 TR-13), made at export in the frame the data are written from,
+// right after _dash_zero_obs_check: for each contour or contourline plot
+// of the graph whose JSON the string scalar <scalar> holds (no heatmap,
+// which twoway draws from another generator), over its rows -- the
+// plot's and the graph's qualifier columns, z, y and x not missing -- and
+// under by() over each panel's rows (and all of them for the Total
+// panel), twoway__contour_gen runs when the rows are a full grid (every
+// (x, y) pair once) or interp() reads as none, with at least 4 rows (3
+// under interp(none)) and 2 distinct x and y (D-37-03.f).  The cuts are
+// twoway's (D-37-03.b): ccuts(); levels(#); else the z axis's ticks --
+// _natscale's #5 (or zlabel(#N)), or a zlabel() numlist -- inside, the
+// first panel's rows under by() (measured: every by() panel is cut at the
+// first panel's cuts, contour_gen_truth.json sandstone.by); any other
+// zlabel() leaves the layer to dash's own fit.  The generator replaces
+// its frame's data, so each call runs on a copy (frame put) that is
+// dropped on every path; a filled layer with outlines, alpattern() or
+// sort runs it again with line for the boundary lines (D-37-03.h).  Its
+// rows go to the external Mata table _dash_cg_list (_dash_cg_take), which
+// _dash_fn_spec_tail writes as the spec's "contour_grids".  A generator
+// error leaves the layer (or panel) to dash's own fit, silently; Break is
+// passed on.  <name> is the graph's name ("" on the one-line route).
+program define _dash_contour_gen
+    version 19
+    args sc name
+    tempname zr zp
+    mata: `zp' = 0
+    mata: `zr' = _dash_zo_records(st_strscalar("`sc'"), `zp')
+    mata: st_local("_cg_n", strofreal(rows(`zr')))
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "qual_col", "_cg_gq")
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "by", "_cg_by")
+    mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "zlabel", "_cg_zl")
+    forvalues k = 1/`_cg_n' {
+        foreach key in type zvar yvar xvar qual_col levels ccuts minmax interp heatmap outlines alpattern sort {
+            mata: _dash_json_get_str(`zr'[`k'], "`key'", "_cg_`key'_`k'")
+        }
+    }
+    capture mata: mata drop `zr' `zp'
+    local _cg_types "contour contourline"
+    forvalues k = 1/`_cg_n' {
+        local t = strlower("`_cg_type_`k''")
+        if !`: list t in _cg_types' continue
+        if `"`_cg_heatmap_`k''"' != "" continue
+        local z `_cg_zvar_`k''
+        local y `_cg_yvar_`k''
+        local x `_cg_xvar_`k''
+        capture confirm numeric variable `z' `y' `x'
+        if _rc continue
+        // interp(): twoway reads an abbreviation of thinplatespline or
+        // shepard of four letters or more, anything else as none
+        // (_dash_contour_interp); a word with other characters is left
+        // to dash's own fit.
+        local ip `"`_cg_interp_`k''"'
+        if !ustrregexm(`"`ip'"', "^[A-Za-z]*$") continue
+        local none 0
+        if "`ip'" != "" {
+            local none 1
+            foreach full in thinplatespline shepard {
+                if strlen("`ip'") >= 4 & substr("`full'", 1, strlen("`ip'")) == "`ip'" local none 0
+            }
+        }
+        if "`ip'" == "" local ip thinplatespline
+        local line = cond("`t'" == "contourline", "line", "")
+        local bnd = ("`t'" == "contour" & `"`_cg_outlines_`k''`_cg_alpattern_`k''`_cg_sort_`k''"' != "")
+        tempvar s g r
+        quietly generate byte `s' = !missing(`z', `y', `x')
+        if "`_cg_qual_col_`k''" != "" quietly replace `s' = 0 if `_cg_qual_col_`k'' != 1
+        if "`_cg_gq'" != "" quietly replace `s' = 0 if `_cg_gq' != 1
+        local G 0
+        local tot 0
+        if `"`_cg_by'"' != "" {
+            tempname bt
+            mata: st_strscalar(st_local("bt"), st_local("_cg_by"))
+            _dash_by_parts `bt'
+            capture confirm variable `_by_vars'
+            if _rc {
+                drop `s'
+                continue
+            }
+            if !`_by_miss' {
+                foreach v of local _by_vars {
+                    quietly replace `s' = 0 if missing(`v')
+                }
+            }
+            quietly egen long `g' = group(`_by_vars') if `s', missing
+            quietly summarize `g', meanonly
+            local G = cond(r(N) > 0, r(max), 0)
+            local tot `_by_total'
+            local cutc "`g' == 1"
+        }
+        else local cutc "`s'"
+        // The cuts (D-37-03.b), over the first panel's rows under by().
+        tempname zmn zmx
+        quietly summarize `z' if `cutc'
+        if r(N) == 0 {
+            capture drop `s' `g'
+            continue
+        }
+        scalar `zmn' = r(min)
+        scalar `zmx' = r(max)
+        local cuts ""
+        local ok 1
+        if `"`_cg_ccuts_`k''"' != "" {
+            capture numlist `"`_cg_ccuts_`k''"', sort
+            if _rc local ok 0
+            else local cuts `r(numlist)'
+        }
+        else if real("`_cg_levels_`k''") >= 2 & real("`_cg_levels_`k''") < . {
+            local L = floor(real("`_cg_levels_`k''"))
+            forvalues i = 1/`=`L' - 1' {
+                local cuts `cuts' `=strofreal(`zmn' + `i' * (`zmx' - `zmn') / `L', "%21.17g")'
+            }
+            if `"`_cg_minmax_`k''"' != "" {
+                local cuts `=strofreal(`zmn', "%21.17g")' `cuts' `=strofreal(`zmx', "%21.17g")'
+            }
+        }
+        else {
+            local zl `"`_cg_zl'"'
+            mata: st_local("zl", strtrim(substr(st_local("zl"), 1, (strpos(st_local("zl"), ",") ? strpos(st_local("zl"), ",") - 1 : .))))
+            local ticks ""
+            local rule 1
+            if `"`zl'"' == "" | ustrregexm(`"`zl'"', "^#[0-9]+$") {
+                local nt = cond(`"`zl'"' == "", 5, real(substr(`"`zl'"', 2, .)))
+                capture _natscale `=`zmn'' `=`zmx'' `nt'
+                if _rc local ok 0
+                else {
+                    capture numlist "`r(min)'(`r(delta)')`r(max)'"
+                    if _rc local ok 0
+                    else local ticks `r(numlist)'
+                }
+            }
+            else if ustrregexm(`"`zl'"', "^[-+0-9.eE() ]+$") {
+                local rule = strpos(`"`zl'"', "(") > 0
+                capture numlist `"`zl'"', sort
+                if _rc local ok 0
+                else local ticks `r(numlist)'
+            }
+            else local ok 0
+            if `ok' {
+                local nt : word count `ticks'
+                if `rule' {
+                    if `nt' > 2 {
+                        forvalues i = 2/`=`nt' - 1' {
+                            local cuts `cuts' `: word `i' of `ticks''
+                        }
+                    }
+                }
+                else local cuts `ticks'
+                if "`cuts'" == "" local cuts `=strofreal(`zmx', "%21.17g")'
+            }
+        }
+        if !`ok' {
+            capture drop `s' `g'
+            continue
+        }
+        // One generator call per panel (key its by() values), the
+        // Total panel's over every row (key "total"), or the layer's.
+        quietly generate byte `r' = 0
+        local last = cond(`G' > 0, `G' + `tot', 1)
+        forvalues gi = 1/`last' {
+            if `G' == 0 {
+                quietly replace `r' = `s'
+                local key ""
+            }
+            else if `gi' <= `G' {
+                quietly replace `r' = (`g' == `gi')
+                mata: st_local("key", _dash_fit_panel_key(st_local("_by_vars"), st_local("g"), `gi'))
+            }
+            else {
+                quietly replace `r' = `s'
+                local key "total"
+            }
+            // The gate (D-37-03.f): a full grid, or interp(none).
+            tempname gm
+            mata: `gm' = st_data(., ("`x'", "`y'"), "`r'")
+            mata: st_local("N", strofreal(rows(`gm')))
+            mata: st_local("nx", strofreal(rows(uniqrows(`gm'[., 1]))))
+            mata: st_local("ny", strofreal(rows(uniqrows(`gm'[., 2]))))
+            mata: st_local("nxy", strofreal(rows(uniqrows(`gm'))))
+            capture mata: mata drop `gm'
+            local grid = (`N' == `nx' * `ny' & `nxy' == `N')
+            if !((`grid' & `N' >= 4 & `nx' >= 2 & `ny' >= 2) | (`none' & `N' >= 3 & `nx' >= 2 & `ny' >= 2)) continue
+            tempname f lf
+            local lfr ""
+            quietly frame put `z' `y' `x' if `r', into(`f')
+            capture frame `f': twoway__contour_gen `z' `y' `x', cuts(`cuts') gen(__cgz __cgy __cgx __cgl) interp(`ip') `line'
+            local rc = _rc
+            if !`rc' & `bnd' {
+                quietly frame put `z' `y' `x' if `r', into(`lf')
+                capture frame `lf': twoway__contour_gen `z' `y' `x', cuts(`cuts') gen(__cgz __cgy __cgx __cgl) interp(`ip') line
+                local rc = _rc
+                local lfr "`lf'"
+            }
+            if !`rc' {
+                capture mata: _dash_cg_take(st_local("name"), `k', st_local("key"), st_local("cuts"), ("`line'" != ""), st_local("f"), `N', st_local("lfr"))
+                local rc = _rc
+            }
+            capture frame drop `f'
+            capture frame drop `lf'
+            if `rc' == 1 exit 1
+        }
+        capture drop `s' `g' `r'
+    }
+end
+
 // ================================================================
 // _dash_sort_gen <cmdname>  -- sort(varlist)'s rank columns, made in Stata
 //
@@ -12928,6 +13134,17 @@ program define _dash_render_immediate
             _dash_tmp_close, dir(`"`_dash_run'"')
             exit `_dt_rc'
         }
+        // WP-37 TR-13: twoway's own contour polygons, made in the same
+        // frame (_dash_contour_gen); only a Break stops the export.
+        mata: _dash_cg_reset()
+        capture `_xfp' _dash_contour_gen `_zo_sc' ""
+        if _rc == 1 {
+            capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            if "`_dash_es'" != "" capture drop `_dash_es'
+            capture frame drop `_dash_xf'
+            _dash_tmp_close, dir(`"`_dash_run'"')
+            exit 1
+        }
         local _dst_names json_spec
         local _dash_st_json ""
         // WP-31 D15: Stata's own #N ticks over each axis's rows, asked of
@@ -14814,6 +15031,17 @@ program define _dash_prepare_spec, rclass
             capture noisily frame `_dash_stk': _dash_zero_obs_check `_zo_sc' "`_zo_g'" 0 "`_fof_`_zok''"
             if _rc exit _rc
         }
+        // WP-37 TR-13: twoway's own contour polygons, from the stack
+        // (_dash_contour_gen); only a Break stops the export.
+        mata: _dash_cg_reset()
+        forvalues _zok = 1/`ntok_reg' {
+            local _zo_g : word `_zok' of `registry'
+            if "${dash_img_`_zo_g'}" == "1" | "${dash_kpi_`_zo_g'}" == "1" continue
+            if !`: length local _qg_`_zok'' continue
+            mata: st_strscalar(st_local("_zo_sc"), st_local("_qg_`_zok'"))
+            capture frame `_dash_stk': _dash_contour_gen `_zo_sc' "`_zo_g'"
+            if _rc == 1 exit 1
+        }
         frame `_dash_stk': _dash_formats_json "`all_vars' `_dash_split_vars'" _dash_fmt_json _dash_date_vars _dash_bcal_json
         if `_dts_n' + `_dwx_n' > 0 {
             frame `_dash_stk': mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
@@ -14924,6 +15152,22 @@ program define _dash_prepare_spec, rclass
                 if "`_dash_es'" != "" capture drop `_dash_es'
                 capture frame drop `_dash_xf'
                 exit `_dt_rc'
+            }
+        }
+        // WP-37 TR-13: twoway's own contour polygons, made in the same
+        // frame (_dash_contour_gen); only a Break stops the export.
+        mata: _dash_cg_reset()
+        forvalues _zok = 1/`ntok_reg' {
+            local _zo_g : word `_zok' of `registry'
+            if "${dash_img_`_zo_g'}" == "1" | "${dash_kpi_`_zo_g'}" == "1" continue
+            if !`: length local _qg_`_zok'' continue
+            mata: st_strscalar(st_local("_zo_sc"), st_local("_qg_`_zok'"))
+            capture `_xfp' _dash_contour_gen `_zo_sc' "`_zo_g'"
+            if _rc == 1 {
+                capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+                if "`_dash_es'" != "" capture drop `_dash_es'
+                capture frame drop `_dash_xf'
+                exit 1
             }
         }
         local _dst_names ""
