@@ -999,6 +999,7 @@ and now matches Stata.
 - lfit and lfitci with xlog or xtransform() drew a straight line and named the option; they draw twoway's fit on the transformed x, once in each by() panel, and qfit, qfitci and fpfitci take the two options without a note, as twoway does (WP-37, stat:PT-12)
 - lfit mpg weight, estopts(nocons) by(foreign) (and every fit with estopts(), predopts() or estcmd() under by()) drew the whole sample's fit in each panel; each panel draws the fit of its own rows, as twoway does (WP-37, stat:PT-12)
 - The help said Stata's lpolyci band at a grid point whose pilot has no residual degrees of freedom is round-off, often missing; it now says twoway can draw no band there or a very wide one that rescales the y axis (lpolyci mpg weight, degree(3): -50.75 to 74.75), where dash draws zero width, and lists the difference under Differences from twoway (WP-37, stat:PT-16)
+- The estimators' numeric limits were stated in the help but not listed under Differences from twoway; they now are, each with its measured value: lpoly's default bandwidth at degree 2 and 3 (120.7932 against Stata's 120.7929 at degree(2)), at degree 6 and 7 (386.3 against 390.0) and at degree 8 (400.94 against 484.23), three exact-polynomial cases, fpfit on a date-time x and dot's dots above 2,000,000 (WP-37, DT-26)
 
 ### Fixed in WP-36
 

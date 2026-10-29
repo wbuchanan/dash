@@ -1473,4 +1473,6 @@ class TestInternalLinksResolve:
         # 137 -> 138 links: stat:PT-16 the Differences entry lpolyci where
         # the pilot has no residual degrees of freedom links Statistical
         # Layer Options (WP-37 37-05).
-        assert len(refs) == 138 and len(set(refs)) == 49
+        # 138 -> 139 links: DT-26 the Differences entry Numeric limits of
+        # the estimators links Statistical Layer Options (WP-37 37-05).
+        assert len(refs) == 139 and len(set(refs)) == 49

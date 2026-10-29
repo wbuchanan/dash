@@ -391,7 +391,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-8 Tracked:** Open (WP-37 section 37-02).
 - **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit pending.
 - **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit pending.
-- **DT-26 Tracked:** Open (WP-37 section 37-05).
+- **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit pending.
 - **stat:PT-21 Tracked:** Open (WP-37 section 37-05).
 - **syn:SD-17 Tracked:** Open (WP-38 section 38-01).
 - **GW-12 Tracked:** Open (WP-38 section 38-01).

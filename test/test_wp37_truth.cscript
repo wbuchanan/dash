@@ -950,6 +950,19 @@ def _w37s05_zero_df(fixture):
     except Exception as e:
         _w37s05_M.setGlobal("w37s05_tw", "error")
         _w37s05_M.setGlobal("w37s05_dw", "error " + str(e)[:200])
+
+
+def _w37s05_rot(degree):
+    """Global w37s05_h: dash's default lpoly bandwidth of mpg on weight in
+    memory at *degree*, epanechnikov (GlyphMapper's rule of thumb)."""
+    try:
+        dr = _w37s05_render()
+        h = dr.GlyphMapper._default_lpoly_bwidth(
+            _w37s05_col("weight"), _w37s05_col("mpg"), None, int(degree),
+            "epanechnikov")
+        _w37s05_M.setGlobal("w37s05_h", repr(float(h)))
+    except Exception as e:
+        _w37s05_M.setGlobal("w37s05_h", "error " + str(e)[:200])
 end
 
 * ==== S05 stat:PT-16: lpolyci with no residual df ====
@@ -975,6 +988,32 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
     _w37_expect Q3705-1 `"(abs(real("`s05_dw'")) < 1e-9)"' "dash's band width is `s05_dw', not 0"
     _w37_done Q3705-1 "at weight 4714.29 twoway draws -50.75 to 74.75 and dash a zero-width band"
     macro drop w37s05_tw w37s05_dw
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
+* ==== S05 DT-26: numeric limits ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3705-2: the help's degree-8 numbers.  lpoly mpg weight,
+    // degree(8)'s r(bwidth) is 484.23 in Stata, and dash's default
+    // bandwidth there is 400.94 (both to 0.01).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily lpoly mpg weight, degree(8) nograph
+    local s05_rc = _rc
+    local s05_sh = r(bwidth)
+    python: _w37s05_rot(8)
+    local s05_dh "${w37s05_h}"
+    display as text "Q3705-2: Stata r(bwidth) `s05_sh' (rc `s05_rc'); dash `s05_dh'"
+    _w37_expect Q3705-2 "(`s05_rc' == 0)" "lpoly ..., degree(8) rc `s05_rc'"
+    _w37_expect Q3705-2 "(abs(`s05_sh' - 484.23) < .01)" "Stata's r(bwidth) is `s05_sh', not 484.23"
+    _w37_expect Q3705-2 `"(abs(real("`s05_dh'") - 400.94) < .01)"' "dash's bandwidth is `s05_dh', not 400.94"
+    _w37_done Q3705-2 "degree 8: Stata's bandwidth `s05_sh', dash's `s05_dh'"
+    macro drop w37s05_h
     display as text "S05 end " c(current_date) " " c(current_time)
 }
 * ==== end S05 ====

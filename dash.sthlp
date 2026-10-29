@@ -1236,8 +1236,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:yaxis()} and {cmd:xaxis()} 1, 2 or both ({cmd:yaxis(1 2)} draws
     the layer on both axes, a list read as {cmd:twoway} reads it);
     {cmd:degree()} 0 or more, as {cmd:twoway} takes it (above 7 it is
-    drawn with a note that the result can differ from Stata's, fitted at
-    most at degree 30 and never above the distinct x values less one, and
+    drawn with a note that the result can differ from Stata's (measured
+    at degree 8 on {cmd:lpoly mpg weight}: a bandwidth of 400.94 where
+    Stata's is 484.23), fitted at most at degree 30 and never above the distinct x values less one, and
     on the saved page kept as built and marked after a filter move);
     {cmd:n()} 1 to 10000, 1 to 300 on {cmd:mspline}, and up to 10000 on
     {cmd:mband}, where one below 1 draws its default; {cmd:bin()} 1
@@ -1488,6 +1489,13 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}11.  {ul:lpolyci where the pilot has no residual degrees of freedom.}
     {cmd:dash} draws zero width where {cmd:twoway} may draw a very wide
     band; see {help dash##smoother_options:Statistical layer options}.
+
+{phang2}12.  {ul:Numeric limits of the estimators.}  {cmd:lpoly}'s default
+    bandwidth at degree 2 and 3 (in its last digits) and at degree 6 and
+    above, three exact-polynomial cases, {cmd:fpfit} on a date-time
+    {it:x}, and {cmd:dot}'s dots above 2,000,000 differ from Stata's by
+    the measured amounts in
+    {help dash##smoother_options:Statistical layer options}.
 
 
 {marker subcommands}
@@ -4087,11 +4095,17 @@ degree p+3 in powers of x, where p is the degree and an even degree uses
 the next odd one, with Stata's handling of nearly collinear powers; the
 residual variance as the weighted mean squared residual of that fit; the
 squared (p+1)th derivative of the fit integrated over the central 90% of
-the range of x; and Stata's constant for the kernel.  At degree 4 and 5
+the range of x; and Stata's constant for the kernel.  At degree 2 and 3
+Stata's round-off shows only in the last digits
+({cmd:lpoly mpg weight, degree(2)}: 120.7932 where {cmd:r(bwidth)} is
+120.7929), and a point of the curve differs from Stata's by less than
+5e-6 of its value.  At degree 4 and 5
 the bandwidth is Stata's to 5e-4; at degree 6 and 7, where that global
 polynomial is of degree 9 or 10 in raw powers, Stata's own round-off is
 not reproduced and the bandwidth agrees to about 1%
-({cmd:lpoly mpg weight, degree(6)}: 386.3 where {cmd:r(bwidth)} is 390.0).
+({cmd:lpoly mpg weight, degree(6)}: 386.3 where {cmd:r(bwidth)} is 390.0);
+above degree 7 the two part further (degree 8: 400.94 where {cmd:r(bwidth)}
+is 484.23), and the layer is drawn with a note.
 The bandwidth is
 computed from the rows each layer draws: each {cmd:by()} panel and each
 {cmd:if} or {cmd:in} gets its own, and the served app recomputes it from
