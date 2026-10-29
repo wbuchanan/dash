@@ -997,6 +997,7 @@ and now matches Stata.
 - The help, README and package did not say that dash has run only on macOS arm64 with StataNow 19.5 from the console; they now say that Windows, Linux, Intel macOS and Stata's graphical interface have not been run (WP-36, plat:PT-5)
 - The help and README did not say that dash's claim to take twoway's place holds only from Stata 19, where twoway runs on older releases; they now do, beside the r(9) refusal of an older Stata (WP-36, plat:PT-2)
 - The help's Dependencies section did not say it lists everything dash needs, and said the Python must be linked by hand; it now says nothing else is needed, that Stata finds the Python or uses the one python set exec names, and that dash_setup reports an old numpy or pandas without upgrading it (WP-36, plat:PT-11)
+- dash_setup's help did not say which Pythons and platforms the hash-pinned lock covers; it names Python 3.11 to 3.14 on five platforms and says Python 3.15 and Windows on ARM64 are not covered (WP-36, plat:PT-12)
 
 ### Fixed in WP-35
 

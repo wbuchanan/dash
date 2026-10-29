@@ -423,6 +423,28 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w36_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 plat:PT-12: the lock's coverage ====
+local only : env WP36_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w36_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3604-3: dash_setup's help names the Pythons and platforms of the
+    // lock's two header lines; lines 6 and 7 of dash_requirements.txt
+    // are exactly those the sentence lists.
+    // ------------------------------------------------------------
+    capture mata: st_local("s04_n", strofreal(rows(cat("../dash_requirements.txt"))))
+    _w36_expect Q3604-3 "(_rc == 0 & 0`s04_n' >= 7)" "dash_requirements.txt not read (rc `=_rc', `s04_n' lines)"
+    capture mata: st_local("s04_py", cat("../dash_requirements.txt")[6])
+    capture mata: st_local("s04_pf", cat("../dash_requirements.txt")[7])
+    _w36_expect Q3604-3 `"("`s04_py'" == "# pythons: 3.11 3.12 3.13 3.14")"' "line 6 reads `s04_py'"
+    _w36_expect Q3604-3 `"("`s04_pf'" == "# platforms: macos-arm64 macos-x86_64 linux-x86_64 linux-aarch64 windows-amd64")"' "line 7 reads `s04_pf'"
+    _w36_done Q3604-3 "the lock covers Python 3.11 to 3.14 on the five platforms the help names"
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

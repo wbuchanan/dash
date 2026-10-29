@@ -4796,11 +4796,11 @@
   - Suggested fix: Documented only (Q49, M8): the help lists the dependencies, and nothing else changes.
   - Resolution: Documented 29oct2026 (WP-36, plat:PT-11). dash.sthlp, Dependencies: the intro opens "These are all {cmd:dash} needs: no other program, package or service." and ends "a Python you install yourself -- Stata finds it, or uses the one {cmd:python set exec} names:"; the Python 3.11+ item reads "the one {cmd:python set exec} names, or, with none set, the one Stata finds"; the required-packages item (bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3) adds "{helpb dash_setup} reports a numpy or pandas older than its minimum and does not upgrade it."; no install advice beyond the list (Q49). Pinned by test/test_help_environment.py::TestTheDependencies. Closes GAPS4 plat:PT-11 (WP-36, plat:PT-11).
 
-- [ ] Title: The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route
+- [x] Title: The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route
   - File Names and Line Numbers: dash_requirements.txt:6-7, 11, 83, 600; dash_setup_lib.py:54, 430-437; no Python ceiling
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-12; confirmed; tracked: generic in dash_setup.sthlp; specifics untracked. Registered as GAPS4 plat:PT-12 (WP-36, section 36-04, Document).
   - Suggested fix: Documented only (Q33, M8): dash_setup's help states the Pythons and platform tags the lock covers, and that Python 3.15 and Windows ARM64 are not covered.
-  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Documented 29oct2026 (WP-36, plat:PT-12). dash_setup.sthlp, The hash-pinned lock: the lock covers "Python 3.11, 3.12, 3.13 and 3.14 on five platforms: macOS arm64 and x86_64, Linux x86_64 and aarch64, and Windows x86_64 (the {cmd:# pythons:} and {cmd:# platforms:} lines at the top of {cmd:dash_requirements.txt})", and on another platform or Python pip stops, "this includes Python 3.15 and later and Windows on ARM64, which the lock does not cover". Pinned by test/test_help_environment.py::TestTheLock, test/test_wp36_truth.cscript Q3604-3. Closes GAPS4 plat:PT-12 (WP-36, plat:PT-12).
 
 - [ ] Title: saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative
   - File Names and Line Numbers: dash.ado:756-763; dash_parse.mata:1455-1475; [U] 11.6.2

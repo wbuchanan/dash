@@ -93,14 +93,18 @@ own {cmd:pip} settings -- an index, a proxy -- still apply.
 lines of {cmd:dash_requirements.txt}, shipped beside {cmd:dash_setup.ado}:
 each package {cmd:dash} needs, at the newest version its test suites run
 under, and each of their dependencies, pinned with {cmd:==} to one release and to the sha256 hash of every wheel of it, for
-Python 3.11 to 3.14 on macOS (arm64 and x86_64), Linux (x86_64 and
-aarch64) and Windows (x86_64).  {cmd:pip} refuses a file whose hash is not
+Python 3.11, 3.12, 3.13 and 3.14 on five platforms: macOS arm64 and
+x86_64, Linux x86_64 and aarch64, and Windows x86_64 (the
+{cmd:# pythons:} and {cmd:# platforms:} lines at the top of
+{cmd:dash_requirements.txt}).  {cmd:pip} refuses a file whose hash is not
 listed, so the index cannot hand {cmd:dash_setup} anything else.  The
 lines are the missing package's and those of each dependency that is not
 installed: a package already installed is left as it is, and one whose
 installed version does not meet a missing package's needs makes {cmd:pip}
 stop, naming it, rather than replace it.  On another platform or Python
-there is no wheel to match and {cmd:pip} stops; install by hand as below.
+there is no wheel to match and {cmd:pip} stops; this includes Python 3.15
+and later and Windows on ARM64, which the lock does not cover; install by
+hand as below.
 The lock is written by {cmd:scripts/make_requirements_lock.py} in
 {cmd:dash}'s source repository, never by hand; to regenerate it after the
 minimums change, or for a release, run

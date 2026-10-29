@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'plat:PT-12': 'The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route',
     'plat:PT-6': "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\\' as relative",
     'plat:PT-16': "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified",
     'plat:PT-14': 'Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size',

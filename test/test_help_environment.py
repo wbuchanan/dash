@@ -207,3 +207,33 @@ class TestTheDependencies:
                 in _readme_requirements())
         assert ("Requires: Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, "
                 "pandas>=2.3." in _pkg_description())
+
+
+def _lock_paragraph():
+    return _flat(_between(_setup_help(), "{ul:The hash-pinned lock.}",
+                          "\n\n"))
+
+
+class TestTheLock:
+    """plat:PT-12: the hash-pinned lock covers Python 3.11-3.14 on five
+    platform tags; Python 3.15 and Windows ARM64 are not covered (probe:
+    test_wp36_truth.cscript Q3604-3)."""
+
+    def test_the_coverage(self):
+        lock = _lock_paragraph()
+        assert ("for Python 3.11, 3.12, 3.13 and 3.14 on five platforms: "
+                "macOS arm64 and x86_64, Linux x86_64 and aarch64, and "
+                "Windows x86_64 (the {cmd:# pythons:} and "
+                "{cmd:# platforms:} lines at the top of "
+                "{cmd:dash_requirements.txt})") in lock, lock
+        assert ("On another platform or Python there is no wheel to match "
+                "and {cmd:pip} stops; this includes Python 3.15 and later "
+                "and Windows on ARM64, which the lock does not cover;") \
+            in lock, lock
+
+    def test_it_matches_the_lock_header(self):
+        lines = _requirements().split("\n")
+        assert lines[5] == "# pythons: 3.11 3.12 3.13 3.14", lines[5]
+        assert lines[6] == ("# platforms: macos-arm64 macos-x86_64 "
+                            "linux-x86_64 linux-aarch64 windows-amd64"), \
+            lines[6]
