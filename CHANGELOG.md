@@ -1003,6 +1003,7 @@ and now matches Stata.
 - rarea with cmissing(n) drew its outline across the gaps; the outline breaks where the fill does (WP-37, DG-5)
 - A contour over too few points for a surface drew no colour key; it draws the key from its levels, as twoway does (WP-37, DG-8)
 - contour and contourline over more than 1,000 points drew an approximate surface even on a full grid (every sandstone example), under by() as well; on a full grid or with interp(none) they draw twoway's own polygons, in each by() panel from its own rows, and after a filter move that leaves rows out the saved page and the served app draw dash's own surface of the rows kept and mark it (unfiltered) (WP-37, TR-13)
+- contour's outlines and heatmap were accepted and drew nothing: dash never wrote them to the spec; heatmap draws the surface's cells, and outlines outlines the colour key's boxes in black and leaves the plot as it is, as twoway draws it (dash drew the bands' boundaries black in the plot), in the saved page, the served app and after a move; contourline takes both and draws nothing different, as twoway does (WP-37, TR-13a)
 
 ### Fixed in WP-36
 

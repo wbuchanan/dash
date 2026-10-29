@@ -220,10 +220,12 @@ class TestTheRenderer:
         assert sorted(drawn[np.isfinite(drawn)].tolist()) == sorted(
             v for v in np.asarray(xs, float).tolist() if v == v)
 
-    @pytest.mark.parametrize("opt", [{"outlines": "outlines"},
-                                     {"alpattern": "dash"},
+    # Flipped (WP-37 TR-13a): outlines draws no boundary lines -- twoway
+    # outlines the colour key's boxes and leaves the plot as it is
+    # (contour_outlines_truth.json; test_contour_outlines.py).
+    @pytest.mark.parametrize("opt", [{"alpattern": "dash"},
                                      {"sort": "sort"}],
-                             ids=["outlines", "alpattern", "sort"])
+                             ids=["alpattern", "sort"])
     def test_boundary_lines_come_from_the_grid(self, mode, opt):
         cg = _obj("grid40", lines="grid40.line")
         spec = tp._spec([_plot("contour", dict(opt, contour_gen=cg))])
@@ -236,13 +238,9 @@ class TestTheRenderer:
             np.testing.assert_array_equal(np.asarray(a, float), b)
         assert _lines(d) == _T["grid40.line"]["lines_per_cut"]
         med = float(dr.OptionTranslator.translate_lwidth("medium"))
-        if "outlines" in opt:
-            assert list(d["line_color"]) == ["#000000"] * 3
-            assert [float(w) for w in d["line_width"]] == [2 * med] * 3
-        else:
-            assert [float(w) for w in d["line_width"]] == [
-                med * dr._DASH_CONTOUR_HAIRLINE] * 3
-            assert all(list(p) for p in d["line_dash"])
+        assert [float(w) for w in d["line_width"]] == [
+            med * dr._DASH_CONTOUR_HAIRLINE] * 3
+        assert all(list(p) for p in d["line_dash"])
 
     def test_horizontal_swaps(self, mode):
         spec = tp._spec([_plot("contour", {"contour_gen": _obj("grid40"),
@@ -293,9 +291,10 @@ class TestTheRenderer:
 
     def test_a_malformed_object_falls_back(self, mode):
         """One note, dash's own fit; also a filled object with no lines on
-        an outlines layer."""
+        an alpattern() layer.  Flipped (WP-37 TR-13a): the second case was
+        an outlines layer, which draws no boundary lines now."""
         for opts in ({"contour_gen": {"cuts": "x", "n": 1600}},
-                     {"contour_gen": _obj("grid40"), "outlines": "outlines"}):
+                     {"contour_gen": _obj("grid40"), "alpattern": "dash"}):
             spec = tp._spec([_plot("contour", opts)])
             [fig], msgs = _figs_msgs(mode, spec, _grid_df())
             notes = [m for m in msgs if "cannot be read" in m]
@@ -402,7 +401,7 @@ def _page(ptype, side=20, n=None, opts=None):
     key = "grid40" if ptype == "contour" else "grid40.line"
     cg = _obj(key, n=side * side if n is None else n)
     o = dict(opts or {})
-    if o.get("outlines"):
+    if o.get("alpattern"):
         cg["lines"] = {k: _obj("grid40.line")[k]
                        for k in ("x", "y", "z", "levels")}
     o["contour_gen"] = cg
@@ -492,15 +491,17 @@ class TestTheSavedPage:
             assert list(a["levels"]) == list(b["levels"])
         assert _cue_on(r)
 
-    @pytest.mark.parametrize("part", ["bands", "outlines"])
+    # Flipped (WP-37 TR-13a): the boundary-line case is alpattern(), as
+    # outlines draws no boundary lines now.
+    @pytest.mark.parametrize("part", ["bands", "alpattern"])
     def test_a_move_back_draws_the_polygons(self, part):
-        opts = {"outlines": "outlines"} if part == "outlines" else {}
+        opts = {"alpattern": "dash"} if part == "alpattern" else {}
         spec, df = _page("contour", opts=opts)
         r = jo._saved(spec, df, labels=True)
         built = {k: list(v) for k, v in _fill(r).items()}
         lines = ({k: list(v) for k, v in
                   _fill(r, "line", "dash_contour_lines").items()}
-                 if part == "outlines" else None)
+                 if part == "alpattern" else None)
         bar = r.figures and [m for f in jo._saved_figs(r)
                              for side in (f.right, f.left, f.above, f.below,
                                           f.center) for m in side

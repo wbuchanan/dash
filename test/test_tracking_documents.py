@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'TR-13a': "contour's outlines and heatmap are accepted but never reach the renderer, so neither is drawn; dash's outlines drawing strokes the bands' boundaries in the plot, where twoway outlines only the colour key's boxes",
     'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',
     'GW-12': 'A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)',
     'ECO-1': 'A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)',

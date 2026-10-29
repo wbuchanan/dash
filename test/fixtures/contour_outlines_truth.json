@@ -1,0 +1,1312 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "fe63092408ba3b9d80a25100dcd07e6404a7c27f",
+  "extracted": "29 Oct 2026 17:19:24",
+  "scheme": "stcolor (s2.*: s2color)",
+  "source": "scripts/extract_contour_outlines_truth.do",
+  "stata_version": "19.5"
+ },
+ "au.default": {
+  "command": "twoway contour price mpg weight",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 2518,
+  "plot_filled_rects": 1301,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "81df68691c26081db4b4a6d37c35f8f0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 1169,
+   "#00ff00 6.00": 1026,
+   "#ff0000 6.00": 323
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "au.outlines"
+  ]
+ },
+ "au.heatmap": {
+  "command": "twoway contour price mpg weight, heatmap",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 2292,
+  "plot_filled_rects": 1344,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "adacae463fd645daaf80963781616847",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 1108,
+   "#00ff00 6.00": 899,
+   "#ff0000 6.00": 285
+  },
+  "rc": 0,
+  "same_plot_as": []
+ },
+ "au.heatmap_none": {
+  "command": "twoway contour price mpg weight, heatmap interp(none)",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 116,
+  "plot_filled_rects": 74,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "752c17997d7f72ae919f874d59d7db28",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 62,
+   "#00ff00 6.00": 39,
+   "#ff0000 6.00": 15
+  },
+  "rc": 0,
+  "same_plot_as": []
+ },
+ "au.line": {
+  "command": "twoway contourline price mpg weight",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 458,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 754,
+  "plot_lines_md5": "796598a43f2a85d98842e6dd47500ece",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "au.line_heatmap",
+   "au.line_outlines"
+  ]
+ },
+ "au.line_heatmap": {
+  "command": "twoway contourline price mpg weight, heatmap",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 458,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 754,
+  "plot_lines_md5": "796598a43f2a85d98842e6dd47500ece",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "au.line",
+   "au.line_outlines"
+  ]
+ },
+ "au.line_outlines": {
+  "command": "twoway contourline price mpg weight, outlines",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 458,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 754,
+  "plot_lines_md5": "796598a43f2a85d98842e6dd47500ece",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "au.line",
+   "au.line_heatmap"
+  ]
+ },
+ "au.none": {
+  "command": "twoway contour price mpg weight, interp(none)",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 516,
+  "plot_filled_rects": 287,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "b3989a53fdd917b89cf0a9bf5b6e622d",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 273,
+   "#00ff00 6.00": 183,
+   "#ff0000 6.00": 60
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "au.outlines_none"
+  ]
+ },
+ "au.outlines": {
+  "command": "twoway contour price mpg weight, outlines",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 2518,
+  "plot_filled_rects": 1301,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "81df68691c26081db4b4a6d37c35f8f0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 1169,
+   "#00ff00 6.00": 1026,
+   "#ff0000 6.00": 323
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "au.default"
+  ]
+ },
+ "au.outlines_none": {
+  "command": "twoway contour price mpg weight, outlines interp(none)",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 516,
+  "plot_filled_rects": 287,
+  "plot_lines": 252,
+  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
+  "plot_md5": "b3989a53fdd917b89cf0a9bf5b6e622d",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 273,
+   "#00ff00 6.00": 183,
+   "#ff0000 6.00": 60
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "au.none"
+  ]
+ },
+ "g5.default": {
+  "command": "twoway contour z y x",
+  "cuts": [
+   2.0,
+   4.0,
+   6.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#aaff00",
+    "rect": 1,
+    "stroke": "#aaff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffaa",
+    "rect": 1,
+    "stroke": "#00ffaa",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 26,
+  "plot_filled_rects": 24,
+  "plot_lines": 330,
+  "plot_lines_md5": "10decdf3241e607a752ea879f9766cf5",
+  "plot_md5": "283c97bb3fb1436917c15c75a15847bf",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 3,
+   "#00ffaa 6.00": 10,
+   "#aaff00 6.00": 10,
+   "#ff0000 6.00": 3
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "g5.outlines"
+  ]
+ },
+ "g5.heatmap": {
+  "command": "twoway contour z y x, heatmap",
+  "cuts": [
+   2.0,
+   4.0,
+   6.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#aaff00",
+    "rect": 1,
+    "stroke": "#aaff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffaa",
+    "rect": 1,
+    "stroke": "#00ffaa",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 36,
+  "plot_filled_rects": 25,
+  "plot_lines": 330,
+  "plot_lines_md5": "10decdf3241e607a752ea879f9766cf5",
+  "plot_md5": "4bba24dbd6a51805565e91d5106dd767",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 4,
+   "#00ffaa 6.00": 10,
+   "#aaff00 6.00": 13,
+   "#ff0000 6.00": 9
+  },
+  "rc": 0,
+  "same_plot_as": []
+ },
+ "g5.outlines": {
+  "command": "twoway contour z y x, outlines",
+  "cuts": [
+   2.0,
+   4.0,
+   6.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#aaff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ffaa",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 26,
+  "plot_filled_rects": 24,
+  "plot_lines": 330,
+  "plot_lines_md5": "10decdf3241e607a752ea879f9766cf5",
+  "plot_md5": "283c97bb3fb1436917c15c75a15847bf",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 3,
+   "#00ffaa 6.00": 10,
+   "#aaff00 6.00": 10,
+   "#ff0000 6.00": 3
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "g5.default"
+  ]
+ },
+ "s2.default": {
+  "command": "twoway contour price mpg weight",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 2518,
+  "plot_filled_rects": 1304,
+  "plot_lines": 0,
+  "plot_lines_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_md5": "4f8001c97fbde9d77217ec5a7ef26621",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 1169,
+   "#00ff00 6.00": 1026,
+   "#ff0000 6.00": 323
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "s2.outlines"
+  ]
+ },
+ "s2.outlines": {
+  "command": "twoway contour price mpg weight, outlines",
+  "cuts": [
+   5000.0,
+   10000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 17.28
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 17.28
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 17.28
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 2518,
+  "plot_filled_rects": 1304,
+  "plot_lines": 0,
+  "plot_lines_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_md5": "4f8001c97fbde9d77217ec5a7ef26621",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 1169,
+   "#00ff00 6.00": 1026,
+   "#ff0000 6.00": 323
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "s2.default"
+  ]
+ },
+ "ss.alpattern": {
+  "command": "twoway contour depth northing easting, alpattern(dash)",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#ffff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#00ffff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 6774,
+  "plot_black_strokes": 0,
+  "plot_filled": 5668,
+  "plot_filled_rects": 0,
+  "plot_lines": 29398,
+  "plot_lines_md5": "16c63e64774829120e0758ed7346e445",
+  "plot_md5": "1e17ec649f5e857d3cc2dbf8aaf3e9a3",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 152,
+   "#00ff00 6.00": 2188,
+   "#00ffff 6.00": 315,
+   "#ff0000 6.00": 443,
+   "#ffff00 6.00": 2570
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.outlines_alpattern"
+  ]
+ },
+ "ss.ccuts": {
+  "command": "twoway contour depth northing easting, ccuts(7600(100)8000)",
+  "cuts": [
+   7600.0,
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffcc00",
+    "rect": 1,
+    "stroke": "#ffcc00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#65ff00",
+    "rect": 1,
+    "stroke": "#65ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff65",
+    "rect": 1,
+    "stroke": "#00ff65",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00cbff",
+    "rect": 1,
+    "stroke": "#00cbff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12444,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "6422cbbbada888e7c6cbd0b76f2c4cd3",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 32,
+   "#00cbff 6.00": 320,
+   "#00ff65 6.00": 753,
+   "#65ff00 6.00": 4721,
+   "#ff0000 6.00": 1052,
+   "#ffcc00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.outlines_ccuts"
+  ]
+ },
+ "ss.default": {
+  "command": "twoway contour depth northing easting",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#ffff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#00ffff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12442,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "1d51e957083ee5e2e11abc7836b4c4b0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 350,
+   "#00ff00 6.00": 4721,
+   "#00ffff 6.00": 753,
+   "#ff0000 6.00": 1052,
+   "#ffff00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.none",
+   "ss.outlines",
+   "ss.outlines_none"
+  ]
+ },
+ "ss.heatmap": {
+  "command": "twoway contour depth northing easting, heatmap",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#ffff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#00ffff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12460,
+  "plot_filled_rects": 6400,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "ce3b0e4393ca7ebfb9b5f07ab0c93f33",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 379,
+   "#00ff00 6.00": 4687,
+   "#00ffff 6.00": 744,
+   "#ff0000 6.00": 1110,
+   "#ffff00 6.00": 5540
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.outlines_heatmap"
+  ]
+ },
+ "ss.heatmap_ccuts": {
+  "command": "twoway contour depth northing easting, heatmap ccuts(7600(100)8000)",
+  "cuts": [
+   7600.0,
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffcc00",
+    "rect": 1,
+    "stroke": "#ffcc00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#65ff00",
+    "rect": 1,
+    "stroke": "#65ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff65",
+    "rect": 1,
+    "stroke": "#00ff65",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00cbff",
+    "rect": 1,
+    "stroke": "#00cbff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12449,
+  "plot_filled_rects": 6400,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "b9e66d35a7ee07f451fdd1297012062d",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 36,
+   "#00cbff 6.00": 332,
+   "#00ff65 6.00": 744,
+   "#65ff00 6.00": 4687,
+   "#ff0000 6.00": 1110,
+   "#ffcc00 6.00": 5540
+  },
+  "rc": 0,
+  "same_plot_as": []
+ },
+ "ss.line": {
+  "command": "twoway contourline depth northing easting",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 575,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 889,
+  "plot_lines_md5": "85fcc0e4b772ea69d799e52c6b3f415e",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "ss.line_heatmap",
+   "ss.line_outlines"
+  ]
+ },
+ "ss.line_heatmap": {
+  "command": "twoway contourline depth northing easting, heatmap",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 575,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 889,
+  "plot_lines_md5": "85fcc0e4b772ea69d799e52c6b3f415e",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "ss.line",
+   "ss.line_outlines"
+  ]
+ },
+ "ss.line_outlines": {
+  "command": "twoway contourline depth northing easting, outlines",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [],
+  "malformed": 0,
+  "plot_black_strokes": 575,
+  "plot_filled": 0,
+  "plot_filled_rects": 0,
+  "plot_lines": 889,
+  "plot_lines_md5": "85fcc0e4b772ea69d799e52c6b3f415e",
+  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "plot_stroke_kinds": {},
+  "rc": 0,
+  "same_plot_as": [
+   "ss.line",
+   "ss.line_heatmap"
+  ]
+ },
+ "ss.none": {
+  "command": "twoway contour depth northing easting, interp(none)",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#ff0000",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#ffff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#00ff00",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#00ffff",
+    "stroke_width": 6.0
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#0000ff",
+    "stroke_width": 6.0
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12442,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "1d51e957083ee5e2e11abc7836b4c4b0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 350,
+   "#00ff00 6.00": 4721,
+   "#00ffff 6.00": 753,
+   "#ff0000 6.00": 1052,
+   "#ffff00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.default",
+   "ss.outlines",
+   "ss.outlines_none"
+  ]
+ },
+ "ss.outlines": {
+  "command": "twoway contour depth northing easting, outlines",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12442,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "1d51e957083ee5e2e11abc7836b4c4b0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 350,
+   "#00ff00 6.00": 4721,
+   "#00ffff 6.00": 753,
+   "#ff0000 6.00": 1052,
+   "#ffff00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.default",
+   "ss.none",
+   "ss.outlines_none"
+  ]
+ },
+ "ss.outlines_alpattern": {
+  "command": "twoway contour depth northing easting, outlines alpattern(dash)",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 6774,
+  "plot_black_strokes": 0,
+  "plot_filled": 5668,
+  "plot_filled_rects": 0,
+  "plot_lines": 29398,
+  "plot_lines_md5": "16c63e64774829120e0758ed7346e445",
+  "plot_md5": "1e17ec649f5e857d3cc2dbf8aaf3e9a3",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 152,
+   "#00ff00 6.00": 2188,
+   "#00ffff 6.00": 315,
+   "#ff0000 6.00": 443,
+   "#ffff00 6.00": 2570
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.alpattern"
+  ]
+ },
+ "ss.outlines_ccuts": {
+  "command": "twoway contour depth northing easting, outlines ccuts(7600(100)8000)",
+  "cuts": [
+   7600.0,
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#ffcc00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#65ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff65",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00cbff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12444,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "6422cbbbada888e7c6cbd0b76f2c4cd3",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 32,
+   "#00cbff 6.00": 320,
+   "#00ff65 6.00": 753,
+   "#65ff00 6.00": 4721,
+   "#ff0000 6.00": 1052,
+   "#ffcc00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.ccuts"
+  ]
+ },
+ "ss.outlines_heatmap": {
+  "command": "twoway contour depth northing easting, outlines heatmap",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12460,
+  "plot_filled_rects": 6400,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "ce3b0e4393ca7ebfb9b5f07ab0c93f33",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 379,
+   "#00ff00 6.00": 4687,
+   "#00ffff 6.00": 744,
+   "#ff0000 6.00": 1110,
+   "#ffff00 6.00": 5540
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.heatmap"
+  ]
+ },
+ "ss.outlines_none": {
+  "command": "twoway contour depth northing easting, outlines interp(none)",
+  "cuts": [
+   7700.0,
+   7800.0,
+   7900.0,
+   8000.0
+  ],
+  "key_boxes": [
+   {
+    "fill": "#ff0000",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#ffff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ff00",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#00ffff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   },
+   {
+    "fill": "#0000ff",
+    "rect": 1,
+    "stroke": "#000000",
+    "stroke_width": 19.44
+   }
+  ],
+  "malformed": 0,
+  "plot_black_strokes": 0,
+  "plot_filled": 12442,
+  "plot_filled_rects": 6336,
+  "plot_lines": 270,
+  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
+  "plot_md5": "1d51e957083ee5e2e11abc7836b4c4b0",
+  "plot_stroke_kinds": {
+   "#0000ff 6.00": 350,
+   "#00ff00 6.00": 4721,
+   "#00ffff 6.00": 753,
+   "#ff0000 6.00": 1052,
+   "#ffff00 6.00": 5566
+  },
+  "rc": 0,
+  "same_plot_as": [
+   "ss.default",
+   "ss.none",
+   "ss.outlines"
+  ]
+ }
+}

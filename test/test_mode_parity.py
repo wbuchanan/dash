@@ -2936,6 +2936,18 @@ CORPUS = [
               {"key": [0], "grid": _tr13_grid(5)},
               {"key": [1], "grid": _tr13_grid(5)}]}})],
           go={"by": "foreign"}),
+    # WP-37 TR-13a: outlines outlines the key, heatmap draws its cells,
+    # contourline draws as without them -- from Stata's polygons and
+    # from dash's own fit.
+    _case("TR-13a: contour outlines from Stata's polygons",
+          [plot_for("contour", {"contour_gen": _tr13_grid(10),
+                                "outlines": "outlines"})]),
+    _case("TR-13a: contour heatmap outlines",
+          [plot_for("contour", {"heatmap": "heatmap",
+                                "outlines": "outlines"})]),
+    _case("TR-13a: contourline outlines heatmap",
+          [plot_for("contourline", {"heatmap": "heatmap",
+                                    "outlines": "outlines"})]),
     # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
     _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
     # WP-35 DT-19: a spec whose working-column prefix is not the default
@@ -4283,6 +4295,12 @@ MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
 MOVE_CORPUS.append(_move_case(
     "TR-13: contour from Stata's polygons, dropdown to Foreign", _MOVES[0],
     [_tr13_plot()]))
+
+# WP-37 TR-13a: an outlined contour key after a move, one key line per
+# level in both modes.
+MOVE_CORPUS.append(_move_case(
+    "TR-13a: contour outlines, dropdown to Foreign", _MOVES[0],
+    [plot_for("contour", {"outlines": "outlines"})]))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

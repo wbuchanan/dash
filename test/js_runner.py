@@ -173,8 +173,11 @@ def stand_in(m, models, objs):
     if isinstance(m, GlyphRenderer):
         # Its source and glyph too (WP-32): the colour relevel reads the
         # source's colour column and recolours a key's swatch glyph.
+        # Its string tags (WP-37 TR-13a): the refit finds an outlined
+        # contour key's line renderer by its tag.
         return {"__type__": "GlyphRenderer", "muted": bool(m.muted),
                 "visible": bool(m.visible),
+                "tags": [t for t in (m.tags or []) if isinstance(t, str)],
                 "data_source": encode(m.data_source, models, objs),
                 "glyph": encode(m.glyph, models, objs)}
     if isinstance(m, Title):
@@ -252,9 +255,12 @@ def stand_in(m, models, objs):
     # WP-31 B4d: a contour's colour key, whose levels, ticker and labels
     # the refit writes.
     if type(m).__name__ == "ContourColorBar":
+        # Its line renderer (WP-37 TR-13a): an outlined key's, whose
+        # source the refit sizes to the levels.
         return {"__type__": "ContourColorBar",
                 "levels": [plain(v) for v in (m.levels or [])],
                 "ticker": encode(m.ticker, models, objs),
+                "line_renderer": encode(m.line_renderer, models, objs),
                 "major_label_overrides": {
                     str(k): v for k, v in
                     dict(m.major_label_overrides or {}).items()}}

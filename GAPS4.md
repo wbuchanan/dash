@@ -389,7 +389,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-1 Tracked:** Closed in WP-37, BUGS.md "contour over zero observations crashes with a Python traceback, r(7102)", commit f878d35.
 - **DG-5 Tracked:** Closed in WP-37, BUGS.md "rarea with cmissing(n) draws its bound outlines across the gaps", commit 5769631.
 - **TR-13 Tracked:** Closed in WP-37, BUGS.md "contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter", commit 3a5ac88.
-- **TR-13a Tracked:** Open (WP-37 section 37-06).
+- **TR-13a Tracked:** Closed in WP-37, BUGS.md "contour's outlines and heatmap are accepted but never reach the renderer, so neither is drawn; dash's outlines drawing strokes the bands' boundaries in the plot, where twoway outlines only the colour key's boxes", commit pending.
 - **DG-8 Tracked:** Closed in WP-37, BUGS.md "A contour with no surface (two observations) draws no colour key", commit 32fc0ba.
 - **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit d3f9f82.
 - **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit 702c99b.

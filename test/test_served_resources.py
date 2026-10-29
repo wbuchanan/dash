@@ -602,7 +602,11 @@ _SAVED_DIGEST = (
     # branch writes a Stata-grid layer's build back (ac.stata_n; filter
     # JS text only, the page draws no contour); the same under both
     # Pythons.
-    "fefad145d18893d65122a50b272c8fbd065db7a6bd6f2f89afd5322c9488242f")
+    # fefad145... -> 104e1ca0...: WP-37 TR-13a, the filter code's contour
+    # key sizes an outlined key's line source to its levels (filter JS
+    # text only: the base's tree with only this hunk gives the new
+    # digest); the same under both Pythons.
+    "104e1ca0eb321f2921f97bb5d6a313089bd51870e2198a9c88ec386c38aab2c7")
 
 
 # ===========================================================================

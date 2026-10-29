@@ -916,7 +916,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # parser).
     # 180 -> 182: WP-37 stat:PT-12 the note on the xlog and xtransform()
     # s() returns (two).
-    assert comments == {"_dash_parse_plot_opts": 182,
+    # 182 -> 183: WP-37 TR-13a the note that heatmap and outlines reach the
+    # spec under their own names (one more line).
+    assert comments == {"_dash_parse_plot_opts": 183,
                         "_dash_parse_graph_opts": 79}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

@@ -33,7 +33,7 @@ FUNCTIONS = {
  'GlyphMapper._fit_agg_config': 'test/test_js_fit_refit.py::TestTheConfig::test_lfit_config_keys',
  'GlyphMapper._fit_agg_config.<locals>._axis': 'test/test_js_fit_refit.py::TestTheConfig::test_date_kinds',
  'GlyphMapper._contour_parts': 'test/test_noted_drawn.py::TestContourParts::test_heatmap_draws_cells',
- 'GlyphMapper._contour_parts.<locals>._style': 'test/test_noted_drawn.py::TestContourParts::test_outlines_are_black_and_twice_medium',
+ 'GlyphMapper._contour_parts.<locals>._style': 'test/test_contour_gen.py::TestTheRenderer::test_boundary_lines_come_from_the_grid',
  '_dash_contour_heat_cells': 'test/test_noted_drawn.py::TestContourParts::test_heatmap_draws_cells',
  '_dash_contour_heat_cells.<locals>._edges': 'test/test_noted_drawn.py::TestContourHeatCells::test_cells_end_half_way_between_nodes',
  '_dash_contour_parts': 'test/test_noted_drawn.py::TestContourParts::test_alpattern_and_sort_dash_a_hairline',

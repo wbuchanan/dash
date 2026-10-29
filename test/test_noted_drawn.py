@@ -257,7 +257,8 @@ class TestContourParts:
     them on a grid (measured 19oct2026, graph export SVG): heatmap fills
     each node's cell -- to the midpoints between nodes, the grid's ends at
     its edge -- in its level's colour in place of the bands; outlines
-    strokes the bands' boundaries black at twice a medium line; alpattern()
+    leaves the plot as it is (WP-37 TR-13a: it outlines the key's boxes,
+    test_contour_outlines.py); alpattern()
     dashes their hairline boundaries (twoway's .001 line, a third of a
     medium one in its SVG), and sort draws what alpattern(dash) draws."""
 
@@ -281,19 +282,13 @@ class TestContourParts:
         assert np.all(R > L)
         assert not [n for n in notes if "heatmap" in n]
 
-    def test_outlines_are_black_and_twice_medium(self, mode):
+    def test_outlines_outlines_the_key_not_the_plot(self, mode):
+        """Flipped (WP-37 TR-13a): outlines drew the bands' boundaries black
+        at twice a medium line; twoway draws the plot as without it and
+        outlines the colour key's boxes (contour_outlines_truth.json)."""
         rs, notes = self._figs(mode, {"outlines": "outlines"})
         cs = _contours(rs)
-        assert len(cs) == 2, cs
-        lines = cs[1].line_renderer
-        cols = lines.data_source.data.get("line_color") or [
-            lines.glyph.line_color]
-        assert set(map(str.lower, map(str, cols))) == {"#000000"}
-        import dash_render as dr
-        med = dr.OptionTranslator.translate_lwidth("medium")
-        ws = lines.data_source.data.get("line_width") or [
-            lines.glyph.line_width]
-        assert all(abs(float(w) - 2 * med) < 1e-6 for w in ws)
+        assert len(cs) == 1, cs
         assert not [n for n in notes if "outlines" in n]
 
     @pytest.mark.parametrize("o", [{"alpattern": "dash"}, {"sort": "sort"}])

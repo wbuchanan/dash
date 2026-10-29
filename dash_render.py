@@ -24641,7 +24641,9 @@ class GlyphMapper:
         # weight in 1/2: 4,000 to 4,800, titled Price).
         if (not lines_only and not _no_rows and math.isfinite(zmin)
                 and math.isfinite(zmax)):
-            self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
+            self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax,
+                              outlined=_dash_contour_parts(options)[
+                                  "outlines"])
         elif not lines_only and _no_rows:
             self._contour_key_empty(fig, cr, zvar)
         return [cr] + _extra + [hull]
@@ -24657,11 +24659,14 @@ class GlyphMapper:
           place of the bands (the bands drawn transparent, kept for the
           key and the refit), a Quad over the upright grid that the
           layer's transpose turns (:func:`_dash_contour_heat_cells`);
-        - ``outlines``: the bands' boundaries black at twice a medium line;
         - ``alpattern()`` and ``sort``: the boundaries' hairline (twoway's
           .001 line, a third of a medium one in its SVG) in their levels'
           colours, dashed in alpattern()'s pattern, sort as
           ``alpattern(dash)``.
+
+        ``outlines`` draws nothing here: twoway outlines the colour key's
+        boxes and leaves the plot as it is (WP-37 TR-13a, measured
+        29oct2026; :meth:`_contour_key`).
 
         Each part's source is refitted by the saved page after a move
         (``_dash_agg_config`` part "heat" or "line") and redrawn by the
@@ -24703,8 +24708,6 @@ class GlyphMapper:
             n = len(cuts)
 
             def _style(k):
-                if parts["outlines"]:
-                    return ["#000000"] * k, [2.0 * med] * k
                 cols = _dash_contour_colours(
                     options, k + 1, self.scheme,
                     parse=lambda t: self.tr.parse_color_alpha(
@@ -24820,8 +24823,20 @@ class GlyphMapper:
                 "kfmt": _dash_dp_fmt(_dash_key_format(self.z_options)[0],
                                      getattr(self, "dp", "period"))}
 
-    def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax) -> None:
-        """contour's colour key (WP-31 B4b): see :meth:`map_contour`."""
+    def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax,
+                     outlined=False) -> None:
+        """contour's colour key (WP-31 B4b): see :meth:`map_contour`.
+
+        *outlined* (``outlines``, WP-37 TR-13a): twoway strokes each of the
+        key's boxes black at twice a medium line, clipped to the box (19.44
+        SVG units under stcolor, 17.28 under s2color, where a box is
+        otherwise stroked in its own colour), and draws the plot as without
+        it (contour_outlines_truth.json).  The bar is outlined black at a
+        medium line, and a line renderer of its own, one empty line per
+        level, strokes each level across it -- the boxes' edges; it is no
+        renderer of the figure, so the plot shows nothing of it.
+        :func:`_dash_contour_bar_follow` and the page's refit keep it one
+        line per level, as BokehJS requires."""
         from bokeh.models import FixedTicker
         cb = cr.construct_color_bar(
             title=_dash_var_label(self.variable_labels, zvar, zvar))
@@ -24836,6 +24851,19 @@ class GlyphMapper:
             except (AttributeError, ValueError, TypeError):
                 pass
         cb.width = 12
+        if outlined:
+            from bokeh.models import GlyphRenderer, MultiLine
+            med = float(OptionTranslator.translate_lwidth("medium"))
+            cb.bar_line_color = "#000000"
+            cb.bar_line_width = med
+            n = len(cb.levels)
+            cb.line_renderer = GlyphRenderer(
+                glyph=MultiLine(xs="xs", ys="ys", line_color="#000000",
+                                line_width=med),
+                data_source=ColumnDataSource(
+                    {"xs": [[] for _ in range(n)],
+                     "ys": [[] for _ in range(n)]}),
+                tags=["dash_contour_keylines"])
         fmt, _bad = _dash_key_format(self.z_options)
         pos, ovr = _dash_key_ticks([t for t in ticks if lo <= t <= hi], "",
                                    fmt, dp=getattr(self, "dp", "period"))
@@ -29639,7 +29667,8 @@ def _dash_contour_bar_follow(bar, levels, ticks, overrides):
     range once, from the levels it is first drawn with, so the cuts are
     held inside them, and only the ticks between them are kept.  The
     level count always becomes the bands' count plus one, which BokehJS
-    requires to paint the bar.
+    requires to paint the bar, and an outlined key's line renderer one
+    line per level.
     """
     from bokeh.models import FixedTicker
     e0, e1 = float(bar.levels[0]), float(bar.levels[-1])
@@ -29653,6 +29682,12 @@ def _dash_contour_bar_follow(bar, levels, ticks, overrides):
     bar.major_label_overrides = {
         float(k): v for k, v in dict(overrides or {}).items()
         if float(k) in keep}
+    # An outlined key (WP-37 TR-13a) strokes one line per level.
+    lr = getattr(bar, "line_renderer", None)
+    if lr is not None and "dash_contour_keylines" in (lr.tags or []):
+        n = len(bar.levels)
+        lr.data_source.data = {"xs": [[] for _ in range(n)],
+                               "ys": [[] for _ in range(n)]}
 
 
 def _dash_contour_colours(options, n_levels, scheme, parse=None):
@@ -29709,9 +29744,10 @@ _DASH_CONTOUR_HAIRLINE = 3.0 / 9.72
 def _dash_contour_parts(options):
     """What contour draws besides its bands (WP-32): ``{"heat", "lines",
     "outlines", "dash"}`` -- heatmap's cells; boundary lines under
-    outlines, alpattern() or sort; outlines' black; the boundary's Bokeh
-    dash list (alpattern()'s pattern, sort's that of ``dash``), or None
-    for a solid one."""
+    alpattern() or sort; outlines' black key (WP-37 TR-13a: twoway draws
+    no boundary under outlines, it outlines the key's boxes); the
+    boundary's Bokeh dash list (alpattern()'s pattern, sort's that of
+    ``dash``), or None for a solid one."""
     o = options or {}
     on = lambda k: bool(str(o.get(k, "") or "").strip())  # noqa: E731
     alp = str(o.get("alpattern", "") or "").strip()
@@ -29726,7 +29762,7 @@ def _dash_contour_parts(options):
     if dash is not None and not list(dash):
         dash = None
     return {"heat": on("heatmap"),
-            "lines": on("outlines") or bool(alp) or on("sort"),
+            "lines": bool(alp) or on("sort"),
             "outlines": on("outlines"), "dash": dash}
 
 
@@ -29738,13 +29774,15 @@ def _dash_contour_gen_of(options):
     ``{"cuts": [..], "line": 0|1, "x", "y", "z", "levels": [..], "n": N}``
     -- the generator's four columns, null where Stata has missing, and N
     the rows it was given -- with, on a filled object whose layer draws
-    boundary lines (outlines, alpattern() or sort), ``"lines"``: the
+    boundary lines (alpattern() or sort), ``"lines"``: the
     generator's ``line`` output at the same cuts (D-37-03.h).  Returns it
     when its columns are equal-length lists of numbers or None, its cuts a
     list of numbers and its n a whole number; None when the layer has
     none.  A malformed object -- or a by() panels object that reached the
     mapper unpicked -- is None with one note, and dash's own fit draws the
-    layer.  Never with heatmap, which twoway draws from another generator.
+    layer.  Never a filled object with heatmap, which twoway draws from
+    another generator; contourline's line object is read with heatmap,
+    which contourline ignores (WP-37 TR-13a).
     """
     o = options or {}
     cg = o.get("contour_gen")
@@ -29773,7 +29811,7 @@ def _dash_contour_gen_of(options):
           and float(cg["n"]) == int(cg["n"]) and cg.get("line") in (0, 1))
     if ok and not cg["line"] and _dash_contour_parts(o)["lines"]:
         ok = _cols(cg.get("lines"))
-    if ok and _dash_contour_parts(o)["heat"]:
+    if ok and not cg["line"] and _dash_contour_parts(o)["heat"]:
         ok = False
     if not ok:
         _dash_warn_once(("contour-gen-bad",),
@@ -35596,6 +35634,12 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             if (_kb && _kb.levels && _kb.levels.length >= 2) {
                 const e0 = _kb.levels[0], e1 = _kb.levels[_kb.levels.length - 1];
                 _kb.levels = [e0].concat(_cuts.map(c => Math.min(Math.max(c, e0), e1)), [e1]);
+                // An outlined key (WP-37 TR-13a): one line per level.
+                const _kl = _kb.line_renderer;
+                if (_kl && Array.isArray(_kl.tags) && _kl.tags.indexOf('dash_contour_keylines') >= 0 && _kl.data_source) {
+                    const _kn = _kb.levels.length;
+                    _kl.data_source.data = {xs: Array.from({length: _kn}, () => []), ys: Array.from({length: _kn}, () => [])};
+                }
                 if (_ticks !== null && ac.rule.kind !== 'cuts' && ac.rule.kind !== 'ticks') {
                     const _kt = _ticks.filter(t => t >= e0 && t <= e1 && t >= _lo && t <= _hi);
                     if (_kb.ticker) _kb.ticker.ticks = _kt;

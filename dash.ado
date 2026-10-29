@@ -1530,8 +1530,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
     // WP-31 B4b: contour's heatmap drawing and its band outlines.
     // WP-32: heatmap and outlines are drawn on contour as twoway draws
-    // them (map_contour's _contour_parts) and change nothing on
-    // contourline: not named.
+    // them (map_contour's _contour_parts and _contour_key) and change
+    // nothing on contourline: not named.  They reach the spec under their
+    // own names (WP-37 TR-13a; s(_heatmap) and s(_outlines) never did).
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -1640,8 +1641,8 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidths         : copy local clwidths
     sreturn local clpatterns       : copy local clpatterns
     sreturn local reversekey       : copy local reversekey
-    sreturn local _heatmap         : copy local heatmap
-    sreturn local _outlines        : copy local outlines
+    sreturn local heatmap          : copy local heatmap
+    sreturn local outlines         : copy local outlines
     sreturn local colorlines       : copy local colorlines
     sreturn local _le_typed        : copy local _dash_le_typed
     sreturn local gap              : copy local gap
@@ -2891,8 +2892,7 @@ program define _dash_contour_check, sclass
     local zo_flags "minmax reversekey heatmap outlines colorlines"
     if !inlist("`own'", "contour", "contourline") {
         foreach o of local zo {
-            local _zs = cond(inlist("`o'", "heatmap", "outlines"), "_`o'", "`o'")
-            mata: st_local("_zv", strofreal(st_global("s(`_zs')") != ""))
+            mata: st_local("_zv", strofreal(st_global("s(`o')") != ""))
             if `_zv' {
                 local _zp = cond(`: list o in zo_flags', "", "()")
                 display as error "option `o'`_zp' not allowed"
@@ -5824,6 +5824,7 @@ program define _dash_plot_opts_to_json, rclass
                    gap baroffset area boundary droplines nodropbase ///
                    ccuts levels minmax crule scolor ecolor ccolors clabels ///
                    format interp clwidths clpatterns reversekey colorlines ///
+                   heatmap outlines ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -8900,8 +8901,9 @@ end
 // _dash_contour_gen <scalar> <name>  -- twoway's own contour polygons
 // (WP-37 TR-13), made at export in the frame the data are written from,
 // right after _dash_zero_obs_check: for each contour or contourline plot
-// of the graph whose JSON the string scalar <scalar> holds (no heatmap,
-// which twoway draws from another generator), over its rows -- the
+// of the graph whose JSON the string scalar <scalar> holds (no contour
+// with heatmap, which twoway draws from another generator; contourline
+// ignores heatmap, as twoway does), over its rows -- the
 // plot's and the graph's qualifier columns, z, y and x not missing -- and
 // under by() over each panel's rows (and all of them for the Total
 // panel), twoway__contour_gen runs when the rows are a full grid (every
@@ -8913,8 +8915,9 @@ end
 // first panel's cuts, contour_gen_truth.json sandstone.by); any other
 // zlabel() leaves the layer to dash's own fit.  The generator replaces
 // its frame's data, so each call runs on a copy (frame put) that is
-// dropped on every path; a filled layer with outlines, alpattern() or
-// sort runs it again with line for the boundary lines (D-37-03.h).  Its
+// dropped on every path; a filled layer with alpattern() or sort runs it
+// again with line for the boundary lines (D-37-03.h; outlines draws none,
+// WP-37 TR-13a).  Its
 // rows go to the external Mata table _dash_cg_list (_dash_cg_take), which
 // _dash_fn_spec_tail writes as the spec's "contour_grids".  A generator
 // error leaves the layer (or panel) to dash's own fit, silently; Break is
@@ -8939,7 +8942,7 @@ program define _dash_contour_gen
     forvalues k = 1/`_cg_n' {
         local t = strlower("`_cg_type_`k''")
         if !`: list t in _cg_types' continue
-        if `"`_cg_heatmap_`k''"' != "" continue
+        if "`t'" == "contour" & `"`_cg_heatmap_`k''"' != "" continue
         local z `_cg_zvar_`k''
         local y `_cg_yvar_`k''
         local x `_cg_xvar_`k''
@@ -8960,7 +8963,7 @@ program define _dash_contour_gen
         }
         if "`ip'" == "" local ip thinplatespline
         local line = cond("`t'" == "contourline", "line", "")
-        local bnd = ("`t'" == "contour" & `"`_cg_outlines_`k''`_cg_alpattern_`k''`_cg_sort_`k''"' != "")
+        local bnd = ("`t'" == "contour" & `"`_cg_alpattern_`k''`_cg_sort_`k''"' != "")
         tempvar s g r
         quietly generate byte `s' = !missing(`z', `y', `x')
         if "`_cg_qual_col_`k''" != "" quietly replace `s' = 0 if `_cg_qual_col_`k'' != 1
