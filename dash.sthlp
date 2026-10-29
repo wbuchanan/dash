@@ -1472,6 +1472,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:r(9)}, where {cmd:twoway} runs; see
     {help dash##dependencies:Dependencies}.
 
+{phang2}10.  {ul:Large data take time and memory.}  A million rows take
+    seconds and about 1.5 GB of Stata's memory to build; see
+    {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3176,6 +3180,13 @@ about 2 GB of memory to render, and Chrome, the browser dash is tested in,
 cannot hold a page much past 512 MB.  To make a page smaller, reduce the
 data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or {cmd:collapse},
 inside {cmd:preserve} and {cmd:restore}.
+
+{pstd}
+{ul:Large data.}  A million observations of one {it:y} and one {it:x} take
+about 8 seconds to build in the first command of a session, as Python
+starts, and about 6 seconds in the next, about 1.5 GB of Stata's memory at
+the peak, and make a page of about 48 MB: the page holds each column as a
+list of numbers written as text (measured on macOS arm64, StataNow 19.5).
 
 {pstd}
 {ul:WebGL.}  A graph that draws more than 10,000 rows is drawn with WebGL,

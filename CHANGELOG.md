@@ -1000,6 +1000,7 @@ and now matches Stata.
 - dash_setup's help did not say which Pythons and platforms the hash-pinned lock covers; it names Python 3.11 to 3.14 on five platforms and says Python 3.15 and Windows on ARM64 are not covered (WP-36, plat:PT-12)
 - The help did not say how saving() reads a tilde; it says only a leading ~/ is expanded, from HOME, and that ~\ is an ordinary path, relative to the working directory on Windows (WP-36, plat:PT-6)
 - The help, README and package said a saved page works "in any modern browser"; they say it is tested in Google Chrome (WP-36, plat:PT-16)
+- The help did not say how long a million rows take or how much memory; Resource limits states about 8 s for the first command of a session, about 6 s after, about 1.5 GB of Stata's memory and a 48 MB page, measured (WP-36, plat:PT-14)
 
 ### Fixed in WP-35
 

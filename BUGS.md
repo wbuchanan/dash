@@ -4814,11 +4814,11 @@
   - Suggested fix: Documented only (M8): the help states that Chrome is the browser dash is tested in.
   - Resolution: Documented 29oct2026 (WP-36, plat:PT-16). dash.sthlp, Description: "The HTML file works offline -- no server, internet connection, or special software is required.  {cmd:dash} is tested in Google Chrome; a page that misbehaves in another browser is outside what {cmd:dash} supports."; Differences from twoway item 1 ends "opened offline in a browser; {cmd:dash} is tested in Google Chrome only."; README.md and dash.pkg say the saved page opens offline and is tested in Google Chrome; no other browser is named (A1). Pinned by test/test_help_environment.py::TestTheBrowser. Closes GAPS4 plat:PT-16 (WP-36, plat:PT-16).
 
-- [ ] Title: Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size
+- [x] Title: Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size
   - File Names and Line Numbers: probe1/probe2 timings and RSS; q1.html CDS entries; dash_render.py:2279
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-14; confirmed; tracked: untracked. Registered as GAPS4 plat:PT-14 (WP-36, section 36-04, Document).
   - Suggested fix: Documented only (Q31, M8): page columns stay JSON number lists; the help states the measured timings and memory (about 6-8 s and 1.4 GB of Stata memory per million rows).
-  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Documented 29oct2026 (WP-36, plat:PT-14). dash.sthlp, Resource limits, the new Large data paragraph before WebGL: a million observations of one y and one x take about 8 seconds to build in the first command of a session, as Python starts, and about 6 seconds in the next, about 1.5 GB of Stata's memory at the peak, and make a page of about 48 MB, the page holding each column as a list of numbers written as text; re-measured at 0b7e01a (cold 8.14 s, warm 5.67 s, peak RSS 1,654,489,088 bytes, page 47,794,355 bytes; the audit's 7.99 s, 5.58 s and 1.44 GB at 7dced3a); Differences from twoway item 10, Large data take time and memory, links Resource limits. The export is unchanged (Q31). Pinned by test/test_help_environment.py::TestLargeData. Closes GAPS4 plat:PT-14 (WP-36, plat:PT-14).
 
 - [x] Title: WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's
   - File Names and Line Numbers: dash_render.py:5567, 63396, 70285; px_L02.png (SwiftShader only)

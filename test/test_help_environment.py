@@ -286,3 +286,27 @@ class TestTheBrowser:
             flat = _flat(text).lower()
             assert "modern browser" not in flat, name
             assert "any browser" not in flat, name
+
+
+class TestLargeData:
+    """plat:PT-14: Resource limits states the time, Stata's peak memory and
+    the page size a million rows of one y and one x take, as measured at
+    the batch-36.2 base, and that the page holds numbers as text lists."""
+
+    def test_the_timings(self):
+        limits = _between(_help(), "{marker limits}", "{ul:WebGL.}")
+        para = _flat(_between(limits, "{ul:Large data.}", "{pstd}"))
+        assert len(re.findall(r"about \d+ seconds", para)) == 2, para
+        assert re.search(r"about \d\.\d GB of Stata's memory at the peak",
+                         para), para
+        assert re.search(r"a page of about \d+ MB", para), para
+        assert ("the page holds each column as a list of numbers written "
+                "as text (measured on macOS arm64, StataNow 19.5).") \
+            in para, para
+
+    def test_the_differences_entry(self):
+        entry = _differences_entry("Large data take time and memory.")
+        assert re.search(r"A million rows take seconds and about \d\.\d GB "
+                         r"of Stata's memory to build; see "
+                         r"\{help dash##limits:Resource limits\}\.", entry), \
+            entry

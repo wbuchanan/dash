@@ -383,7 +383,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-12 Tracked:** Documented in WP-36, BUGS.md "The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route", commit pending.
 - **plat:PT-6 Tracked:** Documented in WP-36, BUGS.md "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative", commit pending.
 - **plat:PT-16 Tracked:** Documented in WP-36, BUGS.md "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified", commit pending.
-- **plat:PT-14 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit pending.
 - **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
 - **DG-1 Tracked:** Open (WP-37 section 37-01).
 - **DG-5 Tracked:** Open (WP-37 section 37-02).

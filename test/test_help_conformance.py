@@ -1463,4 +1463,6 @@ class TestInternalLinksResolve:
         # later links Dependencies (WP-36 36-04).
         # 135 -> 136 links: plat:PT-6 the saving() characters paragraph's
         # tilde rule links Dependencies (WP-36 36-04).
-        assert len(refs) == 136 and len(set(refs)) == 49
+        # 136 -> 137 links: plat:PT-14 the Differences entry Large data
+        # take time and memory links Resource limits (WP-36 36-04).
+        assert len(refs) == 137 and len(set(refs)) == 49
