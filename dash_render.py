@@ -23018,8 +23018,30 @@ class GlyphMapper:
             if str(options.get(_src, "") or "").strip():
                 _lo[_dst] = options[_src]
         _outlines = []
+        _fd = source.data
         for _yb in (y1var, y2var):
-            _o = fig.line(x=xvar, y=_yb, source=source,
+            _osrc = source
+            if _expand and _cmiss == "n":
+                # cmissing(n) (WP-37 DG-5): twoway strokes each polygon
+                # on its own (area_cmissing_truth.json R02, R03), so each
+                # bound is a source of its own over the fill's vertices,
+                # stair corners included, missing at each gap's
+                # zero-height pair -- the outline breaks where the fill
+                # does and a lone row is one vertex, drawn as nothing.
+                # The saved page rebuilds it after a move from its
+                # _dash_join record (brk: _FILTER_JS's
+                # dash_fill_rebuild_kept writes NaN at those pairs).
+                _od = {xvar: _dash_float_values(_fd[xvar]),
+                       _yb: np.where(_col, np.nan,
+                                     _dash_float_values(_fd[_yb]))}
+                if _ROW_ID_COLUMN in _fd:
+                    _od[_ROW_ID_COLUMN] = list(_fd[_ROW_ID_COLUMN])
+                _osrc = ColumnDataSource(_od)
+                if _gap_rid is not None:
+                    _osrc._dash_join = dict(_dash_fill_join(
+                        xvar, (_yb,), _yb, _style, _cmiss, _cols[xvar],
+                        _ok, _gap_rid), brk=True)
+            _o = fig.line(x=xvar, y=_yb, source=_osrc,
                           line_color=_b["line"],
                           line_alpha=(1.0 if _b.get("line_alpha") is None
                                       else _b["line_alpha"]),
@@ -32131,6 +32153,9 @@ function dash_fill_rebuild_kept(od, spec, rowId, keep) {
     const st = (spec.style === "stairstep" || spec.style === "stepstair") ? spec.style : "direct";
     const vt = dash_fill_vertices(xfin, ok, st, spec.cmiss === "n" ? "n" : "y");
     const yc = spec.ycols || [], pin = spec.pin;
+    // rarea's outline under cmissing(n) (WP-37 DG-5, spec.brk): the
+    // zero-height pairs are breaks, NaN in spec.ycols, not the pin.
+    const brk = spec.brk === true;
     const out = {};
     for (const c of cols) {
         dash_own_col(out, c);
@@ -32139,7 +32164,7 @@ function dash_fill_rebuild_kept(od, spec, rowId, keep) {
         for (let k = 0; k < vt.xi.length; k++) {
             const xr = vt.xi[k], yr = vt.yi[k], z = vt.col[k];
             if (c === spec.x) o.push(xs[xr]);
-            else if (isy) o.push(z ? od[pin][rows[yr]] : src[rows[yr]]);
+            else if (isy) o.push(z ? (brk ? NaN : od[pin][rows[yr]]) : src[rows[yr]]);
             else o.push((xr === yr && !z) ? src[rows[yr]] : null);
         }
     }

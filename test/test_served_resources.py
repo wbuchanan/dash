@@ -594,7 +594,11 @@ _SAVED_DIGEST = (
     # row-id fallback (filter and relevel JS text only: the base's
     # _DASH_FILTER_MASK_JS, _FILTER_JS, _DASH_CSV_SAVED_JS and
     # _DASH_CVAR_RELEVEL_JS give the old digest on the new tree).
-    "ac323e8cb968112b72b483cf0c106bedadd3d49168304d1079ec5ef02d57e671")
+    # ac323e8c... -> 0cc24f13...: WP-37 DG-5, the filter code's
+    # dash_fill_rebuild_kept writes NaN at a rarea outline's gap pairs
+    # (spec.brk; filter JS text only: the base's _FILTER_JS gives the old
+    # digest on the new tree); the same under both Pythons.
+    "0cc24f1305a275b8dd8f110dc5e70c829eaa91372db17d6e6a7a12f6d3fbc189")
 
 
 # ===========================================================================

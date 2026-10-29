@@ -50,7 +50,10 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import test_bar_range_geometry as bg  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from test_join_order import _served_figs, _served_move, _write  # noqa: E402
+from conftest import render_models  # noqa: E402
+from js_runner import fit_helpers_js, requires_node, run_js  # noqa: E402
+from test_join_order import (_saved_figs, _saved_move, _served_figs,  # noqa: E402
+                             _served_move, _write)
 
 _REPO = os.path.join(_HERE, "..")
 with open(os.path.join(_HERE, "fixtures", "area_cmissing_truth.json"),
@@ -174,6 +177,30 @@ def _truth_line_runs(pid):
     return [len(p["pts"]) for p in _T[pid]["paths"] if not p["closed"]]
 
 
+def _outline_runs(fig):
+    """rarea's two outline Lines (tag dash_rarea_outline): per Line, its
+    runs of finite vertices (split at a non-finite x or y), each run the
+    list of its x values (WP-37 DG-5)."""
+    out = []
+    for g in fig.renderers:
+        if "dash_rarea_outline" not in (g.tags or []):
+            continue
+        d = g.data_source.data
+        xs = dr._dash_float_values(d[g.glyph.x])
+        ys = dr._dash_float_values(d[g.glyph.y])
+        runs, cur = [], []
+        for a, b in zip(xs, ys):
+            if np.isfinite(a) and np.isfinite(b):
+                cur.append(float(a))
+            elif cur:
+                runs.append(cur)
+                cur = []
+        if cur:
+            runs.append(cur)
+        out.append(runs)
+    return out
+
+
 # ===========================================================================
 # The fixture
 # ===========================================================================
@@ -277,6 +304,49 @@ class TestRareaConnect:
             assert _same_extents(_fill_runs(r), _T[pid]["polys"]), (
                 o, _fill_runs(r), _T[pid]["polys"])
 
+    def test_the_outline_breaks(self, mode):
+        """rarea lo hi weight in 1/20, cmissing(n) sort: twoway strokes
+        each of its three polygons on its own (R02), so each bound's
+        outline is three runs, each over one polygon's x extent; it was
+        one run, joined across both gaps (WP-37 DG-5)."""
+        fig = _figs(mode, [_rarea(cmissing="n", sort="sort")], _auto(20))[0]
+        runs = _outline_runs(fig)
+        assert len(runs) == 2
+        assert sum(len(r) for r in runs) == 6, runs
+        for each in runs:
+            ext = [[min(r), max(r)] for r in each]
+            assert _same_extents(ext, _T["R02"]["polys"]), (
+                ext, _T["R02"]["polys"])
+
+    def test_the_stepstair_outline_breaks(self, mode):
+        """connect(stepstair) cmissing(n) (R03): each outline run starts
+        where its polygon does -- the second at the missing row's x, 3400,
+        where the stair's lead-in corner is (WP-37 DG-5)."""
+        fig = _figs(mode, [_rarea(cmissing="n", connect="stepstair",
+                                  sort="sort")], _auto(20))[0]
+        for each in _outline_runs(fig):
+            ext = [[min(r), max(r)] for r in each]
+            assert _same_extents(ext, _T["R03"]["polys"]), (
+                ext, _T["R03"]["polys"])
+
+    def test_no_outline_spike_at_a_lone_point(self, mode):
+        """A present row between two gaps is no polygon in twoway: its
+        outline is one vertex (nothing drawn), not a spike from the lower
+        bound to the upper one (WP-37 DG-5)."""
+        df = pd.DataFrame({"x": np.arange(1.0, 10.0)})
+        df["lo"] = df["x"]
+        df["hi"] = df["x"] + 2
+        df.loc[df["x"].isin([3.0, 5.0]), ["lo", "hi"]] = np.nan
+        p = {"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+             "options": {"cmissing": "n"}}
+        fig = _figs(mode, [p], df)[0]
+        runs = _outline_runs(fig)
+        assert len(runs) == 2
+        for each in runs:
+            assert [r for r in each if 4.0 in r] == [[4.0]], each
+            assert [[min(r), max(r)] for r in each] == [
+                [1.0, 2.0], [4.0, 4.0], [6.0, 9.0]], each
+
 
 # ===========================================================================
 # The estimators
@@ -351,11 +421,80 @@ class TestAfterAMove:
             _fill_runs(r), want)
 
 
+    def test_the_rarea_outline_follows_a_move(self):
+        """rarea cmissing(n) after a dropdown move to Foreign: the saved
+        page's own filter script (under node) leaves each outline Line
+        the runs the served app redraws, one per run of kept present rows
+        (WP-37 DG-5)."""
+        df = _auto(20)
+        spec = tp._spec(graphs=[("g1", [_rarea(cmissing="n", sort="sort")],
+                                 {}, {})],
+                        build_options={"filter": "foreign, type(dropdown)"})
+        saved = _outline_runs(_saved_figs(
+            _saved_move(spec, df, ("Select", "Foreign")))[0])
+        doc, _ = _served_move(spec, df, ("Select", "Foreign"))
+        served = _outline_runs(_served_figs(doc)[0])
+        kept = df[df["foreign"] == 1].sort_values("weight", kind="stable")
+        want, cur = [], []
+        for w, o in zip(kept["weight"], kept["mpg"].notna()):
+            if o:
+                cur.append(float(w))
+            elif cur:
+                want.append(cur)
+                cur = []
+        if cur:
+            want.append(cur)
+        assert len(want) > 1
+        assert served == [want, want], served
+        assert saved == served, (saved, served)
+
+
 # ===========================================================================
 # The helpers
 # ===========================================================================
 
 class TestTheHelper:
+
+    @requires_node
+    @pytest.mark.parametrize("style", ["direct", "stepstair"])
+    def test_the_outline_rebuild_twin(self, style):
+        """_FILTER_JS's dash_fill_rebuild_kept under an outline's record
+        (brk, WP-37 DG-5), every row kept, gives the outline source the
+        build wrote: NaN at each gap's pair, so the saved page's rebuild
+        breaks where map_rarea does; without brk the pair is pinned."""
+        tmp = tempfile.mkdtemp()
+        spec = bg._spec([_rarea(cmissing="n", sort="sort", connect=style)])
+        r = render_models(dr.DashRenderer(*bg._write(tmp, spec,
+                                                     _auto(20))))
+        fig = list(r.figures.values())[0]
+        outs = [g for g in fig.renderers
+                if "dash_rarea_outline" in (g.tags or [])]
+        assert len(outs) == 2
+        for g in outs:
+            d, jn = g.data_source.data, g.data_source._dash_join
+            assert jn["brk"] is True and jn["ycols"] == [g.glyph.y]
+            od = {k: [None if (isinstance(v, float) and v != v) else
+                      (float(v) if v is not None else None) for v in d[k]]
+                  for k in d}
+            ids = list(jn["order"])
+            js = (fit_helpers_js()
+                  + "const OD = " + json.dumps(od) + ";\n"
+                  + "const SP = " + json.dumps(jn) + ";\n"
+                  + "const K = new Set(" + json.dumps(ids) + ");\n"
+                  + "const a = dash_fill_rebuild_kept(OD, SP, "
+                  + json.dumps(_RID) + ", K);\n"
+                  + "const b = dash_fill_rebuild_kept(OD, Object.assign("
+                  "{}, SP, {brk: false}), " + json.dumps(_RID) + ", K);\n"
+                  + "const f = (c) => c.map(v => (typeof v === 'number' "
+                  "&& isNaN(v)) ? 'nan' : v);\n"
+                  + "process.stdout.write(JSON.stringify([f(a[SP.ycols[0]]),"
+                  " f(b[SP.ycols[0]]), f(a[SP.x])]));\n")
+            got, pinned, gx = run_js(js)
+            want = ["nan" if not np.isfinite(v) else float(v)
+                    for v in dr._dash_float_values(d[g.glyph.y])]
+            assert got == want, (got, want)
+            assert gx == [float(v) for v in d[g.glyph.x]]
+            assert "nan" not in pinned and got.count("nan") == 4
 
     def test_rows(self):
         """_dash_fill_vertices: the present rows in order, a zero-height

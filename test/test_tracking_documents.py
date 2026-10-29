@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'DG-5': 'rarea with cmissing(n) draws its bound outlines across the gaps',
     'TR-13': 'contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter',
     'DG-8': 'A contour with no surface (two observations) draws no colour key',
     'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',

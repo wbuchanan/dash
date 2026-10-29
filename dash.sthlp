@@ -537,7 +537,9 @@ the last counts.  A misplaced {cmd:..} is refused, r(198), and a
 where {cmd:twoway} draws a connecting line, in {cmd:twoway}'s words.
 {cmd:cmissing(n)} splits an {cmd:area} or {cmd:rarea} where it splits a
 line: one filled region per run of observations present in {it:x} and
-the {it:y}(s), as {cmd:twoway} closes one polygon per run.  It breaks
+the {it:y}(s), as {cmd:twoway} closes one polygon per run; the
+{cmd:rarea} outline breaks where the fill does, and an observation alone
+between two gaps is outlined by nothing.  It breaks
 the line of the fits and smooths where their own result is missing, as
 {cmd:twoway}'s does: {cmd:lowess}, {cmd:fpfit} and {cmd:fpfitci} at an
 observation that has {it:x} and no {it:y}, {cmd:lpoly} and

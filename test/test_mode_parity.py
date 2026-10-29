@@ -4104,6 +4104,14 @@ MOVE_CORPUS = [
     # WP-31 E8: rarea's outline Lines follow the move with the fill.
     _move_case("rarea, dropdown to Foreign (WP-31 E8)", _MOVES[0],
                [plot_for("rarea", {"sort": "1"})]),
+    # WP-37 DG-5: under cmissing(n) each outline Line breaks where the
+    # fill does, after the move too: mpg missing in row 1 (a Domestic
+    # car), so the kept Domestic rows are a lone point and a run.
+    _move_case("DG-5: rarea cmissing(n) outline, dropdown move",
+               ("dropdown to Domestic", "foreign, type(dropdown)",
+                ("Select", "Domestic"), "foreign == 0"),
+               [plot_for("rarea", {"sort": "sort", "cmissing": "n"})],
+               bo={"_parity_frame": "missing_first_y"}),
     # WP-31 C16: a recast histogram and kdensity are recounted.
     _move_case("histogram recast(line), dropdown to Foreign (WP-31 C16)",
                _MOVES[0], [plot_for("histogram", {"recast": "line"})]),
@@ -4259,7 +4267,9 @@ _JS_ORACLE_CASES = frozenset(
     + ["kdensity, dropdown to Foreign"]
     + ["by(foreign) shared scale, price slider",
        "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"]
-    + [p.values[0] for p in _CVAR_MOVES])
+    + [p.values[0] for p in _CVAR_MOVES]
+    # WP-37 DG-5: rarea's outline sources rebuilt by the saved page.
+    + ["DG-5: rarea cmissing(n) outline, dropdown move"])
 assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
     _JS_ORACLE_CASES - _MOVE_CORPUS_NAMES)
 

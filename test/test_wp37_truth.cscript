@@ -613,6 +613,152 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w37_run' {
 }
 * ==== end S01 ====
 
+// S02's helpers (WP-37 DG-5, DG-8): a saved page's Bokeh models by id,
+// rarea's outline runs against a fixture's polygons, and its colour keys.
+python:
+import base64 as _w37s02_b64
+import gzip as _w37s02_gzip
+import json as _w37s02_json
+import math as _w37s02_math
+import re as _w37s02_re
+import struct as _w37s02_struct
+from html import unescape as _w37s02_unescape
+from sfi import Macro as _w37s02_M
+
+
+def _w37s02_safe(v):
+    """v with no character that ends or expands a Stata string."""
+    return str(v).replace('"', "'").replace("`", "'").replace("$", "S")[:400]
+
+
+def _w37s02_dec(v):
+    """A column of the page's JSON as a list of floats (None -> nan)."""
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        arr = v.get("array")
+        if isinstance(arr, dict) and arr.get("type") == "bytes":
+            raw = _w37s02_b64.b64decode(arr.get("data", ""))
+            if raw[:2] == b"\x1f\x8b":
+                # The saved page gzips a column's bytes.
+                raw = _w37s02_gzip.decompress(raw)
+            f = {"float64": "d", "float32": "f", "int32": "i",
+                 "int64": "q"}.get(str(v.get("dtype")))
+            if f is None:
+                return []
+            n = len(raw) // _w37s02_struct.calcsize(f)
+            return [float(x) for x in _w37s02_struct.unpack("<%d%s" % (n, f),
+                                                            raw[:n * _w37s02_struct.calcsize(f)])]
+        v = arr
+    out = []
+    for x in v if isinstance(v, list) else []:
+        try:
+            out.append(float("nan") if x is None else float(x))
+        except (TypeError, ValueError):
+            out.append(float("nan"))
+    return out
+
+
+def _w37s02_objs(path):
+    """{id: model} of every model of the saved page *path*."""
+    page = open(path, encoding="utf-8").read()
+    m = _w37s02_re.search(
+        r'<script[^>]+type=["\']application/json["\'][^>]*>', page)
+    body = page[m.end():page.index("</script>", m.end())]
+    objs = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "id" in node and "name" in node:
+                objs[node["id"]] = node
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(_w37s02_json.loads(_w37s02_unescape(body)))
+    return objs
+
+
+def _w37s02_ref(objs, v):
+    return objs.get(v.get("id"), v) if isinstance(v, dict) else {}
+
+
+def _w37s02_outline(path, fixture, key):
+    """Global w37s02_v: "" when each rarea outline Line (tag
+    dash_rarea_outline) of the saved page is one run of finite vertices
+    per polygon of the fixture's probe *key*, over its x extent (within
+    2); else what differs.  Global w37s02_n: the runs of every outline."""
+    v, total = "", 0
+    try:
+        polys = _w37s02_json.load(open(fixture, encoding="utf-8"))[key]["polys"]
+        objs = _w37s02_objs(path)
+        lines = [o for o in objs.values() if o.get("name") == "GlyphRenderer"
+                 and "dash_rarea_outline" in
+                 ((o.get("attributes") or {}).get("tags") or [])]
+        if len(lines) != 2:
+            v = "%d outline Lines, not 2" % len(lines)
+        for o in lines:
+            a = o["attributes"]
+            g = _w37s02_ref(objs, a.get("glyph")).get("attributes", {})
+            src = _w37s02_ref(objs, a.get("data_source")).get("attributes", {})
+            data = src.get("data", {})
+            cols = {e[0]: e[1] for e in data.get("entries", [])} \
+                if isinstance(data, dict) and "entries" in data else data
+            xs = _w37s02_dec(cols.get((g.get("x") or {}).get("field")))
+            ys = _w37s02_dec(cols.get((g.get("y") or {}).get("field")))
+            runs, cur = [], []
+            for x, y in zip(xs, ys):
+                if _w37s02_math.isfinite(x) and _w37s02_math.isfinite(y):
+                    cur.append(x)
+                elif cur:
+                    runs.append(cur)
+                    cur = []
+            if cur:
+                runs.append(cur)
+            total += len(runs)
+            ext = [[min(r), max(r)] for r in runs]
+            ok = len(ext) == len(polys) and all(
+                abs(e[0] - p[0]) <= 2 and abs(e[1] - p[1]) <= 2
+                for e, p in zip(ext, polys))
+            if not ok and not v:
+                v = "runs %s, twoway's polygons %s" % (
+                    [[round(e[0]), round(e[1])] for e in ext],
+                    [[round(p[0]), round(p[1])] for p in polys])
+    except Exception as e:
+        v = "error " + str(e)
+    _w37s02_M.setGlobal("w37s02_v", _w37s02_safe(v))
+    _w37s02_M.setGlobal("w37s02_n", str(total))
+end
+
+* ==== S02 DG-5: rarea outlines break at gaps ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w37_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02_h "`w37_work'/s02.html"
+
+    // ------------------------------------------------------------
+    // Q3702-1: rarea lo hi weight in 1/20, cmissing(n) sort -- twoway
+    // strokes three polygons (fixtures/area_cmissing_truth.json R02, the
+    // data its extract script makes); each of dash's two outline Lines
+    // is three runs, one over each polygon, none across a gap.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly replace mpg = . in 10/12
+    quietly generate lo = mpg - 2
+    quietly generate hi = mpg + 2
+    capture dash clear
+    capture erase "`s02_h'"
+    capture noisily dash rarea lo hi weight in 1/20, cmissing(n) sort saving("`s02_h'", replace)
+    _w37_expect Q3702-1 "(_rc == 0)" "dash rarea rc `=_rc'"
+    python: _w37s02_outline(r"`s02_h'", r"fixtures/area_cmissing_truth.json", "R02")
+    _w37_expect Q3702-1 `"("${w37s02_v}" == "")"' "${w37s02_v}"
+    _w37_expect Q3702-1 "(${w37s02_n} == 6)" "${w37s02_n} outline runs, not 6"
+    _w37_done Q3702-1 "each rarea outline breaks where twoway's polygons do (${w37s02_n} runs)"
+    capture erase "`s02_h'"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // S04 helpers (WP-37 stat:PT-12).  _q4_take: the data in memory (a
 // serset after serset use) appended to a JSON list in <out>, its columns
 // in order, missing as null.  _q4_cmp: the points dash stored for plot k
