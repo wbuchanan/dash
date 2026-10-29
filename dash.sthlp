@@ -188,8 +188,9 @@ draws it; an axis option there is refused as {cmd:twoway} refuses it,
 {pstd}
 {cmd:dash} accepts the same syntax as {helpb twoway} and produces an
 interactive HTML file instead of a static Stata graph window.
-The HTML file works offline in any modern browser -- no server, internet
-connection, or special software is required.
+The HTML file works offline -- no server, internet connection, or special
+software is required.  {cmd:dash} is tested in Google Chrome; a page that
+misbehaves in another browser is outside what {cmd:dash} supports.
 
 {pstd}
 A dashboard is not a Stata graph: {cmd:graph export}, {cmd:graph save},
@@ -855,7 +856,8 @@ there, is an invalid point.  The literal is read as data and never run.
     Every figure includes pan, zoom, box-select, lasso-select, undo, redo,
     reset, a button that saves the figures as a PNG image, and hover
     tooltips, automatically; see {help dash##toolbar:The toolbar}.
-    The file can be shared, emailed, or opened in any browser.
+    The file can be shared, emailed, or opened offline in a browser;
+    {cmd:dash} is tested in Google Chrome only.
 
 {phang2}2.  {ul:The {cmd:name()} option is repurposed.}
     In {cmd:twoway}, {cmd:name()} stores the graph in Stata's named graph

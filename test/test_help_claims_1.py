@@ -565,10 +565,12 @@ class _Tags(html.parser.HTMLParser):
 
 
 class TestTheSavedPageNeedsNoNetwork:
-    """"The HTML file works offline in any modern browser -- no server,
-    internet connection, or special software is required."  Nothing in the
-    page is fetched: no element names a URL, BokehJS is in the page, and
-    the page's own policy forbids every fetch (default-src 'none')."""
+    """"The HTML file works offline -- no server, internet connection, or
+    special software is required.  dash is tested in Google Chrome; a page
+    that misbehaves in another browser is outside what dash supports."
+    (WP-36 plat:PT-16.)  Nothing in the page is fetched: no element names a
+    URL, BokehJS is in the page, and the page's own policy forbids every
+    fetch (default-src 'none')."""
 
     @pytest.fixture(scope="class")
     def page(self):

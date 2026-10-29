@@ -255,3 +255,34 @@ class TestTheTilde:
             "{cmd:~\\}{it:dir}{cmd:\\}{it:file} is a path relative to the "
             "working directory, not your home folder (Windows has not been "
             "run; see {help dash##dependencies:Dependencies})."), para
+
+
+class TestTheBrowser:
+    """plat:PT-16: dash is tested in Google Chrome; the help, README and
+    package no longer say "any browser" or "a modern browser" (A1)."""
+
+    def test_chrome_is_named(self):
+        description = _flat(_between(_help(), "{marker description}",
+                                     "{marker differences}"))
+        assert ("The HTML file works offline -- no server, internet "
+                "connection, or special software is required. {cmd:dash} is "
+                "tested in Google Chrome; a page that misbehaves in another "
+                "browser is outside what {cmd:dash} supports.") \
+            in description, description
+        item1 = _flat(_between(_differences(), "{phang2}1.", "{phang2}2."))
+        assert item1.endswith(
+            "The file can be shared, emailed, or opened offline in a "
+            "browser; {cmd:dash} is tested in Google Chrome only."), item1
+        assert ("that opens offline, without a server or an internet "
+                "connection; it is tested in Google Chrome."
+                in _flat(_readme()))
+        assert ("that opens offline, without a server or an internet "
+                "connection; it is tested in Google Chrome."
+                in _flat(_pkg_description()))
+
+    def test_no_any_browser(self):
+        for name, text in (("dash.sthlp", _help()), ("README.md", _readme()),
+                           ("dash.pkg", _pkg_description())):
+            flat = _flat(text).lower()
+            assert "modern browser" not in flat, name
+            assert "any browser" not in flat, name

@@ -8,7 +8,8 @@ honoured; the rest are accepted and named in a note -- see `help dash`,
 Unsupported Stata twoway options.
 
 A saved dashboard is one self-contained HTML file, with BokehJS embedded,
-that opens in a modern browser without a server or an internet connection.
+that opens offline, without a server or an internet connection; it is
+tested in Google Chrome.
 `dash serve` runs the dashboard on a Bokeh Server instead, and `dash build`
 with the `server` option writes such an app for you to launch.
 

@@ -999,6 +999,7 @@ and now matches Stata.
 - The help's Dependencies section did not say it lists everything dash needs, and said the Python must be linked by hand; it now says nothing else is needed, that Stata finds the Python or uses the one python set exec names, and that dash_setup reports an old numpy or pandas without upgrading it (WP-36, plat:PT-11)
 - dash_setup's help did not say which Pythons and platforms the hash-pinned lock covers; it names Python 3.11 to 3.14 on five platforms and says Python 3.15 and Windows on ARM64 are not covered (WP-36, plat:PT-12)
 - The help did not say how saving() reads a tilde; it says only a leading ~/ is expanded, from HOME, and that ~\ is an ordinary path, relative to the working directory on Windows (WP-36, plat:PT-6)
+- The help, README and package said a saved page works "in any modern browser"; they say it is tested in Google Chrome (WP-36, plat:PT-16)
 
 ### Fixed in WP-35
 

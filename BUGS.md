@@ -4808,11 +4808,11 @@
   - Suggested fix: Documented only (Q47, M8): the tested-platform statement covers it; saving()'s ~ expansion is not changed.
   - Resolution: Documented 29oct2026 (WP-36, plat:PT-6). dash.sthlp, Characters in saving() (marker saving_chars) ends: a saving() path that starts with ~/ starts in your home folder, read from the HOME environment variable (r(198) when it is not set); a ~ anywhere else, and ~\, is an ordinary character, so on Windows ~\dir\file is a path relative to the working directory (Windows has not been run; Dependencies is linked). The expansion is unchanged. Pinned by test/test_help_environment.py::TestTheTilde, test/test_wp36_truth.cscript Q3604-2. Closes GAPS4 plat:PT-6 (WP-36, plat:PT-6).
 
-- [ ] Title: 'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified
+- [x] Title: 'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified
   - File Names and Line Numbers: dash.sthlp:172-174; BUGS P1.29 residual; dash_render.py:237
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 2 (major): ids plat:PT-16; confirmed; tracked: ROADMAP S04, S41. Registered as GAPS4 plat:PT-16 (WP-36, section 36-04, Document).
   - Suggested fix: Documented only (M8): the help states that Chrome is the browser dash is tested in.
-  - Resolution: Not fixed because WP-36 section 36-04 has not landed. Graded S2 (WP-36): drop-in audit package 2, major.
+  - Resolution: Documented 29oct2026 (WP-36, plat:PT-16). dash.sthlp, Description: "The HTML file works offline -- no server, internet connection, or special software is required.  {cmd:dash} is tested in Google Chrome; a page that misbehaves in another browser is outside what {cmd:dash} supports."; Differences from twoway item 1 ends "opened offline in a browser; {cmd:dash} is tested in Google Chrome only."; README.md and dash.pkg say the saved page opens offline and is tested in Google Chrome; no other browser is named (A1). Pinned by test/test_help_environment.py::TestTheBrowser. Closes GAPS4 plat:PT-16 (WP-36, plat:PT-16).
 
 - [ ] Title: Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size
   - File Names and Line Numbers: probe1/probe2 timings and RSS; q1.html CDS entries; dash_render.py:2279
