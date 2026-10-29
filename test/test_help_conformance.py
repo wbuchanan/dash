@@ -1475,4 +1475,6 @@ class TestInternalLinksResolve:
         # Layer Options (WP-37 37-05).
         # 138 -> 139 links: DT-26 the Differences entry Numeric limits of
         # the estimators links Statistical Layer Options (WP-37 37-05).
-        assert len(refs) == 139 and len(set(refs)) == 49
+        # 139 -> 140 links: stat:PT-21 the Differences entry Points whose
+        # sort keys tie links Plot types (WP-37 37-05).
+        assert len(refs) == 140 and len(set(refs)) == 49

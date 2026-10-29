@@ -470,8 +470,12 @@ expression, {cmd:D.close}.
 data, as {cmd:twoway} does.  {cmd:sort} joins them in the order of {it:x},
 and {cmd:sort(}{it:varlist}{cmd:)} in the order of {it:varlist}, whether or
 not {cmd:sort} is also given; of several copies the last one that is not
-empty counts.  Points whose keys tie keep the order of the data
-({cmd:twoway}'s order among them changes from one run to the next).
+empty counts.  Points whose keys tie keep the order of the data.
+{cmd:twoway}'s order among them is not fixed -- it changes from one run
+to the next, so no fixed order can match it -- which shows where tied
+points are joined: the path of a {cmd:lowess} through a tied {it:x}, a
+{cmd:sort} under {cmd:by()}, and where {cmd:cmissing(n)} breaks a line at
+a tie.
 Strings sort byte by byte, and {cmd:.} before {cmd:.a} before {cmd:.b}, as
 Stata's {cmd:sort} sorts them.  {cmd:tsline} and {cmd:tsrline} join in time
 order and ignore both.  On data not sorted by {it:x} an area follows the
@@ -1496,6 +1500,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {it:x}, and {cmd:dot}'s dots above 2,000,000 differ from Stata's by
     the measured amounts in
     {help dash##smoother_options:Statistical layer options}.
+
+{phang2}13.  {ul:Points whose sort keys tie.}  {cmd:dash} joins them in the
+    data's order; {cmd:twoway}'s order among them changes from run to
+    run; see {help dash##plottypes:Plot types}.
 
 
 {marker subcommands}

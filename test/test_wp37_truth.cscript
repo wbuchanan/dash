@@ -963,6 +963,42 @@ def _w37s05_rot(degree):
         _w37s05_M.setGlobal("w37s05_h", repr(float(h)))
     except Exception as e:
         _w37s05_M.setGlobal("w37s05_h", "error " + str(e)[:200])
+
+
+def _w37s05_ties(path, keys):
+    """Global w37s05_ties: for each weight in *keys*, "ok" when the saved
+    page's one Line joins the tied points' mpg in the data's order (mpg
+    and weight in memory, in observation order), else what it drew."""
+    import re
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, Line
+    try:
+        page = open(path, encoding="utf-8").read()
+        ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+                "#x27": chr(39), "#x60": chr(96)}
+        blocks = re.findall(
+            r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+            page, re.S)
+        docs = [d for b in blocks
+                for d in _w37s05_json.loads(re.sub(
+                    r"&(amp|lt|gt|quot|#x27|#x60);",
+                    lambda m: ents[m.group(1)], b)).values()]
+        doc = Document.from_json(docs[0])
+        [line] = [m for m in doc.models if isinstance(m, GlyphRenderer)
+                  and isinstance(m.glyph, Line)]
+        d = line.data_source.data
+        lx = [float(v) for v in d[line.glyph.x.field]]
+        ly = [float(v) for v in d[line.glyph.y.field]]
+        x, y = _w37s05_col("weight"), _w37s05_col("mpg")
+        out = []
+        for k in [float(v) for v in keys.split()]:
+            want = [float(b) for a, b in zip(x, y) if a == k]
+            got = [b for a, b in zip(lx, ly) if a == k]
+            out.append("ok" if len(want) > 1 and got == want
+                       else "%g:%r/%r" % (k, got, want))
+        _w37s05_M.setGlobal("w37s05_ties", " ".join(out))
+    except Exception as e:
+        _w37s05_M.setGlobal("w37s05_ties", "error " + str(e)[:200])
 end
 
 * ==== S05 stat:PT-16: lpolyci with no residual df ====
@@ -1014,6 +1050,37 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
     _w37_expect Q3705-2 `"(abs(real("`s05_dh'") - 400.94) < .01)"' "dash's bandwidth is `s05_dh', not 400.94"
     _w37_done Q3705-2 "degree 8: Stata's bandwidth `s05_sh', dash's `s05_dh'"
     macro drop w37s05_h
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
+* ==== S05 stat:PT-21: tied sort keys ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3705-3: dash line mpg weight, sort joins the cars of equal
+    // weight 3370, 3600 and 4060 in the data's order, the same in two
+    // builds (twoway's order among ties changes from run to run, so it
+    // is not compared).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local s05_all ""
+    forvalues s05_k = 1/2 {
+        capture erase "`w37_work'/s05_ties`s05_k'.html"
+        capture noisily dash line mpg weight, sort saving("`w37_work'/s05_ties`s05_k'.html", replace)
+        _w37_expect Q3705-3 "(_rc == 0)" "dash line mpg weight, sort (build `s05_k') rc `=_rc'"
+        python: _w37s05_ties(r"`w37_work'/s05_ties`s05_k'.html", "3370 3600 4060")
+        local s05_all "`s05_all' ${w37s05_ties}"
+        capture erase "`w37_work'/s05_ties`s05_k'.html"
+        capture dash clear
+    }
+    local s05_all = strtrim("`s05_all'")
+    display as text "Q3705-3: `s05_all'"
+    _w37_expect Q3705-3 `"("`s05_all'" == "ok ok ok ok ok ok")"' "ties not in data order: `s05_all'"
+    _w37_done Q3705-3 "weights 3370, 3600 and 4060 are joined in data order in both builds"
+    macro drop w37s05_ties
     display as text "S05 end " c(current_date) " " c(current_time)
 }
 * ==== end S05 ====

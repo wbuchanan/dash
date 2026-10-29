@@ -106,7 +106,11 @@ class TestThePlotTypesSection:
                 where[section] = where.get(section, 0) + ln.count(link)
         # old -> new: differences 1 -> 2: the entry Plot-type names in
         # lower case only links the section (WP-35 plot:PT-3).
-        assert where == {"syntax": 1, "differences": 2,
+        # old -> new: validation 0 -> 1: the Differences entry Points
+        # whose sort keys tie (item 13, after the {marker validation}
+        # paragraph of item 5) links the section's Join order paragraph
+        # (WP-37 stat:PT-21).
+        assert where == {"syntax": 1, "differences": 2, "validation": 1,
                          "marker_labels": 1}, (
             f"links to the Plot types section, by the section that holds "
             f"them: {where}; the Syntax and the differences must each "

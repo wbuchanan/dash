@@ -169,3 +169,28 @@ class TestNumericLimits:
                 "and says how many.") in _flat(_help())
         assert "_DASH_DOTS_MAX = 2_000_000\n" in _read(
             os.path.join(_ROOT, "dash_render.py"))
+
+
+class TestTies:
+    """stat:PT-21 (with BY-30 and DG-16): points whose sort keys tie are
+    joined in the data's order in dash; twoway's order among them changes
+    from run to run (BY-30's verifier: line mpg weight, sort by(foreign)
+    four times in one session), which shows in three places."""
+
+    def test_the_three_places(self):
+        text = _flat(_between(_help(), "{ul:Join order.}",
+                              "Strings sort byte by byte"))
+        assert (
+            "Points whose keys tie keep the order of the data. {cmd:twoway}'s "
+            "order among them is not fixed -- it changes from one run to the "
+            "next, so no fixed order can match it -- which shows where tied "
+            "points are joined: the path of a {cmd:lowess} through a tied "
+            "{it:x}, a {cmd:sort} under {cmd:by()}, and where "
+            "{cmd:cmissing(n)} breaks a line at a tie.") in text
+
+    def test_the_differences_entry(self):
+        assert (
+            "{ul:Points whose sort keys tie.} {cmd:dash} joins them in the "
+            "data's order; {cmd:twoway}'s order among them changes from run "
+            "to run; see {help dash##plottypes:Plot types}.") in _entry(
+                "{ul:Points whose sort keys tie.}")
