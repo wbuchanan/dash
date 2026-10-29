@@ -12,9 +12,9 @@ that opens in a modern browser without a server or an internet connection.
 `dash serve` runs the dashboard on a Bokeh Server instead, and `dash build`
 with the `server` option writes such an app for you to launch.
 
-`dash` takes the place of `twoway`: write `dash scatter mpg weight` where
-you would write `twoway scatter mpg weight`.  It has been tested on macOS
-arm64 with StataNow 19.5, run from the console.
+`dash` takes the place of `twoway` (on Stata 19 and later): write
+`dash scatter mpg weight` where you would write `twoway scatter mpg weight`.
+It has been tested on macOS arm64 with StataNow 19.5, run from the console.
 
 Beyond the graphs, a dashboard can carry:
 

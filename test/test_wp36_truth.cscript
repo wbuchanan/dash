@@ -393,6 +393,36 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w36_run' {
 }
 * ==== end S03 ====
 
+* ==== S04 plat:PT-2: the Stata 19 floor ====
+local only : env WP36_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w36_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3604-1: the help's floor -- dash refuses a Stata older than 19,
+    // r(9).  No older Stata is run: _dash_stata_ok, the test
+    // _dash_require_stata makes, is driven by value (as SF-01 of
+    // test_wp30_truth.cscript measures Stata's own r(9)), and
+    // _dash_require_stata passes on this Stata.
+    // ------------------------------------------------------------
+    capture noisily _dash_stata_ok "18.5" "19"
+    local s04_rc = _rc
+    local s04_ok = r(ok)
+    local s04_sh "`r(shown)'"
+    _w36_expect Q3604-1 "(`s04_rc' == 0 & `s04_ok' == 0)" "18.5 against floor 19: rc `s04_rc', ok `s04_ok'"
+    _w36_expect Q3604-1 `"("`s04_sh'" == "18.5")"' "18.5 shown as `s04_sh'"
+    capture noisily _dash_stata_ok "19.5" "19"
+    local s04_ok = r(ok)
+    _w36_expect Q3604-1 "(`s04_ok' == 1)" "19.5 against floor 19: ok `s04_ok'"
+    capture noisily _dash_require_stata
+    local s04_rc = _rc
+    _w36_expect Q3604-1 "(`s04_rc' == 0)" "_dash_require_stata on Stata `c(stata_version)' gave rc `s04_rc'"
+    _w36_done Q3604-1 "a Stata below 19 is refused by dash's floor test; this Stata passes it"
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

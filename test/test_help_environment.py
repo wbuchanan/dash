@@ -122,3 +122,29 @@ class TestThePlatform:
         assert ("{cmd:dash} has run only on macOS arm64 with StataNow 19.5 "
                 "from the console; see "
                 "{help dash##dependencies:Dependencies}.") in entry, entry
+
+
+class TestTheFloor:
+    """plat:PT-2: dash refuses a Stata older than 19, r(9), where twoway
+    runs; the claim that dash takes twoway's place is made for Stata 19 and
+    later (probe: test_wp36_truth.cscript Q3604-1)."""
+
+    def test_the_claim_is_for_stata_19(self):
+        item = _stata_item()
+        assert "r(9)" in item, item
+        assert item.endswith(
+            "The claim that {cmd:dash} takes {cmd:twoway}'s place is made "
+            "for Stata 19 and later; {cmd:twoway} itself runs on older "
+            "releases."), item
+        readme = _flat(_between(_readme(), "`dash` takes the place of",
+                                "Beyond the graphs"))
+        assert readme.startswith(
+            "`dash` takes the place of `twoway` (on Stata 19 and later):"), \
+            readme
+        assert "Stata 19 or later" in _readme_requirements()
+
+    def test_the_differences_entry(self):
+        entry = _differences_entry("Stata 19 or later.")
+        assert ("{cmd:dash} refuses an older Stata, {cmd:r(9)}, where "
+                "{cmd:twoway} runs; see "
+                "{help dash##dependencies:Dependencies}.") in entry, entry

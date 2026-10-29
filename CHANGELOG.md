@@ -995,6 +995,7 @@ and now matches Stata.
 
 - A dashed or dotted line in a graph of more than 10,000 rows drew broken up under WebGL, and a small graph of a large dataset used WebGL; such graphs are drawn on canvas, and the switch counts the rows a graph draws (WP-36, DG-14)
 - The help, README and package did not say that dash has run only on macOS arm64 with StataNow 19.5 from the console; they now say that Windows, Linux, Intel macOS and Stata's graphical interface have not been run (WP-36, plat:PT-5)
+- The help and README did not say that dash's claim to take twoway's place holds only from Stata 19, where twoway runs on older releases; they now do, beside the r(9) refusal of an older Stata (WP-36, plat:PT-2)
 
 ### Fixed in WP-35
 

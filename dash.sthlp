@@ -1466,6 +1466,10 @@ there, is an invalid point.  The literal is read as data and never run.
     arm64 with StataNow 19.5 from the console; see
     {help dash##dependencies:Dependencies}.
 
+{phang2}9.  {ul:Stata 19 or later.}  {cmd:dash} refuses an older Stata,
+    {cmd:r(9)}, where {cmd:twoway} runs; see
+    {help dash##dependencies:Dependencies}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -6820,7 +6824,9 @@ link yourself:
     {helpb dash_setup} stop before doing anything else with "dash requires
     Stata 19 or later; this is Stata {it:#}", r(9).  The floor is the Stata
     you run, not the version a do-file sets: a do-file that begins
-    {cmd:version 16} still runs {cmd:dash} on Stata 19.
+    {cmd:version 16} still runs {cmd:dash} on Stata 19.  The claim that
+    {cmd:dash} takes {cmd:twoway}'s place is made for Stata 19 and later;
+    {cmd:twoway} itself runs on older releases.
 
 {phang2}{ul:Python 3.11+} -- linked to Stata; see {helpb python}.  Both
     test suites pass under Python 3.11, and a Stata session linked to 3.11

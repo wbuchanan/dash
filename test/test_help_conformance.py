@@ -1459,4 +1459,6 @@ class TestInternalLinksResolve:
         # 132 -> 134 links: plat:PT-5 the drop-in paragraph and the
         # Differences entry Tested on one platform link Dependencies
         # (WP-36 36-04).
-        assert len(refs) == 134 and len(set(refs)) == 49
+        # 134 -> 135 links: plat:PT-2 the Differences entry Stata 19 or
+        # later links Dependencies (WP-36 36-04).
+        assert len(refs) == 135 and len(set(refs)) == 49
