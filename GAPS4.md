@@ -386,9 +386,9 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit 3a9c7cd.
 - **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
 - **DG-1 Tracked:** Closed in WP-37, BUGS.md "contour over zero observations crashes with a Python traceback, r(7102)", commit f878d35.
-- **DG-5 Tracked:** Closed in WP-37, BUGS.md "rarea with cmissing(n) draws its bound outlines across the gaps", commit pending.
+- **DG-5 Tracked:** Closed in WP-37, BUGS.md "rarea with cmissing(n) draws its bound outlines across the gaps", commit 5769631.
 - **TR-13 Tracked:** Open (WP-37 section 37-03).
-- **DG-8 Tracked:** Closed in WP-37, BUGS.md "A contour with no surface (two observations) draws no colour key", commit pending.
+- **DG-8 Tracked:** Closed in WP-37, BUGS.md "A contour with no surface (two observations) draws no colour key", commit 32fc0ba.
 - **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit d3f9f82.
 - **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit 702c99b.
 - **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit a027672.
