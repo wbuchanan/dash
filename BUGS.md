@@ -5887,3 +5887,9 @@
   - Description: WP-34 34-07 (TR-4, 24oct2026), measured in both modes: the complete-case rule is exact for missing values at the ends only.
   - Suggested fix: Break the area at a row where either bound is missing, as twoway does, in both modes.
   - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S2 (WP-47): twoway draws it differently, no refusal.
+
+- [ ] Title: contour's outlines and heatmap are accepted but never reach the renderer, so neither is drawn; dash's outlines drawing strokes the bands' boundaries in the plot, where twoway outlines only the colour key's boxes
+  - File Names and Line Numbers: dash.ado:1643-1644 (s(_heatmap), s(_outlines)), :5825 (_dash_plot_opts_to_json's key list); dash_render.py _dash_contour_parts, GlyphMapper._contour_parts; test/fixtures/contour_outlines_truth.json
+  - Description: Found by WP-37 section 37-03 (TR-13): _dash_parse_plot_opts keeps outlines and heatmap as s(_outlines) and s(_heatmap), and _dash_plot_opts_to_json's key list writes neither, so a real dash command never carries them to the spec and the renderer draws neither (unit tests built the spec by hand). 37-03 also measured twoway contour depth northing easting, outlines: no black stroke inside the plot region. Registered by the maintainer ruling D64 (29oct2026: file it, fix in WP-37). Registered as GAPS4 TR-13a (WP-37, section 37-06, Fix).
+  - Suggested fix: Write heatmap and outlines to the spec; under outlines draw the key's boxes outlined black and the plot unchanged, as twoway draws them
+  - Resolution: Not fixed because WP-37 section 37-06 has not landed. Graded S2 (WP-37): two documented contour options draw nothing.

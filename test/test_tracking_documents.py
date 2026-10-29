@@ -2869,11 +2869,12 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 234 registered items, by lead id, with its
+#: BUGS.md entry of each of the 235 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
+    'TR-13a': "contour's outlines and heatmap are accepted but never reach the renderer, so neither is drawn; dash's outlines drawing strokes the bands' boundaries in the plot, where twoway outlines only the colour key's boxes",
     'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',
     'GW-12': 'A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)',
     'ECO-1': 'A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)',
@@ -3106,6 +3107,7 @@ GAPS4_WP = {
     'DG-1': 'WP-37',
     'DG-5': 'WP-37',
     'TR-13': 'WP-37',
+    'TR-13a': 'WP-37',
     'DG-8': 'WP-37',
     'stat:PT-12': 'WP-37',
     'stat:PT-16': 'WP-37',
@@ -3343,6 +3345,7 @@ GAPS4_SECTION = {
     'DG-1': '37-01',
     'DG-5': '37-02',
     'TR-13': '37-03',
+    'TR-13a': '37-06',
     'DG-8': '37-02',
     'stat:PT-12': '37-04',
     'stat:PT-16': '37-05',
@@ -3530,7 +3533,7 @@ _GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
 _GAPS4_WITHDRAWN = ("plat:PT-3", "basic:PT-7", "plot:PT-10")
 # An optional lower-case letter: the rows a closing section registers for
 # differences it measured and no audit item covers (D42: syn:SD-20a..e;
-# D44: BY-24a).
+# D44: BY-24a; D64: TR-13a).
 _GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}[a-z]?"
 _GAPS4_KINDS = ("Fix", "Document", "Partly", "Fix per the Q8 per-word ruling",
                 "Fix or Document per the Q8 per-word ruling")
@@ -3729,7 +3732,8 @@ class TestGaps4Tracking:
         # colorlist() with quoted RGB colours not applied under colorvar()
         # old -> new: 231 -> 234: 34-07 (TR-4) measured AX-19, AX-20 and
         # PIC-17, three range/bar rows rules no item covered (24oct2026)
-        assert len(GAPS4_ALL) == 234
+        # old -> new: 234 -> 235: TR-13a (D64)
+        assert len(GAPS4_ALL) == 235
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.
