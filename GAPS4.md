@@ -376,14 +376,14 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
 - **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit 2e22ede.
 - **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal", commit eb8a8f1.
-- **plat:PT-5 Tracked:** Documented in WP-36, BUGS.md "Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh", commit pending.
+- **plat:PT-5 Tracked:** Documented in WP-36, BUGS.md "Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh", commit 0d3b770.
 - **plat:PT-4 Tracked:** Closed in WP-36, BUGS.md "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help", commit c4ecfcc.
-- **plat:PT-2 Tracked:** Documented in WP-36, BUGS.md "The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later", commit pending.
-- **plat:PT-11 Tracked:** Documented in WP-36, BUGS.md "Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it", commit pending.
-- **plat:PT-12 Tracked:** Documented in WP-36, BUGS.md "The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route", commit pending.
-- **plat:PT-6 Tracked:** Documented in WP-36, BUGS.md "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative", commit pending.
-- **plat:PT-16 Tracked:** Documented in WP-36, BUGS.md "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified", commit pending.
-- **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit pending.
+- **plat:PT-2 Tracked:** Documented in WP-36, BUGS.md "The version floor is Stata 19 (r(9)); twoway runs on Stata 8 and later", commit 3eb0ba6.
+- **plat:PT-11 Tracked:** Documented in WP-36, BUGS.md "Python 3.11+ with bokeh 3.8-3.9, numpy and pandas is required; no conda guidance; dash_setup reports an old numpy/pandas as unmet and does not upgrade it", commit dcd8851.
+- **plat:PT-12 Tracked:** Documented in WP-36, BUGS.md "The hash-pinned lock covers Python 3.11-3.14 on five platform tags: Python 3.15 and Windows ARM64 (tzdata) fail, and there is no offline wheelhouse route", commit 38891b3.
+- **plat:PT-6 Tracked:** Documented in WP-36, BUGS.md "saving() with ~ on Windows: dash expands only '~/' from HOME and treats '~\' as relative", commit 540597e.
+- **plat:PT-16 Tracked:** Documented in WP-36, BUGS.md "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified", commit 110072b.
+- **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit 3a9c7cd.
 - **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
 - **DG-1 Tracked:** Open (WP-37 section 37-01).
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
