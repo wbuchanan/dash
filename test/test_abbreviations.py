@@ -914,7 +914,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 172 -> 180 and 77 -> 79: WP-35 DT-15 the notes on kernel()'s case
     # (three) and on xsize(()) (five in the plot parser, two in the graph
     # parser).
-    assert comments == {"_dash_parse_plot_opts": 180,
+    # 180 -> 182: WP-37 stat:PT-12 the note on the xlog and xtransform()
+    # s() returns (two).
+    assert comments == {"_dash_parse_plot_opts": 182,
                         "_dash_parse_graph_opts": 79}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

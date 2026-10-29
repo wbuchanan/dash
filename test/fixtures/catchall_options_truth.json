@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "35b31f93b5aa47dd492ca195613cc13f5492402b",
-  "extracted": "26 Oct 2026 22:07:11",
+  "dash_commit": "b34f4116d3e0d90d319f15d3da602230ca4e1ab0",
+  "extracted": "29 Oct 2026 14:00:31",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
@@ -51,8 +51,6 @@
   "refscheme",
   "rescaling",
   "titling",
-  "xlog",
-  "xtransform",
   "zvarformat",
   "zvarlabel"
  ],
@@ -981,9 +979,7 @@
    "cmd": "lfit mpg weight, xlog",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "xlog"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -991,9 +987,7 @@
    "cmd": "lfit mpg weight, xtransform(ln(X))",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "xtransform"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },

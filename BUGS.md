@@ -4850,11 +4850,11 @@
   - Suggested fix: Build the key from the levels anyway
   - Resolution: Not fixed because WP-37 section 37-02 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
 
-- [ ] Title: xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x
+- [x] Title: xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x
   - File Names and Line Numbers: twoway_lfit_parse.class:75-88; sersets.log xtr
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 12 (major): ids stat:PT-12; confirmed; tracked: help Unsupported. Registered as GAPS4 stat:PT-12 (WP-37, section 37-04, Fix).
   - Suggested fix: Route through _dash_fit_points with xtrans()
-  - Resolution: Not fixed because WP-37 section 37-04 has not landed. Graded S2 (WP-37): drop-in audit package 12, major.
+  - Resolution: Fixed 29oct2026 (WP-37, stat:PT-12). xlog and xtransform() are read by _dash_label_split (XLOG XTRansform(); xt() stays xtitle(), as twoway reads it) and refused off lfit, qfit, lfitci, qfitci and fpfitci in twoway's words by _dash_fit_opts_check, with an xtransform() holding a backtick refused on lfit and lfitci as twoway's generator refuses it ("invalid syntax", r(198)); on lfit and lfitci _dash_process_segment hands the transform (xlog as ln(X), which wins) through macval() to _dash_fit_points, which runs twoway__lfit_serset with xtrans() at registration, 100 points at n(3) or no n() as twoway_lfit_parse.class sets them, so the stored points (and lfitci's band) are twoway's serset; qfit, qfitci and fpfitci take both options with no note and draw as without them, as twoway does. Under by() every fit Stata computes (xlog, xtransform(), estopts(), predopts(), estcmd()) is fitted once per by() group of the plot's sample and once over all of it for the Total panel, written as {"panels":[{"key":[..],"points":..}],"total":..} (new Mata _dash_fit_panel_key and _dash_fit_panel_add; _dash_fn_points_ok allows the letters k and t), and both renderers give each panel the entry keyed by its own by() values (new _dash_by_key_of and _dash_fit_panel_spec in DashRenderer._build_sources_and_figures and the served app's panel loop); a filter move marks the layer as every Stata-computed fit is marked. Pinned by test/test_lfit_xtrans.py::TestThePanels, test/test_lfit_xtrans.py::TestTheRoute, test/test_wp37_truth.cscript Q3704-1..7. Closes GAPS4 stat:PT-12 (WP-37, stat:PT-12).
 
 - [ ] Title: lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off
   - File Names and Line Numbers: lpolyci_truth a_d3 row 47; dash.sthlp:4032-4034

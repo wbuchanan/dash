@@ -763,7 +763,9 @@ class TestTheParsersFoundSomething:
         # 277 -> 278: H2l brush() declared by dash build's syntaxes
         # 278 -> 279: dash image's alt() (WP-33 33-06).
         # 279 -> 280: WP-35 stat:PT-6 function's subchar() declared
-        assert len(_ado_declarations()) == 280
+        # 280 -> 282: WP-37 stat:PT-12 xlog and xtransform() declared
+        # (_dash_label_split).
+        assert len(_ado_declarations()) == 282
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -838,7 +840,10 @@ class TestTheParsersFoundSomething:
         # 58 -> 57: WP-35 syn:SD-20c symbol() read as msymbol()
         # 57 -> 56: WP-35 GW-3 maxaxes() checked
         # 56 -> 55: WP-35 stat:PT-8 lowess weight taken
-        assert len(_unsupported_section()) == 55
+        # 55 -> 53: WP-37 stat:PT-12 xlog and xtransform() drawn on lfit
+        # and lfitci, taken silently on qfit, qfitci and fpfitci
+        # (catchall_options_truth.json re-extracted).
+        assert len(_unsupported_section()) == 53
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared

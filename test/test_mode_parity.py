@@ -2918,6 +2918,19 @@ CORPUS = [
     pytest.param("WP-35 DT-19: a spec whose working-column prefix is __dsh1_",
                  {**_spec([_sc()]), "_dash_prefix": "__dsh1_"},
                  id="WP-35 DT-19: a spec whose working-column prefix is __dsh1_"),
+    # WP-37 stat:PT-12: lfit on a transformed x draws Stata's points, flat
+    # and per by() panel (each panel the entry keyed by its own values).
+    _case("stat:PT-12: lfit xlog with Stata's points",
+          [plot_for("lfit", {"xlog": "xlog", "points": {
+              "x": [1800.0, 3000.0, 4080.0], "y": [31.0, 24.0, 20.5],
+              "nobs": 10}})]),
+    _case("stat:PT-12: lfit xlog per by() panel",
+          [plot_for("lfit", {"xlog": "xlog", "points": {"panels": [
+              {"key": [1], "points": {"x": [1800.0, 3350.0],
+                                      "y": [30.0, 19.0], "nobs": 5}},
+              {"key": [0], "points": {"x": [2200.0, 4080.0],
+                                      "y": [25.0, 14.0], "nobs": 5}}]}})],
+          go={"by": "foreign"}),
 ]
 
 

@@ -3736,6 +3736,18 @@ the filter" and a note under the filters (the served page's is worded for
 refused with {cmd:range()}, as {cmd:twoway} refuses it.  Their text may not
 hold a semicolon, backtick, dollar sign or line break:
 {cmd:option estopts() incorrectly specified}, r(198).
+{opt xlog} and {opt xtransform(exp)} on {cmd:lfit} and {cmd:lfitci} fit
+{it:y} on the transformed {it:x} with {cmd:twoway}'s own generator, at 100
+points unless {cmd:n()} says otherwise ({cmd:n(3)}, {cmd:lfit}'s default,
+is 100 too, as in {cmd:twoway}), as {cmd:twoway} draws them; {opt xlog}
+wins over {opt xtransform()}; after a filter move the saved page and the
+served app keep the curve as built and mark it.  On {cmd:qfit},
+{cmd:qfitci} and {cmd:fpfitci}, {cmd:twoway} accepts both and draws the fit
+without them, and so does {cmd:dash}; {cmd:fpfit} refuses them, as
+{cmd:twoway} does.  Under {cmd:by()} a fit Stata computes -- one with
+{opt xlog}, {opt xtransform()}, {opt estopts()}, {opt predopts()} or
+{opt estcmd()} -- is made once in each panel from that panel's rows, and
+the Total panel's from all of them, as {cmd:twoway} makes it.
 
 {phang}{ul:Recast.}  {opt recast(plottype)}, and its synonyms
 {opt recastas(plottype)} and {opt type(plottype)}, are read as
@@ -6689,8 +6701,6 @@ in either direction.
     {cmd:dot} plot; {cmd:dash} draws it solid, and names it.
 
 {phang2}{ul:Type-specific options.}
-    {opt xlog} and {opt xtransform(exp)} on {cmd:lfit} and the other fits,
-    which fit against a transformed {it:x};
     {opt back} and {opt noback} on {cmd:mspline} and {cmd:mband};
     {opt onepanel} on {cmd:tsline} and {cmd:tsrline}; and
     {opt heatlabel}, {opt zvarlabel(string)}, {opt zvarformat(fmt)} on

@@ -297,7 +297,12 @@ class TestDeclaredOptionsReachTheSpec:
                    # WP-35 stat:PT-6: function's subchar() is read by
                    # _dash_fold_stat_words and _dash_label_split, never
                    # written to the spec.
-                   "subchar": "read by _dash_fold_stat_words and _dash_label_split"}
+                   "subchar": "read by _dash_fold_stat_words and _dash_label_split",
+                   # WP-37 stat:PT-12: lfit's and lfitci's transformed x
+                   # is handed to twoway's generator at registration; the
+                   # spec carries Stata's points, not the option.
+                   "xlog": "read by _dash_process_segment's fit route",
+                   "xtransform": "read by _dash_process_segment's fit route"}
         plain = set(re.findall(r"sreturn local ([a-z0-9]+)\b", body))
         missing = sorted(n for n in plain
                          if n not in keys and n not in allowed

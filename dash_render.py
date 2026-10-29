@@ -61087,6 +61087,118 @@ def _dash_fn_panel_spec(g, idx):
     return out
 
 
+def _dash_by_key_of(df, by_raw, code_prefix=None):
+    """The by() values of panel frame *df* as a list, in by() order (WP-37
+    stat:PT-12), for :func:`_dash_fit_panel_spec`: a string as text, a
+    number as a float, a missing number as its code text -- ``"." +`` the
+    letter in the code column ``<code_prefix><name>`` when it holds one,
+    else ``"."`` -- or None when *df* has no row or lacks a by() variable.
+    Both render modes call it; the served app copies it by source.
+    """
+    if code_prefix is None:
+        code_prefix = _DASH_CODE_PREFIX
+    names = str(_dash_parse_by(str(by_raw or ""), warn=False)[0]).split()
+    if df is None or not names or len(df) == 0:
+        return None
+    out = []
+    for nm in names:
+        if nm not in df.columns:
+            return None
+        v = df[nm].iloc[0]
+        if isinstance(v, str):
+            out.append(v)
+            continue
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            out.append(str(v))
+            continue
+        if f != f:
+            code = ""
+            cc = str(code_prefix) + str(nm)
+            if cc in df.columns:
+                c = df[cc].iloc[0]
+                code = c if isinstance(c, str) else ""
+            out.append("." + code)
+        else:
+            out.append(f)
+    return out
+
+
+def _dash_fit_panel_spec(g, key, total=False):
+    """The graph *g* as one by() panel draws its fit layers (WP-37
+    stat:PT-12).
+
+    Under by(), dash.ado fits a layer Stata computes (xlog, xtransform(),
+    estopts(), predopts(), estcmd()) once per by() group, as twoway fits
+    each panel's own rows, and writes ``{"panels": [{"key": [..],
+    "points": ..}, ..], "total": ..}`` (``_dash_fit_panel_key``: a number
+    as itself, a string or a missing number's code text as ``{"s":
+    [<its bytes>]}``).  This is a copy of *g* whose fit plots carrying such
+    points carry the entry whose key equals *key* (``_dash_by_key_of``:
+    numbers equal as floats, text as text), or, with *total*, the
+    ``"total"`` points; a panel with no entry draws the layer empty
+    (``{"x": [], "y": [], "nobs": 0}``, with ``"lo"``/``"hi"`` for a ci
+    type).  *g* itself when no plot carries such points.  Both render modes
+    call it; the served app copies it by source.
+    """
+    if not isinstance(g, dict):
+        return g
+    plots = g.get("plots") or []
+
+    def _pan(p):
+        if not isinstance(p, dict) or str(
+                p.get("type", "")).lower() not in _DASH_FIT_POINT_TYPES:
+            return None
+        o = p.get("options")
+        pts = o.get("points") if isinstance(o, dict) else None
+        return pts if isinstance(pts, dict) and "panels" in pts else None
+
+    def _same(stored, want):
+        if not isinstance(stored, list) or len(stored) != len(want):
+            return False
+        for a, b in zip(stored, want):
+            if isinstance(a, dict):
+                raw = a.get("s")
+                if not isinstance(raw, list) or not all(
+                        isinstance(t, int) and not isinstance(t, bool)
+                        and 0 <= t < 256 for t in raw):
+                    return False
+                if not isinstance(b, str) or bytes(raw).decode(
+                        "utf-8", "replace") != b:
+                    return False
+            elif isinstance(a, (int, float)) and not isinstance(a, bool):
+                if isinstance(b, str) or float(a) != float(b):
+                    return False
+            else:
+                return False
+        return True
+
+    if not any(_pan(p) is not None for p in plots):
+        return g
+    new = []
+    for p in plots:
+        pts = _pan(p)
+        if pts is not None:
+            got = None
+            if total:
+                got = pts.get("total")
+            elif key is not None:
+                pan = pts.get("panels")
+                for e in pan if isinstance(pan, list) else []:
+                    if isinstance(e, dict) and _same(e.get("key"), key):
+                        got = e.get("points")
+                        break
+            if not isinstance(got, dict):
+                got = {"x": [], "y": [], "nobs": 0}
+                if str(p.get("type", "")).lower() in ("lfitci", "qfitci",
+                                                       "fpfitci"):
+                    got = {"x": [], "y": [], "lo": [], "hi": [], "nobs": 0}
+            p = dict(p, options=dict(p["options"], points=got))
+        new.append(p)
+    return dict(g, plots=new)
+
+
 def _dash_total_spec(g):
     """The graph *g* as its by(, total) Total panel draws it.
 
@@ -63119,6 +63231,9 @@ class DashRenderer:
         # The facet keys of by(, total) Total panels, drawn from their own
         # qualifier columns (_dash_total_spec).
         self._facet_total_keys: set = set()
+        # Each by() panel's own by() values (WP-37 stat:PT-12), for the
+        # fit layers Stata computed per panel (_dash_fit_panel_spec).
+        self._facet_keys: dict = {}
 
         self._load_data()
         # A string plot variable is refused here too (GAPS2 G2): dash.ado
@@ -65759,6 +65874,8 @@ class DashRenderer:
         # A renderer a test made without __init__ has none yet.
         if not hasattr(self, "_facet_total_keys"):
             self._facet_total_keys = set()
+        if not hasattr(self, "_facet_keys"):
+            self._facet_keys = {}
         all_graph_names = [
             g.get("graph_options", {}).get("name", "") for g in graphs
         ]
@@ -65906,6 +66023,8 @@ class DashRenderer:
                                 fkey = f"{name}__by__{idx}"
                                 if group_df.attrs.get("_dash_total"):
                                     self._facet_total_keys.add(fkey)
+                                self._facet_keys[fkey] = _dash_by_key_of(
+                                    group_df, by_raw_lnk2)
                                 _gidx = frozenset(group_df.index)
                                 mask = [i in _gidx for i in _link_index]
                                 facet_entries_lnk.append((fkey, label))
@@ -65970,6 +66089,8 @@ class DashRenderer:
                             fkey = f"{name}__by__{idx}"
                             if group_df.attrs.get("_dash_total"):
                                 self._facet_total_keys.add(fkey)
+                            self._facet_keys[fkey] = _dash_by_key_of(
+                                group_df, by_raw)
                             self.sources[fkey] = self._make_source(
                                 g_vars, df=group_df, rows=_grows.get(name))
                             facet_entries.append((fkey, label))
@@ -66037,6 +66158,10 @@ class DashRenderer:
                                        if fkey in self._facet_total_keys else g)
                             # WP-31 C12: the panel's own function points.
                             g_panel = _dash_fn_panel_spec(g_panel, panel_idx_r)
+                            # WP-37 stat:PT-12: the panel's own fit points.
+                            g_panel = _dash_fit_panel_spec(
+                                g_panel, self._facet_keys.get(fkey),
+                                fkey in self._facet_total_keys)
                             fig = self._make_figure(g_panel, src,
                                                     facet_view=panel_view_r,
                                                     rescale=_brs)
@@ -68873,6 +68998,7 @@ class ServerAppBuilder:
                          "_dash_lpoly_degree_frozen",
                          "_lpoly_fit_degree",
                          "_dash_fn_panel_spec",
+                         "_dash_by_key_of", "_dash_fit_panel_spec",
                          "_dash_rarea_one_bound",
                          # extended missing values .a-.z (WP-31 G1).
                          "_dash_attach_missing_codes", "_dash_code_text",
@@ -71996,10 +72122,13 @@ class ServerAppBuilder:
             "                _owner_rows[_fname] = _gdf.index",
             "                # WP-31 C12: the panel's own function points.",
             "                _g_pan = _dash_fn_panel_spec(g, _fi)",
+            "                # WP-37 stat:PT-12: the panel's own fit points.",
+            "                _g_pan = _dash_fit_panel_spec(_g_pan, _dash_by_key_of(_gdf, go.get('by', '')), _fi == _t_idx)",
             "                if _fi == _t_idx and _g_tot is not g:",
             "                    # The Total panel: its own qualifier columns, drawn",
             "                    # and reapplied after a filter move (_total_quals).",
             "                    _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
+            "                    _g_pan = _dash_fit_panel_spec(_g_pan, None, True)",
             "                    _total_quals[_fname] = {",
             "                        'if_expr': _g_if, 'in_expr': _g_in,",
             "                        'qual_col': str(_g_tot.get('qual_col') or '')}",

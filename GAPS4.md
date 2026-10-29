@@ -389,7 +389,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
 - **TR-13 Tracked:** Open (WP-37 section 37-03).
 - **DG-8 Tracked:** Open (WP-37 section 37-02).
-- **stat:PT-12 Tracked:** Open (WP-37 section 37-04).
+- **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit pending.
 - **stat:PT-16 Tracked:** Open (WP-37 section 37-05).
 - **DT-26 Tracked:** Open (WP-37 section 37-05).
 - **stat:PT-21 Tracked:** Open (WP-37 section 37-05).

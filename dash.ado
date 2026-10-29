@@ -504,6 +504,7 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
+        _dash_fit_panel_key _dash_fit_panel_add ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
@@ -1714,6 +1715,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local lalign           : copy local lalign
     sreturn local mlabstyle        : copy local mlabstyle
     sreturn local subchar          : copy local subchar
+    // WP-37 stat:PT-12: lfit's and lfitci's transformed x, for twoway's
+    // generator (_dash_process_segment's fit route).
+    sreturn local xlog             : copy local xlog
+    sreturn local xtransform       : copy local xtransform
     sreturn local xvarlabel        : copy local xvarlabel
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -2766,16 +2771,20 @@ end
 // twoway draws it (test/fixtures/varlabel_mlabel_truth.json
 // varlabel.x_empty) -- is a value and not an absent option.  function's
 // subchar() (WP-35 stat:PT-6; twoway_function_parse.class SUBChar, minimum
-// subc) is read here too; _dash_fold_stat_words checks it.  Sets the
+// subc) is read here too; _dash_fold_stat_words checks it.  lfit's xlog
+// and xtransform() (WP-37 stat:PT-12; twoway_lfit_parse.class XLOG
+// XTransform(), measured minimum xtr -- xt() is xtitle()) are read here
+// too; _dash_fit_opts_check refuses them off the five fits, and
+// _dash_process_segment hands them to twoway's generator.  Sets the
 // caller's locals of the same names, by value.
 // ================================================================
 program define _dash_label_split
     version 19
-    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle table table2 subchar"
+    local lo "yvarlabel xvarlabel mlabprefix mlabsuffix lalign mlabstyle table table2 subchar xlog xtransform"
     foreach o of local lo {
         c_local `o' ""
     }
-    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal|table|subc)")))
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl|mlabpre|mlabsuf|mlabst|la\(|lal|table|subc|xlog|xtr)")))
     if !`_lb_any' exit
     mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
     mata: _dash_lb_in = ""
@@ -2796,7 +2805,8 @@ program define _dash_label_split
         // parser's LALPha.
         capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
             MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-            MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ]
+            MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ///
+            XLOG XTRansform(string asis) ]
         local _rc_lb = _rc
         // A second table (WP-31 H2t) goes on with the rest, as typed: the
         // repeat check then refuses it as a second name() is refused.
@@ -2822,7 +2832,8 @@ program define _dash_label_split
     mata: st_local("0", ", " + _dash_lb_in)
     syntax [, YVARLabel(string asis) XVARLabel(string asis) ///
         MLABPREfix(string asis) MLABSUFFix(string asis) LAlign(string) ///
-        MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ]
+        MLABSTyle(string asis) TABLE TABLE2(string asis) SUBChar(string) ///
+        XLOG XTRansform(string asis) ]
     foreach o of local lo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -7639,6 +7650,17 @@ program define _dash_process_segment, rclass
     // renderers' own 10,000-point grid (WP-35 stat:PT-9): twoway's
     // generator makes the points twoway draws -- none for a negative one.
     mata: st_local("_ft_on", strofreal(st_global("dash__ftsc") != "" & ((st_global("s(estopts)") + st_global("s(predopts)") + st_global("s(estcmd)")) != "" | ((strtoreal(st_global("s(n)")) < 0 | (strtoreal(st_global("s(n)")) > 10000 & strtoreal(st_global("s(n)")) < .)) & anyof(("lfit", "qfit", "lfitci", "qfitci"), st_local("ptype"))))))
+    // xlog and xtransform() on lfit and lfitci: twoway's generator fits the
+    // transformed x (twoway_lfit_parse.class; WP-37 stat:PT-12).  xlog
+    // wins.  The text is read by value and handed on through macval().
+    local _ft_x ""
+    local _ft_lf "lfit lfitci"
+    if `: list ptype in _ft_lf' {
+        mata: st_local("_ft_x", st_global("s(xtransform)"))
+        mata: st_local("_ft_xl", st_global("s(xlog)"))
+        if "`_ft_xl'" != "" local _ft_x "ln(X)"
+        mata: st_local("_ft_on", strofreal(`_ft_on' | (st_global("dash__ftsc") != "" & st_local("_ft_x") != "")))
+    }
     if `_ft_on' & `: list ptype in _ft_types' {
         mata: st_local("_ft_e", st_global("s(estopts)"))
         mata: st_local("_ft_p", st_global("s(predopts)"))
@@ -7656,9 +7678,63 @@ program define _dash_process_segment, rclass
         if "`_ft_r'" != "" local _ft_o "`_ft_o' range(`_ft_r')"
         if "`_ft_l'" != "" local _ft_o "`_ft_o' level(`_ft_l')"
         if "`_ft_s'" != "" local _ft_o "`_ft_o' std(`_ft_s')"
-        _dash_fit_points `yvar' `xvar' `macval(_psq)' `_ft_w', sc(`_ft_sc') ptype(`ptype') ///
-            estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
-            `_ft_o' `_ft_a'
+        if `: length local _ss_by' {
+            // Under by(), twoway fits each panel's own rows (DECISIONS
+            // A-12, P5-1): one fit per by() group of the plot's sample --
+            // its rows, the by() variables present unless by()'s missing
+            // -- keyed by the group's values, and the Total panel's over
+            // the whole sample (WP-37 stat:PT-12).  A group whose fit
+            // fails (one row: twoway leaves the panel out, as the
+            // renderers do) has no entry.
+            // The graph's by() text: _dash_plot's, else this segment's own
+            // (_ss_by joins the two only to ask whether there is one).
+            tempname _ft_bt _ft_one _ft_all
+            mata: st_strscalar(st_local("_ft_bt"), st_global("dash__g_by") != "" ? st_global("dash__g_by") : st_global("s(g_by)"))
+            _dash_by_parts `_ft_bt'
+            tempvar _ft_tu _ft_g
+            quietly generate byte `_ft_tu' = 0
+            quietly replace `_ft_tu' = 1 `macval(_psq)'
+            if !`_by_miss' {
+                foreach _v of local _by_vars {
+                    quietly replace `_ft_tu' = 0 if missing(`_v')
+                }
+            }
+            quietly egen long `_ft_g' = group(`_by_vars') if `_ft_tu', missing
+            quietly summarize `_ft_g', meanonly
+            local _ft_ng = cond(r(N), r(max), 0)
+            mata: st_strscalar(st_local("_ft_all"), "")
+            forvalues _gi = 1/`_ft_ng' {
+                mata: st_strscalar(st_local("_ft_one"), "")
+                capture _dash_fit_points `yvar' `xvar' if `_ft_g' == `_gi' `_ft_w', sc(`_ft_one') ptype(`ptype') ///
+                    estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
+                    `_ft_o' `_ft_a' xtrans(`macval(_ft_x)')
+                // Any failure but too few rows (r(2000), r(2001): the panel
+                // is left out) is the command's, given as the generator
+                // gives it, as twoway gives it.
+                if _rc & !inlist(_rc, 2000, 2001) {
+                    _dash_fit_points `yvar' `xvar' if `_ft_g' == `_gi' `_ft_w', sc(`_ft_one') ptype(`ptype') ///
+                        estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
+                        `_ft_o' `_ft_a' xtrans(`macval(_ft_x)')
+                }
+                if _rc == 0 {
+                    mata: _dash_fit_panel_add(st_local("_ft_all"), _dash_fit_panel_key(st_local("_by_vars"), st_local("_ft_g"), `_gi'), st_strscalar(st_local("_ft_one")))
+                }
+            }
+            local _ft_tot ""
+            if `_by_total' {
+                mata: st_strscalar(st_local("_ft_one"), "")
+                capture _dash_fit_points `yvar' `xvar' if `_ft_tu' `_ft_w', sc(`_ft_one') ptype(`ptype') ///
+                    estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
+                    `_ft_o' `_ft_a' xtrans(`macval(_ft_x)')
+                if _rc == 0 local _ft_tot 1
+            }
+            mata: st_strscalar(st_local("_ft_sc"), "{" + char(34) + "panels" + char(34) + ":[" + st_strscalar(st_local("_ft_all")) + "]" + (st_local("_ft_tot") == "1" ? "," + char(34) + "total" + char(34) + ":" + st_strscalar(st_local("_ft_one")) : "") + "}")
+        }
+        else {
+            _dash_fit_points `yvar' `xvar' `macval(_psq)' `_ft_w', sc(`_ft_sc') ptype(`ptype') ///
+                estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
+                `_ft_o' `_ft_a' xtrans(`macval(_ft_x)')
+        }
     }
 end
 
@@ -11456,10 +11532,17 @@ program define _dash_fit_opts_check, sclass
     local _fo_estopts "lfit qfit lfitci qfitci fpfit fpfitci"
     local _fo_predopts "lfit qfit lfitci qfitci fpfit fpfitci"
     local _fo_estcmd "fpfit fpfitci"
-    foreach o in atobs nofit fitplot ciplot smoothplot estopts predopts estcmd {
+    // xlog and xtransform() (WP-37 stat:PT-12): twoway_lfit_parse.class
+    // declares them, and qfit's, qfitci's and fpfitci's parsers inherit
+    // it; fpfit's does not -- "option xlog not allowed", "option
+    // xtransform() not allowed", r(198), as on every other type (measured
+    // 29oct2026, test_wp37_truth.cscript Q3704-4).
+    local _fo_xlog "lfit qfit lfitci qfitci fpfitci"
+    local _fo_xtransform "lfit qfit lfitci qfitci fpfitci"
+    foreach o in atobs nofit fitplot ciplot smoothplot estopts predopts estcmd xlog xtransform {
         mata: st_local("_fo_v", strofreal(st_global("s(" + st_local("o") + ")") != ""))
         if `_fo_v' & !`: list ptype in _fo_`o'' {
-            if inlist("`o'", "atobs", "nofit") display as error "option `o' not allowed"
+            if inlist("`o'", "atobs", "nofit", "xlog") display as error "option `o' not allowed"
             else display as error "option `o'() not allowed"
             exit 198
         }
@@ -11472,6 +11555,17 @@ program define _dash_fit_opts_check, sclass
             display as error "option `o'() incorrectly specified"
             exit 198
         }
+    }
+    // An xtransform() text holding a backtick on lfit and lfitci: twoway's
+    // generator answers "invalid syntax", r(198) (measured 29oct2026,
+    // test_wp37_truth.cscript Q3704-6; qfit, qfitci and fpfitci never read
+    // the text, rc 0).  dash hands the text on only through macval(), so
+    // it is answered here (WP-37 stat:PT-12).
+    local _fo_xtl "lfit lfitci"
+    mata: st_local("_fo_bq", strofreal(strpos(st_global("s(xtransform)"), char(96)) > 0))
+    if `_fo_bq' & `: list ptype in _fo_xtl' {
+        display as error "invalid syntax"
+        exit 198
     }
     local _fo_lf "lfit qfit lfitci qfitci"
     mata: st_local("_fo_rng", strofreal(strtrim(st_global("s(range)")) != ""))
@@ -11539,12 +11633,16 @@ end
 // (_dash_fit_opt_bad) and reaches the generator only through macval();
 // a failure is the generator's own, with its note and code -- twoway's
 // "(note:  regress could not fit model)" then regress's error.
+// xtrans() (WP-37 stat:PT-12) is lfit's and lfitci's xlog ("ln(X)") or
+// xtransform() text, handed to twoway__lfit_serset as twoway's parse
+// hands it, through macval() only: the generator regresses y on the
+// transformed x and draws over x.
 program define _dash_fit_points
     version 19
     syntax varlist(min=2 max=2 numeric ts) [if] [in] [fw aw pw iw] , ///
         SC(name) PType(name) [ESTopts(string asis) PREDopts(string asis) ///
         ESTCmd(string asis) N(string) RAnge(string) ATObs LEVel(string) ///
-        STD(string)]
+        STD(string) XTRans(string asis)]
     marksample touse
     gettoken y x : varlist
     local x = strtrim(`"`x'"')
@@ -11554,6 +11652,9 @@ program define _dash_fit_points
     if "`ptype'" == "lfit" local pts 3
     if "`n'" != "" local pts `n'
     if "`ptype'" == "qfit" & "`pts'" == "3" local pts 100
+    // twoway_lfit_parse.class: xlog or xtransform() with n(3), the default,
+    // draws 100 points (measured: n(3) xlog draws 100; WP-37 stat:PT-12).
+    if `"`macval(xtrans)'"' != "" & "`pts'" == "3" local pts 100
     local lo .
     local hi .
     if `"`range'"' != "" {
@@ -11585,10 +11686,17 @@ program define _dash_fit_points
         local gen twoway__lfit_serset
         local _fp_q "qfit qfitci"
         if `: list ptype in _fp_q' local gen twoway__qfit_serset
+        // Only twoway__lfit_serset takes xtrans(); twoway passes none to
+        // twoway__qfit_serset.
+        local _fp_xt ""
+        if "`gen'" == "twoway__lfit_serset" & `"`macval(xtrans)'"' != "" {
+            local _fp_xt `"xtrans(`macval(xtrans)')"'
+        }
         capture noisily `gen', sersetname(__dash_fit_ss) x(`x') y(`y') ///
             touse(`touse') regopts(`macval(estopts)') ///
             predopts(`macval(predopts)') atobs(`ao') points(`pts') ///
-            min(`lo') max(`hi') weight(`w') std(`std') level(`level')
+            min(`lo') max(`hi') weight(`w') std(`std') level(`level') ///
+            `macval(_fp_xt)'
     }
     local rc = _rc
     if `rc' {

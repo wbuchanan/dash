@@ -204,6 +204,15 @@
 *!       {"x":[..],"y":[..],"lo":[..],"hi":[..],"nobs":n}, the limits only
 *!       when the serset has them, each %24.17g, a missing value null.
 *!
+*!   _dash_fit_panel_key(vars, gvar, gi)
+*!       The by() values of group gi of gvar as a JSON list (WP-37
+*!       stat:PT-12): a number %24.17g; a string, or a missing number's
+*!       code text (".", ".a" .. ".z"), as {"s":[<its bytes>]}.
+*!
+*!   _dash_fit_panel_add(sc, key, pts)
+*!       Appends {"key":key,"points":pts} to the string scalar named sc,
+*!       a comma before every entry but the first (WP-37 stat:PT-12).
+*!
 *!   _dash_fit_opt_bad(s)
 *!       1 when estopts()/predopts()/estcmd() text holds a semicolon,
 *!       backtick, dollar sign, line break, odd double quote or stray
@@ -6839,6 +6848,61 @@ string scalar _dash_fit_points_json(real scalar nobs)
     return(out + "," + q + "nobs" + q + ":" + _dash_json_number17(nobs) + "}")
 }
 
+// _dash_fit_panel_key(vars, gvar, gi) -- the by() values of a group as a
+// JSON list (WP-37 stat:PT-12): for each variable of vars, its value at
+// the first observation where gvar == gi -- a number as
+// _dash_json_number17 writes it; a string variable's value, and a missing
+// number's code text ("." or ".a" .. ".z"), as {"s":[<its bytes>]}, so the
+// stored table holds no letter _dash_fn_points_ok does not allow.  The
+// renderers match it with a panel's own by() values (_dash_by_key_of and
+// _dash_fit_panel_spec in dash_render.py).
+string scalar _dash_fit_panel_key(string scalar vars, string scalar gvar,
+                                  real scalar gi)
+{
+    string rowvector v
+    string scalar    q, out, t
+    real colvector   g, at
+    real scalar      i, r, x
+
+    q = char(34)
+    v = tokens(vars)
+    g = st_data(., gvar)
+    at = selectindex(g :== gi)
+    if (rows(at) == 0) return("[]")
+    r = at[1]
+    out = ""
+    for (i = 1; i <= cols(v); i++) {
+        x = 0
+        if (st_isstrvar(v[i])) t = _st_sdata(r, st_varindex(v[i]))
+        else {
+            x = _st_data(r, st_varindex(v[i]))
+            if (x >= .) t = strofreal(x)
+            else t = ""
+        }
+        if (st_isstrvar(v[i]) | x >= .) {
+            t = "{" + q + "s" + q + ":[" + (t == "" ? "" :
+                invtokens(strofreal(ascii(t)), ",")) + "]}"
+        }
+        else t = _dash_json_number17(x)
+        out = out + (i > 1 ? "," : "") + t
+    }
+    return("[" + out + "]")
+}
+
+// _dash_fit_panel_add(sc, key, pts) -- appends {"key":<key>,"points":<pts>}
+// to the string scalar named sc, a comma before every entry but the first
+// (WP-37 stat:PT-12).
+void _dash_fit_panel_add(string scalar sc, string scalar key,
+                         string scalar pts)
+{
+    string scalar q, cur
+
+    q = char(34)
+    cur = st_strscalar(sc)
+    st_strscalar(sc, cur + (cur == "" ? "" : ",") + "{" + q + "key" + q +
+        ":" + key + "," + q + "points" + q + ":" + pts + "}")
+}
+
 // _dash_fit_opt_bad(s) -- 1 when the text of estopts(), predopts() or
 // estcmd() may not reach a command line (WP-31 C4): a semicolon, a
 // backtick, a dollar sign, a line feed or carriage return, an odd number
@@ -6912,7 +6976,9 @@ real scalar _dash_fn_stray_close(string scalar s)
 // x d y " : , { } [ ] (an ascii() lookup), or o b s h i, the letters of a
 // fit layer's keys lo, hi and nobs (WP-31 C4), or r o p s, which with d
 // spell drops (WP-31 C5), or a, which with p n e l s spells panels, a
-// by() layer's per-panel points (WP-31 C12).  A global the user set by hand to anything
+// by() layer's per-panel points (WP-31 C12), or k and t, which spell a
+// fit's per-panel key, points and total (WP-37 stat:PT-12; a key's text
+// travels as its bytes, _dash_fit_panel_key).  A global the user set by hand to anything
 // else -- }],"graphs":[ among them -- cannot reach the spec.
 real scalar _dash_fn_points_ok(string scalar txt)
 {
@@ -6921,7 +6987,7 @@ real scalar _dash_fn_points_ok(string scalar txt)
 
     if (strlen(txt) < 2) return(0)
     if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
-    allowed = "0123456789.+-eEnulxdyobshirpsa" + char(34) + ":,{}[]"
+    allowed = "0123456789.+-eEnulxdyobshirpsakt" + char(34) + ":,{}[]"
     ok = J(1, 256, 0)
     b  = ascii(allowed)
     ok[b :+ 1] = J(1, cols(b), 1)

@@ -723,6 +723,8 @@ COVERAGE = {
         # WP-31 C4: the points object from the serset (U11-03), the text
         # check (U11-06), the plot-type spellings (U11-04, direct).
         "_dash_fit_points_json": ("test_wp31_truth.cscript:U11-03",),
+        "_dash_fit_panel_key": ("test_wp37_truth.cscript:Q3704-5",),
+        "_dash_fit_panel_add": ("test_wp37_truth.cscript:Q3704-5",),
         "_dash_fit_opt_bad": ("test_wp31_truth.cscript:U11-06",),
         "_dash_recast_canon": ("test_wp31_truth.cscript:U11-04",),
         "_dash_fn_spec_tail": ("test_parser.cscript:FX-10",

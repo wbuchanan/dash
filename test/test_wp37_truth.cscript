@@ -613,6 +613,296 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w37_run' {
 }
 * ==== end S01 ====
 
+// S04 helpers (WP-37 stat:PT-12).  _q4_take: the data in memory (a
+// serset after serset use) appended to a JSON list in <out>, its columns
+// in order, missing as null.  _q4_cmp: the points dash stored for plot k
+// of a graph (the served spec's function_points) -- flat, the by() panel
+// whose key is <key> (JSON), or "total" -- against twoway's serset number
+// <s> of <tw>: y, then lo and hi for a band, then x, within rtol; global
+// q4_ok 1 or 0 and q4_msg.  _q4_same: two served specs' plots equal.
+// _q4_first: the first line of output between two markers of a log.
+python:
+def _q4_take(out):
+    import json
+    import os
+    from sfi import Data
+    have = json.load(open(out, encoding="utf-8")) if os.path.exists(out) else []
+    d = Data.getAsDict(missingval=None)
+    names = [Data.getVarName(i) for i in range(Data.getVarCount())]
+    have.append([[None if v is None else float(v) for v in d[n]] for n in names])
+    json.dump(have, open(out, "w", encoding="utf-8"))
+
+
+def _q4_cmp(spec, gname, k, which, tw, s, rtol):
+    import json
+    import numpy as np
+    import os
+    from sfi import Macro
+    if not os.path.exists(spec) or not os.path.exists(tw):
+        Macro.setGlobal("q4_ok", "0")
+        Macro.setGlobal("q4_msg", "no spec or no twoway serset file")
+        return
+    sp = json.load(open(spec, encoding="utf-8"))
+    p = (sp.get("function_points") or {}).get(gname, {}).get(str(k))
+    if which == "total":
+        p = p.get("total") if isinstance(p, dict) else None
+    elif which:
+        key = json.loads(which)
+        pan = p.get("panels") if isinstance(p, dict) else None
+        p = None
+        for e in pan if isinstance(pan, list) else []:
+            if isinstance(e, dict) and e.get("key") == key:
+                p = e.get("points")
+    cols = json.load(open(tw, encoding="utf-8"))[int(s)]
+    cols = [np.asarray([np.nan if v is None else v for v in c], float)
+            for c in cols]
+    if not isinstance(p, dict) or "x" not in p:
+        Macro.setGlobal("q4_ok", "0")
+        Macro.setGlobal("q4_msg", "no points stored for %s plot %s %s" % (gname, k, which))
+        return
+    want = [cols[0]] + (cols[1:3] if len(cols) == 4 else []) + [cols[-1]]
+    got = [np.asarray([np.nan if v is None else v for v in p[c]], float)
+           for c in (["y", "lo", "hi", "x"] if "lo" in p else ["y", "x"])]
+    ok = len(want) == len(got) and all(
+        len(a) == len(b) and np.allclose(a, b, rtol=rtol, atol=0,
+                                         equal_nan=True)
+        for a, b in zip(got, want))
+    Macro.setGlobal("q4_ok", "1" if ok else "0")
+    Macro.setGlobal("q4_msg", "%d stored points in %d columns, twoway's %d rows in %d (y %s)" % (
+        len(got[0]), len(got), len(want[0]), len(want),
+        " ".join("%.6g" % v for v in got[0][:3])))
+
+
+def _q4_same(a, b):
+    import json
+    import os
+    from sfi import Macro
+    if not (os.path.exists(a) and os.path.exists(b)):
+        Macro.setGlobal("q4_ok", "0")
+        return
+    pa = [g.get("plots") for g in json.load(open(a, encoding="utf-8")).get("graphs", [])]
+    pb = [g.get("plots") for g in json.load(open(b, encoding="utf-8")).get("graphs", [])]
+    fa = json.load(open(a, encoding="utf-8")).get("function_points")
+    fb = json.load(open(b, encoding="utf-8")).get("function_points")
+    Macro.setGlobal("q4_ok", "1" if (pa == pb and fa == fb and pa) else "0")
+
+
+def _q4_first(log):
+    from sfi import Macro
+    lines = open(log, encoding="utf-8", errors="replace").read().splitlines()
+    out, on = "", False
+    for ln in lines:
+        if ln.strip() == "Q4MARK":
+            on = True
+            continue
+        if ln.strip() == "Q4END":
+            break
+        if not on or not ln.strip() or ln.startswith(". ") or ln.startswith("> "):
+            continue
+        out = ln.strip()
+        break
+    Macro.setGlobal("q4_line", out)
+
+
+def _q4_has(log, text):
+    from sfi import Macro
+    body = open(log, encoding="utf-8", errors="replace").read()
+    Macro.setGlobal("q4_has", "1" if text in body else "0")
+end
+
+capture program drop _q4_tw
+program define _q4_tw
+    // _q4_tw <out.json> <twoway command ...>: twoway's sersets, in order,
+    // into <out.json> (_q4_take).
+    version 19
+    gettoken out 0 : 0
+    capture erase "`out'"
+    capture graph drop _all
+    capture serset drop _all
+    quietly `0'
+    forvalues s = 0/20 {
+        capture serset set `s'
+        if _rc continue, break
+        preserve
+        quietly serset use, clear
+        python: __import__("__main__")._q4_take("`out'")
+        restore
+    }
+    capture graph drop _all
+end
+
+* ==== S04 stat:PT-12: lfit and lfitci on a transformed x ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w37_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q4d "`w37_work'/s04"
+    capture mkdir "`q4d'"
+
+    // ------------------------------------------------------------
+    // Q3704-1..3: the stored points are twoway's serset -- xtransform(X^2)
+    // n(7); xlog with no n(), 100 points; lfitci xlog n(5) with its band.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "Q3704-1|lfit mpg weight, xtransform(X^2) n(7)|7" "Q3704-2|lfit mpg weight, xlog|100" "Q3704-3|lfitci mpg weight, xlog n(5)|5" {
+        local ++k
+        mata: q4_t = ustrsplit(st_local("c"), "[|]"); st_local("id", q4_t[1]); st_local("cmd", q4_t[2]); st_local("np", q4_t[3])
+        sysuse auto, clear
+        _q4_tw "`q4d'/t`k'.json" twoway `cmd' nodraw
+        dash clear
+        capture noisily dash `cmd' name(q4a`k')
+        _w37_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        capture noisily _dash_serve_spec, specpath("`q4d'/s`k'.json") datapath("`q4d'/d`k'.json")
+        python: __import__("__main__")._q4_cmp("`q4d'/s`k'.json", "q4a`k'", 1, "", "`q4d'/t`k'.json", 0, 1e-9)
+        _w37_expect `id' "(${q4_ok} == 1)" "dash `cmd': ${q4_msg}"
+        _w37_expect `id' `"(strpos("${q4_msg}", "`np' stored points") == 1)"' "dash `cmd': ${q4_msg}, not `np' points"
+        _w37_done `id' "dash `cmd' stores twoway's serset (${q4_msg})"
+    }
+
+    // ------------------------------------------------------------
+    // Q3704-4: no note on lfit; qfit, qfitci and fpfitci take both
+    // options, with no note, and draw as without them; fpfit refuses them
+    // as twoway does.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local lf "`q4d'/n.log"
+    dash clear
+    quietly log using "`lf'", text replace name(q4l)
+    capture noisily dash lfit mpg weight, xlog name(q4n)
+    local drc = _rc
+    quietly log close q4l
+    python: __import__("__main__")._q4_has("`lf'", "ignoring unsupported")
+    _w37_expect Q3704-4 "(`drc' == 0 & ${q4_has} == 0)" "dash lfit mpg weight, xlog: rc `drc', note ${q4_has}"
+    local j 0
+    foreach t in qfit qfitci fpfitci {
+        foreach o in "xlog" "xtransform(X^2)" {
+            local ++j
+            capture noisily twoway `t' mpg weight, `o' nodraw
+            local trc = _rc
+            dash clear
+            quietly log using "`lf'", text replace name(q4l)
+            capture noisily dash `t' mpg weight, `o' name(q4o)
+            local drc = _rc
+            quietly log close q4l
+            python: __import__("__main__")._q4_has("`lf'", "ignoring unsupported")
+            _w37_expect Q3704-4 "(`trc' == 0 & `drc' == 0 & ${q4_has} == 0)" "`t' mpg weight, `o': twoway rc `trc', dash rc `drc', note ${q4_has}"
+            capture noisily _dash_serve_spec, specpath("`q4d'/o`j'a.json") datapath("`q4d'/o`j'd.json")
+            dash clear
+            capture quietly dash `t' mpg weight, name(q4o)
+            capture noisily _dash_serve_spec, specpath("`q4d'/o`j'b.json") datapath("`q4d'/o`j'd.json")
+            python: __import__("__main__")._q4_same("`q4d'/o`j'a.json", "`q4d'/o`j'b.json")
+            _w37_expect Q3704-4 "(${q4_ok} == 1)" "dash `t' mpg weight, `o' is not the layer without it"
+        }
+    }
+    foreach o in "xlog" "xtransform(X^2)" {
+        quietly log using "`lf'", text replace name(q4l)
+        display "Q4MARK"
+        capture noisily twoway fpfit mpg weight, `o' nodraw
+        local trc = _rc
+        display "Q4END"
+        quietly log close q4l
+        python: __import__("__main__")._q4_first("`lf'")
+        local tline "${q4_line}"
+        dash clear
+        quietly log using "`lf'", text replace name(q4l)
+        display "Q4MARK"
+        capture noisily dash fpfit mpg weight, `o' name(q4f)
+        local drc = _rc
+        display "Q4END"
+        quietly log close q4l
+        python: __import__("__main__")._q4_first("`lf'")
+        _w37_expect Q3704-4 `"(`trc' == `drc' & "`tline'" == "${q4_line}" & `trc' == 198)"' "fpfit mpg weight, `o': twoway r(`trc') `tline', dash r(`drc') ${q4_line}"
+    }
+    _w37_done Q3704-4 "lfit xlog has no note; qfit, qfitci, fpfitci draw as without the options; fpfit refuses them as twoway does"
+
+    // ------------------------------------------------------------
+    // Q3704-5: under by() each panel's stored points are that panel's
+    // serset, and the Total panel's the whole sample's.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "lfit mpg weight, xlog by(foreign)|0 1|" "lfitci mpg weight, xtransform(X^2) n(5) by(foreign, total)|0 1|total" {
+        local ++k
+        mata: q4_t = ustrsplit(st_local("c"), "[|]"); st_local("cmd", q4_t[1]); st_local("keys", q4_t[2]); st_local("tot", q4_t[3])
+        sysuse auto, clear
+        _q4_tw "`q4d'/p`k'.json" twoway `cmd' nodraw
+        dash clear
+        capture noisily dash `cmd' name(q4p`k')
+        _w37_expect Q3704-5 "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        capture noisily _dash_serve_spec, specpath("`q4d'/ps`k'.json") datapath("`q4d'/pd`k'.json")
+        local s 0
+        foreach v of local keys {
+            python: __import__("__main__")._q4_cmp("`q4d'/ps`k'.json", "q4p`k'", 1, "[`v']", "`q4d'/p`k'.json", `s', 1e-9)
+            _w37_expect Q3704-5 "(${q4_ok} == 1)" "dash `cmd', panel foreign == `v': ${q4_msg}"
+            local ++s
+        }
+        if "`tot'" != "" {
+            python: __import__("__main__")._q4_cmp("`q4d'/ps`k'.json", "q4p`k'", 1, "total", "`q4d'/p`k'.json", `s', 1e-9)
+            _w37_expect Q3704-5 "(${q4_ok} == 1)" "dash `cmd', the Total panel: ${q4_msg}"
+        }
+    }
+    _w37_done Q3704-5 "under by() each panel stores its own serset, and the Total panel the whole sample's"
+
+    // ------------------------------------------------------------
+    // Q3704-6: xtransform() text reaches twoway's generator by value:
+    // dash gives twoway's return code and first line for each.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q4t1 = "X+" + char(36) + "y"
+    local q4t2 "X;"
+    local q4t3 `"X+"a""'
+    local q4t4 = "X+" + char(96) + "y" + char(39)
+    local q4t5 "nosuchvar"
+    forvalues i = 1/5 {
+        quietly log using "`lf'", text replace name(q4l)
+        display "Q4MARK"
+        capture noisily twoway lfit mpg weight, xtransform(`macval(q4t`i')') nodraw
+        local trc = _rc
+        display "Q4END"
+        quietly log close q4l
+        python: __import__("__main__")._q4_first("`lf'")
+        local tline "${q4_line}"
+        dash clear
+        quietly log using "`lf'", text replace name(q4l)
+        display "Q4MARK"
+        capture noisily dash lfit mpg weight, xtransform(`macval(q4t`i')') name(q4x, replace)
+        local drc = _rc
+        display "Q4END"
+        quietly log close q4l
+        python: __import__("__main__")._q4_first("`lf'")
+        display as text `"Q3704-6 text `i': twoway r(`trc') `tline' | dash r(`drc') ${q4_line}"'
+        _w37_expect Q3704-6 `"(`trc' == `drc' & `"`tline'"' == `"${q4_line}"')"' `"text `i': twoway r(`trc') `tline', dash r(`drc') ${q4_line}"'
+    }
+    _w37_done Q3704-6 "xtransform() text is answered as twoway answers it"
+
+    // ------------------------------------------------------------
+    // Q3704-7: estopts() under by(): each panel's own fit, as twoway's.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    _q4_tw "`q4d'/e.json" twoway lfit mpg weight, estopts(nocons) by(foreign) nodraw
+    dash clear
+    capture noisily dash lfit mpg weight, estopts(nocons) by(foreign) name(q4e)
+    _w37_expect Q3704-7 "(_rc == 0)" "dash lfit estopts(nocons) by(foreign) rc `=_rc'"
+    capture noisily _dash_serve_spec, specpath("`q4d'/es.json") datapath("`q4d'/ed.json")
+    forvalues v = 0/1 {
+        python: __import__("__main__")._q4_cmp("`q4d'/es.json", "q4e", 1, "[`v']", "`q4d'/e.json", `v', 1e-9)
+        _w37_expect Q3704-7 "(${q4_ok} == 1)" "panel foreign == `v': ${q4_msg}"
+        local q4e`v' "${q4_msg}"
+    }
+    _w37_expect Q3704-7 `"("`q4e0'" != "`q4e1'")"' "the two panels store the same points: `q4e0'"
+    _w37_done Q3704-7 "estopts() under by() is fitted per panel as twoway fits it"
+
+    capture erase "`lf'"
+    local q4files : dir "`q4d'" files "*"
+    foreach f of local q4files {
+        capture erase "`q4d'/`f'"
+    }
+    capture rmdir "`q4d'"
+    capture mata: mata drop q4_t
+    macro drop q4_ok q4_msg q4_has q4_line
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
