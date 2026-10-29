@@ -995,7 +995,6 @@ and now matches Stata.
 ### Fixed in WP-37
 
 - contour and contourline over no observations stopped with a Python traceback, r(7102); they draw an empty plot with the key's title, as twoway does (WP-37, DG-1)
-
 - lfit and lfitci with xlog or xtransform() drew a straight line and named the option; they draw twoway's fit on the transformed x, once in each by() panel, and qfit, qfitci and fpfitci take the two options without a note, as twoway does (WP-37, stat:PT-12)
 - lfit mpg weight, estopts(nocons) by(foreign) (and every fit with estopts(), predopts() or estcmd() under by()) drew the whole sample's fit in each panel; each panel draws the fit of its own rows, as twoway does (WP-37, stat:PT-12)
 - The help said Stata's lpolyci band at a grid point whose pilot has no residual degrees of freedom is round-off, often missing; it now says twoway can draw no band there or a very wide one that rescales the y axis (lpolyci mpg weight, degree(3): -50.75 to 74.75), where dash draws zero width, and lists the difference under Differences from twoway (WP-37, stat:PT-16)

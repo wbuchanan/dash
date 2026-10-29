@@ -385,14 +385,14 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-16 Tracked:** Documented in WP-36, BUGS.md "'Works offline in any modern browser' is verified on Chrome only (Firefox once by hand, Safari never); bokeh 3.10+ unverified", commit 110072b.
 - **plat:PT-14 Tracked:** Documented in WP-36, BUGS.md "Large data: about 6-8 s and 1.4 GB of Stata RSS per million rows; page columns are JSON number lists, about twice the base64 size", commit 3a9c7cd.
 - **DG-14 Tracked:** Closed in WP-36, BUGS.md "WebGL above 10,000 dataset rows: thick dashed lines draw speckled; the switch counts the dataset's rows, not the graph's", commit 54b07d0.
-- **DG-1 Tracked:** Closed in WP-37, BUGS.md "contour over zero observations crashes with a Python traceback, r(7102)", commit pending.
+- **DG-1 Tracked:** Closed in WP-37, BUGS.md "contour over zero observations crashes with a Python traceback, r(7102)", commit f878d35.
 - **DG-5 Tracked:** Open (WP-37 section 37-02).
 - **TR-13 Tracked:** Open (WP-37 section 37-03).
 - **DG-8 Tracked:** Open (WP-37 section 37-02).
-- **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit pending.
-- **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit pending.
-- **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit pending.
-- **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit pending.
+- **stat:PT-12 Tracked:** Closed in WP-37, BUGS.md "xlog/xtransform() on lfit/lfitci are noted and the straight line drawn; twoway fits the transformed x", commit d3f9f82.
+- **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit 702c99b.
+- **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit a027672.
+- **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit 4eb94ea.
 - **syn:SD-17 Tracked:** Open (WP-38 section 38-01).
 - **GW-12 Tracked:** Open (WP-38 section 38-01).
 - **ECO-1 Tracked:** Open (WP-38 section 38-01).
