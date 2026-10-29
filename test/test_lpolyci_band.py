@@ -12,8 +12,9 @@ Every number is from test/fixtures/lpolyci_truth.json
 at 1e-8 x max(1, |y|); at the default bandwidths as exact as the rule of
 thumb (noisy cases: 1e-4 of the band half-width).  Rows whose pilot fit has
 no residual degrees of freedom (the fixture's ``no_df``, computed with
-numpy from the data, not by dash) are pinched: se 0 where Stata's value is
-round-off, often missing (documented divergence D4).
+numpy from the data, not by dash) are pinched: se 0, where twoway draws
+its own round-off -- no band, or a finite band that can be very wide
+(documented divergence D4; dash.sthlp, stat:PT-16).
 """
 import json
 import os

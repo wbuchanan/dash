@@ -2877,7 +2877,6 @@ GAPS4_OPEN = {
     'DG-5': 'rarea with cmissing(n) draws its bound outlines across the gaps',
     'TR-13': 'contour above 1,000 distinct points fits a seeded subsample on a 100x100 grid (every sandstone help example); a repeated node keeps the smallest z; a different polygon cutter',
     'DG-8': 'A contour with no surface (two observations) draws no colour key',
-    'stat:PT-16': 'lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off',
     'DT-26': 'Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000',
     'stat:PT-21': "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)",
     'syn:SD-17': 'name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output',

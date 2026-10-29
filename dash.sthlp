@@ -1485,6 +1485,10 @@ there, is an invalid point.  The literal is read as data and never run.
     seconds and about 1.5 GB of Stata's memory to build; see
     {help dash##limits:Resource limits}.
 
+{phang2}11.  {ul:lpolyci where the pilot has no residual degrees of freedom.}
+    {cmd:dash} draws zero width where {cmd:twoway} may draw a very wide
+    band; see {help dash##smoother_options:Statistical layer options}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -4218,9 +4222,13 @@ no band.  {cmd:lpolyci}'s band is {cmd:lpoly}'s analytic band
 invnormal times its standard error, a sandwich variance with a pilot
 local fit of degree p+2 at {cmd:pwidth()}, or {cmd:var()}.  At given
 bandwidths it is Stata's; at the default bandwidths it is as exact as the
-rule of thumb.  A grid point whose pilot window has no residual degrees of
-freedom is drawn with zero width; Stata's value there is round-off, often
-missing.  The band is drawn where its standard error is defined and joins
+rule of thumb.  At a grid point whose pilot window leaves no residual
+degrees of freedom, {cmd:dash} draws the band with zero width.
+{cmd:twoway} draws there what its own round-off gives: sometimes no band,
+and sometimes a finite band that can be very wide and rescale the y axis
+({cmd:lpolyci mpg weight, degree(3)} draws -50.75 to 74.75 at a weight of
+4,714, where the smooth is about 12, and no band at the three grid points
+before it and at the second after it).  The band is drawn where its standard error is defined and joins
 across the points where it is not, as {cmd:twoway lpolyci} draws it.  The
 saved page keeps the band computed when it was built; the served app
 refits it after every filter move.  The

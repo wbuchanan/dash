@@ -1470,4 +1470,7 @@ class TestInternalLinksResolve:
         # tilde rule links Dependencies (WP-36 36-04).
         # 136 -> 137 links: plat:PT-14 the Differences entry Large data
         # take time and memory links Resource limits (WP-36 36-04).
-        assert len(refs) == 137 and len(set(refs)) == 49
+        # 137 -> 138 links: stat:PT-16 the Differences entry lpolyci where
+        # the pilot has no residual degrees of freedom links Statistical
+        # Layer Options (WP-37 37-05).
+        assert len(refs) == 138 and len(set(refs)) == 49

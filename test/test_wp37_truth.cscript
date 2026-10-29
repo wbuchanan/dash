@@ -903,6 +903,82 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w37_run' {
 }
 * ==== end S04 ====
 
+python:
+import json as _w37s05_json
+import numpy as _w37s05_np
+from sfi import Data as _w37s05_D
+from sfi import Macro as _w37s05_M
+
+
+def _w37s05_render():
+    """dash_render from this tree: the script runs from test/."""
+    import os
+    import sys
+    repo = os.path.abspath("..")
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    import dash_render
+    return dash_render
+
+
+def _w37s05_col(name):
+    return _w37s05_np.asarray(_w37s05_D.get(name), dtype=float).ravel()
+
+
+def _w37s05_zero_df(fixture):
+    """Globals w37s05_tw (twoway's band at a_d3 grid index 47: lower,
+    upper, width) and w37s05_dw (dash's band width there): mpg on weight
+    in memory, degree(3), the renderer's rule of thumb, local fit and
+    standard error at the fixture's grid."""
+    try:
+        dr = _w37s05_render()
+        [c] = [c for c in _w37s05_json.load(open(fixture, encoding="utf-8"))["cases"]
+               if c["id"] == "a_d3"]
+        lo, hi = float(c["cl"][47]), float(c["cu"][47])
+        _w37s05_M.setGlobal("w37s05_tw", "%r %r %r" % (lo, hi, hi - lo))
+        x, y = _w37s05_col("weight"), _w37s05_col("mpg")
+        gm = dr.GlyphMapper
+        rot = gm._default_lpoly_bwidth(x, y, None, 3, "epanechnikov")
+        gx, gy = gm._compute_lpoly_fit(x, y, bwidth=rot, degree=3,
+                                       kernel="epanechnikov", n_grid=50)
+        if abs(gx[47] - float(c["gx"][47])) > 1e-9 * gx[47]:
+            raise ValueError("grid %r against the fixture's %r" % (gx[47], c["gx"][47]))
+        se = dr._lpoly_se(x, y, gx, rot, 1.5 * rot, 3, "epanechnikov")
+        z = dr._dash_invnormal(0.975)
+        _w37s05_M.setGlobal("w37s05_dw", repr(float((gy[47] + z * se[47])
+                                                    - (gy[47] - z * se[47]))))
+    except Exception as e:
+        _w37s05_M.setGlobal("w37s05_tw", "error")
+        _w37s05_M.setGlobal("w37s05_dw", "error " + str(e)[:200])
+end
+
+* ==== S05 stat:PT-16: lpolyci with no residual df ====
+local only : env WP37_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3705-1: lpolyci mpg weight, degree(3) at grid index 47 (weight
+    // 4714.29), where the pilot window has no residual degrees of
+    // freedom: twoway's band (fixtures/lpolyci_truth.json case a_d3,
+    // the committed truth) is finite and wider than 100, -50.75 to
+    // 74.75; dash's band there has zero width.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    python: _w37s05_zero_df("fixtures/lpolyci_truth.json")
+    local s05_tw "${w37s05_tw}"
+    local s05_dw "${w37s05_dw}"
+    display as text "Q3705-1: twoway lower upper width `s05_tw'; dash width `s05_dw'"
+    _w37_expect Q3705-1 `"(wordcount("`s05_tw'") == 3)"' "twoway's band not read: `s05_tw'"
+    _w37_expect Q3705-1 `"(real(word("`s05_tw'", 3)) > 100 & real(word("`s05_tw'", 3)) < .)"' "twoway's band is not finite and wider than 100: `s05_tw'"
+    _w37_expect Q3705-1 `"(abs(real(word("`s05_tw'", 1)) + 50.75) < .005 & abs(real(word("`s05_tw'", 2)) - 74.75) < .005)"' "twoway's band is not -50.75 to 74.75: `s05_tw'"
+    _w37_expect Q3705-1 `"(abs(real("`s05_dw'")) < 1e-9)"' "dash's band width is `s05_dw', not 0"
+    _w37_done Q3705-1 "at weight 4714.29 twoway draws -50.75 to 74.75 and dash a zero-width band"
+    macro drop w37s05_tw w37s05_dw
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
