@@ -376,7 +376,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-1 Tracked:** Closed in WP-35, BUGS.md "A bare plot after a parenthesised group, '(scatter ..) line ..', is refused; twoway draws it", commit 8cab1d2.
 - **syn:SD-13 Tracked:** Closed in WP-35, BUGS.md "A || inside one group with no graph options, '(scatter .. || line ..)', is refused; twoway draws both", commit 2e22ede.
 - **plat:PT-1 Tracked:** Closed in WP-36, BUGS.md "dash and dash_setup refuse a Python that Stata found by itself (python_exec never set), and the remedy loops back to the same refusal", commit eb8a8f1.
-- **plat:PT-5 Tracked:** Open (WP-36 section 36-04).
+- **plat:PT-5 Tracked:** Documented in WP-36, BUGS.md "Windows, Linux, Intel macOS and GUI Stata have never run dash; the opener and os.name branches are simulated only; the runners are POSIX sh", commit pending.
 - **plat:PT-4 Tracked:** Closed in WP-36, BUGS.md "Named graphs with function layers are capped by c(macrolen): two n(10000) layers can be refused r(134), and the advice 'set maxvar' does not always help", commit c4ecfcc.
 - **plat:PT-2 Tracked:** Open (WP-36 section 36-04).
 - **plat:PT-11 Tracked:** Open (WP-36 section 36-04).

@@ -16,6 +16,8 @@ d an app for you to launch.
 d
 d Requires: Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
 d Measured on MP only; Stata 19.0, Stata/BE and Stata/SE have not been run.
+d It is run from the console; Windows, Linux, Intel macOS and Stata's
+d graphical interface have not been run.
 d Requires: Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3.
 d
 d Run -dash_setup- once after installation: it checks the

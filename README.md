@@ -13,7 +13,8 @@ that opens in a modern browser without a server or an internet connection.
 with the `server` option writes such an app for you to launch.
 
 `dash` takes the place of `twoway`: write `dash scatter mpg weight` where
-you would write `twoway scatter mpg weight`.
+you would write `twoway scatter mpg weight`.  It has been tested on macOS
+arm64 with StataNow 19.5, run from the console.
 
 Beyond the graphs, a dashboard can carry:
 
@@ -31,6 +32,7 @@ Beyond the graphs, a dashboard can carry:
 
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
   Measured on MP only; Stata 19.0, Stata/BE and Stata/SE have not been run.
+  It is run from the console; Windows, Linux, Intel macOS and Stata's graphical interface have not been run.
 - Python 3.11+, bokeh>=3.8,<3.10, numpy>=2.3, pandas>=2.3.
 
 ## Installation

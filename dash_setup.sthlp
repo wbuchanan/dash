@@ -155,9 +155,11 @@ environment in place; you may delete it.
 
 {phang2}Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
 Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are admitted but
-have not been run.  {cmd:dash_setup} checks this before anything else and
-reports {cmd:Stata .............. OK} with the release; on an older Stata
-it stops at once with "dash requires Stata 19 or later; this is Stata
+have not been run.
+It is run from the console; Windows, Linux, Intel macOS and Stata's
+graphical interface have not been run.  {cmd:dash_setup} checks this
+before anything else and reports {cmd:Stata .............. OK} with the
+release; on an older Stata it stops at once with "dash requires Stata 19 or later; this is Stata
 {it:#}", r(9), and checks and installs nothing.
 
 {pstd}{ul:Python}

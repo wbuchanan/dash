@@ -167,6 +167,8 @@ see {help dash##weights:Weights}.
 {pstd}
 {cmd:dash} replaces {cmd:twoway}: type {cmd:dash} where you would type
 {cmd:twoway}, as in {cmd:dash (scatter mpg weight) (lfit mpg weight)}.
+It has been tested on macOS arm64 with StataNow 19.5, run from the
+console; see {help dash##dependencies:Dependencies}.
 {cmd:dash twoway scatter mpg weight} is therefore {cmd:twoway twoway scatter mpg weight},
 and is refused as {cmd:twoway} refuses that, "twoway is not a twoway plot type",
 {cmd:r(198)}; so are {cmd:tw}, {cmd:two}, {cmd:twow}, {cmd:twowa},
@@ -1459,6 +1461,10 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}7.  {ul:Options dash takes that twoway refuses:} {cmd:hover()} and
     {cmd:table}; see {help dash##dashonly:dash's own options}.
+
+{phang2}8.  {ul:Tested on one platform.}  {cmd:dash} has run only on macOS
+    arm64 with StataNow 19.5 from the console; see
+    {help dash##dependencies:Dependencies}.
 
 
 {marker subcommands}
@@ -6806,7 +6812,11 @@ link yourself:
 
 {phang2}{ul:Stata} -- Stata 19 or later; tested on StataNow 19.5 (MP), macOS
     arm64.  Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are
-    admitted but have not been run.  On an older Stata, {cmd:dash} and
+    admitted but have not been run.
+    It is run from the console; Windows, Linux, Intel macOS and Stata's
+    graphical interface have not been run: the code that opens a page
+    there, the Windows file handling and the test runners (POSIX shell
+    scripts) are untested.  On an older Stata, {cmd:dash} and
     {helpb dash_setup} stop before doing anything else with "dash requires
     Stata 19 or later; this is Stata {it:#}", r(9).  The floor is the Stata
     you run, not the version a do-file sets: a do-file that begins

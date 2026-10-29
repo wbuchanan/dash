@@ -1456,4 +1456,7 @@ class TestInternalLinksResolve:
         # 128 -> 132 links, 48 -> 49 targets: WP-35 DT-15 the Option values
         # paragraph, the Differences entry, hover()'s entry and the Data
         # tables section link dash's own options, dash##dashonly.
-        assert len(refs) == 132 and len(set(refs)) == 49
+        # 132 -> 134 links: plat:PT-5 the drop-in paragraph and the
+        # Differences entry Tested on one platform link Dependencies
+        # (WP-36 36-04).
+        assert len(refs) == 134 and len(set(refs)) == 49
