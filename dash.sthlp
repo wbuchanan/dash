@@ -1662,6 +1662,12 @@ path, and you open it yourself.  This includes the one-line form's preview
 page when the name of your user folder holds such a character.  On
 Windows the {cmd:To launch:} line keeps double quotes and says so when the
 path holds {cmd:%} or {cmd:!}, which cmd.exe expands in a pasted line.
+A {cmd:saving()} path that starts with {cmd:~/} starts in your home
+folder, read from the {cmd:HOME} environment variable ({cmd:r(198)} when
+it is not set); a {cmd:~} anywhere else, and {cmd:~\}, is an ordinary
+character, so on Windows {cmd:~\}{it:dir}{cmd:\}{it:file} is a path
+relative to the working directory, not your home folder (Windows has not
+been run; see {help dash##dependencies:Dependencies}).
 
 {marker nobrowser_global}
 {pstd}

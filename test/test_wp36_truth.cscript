@@ -445,6 +445,40 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w36_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 plat:PT-6: a leading tilde ====
+local only : env WP36_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w36_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q3604-2: the help's tilde rule.  r(filename)'s _dash_abs_path,
+    // driven by os value: ~\a\b.html is relative on Windows (joined to
+    // the working directory), ~/a.html absolute on a Mac.  The ado's
+    // _dash_validate_path, which hands its result back in the caller's
+    // local _dash_vpath, expands ~/ from HOME and leaves ~\ as typed.
+    // Neither call writes a file.
+    // ------------------------------------------------------------
+    mata: st_local("s04_w", _dash_abs_path("~" + char(92) + "a" + char(92) + "b.html", "C:" + char(92) + "w", "Windows"))
+    mata: st_local("s04_wx", "C:" + char(92) + "w" + char(92) + "~" + char(92) + "a" + char(92) + "b.html")
+    _w36_expect Q3604-2 `"("`s04_w'" == "`s04_wx'")"' "Windows ~\a\b.html read as `s04_w'"
+    mata: st_local("s04_m", _dash_abs_path("~/a.html", "/w", "MacOSX"))
+    _w36_expect Q3604-2 `"("`s04_m'" == "~/a.html")"' "MacOSX ~/a.html read as `s04_m'"
+    local s04_home : environment HOME
+    local _dash_vpath ""
+    capture noisily _dash_validate_path "~/q3604_t.html"
+    _w36_expect Q3604-2 "(_rc == 0)" "_dash_validate_path ~/q3604_t.html rc `=_rc'"
+    _w36_expect Q3604-2 `"("`_dash_vpath'" == "`s04_home'/q3604_t.html" & "`s04_home'" != "")"' "~/q3604_t.html became `_dash_vpath' (HOME `s04_home')"
+    local _dash_vpath ""
+    mata: st_local("s04_b", "~" + char(92) + "q3604_t.html")
+    capture noisily _dash_validate_path "`s04_b'"
+    _w36_expect Q3604-2 "(_rc == 0)" "_dash_validate_path ~\q3604_t.html rc `=_rc'"
+    _w36_expect Q3604-2 `"("`_dash_vpath'" == "`s04_b'")"' "~\q3604_t.html became `_dash_vpath'"
+    _w36_done Q3604-2 "only a leading ~/ is expanded, from HOME; ~\ is an ordinary path"
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

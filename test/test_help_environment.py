@@ -237,3 +237,21 @@ class TestTheLock:
         assert lines[6] == ("# platforms: macos-arm64 macos-x86_64 "
                             "linux-x86_64 linux-aarch64 windows-amd64"), \
             lines[6]
+
+
+class TestTheTilde:
+    """plat:PT-6: saving() expands only a leading ``~/``, from HOME; ``~\\``
+    is an ordinary path, relative on Windows (probe: test_wp36_truth.cscript
+    Q3604-2)."""
+
+    def test_the_rule(self):
+        para = _flat(_between(_help(), "{marker saving_chars}",
+                              "{marker nobrowser_global}"))
+        assert para.endswith(
+            "A {cmd:saving()} path that starts with {cmd:~/} starts in your "
+            "home folder, read from the {cmd:HOME} environment variable "
+            "({cmd:r(198)} when it is not set); a {cmd:~} anywhere else, and "
+            "{cmd:~\\}, is an ordinary character, so on Windows "
+            "{cmd:~\\}{it:dir}{cmd:\\}{it:file} is a path relative to the "
+            "working directory, not your home folder (Windows has not been "
+            "run; see {help dash##dependencies:Dependencies})."), para

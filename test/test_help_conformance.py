@@ -1461,4 +1461,6 @@ class TestInternalLinksResolve:
         # (WP-36 36-04).
         # 134 -> 135 links: plat:PT-2 the Differences entry Stata 19 or
         # later links Dependencies (WP-36 36-04).
-        assert len(refs) == 135 and len(set(refs)) == 49
+        # 135 -> 136 links: plat:PT-6 the saving() characters paragraph's
+        # tilde rule links Dependencies (WP-36 36-04).
+        assert len(refs) == 136 and len(set(refs)) == 49
