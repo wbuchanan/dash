@@ -993,6 +993,8 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-40
+
 ### Fixed in WP-38
 
 - The help did not say beside its drop-in claim that a graph with name() is registered for dash build and drawn by nothing else, and that saving() beside name() writes nothing; the Description says so, and a new section, Stata graph integration, says what a do-file of named graphs does under dash (WP-38, syn:SD-17)

@@ -311,7 +311,8 @@ class TestTheChecksReachEveryScript:
         # 72 -> 73: test_wp36_truth.cscript (WP-36 W0).
         # 73 -> 74: test_wp37_truth.cscript (WP-37 W0).
         # 74 -> 75: test_wp38_truth.cscript (WP-38 W0).
-        assert len(_CSCRIPTS) == 75, (
+        # 75 -> 76: test_wp40_truth.cscript (WP-40 W0).
+        assert len(_CSCRIPTS) == 76, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
