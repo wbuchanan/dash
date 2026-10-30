@@ -15134,9 +15134,12 @@ program define _dash_prepare_spec, rclass
         // and exported from there; only dash's own temporary frames
         // (35-08's export frame, 33-07's stack) are cut with keep.  No
         // row marked, or every row: today's export.
+        // The stack is not counted by _dash_maxvar_room: a stack with no
+        // room for the selection column exports every row, as before.
         if `_sel_mode' {
             tempvar _dash_sel
-            frame `_dash_stk': quietly generate byte `_dash_sel' = 0
+            capture frame `_dash_stk': quietly generate byte `_dash_sel' = 0
+            if !_rc {
             forvalues _selk = 1/`ntok_reg' {
                 if `: length local _qg_`_selk'' frame `_dash_stk': mata: _dash_sel_mark(st_local("_dash_sel"), st_local("_qg_`_selk'"))
             }
@@ -15147,6 +15150,7 @@ program define _dash_prepare_spec, rclass
             local _sel_cut = (`_sel_n' > 0 & `_sel_n' < `_sel_N')
             if `_sel_cut' frame `_dash_stk': quietly keep if `_dash_sel'
             frame `_dash_stk': quietly drop `_dash_sel'
+            }
         }
         capture noisily frame `_dash_stk': _dash_write_data "`datapath'" `all_vars' `_dash_split_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         local _dash_jrc = _rc

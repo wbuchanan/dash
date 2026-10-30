@@ -296,6 +296,19 @@ class TestTheRule:
                         and "\"`_xfp'\" != \"\"" in ln)), (
                 f"{prog}: a keep outside dash's own frames: {ln.strip()}")
 
+    def test_a_full_stack_exports_every_row(self):
+        # 33-07's stack of several frames is not counted by
+        # _dash_maxvar_room, so a stack at c(maxvar) has no room for the
+        # selection column: its generate is captured and, when it fails,
+        # the build exports every row, as before WP-40.
+        body = _program("_dash_prepare_spec")
+        gen = re.search(r"^\s*(capture )?frame `_dash_stk': quietly "
+                        r"generate byte `_dash_sel' = 0\s*$", body, re.M)
+        assert gen, "the stack's selection column"
+        assert gen.group(1), gen.group(0).strip()
+        after = body[gen.end():]
+        assert re.match(r"\s*if !_rc \{", after), after[:80]
+
     def test_full_mode_exports_every_row(self):
         body = _program("_dash_prepare_spec")
         m = re.search(r"local _sel_mode = \((.*)\)\s*$", body, re.M)
