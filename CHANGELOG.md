@@ -1003,6 +1003,7 @@ and now matches Stata.
 - The help said histogram's discrete draws one bar per distinct value, and did not say that width() or discrete needing more than 1,000 bins is rebinned; it now says that past 1,000 bins, empty ones counted, discrete is squeezed into 1,000 bars and width() is dropped, with a note, where twoway draws the occupied bins (74 for histogram price, discrete), in the histogram paragraph, under Resource limits and in Differences from twoway item 15 (WP-40, sil:SD-1)
 - The help did not say that #N above 2,000 is taken as 2,000 silently, nor give twoway's answer to more than 2,000 ticks, nor list the 256 axis ranges a build asks of Stata's tick routine as a limit; the Axis labels paragraph, Resource limits and Differences from twoway item 15 now do (WP-40, AX-16)
 - The help said msize() takes any number; it now says that msize() and the other marker sizes take at most 1,000 units, a larger size drawn at the scheme's default with a note where twoway draws it, in the bounds paragraph, under Resource limits and in Differences from twoway item 15 (WP-40, sil:SD-11)
+- The help did not say that fpfit and fpfitci with more than 20,000 distinct x are evaluated on 20,000 evenly spaced x, silently, where twoway predicts at every distinct x; Resource limits and Differences from twoway item 15 now do (WP-40, sil:SD-12)
 
 ### Fixed in WP-38
 

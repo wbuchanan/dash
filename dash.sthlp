@@ -1578,6 +1578,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Marker size.}  {cmd:msize()} above 1,000 units is drawn at the default, with a note, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:fpfit's grid.}  Above 20,000 distinct x the fit is evaluated on 20,000 points, silently, where {cmd:twoway} predicts at every distinct x; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3467,7 +3469,11 @@ a fixed limit too, 256: a range past it is ticked by {cmd:dash}'s model of
 that routine, silently, where {cmd:twoway} asks the routine for every axis
 it draws.  {cmd:msize()} and the other marker sizes take at most 1,000
 units: a larger size is drawn at the scheme's default with a note, where
-{cmd:twoway} draws it ({cmd:msize(1500)}).
+{cmd:twoway} draws it ({cmd:msize(1500)}).  {cmd:fpfit} and {cmd:fpfitci}
+with more than 20,000 distinct x are evaluated at 20,000 evenly spaced x
+across the range, where {cmd:twoway} predicts at every distinct x; the
+curve is the same, but the points it passes through and where
+{cmd:cmissing()} breaks it can differ.
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:

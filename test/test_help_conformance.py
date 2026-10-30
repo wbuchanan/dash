@@ -1004,8 +1004,10 @@ class TestTheParsersFoundSomething:
         # old -> new: 466 -> 467, AX-16 the sub-point Ticks. (WP-40 40-02).
         # old -> new: 467 -> 468, sil:SD-11 the sub-point Marker size.
         # (WP-40 40-02).
-        assert len(defs) == 468, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 468 "
+        # old -> new: 468 -> 469, sil:SD-12 the sub-point fpfit's grid.
+        # (WP-40 40-02).
+        assert len(defs) == 469, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 469 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1569,4 +1571,6 @@ class TestInternalLinksResolve:
         # Resource limits (WP-40 40-02).
         # old -> new: 177 -> 178 links: sil:SD-11 the sub-point Marker size.
         # links Resource limits (WP-40 40-02).
-        assert len(refs) == 178 and len(set(refs)) == 51
+        # old -> new: 178 -> 179 links: sil:SD-12 the sub-point fpfit's
+        # grid. links Resource limits (WP-40 40-02).
+        assert len(refs) == 179 and len(set(refs)) == 51

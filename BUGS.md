@@ -4994,11 +4994,11 @@
   - Suggested fix: Documented only (M10, Q44): the 1,000-unit msize() bound stays; the help and the note's wording are corrected.
   - Resolution: Documented 30oct2026 (WP-40, sil:SD-11). dash.sthlp Differences from twoway item 5's bounds paragraph (msize() and the other marker sizes take any number up to 1,000 units: a larger size is drawn at the scheme's default with a note, where twoway draws it; HR-19's 'any number' corrected), Resource limits (Fixed limits: the same) and Differences from twoway item 15's sub-point Marker size. The note's wording, 'not a recognised size', is WP-49's (LT-25). Pinned by test/test_help_resource_limits.py::TestMarkerSize, Q4002-7 (test_wp40_truth.cscript S02). Closes GAPS4 sil:SD-11 (WP-40, sil:SD-11).
 
-- [ ] Title: fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently
+- [x] Title: fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently
   - File Names and Line Numbers: dash_render.py:429, 21747, 27031
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-12; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-12 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): the 20,000-point fpfit grid stays and is documented under Resource limits and Differences.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, sil:SD-12). dash.sthlp Resource limits (Fixed limits: fpfit and fpfitci with more than 20,000 distinct x are evaluated at 20,000 evenly spaced x across the range, where twoway predicts at every distinct x; the curve is the same, but the points it passes through and where cmissing() breaks it can differ) and Differences from twoway item 15's sub-point fpfit's grid., which says it is silent. Pinned by test/test_help_resource_limits.py::TestFpfitGrid (no cscript probe: 20,000 distinct x make a slow build). Closes GAPS4 sil:SD-12 (WP-40, sil:SD-12).
 
 - [ ] Title: text() whose globals expand past 4,000 characters is refused r(198)
   - File Names and Line Numbers: dash_parse.mata:11461-11469; dash.sthlp:784-785, 5232-5234

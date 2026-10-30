@@ -465,3 +465,26 @@ class TestMarkerSize:
         _assert_sub_point(sub)
         assert ("{cmd:msize()} above %s units is drawn at the default"
                 % _n(_size_max())) in sub
+
+
+# ---------------------------------------------------------------------------
+# sil:SD-12: fpfit and fpfitci above 20,000 distinct x
+# ---------------------------------------------------------------------------
+
+class TestFpfitGrid:
+    """Above _FP_GRID_MAX distinct x the fit is evaluated on that many
+    evenly spaced x, silently, where twoway predicts at every distinct x
+    (no cscript probe: 20,000 distinct x is a slow build)."""
+
+    def test_the_constant_is_stated(self):
+        grid = _n(_constant(_RENDER, "_FP_GRID_MAX"))
+        s = _fixed_sentence("{cmd:fpfitci} with more than")
+        assert ("{cmd:fpfit} and {cmd:fpfitci} with more than %s distinct x "
+                "are evaluated at %s evenly spaced x across the range, where "
+                "{cmd:twoway} predicts at every distinct x" % (grid, grid)) in s
+
+    def test_the_sub_point(self):
+        sub = _sub("fpfit's grid.")
+        _assert_sub_point(sub)
+        assert ("Above %s distinct x the fit is evaluated on %s points"
+                % ((_n(_constant(_RENDER, "_FP_GRID_MAX")),) * 2)) in sub
