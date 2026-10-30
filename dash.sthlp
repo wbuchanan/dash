@@ -1554,6 +1554,16 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Working values in s().}  {cmd:dash} leaves its parsers' values in s(); see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}15.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+    and any number of plots, panels, lines and texts; {cmd:dash} also takes
+    data of any size; it refuses, trims or rebins only beyond the limits in
+    {help dash##limits:Resource limits} -- its count limits and its fixed
+    limits -- most with a note ({cmd:fpfit}'s grid, a {cmd:#}{it:N} above
+    2,000 and the ticks of an axis range past the 256 a build asks Stata
+    for are silent).
+
+{phang2}    {ul:No size limit; count limits.}  Like {cmd:twoway}, {cmd:dash} takes data and builds pages of any size, and no image is limited by its file size; it limits only counts: at most 100 graphs and KPI cards ({cmd:$dash_max_graphs}), 100 image panels ({cmd:$dash_max_images}), 10,000 reference lines ({cmd:$dash_max_reflines}) and 1,000 added texts ({cmd:$dash_max_added_text}), refused with {cmd:r(134)}; 50 tabs ({cmd:$dash_max_tabs}), 20 filters ({cmd:$dash_max_filters}) and 1,000 data-table rows ({cmd:$dash_max_table_rows}), the first drawn; and 1,000 values in a dropdown filter ({cmd:$dash_max_filter_options}), past which a numeric variable gets a range filter and a string variable lists its first values; each unless its global raises it; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3344,7 +3354,11 @@ formats grows by that much for each.
 The quantities below decide how much {cmd:dash} builds -- the graphs in the
 registry and the plots in a graph, the panels of a {cmd:by()} graph, and
 the tabs, filters, dropdown values, reference lines, added texts and table
-rows a dashboard draws -- and each has a limit.  Each limit has a default,
+rows a dashboard draws -- and each has a limit.  Neither {cmd:twoway} nor
+{cmd:dash} limits the size of the data or of the page, and no image panel is
+limited by its file size: {cmd:$dash_max_images} counts images, not bytes.
+{cmd:twoway} has none of the count limits below either: it draws any number
+of plots, panels, lines and texts.  Each limit has a default,
 a ceiling that nothing moves, and a global macro that moves it for the rest
 of the session:
 

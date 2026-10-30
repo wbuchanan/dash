@@ -985,8 +985,11 @@ class TestTheParsersFoundSomething:
         # sub-options. (WP-38 38-02).
         # old -> new: 460 -> 461, ECO-5 the sub-point dash clear.
         # (WP-38 38-02).
-        assert len(defs) == 461, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 461 "
+        # old -> new: 461 -> 462, plat:PT-8 the sub-point No size limit;
+        # count limits. of the new Differences item Resource limits (WP-40
+        # 40-02).
+        assert len(defs) == 462, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 462 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1535,4 +1538,7 @@ class TestInternalLinksResolve:
         # (WP-38 38-02).
         # old -> new: 169 -> 170 links: plat:PT-7 the What dash exports
         # paragraph links Description (WP-40 40-01).
-        assert len(refs) == 170 and len(set(refs)) == 51
+        # old -> new: 170 -> 172 links: plat:PT-8 the Differences item
+        # Resource limits and its sub-point No size limit; count limits.
+        # link Resource limits (WP-40 40-02).
+        assert len(refs) == 172 and len(set(refs)) == 51

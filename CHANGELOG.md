@@ -996,6 +996,7 @@ and now matches Stata.
 ### Fixed in WP-40
 
 - dash scatter y x in 1/100 exported every observation to its data file and held them in memory while it built; on the one-line form and a build with no filter(), link(), brush(), csv or KPI card only the rows the graphs draw are exported: 100 of 3,000,000 (WP-40, plat:PT-7)
+- The help did not say that dash, like twoway, sets no limit on the size of the data or of the page, nor list dash's count limits under Differences from twoway; Resource limits now says that twoway has none of the count limits and that no image is limited by its file size, and Differences from twoway item 15 lists every count limit with its default and global (WP-40, plat:PT-8)
 
 ### Fixed in WP-38
 

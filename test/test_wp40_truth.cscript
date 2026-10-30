@@ -538,6 +538,76 @@ end
 }
 * ==== end S01 ====
 
+// ----------------------------------------------------------------
+// S02's helper (section 40-02): _w40_s02_run <log> <cmd> runs the dash
+// command <cmd> under capture noisily with its output logged to <log>,
+// sets c_local s02rc to its return code; _w40_s02_log <log> <needle> sets
+// c_local s02c to the number of logical lines of <log> holding <needle>.
+// ----------------------------------------------------------------
+capture program drop _w40_s02_run
+program define _w40_s02_run
+    version 19
+    gettoken logf 0 : 0
+    capture log close s02l
+    quietly log using "`logf'", text replace name(s02l) nomsg
+    capture noisily `0'
+    local rc = _rc
+    quietly log close s02l
+    c_local s02rc = `rc'
+end
+capture program drop _w40_s02_log
+program define _w40_s02_log
+    version 19
+    cert_log_has "`1'", needle(`"`2'"')
+    c_local s02c = r(count)
+end
+
+* ==== S02 plat:PT-8: no size cap, count caps ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-1 (plat:PT-8): 10,001 reference lines and 1,001 added texts
+    // draw in twoway; dash refuses each with r(134), naming its limit
+    // and global.  One xline() of 10,001 positions is refused by twoway
+    // itself ("invalid line argument", r(198), measured 30oct2026), so
+    // the positions are given in five xline() options.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q1x "xline(1(1)2000) xline(2001(1)4000) xline(4001(1)6000) xline(6001(1)8000) xline(8001(1)10001)"
+    capture noisily twoway scatter mpg weight, `q1x' nodraw
+    local q1_trc = _rc
+    _w40_expect Q4002-1 "(`q1_trc' == 0)" "twoway 10,001 xline() positions rc `q1_trc'"
+    capture erase "`s02d'/q1a.html"
+    _w40_s02_run "`s02d'/q1a.log" dash scatter mpg weight, `q1x' saving("`s02d'/q1a.html", replace)
+    _w40_expect Q4002-1 "(`s02rc' == 134)" "dash 10,001 xline() positions rc `s02rc'"
+    _w40_s02_log "`s02d'/q1a.log" "more than the 10,000"
+    _w40_expect Q4002-1 "(`s02c' == 1)" "the refusal does not name 10,000"
+    _w40_s02_log "`s02d'/q1a.log" "dash_max_reflines"
+    _w40_expect Q4002-1 "(`s02c' == 1)" "the refusal does not name dash_max_reflines"
+    local q1t ""
+    forvalues i = 1/1001 {
+        local q1t `"`q1t' 20 2000 "a""'
+    }
+    capture noisily twoway scatter mpg weight, text(`q1t') nodraw
+    local q1_trc = _rc
+    _w40_expect Q4002-1 "(`q1_trc' == 0)" "twoway 1,001 text() points rc `q1_trc'"
+    capture erase "`s02d'/q1b.html"
+    _w40_s02_run "`s02d'/q1b.log" dash scatter mpg weight, text(`q1t') saving("`s02d'/q1b.html", replace)
+    _w40_expect Q4002-1 "(`s02rc' == 134)" "dash 1,001 text() points rc `s02rc'"
+    _w40_s02_log "`s02d'/q1b.log" "more than the 1,000"
+    _w40_expect Q4002-1 "(`s02c' == 1)" "the refusal does not name 1,000"
+    _w40_s02_log "`s02d'/q1b.log" "dash_max_added_text"
+    _w40_expect Q4002-1 "(`s02c' == 1)" "the refusal does not name dash_max_added_text"
+    _w40_done Q4002-1 "10,001 reference lines and 1,001 texts: twoway draws, dash r(134) naming each limit"
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

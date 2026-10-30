@@ -407,7 +407,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ECO-5 Tracked:** Documented in WP-38, BUGS.md "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items", commit c713765.
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit 51fcf94.
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit 933328c.
-- **plat:PT-8 Tracked:** Open (WP-40 section 40-02).
+- **plat:PT-8 Tracked:** Documented in WP-40, BUGS.md "r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts", commit pending.
 - **plat:PT-7 Tracked:** Closed in WP-40, BUGS.md "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows", commit 0d31c6b.
 - **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
 - **plat:PT-10 Tracked:** Open (WP-40 section 40-02).

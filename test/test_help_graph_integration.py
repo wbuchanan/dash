@@ -69,10 +69,16 @@ def _differences():
 
 def _item():
     """Differences item "A dashboard is not a Stata graph", with its
-    sub-points: from its number to the end of the section."""
+    sub-points: from its number to the next numbered item or the end of
+    the section."""
     d = _differences()
     i = d.index("{ul:A dashboard is not a Stata graph.}")
-    return d[d.rindex("{phang2}", 0, i):]
+    start = d.rindex("{phang2}", 0, i)
+    # Flipped (WP-40 plat:PT-8): item 15, Resource limits, follows this
+    # item, so its sub-points end at the next numbered item, not at the
+    # end of the section.
+    nxt = re.search(r"^\{phang2\}\d+\.  ", d[i:], re.M)
+    return d[start:i + nxt.start()] if nxt else d[start:]
 
 
 def _sub_point(heading):
@@ -86,14 +92,17 @@ def _sub_point(heading):
 class TestTheDifferencesItem:
 
     def test_the_item_links_to_the_section(self):
-        """The new item is the last numbered one and links the section;
+        """The new item is numbered in sequence and links the section;
         the link lands on its marker, which has a Jump To entry."""
         d = _differences()
         nums = [int(n) for n in re.findall(r"^\{phang2\}(\d+)\.", d, re.M)]
         head = re.search(r"^\{phang2\}(\d+)\.  \{ul:A dashboard is not a "
                          r"Stata graph\.\}", d, re.M)
         assert head, "no Differences item 'A dashboard is not a Stata graph'"
-        assert int(head.group(1)) == max(nums) == len(nums)
+        # Flipped (WP-40 plat:PT-8): item 14 was the last numbered item;
+        # item 15, Resource limits, now follows it.
+        assert nums == list(range(1, len(nums) + 1)), nums
+        assert int(head.group(1)) == 14
         item = _flat(_item())
         assert ("{cmd:dash} writes a web page; nothing in Stata's graph "
                 "memory sees it. See " + _LINK) in item
