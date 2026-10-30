@@ -382,6 +382,25 @@ end
     capture dash clear
     capture graph drop _all
 
+    // ------------------------------------------------------------
+    // Q3801-5 (ECO-7): dash leaves s(_recast_type) and s(g_saving) or
+    // s(g_name); twoway, run after it, leaves s() empty.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    sreturn clear
+    capture erase "`s01d'/q5.html"
+    dash scatter mpg weight, saving("`s01d'/q5.html", replace)
+    _w38_expect Q3801-5 `"("`s(_recast_type)'" == "scatter")"' `"dash left s(_recast_type) "`s(_recast_type)'""'
+    _w38_expect Q3801-5 `"("`s(g_saving)'" != "")"' "dash left no s(g_saving)"
+    dash scatter mpg weight, name(q3801s)
+    _w38_expect Q3801-5 `"("`s(g_name)'" == "q3801s")"' `"dash left s(g_name) "`s(g_name)'""'
+    quietly twoway scatter mpg weight, nodraw name(q3801st)
+    mata: st_local("q5_left", invtokens(st_dir("s()", "macro", "*")'))
+    _w38_expect Q3801-5 `"("`q5_left'" == "")"' "twoway after dash left s(): `q5_left'"
+    _w38_done Q3801-5 "dash leaves its parsers' s(); twoway after it leaves s() empty"
+    capture dash clear
+    capture graph drop _all
+
     local s01f : dir "`s01d'" files "*"
     foreach f of local s01f {
         capture erase "`s01d'/`f'"

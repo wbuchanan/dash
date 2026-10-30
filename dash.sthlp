@@ -1527,6 +1527,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:One page per command.}  Each one-line command opens its own page; see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:Working values in s().}  {cmd:dash} leaves its parsers' values in s(); see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1928,6 +1930,15 @@ the page where it says and opens nothing; {cmd:$dash_nobrowser} keeps every
 window shut (see {help dash##nobrowser_global:The global dash_nobrowser});
 {cmd:twoway} instead draws every graph into its one Graph window.
 
+{pstd}
+{ul:What dash leaves in s().}  {cmd:twoway} leaves {cmd:s()} empty, whatever an
+earlier command left there; {cmd:dash} leaves the values its option parsers
+set -- {cmd:s(_recast_type)}, with {cmd:s(g_saving)} after the one-line form
+with {cmd:saving()} or {cmd:s(g_name)} after a named graph, and others an
+option sets.  They are {cmd:dash}'s working values, not results: read
+{cmd:r(filename)} (see {help dash##results:Stored results}), and do not rely
+on {cmd:s()} after either command.
+
 
 {marker accessibility}{...}
 {title:Accessibility}
@@ -1984,6 +1995,8 @@ use {cmd:saving()} to keep a page.  Registering a graph or a KPI card,
 no file of yours, and the key in its address is never stored.  A command
 that stops with an error stores nothing.  As after {cmd:twoway}, every
 {cmd:dash} command replaces the {cmd:r()} results of the command before it.
+{cmd:s()} holds {cmd:dash}'s working values after a command; see
+{help dash##graphintegration:Stata graph integration}.
 
 
 {marker layout}

@@ -18,6 +18,8 @@ item:
   options are refused (TestGraphCombine).
 * ECO-15 -- each one-line command writes and opens its own page; five
   previews are kept (TestOnePagePerCommand).
+* ECO-7 -- dash leaves the s() values its parsers set, where twoway leaves
+  s() empty (TestSReturns).
 
 The Stata half -- each measurable sentence beside twoway in one run -- is
 test_wp38_truth.cscript's block S01 (Q3801-k).
@@ -328,4 +330,34 @@ class TestOnePagePerCommand:
     def test_the_sub_point(self):
         line = _sub_point("One page per command.")
         assert ("Each one-line command opens its own page; see "
+                + _LINK + ".") in line
+
+
+class TestSReturns:
+    """ECO-7: dash leaves the s() its parsers set; twoway leaves s()
+    empty (Q3801-5)."""
+
+    def test_the_paragraph(self):
+        t = _topic()
+        para = t[t.index("{ul:What dash leaves in s().}"):]
+        for claim in (
+                "{cmd:twoway} leaves {cmd:s()} empty, whatever an earlier "
+                "command left there;",
+                "{cmd:dash} leaves the values its option parsers set -- "
+                "{cmd:s(_recast_type)}, with {cmd:s(g_saving)} after the "
+                "one-line form with {cmd:saving()} or {cmd:s(g_name)} after "
+                "a named graph, and others an option sets.",
+                "They are {cmd:dash}'s working values, not results: read "
+                "{cmd:r(filename)} (see {help dash##results:Stored results}),"
+                " and do not rely on {cmd:s()} after either command."):
+            assert claim in para, claim
+
+    def test_stored_results_points_here(self):
+        res = _flat(_between(_help(), "{marker results}", "{marker layout}"))
+        assert ("{cmd:s()} holds {cmd:dash}'s working values after a "
+                "command; see " + _LINK + ".") in res
+
+    def test_the_sub_point(self):
+        line = _sub_point("Working values in s().")
+        assert ("{cmd:dash} leaves its parsers' values in s(); see "
                 + _LINK + ".") in line

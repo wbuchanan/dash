@@ -1000,6 +1000,7 @@ and now matches Stata.
 - The help did not say that a registered graph keeps its command and frame, not its data: a graph registered on collapsed data and built after restore draws the restored data, and one of a tempvar gone by dash build fails r(111); Stata graph integration says so and how to build in time (WP-38, ECO-1)
 - The help never mapped graph combine to dash build: Stata graph integration says layout() and tabs() place the registered graphs and lists the twelve graph combine options dash build refuses, r(198) (WP-38, ECO-4)
 - The help did not say in one place that each one-line command writes and opens a page of its own, of which a session keeps the newest five, and that saving() opens none; Stata graph integration says so (WP-38, ECO-15)
+- The help did not say that dash leaves its working s() values, s(_recast_type), s(g_saving) and s(g_name), where twoway leaves s() empty; Stata graph integration and Stored results say so (WP-38, ECO-7)
 
 ### Fixed in WP-37
 

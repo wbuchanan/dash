@@ -972,8 +972,9 @@ class TestTheParsersFoundSomething:
         # old -> new: 451 -> 452: ECO-1 its sub-point Data at build.
         # old -> new: 452 -> 453: ECO-4 its sub-point graph combine.
         # old -> new: 453 -> 454: ECO-15 its sub-point One page per command.
-        assert len(defs) == 454, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 454 "
+        # old -> new: 454 -> 455: ECO-7 its sub-point Working values in s().
+        assert len(defs) == 455, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 455 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1501,4 +1502,7 @@ class TestInternalLinksResolve:
         # old -> new: 153 -> 156 links: ECO-15 the sub-point One page per
         # command and its paragraph's links to Temporary files and to the
         # global dash_nobrowser (WP-38 38-01).
-        assert len(refs) == 156 and len(set(refs)) == 50
+        # old -> new: 156 -> 159 links: ECO-7 the sub-point Working values in
+        # s(), its paragraph's link to Stored results and Stored
+        # results' link to the section (WP-38 38-01).
+        assert len(refs) == 159 and len(set(refs)) == 50

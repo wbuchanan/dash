@@ -4940,11 +4940,11 @@
   - Suggested fix: Documented only (M10): the help states that each one-line command opens a new browser page, that the newest five previews are kept, and that saving() opens none.
   - Resolution: Documented 30oct2026 (WP-38, ECO-15). dash.sthlp Stata graph integration (One page per command): each one-line command without saving() writes a preview page of its own and, in interactive Stata, opens it, so a do-file of ten graphs opens ten pages; the newest five previews of a session are kept, older ones removed except one a browser was asked to open in the last minute; saving() opens nothing and $dash_nobrowser keeps every window shut, where twoway draws every graph into its one Graph window. Differences item 14 has the sub-point One page per command. Pinned by test/test_help_graph_integration.py::TestOnePagePerCommand, test/test_graph_integration_code.py::TestPreviews::test_the_newest_five_are_kept. Closes GAPS4 ECO-15 (WP-38, ECO-15).
 
-- [ ] Title: dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()
+- [x] Title: dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()
   - File Names and Line Numbers: dash.ado:154-185; probes p1/p2
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-7; confirmed; tracked: untracked. Registered as GAPS4 ECO-7 (WP-38, section 38-01, Document).
   - Suggested fix: Documented only (M10): the help states which s() macros dash leaves.
-  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, ECO-7). dash.sthlp Stata graph integration (What dash leaves in s()): twoway leaves s() empty, whatever an earlier command left there; dash leaves the values its option parsers set, s(_recast_type) with s(g_saving) or s(g_name) and others an option sets, which are working values, not results: read r(filename). Stored results gains one sentence pointing to the section; Differences item 14 has the sub-point Working values in s(). Pinned by test/test_help_graph_integration.py::TestSReturns, Q3801-5 (test_wp38_truth.cscript S01). Closes GAPS4 ECO-7 (WP-38, ECO-7).
 
 - [ ] Title: r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts
   - File Names and Line Numbers: dash_render.py:2360-2375; dash.sthlp:2933-3000; probes: 11M obs refused, 300 plots refused

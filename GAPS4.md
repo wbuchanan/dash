@@ -406,7 +406,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-9 Tracked:** Open (WP-38 section 38-02).
 - **ECO-5 Tracked:** Open (WP-38 section 38-02).
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit pending.
-- **ECO-7 Tracked:** Open (WP-38 section 38-01).
+- **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit pending.
 - **plat:PT-8 Tracked:** Open (WP-40 section 40-02).
 - **plat:PT-7 Tracked:** Open (WP-40 section 40-01).
 - **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
