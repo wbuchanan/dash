@@ -994,6 +994,10 @@ there, is an invalid point.  The literal is read as data and never run.
     refused as an invalid name, not as "option {it:word} not allowed"; see
     {help dash##registry:The registry}.
 
+{phang2}    {ul:dash clear.}  It takes no names and empties the whole registry;
+    nothing lists, describes or drops one item; see
+    {help dash##registry:The registry}.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, {cmd:dash serve} and {cmd:dash clear}
     have no {cmd:twoway} equivalents.  See
@@ -1662,7 +1666,8 @@ files.  Settings stay:
 them (see {help dash##limits:Resource limits}).  It also removes this
 session's preview pages, but one a browser was asked to open in the last
 minute (see {help dash##tempfiles:Temporary files and privacy}).  Run this
-before starting a new dashboard definition.
+before starting a new dashboard definition.  It takes no names: see
+{help dash##registry:The registry}.
 
 
 {marker registry}
@@ -1711,6 +1716,17 @@ as "option {it:word} not allowed", {cmd:r(198)}; {cmd:dash} refuses it as an
 invalid name, printing the name with the comma and blank shown as {cmd:?}
 ("dash: invalid graph name 'g??rep'. ..."), {cmd:r(198)}.  Write
 {cmd:name(}{it:name}{cmd:, replace)}.
+
+{pstd}
+{ul:dash clear.}  {cmd:dash clear} takes no names: anything after it is
+ignored, and the whole registry is emptied ({cmd:dash clear} {it:g2} clears
+every graph and card, rc 0).  There is no command that lists, describes or
+drops one registered item, as {cmd:graph dir}, {cmd:graph describe} and
+{cmd:graph drop} do for Stata's graphs, and those commands do not see
+registered items ({cmd:graph describe} of one is "graph {it:name} not
+found", {cmd:r(111)}); replace an item with
+{cmd:name(}{it:name}{cmd:, replace)}, or {cmd:dash clear} and register
+again.  The names registered are in {cmd:$dash_graph_registry}.
 
 
 {marker dashboard_options}

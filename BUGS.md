@@ -4928,11 +4928,11 @@
   - Suggested fix: Documented only (M10): the help states the message a bad name() sub-option gives.
   - Resolution: Documented 30oct2026 (WP-38, GW-9). dash.sthlp, The registry: return codes and messages (name()'s sub-options.): name() takes one sub-option, replace, in full and lower case; twoway refuses any other word as 'option rep not allowed', r(198); dash refuses it as an invalid name, printing the name with the comma and blank shown as ? ('dash: invalid graph name g??rep. ...'), r(198), and registers nothing; the sub-point name()'s sub-options. under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestNameSubOptions, test/test_registry_collision.cscript Q3802-4. Closes GAPS4 GW-9 (WP-38, GW-9).
 
-- [ ] Title: 'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items
+- [x] Title: 'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items
   - File Names and Line Numbers: dash.ado:11948-11997; probe p1 J1
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-5; confirmed; tracked: untracked. Registered as GAPS4 ECO-5 (WP-38, section 38-02, Document).
   - Suggested fix: Documented only (M10): the help states that dash clear clears the whole registry and that there is no dir, describe or drop for registered items.
-  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, ECO-5). dash.sthlp, The registry: return codes and messages (dash clear.): dash clear takes no names, ignores anything after it and empties the whole registry, rc 0; nothing lists, describes or drops one registered item, and graph dir, graph describe and graph drop do not see registered items (graph describe of one is 'graph q5b not found', r(111)); replace an item with name(name, replace), or dash clear and register again; the dash clear entry under Subcommands and the sub-point dash clear. under Differences from twoway item 2 link to it. Pinned by test/test_help_registry.py::TestDashClear, test/test_registry_collision.cscript Q3802-5. Closes GAPS4 ECO-5 (WP-38, ECO-5).
 
 - [x] Title: Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none
   - File Names and Line Numbers: dash.ado:10045-10200; dash.sthlp:1608-1611, 1769, 2864-2867

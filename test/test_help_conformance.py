@@ -983,8 +983,10 @@ class TestTheParsersFoundSomething:
         # (WP-38 38-02).
         # old -> new: 459 -> 460, GW-9 the sub-point name()'s
         # sub-options. (WP-38 38-02).
-        assert len(defs) == 460, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 460 "
+        # old -> new: 460 -> 461, ECO-5 the sub-point dash clear.
+        # (WP-38 38-02).
+        assert len(defs) == 461, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 461 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1528,4 +1530,7 @@ class TestInternalLinksResolve:
         # twoway options (WP-38 38-02).
         # old -> new: 166 -> 167 links: GW-9 the sub-point name()'s
         # sub-options. links The registry (WP-38 38-02).
-        assert len(refs) == 167 and len(set(refs)) == 51
+        # old -> new: 167 -> 169 links: ECO-5 the sub-point dash clear.
+        # and the dash clear entry under Subcommands link The registry
+        # (WP-38 38-02).
+        assert len(refs) == 169 and len(set(refs)) == 51

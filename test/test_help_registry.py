@@ -160,3 +160,31 @@ class TestNameSubOptions:
         assert "A word other than {cmd:replace} is refused as an invalid name" in s
         assert 'not as "option {it:word} not allowed"' in s
         assert _LINK in s
+
+
+class TestDashClear:
+    """ECO-5: dash clear takes no names and empties the whole registry."""
+
+    def test_no_names_whole_registry(self):
+        p = _paragraph("dash clear.")
+        assert "{cmd:dash clear} takes no names" in p
+        assert "anything after it is ignored" in p
+        assert "the whole registry is emptied" in p
+        assert "clears every graph and card, rc 0" in p
+        for cmd in ("graph dir", "graph describe", "graph drop"):
+            assert "{cmd:%s}" % cmd in p
+        assert "those commands do not see registered items" in p
+        assert "{cmd:name(}{it:name}{cmd:, replace)}" in p
+        assert "{cmd:$dash_graph_registry}" in p
+
+    def test_dlgtab_links_here(self):
+        d = _flat(_between(_help(), "{dlgtab:dash clear}",
+                           "{marker registry}"))
+        assert "takes no names" in d
+        assert _LINK in d
+
+    def test_the_sub_point(self):
+        s = _sub_point("dash clear.")
+        assert "It takes no names and empties the whole registry" in s
+        assert "nothing lists, describes or drops one item" in s
+        assert _LINK in s

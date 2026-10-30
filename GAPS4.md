@@ -404,7 +404,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit pending.
 - **GW-16 Tracked:** Documented in WP-38, BUGS.md "play() refuses a readable recording (r(198)); there is no Graph Editor", commit pending.
 - **GW-9 Tracked:** Documented in WP-38, BUGS.md "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'", commit pending.
-- **ECO-5 Tracked:** Open (WP-38 section 38-02).
+- **ECO-5 Tracked:** Documented in WP-38, BUGS.md "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items", commit pending.
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit pending.
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit pending.
 - **plat:PT-8 Tracked:** Open (WP-40 section 40-02).

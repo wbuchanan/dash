@@ -1663,6 +1663,32 @@ if "`q4rc'" != "198 198 198 198 198 198" | !`q4w' | "`q4reg'" != "" {
 else display "Q3802-4 PASS: twoway says option <word> not allowed and dash says invalid graph name, both r(198)"
 assert "`q4rc'" == "198 198 198 198 198 198" & `q4w' & "`q4reg'" == ""
 
+// ================================================================
+// Q3802-5 (WP-38 ECO-5) -- dash clear takes no names
+// ================================================================
+// dash.sthlp, The registry: return codes and messages, dash clear.  A
+// name after dash clear is ignored, rc 0, and the whole registry is
+// emptied; Stata's graph commands do not see a registered item: graph
+// describe of one is "graph q5b not found", r(111) (measured 30oct2026).
+capture graph drop _all
+dash clear
+dash scatter mpg weight, name(q5a)
+dash scatter mpg weight, name(q5b)
+capture noisily dash clear q5a
+local q5c = _rc
+local q5reg "${dash_graph_registry}"
+dash scatter mpg weight, name(q5b)
+capture graph describe q5b
+local q5d = _rc
+capture graph drop q5b
+local q5g = _rc
+dash clear
+if `q5c' != 0 | "`q5reg'" != "" | `q5d' != 111 | `q5g' != 111 {
+    display as error "Q3802-5 FAIL: clear rc `q5c', registry '`q5reg'', describe rc `q5d', drop rc `q5g'"
+}
+else display "Q3802-5 PASS: dash clear q5a empties the whole registry, rc 0; graph describe and graph drop do not see q5b, r(111)"
+assert `q5c' == 0 & "`q5reg'" == "" & `q5d' == 111 & `q5g' == 111
+
 dash clear
 macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh

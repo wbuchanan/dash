@@ -1019,6 +1019,7 @@ and now matches Stata.
 - The help's note that nodraw with saving(, asis) writes the page where twoway refuses it, r(601), is now listed in The registry: return codes and messages, and Differences from twoway item 2 links to it (WP-38, GW-15)
 - The help said play() refuses a readable recording, r(198), only under Unsupported options; The registry: return codes and messages states it beside the missing recording's r(601), as twoway's, and that no Graph Editor can open a dashboard, and Differences from twoway item 2 links to it (WP-38, GW-16)
 - The help did not say how a name() sub-option other than replace is refused; The registry: return codes and messages states that twoway says option rep not allowed and dash says invalid graph name 'g??rep', both r(198), and Differences from twoway item 2 links to it (WP-38, GW-9)
+- The help did not say that dash clear takes no names; The registry: return codes and messages states that a name after it is ignored and the whole registry emptied, rc 0, and that nothing lists, describes or drops one registered item (graph describe does not see one, r(111)), and the dash clear entry and Differences from twoway item 2 link to it (WP-38, ECO-5)
 
 ### Fixed in WP-36
 
