@@ -1622,6 +1622,47 @@ if "`q1rc'" != "0 110 0 198 0 198 0 0 198 198" | !`q1h1' | !`q1h2' | !`q1h3' {
 else display "Q3802-1 PASS: twoway takes 32 characters and a__b and says r(110) for a name it holds; dash takes 22, no __, and says r(198)"
 assert "`q1rc'" == "0 110 0 198 0 198 0 0 198 198" & `q1h1' & `q1h2' & `q1h3'
 
+// ================================================================
+// Q3802-4 (WP-38 GW-9) -- name()'s sub-options, beside twoway
+// ================================================================
+// dash.sthlp, The registry: return codes and messages, name()'s
+// sub-options.  twoway refuses any word but replace as "option <word>
+// not allowed", r(198); dash refuses it as an invalid name, the comma
+// and blank shown as ?, r(198), and registers nothing.  Measured
+// 30oct2026.
+capture graph drop _all
+dash clear
+tempname q4f
+tempfile q4lg
+local q4ls = c(linesize)
+set linesize 255
+quietly log using "`q4lg'", replace text name(`q4f')
+local q4rc ""
+foreach w in rep REPLACE bogus {
+    capture noisily twoway scatter mpg weight, name(q4, `w') nodraw
+    local q4rc "`q4rc' `=_rc'"
+    capture noisily dash scatter mpg weight, name(q4, `w')
+    local q4rc "`q4rc' `=_rc'"
+}
+quietly log close `q4f'
+set linesize `q4ls'
+local q4reg "${dash_graph_registry}"
+local q4w 1
+foreach w in rep REPLACE bogus {
+    cert_log_has "`q4lg'", needle("option `w' not allowed")
+    if !r(found) local q4w 0
+    cert_log_has "`q4lg'", needle("dash: invalid graph name 'q4??`w''. Names must start with a letter")
+    if !r(found) local q4w 0
+}
+capture graph drop _all
+dash clear
+local q4rc : list retokenize q4rc
+if "`q4rc'" != "198 198 198 198 198 198" | !`q4w' | "`q4reg'" != "" {
+    display as error "Q3802-4 FAIL: rcs `q4rc', words `q4w', registry `q4reg'"
+}
+else display "Q3802-4 PASS: twoway says option <word> not allowed and dash says invalid graph name, both r(198)"
+assert "`q4rc'" == "198 198 198 198 198 198" & `q4w' & "`q4reg'" == ""
+
 dash clear
 macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh

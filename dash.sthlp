@@ -990,6 +990,10 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:play().}  A readable recording is refused {cmd:r(198)}; there
     is no Graph Editor; see {help dash##registry:The registry}.
 
+{phang2}    {ul:name()'s sub-options.}  A word other than {cmd:replace} is
+    refused as an invalid name, not as "option {it:word} not allowed"; see
+    {help dash##registry:The registry}.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, {cmd:dash serve} and {cmd:dash clear}
     have no {cmd:twoway} equivalents.  See
@@ -1699,6 +1703,14 @@ graph", {cmd:r(601)}; {cmd:dash} writes the page and opens no browser window
 {cmd:r(198)}, because a recording's edits act on a Stata graph, which a
 dashboard is not, and no Graph Editor can open a dashboard (see
 {help dash##unsupported:Unsupported Stata twoway options}).
+
+{pstd}
+{ul:name()'s sub-options.}  {cmd:name()} takes one sub-option,
+{cmd:replace}, in full and lower case.  {cmd:twoway} refuses any other word
+as "option {it:word} not allowed", {cmd:r(198)}; {cmd:dash} refuses it as an
+invalid name, printing the name with the comma and blank shown as {cmd:?}
+("dash: invalid graph name 'g??rep'. ..."), {cmd:r(198)}.  Write
+{cmd:name(}{it:name}{cmd:, replace)}.
 
 
 {marker dashboard_options}

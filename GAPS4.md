@@ -403,7 +403,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-14 Tracked:** Documented in WP-38, BUGS.md "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing", commit pending.
 - **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit pending.
 - **GW-16 Tracked:** Documented in WP-38, BUGS.md "play() refuses a readable recording (r(198)); there is no Graph Editor", commit pending.
-- **GW-9 Tracked:** Open (WP-38 section 38-02).
+- **GW-9 Tracked:** Documented in WP-38, BUGS.md "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'", commit pending.
 - **ECO-5 Tracked:** Open (WP-38 section 38-02).
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit pending.
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit pending.

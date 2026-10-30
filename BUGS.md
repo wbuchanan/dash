@@ -4922,11 +4922,11 @@
   - Suggested fix: Documented only (M10): the help states that play() is refused and that there is no Graph Editor.
   - Resolution: Documented 30oct2026 (WP-38, GW-16). dash.sthlp, The registry: return codes and messages (play().): a recording play() cannot find is refused as twoway refuses it, r(601); a readable recording is refused, r(198), because its edits act on a Stata graph, which a dashboard is not, and no Graph Editor can open a dashboard (linking Unsupported Stata twoway options, where play() is described); the sub-point play(). under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestPlay, test/test_option_validation.cscript U54. Closes GAPS4 GW-16 (WP-38, GW-16).
 
-- [ ] Title: name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'
+- [x] Title: name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'
   - File Names and Line Numbers: dash.ado:11273-11303; probe p4
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-9; confirmed; tracked: untracked. Registered as GAPS4 GW-9 (WP-38, section 38-02, Document).
   - Suggested fix: Documented only (M10): the help states the message a bad name() sub-option gives.
-  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, GW-9). dash.sthlp, The registry: return codes and messages (name()'s sub-options.): name() takes one sub-option, replace, in full and lower case; twoway refuses any other word as 'option rep not allowed', r(198); dash refuses it as an invalid name, printing the name with the comma and blank shown as ? ('dash: invalid graph name g??rep. ...'), r(198), and registers nothing; the sub-point name()'s sub-options. under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestNameSubOptions, test/test_registry_collision.cscript Q3802-4. Closes GAPS4 GW-9 (WP-38, GW-9).
 
 - [ ] Title: 'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items
   - File Names and Line Numbers: dash.ado:11948-11997; probe p1 J1

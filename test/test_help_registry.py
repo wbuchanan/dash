@@ -141,3 +141,22 @@ class TestPlay:
         assert "A readable recording is refused {cmd:r(198)}" in s
         assert "there is no Graph Editor" in s
         assert _LINK in s
+
+
+class TestNameSubOptions:
+    """GW-9: a name() sub-option other than replace is refused as a name."""
+
+    def test_both_answers(self):
+        p = _paragraph("name()'s sub-options.")
+        assert "one sub-option, {cmd:replace}, in full and lower case" in p
+        assert '"option {it:word} not allowed", {cmd:r(198)}' in p
+        assert "refuses it as an invalid name" in p
+        assert "the comma and blank shown as {cmd:?}" in p
+        assert "(\"dash: invalid graph name 'g??rep'. ...\"), {cmd:r(198)}" in p
+        assert "Write {cmd:name(}{it:name}{cmd:, replace)}" in p
+
+    def test_the_sub_point(self):
+        s = _sub_point("name()'s sub-options.")
+        assert "A word other than {cmd:replace} is refused as an invalid name" in s
+        assert 'not as "option {it:word} not allowed"' in s
+        assert _LINK in s
