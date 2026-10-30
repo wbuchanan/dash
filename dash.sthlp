@@ -1525,6 +1525,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:graph combine.}  {cmd:dash build} with {cmd:layout()} combines registered graphs; see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:One page per command.}  Each one-line command opens its own page; see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1914,6 +1916,17 @@ refused, "option {it:name} not allowed", {cmd:r(198)};
 grid, and {cmd:link()} shares a selection between graphs.
 {cmd:graph combine g1} after {cmd:dash} is refused, "g1 is not a memory
 graph", {cmd:r(198)}.
+
+{pstd}
+{ul:One page per command.}  Each one-line command without {cmd:saving()}
+writes a preview page of its own, under a new name, and, in interactive
+Stata, opens it, so a do-file of ten graphs opens ten pages; the newest
+five previews of a session are kept and older ones are removed, except one
+a browser was asked to open in the last minute (see
+{help dash##tempfiles:Temporary files and privacy}).  {cmd:saving()} writes
+the page where it says and opens nothing; {cmd:$dash_nobrowser} keeps every
+window shut (see {help dash##nobrowser_global:The global dash_nobrowser});
+{cmd:twoway} instead draws every graph into its one Graph window.
 
 
 {marker accessibility}{...}

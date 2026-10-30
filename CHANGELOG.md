@@ -999,6 +999,7 @@ and now matches Stata.
 - The help named only graph export, graph save, putdocx and dyndoc as unable to use a dashboard; the new section Stata graph integration lists every graph and report command that cannot, and says graph export after dash writes the last graph Stata drew or fails r(601) (WP-38, GW-12)
 - The help did not say that a registered graph keeps its command and frame, not its data: a graph registered on collapsed data and built after restore draws the restored data, and one of a tempvar gone by dash build fails r(111); Stata graph integration says so and how to build in time (WP-38, ECO-1)
 - The help never mapped graph combine to dash build: Stata graph integration says layout() and tabs() place the registered graphs and lists the twelve graph combine options dash build refuses, r(198) (WP-38, ECO-4)
+- The help did not say in one place that each one-line command writes and opens a page of its own, of which a session keeps the newest five, and that saving() opens none; Stata graph integration says so (WP-38, ECO-15)
 
 ### Fixed in WP-37
 

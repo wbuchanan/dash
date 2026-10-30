@@ -4934,11 +4934,11 @@
   - Suggested fix: Documented only (M10): the help states that dash clear clears the whole registry and that there is no dir, describe or drop for registered items.
   - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
 
-- [ ] Title: Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none
+- [x] Title: Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none
   - File Names and Line Numbers: dash.ado:10045-10200; dash.sthlp:1608-1611, 1769, 2864-2867
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids ECO-15; partly; tracked: mostly documented. Registered as GAPS4 ECO-15 (WP-38, section 38-01, Document).
   - Suggested fix: Documented only (M10): the help states that each one-line command opens a new browser page, that the newest five previews are kept, and that saving() opens none.
-  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, ECO-15). dash.sthlp Stata graph integration (One page per command): each one-line command without saving() writes a preview page of its own and, in interactive Stata, opens it, so a do-file of ten graphs opens ten pages; the newest five previews of a session are kept, older ones removed except one a browser was asked to open in the last minute; saving() opens nothing and $dash_nobrowser keeps every window shut, where twoway draws every graph into its one Graph window. Differences item 14 has the sub-point One page per command. Pinned by test/test_help_graph_integration.py::TestOnePagePerCommand, test/test_graph_integration_code.py::TestPreviews::test_the_newest_five_are_kept. Closes GAPS4 ECO-15 (WP-38, ECO-15).
 
 - [ ] Title: dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()
   - File Names and Line Numbers: dash.ado:154-185; probes p1/p2

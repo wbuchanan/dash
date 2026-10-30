@@ -16,6 +16,8 @@ item:
   (TestDataAtBuild).
 * ECO-4 -- graph combine maps to dash build's layout() and tabs(); its
   options are refused (TestGraphCombine).
+* ECO-15 -- each one-line command writes and opens its own page; five
+  previews are kept (TestOnePagePerCommand).
 
 The Stata half -- each measurable sentence beside twoway in one run -- is
 test_wp38_truth.cscript's block S01 (Q3801-k).
@@ -297,3 +299,33 @@ class TestGraphCombine:
         line = _sub_point("graph combine.")
         assert ("{cmd:dash build} with {cmd:layout()} combines registered "
                 "graphs; see " + _LINK + ".") in line
+
+
+class TestOnePagePerCommand:
+    """ECO-15: each one-line command writes and opens its own page
+    (test_graph_integration_code.py::TestPreviews pins the five)."""
+
+    def test_the_paragraph(self):
+        t = _topic()
+        para = t[t.index("{ul:One page per command.}"):]
+        for claim in (
+                "Each one-line command without {cmd:saving()} writes a "
+                "preview page of its own, under a new name, and, in "
+                "interactive Stata, opens it, so a do-file of ten graphs "
+                "opens ten pages;",
+                "the newest five previews of a session are kept and older "
+                "ones are removed, except one a browser was asked to open "
+                "in the last minute (see "
+                "{help dash##tempfiles:Temporary files and privacy}).",
+                "{cmd:saving()} writes the page where it says and opens "
+                "nothing; {cmd:$dash_nobrowser} keeps every window shut "
+                "(see {help dash##nobrowser_global:The global "
+                "dash_nobrowser});",
+                "{cmd:twoway} instead draws every graph into its one Graph "
+                "window."):
+            assert claim in para, claim
+
+    def test_the_sub_point(self):
+        line = _sub_point("One page per command.")
+        assert ("Each one-line command opens its own page; see "
+                + _LINK + ".") in line

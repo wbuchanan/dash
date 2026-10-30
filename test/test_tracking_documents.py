@@ -2880,7 +2880,6 @@ GAPS4_OPEN = {
     'GW-16': 'play() refuses a readable recording (r(198)); there is no Graph Editor',
     'GW-9': "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'",
     'ECO-5': "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items",
-    'ECO-15': 'Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none',
     'ECO-7': 'dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()',
     'plat:PT-8': 'r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts',
     'plat:PT-7': "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows",
