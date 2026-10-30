@@ -395,18 +395,18 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit 702c99b.
 - **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit a027672.
 - **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit 4eb94ea.
-- **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit pending.
-- **GW-12 Tracked:** Documented in WP-38, BUGS.md "A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)", commit pending.
-- **ECO-1 Tracked:** Documented in WP-38, BUGS.md "A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)", commit pending.
-- **ECO-4 Tracked:** Documented in WP-38, BUGS.md "graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()", commit pending.
-- **GW-13 Tracked:** Documented in WP-38, BUGS.md "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'", commit pending.
-- **GW-14 Tracked:** Documented in WP-38, BUGS.md "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing", commit pending.
-- **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit pending.
-- **GW-16 Tracked:** Documented in WP-38, BUGS.md "play() refuses a readable recording (r(198)); there is no Graph Editor", commit pending.
-- **GW-9 Tracked:** Documented in WP-38, BUGS.md "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'", commit pending.
-- **ECO-5 Tracked:** Documented in WP-38, BUGS.md "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items", commit pending.
-- **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit pending.
-- **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit pending.
+- **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit 4fdcea2.
+- **GW-12 Tracked:** Documented in WP-38, BUGS.md "A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)", commit 06b86ca.
+- **ECO-1 Tracked:** Documented in WP-38, BUGS.md "A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)", commit a92dfd0.
+- **ECO-4 Tracked:** Documented in WP-38, BUGS.md "graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()", commit 33426d8.
+- **GW-13 Tracked:** Documented in WP-38, BUGS.md "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'", commit 6e76d5a.
+- **GW-14 Tracked:** Documented in WP-38, BUGS.md "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing", commit c106716.
+- **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit 59a2033.
+- **GW-16 Tracked:** Documented in WP-38, BUGS.md "play() refuses a readable recording (r(198)); there is no Graph Editor", commit cc4e182.
+- **GW-9 Tracked:** Documented in WP-38, BUGS.md "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'", commit 0f80d20.
+- **ECO-5 Tracked:** Documented in WP-38, BUGS.md "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items", commit c713765.
+- **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit 51fcf94.
+- **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit 933328c.
 - **plat:PT-8 Tracked:** Open (WP-40 section 40-02).
 - **plat:PT-7 Tracked:** Open (WP-40 section 40-01).
 - **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
