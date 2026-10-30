@@ -13958,8 +13958,8 @@ string colvector _dash_zo_records(string scalar json, real scalar pend)
 // When nothing on the page needs every row (the one-line form; a saved
 // dash build with no filter(), link(), brush(), csv or KPI card) dash
 // exports only the rows some graph draws: the page plan's own rule
-// (dash_render.py _dash_embed_plan), plus a literal by() graph's panel
-// rows, marked in Stata after every working column is made.
+// (dash_render.py _dash_embed_plan), plus a by() graph's panel rows,
+// marked in Stata after every working column is made.
 
 // _dash_sel_col(c) -- the rows qualifier column c holds 1 on; every row
 // when c is "".  A name that is not a variable is an error, never skipped.
@@ -13977,8 +13977,9 @@ real colvector _dash_sel_col(string scalar c)
 // pcarrowi or function, the rows of the graph's and the plot's qualifier
 // columns (G & P), and, when the graph or a kept plot carries a by(,
 // total) twin, the Total rows (Gt & Pt, each its own column when it has
-// no twin).  A graph of literal plots alone marks its G (or G | Gt) rows
-// under by(), whose panels are built from them, and none otherwise.  A
+// no twin).  Under by() a graph also marks its G (or G | Gt) rows, whose
+// by() groups are its panels, so a graph of literal plots alone marks
+// those and, without by(), none.  A
 // lowess layer with adjust marks every row: its mean reads every
 // observation.  The graph's own keys are read after the plots array
 // (_dash_zo_records sets pe to the ] that closes it).
@@ -14029,9 +14030,12 @@ void _dash_sel_mark(string scalar var, string scalar gjson)
             if (adj != "") adj_all = 1
         }
     }
-    if (!kept) {
-        if (strtrim(by) == "") return
-        s = _dash_sel_col(g)
+    // A by() graph's panels are its by() groups among its G rows, whatever
+    // its plots select: twoway draws a group's panel when no plot has a
+    // row in it (test_wp29_truth ER-02), so under by() every G (and Gt)
+    // row is marked.
+    if (strtrim(by) != "") {
+        s = s :| _dash_sel_col(g)
         if (gt != "") s = s :| _dash_sel_col(gt)
     }
     if (adj_all) s = J(st_nobs(), 1, 1)

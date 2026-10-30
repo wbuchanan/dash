@@ -13182,8 +13182,8 @@ program define _dash_render_immediate
         // WP-40 plat:PT-7: when nothing needs every row (the one-line
         // form; a saved build with no filter(), link(), brush(), csv or
         // KPI card) only the rows some graph draws are exported -- the
-        // page plan's own rule (_dash_embed_plan), plus a literal by()
-        // graph's panel rows; a lowess layer with adjust, whose mean
+        // page plan's own rule (_dash_embed_plan), plus a by() graph's
+        // panel rows; a lowess layer with adjust, whose mean
         // reads every observation, marks every row -- marked after every
         // working column, so operators and _n-based qualifiers see the
         // full data.  The user's frame is never reduced: from it the
@@ -15125,8 +15125,8 @@ program define _dash_prepare_spec, rclass
         // WP-40 plat:PT-7: when nothing needs every row (the one-line
         // form; a saved build with no filter(), link(), brush(), csv or
         // KPI card) only the rows some graph draws are exported -- the
-        // page plan's own rule (_dash_embed_plan), plus a literal by()
-        // graph's panel rows; a lowess layer with adjust, whose mean
+        // page plan's own rule (_dash_embed_plan), plus a by() graph's
+        // panel rows; a lowess layer with adjust, whose mean
         // reads every observation, marks every row -- marked after every
         // working column, so operators and _n-based qualifiers see the
         // full data.  The user's frame is never reduced: from it the
@@ -15286,8 +15286,8 @@ program define _dash_prepare_spec, rclass
         // WP-40 plat:PT-7: when nothing needs every row (the one-line
         // form; a saved build with no filter(), link(), brush(), csv or
         // KPI card) only the rows some graph draws are exported -- the
-        // page plan's own rule (_dash_embed_plan), plus a literal by()
-        // graph's panel rows; a lowess layer with adjust, whose mean
+        // page plan's own rule (_dash_embed_plan), plus a by() graph's
+        // panel rows; a lowess layer with adjust, whose mean
         // reads every observation, marks every row -- marked after every
         // working column, so operators and _n-based qualifiers see the
         // full data.  The user's frame is never reduced: from it the

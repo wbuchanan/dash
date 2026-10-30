@@ -465,14 +465,19 @@ end
     local q7w8 "1"
     local q7j9 `"{"plots":[{"type":"lowess","options":{},"qual_col":"q1"}],"graph_options":{}}"'
     local q7w9 "_n <= 2"
-    forvalues i = 1/9 {
+    // Case 10 (WP-40 WE, test_wp29_truth ER-02): under by() a graph marks
+    // its G rows beside its plots' -- twoway draws a by() group's panel
+    // when no plot has a row in it.
+    local q7j10 `"{"plots":[{"type":"scatter","qual_col":"q1"}],"graph_options":{"by":"foreign"},"qual_col":"q2"}"'
+    local q7w10 "_n >= 5"
+    forvalues i = 1/10 {
         quietly replace m = 0
         capture mata: _dash_sel_mark("m", st_local("q7j`i'"))
         local q7rc = _rc
         quietly count if m != (`q7w`i'')
         _w40_expect Q4001-7 "(`q7rc' == 0 & r(N) == 0)" "case `i': rc `q7rc', `r(N)' rows differ from `q7w`i''"
     }
-    _w40_done Q4001-7 "_dash_sel_mark marks the rows each graph draws (nine cases)"
+    _w40_done Q4001-7 "_dash_sel_mark marks the rows each graph draws (ten cases)"
 
     // ------------------------------------------------------------
     // Q4001-8 (shipped renderer): lpoly's grid follows the graph's _N:

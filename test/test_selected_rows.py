@@ -78,8 +78,8 @@ def _col(name, masks, idx):
 def _selected(spec, frame, masks):
     """The rows _dash_sel_mark marks for *spec*: per graph, each non-literal
     plot's ``G & P`` (and ``Gt & Pt`` when the graph or a plot carries a
-    Total twin); a graph of literal plots only, its ``G`` (or ``G | Gt``)
-    under by(); every row for a lowess layer with adjust."""
+    Total twin); under by() also its ``G`` (or ``G | Gt``), whose groups
+    are its panels; every row for a lowess layer with adjust."""
     idx = frame.index
     s = pd.Series(False, index=idx)
     for g in spec.get("graphs") or []:
@@ -89,12 +89,10 @@ def _selected(spec, frame, masks):
         kept = [p for p in plots
                 if str(p.get("type", "")).lower() not in _LITERAL]
         tot = bool(gt) or any(p.get("qual_col_total") for p in kept)
-        if not kept:
-            if str(go.get("by", "") or "").strip():
-                s = s | _col(gq, masks, idx)
-                if gt:
-                    s = s | _col(gt, masks, idx)
-            continue
+        if str(go.get("by", "") or "").strip():
+            s = s | _col(gq, masks, idx)
+            if gt:
+                s = s | _col(gt, masks, idx)
         for p in kept:
             pq, pt = p.get("qual_col", ""), p.get("qual_col_total", "")
             s = s | (_col(gq, masks, idx) & _col(pq, masks, idx))
@@ -181,9 +179,22 @@ def _qualify(spec, df):
     return spec, df, masks
 
 
+# WP-40 WE: per-plot ifs under by() that leave a by() group without a row
+# -- twoway still draws its panel (test_wp29_truth ER-02).  Kept here, not
+# in test_mode_parity's CORPUS: that harness hands the saved renderer a
+# per-plot if as text, which dash.ado never writes (it writes a qualifier
+# column, as _qualify does here).
+_EXTRA = [
+    tp._case("selected rows: per-plot ifs under by() leave a panel empty",
+             [plot_for("scatter", if_expr="foreign==0"),
+              plot_for("scatter", if_expr="foreign==0 & mpg > 20")], None,
+             {"by": "foreign"}),
+]
+
+
 def _corpus(pred):
     out = []
-    for p in tp.CORPUS:
+    for p in list(tp.CORPUS) + _EXTRA:
         name, spec = p.values
         if _is_qualified(spec) and pred(spec):
             out.append(pytest.param(name, spec, id=name))
