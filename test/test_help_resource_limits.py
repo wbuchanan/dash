@@ -257,3 +257,98 @@ class TestByGroups:
         assert ("A {cmd:by()} graph draws its first %s groups, with a note, "
                 "where {cmd:twoway} draws all"
                 % _n(_limits_table()["by_groups"][0])) in sub
+
+
+# ---------------------------------------------------------------------------
+# stat:PT-15 (DT-17): n(), bin() and lpoly's degree
+# ---------------------------------------------------------------------------
+
+def _rule_tokens(name):
+    """The *name*= tokens of dash.ado's _dash_option_rules, as (upper
+    bound or None, types or None for "every other type")."""
+    ado = _read(_ADO)
+    i = ado.index("program define _dash_option_rules")
+    body = ado[i:ado.index("\nend\n", i)]
+    out = []
+    for tok in body.split():
+        if not tok.startswith(name + "="):
+            continue
+        spec, _at, types = tok[len(name) + 1:].partition("@")
+        parts = spec.split(",")
+        if parts[0] not in ("int", "num", "pos"):
+            continue  # n=style and the like are no count
+        hi = int(parts[2]) if len(parts) > 2 and parts[2] else None
+        out.append((hi, types.split("|") if types else None))
+    assert out, "no %s= token in _dash_option_rules" % name
+    return out
+
+
+def _n_pairs():
+    """The n() rules grouped: {bound: [types, "other" for no type list]},
+    and the types whose n() has no upper bound."""
+    bounded, unbounded = {}, []
+    for hi, types in _rule_tokens("n"):
+        if hi is None:
+            unbounded.extend(types or ["other"])
+        else:
+            bounded.setdefault(hi, []).extend(types or ["other"])
+    return bounded, unbounded
+
+
+def _type_words(t):
+    return ("the other types that take {cmd:n()}" if t == "other"
+            else "{cmd:%s}" % t)
+
+
+class TestNBinDegree:
+    """n() past its bound and bin() above 1,000 are refused where twoway
+    draws them (mspline's 300 is twoway's own); fpfitci and the linear
+    and quadratic fits take any n() as twoway does; lpoly fits at most
+    degree 30 (Q4002-4 measures twoway beside dash)."""
+
+    def test_the_fixed_limits_paragraph(self):
+        f = _flat(_fixed())
+        assert f.startswith("{ul:Fixed limits.} These have no global; each "
+                            "is a guard on what one layer or option asks "
+                            "{cmd:dash} to draw.")
+
+    def test_each_n_bound_is_stated_with_its_types(self):
+        bounded, unbounded = _n_pairs()
+        assert bounded and unbounded
+        refused = [s for s in _sentences(_fixed()) if "is refused" in s
+                   and "{cmd:n()}" in s]
+        assert refused, "no sentence says n() is refused"
+        for hi, types in bounded.items():
+            assert _n(hi) in refused[0], hi
+            for t in types:
+                assert _type_words(t) in refused[0], (hi, t)
+        anyn = [s for s in _sentences(_fixed()) if "any {cmd:n()}" in s]
+        assert anyn, "no sentence names the types that take any n()"
+        for t in unbounded:
+            assert "{cmd:%s}" % t in anyn[0], t
+            for s in _sentences(_fixed()):
+                if "refused" in s:
+                    assert "{cmd:%s}" % t not in s, (t, s)
+
+    def test_bin_and_degree(self):
+        (hi, _types), = _rule_tokens("bin")
+        s = _fixed_sentence("{cmd:bin()} above")
+        assert "{cmd:bin()} above %s is refused with {cmd:r(198)}, where " \
+               "{cmd:twoway} draws it" % _n(hi) in s
+        deg = _constant(_RENDER, "_LPOLY_DEGREE_FIT_MAX")
+        s = _fixed_sentence("{cmd:degree()}")
+        assert "fitted at most at degree %d" % deg in s
+        assert "with a note, where {cmd:twoway} fits any degree" in s
+
+    def test_the_sub_point(self):
+        bounded, unbounded = _n_pairs()
+        sub = _sub("n(), bin() and degree().")
+        _assert_sub_point(sub)
+        for hi in bounded:
+            assert _n(hi) in sub, hi
+        for t in unbounded:
+            assert "{cmd:%s}" % t in sub, t
+        (hi, _types), = _rule_tokens("bin")
+        assert "{cmd:bin()} above %s are refused" % _n(hi) in sub
+        assert "fits at most degree %d" % _constant(
+            _RENDER, "_LPOLY_DEGREE_FIT_MAX") in sub

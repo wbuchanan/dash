@@ -999,6 +999,7 @@ and now matches Stata.
 - The help did not say that dash, like twoway, sets no limit on the size of the data or of the page, nor list dash's count limits under Differences from twoway; Resource limits now says that twoway has none of the count limits and that no image is limited by its file size, and Differences from twoway item 15 lists every count limit with its default and global (WP-40, plat:PT-8)
 - The help did not say that dash's plot limit counts the plots of a graph where twoway's counts the variables of one plot; the $dash_max_plots row of Resource limits now gives twoway's limit of 100 variables, with scatter y1-y100 x, which twoway refuses, r(103), and dash draws, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-9)
 - The help did not say that twoway draws every by() group where dash draws the first 100 with a note; the $dash_max_by_groups row of Resource limits now says so, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-10)
+- The help did not list dash's bounds on n(), bin() and lpoly's degree() beside twoway's answers; Resource limits gains a Fixed limits paragraph stating each n() bound with the types it applies to (mspline's 300 is twoway's own), the types that take any n(), bin()'s 1,000 and the fitted degree's 30, and Differences from twoway item 15 has the sub-point (WP-40, stat:PT-15)
 
 ### Fixed in WP-38
 

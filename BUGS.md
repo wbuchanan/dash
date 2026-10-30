@@ -4970,11 +4970,11 @@
   - Suggested fix: Documented only (M10, Q44): by()'s group limit stays and is documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, plat:PT-10). dash.sthlp Resource limits (the $dash_max_by_groups row: twoway draws every group) and Differences from twoway item 15's sub-point by() groups.: a by() graph draws its first 100 groups, with a note, where twoway draws all. Pinned by test/test_help_resource_limits.py::TestByGroups, Q4002-3 (test_wp40_truth.cscript S02). Closes GAPS4 plat:PT-10 (WP-40, plat:PT-10).
 
-- [ ] Title: n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree
+- [x] Title: n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree
   - File Names and Line Numbers: probe1 #3, #85, #177; dash.sthlp:1149-1172, 3711-3716
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids stat:PT-15, DT-17; confirmed; tracked: documented. Registered as GAPS4 stat:PT-15 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): the n(), bin() and degree() bounds stay and are documented under Resource limits and Differences.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, stat:PT-15). dash.sthlp Resource limits (the new Fixed limits paragraph: n() is refused with r(198) above 300 on mspline, as twoway refuses it, and above 10,000 on mband and the other types that take n(), where twoway draws them; lfit, qfit, lfitci, qfitci and fpfitci take any n(), as twoway does (WP-35 35-03 lifted their bound); bin() above 1,000 is refused with r(198), where twoway draws it; lpoly's degree() is fitted at most at degree 30, with a note, where twoway fits any degree) and Differences from twoway item 15's sub-point n(), bin() and degree(). The value-truth rows stat:PT-15 (documented) stay as known differences (A-10). Pinned by test/test_help_resource_limits.py::TestNBinDegree, Q4002-4 (test_wp40_truth.cscript S02). Closes GAPS4 stat:PT-15 (WP-40, stat:PT-15).
 
 - [ ] Title: histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars
   - File Names and Line Numbers: dash_render.py:22508, 22539-22576; twoway__histogram_gen.ado:205-216 tabulates occupied bins; price discrete/width(1)/width(10)

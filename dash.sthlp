@@ -1568,6 +1568,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:by() groups.}  A {cmd:by()} graph draws its first 100 groups, with a note, where {cmd:twoway} draws all; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:n(), bin() and degree().}  {cmd:n()} past its bound (300 on {cmd:mspline}, {cmd:twoway}'s own, and 10,000 on {cmd:mband} and the other types that take it) and {cmd:bin()} above 1,000 are refused, {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci} take any {cmd:n()} as {cmd:twoway} does, and {cmd:lpoly} fits at most degree 30; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3432,6 +3434,19 @@ build, export every observation of the variables the dashboard uses,
 because a filter, a link, a brush or a card can reach any row.  Either way
 the saved page holds only the rows its graphs, cards and filters select
 (see {help dash##description:Description}).
+
+{pstd}
+{ul:Fixed limits.}  These have no global; each is a guard on what one layer
+or option asks {cmd:dash} to draw.  {cmd:n()} is refused with {cmd:r(198)}
+above 300 on {cmd:mspline}, as {cmd:twoway} refuses it, and above 10,000 on
+{cmd:mband} and the other types that take {cmd:n()}, where {cmd:twoway}
+draws them ({cmd:lpoly} reads an {cmd:n()} past the observations as their
+number).  {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and
+{cmd:fpfitci} take any {cmd:n()}, as {cmd:twoway} does.  {cmd:bin()} above
+1,000 is refused with {cmd:r(198)}, where {cmd:twoway} draws it.
+{cmd:lpoly}'s {cmd:degree()} is fitted at most at degree 30 (and never
+above the distinct x values less one), with a note, where {cmd:twoway} fits
+any degree.
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:

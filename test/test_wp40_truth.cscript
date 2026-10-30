@@ -677,6 +677,51 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 stat:PT-15: n() and bin() bounds ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-4 (stat:PT-15): n() above 10,000 on a type with dash's bound
+    // (kdensity) and bin() above 1,000 draw in twoway and are refused by
+    // dash, r(198); mspline's n() above 300 is refused by both; the types
+    // whose n() rule has no upper bound (lfit, fpfitci) take n(20000) as
+    // twoway does.  35-03 lifted lfit's bound, so kdensity stands in for
+    // the plan's lfit.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q4i 0
+    foreach q4c in "kdensity mpg, n(20000)" "histogram mpg, bin(2000)" "mspline mpg weight, n(301)" "lfit mpg weight, n(20000)" "fpfitci mpg weight, n(20000)" {
+        local ++q4i
+        capture noisily twoway `q4c' nodraw
+        local q4_trc = _rc
+        capture erase "`s02d'/q4_`q4i'.html"
+        _w40_s02_run "`s02d'/q4_`q4i'.log" dash `q4c' saving("`s02d'/q4_`q4i'.html", replace)
+        if `q4i' <= 2 {
+            _w40_expect Q4002-4 "(`q4_trc' == 0)" "twoway `q4c' rc `q4_trc'"
+            _w40_expect Q4002-4 "(`s02rc' == 198)" "dash `q4c' rc `s02rc'"
+        }
+        else if `q4i' == 3 {
+            _w40_expect Q4002-4 "(`q4_trc' == 198)" "twoway `q4c' rc `q4_trc'"
+            _w40_expect Q4002-4 "(`s02rc' == 198)" "dash `q4c' rc `s02rc'"
+        }
+        else {
+            _w40_expect Q4002-4 "(`q4_trc' == 0)" "twoway `q4c' rc `q4_trc'"
+            _w40_expect Q4002-4 "(`s02rc' == `q4_trc')" "dash `q4c' rc `s02rc', twoway `q4_trc'"
+        }
+    }
+    _w40_s02_log "`s02d'/q4_1.log" "dash evaluates up to 10000"
+    _w40_expect Q4002-4 "(`s02c' == 1)" "the n() refusal does not give dash's bound"
+    _w40_s02_log "`s02d'/q4_2.log" "dash draws up to 1000 bins"
+    _w40_expect Q4002-4 "(`s02c' == 1)" "the bin() refusal does not give dash's bound"
+    _w40_done Q4002-4 "kdensity n(20000), bin(2000): twoway draws, dash r(198); mspline n(301) r(198) in both; lfit and fpfitci n(20000) draw in both"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
