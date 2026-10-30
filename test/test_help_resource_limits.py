@@ -210,3 +210,29 @@ class TestNoSizeAndCounts:
         hits = [s for s in _sentences(_item_head()) if "are silent" in s]
         assert hits, "no sentence of the item says which limits are silent"
         assert str(bound) in hits[0], hits[0]
+
+
+# ---------------------------------------------------------------------------
+# plat:PT-9: the plot limit counts plots, twoway's counts variables
+# ---------------------------------------------------------------------------
+
+class TestPlotsNotVariables:
+    """dash's limit is plots in a graph; twoway's is 100 variables in one
+    plot, x included (limits.sthlp; Q4002-2 measures both examples)."""
+
+    def test_the_row_gives_twoways_limit(self):
+        default = _limits_table()["plots"][0]
+        row = _table_row("dash_max_plots")
+        assert "default %s" % _n(default) in row
+        assert ("{cmd:twoway}'s own limit is 100 variables in one plot, x "
+                "included: it refuses {cmd:scatter y1-y100 x}, \"too many "
+                "variables specified\", {cmd:r(103)}, which {cmd:dash} "
+                "draws, and draws {cmd:(scatter y1-y60 x) (scatter y61-y120 "
+                "x)}, which {cmd:dash} refuses at the default.") in row
+
+    def test_the_sub_point(self):
+        sub = _sub("Plots, not variables.")
+        _assert_sub_point(sub)
+        assert ("The plot limit counts a graph's plots, %s at the default, "
+                "where {cmd:twoway} counts the variables of one plot"
+                % _n(_limits_table()["plots"][0])) in sub

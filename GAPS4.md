@@ -409,7 +409,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit 933328c.
 - **plat:PT-8 Tracked:** Documented in WP-40, BUGS.md "r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts", commit pending.
 - **plat:PT-7 Tracked:** Closed in WP-40, BUGS.md "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows", commit 0d31c6b.
-- **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
+- **plat:PT-9 Tracked:** Documented in WP-40, BUGS.md "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws", commit pending.
 - **plat:PT-10 Tracked:** Open (WP-40 section 40-02).
 - **stat:PT-15 Tracked:** Open (WP-40 section 40-02).
 - **sil:SD-1 Tracked:** Open (WP-40 section 40-02).

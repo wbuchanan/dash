@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'plat:PT-9': "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws",
     'plat:PT-10': 'by() draws the first 100 groups (ceiling 1,000), with a note',
     'stat:PT-15': 'n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree',
     'sil:SD-1': 'histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars',

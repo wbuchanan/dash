@@ -1564,6 +1564,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:No size limit; count limits.}  Like {cmd:twoway}, {cmd:dash} takes data and builds pages of any size, and no image is limited by its file size; it limits only counts: at most 100 graphs and KPI cards ({cmd:$dash_max_graphs}), 100 image panels ({cmd:$dash_max_images}), 10,000 reference lines ({cmd:$dash_max_reflines}) and 1,000 added texts ({cmd:$dash_max_added_text}), refused with {cmd:r(134)}; 50 tabs ({cmd:$dash_max_tabs}), 20 filters ({cmd:$dash_max_filters}) and 1,000 data-table rows ({cmd:$dash_max_table_rows}), the first drawn; and 1,000 values in a dropdown filter ({cmd:$dash_max_filter_options}), past which a numeric variable gets a range filter and a string variable lists its first values; each unless its global raises it; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:Plots, not variables.}  The plot limit counts a graph's plots, 100 at the default, where {cmd:twoway} counts the variables of one plot, 100 with its x; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3372,7 +3374,11 @@ of the session:
 {synopt:{cmd:$dash_max_images}}image panels in the registry; default 100, at most 1,000.  Over it {cmd:dash image} is refused with {cmd:r(134)}.{p_end}
 {synopt:{cmd:$dash_max_plots}}plots in one graph, where each y variable of
     {cmd:scatter y1 y2 x} is one; default 100, at most 1,000.  Refused with
-    {cmd:r(134)}.{p_end}
+    {cmd:r(134)}.  {cmd:twoway}'s own limit is 100 variables in one plot, x
+    included: it refuses {cmd:scatter y1-y100 x}, "too many variables
+    specified", {cmd:r(103)}, which {cmd:dash} draws, and draws
+    {cmd:(scatter y1-y60 x) (scatter y61-y120 x)}, which {cmd:dash} refuses
+    at the default.{p_end}
 {synopt:{cmd:$dash_max_filter_options}}values one {cmd:type(dropdown)}
     filter lists; default 1,000, at most 100,000.  Over it a numeric or date
     variable is drawn as {cmd:type(range)} and a string variable lists its
