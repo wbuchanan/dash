@@ -990,8 +990,10 @@ class TestTheParsersFoundSomething:
         # 40-02).
         # old -> new: 462 -> 463, plat:PT-9 the sub-point Plots, not
         # variables. (WP-40 40-02).
-        assert len(defs) == 463, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 463 "
+        # old -> new: 463 -> 464, plat:PT-10 the sub-point by() groups.
+        # (WP-40 40-02).
+        assert len(defs) == 464, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 464 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1545,4 +1547,6 @@ class TestInternalLinksResolve:
         # link Resource limits (WP-40 40-02).
         # old -> new: 172 -> 173 links: plat:PT-9 the sub-point Plots, not
         # variables. links Resource limits (WP-40 40-02).
-        assert len(refs) == 173 and len(set(refs)) == 51
+        # old -> new: 173 -> 174 links: plat:PT-10 the sub-point by()
+        # groups. links Resource limits (WP-40 40-02).
+        assert len(refs) == 174 and len(set(refs)) == 51

@@ -4964,11 +4964,11 @@
   - Suggested fix: Documented only (M10, Q44): the per-graph plot limit stays and is documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, plat:PT-9). dash.sthlp Resource limits (the $dash_max_plots row: twoway's own limit is 100 variables in one plot, x included; it refuses scatter y1-y100 x, 'too many variables specified', r(103), which dash draws, and draws (scatter y1-y60 x) (scatter y61-y120 x), which dash refuses at the default) and Differences from twoway item 15's sub-point Plots, not variables. Pinned by test/test_help_resource_limits.py::TestPlotsNotVariables, Q4002-2 (test_wp40_truth.cscript S02). Closes GAPS4 plat:PT-9 (WP-40, plat:PT-9).
 
-- [ ] Title: by() draws the first 100 groups (ceiling 1,000), with a note
+- [x] Title: by() draws the first 100 groups (ceiling 1,000), with a note
   - File Names and Line Numbers: dash_render.py:2366; dash.sthlp:2976-2980, 3300-3304
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-10, BY-22; confirmed; tracked: Resource limits. Registered as GAPS4 plat:PT-10 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): by()'s group limit stays and is documented under Resource limits and Differences.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, plat:PT-10). dash.sthlp Resource limits (the $dash_max_by_groups row: twoway draws every group) and Differences from twoway item 15's sub-point by() groups.: a by() graph draws its first 100 groups, with a note, where twoway draws all. Pinned by test/test_help_resource_limits.py::TestByGroups, Q4002-3 (test_wp40_truth.cscript S02). Closes GAPS4 plat:PT-10 (WP-40, plat:PT-10).
 
 - [ ] Title: n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree
   - File Names and Line Numbers: probe1 #3, #85, #177; dash.sthlp:1149-1172, 3711-3716

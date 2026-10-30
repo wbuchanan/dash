@@ -1566,6 +1566,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Plots, not variables.}  The plot limit counts a graph's plots, 100 at the default, where {cmd:twoway} counts the variables of one plot, 100 with its x; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:by() groups.}  A {cmd:by()} graph draws its first 100 groups, with a note, where {cmd:twoway} draws all; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3385,7 +3387,8 @@ of the session:
     first values in sort order.{p_end}
 {synopt:{cmd:$dash_max_by_groups}}groups one {cmd:by()} graph draws, a panel
     each, and its {cmd:total} panel one more; default 100, at most 1,000.
-    The first groups in sort order are drawn.{p_end}
+    The first groups in sort order are drawn.  {cmd:twoway} draws every
+    group.{p_end}
 {synopt:{cmd:$dash_max_tabs}}tabs; default 50, at most 500.  The first are
     drawn.{p_end}
 {synopt:{cmd:$dash_max_filters}}filter widgets; default 20, at most 200.

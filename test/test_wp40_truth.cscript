@@ -642,6 +642,41 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 plat:PT-10: by() groups ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-3 (plat:PT-10): 120 by() groups of two rows each; twoway
+    // draws 120 panels, dash the first 100 with a note naming
+    // $dash_max_by_groups.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly expand 4
+    quietly keep in 1/240
+    generate g = mod(_n, 120)
+    capture graph drop q4002g
+    capture noisily twoway scatter mpg weight, by(g) nodraw name(q4002g)
+    local q3_trc = _rc
+    _w40_expect Q4002-3 "(`q3_trc' == 0)" "twoway by(g) rc `q3_trc'"
+    local q3_np = 0`.q4002g.graphs.arrnels'
+    _w40_expect Q4002-3 "(`q3_np' == 120)" "twoway drew `q3_np' panels, not 120"
+    capture graph drop q4002g
+    capture erase "`s02d'/q3.html"
+    _w40_s02_run "`s02d'/q3.log" dash scatter mpg weight, by(g) saving("`s02d'/q3.html", replace)
+    _w40_expect Q4002-3 "(`s02rc' == 0)" "dash by(g) rc `s02rc'"
+    _w40_s02_log "`s02d'/q3.log" "has 120 groups, more than the 100 one graph draws"
+    _w40_expect Q4002-3 "(`s02c' == 1)" "no note that 100 of 120 groups are drawn"
+    _w40_s02_log "`s02d'/q3.log" "dash_max_by_groups"
+    _w40_expect Q4002-3 "(`s02c' == 1)" "the note does not name dash_max_by_groups"
+    _w40_done Q4002-3 "120 by() groups: twoway draws 120 panels, dash 100 with a note"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

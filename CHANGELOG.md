@@ -998,6 +998,7 @@ and now matches Stata.
 - dash scatter y x in 1/100 exported every observation to its data file and held them in memory while it built; on the one-line form and a build with no filter(), link(), brush(), csv or KPI card only the rows the graphs draw are exported: 100 of 3,000,000 (WP-40, plat:PT-7)
 - The help did not say that dash, like twoway, sets no limit on the size of the data or of the page, nor list dash's count limits under Differences from twoway; Resource limits now says that twoway has none of the count limits and that no image is limited by its file size, and Differences from twoway item 15 lists every count limit with its default and global (WP-40, plat:PT-8)
 - The help did not say that dash's plot limit counts the plots of a graph where twoway's counts the variables of one plot; the $dash_max_plots row of Resource limits now gives twoway's limit of 100 variables, with scatter y1-y100 x, which twoway refuses, r(103), and dash draws, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-9)
+- The help did not say that twoway draws every by() group where dash draws the first 100 with a note; the $dash_max_by_groups row of Resource limits now says so, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-10)
 
 ### Fixed in WP-38
 

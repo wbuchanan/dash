@@ -236,3 +236,24 @@ class TestPlotsNotVariables:
         assert ("The plot limit counts a graph's plots, %s at the default, "
                 "where {cmd:twoway} counts the variables of one plot"
                 % _n(_limits_table()["plots"][0])) in sub
+
+
+# ---------------------------------------------------------------------------
+# plat:PT-10 (BY-22): by() draws its first 100 groups; twoway draws all
+# ---------------------------------------------------------------------------
+
+class TestByGroups:
+    """Q4002-3: twoway draws 120 panels where dash draws 100 with a note."""
+
+    def test_the_row_gives_twoways_answer(self):
+        default = _limits_table()["by_groups"][0]
+        row = _table_row("dash_max_by_groups")
+        assert "default %s" % _n(default) in row
+        assert "{cmd:twoway} draws every group." in row
+
+    def test_the_sub_point(self):
+        sub = _sub("by() groups.")
+        _assert_sub_point(sub)
+        assert ("A {cmd:by()} graph draws its first %s groups, with a note, "
+                "where {cmd:twoway} draws all"
+                % _n(_limits_table()["by_groups"][0])) in sub
