@@ -1016,6 +1016,7 @@ and now matches Stata.
 - contour's outlines was accepted and drew nothing: dash never wrote it to the spec; outlines outlines the colour key's boxes in black and leaves the plot as it is, as twoway draws it (dash drew the bands' boundaries black in the plot), in the saved page, the served app and after a move; contourline takes it and draws nothing different, as twoway does (WP-37, TR-13a)
 - The help named the rc of a name already held only in passing; the new section The registry: return codes and messages states that twoway takes a name of up to 32 characters, a__b included, and refuses a name it holds with r(110), where dash takes 22 characters (18 for a KPI card), no __, and refuses one with r(198) in its own words, and Differences from twoway item 2 links to it (WP-38, GW-13)
 - The help gave saving()'s r(198) beside twoway's r(602) but not twoway's (file x.gph not found) note, which dash does not print; The registry: return codes and messages states both, and Differences from twoway item 2 links to it (WP-38, GW-14)
+- The help's note that nodraw with saving(, asis) writes the page where twoway refuses it, r(601), is now listed in The registry: return codes and messages, and Differences from twoway item 2 links to it (WP-38, GW-15)
 
 ### Fixed in WP-36
 

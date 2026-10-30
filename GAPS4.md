@@ -401,7 +401,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ECO-4 Tracked:** Documented in WP-38, BUGS.md "graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()", commit pending.
 - **GW-13 Tracked:** Documented in WP-38, BUGS.md "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'", commit pending.
 - **GW-14 Tracked:** Documented in WP-38, BUGS.md "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing", commit pending.
-- **GW-15 Tracked:** Open (WP-38 section 38-02).
+- **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit pending.
 - **GW-16 Tracked:** Open (WP-38 section 38-02).
 - **GW-9 Tracked:** Open (WP-38 section 38-02).
 - **ECO-5 Tracked:** Open (WP-38 section 38-02).

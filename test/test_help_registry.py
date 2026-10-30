@@ -109,3 +109,18 @@ class TestSavingExisting:
         assert "{cmd:r(198)} where {cmd:twoway} gives {cmd:r(602)}" in s
         assert 'no "(file not found)" note' in s
         assert _LINK in s
+
+
+class TestNodrawAsis:
+    """GW-15: nodraw with saving(, asis) writes the page; twoway: r(601)."""
+
+    def test_both_answers(self):
+        p = _paragraph("nodraw with saving(, asis).")
+        assert '"no current graph", {cmd:r(601)}' in p
+        assert "{cmd:dash} writes the page and opens no browser" in p
+        assert "{ul:nodraw still writes the page.}" in p
+
+    def test_the_sub_point(self):
+        s = _sub_point("nodraw with saving(, asis).")
+        assert "The page is written where {cmd:twoway} refuses {cmd:r(601)}" in s
+        assert _LINK in s
