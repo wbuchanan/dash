@@ -16,7 +16,9 @@
 *! the r() twoway leaves (return_after_twoway); graph export to every
 *! suffix spelling of gr_export.ado's VerifySuffix list and some it does
 *! not recognise (sfx_<s>); and twoway's own saving() of a .png name
-*! (saving_png).  A trailing python: block (stdlib only, never calling back
+*! (saving_png); twoway's nodraw with saving(, asis) before any graph is
+*! drawn (nodraw_asis) and after a drawn graph was dropped
+*! (nodraw_asis_dropped; WP-38 GW-15).  A trailing python: block (stdlib only, never calling back
 *! into Stata) takes each log's first line (not replace's "(file ... not
 *! found)"), puts <work> for the work
 *! folder and writes the fixture.  The git commit is read from a file
@@ -85,6 +87,12 @@ end
 
 sysuse auto, clear
 
+* WP-38 GW-15: nodraw with saving(, asis) before anything is drawn.
+graph drop _all
+_gx_run nodraw_asis : twoway scatter price weight, saving("${GX_WORK}/gx7.gph", asis) nodraw
+capture confirm file "${GX_WORK}/gx7.gph"
+global GX_s7_written = (_rc == 0)
+
 graph drop _all
 _gx_run no_graph : graph export "${GX_WORK}/gx1.png", replace
 
@@ -102,6 +110,9 @@ quietly twoway scatter price weight
 graph drop _all
 _gx_mem dropped
 _gx_run dropped : graph export "${GX_WORK}/gx4.svg", replace
+_gx_run nodraw_asis_dropped : twoway scatter price weight, saving("${GX_WORK}/gx8.gph", asis) nodraw
+capture confirm file "${GX_WORK}/gx8.gph"
+global GX_s8_written = (_rc == 0)
 
 quietly summarize price
 twoway scatter price weight
@@ -172,6 +183,10 @@ out = {
         "no_such_name": case("no_such_name"),
         "nodraw_only": case("nodraw_only", memory=G("GX_mem_nodraw").strip()),
         "dropped": case("dropped", memory=G("GX_mem_dropped").strip()),
+        "nodraw_asis": case("nodraw_asis",
+                            written=int(float(G("GX_s7_written")))),
+        "nodraw_asis_dropped": case("nodraw_asis_dropped",
+                                    written=int(float(G("GX_s8_written")))),
         "saving_png": case("saving_png",
                            named_as_typed=int(float(G("GX_s6_named"))),
                            gph_appended=int(float(G("GX_s6_appended")))),

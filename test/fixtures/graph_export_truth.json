@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "90ad3936355a2f2610d2d8a1c20f617931370679",
-  "extracted": " 7 Oct 2026 23:27:15",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "1169d6ea6802a04466d73f4dc89156220192b0ed",
+  "extracted": "30 Oct 2026 10:24:13",
   "mode": "batch",
   "os": "Unix",
   "source": "scripts/extract_graph_export_truth.do",
@@ -21,6 +21,16 @@
   "no_such_name": {
    "first": "could not find Graph window",
    "rc": 693
+  },
+  "nodraw_asis": {
+   "first": "no current graph",
+   "rc": 601,
+   "written": 0
+  },
+  "nodraw_asis_dropped": {
+   "first": "file <work>/gx8.gph saved",
+   "rc": 0,
+   "written": 1
   },
   "nodraw_only": {
    "first": "no Graph window open",

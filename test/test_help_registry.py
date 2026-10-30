@@ -9,15 +9,21 @@ linking to it.  Each class reads one item's paragraph and its sub-point.
 The rcs and words quoted are what twoway and dash print at a3ffa90
 (StataNow 19.5, 30oct2026); the measurable claims are probed beside
 twoway in test_registry_collision.cscript (Q3802-1, Q3802-4, Q3802-5),
-test_path_validation.cscript (Q3802-2) and test_nodraw_honoured.cscript
-(Q3802-3), and play()'s refusal in test_option_validation.cscript U54.
+test_path_validation.cscript (Q3802-2), nodraw with saving(, asis) from
+graph_export_truth.json's fresh-session cases (dash's half in
+test_nodraw_honoured.cscript ND-06), and play()'s refusal in
+test_option_validation.cscript U54.
 """
 
+import json
 import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 _HELP = os.path.join(_ROOT, "dash.sthlp")
+with open(os.path.join(_HERE, "fixtures", "graph_export_truth.json"),
+          encoding="utf-8") as _fh:
+    _GX = json.load(_fh)
 
 
 def _read(path):
@@ -116,13 +122,23 @@ class TestNodrawAsis:
 
     def test_both_answers(self):
         p = _paragraph("nodraw with saving(, asis).")
+        # Flipped (gate 38.1): twoway's answer depends on the session; the
+        # help states the fresh session's, read from graph_export_truth.json.
+        c = _GX["cases"]
+        assert (c["nodraw_asis"]["rc"], c["nodraw_asis"]["first"],
+                c["nodraw_asis"]["written"]) == (601, "no current graph", 0)
+        assert (c["nodraw_asis_dropped"]["rc"],
+                c["nodraw_asis_dropped"]["written"]) == (0, 1)
+        assert "In a session that has drawn no graph," in p
         assert '"no current graph", {cmd:r(601)}' in p
+        assert "once a drawn graph" in p and "saves that file with rc 0" in p
         assert "{cmd:dash} writes the page and opens no browser" in p
         assert "{ul:nodraw still writes the page.}" in p
 
     def test_the_sub_point(self):
         s = _sub_point("nodraw with saving(, asis).")
-        assert "The page is written where {cmd:twoway} refuses {cmd:r(601)}" in s
+        assert ("The page is written where {cmd:twoway}, in a session that "
+                "has drawn no graph, refuses {cmd:r(601)}") in s
         assert _LINK in s
 
 

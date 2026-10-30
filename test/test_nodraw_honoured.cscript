@@ -170,46 +170,6 @@ confirm file "`out1'"
 display as text "ND-06 PASS: saving(, asis) with nodraw writes the page"
 
 // ----------------------------------------------------------------
-// Q3802-3 (WP-38 GW-15) -- nodraw with saving(, asis) beside twoway.
-// dash.sthlp, The registry: return codes and messages, nodraw with
-// saving(, asis).  twoway refuses it, "no current graph", r(601); dash
-// writes the page (ND-06 holds dash's half; this adds twoway's, measured
-// in the same run, 30oct2026).
-// ----------------------------------------------------------------
-capture dash clear
-capture graph drop _all
-tempfile q3b
-local q3g "`q3b'_q3802.gph"
-local q3h "`q3b'_q3802.html"
-capture erase "`q3g'"
-capture erase "`q3h'"
-tempname q3f
-tempfile q3lg
-local q3ls = c(linesize)
-set linesize 255
-quietly log using "`q3lg'", replace text name(`q3f')
-capture noisily twoway scatter mpg weight, saving("`q3g'", asis) nodraw
-local q3t = _rc
-quietly log close `q3f'
-set linesize `q3ls'
-capture noisily dash scatter mpg weight, saving("`q3h'", asis) nodraw
-local q3d = _rc
-capture confirm file "`q3h'"
-local q3e = _rc
-capture confirm file "`q3g'"
-local q3ge = _rc
-cert_log_has "`q3lg'", needle("no current graph")
-local q3w = r(found)
-capture erase "`q3g'"
-capture erase "`q3h'"
-capture graph drop _all
-capture dash clear
-if `q3t' != 601 | !`q3w' | `q3ge' == 0 | `q3d' != 0 | `q3e' != 0 {
-    display as error "Q3802-3 FAIL: twoway rc `q3t' (words `q3w', file `q3ge'), dash rc `q3d' (file `q3e')"
-}
-else display as text "Q3802-3 PASS: twoway refuses nodraw with saving(, asis), r(601); dash writes the page"
-assert `q3t' == 601 & `q3w' & `q3ge' != 0 & `q3d' == 0 & `q3e' == 0
-
 capture dash clear
 capture erase "`out1'"
 capture erase "`logfile'"

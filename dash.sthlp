@@ -915,7 +915,8 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:nodraw still writes the page.}  A graph with {cmd:nodraw} and
     {cmd:saving(}{it:filepath}{cmd:, asis)} writes the page to
     {it:filepath} and opens no browser window; {cmd:twoway} refuses the
-    same options, "no current graph", {cmd:r(601)}, since {cmd:asis} saves
+    same options in a session that has drawn no graph, {cmd:r(601)}, since
+    {cmd:asis} saves
     a drawn graph and {cmd:nodraw} draws none.
 
 {phang2}    {ul:graph is read only before twoway.}  After {cmd:dash},
@@ -985,7 +986,8 @@ there, is an invalid point.  The literal is read as data and never run.
     {help dash##registry:The registry}.
 
 {phang2}    {ul:nodraw with saving(, asis).}  The page is written where
-    {cmd:twoway} refuses {cmd:r(601)}; see {help dash##registry:The registry}.
+    {cmd:twoway}, in a session that has drawn no graph, refuses
+    {cmd:r(601)}; see {help dash##registry:The registry}.
 
 {phang2}    {ul:play().}  A readable recording is refused {cmd:r(198)}; there
     is no Graph Editor; see {help dash##registry:The registry}.
@@ -1698,8 +1700,10 @@ found)", printed when {cmd:saving(}{it:x}{cmd:, replace)} writes a new file,
 is not printed by {cmd:dash}.
 
 {pstd}
-{ul:nodraw with saving(, asis).}  {cmd:twoway} refuses it, "no current
-graph", {cmd:r(601)}; {cmd:dash} writes the page and opens no browser window
+{ul:nodraw with saving(, asis).}  In a session that has drawn no graph,
+{cmd:twoway} refuses it, "no current graph", {cmd:r(601)}; after earlier
+graphs its answer depends on what Stata still holds, and once a drawn graph
+has been dropped it saves that file with rc 0; {cmd:dash} writes the page and opens no browser window
 (see {ul:nodraw still writes the page.} under Differences from twoway).
 
 {pstd}
