@@ -1565,6 +1565,63 @@ if "`q1a'" != "cars" | "`q1b'" != "`q1cur'" | "`q1left'" != "" {
 else display "Q3307-1 PASS: a named registration records the frame it ran in, and dash clear removes it"
 assert "`q1a'" == "cars" & "`q1b'" == "`q1cur'" & "`q1left'" == ""
 
+// ================================================================
+// Q3802-1 (WP-38 GW-13) -- name()'s limits and a name already held,
+// beside twoway
+// ================================================================
+// dash.sthlp, The registry: return codes and messages, Names.  twoway
+// takes a name of up to 32 characters (33 is "<name> invalid name",
+// r(198)) and a__b, and refuses a name it holds, "graph q1 already
+// exists", r(110); dash takes at most 22 characters and no __, and
+// refuses a name it holds in its own words, r(198).  Measured 30oct2026.
+capture graph drop _all
+dash clear
+tempname q1f
+tempfile q1lg
+local q1ls = c(linesize)
+set linesize 255
+quietly log using "`q1lg'", replace text name(`q1f')
+capture noisily twoway scatter mpg weight, name(q1) nodraw
+local q1t1 = _rc
+capture noisily twoway scatter mpg weight, name(q1) nodraw
+local q1t2 = _rc
+capture noisily dash scatter mpg weight, name(q1)
+local q1d1 = _rc
+capture noisily dash scatter mpg weight, name(q1)
+local q1d2 = _rc
+local q1n32 "abcdefghijklmnopqrstuvwxyzabcdef"
+local q1n33 "`q1n32'g"
+local q1n22 = substr("`q1n32'", 1, 22)
+local q1n23 = substr("`q1n32'", 1, 23)
+capture noisily twoway scatter mpg weight, name(`q1n32') nodraw
+local q1t32 = _rc
+capture noisily twoway scatter mpg weight, name(`q1n33') nodraw
+local q1t33 = _rc
+capture noisily twoway scatter mpg weight, name(a__b) nodraw
+local q1tab = _rc
+capture noisily dash scatter mpg weight, name(`q1n22')
+local q1d22 = _rc
+capture noisily dash scatter mpg weight, name(`q1n23')
+local q1d23 = _rc
+capture noisily dash scatter mpg weight, name(a__b)
+local q1dab = _rc
+quietly log close `q1f'
+set linesize `q1ls'
+cert_log_has "`q1lg'", needle("graph q1 already exists")
+local q1h1 = r(found)
+cert_log_has "`q1lg'", needle("dash: graph name 'q1' already exists. Use name(q1, replace) to overwrite.")
+local q1h2 = r(found)
+cert_log_has "`q1lg'", needle("`q1n33' invalid name")
+local q1h3 = r(found)
+capture graph drop _all
+dash clear
+local q1rc "`q1t1' `q1t2' `q1d1' `q1d2' `q1t32' `q1t33' `q1tab' `q1d22' `q1d23' `q1dab'"
+if "`q1rc'" != "0 110 0 198 0 198 0 0 198 198" | !`q1h1' | !`q1h2' | !`q1h3' {
+    display as error "Q3802-1 FAIL: rcs `q1rc', words `q1h1' `q1h2' `q1h3'"
+}
+else display "Q3802-1 PASS: twoway takes 32 characters and a__b and says r(110) for a name it holds; dash takes 22, no __, and says r(198)"
+assert "`q1rc'" == "0 110 0 198 0 198 0 0 198 198" & `q1h1' & `q1h2' & `q1h3'
+
 dash clear
 macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh

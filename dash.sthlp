@@ -6,6 +6,7 @@
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}
 {viewerjumpto "Differences from twoway" "dash##differences"}{...}
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
+{viewerjumpto "The registry"      "dash##registry"}{...}
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
 {viewerjumpto "Exporting"         "dash##export"}{...}
 {viewerjumpto "Stata graph integration" "dash##graphintegration"}{...}
@@ -975,6 +976,10 @@ there, is an invalid point.  The literal is read as data and never run.
     macros by hand is not supported: {cmd:dash} validates what it registers,
     not what you assign afterwards.
 
+{phang2}    {ul:Names.}  A name is at most 22 characters (18 for a KPI card)
+    with no {cmd:__}, and a name in use is refused {cmd:r(198)} where
+    {cmd:twoway} gives {cmd:r(110)}; see {help dash##registry:The registry}.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, {cmd:dash serve} and {cmd:dash clear}
     have no {cmd:twoway} equivalents.  See
@@ -1644,6 +1649,25 @@ them (see {help dash##limits:Resource limits}).  It also removes this
 session's preview pages, but one a browser was asked to open in the last
 minute (see {help dash##tempfiles:Temporary files and privacy}).  Run this
 before starting a new dashboard definition.
+
+
+{marker registry}
+{title:The registry: return codes and messages}
+
+{pstd}
+{cmd:name()} registers a graph or KPI card instead of drawing it.  Where the
+registry answers a command differently from {cmd:twoway}'s graph memory, it
+does so as follows.
+
+{pstd}
+{ul:Names.}  {cmd:twoway} takes a name of up to 32 characters, double
+underscores included, and refuses a name it already holds, "graph
+{it:name} already exists", {cmd:r(110)}.  {cmd:dash} takes at most 22
+characters for a graph and 18 for a KPI card, no {cmd:__} (see
+{ul:What a name may be.} under {help dash##differences:Differences from twoway}),
+and refuses a name it already holds with its own words, "dash: graph name
+'{it:name}' already exists. Use name({it:name}, replace) to overwrite.",
+{cmd:r(198)}.
 
 
 {marker dashboard_options}

@@ -4898,11 +4898,11 @@
   - Suggested fix: Documented only (M10): the help maps graph combine's options onto layout() and names those dash build refuses.
   - Resolution: Documented 30oct2026 (WP-38, ECO-4). dash.sthlp Stata graph integration (graph combine): dash build plays graph combine's part, placing the registered graphs and KPI cards in layout()'s grid or in tabs(), with title() and subtitle() over them; graph combine's cols(), rows(), holes(), colfirst, xcommon, ycommon, iscale(), imargin(), note(), caption(), xsize() and ysize() are refused by dash build, option name not allowed, r(198); graph combine of a registered name is refused, name is not a memory graph, r(198). Differences item 14 has the sub-point graph combine. Pinned by test/test_help_graph_integration.py::TestGraphCombine, Q3801-4 (test_wp38_truth.cscript S01). Closes GAPS4 ECO-4 (WP-38, ECO-4).
 
-- [ ] Title: name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'
+- [x] Title: name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'
   - File Names and Line Numbers: dash.ado:11294-11303, 11360-11364; dash.sthlp:861-897; test_registry_collision.cscript:987
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-13, ECO-6, ECO-12; confirmed; tracked: dash.sthlp 'What a name may be' (the rc is not listed). Registered as GAPS4 GW-13 (WP-38, section 38-02, Document).
   - Suggested fix: Documented only (M10): the help states name()'s limits (22 characters, no '__') and the rc and words a duplicate name gives.
-  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, GW-13). dash.sthlp, The registry: return codes and messages (Names.): twoway takes a name of up to 32 characters (33 is refused, r(198)) and a__b, and refuses a name it already holds, 'graph X already exists', r(110); dash takes at most 22 characters for a graph and 18 for a KPI card, no __, and refuses a name it already holds in its own words, r(198); the sub-point Names. under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestNames, test/test_registry_collision.cscript Q3802-1. Closes GAPS4 GW-13 (WP-38, GW-13).
 
 - [ ] Title: saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing
   - File Names and Line Numbers: probe p1 I1/I2; dash.sthlp:825-829; dash.ado:11458-11508

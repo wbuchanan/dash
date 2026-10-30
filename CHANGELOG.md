@@ -1014,6 +1014,7 @@ and now matches Stata.
 - A contour over too few points for a surface drew no colour key; it draws the key from its levels, as twoway does (WP-37, DG-8)
 - contour and contourline over more than 1,000 points drew an approximate surface even on a full grid (every sandstone example), under by() as well; on a full grid or with interp(none) they draw twoway's own polygons, in each by() panel from its own rows, and after a filter move that leaves rows out the saved page and the served app draw dash's own surface of the rows kept and mark it (unfiltered) (WP-37, TR-13)
 - contour's outlines was accepted and drew nothing: dash never wrote it to the spec; outlines outlines the colour key's boxes in black and leaves the plot as it is, as twoway draws it (dash drew the bands' boundaries black in the plot), in the saved page, the served app and after a move; contourline takes it and draws nothing different, as twoway does (WP-37, TR-13a)
+- The help named the rc of a name already held only in passing; the new section The registry: return codes and messages states that twoway takes a name of up to 32 characters, a__b included, and refuses a name it holds with r(110), where dash takes 22 characters (18 for a KPI card), no __, and refuses one with r(198) in its own words, and Differences from twoway item 2 links to it (WP-38, GW-13)
 
 ### Fixed in WP-36
 
