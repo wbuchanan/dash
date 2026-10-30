@@ -5258,6 +5258,25 @@ Summarised from .ultraplan/sections/index.md (M9) and .ultraplan/review/DECISION
 - **Left open:** none of WP-37's rows.
 - **Gate (30oct2026):** `make test-all` on dc758d6 -- pytest 40,026 passed and 1 failed (a timing ratio under load, made best-of-three in a31c6d9 and green alone), cert 71 of 71 (511 s), 1,445 s in all. `make cert-all` on a16b0d6 -- 74 of 74 registered scripts passed (3 sessions, all tier).
 
+## WP-38 · Stata graph integration, documented (P3) — DONE
+
+**GAPS4 closed:** none; **documented:** syn:SD-17, GW-12, ECO-1, ECO-4, GW-13, GW-14, GW-15, GW-16, GW-9, ECO-5, ECO-15, ECO-7
+
+As a Stata user who builds dashboards beside twoway's graphs, I want the help to say plainly that a dashboard is not a Stata graph, and to give each return code and message where dash's registry answers differently from twoway's graph memory, so that a do-file written for twoway does not surprise me in dash.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M10) and .ultraplan/review/DECISIONS.md (A-17), which hold them in full.
+
+- **A dashboard is not a Stata graph (M10, 38-01).** A new help topic says what name() and saving() do in dash, that graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use a dashboard, that a registered graph draws the data in memory at dash build, how dash build's layout() stands in for graph combine, which s() macros dash leaves, and when a browser page opens; each has a Differences entry.
+- **The registry's answers (M10, 38-02).** A second topic sets out name()'s limits, saving() onto a file that exists, nodraw with saving(, asis), play(), name()'s sub-options and dash clear, each beside twoway's measured rc and words, with a sub-point under Differences item 2.
+- **Measured, not assumed.** twoway's answer to nodraw with saving(, asis) depends on what the session drew before; the help gives the fresh-session answer, measured by scripts/extract_graph_export_truth.do, and the case after a drawn graph is dropped.
+- **No code change.** Every row is resolved by help text and the tests that read it.
+
+- **Entries.** 12 WP-38 entries; 0 closed, 12 documented, 0 partly closed; BUGS.md holds 152 open entries.
+- **Left open:** none of WP-38's rows.
+- **Gate (30oct2026):** `make test-all` on 4b24ca7 -- pytest 40,069 passed, cert 72 of 72 (503 s), 1,376 s in all. `make cert-all` on 4b24ca7 -- 75 of 75 registered scripts passed (3 sessions, all tier).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
