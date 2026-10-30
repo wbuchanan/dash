@@ -1284,7 +1284,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
     1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
-    number, and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
+    number ({cmd:msize()} and the other marker sizes at most 1,000 units: a
+    larger size is drawn at the scheme's default with a note, where
+    {cmd:twoway} draws it), and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
     number with a unit ({cmd:4pt}, {cmd:.1in}) or a {cmd:*}{it:#}
     multiplier, and {cmd:msize(1e400)}, a number past the machine's range,
     is read as {cmd:msize(0)}, as {cmd:twoway} draws it; {cmd:lwidth()},
@@ -1573,6 +1575,8 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:Histogram bins.}  {cmd:width()} or {cmd:discrete} needing more than 1,000 bins is rebinned, where {cmd:twoway} draws the occupied bins; see {help dash##limits:Resource limits}.
 
 {phang2}    {ul:Ticks.}  More than 2,000 ticks keep the default ticks, and a build asks Stata's tick routine for at most 256 axis ranges, ticking the rest by {cmd:dash}'s model; see {help dash##limits:Resource limits}.
+
+{phang2}    {ul:Marker size.}  {cmd:msize()} above 1,000 units is drawn at the default, with a note, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
 
 
 {marker subcommands}
@@ -3461,7 +3465,9 @@ note, and {cmd:#}{it:N} above 2,000 is taken as 2,000, silently, where
 3,501).  The number of axis ranges a build asks of Stata's tick routine is
 a fixed limit too, 256: a range past it is ticked by {cmd:dash}'s model of
 that routine, silently, where {cmd:twoway} asks the routine for every axis
-it draws.
+it draws.  {cmd:msize()} and the other marker sizes take at most 1,000
+units: a larger size is drawn at the scheme's default with a note, where
+{cmd:twoway} draws it ({cmd:msize(1500)}).
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:

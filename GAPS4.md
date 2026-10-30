@@ -414,7 +414,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-15 Tracked:** Documented in WP-40, BUGS.md "n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree", commit pending.
 - **sil:SD-1 Tracked:** Documented in WP-40, BUGS.md "histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars", commit pending.
 - **AX-16 Tracked:** Documented in WP-40, BUGS.md "An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently", commit pending.
-- **sil:SD-11 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-11 Tracked:** Documented in WP-40, BUGS.md "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number", commit pending.
 - **sil:SD-12 Tracked:** Open (WP-40 section 40-02).
 - **sil:SD-13 Tracked:** Open (WP-40 section 40-02).
 - **BY-28 Tracked:** Open (WP-41 section 41-01).

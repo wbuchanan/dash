@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'sil:SD-11': "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number",
     'sil:SD-12': 'fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently',
     'sil:SD-13': 'text() whose globals expand past 4,000 characters is refused r(198)',
     'BY-28': 'contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel',

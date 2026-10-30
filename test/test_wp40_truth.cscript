@@ -798,6 +798,33 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 sil:SD-11: marker size ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-7 (sil:SD-11): msize(1500) draws in twoway; dash draws the
+    // scheme's default size with a note naming msize().
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily twoway scatter mpg weight, msize(1500) nodraw
+    local q7_trc = _rc
+    _w40_expect Q4002-7 "(`q7_trc' == 0)" "twoway msize(1500) rc `q7_trc'"
+    capture erase "`s02d'/q7.html"
+    _w40_s02_run "`s02d'/q7.log" dash scatter mpg weight, msize(1500) saving("`s02d'/q7.html", replace)
+    _w40_expect Q4002-7 "(`s02rc' == 0)" "dash msize(1500) rc `s02rc'"
+    _w40_s02_log "`s02d'/q7.log" "msize(1500)"
+    _w40_expect Q4002-7 "(`s02c' >= 1)" "no note naming msize(1500)"
+    _w40_s02_log "`s02d'/q7.log" "using the scheme's default"
+    _w40_expect Q4002-7 "(`s02c' == 1)" "the note does not say the default is drawn"
+    _w40_done Q4002-7 "msize(1500): twoway draws it, dash draws the default with a note"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

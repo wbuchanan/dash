@@ -428,3 +428,40 @@ class TestTicks:
         assert bound in sub
         assert ("More than %s ticks keep the default ticks"
                 % _n(_constant(_RENDER, "_MAX_AXIS_TICKS"))) in sub
+
+
+# ---------------------------------------------------------------------------
+# sil:SD-11: msize() above 1,000 units is drawn at the default
+# ---------------------------------------------------------------------------
+
+def _size_max():
+    m = re.search(r"_SIZE_MAX_RS: float = ([0-9.]+)", _read(_RENDER))
+    assert m, "_SIZE_MAX_RS not found"
+    return int(float(m.group(1)))
+
+
+class TestMarkerSize:
+    """HR-19: msize() "any number" is corrected; above _SIZE_MAX_RS units
+    the scheme's default is drawn with a note, where twoway draws it
+    (Q4002-7)."""
+
+    _SAYS = ("({cmd:msize()} and the other marker sizes at most %s units: a "
+             "larger size is drawn at the scheme's default with a note, "
+             "where {cmd:twoway} draws it)")
+
+    def test_the_option_values_sentence(self):
+        h = _flat(_help())
+        assert ("{cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} "
+                "any number " + self._SAYS % _n(_size_max())) in h
+
+    def test_the_fixed_limit(self):
+        s = _fixed_sentence("{cmd:msize()}")
+        assert ("{cmd:msize()} and the other marker sizes take at most %s "
+                "units: a larger size is drawn at the scheme's default with "
+                "a note, where {cmd:twoway} draws it" % _n(_size_max())) in s
+
+    def test_the_sub_point(self):
+        sub = _sub("Marker size.")
+        _assert_sub_point(sub)
+        assert ("{cmd:msize()} above %s units is drawn at the default"
+                % _n(_size_max())) in sub

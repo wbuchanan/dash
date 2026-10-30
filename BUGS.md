@@ -4988,11 +4988,11 @@
   - Suggested fix: Documented only (M10, Q44): the 2,000-tick bound stays and is documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, AX-16). dash.sthlp Axis labels (more than 2,000 ticks in any form keep the axis's default ticks, with a note; #N above 2,000 is taken as 2,000, silently, and twoway draws every tick it is asked for, 3,501 for xtick(1500(1)5000)), Resource limits (Fixed limits: the same, and the 256 axis ranges a build asks of Stata's tick routine, a range past it ticked by dash's model, silently, where twoway asks the routine for every axis it draws; A-18) and Differences from twoway item 15's sub-point Ticks. Pinned by test/test_help_resource_limits.py::TestTicks, Q4002-6 (test_wp40_truth.cscript S02). Closes GAPS4 AX-16 (WP-40, AX-16).
 
-- [ ] Title: msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number
+- [x] Title: msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number
   - File Names and Line Numbers: dash_render.py:8314, 8421-8424; dash.sthlp:1177-1178
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-11; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-11 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): the 1,000-unit msize() bound stays; the help and the note's wording are corrected.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, sil:SD-11). dash.sthlp Differences from twoway item 5's bounds paragraph (msize() and the other marker sizes take any number up to 1,000 units: a larger size is drawn at the scheme's default with a note, where twoway draws it; HR-19's 'any number' corrected), Resource limits (Fixed limits: the same) and Differences from twoway item 15's sub-point Marker size. The note's wording, 'not a recognised size', is WP-49's (LT-25). Pinned by test/test_help_resource_limits.py::TestMarkerSize, Q4002-7 (test_wp40_truth.cscript S02). Closes GAPS4 sil:SD-11 (WP-40, sil:SD-11).
 
 - [ ] Title: fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently
   - File Names and Line Numbers: dash_render.py:429, 21747, 27031
