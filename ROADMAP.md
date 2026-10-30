@@ -5277,6 +5277,24 @@ Summarised from .ultraplan/sections/index.md (M10) and .ultraplan/review/DECISIO
 - **Left open:** none of WP-38's rows.
 - **Gate (30oct2026):** `make test-all` on 4b24ca7 -- pytest 40,069 passed, cert 72 of 72 (503 s), 1,376 s in all. `make cert-all` on 4b24ca7 -- 75 of 75 registered scripts passed (3 sessions, all tier).
 
+## WP-40 · Resource limits (P5) — DONE
+
+**GAPS4 closed:** plat:PT-7; **documented:** plat:PT-8, plat:PT-9, plat:PT-10, stat:PT-15, sil:SD-1, AX-16, sil:SD-11, sil:SD-12, sil:SD-13
+
+As a Stata user with large or wide data, I want a subset of my data to build as quickly as twoway draws it, and every limit dash keeps to be stated beside twoway's answer, so that a refusal, a trimmed graph or a slow build is never a surprise.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M10, Q44, Q45) and .ultraplan/review/DECISIONS.md (P4-3, A-12, A-18), which hold them in full.
+
+- **Only the drawn rows are exported (Q45, P4-3, A-12).** On the one-line form and on a saved `dash build` with no filter(), link(), brush(), csv or KPI card, dash evaluates the qualifiers first and exports only the rows some graph draws (`dash scatter y x in 1/100` on 200,000 observations exports 100); the user's frame is never reduced, every graph draws what it drew before, and a served app or any other build exports every row. Each graph's JSON carries its frame's `_N` as `"n_obs"`, so lpoly's grid keeps twoway's count (50 points over 22 cars) at build and after a served filter move; a by() graph keeps every row of its own sample, so each by() group keeps its panel; a lowess layer with adjust keeps every row; a frame stack with no room for the selection column exports every row.
+- **No size limit, count limits documented (M10, Q44, P4-3).** The help says that dash, like twoway, sets no limit on the size of the data or of the page, and that no image is limited by its file size; a new Differences item lists every count limit with its default and global, and Resource limits states twoway's answer beside each.
+- **Fixed limits (A-18).** A new Fixed limits paragraph states n() and bin() bounds by type (mspline 300, as twoway refuses it; 10,000 on the other bounded types; lfit, qfit, lfitci, qfitci and fpfitci take any n()), lpoly's fit degree of at most 30, histogram rebinning above 1,000 bins, the 2,000-tick limit and the 256 axis ranges a build asks Stata's tick routine for, the 1,000-unit marker size, fpfit's 20,000-point grid and the 4,000-character text limit, each beside twoway's measured answer; the msize "any number" and discrete "one bar per distinct value" sentences are corrected.
+
+- **Entries.** 10 WP-40 entries; 1 closed, 9 documented, 0 partly closed; BUGS.md holds 142 open entries.
+- **Left open:** none of WP-40's rows.
+- **Gate (30oct2026):** `make test-all` on cc50c88 -- pytest 40,233 passed, cert 73 of 73 (514 s), 1,431 s in all. `make cert-all` on cc50c88 -- 75 of 76 registered scripts passed (3 sessions, all tier): test_wp29_truth ER-02 found a by() graph losing the panel of a group no plot had a row in under the selected-row export; fixed in 17ea7fd (a by() graph marks its own rows), and test_wp29_truth and the S01 block pass on it.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
