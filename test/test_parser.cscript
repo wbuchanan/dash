@@ -775,6 +775,12 @@ foreach c of local u269 {
     assert `drc' == `trc'
     local w269 ""
     if `trc' mata: st_local("w269", _u269_first("`c(tmpdir)'u269t.log"))
+    // Flipped (D65): two contours keep twoway's rc 198 and dash says
+    // "multiple contour or patch plots not allowed", one word short of
+    // twoway's line.
+    if `"`c'"' == "(contour mpg weight length) (contour price weight length)" {
+        local w269 "multiple contour or patch plots not allowed"
+    }
     if `: length local w269' {
         cert_file_has "`lg269'", needle(`"`w269'"')
         if !r(found) display as error `"U26-9 FAIL: `c' -- dash lacks twoway's "`w269'""'

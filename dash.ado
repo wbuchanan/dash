@@ -9700,10 +9700,11 @@ program define _dash_plot
         // colorvar() layer after a contour unless it says
         // colorallowmultiple (twowaygraph_g.class:349-394, measured
         // 15oct2026, contour_truth.json refuse.two_*; a contour and a
-        // contourline together draw).
+        // contourline together draw).  The first message is twoway's
+        // with one word taken out (D65).
         if "`_pt_k'" == "contour" {
             if 0`_g_hascont' {
-                display as error "multiple contour, heatmap, or patch plots not allowed"
+                display as error "multiple contour or patch plots not allowed"
                 exit 198
             }
             local _g_hascont 1

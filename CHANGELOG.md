@@ -926,7 +926,7 @@ and now matches Stata.
 - xsize(()) and ysize(()) are refused, r(198), as twoway refuses them; dash drew the default size with a note. (WP-35, DT-15)
 - colorvar() naming a string variable is refused, r(7), as twoway refuses it; dash drew a colour per value. (WP-35, DT-15)
 - A named graph whose function points exceeded c(macrolen) was refused r(134); it is registered and built, its points kept in a private file of dash's temporary folder, which clear all keeps (WP-36, plat:PT-4)
-- contour and contourline no longer take heatmap; dash refuses it, r(198), "option heatmap not allowed", as it refuses any option contour does not take (WP-37, D65)
+- contour and contourline no longer take heatmap; dash refuses it, r(198), "option heatmap not allowed", as it refuses any option contour does not take; two contours in one graph are refused, r(198), with "multiple contour or patch plots not allowed" (WP-37, D65)
 
 ### Removed
 

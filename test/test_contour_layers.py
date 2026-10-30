@@ -147,8 +147,9 @@ class TestTheFixture:
         r = _T["refuse"]
         assert (r["ccuts_levels"]["rc"], r["ccuts_levels"]["lines"]) == (
             198, ["option ccuts() cannot be combined with option levels()"])
-        assert (r["two_contours"]["rc"], r["two_contours"]["lines"]) == (
-            198, ["multiple contour, heatmap, or patch plots not allowed"])
+        # Flipped (D65): the two-contour probe is no longer extracted;
+        # dash's own words are pinned by test_parser.cscript U26-9.
+        assert "two_contours" not in r
         assert (r["two_lines"]["rc"], r["two_lines"]["lines"]) == (
             198, ["multiple contourline plots not allowed"])
         assert r["contour_and_line"]["rc"] == 0

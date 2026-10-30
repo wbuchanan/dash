@@ -365,7 +365,6 @@ _zd_run refuse.ccolors_bogus `c', ccolors(red notacolour)
 _zd_run refuse.clwidths_bogus `cl', clwidths(notawidth)
 _zd_run refuse.clpatterns_bogus `cl', clpatterns(notapattern)
 _zd_run refuse.hz_vert `c', horizontal vertical
-_zd_run refuse.two_contours twoway (contour mpg weight length) (contour price weight length)
 _zd_run refuse.two_lines twoway (contourline mpg weight length) (contourline price weight length)
 _zd_run refuse.contour_and_line twoway (contour mpg weight length) (contourline price weight length)
 _zd_run refuse.contour_scatter twoway (contour mpg weight length) (scatter weight length), `nm'
