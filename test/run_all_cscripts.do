@@ -90,14 +90,14 @@ if `"`macval(_dash_pyx)'"' != "" {
 // over the sessions
 local _cert_shards ///
     test_abbreviations.cscript           66.5 0  1 3 4 ///
-    test_ado_loads.cscript                0.2 0  2 2 2 ///
+    test_ado_loads.cscript                0.2 0  1 2 2 ///
     test_adversarial.cscript             30.1 0  1 2 4 ///
     test_alias_semantics.cscript         14.9 0  2 2 2 ///
     test_bug_regressions.cscript         17.9 1  2 2 2 ///
     test_by_suboptions.cscript           49.9 0  2 1 2 ///
     test_caller_version.cscript           1.1 0  2 3 1 ///
     test_ci_band_options.cscript          7.8 0  1 1 2 ///
-    test_clear_registry.cscript           0.2 0  2 3 4 ///
+    test_clear_registry.cscript           0.2 0  1 3 4 ///
     test_conformance.cscript             11.6 0  2 1 1 ///
     test_custom_scheme.cscript            9.7 0  1 1 1 ///
     test_e2e_filters.cscript             12.2 0  1 3 2 ///
@@ -109,9 +109,9 @@ local _cert_shards ///
     test_env_guards.cscript              62.8 1  2 2 2 ///
     test_examples_run.cscript            26.0 0  2 1 2 ///
     test_export.cscript                   6.4 0  1 2 2 ///
-    test_filter_label.cscript             0.8 0  1 3 1 ///
+    test_filter_label.cscript             0.8 0  2 3 1 ///
     test_gaps2_truth.cscript             20.5 0  2 1 2 ///
-    test_graph_option_scope.cscript       0.7 0  2 2 2 ///
+    test_graph_option_scope.cscript       0.7 0  1 2 2 ///
     test_help_claims_1.cscript           15.0 0  1 1 1 ///
     test_help_claims_2.cscript           14.9 0  1 3 4 ///
     test_help_claims_3.cscript            7.7 0  1 2 3 ///
@@ -122,10 +122,10 @@ local _cert_shards ///
     test_help_claims_8.cscript            8.3 0  2 2 2 ///
     test_help_examples.cscript           23.5 0  1 2 1 ///
     test_json_escaping.cscript           35.9 0  1 2 4 ///
-    test_mata_autoload.cscript            0.5 0  1 3 3 ///
+    test_mata_autoload.cscript            0.5 0  2 3 3 ///
     test_mata_library_guard.cscript      30.4 0  2 1 1 ///
     test_nodraw_honoured.cscript          0.9 0  2 2 3 ///
-    test_option_report_paren.cscript      0.3 0  2 2 1 ///
+    test_option_report_paren.cscript      0.3 0  1 2 1 ///
     test_option_surface.cscript          13.6 0  2 3 2 ///
     test_option_validation.cscript       66.0 0  2 2 4 ///
     test_parser.cscript                  51.2 0  1 3 3 ///
@@ -143,17 +143,17 @@ local _cert_shards ///
     test_serve_options.cscript            1.8 0  1 1 3 ///
     test_server_build.cscript             2.1 0  1 2 3 ///
     test_setup_honesty.cscript           18.5 0  2 2 3 ///
-    test_setup_injection.cscript          0.0 0  2 2 3 ///
-    test_setup_python_gate.cscript        0.0 0  2 2 3 ///
-    test_setup_version_gate.cscript       0.3 0  1 1 3 ///
+    test_setup_injection.cscript          0.0 0  1 2 3 ///
+    test_setup_python_gate.cscript        0.0 0  1 2 3 ///
+    test_setup_version_gate.cscript       0.3 0  2 1 3 ///
     test_statistical_options.cscript     12.9 0  2 2 3 ///
     test_string_values.cscript           26.7 0  2 3 3 ///
     test_suboption_reporting.cscript     22.6 0  1 3 4 ///
-    test_textbox_multiline.cscript        0.4 0  1 3 1 ///
-    test_theme_escaping.cscript           0.7 0  2 1 4 ///
-    test_tokenizer.cscript                0.1 0  1 1 2 ///
+    test_textbox_multiline.cscript        0.4 0  2 3 1 ///
+    test_theme_escaping.cscript           0.7 0  1 1 4 ///
+    test_tokenizer.cscript                0.1 0  2 1 2 ///
     test_twoway_option_parity.cscript    86.7 0  2 3 3 ///
-    test_utf8_validation.cscript          0.1 0  1 1 1 ///
+    test_utf8_validation.cscript          0.1 0  2 1 1 ///
     test_varlist_expansion.cscript        8.3 0  2 3 3 ///
     test_wp29_truth.cscript             138.4 1  2 2 2 ///
     test_wp30_truth.cscript             628.1 0  * * * ///
@@ -162,7 +162,8 @@ local _cert_shards ///
     test_wp34_truth.cscript               1.0 0  * * * ///
     test_wp35_truth.cscript               1.0 0  * * * ///
     test_wp36_truth.cscript               1.0 0  * * * ///
-    test_wp37_truth.cscript               1.0 0  * * *
+    test_wp37_truth.cscript               1.0 0  * * * ///
+    test_wp38_truth.cscript               1.0 0  * * *
 // The release tier: the closed work packages' truth scripts,
 // which a default run (make cert, make test-all) leaves out and
 // DASH_CERT_TIER=release or all runs (make cert-release, make
@@ -3414,6 +3415,52 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_wp37_truth.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+}
+
+// 76. test_wp38_truth.cscript (WP-38: the one certification script for
+// every twoway/Stata-value comparison WP-38's sections need; S00's
+// scaffold and one block per GAPS4 row or harness tool, above its "append
+// new blocks above this line" marker -- .ultraplan/sections/index.md
+// PD-6).  It runs in every shard, each session running its own part of
+// the blocks (DASH_CERT_SHARD).
+// ----------------------------------------------------------------
+local _cert_go : list posof "test_wp38_truth.cscript" in _cert_run
+if `_cert_go' {
+display as text "[ RUN ] test_wp38_truth.cscript"
+cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
+capture noisily {
+    do "test_wp38_truth.cscript"
+}
+local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_wp38_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_wp38_truth.cscript"
+    capture noisily profiler report
+}
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_wp38_truth.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_wp38_truth.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_wp38_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 }
