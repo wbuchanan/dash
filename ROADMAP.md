@@ -5236,6 +5236,28 @@ Summarised from .ultraplan/sections/index.md (M8) and .ultraplan/review/DECISION
 - **Left open:** none of WP-36's rows. Registering a graph with a function layer now starts Python (36-03 accepts this).
 - **Gate (29oct2026):** `make test-all` -- pytest 39,783 passed (842 s), cert 70 of 70 (495 s), 1,347 s in all. `make cert-all` -- 73 of 73 registered scripts passed (3 sessions, all tier).
 
+## WP-37 · Statistical and computed layers (P12) — DONE
+
+**GAPS4 closed:** DG-1, DG-5, DG-8, TR-13, TR-13a, stat:PT-12; **documented:** stat:PT-16, DT-26, stat:PT-21
+
+As a Stata user drawing fits, areas and contours, I want dash to compute them as twoway does -- an empty sample answered as twoway answers it, a fit on the transformed x, a gridded contour from twoway's own generator -- and to say plainly where its numbers part from twoway's, so that a twoway command draws the same picture in dash.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (M9) and .ultraplan/review/DECISIONS.md (A-12, A-26, P5-1, P5-2, D45, D64, D65), which hold them in full.
+
+- **Zero observations (M9, PD-15, P5-2).** One check runs on every export route, after the working columns and before Python, and answers each plot type and empty-sample case as twoway does (400 measured probes); a contour over no rows draws an empty plot with its key's title instead of a Python traceback.
+- **Fits on a transformed x (A-12, P5-1).** lfit and lfitci with xlog or xtransform() draw twoway's own fit (twoway__lfit_serset with xtrans()), once per by() panel; every Stata-computed fit under by() is fitted per panel.
+- **Areas and contour keys.** rarea's outlines break where cmissing(n) breaks its fill, in both modes and after a filter move; a contour with no surface still draws its colour key.
+- **Contours from Stata's grid (M9, A-26).** A gridded contour or contourline, or one with interp(none), is cut by twoway__contour_gen at export, flat, per by() panel and for the Total panel; after a filter move that drops rows the layer is refitted by dash and marked stale.
+- **outlines (D64).** contour's outlines option reaches the renderer and draws as twoway draws it: the colour key's boxes outlined, the plot region unchanged (TR-13a, filed during the WP).
+- **Option removed (D65).** contour and contourline refuse the option the maintainer removed, r(198), as any option they do not take; the two-contour refusal reads "multiple contour or patch plots not allowed".
+- **Documented (D45).** lpolyci's band where the pilot has no residual degrees of freedom, the estimators' numeric limits (lpoly's bandwidth at degree 2-3 within 5e-6, 6-7 and above 7, exact-polynomial cases, fpfit on dates, the 2,000,000-dot limit) and tied sort keys keeping the data's order each have a help sentence with its measured numbers and a Differences entry.
+
+- **Entries.** 9 WP-37 entries; 6 closed, 3 documented, 0 partly closed; BUGS.md holds 164 open entries.
+- **Left open:** none of WP-37's rows.
+- **Gate (30oct2026):** `make test-all` on dc758d6 -- pytest 40,026 passed and 1 failed (a timing ratio under load, made best-of-three in a31c6d9 and green alone), cert 71 of 71 (511 s), 1,445 s in all. `make cert-all` on a16b0d6 -- 74 of 74 registered scripts passed (3 sessions, all tier).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
