@@ -4874,11 +4874,11 @@
   - Suggested fix: Documented only (37-05): the help states that tied sort keys keep data order, where twoway's order among ties is unstable.
   - Resolution: Documented 29oct2026 (WP-37, stat:PT-21). dash.sthlp, Plot types (the Join order paragraph): points whose keys tie keep the data's order in dash; twoway's order among them is not fixed, changing from run to run, which shows in a lowess path through a tied x, a sort under by() and where cmissing(n) breaks a line at a tie; Differences from twoway item 13 links to it. Pinned by test/test_help_statistical_limits.py::TestTies, test/test_wp37_truth.cscript Q3705-3. Closes GAPS4 stat:PT-21 (WP-37, stat:PT-21).
 
-- [ ] Title: name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output
+- [x] Title: name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output
   - File Names and Line Numbers: dash.sthlp:815-823 (Difference 2); probe p3 B1/B2
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids syn:SD-17, ECO-3; confirmed; tracked: dash.sthlp Differences item 2 (deliberate). Registered as GAPS4 syn:SD-17 (WP-38, section 38-01, Document).
   - Suggested fix: Documented only (M10): the help states that name() registers the graph instead of drawing it and that saving() beside name() writes nothing.
-  - Resolution: Not fixed because WP-38 section 38-01 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, syn:SD-17). dash.sthlp Stata graph integration (name() registers; it does not draw), the Description's sentence after "accepts the same syntax as twoway", and Differences item 14, A dashboard is not a Stata graph (sub-point name() registers): dash ..., name() registers the graph for dash build and draws nothing, and saving() beside name() writes nothing and is named in the note. Pinned by test/test_help_graph_integration.py::TestNameRegisters, ::TestTheDifferencesItem, Q3801-1 (test_wp38_truth.cscript S01). Closes GAPS4 syn:SD-17 (WP-38, syn:SD-17).
 
 - [ ] Title: A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)
   - File Names and Line Numbers: dash.sthlp:172-182, 1631-1663; dash.ado:244; probes p1 F1/F4 and p2 A1/A2

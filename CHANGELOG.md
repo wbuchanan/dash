@@ -995,6 +995,8 @@ and now matches Stata.
 
 ### Fixed in WP-38
 
+- The help did not say beside its drop-in claim that a graph with name() is registered for dash build and drawn by nothing else, and that saving() beside name() writes nothing; the Description says so, and a new section, Stata graph integration, says what a do-file of named graphs does under dash (WP-38, syn:SD-17)
+
 ### Fixed in WP-37
 
 - contour and contourline over no observations stopped with a Python traceback, r(7102); they draw an empty plot with the key's title, as twoway does (WP-37, DG-1)

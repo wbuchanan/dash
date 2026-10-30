@@ -8,6 +8,7 @@
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
 {viewerjumpto "Exporting"         "dash##export"}{...}
+{viewerjumpto "Stata graph integration" "dash##graphintegration"}{...}
 {viewerjumpto "Accessibility"     "dash##accessibility"}{...}
 {viewerjumpto "Stored results"    "dash##results"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
@@ -201,6 +202,9 @@ the file it wrote in {cmd:r(filename)}; see {help dash##export:Exporting} and
 {pstd}
 For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
 {cmd:dash} accepts the same syntax as {helpb twoway}.
+A graph with {cmd:name()} is registered for {cmd:dash build} instead of
+drawn, and no Stata graph is made: see
+{help dash##graphintegration:Stata graph integration}.
 See {manhelp twoway G-2:graph twoway} for the full reference.
 
 {pstd}
@@ -1507,6 +1511,12 @@ there, is an invalid point.  The literal is read as data and never run.
     data's order; {cmd:twoway}'s order among them changes from run to
     run; see {help dash##plottypes:Plot types}.
 
+{phang2}14.  {ul:A dashboard is not a Stata graph.}  {cmd:dash} writes a web
+    page; nothing in Stata's graph memory sees it.  See
+    {help dash##graphintegration:Stata graph integration}.
+
+{phang2}    {ul:name() registers.}  A named graph is drawn by {cmd:dash build}, not when it is typed; see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1830,6 +1840,23 @@ browser only what it draws.  When served, each click is computed on the server f
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
+
+
+{marker graphintegration}{...}
+{title:Stata graph integration}
+
+{pstd}
+A dashboard is a web page, not a Stata graph.  This section says what that
+means for a do-file written for {cmd:twoway}.
+
+{pstd}
+{ul:name() registers; it does not draw.}  {cmd:twoway ..., name(g1)} draws the
+graph and keeps it as {cmd:g1} in graph memory.  {cmd:dash} ...{cmd:, name(g1)}
+registers the graph for a later {cmd:dash build} and draws nothing;
+{cmd:saving()} beside {cmd:name()} writes nothing: it is named in the note
+{cmd:dash: ignoring unsupported option(s): saving()}.  A do-file whose graphs
+all have names therefore writes no page until it runs {cmd:dash build} with
+{cmd:saving()}.
 
 
 {marker accessibility}{...}

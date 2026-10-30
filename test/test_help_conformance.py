@@ -966,8 +966,10 @@ class TestTheParsersFoundSomething:
         # (WP-35 35-06)
         # 478 -> 450: WP-35 DT-15 the entries of the 28 refused options leave.
         # 450 -> 449: WP-37 D65 a contour option's entry leaves.
-        assert len(defs) == 449, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 449 "
+        # old -> new: 449 -> 450: syn:SD-17 the Differences item A dashboard
+        # is not a Stata graph's sub-point name() registers (WP-38 38-01).
+        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1480,4 +1482,8 @@ class TestInternalLinksResolve:
         # the estimators links Statistical Layer Options (WP-37 37-05).
         # 139 -> 140 links: stat:PT-21 the Differences entry Points whose
         # sort keys tie links Plot types (WP-37 37-05).
-        assert len(refs) == 140 and len(set(refs)) == 49
+        # old -> new: 140 -> 144 links, 49 -> 50 targets: syn:SD-17 the new
+        # section Stata graph integration (dash##graphintegration): its Jump
+        # To entry, the Description's caveat, the Differences item and its
+        # sub-point name() registers (WP-38 38-01).
+        assert len(refs) == 144 and len(set(refs)) == 50

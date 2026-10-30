@@ -203,6 +203,66 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w38_run' {
 }
 * ==== end S00 ====
 
+// ----------------------------------------------------------------
+// S01's helper (section 38-01): _w38_s01_log <log> <needle> sets
+// c_local s01c to the number of logical lines of <log> holding <needle>.
+// ----------------------------------------------------------------
+capture program drop _w38_s01_log
+program define _w38_s01_log
+    version 19
+    cert_log_has "`1'", needle(`"`2'"')
+    c_local s01c = r(count)
+end
+
+* ==== S01 syn:SD-17: a dashboard is not a Stata graph ====
+local only : env WP38_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w38_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local s01d "`w38_work'/s01"
+    capture mkdir "`s01d'"
+    capture dash clear
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q3801-1 (syn:SD-17): name() registers and draws nothing; saving()
+    // beside it is named in the note and writes nothing, where twoway's
+    // name() with saving() writes the .gph.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture erase "`s01d'/q1.html"
+    capture log close s01l
+    quietly log using "`s01d'/q1.log", text replace name(s01l) nomsg
+    capture noisily dash scatter mpg weight, name(q3801a) saving("`s01d'/q1.html", replace)
+    local q1_rc = _rc
+    quietly log close s01l
+    _w38_expect Q3801-1 "(`q1_rc' == 0)" "dash ..., name() saving() rc `q1_rc'"
+    capture confirm file "`s01d'/q1.html"
+    _w38_expect Q3801-1 "(_rc == 601)" "saving() beside name() wrote a file"
+    _w38_s01_log "`s01d'/q1.log" "dash: ignoring unsupported option(s): saving()"
+    _w38_expect Q3801-1 "(`s01c' == 1)" "the note naming saving() was printed `s01c' times"
+    local q1_reg : list posof "q3801a" in global(dash_graph_registry)
+    _w38_expect Q3801-1 "(`q1_reg' > 0)" "q3801a is not registered"
+    capture graph describe q3801a
+    _w38_expect Q3801-1 "(_rc != 0)" "dash made a Stata graph q3801a"
+    capture erase "`s01d'/q1t.gph"
+    capture noisily twoway scatter mpg weight, name(q3801t) saving("`s01d'/q1t.gph", replace) nodraw
+    local q1_trc = _rc
+    _w38_expect Q3801-1 "(`q1_trc' == 0)" "twoway name() saving() nodraw rc `q1_trc'"
+    capture confirm file "`s01d'/q1t.gph"
+    _w38_expect Q3801-1 "(_rc == 0)" "twoway's saving() beside name() wrote no .gph"
+    _w38_done Q3801-1 "name() registers and saving() beside it writes nothing; twoway writes the .gph"
+    capture dash clear
+    capture graph drop _all
+
+    local s01f : dir "`s01d'" files "*"
+    foreach f of local s01f {
+        capture erase "`s01d'/`f'"
+    }
+    capture rmdir "`s01d'"
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

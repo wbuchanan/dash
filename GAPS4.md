@@ -395,7 +395,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-16 Tracked:** Documented in WP-37, BUGS.md "lpolyci at zero-df grid points: dash pinches to zero width where twoway draws a huge band that rescales y; the help calls it round-off", commit 702c99b.
 - **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit a027672.
 - **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit 4eb94ea.
-- **syn:SD-17 Tracked:** Open (WP-38 section 38-01).
+- **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit pending.
 - **GW-12 Tracked:** Open (WP-38 section 38-01).
 - **ECO-1 Tracked:** Open (WP-38 section 38-01).
 - **ECO-4 Tracked:** Open (WP-38 section 38-01).
