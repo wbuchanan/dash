@@ -4904,11 +4904,11 @@
   - Suggested fix: Documented only (M10): the help states name()'s limits (22 characters, no '__') and the rc and words a duplicate name gives.
   - Resolution: Documented 30oct2026 (WP-38, GW-13). dash.sthlp, The registry: return codes and messages (Names.): twoway takes a name of up to 32 characters (33 is refused, r(198)) and a__b, and refuses a name it already holds, 'graph X already exists', r(110); dash takes at most 22 characters for a graph and 18 for a KPI card, no __, and refuses a name it already holds in its own words, r(198); the sub-point Names. under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestNames, test/test_registry_collision.cscript Q3802-1. Closes GAPS4 GW-13 (WP-38, GW-13).
 
-- [ ] Title: saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing
+- [x] Title: saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing
   - File Names and Line Numbers: probe p1 I1/I2; dash.sthlp:825-829; dash.ado:11458-11508
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-14, ECO-13; confirmed; tracked: dash.sthlp Differences item 2. Registered as GAPS4 GW-14 (WP-38, section 38-02, Document).
   - Suggested fix: Documented only (M10): the help states the rc and words saving() onto an existing file gives.
-  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, GW-14). dash.sthlp, The registry: return codes and messages (saving() onto a file that exists.): twoway refuses it, 'file x.gph already exists', r(602), and prints '(file x.gph not found)' when saving(x, replace) writes a new file; dash refuses it in its own words, r(198), and prints no such note; the sub-point saving() onto a file that exists. under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestSavingExisting, test/test_path_validation.cscript Q3802-2. Closes GAPS4 GW-14 (WP-38, GW-14).
 
 - [ ] Title: nodraw with saving(, asis) writes the page where twoway gives r(601)
   - File Names and Line Numbers: probe v1; dash.sthlp:848-852; ND-06

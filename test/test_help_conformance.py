@@ -975,8 +975,10 @@ class TestTheParsersFoundSomething:
         # old -> new: 454 -> 455: ECO-7 its sub-point Working values in s().
         # old -> new: 455 -> 456, GW-13 the Differences sub-point Names.
         # (WP-38 38-02).
-        assert len(defs) == 456, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 456 "
+        # old -> new: 456 -> 457, GW-14 the sub-point saving() onto a
+        # file that exists. (WP-38 38-02).
+        assert len(defs) == 457, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 457 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1511,4 +1513,6 @@ class TestInternalLinksResolve:
         # entry for The registry (dash##registry), the Differences sub-point
         # Names. linking it and its Names. paragraph linking Differences
         # from twoway (WP-38 38-02).
-        assert len(refs) == 162 and len(set(refs)) == 51
+        # old -> new: 162 -> 163 links: GW-14 the sub-point saving() onto
+        # a file that exists. links The registry (WP-38 38-02).
+        assert len(refs) == 163 and len(set(refs)) == 51

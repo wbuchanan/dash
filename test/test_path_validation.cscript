@@ -926,5 +926,58 @@ else display "Q3306-9 PASS: link() takes only a page name in the same folder"
 assert `q9a' == 0 & "`q9l'" == "scatter.html" & "`q9bad'" == ""
 capture dash clear
 
+// ================================================================
+// Q3802-2 (WP-38 GW-14) -- saving() onto a file that exists, beside twoway
+// ================================================================
+// dash.sthlp, The registry: return codes and messages, saving() onto a
+// file that exists.  twoway prints "(file q2.gph not found)" when
+// saving(q2, replace) writes a new file and refuses saving(q2) onto it,
+// "file q2.gph already exists", r(602); dash prints no such note and
+// refuses in its own words, r(198).  Measured 30oct2026.
+tempfile q2b
+local q2d "`q2b'_q3802"
+mkdir "`q2d'"
+local q2pwd "`c(pwd)'"
+capture dash clear
+tempname q2f
+tempfile q2lg
+local q2ls = c(linesize)
+set linesize 255
+quietly log using "`q2lg'", replace text name(`q2f')
+quietly cd "`q2d'"
+capture noisily twoway scatter mpg weight, saving(q2, replace) nodraw
+local q2t1 = _rc
+capture noisily twoway scatter mpg weight, saving(q2) nodraw
+local q2t2 = _rc
+display "Q3802-2 dash starts"
+capture noisily dash scatter mpg weight, saving(q2d, replace)
+local q2d1 = _rc
+capture noisily dash scatter mpg weight, saving(q2d)
+local q2d2 = _rc
+quietly cd "`q2pwd'"
+quietly log close `q2f'
+set linesize `q2ls'
+cert_log_has "`q2lg'", needle("(file q2.gph not found)")
+local q2h1 = r(found)
+cert_log_has "`q2lg'", needle("file q2.gph already exists")
+local q2h2 = r(found)
+cert_log_has "`q2lg'", needle("not found")
+local q2h3 = r(count)
+cert_log_has "`q2lg'", needle("dash: file 'q2d.html' already exists. Use replace option to overwrite.")
+local q2h4 = r(found)
+local fl : dir "`q2d'" files "*"
+foreach f of local fl {
+    capture erase "`q2d'/`f'"
+}
+capture rmdir "`q2d'"
+capture graph drop _all
+capture dash clear
+local q2rc "`q2t1' `q2t2' `q2d1' `q2d2'"
+if "`q2rc'" != "0 602 0 198" | !`q2h1' | !`q2h2' | `q2h3' != 1 | !`q2h4' {
+    display as error "Q3802-2 FAIL: rcs `q2rc', words `q2h1' `q2h2' `q2h3' `q2h4'"
+}
+else display "Q3802-2 PASS: twoway notes the new file and says r(602) for one that exists; dash notes nothing and says r(198)"
+assert "`q2rc'" == "0 602 0 198" & `q2h1' & `q2h2' & `q2h3' == 1 & `q2h4'
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

@@ -90,3 +90,22 @@ class TestNames:
         assert "at most 22 characters (18 for a KPI card)" in s
         assert "{cmd:r(198)} where {cmd:twoway} gives {cmd:r(110)}" in s
         assert _LINK in s
+
+
+class TestSavingExisting:
+    """GW-14: saving() onto a file that exists, and twoway's not-found note."""
+
+    def test_rc_and_the_missing_note(self):
+        p = _paragraph("saving() onto a file that exists.")
+        assert '"file {it:x}.gph already exists", {cmd:r(602)}' in p
+        assert ("\"dash: file '{it:x}.html' already exists. Use replace option to "
+                "overwrite.\", {cmd:r(198)}") in p
+        assert "{ul:saving() keeps a file that is already there.}" in p
+        assert '"(file {it:x}.gph not found)"' in p
+        assert "is not printed by {cmd:dash}" in p
+
+    def test_the_sub_point(self):
+        s = _sub_point("saving() onto a file that exists.")
+        assert "{cmd:r(198)} where {cmd:twoway} gives {cmd:r(602)}" in s
+        assert 'no "(file not found)" note' in s
+        assert _LINK in s

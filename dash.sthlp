@@ -980,6 +980,10 @@ there, is an invalid point.  The literal is read as data and never run.
     with no {cmd:__}, and a name in use is refused {cmd:r(198)} where
     {cmd:twoway} gives {cmd:r(110)}; see {help dash##registry:The registry}.
 
+{phang2}    {ul:saving() onto a file that exists.}  Refused {cmd:r(198)} where
+    {cmd:twoway} gives {cmd:r(602)}; no "(file not found)" note; see
+    {help dash##registry:The registry}.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, {cmd:dash serve} and {cmd:dash clear}
     have no {cmd:twoway} equivalents.  See
@@ -1668,6 +1672,15 @@ characters for a graph and 18 for a KPI card, no {cmd:__} (see
 and refuses a name it already holds with its own words, "dash: graph name
 '{it:name}' already exists. Use name({it:name}, replace) to overwrite.",
 {cmd:r(198)}.
+
+{pstd}
+{ul:saving() onto a file that exists.}  {cmd:twoway} refuses it, "file
+{it:x}.gph already exists", {cmd:r(602)}; {cmd:dash} refuses it in its own
+words, "dash: file '{it:x}.html' already exists. Use replace option to
+overwrite.", {cmd:r(198)} (see {ul:saving() keeps a file that is already there.}
+under Differences from twoway).  {cmd:twoway}'s note "(file {it:x}.gph not
+found)", printed when {cmd:saving(}{it:x}{cmd:, replace)} writes a new file,
+is not printed by {cmd:dash}.
 
 
 {marker dashboard_options}

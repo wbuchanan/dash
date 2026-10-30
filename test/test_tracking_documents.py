@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'GW-14': "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing",
     'GW-15': 'nodraw with saving(, asis) writes the page where twoway gives r(601)',
     'GW-16': 'play() refuses a readable recording (r(198)); there is no Graph Editor',
     'GW-9': "name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'",
