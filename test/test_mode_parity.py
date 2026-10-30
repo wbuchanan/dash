@@ -1980,6 +1980,21 @@ CORPUS = [
     # ---- qualifiers (GAPS.md D3) ------------------------------------------
     _case("graph-level if", [_sc()], if_expr="price > 4500"),
     _case("graph-level in", [_sc()], in_expr="2/6"),
+    # WP-40 plat:PT-7: the qualified shapes test_selected_rows.py renders
+    # from the selected rows (a by() graph, a colour variable, a literal
+    # by() graph beside a qualified one, lpoly's grid, lowess's adjust).
+    _case("selected rows: if under by()", [_sc()], None, {"by": "rep"},
+          if_expr="rep > 3"),
+    _case("selected rows: colorvar() under an if",
+          [_sc(colorvar="price")], if_expr="foreign == 1"),
+    _case("selected rows: in 1/1 beside function under by()",
+          graphs=[("g1", [_sc()], None, {"if_expr": "", "in_expr": "1/1"}),
+                  ("g2", [plot_for("function")], {"by": "foreign"})]),
+    _case("selected rows: lpoly under an if",
+          [plot_for("lpoly", {"bwidth": "5000"})],
+          if_expr="foreign == 1"),
+    _case("selected rows: lowess adjust under an if",
+          [plot_for("lowess", {"adjust": "adjust"})], if_expr="foreign == 1"),
     _case("per-plot if", [_sc(), plot_for("scatter", if_expr="foreign==1")]),
     _case("per-plot if on a histogram",
           [plot_for("histogram", if_expr="foreign==1")]),

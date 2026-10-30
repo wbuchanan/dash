@@ -545,7 +545,9 @@ class TestTheShownCommands:
         # [aw=weight], which the example below it runs.
         # 12 -> 13: WP-34 AX-3, the Resource limits sentence's
         # dash build, server (the served app's ticks asked at build).
-        assert forms.count(("dash.sthlp", "inline")) == 13
+        # old -> new: 13 -> 14: WP-40 plat:PT-7, the What dash exports
+        # sentence's dash scatter y x in 1/100.
+        assert forms.count(("dash.sthlp", "inline")) == 14
         # 7 -> 8: WP-32 I3, the hash-checked pip line naming the lock.
         assert forms.count(("dash_setup.sthlp", "line")) == 8
         # dash_setup.sthlp once also named `python set exec` inline, in the
@@ -561,7 +563,8 @@ class TestTheShownCommands:
         # 16 -> 17: WP-31 H2k, the weighted KPI sentence.
         # 17 -> 19: WP-31 I2, the Installation section's two lines.
         # 19 -> 20: WP-32 I3, the hash-checked pip line.
-        assert len({s.text for s in shown}) == 20
+        # old -> new: 20 -> 21: WP-40 plat:PT-7, What dash exports.
+        assert len({s.text for s in shown}) == 21
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
@@ -674,13 +677,16 @@ class TestThePinnedLists:
         # 24 -> 25: WP-31 H2k -- the weighted KPI sentence's described pin.
         # 25 -> 27: WP-31 I2 -- the Installation section's two install pins.
         # 27 -> 28: WP-32 I3, the hash-checked pip line's pin.
-        assert len(lines) == len(pins) == 28
+        # old -> new: 28 -> 29: WP-40 plat:PT-7, What dash exports'
+        # dash scatter y x in 1/100 fragment pin.
+        assert len(lines) == len(pins) == 29
         kinds = [k for k, _v, _t in pins]
         # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
         # shown 16 -> 17: WP-31 H2k, as above.  17 -> 19: WP-31 I2.
         # 19 -> 20: WP-32 I3, the hash-checked pip line.
+        # old -> new: shown 20 -> 21: WP-40 plat:PT-7, as above.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 20)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 21)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]

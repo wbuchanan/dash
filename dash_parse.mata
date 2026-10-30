@@ -819,6 +819,14 @@
 *!       Empties the external table _dash_cg_list of contour grids (WP-37
 *!       TR-13), at the start of each export.
 *!
+*!   _dash_sel_mark(var, gjson)
+*!       ORs into byte variable var the rows graph gjson draws: the page
+*!       plan's rule, a literal by() graph's panel rows, every row for a
+*!       lowess layer with adjust (WP-40 plat:PT-7).
+*!
+*!   _dash_put_n_obs(gjson, n)
+*!       gjson with "n_obs":n, its frame's _N, appended (WP-40 plat:PT-7).
+*!
 *!   _dash_cg_take(name, k, key, cuts, line, frame, n, lframe)
 *!       Appends (name, k, key, object) to _dash_cg_list: object the JSON
 *!       {"cuts","line","x","y","z","levels","n"} of twoway__contour_gen's
@@ -13942,6 +13950,107 @@ string colvector _dash_zo_records(string scalar json, real scalar pend)
         }
     }
     return(out)
+}
+
+// ============================================================
+// Selected rows (WP-40 plat:PT-7)
+// ============================================================
+// When nothing on the page needs every row (the one-line form; a saved
+// dash build with no filter(), link(), brush(), csv or KPI card) dash
+// exports only the rows some graph draws: the page plan's own rule
+// (dash_render.py _dash_embed_plan), plus a literal by() graph's panel
+// rows, marked in Stata after every working column is made.
+
+// _dash_sel_col(c) -- the rows qualifier column c holds 1 on; every row
+// when c is "".  A name that is not a variable is an error, never skipped.
+real colvector _dash_sel_col(string scalar c)
+{
+    if (c == "") return(J(st_nobs(), 1, 1))
+    if (_st_varindex(c) >= .) {
+        _error(3500, "qualifier column " + c + " is not a variable")
+    }
+    return(st_data(., c) :== 1)
+}
+
+// _dash_sel_mark(var, gjson) -- ORs into the byte variable var the rows
+// graph gjson draws: per plot record whose type is not scatteri, pci,
+// pcarrowi or function, the rows of the graph's and the plot's qualifier
+// columns (G & P), and, when the graph or a kept plot carries a by(,
+// total) twin, the Total rows (Gt & Pt, each its own column when it has
+// no twin).  A graph of literal plots alone marks its G (or G | Gt) rows
+// under by(), whose panels are built from them, and none otherwise.  A
+// lowess layer with adjust marks every row: its mean reads every
+// observation.  The graph's own keys are read after the plots array
+// (_dash_zo_records sets pe to the ] that closes it).
+void _dash_sel_mark(string scalar var, string scalar gjson)
+{
+    string colvector recs
+    string scalar    tail, g, gt, by, t, p, pt, adj
+    real colvector   s
+    real scalar      pe, i, kept, tot, adj_all
+
+    pe = 0
+    adj_all = 0
+    recs = _dash_zo_records(gjson, pe)
+    tail = substr(gjson, pe + 1, .)
+    _dash_json_get_str(tail, "qual_col", "_sm_g")
+    _dash_json_get_str(tail, "qual_col_total", "_sm_gt")
+    _dash_json_get_str(tail, "by", "_sm_by")
+    g  = st_local("_sm_g")
+    gt = st_local("_sm_gt")
+    by = st_local("_sm_by")
+    tot = (gt != "")
+    for (i = 1; i <= rows(recs); i++) {
+        _dash_json_get_str(recs[i], "type", "_sm_t")
+        if (anyof(("scatteri", "pci", "pcarrowi", "function"),
+                  strlower(st_local("_sm_t")))) continue
+        _dash_json_get_str(recs[i], "qual_col_total", "_sm_pt")
+        if (st_local("_sm_pt") != "") tot = 1
+    }
+    s = J(st_nobs(), 1, 0)
+    kept = 0
+    for (i = 1; i <= rows(recs); i++) {
+        _dash_json_get_str(recs[i], "type", "_sm_t")
+        t = strlower(st_local("_sm_t"))
+        if (anyof(("scatteri", "pci", "pcarrowi", "function"), t)) continue
+        kept++
+        _dash_json_get_str(recs[i], "qual_col", "_sm_p")
+        _dash_json_get_str(recs[i], "qual_col_total", "_sm_pt")
+        p  = st_local("_sm_p")
+        pt = st_local("_sm_pt")
+        s = s :| (_dash_sel_col(g) :& _dash_sel_col(p))
+        if (tot) {
+            s = s :| (_dash_sel_col(gt != "" ? gt : g) :&
+                      _dash_sel_col(pt != "" ? pt : p))
+        }
+        if (t == "lowess") {
+            _dash_json_get_str(recs[i], "adjust", "_sm_adj")
+            adj = strtrim(st_local("_sm_adj"))
+            if (adj != "") adj_all = 1
+        }
+    }
+    if (!kept) {
+        if (strtrim(by) == "") return
+        s = _dash_sel_col(g)
+        if (gt != "") s = s :| _dash_sel_col(gt)
+    }
+    if (adj_all) s = J(st_nobs(), 1, 1)
+    st_store(., var, st_data(., var) :| s)
+}
+
+// _dash_put_n_obs(gjson, n) -- graph gjson with "n_obs":n, its frame's
+// _N, appended as its last key (WP-40 plat:PT-7: lpoly's grid follows
+// _N, not the rows exported).  JSON that does not end in } is refused.
+string scalar _dash_put_n_obs(string scalar gjson, real scalar n)
+{
+    string scalar s
+
+    s = strrtrim(gjson)
+    if (substr(s, strlen(s), 1) != "}") {
+        _error(3498, "graph JSON does not end in }")
+    }
+    return(substr(s, 1, strlen(s) - 1) + "," + char(34) + "n_obs" +
+           char(34) + ":" + strtrim(strofreal(n, "%20.0f")) + "}")
 }
 
 end

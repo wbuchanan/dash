@@ -40,7 +40,12 @@ class TestTheRoomIsCountedFirst:
             assert len(nearest) == 4 and nearest[0] - c < 45, c + 1
         for c in checks:
             args = lines[c].replace("capture noisily ", "").split()
-            assert args[1:5] == ["`_dq_n'", "`_ds_n'", "`_dts_n'", "`_dwx_n'"]
+            # Flipped (WP-40 plat:PT-7): the two routes count the selection
+            # column beside the weight columns, `=`_dwx_n' + `_sel_mode''
+            # (it exists with every other working column at the export);
+            # 33-07's per-frame count is unchanged.
+            assert args[1:4] == ["`_dq_n'", "`_ds_n'", "`_dts_n'"]
+            assert args[4] in ("`_dwx_n'", "`=`_dwx_n'+`_sel_mode''"), args[4]
             # WP-35 DT-19: the count of the variables the export reads.
             assert args[6] == "`_mv_kx'", c + 1
 

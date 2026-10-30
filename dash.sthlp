@@ -3398,6 +3398,19 @@ drop these globals, because they are settings rather than registry;
 {cmd:macro drop dash_max_*} does.
 
 {pstd}
+{ul:What dash exports.}  On the one-line form, and on a {cmd:dash build}
+with no {cmd:filter()}, {cmd:link()}, {cmd:brush()}, {cmd:csv} or KPI card,
+{cmd:dash} evaluates every qualifier first and exports only the
+observations some graph draws -- {cmd:dash scatter y x in 1/100} on
+3,000,000 observations exports 100 -- so the data file, and the memory and
+time a build takes, follow what is drawn ({cmd:lowess}'s {cmd:adjust},
+whose mean reads every observation, keeps them all).  A served app, and any other
+build, export every observation of the variables the dashboard uses,
+because a filter, a link, a brush or a card can reach any row.  Either way
+the saved page holds only the rows its graphs, cards and filters select
+(see {help dash##description:Description}).
+
+{pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:
 it embeds every value its graphs, cards and filters need, however many, in
 a saved page and in a served app.  Above 1,000,000 embedded values it notes

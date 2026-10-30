@@ -1533,4 +1533,6 @@ class TestInternalLinksResolve:
         # old -> new: 167 -> 169 links: ECO-5 the sub-point dash clear.
         # and the dash clear entry under Subcommands link The registry
         # (WP-38 38-02).
-        assert len(refs) == 169 and len(set(refs)) == 51
+        # old -> new: 169 -> 170 links: plat:PT-7 the What dash exports
+        # paragraph links Description (WP-40 40-01).
+        assert len(refs) == 170 and len(set(refs)) == 51

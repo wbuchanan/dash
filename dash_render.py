@@ -14507,6 +14507,8 @@ class GlyphMapper:
         # lpoly.ado:283-290).  Both render modes set it; None -- a mapper
         # used on its own -- falls back to the layer's own rows.
         self.dataset = None
+        # The graph's _N (its "n_obs", WP-40 plat:PT-7): c(N) of the frame it draws from, read before any subset; lpoly's grid follows it.
+        self.n_obs: "int | None" = None
         self.date_vars: dict[str, str] = {}
         self.numeric_formats: dict[str, str] = {}
         # Defer scheme import to avoid circular dependency; default to s2color.
@@ -21128,10 +21130,15 @@ class GlyphMapper:
         review).  Without a dataset -- the mapper on its own -- the layer's
         own rows stand in for _N.  The saved page applies the same rule to
         N and user, carried in its refit config (WP-31 F1d, D-19.c): a
-        filter does not change _N.
+        filter does not change _N.  The graph's "n_obs" (its frame's _N,
+        written by dash at build, WP-40 plat:PT-7) wins over
+        len(self.dataset), which counts only the rows exported.
         """
         N = n_sample
-        if self.dataset is not None:
+        _nobs = getattr(self, "n_obs", None)
+        if isinstance(_nobs, int):
+            N = _nobs
+        elif self.dataset is not None:
             try:
                 N = int(len(self.dataset))
             except TypeError:
@@ -21142,6 +21149,14 @@ class GlyphMapper:
             return max(1, N), N, user
         n = 50 if user is None or user <= 1 else int(user)
         return max(1, min(n, N)), N, user
+
+    def _set_graph_n_obs(self, graph_spec: dict) -> None:
+        """Take the graph's _N from its spec's "n_obs" (WP-40 plat:PT-7):
+        a whole number of at least 0, else None -- the rows exported then
+        stand in (_lpoly_grid_plan)."""
+        v = graph_spec.get("n_obs") if isinstance(graph_spec, dict) else None
+        self.n_obs = (v if isinstance(v, int) and not isinstance(v, bool)
+                      and v >= 0 else None)
 
     def map_lpoly(
         self,
@@ -64801,6 +64816,7 @@ class DashRenderer:
                                  for k in ("zlabel", "ztitle", "zscale",
                                            "clegend", "plegend")}
         self.mapper.z_context = (_seen, _gkey)
+        self.mapper._set_graph_n_obs(graph_spec)
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
                                              self.variable_labels, _seen, _gkey)
 
@@ -65348,6 +65364,7 @@ class DashRenderer:
         # title onto an untitled one.
         self.mapper.z_options = {}
         self.mapper.z_context = (None, "")
+        self.mapper.n_obs = None
 
         # The second axes, fitted to what their layers drew and labelled
         # through ylabel()'s grammar -- the helper the generated app runs.
@@ -71813,9 +71830,12 @@ class ServerAppBuilder:
             "                                        qual=_p_q)",
             "            _tfig = bokeh_figure()",
             "            _dash_mark_date_axes(_tfig, *_rkinds)",
+            "            _n_obs0 = getattr(_dash_cur_mapper(), 'n_obs', None)",
+            "            _dash_cur_mapper()._set_graph_n_obs(g)",
             "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
+            "            _dash_cur_mapper().n_obs = _n_obs0",
             "            _out = [_s for _s in _srcs if _s is not _ly]",
             "            # WP-31 D5: the weighted sizes at the graph's scale().",
             "            _dash_scale_columns(_out, _dash_scale_factor(_go))",
@@ -71865,6 +71885,7 @@ class ServerAppBuilder:
             "                                  for k in ('zlabel', 'ztitle', 'zscale',",
             "                                            'clegend', 'plegend')}",
             "        _dash_cur_mapper().z_context = (_reported_subopts, gname)",
+            "        _dash_cur_mapper()._set_graph_n_obs(g)",
             "        _src_list = graph_sources.get(gname)",
             "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else _shared_of.get(gname))",
             "        # ---- Per-graph if_expr / in_expr filtering ----",
@@ -72194,6 +72215,7 @@ class ServerAppBuilder:
             "        # (GAPS2 X2); reset before the next figure builds.",
             "        _dash_cur_mapper().z_options = {}",
             "        _dash_cur_mapper().z_context = (None, '')",
+            "        _dash_cur_mapper().n_obs = None",
             "",
 
             "        # The second axes, fitted to what their layers drew and",

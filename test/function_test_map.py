@@ -218,6 +218,7 @@ FUNCTIONS = {
  'GlyphMapper._rot_conditional': 'test/test_js_fit_refit.py::TestTheExactFitIsMarked::test_rot_conditional',
  'GlyphMapper._layer_weights': 'test/test_statistical_helpers.py::TestLayerWeights::test_an_unweighted_layer_is_masked_and_carries_no_weight',
  'GlyphMapper._lpoly_grid_plan': 'test/test_js_fit_refit.py::TestLpolyConfig::test_lpoly_grid_plan',
+ 'GlyphMapper._set_graph_n_obs': 'test/test_selected_rows.py::TestTheLpolyGrid::test_set_graph_n_obs',
  'GlyphMapper._mark_insufficient': 'test/test_layer_reports.py::TestAByPanelIsAnsweredAsTwowayAnswersIt::test_mark_insufficient_marks_each_renderer',
  'GlyphMapper._mark_silent': 'test/test_layer_reports.py::TestASmootherTwowayDrawsInSilenceIsSilent::test_mark_silent_marks_each_renderer',
  'GlyphMapper._mark_unfit': 'test/test_layer_reports.py::TestAFitWithNothingToFitGivesTwowaysNote::test_mark_unfit_marks_each_renderer_it_is_given',

@@ -599,6 +599,10 @@ _hx_pin shown fragment `"dash kdensity date"'
 //   default bar base and the refusal of a registration without Python
 _hx_pin shown fragment `"dash bar mpg weight"'
 _hx_pin shown fragment `"dash scatter mpg weight, name(g1)"'
+//   (WP-40 plat:PT-7) the Resource limits sentence's illustration on
+//   3,000,000 observations, which no example loads; S01 of
+//   test_wp40_truth.cscript runs it on 200,000 (Q4001-1)
+_hx_pin shown fragment `"dash scatter y x in 1/100"'
 
 mata: _hx_pins_check()
 if `hx_badpins' > 0 exit 9

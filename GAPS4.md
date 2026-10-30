@@ -408,7 +408,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit 51fcf94.
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit 933328c.
 - **plat:PT-8 Tracked:** Open (WP-40 section 40-02).
-- **plat:PT-7 Tracked:** Open (WP-40 section 40-01).
+- **plat:PT-7 Tracked:** Closed in WP-40, BUGS.md "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows", commit pending.
 - **plat:PT-9 Tracked:** Open (WP-40 section 40-02).
 - **plat:PT-10 Tracked:** Open (WP-40 section 40-02).
 - **stat:PT-15 Tracked:** Open (WP-40 section 40-02).

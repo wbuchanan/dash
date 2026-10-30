@@ -4952,11 +4952,11 @@
   - Suggested fix: Documented (M10, Q44, P4-3): the embedded-cell cap is removed (section 33-15), so a dashboard has no size cap and the help says so; the count caps (100 plots, 10,000 reference lines, 1,000 added texts) stay and are documented under Resource limits and Differences.
   - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
 
-- [ ] Title: The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows
+- [x] Title: The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows
   - File Names and Line Numbers: dash.ado:5222-5254, 11720-11727, 13170-13176; probe1/probe2
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids plat:PT-7, DG-15; confirmed (plat:PT-7 partly: deliberate, documented); tracked: documented at dash.sthlp:2950-2953, 3048-3050. Registered as GAPS4 plat:PT-7 (WP-40, section 40-01, Fix).
   - Suggested fix: Export only the rows some graph draws when no filter(), link(), brush(), csv or KPI card needs every row and the page is not served (Q45, A-12); with the embedded-cell cap removed (P4-3, section 33-15) this keeps pages and data files small and refuses nothing.
-  - Resolution: Not fixed because WP-40 section 40-01 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Fixed 30oct2026 (WP-40, plat:PT-7). The cell cap that counted _N went with the size caps in WP-33 (33-15, P4-3); on the one-line form and a saved dash build with no filter(), link(), brush(), csv or KPI card the export now writes only the rows some graph draws (dash_parse.mata _dash_sel_mark, taken in the export frame in _dash_render_immediate and _dash_prepare_spec); the saved page holds the same rows as before; a lowess layer with adjust, whose mean reads every observation, keeps every row; each graph carries its frame's _N as n_obs, which lpoly's grid reads at build and after a served move; a served app and every other build export every row. Pinned by test/test_selected_rows.py::TestTheRule::test_sel_mark_runs_before_the_export_on_both_routes, test/test_wp40_truth.cscript Q4001-1. Closes GAPS4 plat:PT-7 (WP-40, plat:PT-7).
 
 - [ ] Title: The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws
   - File Names and Line Numbers: limits.sthlp:104; probe6/probe7; dash.ado:5204-5219

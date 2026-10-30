@@ -203,6 +203,341 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w40_run' {
 }
 * ==== end S00 ====
 
+* ==== S01 plat:PT-7: only the rows the graphs draw are exported ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w40_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // The stand-in renderer (test_wp29_truth.cscript PF-06's method): a
+    // dash_render.py first on the ado-path, session-only, that copies the
+    // data file dash hands it to <s1d>/data.json and writes --output.  The
+    // export itself still runs the shipped module (_dash_xm_load).  The
+    // readers: the data file's numberOfRecords, and the Bokeh sources a
+    // saved page embeds (test_wp29_truth.cscript's page-JSON reader).
+    local s1d "`w40_work'/s01"
+    capture mkdir "`s1d'"
+    tempname s1h
+    file open `s1h' using "`s1d'/dash_render.py", write text replace
+    file write `s1h' `"import shutil, sys"' _n
+    file write `s1h' `"_a = sys.argv[1:]"' _n
+    file write `s1h' `"shutil.copyfile(_a[_a.index("--data") + 1], r"`s1d'/data.json")"' _n
+    file write `s1h' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("x")"' _n
+    file close `s1h'
+    python:
+import json as _s01j
+import os as _s01os
+import re as _s01re
+from sfi import Macro as _s01M
+
+
+def _s01_find(o):
+    if isinstance(o, dict):
+        if "numberOfRecords" in o:
+            return o["numberOfRecords"]
+        o = list(o.values())
+    if isinstance(o, list):
+        for v in o:
+            r = _s01_find(v)
+            if r is not None:
+                return r
+    return None
+
+
+def _s01_nrec(name):
+    """numberOfRecords of the data file the stand-in copied (-1: none),
+    into local <name>; the copy is removed after it is read."""
+    p = _s01os.path.join(_s01M.getLocal("s1d"), "data.json")
+    try:
+        with open(p, encoding="utf-8") as fh:
+            r = _s01_find(_s01j.load(fh))
+        _s01os.remove(p)
+    except (OSError, ValueError):
+        r = None
+    _s01M.setLocal(name, str(-1 if r is None else int(r)))
+
+
+def _s01_sources(path):
+    from bokeh.document import Document
+    from bokeh.models import ColumnDataSource
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    out = []
+    for blob in _s01re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _s01re.S):
+        for dd in _s01j.loads(blob).values():
+            for s in Document.from_json(dd).select(dict(type=ColumnDataSource)):
+                out.append(dict(s.data))
+    return out
+
+
+def _s01_xlp(path, name):
+    """The x_lp counts of every lpoly source on the page, into <name>."""
+    n = [len(d["x_lp"]) for d in _s01_sources(path) if "x_lp" in d]
+    _s01M.setLocal(name, " ".join(str(k) for k in n))
+
+
+def _s01_xs(path, name):
+    """The distinct x values the page's sources hold, into <name>."""
+    xs = set()
+    for d in _s01_sources(path):
+        for v in d.get("x", []):
+            try:
+                xs.add(int(round(float(v))))
+            except (TypeError, ValueError):
+                pass
+    _s01M.setLocal(name, " ".join(str(k) for k in sorted(xs)))
+end
+
+    // ------------------------------------------------------------
+    // Q4001-1: on 200,000 observations twoway draws in 1/100; dash's
+    // one-line form exports the 100 rows, by in and by if _n <= 100.
+    // Q4001-4: the data in memory are unchanged by it.
+    // ------------------------------------------------------------
+    clear
+    set obs 200000
+    gen double y = runiform()
+    gen double x = _n
+    capture noisily twoway scatter y x in 1/100, nodraw
+    local q1tw = _rc
+    _w40_expect Q4001-1 "(`q1tw' == 0)" "twoway scatter y x in 1/100 rc `q1tw'"
+    quietly datasignature
+    local q4sig0 "`r(datasignature)'"
+    local q4k0 = c(k)
+    local q4ch0 = c(changed)
+    adopath ++ "`s1d'"
+    capture noisily dash scatter y x in 1/100, saving("`s1d'/q1.html", replace)
+    local q1rc = _rc
+    python: _s01_nrec("q1n")
+    quietly datasignature
+    local q4sig1 "`r(datasignature)'"
+    _w40_expect Q4001-1 "(`q1rc' == 0)" "dash scatter y x in 1/100 rc `q1rc'"
+    _w40_expect Q4001-1 "(`q1n' == 100)" "in 1/100 exported `q1n' rows, not 100"
+    capture noisily dash scatter y x if _n <= 100, saving("`s1d'/q1.html", replace)
+    local q1rc = _rc
+    python: _s01_nrec("q1n")
+    _w40_expect Q4001-1 "(`q1rc' == 0)" "dash scatter y x if _n <= 100 rc `q1rc'"
+    _w40_expect Q4001-1 "(`q1n' == 100)" "if _n <= 100 exported `q1n' rows, not 100"
+    // 35-08's temporary export frame (dash__force_frame, its
+    // certification switch): cut there, the same 100 rows.
+    global dash__force_frame 1
+    capture noisily dash scatter y x in 1/100, saving("`s1d'/q1.html", replace)
+    local q1rc = _rc
+    global dash__force_frame
+    python: _s01_nrec("q1n")
+    _w40_expect Q4001-1 "(`q1rc' == 0 & `q1n' == 100)" "in the export frame: rc `q1rc', `q1n' rows, not 100"
+    _w40_done Q4001-1 "the one-line form exports the 100 rows in 1/100 and if _n <= 100 draw, of 200,000"
+    _w40_expect Q4001-4 `"("`q4sig0'" == "`q4sig1'")"' "the data signature changed: `q4sig0' -> `q4sig1'"
+    _w40_expect Q4001-4 "(`q4k0' == c(k))" "c(k) `q4k0' -> `c(k)'"
+    _w40_expect Q4001-4 "(`q4ch0' == c(changed))" "c(changed) `q4ch0' -> `c(changed)'"
+    _w40_expect Q4001-4 "(_N == 200000)" "_N is `=_N'"
+    _w40_done Q4001-4 "the data in memory are unchanged by the one-line command"
+
+    // ------------------------------------------------------------
+    // Q4001-2: no qualifier exports every row; a lowess layer with
+    // adjust, whose mean reads every observation, keeps every row.
+    // ------------------------------------------------------------
+    capture noisily dash scatter y x, saving("`s1d'/q2.html", replace)
+    local q2rc = _rc
+    python: _s01_nrec("q2n")
+    _w40_expect Q4001-2 "(`q2rc' == 0 & `q2n' == 200000)" "no qualifier: rc `q2rc', `q2n' rows"
+    capture noisily dash lowess y x in 1/100, adjust saving("`s1d'/q2.html", replace)
+    local q2rc = _rc
+    python: _s01_nrec("q2n")
+    _w40_expect Q4001-2 "(`q2rc' == 0 & `q2n' == 200000)" "lowess, adjust: rc `q2rc', `q2n' rows"
+    _w40_done Q4001-2 "no qualifier, and lowess with adjust, export all 200,000 rows"
+
+    // ------------------------------------------------------------
+    // Q4001-3: a saved build exports the drawn rows; a KPI card,
+    // filter(), link(), brush(), csv and a served build export every row.
+    // ------------------------------------------------------------
+    local q3f "`s1d'/q3.html"
+    dash clear
+    dash scatter y x in 1/100, name(q3)
+    capture noisily dash build, saving("`q3f'", replace) nobrowser
+    local q3rc = _rc
+    python: _s01_nrec("q3n")
+    _w40_expect Q4001-3 "(`q3rc' == 0 & `q3n' == 100)" "a plain build: rc `q3rc', `q3n' rows, not 100"
+    global dash__force_frame 1
+    capture noisily dash build, saving("`q3f'", replace) nobrowser
+    local q3rc = _rc
+    global dash__force_frame
+    python: _s01_nrec("q3n")
+    _w40_expect Q4001-3 "(`q3rc' == 0 & `q3n' == 100)" "a build in the export frame: rc `q3rc', `q3n' rows, not 100"
+    local q3i 0
+    foreach q3o in kpi filter link brush csv server {
+        local ++q3i
+        dash clear
+        dash scatter y x in 1/100, name(q3)
+        dash scatter y x in 101/200, name(q3b)
+        local q3opt ""
+        if "`q3o'" == "kpi"    dash kpi mean(y), name(k3) title(K3)
+        if "`q3o'" == "filter" local q3opt "filter(x)"
+        if "`q3o'" == "link"   local q3opt "link(q3 q3b)"
+        if "`q3o'" == "brush"  local q3opt "link(q3 q3b) brush(filter)"
+        if "`q3o'" == "csv"    local q3opt "csv"
+        if "`q3o'" == "server" {
+            capture noisily dash build, server saving("`s1d'/q3.py", replace) nobrowser
+        }
+        else {
+            capture noisily dash build, saving("`q3f'", replace) nobrowser `q3opt'
+        }
+        local q3rc = _rc
+        python: _s01_nrec("q3n")
+        _w40_expect Q4001-3 "(`q3rc' == 0 & `q3n' == 200000)" "`q3o': rc `q3rc', `q3n' rows, not 200,000"
+    }
+    _w40_done Q4001-3 "a plain build exports the 100 drawn rows; a KPI, filter(), link(), brush(), csv and a served build export all 200,000"
+    dash clear
+
+    // ------------------------------------------------------------
+    // Q4001-5: two graphs' rows are the union: 20 of 1,000 exported;
+    // the shipped renderer's page holds x 1..10 and 991..1000.
+    // ------------------------------------------------------------
+    clear
+    set obs 1000
+    gen double y = runiform()
+    gen double x = _n
+    dash scatter y x in 1/10, name(a)
+    dash scatter y x in 991/1000, name(b)
+    capture noisily dash build, saving("`s1d'/q5.html", replace) nobrowser
+    local q5rc = _rc
+    python: _s01_nrec("q5n")
+    _w40_expect Q4001-5 "(`q5rc' == 0 & `q5n' == 20)" "stand-in: rc `q5rc', `q5n' rows, not 20"
+    adopath - "`s1d'"
+    capture erase "`s1d'/q5s.html"
+    capture noisily dash build, saving("`s1d'/q5s.html", replace) nobrowser
+    local q5rc = _rc
+    local q5x ""
+    if `q5rc' == 0 python: _s01_xs(r"`s1d'/q5s.html", "q5x")
+    local q5want ""
+    forvalues i = 1/10 {
+        local q5want `q5want' `i'
+    }
+    forvalues i = 991/1000 {
+        local q5want `q5want' `i'
+    }
+    _w40_expect Q4001-5 `"(`q5rc' == 0 & "`q5x'" == "`q5want'")"' "shipped: rc `q5rc', x values `q5x'"
+    _w40_done Q4001-5 "two graphs export the 20 rows they draw, and the page holds x 1..10 and 991..1000"
+    dash clear
+    adopath ++ "`s1d'"
+
+    // ------------------------------------------------------------
+    // Q4001-6 (R3-7): a literal by() graph's panels read its by()
+    // variable's rows: in 1/10 (all domestic) beside function, by(foreign)
+    // exports every car, so both panels are drawn as twoway draws them.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily twoway function y = x, by(foreign) nodraw
+    local q6tw = _rc
+    dash scatter mpg weight in 1/10, name(s6)
+    dash function y = x, by(foreign) name(f6)
+    capture noisily dash build, saving("`s1d'/q6.html", replace) nobrowser
+    local q6rc = _rc
+    python: _s01_nrec("q6n")
+    _w40_expect Q4001-6 "(`q6tw' == 0)" "twoway function, by(foreign) rc `q6tw'"
+    _w40_expect Q4001-6 "(`q6rc' == 0 & `q6n' == 74)" "rc `q6rc', `q6n' rows, not 74"
+    _w40_done Q4001-6 "a literal by() graph keeps its panels' rows: 74 exported"
+    dash clear
+    adopath - "`s1d'"
+
+    // ------------------------------------------------------------
+    // Q4001-7: _dash_sel_mark's rule, case by case, on six rows.
+    // ------------------------------------------------------------
+    clear
+    set obs 6
+    gen byte q1 = _n <= 2
+    gen byte q2 = _n >= 5
+    gen byte t1 = _n == 3
+    gen byte m = 0
+    local q7j1 `"{"plots":[{"type":"scatter","qual_col":"q1"}],"graph_options":{}}"'
+    local q7w1 "_n <= 2"
+    local q7j2 `"{"plots":[{"type":"scatter"}],"graph_options":{},"qual_col":"q2"}"'
+    local q7w2 "_n >= 5"
+    local q7j3 `"{"plots":[{"type":"scatter","qual_col":"q1"}],"graph_options":{},"qual_col":"q2"}"'
+    local q7w3 "0"
+    local q7j4 `"{"plots":[{"type":"scatter","qual_col":"q1"}],"graph_options":{},"qual_col_total":"t1"}"'
+    local q7w4 "_n <= 2"
+    local q7j5 `"{"plots":[{"type":"scatter"}],"graph_options":{},"qual_col":"q1","qual_col_total":"t1"}"'
+    local q7w5 "_n <= 3"
+    local q7j6 `"{"plots":[{"type":"function","expr":"x"}],"graph_options":{}}"'
+    local q7w6 "0"
+    local q7j7 `"{"plots":[{"type":"function","expr":"x"}],"graph_options":{"by":"foreign"},"qual_col":"q2"}"'
+    local q7w7 "_n >= 5"
+    local q7j8 `"{"plots":[{"type":"lowess","options":{"adjust":"adjust"},"qual_col":"q1"}],"graph_options":{}}"'
+    local q7w8 "1"
+    local q7j9 `"{"plots":[{"type":"lowess","options":{},"qual_col":"q1"}],"graph_options":{}}"'
+    local q7w9 "_n <= 2"
+    forvalues i = 1/9 {
+        quietly replace m = 0
+        capture mata: _dash_sel_mark("m", st_local("q7j`i'"))
+        local q7rc = _rc
+        quietly count if m != (`q7w`i'')
+        _w40_expect Q4001-7 "(`q7rc' == 0 & r(N) == 0)" "case `i': rc `q7rc', `r(N)' rows differ from `q7w`i''"
+    }
+    _w40_done Q4001-7 "_dash_sel_mark marks the rows each graph draws (nine cases)"
+
+    // ------------------------------------------------------------
+    // Q4001-8 (shipped renderer): lpoly's grid follows the graph's _N:
+    // 50 points over the 22 foreign cars, as twoway draws it.  The page
+    // holds the grid points that have a neighbour, so a bandwidth wider
+    // than the data makes its x_lp count the grid's (Q4001-9 too).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily twoway lpoly mpg weight if foreign == 1, bwidth(5000) nodraw
+    local q8tw = _rc
+    capture erase "`s1d'/q8.html"
+    capture noisily dash lpoly mpg weight if foreign == 1, bwidth(5000) saving("`s1d'/q8.html", replace)
+    local q8rc = _rc
+    local q8n ""
+    if `q8rc' == 0 python: _s01_xlp(r"`s1d'/q8.html", "q8n")
+    _w40_expect Q4001-8 "(`q8tw' == 0)" "twoway lpoly rc `q8tw'"
+    _w40_expect Q4001-8 `"(`q8rc' == 0 & "`q8n'" == "50")"' "rc `q8rc', x_lp counts `q8n', not 50"
+    _w40_done Q4001-8 "dash lpoly mpg weight if foreign == 1 draws 50 grid points over 22 cars"
+
+    // ------------------------------------------------------------
+    // Q4001-9 (shipped renderer; 33-07's stack): a graph of a 22-row
+    // frame draws 22 grid points, its own frame's _N, not 50 from the
+    // 96 stacked rows.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture frame drop q9f
+    frame create q9f
+    frame q9f: sysuse auto, clear
+    frame q9f: keep if foreign == 1
+    dash clear
+    frame q9f: dash lpoly mpg weight, bwidth(5000) name(q9f)
+    dash scatter mpg weight, name(q9a)
+    capture erase "`s1d'/q9.html"
+    capture noisily dash build, saving("`s1d'/q9.html", replace) nobrowser
+    local q9rc = _rc
+    local q9n ""
+    if `q9rc' == 0 python: _s01_xlp(r"`s1d'/q9.html", "q9n")
+    frame q9f: lpoly mpg weight, bwidth(5000) nograph generate(q9x q9y)
+    frame q9f: quietly count if !missing(q9x)
+    local q9tw = r(N)
+    _w40_expect Q4001-9 `"(`q9rc' == 0 & "`q9n'" == "`q9tw'" & `q9tw' == 22)"' "rc `q9rc', x_lp counts `q9n', lpoly's grid `q9tw'"
+    _w40_done Q4001-9 "a 22-row frame's lpoly in a stack draws 22 grid points, as lpoly makes"
+    frame drop q9f
+    dash clear
+
+    // ------------------------------------------------------------
+    // Q4001-10: _dash_put_n_obs appends the graph's _N.
+    // ------------------------------------------------------------
+    local q10a `"{"plots":[]}"'
+    local q10b `"{"plots":[]} "'
+    local q10w `"{"plots":[],"n_obs":74}"'
+    foreach q10 in q10a q10b {
+        local q10r ""
+        capture mata: st_local("q10r", _dash_put_n_obs(st_local("`q10'"), 74))
+        _w40_expect Q4001-10 `"(_rc == 0 & `"`q10r'"' == `"`q10w'"')"' `"`q10': got `q10r'"'
+    }
+    capture mata: _dash_put_n_obs("abc", 1)
+    _w40_expect Q4001-10 "(_rc == 3498)" "abc: rc `=_rc', not 3498"
+    _w40_done Q4001-10 "_dash_put_n_obs appends n_obs and refuses JSON that does not end in }"
+
+    python: import shutil as _s01sh; _s01sh.rmtree(_s01M.getLocal("s1d"), True)
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

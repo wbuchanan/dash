@@ -528,6 +528,7 @@ program define _dash_require_mata
         _dash_reserved_prefix _dash_esample_sub _dash_expr_words ///
         _dash_pyname ///
         _dash_zero_obs_rule _dash_zo_records ///
+        _dash_sel_mark _dash_put_n_obs ///
         _dash_cg_reset _dash_cg_take ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
 
@@ -13032,6 +13033,12 @@ program define _dash_render_immediate
     local data_json_path `"`r(data)'"'
     local _dash_noted    `"`r(noted)'"'
     local _dash_jrc = 0
+    // WP-40 plat:PT-7: the graph's _N, c(N) of the user's frame, read
+    // before any subset; written into the spec as "n_obs" below.
+    local _dash_nobs = c(N)
+    // The one-line form takes no filter, link, brush, csv or KPI: its
+    // export is always of the rows its graph draws (selected mode).
+    local _sel_mode 1
     if `_varfree' {
         _dash_empty_data "`data_json_path'"
     }
@@ -13059,7 +13066,7 @@ program define _dash_render_immediate
         // variables the export reads (_mv_plan frame), else refused in
         // dash's words with the data left as they were.
         _dash_frame_vars `_dash_rp' "" `needed_vars'
-        capture noisily _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `_dwx_n' "dash" `_mv_kx'
+        capture noisily _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `=`_dwx_n'+`_sel_mode'' "dash" `_mv_kx'
         if _rc {
             local _dt_rc = _rc
             if "`_dash_es'" != "" capture drop `_dash_es'
@@ -13172,8 +13179,45 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily `_xfp' _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
-        local _dash_jrc = _rc
+        // WP-40 plat:PT-7: when nothing needs every row (the one-line
+        // form; a saved build with no filter(), link(), brush(), csv or
+        // KPI card) only the rows some graph draws are exported -- the
+        // page plan's own rule (_dash_embed_plan), plus a literal by()
+        // graph's panel rows; a lowess layer with adjust, whose mean
+        // reads every observation, marks every row -- marked after every
+        // working column, so operators and _n-based qualifiers see the
+        // full data.  The user's frame is never reduced: from it the
+        // marked rows are copied with frame put into a temporary frame
+        // and exported from there; only dash's own temporary frames
+        // (35-08's export frame, 33-07's stack) are cut with keep.  No
+        // row marked, or every row: today's export.
+        tempvar _dash_sel
+        `_xfp' quietly generate byte `_dash_sel' = 0
+        `_xfp' mata: _dash_sel_mark(st_local("_dash_sel"), st_local("json_spec"))
+        `_xfp' quietly count if `_dash_sel'
+        local _sel_n = r(N)
+        `_xfp' quietly count
+        local _sel_N = r(N)
+        local _sel_cut = (`_sel_n' > 0 & `_sel_n' < `_sel_N')
+        if `_sel_cut' & "`_xfp'" != "" `_xfp' quietly keep if `_dash_sel'
+        if `_sel_cut' & "`_xfp'" == "" {
+            local _sel_v `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            unab _sel_v : `_sel_v'
+            local _sel_v : list uniq _sel_v
+            tempname _dash_sf
+            capture noisily frame put `_sel_v' if `_dash_sel', into(`_dash_sf')
+            local _dash_jrc = _rc
+            if !`_dash_jrc' {
+                capture noisily frame `_dash_sf': _dash_write_data "`data_json_path'" `_sel_v'
+                local _dash_jrc = _rc
+            }
+            capture frame drop `_dash_sf'
+        }
+        else {
+            capture noisily `_xfp' _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            local _dash_jrc = _rc
+        }
+        capture `_xfp' drop `_dash_sel'
         if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'`_dash_wexp_vars'" != "" {
             capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         }
@@ -13210,6 +13254,9 @@ program define _dash_render_immediate
     // WP-31 D15: Stata's own #N ticks, when the export asked for any.
     local _dash_st_bo ""
     if `: length local _dash_st_json' local _dash_st_bo `","stata_ticks":`_dash_st_json'"'
+    // WP-40 plat:PT-7: the graph's _N, which lpoly's grid reads in place
+    // of the rows exported; after the export, so no reader before sees it.
+    mata: st_local("json_spec", _dash_put_n_obs(st_local("json_spec"), `_dash_nobs'))
     local master_json = `"{"graphs": [`json_spec'], "_dash_prefix": "`_dash_rp'", "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "dp": "`_dash_dp'", "adoarchive": "`c(adoarchive)'"`_dash_gsf', "formats": `_dash_fmt_json'`_dash_st_bo'`_dash_bcal_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
@@ -14554,6 +14601,7 @@ program define _dash_prepare_spec, rclass
     }
     local _rl_sum 0
     local _at_sum 0
+    local _has_kpi 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
@@ -14577,6 +14625,7 @@ program define _dash_prepare_spec, rclass
         // written with the images below.
         if "${dash_img_`gname'}" == "1" continue
         if "${dash_kpi_`gname'}" == "1" {
+            local _has_kpi 1
             // _dash_kpi always stores a statistic and a variable.  A KPI
             // without them was not registered by this dash -- its marker
             // set by hand, or a KPI an older dash left in the session under
@@ -14654,6 +14703,9 @@ program define _dash_prepare_spec, rclass
             local _dq_err ""
             `_fpx' mata: st_local("_qg_`k'", _dash_qual_rewrite( ///
                 st_global("dash_json_" + st_local("gname")), "_dq_err", 1))
+            // WP-40 plat:PT-7: the graph's _N, c(N) of the frame it draws
+            // from, read before any subset or stack ("n_obs", below).
+            `_fpx' mata: st_local("_gn_`k'", strtrim(strofreal(st_nobs(), "%20.0f")))
             if `: length local _dq_err' {
                 mata: _dash_say("err", "`cmdname': registry entry '", ///
                     st_local("gname"), "' holds a qualifier dash cannot evaluate: " + ///
@@ -14900,6 +14952,11 @@ program define _dash_prepare_spec, rclass
     mata: _dash_tsop_export()
     local _dwx_n = 0
     mata: _dash_wexp_export()
+    // WP-40 plat:PT-7: selected mode -- only the rows the graphs draw
+    // are exported -- on a saved build with no filter(), link(),
+    // brush(), csv or KPI card; never served (a served app embeds every
+    // observation).  The options as inherited, read by length.
+    local _sel_mode = ("`server'" == "" & "`cmdname'" != "dash serve" & !`: length local filter' & !`: length local link' & !`: length local brush' & "`csv'" == "" & !`_has_kpi')
     local _novars = ("`all_vars'" == "" & `_dts_n' == 0)
     if `_novars' {
         _dash_plottype_families
@@ -15065,6 +15122,32 @@ program define _dash_prepare_spec, rclass
                 if _rc local _dash_st_json ""
             }
         }
+        // WP-40 plat:PT-7: when nothing needs every row (the one-line
+        // form; a saved build with no filter(), link(), brush(), csv or
+        // KPI card) only the rows some graph draws are exported -- the
+        // page plan's own rule (_dash_embed_plan), plus a literal by()
+        // graph's panel rows; a lowess layer with adjust, whose mean
+        // reads every observation, marks every row -- marked after every
+        // working column, so operators and _n-based qualifiers see the
+        // full data.  The user's frame is never reduced: from it the
+        // marked rows are copied with frame put into a temporary frame
+        // and exported from there; only dash's own temporary frames
+        // (35-08's export frame, 33-07's stack) are cut with keep.  No
+        // row marked, or every row: today's export.
+        if `_sel_mode' {
+            tempvar _dash_sel
+            frame `_dash_stk': quietly generate byte `_dash_sel' = 0
+            forvalues _selk = 1/`ntok_reg' {
+                if `: length local _qg_`_selk'' frame `_dash_stk': mata: _dash_sel_mark(st_local("_dash_sel"), st_local("_qg_`_selk'"))
+            }
+            frame `_dash_stk': quietly count if `_dash_sel'
+            local _sel_n = r(N)
+            frame `_dash_stk': quietly count
+            local _sel_N = r(N)
+            local _sel_cut = (`_sel_n' > 0 & `_sel_n' < `_sel_N')
+            if `_sel_cut' frame `_dash_stk': quietly keep if `_dash_sel'
+            frame `_dash_stk': quietly drop `_dash_sel'
+        }
         capture noisily frame `_dash_stk': _dash_write_data "`datapath'" `all_vars' `_dash_split_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         local _dash_jrc = _rc
     }
@@ -15084,7 +15167,7 @@ program define _dash_prepare_spec, rclass
         // frame of the variables the export reads, else refused, as on
         // the immediate route.
         _dash_frame_vars `_dash_rp' "" `all_vars'
-        capture noisily _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `_dwx_n' "`cmdname'" `_mv_kx'
+        capture noisily _dash_maxvar_room `_dq_n' `_ds_n' `_dts_n' `=`_dwx_n'+`_sel_mode'' "`cmdname'" `_mv_kx'
         if _rc {
             local _dt_rc = _rc
             if "`_dash_es'" != "" capture drop `_dash_es'
@@ -15196,8 +15279,50 @@ program define _dash_prepare_spec, rclass
             }
         }
         // Captured for the same reason as on the immediate route.
-        capture noisily `_xfp' _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
-        local _dash_jrc = _rc
+        // WP-40 plat:PT-7: when nothing needs every row (the one-line
+        // form; a saved build with no filter(), link(), brush(), csv or
+        // KPI card) only the rows some graph draws are exported -- the
+        // page plan's own rule (_dash_embed_plan), plus a literal by()
+        // graph's panel rows; a lowess layer with adjust, whose mean
+        // reads every observation, marks every row -- marked after every
+        // working column, so operators and _n-based qualifiers see the
+        // full data.  The user's frame is never reduced: from it the
+        // marked rows are copied with frame put into a temporary frame
+        // and exported from there; only dash's own temporary frames
+        // (35-08's export frame, 33-07's stack) are cut with keep.  No
+        // row marked, or every row: today's export.
+        local _sel_cut 0
+        if `_sel_mode' {
+            tempvar _dash_sel
+            `_xfp' quietly generate byte `_dash_sel' = 0
+            forvalues _selk = 1/`ntok_reg' {
+                if `: length local _qg_`_selk'' `_xfp' mata: _dash_sel_mark(st_local("_dash_sel"), st_local("_qg_`_selk'"))
+            }
+            `_xfp' quietly count if `_dash_sel'
+            local _sel_n = r(N)
+            `_xfp' quietly count
+            local _sel_N = r(N)
+            local _sel_cut = (`_sel_n' > 0 & `_sel_n' < `_sel_N')
+            if `_sel_cut' & "`_xfp'" != "" `_xfp' quietly keep if `_dash_sel'
+        }
+        if `_sel_cut' & "`_xfp'" == "" {
+            local _sel_v `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            unab _sel_v : `_sel_v'
+            local _sel_v : list uniq _sel_v
+            tempname _dash_sf
+            capture noisily frame put `_sel_v' if `_dash_sel', into(`_dash_sf')
+            local _dash_jrc = _rc
+            if !`_dash_jrc' {
+                capture noisily frame `_dash_sf': _dash_write_data "`datapath'" `_sel_v'
+                local _dash_jrc = _rc
+            }
+            capture frame drop `_dash_sf'
+        }
+        else {
+            capture noisily `_xfp' _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+            local _dash_jrc = _rc
+        }
+        if `_sel_mode' capture `_xfp' drop `_dash_sel'
         if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'`_dash_wexp_vars'" != "" {
             capture `_xfp' drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         }
@@ -15239,6 +15364,9 @@ program define _dash_prepare_spec, rclass
         if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
         // The graph with its qualifiers replaced by their columns
         // (_dash_qual_rewrite, above), joined by value.
+        // WP-40 plat:PT-7: the graph's _N as "n_obs", on this copy only
+        // (the registry's dash_json_<name> keeps none).
+        if `: length local _gn_`k'' mata: st_local("_qg_`k'", _dash_put_n_obs(st_local("_qg_`k'"), `_gn_`k''))
         mata: st_local("graphs_json", st_local("graphs_json") + st_local("_qg_`k'"))
         local n_graphs = `n_graphs' + 1
         local _fp_names `_fp_names' `gname'

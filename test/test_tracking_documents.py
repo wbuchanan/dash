@@ -2875,7 +2875,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'plat:PT-8': 'r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts',
-    'plat:PT-7': "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows",
     'plat:PT-9': "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws",
     'plat:PT-10': 'by() draws the first 100 groups (ceiling 1,000), with a note',
     'stat:PT-15': 'n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree',

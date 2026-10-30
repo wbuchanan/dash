@@ -995,6 +995,8 @@ and now matches Stata.
 
 ### Fixed in WP-40
 
+- dash scatter y x in 1/100 exported every observation to its data file and held them in memory while it built; on the one-line form and a build with no filter(), link(), brush(), csv or KPI card only the rows the graphs draw are exported: 100 of 3,000,000 (WP-40, plat:PT-7)
+
 ### Fixed in WP-38
 
 - The help did not say beside its drop-in claim that a graph with name() is registered for dash build and drawn by nothing else, and that saving() beside name() writes nothing; the Description says so, and a new section, Stata graph integration, says what a do-file of named graphs does under dash (WP-38, syn:SD-17)
