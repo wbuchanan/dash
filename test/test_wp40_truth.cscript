@@ -722,6 +722,48 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 sil:SD-1: histogram bins ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-5 (sil:SD-1): histogram price, discrete needs 12,616 bins of
+    // its width, empty ones counted; twoway draws the 74 that hold
+    // observations (twoway__histogram_gen's bins), and with width(10) 68;
+    // dash squeezes discrete into 1,000 bars and drops width(10), each
+    // with a note.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily twoway histogram price, discrete nodraw
+    local q5_trc = _rc
+    _w40_expect Q4002-5 "(`q5_trc' == 0)" "twoway histogram price, discrete rc `q5_trc'"
+    foreach q5o in discrete "width(10)" {
+        capture drop q5h q5x
+        quietly twoway__histogram_gen price, `q5o' generate(q5h q5x)
+        quietly count if !missing(q5h)
+        local q5n = r(N)
+        local q5want = cond("`q5o'" == "discrete", 74, 68)
+        _w40_expect Q4002-5 "(`q5n' == `q5want')" "twoway's `q5o' bins: `q5n', not `q5want'"
+    }
+    capture drop q5h q5x
+    capture erase "`s02d'/q5a.html"
+    _w40_s02_run "`s02d'/q5a.log" dash histogram price, discrete saving("`s02d'/q5a.html", replace)
+    _w40_expect Q4002-5 "(`s02rc' == 0)" "dash histogram price, discrete rc `s02rc'"
+    _w40_s02_log "`s02d'/q5a.log" "histogram discrete needs 12616 bins, more than the 1000 limit; using 1000 bins"
+    _w40_expect Q4002-5 "(`s02c' == 1)" "no rebinning note for discrete"
+    capture erase "`s02d'/q5b.html"
+    _w40_s02_run "`s02d'/q5b.log" dash histogram price, width(10) saving("`s02d'/q5b.html", replace)
+    _w40_expect Q4002-5 "(`s02rc' == 0)" "dash histogram price, width(10) rc `s02rc'"
+    _w40_s02_log "`s02d'/q5b.log" "would need more than 1000 bins"
+    _w40_expect Q4002-5 "(`s02c' == 1)" "no note that width(10) is dropped"
+    _w40_done Q4002-5 "price discrete: twoway 74 bars, dash 1,000 with a note; width(10): twoway 68, dash drops it with a note"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

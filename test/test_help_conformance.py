@@ -672,8 +672,11 @@ class TestTheParsersFoundSomething:
         # 237 -> 236: WP-37 D65 a contour option's definition leaves.
         # old -> new: 236 -> 237, stat:PT-15 the Differences sub-point
         # n(), bin() and degree(). is read as defining bin() (WP-40 40-02).
-        assert len(found) == 237, (
-            f"{len(found)} options parsed out of dash.sthlp, 237 measured "
+        # old -> new: 237 -> 238, sil:SD-1 the Differences sub-point
+        # Histogram bins., which opens with width(), is read as defining
+        # width() (WP-40 40-02).
+        assert len(found) == 238, (
+            f"{len(found)} options parsed out of dash.sthlp, 238 measured "
             f"30oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -996,8 +999,10 @@ class TestTheParsersFoundSomething:
         # (WP-40 40-02).
         # old -> new: 464 -> 465, stat:PT-15 the sub-point n(), bin() and
         # degree(). (WP-40 40-02).
-        assert len(defs) == 465, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 465 "
+        # old -> new: 465 -> 466, sil:SD-1 the sub-point Histogram bins.
+        # (WP-40 40-02).
+        assert len(defs) == 466, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 466 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1555,4 +1560,6 @@ class TestInternalLinksResolve:
         # groups. links Resource limits (WP-40 40-02).
         # old -> new: 174 -> 175 links: stat:PT-15 the sub-point n(), bin()
         # and degree(). links Resource limits (WP-40 40-02).
-        assert len(refs) == 175 and len(set(refs)) == 51
+        # old -> new: 175 -> 176 links: sil:SD-1 the sub-point Histogram
+        # bins. links Resource limits (WP-40 40-02).
+        assert len(refs) == 176 and len(set(refs)) == 51

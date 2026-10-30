@@ -1570,6 +1570,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:n(), bin() and degree().}  {cmd:n()} past its bound (300 on {cmd:mspline}, {cmd:twoway}'s own, and 10,000 on {cmd:mband} and the other types that take it) and {cmd:bin()} above 1,000 are refused, {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci} take any {cmd:n()} as {cmd:twoway} does, and {cmd:lpoly} fits at most degree 30; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:Histogram bins.}  {cmd:width()} or {cmd:discrete} needing more than 1,000 bins is rebinned, where {cmd:twoway} draws the occupied bins; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3446,7 +3448,11 @@ number).  {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and
 1,000 is refused with {cmd:r(198)}, where {cmd:twoway} draws it.
 {cmd:lpoly}'s {cmd:degree()} is fitted at most at degree 30 (and never
 above the distinct x values less one), with a note, where {cmd:twoway} fits
-any degree.
+any degree.  A {cmd:histogram} whose {cmd:width()} or {cmd:discrete} would
+need more than 1,000 bins over its range, empty ones counted, is drawn with
+1,000 bins under {cmd:discrete} and with the default bins in place of
+{cmd:width()}, with a note; {cmd:twoway} draws the occupied bins
+({cmd:histogram price, width(10)}: 68 bars).
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:
@@ -4448,10 +4454,13 @@ that they were ignored.
 {cmd:histogram}'s bin count is {cmd:bin()}, or {cmd:bins()}, which is
 {cmd:twoway}'s own name for it ({cmd:bin()} is its abbreviation); both
 are read, from 1 to 1000 ({cmd:twoway} has no upper bound).  With
-{cmd:discrete} it draws one bar per distinct value, of width
-{cmd:width()} or, by default, the smallest positive spacing between the
-distinct values (1 when there is only one), each bar centred on its
-value; {cmd:start()} does not move the bars, as in Stata, and a value
+{cmd:discrete} it draws one bar per distinct value -- as long as the range
+needs at most 1,000 bars of that width, empty ones counted: beyond that the
+values are squeezed into 1,000 bars, with a note, where {cmd:twoway} draws
+only the bars that hold observations ({cmd:histogram price, discrete} draws
+74).  The width is {cmd:width()} or, by default, the smallest positive
+spacing between the distinct values (1 when there is only one), each bar
+centred on its value; {cmd:start()} does not move the bars, as in Stata, and a value
 past the last bar's edge (a {cmd:width()} coarser than the data's
 spacing) is counted in the last bar, as Stata counts it.
 On every {cmd:histogram}, discrete or continuous, each observation is

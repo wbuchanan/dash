@@ -412,7 +412,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plat:PT-9 Tracked:** Documented in WP-40, BUGS.md "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws", commit pending.
 - **plat:PT-10 Tracked:** Documented in WP-40, BUGS.md "by() draws the first 100 groups (ceiling 1,000), with a note", commit pending.
 - **stat:PT-15 Tracked:** Documented in WP-40, BUGS.md "n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree", commit pending.
-- **sil:SD-1 Tracked:** Open (WP-40 section 40-02).
+- **sil:SD-1 Tracked:** Documented in WP-40, BUGS.md "histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars", commit pending.
 - **AX-16 Tracked:** Open (WP-40 section 40-02).
 - **sil:SD-11 Tracked:** Open (WP-40 section 40-02).
 - **sil:SD-12 Tracked:** Open (WP-40 section 40-02).

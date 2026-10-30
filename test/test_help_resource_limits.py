@@ -352,3 +352,39 @@ class TestNBinDegree:
         assert "{cmd:bin()} above %s are refused" % _n(hi) in sub
         assert "fits at most degree %d" % _constant(
             _RENDER, "_LPOLY_DEGREE_FIT_MAX") in sub
+
+
+# ---------------------------------------------------------------------------
+# sil:SD-1: histogram width() or discrete needing more than 1,000 bins
+# ---------------------------------------------------------------------------
+
+class TestHistogramBins:
+    """Past _MAX_BINS bins, empty ones counted, discrete is squeezed into
+    that many bars and width() is dropped; twoway draws the occupied bins
+    (Q4002-5).  HR-19: "one bar per distinct value" is qualified."""
+
+    def test_the_discrete_sentence_is_qualified(self):
+        bins = _constant(_RENDER, "_MAX_BINS")
+        h = _flat(_help())
+        assert ("With {cmd:discrete} it draws one bar per distinct value -- "
+                "as long as the range needs at most %s bars of that width, "
+                "empty ones counted: beyond that the values are squeezed "
+                "into %s bars, with a note, where {cmd:twoway} draws only "
+                "the bars that hold observations ({cmd:histogram price, "
+                "discrete} draws 74)" % (_n(bins), _n(bins))) in h
+
+    def test_the_fixed_limit(self):
+        bins = _constant(_RENDER, "_MAX_BINS")
+        s = _fixed_sentence("{cmd:histogram}")
+        assert ("A {cmd:histogram} whose {cmd:width()} or {cmd:discrete} "
+                "would need more than %s bins over its range, empty ones "
+                "counted, is drawn with %s bins under {cmd:discrete} and "
+                "with the default bins in place of {cmd:width()}, with a "
+                "note; {cmd:twoway} draws the occupied bins"
+                % (_n(bins), _n(bins))) in s
+
+    def test_the_sub_point(self):
+        sub = _sub("Histogram bins.")
+        _assert_sub_point(sub)
+        assert ("{cmd:width()} or {cmd:discrete} needing more than %s bins "
+                "is rebinned" % _n(_constant(_RENDER, "_MAX_BINS"))) in sub

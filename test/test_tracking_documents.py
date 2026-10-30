@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'sil:SD-1': 'histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars',
     'AX-16': 'An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently',
     'sil:SD-11': "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number",
     'sil:SD-12': 'fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently',

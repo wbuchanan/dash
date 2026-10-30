@@ -1000,6 +1000,7 @@ and now matches Stata.
 - The help did not say that dash's plot limit counts the plots of a graph where twoway's counts the variables of one plot; the $dash_max_plots row of Resource limits now gives twoway's limit of 100 variables, with scatter y1-y100 x, which twoway refuses, r(103), and dash draws, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-9)
 - The help did not say that twoway draws every by() group where dash draws the first 100 with a note; the $dash_max_by_groups row of Resource limits now says so, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-10)
 - The help did not list dash's bounds on n(), bin() and lpoly's degree() beside twoway's answers; Resource limits gains a Fixed limits paragraph stating each n() bound with the types it applies to (mspline's 300 is twoway's own), the types that take any n(), bin()'s 1,000 and the fitted degree's 30, and Differences from twoway item 15 has the sub-point (WP-40, stat:PT-15)
+- The help said histogram's discrete draws one bar per distinct value, and did not say that width() or discrete needing more than 1,000 bins is rebinned; it now says that past 1,000 bins, empty ones counted, discrete is squeezed into 1,000 bars and width() is dropped, with a note, where twoway draws the occupied bins (74 for histogram price, discrete), in the histogram paragraph, under Resource limits and in Differences from twoway item 15 (WP-40, sil:SD-1)
 
 ### Fixed in WP-38
 
