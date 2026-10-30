@@ -254,6 +254,37 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w38_run' {
     capture dash clear
     capture graph drop _all
 
+    // ------------------------------------------------------------
+    // Q3801-2 (GW-12): after dash, graph export writes the graph twoway
+    // drew before it, and dash's note names that graph; a drawn graph
+    // since dropped is still the one written.  The r(601) cases need a
+    // session in which nothing was drawn, which this shared session is
+    // not: graph_export_truth.json (no_graph, nodraw_only) holds them,
+    // and test_help_graph_integration.py reads it.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, name(q3801d)
+    capture log close s01l
+    quietly log using "`s01d'/q2.log", text replace name(s01l) nomsg
+    capture noisily dash scatter mpg weight, saving("`s01d'/q2.html", replace)
+    local q2_rc = _rc
+    quietly log close s01l
+    _w38_expect Q3801-2 "(`q2_rc' == 0)" "dash ..., saving() rc `q2_rc'"
+    _w38_s01_log "`s01d'/q2.log" "graph export writes the graph in Stata's Graph window, not this dashboard; graphs in memory: q3801d"
+    _w38_expect Q3801-2 "(`s01c' == 1)" "the graph-memory note naming q3801d was printed `s01c' times"
+    capture erase "`s01d'/q2.png"
+    capture noisily graph export "`s01d'/q2.png", replace
+    _w38_expect Q3801-2 "(_rc == 0)" "graph export after dash rc `=_rc'"
+    capture confirm file "`s01d'/q2.png"
+    _w38_expect Q3801-2 "(_rc == 0)" "graph export after dash wrote no file"
+    capture graph drop _all
+    capture erase "`s01d'/q2b.png"
+    capture noisily graph export "`s01d'/q2b.png", replace
+    _w38_expect Q3801-2 "(_rc == 0)" "graph export after graph drop _all rc `=_rc'"
+    capture graph describe q3801d
+    _w38_expect Q3801-2 "(_rc != 0)" "q3801d is still in memory"
+    _w38_done Q3801-2 "graph export after dash writes twoway's earlier graph, dropped or not, and the note names it"
+    capture graph drop _all
+
     local s01f : dir "`s01d'" files "*"
     foreach f of local s01f {
         capture erase "`s01d'/`f'"

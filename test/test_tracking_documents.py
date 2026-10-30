@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'GW-12': 'A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)',
     'ECO-1': 'A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)',
     'ECO-4': 'graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()',
     'GW-13': "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'",

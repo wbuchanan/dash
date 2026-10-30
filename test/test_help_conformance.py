@@ -968,8 +968,9 @@ class TestTheParsersFoundSomething:
         # 450 -> 449: WP-37 D65 a contour option's entry leaves.
         # old -> new: 449 -> 450: syn:SD-17 the Differences item A dashboard
         # is not a Stata graph's sub-point name() registers (WP-38 38-01).
-        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
+        # old -> new: 450 -> 451: GW-12 its sub-point No graph memory.
+        assert len(defs) == 451, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 451 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1486,4 +1487,7 @@ class TestInternalLinksResolve:
         # section Stata graph integration (dash##graphintegration): its Jump
         # To entry, the Description's caveat, the Differences item and its
         # sub-point name() registers (WP-38 38-01).
-        assert len(refs) == 144 and len(set(refs)) == 50
+        # old -> new: 144 -> 148 links: GW-12 the sub-point No graph memory,
+        # the Description's and Exporting's links to the section and its
+        # Graph memory paragraph's link to Exporting (WP-38 38-01).
+        assert len(refs) == 148 and len(set(refs)) == 50

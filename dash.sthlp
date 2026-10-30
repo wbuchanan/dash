@@ -198,6 +198,8 @@ A dashboard is not a Stata graph: {cmd:graph export}, {cmd:graph save},
 {cmd:putdocx} and {cmd:dyndoc} do not see it.  {cmd:dash} stores the path of
 the file it wrote in {cmd:r(filename)}; see {help dash##export:Exporting} and
 {help dash##results:Stored results}.
+{help dash##graphintegration:Stata graph integration} says what each of them
+does after {cmd:dash}.
 
 {pstd}
 For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
@@ -1517,6 +1519,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:name() registers.}  A named graph is drawn by {cmd:dash build}, not when it is typed; see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:No graph memory.}  {cmd:graph export}, {cmd:graph combine}, {cmd:putdocx} and the rest do not see a dashboard; see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1751,7 +1755,8 @@ before.
 {pstd}
 Every dashboard can save its figures as a PNG image, with the save button
 on the toolbar (see {help dash##toolbar:The toolbar}).  With {cmd:csv} it
-can also give you its data.
+can also give you its data.  What Stata's graph commands do after
+{cmd:dash} is in {help dash##graphintegration:Stata graph integration}.
 
 {pstd}
 {ul:graph export.}  A dashboard is drawn in the browser, not in a Stata
@@ -1857,6 +1862,21 @@ registers the graph for a later {cmd:dash build} and draws nothing;
 {cmd:dash: ignoring unsupported option(s): saving()}.  A do-file whose graphs
 all have names therefore writes no page until it runs {cmd:dash build} with
 {cmd:saving()}.
+
+{pstd}
+{ul:Graph memory and exports.}  Stata's graph commands read its graph
+memory or {cmd:.gph} files, and the report commands embed an image file
+{cmd:graph export} wrote; a dashboard is neither, so {cmd:graph export},
+{cmd:graph save}, {cmd:graph use}, {cmd:graph display},
+{cmd:graph combine}, {cmd:graph dir}, {cmd:putdocx image},
+{cmd:putpdf image}, {cmd:putexcel}'s images and {cmd:dyndoc}'s and
+markdown's graph links cannot use one.  After {cmd:dash}, {cmd:graph export}
+writes the last graph Stata drew -- an earlier one, even one since dropped
+with {cmd:graph drop} -- or fails with "no Graph window open",
+{cmd:r(601)}, when none was drawn in the session (a {cmd:nodraw} graph in
+memory is not enough).  {cmd:dash} returns the page's path in
+{cmd:r(filename)}; an image of a dashboard comes from its toolbar (PNG or
+SVG; see {help dash##export:Exporting}).
 
 
 {marker accessibility}{...}

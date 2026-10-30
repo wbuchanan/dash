@@ -10,6 +10,8 @@ item:
 
 * syn:SD-17 -- name() registers instead of drawing; saving() beside
   name() writes nothing (TestNameRegisters, TestTheDifferencesItem).
+* GW-12 -- graph memory, graph export and the report commands do not see a
+  dashboard (TestGraphMemory).
 
 The Stata half -- each measurable sentence beside twoway in one run -- is
 test_wp38_truth.cscript's block S01 (Q3801-k).
@@ -144,3 +146,61 @@ class TestNameRegisters:
         line = _sub_point("name() registers.")
         assert ("A named graph is drawn by {cmd:dash build}, not when it is "
                 "typed; see " + _LINK + ".") in line
+
+
+def _export_truth():
+    """graph_export_truth.json's cases: graph export measured in a fresh
+    console batch session (scripts/extract_graph_export_truth.do)."""
+    import json
+    path = os.path.join(_HERE, "fixtures", "graph_export_truth.json")
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)["cases"]
+
+
+class TestGraphMemory:
+    """GW-12: graph memory, graph export and the report commands do not
+    see a dashboard (Q3801-2; the r(601) cases in a fresh session are
+    graph_export_truth.json's)."""
+
+    def test_the_commands_listed(self):
+        t = _topic()
+        para = t[t.index("{ul:Graph memory and exports.}"):]
+        for cmd in ("graph export", "graph save", "graph use",
+                    "graph display", "graph combine", "graph dir",
+                    "putdocx image", "putpdf image", "putexcel",
+                    "dyndoc"):
+            assert "{cmd:%s}" % cmd in para, cmd
+        assert "markdown" in para
+        assert "cannot use one." in para
+
+    def test_export_after_dash(self):
+        cases = _export_truth()
+        for k in ("no_graph", "nodraw_only"):
+            assert (cases[k]["rc"], cases[k]["first"]) == (
+                601, "no Graph window open"), k
+        assert cases["dropped"]["rc"] == 0
+        t = _topic()
+        assert ("After {cmd:dash}, {cmd:graph export} writes the last graph "
+                "Stata drew -- an earlier one, even one since dropped with "
+                "{cmd:graph drop} -- or fails with \"no Graph window open\", "
+                "{cmd:r(601)}, when none was drawn in the session (a "
+                "{cmd:nodraw} graph in memory is not enough).") in t
+        assert ("{cmd:dash} returns the page's path in {cmd:r(filename)}; "
+                "an image of a dashboard comes from its toolbar (PNG or "
+                "SVG; see {help dash##export:Exporting}).") in t
+
+    def test_the_sub_point(self):
+        line = _sub_point("No graph memory.")
+        assert ("{cmd:graph export}, {cmd:graph combine}, {cmd:putdocx} and "
+                "the rest do not see a dashboard; see " + _LINK + ".") in line
+
+    def test_description_and_exporting_link_here(self):
+        d = _description()
+        assert ("A dashboard is not a Stata graph: {cmd:graph export}, "
+                "{cmd:graph save}, {cmd:putdocx} and {cmd:dyndoc} do not "
+                "see it.") in d
+        assert (_LINK + " says what each of them does after {cmd:dash}."
+                ) in d
+        ex = _flat(_between(_help(), "{marker export}", "{ul:graph export.}"))
+        assert ("What Stata's graph commands do after {cmd:dash} is in "
+                + _LINK + ".") in ex

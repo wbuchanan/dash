@@ -396,7 +396,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DT-26 Tracked:** Documented in WP-37, BUGS.md "Documented numeric limits: lpoly bandwidth about 1% off at degree 6-7, degree above 7 differs (484.23 vs 400.94), exact-polynomial cases, fpfit date-time model choice, ndots thinning above 2,000,000", commit a027672.
 - **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit 4eb94ea.
 - **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit pending.
-- **GW-12 Tracked:** Open (WP-38 section 38-01).
+- **GW-12 Tracked:** Documented in WP-38, BUGS.md "A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)", commit pending.
 - **ECO-1 Tracked:** Open (WP-38 section 38-01).
 - **ECO-4 Tracked:** Open (WP-38 section 38-01).
 - **GW-13 Tracked:** Open (WP-38 section 38-02).
