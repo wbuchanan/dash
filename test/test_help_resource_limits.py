@@ -488,3 +488,36 @@ class TestFpfitGrid:
         _assert_sub_point(sub)
         assert ("Above %s distinct x the fit is evaluated on %s points"
                 % ((_n(_constant(_RENDER, "_FP_GRID_MAX")),) * 2)) in sub
+
+
+# ---------------------------------------------------------------------------
+# sil:SD-13: text whose globals expand past 4,000 characters
+# ---------------------------------------------------------------------------
+
+def _text_bound():
+    """The expansion bound of text() (dash_parse.mata) and of the text
+    options (dash.ado's gopts loop); the two are one number."""
+    m = re.search(r"strlen\(g\) > (\d+)", _read(_MATA))
+    a = re.search(r'strlen\(st_local\("_gtg"\)\) > (\d+)', _read(_ADO))
+    assert m and a, "the expansion bounds were not found"
+    assert m.group(1) == a.group(1), (m.group(1), a.group(1))
+    return int(m.group(1))
+
+
+class TestLongText:
+    """A text() or text option whose globals expand past 4,000 characters
+    is refused, r(198), where twoway draws it (Q4002-8)."""
+
+    _SAYS = ("A {cmd:text()} or text option whose globals expand past %s "
+             "characters is refused, {cmd:r(198)}, where {cmd:twoway} draws "
+             "it")
+
+    def test_the_fixed_limit(self):
+        s = _fixed_sentence("globals expand past")
+        assert self._SAYS % _n(_text_bound()) in s
+        assert "{help dash##added_text:Added text}" in s
+
+    def test_the_sub_point(self):
+        sub = _sub("Long text.")
+        _assert_sub_point(sub)
+        assert self._SAYS % _n(_text_bound()) in sub

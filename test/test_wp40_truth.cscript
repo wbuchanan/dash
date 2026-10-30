@@ -825,6 +825,43 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 sil:SD-13: long text ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-8 (sil:SD-13): a text() whose global expands to 4,100
+    // characters draws in twoway; dash refuses it, r(198), "text():
+    // expanded text is too long".  The \$ keeps the global unexpanded
+    // until the command reads it.  (Its value typed in the line, already
+    // expanded, is no global for dash to expand: dash draws nothing and
+    // notes the added text, where twoway draws it.)
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    global w40q8 = "a" * 4100
+    capture noisily twoway scatter mpg weight, text(30 3000 "\$w40q8") nodraw
+    local q8_trc = _rc
+    _w40_expect Q4002-8 "(`q8_trc' == 0)" "twoway text() of 4,100 characters rc `q8_trc'"
+    capture erase "`s02d'/q8.html"
+    // Not through _w40_s02_run, whose `0' would expand the global
+    // before dash reads it.
+    capture log close s02l
+    quietly log using "`s02d'/q8.log", text replace name(s02l) nomsg
+    capture noisily dash scatter mpg weight, text(30 3000 "\$w40q8") saving("`s02d'/q8.html", replace)
+    local s02rc = _rc
+    quietly log close s02l
+    _w40_expect Q4002-8 "(`s02rc' == 198)" "dash text() of 4,100 characters rc `s02rc'"
+    _w40_s02_log "`s02d'/q8.log" "text(): expanded text is too long"
+    _w40_expect Q4002-8 "(`s02c' == 1)" "no 'expanded text is too long' refusal"
+    macro drop w40q8
+    _w40_done Q4002-8 "a 4,100-character global in text(): twoway draws, dash r(198)"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

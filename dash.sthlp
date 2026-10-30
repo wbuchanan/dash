@@ -1580,6 +1580,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:fpfit's grid.}  Above 20,000 distinct x the fit is evaluated on 20,000 points, silently, where {cmd:twoway} predicts at every distinct x; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:Long text.}  A {cmd:text()} or text option whose globals expand past 4,000 characters is refused, {cmd:r(198)}, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3473,7 +3475,9 @@ units: a larger size is drawn at the scheme's default with a note, where
 with more than 20,000 distinct x are evaluated at 20,000 evenly spaced x
 across the range, where {cmd:twoway} predicts at every distinct x; the
 curve is the same, but the points it passes through and where
-{cmd:cmissing()} breaks it can differ.
+{cmd:cmissing()} breaks it can differ.  A {cmd:text()} or text option whose
+globals expand past 4,000 characters is refused, {cmd:r(198)}, where
+{cmd:twoway} draws it; see {help dash##added_text:Added text}.
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:

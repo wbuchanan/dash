@@ -5000,11 +5000,11 @@
   - Suggested fix: Documented only (M10, Q44): the 20,000-point fpfit grid stays and is documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, sil:SD-12). dash.sthlp Resource limits (Fixed limits: fpfit and fpfitci with more than 20,000 distinct x are evaluated at 20,000 evenly spaced x across the range, where twoway predicts at every distinct x; the curve is the same, but the points it passes through and where cmissing() breaks it can differ) and Differences from twoway item 15's sub-point fpfit's grid., which says it is silent. Pinned by test/test_help_resource_limits.py::TestFpfitGrid (no cscript probe: 20,000 distinct x make a slow build). Closes GAPS4 sil:SD-12 (WP-40, sil:SD-12).
 
-- [ ] Title: text() whose globals expand past 4,000 characters is refused r(198)
+- [x] Title: text() whose globals expand past 4,000 characters is refused r(198)
   - File Names and Line Numbers: dash_parse.mata:11461-11469; dash.sthlp:784-785, 5232-5234
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids sil:SD-13; partly; tracked: documented; BUGS D13. Registered as GAPS4 sil:SD-13 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): the 4,000-character bound on text() after its globals expand stays and is documented under Resource limits and Differences.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, sil:SD-13). dash.sthlp Resource limits (Fixed limits: a text() or text option whose globals expand past 4,000 characters is refused, r(198), where twoway draws it, linking Added text, which states the refusal's words) and Differences from twoway item 15's sub-point Long text. Pinned by test/test_help_resource_limits.py::TestLongText, Q4002-8 (test_wp40_truth.cscript S02). Closes GAPS4 sil:SD-13 (WP-40, sil:SD-13).
 
 - [ ] Title: contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel
   - File Names and Line Numbers: zyx2view_g.class:255-276; tw_f29a.svg has 3 colours in both panels; dash dump shows per-panel cuts; _dash_share_by_scales shares x/y only

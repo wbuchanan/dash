@@ -1006,8 +1006,10 @@ class TestTheParsersFoundSomething:
         # (WP-40 40-02).
         # old -> new: 468 -> 469, sil:SD-12 the sub-point fpfit's grid.
         # (WP-40 40-02).
-        assert len(defs) == 469, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 469 "
+        # old -> new: 469 -> 470, sil:SD-13 the sub-point Long text. (WP-40
+        # 40-02).
+        assert len(defs) == 470, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 470 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1573,4 +1575,8 @@ class TestInternalLinksResolve:
         # links Resource limits (WP-40 40-02).
         # old -> new: 178 -> 179 links: sil:SD-12 the sub-point fpfit's
         # grid. links Resource limits (WP-40 40-02).
-        assert len(refs) == 179 and len(set(refs)) == 51
+        # old -> new: 179 -> 181 links: sil:SD-13 the sub-point Long text.
+        # links Resource limits and the Fixed limits sentence links Added
+        # text (WP-40 40-02).
+        # 51 -> 52 targets: dash##added_text is linked for the first time.
+        assert len(refs) == 181 and len(set(refs)) == 52
