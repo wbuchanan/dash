@@ -1521,6 +1521,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:No graph memory.}  {cmd:graph export}, {cmd:graph combine}, {cmd:putdocx} and the rest do not see a dashboard; see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:Data at build.}  A named graph draws its frame's data as they are at {cmd:dash build}; see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1877,6 +1879,24 @@ with {cmd:graph drop} -- or fails with "no Graph window open",
 memory is not enough).  {cmd:dash} returns the page's path in
 {cmd:r(filename)}; an image of a dashboard comes from its toolbar (PNG or
 SVG; see {help dash##export:Exporting}).
+
+{pstd}
+{ul:A registered graph keeps no data.}  {cmd:name()} stores the command and
+the frame it was registered in, not its data: {cmd:dash build} draws every
+registered graph from that frame's data as they are when the build runs,
+evaluating each qualifier again (see {help dash##description:Description}).
+So {cmd:preserve}, {cmd:collapse}, {cmd:dash} ...{cmd:, name(g1)},
+{cmd:restore}, {cmd:dash build} draws the restored data, with no note --
+where {cmd:twoway}'s {cmd:g1} keeps the collapsed graph -- and a graph of a
+temporary variable fails at build once the variable is gone (a
+{cmd:tempvar} is dropped when the program or do-file that made it ends):
+"variable {it:name} not found", {cmd:r(111)}.  A graph registered in another frame
+({cmd:frame} {it:name}{cmd::} {cmd:dash} ...{cmd:, name()}) reads that frame
+instead; see {help dash##frames:Graphs from several frames}.  KPI cards read
+the frame current at {cmd:dash build}.  What counts is the data when
+{cmd:dash build} runs, not when the graph is registered: build before
+{cmd:restore}, or keep the reduced data in a frame of their own and register
+the graph under {cmd:frame} {it:name}{cmd::}.
 
 
 {marker accessibility}{...}

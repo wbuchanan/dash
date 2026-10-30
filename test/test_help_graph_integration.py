@@ -12,6 +12,8 @@ item:
   name() writes nothing (TestNameRegisters, TestTheDifferencesItem).
 * GW-12 -- graph memory, graph export and the report commands do not see a
   dashboard (TestGraphMemory).
+* ECO-1 -- a registered graph keeps its command and frame, not its data
+  (TestDataAtBuild).
 
 The Stata half -- each measurable sentence beside twoway in one run -- is
 test_wp38_truth.cscript's block S01 (Q3801-k).
@@ -204,3 +206,52 @@ class TestGraphMemory:
         ex = _flat(_between(_help(), "{marker export}", "{ul:graph export.}"))
         assert ("What Stata's graph commands do after {cmd:dash} is in "
                 + _LINK + ".") in ex
+
+
+#: 33-07's sentence after the qualifier paragraph (dash.sthlp, Description),
+#: given verbatim in the ECO-1 paragraph (TR-38-01.4).
+_FRAMES = ("A graph registered in another frame ({cmd:frame} {it:name}{cmd::} "
+           "{cmd:dash} ...{cmd:, name()}) reads that frame instead; see "
+           "{help dash##frames:Graphs from several frames}.")
+
+
+class TestDataAtBuild:
+    """ECO-1: a registered graph keeps its command and frame, not its data
+    (Q3801-3: collapse undone by restore, and a tempvar gone at build)."""
+
+    def test_the_paragraph(self):
+        t = _topic()
+        para = t[t.index("{ul:A registered graph keeps no data.}"):]
+        for claim in (
+                "{cmd:name()} stores the command and the frame it was "
+                "registered in, not its data: {cmd:dash build} draws every "
+                "registered graph from that frame's data as they are when "
+                "the build runs,",
+                "So {cmd:preserve}, {cmd:collapse}, {cmd:dash} ...{cmd:, "
+                "name(g1)}, {cmd:restore}, {cmd:dash build} draws the "
+                "restored data, with no note -- where {cmd:twoway}'s "
+                "{cmd:g1} keeps the collapsed graph --",
+                "a graph of a temporary variable fails at build once the "
+                "variable is gone",
+                "\"variable {it:name} not found\", {cmd:r(111)}.",
+                "What counts is the data when {cmd:dash build} runs, not "
+                "when the graph is registered:"):
+            assert claim in para, claim
+
+    def test_frame_is_named(self):
+        """D-38-01.c, A-17: the frame prefix in 33-07's words, the KPI
+        rule, and no frame() option."""
+        assert _FRAMES in _description()
+        t = _topic()
+        para = t[t.index("{ul:A registered graph keeps no data.}"):]
+        assert _FRAMES in para
+        assert "{help dash##frames:" in para
+        assert "{cmd:frame} {it:name}{cmd::}" in para
+        assert "KPI cards read the frame current at {cmd:dash build}" in para
+        assert "{cmd:frame(" not in t
+        assert "every other graph from the frame current at build" not in t
+
+    def test_the_sub_point(self):
+        line = _sub_point("Data at build.")
+        assert ("A named graph draws its frame's data as they are at "
+                "{cmd:dash build}; see " + _LINK + ".") in line

@@ -969,8 +969,9 @@ class TestTheParsersFoundSomething:
         # old -> new: 449 -> 450: syn:SD-17 the Differences item A dashboard
         # is not a Stata graph's sub-point name() registers (WP-38 38-01).
         # old -> new: 450 -> 451: GW-12 its sub-point No graph memory.
-        assert len(defs) == 451, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 451 "
+        # old -> new: 451 -> 452: ECO-1 its sub-point Data at build.
+        assert len(defs) == 452, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 452 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1490,4 +1491,7 @@ class TestInternalLinksResolve:
         # old -> new: 144 -> 148 links: GW-12 the sub-point No graph memory,
         # the Description's and Exporting's links to the section and its
         # Graph memory paragraph's link to Exporting (WP-38 38-01).
-        assert len(refs) == 148 and len(set(refs)) == 50
+        # old -> new: 148 -> 151 links: ECO-1 the sub-point Data at build
+        # and its paragraph's links to Description and Graphs from several
+        # frames (WP-38 38-01).
+        assert len(refs) == 151 and len(set(refs)) == 50

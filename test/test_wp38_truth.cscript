@@ -213,6 +213,15 @@ program define _w38_s01_log
     cert_log_has "`1'", needle(`"`2'"')
     c_local s01c = r(count)
 end
+// _w38_s01_tv: registers q3801v, a graph of a temporary variable that is
+// dropped when this program ends (Q3801-3).
+capture program drop _w38_s01_tv
+program define _w38_s01_tv
+    version 19
+    tempvar tv
+    quietly generate `tv' = 2 * mpg
+    dash scatter `tv' weight, name(q3801v)
+end
 
 * ==== S01 syn:SD-17: a dashboard is not a Stata graph ====
 local only : env WP38_ONLY
@@ -284,6 +293,54 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w38_run' {
     _w38_expect Q3801-2 "(_rc != 0)" "q3801d is still in memory"
     _w38_done Q3801-2 "graph export after dash writes twoway's earlier graph, dropped or not, and the note names it"
     capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q3801-3 (ECO-1): a registered graph keeps no data.  Registered on
+    // collapsed data and built after restore, it draws the restored rows
+    // (69 with rep78), with no note; a graph of a tempvar that is gone
+    // by the build fails there, r(111).
+    // ------------------------------------------------------------
+    capture dash clear
+    sysuse auto, clear
+    preserve
+    collapse (mean) mpg, by(rep78)
+    local q3_nc = _N
+    dash line mpg rep78, name(q3801r)
+    restore
+    capture erase "`s01d'/q3.html"
+    capture log close s01l
+    quietly log using "`s01d'/q3.log", text replace name(s01l) nomsg
+    capture noisily dash build, saving("`s01d'/q3.html") replace nobrowser
+    local q3_rc = _rc
+    quietly log close s01l
+    _w38_expect Q3801-3 "(`q3_rc' == 0)" "dash build after restore rc `q3_rc'"
+    _w38_s01_log "`s01d'/q3.log" "note"
+    _w38_expect Q3801-3 "(`s01c' == 0)" "dash build printed `s01c' notes"
+    global w38_s01_page "`s01d'/q3.html"
+    python:
+import os as _q3_os, sys as _q3_sys
+from sfi import Macro as _q3_M
+_q3_sys.path.insert(0, _q3_os.path.abspath("."))
+import embed_truth_check as _q3_c
+_q3_M.setGlobal("w38_s01_rows", str(_q3_c.page_rows(_q3_M.getGlobal("w38_s01_page"))["rows"]))
+end
+    local q3_rows ${w38_s01_rows}
+    macro drop w38_s01_page w38_s01_rows
+    quietly count if !missing(rep78)
+    _w38_expect Q3801-3 "(`q3_rows' == r(N) & `q3_rows' != `q3_nc')" "the page holds `q3_rows' rows; restored data `=r(N)', collapsed `q3_nc'"
+    capture dash clear
+    _w38_s01_tv
+    capture erase "`s01d'/q3v.html"
+    capture log close s01l
+    quietly log using "`s01d'/q3v.log", text replace name(s01l) nomsg
+    capture noisily dash build, saving("`s01d'/q3v.html") replace nobrowser
+    local q3_vrc = _rc
+    quietly log close s01l
+    _w38_expect Q3801-3 "(`q3_vrc' == 111)" "dash build of a gone tempvar rc `q3_vrc'"
+    _w38_s01_log "`s01d'/q3v.log" " not found"
+    _w38_expect Q3801-3 "(`s01c' >= 1)" "no 'not found' message"
+    _w38_done Q3801-3 "a registered graph draws the data at dash build: restored rows `q3_rows', a gone tempvar r(111)"
+    capture dash clear
 
     local s01f : dir "`s01d'" files "*"
     foreach f of local s01f {

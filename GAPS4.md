@@ -397,7 +397,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **stat:PT-21 Tracked:** Documented in WP-37, BUGS.md "Tied sort keys keep data order; twoway's order among ties is unstable (lowess drawn path, sort with by(), cmissing breaks)", commit 4eb94ea.
 - **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit pending.
 - **GW-12 Tracked:** Documented in WP-38, BUGS.md "A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)", commit pending.
-- **ECO-1 Tracked:** Open (WP-38 section 38-01).
+- **ECO-1 Tracked:** Documented in WP-38, BUGS.md "A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)", commit pending.
 - **ECO-4 Tracked:** Open (WP-38 section 38-01).
 - **GW-13 Tracked:** Open (WP-38 section 38-02).
 - **GW-14 Tracked:** Open (WP-38 section 38-02).

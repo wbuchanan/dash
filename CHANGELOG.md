@@ -997,6 +997,7 @@ and now matches Stata.
 
 - The help did not say beside its drop-in claim that a graph with name() is registered for dash build and drawn by nothing else, and that saving() beside name() writes nothing; the Description says so, and a new section, Stata graph integration, says what a do-file of named graphs does under dash (WP-38, syn:SD-17)
 - The help named only graph export, graph save, putdocx and dyndoc as unable to use a dashboard; the new section Stata graph integration lists every graph and report command that cannot, and says graph export after dash writes the last graph Stata drew or fails r(601) (WP-38, GW-12)
+- The help did not say that a registered graph keeps its command and frame, not its data: a graph registered on collapsed data and built after restore draws the restored data, and one of a tempvar gone by dash build fails r(111); Stata graph integration says so and how to build in time (WP-38, ECO-1)
 
 ### Fixed in WP-37
 
