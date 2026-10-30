@@ -486,7 +486,9 @@ class TestTheLoneAxisRewrite:
         (22oct2026): a two-second bound for 2,000 graphs of 50 layers failed
         on a loaded machine (2.9 s); linear is measured as a ratio instead --
         2,000 graphs take under 8 times what 500 take (linear is about 4,
-        quadratic about 16), with 50 ms of slack and a 20-second ceiling."""
+        quadratic about 16), with 50 ms of slack and a 20-second ceiling.
+        Each size keeps its best of three runs (30oct2026: one pause on a
+        loaded gate made 2,000 graphs take 28 times what 500 took)."""
         import time
         import dash_render as _dr
         g = {"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
@@ -494,9 +496,12 @@ class TestTheLoneAxisRewrite:
              "graph_options": {}}
         secs = {}
         for n in (500, 2000):
-            t0 = time.perf_counter()
-            out = _dr._dash_lone_second_axes({"graphs": [g] * n})
-            secs[n] = time.perf_counter() - t0
+            runs = []
+            for _ in range(3):
+                t0 = time.perf_counter()
+                out = _dr._dash_lone_second_axes({"graphs": [g] * n})
+                runs.append(time.perf_counter() - t0)
+            secs[n] = min(runs)
         assert secs[2000] < 8 * secs[500] + 0.05, secs
         assert secs[2000] < 20, secs
         assert all("yaxis" not in p["options"]
