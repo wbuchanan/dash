@@ -198,7 +198,11 @@ program define _sv_both
     version 16.0
     args vars
     tempfile s d a
-    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    // As dash serve runs it: every observation is exported, so each
+    // loaded column holds every row beside Stata's.  Flipped (WP-40
+    // plat:PT-7): a saved build now exports only the rows its graphs draw,
+    // and these graphs' if qualifiers leave rows out.
+    _dash_prepare_spec, specpath("`s'") datapath("`d'") cmdname("dash serve")
     global SV_SPEC "`s'"
     global SV_DATA "`d'"
     global SV_APP  "`a'"
@@ -408,7 +412,9 @@ _dash_prepare_spec, specpath("`s'") datapath("`d'")
 global SV_DATA "`d'"
 python: _sv_data_facts()
 display as text "  SV-05 names [$SV_NAMES] records $SV_NREC"
-assert "$SV_NREC" == "4"
+// Flipped (WP-40 plat:PT-7): a saved build exports only the rows its
+// graphs draw -- rowid > 2 keeps 2 of the 4 -- where it exported all 4.
+assert "$SV_NREC" == "2"
 local names "$SV_NAMES"
 assert `: list sizeof names' == 4
 assert `: list posof "__dashq1" in names' > 0

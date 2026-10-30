@@ -603,10 +603,15 @@ display "REG-21 PASS: replacing KPI a leaves KPI a_b's globals and card in place
 // JSON is cut short dies in the renderer with a JSONDecodeError, and its
 // traceback is in the log (measured 24sep2026: rc 7102, the word on one
 // line).  REG-23 and REG-27 search their logs for the same word the same
-// way.
+// way.  Flipped (WP-40 plat:PT-7): dash now appends the graph's "n_obs"
+// before the JSON's last brace and refuses a graph JSON that does not
+// end in one (rc 3498) before the renderer runs, so the control no longer
+// cuts the JSON short: it puts a stray character before it, which leaves
+// every key dash reads in place and still makes the renderer's
+// JSONDecodeError.
 dash clear
 dash scatter price weight, name(g2) title("Graph g2")
-mata: st_global("dash_json_g2", substr(st_global("dash_json_g2"), 1, 40))
+mata: st_global("dash_json_g2", "x" + st_global("dash_json_g2"))
 _reg_build r21ctl
 local rc21c = r(rc)
 local lg "`r(log)'"

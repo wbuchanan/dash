@@ -422,7 +422,10 @@ python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal
 // 97ad5d7d... -> 11e9f17a...: the spec gains its top-level
 // "_dash_prefix":"__dash" (WP-35 DT-19); without that key the digest is
 // dc4078c's, byte for byte.
-local base_digest "11e9f17a791676814f504513e8623db4551e6ecb75e5dd0f2c703e1910f462eb"
+// 11e9f17a... -> 6ee8200b...: each graph's JSON gains "n_obs":74, its
+// frame's _N (WP-40 plat:PT-7); with those three keys taken out the
+// digest is 11e9f17a..., byte for byte (measured 30oct2026).
+local base_digest "6ee8200b33edb1e5b91c0b71c5a86e0147867b5d649967aef5523922aa4c6617"
 display "Q3307-5 digest `dig'"
 assert "`dig'" == "`base_digest'"
 display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"
