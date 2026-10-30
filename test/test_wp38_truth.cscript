@@ -339,8 +339,48 @@ end
     _w38_expect Q3801-3 "(`q3_vrc' == 111)" "dash build of a gone tempvar rc `q3_vrc'"
     _w38_s01_log "`s01d'/q3v.log" " not found"
     _w38_expect Q3801-3 "(`s01c' >= 1)" "no 'not found' message"
-    _w38_done Q3801-3 "a registered graph draws the data at dash build: restored rows `q3_rows', a gone tempvar r(111)"
+    _w38_done Q3801-3 "a registered graph draws the data at dash build: restored rows `q3_rows' (collapsed `q3_nc'), a gone tempvar r(111)"
     capture dash clear
+
+    // ------------------------------------------------------------
+    // Q3801-4 (ECO-4): dash build takes title() and subtitle() but none of
+    // graph combine's other options, "option X not allowed", r(198), where
+    // graph combine takes them; graph combine of a registered name is
+    // refused, "<name> is not a memory graph", r(198).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash scatter mpg weight, name(q3801g)
+    foreach o in "cols(2)" "rows(2)" "holes(2)" "colfirst" "xcommon" "ycommon" "iscale(.5)" "imargin(small)" "note(n)" "caption(c)" "xsize(5)" "ysize(5)" {
+        local q4_w = ustrregexra("`o'", "\(.*\)", "()")
+        capture log close s01l
+        quietly log using "`s01d'/q4.log", text replace name(s01l) nomsg
+        capture noisily dash build, saving("`s01d'/q4.html") replace nobrowser `o'
+        local q4_rc = _rc
+        quietly log close s01l
+        _w38_expect Q3801-4 "(`q4_rc' == 198)" "dash build, `o' rc `q4_rc'"
+        _w38_s01_log "`s01d'/q4.log" "option `q4_w' not allowed"
+        _w38_expect Q3801-4 "(`s01c' == 1)" "dash build, `o': no 'option `q4_w' not allowed'"
+    }
+    foreach o in "title(T)" "subtitle(S)" {
+        capture noisily dash build, saving("`s01d'/q4.html") replace nobrowser `o'
+        _w38_expect Q3801-4 "(_rc == 0)" "dash build, `o' rc `=_rc'"
+    }
+    capture graph drop _all
+    quietly twoway scatter mpg weight, nodraw name(q3801ca)
+    quietly twoway scatter price weight, nodraw name(q3801cb)
+    capture noisily graph combine q3801ca q3801cb, cols(2) holes(3) colfirst xcommon ycommon iscale(.5) imargin(small) note(n) caption(c) xsize(5) ysize(5) nodraw name(q3801cc)
+    _w38_expect Q3801-4 "(_rc == 0)" "graph combine with its options rc `=_rc'"
+    capture log close s01l
+    quietly log using "`s01d'/q4c.log", text replace name(s01l) nomsg
+    capture noisily graph combine q3801g
+    local q4_crc = _rc
+    quietly log close s01l
+    _w38_expect Q3801-4 "(`q4_crc' == 198)" "graph combine q3801g rc `q4_crc'"
+    _w38_s01_log "`s01d'/q4c.log" "q3801g is not a memory graph"
+    _w38_expect Q3801-4 "(`s01c' == 1)" "no 'q3801g is not a memory graph'"
+    _w38_done Q3801-4 "dash build refuses graph combine's options and takes title() and subtitle(); graph combine refuses a registered name"
+    capture dash clear
+    capture graph drop _all
 
     local s01f : dir "`s01d'" files "*"
     foreach f of local s01f {

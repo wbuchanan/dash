@@ -14,6 +14,8 @@ item:
   dashboard (TestGraphMemory).
 * ECO-1 -- a registered graph keeps its command and frame, not its data
   (TestDataAtBuild).
+* ECO-4 -- graph combine maps to dash build's layout() and tabs(); its
+  options are refused (TestGraphCombine).
 
 The Stata half -- each measurable sentence beside twoway in one run -- is
 test_wp38_truth.cscript's block S01 (Q3801-k).
@@ -255,3 +257,43 @@ class TestDataAtBuild:
         line = _sub_point("Data at build.")
         assert ("A named graph draws its frame's data as they are at "
                 "{cmd:dash build}; see " + _LINK + ".") in line
+
+
+#: graph combine's options dash build refuses, "option X not allowed",
+#: r(198), each measured at the WP-38 base (Q3801-4).
+_COMBINE_REFUSED = ("cols()", "rows()", "holes()", "colfirst", "xcommon",
+                    "ycommon", "iscale()", "imargin()", "note()",
+                    "caption()", "xsize()", "ysize()")
+
+
+class TestGraphCombine:
+    """ECO-4: dash build plays graph combine's part (Q3801-4)."""
+
+    def _para(self):
+        t = _topic()
+        i = t.index("{ul:graph combine.}")
+        return t[i:t.index("{ul:", i + 5)] if "{ul:" in t[i + 5:] else t[i:]
+
+    def test_every_option_listed(self):
+        para = self._para()
+        for opt in _COMBINE_REFUSED:
+            assert "{cmd:%s}" % opt in para, opt
+        assert ("are not {cmd:dash build}'s options and are refused, "
+                "\"option {it:name} not allowed\", {cmd:r(198)};") in para
+        assert ("{cmd:graph combine g1} after {cmd:dash} is refused, \"g1 "
+                "is not a memory graph\", {cmd:r(198)}.") in para
+
+    def test_layout_is_the_counterpart(self):
+        para = self._para()
+        assert ("{cmd:dash build} plays {cmd:graph combine}'s part: it "
+                "places the registered graphs and KPI cards in "
+                "{cmd:layout()}'s grid or in {cmd:tabs()} (see "
+                "{help dash##layout:Layout}), with {cmd:title()} and "
+                "{cmd:subtitle()} over them.") in para
+        assert "{cmd:layout(}{it:rows} {it:cols}{cmd:)}" in para
+        assert "{cmd:layout(}{it:name}{cmd::}{it:row}{cmd:,}{it:col}" in para
+
+    def test_the_sub_point(self):
+        line = _sub_point("graph combine.")
+        assert ("{cmd:dash build} with {cmd:layout()} combines registered "
+                "graphs; see " + _LINK + ".") in line

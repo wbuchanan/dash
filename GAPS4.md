@@ -398,7 +398,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **syn:SD-17 Tracked:** Documented in WP-38, BUGS.md "name() registers the graph instead of drawing it, and saving() beside name() writes nothing; a do-file that names every graph produces no output", commit pending.
 - **GW-12 Tracked:** Documented in WP-38, BUGS.md "A dashboard is not a Stata graph: graph export/save/display/combine, putdocx, putpdf, putexcel, dyndoc and markdown cannot use it; graph export writes a stale graph or r(601)", commit pending.
 - **ECO-1 Tracked:** Documented in WP-38, BUGS.md "A registered graph draws the data in memory at dash build, not at registration: preserve/collapse + name() + restore draws the restored data with no note; tempvar and frame graphs fail with r(111)", commit pending.
-- **ECO-4 Tracked:** Open (WP-38 section 38-01).
+- **ECO-4 Tracked:** Documented in WP-38, BUGS.md "graph combine has no full counterpart: dash build refuses xcommon, ycommon, cols(), holes(), colfirst, iscale(), imargin(), note(), caption() and xsize(), and the help never maps combine to layout()", commit pending.
 - **GW-13 Tracked:** Open (WP-38 section 38-02).
 - **GW-14 Tracked:** Open (WP-38 section 38-02).
 - **GW-15 Tracked:** Open (WP-38 section 38-02).

@@ -1523,6 +1523,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Data at build.}  A named graph draws its frame's data as they are at {cmd:dash build}; see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:graph combine.}  {cmd:dash build} with {cmd:layout()} combines registered graphs; see {help dash##graphintegration:Stata graph integration}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -1897,6 +1899,21 @@ the frame current at {cmd:dash build}.  What counts is the data when
 {cmd:dash build} runs, not when the graph is registered: build before
 {cmd:restore}, or keep the reduced data in a frame of their own and register
 the graph under {cmd:frame} {it:name}{cmd::}.
+
+{pstd}
+{ul:graph combine.}  {cmd:dash build} plays {cmd:graph combine}'s part: it
+places the registered graphs and KPI cards in {cmd:layout()}'s grid or in
+{cmd:tabs()} (see {help dash##layout:Layout}), with {cmd:title()} and
+{cmd:subtitle()} over them.  {cmd:graph combine}'s {cmd:cols()},
+{cmd:rows()}, {cmd:holes()}, {cmd:colfirst}, {cmd:xcommon}, {cmd:ycommon},
+{cmd:iscale()}, {cmd:imargin()}, {cmd:note()}, {cmd:caption()},
+{cmd:xsize()} and {cmd:ysize()} are not {cmd:dash build}'s options and are
+refused, "option {it:name} not allowed", {cmd:r(198)};
+{cmd:layout(}{it:rows} {it:cols}{cmd:)} and
+{cmd:layout(}{it:name}{cmd::}{it:row}{cmd:,}{it:col} ...{cmd:)} give the
+grid, and {cmd:link()} shares a selection between graphs.
+{cmd:graph combine g1} after {cmd:dash} is refused, "g1 is not a memory
+graph", {cmd:r(198)}.
 
 
 {marker accessibility}{...}
