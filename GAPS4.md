@@ -407,16 +407,16 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ECO-5 Tracked:** Documented in WP-38, BUGS.md "'dash clear g2' clears the whole registry (no syntax check); there is no dir/describe/drop for registered items", commit c713765.
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit 51fcf94.
 - **ECO-7 Tracked:** Documented in WP-38, BUGS.md "dash leaves internal s() macros (s(_recast_type), s(g_saving), s(g_name)); twoway clears s()", commit 933328c.
-- **plat:PT-8 Tracked:** Documented in WP-40, BUGS.md "r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts", commit pending.
+- **plat:PT-8 Tracked:** Documented in WP-40, BUGS.md "r(134) above 5M embedded cells (hard ceiling 20M, about 10M obs for one y and one x), 100 plots, 10,000 reflines and 1,000 added texts", commit ce1b7c3.
 - **plat:PT-7 Tracked:** Closed in WP-40, BUGS.md "The cell cap counts _N whatever if/in select (the qualifier adds a column), so 'in 1/100' on 3M obs is refused although the page embeds only the selected rows", commit 0d31c6b.
-- **plat:PT-9 Tracked:** Documented in WP-40, BUGS.md "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws", commit pending.
-- **plat:PT-10 Tracked:** Documented in WP-40, BUGS.md "by() draws the first 100 groups (ceiling 1,000), with a note", commit pending.
-- **stat:PT-15 Tracked:** Documented in WP-40, BUGS.md "n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree", commit pending.
-- **sil:SD-1 Tracked:** Documented in WP-40, BUGS.md "histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars", commit pending.
-- **AX-16 Tracked:** Documented in WP-40, BUGS.md "An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently", commit pending.
-- **sil:SD-11 Tracked:** Documented in WP-40, BUGS.md "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number", commit pending.
-- **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit pending.
-- **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit pending.
+- **plat:PT-9 Tracked:** Documented in WP-40, BUGS.md "The plot limit is per graph, not twoway's 100 variables per plot: dash takes y1-y100 x (twoway r(103)) and refuses (y1-y60 x)(y61-y120 x), which twoway draws", commit 112bfd5.
+- **plat:PT-10 Tracked:** Documented in WP-40, BUGS.md "by() draws the first 100 groups (ceiling 1,000), with a note", commit fd67861.
+- **stat:PT-15 Tracked:** Documented in WP-40, BUGS.md "n() above 10,000 and bin() above 1,000 are refused; lpoly degree() above 30 is fitted at a lower degree", commit ac96ac0.
+- **sil:SD-1 Tracked:** Documented in WP-40, BUGS.md "histogram width() or discrete needing more than 1,000 bins (empty ones counted) is rebinned: width() is dropped, and discrete is squeezed into 1,000 bars", commit 7342e67.
+- **AX-16 Tracked:** Documented in WP-40, BUGS.md "An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently", commit 27f1d91.
+- **sil:SD-11 Tracked:** Documented in WP-40, BUGS.md "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number", commit 4f884dc.
+- **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit 83997b1.
+- **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit 76543d4.
 - **BY-28 Tracked:** Open (WP-41 section 41-01).
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
