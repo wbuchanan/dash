@@ -120,7 +120,7 @@ foreach t of local types {
 local probes at(mpg) blabel(total) ciopts(lcolor(red)) fitopts(lcolor(red)) ///
     lineopts(lcolor(red)) mlabwidth(thick) bmlinestyle(p3) dlalign(inside) ///
     acolor(red) alcolor(red) alwidth(thick) alpattern(dash) sort sort(price) ///
-    heatmap outlines lstyle(p3) alstyle(p3) blstyle(p3) mstyle(p3) mlstyle(p3) ///
+    outlines lstyle(p3) alstyle(p3) blstyle(p3) mstyle(p3) mlstyle(p3) ///
     mangle(30) barbsize(2) headlabel mwidth baroffset(1) msize(small) ///
     recast(line) filter(foreign) link(g1) play(zn_no_such_recording) replace
 local k 0

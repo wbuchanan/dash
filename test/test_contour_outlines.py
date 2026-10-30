@@ -1,28 +1,25 @@
 """
-test_contour_outlines.py -- contour's outlines and heatmap options reach
-the renderer and are drawn as twoway draws them (WP-37 TR-13a, ruling
-D64).
+test_contour_outlines.py -- contour's outlines option reaches the
+renderer and is drawn as twoway draws it (WP-37 TR-13a, ruling D64).
 
-The defect (found by 37-03): _dash_parse_plot_opts kept outlines and
-heatmap as s(_outlines) and s(_heatmap), and _dash_plot_opts_to_json's
-key list wrote neither, so a real dash command drew neither; and WP-32's
-outlines drawing stroked the bands' boundaries black in the plot.
+The defect (found by 37-03): _dash_parse_plot_opts kept outlines as
+s(_outlines), and _dash_plot_opts_to_json's key list did not write it, so
+a real dash command did not draw it; and WP-32's outlines drawing stroked
+the bands' boundaries black in the plot.
 
 Measured (test/fixtures/contour_outlines_truth.json,
 scripts/extract_contour_outlines_truth.do, graph export SVG under
 stcolor): under outlines twoway draws the plot region exactly as without
 it -- no black stroke inside it, on sandstone (a full grid, drawn from
 twoway's generator), on auto's scattered points (dash's own fit), with
-ccuts(), interp(none) and heatmap -- and outlines each box of the colour
+ccuts() and interp(none) -- and outlines each box of the colour
 key in black at 19.44 SVG units (twice a medium line, clipped to the box)
 where each box is otherwise stroked in its own colour at 6.00 (17.28
-under s2color: twice its medium line).  heatmap
-fills one rectangle per grid node (6,400 on sandstone's 80 x 80 grid, 25
-on a 5 x 5 grid) and leaves the key as it is.  contourline takes both
-and draws nothing different.  alpattern()'s boundary lines are the same
+under s2color: twice its medium line).  contourline takes it and draws
+nothing different.  alpattern()'s boundary lines are the same
 with outlines.
 
-test_wp37_truth.cscript S06 (Q3706-1..5) checks the Stata side live.
+test_wp37_truth.cscript S06 (Q3706-1..3 and Q3706-5) checks the Stata side live.
 """
 import json
 import os
@@ -74,11 +71,10 @@ def _layer(kind, opts=None):
     """(plot, df) of a contour layer drawn from Stata's polygons ("grid",
     37-03's route) or from dash's own fit ("fit")."""
     o = dict(opts or {})
-    if kind == "grid" and not o.get("heatmap"):
+    if kind == "grid":
         o["contour_gen"] = cg._obj("grid40")
         return cg._plot("contour", o), cg._grid_df()
-    return cg._plot("contour", o), (_scatter_df() if kind == "fit"
-                                    else cg._grid_df())
+    return cg._plot("contour", o), _scatter_df()
 
 
 def _bars(fig):
@@ -112,25 +108,24 @@ def _key_outlined(bar):
 
 
 class TestTheSpecCarriesThem:
-    """The real ado path: the parser returns both in s() under their own
-    names and the options writer lists them (s(_heatmap) and s(_outlines)
-    were skipped by the writer and by test_mlabvposition's check of it)."""
+    """The real ado path: the parser returns outlines in s() under its own
+    name and the options writer lists it (s(_outlines) was skipped by the
+    writer and by test_mlabvposition's check of it)."""
 
     def test_the_parser_returns_them_by_name(self):
         body = _program("_dash_parse_plot_opts")
-        for o in ("heatmap", "outlines"):
-            assert re.search(r"sreturn local %s\b" % o, body), o
-            assert not re.search(r"sreturn local _%s\b" % o, body), o
+        assert re.search(r"sreturn local outlines\b", body)
+        assert not re.search(r"sreturn local _outlines\b", body)
 
     def test_the_writer_lists_them(self):
         body = _program("_dash_plot_opts_to_json")
         keys = body.split("foreach key in", 1)[1].split("{", 1)[0]
         words = set(re.findall(r"[a-z0-9_]+", keys))
-        assert {"heatmap", "outlines"} <= words
+        assert "outlines" in words
 
     def test_the_contour_check_reads_them_by_name(self):
         body = _program("_dash_contour_check")
-        assert "_heatmap" not in body and "_outlines" not in body
+        assert "_outlines" not in body
 
 
 class TestTheFixture:
@@ -142,12 +137,13 @@ class TestTheFixture:
         assert _T["_meta"]["source"] == \
             "scripts/extract_contour_outlines_truth.do"
         probes = [k for k in _T if k != "_meta"]
-        assert len(probes) == 28
+        # 28 -> 20: eight probes of an option contour no longer takes go (D65).
+        assert len(probes) == 20
         assert all(_T[k]["rc"] == 0 for k in probes)
 
     @pytest.mark.parametrize("plain,outl", [
         ("ss.default", "ss.outlines"), ("ss.ccuts", "ss.outlines_ccuts"),
-        ("ss.none", "ss.outlines_none"), ("ss.heatmap", "ss.outlines_heatmap"),
+        ("ss.none", "ss.outlines_none"),
         ("au.default", "au.outlines"), ("au.none", "au.outlines_none"),
         ("g5.default", "g5.outlines"),
         ("ss.alpattern", "ss.outlines_alpattern"),
@@ -165,18 +161,10 @@ class TestTheFixture:
             assert (a["stroke"], a["stroke_width"]) == (a["fill"], 6.0)
             assert (b["stroke"], b["stroke_width"]) == ("#000000", width)
 
-    @pytest.mark.parametrize("key,rects", [("ss.heatmap", 6400),
-                                           ("g5.heatmap", 25)])
-    def test_heatmap_is_a_cell_per_node_and_keeps_the_key(self, key, rects):
-        h = _T[key]
-        assert h["plot_filled_rects"] == rects
-        assert h["malformed"] == 0
-        assert all(b["stroke"] == b["fill"] for b in h["key_boxes"])
-
     @pytest.mark.parametrize("ds", ["ss", "au"])
     def test_contourline_takes_both_and_draws_nothing_new(self, ds):
         assert sorted(_T[ds + ".line"]["same_plot_as"]) == [
-            ds + ".line_heatmap", ds + ".line_outlines"]
+            ds + ".line_outlines"]
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -203,26 +191,11 @@ class TestTheDrawing:
         assert not _key_outlined(bar)
         assert bar.bar_line_color is None
 
-    def test_heatmap_keeps_the_key(self, mode, kind):
-        for opts, outlined in (({"heatmap": "heatmap"}, False),
-                               ({"heatmap": "heatmap",
-                                 "outlines": "outlines"}, True)):
-            plot, df = _layer(kind, opts)
-            fig, msgs = _draw(mode, plot, df)
-            heat = [r for r in fig.renderers
-                    if "dash_contour_heat" in (r.tags or [])]
-            assert len(heat) == 1 and len(heat[0].data_source.data["left"])
-            [bar] = _bars(fig)
-            assert _key_outlined(bar) is outlined
-            assert not cg._crs(fig, "dash_contour_lines")
-            assert not [m for m in msgs if "heatmap" in m]
-
 
 @pytest.mark.parametrize("mode", _MODES)
-@pytest.mark.parametrize("opt", ["outlines", "heatmap"])
+@pytest.mark.parametrize("opt", ["outlines"])
 def test_contourline_draws_the_same_lines(mode, opt):
-    """contourline takes outlines and heatmap and draws its lines as
-    without them, from Stata's polygons on a grid (no fallback note)."""
+    """contourline takes outlines and draws its lines as without it, from Stata's polygons on a grid (no fallback note)."""
     df = cg._grid_df()
     line = cg._obj("grid40.line")
     base = cg._plot("contourline", {"contour_gen": line})
@@ -235,14 +208,6 @@ def test_contourline_draws_the_same_lines(mode, opt):
     assert len(fig1.renderers) == len(fig0.renderers)
     assert not [m for m in msgs if "cannot be read" in m or opt in m]
     assert not _bars(fig1)
-
-
-def test_a_line_object_is_read_under_heatmap():
-    """contourline's generator object is read with heatmap set: twoway's
-    contourline ignores heatmap."""
-    line = cg._obj("grid40.line")
-    assert dr._dash_contour_gen_of({"contour_gen": line,
-                                    "heatmap": "heatmap"}) is line
 
 
 def test_the_bar_follow_resizes_the_key_lines():

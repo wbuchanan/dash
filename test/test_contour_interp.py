@@ -46,8 +46,8 @@ def _scatter(n, seed=7):
 
 
 def _nodes_of(case, gx, gy):
-    """(row, column) of each heatmap rectangle's grid node, and the rect."""
-    hm = case["heatmap"]
+    """(row, column) of each node rectangle's grid node, and the rect."""
+    hm = case["nodes"]
     ix = np.searchsorted(gx, np.asarray(hm["x0"]), side="left")
     iy = np.searchsorted(gy, np.asarray(hm["y0"]), side="left")
     return iy, ix, hm
@@ -184,14 +184,14 @@ class TestDegenerate:
         assert s["note"] == "degenerate" and np.all(np.isnan(s["gz"]))
         # twoway draws no rectangle and no polygon from two points.
         two = truth["degenerate"]["two_points"]
-        assert two["heatmap"]["n_rects"] == 0 and two["filled"]["n_rows"] == 0
+        assert two["nodes"]["n_rects"] == 0 and two["filled"]["n_rows"] == 0
 
     def test_one_x_draws_the_observed_column(self, truth):
         one = truth["degenerate"]["one_x"]
         rows = one["rows"]
         s = dr._dash_contour_surface(rows["x"], rows["y"], rows["z"])
         assert s["gz"].shape == (4, 1) and s["note"] == "singular"
-        assert list(s["gz"][:, 0]) == one["heatmap"]["z"]
+        assert list(s["gz"][:, 0]) == one["nodes"]["z"]
 
     def test_unknown_interp(self, truth):
         # Measured: twoway passes interp() to its generator, which reads an
@@ -219,14 +219,14 @@ _CASES = [(ds, it) for ds in ("auto", "synthetic", "manual5")
 
 class TestAgainstTheFixture:
     @pytest.mark.parametrize("ds,interp", _CASES)
-    def test_node_levels_match_twoways_heatmap(self, truth, ds, interp):
+    def test_node_levels_match_twoways_nodes(self, truth, ds, interp):
         case = truth["cases"][ds][interp]
         x, y, z = _twoways_input(case)
         gx, gy = dr._dash_contour_grid(x, y)
         iy, ix, hm = _nodes_of(case, gx, gy)
         # Under thin-plate and Shepard twoway keeps one z of a duplicate
         # (y, x) in an order that follows the sort seed (fixture `dupseed'),
-        # not the smallest: fit to the z its heatmap shows at each observed
+        # not the smallest: fit to the z its node grid shows at each observed
         # node, so this compares the interpolation, not the pick.
         observed = {(a, b) for a, b in zip(np.searchsorted(gy, y),
                                            np.searchsorted(gx, x))}
@@ -305,7 +305,7 @@ class TestTheFixture:
         for ds in truth["cases"]:
             for it in ("thinplatespline", "shepard", "none"):
                 case = truth["cases"][ds][it]
-                assert case["rc"] == {"heatmap": 0, "filled": 0, "line": 0}
+                assert case["rc"] == {"nodes": 0, "filled": 0, "line": 0}
                 assert case["filled"]["n_rows"] > 0 and case["line"]["n_rows"] > 0
         assert truth["cases"]["manual5"]["thinplatespline"]["input"]["n_unique"] == 4
         assert sorted(truth["grid"]) == ["auto", "manual5", "synthetic"]

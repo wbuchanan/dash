@@ -253,10 +253,8 @@ def _contours(rs):
 
 @pytest.mark.parametrize("mode", MODES)
 class TestContourParts:
-    """contour's heatmap, outlines, alpattern() and sort, as twoway draws
-    them on a grid (measured 19oct2026, graph export SVG): heatmap fills
-    each node's cell -- to the midpoints between nodes, the grid's ends at
-    its edge -- in its level's colour in place of the bands; outlines
+    """contour's outlines, alpattern() and sort, as twoway draws them on a
+    grid (measured 19oct2026, graph export SVG): outlines
     leaves the plot as it is (WP-37 TR-13a: it outlines the key's boxes,
     test_contour_outlines.py); alpattern()
     dashes their hairline boundaries (twoway's .001 line, a third of a
@@ -269,18 +267,6 @@ class TestContourParts:
                                {"scheme": "stcolor"}, {}), mode)
         rs = [r for f in d.figures for r in f.renderers]
         return rs, [m for m in d.warnings if m.startswith("dash")]
-
-    def test_heatmap_draws_cells(self, mode):
-        rs, notes = self._figs(mode, {"heatmap": "heatmap"})
-        heat = [r for r in rs if isinstance(r, GlyphRenderer)
-                and type(r.glyph).__name__ == "Quad"
-                and "dash_contour_heat" in (r.tags or [])]
-        assert heat, "no heatmap cells"
-        d = heat[0].data_source.data
-        assert len(d["left"]) > 4
-        L, R = np.asarray(d["left"]), np.asarray(d["right"])
-        assert np.all(R > L)
-        assert not [n for n in notes if "heatmap" in n]
 
     def test_outlines_outlines_the_key_not_the_plot(self, mode):
         """Flipped (WP-37 TR-13a): outlines drew the bands' boundaries black
@@ -322,22 +308,3 @@ class TestRbarMwidthBaroffsetTurned:
         f = r.glyph.y if isinstance(r.glyph.y, str) else r.glyph.y.field
         assert f == a["col"]
         assert not [n for n in notes if "baroffset" in n]
-
-
-class TestContourHeatCells:
-    """The heatmap's cells end half way between consecutive nodes and at
-    the grid's ends, as twoway's heatmap rectangles do (U23-1 in
-    test_wp31_truth.cscript measures the same edges); a missing node draws
-    no cell (interp(none), U23-4)."""
-
-    def test_cells_end_half_way_between_nodes(self):
-        import dash_render as dr
-        c = dr._dash_contour_heat_cells(
-            [1.0, 2.0, 4.0], [10.0, 20.0],
-            [[1.0, 2.0, float("nan")], [3.0, 4.0, 5.0]],
-            [0.0, 2.5, 6.0], ["#a", "#b"])
-        assert c["left"] == [1.0, 1.5, 1.0, 1.5, 3.0]
-        assert c["right"] == [1.5, 3.0, 1.5, 3.0, 4.0]
-        assert c["bottom"] == [10.0, 10.0, 15.0, 15.0, 15.0]
-        assert c["top"] == [15.0, 15.0, 20.0, 20.0, 20.0]
-        assert c["fill_color"] == ["#a", "#a", "#b", "#b", "#b"]

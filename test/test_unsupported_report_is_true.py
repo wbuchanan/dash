@@ -120,10 +120,10 @@ PLOT_VALUES = {
     "percent": ("percent", "frequency", "histogram"),
     "range": ("10 30", "12 28", "kdensity"),
     "scheme": ("economist", "s1mono", "scatter"),
-    # Flipped (WP-32): heatmap and outlines -- named and inert -- left
-    # this table: dash draws them on contour as twoway does
-    # (test_noted_drawn.py TestContourParts); _dash_contour_split reads
-    # them, so no syntax block declares them.
+    # Flipped (WP-32): outlines -- named and inert -- left this table:
+    # dash draws it on contour as twoway does (test_noted_drawn.py
+    # TestContourParts); _dash_contour_split reads it, so no syntax block
+    # declares it.
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
     # line in x order under it -- so the inert case is on scatter, where it
     # is still named and draws nothing.
@@ -181,8 +181,8 @@ FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
          # WP-22: twoway's advanced options, declared XOVERHANGs/YOVERHANGs.
          "xoverhangs", "yoverhangs",
-         # WP-31 B4b: contour's heatmap and band outlines, named.
-         "heatmap", "outlines",
+         # WP-31 B4b: contour's band outlines, named.
+         "outlines",
          # The seven statistical sub-options (WP-18): discrete on
          # histogram; stdp/stdf/stdr on lfitci and qfitci; mean, noweight,
          # adjust and logit on lowess.
@@ -287,7 +287,7 @@ class TestTheListIsCoveredAndHonest:
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33 and 24 -> 18: D1 xmlabel xmtick tmlabel tmtick ymlabel
         # ymtick drawn (minor ticks and labels)
-        # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25 and
+        # 33 -> 35: B4b two contour options named; 35 -> 25 and
         # 18 -> 8: D2 edge titles drawn, title2/subtitle2 refused
         # 25 -> 20 and 8 -> 3: D5 fxsize fysize scale xoverhangs
         # yoverhangs drawn; 20 -> 19: E3 mlalign() read by the renderer
@@ -296,7 +296,7 @@ class TestTheListIsCoveredAndHonest:
         # lineopts mlabwidth refused, as twoway refuses them
         # 10 -> 9 and 1 -> 0: WP-32 play() refused, as twoway refuses a
         # recording it cannot find or read
-        # 9 -> 7: WP-32 heatmap and outlines drawn on contour
+        # 9 -> 7: WP-32 two contour options drawn
         assert len(_plot_pending()) == 7, sorted(_plot_pending())
         assert len(_graph_pending()) == 0, sorted(_graph_pending())
 

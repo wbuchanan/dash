@@ -1528,11 +1528,10 @@ program define _dash_parse_plot_opts, sclass
     // on tsline and tsrline, taking sort off this list there (WP-29
     // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
-    // WP-31 B4b: contour's heatmap drawing and its band outlines.
-    // WP-32: heatmap and outlines are drawn on contour as twoway draws
-    // them (map_contour's _contour_parts and _contour_key) and change
-    // nothing on contourline: not named.  They reach the spec under their
-    // own names (WP-37 TR-13a; s(_heatmap) and s(_outlines) never did).
+    // WP-32: outlines is drawn on contour as twoway draws it
+    // (map_contour's _contour_key) and changes nothing on contourline:
+    // not named.  It reaches the spec under its own name (WP-37 TR-13a;
+    // s(_outlines) never did).
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -1641,7 +1640,6 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidths         : copy local clwidths
     sreturn local clpatterns       : copy local clpatterns
     sreturn local reversekey       : copy local reversekey
-    sreturn local heatmap          : copy local heatmap
     sreturn local outlines         : copy local outlines
     sreturn local colorlines       : copy local colorlines
     sreturn local _le_typed        : copy local _dash_le_typed
@@ -2697,8 +2695,8 @@ program define _dash_contour_split
     // bare "string" after the comma, which the plot parser then misreads
     // (test_json_escaping.cscript JSE-69, test_parser.cscript U26-12).
     // Otherwise it is left as typed.
-    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines"
-    mata: st_local("_zyx_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(cc|lev|minmax|crule|sc|ec|clab|format|interp|clwidths|clpatterns|rev|heatmap|out|colorlines)")))
+    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey outlines colorlines"
+    mata: st_local("_zyx_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(cc|lev|minmax|crule|sc|ec|clab|format|interp|clwidths|clpatterns|rev|out|colorlines)")))
     if !`_zyx_any' {
         foreach o of local zo {
             c_local `o' ""
@@ -2727,7 +2725,7 @@ program define _dash_contour_split
             CRULE(string asis) SColor(string asis) EColor(string asis) ///
             CColors(string asis) CLABels(string asis) FORMAT(string asis) ///
             INTERP(string asis) CLWIDTHS(string asis) ///
-            CLPATTERNS(string asis) REVersekey HEATMAP OUTlines COLORLINES ]
+            CLPATTERNS(string asis) REVersekey OUTlines COLORLINES ]
         if _rc mata: _dash_zyx_out = _dash_zyx_out + " " + _dash_zyx_tok[`_zi']
         else {
             local _zyx_in_`_zi' 1
@@ -2736,7 +2734,7 @@ program define _dash_contour_split
             }
         }
     }
-    mata: _dash_zyx_keep = _dash_rightmost_keep(_dash_zyx_nm, "minmax reversekey heatmap outlines colorlines")
+    mata: _dash_zyx_keep = _dash_rightmost_keep(_dash_zyx_nm, "minmax reversekey outlines colorlines")
     forvalues _zi = 1/`_zn' {
         if "`_zyx_in_`_zi''" == "1" {
             mata: st_local("_k", strofreal(_dash_zyx_keep[`_zi']))
@@ -2749,7 +2747,7 @@ program define _dash_contour_split
         SColor(string asis) EColor(string asis) CColors(string asis) ///
         CLABels(string asis) FORMAT(string asis) INTERP(string asis) ///
         CLWIDTHS(string asis) CLPATTERNS(string asis) REVersekey ///
-        HEATMAP OUTlines COLORLINES ]
+        OUTlines COLORLINES ]
     foreach o of local zo {
         c_local `o' `"`macval(`o')'"'
     }
@@ -2888,8 +2886,8 @@ end
 program define _dash_contour_check, sclass
     version 19
     args own
-    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines"
-    local zo_flags "minmax reversekey heatmap outlines colorlines"
+    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey outlines colorlines"
+    local zo_flags "minmax reversekey outlines colorlines"
     if !inlist("`own'", "contour", "contourline") {
         foreach o of local zo {
             mata: st_local("_zv", strofreal(st_global("s(`o')") != ""))
@@ -5824,7 +5822,7 @@ program define _dash_plot_opts_to_json, rclass
                    gap baroffset area boundary droplines nodropbase ///
                    ccuts levels minmax crule scolor ecolor ccolors clabels ///
                    format interp clwidths clpatterns reversekey colorlines ///
-                   heatmap outlines ///
+                   outlines ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -8901,9 +8899,8 @@ end
 // _dash_contour_gen <scalar> <name>  -- twoway's own contour polygons
 // (WP-37 TR-13), made at export in the frame the data are written from,
 // right after _dash_zero_obs_check: for each contour or contourline plot
-// of the graph whose JSON the string scalar <scalar> holds (no contour
-// with heatmap, which twoway draws from another generator; contourline
-// ignores heatmap, as twoway does), over its rows -- the
+// of the graph whose JSON the string scalar <scalar> holds, over its
+// rows -- the
 // plot's and the graph's qualifier columns, z, y and x not missing -- and
 // under by() over each panel's rows (and all of them for the Total
 // panel), twoway__contour_gen runs when the rows are a full grid (every
@@ -8933,7 +8930,7 @@ program define _dash_contour_gen
     mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "by", "_cg_by")
     mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "zlabel", "_cg_zl")
     forvalues k = 1/`_cg_n' {
-        foreach key in type zvar yvar xvar qual_col levels ccuts minmax interp heatmap outlines alpattern sort {
+        foreach key in type zvar yvar xvar qual_col levels ccuts minmax interp outlines alpattern sort {
             mata: _dash_json_get_str(`zr'[`k'], "`key'", "_cg_`key'_`k'")
         }
     }
@@ -8942,7 +8939,6 @@ program define _dash_contour_gen
     forvalues k = 1/`_cg_n' {
         local t = strlower("`_cg_type_`k''")
         if !`: list t in _cg_types' continue
-        if "`t'" == "contour" & `"`_cg_heatmap_`k''"' != "" continue
         local z `_cg_zvar_`k''
         local y `_cg_yvar_`k''
         local x `_cg_xvar_`k''

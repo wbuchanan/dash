@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "e46e57de8e647e1982bd037c5cb3fac31b4e03c5",
-  "extracted": "19 Oct 2026 06:13:43",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "a74be41321ba13c57a689b132394e909c8abb797",
+  "extracted": "30 Oct 2026 08:09:23",
   "source": "scripts/extract_noted_option_truth.do",
   "stata_version": "19.5"
  },
@@ -132,9 +132,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "acolor()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -142,9 +140,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "acolor()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -490,9 +486,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "alcolor()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -500,9 +494,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "alcolor()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -848,9 +840,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "alpattern()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": true,
     "twoway_message": "",
@@ -858,9 +848,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "alpattern()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -1560,9 +1548,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "alwidth()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -1570,9 +1556,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "alwidth()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -2272,9 +2256,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "barbsize()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -2282,9 +2264,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "barbsize()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -3692,9 +3672,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "bmlinestyle()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -3702,9 +3680,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "bmlinestyle()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -4404,9 +4380,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "dlalign()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -4414,9 +4388,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "dlalign()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -5797,364 +5769,6 @@
     "twoway_rc": 198
    }
   },
-  "heatmap": {
-   "area": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "bar": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "connected": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "contour": {
-    "dash_message": "",
-    "dash_note": [
-     "heatmap"
-    ],
-    "dash_rc": 0,
-    "twoway_draws": true,
-    "twoway_message": "",
-    "twoway_rc": 0
-   },
-   "contourline": {
-    "dash_message": "",
-    "dash_note": [
-     "heatmap"
-    ],
-    "dash_rc": 0,
-    "twoway_draws": false,
-    "twoway_message": "",
-    "twoway_rc": 0
-   },
-   "dot": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "dropline": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "fpfit": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "fpfitci": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "function": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "histogram": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "kdensity": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "lfit": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "lfitci": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "line": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "lowess": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "lpoly": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "lpolyci": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "mband": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "mspline": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pcarrow": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pcarrowi": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pcbarrow": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pccapsym": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pci": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pcscatter": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "pcspike": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "qfit": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "qfitci": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rarea": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rbar": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rcap": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rcapsym": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rconnected": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rline": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rpcap": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rpspike": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rscatter": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "rspike": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "scatter": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "scatteri": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "spike": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "tsline": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   },
-   "tsrline": {
-    "dash_message": "option heatmap not allowed",
-    "dash_note": [],
-    "dash_rc": 198,
-    "twoway_draws": null,
-    "twoway_message": "option heatmap not allowed",
-    "twoway_rc": 198
-   }
-  },
   "lineopts(lcolor(red))": {
    "area": {
     "dash_message": "option lineopts() not allowed",
@@ -7244,9 +6858,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "mangle()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -7254,9 +6866,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "mangle()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -9372,9 +8982,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "outlines"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": true,
     "twoway_message": "",
@@ -9382,9 +8990,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "outlines"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -10776,9 +10382,7 @@
    },
    "bar": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10794,9 +10398,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": true,
     "twoway_message": "",
@@ -10804,9 +10406,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -10814,9 +10414,7 @@
    },
    "dot": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10824,9 +10422,7 @@
    },
    "dropline": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10938,9 +10534,7 @@
    },
    "pcarrow": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10956,9 +10550,7 @@
    },
    "pcbarrow": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10966,9 +10558,7 @@
    },
    "pccapsym": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10984,9 +10574,7 @@
    },
    "pcscatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -10994,9 +10582,7 @@
    },
    "pcspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11028,9 +10614,7 @@
    },
    "rbar": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11038,9 +10622,7 @@
    },
    "rcap": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11048,9 +10630,7 @@
    },
    "rcapsym": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11074,9 +10654,7 @@
    },
    "rpcap": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11084,9 +10662,7 @@
    },
    "rpspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11094,9 +10670,7 @@
    },
    "rscatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11104,9 +10678,7 @@
    },
    "rspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11114,9 +10686,7 @@
    },
    "scatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11132,9 +10702,7 @@
    },
    "spike": {
     "dash_message": "",
-    "dash_note": [
-     "sort"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11168,9 +10736,7 @@
    },
    "bar": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11186,9 +10752,7 @@
    },
    "contour": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": true,
     "twoway_message": "",
@@ -11196,9 +10760,7 @@
    },
    "contourline": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": false,
     "twoway_message": "",
@@ -11206,9 +10768,7 @@
    },
    "dot": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11216,9 +10776,7 @@
    },
    "dropline": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11330,9 +10888,7 @@
    },
    "pcarrow": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11348,9 +10904,7 @@
    },
    "pcbarrow": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11358,9 +10912,7 @@
    },
    "pccapsym": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11376,9 +10928,7 @@
    },
    "pcscatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11386,9 +10936,7 @@
    },
    "pcspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11420,9 +10968,7 @@
    },
    "rbar": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11430,9 +10976,7 @@
    },
    "rcap": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11440,9 +10984,7 @@
    },
    "rcapsym": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11466,9 +11008,7 @@
    },
    "rpcap": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11476,9 +11016,7 @@
    },
    "rpspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11486,9 +11024,7 @@
    },
    "rscatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11496,9 +11032,7 @@
    },
    "rspike": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11506,9 +11040,7 @@
    },
    "scatter": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",
@@ -11524,9 +11056,7 @@
    },
    "spike": {
     "dash_message": "",
-    "dash_note": [
-     "sort()"
-    ],
+    "dash_note": [],
     "dash_rc": 0,
     "twoway_draws": "order",
     "twoway_message": "",

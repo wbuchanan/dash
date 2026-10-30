@@ -895,8 +895,8 @@ class TestKdensityRange:
         # dstyle() dlstyle() drawn, dlalign() named.
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn.
         # 33 -> 23: D2 the eight edge titles drawn, title2() and
-        # subtitle2() refused.  23 -> 25: B4b heatmap() and outlines()
-        # named on contour.  25 -> 20: D5 fxsize fysize scale xoverhangs
+        # subtitle2() refused.  23 -> 25: B4b two contour options
+        # named.  25 -> 20: D5 fxsize fysize scale xoverhangs
         # yoverhangs drawn (scale was the second control; play is now).
         # 20 -> 19: E3 mlalign() read by the renderer.  19 -> 18: E2
         # mlpattern() taken as twoway takes it.

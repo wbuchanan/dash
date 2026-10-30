@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "fe63092408ba3b9d80a25100dcd07e6404a7c27f",
-  "extracted": "29 Oct 2026 17:19:24",
+  "dash_commit": "a74be41321ba13c57a689b132394e909c8abb797",
+  "extracted": "30 Oct 2026 08:09:44",
   "scheme": "stcolor (s2.*: s2color)",
   "source": "scripts/extract_contour_outlines_truth.do",
   "stata_version": "19.5"
@@ -50,88 +50,6 @@
    "au.outlines"
   ]
  },
- "au.heatmap": {
-  "command": "twoway contour price mpg weight, heatmap",
-  "cuts": [
-   5000.0,
-   10000.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#ff0000",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ff00",
-    "rect": 1,
-    "stroke": "#00ff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#0000ff",
-    "stroke_width": 6.0
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 2292,
-  "plot_filled_rects": 1344,
-  "plot_lines": 252,
-  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
-  "plot_md5": "adacae463fd645daaf80963781616847",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 1108,
-   "#00ff00 6.00": 899,
-   "#ff0000 6.00": 285
-  },
-  "rc": 0,
-  "same_plot_as": []
- },
- "au.heatmap_none": {
-  "command": "twoway contour price mpg weight, heatmap interp(none)",
-  "cuts": [
-   5000.0,
-   10000.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#ff0000",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ff00",
-    "rect": 1,
-    "stroke": "#00ff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#0000ff",
-    "stroke_width": 6.0
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 116,
-  "plot_filled_rects": 74,
-  "plot_lines": 252,
-  "plot_lines_md5": "9c2229fcd96bab17a294bd0de66d8e1b",
-  "plot_md5": "752c17997d7f72ae919f874d59d7db28",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 62,
-   "#00ff00 6.00": 39,
-   "#ff0000 6.00": 15
-  },
-  "rc": 0,
-  "same_plot_as": []
- },
  "au.line": {
   "command": "twoway contourline price mpg weight",
   "cuts": [
@@ -149,28 +67,6 @@
   "plot_stroke_kinds": {},
   "rc": 0,
   "same_plot_as": [
-   "au.line_heatmap",
-   "au.line_outlines"
-  ]
- },
- "au.line_heatmap": {
-  "command": "twoway contourline price mpg weight, heatmap",
-  "cuts": [
-   5000.0,
-   10000.0
-  ],
-  "key_boxes": [],
-  "malformed": 0,
-  "plot_black_strokes": 458,
-  "plot_filled": 0,
-  "plot_filled_rects": 0,
-  "plot_lines": 754,
-  "plot_lines_md5": "796598a43f2a85d98842e6dd47500ece",
-  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
-  "plot_stroke_kinds": {},
-  "rc": 0,
-  "same_plot_as": [
-   "au.line",
    "au.line_outlines"
   ]
  },
@@ -191,8 +87,7 @@
   "plot_stroke_kinds": {},
   "rc": 0,
   "same_plot_as": [
-   "au.line",
-   "au.line_heatmap"
+   "au.line"
   ]
  },
  "au.none": {
@@ -374,55 +269,6 @@
   "same_plot_as": [
    "g5.outlines"
   ]
- },
- "g5.heatmap": {
-  "command": "twoway contour z y x, heatmap",
-  "cuts": [
-   2.0,
-   4.0,
-   6.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#ff0000",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#aaff00",
-    "rect": 1,
-    "stroke": "#aaff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ffaa",
-    "rect": 1,
-    "stroke": "#00ffaa",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#0000ff",
-    "stroke_width": 6.0
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 36,
-  "plot_filled_rects": 25,
-  "plot_lines": 330,
-  "plot_lines_md5": "10decdf3241e607a752ea879f9766cf5",
-  "plot_md5": "4bba24dbd6a51805565e91d5106dd767",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 4,
-   "#00ffaa 6.00": 10,
-   "#aaff00 6.00": 13,
-   "#ff0000 6.00": 9
-  },
-  "rc": 0,
-  "same_plot_as": []
  },
  "g5.outlines": {
   "command": "twoway contour z y x, outlines",
@@ -748,130 +594,6 @@
    "ss.outlines_none"
   ]
  },
- "ss.heatmap": {
-  "command": "twoway contour depth northing easting, heatmap",
-  "cuts": [
-   7700.0,
-   7800.0,
-   7900.0,
-   8000.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#ff0000",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#ffff00",
-    "rect": 1,
-    "stroke": "#ffff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ff00",
-    "rect": 1,
-    "stroke": "#00ff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ffff",
-    "rect": 1,
-    "stroke": "#00ffff",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#0000ff",
-    "stroke_width": 6.0
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 12460,
-  "plot_filled_rects": 6400,
-  "plot_lines": 270,
-  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
-  "plot_md5": "ce3b0e4393ca7ebfb9b5f07ab0c93f33",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 379,
-   "#00ff00 6.00": 4687,
-   "#00ffff 6.00": 744,
-   "#ff0000 6.00": 1110,
-   "#ffff00 6.00": 5540
-  },
-  "rc": 0,
-  "same_plot_as": [
-   "ss.outlines_heatmap"
-  ]
- },
- "ss.heatmap_ccuts": {
-  "command": "twoway contour depth northing easting, heatmap ccuts(7600(100)8000)",
-  "cuts": [
-   7600.0,
-   7700.0,
-   7800.0,
-   7900.0,
-   8000.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#ff0000",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#ffcc00",
-    "rect": 1,
-    "stroke": "#ffcc00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#65ff00",
-    "rect": 1,
-    "stroke": "#65ff00",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00ff65",
-    "rect": 1,
-    "stroke": "#00ff65",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#00cbff",
-    "rect": 1,
-    "stroke": "#00cbff",
-    "stroke_width": 6.0
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#0000ff",
-    "stroke_width": 6.0
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 12449,
-  "plot_filled_rects": 6400,
-  "plot_lines": 270,
-  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
-  "plot_md5": "b9e66d35a7ee07f451fdd1297012062d",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 36,
-   "#00cbff 6.00": 332,
-   "#00ff65 6.00": 744,
-   "#65ff00 6.00": 4687,
-   "#ff0000 6.00": 1110,
-   "#ffcc00 6.00": 5540
-  },
-  "rc": 0,
-  "same_plot_as": []
- },
  "ss.line": {
   "command": "twoway contourline depth northing easting",
   "cuts": [
@@ -891,30 +613,6 @@
   "plot_stroke_kinds": {},
   "rc": 0,
   "same_plot_as": [
-   "ss.line_heatmap",
-   "ss.line_outlines"
-  ]
- },
- "ss.line_heatmap": {
-  "command": "twoway contourline depth northing easting, heatmap",
-  "cuts": [
-   7700.0,
-   7800.0,
-   7900.0,
-   8000.0
-  ],
-  "key_boxes": [],
-  "malformed": 0,
-  "plot_black_strokes": 575,
-  "plot_filled": 0,
-  "plot_filled_rects": 0,
-  "plot_lines": 889,
-  "plot_lines_md5": "85fcc0e4b772ea69d799e52c6b3f415e",
-  "plot_md5": "d41d8cd98f00b204e9800998ecf8427e",
-  "plot_stroke_kinds": {},
-  "rc": 0,
-  "same_plot_as": [
-   "ss.line",
    "ss.line_outlines"
   ]
  },
@@ -937,8 +635,7 @@
   "plot_stroke_kinds": {},
   "rc": 0,
   "same_plot_as": [
-   "ss.line",
-   "ss.line_heatmap"
+   "ss.line"
   ]
  },
  "ss.none": {
@@ -1187,65 +884,6 @@
   "rc": 0,
   "same_plot_as": [
    "ss.ccuts"
-  ]
- },
- "ss.outlines_heatmap": {
-  "command": "twoway contour depth northing easting, outlines heatmap",
-  "cuts": [
-   7700.0,
-   7800.0,
-   7900.0,
-   8000.0
-  ],
-  "key_boxes": [
-   {
-    "fill": "#ff0000",
-    "rect": 1,
-    "stroke": "#000000",
-    "stroke_width": 19.44
-   },
-   {
-    "fill": "#ffff00",
-    "rect": 1,
-    "stroke": "#000000",
-    "stroke_width": 19.44
-   },
-   {
-    "fill": "#00ff00",
-    "rect": 1,
-    "stroke": "#000000",
-    "stroke_width": 19.44
-   },
-   {
-    "fill": "#00ffff",
-    "rect": 1,
-    "stroke": "#000000",
-    "stroke_width": 19.44
-   },
-   {
-    "fill": "#0000ff",
-    "rect": 1,
-    "stroke": "#000000",
-    "stroke_width": 19.44
-   }
-  ],
-  "malformed": 0,
-  "plot_black_strokes": 0,
-  "plot_filled": 12460,
-  "plot_filled_rects": 6400,
-  "plot_lines": 270,
-  "plot_lines_md5": "cd73dfdef1eebc5287101e9d79c57cfd",
-  "plot_md5": "ce3b0e4393ca7ebfb9b5f07ab0c93f33",
-  "plot_stroke_kinds": {
-   "#0000ff 6.00": 379,
-   "#00ff00 6.00": 4687,
-   "#00ffff 6.00": 744,
-   "#ff0000 6.00": 1110,
-   "#ffff00 6.00": 5540
-  },
-  "rc": 0,
-  "same_plot_as": [
-   "ss.heatmap"
   ]
  },
  "ss.outlines_none": {

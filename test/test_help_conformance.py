@@ -641,7 +641,7 @@ class TestTheParsersFoundSomething:
         # labels" goes (xmtick() .. tmtick()) and four synopt rows define
         # ymtick2() ymlabel2() xmtick2() xmlabel2().
         # 219 -> 221: B4b the Unsupported entry "Contour options" names
-        # heatmap and outlines; 221 -> 211: D2 the Unsupported entry
+        # two contour options; 221 -> 211: D2 the Unsupported entry
         # "Alternative titles" goes.
         # 211 -> 213: D8 the yvarlabel() xvarlabel() entry.
         # 213 -> 216: C17 the mlabprefix() mlabsuffix() and lalign() entries.
@@ -656,7 +656,7 @@ class TestTheParsersFoundSomething:
         # mlabwidth() leave the Unsupported entries: refused, as twoway
         # refuses them (noted_option_truth.json).
         # 266 -> 265: WP-32 play() leaves the Not drawn entry.
-        # 265 -> 265: WP-32 heatmap and outlines leave the Unsupported
+        # 265 -> 265: WP-32 two contour options leave the Unsupported
         # entries for two entries of the contour paragraph.
         # 265 -> 266: dash image's alt() (WP-33 33-06).
         # 266 -> 265: WP-35 syn:SD-20c symbol() leaves the Unsupported
@@ -669,9 +669,10 @@ class TestTheParsersFoundSomething:
         # colornlevels(), colormissing()) leave the help: dash refuses them.
         # 266 -> 265: WP-35 stat:PT-8 weight leaves the Unsupported list
         # (lowess weight taken silently).
-        assert len(found) == 237, (
-            f"{len(found)} options parsed out of dash.sthlp, 237 measured "
-            f"21oct2026: a reader of the parser lost a form, or the help "
+        # 237 -> 236: WP-37 D65 a contour option's definition leaves.
+        assert len(found) == 236, (
+            f"{len(found)} options parsed out of dash.sthlp, 236 measured "
+            f"30oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -765,7 +766,8 @@ class TestTheParsersFoundSomething:
         # 279 -> 280: WP-35 stat:PT-6 function's subchar() declared
         # 280 -> 282: WP-37 stat:PT-12 xlog and xtransform() declared
         # (_dash_label_split).
-        assert len(_ado_declarations()) == 282
+        # 282 -> 281: WP-37 D65 a contour flag leaves _dash_contour_split.
+        assert len(_ado_declarations()) == 281
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -788,7 +790,7 @@ class TestTheParsersFoundSomething:
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
-        # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25: D2
+        # 33 -> 35: B4b two contour options named; 35 -> 25: D2
         # the eight edge titles drawn, title2() and subtitle2() refused
         # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn;
         # 20 -> 19: E3 mlalign() read by the renderer
@@ -797,7 +799,7 @@ class TestTheParsersFoundSomething:
         # mlabwidth refused, as twoway refuses them
         # 10 -> 9: WP-32 play() refused, as twoway refuses a recording it
         # cannot find or read
-        # 9 -> 7: WP-32 heatmap and outlines drawn on contour
+        # 9 -> 7: WP-32 two contour options drawn
         assert len(_ignored_options()) == 7
 
     def test_the_unsupported_section_was_found(self):
@@ -822,7 +824,7 @@ class TestTheParsersFoundSomething:
         # 40 -> 39: B5b dstyle() and dlstyle() leave it with their entry,
         # dlalign() joins the marker outline entry
         # 39 -> 33: D1 the "Minor ticks and minor labels" entry goes
-        # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines;
+        # 33 -> 35: B4b the "Contour options" entry, two contour options;
         # 35 -> 25: D2 the "Alternative titles" entry goes
         # 25 -> 20: D5 the "Sizing for graph combine" and "Room for long
         # end labels" entries go; 20 -> 19: E3 mlalign() leaves the
@@ -832,8 +834,8 @@ class TestTheParsersFoundSomething:
         # 71 -> 63: WP-32 the eight options twoway refuses on every type
         # leave it (at blabel ciopts filter fitopts link lineopts mlabwidth).
         # 63 -> 62: WP-32 play() leaves it (refused; prose says so).
-        # 62 -> 60: WP-32 the Contour options entry goes (heatmap and
-        # outlines drawn).
+        # 62 -> 60: WP-32 the Contour options entry goes (its two options
+        # drawn).
         # 60 -> 59: WP-32 baroffset() on rbar beside mwidth drawn
         # (catchall_options_truth.json re-extracted).
         # 59 -> 58: WP-35 stat:PT-6 subchar() drawn on function
@@ -952,7 +954,7 @@ class TestTheParsersFoundSomething:
         # 468 -> 465: WP-32 the Options of other commands, Bar labels and
         # Build-time options entries go (refused, as twoway refuses them).
         # 465 -> 466: WP-32 the Contour options entry goes, the contour
-        # paragraph's heatmap and outlines entries come.
+        # paragraph's two option entries come.
         # 466 -> 464: the $dash_max_cells and $dash_max_bytes rows removed (WP-33 33-15)
         # 464 -> 467: dash image's syntax line, Image panels section and $dash_max_images row (WP-33 33-06)
         # 467 -> 474: the Graphs from several frames paragraph (WP-33 33-07)
@@ -963,9 +965,10 @@ class TestTheParsersFoundSomething:
         # 477 -> 478: syn:SD-22 the Differences entry contour with levels()
         # (WP-35 35-06)
         # 478 -> 450: WP-35 DT-15 the entries of the 28 refused options leave.
-        assert len(defs) == 450, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 450 "
-            f"measured 26oct2026")
+        # 450 -> 449: WP-37 D65 a contour option's entry leaves.
+        assert len(defs) == 449, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 449 "
+            f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
         assert not any("pbgc" in _option_tokens(t) for t in defs), (

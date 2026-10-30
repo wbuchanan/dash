@@ -4918,7 +4918,7 @@ if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
 // S23 B4a helper.  _u23_check(case, arg): one comparison of dash's
 // contour surface helpers with twoway's generator, read from
 // fixtures/contour_truth.json (scripts/extract_contour_truth.do) or from
-// a heatmap matrix measured live (u23_M, Mata); globals u23_ok (1 when
+// a node matrix measured live (u23_M, Mata, _contour_heatmap's); globals u23_ok (1 when
 // it holds) and u23_msg (what was compared).
 python:
 def _u23_check(case, arg=""):
@@ -4954,7 +4954,7 @@ def _u23_check(case, arg=""):
         px, py, pz = dr._dash_contour_points([1, 2, 1, 2, 2], [1, 1, 2, 2, 2],
                                              [1, 2, 3, 4, 5])
         ok = pz.size == 4 and pz[-1] == 4 and node == [4.0]
-        hm = t["cases"]["manual5"]["none"]["heatmap"]
+        hm = t["cases"]["manual5"]["none"]["nodes"]
         lev = [lv for x0, x1, y0, y1, lv in zip(hm["x0"], hm["x1"], hm["y0"],
                                                hm["y1"], hm["lev"])
                if x0 <= 2 <= x1 and y0 <= 2 <= y1][0]
@@ -4966,7 +4966,7 @@ def _u23_check(case, arg=""):
         for ds in ("auto", "synthetic", "manual5"):
             for it in ("thinplatespline", "shepard"):
                 c = t["cases"][ds][it]
-                inp, hm, cuts = c["input"], c["heatmap"], np.asarray(c["cuts"])
+                inp, hm, cuts = c["input"], c["nodes"], np.asarray(c["cuts"])
                 x, y = np.asarray(inp["x"]), np.asarray(inp["y"])
                 gx, gy = dr._dash_contour_grid(x, y)
                 iy, ix = node_index(hm, gx, gy)
@@ -4993,8 +4993,8 @@ def _u23_check(case, arg=""):
             inp = c["input"]
             s = dr._dash_contour_surface(inp["x"], inp["y"], inp["z"], "none")
             n = int(np.isfinite(s["gz"]).sum())
-            ok &= n == inp["n_unique"] == c["heatmap"]["n_rects"]
-            msg += "%s %d/%d; " % (ds, n, c["heatmap"]["n_rects"])
+            ok &= n == inp["n_unique"] == c["nodes"]["n_rects"]
+            msg += "%s %d/%d; " % (ds, n, c["nodes"]["n_rects"])
     elif case == 5:
         rng = np.random.default_rng(5)
         a = rng.uniform(0, 10, 1001)
@@ -5022,7 +5022,7 @@ if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
     display as text "S23 start " c(current_date) " " c(current_time)
 
     // ------------------------------------------------------------
-    // U23-1: dash's grid is twoway's -- the heatmap's rectangle edges are
+    // U23-1: dash's grid is twoway's -- the node rectangles' edges are
     // the midpoints of consecutive distinct x (and y) and the min and max.
     // ------------------------------------------------------------
     python: _u23_check(1)
@@ -5047,7 +5047,7 @@ if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
 
     // ------------------------------------------------------------
     // U23-3: every node's z and level under thinplatespline and shepard
-    // equal twoway's heatmap on auto, the synthetic set and manual5.
+    // equal twoway's node grid on auto, the synthetic set and manual5.
     // ------------------------------------------------------------
     python: _u23_check(3)
     _w31_expect U23-3 "(${u23_ok} == 1)" "${u23_msg}"
@@ -5055,7 +5055,7 @@ if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
 
     // ------------------------------------------------------------
     // U23-4: interp(none) draws the observed nodes only, as many as
-    // twoway's heatmap rectangles.
+    // twoway's node rectangles.
     // ------------------------------------------------------------
     python: _u23_check(4)
     _w31_expect U23-4 "(${u23_ok} == 1)" "${u23_msg}"
@@ -5073,7 +5073,7 @@ if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
     // U23-6: twoway never refuses an interp() word: its generator reads
     // a 4-letter-or-longer abbreviation of thinplatespline or shepard and
     // draws any other word as none.  Measured live on bogus: rc 0 and the
-    // heatmap of interp(none).
+    // node grid of interp(none).
     // ------------------------------------------------------------
     capture twoway contour z y x, interp(bogus) nodraw
     local u23rc = _rc

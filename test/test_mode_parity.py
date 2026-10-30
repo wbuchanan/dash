@@ -2623,8 +2623,7 @@ CORPUS = [
     _case("histogram mwidth", [plot_for("histogram", {"mwidth": "mwidth"})]),
     # WP-32: marker layers drawn in sort order.
     _case("scatter sort", [plot_for("scatter", {"sort": "sort"})]),
-    # WP-32: contour's heatmap cells and boundary lines.
-    _case("contour heatmap", [plot_for("contour", {"heatmap": "heatmap"})]),
+    # WP-32: contour's boundary lines.
     _case("contour outlines", [plot_for("contour", {"outlines": "outlines"})]),
     _case("contour alpattern(dash)", [plot_for("contour", {"alpattern": "dash"})]),
     _case("contour sort", [plot_for("contour", {"sort": "sort"})]),
@@ -2936,18 +2935,13 @@ CORPUS = [
               {"key": [0], "grid": _tr13_grid(5)},
               {"key": [1], "grid": _tr13_grid(5)}]}})],
           go={"by": "foreign"}),
-    # WP-37 TR-13a: outlines outlines the key, heatmap draws its cells,
-    # contourline draws as without them -- from Stata's polygons and
-    # from dash's own fit.
+    # WP-37 TR-13a: outlines outlines the key, contourline draws as
+    # without it -- from Stata's polygons and from dash's own fit.
     _case("TR-13a: contour outlines from Stata's polygons",
           [plot_for("contour", {"contour_gen": _tr13_grid(10),
                                 "outlines": "outlines"})]),
-    _case("TR-13a: contour heatmap outlines",
-          [plot_for("contour", {"heatmap": "heatmap",
-                                "outlines": "outlines"})]),
-    _case("TR-13a: contourline outlines heatmap",
-          [plot_for("contourline", {"heatmap": "heatmap",
-                                    "outlines": "outlines"})]),
+    _case("TR-13a: contourline outlines",
+          [plot_for("contourline", {"outlines": "outlines"})]),
     # WP-35 plot:PT-4: the graph with no plot draws no axis in either mode.
     _case("WP-35 plot:PT-4: empty graph", [], go={"title": "T"}),
     # WP-35 DT-19: a spec whose working-column prefix is not the default
@@ -3967,8 +3961,6 @@ MOVE_CORPUS = [
                [plot_for("histogram", {"mwidth": "mwidth"})]),
     _move_case("scatter sort after a move", _MOVES[0],
                [plot_for("scatter", {"sort": "sort"})]),
-    _move_case("contour heatmap after a move", _MOVES[0],
-               [plot_for("contour", {"heatmap": "heatmap"})]),
     _move_case("contour outlines after a move", _MOVES[0],
                [plot_for("contour", {"outlines": "outlines"})]),
     _move_case("contour alpattern after a move", _MOVES[0],

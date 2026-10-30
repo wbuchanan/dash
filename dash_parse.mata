@@ -9665,7 +9665,6 @@ string matrix _dash_tw_silent_tab()
     t = t \ ("bmlinestyle", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("dlalign", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("headlabel", "rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi")
-    t = t \ ("heatmap", "contourline")
     t = t \ ("lstyle", "scatter dot rscatter contour contourline pcscatter scatteri")
     t = t \ ("mangle", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcscatter pci scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("mlstyle", "line area bar spike tsline tsrline rarea rbar rspike rcap rline contour contourline pcspike pci lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
@@ -9900,7 +9899,7 @@ string scalar _dash_rep_prefix(string scalar opts, real scalar n)
 
 // _dash_pending_note(p) -- the pending names p (s(_pending): options dash
 // declares and does not draw, bare names) as the note writes them: "()"
-// after each that takes a value, none after heatmap, outlines, mwidth and
+// after each that takes a value, none after outlines, mwidth and
 // headlabel, which take none, and none after sort unless sort(varlist) was
 // given (s(sort1), the plot parser's), as twoway names a word as typed
 // (WP-32).
@@ -9916,7 +9915,7 @@ string scalar _dash_pending_note(string scalar p)
         // headlabel takes no value, and sort is named as typed: sort()
         // when sort(varlist) was given (s(sort1)), else sort (WP-32).
         out = out + " " + w[i] +
-              (anyof(("heatmap", "outlines", "mwidth", "headlabel"), w[i]) |
+              (anyof(("outlines", "mwidth", "headlabel"), w[i]) |
                (w[i] == "sort" & strtrim(st_global("s(sort1)")) == "") ?
                "" : "()")
     }

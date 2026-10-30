@@ -123,8 +123,9 @@ program define _zc_case
     mata: zc_put("`ds'.input", st_data(., ("x", "y", "z")))
     restore
     foreach i in thinplatespline shepard none {
-        foreach k in heatmap filled line {
-            capture noisily mata: zc_M = _contour_`k'("z", "y", "x", zc_ct, "`i'")
+        foreach f in _contour_heatmap _contour_filled _contour_line {
+            local k = cond("`f'" == "_contour_heatmap", "nodes", substr("`f'", 10, .))
+            capture noisily mata: zc_M = `f'("z", "y", "x", zc_ct, "`i'")
             local rc = _rc
             mata: zc_put("`ds'.`i'.`k'.rc", `rc')
             if !`rc' mata: zc_put("`ds'.`i'.`k'", zc_M)
@@ -184,7 +185,8 @@ foreach o in 1 2 {
 set sortseed 20261010
 
 * ---- interp() words: what twoway contour returns, and which method the
-* generator applies (its heatmap compared with the three canonical ones on
+* generator applies (its node matrix, _contour_heatmap's, compared with the
+* three canonical ones on
 * five points whose 3x3 grid leaves four nodes to interpolate).
 mata: zc_data((1,1,1 \ 1,3,2 \ 3,1,3 \ 2,2,10 \ 3,3,4))
 mata: zc_put("words.rows", st_data(., ("x", "y", "z")))
@@ -194,7 +196,7 @@ foreach word in thinplatespline shepard none thin thinp th t tps shep shepa sh s
     local arg = cond("`word'" == "EMPTY", "", "`word'")
     capture twoway contour z y x, interp(`arg') nodraw
     mata: zc_put("words.w`w'.rc", `=_rc')
-    mata: zc_put("words.w`w'.heatmap", _contour_heatmap("z", "y", "x", (2 \ 3 \ 4), "`arg'"))
+    mata: zc_put("words.w`w'.nodes", _contour_heatmap("z", "y", "x", (2 \ 3 \ 4), "`arg'"))
     global ZC_WORD_`w' "`word'"
 }
 global ZC_NWORDS `w'
@@ -210,8 +212,9 @@ foreach d in two_points one_x {
     quietly log close zc_log
     mata: zc_put("degenerate.`d'.rc", `rc')
     mata: zc_put("degenerate.`d'.rows", st_data(., ("x", "y", "z")))
-    foreach k in heatmap filled {
-        capture mata: zc_M = _contour_`k'("z", "y", "x", 1.5, "thinplatespline")
+    foreach f in _contour_heatmap _contour_filled {
+        local k = cond("`f'" == "_contour_heatmap", "nodes", substr("`f'", 10, .))
+        capture mata: zc_M = `f'("z", "y", "x", 1.5, "thinplatespline")
         local rc = _rc
         mata: zc_put("degenerate.`d'.`k'.rc", `rc')
         if !`rc' mata: zc_put("degenerate.`d'.`k'", zc_M)
@@ -374,7 +377,7 @@ _zd_run refuse.counts_2 twoway contour mpg weight
 _zd_run refuse.counts_4 twoway contour mpg weight length turn
 _zd_run refuse.counts_5 twoway contour mpg weight length turn trunk
 _zd_run refuse.line_counts_2 twoway contourline mpg weight
-foreach o in ccuts(1) levels(5) crule(hue) scolor(red) ecolor(red) ccolors(red) clabels(a) interp(none) minmax reversekey clwidths(thin) clpatterns(dash) heatmap outlines colorlines {
+foreach o in ccuts(1) levels(5) crule(hue) scolor(red) ecolor(red) ccolors(red) clabels(a) interp(none) minmax reversekey clwidths(thin) clpatterns(dash) outlines colorlines {
     local k = subinstr(subinstr(subinstr("`o'", "(", "", .), ")", "", .), " ", "", .)
     _zd_run refuse.on_scatter_`k' twoway scatter mpg weight, `o'
 }
@@ -425,8 +428,8 @@ def gen(key):
     return out
 
 
-def heat(key):
-    # A heatmap matrix is one rectangle per drawn grid node: four corner
+def nodes(key):
+    # _contour_heatmap's matrix is one rectangle per drawn grid node: four corner
     # rows, the node's z and level on each, missing rows between pieces.
     out = {"rc": int(scalar(key + ".rc"))}
     if key not in rec:
@@ -456,12 +459,12 @@ for ds in ("auto", "synthetic", "manual5"):
     out["cases"][ds] = {}
     for it in ("thinplatespline", "shepard", "none"):
         k = "%s.%s" % (ds, it)
-        out["cases"][ds][it] = dict(base, heatmap=heat(k + ".heatmap"),
+        out["cases"][ds][it] = dict(base, nodes=nodes(k + ".nodes"),
                                     filled=gen(k + ".filled"),
                                     line=gen(k + ".line"),
                                     rc={g: int(scalar("%s.%s.rc" % (k, g)))
-                                        for g in ("heatmap", "filled", "line")})
-    hm = out["cases"][ds]["thinplatespline"]["heatmap"]
+                                        for g in ("nodes", "filled", "line")})
+    hm = out["cases"][ds]["thinplatespline"]["nodes"]
     out["grid"][ds] = {"x": sorted(set(hm["x0"]) | set(hm["x1"])),
                        "y": sorted(set(hm["y0"]) | set(hm["y1"]))}
     out["cases"][ds]["rows"] = cols(rec[ds + ".rows"], ("x", "y", "z"))
@@ -477,13 +480,13 @@ words = {"rows": cols(rec["words.rows"], ("x", "y", "z"))}
 n = int(G("ZC_NWORDS"))
 for w in range(1, n + 1):
     word = G("ZC_WORD_%d" % w)
-    m = rec["words.w%d.heatmap" % w]
-    words[word] = {"rc": int(scalar("words.w%d.rc" % w)), "heatmap_rows": len(m)}
+    m = rec["words.w%d.nodes" % w]
+    words[word] = {"rc": int(scalar("words.w%d.rc" % w)), "node_rows": len(m)}
     if word in ("thinplatespline", "shepard", "none"):
         canon[word] = m
 for w in range(1, n + 1):
     word = G("ZC_WORD_%d" % w)
-    m = rec["words.w%d.heatmap" % w]
+    m = rec["words.w%d.nodes" % w]
     same = [c for c, cm in canon.items() if cm == m]
     words[word]["method"] = same[0] if len(same) == 1 else None
 out["interp_abbrev"] = words
@@ -503,7 +506,7 @@ for d in ("two_points", "one_x"):
         pass
     deg[d] = {"rc": int(scalar("degenerate.%s.rc" % d)), "message": text,
               "rows": cols(rec["degenerate.%s.rows" % d], ("x", "y", "z")),
-              "heatmap": heat("degenerate.%s.heatmap" % d),
+              "nodes": nodes("degenerate.%s.nodes" % d),
               "filled": gen("degenerate.%s.filled" % d)}
 out["degenerate"] = deg
 out["cost"] = {"n3000": "not run: twoway did not finish n=3000 in ten minutes "

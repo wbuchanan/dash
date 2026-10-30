@@ -24509,9 +24509,6 @@ class GlyphMapper:
                 ry = self._on_axis(fig, ry, yvar, letters[1], options)[0]
             rx, ry = np.asarray(rx, float), np.asarray(ry, float)
             return (ry, rx) if horizontal else (rx, ry)
-        # The upright grid, for heatmap's cells, which the layer's
-        # transpose turns with the layer (WP-32).
-        _ugx, _ugy, _ugz = gx, gy, np.asarray(gz)
         if horizontal:
             gx, gy, gz = gy, gx, np.asarray(gz).T
         colours = _dash_contour_colours(
@@ -24619,7 +24616,7 @@ class GlyphMapper:
         if not lines_only:
             _extra = self._contour_parts(
                 fig, cr, options, _parts, colours, cuts,
-                (gx, gy, gz), (_ugx, _ugy, _ugz), fl, drawable, source, view,
+                (gx, gy, gz), drawable, source, view,
                 cg_lines=(cg.get("lines") if cg is not None else None),
                 cg_xy=_cg_xy)
         if cg_given is not None:
@@ -24649,27 +24646,21 @@ class GlyphMapper:
         return [cr] + _extra + [hull]
 
     def _contour_parts(self, fig, cr, options, parts, colours, cuts, grid,
-                       upright, levels, drawable, source, view,
+                       drawable, source, view,
                        cg_lines=None, cg_xy=None) -> list:
-        """contour's heatmap and boundary lines (WP-32), as twoway draws
-        them (measured 19oct2026 on a grid, graph export SVG):
-
-        - ``heatmap``: each node's cell -- to the midpoints between nodes,
-          the grid's ends at its edge -- filled in its level's colour in
-          place of the bands (the bands drawn transparent, kept for the
-          key and the refit), a Quad over the upright grid that the
-          layer's transpose turns (:func:`_dash_contour_heat_cells`);
-        - ``alpattern()`` and ``sort``: the boundaries' hairline (twoway's
-          .001 line, a third of a medium one in its SVG) in their levels'
-          colours, dashed in alpattern()'s pattern, sort as
-          ``alpattern(dash)``.
+        """contour's boundary lines (WP-32), as twoway draws them
+        (measured 19oct2026 on a grid, graph export SVG): under
+        ``alpattern()`` and ``sort``, the boundaries' hairline (twoway's
+        .001 line, a third of a medium one in its SVG) in their levels'
+        colours, dashed in alpattern()'s pattern, sort as
+        ``alpattern(dash)``.
 
         ``outlines`` draws nothing here: twoway outlines the colour key's
         boxes and leaves the plot as it is (WP-37 TR-13a, measured
         29oct2026; :meth:`_contour_key`).
 
         Each part's source is refitted by the saved page after a move
-        (``_dash_agg_config`` part "heat" or "line") and redrawn by the
+        (``_dash_agg_config`` part "line") and redrawn by the
         served app, which pairs the layer's sources by position.
 
         *cg_lines* (WP-37 TR-13, D-37-03.h): on a layer drawn from Stata's
@@ -24682,26 +24673,6 @@ class GlyphMapper:
         rule = self._contour_refit_rule(options, False, len(cuts))
         base_cfg = dict(cr._dash_contour_config, rule=rule["rule"],
                         kfmt=rule["kfmt"])
-        if parts["heat"]:
-            cr.fill_renderer.glyph.fill_alpha = 0.0
-            cells = (_dash_contour_heat_cells(*upright, levels, colours)
-                     if drawable else
-                     {"left": [], "right": [], "bottom": [], "top": [],
-                      "fill_color": []})
-            hsrc = ColumnDataSource(cells)
-            hr = fig.quad(left="left", right="right", bottom="bottom",
-                          top="top", fill_color="fill_color", source=hsrc,
-                          line_alpha=0.0)
-            hr.tags = ["dash_contour_heat"]
-            if drawable and not cr._dash_contour_capped:
-                hr._dash_agg_source = hsrc
-                hr._dash_agg_config = dict(
-                    base_cfg, part="heat", extra={},
-                    styles=rule["styles"],
-                    upright_gx=bool(cr._dash_contour_config.get(
-                        "horizontal")))
-                hr._dash_agg_rows = self._agg_member_ids(source, view)
-            out.append(hr)
         if parts["lines"]:
             gx, gy, gz = grid
             med = float(T.translate_lwidth("medium"))
@@ -29742,8 +29713,8 @@ _DASH_CONTOUR_HAIRLINE = 3.0 / 9.72
 
 
 def _dash_contour_parts(options):
-    """What contour draws besides its bands (WP-32): ``{"heat", "lines",
-    "outlines", "dash"}`` -- heatmap's cells; boundary lines under
+    """What contour draws besides its bands (WP-32): ``{"lines",
+    "outlines", "dash"}`` -- boundary lines under
     alpattern() or sort; outlines' black key (WP-37 TR-13a: twoway draws
     no boundary under outlines, it outlines the key's boxes); the
     boundary's Bokeh dash list (alpattern()'s pattern, sort's that of
@@ -29761,8 +29732,7 @@ def _dash_contour_parts(options):
         dash = OptionTranslator.translate_lpattern("dash")
     if dash is not None and not list(dash):
         dash = None
-    return {"heat": on("heatmap"),
-            "lines": bool(alp) or on("sort"),
+    return {"lines": bool(alp) or on("sort"),
             "outlines": on("outlines"), "dash": dash}
 
 
@@ -29780,9 +29750,7 @@ def _dash_contour_gen_of(options):
     list of numbers and its n a whole number; None when the layer has
     none.  A malformed object -- or a by() panels object that reached the
     mapper unpicked -- is None with one note, and dash's own fit draws the
-    layer.  Never a filled object with heatmap, which twoway draws from
-    another generator; contourline's line object is read with heatmap,
-    which contourline ignores (WP-37 TR-13a).
+    layer.
     """
     o = options or {}
     cg = o.get("contour_gen")
@@ -29811,8 +29779,6 @@ def _dash_contour_gen_of(options):
           and float(cg["n"]) == int(cg["n"]) and cg.get("line") in (0, 1))
     if ok and not cg["line"] and _dash_contour_parts(o)["lines"]:
         ok = _cols(cg.get("lines"))
-    if ok and not cg["line"] and _dash_contour_parts(o)["heat"]:
-        ok = False
     if not ok:
         _dash_warn_once(("contour-gen-bad",),
                         "dash: the contour polygons Stata computed for this "
@@ -29855,45 +29821,6 @@ def _dash_contour_gen_lines(cg, n):
     _flush()
     return ([np.asarray(a, dtype=float) for a in xs],
             [np.asarray(a, dtype=float) for a in ys])
-
-
-def _dash_contour_heat_cells(gx, gy, gz, levels, colours):
-    """heatmap's cells (WP-32): one per finite node of the grid *gx* (nx)
-    by *gy* (ny), *gz* ``[iy, ix]``, from the midpoints between its
-    neighbours -- the grid's ends at its edge -- filled in the colour of
-    the band of *levels* (``colours[k]`` between ``levels[k]`` and
-    ``levels[k + 1]``) its z falls in, as twoway's heatmap fills its grid
-    (measured 19oct2026: a 3 by 3 grid's cells end half way between its
-    nodes)."""
-    gx = np.asarray(gx, dtype=float)
-    gy = np.asarray(gy, dtype=float)
-    z = np.asarray(gz, dtype=float).reshape(len(gy), len(gx))
-
-    def _edges(g):
-        if g.size == 0:
-            return g, g
-        m = (g[:-1] + g[1:]) / 2.0
-        return (np.concatenate([[g[0]], m]), np.concatenate([m, [g[-1]]]))
-
-    xl, xr = _edges(gx)
-    yb, yt = _edges(gy)
-    lv = [float(v) for v in levels]
-    out = {"left": [], "right": [], "bottom": [], "top": [],
-           "fill_color": []}
-    for iy in range(len(gy)):
-        for ix in range(len(gx)):
-            v = z[iy, ix]
-            if not math.isfinite(v) or not colours:
-                continue
-            k = 0
-            while k + 1 < len(lv) - 1 and v >= lv[k + 1]:
-                k += 1
-            out["left"].append(float(xl[ix]))
-            out["right"].append(float(xr[ix]))
-            out["bottom"].append(float(yb[iy]))
-            out["top"].append(float(yt[iy]))
-            out["fill_color"].append(colours[min(k, len(colours) - 1)])
-    return out
 
 
 def _dash_contour_line_style(options, colours, n_cuts):
@@ -34770,31 +34697,6 @@ function dash_contour_rings(S, c) {
 }
 // MultiLine data as Bokeh's contour_data writes it: one entry per level,
 // its lines joined with a NaN between them.
-// WP-32: heatmap's cells (_dash_contour_heat_cells' twin): one per finite
-// node, to the midpoints between nodes, the grid's ends at its edge, in
-// the colour of the band of lv its z falls in.
-function dash_contour_heat(S, lv, cols) {
-    const out = {left: [], right: [], bottom: [], top: [], fill_color: []};
-    const edges = (g) => {
-        const lo = [], hi = [];
-        for (let i = 0; i < g.length; i++) {
-            lo.push(i === 0 ? g[0] : (g[i - 1] + g[i]) / 2);
-            hi.push(i === g.length - 1 ? g[g.length - 1] : (g[i] + g[i + 1]) / 2);
-        }
-        return [lo, hi];
-    };
-    const [xl, xr] = edges(Array.from(S.gx)), [yb, yt] = edges(Array.from(S.gy));
-    for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) {
-        const v = S.gz[iy * S.nx + ix];
-        if (!Number.isFinite(v) || !cols.length) continue;
-        let k = 0;
-        while (k + 1 < lv.length - 1 && v >= lv[k + 1]) k++;
-        out.left.push(xl[ix]); out.right.push(xr[ix]);
-        out.bottom.push(yb[iy]); out.top.push(yt[iy]);
-        out.fill_color.push(cols[Math.min(k, cols.length - 1)]);
-    }
-    return out;
-}
 function dash_contour_lines(S, levels) {
     const xs = [], ys = [];
     for (const c of levels) {
@@ -35574,8 +35476,6 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         if (ac.xaxiskind) S.gx = S.gx.map(v => dash_axis_value_of(v, ac.xaxiskind));
         if (ac.yaxiskind) S.gy = S.gy.map(v => dash_axis_value_of(v, ac.yaxiskind));
-        // WP-32: heatmap's cells are drawn upright, turned with the layer.
-        const _S_up = S;
         if (ac.horizontal) {
             // drawn turned, as map_contour turns it: x and y swap
             const tz = new Float64Array(S.nx * S.ny);
@@ -35601,14 +35501,6 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const _st = (ac.styles || {})[String(_cuts.length)];
         const _cd = Object.assign({}, ac.extra || {}, _st || {});
-        if (ac.part === 'heat') {
-            // WP-32: heatmap's cells over the kept rows' surface, each in
-            // its level's colour (_dash_contour_heat_cells).
-            const lv = [_lo].concat(_cuts, [_hi]);
-            src.data = dash_contour_heat(_S_up, lv, (_st && _st.fill_color) || []);
-            src.change.emit();
-            continue;
-        }
         if (ac.part === 'line') {
             const L = dash_contour_lines(S, _cuts);
             _cd.xs = L.xs; _cd.ys = L.ys; _cd.levels = L.levels;
@@ -69808,8 +69700,8 @@ class ServerAppBuilder:
                     _dash_tag_eval_extent, _dash_eval_values,
                     _dash_contour_colours, _dash_contour_line_style,
                     _dash_contour_fill_levels, _dash_is_horizontal_opts,
-                    # WP-32: contour's heatmap cells and boundary lines.
-                    _dash_contour_parts, _dash_contour_heat_cells,
+                    # WP-32: contour's boundary lines.
+                    _dash_contour_parts,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
                     # Stata's `if' grammar and its arithmetic operators.  The

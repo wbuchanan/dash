@@ -747,7 +747,7 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     // because twoway names a word as typed (BUGS.md "A bare sort or
     // headlabel is named sort() or headlabel() in the note").
     // Flipped (WP-32): named at all was wrong, because twoway draws the
-    // marks in x order and dash now does (BUGS.md "sort on marker types and contour, and heatmap, outlines and alpattern() on contour, are named where twoway draws them").
+    // marks in x order and dash now does (BUGS.md "sort on marker types and contour, and outlines and alpattern() on contour, are named where twoway draws them").
     cert_log_has "`logfile'", needle("ignoring unsupported")
     if `tw_rc' != 0 | `drc' != 0 | r(found) != 0 {
         display as error "TP-06b FAIL: dash `c' -- twoway r(`tw_rc'), dash rc `drc', sort named `r(found)' (want 0)"
@@ -1011,7 +1011,7 @@ foreach tt in tsline tsrline {
 // Flipped (WP-32): lfit left the list: twoway draws a fit the same with
 // sort(z), and dash takes it in silence (BUGS.md "dash names options twoway takes and draws nothing of, where twoway is silent").
 // Flipped (WP-32): scatter and bar named sort(z), which was wrong because
-// twoway draws their marks in z's order and dash now does (BUGS.md "sort on marker types and contour, and heatmap, outlines and alpattern() on contour, are named where twoway draws them").
+// twoway draws their marks in z's order and dash now does (BUGS.md "sort on marker types and contour, and outlines and alpattern() on contour, are named where twoway draws them").
 foreach tt in scatter bar {
     _ztp_run `"dash `tt' mpg weight, sort(z) name(zqtp)"' "`logfile'"
     local drc = r(rc)

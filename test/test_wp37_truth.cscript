@@ -1615,12 +1615,12 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w37_run' {
 }
 * ==== end S05 ====
 
-// S06 helpers (WP-37 TR-13a).  _w37s06_opts: "heatmap=<v> outlines=<v>"
+// S06 helpers (WP-37 TR-13a).  _w37s06_opts: "outlines=<v>"
 // of graph <g>'s first plot in a served spec, into global w37s06_v.
 // _w37s06_page: what a saved page draws for its contour key and parts --
 // "<bar line colour> <key line colour> <key lines> <key levels>" per
-// ContourColorBar, then "lines=<renderers tagged dash_contour_lines>
-// heat=<cells of the renderer tagged dash_contour_heat>", into w37s06_v.
+// ContourColorBar, then "lines=<renderers tagged dash_contour_lines>",
+// into w37s06_v.
 // _w37s06_svg: of a twoway SVG, "<black key-box strokes> <filled
 // rectangles in the plot region> <MD5 of the plot region's shapes>",
 // into w37s06_v.
@@ -1631,7 +1631,7 @@ def _w37s06_opts(path, g):
         [gr] = [x for x in d["graphs"]
                 if x.get("graph_options", {}).get("name") == g]
         o = gr["plots"][0].get("options", {})
-        v = "heatmap=%s outlines=%s" % (o.get("heatmap", ""), o.get("outlines", ""))
+        v = "outlines=%s" % o.get("outlines", "")
     except Exception as e:
         v = "error " + str(e)
     _w37s02_M.setGlobal("w37s06_v", _w37s02_safe(v))
@@ -1658,16 +1658,13 @@ def _w37s06_page(path):
             out.append("%s %s %d %d" % (a.get("bar_line_color"), lc,
                                         len(cols(src).get("xs", [])),
                                         len(_w37s02_dec(a.get("levels", [])))))
-        nl, nh = 0, 0
+        nl = 0
         for o in objs.values():
             a = o.get("attributes") or {}
             tags = a.get("tags") or []
             if o.get("name") == "ContourRenderer" and "dash_contour_lines" in tags:
                 nl += 1
-            if o.get("name") == "GlyphRenderer" and "dash_contour_heat" in tags:
-                src = _w37s02_ref(objs, a.get("data_source")).get("attributes", {})
-                nh += len(_w37s02_dec(cols(src).get("left", [])))
-        out.append("lines=%d heat=%d" % (nl, nh))
+        out.append("lines=%d" % nl)
         v = ";".join(out)
     except Exception as e:
         v = "error " + str(e)
@@ -1706,7 +1703,7 @@ def _w37s06_svg(path):
     _w37s02_M.setGlobal("w37s06_v", _w37s02_safe(v))
 end
 
-* ==== S06 TR-13a: contour's outlines and heatmap ====
+* ==== S06 TR-13a: contour's outlines ====
 local only : env WP37_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
     display as text "S06 start " c(current_date) " " c(current_time)
@@ -1717,21 +1714,20 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
 
     // ------------------------------------------------------------
     // Q3706-1: the real ado path -- contour and contourline with outlines
-    // heatmap carry both options in the served spec (s(_heatmap) and
-    // s(_outlines) never reached it).
+    // carry it in the served spec (s(_outlines) never reached it).
     // ------------------------------------------------------------
     sysuse sandstone, clear
     capture dash clear
-    dash contour depth northing easting, outlines heatmap name(q6a)
-    dash contourline depth northing easting, outlines heatmap name(q6b)
+    dash contour depth northing easting, outlines name(q6a)
+    dash contourline depth northing easting, outlines name(q6b)
     capture erase "`s06_s'"
     _dash_serve_spec, specpath("`s06_s'") datapath("`s06_d'")
     foreach g in q6a q6b {
         python: _w37s06_opts(r"`s06_s'", "`g'")
-        _w37_expect Q3706-1 `"("${w37s06_v}" == "heatmap=heatmap outlines=outlines")"' "`g': ${w37s06_v}"
+        _w37_expect Q3706-1 `"("${w37s06_v}" == "outlines=outlines")"' "`g': ${w37s06_v}"
     }
     capture dash clear
-    _w37_done Q3706-1 "the spec carries heatmap and outlines"
+    _w37_done Q3706-1 "the spec carries outlines"
 
     // ------------------------------------------------------------
     // Q3706-2: sandstone (twoway's generator): twoway's outlines draws
@@ -1756,7 +1752,7 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
     capture noisily dash contour `s06_c', outlines saving("`s06_h'", replace)
     _w37_expect Q3706-2 "(_rc == 0)" "dash contour, outlines rc `=_rc'"
     python: _w37s06_page(r"`s06_h'")
-    _w37_expect Q3706-2 `"("${w37s06_v}" == "#000000 #000000 6 6;lines=0 heat=0")"' "dash: ${w37s06_v}"
+    _w37_expect Q3706-2 `"("${w37s06_v}" == "#000000 #000000 6 6;lines=0")"' "dash: ${w37s06_v}"
     python: _w37s03_fill(r"`s06_h'")
     local got "${w37s03_v}"
     python: _w37s03_fix("sandstone.default", "polys_per_band")
@@ -1784,54 +1780,25 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
     capture noisily dash contour price mpg weight, outlines saving("`s06_h'", replace)
     _w37_expect Q3706-3 "(_rc == 0)" "dash contour, outlines rc `=_rc'"
     python: _w37s06_page(r"`s06_h'")
-    _w37_expect Q3706-3 `"("${w37s06_v}" == "#000000 #000000 4 4;lines=0 heat=0")"' "dash: ${w37s06_v}"
+    _w37_expect Q3706-3 `"("${w37s06_v}" == "#000000 #000000 4 4;lines=0")"' "dash: ${w37s06_v}"
     _w37_done Q3706-3 "auto outlines: the key outlined, no boundary lines (${w37s06_v})"
 
-    // ------------------------------------------------------------
-    // Q3706-4: heatmap on a 30 x 30 grid (900 points, under the 1,000
-    // points dash fits exactly; above them, sandstone's 6,400, dash's
-    // heatmap is its documented subsample fit): twoway fills a rectangle
-    // per node and keeps its key; dash draws a cell per node and a plain
-    // key; with outlines too the key is outlined.
-    // ------------------------------------------------------------
-    clear
-    quietly set obs 900
-    generate double x = mod(_n - 1, 30)
-    generate double y = floor((_n - 1) / 30)
-    generate double z = sin(x / 6) + cos(y / 7)
-    capture graph drop w37s06
-    quietly twoway contour z y x, heatmap name(w37s06)
-    capture erase "`s06_g'"
-    cert_svg_export, name(w37s06) file("`s06_g'")
-    python: _w37s06_svg(r"`s06_g'")
-    capture graph drop w37s06
-    _w37_expect Q3706-4 `"("`: word 1 of ${w37s06_v}' `: word 2 of ${w37s06_v}'" == "0 900")"' "twoway heatmap: ${w37s06_v}"
-    capture erase "`s06_h'"
-    capture noisily dash contour z y x, heatmap saving("`s06_h'", replace)
-    _w37_expect Q3706-4 "(_rc == 0)" "dash contour, heatmap rc `=_rc'"
-    python: _w37s06_page(r"`s06_h'")
-    _w37_expect Q3706-4 `"(strpos("${w37s06_v}", "None None 0 ") == 1 & strpos("${w37s06_v}", ";lines=0 heat=900") > 0)"' "dash heatmap: ${w37s06_v}"
-    capture erase "`s06_h'"
-    capture noisily dash contour z y x, heatmap outlines saving("`s06_h'", replace)
-    python: _w37s06_page(r"`s06_h'")
-    mata: st_local("s06_ok", strofreal(ustrregexm(st_global("w37s06_v"), "^#000000 #000000 ([0-9]+) ([0-9]+);lines=0 heat=900$") & ustrregexs(1) == ustrregexs(2)))
-    _w37_expect Q3706-4 "(`s06_ok' == 1)" "dash heatmap outlines: ${w37s06_v}"
-    _w37_done Q3706-4 "heatmap: a cell per node, the key outlined only under outlines"
+    // Q3706-4 retired with the option contour no longer takes (D65).
     sysuse sandstone, clear
 
     // ------------------------------------------------------------
-    // Q3706-5: contourline takes outlines and heatmap and draws twoway's
-    // lines as without them (sandstone.default.line, from the generator).
+    // Q3706-5: contourline takes outlines and draws twoway's lines as
+    // without it (sandstone.default.line, from the generator).
     // ------------------------------------------------------------
     python: _w37s03_fix("sandstone.default.line", "lines_per_cut")
-    foreach o in outlines heatmap {
+    foreach o in outlines {
         capture erase "`s06_h'"
         capture noisily dash contourline `s06_c', `o' saving("`s06_h'", replace)
         _w37_expect Q3706-5 "(_rc == 0)" "contourline, `o' rc `=_rc'"
         python: _w37s03_lines(r"`s06_h'", "dash_contour")
         _w37_expect Q3706-5 `"(strpos("${w37s03_v}", "${w37s03_f}|") == 1)"' "contourline, `o': ${w37s03_v}, twoway ${w37s03_f}"
     }
-    _w37_done Q3706-5 "contourline draws its lines as without outlines or heatmap"
+    _w37_done Q3706-5 "contourline draws its lines as without outlines"
     capture erase "`s06_h'"
     capture erase "`s06_g'"
     capture erase "`s06_s'"

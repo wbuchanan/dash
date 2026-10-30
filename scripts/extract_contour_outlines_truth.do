@@ -1,6 +1,6 @@
 *! extract_contour_outlines_truth.do -- WP-37 TR-13a (ruling D64): what
-*! twoway contour draws under its outlines and heatmap options, and what
-*! twoway contourline draws under them.
+*! twoway contour draws under its outlines option, and what twoway
+*! contourline draws under it.
 *!
 *! WHY THIS EXISTS
 *!
@@ -96,29 +96,22 @@ sysuse sandstone, clear
 local s "depth northing easting"
 _co_probe ss.default contour `s'
 _co_probe ss.outlines contour `s', outlines
-_co_probe ss.heatmap contour `s', heatmap
-_co_probe ss.outlines_heatmap contour `s', outlines heatmap
 _co_probe ss.ccuts contour `s', ccuts(7600(100)8000)
 _co_probe ss.outlines_ccuts contour `s', outlines ccuts(7600(100)8000)
-_co_probe ss.heatmap_ccuts contour `s', heatmap ccuts(7600(100)8000)
 _co_probe ss.none contour `s', interp(none)
 _co_probe ss.outlines_none contour `s', outlines interp(none)
 _co_probe ss.line contourline `s'
 _co_probe ss.line_outlines contourline `s', outlines
-_co_probe ss.line_heatmap contourline `s', heatmap
 
 * ---- auto: 74 scattered points (dash fits these itself).
 sysuse auto, clear
 local a "price mpg weight"
 _co_probe au.default contour `a'
 _co_probe au.outlines contour `a', outlines
-_co_probe au.heatmap contour `a', heatmap
 _co_probe au.none contour `a', interp(none)
 _co_probe au.outlines_none contour `a', outlines interp(none)
-_co_probe au.heatmap_none contour `a', heatmap interp(none)
 _co_probe au.line contourline `a'
 _co_probe au.line_outlines contourline `a', outlines
-_co_probe au.line_heatmap contourline `a', heatmap
 
 * ---- grid5: a 5 x 5 grid, z = x + y.
 clear
@@ -128,7 +121,6 @@ generate double y = floor((_n - 1) / 5)
 generate double z = x + y
 _co_probe g5.default contour z y x
 _co_probe g5.outlines contour z y x, outlines
-_co_probe g5.heatmap contour z y x, heatmap
 
 * ---- s2color: the key boxes' outline is twice s2color's medium line.
 set scheme s2color
@@ -227,8 +219,8 @@ def read(key):
                 key_boxes[-1]["stroke"] = st["stroke"]
                 key_boxes[-1]["stroke_width"] = float(st.get("stroke-width", "0"))
         elif any(p[0] <= pr["right"] for p in pts):
-            # The plot region's shapes (a heatmap cell's path may open with
-            # a move to the region's corner).
+            # The plot region's shapes (a path may open with a move to the
+            # region's corner).
             plot.append((pts, d, st))
     filled = [s for s in plot if s[2].get("fill", "none") != "none"]
     strokes = [s for s in plot if s[2].get("stroke", "none") != "none"]

@@ -926,6 +926,7 @@ and now matches Stata.
 - xsize(()) and ysize(()) are refused, r(198), as twoway refuses them; dash drew the default size with a note. (WP-35, DT-15)
 - colorvar() naming a string variable is refused, r(7), as twoway refuses it; dash drew a colour per value. (WP-35, DT-15)
 - A named graph whose function points exceeded c(macrolen) was refused r(134); it is registered and built, its points kept in a private file of dash's temporary folder, which clear all keeps (WP-36, plat:PT-4)
+- contour and contourline no longer take heatmap; dash refuses it, r(198), "option heatmap not allowed", as it refuses any option contour does not take (WP-37, D65)
 
 ### Removed
 
@@ -1003,7 +1004,7 @@ and now matches Stata.
 - rarea with cmissing(n) drew its outline across the gaps; the outline breaks where the fill does (WP-37, DG-5)
 - A contour over too few points for a surface drew no colour key; it draws the key from its levels, as twoway does (WP-37, DG-8)
 - contour and contourline over more than 1,000 points drew an approximate surface even on a full grid (every sandstone example), under by() as well; on a full grid or with interp(none) they draw twoway's own polygons, in each by() panel from its own rows, and after a filter move that leaves rows out the saved page and the served app draw dash's own surface of the rows kept and mark it (unfiltered) (WP-37, TR-13)
-- contour's outlines and heatmap were accepted and drew nothing: dash never wrote them to the spec; heatmap draws the surface's cells, and outlines outlines the colour key's boxes in black and leaves the plot as it is, as twoway draws it (dash drew the bands' boundaries black in the plot), in the saved page, the served app and after a move; contourline takes both and draws nothing different, as twoway does (WP-37, TR-13a)
+- contour's outlines was accepted and drew nothing: dash never wrote it to the spec; outlines outlines the colour key's boxes in black and leaves the plot as it is, as twoway draws it (dash drew the bands' boundaries black in the plot), in the saved page, the served app and after a move; contourline takes it and draws nothing different, as twoway does (WP-37, TR-13a)
 
 ### Fixed in WP-36
 
@@ -1116,7 +1117,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - baroffset() moves rbar's bars as bar's, and histogram's mwidth draws each bar a marker wide at its bin's start, as twoway draws them, in the saved page, the served app and after a move; dash named them (WP-32)
 - contour and contourline are measured on a grid, where twoway's picture is the same from export to export, and the options twoway draws nothing different with there are taken in silence (WP-32)
 - sort and sort(varlist) on scatter, bar, spike, dropline, dot, the range types and the pc types draw the marks in that order, as twoway draws them, in the saved page, the served app and after a move; rbar mwidth's baroffset() moves the bars in screen widths, and a horizontal histogram's mwidth draws marker-tall bars, as twoway does; dash named them (WP-32)
-- contour's heatmap draws the surface's cells, outlines its black boundaries and alpattern() and sort a dashed hairline boundary, as twoway draws them, in the saved page, the served app and after a move; rbar mwidth horizontal baroffset() moves the bars down in screen heights; dash named them (WP-32)
+- contour's outlines draws its black boundaries and alpattern() and sort a dashed hairline boundary, as twoway draws them, in the saved page, the served app and after a move; rbar mwidth horizontal baroffset() moves the bars down in screen heights; dash named them (WP-32)
 - An all-missing line, area, bar, spike, dropline, tsline, rarea or paired-coordinate layer draws nothing in silence, as twoway draws it, in the saved page and the served app; dash said "drew nothing". (WP-32)
 - scheme(meta) drew a black outline round the legend and the KPI cards, where twoway draws none (`linestyle legend none`); dash-meta.scheme is regenerated with that directive and the legend and the cards are drawn without an outline, as twoway draws them; a scheme of your own with `linestyle legend none` draws the same. (WP-32)
 - The data file dash writes for each dashboard holds its numbers as binary columns (little-endian float64, or float32 where every value is exactly one), each missing value, .a to .z included, read back as missing with its letter kept: a million values take 8.0 MB and load in 0.03 s, where one JSON object per observation took 19.8 MB and 0.43 s (measured 19oct2026); a data file in the old layout is still read. (WP-32, G3b)

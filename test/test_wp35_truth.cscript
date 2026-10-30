@@ -360,7 +360,7 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w35_run' {
     // Q3501-3: a contour flag given twice is refused, with twoway's
     // return code and first line.
     // ------------------------------------------------------------
-    foreach f in "`c', minmax minmax" "`c', reversekey reversekey" "`c', heatmap heatmap" "`c', outlines outlines" "`cl', colorlines colorlines" {
+    foreach f in "`c', minmax minmax" "`c', reversekey reversekey" "`c', outlines outlines" "`cl', colorlines colorlines" {
         _s01_first "`w35_work'" `"twoway `f'"'
         local trc = r(rc)
         local tln `"`r(line)'"'
@@ -372,7 +372,8 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w35_run' {
         mata: st_local("same", strofreal(st_local("dln") == st_local("tln")))
         _w35_expect Q3501-3 "(`same' == 1)" `"`f': dash said [`dln'], twoway said [`tln']"'
     }
-    _w35_done Q3501-3 "five repeated contour flags refused as twoway refuses them"
+    // 5 -> 4 flags: one contour no longer takes leaves the list (D65).
+    _w35_done Q3501-3 "four repeated contour flags refused as twoway refuses them"
 
     sysuse auto, clear
     display as text "S01 end " c(current_date) " " c(current_time)
