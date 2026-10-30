@@ -987,6 +987,9 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:nodraw with saving(, asis).}  The page is written where
     {cmd:twoway} refuses {cmd:r(601)}; see {help dash##registry:The registry}.
 
+{phang2}    {ul:play().}  A readable recording is refused {cmd:r(198)}; there
+    is no Graph Editor; see {help dash##registry:The registry}.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, {cmd:dash serve} and {cmd:dash clear}
     have no {cmd:twoway} equivalents.  See
@@ -1689,6 +1692,13 @@ is not printed by {cmd:dash}.
 {ul:nodraw with saving(, asis).}  {cmd:twoway} refuses it, "no current
 graph", {cmd:r(601)}; {cmd:dash} writes the page and opens no browser window
 (see {ul:nodraw still writes the page.} under Differences from twoway).
+
+{pstd}
+{ul:play().}  A recording {cmd:play()} cannot find is refused as
+{cmd:twoway} refuses it, {cmd:r(601)}; a readable recording is refused,
+{cmd:r(198)}, because a recording's edits act on a Stata graph, which a
+dashboard is not, and no Graph Editor can open a dashboard (see
+{help dash##unsupported:Unsupported Stata twoway options}).
 
 
 {marker dashboard_options}

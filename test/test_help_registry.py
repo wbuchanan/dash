@@ -124,3 +124,20 @@ class TestNodrawAsis:
         s = _sub_point("nodraw with saving(, asis).")
         assert "The page is written where {cmd:twoway} refuses {cmd:r(601)}" in s
         assert _LINK in s
+
+
+class TestPlay:
+    """GW-16: play() refuses a readable recording; there is no Graph Editor."""
+
+    def test_both_refusals_and_no_editor(self):
+        p = _paragraph("play().")
+        assert "as {cmd:twoway} refuses it, {cmd:r(601)}" in p
+        assert "a readable recording is refused, {cmd:r(198)}" in p
+        assert "no Graph Editor can open a dashboard" in p
+        assert "{help dash##unsupported:" in p
+
+    def test_the_sub_point(self):
+        s = _sub_point("play().")
+        assert "A readable recording is refused {cmd:r(198)}" in s
+        assert "there is no Graph Editor" in s
+        assert _LINK in s

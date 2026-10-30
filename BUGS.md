@@ -4916,11 +4916,11 @@
   - Suggested fix: Documented only (M10): the help states that nodraw with saving(, asis) writes the page.
   - Resolution: Documented 30oct2026 (WP-38, GW-15). dash.sthlp, The registry: return codes and messages (nodraw with saving(, asis).): twoway refuses it, 'no current graph', r(601); dash writes the page and opens no browser window; the sub-point nodraw with saving(, asis). under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestNodrawAsis, test/test_nodraw_honoured.cscript Q3802-3 (beside ND-06). Closes GAPS4 GW-15 (WP-38, GW-15).
 
-- [ ] Title: play() refuses a readable recording (r(198)); there is no Graph Editor
+- [x] Title: play() refuses a readable recording (r(198)); there is no Graph Editor
   - File Names and Line Numbers: dash.ado:8239-8272; dash.sthlp:6667-6683; U54
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 3 (major): ids GW-16, ECO-14; confirmed; tracked: dash.sthlp Unsupported, play(). Registered as GAPS4 GW-16 (WP-38, section 38-02, Document).
   - Suggested fix: Documented only (M10): the help states that play() is refused and that there is no Graph Editor.
-  - Resolution: Not fixed because WP-38 section 38-02 has not landed. Graded S2 (WP-38): drop-in audit package 3, major.
+  - Resolution: Documented 30oct2026 (WP-38, GW-16). dash.sthlp, The registry: return codes and messages (play().): a recording play() cannot find is refused as twoway refuses it, r(601); a readable recording is refused, r(198), because its edits act on a Stata graph, which a dashboard is not, and no Graph Editor can open a dashboard (linking Unsupported Stata twoway options, where play() is described); the sub-point play(). under Differences from twoway item 2 links to it. Pinned by test/test_help_registry.py::TestPlay, test/test_option_validation.cscript U54. Closes GAPS4 GW-16 (WP-38, GW-16).
 
 - [ ] Title: name(g, rep) or another bad sub-option gives a garbled 'invalid graph name g??rep' where twoway says 'option rep not allowed'
   - File Names and Line Numbers: dash.ado:11273-11303; probe p4

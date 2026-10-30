@@ -979,8 +979,10 @@ class TestTheParsersFoundSomething:
         # file that exists. (WP-38 38-02).
         # old -> new: 457 -> 458, GW-15 the sub-point nodraw with
         # saving(, asis). (WP-38 38-02).
-        assert len(defs) == 458, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 458 "
+        # old -> new: 458 -> 459, GW-16 the sub-point play().
+        # (WP-38 38-02).
+        assert len(defs) == 459, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 459 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1519,4 +1521,7 @@ class TestInternalLinksResolve:
         # a file that exists. links The registry (WP-38 38-02).
         # old -> new: 163 -> 164 links: GW-15 the sub-point nodraw with
         # saving(, asis). (WP-38 38-02).
-        assert len(refs) == 164 and len(set(refs)) == 51
+        # old -> new: 164 -> 166 links: GW-16 the sub-point play() links
+        # The registry and its play(). paragraph links Unsupported Stata
+        # twoway options (WP-38 38-02).
+        assert len(refs) == 166 and len(set(refs)) == 51

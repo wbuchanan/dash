@@ -402,7 +402,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-13 Tracked:** Documented in WP-38, BUGS.md "name(): at most 22 characters and no '__'; a duplicate name gives r(198) in dash's words where twoway gives r(110) 'graph X already exists'", commit pending.
 - **GW-14 Tracked:** Documented in WP-38, BUGS.md "saving() onto an existing file gives r(198) where twoway gives r(602); twoway's '(file x.gph not found)' note is missing", commit pending.
 - **GW-15 Tracked:** Documented in WP-38, BUGS.md "nodraw with saving(, asis) writes the page where twoway gives r(601)", commit pending.
-- **GW-16 Tracked:** Open (WP-38 section 38-02).
+- **GW-16 Tracked:** Documented in WP-38, BUGS.md "play() refuses a readable recording (r(198)); there is no Graph Editor", commit pending.
 - **GW-9 Tracked:** Open (WP-38 section 38-02).
 - **ECO-5 Tracked:** Open (WP-38 section 38-02).
 - **ECO-15 Tracked:** Documented in WP-38, BUGS.md "Each one-line command opens a new browser page; only the newest five previews are kept; saving() opens none", commit pending.

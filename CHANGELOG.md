@@ -1017,6 +1017,7 @@ and now matches Stata.
 - The help named the rc of a name already held only in passing; the new section The registry: return codes and messages states that twoway takes a name of up to 32 characters, a__b included, and refuses a name it holds with r(110), where dash takes 22 characters (18 for a KPI card), no __, and refuses one with r(198) in its own words, and Differences from twoway item 2 links to it (WP-38, GW-13)
 - The help gave saving()'s r(198) beside twoway's r(602) but not twoway's (file x.gph not found) note, which dash does not print; The registry: return codes and messages states both, and Differences from twoway item 2 links to it (WP-38, GW-14)
 - The help's note that nodraw with saving(, asis) writes the page where twoway refuses it, r(601), is now listed in The registry: return codes and messages, and Differences from twoway item 2 links to it (WP-38, GW-15)
+- The help said play() refuses a readable recording, r(198), only under Unsupported options; The registry: return codes and messages states it beside the missing recording's r(601), as twoway's, and that no Graph Editor can open a dashboard, and Differences from twoway item 2 links to it (WP-38, GW-16)
 
 ### Fixed in WP-36
 
