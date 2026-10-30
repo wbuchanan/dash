@@ -764,6 +764,40 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 AX-16: ticks ====
+local only : env WP40_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local s02d "`w40_work'/s02"
+    capture mkdir "`s02d'"
+
+    // ------------------------------------------------------------
+    // Q4002-6 (AX-16): xtick(1500(1)5000) asks for 3,501 ticks; twoway
+    // draws them, dash keeps the default ticks with a note.  #N above
+    // 2,000 is taken as 2,000 with no note.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    capture noisily twoway scatter mpg weight, xtick(1500(1)5000) nodraw
+    local q6_trc = _rc
+    _w40_expect Q4002-6 "(`q6_trc' == 0)" "twoway xtick(1500(1)5000) rc `q6_trc'"
+    capture erase "`s02d'/q6a.html"
+    _w40_s02_run "`s02d'/q6a.log" dash scatter mpg weight, xtick(1500(1)5000) saving("`s02d'/q6a.html", replace)
+    _w40_expect Q4002-6 "(`s02rc' == 0)" "dash xtick(1500(1)5000) rc `s02rc'"
+    _w40_s02_log "`s02d'/q6a.log" "asks for more than 2,000 ticks"
+    _w40_expect Q4002-6 "(`s02c' == 1)" "no note on the 3,501 ticks"
+    capture noisily twoway scatter mpg weight, xlabel(#3000) nodraw
+    local q6_trc = _rc
+    _w40_expect Q4002-6 "(`q6_trc' == 0)" "twoway xlabel(#3000) rc `q6_trc'"
+    capture erase "`s02d'/q6b.html"
+    _w40_s02_run "`s02d'/q6b.log" dash scatter mpg weight, xlabel(#3000) saving("`s02d'/q6b.html", replace)
+    _w40_expect Q4002-6 "(`s02rc' == 0)" "dash xlabel(#3000) rc `s02rc'"
+    _w40_s02_log "`s02d'/q6b.log" "2,000"
+    _w40_expect Q4002-6 "(`s02c' == 0)" "xlabel(#3000) printed a note on 2,000 ticks"
+    _w40_done Q4002-6 "3,501 ticks: twoway draws, dash keeps the default with a note; #3000 taken silently"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

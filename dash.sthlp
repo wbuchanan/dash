@@ -1572,6 +1572,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Histogram bins.}  {cmd:width()} or {cmd:discrete} needing more than 1,000 bins is rebinned, where {cmd:twoway} draws the occupied bins; see {help dash##limits:Resource limits}.
 
+{phang2}    {ul:Ticks.}  More than 2,000 ticks keep the default ticks, and a build asks Stata's tick routine for at most 256 axis ranges, ticking the rest by {cmd:dash}'s model; see {help dash##limits:Resource limits}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -3452,7 +3454,14 @@ any degree.  A {cmd:histogram} whose {cmd:width()} or {cmd:discrete} would
 need more than 1,000 bins over its range, empty ones counted, is drawn with
 1,000 bins under {cmd:discrete} and with the default bins in place of
 {cmd:width()}, with a note; {cmd:twoway} draws the occupied bins
-({cmd:histogram price, width(10)}: 68 bars).
+({cmd:histogram price, width(10)}: 68 bars).  An axis option asking for
+more than 2,000 ticks in any form keeps the axis's default ticks, with a
+note, and {cmd:#}{it:N} above 2,000 is taken as 2,000, silently, where
+{cmd:twoway} draws every tick it is asked for ({cmd:xtick(1500(1)5000)}:
+3,501).  The number of axis ranges a build asks of Stata's tick routine is
+a fixed limit too, 256: a range past it is ticked by {cmd:dash}'s model of
+that routine, silently, where {cmd:twoway} asks the routine for every axis
+it draws.
 
 {pstd}
 {ul:No size limit.}  {cmd:dash} sets no limit on the size of a dashboard:
@@ -4999,7 +5008,9 @@ the list with Stata's own {cmd:numlist} before the dashboard is drawn, and
 the renderer reads the same grammar for a spec written by hand; a single
 quote is a character, not a string delimiter, and a word that is no value,
 form, rule or label is named in the note.  More than 2,000 ticks in any
-form keep the axis's default ticks, with a note.  Each value is the one
+form keep the axis's default ticks, with a note; {cmd:#}{it:N} above 2,000
+is taken as 2,000, silently, and {cmd:twoway} draws every tick it is asked
+for ({cmd:xtick(1500(1)5000)}: 3,501).  Each value is the one
 {cmd:numlist} makes, so a rule that crosses zero, such as
 {cmd:ylabel(-.3(.1).3)}, labels its middle tick 0.
 

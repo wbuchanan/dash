@@ -1001,6 +1001,7 @@ and now matches Stata.
 - The help did not say that twoway draws every by() group where dash draws the first 100 with a note; the $dash_max_by_groups row of Resource limits now says so, and Differences from twoway item 15 has the sub-point (WP-40, plat:PT-10)
 - The help did not list dash's bounds on n(), bin() and lpoly's degree() beside twoway's answers; Resource limits gains a Fixed limits paragraph stating each n() bound with the types it applies to (mspline's 300 is twoway's own), the types that take any n(), bin()'s 1,000 and the fitted degree's 30, and Differences from twoway item 15 has the sub-point (WP-40, stat:PT-15)
 - The help said histogram's discrete draws one bar per distinct value, and did not say that width() or discrete needing more than 1,000 bins is rebinned; it now says that past 1,000 bins, empty ones counted, discrete is squeezed into 1,000 bars and width() is dropped, with a note, where twoway draws the occupied bins (74 for histogram price, discrete), in the histogram paragraph, under Resource limits and in Differences from twoway item 15 (WP-40, sil:SD-1)
+- The help did not say that #N above 2,000 is taken as 2,000 silently, nor give twoway's answer to more than 2,000 ticks, nor list the 256 axis ranges a build asks of Stata's tick routine as a limit; the Axis labels paragraph, Resource limits and Differences from twoway item 15 now do (WP-40, AX-16)
 
 ### Fixed in WP-38
 

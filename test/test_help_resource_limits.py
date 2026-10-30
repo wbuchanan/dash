@@ -388,3 +388,43 @@ class TestHistogramBins:
         _assert_sub_point(sub)
         assert ("{cmd:width()} or {cmd:discrete} needing more than %s bins "
                 "is rebinned" % _n(_constant(_RENDER, "_MAX_BINS"))) in sub
+
+
+# ---------------------------------------------------------------------------
+# AX-16 (sil:SD-10): 2,000 ticks; 256 axis ranges asked of Stata a build
+# ---------------------------------------------------------------------------
+
+class TestTicks:
+    """More than _MAX_AXIS_TICKS ticks keep the default ticks with a note
+    and #N above it is clamped silently, where twoway draws every tick
+    (Q4002-6); a build asks Stata's tick routine for at most
+    _DASH_STATA_ORACLE_MAX ranges (A-18, D-40-02.f)."""
+
+    def test_the_axis_paragraph(self):
+        ticks = _n(_constant(_RENDER, "_MAX_AXIS_TICKS"))
+        h = _flat(_help())
+        assert ("More than %s ticks in any form keep the axis's default "
+                "ticks, with a note; {cmd:#}{it:N} above %s is taken as %s, "
+                "silently, and {cmd:twoway} draws every tick it is asked "
+                "for ({cmd:xtick(1500(1)5000)}: 3,501)."
+                % (ticks, ticks, ticks)) in h
+
+    def test_the_fixed_limit(self):
+        ticks = _n(_constant(_RENDER, "_MAX_AXIS_TICKS"))
+        s = _fixed_sentence("ticks in any form")
+        assert ("more than %s ticks in any form keeps the axis's default "
+                "ticks, with a note, and {cmd:#}{it:N} above %s is taken as "
+                "%s, silently, where {cmd:twoway} draws every tick it is "
+                "asked for" % (ticks, ticks, ticks)) in s
+
+    def test_the_build_bound_is_stated(self):
+        bound = str(_constant(_RENDER, "_DASH_STATA_ORACLE_MAX"))
+        s = _fixed_sentence("tick routine")
+        assert bound in s and "silently" in s, s
+        assert ("where {cmd:twoway} asks the routine for every axis it "
+                "draws") in s
+        sub = _sub("Ticks.")
+        _assert_sub_point(sub)
+        assert bound in sub
+        assert ("More than %s ticks keep the default ticks"
+                % _n(_constant(_RENDER, "_MAX_AXIS_TICKS"))) in sub

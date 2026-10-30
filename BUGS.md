@@ -4982,11 +4982,11 @@
   - Suggested fix: Documented only (M10, Q44): the 1,000-bin bound and its rebinning stay and are documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, sil:SD-1). dash.sthlp Statistical layer options (the histogram paragraph: discrete draws one bar per distinct value as long as the range needs at most 1,000 bars of that width, empty ones counted; beyond that the values are squeezed into 1,000 bars, with a note, where twoway draws only the bars that hold observations, 74 for histogram price, discrete; HR-19), Resource limits (Fixed limits: width() or discrete needing more than 1,000 bins is drawn with 1,000 bins under discrete and the default bins in place of width(), with a note; twoway draws the occupied bins, 68 for width(10)) and Differences from twoway item 15's sub-point Histogram bins. Pinned by test/test_help_resource_limits.py::TestHistogramBins, Q4002-5 (test_wp40_truth.cscript S02). Closes GAPS4 sil:SD-1 (WP-40, sil:SD-1).
 
-- [ ] Title: An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently
+- [x] Title: An axis option asking for more than 2,000 ticks keeps the default ticks; #N above 2,000 is clamped silently
   - File Names and Line Numbers: dash_render.py:40233, 42205, 42228-42233; twoway draws 2,501 labels
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 5 (major): ids AX-16, sil:SD-10; confirmed; tracked: partly in the Axis labels paragraph. Registered as GAPS4 AX-16 (WP-40, section 40-02, Document).
   - Suggested fix: Documented only (M10, Q44): the 2,000-tick bound stays and is documented under Resource limits and Differences.
-  - Resolution: Not fixed because WP-40 section 40-02 has not landed. Graded S2 (WP-40): drop-in audit package 5, major.
+  - Resolution: Documented 30oct2026 (WP-40, AX-16). dash.sthlp Axis labels (more than 2,000 ticks in any form keep the axis's default ticks, with a note; #N above 2,000 is taken as 2,000, silently, and twoway draws every tick it is asked for, 3,501 for xtick(1500(1)5000)), Resource limits (Fixed limits: the same, and the 256 axis ranges a build asks of Stata's tick routine, a range past it ticked by dash's model, silently, where twoway asks the routine for every axis it draws; A-18) and Differences from twoway item 15's sub-point Ticks. Pinned by test/test_help_resource_limits.py::TestTicks, Q4002-6 (test_wp40_truth.cscript S02). Closes GAPS4 AX-16 (WP-40, AX-16).
 
 - [ ] Title: msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number
   - File Names and Line Numbers: dash_render.py:8314, 8421-8424; dash.sthlp:1177-1178
