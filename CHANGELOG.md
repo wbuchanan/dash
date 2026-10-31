@@ -1006,6 +1006,7 @@ and now matches Stata.
 - by(, legend(pos(abc))) prints twoway's clockdir note and draws the legend above the panels, and by(, bgcolor()) is taken in silence (WP-41, BY-7)
 - by()'s title() at position(5), (6) or (7) is drawn below the panels, under the Graphs by note, as twoway draws it; it was drawn above them (WP-41, BY-24a)
 - by()'s at() hole for a legend or colour key is kept empty whether or not the key is drawn, as twoway keeps it; by(foreign, legend(off at(1))) drew the panels in one row, now in a 2x2 grid with cell 1 empty (WP-41, BY-3)
+- by(, legloc() clegloc() plegloc()) place their keys as twoway does; they were named and ignored (WP-41, BY-13)
 
 ### Fixed in WP-40
 

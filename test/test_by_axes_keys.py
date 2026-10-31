@@ -1509,3 +1509,64 @@ class TestHoles:
         g.add_layout(ColorBar(color_mapper=LinearColorMapper()), "right")
         assert dr._dash_has_colour_key(g)
         assert not dr._dash_has_colour_key(None)
+
+
+def _key_place(grid, name):
+    """``(side, location)`` of key cell *name* against the panels."""
+    from bokeh.models import ColorBar, Legend
+    c = _cell(grid, name)
+    if c is None:
+        return None
+    keys = [m for s in ("left", "right", "above", "below", "center")
+            for m in getattr(c[0], s) if isinstance(m, (Legend, ColorBar))]
+    return _cell_side(grid, c), [getattr(k, "location", None) for k in keys]
+
+
+class TestLocWords:
+    _PIDS = ("K05", "K06", "K07", "K13")
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_legloc_equals_legend_pos(self, mode):
+        """by(, legloc(pos(6))) draws exactly as by(, legend(pos(6)))
+        (K05's SVG is K06's), and legend() before legloc() wins, as
+        twoway's first copy does (K13: legend(pos(6)) legloc(pos(12)) is
+        below)."""
+        f = _fix()["probes"]
+        assert f["K05"]["svg"] == f["K06"]["svg"]
+        assert f["K13"]["legend"]["side"] == "below"
+        grids, _n, _o = _k_build(mode, self._PIDS)
+        want = _key_place(grids["K06"], "dash_by_legend")
+        assert want[0] == "below"
+        assert _key_place(grids["K05"], "dash_by_legend") == want
+        assert _key_place(grids["K13"], "dash_by_legend") == want
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_clegloc(self, mode):
+        """by(, clegend(on) clegloc(pos(6))) draws the colour key below
+        the panels, as twoway draws it (K07)."""
+        assert _fix()["probes"]["K07"]["clegend"]["side"] == "below"
+        grids, _n, _o = _k_build(mode, self._PIDS)
+        assert _key_place(grids["K07"], "dash_by_clegend")[0] == "below"
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_not_named(self, mode):
+        """legloc(), clegloc(), plegend() and plegloc() inside by() are
+        drawn, so none is named as not implemented."""
+        spec = _spec([
+            _graph("g1", _TWO, {"by": "foreign, legloc(pos(6))"}),
+            _graph("g2", [_p("scatter", colorvar="headroom")],
+                   {"by": "foreign, clegend(on) clegloc(pos(9))"}),
+            _graph("g3", _CUP, {"by": "foreign, plegend(on) "
+                                      "plegloc(pos(6))"})])
+        _r, notes, _o = _build(mode, spec)
+        assert not [n for n in notes if "not implemented" in n], notes
+
+    def test_the_loc_copies_merge_last(self):
+        """_dash_by_axes_options: legloc() after the legend() copies,
+        clegloc() after clegend(), plegloc() after plegend()."""
+        o = dr._dash_by_axes_options(
+            "foreign, legloc(pos(12)) legend(pos(6)) clegloc(at(2)) "
+            "clegend(on) plegloc(pos(6)) plegend(on)")
+        assert o["legend"] == "pos(6) pos(12)"
+        assert o["clegend"] == "on at(2)"
+        assert o["plegend"] == "on pos(6)"

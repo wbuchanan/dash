@@ -815,6 +815,41 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w41_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 BY-13: by() legloc clegloc plegloc ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w41_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4104-2: by(foreign, legloc(pos(6))) draws the legend below the
+    // panels, as twoway draws legloc(pos(6)) exactly as legend(pos(6))
+    // (by_chrome_truth.json K05 = K06); legloc() is not named.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    capture erase "`w41_work'/q4104_2.html"
+    quietly log using "`w41_work'/q4104_2.log", text replace name(_q4104)
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), by(foreign, legloc(pos(6))) saving("`w41_work'/q4104_2.html", replace)
+    local q2rc = _rc
+    quietly log close _q4104
+    _w41_expect Q4104-2 "(`q2rc' == 0)" "dash ... saving() rc `q2rc'"
+    cert_log_has "`w41_work'/q4104_2.log", needle("not implemented")
+    _w41_expect Q4104-2 "(r(found) == 0)" "the build named a by() sub-option as not implemented"
+    global W41_S04_PAGE "`w41_work'/q4104_2.html"
+    capture noisily python: _w41_s04_read()
+    _w41_expect Q4104-2 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+    capture noisily python: _w41_s04_below("dash_by_legend")
+    _w41_expect Q4104-2 "(0${W41_S04_ANS} == 1)" "the legend cell is not below the panels"
+    _w41_done Q4104-2 "by()'s legloc(pos(6)) draws the legend below the panels, as twoway does"
+    macro drop W41_S04_PAGE W41_S04_ANS
+    capture erase "`w41_work'/q4104_2.log"
+    capture erase "`w41_work'/q4104_2.html"
+    dash clear
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S06 helper (BY-16): the text of every Title named dash_by_label in the
 // saved page $W41_Q2_PAGE, sorted, into $W41_Q2_GOT (each
 // <script type="application/json"> block loaded as a Bokeh document, as

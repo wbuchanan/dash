@@ -3696,6 +3696,10 @@ scheme puts it (s2color below, stcolor right, economist above); a
 {cmd:position()} that is not a clock position ({cmd:abc}, {cmd:13},
 {cmd:03}) prints {cmd:twoway}'s note and places the legend above the
 panels.
+{cmd:legloc()}, {cmd:clegloc()} and {cmd:plegloc()} place their key as
+the same words inside {cmd:legend()}, {cmd:clegend()} and {cmd:plegend()}
+do, after them (a sub-option given in both is read from {cmd:legend()},
+as {cmd:twoway} reads its first copy).
 {cmd:ilegends} draws each panel's legend instead; {cmd:legend(on)} outside
 {cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
 nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
@@ -3790,7 +3794,8 @@ replace the shared axis titles, as in {cmd:twoway}; {cmd:t1title()} and
 {cmd:l2title()} a column left of the y title and {cmd:r1title()} and
 {cmd:r2title()} columns right of the panels), the axis and title
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
-{cmd:legend()}, {cmd:clegend()}, {cmd:graphregion()}, {cmd:plotregion()},
+{cmd:legend()}, {cmd:clegend()}, {cmd:legloc()}, {cmd:clegloc()},
+{cmd:plegend()}, {cmd:plegloc()}, {cmd:graphregion()}, {cmd:plotregion()},
 {cmd:subtitleformat()}, {cmd:shrink}, {cmd:overallshrink},
 {cmd:noshrink}, {cmd:noishrink}, {cmd:nooverallshrink}, {cmd:ishrink},
 {cmd:bgcolor()} (the background behind the graph's cells, which under

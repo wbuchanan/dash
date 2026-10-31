@@ -428,7 +428,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-6 Tracked:** Open (WP-41 section 41-05).
 - **BY-32 Tracked:** Open (WP-41 section 41-05).
 - **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.
-- **BY-13 Tracked:** Open (WP-41 section 41-04).
+- **BY-13 Tracked:** Closed in WP-41, BUGS.md "by(, legloc() clegloc() plegend() plegloc()) are named and ignored", commit pending.
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
 - **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.

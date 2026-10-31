@@ -37060,10 +37060,12 @@ def _dash_parse_by(by_raw, warn=True):
             # _dash_by_chrome (WP-30 P1.15a).
             pass
         elif (_row in _DASH_BY_AXES_SPELLINGS and "(" not in tok) or (
-                _row in ("legend", "clegend") and "(" in tok):
+                _row in ("legend", "clegend", "legloc", "clegloc",
+                         "plegend", "plegloc") and "(" in tok):
             # The i*/no* axis and title words, edgelabel, individual,
             # ilegends, legend() and clegend(): drawn by `_dash_by_side`
-            # (WP-30 P1.15c).
+            # (WP-30 P1.15c); legloc(), clegloc(), plegend() and
+            # plegloc() too (WP-41 BY-13, BY-14).
             pass
         elif (_row in ("graphregion", "plotregion", "subtitleformat")
               and "(" in tok) or (
@@ -56619,8 +56621,8 @@ def _dash_by_chrome_figures(figures, facet_map):
 # ---- by()'s shared axes and keys (WP-30 P1.15c) ------------------------------
 
 def _dash_by_axes_options(by_raw, scheme=None):
-    """``{"flags", "legend", "clegend", "compact"}``: what a by() string
-    asks of the shared axes, titles and keys (WP-30 P1.15c), as
+    """``{"flags", "legend", "clegend", "plegend", "compact"}``: what a
+    by() string asks of the shared axes, titles and keys (WP-30 P1.15c), as
     bygraph_g.class parse_settings reads it.
 
     ``flags`` starts from the scheme's ``yesno by_*`` keys
@@ -56631,13 +56633,16 @@ def _dash_by_axes_options(by_raw, scheme=None):
     ``no`` form clears it, a positive word winning over its ``no`` form
     whatever their order (yesno.class ``set_xor``; probes ``iyaxes
     noiyaxes`` and ``noiyaxes iyaxes``).  ``legend``/``clegend`` are the
-    merged arguments of every ``legend()``/``clegend()`` copy, in order.
+    merged arguments of every ``legend()``/``clegend()`` copy, in order,
+    then ``legloc()``/``clegloc()``'s; ``plegend`` plegend()'s then
+    plegloc()'s (WP-41 BY-13).
     Case-sensitive, through ``_dash_by_word``; linear; never raises."""
     base = getattr(scheme, "by_flags", None) or _DASH_BY_FLAG_DEFAULTS
     flags = {k: bool(base.get(k, v)) for k, v in
              _DASH_BY_FLAG_DEFAULTS.items()}
     flags["indiv_legends"] = False
-    out = {"flags": flags, "legend": "", "clegend": "", "compact": False}
+    out = {"flags": flags, "legend": "", "clegend": "", "plegend": "",
+           "compact": False}
     try:
         text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
     except Exception:  # noqa: BLE001 -- any object at all
@@ -56646,6 +56651,11 @@ def _dash_by_axes_options(by_raw, scheme=None):
     if not comma:
         return out
     yes, no, legs, clegs = set(), set(), [], []
+    # WP-41 BY-13: legloc(), clegloc() and plegloc() follow their key's
+    # copies, as twoway passes `legend' `legloc' to SetLegend (and so on);
+    # a sub-option's first copy wins there (measured: legend(pos(6))
+    # legloc(pos(12)) is below, by_chrome_truth.json K13).
+    locs, clocs, plegs, plocs = [], [], [], []
     for tok in _dash_by_tokens(subs.strip()):
         row, _typed, paren, arg = _dash_by_word(tok)
         if row is None:
@@ -56655,6 +56665,14 @@ def _dash_by_axes_options(by_raw, scheme=None):
                 legs.append(arg)
             elif row == "clegend":
                 clegs.append(arg)
+            elif row == "legloc":
+                locs.append(arg)
+            elif row == "clegloc":
+                clocs.append(arg)
+            elif row == "plegend":
+                plegs.append(arg)
+            elif row == "plegloc":
+                plocs.append(arg)
             elif row == "style" and arg.strip() == "compact":
                 out["compact"] = True
             continue
@@ -56671,8 +56689,11 @@ def _dash_by_axes_options(by_raw, scheme=None):
         flags[k] = False
     for k in yes:
         flags[k] = True
-    out["legend"] = " ".join(a.strip() for a in legs if a.strip())
-    out["clegend"] = " ".join(a.strip() for a in clegs if a.strip())
+    out["legend"] = " ".join(a.strip() for a in legs + locs if a.strip())
+    out["clegend"] = " ".join(a.strip() for a in clegs + clocs
+                              if a.strip())
+    out["plegend"] = " ".join(a.strip() for a in plegs + plocs
+                              if a.strip())
     return out
 
 
