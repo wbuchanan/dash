@@ -2884,7 +2884,6 @@ GAPS4_OPEN = {
     'BY-12': 'by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles',
     'BY-13': 'by(, legloc() clegloc() plegend() plegloc()) are named and ignored',
     'BY-14': "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key",
-    'BY-10': 'Panel-label sub-options twoway draws are named: justification(), nobexpand, lwidth()/lpattern(), span, alignment(), linegap(), bmargin(), placement(), orientation()',
     'BY-16': 'by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line',
     'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",
     'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',

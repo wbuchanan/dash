@@ -1001,6 +1001,8 @@ and now matches Stata.
 - scale() beside by() no longer scales the panels and by(, scale()) scales the whole graph, as twoway does; scatter mpg weight, scale(1.5) by(foreign) drew 12.75pt tick labels, now 8.5pt (WP-41, BY-2)
 - function and kdensity range(varname) under by() span each panel's own range, as twoway does; Domestic and Foreign both drew 1760-4840, now 1800-4840 and 1760-3420 (WP-41, BY-27)
 
+- by() panel labels draw subtitle()'s justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement(), which were named and ignored; orientation() is still named (WP-41, BY-10)
+
 ### Fixed in WP-40
 
 - dash scatter y x in 1/100 exported every observation to its data file and held them in memory while it built; on the one-line form and a build with no filter(), link(), brush(), csv or KPI card only the rows the graphs draw are exported: 100 of 3,000,000 (WP-40, plat:PT-7)

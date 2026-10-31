@@ -39520,6 +39520,66 @@ const at = (key, lo, len, size, mg) =>
   : lo + (len - size) / 2;
 for (const it of items) {
   const m = it[0], kind = it[1], side = it[2], place = it[3];
+  if (kind === "bylabel") {
+    // WP-41 BY-10: a by() panel label's box (dash_by_label_box).  Its one
+    // tick sits at 0 and the colour mapper's range moves it along the bar:
+    // at the left or right end less the inset it[4] (px), else centred.
+    // Mode "span": the bar runs over the panel's graph, from left of its y
+    // labels to its right margin (region "panel").
+    const fb = (pv.frame != null && pv.frame.bbox != null)
+      ? pv.frame.bbox : null;
+    if (fb == null || !(fb.width > 0) || m.color_mapper == null) {
+      continue;
+    }
+    const mode = it[7] || "";
+    const pad = +m.padding || 0;
+    let L = fb.x0, R = fb.x1, moved = false;
+    if (mode === "span") {
+      const gp = region("panel");
+      if (gp != null) { L = Math.min(L, gp.L); R = Math.max(R, gp.R); }
+      // Never past the panel's canvas, where it would be cut off.
+      L = Math.max(L, 0);
+      R = Math.min(R, W);
+      const w = Math.max(1, Math.round(R - L - 2 * pad));
+      if (m.width !== w) { m.width = w; moved = true; }
+      const loc = [Math.round(L - fb.x0), 0];
+      const cur = m.location;
+      if (!Array.isArray(cur) || cur[0] !== loc[0] || cur[1] !== loc[1]) {
+        m.location = loc;
+        moved = true;
+      }
+    }
+    const len = R - L - 2 * pad;
+    if (!(len > 0)) { continue; }
+    // BokehJS centres a horizontal bar's label on its tick whatever its
+    // align, so an end-placed text is centred half its widest line in.
+    let tw = 0;
+    if (place === "left" || place === "right") {
+      const ov = m.major_label_overrides;
+      const txt = String((ov instanceof Map ? [...ov.values()]
+                          : Object.values(ov || {}))[0] || "");
+      try {
+        const cx = document.createElement("canvas").getContext("2d");
+        cx.font = [m.major_label_text_font_style || "normal",
+                   m.major_label_text_font_size || "13px",
+                   m.major_label_text_font || "helvetica"].join(" ");
+        for (const ln of txt.split("\\n")) {
+          tw = Math.max(tw, cx.measureText(ln).width);
+        }
+      } catch (e) { tw = 0; }
+    }
+    const ins = Math.min(0.5, Math.max(0, ((+it[4] || 0) + tw / 2) / len));
+    const f = place === "left" ? ins : place === "right" ? 1 - ins : 0.5;
+    const cm = m.color_mapper;
+    if (Math.abs((+cm.low) + f) > 1e-6 || Math.abs((+cm.high) - (1 - f)) > 1e-6) {
+      cm.low = -f;
+      cm.high = 1 - f;
+    }
+    if (moved) {
+      try { pv.invalidate_layout(); } catch (e) { /* next layout */ }
+    }
+    continue;
+  }
   const g = region(it[5] || "");
   if (g == null) { continue; }
   let v = null;
@@ -55980,7 +56040,8 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
         (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key,
         placed=False,
         extra=_DASH_BY_LABEL_BOX_WORDS + ("position", "ring", "bexpand",
-                                          "nobexpand"))
+                                          "nobexpand")
+        + _DASH_BY_LABEL_ROW_WORDS)
     if not text:
         return None
     if scheme is not None:
@@ -56018,9 +56079,21 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
         # region; inside it (ring(0)) the box is the region's.
         _dash_report_suboptions("subtitle", ["margin(%s)" % opts["margin"]],
                                 seen, key)
-    if "nobexpand" in opts and inside is None:
-        # Outside the plot region the box already spans the panel.
-        _dash_report_suboptions("subtitle", ["nobexpand"], seen, key)
+    if inside is not None:
+        # WP-41 BY-10: the row words are drawn on the label row above or
+        # below the plot region; inside it (ring(0)) they are not, so they
+        # stay named there (width() and height() draw nothing, measured).
+        _dash_report_suboptions("subtitle", [
+            k if opts[k] == k else "%s(%s)" % (k, opts[k])
+            for k in _DASH_BY_LABEL_ROW_WORDS
+            if k in opts and k not in ("width", "height")], seen, key)
+    else:
+        # WP-41 BY-10: justification() places the label in its box
+        # (by_label_truth.json L01, L02); under nobexpand placement() does
+        # (L12), the box only round the text.
+        _j = _dash_by_label_just(opts)
+        if _j is not None:
+            align = _j
     px = _textbox_size(opts, size_default, OptionTranslator.size_ref_of(fig),
                        "subtitle(size)")
     colour, alpha = _textbox_color(
@@ -56036,6 +56109,9 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     # label's box; by_remainder_truth.json sub_*).
     title._dash_box_opts = {k: opts[k] for k in _DASH_BY_LABEL_BOX_WORDS
                             if k in opts}
+    # WP-41 BY-10: the row words _dash_by_label_box draws.
+    title._dash_label_opts = {k: opts[k] for k in _DASH_BY_LABEL_ROW_WORDS
+                              + ("bexpand", "nobexpand") if k in opts}
     title._dash_inside = inside
     fig.add_layout(title, side)
     if inside is not None:
@@ -56120,6 +56196,60 @@ _DASH_BY_LABEL_BOX_WORDS = ("fcolor", "bfcolor", "bcolor", "lcolor", "box",
                             # blstyle() the outline's linestyle, margin()
                             # the box's top and bottom margins.
                             "astextbox", "blstyle", "margin")
+
+
+#: The subtitle() sub-options a by() panel label draws on its row beside
+#: its box words (WP-41 BY-10, by_label_truth.json L01-L19, measured on
+#: stcolor): justification() and, under nobexpand, placement() place the
+#: text; lwidth()/lpattern() the outline; span widens the box over the
+#: panel's y labels; alignment() moves the text in its box; linegap() the
+#: line step; bmargin() the margin outside the box.  width() and height()
+#: draw nothing different (L09, L15, L19) and placement() on an expanded
+#: box neither (L13): taken in silence.  orientation() stays named: twoway
+#: turns the text (L14, rotate(-90)) and BokehJS clips a turned Label to
+#: the plot region, so the label row cannot carry it (BUGS.md "A by()
+#: panel label's orientation() is named, not drawn").
+_DASH_BY_LABEL_ROW_WORDS = ("justification", "lwidth", "lpattern", "span",
+                            "alignment", "linegap", "bmargin", "placement",
+                            "width", "height")
+
+#: alignment()'s shift of a by() panel label's text in its box, a share of
+#: the font, up negative (WP-41 BY-10; by_label_truth.json against L00's
+#: 105.13 font: top -15.98 (L07, L16, L19), bottom -15.81 (L08), baseline
+#: +15.81 (L17), whatever height()).
+_DASH_BY_LABEL_ALIGN_SHIFT = {"top": -0.152, "bottom": -0.1504,
+                              "baseline": 0.1504}
+
+
+def _dash_by_label_just(opts):
+    """The horizontal place of a by() panel label's text in its row,
+    ``"left"``, ``"right"``, ``"center"`` or None (the scheme's), from its
+    subtitle() sub-options *opts* (WP-41 BY-10): under nobexpand
+    placement()'s compass (e, ne, se right; w, nw, sw left; else centre,
+    by_label_truth.json L12) and nothing else (justification() moves no
+    box as wide as its text, L20), else justification() (l/left, r/right,
+    c/center, L01, L02).  Never raises."""
+    o = opts if isinstance(opts, dict) else {}
+    if "nobexpand" in o and "bexpand" not in o:
+        # The box is as wide as its text, so justification() moves
+        # nothing (L20 draws as L03).
+        if not o.get("placement"):
+            return None
+        pl = str(o["placement"]).strip().lower()
+        pl = {"east": "e", "west": "w", "north": "n", "south": "s",
+              "c": "c", "center": "c", "centre": "c"}.get(pl, pl)
+        if pl in ("e", "ne", "se"):
+            return "right"
+        if pl in ("w", "nw", "sw"):
+            return "left"
+        return "center"
+    j = str(o.get("justification") or "").strip().lower()
+    if not j:
+        return None
+    for full in ("left", "right", "center"):
+        if full.startswith(j) or (full == "center" and j == "centre"):
+            return full
+    return None
 
 
 def _dash_by_text_cell(scheme, name):
@@ -57129,7 +57259,9 @@ def _dash_by_keys(figs, opts, scheme):
 
 def _dash_by_label_box(fig, scheme, mult=1.0):
     """Draw *fig*'s by() panel label in twoway's filled box (WP-30
-    P1.15c, ratification row 36); returns the box ``ColorBar`` or None.
+    P1.15c, ratification row 36); returns the box ``ColorBar``, the
+    label's ``Title`` under nobexpand (WP-41 BY-10: the Title's own
+    background is a box as wide as its text) or None.
 
     twoway draws each panel's label as ``subtitle(, astextbox box
     blcolor(scheme bylabel_outline))`` (bygraphstyle-default.style): a
@@ -57161,6 +57293,9 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
                 title, where = m, side
     if title is None or not str(title.text or ""):
         return None
+    if getattr(title, "_dash_boxed", False):
+        # nobexpand's box is the Title's own (WP-41 BY-10), drawn once.
+        return title
     bo = getattr(title, "_dash_box_opts", None) or {}
     inside = getattr(title, "_dash_inside", None)
     if inside is not None:
@@ -57198,11 +57333,45 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
             except (TypeError, ValueError, IndexError):
                 pass
     unit = OptionTranslator.PT_PER_RS * px
-    h = int(round(font + (float(top) + float(bottom)) * unit * mult))
+    lo = getattr(title, "_dash_label_opts", None) or {}
+    ref = OptionTranslator.size_ref_of(fig)
+    # WP-41 BY-10/BY-16: linegap() the line step, the font plus the gap at
+    # by()'s multiplier (by_label_truth.json L10: 187.82 against a 105.13
+    # font, linegap(3)); with no gap a step is the font (Q01).  Each line
+    # after the first adds a step to the box.
+    nlines = str(title.text).count("\n") + 1
+    step = 1.0
+    if lo.get("linegap"):
+        try:
+            gap = OptionTranslator.resolve_size(str(lo["linegap"]), "line",
+                                                0.0, ref)
+        except (ValueError, TypeError):
+            gap = None
+            _dash_style_note("subtitle(linegap)", lo["linegap"], "size")
+        if gap is not None and font > 0:
+            step = 1.0 + max(0.0, float(gap)) * px * mult / font
+    h = int(round(font * (1.0 + (nlines - 1) * step)
+                  + (float(top) + float(bottom)) * unit * mult))
     h = max(1, min(h, 2000))
     align = str(title.align or "center")
     t = 0.0 if align == "left" else 0.5
     line = float(getattr(scheme, "by_label_line_pt", 0.576)) * px * mult
+    if lo.get("lwidth"):
+        # lwidth(): the outline's width (L04: vthick 38.56 of 3240, seven
+        # times the default's 5.51).
+        try:
+            line = float(OptionTranslator.translate_lwidth(
+                str(lo["lwidth"]), None, ref)) * mult
+        except (ValueError, TypeError):
+            _dash_style_note("subtitle(lwidth)", lo["lwidth"], "line width")
+    dash = None
+    if lo.get("lpattern"):
+        # lpattern(): the outline's pattern (L05: dash, 64.8 on, 32.4 off).
+        try:
+            dash = OptionTranslator.translate_lpattern(str(lo["lpattern"]))
+        except (ValueError, TypeError):
+            _dash_style_note("subtitle(lpattern)", lo["lpattern"],
+                             "line pattern")
     fill = getattr(scheme, "by_label_fill", "#d9e6eb")
     outline = getattr(scheme, "by_label_outline", "#d9e6eb")
     colours = getattr(fig, "_dash_scheme_colours", None)
@@ -57227,17 +57396,45 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
         if _lb and _lb.get("line"):
             outline = _lb["line"]
     outline = _col("lcolor", "bcolor") or outline
+    if "nobexpand" in lo and "bexpand" not in lo:
+        # WP-41 BY-10 (D-41-06.a): nobexpand's box is only as wide as its
+        # text (L03: 483.64 of a 2196.62 plot region, centred; placement(e)
+        # at its right end, L12): the Title's own background and border,
+        # its padding the box's margin.  _dash_by_scale_panel scales the
+        # Title's font and border later, not its padding.
+        title.visible = True
+        title.background_fill_color = fill
+        title.background_fill_alpha = 1.0
+        title.border_line_color = outline
+        title.border_line_width = round(line / mult if mult > 0 else line, 3)
+        if dash is not None:
+            title.border_line_dash = dash
+        title.padding = int(round(float(top) * unit * mult))
+        title._dash_boxed = True
+        return title
     fpx = "%gpx" % round(font, 2)
+    just = _dash_by_label_just(lo)
+    text = str(title.text)
+    placed = just in ("left", "right") or "span" in lo
+    if placed:
+        # WP-41 BY-10 (D-41-06.b): the one tick at 0, moved along the bar
+        # by the colour mapper's range, which the span hook's bylabel item
+        # sets once the frame is laid out.
+        t = 0.0
+    frac = {"left": 0.0, "right": 1.0}.get(just, 0.5)
     box = ColorBar(
         name="dash_by_label_box", orientation="horizontal", padding=0,
         margin=0, height=h,
-        color_mapper=LinearColorMapper(palette=[fill], low=0, high=1),
+        color_mapper=LinearColorMapper(
+            palette=[fill], low=(-frac if placed else 0),
+            high=(1 - frac if placed else 1)),
         bar_line_color=outline, bar_line_width=round(line, 3),
         border_line_color=None, background_fill_alpha=0,
         major_tick_line_color=None, minor_tick_line_color=None,
         ticker=FixedTicker(ticks=[t]),
-        major_label_overrides={t: str(title.text)},
-        major_label_text_align=("left" if t == 0 else "center"),
+        major_label_overrides={t: text},
+        major_label_text_align=(
+            "center" if placed else ("left" if t == 0 else "center")),
         major_label_text_baseline="middle",
         major_label_text_font_size=fpx,
         major_label_text_color=title.text_color,
@@ -57246,12 +57443,47 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
         label_standoff=int(-(h + font) // 2 - 2))
     if title.text_alpha is not None:
         box.major_label_text_alpha = title.text_alpha
+    if dash is not None:
+        box.bar_line_dash = dash
+    if nlines > 1 or lo.get("linegap"):
+        box.major_label_text_line_height = round(step, 4)
+    shift = _DASH_BY_LABEL_ALIGN_SHIFT.get(
+        str(lo.get("alignment") or "").strip().lower())
+    if shift is not None:
+        # alignment(): the text up (top, bottom) or down (baseline) in its
+        # box, which keeps its height (L07, L08, L16, L17, L19).  The
+        # bar's labels sit above it, so a larger standoff raises the text.
+        box.label_standoff = int(box.label_standoff - round(shift * font))
+    if lo.get("bmargin") and scheme is not None and \
+            hasattr(scheme, "margin_sides"):
+        # bmargin(): a margin outside the box on every side (L11: medium,
+        # 96.4 of 3240).  BokehJS keeps no margin round a ColorBar in a
+        # side panel, so it is the bar's padding (its frame is drawn
+        # round the bar only, the padding left clear).
+        _bs = scheme.margin_sides(str(lo["bmargin"]).strip())
+        if _bs:
+            try:
+                box.padding = int(round(max(
+                    (float(v[1]) / OptionTranslator.PT_PER_RS
+                     if isinstance(v, tuple) else float(v))
+                    for v in _bs) * unit * mult))
+            except (TypeError, ValueError):
+                pass
+        else:
+            _dash_style_note("subtitle(bmargin)", lo["bmargin"], "margin")
     setattr(box, _DASH_GRAPH_TEXT_DONE, True)
     lst = list(getattr(fig, where))
     idx = next(i for i, m in enumerate(lst) if m is title)
     lst.insert(idx, box)
     setattr(fig, where, lst)
     title.visible = False
+    if placed:
+        inset = float(top) * unit * mult
+        _dash_span(fig, box, "bylabel", side=where,
+                   place=just if just in ("left", "right") else "center",
+                   offset=round(inset, 3),
+                   ref="panel" if "span" in lo else "",
+                   mode="span" if "span" in lo else "")
     return box
 
 
@@ -68966,6 +69198,9 @@ class ServerAppBuilder:
                       "_DASH_TICK_EVERY_JS",
                       # WP-31 D10: a by() panel label's box words.
                       "_DASH_BY_LABEL_BOX_WORDS",
+                      # WP-41 BY-10: its row words and alignment() shift.
+                      "_DASH_BY_LABEL_ROW_WORDS",
+                      "_DASH_BY_LABEL_ALIGN_SHIFT",
                       # WP-31 D6: alternate's and nogmin/nogmax's code.
                       "_DASH_ALT_LABEL_JS", "_DASH_GRID_NOEND_JS",
                       "_DASH_TICKGAP_PT", "_DASH_LABJUST", "_DASH_LABALIGN",
@@ -69377,7 +69612,8 @@ class ServerAppBuilder:
                          "_dash_by_value_missing", "_dash_by_nonmissing",
                          "_dash_by_text_key", "_dash_by_text_options",
                          "_dash_by_note_list",
-                         "_dash_by_panel_label", "_dash_by_text_cell",
+                         "_dash_by_panel_label", "_dash_by_label_just",
+                         "_dash_by_text_cell",
                          "_dash_by_chrome",
                          "_dash_by_frame_grid", "_dash_by_chrome_figures",
                          # The Stata display-format writer (WP-28 S04).

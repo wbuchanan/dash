@@ -430,7 +430,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-12 Tracked:** Open (WP-41 section 41-02).
 - **BY-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
-- **BY-10 Tracked:** Open (WP-41 section 41-06).
+- **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit pending): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
 - **BY-16 Tracked:** Open (WP-41 section 41-06).
 - **BY-18 Tracked:** Open (WP-41 section 41-05).
 - **VF-6 Tracked:** Open (WP-41 section 41-05).

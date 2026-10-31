@@ -280,6 +280,7 @@ GENERATORS = {
     "by_chrome_truth.json": "scripts/extract_by_chrome_truth.do",
     "by_contour_truth.json": "scripts/extract_by_contour_truth.do",
     "by_grid_truth.json": "scripts/extract_by_grid_truth.do",
+    "by_label_truth.json": "scripts/extract_by_label_truth.do",
     "by_remainder_truth.json": "scripts/extract_by_remainder_truth.do",
     "by_scale_range_truth.json": "scripts/extract_by_scale_range_truth.do",
     "by_scales_truth.json": "scripts/extract_by_scales_truth.do",

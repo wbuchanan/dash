@@ -1,0 +1,5150 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "58506c397540e22bdd1caaa91b9ca3f2391ae0df",
+  "extracted": "31 Oct 2026 06:30:13",
+  "method": "each panel's subtitle lines from the .Graph members; rects and texts from the SVG in document order; a label's box is the filled rect written before its first line",
+  "probes": 25,
+  "scheme": "stcolor",
+  "script": "scripts/extract_by_label_truth.do",
+  "source": "scripts/extract_by_label_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "D01": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "14610"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "14611"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "14610"
+    ],
+    [
+     "14611"
+    ]
+   ],
+   "options": "by(d)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by d",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "14610",
+    "14611"
+   ]
+  },
+  "D02": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "01jan2000"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "02jan2000"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "01jan2000"
+    ],
+    [
+     "02jan2000"
+    ]
+   ],
+   "options": "by(d, subtitleformat(var))",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "01jan2000",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "02jan2000",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by d",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "01jan2000",
+    "02jan2000"
+   ]
+  },
+  "L00": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L01": {
+   "boxes": [
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 569.87,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 2993.12,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, justification(left)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 569.87,
+     "y": 258.24
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 2993.12,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L02": {
+   "boxes": [
+    {
+     "anchor": "end",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 2733.41,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "end",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 5156.66,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, justification(right)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "end",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 2733.41,
+     "y": 258.24
+    },
+    {
+     "anchor": "end",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 5156.66,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L03": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 483.64,
+     "x": 1409.74,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 397.57,
+     "x": 3876.19,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, nobexpand) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 483.64,
+     "x": 1409.74,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 397.57,
+     "x": 3876.19,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L04": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#000000",
+     "stroke_width": 38.56,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#000000",
+     "stroke_width": 38.56,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, lwidth(vthick) lcolor(black)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#000000",
+     "stroke_width": 38.56,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#000000",
+     "stroke_width": 38.56,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L05": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, lpattern(dash) lcolor(black)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 132.87,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 154.97
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 132.87,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 154.97
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L06": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1601.27,
+     "text_y": 258.24,
+     "w": 2523.99,
+     "x": 339.36,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4131.68,
+     "text_y": 258.24,
+     "w": 2309.85,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, span) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2523.99,
+     "x": 339.36,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2309.85,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1601.27,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4131.68,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L07": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 242.26,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 242.26,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, alignment(top) height(15)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L08": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 242.43,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 242.43,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, alignment(bottom) height(15)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 242.43
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 242.43
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L09": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, height(15)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L10": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 326.03,
+     "label": [
+      "Dom",
+      "estic"
+     ],
+     "plotregion": {
+      "height": 2195.94,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 478.24
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 326.03,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2195.94,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 478.24
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 352.06,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl_q",
+   "labels": [
+    [
+     "Dom",
+     "estic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, linegap(3)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2195.94,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 478.24
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2190.44,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 480.99
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2195.94,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 478.24
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2190.44,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 480.99
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 326.03,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 326.03,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Dom",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "estic",
+     "x": 1651.56,
+     "y": 446.06
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 352.06
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Dom",
+    "estic",
+    "Foreign"
+   ]
+  },
+  "L11": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.21,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2190.88,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 483.3
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 354.59,
+     "w": 2003.74,
+     "x": 649.69,
+     "y": 248.74
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.21,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2190.88,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 483.3
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 354.59,
+     "w": 2003.74,
+     "x": 3073.11,
+     "y": 248.74
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, bmargin(medium)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2190.88,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 483.3
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2185.37,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 486.05
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2190.88,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 483.3
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2185.37,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 486.05
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.21,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2003.74,
+     "x": 649.69,
+     "y": 248.74
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.21,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2003.74,
+     "x": 3073.11,
+     "y": 248.74
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 354.59
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 354.59
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L12": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 2507.96,
+     "text_y": 258.24,
+     "w": 483.81,
+     "x": 2266.14,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4974.41,
+     "text_y": 258.24,
+     "w": 397.57,
+     "x": 4775.63,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, nobexpand placement(e)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 483.81,
+     "x": 2266.14,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 397.57,
+     "x": 4775.63,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 2507.96,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4974.41,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L13": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, placement(e)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L14": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 1261.07,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 1260.9,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 1413.28
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1688.39,
+     "text_y": 782.83,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 1261.07,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 1260.9,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 1413.28
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4111.81,
+     "text_y": 782.83,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, orientation(vertical)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 1260.9,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 1413.28
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 1255.39,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 1416.04
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 1260.9,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 1413.28
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 1255.39,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 1416.04
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 1261.07,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 1261.07,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1688.39,
+     "y": 782.83
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4111.81,
+     "y": 782.83
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L15": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 258.24,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, width(30)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L16": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 242.26,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 242.26,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, alignment(top)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L17": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 274.05,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 274.05,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, alignment(baseline) height(15)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 274.05
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 274.05
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L18": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 1261.07,
+     "label": [
+      "14610"
+     ],
+     "plotregion": {
+      "height": 1260.9,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 1413.28
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1688.39,
+     "text_y": 782.83,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 1261.07,
+     "label": [
+      "14611"
+     ],
+     "plotregion": {
+      "height": 1260.9,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 1413.28
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4111.81,
+     "text_y": 782.83,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "14610"
+    ],
+    [
+     "14611"
+    ]
+   ],
+   "options": "subtitle(, orientation(vertical)) by(d)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 1260.9,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 1413.28
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 1255.39,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 1416.04
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 1260.9,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 1413.28
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 1255.39,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 1416.04
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 1261.07,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 1261.07,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by d",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "14610",
+    "14611"
+   ]
+  },
+  "L19": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 242.26,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 242.26,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, alignment(top) height(4)) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 242.26
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L20": {
+   "boxes": [
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1426.28,
+     "text_y": 258.24,
+     "w": 483.64,
+     "x": 1409.74,
+     "y": 152.21
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.38,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 3892.73,
+     "text_y": 258.24,
+     "w": 397.57,
+     "x": 3876.19,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, justification(left) nobexpand) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2383.59,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 290.59
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2378.09,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 293.34
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 483.64,
+     "x": 1409.74,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.38,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 397.57,
+     "x": 3876.19,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1426.28,
+     "y": 258.24
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 3892.73,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "L21": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.21,
+     "label": [
+      "Domestic"
+     ],
+     "plotregion": {
+      "height": 2190.88,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 483.3
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1601.27,
+     "text_y": 354.59,
+     "w": 2331.11,
+     "x": 435.71,
+     "y": 248.74
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 138.21,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2190.88,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 483.3
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4131.68,
+     "text_y": 354.59,
+     "w": 2117.14,
+     "x": 3073.11,
+     "y": 248.74
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl",
+   "labels": [
+    [
+     "Domestic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "subtitle(, bmargin(medium) span) by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2190.88,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 483.3
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2185.37,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 486.05
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2190.88,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 483.3
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2185.37,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 486.05
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.21,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2331.11,
+     "x": 435.71,
+     "y": 248.74
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 138.21,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2117.14,
+     "x": 3073.11,
+     "y": 248.74
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1601.27,
+     "y": 354.59
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4131.68,
+     "y": 354.59
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Domestic",
+    "Foreign"
+   ]
+  },
+  "Q01": {
+   "boxes": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 243.51,
+     "label": [
+      "Dom",
+      "estic"
+     ],
+     "plotregion": {
+      "height": 2278.46,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 395.72
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 1651.56,
+     "text_y": 258.24,
+     "w": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "h": 243.51,
+     "label": [
+      "Foreign"
+     ],
+     "plotregion": {
+      "height": 2278.46,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 395.72
+     },
+     "size": 105.13,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "text_x": 4074.98,
+     "text_y": 310.89,
+     "w": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "data": "bl_q",
+   "labels": [
+    [
+     "Dom",
+     "estic"
+    ],
+    [
+     "Foreign"
+    ]
+   ],
+   "options": "by(foreign)",
+   "rc": 0,
+   "rects": [
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": "none",
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 3240.0,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 5400.0,
+     "x": 0.0,
+     "y": 0.0
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 3233.52,
+     "stroke": "#ffffff",
+     "stroke_width": 6.48,
+     "width": 5393.52,
+     "x": 3.24,
+     "y": 3.24
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2278.46,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 395.72
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2272.95,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2191.11,
+     "x": 556.09,
+     "y": 398.47
+    },
+    {
+     "dasharray": null,
+     "fill": "#ffffff",
+     "height": 2278.46,
+     "stroke": null,
+     "stroke_width": null,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 395.72
+    },
+    {
+     "dasharray": null,
+     "fill": "none",
+     "height": 2272.95,
+     "stroke": "#ffffff",
+     "stroke_width": 5.51,
+     "width": 2190.94,
+     "x": 2979.5,
+     "y": 398.47
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 243.51,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.62,
+     "x": 553.33,
+     "y": 152.21
+    },
+    {
+     "dasharray": null,
+     "fill": "#f0f0f0",
+     "height": 243.51,
+     "stroke": "#f0f0f0",
+     "stroke_width": 5.51,
+     "width": 2196.45,
+     "x": 2976.75,
+     "y": 152.21
+    }
+   ],
+   "svg_texts": [
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Dom",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "estic",
+     "x": 1651.56,
+     "y": 363.37
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 310.89
+    },
+    {
+     "anchor": "middle",
+     "angle": -90.0,
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "angle": 0.0,
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "angle": 0.0,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ],
+   "texts": [
+    "Dom",
+    "estic",
+    "Foreign"
+   ]
+  }
+ }
+}

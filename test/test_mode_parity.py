@@ -2991,6 +2991,13 @@ CORPUS = [
           [plot_for("kdensity", {"range": "12 41", "range_var": "mpg",
                                  "range_panels": "12 34|14 41"})],
           go={"by": "foreign"}),
+    # WP-41 BY-10: the panel label's sub-options, drawn in both modes.
+    _case("by() label justification(left) nobexpand", [_sc()],
+          go={"by": "foreign",
+              "subtitle": ", justification(left) nobexpand"}),
+    _case("by() label justification(right) span lpattern(dash)", [_sc()],
+          go={"by": "foreign",
+              "subtitle": ", justification(right) span lpattern(dash)"}),
 ]
 
 

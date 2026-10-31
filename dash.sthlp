@@ -5863,8 +5863,12 @@ the scheme's {cmd:by()} panel margin past its plot region on the right), as
 sub-options are named in the note: a title box has no angle and no fixed
 size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},
 {cmd:ring()}, the box colours and {cmd:box}/{cmd:nobox}, as {cmd:twoway}
-places and fills it (see Faceting with {cmd:by()}), and names the other
-placement and box sub-options.
+places and fills it (see Faceting with {cmd:by()}), and draws
+{cmd:justification()}, {cmd:nobexpand}, {cmd:lwidth()}, {cmd:lpattern()},
+{cmd:span}, {cmd:alignment()}, {cmd:linegap()}, {cmd:bmargin()} and
+{cmd:placement()} on the label row as {cmd:twoway} does; {cmd:width()}
+and {cmd:height()} change nothing there, as in {cmd:twoway}, and
+{cmd:orientation()} is named.
 
 
 {marker colorvar}
