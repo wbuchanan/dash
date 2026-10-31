@@ -163,3 +163,32 @@ class TestRing0InChrome:
         assert n == 1, "dash draws %d texts %s" % (n, text)
         assert abs(gx - wx) <= 0.02 and abs(gy - wy) <= dy, \
             (gx, gy, wx, wy)
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestEdgeTitlesInChrome:
+    """WP-41 BY-12: by()'s edge titles are drawn where twoway draws them
+    (by_text_truth.json bp74-bp76), x within 0.02 of the graph's width
+    and y within 0.05 of its height.  l2title's x is read from the shared
+    y title's, as its gap left of it: the y title itself sits 0.027 of
+    the width further left than twoway's in dash (bp01, measured
+    31oct2026: 0.009 against 0.036, the outer margin's difference)."""
+
+    @pytest.mark.parametrize("pid,texts", [("bp74", ("T1", "T2")),
+                                           ("bp75", ("R1", "R2")),
+                                           ("bp76", ("L2", "B2"))])
+    def test_positions(self, mode, pid, texts):
+        bad = []
+        for text in texts:
+            wx, wy, gx, gy, n = _chrome_boxes(mode, pid, text)
+            if text == "L2" and n == 1:
+                yx, _y, ygx, _gy, yn = _chrome_boxes(mode, pid,
+                                                     "Mileage (mpg)")
+                if yn == 1:
+                    wx, gx = yx - wx, ygx - gx
+            if n != 1:
+                bad.append("dash draws %d texts %s" % (n, text))
+            elif abs(gx - wx) > 0.02 or abs(gy - wy) > 0.05:
+                bad.append("%s: dash (%.3f, %.3f), twoway (%.3f, %.3f)"
+                           % (text, gx, gy, wx, wy))
+        assert not bad, bad

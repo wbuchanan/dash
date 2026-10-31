@@ -3778,7 +3778,12 @@ a note names the limit and the global that raises it (see
 {cmd:compact}, {cmd:style(compact)}, {cmd:iscale()}, {cmd:imargin()},
 {cmd:scale()},
 {cmd:total}, {cmd:missing}, the rescale forms above, {cmd:title()},
-{cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
+{cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the eight edge titles
+{cmd:l1title()} to {cmd:b2title()} ({cmd:l1title()} and {cmd:b1title()}
+replace the shared axis titles, as in {cmd:twoway}; {cmd:t1title()} and
+{cmd:t2title()} add rows above the panels, {cmd:b2title()} one below them,
+{cmd:l2title()} a column left of the y title and {cmd:r1title()} and
+{cmd:r2title()} columns right of the panels), the axis and title
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
 {cmd:legend()}, {cmd:clegend()}, {cmd:graphregion()}, {cmd:plotregion()},
 {cmd:subtitleformat()}, {cmd:shrink}, {cmd:overallshrink},

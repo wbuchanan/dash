@@ -1002,6 +1002,7 @@ and now matches Stata.
 - by() panel labels draw subtitle()'s justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement(), which were named and ignored; orientation() is still named (WP-41, BY-10)
 - by() panels of a date variable read its number, as twoway writes it; by(d) drew 01jan2000, now 14610; a value label of quoted parts is split into lines (WP-41, BY-16)
 - by()'s note(), caption() and subtitle() at ring(0) are drawn on the array's edge rows, as twoway draws them; they were dropped silently (WP-41, BY-1)
+- by()'s l1title() and b1title() replace the shared axis titles and t1title/t2title/b2title/l2title/r1title/r2title add their rows and columns, as twoway draws them; they were named and ignored (WP-41, BY-12)
 
 ### Fixed in WP-40
 

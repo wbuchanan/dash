@@ -36896,6 +36896,17 @@ _DASH_BY_TEXT_SPELLINGS = {
     "subtitle": ("sub", "subt", "subti", "subtit", "subtitl", "subtitle"),
     "note": ("note",),
     "caption": ("cap", "capt", "capti", "captio", "caption"),
+    # WP-41 BY-12: the eight edge titles, each from the grammar's shortest
+    # spelling to the full word, drawn by _dash_by_chrome (t1, t2, b2) and
+    # _dash_by_side (l1, b1, l2, r1, r2).
+    "l1title": ("l1", "l1t", "l1ti", "l1tit", "l1titl", "l1title"),
+    "l2title": ("l2", "l2t", "l2ti", "l2tit", "l2titl", "l2title"),
+    "r1title": ("r1", "r1t", "r1ti", "r1tit", "r1titl", "r1title"),
+    "r2title": ("r2", "r2t", "r2ti", "r2tit", "r2titl", "r2title"),
+    "t1title": ("t1", "t1t", "t1ti", "t1tit", "t1titl", "t1title"),
+    "t2title": ("t2", "t2t", "t2ti", "t2tit", "t2titl", "t2title"),
+    "b1title": ("b1", "b1t", "b1ti", "b1tit", "b1titl", "b1title"),
+    "b2title": ("b2", "b2t", "b2ti", "b2tit", "b2titl", "b2title"),
 }
 
 
@@ -37652,7 +37663,8 @@ def _dash_by_scale_panel(fig, m):
 
 def _dash_by_text_key(tok):
     """The by() text sub-option (``"title"``, ``"subtitle"``, ``"note"``,
-    ``"caption"``) one token of :func:`_dash_by_tokens` is, or None.
+    ``"caption"`` or, WP-41 BY-12, an edge title ``"l1title"`` ..
+    ``"b2title"``) one token of :func:`_dash_by_tokens` is, or None.
 
     Only a token with an argument -- ``ti("X")``, ``note(, size(large))``
     -- counts, and its name is compared case-sensitively with
@@ -37670,9 +37682,9 @@ def _dash_by_text_key(tok):
 
 
 def _dash_by_text_options(by_raw):
-    """``{"title", "subtitle", "note", "caption"}``: each by() text
-    sub-option's merged raw value, ``""`` when it is not given (WP-30
-    P1.15a).
+    """``{"title", "subtitle", "note", "caption", "l1title", ..,
+    "b2title"}``: each by() text sub-option's merged raw value, ``""``
+    when it is not given (WP-30 P1.15a; the edge titles WP-41 BY-12).
 
     Repeated forms merge as twoway's text boxes do (probes a07, a08, a13):
     the text is the last occurrence's whose text part is given -- a typed
@@ -52161,7 +52173,8 @@ def _dash_reflow(grid, stack=True):
             total = max(total, col + span)
             nm = str(getattr(child[0], "name", "") or "")
             if nm in ("dash_by_ytitle", "dash_by_legend",
-                      "dash_by_clegend") and span == 1:
+                      "dash_by_clegend", "dash_by_l2title",
+                      "dash_by_r1title", "dash_by_r2title") and span == 1:
                 side_cols.add(col)
             elif nm == "dash_by_ruler":
                 ruler_cols.add(col)
@@ -56380,6 +56393,34 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
     foot = _dash_by_text_cell(scheme, "dash_by_foot")
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
                            sides=("below",), ring0=True)
+    # WP-41 BY-12: by()'s t2title and t1title are rows under the head's
+    # frame (t1 nearest the panels) and b2title a row over the foot's
+    # (nearest them), as twoway draws them (by_text_truth.json bp74,
+    # bp76), each a Title named dash_by_<option>.
+    for cell, k, sd, ring in ((head, "t2title", "below", 1),
+                              (head, "t1title", "below", 2),
+                              (foot, "b2title", "above", 1)):
+        if not o.get(k):
+            continue
+        text, topts = _dash_textbox(o[k], k, seen, key)
+        if not text:
+            continue
+        style = "subheading" if k != "t2title" else "body"
+        if scheme is not None:
+            style = scheme.edge_title_styles.get(k, style)
+            size_d, color_d = (scheme.textbox_style(style)
+                               or (scheme.subheading_font_size,
+                                   scheme.subheading_color))
+        else:
+            d = _DASH_TEXTBOX_DEFAULTS[
+                "subtitle" if style == "subheading" else "caption"]
+            size_d, color_d = f"{d['size']:g}px", d["color"]
+        m = _dash_textbox_draw(cell, k, text, topts, scheme,
+                               {"mode": "side", "side": sd,
+                                "align": "center", "ring": ring,
+                                "clock": 12 if sd == "below" else 6},
+                               base_size=size_d, base_color=color_d)
+        m.name = "dash_by_" + k
     # WP-32: by()'s own spanned boxes are placed on the whole by() graph,
     # as twoway places them (measured 19oct2026: the title at 2700 of
     # 5400, 2251.3 without; the note at 132.8, 245.4 without).
@@ -56717,7 +56758,8 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
     title *axis* was (its finished font, size, colour and style)."""
     from bokeh.models import Title
     cell = _dash_by_cell(scheme, name,
-                         (1, None) if side == "left" else (None, 1))
+                         (1, None) if side in ("left", "right")
+                         else (None, 1))
     kw = {}
     for src, dst in (("axis_label_text_font_size", "text_font_size"),
                      ("axis_label_text_color", "text_color"),
@@ -57958,16 +58000,41 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
             "cells": [], "hook": None, "ring0": bool(keys.get("ring0")),
             "styles": _dash_by_array_styles(go.get("by", ""), scheme, go)}
     tcells = []
+    # WP-41 BY-12: by()'s l1title() and b1title() replace the shared y and
+    # x titles, drawn even under noytitles/noxtitles, as twoway draws the
+    # user's title; l2title(), r1title() and r2title() are cells of their
+    # own (bygraph_g.class; by_text_truth.json bp72-bp76).  Built after
+    # the canvas-text pass, so their text is finished here.
+    eo = _dash_by_text_options(go.get("by"))
+    edge = {}
+    for k in ("l1title", "b1title", "l2title", "r1title", "r2title"):
+        if eo.get(k):
+            text = _dash_textbox(eo[k], k, seen, key)[0]
+            if text:
+                edge[k] = _dash_graph_text(text)[0]
     for d, name, where, flag in (("y", "dash_by_ytitle", "left",
                                   "outer_ytitles"),
                                  ("x", "dash_by_xtitle", "below",
                                   "outer_xtitles")):
-        if fl.get(flag) and titles[d]:
+        own = edge.get({"y": "l1title", "x": "b1title"}[d])
+        if own:
+            titles[d] = own
+        if (fl.get(flag) or own) and titles[d]:
             prim = _dash_primary_axes(getattr(figs[0], d + "axis"),
                                       d + "_range_name")
             cell = _dash_by_title_cell(scheme, name, titles[d], where,
                                        prim[0] if prim else None)
             side["cells"].append((d + "title", cell, ""))
+            tcells.append(cell)
+    yprim = _dash_primary_axes(figs[0].yaxis, "y_range_name")
+    for k, where in (("l2title", "left"), ("r1title", "right"),
+                     ("r2title", "right")):
+        if k in edge:
+            # Drawn at the right y title's angle, reading downward
+            # (twoway reads r1title/r2title upward: 43-05, LT-19).
+            cell = _dash_by_title_cell(scheme, "dash_by_" + k, edge[k],
+                                       where, yprim[0] if yprim else None)
+            side["cells"].append((k, cell, ""))
             tcells.append(cell)
     for k in ("legend", "clegend"):
         if keys.get(k) is not None:
@@ -58032,7 +58099,7 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     kids = [tuple(c) for c in (grid.children or [])]
     kinds = {k: (cell, where) for k, cell, where in side["cells"]}
     at_cells = side.get("at_cells") or {}
-    left_cols = int("ytitle" in kinds)
+    left_cols = int("ytitle" in kinds) + int("l2title" in kinds)
     for k in ("legend", "clegend"):
         if k in kinds and k not in at_cells and kinds[k][1] == "left":
             left_cols += 1
@@ -58057,6 +58124,11 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     if "ytitle" in kinds:
         out.append((kinds["ytitle"][0], p0r,
                     p0c - 1 - int(inner_left), nrows, 1))
+    if "l2title" in kinds:
+        # WP-41 BY-12: left of the y title, inside a left legend.
+        out.append((kinds["l2title"][0], p0r,
+                    p0c - 1 - int(inner_left) - int("ytitle" in kinds),
+                    nrows, 1))
     if inner_left:
         out.append((kinds["legend"][0], p0r, p0c - 1, nrows, 1))
     row = p0r + nrows
@@ -58067,6 +58139,13 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
         out.append((kinds["xtitle"][0], row, p0c, 1, ncols))
         row += 1
     total = p0c + ncols
+    # WP-41 BY-12: r1title then r2title right of the panels, inside a
+    # right legend (measured: by(foreign, r1title() legend(pos(3)))
+    # draws the title at x 3995 of 5400, the legend at 4466).
+    for k in ("r1title", "r2title"):
+        if k in kinds:
+            out.append((kinds[k][0], p0r, total, nrows, 1))
+            total += 1
     lc, tr = 0, 0
     for k in ("legend", "clegend"):
         if k not in kinds or k in at_cells or (k == "legend" and inner):

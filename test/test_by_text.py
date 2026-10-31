@@ -303,8 +303,17 @@ class TestOverallTextMatchesTwoway:
             p = _truth()["probes"][pid]
             o = p["overall"]
             r = _draw(mode, _probe_spec(p))
-            got = sorted(sum((chrome_texts(c) for c in (r.head, r.foot)
-                              if c is not None), []))
+            got = sum((chrome_texts(c) for c in (r.head, r.foot)
+                       if c is not None), [])
+            # Flipped (WP-41 BY-12): by()'s edge titles are not its
+            # overall texts; TestEdgeTitles compares them.
+            for c in (r.head, r.foot):
+                for m in (list(c.above) + list(c.below)) if c else ():
+                    if type(m).__name__ == "Title" and m.name in (
+                            "dash_by_t1title", "dash_by_t2title",
+                            "dash_by_b2title") and str(m.text) in got:
+                        got.remove(str(m.text))
+            got = sorted(got)
             want = sorted(t for t in (o["title"], o["subtitle"],
                                       "\n".join(o["note"]), o["caption"]) if t)
             if got != want:
@@ -431,6 +440,94 @@ class TestRing0Chrome:
         texts = [x for c in (r.head, r.foot) for x, _a in _cell_rows(c)]
         assert "NNN" in texts and not [
             x for x in texts if x.startswith("Graphs by")], texts
+
+
+def _grid_kids(r):
+    """``{cell name: (row, col, rows, cols)}`` of *r*'s by() grid."""
+    from bokeh.models import GridPlot
+    (grid,) = [m for root in r.roots for m in root.references()
+               if isinstance(m, GridPlot)
+               and any(type(c[0]).__name__ == "figure" for c in m.children)]
+    return {getattr(c[0], "name", None): tuple(c[1:]) for c in grid.children
+            if str(getattr(c[0], "name", "") or "").startswith("dash_by_")}
+
+
+def _cell_texts(r):
+    """``{cell name: [Title texts]}`` of every dash_by_* cell of *r*."""
+    from bokeh.models import Plot, Title
+    out = {}
+    for root in r.roots:
+        for m in root.references():
+            if isinstance(m, Plot) and str(m.name or "").startswith(
+                    "dash_by_"):
+                out.setdefault(m.name, []).extend(
+                    str(t.text) for t in m.references()
+                    if isinstance(t, Title) and t.text)
+    return out
+
+
+#: WP-41 BY-12: the eight edge titles, each in a probe of its own.
+_EDGE = ("l1title", "l2title", "r1title", "r2title", "t1title", "t2title",
+         "b1title", "b2title")
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestEdgeTitles:
+    """WP-41 BY-12: by()'s l1title() .. b2title() were named and ignored.
+    twoway (by_text_truth.json bp72-bp76): l1title and b1title replace
+    the shared axis titles; t1title/t2title add rows above the panels
+    (T1 nearest them), b2title a row below the x title, l2title a column
+    left of the y title, r1title/r2title columns right of the panels (R1
+    nearest them)."""
+
+    def test_l1_b1_replace_the_shared_titles(self, mode):
+        r = _draw(mode, _probe_spec(_truth()["probes"]["bp72"]))
+        got = _cell_texts(r)
+        assert got.get("dash_by_ytitle") == ["LEFTX"], got
+        assert "Mileage (mpg)" not in sum(got.values(), [])
+        r = _draw(mode, _probe_spec(_truth()["probes"]["bp73"]))
+        got = _cell_texts(r)
+        assert got.get("dash_by_xtitle") == ["BOTTOMX"], got
+        assert "Weight (lbs.)" not in sum(got.values(), [])
+
+    @pytest.mark.parametrize("pid", ("bp74", "bp75", "bp76"))
+    def test_rows_and_columns(self, mode, pid):
+        r = _draw(mode, _probe_spec(_truth()["probes"][pid]))
+        kids, got = _grid_kids(r), _cell_texts(r)
+        if pid == "bp74":
+            # Head: T2 then T1 under the head's frame, T1 nearest the
+            # panels; the grid keeps the default's places.
+            below = [m.text for m in r.head.below
+                     if type(m).__name__ == "Title"]
+            assert below == ["T2", "T1"], below
+            assert [m.name for m in r.head.below] == \
+                ["dash_by_t2title", "dash_by_t1title"]
+            assert kids["dash_by_head"] == (0, 0, 1, 4)
+        elif pid == "bp75":
+            # No head: the panels are row 0, the foot row 2.
+            assert kids["dash_by_r1title"] == (0, 3, 1, 1)
+            assert kids["dash_by_r2title"] == (0, 4, 1, 1)
+            assert kids["dash_by_ruler"] == (0, 5, 1, 1)
+            assert kids["dash_by_foot"] == (2, 0, 1, 6)
+            assert got["dash_by_r1title"] == ["R1"]
+            assert got["dash_by_r2title"] == ["R2"]
+        else:
+            assert kids["dash_by_l2title"] == (0, 0, 1, 1)
+            assert kids["dash_by_ytitle"] == (0, 1, 1, 1)
+            assert kids["dash_by_xtitle"] == (1, 2, 1, 2)
+            assert kids["dash_by_foot"] == (2, 0, 1, 5)
+            assert got["dash_by_l2title"] == ["L2"]
+            assert [m.text for m in r.foot.above
+                    if type(m).__name__ == "Title"] == ["B2"]
+            assert [m.name for m in r.foot.above] == ["dash_by_b2title"]
+
+    def test_not_named(self, mode):
+        by = "foreign, " + " ".join('%s("%s")' % (k, k.upper())
+                                     for k in _EDGE)
+        r = _draw(mode, _spec({"by": by}))
+        assert not [n for n in r.notes if "not implemented" in n], r.notes
+        texts = sum(_cell_texts(r).values(), [])
+        assert all(k.upper() in texts for k in _EDGE), texts
 
 
 # ---------------------------------------------------------------------------
@@ -615,8 +712,14 @@ class TestTheTextOptions:
         assert f('foreign, title(`"a "b" c"\')')["title"] == '`"a "b" c"\''
         assert f("foreign, title(Bob's cars) cols(2)")["title"] == \
             "Bob's cars"
-        assert f("foreign") == {"title": "", "subtitle": "", "note": "",
-                                "caption": ""}
+        # Flipped (WP-41 BY-12): the eight edge titles are by() text
+        # options too (_DASH_BY_TEXT_SPELLINGS), "" when not given.
+        assert f("foreign") == {k: "" for k in (
+            "title", "subtitle", "note", "caption", "l1title", "l2title",
+            "r1title", "r2title", "t1title", "t2title", "b1title",
+            "b2title")}
+        assert f('foreign, l1("A") b2title("B")')["l1title"] == '"A"'
+        assert f('foreign, l1("A") b2title("B")')["b2title"] == '"B"'
 
     def test_a_megabyte_is_read_at_once(self):
         t0 = time.perf_counter()

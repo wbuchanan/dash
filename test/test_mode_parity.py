@@ -3004,6 +3004,10 @@ CORPUS = [
     # WP-41 BY-1: by()'s ring(0) note on the foot row, in both modes.
     _case("by() ring(0) note", [_sc()],
           go={"by": 'foreign, note("NNN", ring(0))'}),
+    # WP-41 BY-12: by()'s edge titles, in both modes.
+    _case("by() edge titles", [_sc()],
+          go={"by": 'foreign, l1title("L") b1title("B") t1title("T") '
+                    'r1title("R")'}),
 ]
 
 
