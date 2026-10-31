@@ -3764,7 +3764,9 @@ s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
 their axes as in {cmd:twoway} (a title centred over them, a note at
 their left, a caption at 5 o'clock ending at their right, each its text
 box's margin in; with
-{cmd:span} on the whole graph), and under them the note
+{cmd:span} on the whole graph; at {cmd:ring(0)} on the array's top or
+bottom row at their clock, the note in place of "Graphs by"), and under
+them the note
 "Graphs by" names the variables as {cmd:twoway} does: their labels,
 "A and B" for two, and for three or more the first by its name
 ("Graphs by foreign, Repair record 1978, and Headroom (in.)").

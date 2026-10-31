@@ -3001,6 +3001,9 @@ CORPUS = [
     # WP-41 BY-16: a date by() variable's panels read its number.
     _case("by() date panels", [_sc()], {"formats": {"when": "%td"}},
           go={"by": "when"}),
+    # WP-41 BY-1: by()'s ring(0) note on the foot row, in both modes.
+    _case("by() ring(0) note", [_sc()],
+          go={"by": 'foreign, note("NNN", ring(0))'}),
 ]
 
 

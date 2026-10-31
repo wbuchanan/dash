@@ -418,7 +418,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit 83997b1.
 - **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit 76543d4.
 - **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit ff15f74.
-- **BY-1 Tracked:** Open (WP-41 section 41-02).
+- **BY-1 Tracked:** Closed in WP-41, BUGS.md "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)", commit pending.
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.

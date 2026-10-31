@@ -321,6 +321,87 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w41_run' {
 }
 * ==== end S01 ====
 
+// S02 helpers (BY-1, BY-12): the saved page $W41_S02_PAGE's by() cells,
+// each Plot named dash_by_* mapped to the texts of the Titles it
+// references (each <script type="application/json"> block loaded as a
+// Bokeh document, as test_wp29_truth.cscript's _fx_plots_saved loads it).
+python:
+_w41_s02_cells = {}
+
+
+def _w41_s02_read():
+    import re as _re, json as _json
+    from sfi import Macro as _M
+    from bokeh.document import Document as _Doc
+    from bokeh.models import Plot as _Plot, Title as _Title
+    with open(_M.getGlobal("W41_S02_PAGE"), encoding="utf-8") as _fh:
+        _page = _fh.read()
+    _w41_s02_cells.clear()
+    for _blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', _page, _re.S):
+        for _dd in _json.loads(_blob).values():
+            for _p in _Doc.from_json(_dd).select(dict(type=_Plot)):
+                _nm = str(_p.name or "")
+                if _nm.startswith("dash_by_"):
+                    _w41_s02_cells.setdefault(_nm, []).extend(
+                        str(_m.text) for _m in _p.references()
+                        if isinstance(_m, _Title) and _m.text)
+
+
+def _w41_s02_has(name, text):
+    """$W41_S02_ANS = 1 when cell *name* holds a Title *text*, else 0."""
+    from sfi import Macro as _M
+    _M.setGlobal("W41_S02_ANS",
+                 "1" if text in _w41_s02_cells.get(name, []) else "0")
+
+
+def _w41_s02_none(start):
+    """$W41_S02_ANS = 1 when no dash_by_* cell holds a Title that starts
+    with *start*, else 0."""
+    from sfi import Macro as _M
+    _bad = [t for v in _w41_s02_cells.values() for t in v
+            if t.startswith(start)]
+    _M.setGlobal("W41_S02_ANS", "0" if _bad else "1")
+end
+
+* ==== S02 BY-1: by() ring(0) chrome ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w41_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4102-1: by(foreign, note("NNN", ring(0))) draws NNN in the foot
+    // cell in place of "Graphs by", as twoway draws it (by_text_truth.json
+    // bp68); the build names nothing as not implemented.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    capture noisily dash scatter mpg weight, by(foreign, note("NNN", ring(0))) name(q1)
+    _w41_expect Q4102-1 "(_rc == 0)" "dash scatter ... by(foreign, note(..., ring(0))) rc `=_rc'"
+    capture erase "`w41_work'/q4102_1.html"
+    quietly log using "`w41_work'/q4102_1.log", text replace name(_q4102)
+    capture noisily dash build, saving("`w41_work'/q4102_1.html", replace) nobrowser
+    local q1rc = _rc
+    quietly log close _q4102
+    _w41_expect Q4102-1 "(`q1rc' == 0)" "dash build rc `q1rc'"
+    cert_log_has "`w41_work'/q4102_1.log", needle("not implemented")
+    _w41_expect Q4102-1 "(r(found) == 0)" "the build named a by() sub-option as not implemented"
+    global W41_S02_PAGE "`w41_work'/q4102_1.html"
+    capture noisily python: _w41_s02_read()
+    _w41_expect Q4102-1 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+    capture noisily python: _w41_s02_has("dash_by_foot", "NNN")
+    _w41_expect Q4102-1 "(${W41_S02_ANS} == 1)" "the foot cell holds no Title NNN"
+    capture noisily python: _w41_s02_none("Graphs by")
+    _w41_expect Q4102-1 "(${W41_S02_ANS} == 1)" "a by() cell still holds the Graphs by note"
+    _w41_done Q4102-1 "by()'s ring(0) note is drawn in the foot cell in place of Graphs by"
+    macro drop W41_S02_PAGE W41_S02_ANS
+    capture erase "`w41_work'/q4102_1.log"
+    capture erase "`w41_work'/q4102_1.html"
+    dash clear
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 python:
 def _q4103_panels(sp, glob):
     """global *glob* = each panel's "lo hi" of the function layer's x in

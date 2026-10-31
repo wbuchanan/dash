@@ -118,3 +118,48 @@ class TestInChrome:
         assert rects[0] == head and rects[-1] == foot
         for a, b in zip(rects, rects[1:]):
             assert b[1] >= a[1] + a[3] - 1, (a, b)
+
+
+def _chrome_boxes(mode, pid, text):
+    """``(want_x, want_y, got_x, got_y, n)`` for probe *pid*'s *text*:
+    twoway's anchored x over the canvas width and baseline y over its
+    height (stcolor's 7.5 x 4.5 in graph: 3240 of 5400), dash's anchored
+    edge and box bottom over the by() grid's, at 1400 px; *n* the number
+    of Titles dash draws with that text."""
+    import test_by_axes_keys_browser as kb
+    import test_legend_span_browser as lsb
+    p = bt._truth()["probes"][pid]
+    (t,) = [t for t in p["svg"] if t["text"] == text]
+    w = float(p["canvas"])
+    spec = bt._probe_spec(p)
+    spec["build_options"]["scheme"] = \
+        spec["build_options"]["scheme"] or "stcolor"
+    st = kb._measure(mode, spec, lsb._BY_JS)[1400]["wide"]
+    g = st["grid"]
+    boxes = lsb._by_titles(st, text)
+    if len(boxes) != 1:
+        return t["x"] / w, t["y"] / (w * 0.6), None, None, len(boxes)
+    b = boxes[0]["box"]
+    gx = (lsb._anchored_edge(b, t["anchor"]) - g[0]) / (g[2] - g[0])
+    gy = (b[3] - g[1]) / (g[3] - g[1])
+    return t["x"] / w, t["y"] / (w * 0.6), gx, gy, 1
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestRing0InChrome:
+    """WP-41 BY-1: a ring(0) note or caption of by() is drawn where
+    twoway draws it, x within 0.02 of the graph's width and y within
+    *dy* of its height (D-41-02.a: twoway draws it over the array's edge,
+    dash on the edge row).  bp68's *dy* is 0.09, not D-41-02.a's 0.05:
+    twoway draws the ring(0) note at 0.916 of the height, above the x
+    title (which moves down to 0.954), where dash's foot row puts it
+    below the x title, 0.076 lower (measured 31oct2026, a difference the
+    BY-1 hand-back reports)."""
+
+    @pytest.mark.parametrize("pid,text,dy", [("bp68", "NNN", 0.09),
+                                             ("bp69", "CCC", 0.05)])
+    def test_positions(self, mode, pid, text, dy):
+        wx, wy, gx, gy, n = _chrome_boxes(mode, pid, text)
+        assert n == 1, "dash draws %d texts %s" % (n, text)
+        assert abs(gx - wx) <= 0.02 and abs(gy - wy) <= dy, \
+            (gx, gy, wx, wy)

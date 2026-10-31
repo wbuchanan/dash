@@ -151,6 +151,41 @@ program define bt
     quietly graph export "${BT_WORK}/`id'.svg", name(Graph) replace
 end
 
+* bt2 id "if" "options" (WP-41 41-02, BY-7): bt's records for
+* `twoway (scatter mpg weight) (lfit mpg weight) <if>, <options>', so that
+* by()'s legend is drawn; the legend key texts' y are in the SVG texts.
+capture program drop bt2
+program define bt2
+    version 19
+    args id ifq opts
+    use "${BT_WORK}/bt.dta", clear
+    serset clear
+    quietly log using "${BT_WORK}/`id'.log", text replace name(btlog)
+    capture noisily twoway (scatter mpg weight) (lfit mpg weight) `ifq', `opts' name(Graph, replace)
+    local rc = _rc
+    quietly log close btlog
+    file write btrec "R|`id'|`rc'|`ifq'|" `"`opts'"' _n
+    if `rc' exit
+    local np = `.Graph.graphs.arrnels'
+    file write btrec "O|`id'|`np'|" `"`.Graph.title.text[1]'"' "|" ///
+        `"`.Graph.subtitle.text[1]'"' "|" `"`.Graph.note.text[1]'"' "|" ///
+        `"`.Graph.note.text[2]'"' "|" `"`.Graph.caption.text[1]'"' "|" ///
+        `"`.Graph.note.style.size.val'"' _n
+    forvalues k = 1/`np' {
+        * The scatter's observations: the panel's rows that are not
+        * missing (each panel has a serset per plot).
+        local n = .
+        capture quietly count if !missing(mpg, weight) & foreign == `k' - 1
+        if !_rc local n = r(N)
+        file write btrec "P|`id'|`k'|" `"`.Graph.graphs[`k'].subtitle.text[1]'"' "|" ///
+            `"`.Graph.graphs[`k'].subtitle.text[2]'"' "|" ///
+            `"`.Graph.graphs[`k'].title.text[1]'"' "|" ///
+            `"`.Graph.graphs[`k'].note.text[1]'"' "|" ///
+            `"`.Graph.graphs[`k'].caption.text[1]'"' "|`n'" _n
+    }
+    quietly graph export "${BT_WORK}/`id'.svg", name(Graph) replace
+end
+
 file open btrec using "${BT_REC}", write text replace
 bt bp01 "" "by(foreign)"
 bt bp02 "" `"title("T") by(foreign)"'
@@ -221,6 +256,21 @@ bt bp64 "" `"by(foreign, title("X", position(3)))"'
 bt bp65 "" `"by(foreign, title("X", position(9)))"'
 bt bp66 "" `"by(foreign, note("X", position(3)))"'
 bt bp67 "" `"by(foreign, note("X", position(9)))"'
+* WP-41 41-02: by()'s ring(0) note, caption and subtitle (BY-1), its
+* edge titles (BY-12), its legend's clock and bgcolor() (BY-7).
+bt bp68 "" `"by(foreign, note("NNN", ring(0)))"'
+bt bp69 "" `"by(foreign, caption("CCC", ring(0) position(1)))"'
+bt bp70 "" `"by(foreign, subtitle("SSS", ring(0)))"'
+bt bp71 "" `"by(foreign, note("NNN", ring(0) position(3)))"'
+bt bp72 "" `"by(foreign, l1title("LEFTX"))"'
+bt bp73 "" `"by(foreign, b1title("BOTTOMX"))"'
+bt bp74 "" `"by(foreign, t1title("T1") t2title("T2"))"'
+bt bp75 "" `"by(foreign, r1title("R1") r2title("R2"))"'
+bt bp76 "" `"by(foreign, l2title("L2") b2title("B2"))"'
+bt2 bp77 "" "by(foreign, legend(pos(abc)))"
+bt2 bp78 "" "by(foreign, legend(pos(13)))"
+bt2 bp79 "" "by(foreign, legend(pos(03)))"
+bt bp80 "" "by(foreign, bgcolor(red))"
 file close btrec
 
 python:
@@ -247,6 +297,16 @@ def message_of(pid):
             and not set(l.strip()) <= set("-")
             and not re.match(r"^r\(\d+\);$", l.strip())]
     return keep[-1].strip() if keep else ""
+
+
+def note_of(pid):
+    try:
+        with open(os.path.join(WORK, pid + ".log"), encoding="utf-8",
+                  errors="replace") as fh:
+            lines = [l.strip() for l in fh]
+    except OSError:
+        return ""
+    return next((l for l in lines if l.startswith("(note:")), "")
 
 
 probes, order = {}, []
@@ -283,6 +343,13 @@ for pid in order:
                  "anchor": t["anchor"], "size": t["size"]}
                 for t in doc["texts"] if t["text"]
                 and not _NUM.match(t["text"])]
+    # WP-41 41-02: the probes from bp68 on also keep the log's first
+    # note line ("(note: ..."), "" when there is none.
+    if int(pid[2:]) >= 68:
+        p["note"] = note_of(pid)
+        # The first canvas rect's fill (bgcolor() fills it; BY-7).
+        rects = doc.get("rects") or []
+        p["first_fill"] = rects[0].get("fill") if rects else None
     # svg_truth names the viewBox width "w" (WP-33 BY-24: "width" was
     # read here, so every probe's canvas was null).
     p["canvas"] = (doc.get("canvas") or {}).get("w")

@@ -251,7 +251,8 @@ class TestTheFixture:
         assert {"stata_version", "born_date", "dash_commit",
                 "extracted"} <= set(t["_meta"])
         # 39 -> 67: BY-24 position() probes (WP-33)
-        assert len(t["probes"]) == 67
+        # 67 -> 80: WP-41 41-02 probes bp68-bp80
+        assert len(t["probes"]) == 80
         assert t["probes"]["bp32"]["rc"] == 198
         assert t["probes"]["bp35"]["rc"] == 198
 
@@ -379,6 +380,57 @@ class TestPlacementMatchesTwoway:
         assert known_problems(res, known_in(_known(), group),
                               "by_position",
                               deliberate=BY_POSITION_DELIBERATE) == []
+
+
+def _cell_rows(cell):
+    """``[(text, align)]`` of a chrome cell's text models (its title, its
+    above and below Titles, its center Labels); ``[]`` for None."""
+    if cell is None:
+        return []
+    out = []
+    for m in [cell.title] + list(cell.above) + list(cell.below) \
+            + list(cell.center):
+        text = str(getattr(m, "text", "") or "")
+        if text and type(m).__name__ in ("Title", "Label"):
+            out.append((text, getattr(m, "align", None)
+                        or str(m.anchor).split("_")[-1]))
+    return out
+
+
+#: An SVG text-anchor as a Title's align (no anchor is its start).
+_ANCHOR_ALIGN = {"start": "left", "middle": "center", "end": "right",
+                 None: "left"}
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestRing0Chrome:
+    """WP-41 BY-1: by()'s note(), caption() and subtitle() at ring(0)
+    were dropped silently ("Graphs by" with them).  twoway draws them on
+    the array's edge: bp68's note at the bottom left in place of "Graphs
+    by", bp69's caption(, position(1)) at the top right, bp70's subtitle
+    at the top centre, bp71's note(, position(3)) at the right
+    (by_text_truth.json).  dash draws each on the head row (clocks 10-2)
+    or the foot row (the rest), at the clock's horizontal (D-41-02.a)."""
+
+    @pytest.mark.parametrize("pid,text,cell", [
+        ("bp68", "NNN", "foot"), ("bp69", "CCC", "head"),
+        ("bp70", "SSS", "head"), ("bp71", "NNN", "foot")])
+    def test_drawn_on_the_edge_row(self, mode, pid, text, cell):
+        p = _truth()["probes"][pid]
+        (t,) = [t for t in p["svg"] if t["text"] == text]
+        r = _draw(mode, _probe_spec(p))
+        got = [a for x, a in _cell_rows(getattr(r, cell)) if x == text]
+        assert got == [_ANCHOR_ALIGN[t["anchor"]]], (
+            cell, _cell_rows(r.head), _cell_rows(r.foot))
+        assert not [n for n in r.notes if "not implemented" in n], r.notes
+
+    def test_ring0_note_replaces_graphs_by(self, mode):
+        p = _truth()["probes"]["bp68"]
+        assert not [t for t in p["svg"] if t["text"].startswith("Graphs by")]
+        r = _draw(mode, _probe_spec(p))
+        texts = [x for c in (r.head, r.foot) for x, _a in _cell_rows(c)]
+        assert "NNN" in texts and not [
+            x for x in texts if x.startswith("Graphs by")], texts
 
 
 # ---------------------------------------------------------------------------

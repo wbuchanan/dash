@@ -55632,7 +55632,7 @@ _DASH_ADDED_TEXT_VSHIFT = {"middle": 0.0, "top": 0.15, "bottom": 0.15,
 
 
 def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
-                           *, defaults=None, sides=None):
+                           *, defaults=None, sides=None, ring0=False):
     """note(), caption() and subtitle() as side-panel Titles, in both modes.
 
     The generated app carried its own copy of this loop, with its own
@@ -55669,7 +55669,12 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
     ``"above"``/``"below"``) draws only the boxes placed on those sides;
     *defaults* (``{box: text}``) gives a box a default text, kept when the
     option gives none (``_dash_textbox_or_default``) -- the chrome cells'
-    ``Graphs by`` note (:func:`_dash_by_chrome`).
+    ``Graphs by`` note (:func:`_dash_by_chrome`).  With *ring0* (the
+    chrome cells, WP-41 BY-1) a box at ring(0) or position(0) is a row
+    of the head side (``above``, clocks 10, 11, 12, 1 and 2) or the foot
+    side (``below``, every other clock) at its clock's horizontal, as
+    twoway draws by()'s ring(0) boxes on the array's edge; without it
+    such a box is drawn inside the plot region.
     """
     from bokeh.models import Label, Node
     # twoway's rings (scheme-s2color.scheme:1947-1950), for a caller with
@@ -55707,6 +55712,10 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                                        else {}, clock, ring_default, just,
                                        ann_key, note=False)
         side, align = place["side"], place["align"]
+        if ring0 and place["mode"] == "inside":
+            side = "above" if place["clock"] in (10, 11, 12, 1, 2) \
+                else "below"
+            align = place["sx"]
         if sides is not None and side not in sides:
             continue
         if has_default:
@@ -55718,6 +55727,10 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
             continue
         place = _dash_textbox_position(opts, clock, ring_default, just,
                                        ann_key)
+        if ring0 and place["mode"] == "inside":
+            # WP-41 BY-1: a row of the edge side, nearest the panels.
+            place = dict(place, mode="side", side=side, align=align,
+                         ring=1)
         # note()'s box is filled where the scheme's `textboxstyle note'
         # draws one (economist's reverse_big: emidblue).
         fill = (scheme.note_box_fill_color
@@ -56363,10 +56376,10 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
         head.title.text = _dash_textbox(o["title"], "title", seen, key)[0]
         _dash_figure_title(head, {"title": o["title"]}, seen, key)
     _dash_text_annotations(head, boxes, seen, key, scheme, defaults=defaults,
-                           sides=("above",))
+                           sides=("above",), ring0=True)
     foot = _dash_by_text_cell(scheme, "dash_by_foot")
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
-                           sides=("below",))
+                           sides=("below",), ring0=True)
     # WP-32: by()'s own spanned boxes are placed on the whole by() graph,
     # as twoway places them (measured 19oct2026: the title at 2700 of
     # 5400, 2251.3 without; the note at 132.8, 245.4 without).
