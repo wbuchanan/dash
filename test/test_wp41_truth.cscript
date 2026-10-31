@@ -321,6 +321,41 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w41_run' {
 }
 * ==== end S01 ====
 
+* ==== S03 BY-2: by() scale() ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4103-1: by(, scale(1.5)) is drawn, as twoway draws it (by_scale_
+    // range_truth.json S03: every text 1.5 x), so the build no longer
+    // names it as ignored.  The note is printed by Python at build.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily twoway scatter mpg weight, by(foreign, scale(1.5)) name(w41q1, replace)
+    local q1_twrc = _rc
+    capture graph drop w41q1
+    capture noisily dash scatter mpg weight, by(foreign, scale(1.5)) name(q1)
+    local q1_rc = _rc
+    capture erase "`w41_work'/q1.html"
+    quietly log using "`w41_work'/q1.log", text replace name(_q4103) nomsg
+    capture noisily dash build, saving("`w41_work'/q1.html", replace) nobrowser
+    local q1_brc = _rc
+    quietly log close _q4103
+    cert_log_has "`w41_work'/q1.log", needle("not implemented and ignored")
+    local q1_found = r(found)
+    _w41_expect Q4103-1 "(`q1_twrc' == 0)" "twoway rc `q1_twrc'"
+    _w41_expect Q4103-1 "(`q1_rc' == 0 & `q1_brc' == 0)" "dash rc `q1_rc', build rc `q1_brc'"
+    _w41_expect Q4103-1 "(`q1_found' == 0)" "the build named by(, scale(1.5)) as not implemented and ignored"
+    _w41_done Q4103-1 "by(foreign, scale(1.5)) is drawn with no ignored note, as twoway draws it"
+    capture erase "`w41_work'/q1.html"
+    capture erase "`w41_work'/q1.log"
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

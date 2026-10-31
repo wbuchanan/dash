@@ -1,0 +1,777 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "58506c397540e22bdd1caaa91b9ca3f2391ae0df",
+  "extracted": "31 Oct 2026 06:19:57",
+  "method": "drawn twoway graphs (graphics off); S: SVG texts and the first circle's r through scripts/svg_truth.py; R: each panel's second plot's serset x extent beside summarize weight over the panel's rows; W: rc",
+  "probes": 19,
+  "scheme": "stcolor",
+  "source": "scripts/extract_by_scale_range_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "R01": {
+   "command": "twoway (scatter mpg weight) (function y=40-x/200, range(weight)), by(foreign)",
+   "message": "",
+   "panels": [
+    {
+     "drawn": [
+      1800.0,
+      4840.0
+     ],
+     "level": "0",
+     "summarize": [
+      1800.0,
+      4840.0
+     ]
+    },
+    {
+     "drawn": [
+      1760.0,
+      3420.0
+     ],
+     "level": "1",
+     "summarize": [
+      1760.0,
+      3420.0
+     ]
+    }
+   ],
+   "rc": 0
+  },
+  "R02": {
+   "command": "twoway (scatter mpg weight) (function y=40-x/200, range(weight)), by(rep78, total)",
+   "message": "",
+   "panels": [
+    {
+     "drawn": [
+      2730.0,
+      3470.0
+     ],
+     "level": "1",
+     "summarize": [
+      2730.0,
+      3470.0
+     ]
+    },
+    {
+     "drawn": [
+      2690.0,
+      3900.0
+     ],
+     "level": "2",
+     "summarize": [
+      2690.0,
+      3900.0
+     ]
+    },
+    {
+     "drawn": [
+      1830.0,
+      4840.0
+     ],
+     "level": "3",
+     "summarize": [
+      1830.0,
+      4840.0
+     ]
+    },
+    {
+     "drawn": [
+      1760.0,
+      4130.0
+     ],
+     "level": "4",
+     "summarize": [
+      1760.0,
+      4130.0
+     ]
+    },
+    {
+     "drawn": [
+      1800.0,
+      3170.0
+     ],
+     "level": "5",
+     "summarize": [
+      1800.0,
+      3170.0
+     ]
+    },
+    {
+     "drawn": [
+      1760.0,
+      4840.0
+     ],
+     "level": "Total",
+     "summarize": [
+      1760.0,
+      4840.0
+     ]
+    }
+   ],
+   "rc": 0
+  },
+  "R03": {
+   "command": "twoway (scatter mpg weight) (kdensity weight, range(weight)), by(foreign)",
+   "message": "",
+   "panels": [
+    {
+     "drawn": [
+      1800.0,
+      4840.000000000008
+     ],
+     "level": "0",
+     "summarize": [
+      1800.0,
+      4840.0
+     ]
+    },
+    {
+     "drawn": [
+      1760.0,
+      3420.000000000005
+     ],
+     "level": "1",
+     "summarize": [
+      1760.0,
+      3420.0
+     ]
+    }
+   ],
+   "rc": 0
+  },
+  "S01": {
+   "canvas": 5400.0,
+   "command": "twoway scatter mpg weight, by(foreign)",
+   "marker_r": 18.47,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 95.68,
+     "text": "10"
+    },
+    {
+     "size": 95.68,
+     "text": "20"
+    },
+    {
+     "size": 95.68,
+     "text": "30"
+    },
+    {
+     "size": 95.68,
+     "text": "40"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 105.13,
+     "text": "Domestic"
+    },
+    {
+     "size": 105.13,
+     "text": "Foreign"
+    },
+    {
+     "size": 112.56,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 112.56,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 89.94,
+     "text": "Graphs by Car origin"
+    }
+   ]
+  },
+  "S02": {
+   "canvas": 5400.0,
+   "command": "twoway scatter mpg weight, scale(1.5) by(foreign)",
+   "marker_r": 18.47,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 95.68,
+     "text": "10"
+    },
+    {
+     "size": 95.68,
+     "text": "20"
+    },
+    {
+     "size": 95.68,
+     "text": "30"
+    },
+    {
+     "size": 95.68,
+     "text": "40"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 105.13,
+     "text": "Domestic"
+    },
+    {
+     "size": 105.13,
+     "text": "Foreign"
+    },
+    {
+     "size": 112.56,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 112.56,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 89.94,
+     "text": "Graphs by Car origin"
+    }
+   ]
+  },
+  "S03": {
+   "canvas": 5400.0,
+   "command": "twoway scatter mpg weight, by(foreign, scale(1.5))",
+   "marker_r": 27.63,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 143.44,
+     "text": "10"
+    },
+    {
+     "size": 143.44,
+     "text": "20"
+    },
+    {
+     "size": 143.44,
+     "text": "30"
+    },
+    {
+     "size": 143.44,
+     "text": "40"
+    },
+    {
+     "size": 143.44,
+     "text": "2,000"
+    },
+    {
+     "size": 143.44,
+     "text": "3,000"
+    },
+    {
+     "size": 143.44,
+     "text": "4,000"
+    },
+    {
+     "size": 143.44,
+     "text": "5,000"
+    },
+    {
+     "size": 143.44,
+     "text": "2,000"
+    },
+    {
+     "size": 143.44,
+     "text": "3,000"
+    },
+    {
+     "size": 143.44,
+     "text": "4,000"
+    },
+    {
+     "size": 143.44,
+     "text": "5,000"
+    },
+    {
+     "size": 157.78,
+     "text": "Domestic"
+    },
+    {
+     "size": 157.78,
+     "text": "Foreign"
+    },
+    {
+     "size": 168.75,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 168.75,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 135.0,
+     "text": "Graphs by Car origin"
+    }
+   ]
+  },
+  "S04": {
+   "canvas": 5400.0,
+   "command": "twoway scatter mpg weight, by(foreign, scale(1.5) iscale(1))",
+   "marker_r": 32.6,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 168.75,
+     "text": "10"
+    },
+    {
+     "size": 168.75,
+     "text": "20"
+    },
+    {
+     "size": 168.75,
+     "text": "30"
+    },
+    {
+     "size": 168.75,
+     "text": "40"
+    },
+    {
+     "size": 168.75,
+     "text": "2,000"
+    },
+    {
+     "size": 168.75,
+     "text": "3,000"
+    },
+    {
+     "size": 168.75,
+     "text": "4,000"
+    },
+    {
+     "size": 168.75,
+     "text": "5,000"
+    },
+    {
+     "size": 168.75,
+     "text": "2,000"
+    },
+    {
+     "size": 168.75,
+     "text": "3,000"
+    },
+    {
+     "size": 168.75,
+     "text": "4,000"
+    },
+    {
+     "size": 168.75,
+     "text": "5,000"
+    },
+    {
+     "size": 185.63,
+     "text": "Domestic"
+    },
+    {
+     "size": 185.63,
+     "text": "Foreign"
+    },
+    {
+     "size": 168.75,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 168.75,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 135.0,
+     "text": "Graphs by Car origin"
+    }
+   ]
+  },
+  "S05": {
+   "canvas": 5400.0,
+   "command": "twoway (scatter mpg weight) (lfit mpg weight), legend(on) by(foreign, scale(1.5) title(\"T\"))",
+   "marker_r": 27.63,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 143.44,
+     "text": "10"
+    },
+    {
+     "size": 143.44,
+     "text": "20"
+    },
+    {
+     "size": 143.44,
+     "text": "30"
+    },
+    {
+     "size": 143.44,
+     "text": "40"
+    },
+    {
+     "size": 143.44,
+     "text": "2,000"
+    },
+    {
+     "size": 143.44,
+     "text": "3,000"
+    },
+    {
+     "size": 143.44,
+     "text": "4,000"
+    },
+    {
+     "size": 143.44,
+     "text": "5,000"
+    },
+    {
+     "size": 143.44,
+     "text": "2,000"
+    },
+    {
+     "size": 143.44,
+     "text": "3,000"
+    },
+    {
+     "size": 143.44,
+     "text": "4,000"
+    },
+    {
+     "size": 143.44,
+     "text": "5,000"
+    },
+    {
+     "size": 143.44,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 143.44,
+     "text": "Fitted values"
+    },
+    {
+     "size": 143.44,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 143.44,
+     "text": "Fitted values"
+    },
+    {
+     "size": 157.78,
+     "text": "Domestic"
+    },
+    {
+     "size": 157.78,
+     "text": "Foreign"
+    },
+    {
+     "size": 168.75,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 168.75,
+     "text": "Fitted values"
+    },
+    {
+     "size": 168.75,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 135.0,
+     "text": "Graphs by Car origin"
+    },
+    {
+     "size": 236.25,
+     "text": "T"
+    }
+   ]
+  },
+  "S06": {
+   "canvas": 5400.0,
+   "command": "twoway (scatter mpg weight) (lfit mpg weight), legend(on) by(foreign, title(\"T\"))",
+   "marker_r": 18.47,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 95.68,
+     "text": "10"
+    },
+    {
+     "size": 95.68,
+     "text": "20"
+    },
+    {
+     "size": 95.68,
+     "text": "30"
+    },
+    {
+     "size": 95.68,
+     "text": "40"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 95.68,
+     "text": "2,000"
+    },
+    {
+     "size": 95.68,
+     "text": "3,000"
+    },
+    {
+     "size": 95.68,
+     "text": "4,000"
+    },
+    {
+     "size": 95.68,
+     "text": "5,000"
+    },
+    {
+     "size": 95.68,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 95.68,
+     "text": "Fitted values"
+    },
+    {
+     "size": 95.68,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 95.68,
+     "text": "Fitted values"
+    },
+    {
+     "size": 105.13,
+     "text": "Domestic"
+    },
+    {
+     "size": 105.13,
+     "text": "Foreign"
+    },
+    {
+     "size": 112.56,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 112.56,
+     "text": "Fitted values"
+    },
+    {
+     "size": 112.56,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 89.94,
+     "text": "Graphs by Car origin"
+    },
+    {
+     "size": 157.44,
+     "text": "T"
+    }
+   ]
+  },
+  "S07": {
+   "canvas": 5400.0,
+   "command": "twoway scatter mpg weight, by(foreign, iscale(1))",
+   "marker_r": 21.74,
+   "message": "",
+   "rc": 0,
+   "texts": [
+    {
+     "size": 112.56,
+     "text": "10"
+    },
+    {
+     "size": 112.56,
+     "text": "20"
+    },
+    {
+     "size": 112.56,
+     "text": "30"
+    },
+    {
+     "size": 112.56,
+     "text": "40"
+    },
+    {
+     "size": 112.56,
+     "text": "2,000"
+    },
+    {
+     "size": 112.56,
+     "text": "3,000"
+    },
+    {
+     "size": 112.56,
+     "text": "4,000"
+    },
+    {
+     "size": 112.56,
+     "text": "5,000"
+    },
+    {
+     "size": 112.56,
+     "text": "2,000"
+    },
+    {
+     "size": 112.56,
+     "text": "3,000"
+    },
+    {
+     "size": 112.56,
+     "text": "4,000"
+    },
+    {
+     "size": 112.56,
+     "text": "5,000"
+    },
+    {
+     "size": 123.69,
+     "text": "Domestic"
+    },
+    {
+     "size": 123.69,
+     "text": "Foreign"
+    },
+    {
+     "size": 112.56,
+     "text": "Mileage (mpg)"
+    },
+    {
+     "size": 112.56,
+     "text": "Weight (lbs.)"
+    },
+    {
+     "size": 89.94,
+     "text": "Graphs by Car origin"
+    }
+   ]
+  },
+  "W01": {
+   "command": "twoway scatter mpg weight [aw=w], by(foreign)",
+   "message": "",
+   "rc": 198
+  },
+  "W02": {
+   "command": "twoway scatter mpg weight [aw=w], by(foreign, total)",
+   "message": "",
+   "rc": 198
+  },
+  "W03": {
+   "command": "twoway scatter mpg weight [aw=w3], by(rep78)",
+   "message": "",
+   "rc": 198
+  },
+  "W04": {
+   "command": "twoway scatter mpg weight [aw=w3], by(rep78, missing)",
+   "message": "",
+   "rc": 198
+  },
+  "W05": {
+   "command": "twoway (scatter mpg weight [aw=w]) (scatter mpg weight), by(foreign)",
+   "message": "",
+   "rc": 198
+  },
+  "W06": {
+   "command": "twoway scatter mpg weight [aw=w], by(foreign) msymbol(none)",
+   "message": "",
+   "rc": 0
+  },
+  "W07": {
+   "command": "twoway scatter mpg weight [aw=wm], by(foreign)",
+   "message": "",
+   "rc": 198
+  },
+  "W08": {
+   "command": "twoway scatter mpg weight [aw=wd], by(rep78)",
+   "message": "",
+   "rc": 0
+  },
+  "W09": {
+   "command": "twoway scatter mpg weight [aw=wd], by(rep78, missing)",
+   "message": "",
+   "rc": 198
+  }
+ }
+}

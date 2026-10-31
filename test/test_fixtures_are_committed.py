@@ -281,6 +281,7 @@ GENERATORS = {
     "by_contour_truth.json": "scripts/extract_by_contour_truth.do",
     "by_grid_truth.json": "scripts/extract_by_grid_truth.do",
     "by_remainder_truth.json": "scripts/extract_by_remainder_truth.do",
+    "by_scale_range_truth.json": "scripts/extract_by_scale_range_truth.do",
     "by_scales_truth.json": "scripts/extract_by_scales_truth.do",
     "by_text_truth.json": "scripts/extract_by_text_truth.do",
     "by_types_truth.json": "scripts/extract_by_types_truth.do",

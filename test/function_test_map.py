@@ -1467,6 +1467,9 @@ FUNCTIONS = {
  '_dash_by_scale_panel.<locals>.scale': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',
  '_dash_by_scale_value': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',
  '_dash_by_size_mult': 'test/test_by_grid.py::TestTheSizes::test_multiplier',
+ # WP-41 BY-2: by(, scale(#))
+ '_dash_by_scale_mult': 'test/test_by_scale_range_weights.py::TestByScale::test_scale_mult',
+ '_dash_by_scale_arg': 'test/test_by_scale_range_weights.py::TestByScale::test_scale_arg',
  '_dash_by_spacing': 'test/test_by_grid.py::TestSpacing::test_every_probe',
  '_dash_by_word': 'test/test_by_grid.py::TestTheGrammar::test_every_spelling_is_twoways',
  # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)

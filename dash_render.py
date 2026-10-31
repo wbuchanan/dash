@@ -27940,7 +27940,13 @@ def _dash_scale_factor(graph_opts):
     """scale(#) of *graph_opts* as a multiplier (WP-31 D5), or None when it
     is absent, 1 or unusable.  dash.ado has refused a negative value with
     twoway's words and dropped a word (twoway notes it and draws at 1), so
-    anything else reaching here is ignored."""
+    anything else reaching here is ignored.  On a by() graph it is None:
+    twoway ignores a scale() written beside by() (WP-41 BY-2,
+    by_scale_range_truth.json S02 = S01); by(, scale()) acts through
+    ``_dash_by_size_mult``."""
+    if _dash_parse_by(str((graph_opts or {}).get("by", "") or ""),
+                      warn=False)[0]:
+        return None
     raw = str((graph_opts or {}).get("scale", "") or "").strip()[:64]
     if not raw:
         return None
@@ -27978,7 +27984,7 @@ def _dash_scale_columns(sources, factor):
         src._dash_scaled = factor
 
 
-def _dash_apply_scale(fig, factor):
+def _dash_apply_scale(fig, factor, keep=None):
     """twoway's scale(#) (WP-31 D5): every drawn size of *fig* -- text,
     markers, line widths, tick lengths, standoffs, paddings and the legend's
     key geometry -- times *factor*, as twoway multiplies "the size of all
@@ -27986,7 +27992,10 @@ def _dash_apply_scale(fig, factor):
     title, tick labels, marker radius and strokes 1.5 x).  A post-pass over
     the finished figure, so every renderer path is covered; idempotent
     (``fig._dash_scaled``); ``fig._dash_scale`` records the factor.  Gaps
-    between boxes are not scaled.  *factor* None or 1 does nothing."""
+    between boxes are not scaled.  *factor* None or 1 does nothing.
+    *keep* is a set of model ids left alone (WP-41 BY-2: a by() legend
+    cell's keys also hold the panels' own renderers, scaled with their
+    panels)."""
     if factor is None or factor == 1.0 or fig is None:
         return
     if getattr(fig, "_dash_scaled", None) is not None:
@@ -28017,6 +28026,8 @@ def _dash_apply_scale(fig, factor):
 
     cols = []
     for m in fig.references():
+        if keep and id(m) in keep:
+            continue
         if isinstance(m, Axis):
             css(m, "major_label_text_font_size", "axis_label_text_font_size")
             whole(m, "major_tick_in", "major_tick_out", "minor_tick_in",
@@ -37067,6 +37078,11 @@ def _dash_parse_by(by_raw, warn=True):
             # a direct parse still draws their separate scales
             # (_dash_by_rescale), in silence.
             pass
+        elif _row == "scale" and "(" in tok and \
+                _dash_by_scale_arg(arg) is not None:
+            # WP-41 BY-2: a positive number scales the whole by() graph
+            # (_dash_by_scale_mult); anything else is named.
+            pass
         else:
             unsupported.append(tok)
     if unsupported and warn:
@@ -37396,6 +37412,8 @@ def _dash_by_size_mult(by_raw, full_n):
             f = f * v if m.group(1) else v
     # WP-31 D10b: shrink and overallshrink draw the contents smaller.
     f *= _dash_by_shrink_factor(by_raw)
+    # WP-41 BY-2: by(, scale(#)) scales the whole by() graph.
+    f *= _dash_by_scale_mult(by_raw)
     return max(0.0, min(10000.0, f))
 
 
@@ -37447,6 +37465,51 @@ def _dash_by_shrink_factor(by_raw):
         if n:
             f -= sh[k] + (n - 1) * sh["line"]
     return max(0.05, f)
+
+
+#: A positive number as by(, scale()) takes it (WP-41 BY-2).
+_DASH_BY_SCALE_NUM = (r"\s*([+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)"
+                      r"(?:[eE][+-]?[0-9]{1,4})?)\s*")
+
+
+def _dash_by_scale_mult(by_raw):
+    """by(, scale(#)) of *by_raw* as a multiplier (WP-41 BY-2), 1.0
+    without one.  twoway applies by()'s own scale() to the whole by()
+    graph -- panels, panel labels, by()'s texts, the outer axis titles
+    and the keys (by_scale_range_truth.json S03-S06: every text and the
+    marker 1.5 x) -- and ignores a scale() written beside by()
+    (``_dash_scale_factor``).  The last copy is read, case-sensitive
+    through ``_dash_by_word``; a value that is not a finite number above 0
+    is 1.0 (``_dash_parse_by`` names it).  Never raises."""
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001 -- any object at all
+        return 1.0
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return 1.0
+    raw = None
+    for tok in _dash_by_tokens(subs.strip()):
+        row, _typed, paren, arg = _dash_by_word(tok)
+        if row == "scale" and paren:
+            raw = arg
+    v = _dash_by_scale_arg(raw) if raw is not None else None
+    return 1.0 if v is None else v
+
+
+def _dash_by_scale_arg(arg):
+    """The number by(, scale(*arg*)) draws at (WP-41 BY-2): a finite
+    number above 0, else None (a word, 0, a negative number or an empty
+    argument, named by ``_dash_parse_by`` and drawn at 1).  Never
+    raises."""
+    m = re.fullmatch(_DASH_BY_SCALE_NUM, str(arg or "")[:64])
+    if not m:
+        return None
+    try:
+        v = float(m.group(1))
+    except (ValueError, OverflowError):
+        return None
+    return v if math.isfinite(v) and v > 0 else None
 
 
 def _dash_by_spacing(fig0, opts):
@@ -52626,6 +52689,17 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
                             cn)
+        # WP-41 BY-2: by(, scale(#)) scales by()'s overall cells -- its
+        # texts, the outer axis titles, the legend and the colour key --
+        # once; the panels took it in their size multiplier above.
+        _bys = _dash_by_scale_mult(go.get("by"))
+        if _bys != 1.0:
+            _own = set()
+            for f in figs:
+                _own |= {id(x) for x in f.references()}
+            for _ch in list(grid.children):
+                if id(_ch[0]) not in _own:
+                    _dash_apply_scale(_ch[0], _bys, keep=_own)
         _dash_fxy_size(grid, gopts_of(name) or {})
         cell = _dash_name_save(_dash_reflow(grid))
         # A by() graph's data table, once under its grid (WP-31 H2t, D6).
@@ -68868,6 +68942,7 @@ class ServerAppBuilder:
                       # the zoom code's finisher twin.
                       "_DASH_DEFAULT_TAG", "_DASH_MARGIN_RS",
                       "_DASH_BY_GMETRIC", "_DASH_BY_SHRINK_SHARES",
+                      "_DASH_BY_SCALE_NUM",
                       "_DASH_AXIS_FINISH_JS",
                       "_DASH_AXIS_ZOOM_JS",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
@@ -69260,6 +69335,7 @@ class ServerAppBuilder:
                          # by() grid and size (WP-30 P1.15b).
                          "_dash_by_word", "_dash_by_grid_options",
                          "_dash_by_positions", "_dash_by_size_mult",
+                         "_dash_by_scale_mult", "_dash_by_scale_arg",
                          "_dash_by_spacing", "_dash_by_scale_value",
                          "_dash_by_scale_panel",
                          "_dash_facet_label", "_dash_stata_date_text",

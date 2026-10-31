@@ -420,7 +420,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit pending.
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
-- **BY-2 Tracked:** Open (WP-41 section 41-03).
+- **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit pending.
 - **BY-27 Tracked:** Open (WP-41 section 41-03).
 - **BY-3 Tracked:** Open (WP-41 section 41-04).
 - **BY-4 Tracked:** Open (WP-41 section 41-05).

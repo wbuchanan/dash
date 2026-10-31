@@ -2876,7 +2876,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'BY-1': "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)",
     'BY-24a': "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them",
-    'BY-2': 'A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored',
     'BY-27': "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)",
     'BY-3': 'An at() hole for a legend or colour key that is not drawn is not reserved in the grid',
     'BY-4': 'compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn',

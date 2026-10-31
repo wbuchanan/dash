@@ -2982,6 +2982,9 @@ CORPUS = [
               {"key": [0], "points": {"x": [2200.0, 4080.0],
                                       "y": [25.0, 14.0], "nobs": 5}}]}})],
           go={"by": "foreign"}),
+    # WP-41 BY-2: by(, scale(#)) scales the whole by() graph in both modes.
+    _case("by() scale(1.5)", [plot_for("scatter", {})],
+          go={"by": "foreign, scale(1.5)"}),
 ]
 
 

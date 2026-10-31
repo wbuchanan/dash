@@ -3730,7 +3730,10 @@ the {cmd:$dash_max_by_groups} limit is drawn at the limit, with a note.
 Panel text, markers and lines are
 drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
 2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
-title, subtitle, note and caption are not scaled.  The space between the
+title, subtitle, note and caption are not scaled.
+{cmd:by(, scale(}{it:#}{cmd:))} multiplies every size of the by() graph, its
+overall text and keys too, as {cmd:twoway} does; a {cmd:scale()} outside
+{cmd:by()} changes nothing on a by() graph, as in {cmd:twoway}.  The space between the
 panels is the scheme's {cmd:by()} margin, none with {cmd:compact}, or
 {cmd:imargin()}.  {cmd:by()} arguments {cmd:twoway} refuses are refused
 in its words and order: {cmd:rows()} with {cmd:cols()}, a {cmd:rows()},
@@ -3770,6 +3773,7 @@ a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
 {cmd:cols()}, {cmd:rows()}, {cmd:holes()}, {cmd:colfirst},
 {cmd:compact}, {cmd:style(compact)}, {cmd:iscale()}, {cmd:imargin()},
+{cmd:scale()},
 {cmd:total}, {cmd:missing}, the rescale forms above, {cmd:title()},
 {cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
@@ -6168,7 +6172,8 @@ added text; only the graph region's margins stay as they are.  dash's
 differences are listed under
 {help dash##differences:Differences from twoway}.  {cmd:scale(0)} draws
 every size at 0 and a negative {it:#} is refused, r(198), in
-{cmd:twoway}'s words; a word is noted and drawn at 1.{p_end}
+{cmd:twoway}'s words; a word is noted and drawn at 1.
+On a {cmd:by()} graph only {cmd:by(, scale())} acts.{p_end}
 
 {phang2}{opt fysize(#)} draws the figure {it:#} percent as tall, and
 {opt fxsize(#)} holds it to {it:#} percent of the width its cell
