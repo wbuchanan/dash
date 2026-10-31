@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'BY-24a': "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them",
     'BY-3': 'An at() hole for a legend or colour key that is not drawn is not reserved in the grid',
     'BY-4': 'compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn',
     'BY-5': "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')",

@@ -56391,12 +56391,25 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
              "caption": o["caption"]}
     defaults = {"note": "Graphs by " + _dash_by_note_list(by_vars, var_labels)}
     head = _dash_by_text_cell(scheme, "dash_by_head")
+    foot = _dash_by_text_cell(scheme, "dash_by_foot")
     if o["title"]:
-        head.title.text = _dash_textbox(o["title"], "title", seen, key)[0]
-        _dash_figure_title(head, {"title": o["title"]}, seen, key)
+        # WP-41 BY-24a: at clocks 5, 6 and 7 twoway draws by()'s title
+        # below the panels, outermost, under the note (by_text_truth.json
+        # bp43-bp45: X at y 3059.9, the note at 2883.7); the foot cell
+        # takes it there, its ring placing it last.
+        _tt, _to = _dash_textbox(o["title"], "title", seen, key)
+        cell = head
+        if _to and "position" in _to:
+            _pl = _dash_textbox_position(
+                _to, scheme.text_clock["title"] if scheme is not None
+                else 12, scheme.text_ring["title"] if scheme is not None
+                else 7, "center", "title", note=False)
+            if _pl.get("mode") == "side" and _pl.get("clock") in (5, 6, 7):
+                cell = foot
+        cell.title.text = _tt
+        _dash_figure_title(cell, {"title": o["title"]}, seen, key)
     _dash_text_annotations(head, boxes, seen, key, scheme, defaults=defaults,
                            sides=("above",), ring0=True)
-    foot = _dash_by_text_cell(scheme, "dash_by_foot")
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
                            sides=("below",), ring0=True)
     # WP-41 BY-12: by()'s t2title and t1title are rows under the head's

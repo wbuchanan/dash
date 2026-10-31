@@ -64,11 +64,6 @@ _TRUTH = None
 #: whose corner offset does
 #: (test_legend_span_browser.py::TestByTitlesAtPosition, ":offset").
 BY_POSITION_KNOWN = {
-    # BY-24a (41-02, D44): by()'s title at clocks 5, 6 and 7 is drawn above
-    # the panels; twoway draws it below them.
-    "bp43": "BY-24a",
-    "bp44": "BY-24a",
-    "bp45": "BY-24a",
     # BY-18 (41-05): at clocks 3 and 9 dash draws by()'s title above and
     # its note below the panels, aligned right or left; twoway draws them
     # beside the panels, centred.

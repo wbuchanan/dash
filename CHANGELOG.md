@@ -1004,6 +1004,7 @@ and now matches Stata.
 - by()'s note(), caption() and subtitle() at ring(0) are drawn on the array's edge rows, as twoway draws them; they were dropped silently (WP-41, BY-1)
 - by()'s l1title() and b1title() replace the shared axis titles and t1title/t2title/b2title/l2title/r1title/r2title add their rows and columns, as twoway draws them; they were named and ignored (WP-41, BY-12)
 - by(, legend(pos(abc))) prints twoway's clockdir note and draws the legend above the panels, and by(, bgcolor()) is taken in silence (WP-41, BY-7)
+- by()'s title() at position(5), (6) or (7) is drawn below the panels, under the Graphs by note, as twoway draws it; it was drawn above them (WP-41, BY-24a)
 
 ### Fixed in WP-40
 

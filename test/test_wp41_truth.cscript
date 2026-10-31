@@ -506,6 +506,44 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w41_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 BY-24a: by()'s title at clocks 5, 6 and 7 ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w41_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4102-5: by(foreign, title("X", position(5|6|7))) draws X in the
+    // foot cell, below the panels, as twoway draws it (by_text_truth.json
+    // bp43-bp45), and not in the head cell; at position(12) it stays in
+    // the head.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach q5p in 5 6 7 12 {
+        dash clear
+        capture noisily dash scatter mpg weight, by(foreign, title("X", position(`q5p'))) name(q5)
+        _w41_expect Q4102-5 "(_rc == 0)" "dash scatter ... title(X, position(`q5p')) rc `=_rc'"
+        capture erase "`w41_work'/q4102_5.html"
+        capture noisily dash build, saving("`w41_work'/q4102_5.html", replace) nobrowser
+        _w41_expect Q4102-5 "(_rc == 0)" "dash build at position(`q5p') rc `=_rc'"
+        global W41_S02_PAGE "`w41_work'/q4102_5.html"
+        capture noisily python: _w41_s02_read()
+        _w41_expect Q4102-5 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+        local q5in = cond(`q5p' == 12, "dash_by_head", "dash_by_foot")
+        local q5out = cond(`q5p' == 12, "dash_by_foot", "dash_by_head")
+        capture noisily python: _w41_s02_has("`q5in'", "X")
+        _w41_expect Q4102-5 "(${W41_S02_ANS} == 1)" "position(`q5p'): `q5in' holds no Title X"
+        capture noisily python: _w41_s02_has("`q5out'", "X")
+        _w41_expect Q4102-5 "(${W41_S02_ANS} == 0)" "position(`q5p'): `q5out' holds the Title X"
+        macro drop W41_S02_PAGE W41_S02_ANS
+        capture erase "`w41_work'/q4102_5.html"
+    }
+    _w41_done Q4102-5 "by()'s title at clocks 5, 6 and 7 is drawn below the panels, at 12 above"
+    dash clear
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 python:
 def _q4103_panels(sp, glob):
     """global *glob* = each panel's "lo hi" of the function layer's x in
