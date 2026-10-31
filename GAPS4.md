@@ -418,7 +418,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit 83997b1.
 - **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit 76543d4.
 - **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit ff15f74.
-- **BY-1 Tracked:** Closed in WP-41, BUGS.md "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)", commit pending.
+- **BY-1 Tracked:** Closed in WP-41, BUGS.md "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)", commit 35ed982.
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
@@ -427,7 +427,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-5 Tracked:** Open (WP-41 section 41-05).
 - **BY-6 Tracked:** Open (WP-41 section 41-05).
 - **BY-32 Tracked:** Open (WP-41 section 41-05).
-- **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit pending.
+- **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.
 - **BY-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
@@ -437,8 +437,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-5 Tracked:** Open (WP-41 section 41-05).
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
 - **PIC-13 Tracked:** Open (WP-41 section 41-04).
-- **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit pending.
-- **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit pending.
+- **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
+- **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
 - **CV-8 Tracked:** Open (WP-42 section 42-01).
 - **CV-1 Tracked:** Open (WP-42 section 42-02).
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
