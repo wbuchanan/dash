@@ -58242,6 +58242,20 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         if keys.get(k) is not None:
             side["cells"].append((k, keys[k], keys[k + "_side"]))
     m = _dash_by_size_mult(go.get("by"), extra["full_n"])
+    # WP-41 PIC-13: a legend or colour key in an at() hole is drawn at
+    # by()'s size multiplier, as twoway scales it (by_chrome_truth.json
+    # K11: 2.953 against 3.474 rs; K12: 2.776 against 3.474), once; m
+    # holds by(, scale()), so _dash_layout_cell's pass skips the cell.
+    # The panels' own renderers, which the legend's keys also hold, are
+    # left to their panels.
+    _own = None
+    for k in ("legend", "clegend"):
+        if keys.get(k) is not None and keys.get(k + "_at"):
+            if _own is None:
+                _own = set()
+                for fig in figs:
+                    _own |= {id(x) for x in fig.references()}
+            _dash_apply_scale(keys[k], m, keep=_own)
     for fig in figs:
         _dash_by_label_box(fig, scheme, m)
         # A spanned note or caption on a panel keeps its text box's margin

@@ -2881,7 +2881,6 @@ GAPS4_OPEN = {
     'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",
     'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',
     'GW-5': 'xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally',
-    'PIC-13': 'A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)',
     'CV-8': 'An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)',
     'CV-1': 'colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)',
     'CV-3': "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame",

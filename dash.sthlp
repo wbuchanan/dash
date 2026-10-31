@@ -3691,7 +3691,8 @@ the first panel has more than one key or with {cmd:by(, legend(on))}, and
 not with {cmd:by(, legend(off))}; it is placed by
 {cmd:by(, legend(position()))}, in the cell {cmd:at(}{it:#}{cmd:)} names
 (which counts as a cell of the grid, as in {cmd:twoway}, whether or not
-the key is drawn), or else where the
+the key is drawn, and where the legend is drawn at the panels' size, as
+{cmd:twoway} scales it; a colour key in a hole too), or else where the
 scheme puts it (s2color below, stcolor right, economist above); a
 {cmd:position()} that is not a clock position ({cmd:abc}, {cmd:13},
 {cmd:03}) prints {cmd:twoway}'s note and places the legend above the

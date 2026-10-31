@@ -1659,3 +1659,68 @@ class TestColorUsePlegendUnderBy:
         assert bar.major_label_overrides == {0.5: "1", 1.5: "2"}
         assert bar.title == "Repair record"
         assert dr._dash_by_colour_bar_cell(None, Legend(items=[])) is None
+
+
+def _pt(v):
+    return dr.OptionTranslator.css_to_pt(v)
+
+
+class TestHoleLegendScale:
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_labels_at_the_multiplier(self, mode):
+        """A legend in an at() hole draws its labels at by()'s size
+        multiplier, as twoway scales it: gr_example #65's form (K11,
+        three panels and the hole) against #64's (K11n), 2.953 against
+        3.474 rs; dash's three g3 panels the same, within 0.01."""
+        p = _fix()["probes"]["K11"]
+        want = p["legend_label_rs"] / p["nohole_label_rs"]
+        assert abs(want - 0.85) < 0.01
+        from bokeh.models import Legend
+        spec = _spec([_graph("hole", _TWO,
+                             {"by": "g3, legend(at(4) pos(0))"}),
+                      _graph("side", _TWO, {"by": "g3"})])
+        roots, _n, _o = _build(mode, spec)
+        grids = _grids(roots)
+        sizes = {}
+        for k in ("hole", "side"):
+            cell = _cell(grids[k], "dash_by_legend")[0]
+            (lg,) = [m for s in ("left", "right", "above", "below",
+                                 "center")
+                     for m in getattr(cell, s) if isinstance(m, Legend)]
+            sizes[k] = _pt(lg.label_text_font_size)
+        assert abs(sizes["hole"] / sizes["side"] - want) < 0.01, sizes
+        # The panels' own glyphs are not scaled with the key's clones.
+        panels = _panels(grids["hole"])
+        side_panels = _panels(grids["side"])
+        assert [getattr(r.glyph, "size", None) for r in panels[0].renderers
+                if hasattr(r, "glyph")] == \
+            [getattr(r.glyph, "size", None) for r in side_panels[0].renderers
+             if hasattr(r, "glyph")]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_colour_key_in_a_hole(self, mode):
+        """twoway scales a colour key in an at() hole too (D-41-04.e;
+        K12 against K12n: tick labels 2.776 against 3.474 rs, 0.80, the
+        multiplier of six cells); dash's key the same, within 0.01."""
+        from bokeh.models import ColorBar
+
+        def rs(pid):
+            return [t[3] for t in _fix()["probes"][pid]["svg"]["texts"]
+                    if t[0] == "1.5"][0]
+        want = rs("K12") / rs("K12n")
+        assert abs(want - 0.8) < 0.01
+        spec = _spec([
+            _graph("hole", [_p("scatter", colorvar="headroom")],
+                   {"by": "rep78, clegend(on at(6))"}),
+            _graph("side", [_p("scatter", colorvar="headroom")],
+                   {"by": "rep78, clegend(on)"})])
+        roots, _n, _o = _build(mode, spec)
+        grids = _grids(roots)
+        sizes = {}
+        for k in ("hole", "side"):
+            cell = _cell(grids[k], "dash_by_clegend")[0]
+            (bar,) = [m for s in ("left", "right", "above", "below",
+                                  "center")
+                      for m in getattr(cell, s) if isinstance(m, ColorBar)]
+            sizes[k] = _pt(bar.major_label_text_font_size)
+        assert abs(sizes["hole"] / sizes["side"] - want) < 0.01, sizes

@@ -1008,6 +1008,7 @@ and now matches Stata.
 - by()'s at() hole for a legend or colour key is kept empty whether or not the key is drawn, as twoway keeps it; by(foreign, legend(off at(1))) drew the panels in one row, now in a 2x2 grid with cell 1 empty (WP-41, BY-3)
 - by(, legloc() clegloc() plegloc()) place their keys as twoway does; they were named and ignored (WP-41, BY-13)
 - under coloruseplegend, by(, plegend(on)) draws the plot legend of colour keys and by(, clegend(on)) a colour-bar key, as twoway does; plegend(on) drew nothing and clegend(on) a discrete key with (missing) (WP-41, BY-14)
+- a legend in a by() at() hole is drawn at by()'s size, as twoway scales it; it kept full-size text (WP-41, PIC-13)
 
 ### Fixed in WP-40
 
