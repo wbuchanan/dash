@@ -1005,6 +1005,8 @@ and now matches Stata.
 - The help said msize() takes any number; it now says that msize() and the other marker sizes take at most 1,000 units, a larger size drawn at the scheme's default with a note where twoway draws it, in the bounds paragraph, under Resource limits and in Differences from twoway item 15 (WP-40, sil:SD-11)
 - The help did not say that fpfit and fpfitci with more than 20,000 distinct x are evaluated on 20,000 evenly spaced x, silently, where twoway predicts at every distinct x; Resource limits and Differences from twoway item 15 now do (WP-40, sil:SD-12)
 - The 4,000-character limit on a text() or text option whose globals expand past it, refused r(198) where twoway draws it, was stated only under Added text and Text in graphs; Resource limits and Differences from twoway item 15 now list it (WP-40, sil:SD-13)
+- A text() typed in the line, not through a global, with a line over 4,096 characters or more than 64 lines was not drawn, with a note, where twoway draws it; it is now drawn, a line past 254 columns keeping its last wrapped piece as twoway's does (WP-40)
+- The help's two n() bounds sentences under Option values did not say that lfit, qfit, lfitci, qfitci and fpfitci take any n() twoway takes; both now do (WP-40)
 
 ### Fixed in WP-38
 

@@ -395,6 +395,36 @@ class TestAxes:
 
 
 @pytest.mark.parametrize("mode", MODES)
+class TestLongText:
+    """twoway draws a typed text() of any length or line count (measured:
+    4,097, 20,000 and 100,000 characters, 65 and 300 lines, all rc 0), so
+    the renderer draws each one dash.ado writes.  A line past 254 columns
+    keeps twoway's last wrapped piece after "> " (_dash_gt_column)."""
+
+    @pytest.mark.parametrize("lines", [["a" * 4100], ["a" * 100000],
+                                       [f"l{i}" for i in range(65)],
+                                       [f"l{i}" for i in range(300)]],
+                             ids=["4100c", "100000c", "65l", "300l"])
+    def test_drawn_whole(self, mode, lines):
+        caught = []
+        figs = _figs(_spec([_at(30, 3000, lines)]), mode, caught=caught)
+        labs = [lab for f in figs for lab in _labels(f)]
+        def drawn(t):
+            if len(t) <= dr._DASH_GT_LINE_WIDTH:
+                return t
+            return "> " + t[len(t) - (dr._dash_gt_column(len(t)) - 2):]
+        assert [lab.text for lab in labs] == [
+            "\n".join(drawn(t) for t in lines)]
+        assert not any("not drawn" in m for m in caught)
+
+    def test_a_line_that_is_no_string_is_still_refused(self, mode):
+        caught = []
+        figs = _figs(_spec([_at(30, 3000, ["a", 5])]), mode, caught=caught)
+        assert [lab for f in figs for lab in _labels(f)] == []
+        assert sum("added_text entry was not drawn" in m for m in caught) == 1
+
+
+@pytest.mark.parametrize("mode", MODES)
 class TestByPanels:
     def test_every_panel(self, mode):
         """Each panel draws each text once, at the panel's text scale

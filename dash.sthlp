@@ -1277,8 +1277,10 @@ there, is an invalid point.  The literal is read as data and never run.
     at degree 8 on {cmd:lpoly mpg weight}: a bandwidth of 400.94 where
     Stata's is 484.23), fitted at most at degree 30 and never above the distinct x values less one, and
     on the saved page kept as built and marked after a filter move);
-    {cmd:n()} 1 to 10000, 1 to 300 on {cmd:mspline}, and up to 10000 on
-    {cmd:mband}, where one below 1 draws its default; {cmd:bin()} 1
+    {cmd:n()} 1 to 10000, 1 to 300 on {cmd:mspline}, up to 10000 on
+    {cmd:mband}, where one below 1 draws its default, and on {cmd:lfit},
+    {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci} any value
+    {cmd:twoway} takes, with no bound of {cmd:dash}'s; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
     an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
@@ -1345,7 +1347,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway} accepts the value, and {cmd:dash} refuses it, saying so
     in a second sentence of the message: {cmd:bin()} up to 1000, and
     {cmd:n()} up to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s
-    own bound); see {help dash##limits:Resource limits}.  The others are
+    own bound, and {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci} and
+    {cmd:fpfitci} have no bound but {cmd:twoway}'s); see
+    {help dash##limits:Resource limits}.  The others are
     {cmd:twoway}'s, but for one: {cmd:aspectratio()} below 0, which
     {cmd:twoway} draws as a plot region overflowing the graph, a layout
     defect {cmd:dash} does not copy, so it refuses the value, {cmd:r(198)}.

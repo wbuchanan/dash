@@ -330,6 +330,21 @@ class TestNBinDegree:
                 if "refused" in s:
                     assert "{cmd:%s}" % t not in s, (t, s)
 
+    def test_the_option_values_bounds_name_the_unbounded_types(self):
+        """Both n() bounds sentences under Option values, the bounds list
+        and the "two of those bounds" paragraph, name each type that takes
+        any n() twoway takes, beside its bound of 10,000 (measured: lfit,
+        qfit, lfitci, qfitci and fpfitci at n(0), n(-5), n(1.5), n(1) and
+        n(50000) give twoway's rc in dash)."""
+        _bounded, unbounded = _n_pairs()
+        h = _flat(_help())
+        for start in ("{cmd:n()} 1 to 10000,",
+                      "{cmd:n()} up to 10000 (on {cmd:mspline},"):
+            i = h.index(start)
+            s = h[i:h.index(";", h.index(")", i) if "(" in start else i)]
+            for t in unbounded:
+                assert "{cmd:%s}" % t in s, (start, t)
+
     def test_bin_and_degree(self):
         (hi, _types), = _rule_tokens("bin")
         s = _fixed_sentence("{cmd:bin()} above")

@@ -842,8 +842,7 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
     // characters draws in twoway; dash refuses it, r(198), "text():
     // expanded text is too long".  The \$ keeps the global unexpanded
     // until the command reads it.  (Its value typed in the line, already
-    // expanded, is no global for dash to expand: dash draws nothing and
-    // notes the added text, where twoway draws it.)
+    // expanded, is no global for dash to expand: Q4002-9 draws it.)
     // ------------------------------------------------------------
     sysuse auto, clear
     global w40q8 = "a" * 4100
@@ -863,6 +862,34 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w40_run' {
     _w40_expect Q4002-8 "(`s02c' == 1)" "no 'expanded text is too long' refusal"
     macro drop w40q8
     _w40_done Q4002-8 "a 4,100-character global in text(): twoway draws, dash r(198)"
+
+    // ------------------------------------------------------------
+    // Q4002-9: a text() typed in the line, of 4,100 characters or of 65
+    // lines, draws in twoway (rc 0) and in dash, with no note that an
+    // added text was not drawn.  The local expands before either
+    // command reads the line, so each sees the text typed.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q9a = "a" * 4100
+    local q9l ""
+    forvalues i = 1/65 {
+        local q9l `"`q9l' "l`i'""'
+    }
+    local q9k 0
+    foreach q9t in a l {
+        local ++q9k
+        if "`q9t'" == "a" local q9s `""`q9a'""'
+        else local q9s `"`q9l'"'
+        capture noisily twoway scatter mpg weight, text(30 3000 `q9s') nodraw
+        local q9_trc = _rc
+        _w40_expect Q4002-9 "(`q9_trc' == 0)" "twoway typed text() `q9t' rc `q9_trc'"
+        capture erase "`s02d'/q9`q9k'.html"
+        _w40_s02_run "`s02d'/q9`q9k'.log" dash scatter mpg weight, text(30 3000 `q9s') saving("`s02d'/q9`q9k'.html", replace)
+        _w40_expect Q4002-9 "(`s02rc' == 0)" "dash typed text() `q9t' rc `s02rc'"
+        _w40_s02_log "`s02d'/q9`q9k'.log" "not drawn"
+        _w40_expect Q4002-9 "(`s02c' == 0)" "dash typed text() `q9t' noted as not drawn"
+    }
+    _w40_done Q4002-9 "a typed text() of 4,100 characters or 65 lines draws in both"
     display as text "S02 end " c(current_date) " " c(current_time)
 }
 * ==== end S02 ====

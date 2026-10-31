@@ -55518,8 +55518,10 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
     (``_dash_finish_graph_text``) finishes it, in both modes.
 
     A record that is not as dash.ado writes it -- non-finite numbers, an
-    axis outside 1-2, more than 64 lines or a line or at_opts over 4,096
-    characters -- is not drawn and named once.  *budget* (``{"n": ...}``,
+    axis outside 1-2, a line that is no string, or at_opts over 4,096
+    characters -- is not drawn and named once.  Its lines have no count or
+    length bound: twoway draws a typed text() of any length (measured to
+    100,000 characters and 300 lines).  *budget* (``{"n": ...}``,
     one per render) counts the Labels over every figure; past the
     ``added_text`` limit of *limits* a DashLimitError is raised, the
     renderer's own bound for a spec dash.ado did not write.
@@ -55546,8 +55548,8 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
               and rec.get("at_xaxis", 1) in (1, 2)
               and not isinstance(rec.get("at_yaxis", 1), bool)
               and not isinstance(rec.get("at_xaxis", 1), bool)
-              and isinstance(lines, list) and len(lines) <= 64
-              and all(isinstance(s, str) and len(s) <= 4096 for s in lines)
+              and isinstance(lines, list)
+              and all(isinstance(s, str) for s in lines)
               and isinstance(rec.get("at_opts", ""), str)
               and len(rec.get("at_opts", "")) <= 4096)
         if not ok:
