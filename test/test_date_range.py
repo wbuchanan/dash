@@ -598,7 +598,7 @@ class TestTheSavedPageHoldsThePlaceholder:
         # Flipped (WP-30 P1.15a): the date is the panel's label row.
         from by_panel_probe import panel_label
         assert [panel_label(r.figures[k]) for k in ("g1__by__0", "g1__by__1")
-                ] == [_td(14977.0), _td(2936549.0)]  # # GAPS2 E3/G6, WP-28 S12: Stata text
+                ] == ["14977", "2936549"]  # Flipped (WP-41 BY-16): twoway writes the number; a date past 2262 is no "(missing)"
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
         from test_export import _saved_file
@@ -673,8 +673,9 @@ class TestTheServedAppWritesThePlaceholder:
         from by_panel_probe import panel_label
         titles = sorted(panel_label(p) for p in doc.select({"type": Plot})
                         if panel_label(p))
-        # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
-        assert titles == [_td(14977.0), _td(2936549.0)]
+        # Flipped (WP-41 BY-16): twoway writes the number; a date past 2262
+        # is no "(missing)".
+        assert titles == ["14977", "2936549"]
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
         """Under pandas 3 the click raised OverflowError out of

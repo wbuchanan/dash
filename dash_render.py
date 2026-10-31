@@ -37873,14 +37873,13 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
             # WP-41 BY-16: twoway writes a date's Stata number (D01:
             # 14610), from its Stata units; a value label still wins.  A
             # number is already in them (as _dash_stata_date_text reads
-            # one); a datetime is converted (_dash_date_units).
+            # one); a datetime is converted through its milliseconds, as
+            # _dash_stata_date_text reads one (pd.Timestamp's nanoseconds
+            # overflow past 2262, and 31dec9999 read "(missing)").
             if not isinstance(val, (int, float, np.integer, np.floating)):
-                try:
-                    _ms = pd.Timestamp(val).value / 1e6
-                    val = float(_dash_date_units(np.array([_ms]),
-                                                 _kind)[0])
-                except (TypeError, ValueError, OverflowError):
-                    val = float("nan")
+                _ms = _dash_json_value(val)
+                val = (float(_dash_stata_value_of(_ms, _kind))
+                       if isinstance(_ms, float) else float("nan"))
             if not math.isfinite(float(val)):
                 parts.append("(missing)")
                 continue
