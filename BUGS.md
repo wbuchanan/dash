@@ -5006,11 +5006,11 @@
   - Suggested fix: Documented only (M10, Q44): the 4,000-character bound on text() after its globals expand stays and is documented under Resource limits and Differences.
   - Resolution: Documented 30oct2026 (WP-40, sil:SD-13). dash.sthlp Resource limits (Fixed limits: a text() or text option whose globals expand past 4,000 characters is refused, r(198), where twoway draws it, linking Added text, which states the refusal's words) and Differences from twoway item 15's sub-point Long text. Pinned by test/test_help_resource_limits.py::TestLongText, Q4002-8 (test_wp40_truth.cscript S02). Closes GAPS4 sil:SD-13 (WP-40, sil:SD-13).
 
-- [ ] Title: contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel
+- [x] Title: contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel
   - File Names and Line Numbers: zyx2view_g.class:255-276; tw_f29a.svg has 3 colours in both panels; dash dump shows per-panel cuts; _dash_share_by_scales shares x/y only
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-28; confirmed; tracked: untracked. Registered as GAPS4 BY-28 (WP-41, section 41-01, Fix).
   - Suggested fix: Compute the cuts once over all panels (Total included), in both modes; measure the exact cuts from a drawn graph
-  - Resolution: Not fixed because WP-41 section 41-01 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+  - Resolution: Fixed 31oct2026 (WP-41, BY-28). Under by() map_contour cuts every panel at the first panel's z range (_dash_by_contour_zranges, _dash_by_zrange_spec), saved and served at build, and after a move through dash_contour_zfirst and _dash_by_first_zranges; a dash-fitted panel of a gridded layer takes Stata's cuts (_dash_by_contour_gen_cuts). twoway cuts every panel, the Total panel too, at the first panel's cuts (measured; the audit's union of the panels is superseded). Pinned by test/test_by_contour_cuts.py::TestByContourCuts::test_panels_share_the_first_panels_cuts, Q4101-1; fixture test/fixtures/by_contour_truth.json. Closes GAPS4 BY-28 (WP-41, BY-28).
 
 - [ ] Title: by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)
   - File Names and Line Numbers: _dash_by_chrome sides=('above',)/('below',) (dash_render.py:55079, 55082); skipped at 54495

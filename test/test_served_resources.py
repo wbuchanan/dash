@@ -609,7 +609,12 @@ _SAVED_DIGEST = (
     # 104e1ca0... -> 82b3f355...: WP-37 D65, the filter code's contour
     # branch loses the cell part of an option contour no longer takes
     # (filter JS text only); the same under both Pythons.
-    "82b3f35517ec366a98887744012895db4ae834d9ce84a9867f57900602c69a5e")
+    # 82b3f355... -> a21758fc...: WP-41 BY-28, the filter code's by()
+    # contour pre-pass (dash_stata_units, dash_contour_kept_zrange,
+    # dash_contour_zfirst) and its kept-range override (filter JS text
+    # only: the base's _FILTER_JS gives the old digest on the new tree);
+    # the same under both Pythons.
+    "a21758fc5cf45c23d67a94bc0d78658c35e748ac8872d15c3346df1f3e5b504a")
 
 
 # ===========================================================================

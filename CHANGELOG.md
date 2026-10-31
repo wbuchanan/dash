@@ -995,6 +995,8 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- contour and contourline under by() cut every panel at the first panel's cuts, as twoway does; by(rep78, total) drew 4, 5, 3, 3, 4 and 3 levels, now 4 in every panel (WP-41, BY-28)
+
 ### Fixed in WP-40
 
 - dash scatter y x in 1/100 exported every observation to its data file and held them in memory while it built; on the one-line form and a build with no filter(), link(), brush(), csv or KPI card only the rows the graphs draw are exported: 100 of 3,000,000 (WP-40, plat:PT-7)

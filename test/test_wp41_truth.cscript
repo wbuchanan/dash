@@ -203,6 +203,124 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w41_run' {
 }
 * ==== end S00 ====
 
+// S01 helpers (WP-41 BY-28).  _w41s01_cuts: the inner levels of every
+// contour layer (ContourRenderer tagged dash_contour) of the saved page
+// <path>, each compared with the cuts in global w41s01_want to 1e-9;
+// "" into global w41s01_v when every layer matches, else what differs,
+// and the number of layers into global w41s01_n.
+python:
+import base64 as _w41s01_b64
+import gzip as _w41s01_gzip
+import json as _w41s01_json
+import re as _w41s01_re
+import struct as _w41s01_struct
+from html import unescape as _w41s01_unescape
+from sfi import Macro as _w41s01_M
+
+
+def _w41s01_dec(v):
+    """A list of the page's JSON as floats (an encoded array decoded)."""
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        arr = v.get("array")
+        if isinstance(arr, dict) and arr.get("type") == "bytes":
+            raw = _w41s01_b64.b64decode(arr.get("data", ""))
+            if raw[:2] == b"\x1f\x8b":
+                raw = _w41s01_gzip.decompress(raw)
+            f = {"float64": "d", "float32": "f", "int32": "i",
+                 "int64": "q"}.get(str(v.get("dtype")))
+            if f is None:
+                return []
+            n = len(raw) // _w41s01_struct.calcsize(f)
+            return [float(x) for x in _w41s01_struct.unpack(
+                "<%d%s" % (n, f), raw[:n * _w41s01_struct.calcsize(f)])]
+        v = arr
+    return [float(x) for x in v] if isinstance(v, list) else []
+
+
+def _w41s01_cuts(path):
+    bad, n = [], 0
+    try:
+        want = [float(t) for t in _w41s01_M.getGlobal("w41s01_want").split()]
+        page = open(path, encoding="utf-8").read()
+        m = _w41s01_re.search(
+            r'<script[^>]+type=["\']application/json["\'][^>]*>', page)
+        body = page[m.end():page.index("</script>", m.end())]
+        objs = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get("name") == "ContourRenderer":
+                    objs.append(node)
+                for v in node.values():
+                    walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v)
+
+        walk(_w41s01_json.loads(_w41s01_unescape(body)))
+        for o in objs:
+            a = o.get("attributes") or {}
+            if "dash_contour" not in (a.get("tags") or []):
+                continue
+            n += 1
+            got = _w41s01_dec(a.get("levels", []))[1:-1]
+            if len(got) != len(want) or any(
+                    abs(g - w) > 1e-9 * max(1.0, abs(w))
+                    for g, w in zip(got, want)):
+                bad.append("layer %d cut at %s" % (n, " ".join(
+                    "%g" % g for g in got)))
+    except Exception as e:
+        bad.append("error " + str(e))
+    _w41s01_M.setGlobal("w41s01_v", "; ".join(bad)[:400].replace(
+        '"', "'").replace("`", "'").replace("$", "S"))
+    _w41s01_M.setGlobal("w41s01_n", str(n))
+end
+
+* ==== S01 BY-28: contour under by() cut at the first panel's cuts ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w41_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4101-1: every by() panel of dash's contour, the Total panel too,
+    // is cut at twoway's first panel's cuts (lastcuts after export):
+    // by(nf) with Foreign first, by(rep78, total) and levels(4).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    generate byte nf = 1 - foreign
+    local s01_h "`w41_work'/q4101.html"
+    local s01_s "`w41_work'/q4101.svg"
+    local s01_c1 "contour price mpg weight, by(nf)"
+    local s01_c2 "contour price mpg weight, by(rep78, total)"
+    local s01_c3 "contour price mpg weight, levels(4) by(nf)"
+    forvalues k = 1/3 {
+        local cmd "`s01_c`k''"
+        capture noisily twoway `cmd' name(w41q1, replace)
+        _w41_expect Q4101-1 "(_rc == 0)" "twoway `cmd': rc `=_rc'"
+        capture erase "`s01_s'"
+        cert_svg_export, name(w41q1) file("`s01_s'")
+        local np = `.w41q1.graphs.arrnels'
+        local want "`.w41q1.graphs[1].plotregion1.plot1.lastcuts'"
+        _w41_expect Q4101-1 `"("`want'" != "")"' "twoway `cmd': no lastcuts"
+        capture erase "`s01_h'"
+        capture noisily dash `cmd' saving("`s01_h'", replace)
+        _w41_expect Q4101-1 "(_rc == 0)" "dash `cmd': rc `=_rc'"
+        global w41s01_want "`want'"
+        python: _w41s01_cuts(r"`s01_h'")
+        _w41_expect Q4101-1 `"("${w41s01_v}" == "")"' "dash `cmd': ${w41s01_v}; twoway `want'"
+        _w41_expect Q4101-1 "(${w41s01_n} == `np')" "dash `cmd': ${w41s01_n} layers, twoway `np' panels"
+        capture dash clear
+    }
+    _w41_done Q4101-1 "every by() panel cut at the first panel's cuts, as twoway cuts it"
+
+    capture erase "`s01_h'"
+    capture erase "`s01_s'"
+    capture graph drop w41q1
+    macro drop w41s01_*
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

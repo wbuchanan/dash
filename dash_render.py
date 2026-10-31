@@ -5514,6 +5514,175 @@ def _dash_by_panel_dropped(gdf, frame, plots, masks=None, where=""):
     return False
 
 
+def _dash_contour_zrange_of(rows, plot, date_vars=None):
+    """``[lo, hi]``, the z range a contour layer cuts over on *rows* (WP-41
+    BY-28): z over the rows whose x, y and z are all non-missing, each
+    date read in its Stata units (*date_vars*: ``{name: kind}``), as
+    ``GlyphMapper.map_contour`` reads them; None when no row has all
+    three, a column is missing or *plot* is not a dict.  *rows* is a
+    frame already restricted to the layer's rows.  Never raises.  Both
+    render modes call it; the served app copies it by source.
+    """
+    try:
+        if not isinstance(plot, dict):
+            return None
+        names = [str(plot.get(k) or "") for k in ("xvar", "yvar", "zvar")]
+        if not all(n and n in rows.columns for n in names):
+            return None
+        cols = []
+        for n in names:
+            c = _dash_float_values(rows[n], coerce=True)
+            k = (date_vars or {}).get(n)
+            if k in _STATA_DATE_KINDS:
+                c = _dash_date_units(c, k)
+            cols.append(np.asarray(c, dtype=float))
+        ok = ~np.isnan(cols[0]) & ~np.isnan(cols[1]) & ~np.isnan(cols[2])
+        if not ok.any():
+            return None
+        z = cols[2][ok]
+        return [float(z.min()), float(z.max())]
+    except Exception:
+        return None
+
+
+def _dash_by_contour_zranges(gdf, frame, plots, masks=None, date_vars=None):
+    """``{pi: [lo, hi]}`` (pi from 0): the z range of each contour or
+    contourline plot of *plots* over the by() panel *gdf* (WP-41 BY-28).
+
+    twoway reads one z axis under by(): every panel is cut at the cuts
+    of the first panel (measured, by_contour_truth.json), so the builds
+    call this on the first drawn panel.  The plot's rows are the panel's
+    rows its own qualifier keeps, read as :func:`_dash_by_panel_dropped`
+    reads them; their range is :func:`_dash_contour_zrange_of`'s.  A plot
+    with no such row is left out.  Both render modes call it; the served
+    app copies it by source.
+    """
+    out = {}
+    for pi, plot in enumerate(plots or []):
+        if not isinstance(plot, dict) or str(
+                plot.get("type", "") or "").lower() not in _DASH_CONTOUR_TYPES:
+            continue
+        rows = gdf.index
+        p_if = str(plot.get("if_expr") or "").strip()
+        p_in = str(plot.get("in_expr") or "").strip()
+        try:
+            qual = _dash_qual_mask(plot, masks)
+        except ValueError:
+            qual = None
+        if qual is not None or p_if or p_in:
+            with warnings.catch_warnings():
+                # A qualifier the layer cannot apply is named when the
+                # layer is drawn; the range only needs its rows.
+                warnings.simplefilter("ignore")
+                sel = _dash_qualified_frame(frame, p_if, p_in, qual=qual,
+                                            copy=False)
+            rows = rows.intersection(sel.index)
+        r = _dash_contour_zrange_of(frame.loc[rows], plot, date_vars)
+        if r is not None:
+            out[pi] = r
+    return out
+
+
+def _dash_by_contour_gen_cuts(plots):
+    """``{pi: [c, ...]}`` (pi from 0): Stata's cuts of each gridded by()
+    contour layer of *plots* (WP-41 BY-28, D-41-01.e) -- the ``cuts`` of
+    the first entry of its ``contour_gen`` object's ``panels`` whose grid
+    holds a non-empty list of finite numbers, else the ``total`` grid's,
+    sorted.  twoway__contour_gen cut every panel at the first panel's
+    cuts, so a panel of the layer that dash fits is cut at these too.  A
+    plot with none is left out.  Never raises and never notes (the one
+    note on a malformed object is :func:`_dash_contour_gen_of`'s).  Both
+    render modes call it; the served app copies it by source.
+    """
+    def _cuts(grid):
+        c = grid.get("cuts") if isinstance(grid, dict) else None
+        if not isinstance(c, list) or not c or not all(
+                isinstance(v, (int, float)) and not isinstance(v, bool)
+                and math.isfinite(v) for v in c):
+            return None
+        return sorted(float(v) for v in c)
+
+    out = {}
+    for pi, plot in enumerate(plots or []):
+        if not isinstance(plot, dict) or str(
+                plot.get("type", "") or "").lower() not in _DASH_CONTOUR_TYPES:
+            continue
+        o = plot.get("options")
+        cg = o.get("contour_gen") if isinstance(o, dict) else None
+        if not isinstance(cg, dict) or not isinstance(cg.get("panels"), list):
+            continue
+        got = None
+        for e in cg["panels"]:
+            got = _cuts(e.get("grid")) if isinstance(e, dict) else None
+            if got is not None:
+                break
+        if got is None:
+            got = _cuts(cg.get("total"))
+        if got is not None:
+            out[pi] = got
+    return out
+
+
+def _dash_by_zrange_spec(g, zranges, panel_idx, name, zcuts=None):
+    """The graph *g* as by() panel *panel_idx* (from 0) cuts its contour
+    layers (WP-41 BY-28): a copy of *g* whose plot ``pi`` (each key of
+    *zranges*, :func:`_dash_by_contour_zranges` of the first panel)
+    carries in a copied options dict ``_dash_by_zrange`` (the first
+    panel's z range), ``_dash_by_zshare`` (``"<name>|<pi>"``, the layer's
+    panels), ``_dash_by_zpanel`` (*panel_idx*) and, when *zcuts* holds
+    ``pi`` (:func:`_dash_by_contour_gen_cuts`), ``_dash_by_zcuts``.  *g*
+    itself when *zranges* is empty.  Both render modes call it; the served
+    app copies it by source.
+    """
+    if not isinstance(g, dict) or not zranges:
+        return g
+    zcuts = zcuts or {}
+    new = []
+    for pi, p in enumerate(g.get("plots") or []):
+        if pi in zranges and isinstance(p, dict):
+            p = dict(p)
+            o = dict(p.get("options") or {})
+            o["_dash_by_zrange"] = [float(v) for v in zranges[pi]]
+            o["_dash_by_zshare"] = "%s|%d" % (name, pi)
+            o["_dash_by_zpanel"] = int(panel_idx)
+            if pi in zcuts:
+                o["_dash_by_zcuts"] = list(zcuts[pi])
+            p["options"] = o
+        new.append(p)
+    out = dict(g)
+    out["plots"] = new
+    return out
+
+
+def _dash_by_first_zranges(aggs, frame_of):
+    """``{zshare: [lo, hi]}``: after a filter move, the kept z range of
+    each by() contour layer's first panel that keeps rows (WP-41 BY-28).
+
+    *aggs*: the served app's ``{key: agg}`` redraw registrations; an agg
+    with a ``zshare`` is a by() panel of a contour layer, its ``zpanel``
+    the panel's place and its ``redraw.zrange(frame)`` the range of its
+    qualified rows (:func:`_dash_contour_zrange_of`).  *frame_of(key)*:
+    the agg's kept frame.  Per zshare the range of the lowest zpanel with
+    a range, as twoway cuts every panel at its first drawn panel's.  The
+    served app copies it by source.
+    """
+    best = {}
+    for key, agg in (aggs or {}).items():
+        share = agg.get("zshare") if isinstance(agg, dict) else None
+        if not share:
+            continue
+        zr = getattr(agg.get("redraw"), "zrange", None)
+        if zr is None:
+            continue
+        r = zr(frame_of(key))
+        if r is None:
+            continue
+        p = int(agg.get("zpanel") or 0)
+        if share not in best or p < best[share][0]:
+            best[share] = (p, r)
+    return {k: v[1] for k, v in best.items()}
+
+
 _WEBGL_THRESHOLD = 10_000
 
 # Opacity of the observations NOT selected by a brush.
@@ -24471,9 +24640,32 @@ class GlyphMapper:
                                        options)[0]
         zmin = float(np.min(uz)) if uz.size else float("nan")
         zmax = float(np.max(uz)) if uz.size else float("nan")
+        # WP-41 BY-28: under by() twoway cuts every panel at its first
+        # panel's cuts (one z axis): dash's own fit cuts over the first
+        # panel's z range (_dash_by_zrange_spec), and, in a gridded layer
+        # (WP-37 TR-13), at Stata's cuts.  A layer drawn from Stata's
+        # polygons (cg) keeps its own lines.
+        zc_min, zc_max = zmin, zmax
+        _zr = options.get("_dash_by_zrange") if cg is None else None
+        if (isinstance(_zr, (list, tuple)) and len(_zr) == 2
+                and all(isinstance(v, (int, float))
+                        and not isinstance(v, bool) and math.isfinite(v)
+                        for v in _zr)
+                and _zr[0] <= _zr[1] and math.isfinite(zmin)):
+            zc_min, zc_max = float(_zr[0]), float(_zr[1])
         cuts, ticks = _dash_contour_cuts(
-            options, zmin, zmax, self.z_options,
+            options, zc_min, zc_max, self.z_options,
             table=getattr(fig, "_dash_stata_ticks", None))
+        _zk = options.get("_dash_by_zcuts") if cg is None else None
+        if (isinstance(_zk, (list, tuple)) and _zk
+                and all(isinstance(v, (int, float))
+                        and not isinstance(v, bool) and math.isfinite(v)
+                        for v in _zk)):
+            _zk = sorted(float(v) for v in _zk)
+            if not (len(_zk) == len(cuts) and all(
+                    abs(a - b) <= 1e-9 * max(1.0, abs(b))
+                    for a, b in zip(cuts, _zk))):
+                cuts, ticks = list(_zk), list(_zk)
         cg_runs = []
         if cg is not None:
             # twoway's cuts; the key keeps dash's ticks when they are the
@@ -24562,7 +24754,7 @@ class GlyphMapper:
             lo = hi = None
         else:
             lv = [0.0, 1.0] if _no_rows else \
-                _dash_contour_fill_levels(cuts, ticks, zmin, zmax)
+                _dash_contour_fill_levels(cuts, ticks, zc_min, zc_max)
             lo, hi = lv[0], lv[-1]
             # The outer bands hold every node: a spline overshoots the
             # data's range, and twoway fills below the first cut and above
@@ -24600,7 +24792,11 @@ class GlyphMapper:
             "yaxiskind": (self._unit_kind(fig, yvar, letters[1], options)
                           if yvar in units else None),
             "fill_color": [] if lines_only else list(colours),
-            "lo": lo, "hi": hi}
+            "lo": lo, "hi": hi,
+            # WP-41 BY-28: the by() layer's panels (D-41-01.c), whose
+            # saved refit cuts each at the first panel's kept range.
+            "zshare": options.get("_dash_by_zshare") or None,
+            "zpanel": int(options.get("_dash_by_zpanel") or 0)}
         if cg is not None:
             # WP-37 TR-13 (D-37-03.g): the saved page writes the build
             # back while the layer keeps every one of these rows.
@@ -24653,7 +24849,7 @@ class GlyphMapper:
         # weight in 1/2: 4,000 to 4,800, titled Price).
         if (not lines_only and not _no_rows and math.isfinite(zmin)
                 and math.isfinite(zmax)):
-            self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax,
+            self._contour_key(fig, cr, ticks, lo, hi, zvar, zc_min, zc_max,
                               outlined=_dash_contour_parts(options)[
                                   "outlines"])
         elif not lines_only and _no_rows:
@@ -34807,9 +35003,56 @@ function dash_recast_data(cols, xs, ys, prev) {
     }
     return out;
 }
+// A column in its Stata units under a date kind k (a value with no
+// Stata date is NaN); the column itself without one.  Hoisted from the
+// contour branch (WP-41 BY-28), which and dash_contour_kept_zrange use.
+function dash_stata_units(col, k) {
+    return k ? col.map(v => {
+        const u = (typeof v === "number" && isFinite(v)) ? dash_stata_value_of(v, k) : null;
+        return u === null ? NaN : u; }) : col;
+}
+// WP-41 BY-28: the z range of a contour config's kept rows, exactly as
+// the contour branch's kept-range loop reads them (x and y finite as
+// stored, z finite in its Stata units).
+function dash_contour_kept_zrange(ac) {
+    const d = dash_data_for(ac.use);
+    let keep = null;
+    if (ac.member_ids) {
+        const m = new Set(ac.member_ids), rid = d[ROW_ID] || [];
+        keep = [];
+        for (let i = 0; i < rid.length; i++) if (m.has(rid[i])) keep.push(i);
+    }
+    const pick = (c) => (keep === null || !c) ? c : keep.map(i => c[i]);
+    const cx = pick(d[ac.xvar]), cy = pick(d[ac.yvar]), cz0 = pick(d[ac.zvar]);
+    if (!cx || !cy || !cz0) return null;
+    const cz = dash_stata_units(cz0, ac.zdatekind);
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < cz.length; i++) {
+        if (!Number.isFinite(cx[i]) || !Number.isFinite(cy[i]) || !Number.isFinite(cz[i])) continue;
+        if (cz[i] < lo) lo = cz[i];
+        if (cz[i] > hi) hi = cz[i];
+    }
+    return lo <= hi ? [lo, hi] : null;
+}
+// Under by() twoway cuts every panel at its first panel's cuts: per
+// zshare, the range of the config with the lowest zpanel keeping rows.
+function dash_contour_zfirst(configs) {
+    const best = {};
+    for (const ac of configs) {
+        if (!ac || !ac.zshare || (ac.type !== 'contour' && ac.type !== 'contourline')) continue;
+        const r = dash_contour_kept_zrange(ac);
+        if (r === null) continue;
+        const b = best[ac.zshare];
+        if (b === undefined || ac.zpanel < b.p) best[ac.zshare] = {p: ac.zpanel, r: r};
+    }
+    const out = {};
+    for (const k of Object.keys(best)) out[k] = best[k].r;
+    return out;
+}
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
 const agg_configs = JSON.parse(agg_configs_json);
+const _dash_zfirst = dash_contour_zfirst(agg_configs);
 // lpolyci's fit, made once per config for its line and its band
 // (WP-31 F1e, D-22.a); one per callback run.
 const _dash_lpci_cache = new Map();
@@ -35448,9 +35691,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // A date is fitted in its Stata units (ac.xdatekind, as
         // dash_fit_rows reads it) and its grid drawn on its axis
         // (ac.xaxiskind); a value with no Stata date is dropped.
-        const _su = (col, k) => k ? col.map(v => {
-            const u = (typeof v === "number" && isFinite(v)) ? dash_stata_value_of(v, k) : null;
-            return u === null ? NaN : u; }) : col;
+        const _su = dash_stata_units;
         const _zu = _su(_cz, ac.zdatekind);
         // WP-37 TR-13 (D-37-03.g): a layer drawn from Stata's polygons
         // (ac.stata_n, the rows twoway__contour_gen was given) keeps its
@@ -35505,6 +35746,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             if (c < _zmin) _zmin = c;
             if (c > _zmax) _zmax = c;
         }
+        // WP-41 BY-28: a by() panel is cut over its first panel's kept
+        // range (dash_contour_zfirst), as twoway cuts every panel.
+        if (ac.zshare && _dash_zfirst[ac.zshare]) { _zmin = _dash_zfirst[ac.zshare][0]; _zmax = _dash_zfirst[ac.zshare][1]; }
         let _cuts = ac.cuts, _ticks = null, _lo = ac.lo, _hi = ac.hi;
         if (ac.rule && _zmin <= _zmax) {
             const _ct = dash_contour_cuts(ac.rule, _zmin, _zmax);
@@ -63560,6 +63804,11 @@ class DashRenderer:
 
         # Facet map: graph_name → [(facet_key, facet_label), ...]
         self._facet_map: dict[str, list[tuple[str, str]]] = {}
+        # WP-41 BY-28: graph_name -> {plot index: the first panel's z
+        # range} and {plot index: Stata's cuts}, for every panel's contour
+        # cuts (_dash_by_zrange_spec).
+        self._facet_zranges: dict = {}
+        self._facet_zcuts: dict = {}
 
         # Facet masks for by()+link() graphs: graph_name → [(label, bool_mask), ...]
         self._facet_masks: dict = {}
@@ -64591,6 +64840,19 @@ class DashRenderer:
                 t_df = t_df.copy()
                 t_df.attrs["_dash_total"] = True
                 groups.append(("Total", t_df))
+        if groups:
+            # WP-41 BY-28: twoway cuts every panel's contour at its first
+            # panel's cuts; the first drawn panel is groups[0] (the Total
+            # panel only when it is alone, with its own qualifiers).
+            _p0 = groups[0][1]
+            self._facet_zranges[_gname] = _dash_by_contour_zranges(
+                _p0, self.df,
+                (_dash_total_spec(graph_spec) if _p0.attrs.get("_dash_total")
+                 else graph_spec).get("plots", []),
+                getattr(self, "qual_masks", None),
+                getattr(self.mapper, "date_vars", None))
+            self._facet_zcuts[_gname] = _dash_by_contour_gen_cuts(
+                graph_spec.get("plots", []))
         if not groups:
             # Every panel left out: twoway says "nothing to graph", r(198),
             # which dash.ado gives when it registers the graph; a spec that
@@ -66506,6 +66768,11 @@ class DashRenderer:
                             g_panel = _dash_contour_panel_spec(
                                 g_panel, self._facet_keys.get(fkey),
                                 fkey in self._facet_total_keys)
+                            # WP-41 BY-28: cut at the first panel's cuts.
+                            g_panel = _dash_by_zrange_spec(
+                                g_panel, self._facet_zranges.get(name, {}),
+                                panel_idx_r, name,
+                                self._facet_zcuts.get(name, {}))
                             fig = self._make_figure(g_panel, src,
                                                     facet_view=panel_view_r,
                                                     rescale=_brs)
@@ -69344,6 +69611,9 @@ class ServerAppBuilder:
                          "_dash_lpoly_degree_frozen",
                          "_lpoly_fit_degree",
                          "_dash_fn_panel_spec",
+                         "_dash_contour_zrange_of", "_dash_by_contour_zranges",
+                         "_dash_by_contour_gen_cuts", "_dash_by_zrange_spec",
+                         "_dash_by_first_zranges",
                          "_dash_by_key_of", "_dash_fit_panel_spec",
                          "_dash_contour_panel_spec",
                          "_dash_rarea_one_bound",
@@ -71817,7 +72087,7 @@ class ServerAppBuilder:
             "                                          _rax2[0], _date_vars, 2),",
             "                   _dash_figure_date_kind(g.get('plots', []), 'yvar',",
             "                                          _rax2[1], _date_vars, 2))",
-            "        def _redraw(frame):",
+            "        def _qual(frame):",
             "            # The graph's qualifier, then the layer's own where it",
             "            # differs -- the same two steps the live figure took.",
             "            # An `in' counts the dataset's observations, never the",
@@ -71830,11 +72100,26 @@ class ServerAppBuilder:
             "                _fr = _dash_layer_frame(df, _fr, _p_if, _p_in,",
             "                                        'graph %r plot %d' % (gname, pi + 1),",
             "                                        qual=_p_q)",
+            "            return _fr",
+            "        # WP-41 BY-28: a by() contour panel, cut after a move at the",
+            "        # first panel's kept range (_dash_by_first_zranges); the cuts",
+            "        # then follow the kept rows, so Stata's build cuts are dropped.",
+            "        def _redraw(frame, zrange=None):",
+            "            _fr = _qual(frame)",
+            "            _plot_d = plot",
+            "            _po = plot.get('options') or {}",
+            "            if isinstance(_po, dict) and (zrange is not None or any(",
+            "                    _k in _po for _k in ('_dash_by_zrange', '_dash_by_zcuts'))):",
+            "                _o = {_k: _v for _k, _v in _po.items()",
+            "                      if _k not in ('_dash_by_zrange', '_dash_by_zcuts')}",
+            "                if isinstance(zrange, (list, tuple)) and len(zrange) == 2:",
+            "                    _o['_dash_by_zrange'] = list(zrange)",
+            "                _plot_d = dict(plot, options=_o)",
             "            _tfig = bokeh_figure()",
             "            _dash_mark_date_axes(_tfig, *_rkinds)",
             "            _n_obs0 = getattr(_dash_cur_mapper(), 'n_obs', None)",
             "            _dash_cur_mapper()._set_graph_n_obs(g)",
-            "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
+            "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, _plot_d, pi, gname,",
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
             "            _dash_cur_mapper().n_obs = _n_obs0",
@@ -71865,7 +72150,16 @@ class ServerAppBuilder:
             "                _out[0]._dash_eval_v = (list(_evs[0]['source'].data.get('v', []))",
             "                                        if _evs else [])",
             "            return _out",
-            "        return lambda frame: _dash_under_graph_scheme(g, _redraw, frame)",
+            "        def _redraw_one(frame, zrange=None):",
+            "            return _dash_under_graph_scheme(g, _redraw, frame, zrange)",
+            "        def _zrange_of(frame):",
+            "            # The layer's qualified rows, as the redraw reads them; a",
+            "            # qualifier's notes are the redraw's own.",
+            "            with warnings.catch_warnings():",
+            "                warnings.simplefilter('ignore')",
+            "                return _dash_contour_zrange_of(_qual(frame), plot, _date_vars)",
+            "        _redraw_one.zrange = _zrange_of",
+            "        return _redraw_one",
             "",
             "    def _dash_figure_for(g, gname, g_df, _fac_label=None,",
             "                         _rescale=frozenset()):",
@@ -72163,6 +72457,9 @@ class ServerAppBuilder:
             "                        g, plot, pi, gname,",
             "                        cv_domain=_dash_colorvar_domain(",
             "                            g_df, plot.get('options', {}))),",
+            "                    # WP-41 BY-28: the by() contour layer's panels.",
+            "                    'zshare': (plot.get('options') or {}).get('_dash_by_zshare'),",
+            "                    'zpanel': (plot.get('options') or {}).get('_dash_by_zpanel', 0),",
             "                }",
             "                for _rs in agg_sources[(gname, pi)]['sources']:",
             "                    _redrawn_ids.add(id(_rs))",
@@ -72454,6 +72751,10 @@ class ServerAppBuilder:
             "                warnings.warn(f'dash: graph {gname!r}: nothing to graph.',",
             "                              UserWarning, stacklevel=2)",
             "                _panels.append(('', work_df.iloc[0:0], None))",
+            "            # WP-41 BY-28: every panel's contour cut at the first panel's",
+            "            # cuts, as saved (_dash_by_zrange_spec).",
+            "            _zr_by = _dash_by_contour_zranges(_panels[0][1], df, (_g_tot if _t_idx == 0 else g).get('plots', []), _qual_masks, _date_vars)",
+            "            _zk_by = _dash_by_contour_gen_cuts(g.get('plots', []))",
             "            _entries = []",
             "            for _fi, (_label, _gdf, _key) in enumerate(_panels):",
             "                _fname = f'{gname}__by__{_fi}'",
@@ -72477,12 +72778,14 @@ class ServerAppBuilder:
             "                # WP-37 stat:PT-12: the panel's own fit points.",
             "                _g_pan = _dash_fit_panel_spec(_g_pan, _dash_by_key_of(_gdf, go.get('by', '')), _fi == _t_idx)",
             "                _g_pan = _dash_contour_panel_spec(_g_pan, _dash_by_key_of(_gdf, go.get('by', '')), _fi == _t_idx)",
+            "                _g_pan = _dash_by_zrange_spec(_g_pan, _zr_by, _fi, gname, _zk_by)",
             "                if _fi == _t_idx and _g_tot is not g:",
             "                    # The Total panel: its own qualifier columns, drawn",
             "                    # and reapplied after a filter move (_total_quals).",
             "                    _g_pan = _dash_fn_panel_spec(_g_tot, _fi)",
             "                    _g_pan = _dash_fit_panel_spec(_g_pan, None, True)",
             "                    _g_pan = _dash_contour_panel_spec(_g_pan, None, True)",
+            "                    _g_pan = _dash_by_zrange_spec(_g_pan, _zr_by, _fi, gname, _zk_by)",
             "                    _total_quals[_fname] = {",
             "                        'if_expr': _g_if, 'in_expr': _g_in,",
             "                        'qual_col': str(_g_tot.get('qual_col') or '')}",
@@ -72866,7 +73169,10 @@ class ServerAppBuilder:
             "            scheme through _DASH_CTX.\"\"\"",
             "            _DASH_CTX.mapper, _DASH_CTX.scheme = plan['mapper'], plan['scheme']",
             "            try:",
-            "                fresh = {key: agg['redraw'](_dash_agg_frame(plan, key))",
+            "                # WP-41 BY-28: each by() contour layer's first kept range.",
+            "                _zf = _dash_by_first_zranges(_agg_srcs, lambda k: _dash_agg_frame(plan, k))",
+            "                fresh = {key: agg['redraw'](_dash_agg_frame(plan, key),",
+            "                                            zrange=_zf.get(agg.get('zshare')))",
             "                         for key, agg in _agg_srcs.items()}",
             "                kpis = {kpi.get('name', ''): _dash_kpi_value(plan, kpi)",
             "                        for kpi in _kpi_defs if _dash_kpi_wanted(kpi)}",
@@ -73009,6 +73315,9 @@ class ServerAppBuilder:
             "                    pos_of=_shared_pos.get(id(_ss)), need=_EMBED['need'])",
             "                _ss.selected.indices = []",
             "            # 3. Recompute aggregated sources",
+            "            # WP-41 BY-28: each by() contour layer's first kept range.",
+            "            _zf = (_dash_by_first_zranges(_agg_srcs, lambda k: _dash_agg_frame(plan, k))",
+            "                   if res is None else {})",
             "            for key, agg in _agg_srcs.items():",
             "                # Redraw through the mapper.  This used to dispatch on",
             "                # agg['type'] to a second set of statistical helpers,",
@@ -73019,7 +73328,8 @@ class ServerAppBuilder:
             "                # unreachable.  The mapper that drew the layer draws",
             "                # it again from the filtered frame, and its data is",
             "                # copied onto the live sources, so nothing can drift.",
-            "                _fresh = (agg['redraw'](_dash_agg_frame(plan, key))",
+            "                _fresh = (agg['redraw'](_dash_agg_frame(plan, key),",
+            "                                        zrange=_zf.get(agg.get('zshare')))",
             "                          if res is None else res['fresh'][key])",
             "                for _live, _new in zip(agg['sources'], _fresh):",
             "                    # A copy of the link group's source drawn through",

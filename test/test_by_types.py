@@ -80,15 +80,10 @@ _PROBE_IDS = tuple("bt_%s_%s" % (t, form) for t in _TYPES
                    for form in ("by", "total"))
 _CHECKS = ("panels", "rows", "x", "y", "values", "levels")
 
-#: {"<probe id>:<check>": "<GAPS4 id>"} (D-33-12.d, D-33-10.a).  BY-28
-#: (41-01): dash cuts each contour panel at its own z ticks (the Foreign
-#: panel 6000 ... 12000), twoway every panel at the shared 5000 10000.
-BY_TYPES_KNOWN = {
-    "bt_contour_by:levels": "BY-28",
-    "bt_contour_total:levels": "BY-28",
-    "bt_contourline_by:levels": "BY-28",
-    "bt_contourline_total:levels": "BY-28",
-}
+#: {"<probe id>:<check>": "<GAPS4 id>"} (D-33-12.d, D-33-10.a).  Empty
+#: since WP-41 BY-28 (41-01) cut every contour panel at the first panel's
+#: cuts, as twoway does.
+BY_TYPES_KNOWN = {}
 #: Differences a ruling keeps (D-33-10.a's companion dict; empty).
 BY_TYPES_DELIBERATE = {}
 

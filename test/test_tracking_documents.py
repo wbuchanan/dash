@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'BY-28': 'contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel',
     'BY-1': "by()'s note(), caption() and subtitle() with ring(0) are dropped silently ('Graphs by' vanishes too)",
     'BY-24a': "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them",
     'BY-2': 'A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored',

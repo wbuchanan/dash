@@ -417,7 +417,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-11 Tracked:** Documented in WP-40, BUGS.md "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number", commit 4f884dc.
 - **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit 83997b1.
 - **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit 76543d4.
-- **BY-28 Tracked:** Open (WP-41 section 41-01).
+- **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit pending.
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
 - **BY-2 Tracked:** Open (WP-41 section 41-03).

@@ -1589,6 +1589,10 @@ CORPUS = [
     _case("contourline colorlines",
           [plot_for("contourline", {"colorlines": "colorlines",
                                     "clwidths": "thin thick"})]),
+    # WP-41 BY-28: every by() panel, Total too, cut at the first panel's
+    # cuts (rep is _DF's repair record).
+    _case("contour by() shared cuts", [plot_for("contour", {})],
+          go={"by": "rep, total"}),
     # WP-31 B1: rpcap's caps and marker sized together, turned, weighted.
     _case("rpcap msize(large)", [plot_for("rpcap", {"msize": "large"})]),
     _case("rpcap horizontal",

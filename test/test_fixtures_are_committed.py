@@ -278,6 +278,7 @@ GENERATORS = {
     "bare_intensity_truth.json": "scripts/extract_bare_intensity_truth.do",
     "bare_prefix_truth.json": "scripts/extract_bare_prefix_truth.do",
     "by_chrome_truth.json": "scripts/extract_by_chrome_truth.do",
+    "by_contour_truth.json": "scripts/extract_by_contour_truth.do",
     "by_grid_truth.json": "scripts/extract_by_grid_truth.do",
     "by_remainder_truth.json": "scripts/extract_by_remainder_truth.do",
     "by_scales_truth.json": "scripts/extract_by_scales_truth.do",
