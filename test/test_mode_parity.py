@@ -2985,6 +2985,12 @@ CORPUS = [
     # WP-41 BY-2: by(, scale(#)) scales the whole by() graph in both modes.
     _case("by() scale(1.5)", [plot_for("scatter", {})],
           go={"by": "foreign, scale(1.5)"}),
+    # WP-41 BY-27: kdensity range(varname) spans each by() panel's own
+    # range (dash.ado's range_panels), alike in both modes.
+    _case("by() kdensity range(var) per panel",
+          [plot_for("kdensity", {"range": "12 41", "range_var": "mpg",
+                                 "range_panels": "12 34|14 41"})],
+          go={"by": "foreign"}),
 ]
 
 

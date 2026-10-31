@@ -321,6 +321,61 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w41_run' {
 }
 * ==== end S01 ====
 
+python:
+def _q4103_panels(sp, glob):
+    """global *glob* = each panel's "lo hi" of the function layer's x in
+    dash's spec at *sp* (x0 to x0 + dx (n - 1)), "|"-joined in panel
+    order (WP-41 BY-27), and
+    glob + "_kd" = the first kdensity layer's range_panels option."""
+    import json
+    from sfi import Macro
+    spec = json.load(open(sp, encoding="utf-8"))
+    out = []
+    for tab in (spec.get("function_points") or {}).values():
+        for pts in tab.values():
+            pan = (pts or {}).get("panels")
+            if not isinstance(pan, dict):
+                out.append("flat")
+                continue
+            for k in sorted(pan, key=int):
+                pk = pan[k] or {}
+                n = len(pk.get("y") or [])
+                if not n:
+                    out.append(". .")
+                    continue
+                x0, dx = float(pk["x0"]), float(pk.get("dx") or 0.0)
+                out.append("%.17g %.17g" % (x0, x0 + dx * (n - 1)))
+    Macro.setGlobal(glob, "|".join(out))
+    kd = ""
+    for g in spec.get("graphs") or []:
+        for pl in g.get("plots") or []:
+            if pl.get("type") == "kdensity" and not kd:
+                kd = str((pl.get("options") or {}).get("range_panels") or "")
+    Macro.setGlobal(glob + "_kd", kd)
+
+
+def _q4103_close(got, want, glob):
+    """global *glob* = "" when the "|"-joined "lo hi" pairs *got* equal
+    *want* (relative 1e-9), else what differs."""
+    from sfi import Macro
+    g = [p.split() for p in got.split("|")] if got else []
+    w = [p.split() for p in want.split("|")] if want else []
+    bad = ""
+    if len(g) != len(w):
+        bad = "%d panels, twoway %d (%s)" % (len(g), len(w), got)
+    else:
+        for i, (a, b) in enumerate(zip(g, w)):
+            try:
+                ok = all(abs(float(x) - float(y)) <= 1e-9 * max(1.0, abs(float(y)))
+                         for x, y in zip(a, b)) and len(a) == len(b)
+            except ValueError:
+                ok = a == b
+            if not ok:
+                bad = "panel %d: dash %s, twoway %s" % (i + 1, " ".join(a), " ".join(b))
+                break
+    Macro.setGlobal(glob, bad)
+end
+
 * ==== S03 BY-2: by() scale() ====
 local only : env WP41_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
@@ -351,6 +406,83 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
     _w41_done Q4103-1 "by(foreign, scale(1.5)) is drawn with no ignored note, as twoway draws it"
     capture erase "`w41_work'/q1.html"
     capture erase "`w41_work'/q1.log"
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 BY-27: per-panel range(varname) ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4103-2: function and kdensity range(weight) under by() span each
+    // panel's own weight, as twoway's generators summarise it per panel
+    // (by_scale_range_truth.json R01-R03; Total = every row by() keeps).
+    // twoway's pairs are its panels' summarize, measured here.
+    // ------------------------------------------------------------
+    local q2d "`w41_work'/q2"
+    capture mkdir "`q2d'"
+    foreach q2 in "foreign|0 1|" "rep78, total|1 2 3 4 5|total" {
+        gettoken q2by q2 : q2, parse("|")
+        gettoken _bar q2 : q2, parse("|")
+        gettoken q2lev q2 : q2, parse("|")
+        gettoken _bar q2tot : q2, parse("|")
+        local q2var = word(subinstr("`q2by'", ",", " ", .), 1)
+        sysuse auto, clear
+        local q2want ""
+        foreach k of local q2lev {
+            quietly summarize weight if `q2var' == `k', meanonly
+            local q2want "`q2want'|`=strofreal(r(min), "%21.0g")' `=strofreal(r(max), "%21.0g")'"
+        }
+        if "`q2tot'" != "" {
+            quietly summarize weight if !missing(`q2var'), meanonly
+            local q2want "`q2want'|`=strofreal(r(min), "%21.0g")' `=strofreal(r(max), "%21.0g")'"
+        }
+        local q2want = substr("`q2want'", 2, .)
+        capture noisily twoway (scatter mpg weight) (function y=40-x/200, range(weight)), by(`q2by') name(w41q2, replace)
+        local q2twrc = _rc
+        capture graph drop w41q2
+        dash clear
+        capture noisily dash (scatter mpg weight) (function y=40-x/200, range(weight)), by(`q2by') name(q2)
+        local q2rc = _rc
+        _w41_expect Q4103-2 "(`q2twrc' == 0 & `q2rc' == 0)" "function by(`q2by'): twoway rc `q2twrc', dash rc `q2rc'"
+        capture erase "`q2d'/fn.json"
+        capture noisily _dash_serve_spec, specpath("`q2d'/fn.json") datapath("`q2d'/fnd.json")
+        python: __import__("__main__")._q4103_panels("`q2d'/fn.json", "q4103_got")
+        python: __import__("__main__")._q4103_close("${q4103_got}", "`q2want'", "q4103_bad")
+        _w41_expect Q4103-2 `"("${q4103_bad}" == "")"' `"function by(`q2by'): ${q4103_bad}"'
+        if "`q2tot'" == "" {
+            dash clear
+            capture noisily dash (scatter mpg weight) (kdensity weight, range(weight)), by(`q2by') name(q2k)
+            local q2rc = _rc
+            _w41_expect Q4103-2 "(`q2rc' == 0)" "kdensity by(`q2by'): dash rc `q2rc'"
+            capture erase "`q2d'/kd.json"
+            capture noisily _dash_serve_spec, specpath("`q2d'/kd.json") datapath("`q2d'/kdd.json")
+            python: __import__("__main__")._q4103_panels("`q2d'/kd.json", "q4103_got")
+            python: __import__("__main__")._q4103_close("${q4103_got_kd}", "`q2want'", "q4103_bad")
+            _w41_expect Q4103-2 `"("${q4103_bad}" == "")"' `"kdensity by(`q2by'): ${q4103_bad}"'
+        }
+    }
+    _w41_done Q4103-2 "function and kdensity range(weight) span each by() panel's own weight, as twoway draws them"
+    macro drop q4103_got q4103_got_kd q4103_bad
+    foreach f in fn fnd kd kdd {
+        capture erase "`q2d'/`f'.json"
+    }
+    capture rmdir "`q2d'"
+
+    // ------------------------------------------------------------
+    // Q4103-3: _dash_range_panel takes the p-th "|"-separated pair.
+    // ------------------------------------------------------------
+    capture mata: st_local("q3a", _dash_range_panel("1 2|3 4|. .", 2))
+    local q3rc = _rc
+    capture mata: st_local("q3b", _dash_range_panel("1 2|3 4|. .", 3))
+    capture mata: st_local("q3c", _dash_range_panel("1 2|3 4|. .", 4))
+    capture mata: st_local("q3d", _dash_range_panel("", 1))
+    _w41_expect Q4103-3 "(`q3rc' == 0)" "_dash_range_panel is not defined (rc `q3rc')"
+    _w41_expect Q4103-3 `"("`q3a'" == "3 4" & "`q3b'" == ". ." & "`q3c'" == "" & "`q3d'" == "")"' `"got [`q3a'] [`q3b'] [`q3c'] [`q3d']"'
+    _w41_done Q4103-3 "_dash_range_panel returns the p-th pair, empty out of range"
     dash clear
     display as text "S03 end " c(current_date) " " c(current_time)
 }

@@ -501,7 +501,7 @@ program define _dash_require_mata
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_kernel_full ///
-        _dash_unbound_cands _dash_fn_panel_count _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
+        _dash_unbound_cands _dash_fn_panel_count _dash_range_panel _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_fit_panel_key _dash_fit_panel_add ///
@@ -2637,10 +2637,21 @@ end
 // an empty curve, in silence (WP-31 C10d).  Called by
 // _dash_process_segment after _dash_validate_opts; the name passed the
 // kind's regex and confirm variable there.
+//
+// Under by() (WP-41 BY-27) twoway's generators summarise the variable
+// per panel (twoway__function_gen.ado and twoway__kdensity_gen.ado:
+// `sum range if touse' on each panel's rows; by_scale_range_truth.json
+// R01-R03), so s(range_panels) also holds each panel's "lo hi" over the
+// plot's sample and the panel's rows, "|"-separated, in by() panel order
+// -- the groups of the graph's sample in sort order, the by() variables
+// marked out unless by(, missing), as _dash_fn_panel_count counts them --
+// and the Total panel's last under by(, total); ". ." for a panel that
+// holds no value.  Empty without by().
 // ================================================================
 program define _dash_fold_range, sclass
     version 19
     args ptype qual
+    sreturn local range_panels ""
     mata: st_local("v", st_global("s(range)"))
     if substr(`"`macval(v)'"', 1, 5) != "@var:" exit
     local name = substr(`"`v'"', 6, .)
@@ -2668,6 +2679,53 @@ program define _dash_fold_range, sclass
     local hi = strtrim(string(r(max), "%21.0g"))
     sreturn local range "`lo' `hi'"
     sreturn local range_var "`name'"
+    // WP-41 BY-27: each by() panel's own range.
+    mata: st_local("_fr_by", st_global("s(g_by)") + st_global("dash__g_by"))
+    local _fr_p = strpos(`"`macval(_fr_by)'"', ",")
+    local _fr_vl = cond(`_fr_p', substr(`"`macval(_fr_by)'"', 1, `_fr_p' - 1), `"`macval(_fr_by)'"')
+    local _fr_op = cond(`_fr_p', " " + strlower(substr(`"`macval(_fr_by)'"', `_fr_p' + 1, .)) + " ", "")
+    if !`: word count `_fr_vl'' exit
+    local _fr_mis = ustrregexm(`"`macval(_fr_op)'"', "[ ,](mis|miss|missi|missin|missing)[ ,(]")
+    local _fr_tot = ustrregexm(`"`macval(_fr_op)'"', "[ ,](tot|tota|total)[ ,(]")
+    capture unab _fr_vl : `_fr_vl'
+    if _rc exit
+    tempvar _fr_t _fr_g _fr_m
+    quietly generate byte `_fr_t' = 0
+    mata: st_local("_fr_gif", st_global("dash__gq_if"))
+    mata: st_local("_fr_gin", st_global("dash__gq_in"))
+    local _fr_gq ""
+    if `: length local _fr_gif' local _fr_gq `"if (`macval(_fr_gif)')"'
+    if `: length local _fr_gin' local _fr_gq `"`macval(_fr_gq)' in `macval(_fr_gin)'"'
+    quietly replace `_fr_t' = 1 `macval(_fr_gq)'
+    if !`_fr_mis' {
+        foreach _fr_v of local _fr_vl {
+            capture confirm string variable `_fr_v'
+            if !_rc quietly replace `_fr_t' = 0 if `_fr_v' == ""
+            else quietly replace `_fr_t' = 0 if missing(`_fr_v')
+        }
+    }
+    quietly generate byte `_fr_m' = 0
+    quietly replace `_fr_m' = 1 `macval(_fr_q)'
+    capture egen long `_fr_g' = group(`_fr_vl') if `_fr_t', missing
+    if _rc exit
+    quietly summarize `_fr_g', meanonly
+    local _fr_np = cond(r(N), r(max), 0)
+    local _fr_rp ""
+    forvalues _fr_k = 1/`_fr_np' {
+        quietly summarize `name' if `_fr_m' & `_fr_g' == `_fr_k', meanonly
+        if r(N) {
+            local _fr_rp `"`_fr_rp'|`=strtrim(string(r(min), "%21.0g"))' `=strtrim(string(r(max), "%21.0g"))'"'
+        }
+        else local _fr_rp `"`_fr_rp'|. ."'
+    }
+    if `_fr_tot' & `_fr_np' {
+        quietly summarize `name' if `_fr_m' & `_fr_t', meanonly
+        if r(N) {
+            local _fr_rp `"`_fr_rp'|`=strtrim(string(r(min), "%21.0g"))' `=strtrim(string(r(max), "%21.0g"))'"'
+        }
+        else local _fr_rp `"`_fr_rp'|. ."'
+    }
+    sreturn local range_panels `"`=substr(`"`_fr_rp'"', 2, .)'"'
 end
 
 // ================================================================
@@ -5810,7 +5868,7 @@ program define _dash_plot_opts_to_json, rclass
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
                    clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
                    dotextend ndots dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign ///
-                   blabel horizontal vertical sort range range_var colorlist jitterseed ///
+                   blabel horizontal vertical sort range range_var range_panels colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
@@ -6962,6 +7020,7 @@ program define _dash_process_segment, rclass
     local _rc_kind ""
     local _fn_rtyped ""
     local _fn_rnorm ""
+    local _fn_rpan ""
     local _fn_nval ""
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
@@ -7213,6 +7272,8 @@ program define _dash_process_segment, rclass
         _dash_stylelist_check "`_cn_ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
+            // WP-41 BY-27: each by() panel's own range(varname).
+            mata: st_local("_fn_rpan", st_global("s(range_panels)"))
             mata: st_local("_fn_nval", st_global("s(n)"))
         }
         // Options dash draws on some types only, named on the others, and
@@ -7627,6 +7688,7 @@ program define _dash_process_segment, rclass
             local _fn_lo : word 1 of `_fn_rnorm'
             local _fn_hi : word 2 of `_fn_rnorm'
         }
+        else local _fn_rpan ""
         local _fn_n 300
         if "`_fn_nval'" != "" local _fn_n `_fn_nval'
         c_local _seg_fnraw_out : copy local _fn_raw
@@ -7636,6 +7698,7 @@ program define _dash_process_segment, rclass
         c_local _seg_fnx_out "`_fn_x'"
         c_local _seg_fnlo_out `_fn_lo'
         c_local _seg_fnhi_out `_fn_hi'
+        c_local _seg_fnrp_out `"`_fn_rpan'"'
         c_local _seg_fnn_out `_fn_n'
         // droplines() as validated (an expanded numlist), for the
         // generator (WP-31 C5).
@@ -9657,6 +9720,7 @@ program define _dash_plot
         local _seg_fnx_out     ""
         local _seg_fnlo_out    ""
         local _seg_fnhi_out    ""
+        local _seg_fnrp_out    ""
         local _seg_fnn_out     ""
         local _seg_axreq_raw   ""
         local _seg_yaxis_out   1
@@ -9778,6 +9842,7 @@ program define _dash_plot
             local _fn_x_`_fn_m' "`_seg_fnx_out'"
             local _fn_lo_`_fn_m' : copy local _seg_fnlo_out
             local _fn_hi_`_fn_m' : copy local _seg_fnhi_out
+            local _fn_rp_`_fn_m' : copy local _seg_fnrp_out
             local _fn_n_`_fn_m' : copy local _seg_fnn_out
             local _fn_d_`_fn_m' : copy local _seg_fndrops_out
         }
@@ -10070,7 +10135,20 @@ program define _dash_plot
         forvalues _p = 1/`_fn_np' {
             forvalues _m = 1/`_fn_m' {
                 mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
-                _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `=`_p'-1' `_fpl_`_m'' "`_fn_d_`_m''" `_fn_x_`_m''
+                // WP-41 BY-27: range(varname) spans the panel's own rows,
+                // as twoway__function_gen summarises it per panel; a panel
+                // holding no value of it (". .") draws the layer empty.
+                local _fp_lo `_fn_lo_`_m''
+                local _fp_hi `_fn_hi_`_m''
+                if `"`_fn_rp_`_m''"' != "" {
+                    mata: st_local("_fp_lohi", _dash_range_panel(st_local("_fn_rp_`_m'"), `_p'))
+                    if "`_fp_lohi'" == ". ." continue
+                    if `: word count `_fp_lohi'' == 2 {
+                        local _fp_lo : word 1 of `_fp_lohi'
+                        local _fp_hi : word 2 of `_fp_lohi'
+                    }
+                }
+                _dash_fn_points `_fx_raw' `_fp_lo' `_fp_hi' `_fn_n_`_m'' `=`_p'-1' `_fpl_`_m'' "`_fn_d_`_m''" `_fn_x_`_m''
             }
         }
         forvalues _m = 1/`_fn_m' {

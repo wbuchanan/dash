@@ -4223,8 +4223,9 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     the range of x, default {cmd:range(0 1)}.  Two numbers, in either
     order.  On the fits a missing end ({cmd:.}) is the observed minimum or
     maximum; on {cmd:kdensity} and {cmd:function} a variable may be given
-    instead, whose minimum and maximum over the plot's sample are used, as
-    in {cmd:twoway}.  {it:Difference from twoway:} that range is read once,
+    instead, whose minimum and maximum over the plot's sample are used --
+    under {cmd:by()}, each panel's own, the Total panel's over every
+    panel's rows -- as in {cmd:twoway}.  {it:Difference from twoway:} that range is read once,
     when the graph is defined, and a filter move on the page does not
     change it.
     {cmd:twoway} refuses {cmd:range()} on {cmd:fpfit}, {cmd:fpfitci},

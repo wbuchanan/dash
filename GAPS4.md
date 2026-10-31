@@ -421,7 +421,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit pending.
-- **BY-27 Tracked:** Open (WP-41 section 41-03).
+- **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit pending.
 - **BY-3 Tracked:** Open (WP-41 section 41-04).
 - **BY-4 Tracked:** Open (WP-41 section 41-05).
 - **BY-5 Tracked:** Open (WP-41 section 41-05).

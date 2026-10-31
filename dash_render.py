@@ -61645,6 +61645,13 @@ def _dash_fn_panel_spec(g, idx):
     none, which draws the layer empty); *g* itself when no plot carries a
     ``panels`` map.  Both render modes call it; the served app copies it
     by source.
+
+    WP-41 BY-27: a plot drawn here from its range() (kdensity) whose
+    option ``range_panels`` holds each panel's "lo hi" of a
+    range(varname) (dash.ado ``_dash_fold_range``, "|"-separated in panel
+    order, Total last) gets panel *idx*'s pair as its ``range``: ". ."
+    gives ``""``, which map_kdensity draws as the empty curve; an index
+    past the pairs keeps the build's range.  *g* is never edited.
     """
     if not isinstance(g, dict):
         return g
@@ -61653,7 +61660,14 @@ def _dash_fn_panel_spec(g, idx):
     def _has(p):
         return (isinstance(p, dict) and isinstance(p.get("points"), dict)
                 and "panels" in p["points"])
-    if not any(_has(p) for p in plots):
+
+    def _rp(p):
+        if not isinstance(p, dict) or _has(p):
+            return None
+        o = p.get("options")
+        v = o.get("range_panels") if isinstance(o, dict) else None
+        return v if isinstance(v, str) and v.strip() else None
+    if not any(_has(p) or _rp(p) is not None for p in plots):
         return g
     out = dict(g)
     new = []
@@ -61663,6 +61677,26 @@ def _dash_fn_panel_spec(g, idx):
             pan = p["points"].get("panels")
             p["points"] = (pan.get(str(int(idx)))
                            if isinstance(pan, dict) else None)
+        elif _rp(p) is not None:
+            pairs = _rp(p).split("|")
+            try:
+                k = int(idx)
+            except (TypeError, ValueError):
+                k = -1
+            if 0 <= k < len(pairs):
+                words = pairs[k].split()
+                rng = None
+                if words == [".", "."]:
+                    rng = ""
+                elif len(words) == 2:
+                    try:
+                        if all(math.isfinite(float(w)) for w in words):
+                            rng = " ".join(words)
+                    except ValueError:
+                        rng = None
+                if rng is not None:
+                    p = dict(p)
+                    p["options"] = dict(p["options"], range=rng)
         new.append(p)
     out["plots"] = new
     return out

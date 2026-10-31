@@ -1097,6 +1097,7 @@ FUNCTIONS = {
  'GlyphMapper._hist_bar_edges': 'test/test_distribution_odds.py::TestHistogramConfig::test_helper',
  '_dash_fn_panel_spec': 'test/test_function_panels.py::TestFunctionPerPanel::test_panel_spec',
  '_dash_fn_panel_spec.<locals>._has': 'test/test_function_panels.py::TestFunctionPerPanel::test_panel_spec',
+ '_dash_fn_panel_spec.<locals>._rp': 'test/test_by_scale_range_weights.py::TestPerPanelRange::test_panel_spec_swaps_the_range',
  '_dash_by_key_of': 'test/test_lfit_xtrans.py::TestThePanels::test_the_key_of_a_panel',
  '_dash_fit_panel_spec': 'test/test_lfit_xtrans.py::TestThePanels::test_each_panel_takes_its_own_points',
  '_dash_fit_panel_spec.<locals>._pan': 'test/test_lfit_xtrans.py::TestThePanels::test_a_panel_with_no_entry_is_empty',

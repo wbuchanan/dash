@@ -407,6 +407,10 @@
 *!       The panels by() draws over the rows touse marks, for the function
 *!       layers evaluated once per panel (WP-31 C12).
 *!
+*!   _dash_range_panel(rp, p)
+*!       The p-th "lo hi" pair of a range_panels string, for range(varname)
+*!       per by() panel (WP-41 BY-27).
+*!
 *!   _dash_lpolyci_opts(unk, ptype)
 *!       lpolyci's pwidth() and var() taken out of the catch-all by value,
 *!       and twoway's checks on them and on level(), in twoway's order:
@@ -13714,6 +13718,21 @@ real scalar _dash_fn_panel_count(string scalar byraw, string scalar touse)
     key = select(key, keep)
     n = rows(key) ? rows(uniqrows(key)) : 0
     return(n + tot)
+}
+
+// _dash_range_panel(rp, p) -- the p-th (from 1) "|"-separated pair of rp,
+// trimmed, or "" when p is out of range (WP-41 BY-27).  rp is
+// _dash_fold_range's s(range_panels): each by() panel's "lo hi" of a
+// range(varname), ". ." for a panel holding no value of it.
+string scalar _dash_range_panel(string scalar rp, real scalar p)
+{
+    string rowvector parts
+
+    if (rp == "" | p >= . | p < 1 | p != trunc(p)) return("")
+    parts = tokens(rp, "|")
+    parts = select(parts, parts :!= "|")
+    if (p > cols(parts)) return("")
+    return(strtrim(parts[p]))
 }
 
 // _dash_reflines_positions(gjson) -- the reference-line positions of one

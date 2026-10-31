@@ -505,6 +505,7 @@ COVERAGE = {
         "_dash_dp_format": ("test_wp31_truth.cscript:U43-03",),
         # WP-31 C12: a function layer's panels under by().
         "_dash_fn_panel_count": ("test_wp31_truth.cscript:U46-04",),
+        "_dash_range_panel": ("test_wp41_truth.cscript:Q4103-3",),
         # WP-31 G7: a %tb format's business calendar, as JSON.
         "_dash_bcal_json": ("test_wp31_truth.cscript:U46-07",),
         # Flipped: key _json_escape renamed _dash_json_escape (WP-31 H7: every library name is prefixed).

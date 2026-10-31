@@ -174,3 +174,82 @@ class TestByScale:
         assert f(".5e1") == 5.0
         for raw in ("", None, "big", "-1", "0", "1e999", "1 2", "x" * 99):
             assert f(raw) is None, raw
+
+
+# ---------------------------------------------------------------------------
+# BY-27: range(varname) per by() panel.  dash.ado folds the variable's
+# range per panel into the option range_panels ("lo hi|lo hi|...", by()
+# panel order, Total last); function layers are evaluated per panel in
+# Stata (test_wp41_truth.cscript Q4103-2), kdensity's grid is drawn here.
+# ---------------------------------------------------------------------------
+def _panel_pairs(pid):
+    return [p["summarize"] for p in _probe(pid)["panels"]]
+
+
+def _range_panels(pid):
+    return "|".join("%.17g %.17g" % tuple(p) for p in _panel_pairs(pid))
+
+
+def _line_extents(mode, go, plots):
+    """``[(label, xmin, xmax)]`` of each panel's first Line renderer."""
+    spec = tbg._many([go], scheme="stcolor")
+    spec["graphs"][0]["plots"] = plots
+    roots, _notes = tbg._build(mode, spec)
+    grid = tbg._grids(roots)[0]
+
+    class _R:
+        def references(self_inner):
+            return [grid]
+    panels, _, _ = by_grid(_R())
+    out = []
+    for _r, _c, f in panels:
+        line = next(r for r in f.renderers
+                    if type(r.glyph).__name__ == "Line")
+        xs = [float(v) for v in line.data_source.data[line.glyph.x]
+              if v == v]
+        out.append((panel_label_title(f).text, min(xs), max(xs)))
+    return out
+
+
+class TestPerPanelRange:
+    def test_the_fixture_is_twoways_per_panel_rule(self):
+        for pid in ("R01", "R02", "R03"):
+            for p in _probe(pid)["panels"]:
+                assert abs(p["drawn"][0] - p["summarize"][0]) < 1e-9, pid
+                assert abs(p["drawn"][1] - p["summarize"][1]) < 1e-9 * \
+                    abs(p["summarize"][1]), pid
+        assert _panel_pairs("R01") == [[1800.0, 4840.0], [1760.0, 3420.0]]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_kdensity_spans_each_panel(self, mode):
+        pairs = _panel_pairs("R03")
+        plots = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                  "options": {}},
+                 {"type": "kdensity", "yvar": "weight", "xvar": "",
+                  "options": {"range": "1760 4840", "range_var": "weight",
+                              "range_panels": _range_panels("R03")}}]
+        got = _line_extents(mode, {"by": "foreign"}, plots)
+        assert [g[0] for g in got] == ["Domestic", "Foreign"]
+        for (_lab, lo, hi), (wlo, whi) in zip(got, pairs):
+            assert abs(lo - wlo) < 1e-9 and abs(hi - whi) < 1e-6, got
+
+    def test_panel_spec_swaps_the_range(self):
+        g = {"plots": [
+            {"type": "kdensity", "options": {"range": "1 9",
+                                             "range_var": "w",
+                                             "range_panels": "1 2|3 4|. ."}},
+            {"type": "scatter", "options": {}}]}
+        p0 = dr._dash_fn_panel_spec(g, 0)
+        assert p0["plots"][0]["options"]["range"] == "1 2"
+        assert dr._dash_fn_panel_spec(g, 1)["plots"][0]["options"][
+            "range"] == "3 4"
+        assert dr._dash_fn_panel_spec(g, 2)["plots"][0]["options"][
+            "range"] == ""
+        # Out of range: unchanged; the input is never edited.
+        assert dr._dash_fn_panel_spec(g, 3)["plots"][0]["options"][
+            "range"] == "1 9"
+        assert g["plots"][0]["options"]["range"] == "1 9"
+        assert p0["plots"][1] is g["plots"][1]
+        # No range_panels: the graph itself.
+        h = {"plots": [{"type": "kdensity", "options": {"range": "1 9"}}]}
+        assert dr._dash_fn_panel_spec(h, 0) is h
