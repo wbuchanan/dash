@@ -438,7 +438,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
 - **PIC-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit pending.
-- **TR-19 Tracked:** Open (WP-41 section 41-02).
+- **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit pending.
 - **CV-8 Tracked:** Open (WP-42 section 42-01).
 - **CV-1 Tracked:** Open (WP-42 section 42-02).
 - **CV-3 Tracked:** Open (WP-42 section 42-03).

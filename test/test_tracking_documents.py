@@ -2886,7 +2886,6 @@ GAPS4_OPEN = {
     'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',
     'GW-5': 'xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally',
     'PIC-13': 'A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)',
-    'TR-19': "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions",
     'CV-8': 'An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)',
     'CV-1': 'colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)',
     'CV-3': "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame",
@@ -3849,3 +3848,16 @@ class TestGaps4Tracking:
             "all": 11, "wp": "WP-34", "closed": 9, "documented": 0,
             "partly": 1, "open": 12}
         assert _roadmap_gaps4_counts(line, "WP-35") == {}
+
+
+class TestTrackedResiduals:
+    """WP-41 TR-19: a closed BUGS.md entry's Resolution that calls a
+    remaining difference "unfiled here" or "filed nowhere" leaves it
+    tracked nowhere; every residual names the entry that holds it.
+    Scoped to Resolution lines: TR-19's own title quotes the words."""
+
+    def test_no_unfiled_residual(self):
+        bugs = _read("BUGS.md")
+        assert [l for l in bugs.splitlines()
+                if l.startswith("  - Resolution:")
+                and ("unfiled here" in l or "filed nowhere" in l)] == []
