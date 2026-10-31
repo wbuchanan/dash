@@ -778,7 +778,9 @@ class TestFacetAndMarkerLabels:
         dr = _renderer(spec, data, tmp_path)
         dr._load_data()
         label = dr._facet_label(["date"], pd.Timestamp("2001-01-02"))
-        assert "2001" in label and "14977" not in label, label
+        # Flipped (WP-41 BY-16): a date ("2001") was wrong because twoway
+        # writes a date by() variable's number (by_label_truth.json D01).
+        assert label == "14977", label
 
     def test_mlabel_on_a_date_prints_dates(self, tmp_path):
         from bokeh.models import LabelSet

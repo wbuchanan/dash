@@ -431,7 +431,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit pending): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
-- **BY-16 Tracked:** Open (WP-41 section 41-06).
+- **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit pending.
 - **BY-18 Tracked:** Open (WP-41 section 41-05).
 - **VF-6 Tracked:** Open (WP-41 section 41-05).
 - **GW-5 Tracked:** Open (WP-41 section 41-05).

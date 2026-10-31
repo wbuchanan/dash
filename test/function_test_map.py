@@ -1241,6 +1241,7 @@ FUNCTIONS = {
  '_dash_by_note_list': 'test/test_by_text.py::TestTheNoteList::test_lists',
  '_dash_by_panel_label': 'test/test_by_text.py::TestThePanelLabel::test_unit',
  '_dash_by_label_just': 'test/test_by_label_options.py::TestTheHelpers::test_label_just',
+ '_dash_quoted_lines': 'test/test_by_label_options.py::TestQuotedLines::test_quoted_lines_unit',
  '_dash_by_text_cell': 'test/test_by_text.py::TestTheChromeCells::test_a_cell_draws_no_frame_and_no_warning',
  '_dash_by_text_key': 'test/test_by_text.py::TestTheTextOptions::test_keys',
  '_dash_by_text_options': 'test/test_by_text.py::TestTheTextOptions::test_merge',

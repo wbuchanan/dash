@@ -3745,14 +3745,15 @@ above 10,000.
 A panel is labelled with its value's label, when the value has one, and
 otherwise with the value as {cmd:twoway} writes it -- {cmd:3}, {cmd:.25} --
 whatever its display format; a string variable's panels are labelled with
-their text, and a date variable's with their dates in its display format
-({cmd:01jan2000}, {cmd:2000m1}), where {cmd:twoway} writes the number
-({cmd:14610}).  Several {cmd:by()} variables produce composite labels,
+their text, and a date variable's with its number ({cmd:14610}), as
+{cmd:twoway} writes it ({cmd:subtitleformat(var)} writes its dates,
+{cmd:01jan2000}).  Several {cmd:by()} variables produce composite labels,
 "Domestic, 3", as in {cmd:twoway}.  The label is drawn as its own centred
 row under the graph's {cmd:title()}, which every panel keeps.  A graph's
 {cmd:subtitle()} replaces the label, leads it with {cmd:prefix}, follows
 it with {cmd:suffix}, and {cmd:subtitle("")} removes it.  A value label
-holding double quotes stays one line, where {cmd:twoway} splits it.
+holding several quoted parts is drawn one line per part, as in
+{cmd:twoway}.
 As in {cmd:twoway}, the label is drawn in the scheme's filled box across
 the top of the panel's plot region (s2color bluish gray, stcolor light gray,
 s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s

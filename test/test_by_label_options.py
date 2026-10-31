@@ -525,3 +525,58 @@ class TestTheHelpers:
             assert f({"nobexpand": "nobexpand", "placement": pl}) == want, pl
         # placement() on an expanded box draws nothing different (L13).
         assert f({"placement": "e"}) is None
+
+
+# ---------------------------------------------------------------------------
+# BY-16
+# ---------------------------------------------------------------------------
+
+def _labels(r):
+    return [str(panel_label_title(f).text) for f in r.panels]
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestPanelValues:
+
+    def test_date_is_the_number(self, mode):
+        """by(d) on a %td date with no value label (D01): each panel reads
+        the Stata number, as twoway writes it into a macro."""
+        assert _probe("D01")["texts"] == ["14610", "14611"]
+        assert _labels(_draw(mode, "D01")) == ["14610", "14611"]
+
+    def test_subtitleformat_var_keeps_dates(self, mode):
+        """by(d, subtitleformat(var)) (D02): the variable's own format,
+        dates, as twoway draws them."""
+        assert _labels(_draw(mode, "D02")) == _probe("D02")["texts"]
+
+    def test_quoted_parts_are_lines(self, mode):
+        """A value label of quoted parts (Q01: `"Dom" "estic"') is drawn
+        one line per part, its box a line taller (twoway: 243.51 against
+        138.38 for a 105.13 font)."""
+        p = _probe("Q01")
+        assert p["labels"][0] == ["Dom", "estic"]
+        r = _draw(mode, "Q01")
+        assert _labels(r) == ["Dom\nestic", "Foreign"]
+        one = _box(_draw(mode, "L00").panels[0])
+        box = _box(r.panels[0])
+        want = (p["boxes"][0]["h"] - _probe("L00")["boxes"][0]["h"]) \
+            / p["boxes"][0]["size"] * _font_px(box)
+        assert abs((box.height - one.height) - want) <= 1.0
+
+
+class TestQuotedLines:
+
+    def test_quoted_lines_unit(self):
+        """_dash_quoted_lines: two or more Stata strings, plain or compound
+        quoted, become lines; anything else is the text unchanged."""
+        f = dr._dash_quoted_lines
+        assert f('"Dom" "estic"') == "Dom\nestic"
+        assert f(' "a"  "b" "c" ') == "a\nb\nc"
+        assert f('\x60"a"\' \x60"b"\'') == "a\nb"
+        assert f('\x60"say "hi""\' "x"') == 'say "hi"\nx'
+        for same in ('"one"', "Domestic", '"a" b', 'a "b" "c"', "", '"a""b',
+                     '"a" "b', '""'):
+            assert f(same) == same, same
+        assert f(None) == ""
+        long = '"x" ' * 20000
+        assert f(long).count("\n") == 19999

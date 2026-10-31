@@ -628,8 +628,13 @@ class TestFacetTitles:
         from by_panel_probe import panel_label
         titles = {panel_label(f) for f in b.models
                   if type(f).__name__ == "figure"}
-        for t in ("02jan2000", "2000m1", "2000-01-02"):
+        # Flipped (WP-41 BY-16): 02jan2000, 2000m1 and 2000-01-02 were
+        # wrong because twoway writes a date by() variable's number, in
+        # its own units, whatever its format (by_label_truth.json D01:
+        # 14610); 2000m1 is 480.
+        for t in ("14611", "480"):
             assert t in titles, titles
+        assert not {"02jan2000", "2000m1", "2000-01-02"} & titles, titles
         assert dr._dash_stata_date_text(14610.0, "%td") == "01jan2000"
         assert dr._dash_stata_date_text(float("nan"), "%td") == "."
         assert dr._dash_stata_date_text(

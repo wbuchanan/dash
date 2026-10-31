@@ -562,10 +562,10 @@ class TestThePanelTitles:
         r, doc, _, _ = _by("d", df=df, formats={"d": "%td"})
         saved = [t for _, _, t in _saved_panels(r)]
         served = [t for _, _, t in _served_panels(doc)]
-        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "01 Jan 2000").
-        want = [dr._dash_fmt_text(14610.0 + i, "%td") for i in range(3)]
-        assert saved == served == want == ["01jan2000", "02jan2000",
-                                           "03jan2000"], (saved, served)
+        # Flipped (WP-41 BY-16): 01jan2000 .. was wrong because twoway
+        # writes the number (by_label_truth.json D01: 14610, 14611).
+        assert saved == served == ["14610", "14611", "14612"], \
+            (saved, served)
 
     def test_the_graphs_title_leads_each_panels(self):
         """Flipped (WP-30 P1.15a): "Cars — Domestic" was wrong because
@@ -618,13 +618,22 @@ class TestTheFacetLabelHelper:
             numeric_formats={"r": "%9.2f"}) == "4"
 
     def test_a_date_goes_through_the_formatter(self):
+        # Flipped (WP-41 BY-16): 01jan2000 was wrong because twoway writes
+        # the number (by_label_truth.json D01); subtitleformat(var) still
+        # writes the date through the formatter (D02).
         got = dr._dash_facet_label(["d"], 14610.0, date_vars={"d": "td"},
                                    date_formatter=dr._dash_stata_date_text)
-        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "01 Jan 2000").
-        assert got == "01jan2000"
+        assert got == "14610"
         got = dr._dash_facet_label(["d"], pd.Timestamp("2000-01-01"),
                                    date_vars={"d": "td"},
                                    date_formatter=dr._dash_stata_date_text)
+        assert got == "14610"
+        got = dr._dash_facet_label(["d"], pd.Timestamp("2000-01-01"),
+                                   date_vars={"d": "td"},
+                                   date_formatter=dr._dash_stata_date_text,
+                                   formats={"d": "%td"},
+                                   subtitle_format="var")
+        # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "01 Jan 2000").
         assert got == "01jan2000"
 
     def test_a_long_number_is_bounded_as_stata_bounds_it(self):

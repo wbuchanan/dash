@@ -499,6 +499,27 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
 }
 * ==== end S03 ====
 
+// S06 helper (BY-16): the text of every Title named dash_by_label in the
+// saved page $W41_Q2_PAGE, sorted, into $W41_Q2_GOT (each
+// <script type="application/json"> block loaded as a Bokeh document, as
+// test_wp29_truth.cscript's _fx_plots_saved loads it).
+python:
+def _w41_s06_labels():
+    import re as _re, json as _json
+    from sfi import Macro as _M
+    from bokeh.document import Document as _Doc
+    from bokeh.models import Title as _Title
+    with open(_M.getGlobal("W41_Q2_PAGE"), encoding="utf-8") as _fh:
+        _page = _fh.read()
+    _got = []
+    for _blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', _page, _re.S):
+        for _dd in _json.loads(_blob).values():
+            for _t in _Doc.from_json(_dd).select(dict(type=_Title)):
+                if _t.name == "dash_by_label":
+                    _got.append(str(_t.text))
+    _M.setGlobal("W41_Q2_GOT", " ".join(sorted(_got)))
+end
+
 * ==== S06 BY-10: panel-label sub-options ====
 local only : env WP41_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w41_run' {
@@ -525,6 +546,38 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w41_run' {
     _w41_done Q4106-1 "justification(left) nobexpand on the panel labels are drawn, not named"
     capture erase "`w41_work'/q1.log"
     capture erase "`w41_work'/q1.html"
+    dash clear
+
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
+* ==== S06 BY-16: panel label values ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w41_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4106-2: by(d) on a %td date with no value label titles its panels
+    // with the number, as twoway writes it (by_label_truth.json D01:
+    // 14610, 14611), in the saved page's label Titles.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    generate d = mdy(1, 1, 2000) + foreign
+    format d %td
+    capture erase "`w41_work'/q2.html"
+    capture noisily dash scatter mpg weight, by(d) saving("`w41_work'/q2.html", replace)
+    _w41_expect Q4106-2 "(_rc == 0)" "dash scatter ... by(d) saving() rc `=_rc'"
+    global W41_Q2_PAGE "`w41_work'/q2.html"
+    global W41_Q2_GOT ""
+    capture noisily python: _w41_s06_labels()
+    _w41_expect Q4106-2 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+    local q2ok = (`"${W41_Q2_GOT}"' == "14610 14611")
+    _w41_expect Q4106-2 "(`q2ok')" `"the panel labels read ${W41_Q2_GOT}, not 14610 14611"'
+    _w41_done Q4106-2 "a date by() variable's panels read 14610 and 14611, as twoway writes them"
+    macro drop W41_Q2_PAGE W41_Q2_GOT
+    capture erase "`w41_work'/q2.html"
     dash clear
 
     display as text "S06 end " c(current_date) " " c(current_time)

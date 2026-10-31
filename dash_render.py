@@ -37860,13 +37860,31 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                 parts.append(_dash_code_text(val[1], _dash_value_labels_for(
                     var, value_labels, value_label_names)))
                 continue
-            parts.append(val)
+            parts.append(_dash_quoted_lines(val))
             continue
         _kind = date_vars.get(var)
-        if _kind and date_formatter is not None:
+        if _kind and date_formatter is not None and subtitle_format == "var":
+            # subtitleformat(var): the variable's own format, its dates
+            # (by_label_truth.json D02).
             parts.append(date_formatter(
                 val, _dash_date_fmt((formats or {}).get(var), _kind)))
             continue
+        if _kind:
+            # WP-41 BY-16: twoway writes a date's Stata number (D01:
+            # 14610), from its Stata units; a value label still wins.  A
+            # number is already in them (as _dash_stata_date_text reads
+            # one); a datetime is converted (_dash_date_units).
+            if not isinstance(val, (int, float, np.integer, np.floating)):
+                try:
+                    _ms = pd.Timestamp(val).value / 1e6
+                    val = float(_dash_date_units(np.array([_ms]),
+                                                 _kind)[0])
+                except (TypeError, ValueError, OverflowError):
+                    val = float("nan")
+            if not math.isfinite(float(val)):
+                parts.append("(missing)")
+                continue
+            val = float(val)
         vlabels = _dash_value_labels_for(var, value_labels, value_label_names)
         if subtitle_format:
             _txt = GlyphMapper._mlabel_value_text(val, vlabels)
@@ -37883,8 +37901,52 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         # draws on the canvas, and it also feeds a per-facet KPI card that
         # html-escapes it again -- so escaping here showed the entities on
         # the panel and double-escaped the card.
-        parts.append(GlyphMapper._mlabel_value_text(val, vlabels))
+        parts.append(_dash_quoted_lines(
+            GlyphMapper._mlabel_value_text(val, vlabels)))
     return ", ".join(parts)
+
+
+def _dash_quoted_lines(text):
+    """*text* drawn one line per quoted part, as twoway draws a by() panel
+    label (WP-41 BY-16; by_label_truth.json Q01: the value label
+    ``"Dom" "estic"`` is two lines, Dom over estic): when its stripped
+    text is two or more Stata strings -- ``"..."`` or compound-quoted
+    ``\x60"..."'`` -- separated by blanks and nothing else, the parts
+    unquoted and joined by newlines; otherwise *text* unchanged.  One
+    linear scan; never raises."""
+    t = "" if text is None else str(text)
+    s = t.strip()
+    parts, i, n = [], 0, len(s)
+    while i < n:
+        if s.startswith('\x60"', i):
+            # A compound quote nests: count \x60" opens against "' closes.
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if s.startswith('\x60"', j):
+                    depth += 1
+                    j += 2
+                elif s.startswith('"\'', j):
+                    depth -= 1
+                    j += 2
+                else:
+                    j += 1
+            if depth:
+                return t
+            parts.append(s[i + 2:j - 2])
+        elif s[i] == '"':
+            j = s.find('"', i + 1)
+            if j < 0:
+                return t
+            parts.append(s[i + 1:j])
+            j += 1
+        else:
+            return t
+        if j < n and s[j] not in " \t":
+            return t
+        while j < n and s[j] in " \t":
+            j += 1
+        i = j
+    return "\n".join(parts) if len(parts) >= 2 else t
 
 
 def _dash_stata_date_text(value, fmt):
@@ -69607,7 +69669,8 @@ class ServerAppBuilder:
                          "_dash_by_scale_mult", "_dash_by_scale_arg",
                          "_dash_by_spacing", "_dash_by_scale_value",
                          "_dash_by_scale_panel",
-                         "_dash_facet_label", "_dash_stata_date_text",
+                         "_dash_facet_label", "_dash_quoted_lines",
+                         "_dash_stata_date_text",
                          # by() panel labels and overall text (WP-30 P1.15a).
                          "_dash_by_value_missing", "_dash_by_nonmissing",
                          "_dash_by_text_key", "_dash_by_text_options",

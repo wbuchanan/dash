@@ -1002,6 +1002,7 @@ and now matches Stata.
 - function and kdensity range(varname) under by() span each panel's own range, as twoway does; Domestic and Foreign both drew 1760-4840, now 1800-4840 and 1760-3420 (WP-41, BY-27)
 
 - by() panel labels draw subtitle()'s justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement(), which were named and ignored; orientation() is still named (WP-41, BY-10)
+- by() panels of a date variable read its number, as twoway writes it; by(d) drew 01jan2000, now 14610; a value label of quoted parts is split into lines (WP-41, BY-16)
 
 ### Fixed in WP-40
 

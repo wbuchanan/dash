@@ -2998,6 +2998,9 @@ CORPUS = [
     _case("by() label justification(right) span lpattern(dash)", [_sc()],
           go={"by": "foreign",
               "subtitle": ", justification(right) span lpattern(dash)"}),
+    # WP-41 BY-16: a date by() variable's panels read its number.
+    _case("by() date panels", [_sc()], {"formats": {"when": "%td"}},
+          go={"by": "when"}),
 ]
 
 

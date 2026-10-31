@@ -5084,11 +5084,11 @@
   - Suggested fix: draw the turned text in a side-panel model that keeps its own layout (or a second canvas cell above the panel) and size the box to the plot region at layout time.
   - Resolution: Not fixed: it stays open because the label row has no Bokeh model that draws turned text outside the plot region; the note names it. Pinned by test/test_by_label_options.py::TestLabelOptions::test_orientation_stays_named. Graded S3 (WP-41): one sub-option of the panel label, named in a note.
 
-- [ ] Title: by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line
+- [x] Title: by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line
   - File Names and Line Numbers: dash.sthlp:3280-3287
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-16, BY-17; confirmed; tracked: documented. Registered as GAPS4 BY-16 (WP-41, section 41-06, Fix).
   - Suggested fix: Write the raw value as twoway does; split quoted parts
-  - Resolution: Not fixed because WP-41 section 41-06 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+  - Resolution: Fixed 31oct2026 (WP-41, BY-16). Measured first (scripts/extract_by_label_truth.do, test/fixtures/by_label_truth.json): by(d) on a %td date with no value label titles its panels 14610 and 14611 (D01), by(d, subtitleformat(var)) 01jan2000 and 02jan2000 (D02), and a value label "Dom" "estic" draws two lines, the box a line taller (Q01).  _dash_facet_label writes a date's Stata number (a datetime converted by _dash_date_units; a value label still wins) unless subtitleformat(var), and _dash_quoted_lines splits a label of two or more quoted parts into lines, which _dash_by_label_box draws one line per part in both modes.  Pinned by test/test_by_label_options.py::TestPanelValues, ::TestQuotedLines, test/test_wp41_truth.cscript Q4106-2; fixture test/fixtures/by_label_truth.json.
 
 - [ ] Title: Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing
   - File Names and Line Numbers: dash.sthlp:3330-3362, 3342-3343, 5372-5373, 5683-5684
