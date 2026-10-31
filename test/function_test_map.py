@@ -1466,6 +1466,7 @@ FUNCTIONS = {
  'SchemeParser.by_indiv_margin': 'test/test_by_grid.py::TestTheIndivTable::test_every_shipped_scheme',
  '_dash_by_grid_options': 'test/test_by_grid.py::TestPositions::test_every_probe',
  '_dash_by_positions': 'test/test_by_grid.py::TestPositions::test_every_probe',
+ '_dash_by_colour_bar_cell': 'test/test_by_axes_keys.py::TestColorUsePlegendUnderBy::test__dash_by_colour_bar_cell',
  '_dash_by_hole_ats': 'test/test_by_axes_keys.py::TestHoles::test_hole_ats_unit',
  '_dash_has_colour_key': 'test/test_by_axes_keys.py::TestHoles::test__dash_has_colour_key',
  '_dash_by_scale_panel': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',

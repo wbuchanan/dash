@@ -16832,6 +16832,7 @@ class GlyphMapper:
             # factor labels above are too, so escaping only showed entities.
             _legend = Legend(items=legend_items, title=var_display,
                              name=_COLORVAR_LEGEND_NAME)
+            _legend._dash_useplegend = bool(_use_plegend)  # WP-41 BY-14
             for _ks in ((getattr(renderer, "_dash_cvar", None)
                          or {}).get("keys", [])
                         + (getattr(renderer, "_dash_cvar_bins", None)
@@ -52240,7 +52241,8 @@ def _dash_reflow(grid, stack=True):
             total = max(total, col + span)
             nm = str(getattr(child[0], "name", "") or "")
             if nm in ("dash_by_ytitle", "dash_by_legend",
-                      "dash_by_clegend", "dash_by_l2title",
+                      "dash_by_clegend", "dash_by_plegend",
+                      "dash_by_l2title",
                       "dash_by_r1title", "dash_by_r2title") and span == 1:
                 side_cols.add(col)
             elif nm == "dash_by_ruler":
@@ -57141,6 +57143,53 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
     return cell
 
 
+def _dash_by_colour_bar_cell(scheme, legend):
+    """The colour-bar key a by() graph draws for a coloruseplegend key
+    *legend* under ``by(, clegend(on))`` (WP-41 BY-14, D-41-04.d), or
+    None when it holds no level.
+
+    twoway draws a stepped colour bar there, labelled with panel 1's
+    levels and titled with the variable's label, with no "(missing)" or
+    other entry (by_chrome_truth.json K09: 1-5, "Repair record 1978").
+    The bar is a ``ColorBar`` over a ``LinearColorMapper`` of the levels'
+    swatch colours from 0 to n, ticked at each step's middle with the
+    level's label; ``_dash_by_keys`` places it as it places a continuous
+    key.  The missing entry (its swatch named ``__missing__``) and an
+    empty spare entry are dropped."""
+    from bokeh.models import ColorBar, FixedTicker, LinearColorMapper
+    cols, labs = [], []
+    for it in list(getattr(legend, "items", None) or ()):
+        lab = str(getattr(it.label, "value", it.label) or "")
+        rs = list(it.renderers or ())
+        if not lab or not rs or str(getattr(rs[0], "name", "") or "") == \
+                _DASH_SWATCH_PREFIX + "__missing__":
+            continue
+        glyph = getattr(rs[0], "glyph", None)
+        col = getattr(glyph, "fill_color", None)
+        if not isinstance(col, str):
+            continue
+        cols.append(col)
+        labs.append(lab)
+    if not cols:
+        return None
+    ticks = [i + 0.5 for i in range(len(cols))]
+    chrome = {}
+    try:
+        chrome = dict(scheme.colorbar_chrome()) if scheme is not None \
+            and hasattr(scheme, "colorbar_chrome") else {}
+    except Exception:  # noqa: BLE001 -- Bokeh's defaults
+        chrome = {}
+    bar = ColorBar(
+        color_mapper=LinearColorMapper(palette=cols, low=0, high=len(cols)),
+        ticker=FixedTicker(ticks=ticks),
+        major_label_overrides=dict(zip(ticks, labs)),
+        label_standoff=8, width=12, location=(0, 0),
+        title=getattr(legend, "title", None), **chrome)
+    if getattr(legend, "label_text_font_size", None):
+        bar.major_label_text_font_size = legend.label_text_font_size
+    return bar
+
+
 def _dash_by_keys(figs, opts, scheme):
     """by()'s one legend and one colour key (WP-30 P1.15c; bygraph_g.class
     SetLegend :569-626, SetClegend :628-).
@@ -57165,7 +57214,7 @@ def _dash_by_keys(figs, opts, scheme):
     from bokeh.models import ColorBar, Legend
     out = {"legend": None, "legend_side": "", "legend_at": 0,
            "clegend": None, "clegend_side": "", "clegend_at": 0,
-           "ring0": False}
+           "plegend": None, "plegend_side": "", "ring0": False}
     if not figs:
         return out
     fl = (opts or {}).get("flags") or {}
@@ -57344,6 +57393,12 @@ def _dash_by_keys(figs, opts, scheme):
         out["clegend_at"] = at
         if words & {"on", "draw"} and not words & {"off", "nodraw"}:
             _kside, key = keys1[0]
+            if getattr(key, "_dash_useplegend", False):
+                # WP-41 BY-14: coloruseplegend's key is drawn as a colour
+                # bar under by(, clegend(on)), as twoway draws it (K09);
+                # it keeps the build's levels after a move (the relevel
+                # plan recolours the panels' levels, not this bar's).
+                key = _dash_by_colour_bar_cell(scheme, key) or key
             vertical = (side if not at else "right") in ("left", "right")
             if isinstance(key, ColorBar) and (at or not vertical):
                 # Upright at 6 and 12 o'clock and in an at() hole, as
@@ -57489,6 +57544,22 @@ def _dash_by_keys(figs, opts, scheme):
             cell.frame_align = False
             out["clegend"] = cell
             out["clegend_side"], out["clegend_at"] = side, at
+    # WP-41 BY-14: by(, plegend(on|draw)) under coloruseplegend draws
+    # panel 1's colour keys as one plot legend, placed by plegend()'s
+    # position() else the scheme's zyx2legend_position, as twoway's
+    # SetPlegend places it (K08 right, K10a plegloc(pos(6)) below).
+    # twoway refuses plegend(at()) there (r(4019), K10b), so at() is not
+    # read.
+    pkey = next((m for _sd, m in keys1
+                 if getattr(m, "_dash_useplegend", False)), None)
+    if not ilegends and pkey is not None and opts.get("plegend"):
+        words, _at, side, _ring = place(opts.get("plegend", ""),
+                                        getattr(scheme, "zyx2_position", 3))
+        if words & {"on", "draw"} and not words & {"off", "nodraw"}:
+            out["plegend"] = _dash_by_legend_cell(
+                scheme, "dash_by_plegend", side, pkey, list(pkey.items),
+                "p", panels=figs)
+            out["plegend_side"] = side
     return out
 
 
@@ -58167,7 +58238,7 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
                                        where, yprim[0] if yprim else None)
             side["cells"].append((k, cell, ""))
             tcells.append(cell)
-    for k in ("legend", "clegend"):
+    for k in ("legend", "plegend", "clegend"):
         if keys.get(k) is not None:
             side["cells"].append((k, keys[k], keys[k + "_side"]))
     m = _dash_by_size_mult(go.get("by"), extra["full_n"])
@@ -58231,10 +58302,12 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     kinds = {k: (cell, where) for k, cell, where in side["cells"]}
     at_cells = side.get("at_cells") or {}
     left_cols = int("ytitle" in kinds) + int("l2title" in kinds)
-    for k in ("legend", "clegend"):
+    # WP-41 BY-14: by(, plegend())'s cell is placed as the legend's.
+    keyk = ("legend", "plegend", "clegend")
+    for k in keyk:
         if k in kinds and k not in at_cells and kinds[k][1] == "left":
             left_cols += 1
-    top_rows = sum(1 for k in ("legend", "clegend") if k in kinds
+    top_rows = sum(1 for k in keyk if k in kinds
                    and k not in at_cells and kinds[k][1] == "above")
     kids = [(c[0], int(c[1]) + top_rows, int(c[2]) + left_cols) + c[3:]
             for c in kids]
@@ -58278,7 +58351,7 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
             out.append((kinds[k][0], p0r, total, nrows, 1))
             total += 1
     lc, tr = 0, 0
-    for k in ("legend", "clegend"):
+    for k in keyk:
         if k not in kinds or k in at_cells or (k == "legend" and inner):
             continue
         cell, where = kinds[k]
@@ -70163,6 +70236,7 @@ class ServerAppBuilder:
                          "_dash_cvar_kept_ids",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",
+                         "_dash_by_colour_bar_cell",
                          # WP-31 D10: by()'s regions, legend, labels.
                          "_dash_by_region_options", "_dash_by_apply_regions",
                          "_dash_by_panel_matches",

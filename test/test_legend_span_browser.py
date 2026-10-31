@@ -220,7 +220,8 @@ function state() {
     if (!v) return;
     if (v.model && v.model.type === 'GridBox') box = v;
     if (v.model && (v.model.name === 'dash_by_legend'
-        || v.model.name === 'dash_by_clegend') && box) grid = rect(box.el);
+        || v.model.name === 'dash_by_clegend'
+        || v.model.name === 'dash_by_plegend') && box) grid = rect(box.el);
     if (v.frame && v.model && !v.model.name && box && !pgrid) {
       pgrid = rect(box.el);
     }
@@ -299,7 +300,8 @@ function state() {
   const gv = (() => { let f = null; const look = (v) => { if (!v || f) return;
     if (v.model && v.model.type === 'GridBox' && (v.child_views || []).some(
       (k) => k.model && (k.model.name === 'dash_by_legend'
-        || k.model.name === 'dash_by_clegend'))) { f = v; return; }
+        || k.model.name === 'dash_by_clegend'
+        || k.model.name === 'dash_by_plegend'))) { f = v; return; }
     for (const c of (v.child_views || [])) look(c); };
     for (const v of Object.values(Bokeh.index)) look(v); return f; })();
   if (gv) {
@@ -970,3 +972,20 @@ class TestByHoleReserved:
         (tx, ty), (bx, by) = sorted(cells, key=lambda c: c[1])
         # One panel top right (cell 2), the other bottom left (cell 3).
         assert by > ty + 100 and tx > bx + 100, cells
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByPlegend:
+    """WP-41 BY-14 (by_chrome_truth.json K08): ``twoway scatter mpg
+    weight, colorvar(rep78) colordiscrete coloruseplegend by(foreign,
+    plegend(on))`` draws one plot legend of the colour keys right of the
+    panels."""
+
+    def test_drawn_right(self, mode):
+        st = _by_spec(mode, {"by": "foreign, plegend(on)"},
+                      plots=[bk._p("scatter", colorvar="rep78",
+                                   colordiscrete="yes",
+                                   coloruseplegend="coloruseplegend")])[0]
+        (lg,) = [b for b in st["boxes"] if b["type"] == "Legend"
+                 and b["cell"] == "dash_by_plegend"]
+        assert lg["box"][0] >= st["panels"][2] - 1.5, (lg, st["panels"])

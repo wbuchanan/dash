@@ -18,6 +18,8 @@ legend, the colour key and the stacked view's ruler -- also bare
 CHROME_NAMES = ("dash_by_head", "dash_by_foot")
 SIDE_NAMES = ("dash_by_ytitle", "dash_by_xtitle", "dash_by_legend",
               "dash_by_clegend", "dash_by_ruler",
+              # WP-41 BY-14: by(, plegend())'s cell.
+              "dash_by_plegend",
               # WP-41 BY-12: by()'s edge-title columns.
               "dash_by_l2title", "dash_by_r1title", "dash_by_r2title")
 

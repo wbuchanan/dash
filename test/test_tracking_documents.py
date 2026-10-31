@@ -2878,7 +2878,6 @@ GAPS4_OPEN = {
     'BY-5': "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')",
     'BY-6': "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'",
     'BY-32': 'Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row',
-    'BY-14': "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key",
     'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",
     'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',
     'GW-5': 'xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally',

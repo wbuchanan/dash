@@ -3014,6 +3014,11 @@ CORPUS = [
     _case("by() legend(off at(1))",
           [_sc(), plot_for("lfit", {})],
           go={"by": "foreign, legend(off at(1))"}),
+    # WP-41 BY-14: coloruseplegend's plot legend under by(), both modes.
+    _case("by() coloruseplegend plegend(on)",
+          [_sc(colorvar="rep78", colordiscrete="yes",
+               coloruseplegend="coloruseplegend")],
+          go={"by": "foreign, plegend(on)"}),
 ]
 
 

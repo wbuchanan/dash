@@ -1570,3 +1570,92 @@ class TestLocWords:
         assert o["legend"] == "pos(6) pos(12)"
         assert o["clegend"] == "on at(2)"
         assert o["plegend"] == "on pos(6)"
+
+
+def _svg_text(pid, text):
+    """``(x, y)`` of the first SVG text *text* of probe *pid*."""
+    for t in _fix()["probes"][pid]["svg"]["texts"]:
+        if t[0] == text:
+            return t[1], t[2]
+    return None
+
+
+class TestColorUsePlegendUnderBy:
+    _PIDS = ("K08", "K09", "K10a")
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_plegend_on_draws_the_plot_legend(self, mode):
+        """by(, plegend(on)) under coloruseplegend draws one plot legend
+        of panel 1's colour keys at the right, as twoway draws it (K08:
+        its keys right of both panels); no panel keeps its own."""
+        from bokeh.models import Legend
+        x_key = _svg_text("K08", "Other")[0]
+        assert x_key > max(_svg_text("K08", lab)[0]
+                           for lab in ("Domestic", "Foreign"))
+        grids, _n, _o = _k_build(mode, self._PIDS)
+        grid = grids["K08"]
+        assert _key_place(grid, "dash_by_plegend")[0] == "right"
+        cell = _cell(grid, "dash_by_plegend")[0]
+        (lg,) = [m for s in ("left", "right", "above", "below", "center")
+                 for m in getattr(cell, s) if isinstance(m, Legend)]
+        assert lg.items and lg.click_policy == "hide"
+        for f in _panels(grid):
+            assert not _colour_keys(f), panel_label(f)
+        assert _cell(grid, "dash_by_clegend") is None
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_clegend_on_draws_a_colour_bar(self, mode):
+        """by(, clegend(on)) under coloruseplegend draws a colour-bar key
+        labelled with panel 1's levels, 1-5, and no (missing), as twoway
+        draws it (K09), at the right, titled with the variable's label."""
+        from bokeh.models import ColorBar, Legend
+        texts = [t[0] for t in _fix()["probes"]["K09"]["svg"]["texts"]]
+        assert all(str(v) in texts for v in range(1, 6))
+        assert "Repair record 1978" in texts and "(missing)" not in texts
+        grids, _n, _o = _k_build(mode, self._PIDS)
+        grid = grids["K09"]
+        assert _key_place(grid, "dash_by_clegend")[0] == "right"
+        cell = _cell(grid, "dash_by_clegend")[0]
+        sides = ("left", "right", "above", "below", "center")
+        bars = [m for s in sides for m in getattr(cell, s)
+                if isinstance(m, ColorBar)]
+        assert not [m for s in sides for m in getattr(cell, s)
+                    if isinstance(m, Legend)]
+        assert len(bars) == 1
+        labels = [bars[0].major_label_overrides[k]
+                  for k in sorted(bars[0].major_label_overrides)]
+        assert labels == ["1", "2", "3", "4", "5"]
+        assert bars[0].title == "Repair record 1978"
+        assert _cell(grid, "dash_by_plegend") is None
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_plegloc(self, mode):
+        """plegend(on) plegloc(pos(6)) draws the plot legend below the
+        panels, as twoway draws it (K10a: its keys under the x title)."""
+        assert _svg_text("K10a", "Other")[1] > \
+            _svg_text("K10a", "Weight (lbs.)")[1]
+        grids, _n, _o = _k_build(mode, self._PIDS)
+        assert _key_place(grids["K10a"], "dash_by_plegend")[0] == "below"
+
+    def test__dash_by_colour_bar_cell(self):
+        """The colour bar of a coloruseplegend key: one step per level in
+        the level's colour, ticked at each step's middle with its label;
+        (missing) and empty spare entries dropped; the Legend's title."""
+        from bokeh.models import Legend, LegendItem
+        from bokeh.plotting import figure
+        f = figure()
+        items = []
+        for lab, col, nm in (("1", "#0000ff", "a"), ("2", "#00ff00", "b"),
+                             ("(missing)", "#808080",
+                              dr._DASH_SWATCH_PREFIX + "__missing__"),
+                             ("", "#ffffff", "c")):
+            r = f.scatter(x=[1], y=[1], color=col, name=nm)
+            items.append(LegendItem(label=lab, renderers=[r]))
+        lg = Legend(items=items, title="Repair record")
+        bar = dr._dash_by_colour_bar_cell(dr.SchemeParser("stcolor"), lg)
+        assert list(bar.color_mapper.palette) == ["#0000ff", "#00ff00"]
+        assert (bar.color_mapper.low, bar.color_mapper.high) == (0, 2)
+        assert list(bar.ticker.ticks) == [0.5, 1.5]
+        assert bar.major_label_overrides == {0.5: "1", 1.5: "2"}
+        assert bar.title == "Repair record"
+        assert dr._dash_by_colour_bar_cell(None, Legend(items=[])) is None
