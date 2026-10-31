@@ -3719,8 +3719,9 @@ every position as in {cmd:twoway} (at 6 or 12 o'clock half the graph's
 height less a sixth of its smaller side long).  Under
 {cmd:coloruseplegend}, {cmd:by(, plegend(on))} draws the plot legend of the
 first panel's colour keys, placed by {cmd:plegend(position())} else the
-scheme's colour-key position ({cmd:twoway} refuses {cmd:plegend(at())}
-there, so {cmd:dash} does not read it), and {cmd:by(, clegend(on))} draws
+scheme's colour-key position ({cmd:plegend(at(}{it:#}{cmd:))} with
+{it:#} of 1 or more is refused there, on or off, with r(4019), as in
+{cmd:twoway}), and {cmd:by(, clegend(on))} draws
 a colour-bar key of the first panel's levels, with no "(missing)" entry,
 as {cmd:twoway} draws it.  On a narrow
 screen, where the panels stack into one column, every panel shows its axes

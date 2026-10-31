@@ -268,6 +268,11 @@
 *!       that is not a clock position 0-12 as typed; "" when none (WP-41
 *!       BY-7: twoway's clockdir note).
 *!
+*!   _dash_by_plegend_at(scname)
+*!       1 when the first plegend() of the by() text held by the string
+*!       scalar scname names at(#) with # >= 1, else 0 (WP-41 K10:
+*!       twoway's r(4019) under coloruseplegend).
+*!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
@@ -8364,6 +8369,53 @@ string scalar _dash_legend_pos_text(string scalar scname)
         }
     }
     return("")
+}
+
+// _dash_by_plegend_at(scname) -- 1 when the first plegend() copy of the
+// by() text held by the string scalar scname (varlist, comma, tail;
+// matched by _dash_by_grammar() as _dash_by_scan matches it) names at(#)
+// with # >= 1, else 0.  Under coloruseplegend twoway refuses such a
+// copy, on or off, with r(4019) (measured 31oct2026; WP-41 K10); at(0)
+// and an at() that is not a number are 0.  The text is read, never
+// executed.
+real scalar _dash_by_plegend_at(string scalar scname)
+{
+    string matrix    g
+    string rowvector toks, sub
+    string scalar    s, typed, row, nm, last
+    real scalar      j, k, i, p, q, v
+
+    s = st_strscalar(scname)
+    p = strpos(s, ",")
+    if (!p) return(0)
+    g = _dash_by_grammar()
+    toks = _dash_rep_toks(substr(s, p + 1, .), 0)
+    for (j = 1; j <= cols(toks); j++) {
+        p = strpos(toks[j], "(")
+        if (p < 2) continue
+        typed = substr(toks[j], 1, p - 1)
+        row = ""
+        for (k = 1; k <= rows(g); k++) {
+            if (g[k, 3] != "1") continue
+            if (strlen(typed) < strlen(g[k, 2])) continue
+            if (substr(typed, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(typed)) != typed) continue
+            row = g[k, 1]
+            break
+        }
+        if (row != "plegend") continue
+        sub = _dash_rep_toks(_dash_rep_value(toks[j]), 0)
+        last = ""
+        for (i = 1; i <= cols(sub); i++) {
+            q = strpos(sub[i], "(")
+            if (q < 2) continue
+            nm = substr(sub[i], 1, q - 1)
+            if (nm == "at") last = strtrim(_dash_rep_value(sub[i]))
+        }
+        v = strtoreal(last)
+        return(v < . & v >= 1)
+    }
+    return(0)
 }
 
 // _dash_rep_scan(opts, unk, cap) -- whether the list may give an option

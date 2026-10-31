@@ -499,7 +499,7 @@ program define _dash_require_mata
         _dash_frames_keep_of _dash_frames_take _dash_frames_lset _dash_frames_cols_json ///
         _dash_filter_exclude_add _dash_link_split _dash_blank_words ///
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
-        _dash_by_scan _dash_by_clamp _dash_legend_pos_text ///
+        _dash_by_scan _dash_by_clamp _dash_legend_pos_text _dash_by_plegend_at ///
         _dash_text_args _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_range_panel _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
@@ -3117,6 +3117,21 @@ program define _dash_fold_typed, sclass
     if `_ft' {
         display as error "you must specify option colordiscrete with option coloruseplegend"
         exit 198
+    }
+    // WP-41 K10: under coloruseplegend twoway refuses by()'s first
+    // plegend() naming at(#) with # >= 1, on or off, r(4019) (measured
+    // 31oct2026).  The by() text is the graph's ($dash__g_by) else the
+    // segment's (s(g_by)), read by value from a scalar.
+    mata: st_local("_ft", strofreal(st_global("s(colorvar)") != "" & st_global("s(coloruseplegend)") != ""))
+    if `_ft' {
+        tempname _ftb
+        mata: st_strscalar(st_local("_ftb"), st_global("dash__g_by") != "" ? st_global("dash__g_by") : st_global("s(g_by)"))
+        mata: st_local("_ft", strofreal(_dash_by_plegend_at(st_local("_ftb"))))
+        if `_ft' {
+            display as error "source and target types are not compatible"
+            display as error "     may not assign instances of incompatible classes"
+            exit 4019
+        }
     }
     mata: st_local("_ft", strofreal(st_global("s(colorvar)") != ""))
     if `_ft' {

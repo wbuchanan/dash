@@ -881,6 +881,62 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w41_run' {
     capture erase "`w41_work'/q4104_3.html"
     dash clear
 
+    // ------------------------------------------------------------
+    // Q4104-4: under coloruseplegend, by()'s first plegend() naming
+    // at(#) with # >= 1 -- on or off, any ring() -- is refused as twoway
+    // refuses it, r(4019) and its two lines (measured 31oct2026:
+    // plegend(on at(3)), plegend(at(3)), plegend(off at(3)), at(1),
+    // at(9), on ring(0) at(3), with legend(off), and by(rep78, ...
+    // at(6))); plegend(at(0)), legend(at(3)) and plegend(at(3)) without
+    // coloruseplegend are drawn (twoway rc 0).  A second plegend() copy
+    // is refused earlier, r(198), by _dash_by_check; twoway refuses
+    // plegend(at(3)) plegend(at(0)) with r(4019) first.
+    // ------------------------------------------------------------
+    local q4cup "colorvar(rep78) colordiscrete coloruseplegend"
+    local q4n 0
+    foreach q4o in "foreign, plegend(on at(3))" "foreign, plegend(at(3))" "foreign, plegend(off at(3))" "foreign, plegend(at(1))" "foreign, plegend(at(9))" "foreign, plegend(on ring(0) at(3))" "foreign, plegend(on at(3)) legend(off)" "rep78, plegend(at(6))" {
+        local ++q4n
+        dash clear
+        sysuse auto, clear
+        quietly log using "`w41_work'/q4104_4.log", text replace name(_q4104)
+        capture noisily dash scatter mpg weight, `q4cup' by(`q4o') name(q4)
+        local q4rc = _rc
+        quietly log close _q4104
+        _w41_expect Q4104-4 "(`q4rc' == 4019)" "by(`q4o') rc `q4rc', not 4019"
+        cert_log_has "`w41_work'/q4104_4.log", needle("source and target types are not compatible")
+        _w41_expect Q4104-4 "(r(found) == 1)" "by(`q4o'): the first line was not shown"
+        cert_log_has "`w41_work'/q4104_4.log", needle("     may not assign instances of incompatible classes")
+        _w41_expect Q4104-4 "(r(found) == 1)" "by(`q4o'): the second line was not shown"
+    }
+    foreach q4c in "`q4cup' by(foreign, plegend(at(0)))" "`q4cup' by(foreign, legend(at(3)))" "colorvar(rep78) colordiscrete by(foreign, plegend(at(3)))" {
+        dash clear
+        sysuse auto, clear
+        capture erase "`w41_work'/q4104_4.html"
+        capture noisily dash scatter mpg weight, `q4c' saving("`w41_work'/q4104_4.html", replace)
+        _w41_expect Q4104-4 "(_rc == 0)" "`q4c' rc `=_rc', not 0"
+    }
+    _w41_done Q4104-4 "coloruseplegend with by()'s plegend(at(#)) is refused as twoway refuses it, r(4019)"
+    capture erase "`w41_work'/q4104_4.log"
+    capture erase "`w41_work'/q4104_4.html"
+    dash clear
+
+    // ------------------------------------------------------------
+    // Q4104-5: _dash_by_plegend_at(scname) is 1 when the first
+    // plegend() (any abbreviation twoway reads, pleg..) of the by() text
+    // in the scalar names at(#) with # >= 1, else 0.
+    // ------------------------------------------------------------
+    tempname q5s
+    local q5n 0
+    foreach q5row in "1|foreign, plegend(at(3))" "1|foreign, pleg(on at(1))" "1|foreign, plegend(at(3)) plegend(at(0))" "0|foreign, plegend(at(0))" "0|foreign, plegend(at(0)) plegend(at(3))" "0|foreign, legend(at(3))" "0|foreign, plegend(on)" "0|foreign" "0|foreign, clegend(at(3))" "0|foreign, plegend(at(abc))" {
+        local ++q5n
+        gettoken q5want q5txt : q5row, parse("|")
+        local q5txt = substr(`"`q5txt'"', 2, .)
+        mata: st_strscalar(st_local("q5s"), st_local("q5txt"))
+        mata: st_local("q5got", strofreal(_dash_by_plegend_at(st_local("q5s"))))
+        _w41_expect Q4104-5 "(`q5got' == `q5want')" "`q5txt': got `q5got', want `q5want'"
+    }
+    _w41_done Q4104-5 "_dash_by_plegend_at reads the first plegend()'s at()"
+
     display as text "S04 end " c(current_date) " " c(current_time)
 }
 * ==== end S04 ====

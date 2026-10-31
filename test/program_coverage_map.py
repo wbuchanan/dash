@@ -966,6 +966,8 @@ COVERAGE = {
         "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
         # WP-41 BY-7: by()'s key position() twoway notes as clockdir
         "_dash_legend_pos_text": ("test_twoway_option_parity.cscript:Q4102-3",),
+        # WP-41 K10: coloruseplegend with by()'s plegend(at(#)) is r(4019)
+        "_dash_by_plegend_at": ("test_wp41_truth.cscript:Q4104-4", "test_wp41_truth.cscript:Q4104-5"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         "_dash_hz_order": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
