@@ -5090,6 +5090,24 @@
   - Suggested fix: size every panel's label box to the most lines any panel's label draws, as twoway does.
   - Resolution: Not fixed because it was found after WP-41's sections were planned and no section owns the label row's shared height; filed 31oct2026 from batch 41.1. Graded S3 (WP-41): the panels' plot regions of one by() row start at different heights when a label has more lines than another.
 
+- [ ] Title: by()'s note(, ring(0)) is drawn below the x title; twoway draws it above, over the array's edge
+  - File Names and Line Numbers: dash_render.py _dash_by_chrome, _dash_text_annotations (ring0); test/fixtures/by_text_truth.json bp68; test/test_by_text_browser.py TestRing0InChrome (bp68's 0.09 tolerance)
+  - Description: Noticed in WP-41 section 41-02 (BY-1), 31oct2026.  twoway draws `scatter mpg weight, by(foreign, note("NNN", ring(0)))`'s NNN at y 2967.6 of 3240, above the shared x title, which moves down to 3092.8 (by_text_truth.json bp68).  dash draws NNN in the foot cell, under the x title, measured in headless Chrome 0.076 of the graph's height lower than twoway's, past the browser test's usual 0.05.
+  - Suggested fix: draw a ring(0) by() note or caption between the panels' x axis and the shared x title, and move the x title down by its height.
+  - Resolution: Not fixed because it was found after WP-41's sections were planned and BY-1's edge-row design cannot draw over the array's edge; filed 31oct2026 from batch 41.2. Graded S3 (WP-41): a ring(0) note sits on the other side of the x title.
+
+- [ ] Title: by()'s note(, ring(0) position(3)) is drawn at the foot row's right; twoway draws it at the array's right middle
+  - File Names and Line Numbers: dash_render.py _dash_by_chrome, _dash_text_annotations (ring0); test/fixtures/by_text_truth.json bp71
+  - Description: Noticed in WP-41 section 41-02 (BY-1), 31oct2026.  twoway draws `scatter mpg weight, by(foreign, note("NNN", ring(0) position(3)))`'s NNN at x 5267.2 of 5400, y 1581.6, anchored at its end: the middle of the array's right edge (by_text_truth.json bp71).  dash draws it in the foot cell, right-aligned, below the panels; it matches twoway's alignment, not its height.
+  - Suggested fix: draw a ring(0) by() text at clocks 2-4 and 8-10 at the array's side, at the clock's height, as twoway does.
+  - Resolution: Not fixed because it was found after WP-41's sections were planned and BY-1's head and foot rows hold no text at the array's sides; filed 31oct2026 from batch 41.2. Graded S3 (WP-41): a ring(0) note at clock 3 or 9 is drawn at the wrong height.
+
+- [ ] Title: Under by(), dash's shared y title sits about 0.027 of the graph's width left of twoway's
+  - File Names and Line Numbers: dash_render.py _dash_by_side, _dash_by_side_grid; test/fixtures/by_text_truth.json bp01; test/test_by_text_browser.py TestEdgeTitlesInChrome (l2title read against the y title)
+  - Description: Noticed in WP-41 section 41-02 (BY-12), 31oct2026.  twoway draws `scatter mpg weight, by(foreign)`'s shared y title "Mileage (mpg)" centred at x 192.1 of 5400, 0.036 of the width (by_text_truth.json bp01); dash's, measured in headless Chrome, is centred at 0.009 of the width.  The offset predates WP-41.
+  - Suggested fix: give the by() y-title column twoway's gap from the graph's left edge and from the panels' y labels.
+  - Resolution: Not fixed because it was found after WP-41's sections were planned and predates them; filed 31oct2026 from batch 41.2. Graded S3 (WP-41): the shared y title sits nearer the graph's left edge than twoway's.
+
 - [x] Title: by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line
   - File Names and Line Numbers: dash.sthlp:3280-3287
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-16, BY-17; confirmed; tracked: documented. Registered as GAPS4 BY-16 (WP-41, section 41-06, Fix).
