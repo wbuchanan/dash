@@ -5102,11 +5102,11 @@
   - Suggested fix: Skip under by(); measure only the end labels per side
   - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
 
-- [ ] Title: A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)
+- [x] Title: A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)
   - File Names and Line Numbers: dash.ado:6952; probes q1, p2
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids sil:SD-7; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-7 (WP-41, section 41-03, Fix).
   - Suggested fix: Apply the check per panel
-  - Resolution: Not fixed because WP-41 section 41-03 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+  - Resolution: Fixed 31oct2026 (WP-41, sil:SD-7). Measured first (scripts/extract_by_scale_range_truth.do, drawn twoway graphs): scatter mpg weight [aw=w], by(foreign) with w = 0 for every foreign car stops, r(198), with no message; so do by(foreign, total), by(rep78) and by(rep78, missing) with w = 0 when rep78 == 3, a second unweighted layer beside it, and weights missing for every foreign car; msymbol(none) draws (rc 0), and a zero-weight group twoway does not draw (rep78 missing without by(, missing)) is not judged (rc 0). _dash_process_segment's zero-weight check now runs under by() too, per group of the by() variables over the plot's sample (marked out unless by(, missing)): any group with no weight above zero exits 198 in silence, as before only for drawn, unlabelled markers. Pinned by test_option_validation.cscript Q4103-4..9 (each beside live twoway and the fixture's rc); fixture test/fixtures/by_scale_range_truth.json. Closes GAPS4 sil:SD-7 (WP-41, sil:SD-7).
 
 - [ ] Title: A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)
   - File Names and Line Numbers: tw64 vs tw65; d65 label size 10pt

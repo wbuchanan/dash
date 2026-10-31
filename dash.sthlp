@@ -4705,7 +4705,8 @@ size.  As in {cmd:twoway}, a weight at or below zero anywhere in the plot
 scales every marker by 10*sqrt({it:w}/{it:wmax}) instead; a negative
 weight's marker is not drawn, a zero or missing weight's is drawn at size
 zero; a plot with no weight above zero stops the graph, r(198), without a
-word, as {cmd:twoway} stops it; and markers labelled by {cmd:mlabel()},
+word, as {cmd:twoway} stops it -- under {cmd:by()} the rule is applied to
+each panel, as {cmd:twoway} applies it; and markers labelled by {cmd:mlabel()},
 and the point symbol, keep their size.  On {cmd:line}, {cmd:area},
 {cmd:bar}, {cmd:spike}, the range lines, areas, bars and caps, the pc
 lines and arrows, and {cmd:function}, {cmd:twoway} accepts a weight and

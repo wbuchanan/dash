@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- A weighted marker layer under by() with a panel whose weights are all zero is refused r(198), as twoway refuses it; it was drawn (WP-41, sil:SD-7)
 - A graph whose data had no observation left at dash build reached the renderer; lpoly, lpolyci, fpfit, fpfitci, mband and mspline without bands(), histogram on no data and a by() graph with no panel are refused there with twoway's words and a line naming the plot, and function, scatteri, pci and pcarrowi under by() with no panel are refused "nothing to graph" (WP-37, DG-1)
 - With no Python set, dash and dash_setup refused with "Python is required but is not available to Stata", r(198); they run the Python Stata finds, and a Python that cannot start is reported with Stata's message and its return code (WP-36, plat:PT-1)
 - Values twoway draws are drawn: jitter(-3), jitter(150), jitter(abc), jitterseed(-1), barwidth(0), barwidth(-1), lwidth(-1) on scatter, msangle(400) on line, mband's n(0) and msize(1e400), read as msize(0) (dash refused them, r(198)); lwidth(*40000) is refused, r(198), as twoway refuses it (dash drew it with a note); aspectratio(-1) stays refused. (WP-35, basic:PT-13)

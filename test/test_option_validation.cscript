@@ -2066,6 +2066,45 @@ if `"`bad'"' != "" {
 }
 else display as text "U07-8 PASS: weight texts with a backtick, a dollar sign, a semicolon, a quote or a tab refused typed (twoway's rc) and in the registry (r(198)); nothing generated"
 
+// Q4103-4..9 (WP-41 section 41-03, sil:SD-7): a weighted marker layer
+// under by() with a panel whose weights are all zero (or missing) stops,
+// r(198), with no message, as twoway's _draw_weighted_points stops for
+// that panel; msymbol(none) draws (by_scale_range_truth.json W01-W06,
+// measured drawn; twoway is run here too, drawn, under the same data).
+python:
+import json
+from sfi import Macro
+_q41w = json.load(open("fixtures/by_scale_range_truth.json", encoding="utf-8"))["probes"]
+Macro.setGlobal("q4103_wrc", " ".join(str(_q41w["W0%d" % k]["rc"]) for k in range(1, 7)))
+end
+local q41_cmds `""scatter mpg weight [aw=w], by(foreign)" "scatter mpg weight [aw=w], by(foreign, total)" "scatter mpg weight [aw=w3], by(rep78)" "scatter mpg weight [aw=w3], by(rep78, missing)" "(scatter mpg weight [aw=w]) (scatter mpg weight), by(foreign)" "scatter mpg weight [aw=w], by(foreign) msymbol(none)""'
+local q41_k 0
+foreach q41_c of local q41_cmds {
+    local ++q41_k
+    local q41_id = `q41_k' + 3
+    local q41_want : word `q41_k' of ${q4103_wrc}
+    sysuse auto, clear
+    quietly generate double w = cond(foreign, 0, 1 + mod(_n, 3))
+    quietly generate double w3 = cond(rep78 == 3, 0, 1 + mod(_n, 3))
+    capture twoway `q41_c' name(q4103tw, replace)
+    local q41_trc = _rc
+    capture graph drop q4103tw
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'q4103.log"
+    quietly log using "`c(tmpdir)'q4103.log", name(_ovlog) text replace
+    capture noisily dash `q41_c' name(q4103)
+    local q41_drc = _rc
+    quietly log close _ovlog
+    _ov_count "`c(tmpdir)'q4103.log" "dash:"
+    local q41_said = r(n)
+    // Refused: no dash line at all; drawn: only its "registered" line.
+    _ov_assert Q4103-`q41_id' "(`q41_drc' == `q41_want' & `q41_trc' == `q41_want' & `q41_said' == (`q41_want' == 0))" "`q41_c': dash rc `q41_drc', twoway rc `q41_trc' (fixture `q41_want'), dash lines `q41_said'"
+}
+capture erase "`c(tmpdir)'q4103.log"
+capture dash clear
+macro drop q4103_wrc
+
 // U07-9 (WP-31 A6): mlabel(L.make) on the types that never read mlabel()
 // (histogram: dropped, rc 0) or refuse it (mspline: r(111)) keeps
 // twoway's code, measured in the same run (guard).

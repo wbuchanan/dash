@@ -2889,7 +2889,6 @@ GAPS4_OPEN = {
     'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",
     'VF-6': 'by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row',
     'GW-5': 'xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally',
-    'sil:SD-7': 'A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)',
     'PIC-13': 'A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)',
     'BY-7': 'by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor',
     'TR-19': "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions",

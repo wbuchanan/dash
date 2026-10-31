@@ -435,7 +435,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-18 Tracked:** Open (WP-41 section 41-05).
 - **VF-6 Tracked:** Open (WP-41 section 41-05).
 - **GW-5 Tracked:** Open (WP-41 section 41-05).
-- **sil:SD-7 Tracked:** Open (WP-41 section 41-03).
+- **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit pending.
 - **PIC-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-7 Tracked:** Open (WP-41 section 41-02).
 - **TR-19 Tracked:** Open (WP-41 section 41-02).

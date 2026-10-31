@@ -2680,7 +2680,10 @@ program define _dash_fold_range, sclass
     sreturn local range "`lo' `hi'"
     sreturn local range_var "`name'"
     // WP-41 BY-27: each by() panel's own range.
-    mata: st_local("_fr_by", st_global("s(g_by)") + st_global("dash__g_by"))
+    // The graph's by(): written after the plot groups' comma
+    // ($dash__g_by) else the segment's own (s(g_by)); on a one-segment
+    // command both hold it, so they are not joined.
+    mata: st_local("_fr_by", st_global("dash__g_by") != "" ? st_global("dash__g_by") : st_global("s(g_by)"))
     local _fr_p = strpos(`"`macval(_fr_by)'"', ",")
     local _fr_vl = cond(`_fr_p', substr(`"`macval(_fr_by)'"', 1, `_fr_p' - 1), `"`macval(_fr_by)'"')
     local _fr_op = cond(`_fr_p', " " + strlower(substr(`"`macval(_fr_by)'"', `_fr_p' + 1, .)) + " ", "")
@@ -7438,19 +7441,57 @@ program define _dash_process_segment, rclass
     // graph stops, r(198), without a word -- unless the markers are not
     // drawn (msymbol(none)) or are labelled (mlabel() takes the labelled
     // path, which ignores the weight): weighted_markers_truth.json W06.
-    // Under by() twoway answers panel by panel; that is not judged here.
-    if `"`_seg_weight'"' != "" & `: list ptype in _wt_markers' & !`: length local _ss_by' {
+    // Under by() it is judged per panel (WP-41 sil:SD-7): twoway stops
+    // when any panel's rows of the plot hold no weight above zero
+    // (by_scale_range_truth.json W01-W05, W07, W09), the panels being the
+    // groups of the by() variables over the plot's sample, marked out
+    // unless by(, missing) (W08: a missing rep78 panel that is not drawn
+    // is not judged); the Total panel is all-zero only when every panel is.
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_markers' {
         mata: st_local("_wm_lab", st_global("s(mlabel)"))
         mata: st_local("_wm_sym", strlower(strtrim(st_global("s(msymbol)") + st_global("s(marker)"))))
         if `"`macval(_wm_lab)'"' == "" & !inlist(`"`_wm_sym'"', "none", "i") {
-            local _wm_c "!missing((`_seg_wexp')) & (`_seg_wexp') > 0"
-            if `: length local _ps_if' {
-                local _wm_c `"`_wm_c' & `macval(_ps_if)'"'
-            }
             local _wm_in ""
             if `: length local _ps_in' local _wm_in `"in `macval(_ps_in)'"'
-            quietly count if `macval(_wm_c)' `macval(_wm_in)'
-            if r(N) == 0 exit 198
+            // The graph's by() (_ss_by joins both copies, which a
+            // one-segment command holds twice).
+            mata: st_local("_wm_byr", st_global("dash__g_by") != "" ? st_global("dash__g_by") : st_global("s(g_by)"))
+            local _wm_p = strpos(`"`macval(_wm_byr)'"', ",")
+            local _wm_vl = cond(`_wm_p', substr(`"`macval(_wm_byr)'"', 1, `_wm_p' - 1), `"`macval(_wm_byr)'"')
+            local _wm_by 0
+            if `: word count `_wm_vl'' {
+                capture unab _wm_vl : `_wm_vl'
+                local _wm_by = !_rc
+            }
+            if `_wm_by' {
+                local _wm_op = cond(`_wm_p', " " + strlower(substr(`"`macval(_wm_byr)'"', `_wm_p' + 1, .)) + " ", "")
+                local _wm_mis = ustrregexm(`"`macval(_wm_op)'"', "[ ,](mis|miss|missi|missin|missing)[ ,(]")
+                tempvar _wm_s _wm_g _wm_k
+                quietly generate byte `_wm_s' = 0
+                if `: length local _ps_if' {
+                    quietly replace `_wm_s' = 1 if `macval(_ps_if)' `macval(_wm_in)'
+                }
+                else quietly replace `_wm_s' = 1 `macval(_wm_in)'
+                if !`_wm_mis' {
+                    foreach _wm_v of local _wm_vl {
+                        capture confirm string variable `_wm_v'
+                        if !_rc quietly replace `_wm_s' = 0 if `_wm_v' == ""
+                        else quietly replace `_wm_s' = 0 if missing(`_wm_v')
+                    }
+                }
+                quietly egen long `_wm_g' = group(`_wm_vl') if `_wm_s', missing
+                quietly egen byte `_wm_k' = max(!missing((`_seg_wexp')) & (`_seg_wexp') > 0) if `_wm_s', by(`_wm_g')
+                quietly count if `_wm_s' & `_wm_k' == 0
+                if r(N) > 0 exit 198
+            }
+            else {
+                local _wm_c "!missing((`_seg_wexp')) & (`_seg_wexp') > 0"
+                if `: length local _ps_if' {
+                    local _wm_c `"`_wm_c' & `macval(_ps_if)'"'
+                }
+                quietly count if `macval(_wm_c)' `macval(_wm_in)'
+                if r(N) == 0 exit 198
+            }
         }
     }
 

@@ -463,6 +463,17 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
             python: __import__("__main__")._q4103_panels("`q2d'/kd.json", "q4103_got")
             python: __import__("__main__")._q4103_close("${q4103_got_kd}", "`q2want'", "q4103_bad")
             _w41_expect Q4103-2 `"("${q4103_bad}" == "")"' `"kdensity by(`q2by'): ${q4103_bad}"'
+            // The one-segment form holds by() twice (the segment's and
+            // the graph's); each panel still has its own pair.
+            dash clear
+            capture noisily dash kdensity weight, range(weight) by(`q2by') name(q2k1)
+            local q2rc = _rc
+            _w41_expect Q4103-2 "(`q2rc' == 0)" "one-segment kdensity by(`q2by'): dash rc `q2rc'"
+            capture erase "`q2d'/kd.json"
+            capture noisily _dash_serve_spec, specpath("`q2d'/kd.json") datapath("`q2d'/kdd.json")
+            python: __import__("__main__")._q4103_panels("`q2d'/kd.json", "q4103_got")
+            python: __import__("__main__")._q4103_close("${q4103_got_kd}", "`q2want'", "q4103_bad")
+            _w41_expect Q4103-2 `"("${q4103_bad}" == "")"' `"one-segment kdensity by(`q2by'): ${q4103_bad}"'
         }
     }
     _w41_done Q4103-2 "function and kdensity range(weight) span each by() panel's own weight, as twoway draws them"
