@@ -5084,6 +5084,12 @@
   - Suggested fix: draw the turned text in a side-panel model that keeps its own layout (or a second canvas cell above the panel) and size the box to the plot region at layout time.
   - Resolution: Not fixed: it stays open because the label row has no Bokeh model that draws turned text outside the plot region; the note names it. Pinned by test/test_by_label_options.py::TestLabelOptions::test_orientation_stays_named. Graded S3 (WP-41): one sub-option of the panel label, named in a note.
 
+- [ ] Title: A by() panel label of two or more lines makes its own row taller, where twoway makes every panel's label row as tall as the tallest
+  - File Names and Line Numbers: dash_render.py _dash_by_label_box, _dash_quoted_lines; test/fixtures/by_label_truth.json Q01
+  - Description: Noticed in WP-41 section 41-06 (BY-16), 31oct2026.  With a value label "Dom" "estic" on foreign, `scatter mpg weight, by(foreign)` draws in twoway a label box 243.51 high over both panels, Foreign's one-line label included, and both plot regions start at y 395.72 (by_label_truth.json Q01, stcolor SVG of 3240 wide).  dash sizes each panel's label row to its own lines: Domestic's row is a line taller than Foreign's, so the two plot regions do not line up across the row, in both modes.
+  - Suggested fix: size every panel's label box to the most lines any panel's label draws, as twoway does.
+  - Resolution: Not fixed because it was found after WP-41's sections were planned and no section owns the label row's shared height; filed 31oct2026 from batch 41.1. Graded S3 (WP-41): the panels' plot regions of one by() row start at different heights when a label has more lines than another.
+
 - [x] Title: by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line
   - File Names and Line Numbers: dash.sthlp:3280-3287
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-16, BY-17; confirmed; tracked: documented. Registered as GAPS4 BY-16 (WP-41, section 41-06, Fix).
