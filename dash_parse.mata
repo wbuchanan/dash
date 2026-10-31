@@ -262,6 +262,12 @@
 *!       copy of rows() or cols() above limit to limit (the by_groups
 *!       limit), and names the options changed in the local _byg_clamped.
 *!
+*!   _dash_legend_pos_text(scname)
+*!       The first position() text of by()'s legend(), clegend(), plegend()
+*!       or *loc() copies, in the tail held by the string scalar scname,
+*!       that is not a clock position 0-12 as typed; "" when none (WP-41
+*!       BY-7: twoway's clockdir note).
+*!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
@@ -8307,6 +8313,57 @@ void _dash_by_clamp(string scalar scname, real scalar limit)
     }
     st_strscalar(scname, s)
     st_local("_byg_clamped", done)
+}
+
+// _dash_legend_pos_text(scname) -- the position() text of by()'s keys
+// that twoway cannot read as a clock (WP-41 BY-7).  In the tail held by
+// the string scalar scname, every legend(), clegend(), plegend(),
+// legloc(), clegloc() and plegloc() copy (matched by _dash_by_grammar()
+// as _dash_by_scan matches them) is read for its last position()
+// (pos() .. position()); the first such text that is not 0-12 as typed
+// -- abc, 13, 03 or 3.0, each "named style ... not found in class
+// clockdir" in twoway (by_text_truth.json bp77-bp79) -- is returned, ""
+// when there is none.  The text is read, never executed, in one pass.
+string scalar _dash_legend_pos_text(string scalar scname)
+{
+    string matrix    g
+    string rowvector toks, sub
+    string scalar    typed, row, nm, last
+    real scalar      j, k, i, p, q
+
+    g = _dash_by_grammar()
+    toks = _dash_rep_toks(st_strscalar(scname), 0)
+    for (j = 1; j <= cols(toks); j++) {
+        p = strpos(toks[j], "(")
+        if (p < 2) continue
+        typed = substr(toks[j], 1, p - 1)
+        row = ""
+        for (k = 1; k <= rows(g); k++) {
+            if (g[k, 3] != "1") continue
+            if (strlen(typed) < strlen(g[k, 2])) continue
+            if (substr(typed, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(typed)) != typed) continue
+            row = g[k, 1]
+            break
+        }
+        if (!anyof(("legend", "clegend", "plegend", "legloc", "clegloc",
+                    "plegloc"), row)) continue
+        sub = _dash_rep_toks(_dash_rep_value(toks[j]), 0)
+        last = ""
+        for (i = 1; i <= cols(sub); i++) {
+            q = strpos(sub[i], "(")
+            if (q < 2) continue
+            nm = substr(sub[i], 1, q - 1)
+            if (strlen(nm) >= 3 & nm == substr("position", 1, strlen(nm))) {
+                last = strtrim(_dash_rep_value(sub[i]))
+            }
+        }
+        if (last != "" & !anyof(("0", "1", "2", "3", "4", "5", "6", "7",
+                                 "8", "9", "10", "11", "12"), last)) {
+            return(last)
+        }
+    }
+    return("")
 }
 
 // _dash_rep_scan(opts, unk, cap) -- whether the list may give an option

@@ -540,7 +540,8 @@ class TestAnUnimplementedBySuboptionIsNamed:
     @pytest.mark.parametrize("by_raw,names", [
         ("foreign, style(econ)", ["style(econ)"]),
         ("foreign, style(stata7)", ["style(stata7)"]),
-        ("foreign, style(econ) bgcolor(red)", ["style(econ)", "bgcolor(red)"]),
+        # Flipped (WP-41 BY-7): bgcolor() is taken in silence now.
+        ("foreign, style(econ) spacers(ring(2))", ["style(econ)", "spacers(ring(2))"]),
         ("foreign, style(stata7) shrink", ["style(stata7)"]),
         # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
         # draws it.
@@ -582,19 +583,21 @@ class TestAnUnimplementedBySuboptionIsNamed:
         # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.  Flipped
         # (WP-31 D10): subtitleformat() is drawn; overallshrink is not.
         # Flipped (WP-31 D10b): shrink is drawn; the bystyles are not.
-        spec = by_spec("scatter", by="foreign, style(econ) bgcolor(red)")
+        # Flipped (WP-41 BY-7): bgcolor() is taken in silence now;
+        # spacers(ring(2)) is still ignored.
+        spec = by_spec("scatter", by="foreign, style(econ) spacers(ring(2))")
         tag, sp, dp = _write(tmp_path, spec, _DF)
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
         # Flipped (WP-31 D10c): style(econ) is drawn as its options and
-        # named in its own line (its label margin); bgcolor(red) is still
+        # named in its own line (its label margin); spacers(ring(2)) is still
         # ignored -- each once, at build time.
         # Flipped again (WP-31 D10c follow-up): econ's label margin is
         # drawn too, so style(econ) is silent.
         msgs = [str(w.message) for w in built if "by()" in str(w.message)]
         assert len([m for m in msgs if "style(econ)" in m]) == 0, msgs
-        assert len([m for m in msgs if "bgcolor(red)" in m]) == 1, msgs
+        assert len([m for m in msgs if "spacers(ring(2))" in m]) == 1, msgs
         _, _, warns = served(tmp_path, spec)
         assert not [w for w in warns if "by()" in w and "econ" in w], warns
 

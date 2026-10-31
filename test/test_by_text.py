@@ -530,6 +530,77 @@ class TestEdgeTitles:
         assert all(k.upper() in texts for k in _EDGE), texts
 
 
+def _two_spec(by):
+    """`twoway (scatter mpg weight) (lfit mpg weight), by(<by>)': the
+    probes bt2 draws (by_text_truth.json bp77-bp79)."""
+    spec = _spec({"by": by})
+    spec["graphs"][0]["plots"].append(
+        {"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}})
+    return spec
+
+
+def _legend_side(r):
+    """"above", "below", "left" or "right": where *r*'s by() legend cell
+    sits beside its panels in the grid."""
+    from bokeh.models import GridPlot
+    (grid,) = [m for root in r.roots for m in root.references()
+               if isinstance(m, GridPlot)
+               and any(type(c[0]).__name__ == "figure" for c in m.children)]
+    (lg,) = [c for c in grid.children
+             if getattr(c[0], "name", None) == "dash_by_legend"]
+    pan = [c for c in grid.children
+           if not str(getattr(c[0], "name", "") or "").startswith("dash_by_")]
+    rows = [int(c[1]) for c in pan]
+    cols = [int(c[2]) for c in pan]
+    if int(lg[1]) < min(rows):
+        return "above"
+    if int(lg[1]) > max(rows):
+        return "below"
+    return "left" if int(lg[2]) < min(cols) else "right"
+
+
+def _svg_side(p, key):
+    """twoway's side of the legend key *key* in probe *p*'s SVG: above
+    when its y is above the panel labels'."""
+    lab = min(t["y"] for t in p["svg"] if t["text"] in ("Domestic",
+                                                         "Foreign"))
+    (t,) = [t for t in p["svg"] if t["text"] == key]
+    return "above" if t["y"] < lab else "below"
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestByLegendClock:
+    """WP-41 BY-7: by(, legend(pos(abc))) drew the legend at the scheme's
+    side in silence; twoway notes the clockdir style and draws it above
+    the panels (by_text_truth.json bp77, bp78 pos(13), bp79 pos(03)).
+    by(, bgcolor()) was named; twoway fills the graph's canvas (bp80)."""
+
+    @pytest.mark.parametrize("pid", ("bp77", "bp78"))
+    def test_unreadable_is_above(self, mode, pid):
+        p = _truth()["probes"][pid]
+        assert _svg_side(p, "Fitted values") == "above"
+        r = _draw(mode, _two_spec(p["options"][3:-1]))
+        assert _legend_side(r) == "above"
+
+    def test_leading_zero_per_fixture(self, mode):
+        p = _truth()["probes"]["bp79"]
+        r = _draw(mode, _two_spec(p["options"][3:-1]))
+        assert _legend_side(r) == _svg_side(p, "Fitted values")
+
+    def test_bgcolor_silent_and_set(self, mode):
+        from bokeh.models import GridPlot
+        p = _truth()["probes"]["bp80"]
+        assert p["first_fill"] == "#ff0000"
+        r = _draw(mode, _probe_spec(p))
+        assert not [n for n in r.notes if "bgcolor" in n], r.notes
+        (grid,) = [m for root in r.roots for m in root.references()
+                   if isinstance(m, GridPlot)
+                   and any(type(c[0]).__name__ == "figure"
+                           for c in m.children)]
+        assert str(dict(grid.styles or {}).get(
+            "background-color", "")).lower() == p["first_fill"]
+
+
 # ---------------------------------------------------------------------------
 # Regression tests beyond the fixture's rows
 # ---------------------------------------------------------------------------

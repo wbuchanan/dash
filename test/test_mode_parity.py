@@ -2033,7 +2033,9 @@ CORPUS = [
     _case("by() with an unimplemented sub-option", [_sc()], None,
           # Flipped (WP-31 D10b): shrink is drawn; style(econ) and
           # bgcolor(red) are not.
-          {"by": "foreign, style(econ) bgcolor(red)"}),
+          # Flipped (WP-41 BY-7): bgcolor() is taken in silence;
+          # spacers(ring(2)) is not.
+          {"by": "foreign, style(econ) spacers(ring(2))"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -3143,8 +3145,9 @@ _MUST_WARN = {
     # Flipped (WP-31 D10c): style(econ) is drawn as its options, named in
     # its own line; bgcolor(red) is the sub-option still ignored.
     "by() with an unimplemented sub-option":
+        # Flipped (WP-41 BY-7): spacers(ring(2)), bgcolor() being taken.
         "dash: by() sub-option(s) not implemented and ignored: "
-        "bgcolor(red)",
+        "spacers(ring(2))",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

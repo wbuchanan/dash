@@ -354,6 +354,28 @@ def _w41_s02_has(name, text):
                  "1" if text in _w41_s02_cells.get(name, []) else "0")
 
 
+def _w41_s02_bg():
+    """$W41_S02_ANS = the background-color of the page's by() grid (the
+    GridPlot holding a dash_by_* cell), lower case, "" when none."""
+    import re as _re, json as _json
+    from sfi import Macro as _M
+    from bokeh.document import Document as _Doc
+    from bokeh.models import GridPlot as _Grid
+    with open(_M.getGlobal("W41_S02_PAGE"), encoding="utf-8") as _fh:
+        _page = _fh.read()
+    _bg = ""
+    for _blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', _page, _re.S):
+        for _dd in _json.loads(_blob).values():
+            for _g in _Doc.from_json(_dd).select(dict(type=_Grid)):
+                if not any(str(getattr(_c[0], "name", "") or "").startswith("dash_by_") for _c in _g.children):
+                    continue
+                _st = _g.styles
+                _v = _st.get("background-color") if isinstance(_st, dict) else getattr(_st, "background_color", None)
+                if _v:
+                    _bg = str(_v).lower()
+    _M.setGlobal("W41_S02_ANS", _bg)
+
+
 def _w41_s02_none(start):
     """$W41_S02_ANS = 1 when no dash_by_* cell holds a Title that starts
     with *start*, else 0."""
@@ -439,6 +461,45 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w41_run' {
     macro drop W41_S02_PAGE W41_S02_ANS
     capture erase "`w41_work'/q4102_2.log"
     capture erase "`w41_work'/q4102_2.html"
+    dash clear
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 BY-7: by() legend clock and bgcolor ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w41_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4102-4: by(foreign, bgcolor(red)) is taken in silence and fills
+    // the by() grid's background red, Stata's 255 0 0, as twoway fills
+    // the canvas (by_text_truth.json bp80 first_fill #ff0000).  The
+    // log holds only the build, whose command line does not name it.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    capture noisily dash scatter mpg weight, by(foreign, bgcolor(red)) name(q4)
+    _w41_expect Q4102-4 "(_rc == 0)" "dash scatter ... by(foreign, bgcolor(red)) rc `=_rc'"
+    capture erase "`w41_work'/q4102_4.html"
+    quietly log using "`w41_work'/q4102_4.log", text replace name(_q4102)
+    capture noisily dash build, saving("`w41_work'/q4102_4.html", replace) nobrowser
+    local q4rc = _rc
+    quietly log close _q4102
+    _w41_expect Q4102-4 "(`q4rc' == 0)" "dash build rc `q4rc'"
+    cert_log_has "`w41_work'/q4102_4.log", needle("not implemented")
+    _w41_expect Q4102-4 "(r(found) == 0)" "the build named a by() sub-option as not implemented"
+    cert_log_has "`w41_work'/q4102_4.log", needle("bgcolor")
+    _w41_expect Q4102-4 "(r(found) == 0)" "the build named bgcolor()"
+    global W41_S02_PAGE "`w41_work'/q4102_4.html"
+    capture noisily python: _w41_s02_bg()
+    _w41_expect Q4102-4 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+    _w41_expect Q4102-4 `"("${W41_S02_ANS}" == "#ff0000")"' "the by() grid's background is ${W41_S02_ANS}, not #ff0000"
+    _w41_done Q4102-4 "by()'s bgcolor(red) fills the grid's background red, in silence"
+    macro drop W41_S02_PAGE W41_S02_ANS
+    capture erase "`w41_work'/q4102_4.log"
+    capture erase "`w41_work'/q4102_4.html"
     dash clear
 
     display as text "S02 end " c(current_date) " " c(current_time)

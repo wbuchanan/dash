@@ -5511,6 +5511,47 @@ capture dash clear
 set linesize `at_ls'
 global zta_log
 
+// Q4102-3 (WP-41 BY-7): a position() inside by()'s legend() that is not a
+// clock position -- pos(abc), pos(13) -- prints twoway's clockdir note
+// at registration, the line twoway prints (test/fixtures/by_text_truth.json
+// bp77, bp78 note); a clock position prints none.
+python:
+import json as _q41023_json
+from sfi import Macro as _q41023_M
+_q41023_fx = _q41023_json.load(open("fixtures/by_text_truth.json", encoding="utf-8"))["probes"]
+_q41023_M.setLocal("q3n_abc", _q41023_fx["bp77"]["note"])
+_q41023_M.setLocal("q3n_13", _q41023_fx["bp78"]["note"])
+end
+preserve
+sysuse auto, clear
+local q3bad 0
+foreach q3p in abc 13 6 {
+    _ztp_run `"dash (scatter mpg weight) (lfit mpg weight), by(foreign, legend(pos(`q3p'))) name(q3)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "not found in class clockdir"
+    local said = r(found)
+    if "`q3p'" == "6" {
+        if `rc' | `said' {
+            display as error "Q4102-3 FAIL pos(6): r(`rc'), a clockdir note `said'"
+            local q3bad 1
+        }
+        continue
+    }
+    _ztp_logged "`logfile'" `"`q3n_`q3p''"'
+    if `rc' | !r(found) {
+        display as error `"Q4102-3 FAIL pos(`q3p'): r(`rc'), the log does not hold `q3n_`q3p''"'
+        local q3bad 1
+    }
+    else display as text "Q4102-3 pos(`q3p'): twoway's note"
+}
+capture dash clear
+restore
+if `q3bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q4102-3"
+}
+else display as text "Q4102-3 PASS: by()'s unreadable legend position() prints twoway's clockdir note"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

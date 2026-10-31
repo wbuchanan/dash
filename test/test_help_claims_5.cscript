@@ -452,46 +452,48 @@ display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; 
 // Flipped (WP-31 D10): subtitleformat() is drawn and ishrink is silent,
 // as twoway; only shrink is still named.  Flipped (WP-31 D10b): shrink is
 // drawn too (_dash_by_shrink_factor), so bgcolor(red) is the example.
+// Flipped (WP-41 BY-7): bgcolor() is taken in silence now, so
+// spacers(ring(2)) is the example below.
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact colfirst) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("by() sub-option(s) not implemented")
 assert r(found) == 0
 capture erase "`page'"
-_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
+_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring(2)) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: bgcolor(red))")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2)))")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("ignored: bgcolor(red) cols")
+cert_log_has "`logfile'", needle("ignored: spacers(ring(2)) cols")
 assert r(found) == 0
-// ... and nothing after bgcolor(red).  The note joins what it drops with one
+// ... and nothing after spacers(ring(2)).  The note joins what it drops with one
 // blank, in the order written, so any further name -- total as much as
-// cols() -- follows "bgcolor(red) " (24sep2026: total was never checked).
-local hc5by "by() sub-option(s) not implemented and ignored: bgcolor(red) "
+// cols() -- follows "spacers(ring(2)) " (24sep2026: total was never checked).
+local hc5by "by() sub-option(s) not implemented and ignored: spacers(ring(2)) "
 cert_log_has "`logfile'", needle("`hc5by'")
 assert r(found) == 0
 // The control for that needle: a second name dash does not implement is
-// named after bgcolor(red), from the same warning, so the needle can be found.
+// named after spacers(ring(2)), from the same warning, so the needle can be found.
 capture erase "`page'"
-_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink style(econ)) saving("`page'")"' "`logfile'"
+_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring(2)) ishrink style(econ)) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
 // Flipped (WP-31 D10c): style(econ) is drawn whole, silently, so the
-// list is bgcolor(red) alone, once.
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: bgcolor(red)")
+// list is spacers(ring(2)) alone, once.
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2))")
 assert r(count) == 1
 cert_log_has "`logfile'", needle("sub-option style(econ)")
 assert r(count) == 0
 capture dash clear
-dash scatter mpg weight, by(foreign, subtitleformat(%9s) bgcolor(red) ishrink) name(hc8)
+dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring(2)) ishrink) name(hc8)
 local app "`c(tmpdir)'dash_hc5_app.py"
 capture erase "`app'"
 _hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: bgcolor(red))")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2)))")
 assert r(found) == 1
 capture erase "`app'"
 capture dash clear
-display "HC5-08 PASS: bgcolor(red) is named in the Stata log on a saved and a served build; subtitleformat(), shrink, ishrink, rows(), holes(), compact, colfirst, cols() and total are not"
+display "HC5-08 PASS: spacers(ring(2)) is named in the Stata log on a saved and a served build; subtitleformat(), shrink, ishrink, rows(), holes(), compact, colfirst, cols() and total are not"
 
 // ================================================================
 // HC5-09 -- headlabel

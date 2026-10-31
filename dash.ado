@@ -499,7 +499,7 @@ program define _dash_require_mata
         _dash_frames_keep_of _dash_frames_take _dash_frames_lset _dash_frames_cols_json ///
         _dash_filter_exclude_add _dash_link_split _dash_blank_words ///
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
-        _dash_by_scan _dash_by_clamp ///
+        _dash_by_scan _dash_by_clamp _dash_legend_pos_text ///
         _dash_text_args _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_range_panel _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
@@ -6087,6 +6087,13 @@ program define _dash_by_check
     }
     if `_byg_imargin_neg' {
         mata: _dash_note("", "by(, imargin()) below 0 is drawn as 0", "")
+    }
+    // WP-41 BY-7: a position() of by()'s legend(), clegend() or plegend()
+    // (or a *loc() copy) that is not a clock position gets twoway's
+    // clockdir note, once; the key is drawn above the panels.
+    mata: st_local("_byg_lpos_bad", strofreal(_dash_legend_pos_text(st_local("V")) != ""))
+    if `_byg_lpos_bad' {
+        mata: _dash_note("named style ", _dash_legend_pos_text(st_local("V")), " not found in class clockdir, default attributes used")
     }
     // Last, since _dash_limit is rclass: rows() and cols() above the
     // by_groups limit are drawn at it, with one note (TR-48.3, BR-48.7).

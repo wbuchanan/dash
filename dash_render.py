@@ -37089,6 +37089,12 @@ def _dash_parse_by(by_raw, warn=True):
             # a direct parse still draws their separate scales
             # (_dash_by_rescale), in silence.
             pass
+        elif _row == "bgcolor" and "(" in tok:
+            # WP-41 BY-7: the by() grid's background
+            # (_dash_by_array_styles), under every shipped scheme covered
+            # by the cells' own fill, as twoway's graph region covers its
+            # canvas.
+            pass
         elif _row == "scale" and "(" in tok and \
                 _dash_by_scale_arg(arg) is not None:
             # WP-41 BY-2: a positive number scales the whole by() graph
@@ -56817,9 +56823,15 @@ def _dash_by_clone_renderers(renderers, tag):
     return out
 
 
-def _dash_by_clock_side(clock, default):
+def _dash_by_clock_side(clock, default, unreadable=None):
     """A clock position's side of the panels (``_DASH_CLOCK_SIDE``), else
-    *default*'s."""
+    *default*'s.  With *unreadable* given, a *clock* that is not a whole
+    number 0-12 as typed (``abc``, ``13``, ``03``) is drawn on that side,
+    as twoway draws by(, legend(pos(abc))) above the panels (WP-41 BY-7,
+    by_text_truth.json bp77-bp79)."""
+    if unreadable is not None and clock is not None and re.fullmatch(
+            r"[0-9]|1[0-2]", str(clock).strip()) is None:
+        return unreadable
     try:
         c = int(str(clock).strip())
     except (TypeError, ValueError):
@@ -57128,7 +57140,9 @@ def _dash_by_keys(figs, opts, scheme):
         pos = _dash_legend_arg(calls, ("position",))
         ring = _dash_legend_arg(calls, ("ring",))
         side = _dash_by_clock_side(pos if pos is not None else default_clock,
-                                   default_clock)
+                                   default_clock,
+                                   unreadable="above" if pos is not None
+                                   else None)
         return words, max(0, at), side, ring
 
     if not ilegends and items:
@@ -57165,6 +57179,11 @@ def _dash_by_keys(figs, opts, scheme):
                         scheme, "by_legend_position", 6)).strip())
                 except (TypeError, ValueError):
                     clock = 6
+                # WP-41 BY-7: a given position() that is no clock is
+                # drawn at 12, as twoway draws it (bp77-bp79).
+                if pos is not None and re.fullmatch(
+                        r"[0-9]|1[0-2]", str(pos).strip()) is None:
+                    clock = 12
                 loc = _dash_by_compass_location(clock, side)
             out["legend"] = _dash_by_legend_cell(
                 scheme, "dash_by_legend", side if not at else "right",
@@ -57955,6 +57974,18 @@ def _dash_by_array_styles(by_raw, scheme=None, graph_opts=None):
                 w = 1
             style = "dashed" if spec.get("line_dash") else "solid"
             out["border"] = "%dpx %s %s" % (w, style, str(col).lower())
+    # WP-41 BY-7: by(, bgcolor()) -- the last copy -- is the grid's
+    # background, as twoway fills its canvas (by_text_truth.json bp80).
+    bg = None
+    _t = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    _v, _comma, _subs = _t.partition(",")
+    for tok in (_dash_by_tokens(_subs.strip()) if _comma else ()):
+        if _dash_by_word(tok)[0] == "bgcolor" and "(" in tok:
+            bg = _dash_by_word(tok)[3]
+    if bg is not None and bg.strip():
+        hx = _textbox_color({"color": bg.strip()}, None)
+        if hx:
+            out["background-color"] = str(hx).lower()
     return out
 
 

@@ -457,6 +457,9 @@ class TestTheUnitFunctions:
         assert [dr._dash_by_clock_side(c, 6) for c in
                 ("3", "9", "12", "6", "x")] == ["right", "left", "above",
                                                 "below", "below"]
+        # WP-41 BY-7: a given position() that is not a clock is drawn
+        # above the panels, as twoway draws it (by_text_truth.json bp77).
+        assert dr._dash_by_clock_side("x", 6, unreadable="above") == "above"
 
     def test__dash_by_legend_cell(self):
         from bokeh.models import (ColumnDataSource, GlyphRenderer, Legend,

@@ -856,13 +856,15 @@ class TestTheSubOptionsDashDoesNotImplement:
     def test_named_and_ignored(self):
         # Flipped (WP-31 D10b): shrink and overallshrink are drawn; the
         # bystyles econ and stata7 are the example.
-        r, doc, saved, served = _by("foreign, style(econ) bgcolor(red) "
+        # Flipped (WP-41 BY-7): bgcolor() is taken in silence now;
+        # spacers(ring(2)) is the sub-option still named, here and below.
+        r, doc, saved, served = _by("foreign, style(econ) spacers(ring(2)) "
                                     "cols(2) total missing")
         # Flipped (WP-31 D10c): style(econ) is drawn as its options
-        # (bystyle_truth.json), silently; bgcolor(red) is the sub-option
+        # (bystyle_truth.json), silently; spacers(ring(2)) is the sub-option
         # still ignored.
         want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "bgcolor(red)"]
+                "spacers(ring(2))"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -877,7 +879,7 @@ class TestTheSubOptionsDashDoesNotImplement:
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, style(econ) bgcolor(red)"})])
+                       {"by": "foreign, style(econ) spacers(ring(2))"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -890,9 +892,9 @@ class TestTheSubOptionsDashDoesNotImplement:
             warnings.simplefilter("always")
             ns["make_document"](Document())
         # Flipped (WP-31 D10c): style(econ) is drawn as its options,
-        # silently; bgcolor(red) is still ignored.
+        # silently; spacers(ring(2)) is still ignored.
         for want in ("dash: by() sub-option(s) not implemented and ignored: "
-                     "bgcolor(red)",):
+                     "spacers(ring(2))",):
             assert [str(w.message) for w in built].count(want) == 1, \
                 [str(w.message) for w in built]
             assert want not in [str(w.message) for w in session]

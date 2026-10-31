@@ -5126,11 +5126,11 @@
   - Suggested fix: Scale the hole legend by by()'s size multiplier
   - Resolution: Not fixed because WP-41 section 41-04 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
 
-- [ ] Title: by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor
+- [x] Title: by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor
   - File Names and Line Numbers: probe1 T20, T8
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-7, BY-15; confirmed; tracked: untracked / generic. Registered as GAPS4 BY-7 (WP-41, section 41-02, Fix).
   - Suggested fix: Print twoway's clockdir note with its fallback; take bgcolor in silence or draw it
-  - Resolution: Not fixed because WP-41 section 41-02 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+  - Resolution: Fixed 31oct2026 (WP-41, BY-7). Measured first (scripts/extract_by_text_truth.do, bp77-bp80): twoway (scatter mpg weight) (lfit mpg weight), by(foreign, legend(pos(abc))) prints "(note:  named style abc not found in class clockdir, default attributes used)" and draws the legend above the panels (keys at y 297 and 454 of 3240, the panel labels at 703); pos(13) and pos(03) alike (a leading zero is no clock); by(foreign, bgcolor(red)) fills only the canvas under the graph region (first rect #ff0000). dash.ado's _dash_by_check prints that note once at registration for the first position() of by()'s legend(), clegend(), plegend() or *loc() copies that is not 0-12 as typed (Mata _dash_legend_pos_text); _dash_by_clock_side(..., unreadable="above") and place()'s compass fallback draw such a key above the panels at 12, in both modes. _dash_parse_by takes bgcolor() in silence and _dash_by_array_styles sets it as the by() grid's CSS background-color, which the cells' own fill covers under every shipped scheme. Pinned by test/test_by_text.py::TestByLegendClock::test_unreadable_is_above, ::test_leading_zero_per_fixture, ::test_bgcolor_silent_and_set, test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_clock_side, test/test_twoway_option_parity.cscript Q4102-3, test/test_wp41_truth.cscript Q4102-4; fixture test/fixtures/by_text_truth.json. Closes GAPS4 BY-7 (WP-41, BY-7).
 
 - [ ] Title: Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions
   - File Names and Line Numbers: BUGS.md:3999-4095

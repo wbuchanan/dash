@@ -80,7 +80,9 @@ def _spec(tmp_path):
                      "options": {"mcolor": "notacolor"}}])
     # Flipped (WP-31 D10c): style(econ) is drawn whole now; bgcolor(red)
     # is the by() sub-option still named.
-    sp["graphs"][0]["graph_options"]["by"] = "foreign, bgcolor(red)"
+    # Flipped (WP-41 BY-7): bgcolor() is taken in silence now;
+    # spacers(ring(2)) is the by() sub-option still named.
+    sp["graphs"][0]["graph_options"]["by"] = "foreign, spacers(ring(2))"
     df = pd.DataFrame({"mpg": [20.0, 22.0, 30.0, 18.0],
                        "weight": [3000.0, 2500.0, 2000.0, 3500.0],
                        "foreign": [0.0, 0.0, 1.0, 1.0]})
@@ -318,7 +320,7 @@ class TestTheRendererEntryPoint:
         _, err2, _ = _run(tmp_path / "b", mode, "ignore", monkeypatch, capsys)
         assert _notes(err2) == control
         if mode == "server":
-            assert any("bgcolor" in n for n in control)
+            assert any("spacers" in n for n in control)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_an_error_filter_raises_no_note(self, mode, tmp_path,
@@ -368,6 +370,6 @@ class TestTheRendererEntryPoint:
         notes as warnings."""
         sp, dp = _spec(tmp_path)
         out = str(tmp_path / "o.html")
-        with pytest.warns(UserWarning, match="bgcolor"):
+        with pytest.warns(UserWarning, match="spacers"):
             dr.main(sp, dp, out)
         assert os.path.exists(out)

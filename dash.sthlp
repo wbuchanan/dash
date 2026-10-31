@@ -3691,7 +3691,10 @@ the first panel has more than one key or with {cmd:by(, legend(on))}, and
 not with {cmd:by(, legend(off))}; it is placed by
 {cmd:by(, legend(position()))}, in the cell {cmd:at(}{it:#}{cmd:)} names
 (which counts as a cell of the grid, as in {cmd:twoway}), or else where the
-scheme puts it (s2color below, stcolor right, economist above).
+scheme puts it (s2color below, stcolor right, economist above); a
+{cmd:position()} that is not a clock position ({cmd:abc}, {cmd:13},
+{cmd:03}) prints {cmd:twoway}'s note and places the legend above the
+panels.
 {cmd:ilegends} draws each panel's legend instead; {cmd:legend(on)} outside
 {cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
 nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
@@ -3787,7 +3790,10 @@ replace the shared axis titles, as in {cmd:twoway}; {cmd:t1title()} and
 words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
 {cmd:legend()}, {cmd:clegend()}, {cmd:graphregion()}, {cmd:plotregion()},
 {cmd:subtitleformat()}, {cmd:shrink}, {cmd:overallshrink},
-{cmd:noshrink}, {cmd:noishrink}, {cmd:nooverallshrink}, {cmd:ishrink} and
+{cmd:noshrink}, {cmd:noishrink}, {cmd:nooverallshrink}, {cmd:ishrink},
+{cmd:bgcolor()} (the background behind the graph's cells, which under
+every shipped scheme cover it, as {cmd:twoway}'s graph region covers its
+canvas) and
 {cmd:style(altleg)} (drawn as {cmd:style(default)}, as {cmd:twoway} draws
 it) are the {cmd:by()} sub-options {cmd:dash} implements.
 {cmd:shrink} and {cmd:overallshrink} draw the panels' markers, lines and
@@ -3837,7 +3843,7 @@ unboxed labels -- but {cmd:twoway} lays its panels out as
 each panel in a graph region of its own (measured: 600 lines of the
 exported SVG differ from any {cmd:by()} spelling), which {cmd:dash}'s grid
 of panels does not; that is named once.  Any other sub-option of
-Stata's {cmd:by()} -- for example {cmd:bgcolor()} -- is accepted, named in
+Stata's {cmd:by()} -- for example {cmd:spacers()} -- is accepted, named in
 a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
