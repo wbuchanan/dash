@@ -214,7 +214,8 @@ _BY_JS = r"""
 <script>
 function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
 function state() {
-  const boxes = [], pframes = [], prows = []; let grid = null, pgrid = null;
+  const boxes = [], pframes = [], prows = [], pcells = [];
+  let grid = null, pgrid = null;
   const visit = (v, box) => {
     if (!v) return;
     if (v.model && v.model.type === 'GridBox') box = v;
@@ -227,6 +228,8 @@ function state() {
       pframes.push(v.frame.bbox.width);
       const cr0 = v.canvas_view.el.getBoundingClientRect();
       prows.push([cr0.top + v.frame.bbox.y0, cr0.top + v.frame.bbox.y1]);
+      // WP-41 41-04: each panel's frame's top left corner (page px).
+      pcells.push([cr0.left + v.frame.bbox.x0, cr0.top + v.frame.bbox.y0]);
     }
     if (v.frame && v.renderer_views) {
       const cr = v.canvas_view.el.getBoundingClientRect();
@@ -310,7 +313,7 @@ function state() {
         Math.max(panels[3], r[3])];
     }
   }
-  return {grid, boxes, panels, pframes, prows};
+  return {grid, boxes, panels, pframes, prows, pcells};
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
@@ -951,3 +954,19 @@ class TestByGraphKeepsItsSize:
         g = st["grid"]
         assert abs((g[3] - g[1]) - (g[2] - g[0]) * 4.5 / 7.5) <= 2.5, \
             (go, g, st["panels"])
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestByHoleReserved:
+    """WP-41 BY-3 (by_chrome_truth.json K02): ``twoway (scatter mpg
+    weight) (lfit mpg weight), by(foreign, legend(off at(1)))`` keeps
+    cell 1 empty: Domestic top right, Foreign bottom left of a 2 x 2
+    grid."""
+
+    def test_grid_cells(self, mode):
+        st = _by_spec(mode, {"by": "foreign, legend(off at(1))"})[0]
+        cells = st["pcells"]
+        assert len(cells) == 2, st
+        (tx, ty), (bx, by) = sorted(cells, key=lambda c: c[1])
+        # One panel top right (cell 2), the other bottom left (cell 3).
+        assert by > ty + 100 and tx > bx + 100, cells

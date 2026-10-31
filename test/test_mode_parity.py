@@ -3010,6 +3010,10 @@ CORPUS = [
     _case("by() edge titles", [_sc()],
           go={"by": 'foreign, l1title("L") b1title("B") t1title("T") '
                     'r1title("R")'}),
+    # WP-41 BY-3: an undrawn legend keeps its at() hole, in both modes.
+    _case("by() legend(off at(1))",
+          [_sc(), plot_for("lfit", {})],
+          go={"by": "foreign, legend(off at(1))"}),
 ]
 
 

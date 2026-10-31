@@ -422,7 +422,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-24a Tracked:** Closed in WP-41, BUGS.md "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them", commit fa4a63f.
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
-- **BY-3 Tracked:** Open (WP-41 section 41-04).
+- **BY-3 Tracked:** Closed in WP-41, BUGS.md "An at() hole for a legend or colour key that is not drawn is not reserved in the grid", commit pending.
 - **BY-4 Tracked:** Open (WP-41 section 41-05).
 - **BY-5 Tracked:** Open (WP-41 section 41-05).
 - **BY-6 Tracked:** Open (WP-41 section 41-05).

@@ -37382,6 +37382,38 @@ def _dash_by_positions(n_panels, opts, legend_at=0, clegend_at=0,
     return cells, rows, cols, extra
 
 
+def _dash_by_hole_ats(go, has_colour_key):
+    """``(legend_at, clegend_at)``: the grid holes by()'s keys reserve
+    (WP-41 BY-3, D-41-04.a), read from the merged legend() and clegend()
+    copies of graph options *go*'s by() (``_dash_by_axes_options``).
+
+    twoway's SetLegend and SetClegend set legend_hole/clegend_hole from
+    ``at()`` whether or not the key is drawn (bygraph_g.class :612-618,
+    :670-676; by_chrome_truth.json K01-K03): a legend hole whenever at()
+    is given (every graph has a legend object), a colour-key hole only
+    when the graph has a colour key (*has_colour_key*; K04 makes none);
+    neither under ``ilegends``, where both exit.  The first ``at(#)``
+    copy wins, as twoway reads it (measured: ``legend(at(1) at(3))`` is
+    hole 1).  Pure; never raises."""
+    by = (go or {}).get("by") if isinstance(go, dict) else None
+    try:
+        opts = _dash_by_axes_options(by)
+    except Exception:  # noqa: BLE001 -- no holes
+        return 0, 0
+    if (opts.get("flags") or {}).get("indiv_legends"):
+        return 0, 0
+    ats = []
+    for key in ("legend", "clegend"):
+        at = 0
+        for tok in _dash_by_tokens(str(opts.get(key) or "")):
+            m = re.fullmatch(r"at\(\s*([0-9]{1,9})\s*\)", tok.strip())
+            if m:
+                at = int(m.group(1))
+                break
+        ats.append(at)
+    return ats[0], (ats[1] if has_colour_key else 0)
+
+
 #: Each shipped scheme's ``margin by_indiv`` (WP-30 P1.15b, D-48e), read
 #: through its #include chain by scripts/extract_by_grid_truth.do
 #: (by_grid_truth.json ``by_indiv``).  No dash scheme file carries the
@@ -49152,6 +49184,23 @@ def _dash_share_repoint(figs, letter, name, rng):
                     e["rng"] = rng
 
 
+def _dash_has_colour_key(fig):
+    """Whether by() panel *fig* carries a colour key: a ``ColorBar`` other
+    than a panel label's box (``dash_by_label_box``) or the colorvar key
+    ``Legend`` (``_COLORVAR_LEGEND_NAME``), the test ``_dash_by_keys``'
+    ``colour_keys`` makes (WP-41 BY-3).  Never raises."""
+    from bokeh.models import ColorBar, Legend
+    if fig is None:
+        return False
+    for side in ("center", "left", "right", "above", "below"):
+        for m in list(getattr(fig, side, None) or ()):
+            name = getattr(m, "name", None)
+            if (isinstance(m, ColorBar) and name != "dash_by_label_box") or (
+                    isinstance(m, Legend) and name == _COLORVAR_LEGEND_NAME):
+                return True
+    return False
+
+
 def _dash_share_by_scales(figs, rescale=frozenset()):
     """Draw a by() graph's panels on one scale per axis, as twoway does
     (bygraph_g.class axis_allrange; WP-29 P0.2).
@@ -49173,6 +49222,10 @@ def _dash_share_by_scales(figs, rescale=frozenset()):
         return
     rescale = frozenset(rescale or ())
     letters = tuple(d for d in ("x", "y") if d not in rescale)
+    # WP-41 BY-3: the keys' at() holes, drawn or not (the side record's
+    # once _dash_by_side has taken the colour keys off the panels).
+    _side = getattr(figs[0], "_dash_by_side", None)
+    _ck = any(_dash_has_colour_key(f) for f in figs)
     for f in figs:
         args = getattr(f, "_dash_margin_args", None)
         if args is not None:
@@ -49180,8 +49233,14 @@ def _dash_share_by_scales(figs, rescale=frozenset()):
             # full_n -- the panels and the keys' at() holes.
             go = args[1] or {}
             try:
+                if isinstance(_side, dict):
+                    _ats = (_side.get("legend_at", 0),
+                            _side.get("clegend_at", 0))
+                else:
+                    _ats = _dash_by_hole_ats(go, _ck)
                 full_n = _dash_by_positions(
-                    len(figs), _dash_by_layout_options(go))[3]["full_n"]
+                    len(figs), _dash_by_layout_options(go),
+                    *_ats)[3]["full_n"]
             except Exception:  # noqa: BLE001 -- the panel count, then
                 full_n = len(figs)
             f._dash_margin = _dash_plot_margin(
@@ -57158,6 +57217,10 @@ def _dash_by_keys(figs, opts, scheme):
                                    else None)
         return words, max(0, at), side, ring
 
+    if not ilegends:
+        # WP-41 BY-3: the hole is reserved whether or not the legend is
+        # drawn, as twoway's SetLegend reserves it (K01, K02).
+        out["legend_at"] = place(opts.get("legend", ""), 6)[1]
     if not ilegends and items:
         words, at, side, ring = place(
             opts.get("legend", ""), getattr(scheme, "by_legend_position", 6))
@@ -57255,6 +57318,9 @@ def _dash_by_keys(figs, opts, scheme):
     if not ilegends and keys1:
         words, at, side, _ring = place(opts.get("clegend", ""),
                                        getattr(scheme, "zyx2_position", 3))
+        # WP-41 BY-3: drawn or not, as twoway's SetClegend reserves it
+        # (K03); a graph with no colour key makes none (K04).
+        out["clegend_at"] = at
         if words & {"on", "draw"} and not words & {"off", "nodraw"}:
             _kside, key = keys1[0]
             vertical = (side if not at else "right") in ("left", "right")
@@ -69806,6 +69872,7 @@ class ServerAppBuilder:
                          # by() grid and size (WP-30 P1.15b).
                          "_dash_by_word", "_dash_by_grid_options",
                          "_dash_by_positions", "_dash_by_size_mult",
+                         "_dash_by_hole_ats", "_dash_has_colour_key",
                          "_dash_by_scale_mult", "_dash_by_scale_arg",
                          "_dash_by_spacing", "_dash_by_scale_value",
                          "_dash_by_scale_panel",

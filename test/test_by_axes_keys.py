@@ -320,8 +320,13 @@ class TestTheFixture:
         missing = [k for k in _PROBES if k not in d["probes"]]
         assert not missing, missing
         assert len(d["label_box"]) == 30
-        bad = [k for k, p in d["probes"].items() if p["rc"]]
+        # WP-41 41-04: twoway refuses plegend(at()) under coloruseplegend
+        # with r(4019) (K10b, K10c); every other probe draws.
+        bad = [k for k, p in d["probes"].items() if p["rc"]
+               and k not in ("K10b", "K10c")]
         assert not bad, bad
+        assert [d["probes"][k]["rc"] for k in ("K10b", "K10c")] == \
+            [4019, 4019]
 
 
 class TestTheUnitFunctions:
@@ -335,6 +340,8 @@ class TestTheUnitFunctions:
                 "outer_ytitles", "indiv_as_whole", "indiv_legends")
         bad = []
         for pid, p in sorted(_fix()["probes"].items()):
+            if p["rc"]:
+                continue  # twoway refused it (K10b, K10c): no switches
             cmd = p["command"]
             by = cmd[cmd.index("by(") + 3:]
             depth, end = 1, 0
@@ -1370,3 +1377,135 @@ def test_the_discrete_key_holds_panel_ones_levels_as_twoways_does(mode):
               for m in getattr(cell, sd) if isinstance(m, Legend)
               for i in m.items]
     assert labels == ["1", "2", "3"]
+
+
+# ---------------------------------------------------------------------------
+# WP-41 41-04: by()'s at() holes, loc words, coloruseplegend keys and the
+# hole legend's size (by_chrome_truth.json K01-K13).
+
+_CUP = [_p("scatter", colorvar="rep78", colordiscrete="yes",
+           coloruseplegend="coloruseplegend")]
+
+#: dash's spelling of each 41-04 probe: (plots, graph options).
+_K = {
+    "K01": (_ONE, {"by": "foreign, legend(at(1))"}),
+    "K02": (_TWO, {"by": "foreign, legend(off at(1))"}),
+    "K03": ([_p("scatter", colorvar="headroom")],
+            {"by": "foreign, clegend(at(1))"}),
+    "K04": (_ONE, {"by": "foreign, clegend(at(1))"}),
+    "K05": (_TWO, {"by": "foreign, legloc(pos(6))"}),
+    "K06": (_TWO, {"by": "foreign, legend(pos(6))"}),
+    "K07": ([_p("scatter", colorvar="headroom")],
+            {"by": "foreign, clegend(on) clegloc(pos(6))"}),
+    "K08": (_CUP, {"by": "foreign, plegend(on)"}),
+    "K09": (_CUP, {"by": "foreign, clegend(on)"}),
+    "K10a": (_CUP, {"by": "foreign, plegend(on) plegloc(pos(6))"}),
+    "K13": (_TWO, {"by": "foreign, legend(pos(6)) legloc(pos(12))"}),
+}
+
+
+def _k_build(mode, pids):
+    pids = tuple(sorted(pids))
+    key = ("K", mode, pids)
+    if key not in _BUILT:
+        roots, notes, owner = _build(
+            mode, _spec([_graph(pid, *_K[pid]) for pid in pids]))
+        _BUILT[key] = (_grids(roots), notes, owner)
+    return _BUILT[key]
+
+
+def _svg_cells(pid):
+    """twoway's (row, col) of each panel label of probe *pid*, ranked by
+    its text's y and x in the SVG (by_chrome_truth.json ``svg``)."""
+    p = _fix()["probes"][pid]
+    labels = [q["label"] for q in p["panels"]]
+    pos = {t[0]: (t[2], t[1]) for t in p["svg"]["texts"] if t[0] in labels}
+    ys = sorted({round(v[0]) for v in pos.values()})
+    xs = sorted({round(v[1]) for v in pos.values()})
+    return {lab: (ys.index(round(pos[lab][0])), xs.index(round(pos[lab][1])))
+            for lab in labels}
+
+
+def _dash_cells(grid):
+    """dash's (row, col) of each panel, from the panels' top left cell."""
+    pan = [(panel_label(c[0]), int(c[1]), int(c[2])) for c in grid.children
+           if type(c[0]).__name__ == "figure" and panel_label(c[0])]
+    r0 = min(r for _l, r, _c in pan)
+    c0 = min(c for _l, _r, c in pan)
+    return {lab: (r - r0, c - c0) for lab, r, c in pan}, (r0, c0)
+
+
+class TestHoles:
+    @pytest.mark.parametrize("mode,pid", [(m, k) for m in _MODES
+                                          for k in ("K01", "K02", "K03")])
+    def test_undrawn_key_hole_is_reserved(self, mode, pid):
+        """An at() hole is kept whether or not its key is drawn: twoway's
+        legend_hole/clegend_hole is 1 and the panels sit in cells 2 and 3
+        of a 2 x 2 grid; nothing is drawn in cell 1."""
+        p = _fix()["probes"][pid]
+        assert (p["legend_hole"] or p["clegend_hole"]) == 1
+        assert (p["rows"], p["cols"]) == (2, 2)
+        grids, _n, _o = _k_build(mode, ("K01", "K02", "K03", "K04"))
+        grid = grids[pid]
+        cells, (r0, c0) = _dash_cells(grid)
+        assert cells == _svg_cells(pid), (cells, _svg_cells(pid))
+        assert not [c for c in grid.children
+                    if (int(c[1]), int(c[2])) == (r0, c0)]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_no_colour_key_no_hole(self, mode):
+        """With no colour key, clegend(at(1)) makes no hole (K04)."""
+        p = _fix()["probes"]["K04"]
+        assert (p["clegend_hole"], p["rows"], p["cols"]) == (0, 1, 2)
+        grids, _n, _o = _k_build(mode, ("K01", "K02", "K03", "K04"))
+        cells, _rc = _dash_cells(grids["K04"])
+        assert cells == _svg_cells("K04")
+
+    def test_margin_counts_the_hole(self, monkeypatch):
+        """_dash_share_by_scales' margin multiplier counts the at() hole
+        in full_n: four panels and an undrawn legend's hole are full_n 5,
+        k 3 (0.8), not k 2 (0.85)."""
+        from bokeh.plotting import figure
+        seen = []
+        monkeypatch.setattr(dr, "_dash_plot_margin",
+                            lambda *a, **k: seen.append(k["mult"]))
+        monkeypatch.setattr(dr, "_dash_common_count_ticks",
+                            lambda *a, **k: None)
+        go = {"by": "g10, legend(off at(1))"}
+        figs = [figure() for _ in range(4)]
+        for f in figs:
+            f._dash_margin_args = (None, go)
+        dr._dash_share_by_scales(figs)
+        want = dr._dash_by_size_mult(go["by"], 5)
+        assert want != dr._dash_by_size_mult(go["by"], 4)
+        assert seen == [want] * 4
+
+    def test_hole_ats_unit(self):
+        """_dash_by_hole_ats: the legend's at() whenever given, the
+        colour key's only when the graph has a colour key; the first
+        copy wins, as twoway reads at() (measured: legend(at(1) at(3))
+        is hole 1)."""
+        f = dr._dash_by_hole_ats
+        assert f({"by": "foreign, legend(off at(1))"}, False) == (1, 0)
+        assert f({"by": "foreign, legend(at(1) at(3))"}, False) == (1, 0)
+        assert f({"by": "foreign, clegend(at(2))"}, True) == (0, 2)
+        assert f({"by": "foreign, clegend(at(2))"}, False) == (0, 0)
+        assert f({"by": "foreign"}, True) == (0, 0)
+        assert f({}, True) == (0, 0)
+        assert f(None, False) == (0, 0)
+
+    def test__dash_has_colour_key(self):
+        """A ColorBar other than a label box, or the colorvar Legend."""
+        from bokeh.models import ColorBar, Legend, LinearColorMapper
+        from bokeh.plotting import figure
+        f = figure()
+        assert not dr._dash_has_colour_key(f)
+        f.add_layout(ColorBar(name="dash_by_label_box",
+                              color_mapper=LinearColorMapper()), "above")
+        assert not dr._dash_has_colour_key(f)
+        f.add_layout(Legend(name=dr._COLORVAR_LEGEND_NAME), "right")
+        assert dr._dash_has_colour_key(f)
+        g = figure()
+        g.add_layout(ColorBar(color_mapper=LinearColorMapper()), "right")
+        assert dr._dash_has_colour_key(g)
+        assert not dr._dash_has_colour_key(None)

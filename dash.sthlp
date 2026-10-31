@@ -3690,7 +3690,8 @@ first panel's keys as {cmd:legend()} orders and labels them, is drawn when
 the first panel has more than one key or with {cmd:by(, legend(on))}, and
 not with {cmd:by(, legend(off))}; it is placed by
 {cmd:by(, legend(position()))}, in the cell {cmd:at(}{it:#}{cmd:)} names
-(which counts as a cell of the grid, as in {cmd:twoway}), or else where the
+(which counts as a cell of the grid, as in {cmd:twoway}, whether or not
+the key is drawn), or else where the
 scheme puts it (s2color below, stcolor right, economist above); a
 {cmd:position()} that is not a clock position ({cmd:abc}, {cmd:13},
 {cmd:03}) prints {cmd:twoway}'s note and places the legend above the
@@ -3707,7 +3708,8 @@ scheme's {cmd:gridringstyle by_legend_ring} is read as one.  Clicking a key of
 the overall legend hides that series in every panel.
 Under {cmd:colorvar()} no colour key is drawn unless
 {cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
-{cmd:clegend(position() at())} else the scheme's position, upright at
+{cmd:clegend(position() at())} else the scheme's position (its
+{cmd:at()} cell kept empty, drawn or not, as for the legend), upright at
 every position as in {cmd:twoway} (at 6 or 12 o'clock half the graph's
 height less a sixth of its smaller side long).  On a narrow
 screen, where the panels stack into one column, every panel shows its axes

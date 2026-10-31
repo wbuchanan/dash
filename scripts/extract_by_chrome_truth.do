@@ -89,6 +89,9 @@ if _rc {
 
 sysuse auto, clear
 quietly save "${BC_WORK}/bc.dta", replace
+sysuse lifeexp, clear
+quietly save "${BC_WORK}/bl.dta", replace
+global BC_DS "bc"
 
 // ---------------------------------------------------------------------------
 // bc id scheme "command": one chrome probe.
@@ -97,7 +100,7 @@ capture program drop bc
 program define bc
     version 19
     args id scheme cmd
-    use "${BC_WORK}/bc.dta", clear
+    use "${BC_WORK}/${BC_DS}.dta", clear
     set scheme `scheme'
     capture noisily twoway `cmd' name(Graph, replace)
     local rc = _rc
@@ -152,6 +155,21 @@ program define bb
     }
 end
 
+// bk id scheme "command" (WP-41 41-04): a chrome probe, also exported to
+// SVG for its text positions and sizes (the panel labels' cells, the
+// keys' sides and their label sizes).
+capture program drop bk
+program define bk
+    version 19
+    args id scheme cmd
+    capture graph drop Graph
+    bc `id' `scheme' `"`cmd'"'
+    capture graph describe Graph
+    if _rc exit
+    capture noisily graph export "${BC_WORK}/`id'.svg", name(Graph) replace
+    file write bcrec "K|`id'|`=_rc'|`.Graph.plegend_hole'|`.Graph.at_clegend.draw_view.istrue'" _n
+end
+
 file open bcrec using "${BC_REC}", write text replace
 
 local two "(scatter mpg weight)(lfit mpg weight)"
@@ -200,6 +218,32 @@ bc q09 stcolor `"scatter mpg weight, colorvar(price) by(foreign, clegend(on pos(
 bc r04 stcolor `"`two', by(foreign, legend(pos(6))) legend(order(2 1))"'
 bc r05 stcolor `"`two', by(foreign, legend(pos(9)))"'
 bc r06 stcolor `"`two', by(foreign, legend(pos(12) ring(0)))"'
+
+// WP-41 41-04: at() holes of keys not drawn (K01-K04), the loc words
+// (K05-K07, K10a, K13), coloruseplegend's keys (K08-K10d), the hole legend's
+// scale (K11 against K11n, K12 against K12n).
+bk K01 stcolor `"`one', by(foreign, legend(at(1)))"'
+bk K02 stcolor `"`two', by(foreign, legend(off at(1)))"'
+bk K03 stcolor `"`one', colorvar(headroom) by(foreign, clegend(at(1)))"'
+bk K04 stcolor `"`one', by(foreign, clegend(at(1)))"'
+bk K05 stcolor `"`two', by(foreign, legloc(pos(6)))"'
+bk K06 stcolor `"`two', by(foreign, legend(pos(6)))"'
+bk K07 stcolor `"`one', colorvar(headroom) by(foreign, clegend(on) clegloc(pos(6)))"'
+local cup "`one', colorvar(rep78) colordiscrete coloruseplegend"
+bk K08 stcolor `"`cup' by(foreign, plegend(on))"'
+bk K09 stcolor `"`cup' by(foreign, clegend(on))"'
+bk K10a stcolor `"`cup' by(foreign, plegend(on) plegloc(pos(6)))"'
+bk K10b stcolor `"`cup' by(foreign, plegend(on at(3)))"'
+bk K10c stcolor `"`cup' by(foreign, plegend(at(3)))"'
+bk K10d stcolor `"`one', colorvar(rep78) by(foreign, plegend(at(3)))"'
+// The first copy of a sub-option wins, legend() before legloc().
+bk K13 stcolor `"`two', by(foreign, legend(pos(6)) legloc(pos(12)))"'
+global BC_DS "bl"
+bk K11 stcolor `"(scatter lexp gnppc)(lfit lexp gnppc), by(region, legend(at(4) pos(0)))"'
+bk K11n stcolor `"(scatter lexp gnppc)(lfit lexp gnppc), by(region)"'
+global BC_DS "bc"
+bk K12 stcolor `"`one', colorvar(headroom) by(rep78, clegend(on at(6)))"'
+bk K12n stcolor `"`one', colorvar(headroom) by(rep78, clegend(on))"'
 
 // The abbreviation probes (E4): the style switch each spelling sets.
 local i 0
@@ -278,6 +322,10 @@ with open(Macro.getGlobal("BC_REC"), encoding="utf-8", errors="replace") as fh:
                            "command": "|".join(f[4:]), "labels": []}
         elif k == "L":
             boxes[f[1]]["labels"].append(f[3])
+        elif k == "K":
+            probes[f[1]]["svg_rc"] = int(f[2] or 0)
+            probes[f[1]]["plegend_hole"] = int(f[3] or 0)
+            probes[f[1]]["at_clegend_drawn"] = flag(f[4])
 
 
 def elements(path):
@@ -350,6 +398,39 @@ def label_boxes(pid, labels):
             "units_per_rs": (min(canvas["w"], canvas["h"]) / 100.0
                              if canvas else None)}
 
+
+def svg_texts(pid):
+    """WP-41 41-04: every text of probe *pid*'s SVG as [text, x, y,
+    size_rs, rotate], in units of the canvas and rs (min side / 100)."""
+    doc = svg_truth.svg_document(os.path.join(WORK, pid + ".svg"))
+    cv = doc.get("canvas") or {}
+    ups = min(cv["w"], cv["h"]) / 100.0 if cv else None
+    res = []
+    for t in doc["texts"]:
+        sz = t["size"]
+        res.append([t["text"], t["x"], t["y"],
+                    round(sz / ups, 4) if (sz and ups) else None,
+                    t["rotate"]])
+    return {"canvas": [cv.get("w"), cv.get("h")] if cv else None,
+            "units_per_rs": ups, "texts": res}
+
+
+def label_rs(rec, text):
+    sizes = [t[3] for t in rec["svg"]["texts"] if t[0] == text and t[3]]
+    return max(sizes) if sizes else None
+
+
+for pid in order:
+    p = probes[pid]
+    if "svg_rc" in p and not p["svg_rc"] and not p["rc"]:
+        p["svg"] = svg_texts(pid)
+# K11: the hole legend's key label against the side legend's (PIC-13);
+# K12: the hole colour key's tick label against the side key's.
+if "svg" in probes.get("K11", {}) and "svg" in probes.get("K11n", {}):
+    probes["K11"]["legend_label_rs"] = label_rs(probes["K11"],
+                                                "Fitted values")
+    probes["K11"]["nohole_label_rs"] = label_rs(probes["K11n"],
+                                                "Fitted values")
 
 box_out = {}
 for pid, b in boxes.items():

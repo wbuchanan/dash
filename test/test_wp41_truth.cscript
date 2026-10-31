@@ -722,6 +722,99 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w41_run' {
 }
 * ==== end S03 ====
 
+// S04 helpers (BY-3, BY-13, BY-14): the by() grid of the saved page
+// $W41_S04_PAGE (each <script type="application/json"> block loaded as
+// a Bokeh document, as test_wp29_truth.cscript's _fx_plots_saved loads
+// it): the GridPlot whose children hold a dash_by_* cell, each child's
+// name ("" for a panel) and (row, col).
+python:
+_w41_s04_kids = []
+
+
+def _w41_s04_read():
+    import re as _re, json as _json
+    from sfi import Macro as _M
+    from bokeh.document import Document as _Doc
+    from bokeh.models import GridPlot as _Grid
+    with open(_M.getGlobal("W41_S04_PAGE"), encoding="utf-8") as _fh:
+        _page = _fh.read()
+    del _w41_s04_kids[:]
+    for _blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', _page, _re.S):
+        for _dd in _json.loads(_blob).values():
+            for _g in _Doc.from_json(_dd).select(dict(type=_Grid)):
+                _ch = [(str(getattr(_c[0], "name", "") or ""), int(_c[1]), int(_c[2])) for _c in _g.children]
+                if any(_n.startswith("dash_by_") for _n, _r, _c in _ch):
+                    _w41_s04_kids.extend(_ch)
+
+
+def _w41_s04_ans(ok):
+    from sfi import Macro as _M
+    _M.setGlobal("W41_S04_ANS", "1" if ok else "0")
+
+
+def _w41_s04_hole1():
+    """1 when the two panels sit in cells 2 and 3 of a 2 x 2 grid and no
+    child sits in cell 1."""
+    _p = [(r, c) for n, r, c in _w41_s04_kids if not n.startswith("dash_by_")]
+    if len(_p) != 2:
+        return _w41_s04_ans(False)
+    r0, c0 = min(r for r, c in _p), min(c for r, c in _p)
+    _w41_s04_ans(sorted(_p) == [(r0, c0 + 1), (r0 + 1, c0)] and not [
+        1 for n, r, c in _w41_s04_kids if (r, c) == (r0, c0)])
+
+
+def _w41_s04_below(name):
+    """1 when cell *name* sits below every panel."""
+    _p = [r for n, r, c in _w41_s04_kids if not n.startswith("dash_by_")]
+    _k = [r for n, r, c in _w41_s04_kids if n == name]
+    _w41_s04_ans(bool(_p) and len(_k) == 1 and _k[0] > max(_p))
+
+
+def _w41_s04_has(name):
+    """1 when the grid holds a cell *name*."""
+    _w41_s04_ans(any(n == name for n, r, c in _w41_s04_kids))
+end
+
+* ==== S04 BY-3: by() at() holes ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w41_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4104-1: by(foreign, legend(off at(1))) keeps cell 1 empty whether
+    // or not the legend is drawn: the panels in cells 2 and 3 of a 2 x 2
+    // grid, as twoway's legend_hole (1, read live) places them
+    // (by_chrome_truth.json K02).
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    capture noisily twoway (scatter mpg weight) (lfit mpg weight), by(foreign, legend(off at(1))) nodraw name(_q4104, replace)
+    _w41_expect Q4104-1 "(_rc == 0)" "twoway ... by(foreign, legend(off at(1))) rc `=_rc'"
+    _w41_expect Q4104-1 "(0`._q4104.legend_hole' == 1)" "twoway's legend_hole is not 1"
+    capture graph drop _q4104
+    capture erase "`w41_work'/q4104_1.html"
+    quietly log using "`w41_work'/q4104_1.log", text replace name(_q4104)
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), by(foreign, legend(off at(1))) saving("`w41_work'/q4104_1.html", replace)
+    local q1rc = _rc
+    quietly log close _q4104
+    _w41_expect Q4104-1 "(`q1rc' == 0)" "dash ... saving() rc `q1rc'"
+    cert_log_has "`w41_work'/q4104_1.log", needle("not implemented")
+    _w41_expect Q4104-1 "(r(found) == 0)" "the build named a by() sub-option as not implemented"
+    global W41_S04_PAGE "`w41_work'/q4104_1.html"
+    capture noisily python: _w41_s04_read()
+    _w41_expect Q4104-1 "(_rc == 0)" "the page could not be read (rc `=_rc')"
+    capture noisily python: _w41_s04_hole1()
+    _w41_expect Q4104-1 "(0${W41_S04_ANS} == 1)" "the panels are not in cells 2 and 3 with cell 1 empty"
+    _w41_done Q4104-1 "by()'s undrawn legend keeps its at() hole, as twoway keeps it"
+    macro drop W41_S04_PAGE W41_S04_ANS
+    capture erase "`w41_work'/q4104_1.log"
+    capture erase "`w41_work'/q4104_1.html"
+    dash clear
+
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S06 helper (BY-16): the text of every Title named dash_by_label in the
 // saved page $W41_Q2_PAGE, sorted, into $W41_Q2_GOT (each
 // <script type="application/json"> block loaded as a Bokeh document, as
