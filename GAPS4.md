@@ -417,11 +417,11 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-11 Tracked:** Documented in WP-40, BUGS.md "msize() above 1,000 units is drawn at the default with 'not a recognised size'; the help says any number", commit 4f884dc.
 - **sil:SD-12 Tracked:** Documented in WP-40, BUGS.md "fpfit/fpfitci above 20,000 distinct x is evaluated on a linspace grid, silently", commit 83997b1.
 - **sil:SD-13 Tracked:** Documented in WP-40, BUGS.md "text() whose globals expand past 4,000 characters is refused r(198)", commit 76543d4.
-- **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit pending.
+- **BY-28 Tracked:** Closed in WP-41, BUGS.md "contour/contourline under by() cuts each panel at its own z ticks; twoway uses one shared z axis, so the same colour means a different z per panel", commit ff15f74.
 - **BY-1 Tracked:** Open (WP-41 section 41-02).
 - **BY-24a Tracked:** Open (WP-41 section 41-02).
-- **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit pending.
-- **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit pending.
+- **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
+- **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
 - **BY-3 Tracked:** Open (WP-41 section 41-04).
 - **BY-4 Tracked:** Open (WP-41 section 41-05).
 - **BY-5 Tracked:** Open (WP-41 section 41-05).
@@ -430,12 +430,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-12 Tracked:** Open (WP-41 section 41-02).
 - **BY-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-14 Tracked:** Open (WP-41 section 41-04).
-- **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit pending): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
-- **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit pending.
+- **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
+- **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.
 - **BY-18 Tracked:** Open (WP-41 section 41-05).
 - **VF-6 Tracked:** Open (WP-41 section 41-05).
 - **GW-5 Tracked:** Open (WP-41 section 41-05).
-- **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit pending.
+- **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
 - **PIC-13 Tracked:** Open (WP-41 section 41-04).
 - **BY-7 Tracked:** Open (WP-41 section 41-02).
 - **TR-19 Tracked:** Open (WP-41 section 41-02).

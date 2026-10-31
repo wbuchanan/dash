@@ -997,10 +997,8 @@ and now matches Stata.
 ### Fixed in WP-41
 
 - contour and contourline under by() cut every panel at the first panel's cuts, as twoway does; by(rep78, total) drew 4, 5, 3, 3, 4 and 3 levels, now 4 in every panel (WP-41, BY-28)
-
 - scale() beside by() no longer scales the panels and by(, scale()) scales the whole graph, as twoway does; scatter mpg weight, scale(1.5) by(foreign) drew 12.75pt tick labels, now 8.5pt (WP-41, BY-2)
 - function and kdensity range(varname) under by() span each panel's own range, as twoway does; Domestic and Foreign both drew 1760-4840, now 1800-4840 and 1760-3420 (WP-41, BY-27)
-
 - by() panel labels draw subtitle()'s justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement(), which were named and ignored; orientation() is still named (WP-41, BY-10)
 - by() panels of a date variable read its number, as twoway writes it; by(d) drew 01jan2000, now 14610; a value label of quoted parts is split into lines (WP-41, BY-16)
 
