@@ -422,21 +422,21 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-24a Tracked:** Closed in WP-41, BUGS.md "by()'s title() at position(5), (6) or (7) is drawn above the panels; twoway draws it below them", commit fa4a63f.
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
-- **BY-3 Tracked:** Closed in WP-41, BUGS.md "An at() hole for a legend or colour key that is not drawn is not reserved in the grid", commit pending.
+- **BY-3 Tracked:** Closed in WP-41, BUGS.md "An at() hole for a legend or colour key that is not drawn is not reserved in the grid", commit ff6707d.
 - **BY-4 Tracked:** Open (WP-41 section 41-05).
 - **BY-5 Tracked:** Open (WP-41 section 41-05).
 - **BY-6 Tracked:** Open (WP-41 section 41-05).
 - **BY-32 Tracked:** Open (WP-41 section 41-05).
 - **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.
-- **BY-13 Tracked:** Closed in WP-41, BUGS.md "by(, legloc() clegloc() plegend() plegloc()) are named and ignored", commit pending.
-- **BY-14 Tracked:** Closed in WP-41, BUGS.md "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key", commit pending.
+- **BY-13 Tracked:** Closed in WP-41, BUGS.md "by(, legloc() clegloc() plegend() plegloc()) are named and ignored", commit 9300f24.
+- **BY-14 Tracked:** Closed in WP-41, BUGS.md "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key", commit a75f477.
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
 - **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.
 - **BY-18 Tracked:** Open (WP-41 section 41-05).
 - **VF-6 Tracked:** Open (WP-41 section 41-05).
 - **GW-5 Tracked:** Open (WP-41 section 41-05).
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
-- **PIC-13 Tracked:** Closed in WP-41, BUGS.md "A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)", commit pending.
+- **PIC-13 Tracked:** Closed in WP-41, BUGS.md "A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)", commit f62bb34.
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
 - **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
 - **CV-8 Tracked:** Open (WP-42 section 42-01).
