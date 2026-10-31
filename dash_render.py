@@ -65241,17 +65241,22 @@ class DashRenderer:
                 t_df = t_df.copy()
                 t_df.attrs["_dash_total"] = True
                 groups.append(("Total", t_df))
-        if groups:
+        if groups and any(
+                isinstance(p, dict)
+                and p.get("type") in ("contour", "contourline")
+                for p in graph_spec.get("plots", []) or []):
             # WP-41 BY-28: twoway cuts every panel's contour at its first
             # panel's cuts; the first drawn panel is groups[0] (the Total
-            # panel only when it is alone, with its own qualifiers).
+            # panel only when it is alone, with its own qualifiers).  A
+            # graph with no contour layer has nothing to share; the
+            # readers take {} for it.
             _p0 = groups[0][1]
             self._facet_zranges[_gname] = _dash_by_contour_zranges(
                 _p0, self.df,
                 (_dash_total_spec(graph_spec) if _p0.attrs.get("_dash_total")
                  else graph_spec).get("plots", []),
                 getattr(self, "qual_masks", None),
-                getattr(self.mapper, "date_vars", None))
+                getattr(getattr(self, "mapper", None), "date_vars", None))
             self._facet_zcuts[_gname] = _dash_by_contour_gen_cuts(
                 graph_spec.get("plots", []))
         if not groups:
