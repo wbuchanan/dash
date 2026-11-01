@@ -171,7 +171,7 @@ ALLOWED = {
 }
 
 
-from conftest import render_models  # noqa: E402
+from conftest import render_models, trial_by_blocks  # noqa: E402
 
 
 def _allowed(key):
@@ -3350,7 +3350,8 @@ class TestTheServedBuildNamesTheSavedNotes:
         ap = os.path.join(_TMP, f"trial_{next(_SEQ)}.py")
         with warnings.catch_warnings(record=True) as got:
             warnings.simplefilter("always")
-            dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
+            with trial_by_blocks(dr):
+                dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
         got = sorted(str(w.message) for w in got)
         assert got == saved, (
             f"{name}: the server build's notes differ\n  saved  {saved}"

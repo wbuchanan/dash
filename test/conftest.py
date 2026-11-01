@@ -572,6 +572,41 @@ def render_models(renderer):
     return renderer
 
 
+class _TrialSource:
+    """The text ``_dash_trial_render`` compiles, held for ``exec_app``."""
+
+    def __init__(self, source):
+        self.source = source
+
+
+_TRIAL_FILE = "<dash served app>"
+
+
+@contextlib.contextmanager
+def trial_by_blocks(renderer):
+    """Inside the block, *renderer*'s ``_dash_trial_render`` runs the app's
+    text through ``exec_app`` (its blocks compiled once per process) rather
+    than compiling all 3 MB of it afresh: the same namespace, the same
+    code, the same draw.  Every other ``compile``/``exec`` the renderer
+    makes passes straight through.  ``test_app_loader.py`` pins it."""
+    import builtins
+
+    def _compile(source, filename, mode, *a, **k):
+        if filename == _TRIAL_FILE and mode == "exec" and not a and not k:
+            return _TrialSource(source)
+        return builtins.compile(source, filename, mode, *a, **k)
+
+    def _exec(code, *a, **k):
+        if isinstance(code, _TrialSource):
+            return exec_app(code.source, _TRIAL_FILE, *a, **k)
+        return builtins.exec(code, *a, **k)
+
+    from unittest import mock
+    with mock.patch.object(renderer, "compile", _compile, create=True), \
+            mock.patch.object(renderer, "exec", _exec, create=True):
+        yield
+
+
 #: The generated app's own draw at import, into curdoc(), and the same
 #: lines with the draw turned off (same line count, so every line number
 #: is the file's).

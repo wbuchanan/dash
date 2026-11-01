@@ -151,6 +151,44 @@ class TestTheImportTimeDrawIsTheCallers:
             C.undrawn_app("x = 1\n")
 
 
+class TestTheTrialByBlocks:
+    """``trial_by_blocks``: ``build(trial=True)`` raises the same notes,
+    in order, with the trial's text run through ``exec_app``."""
+
+    def test_the_trial_notes_and_namespace_are_the_whole_compiles(
+            self, tmp_path):
+        import dash_render as dr
+        spec = tp._spec([plot_for("scatter")],
+                        graph_options={"xlabel": "1(1)3, nolabel bogus"})
+        _tag, sp, dp = tp._write(spec)
+
+        def trial(path, by_blocks):
+            with warnings.catch_warnings(record=True) as got:
+                warnings.simplefilter("always")
+                if by_blocks:
+                    with C.trial_by_blocks(dr):
+                        dr.ServerAppBuilder(sp, dp).build(path, trial=True)
+                else:
+                    dr.ServerAppBuilder(sp, dp).build(path, trial=True)
+            return [str(w.message) for w in got]
+
+        whole = trial(str(tmp_path / "w.py"), False)
+        before = dict(C.APP_LOADER_STATS)
+        blocks = trial(str(tmp_path / "b.py"), True)
+        assert blocks == whole and whole, whole
+        assert C.APP_LOADER_STATS["whole"] == before["whole"]
+        assert (C.APP_LOADER_STATS["compiled"] + C.APP_LOADER_STATS["reused"]
+                > before["compiled"] + before["reused"])
+        assert not hasattr(dr, "compile") and not hasattr(dr, "exec")
+
+    def test_other_compiles_and_execs_pass_through(self):
+        import dash_render as dr
+        ns = {}
+        with C.trial_by_blocks(dr):
+            dr.exec(dr.compile("y = 2", "<probe>", "exec"), ns)
+        assert ns["y"] == 2
+
+
 class TestASecondAppReusesTheBlocks:
 
     def test_a_second_spec_compiles_only_what_differs(self, tmp_path):
