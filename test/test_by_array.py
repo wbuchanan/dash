@@ -142,10 +142,16 @@ class TestArrayInset:
     # Flipped (WP-45 GW-6): the padding was the change alone; the scheme's
     # graph margin (s2color's medium, 3.5 units a side) is drawn round the
     # array now, so the padding is the scheme's margin plus the change.
+    # Flipped (WP-41 41-05): the top side also holds the first panel
+    # row's by_indiv top margin (1.2 units, the grid's 9 px row spacing
+    # halved at 3.84 px a unit), between the graph margin and the strips,
+    # as twoway's (G_by_stcolor: the strips 1.2 units under the margin).
     @staticmethod
     def _pct(*units):
         k = min(1.0, 4.0 / 5.5)
-        return " ".join("%.4g%%" % ((u + 3.5) * k) for u in units)
+        top = round(2.4 * 3.84) / 2.0 / 3.84
+        return " ".join("%.4g%%" % ((u + 3.5 + (top if i == 0 else 0)) * k)
+                        for i, u in enumerate(units))
 
     @pytest.mark.parametrize("mode", MODES)
     def test_graph_margin(self, mode):

@@ -1348,9 +1348,11 @@ def test_the_graph_keeps_its_size(mode):
     # Flipped (WP-45 GW-6): the ratio was the graph's; the array is what
     # the graph region holds inside the scheme's graph margin, the whole
     # keeping 7.5:4.5.
-    assert abs(a["ratio"] - dr._dash_inner_ratio(
-        7.5 / 4.5, dr._dash_graph_margin_pct({}, dr.SchemeParser(
-            "stcolor")))) < 1e-9
+    # Flipped (WP-41 41-05): the top also holds the first row's by_indiv
+    # top margin (1.2 units, the 9 px row spacing halved at 3.84 px).
+    _gm = dr._dash_graph_margin_pct({}, dr.SchemeParser("stcolor"))
+    _gm[3] += round(2.4 * 3.84) / 2.0 / 3.84 * 4.5 / 7.5
+    assert abs(a["ratio"] - dr._dash_inner_ratio(7.5 / 4.5, _gm)) < 1e-6
     assert (a["nr"], a["ncols"]) == (2, 3)
     assert {id(p) for p in a["panels"]} == {id(p) for p in panels}
     assert a["base"] == [p.aspect_ratio for p in a["panels"]]

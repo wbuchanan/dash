@@ -398,8 +398,19 @@ class TestSpacing:
                                        {"by": "foreign, compact"}],
                                       scheme="stcolor"))
         got = sorted(tuple(g.spacing) for g in _grids(roots))
-        assert got == [(0, 0), (int(round(2.4 * _UNIT)),
-                                int(round(7.0 * _UNIT)))]
+        # Flipped (WP-41 41-05): the columns touch and each panel's left
+        # and right by_indiv margins (3.5 units) are its own borders, so
+        # the y title's and y labels' cells beside the panels are not 7
+        # units apart; the panels still are (G_by_stcolor: 58.8 px).
+        cols = int(round(7.0 * _UNIT))
+        assert got == [(0, 0), (int(round(2.4 * _UNIT)), 0)]
+        for g in _grids(roots):
+            figs = [c[0] for c in g.children
+                    if type(c[0]).__name__ == "figure"]
+            if g.spacing[0]:
+                assert sorted({(f.min_border_left, f.min_border_right)
+                               for f in figs}) == [(cols // 2,
+                                                    cols - cols // 2)]
 
 
 class TestTheIndivTable:

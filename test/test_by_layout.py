@@ -281,6 +281,10 @@ class TestCombine:
         row = [f for f in figs if abs(f["el"][1] - figs[0]["el"][1]) < 1]
         row.sort(key=lambda f: f["el"][0])
         got = row[1]["el"][0] - row[0]["el"][2]
+        # Flipped (WP-41 41-05): the grid's spacing rides the width scale
+        # (D66), so at 1400 x 840 the two panel margins are 1% of the
+        # 840 px side each unit (twoway's), not 3.84 px a unit.
+        unit = 840 / 100.0
         assert abs(got - 2 * dr._DASH_BY_COMBINE_PANEL_MARGIN_RS * unit) <= 2, (
             got, gap)
 
@@ -557,3 +561,42 @@ class TestCompactPanels:
         for f in figs:
             assert f["ol"] == pytest.approx(4.90 * k, abs=0.1), f
             assert f["alw"] == pytest.approx(4.90 * k, abs=0.1), f
+
+
+def _fg(pid):
+    """One probe of test/fixtures/figure_geometry_truth.json."""
+    import json
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "fixtures", "figure_geometry_truth.json")) as fh:
+        return json.load(fh)["probes"][pid]
+
+
+def _fg_rects(pid, fill, width=1400.0):
+    """The probe's rects of *fill*, in px at *width*: ``[x, y, w, h]``."""
+    p = _fg(pid)
+    k = width / p["canvas"]["w"]
+    return sorted([[r["x"] * k, r["y"] * k, r["w"] * k, r["h"] * k]
+                   for r in p["rects"] if r["fill"] == fill
+                   and r["w"] < 0.9 * p["canvas"]["w"]])
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestTheBandsAsTwoway:
+    """WP-41 41-05 (shots5): scatter mpg weight, by(foreign) under stcolor
+    at 1400 x 840, against twoway's (figure_geometry_truth.json
+    G_by_stcolor): the plot regions 618 px tall (75.3 .. 693.3), each label
+    strip 1.2 units (by_indiv's top) below the graph margin (39.5), and
+    the panels 7 units apart (58.8 px: by_indiv's 3.5 a side)."""
+
+    def test_the_bands(self, mode):
+        figs = _panels_of(_measure(mode, {"by": "foreign"})[1400])
+        assert len(figs) == 2
+        a, b = sorted(figs, key=lambda f: f["frame"][0])
+        tw = _fg_rects("G_by_stcolor", "#ffffff")
+        strips = _fg_rects("G_by_stcolor", "#f0f0f0")
+        got_h = a["frame"][3] - a["frame"][1]
+        assert abs(got_h - tw[0][3]) <= 0.02 * tw[0][3], (a, tw)
+        assert abs(a["strips"][0]["box"][1] - strips[0][1]) <= 2, (a, strips)
+        gap = b["frame"][0] - a["frame"][2]
+        want = tw[1][0] - (tw[0][0] + tw[0][2])
+        assert abs(gap - want) <= 2, (gap, want)

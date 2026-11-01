@@ -737,10 +737,12 @@ _PLAIN_DIGESTS = {
     # 14933864... -> f7c8dba6... saved, d46d95fa... -> cf6d2d71... served:
     # WP-41 41-05, the plot region's outline in the width scale's table;
     # the same under both Pythons.
+    # f7c8dba6... -> 36f06f41... saved, cf6d2d71... -> d5a72d60... served:
+    # WP-41 41-05, the width scale's by() grid spacing pair and its --dash-by-k length (width-scale JS text only); the same under both Pythons.
     ("saved", "plain"):
-        "f7c8dba6dcacb9c31eef3cf6a1e653092e997ab744f665384e2734337c843e10",
+        "36f06f41e440a71fb423956f3f8d387106dd6971585117bd90e6e5795db67a91",
     ("saved", "yaxis2"):
-        "f7c8dba6dcacb9c31eef3cf6a1e653092e997ab744f665384e2734337c843e10",
+        "36f06f41e440a71fb423956f3f8d387106dd6971585117bd90e6e5795db67a91",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -755,9 +757,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "cf6d2d7145fa51df15a3ff5e5a6d480d069bdd34204d48aaed2efaa59ad77f43",
+        "d5a72d60b3b11949f210e833aa313b3ccf1652b9989d0267e411e08132a6af23",
     ("served", "yaxis2"):
-        "cf6d2d7145fa51df15a3ff5e5a6d480d069bdd34204d48aaed2efaa59ad77f43",
+        "d5a72d60b3b11949f210e833aa313b3ccf1652b9989d0267e411e08132a6af23",
 }
 
 

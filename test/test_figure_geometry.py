@@ -298,7 +298,13 @@ class TestGraphRegion:
         st = dict(boxes[0].styles or {})
         # 3.5 units of min(7.5, 4.5) in, as a share of the 7.5 in width.
         pct = 3.5 * 4.5 / 7.5
-        assert st["padding"] == " ".join(["%.4g%%" % pct] * 4)
+        # Flipped (WP-41 41-05): a by() array's top also holds its first
+        # row's by_indiv top margin (1.2 units: the 9 px row spacing
+        # halved at 3.84 px a unit), as twoway's strips sit under it.
+        top = pct + (round(2.4 * 3.84) / 2.0 / 3.84 * 4.5 / 7.5
+                     if go else 0.0)
+        assert st["padding"] == " ".join(["%.4g%%" % top]
+                                         + ["%.4g%%" % pct] * 3)
         assert st["background-color"].lower() == \
             str(figs[0].border_fill_color).lower()
 
@@ -331,3 +337,23 @@ class TestGraphRegion:
         # No panel: the ruler takes the last column, as before.
         out = dr._dash_by_ruler_column([(head, 0, 0, 1, 2)], ru)
         assert tuple(out[-1][1:]) == (0, 2, 1, 1)
+
+    def test_the_panel_borders_and_row_gaps(self):
+        """WP-41 41-05: an outer y axis cell reaches into its panel's
+        left margin by a scaled negative margin, the y title's cell takes
+        that margin on its right; the x title's row keeps half the row
+        spacing and the foot's 0.7 units of it."""
+        from bokeh.models import Plot
+        yax, yt, p1 = Plot(name="dash_by_yaxis_0"), \
+            Plot(name="dash_by_ytitle"), Plot()
+        xt, foot = Plot(name="dash_by_xtitle"), Plot(name="dash_by_foot")
+        dr._dash_by_panel_borders([(yt, 0, 0), (yax, 0, 1), (p1, 0, 2)], 13)
+        assert yax.styles["margin-right"] == \
+            "calc(-13px * var(--dash-by-k, 1))"
+        assert yt.min_border_right == 13 and yt._dash_by_mb
+        dr._dash_by_row_gaps([(p1, 0, 0), (xt, 1, 0), (foot, 2, 0)], 9)
+        assert xt.styles["margin-top"] == "calc(-4.5px * var(--dash-by-k, 1))"
+        u = dr.OptionTranslator.PT_PER_RS * dr.OptionTranslator.PX_PER_PT
+        assert foot.styles["margin-top"] == \
+            "calc(-%.4gpx * var(--dash-by-k, 1))" % (9 - 0.7 * u)
+

@@ -624,7 +624,8 @@ _SAVED_DIGEST = (
     # graph box; the same under both Pythons.
     # 6b5d294b... -> 48aab271...: WP-41 41-05, the plot region's outline
     # in the width scale's table; the same under both Pythons.
-    "48aab2713af559af85e76820f06b3067343a8307bf4eeba2ff27062bfb7227e8")
+    # 48aab271... -> 0754f387...: WP-41 41-05, the width scale's by() grid spacing pair and its --dash-by-k length (width-scale JS text only); the same under both Pythons.
+    "0754f3878b20375a0caf7493e9cbc6221ab39f8d8d27dd9ba90fbe61ba58d401")
 
 
 # ===========================================================================

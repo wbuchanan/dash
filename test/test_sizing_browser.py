@@ -338,7 +338,11 @@ class TestTheGraphMarginInChrome:
             top = min(r[1] for r in rec["rows"])
             bottom = max(r[1] + r[3] for r in rec["rows"])
             m = 0.035 * 840
-            assert abs(left - m) <= 2 and abs(top - m) <= 2, (go, rec)
+            # Flipped (WP-41 41-05): a by() array's first row starts its
+            # by_indiv top margin (1.2 units, 10.1 px) under the graph
+            # margin, as twoway's strips do (G_by_stcolor: 39.5 px).
+            t = m + (0.012 * 840 if go else 0.0)
+            assert abs(left - m) <= 2 and abs(top - t) <= 2, (go, rec)
             assert abs(bottom - (840 - m)) <= 3, (go, rec)
             assert rec["sh"] <= 841 or rec["sh"] == 1100, (go, rec)
 

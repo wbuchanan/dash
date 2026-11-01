@@ -28215,6 +28215,19 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
     if grid is not None and isinstance(getattr(grid, "spacing", None),
                                        (int, float)):
         entries.append([grid, "spacing", float(grid.spacing), "int"])
+    elif grid is not None and isinstance(getattr(grid, "spacing", None),
+                                         (tuple, list)):
+        # WP-41 41-05: a by() grid's row and column spacing.
+        entries.append([grid, "spacing",
+                        [float(v) for v in grid.spacing], "pair"])
+    if grid is not None:
+        # WP-41 41-05: by()'s panel margins, the panels' own borders.
+        for _m in grid.references():
+            if isinstance(_m, Plot) and getattr(_m, "_dash_by_mb", False):
+                for _p in ("min_border_left", "min_border_right"):
+                    _v = getattr(_m, _p, None)
+                    if isinstance(_v, int) and not isinstance(_v, bool):
+                        entries.append([_m, _p, float(_v), "int"])
     plots = []
     for root in models:
         plots += [m for m in root.references() if isinstance(m, Plot)
@@ -28250,6 +28263,11 @@ if (by && typeof Bokeh !== "undefined" && Bokeh.index != null) {
     const r = a.el.getBoundingClientRect();
     if (r.width > 0) { W = r.width; }
   }
+  if (a != null && a.el != null && W > 0 && nominal > 0) {
+    // WP-41 41-05: the scale, for CSS lengths in the grid (an outer y
+    // axis cell's reach into its panel's margin).
+    a.el.style.setProperty("--dash-by-k", String(W / nominal * unit));
+  }
 }
 if (!(W > 0) || !(nominal > 0)) { return; }
 const k = W / nominal * unit;
@@ -28257,7 +28275,13 @@ if (state.k != null && Math.abs(k - state.k) < 0.005 * state.k) { return; }
 state.k = k;
 for (const [m, p, b, kind] of entries) {
   const v = b * k;
-  if (kind === "css") {
+  if (kind === "pair") {
+    const n = [Math.round(b[0] * k), Math.round(b[1] * k)];
+    const cur = m[p];
+    if (!Array.isArray(cur) || cur[0] !== n[0] || cur[1] !== n[1]) {
+      m[p] = n;
+    }
+  } else if (kind === "css") {
     const s = (Math.round(v * 100) / 100) + "pt";
     if (m[p] !== s) { m[p] = s; }
   } else if (kind === "int") {
@@ -53461,18 +53485,29 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             # as twoway does.
             _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar or 1.0),
                               nr, nc, frame_ar=own_ar)
-        grid.spacing = _dash_by_spacing(figs[0], opts)
-        if opts.get("compact") or str(opts.get("style") or "") == "compact":
-            # WP-41 41-05: compact's plot regions touch, as twoway's do
-            # (figure_geometry_truth.json P1: 353.80 .. 2106.47, 2106.47
-            # .. 3859.02 of 3960); a panel's own 5 px border left and
-            # right kept them 10 px apart.
-            for _f in figs:
-                _f.min_border_left = 0
-                _f.min_border_right = 0
+        _rows_px, _cols_px = _dash_by_spacing(figs[0], opts)
+        # WP-41 41-05: each panel's by_indiv margin left and right is its
+        # own border (the grid's columns touch), so the panels are
+        # twoway's 7 units apart (stcolor: 58.8 px at 1400 x 840,
+        # figure_geometry_truth.json G_by_stcolor) and the y title and
+        # the y labels' cell, beside them, are not; compact's touch (P1).
+        # A panel's own 5 px border no longer adds to it.
+        # style(combine) keeps graph combine's own regions (BY-18): its
+        # array's padding holds the panels' outer margins already.
+        _comb = bool(opts.get("combine"))
+        grid.spacing = (_rows_px, _cols_px if _comb else 0)
+        _lb, _rb = (0, 0) if _comb else (_cols_px // 2,
+                                         _cols_px - _cols_px // 2)
+        for _f in figs:
+            if _comb:
+                break
+            _f.min_border_left = _lb
+            _f.min_border_right = _rb
+            _f._dash_by_mb = True
         # The axis titles, legend and colour key beside the panels (WP-30
         # P1.15c); the overall text then spans every column.
         cn = _dash_by_side_grid(grid, side, nr, nc) if side else nc
+        _dash_by_panel_borders(grid.children, _lb)
         # A row's outer y axis (VF-6) is a copy of a panel's axis made
         # before the panels took by()'s size: it takes it now, once.
         for _ch in list(grid.children):
@@ -53489,6 +53524,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
                             cn)
+        if not _comb:
+            _dash_by_row_gaps(grid.children, _rows_px)
         # WP-41 BY-2: by(, scale(#)) scales by()'s overall cells -- its
         # texts, the outer axis titles, the legend and the colour key --
         # once; the panels took it in their size multiplier above.
@@ -53524,6 +53561,17 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             # WP-45 GW-6: the scheme's graph margin round the array, with
             # graphregion(margin())'s change; the fit hook keeps the
             # graph's shape over what the two leave.
+            # WP-41 41-05: the first panel row's by_indiv top margin
+            # (stcolor 1.2 units) between the graph margin and its label
+            # strips, as twoway's (G_by_stcolor: the strips at 39.5 px of
+            # 840, the margin 29.4); the rows below are the grid's row
+            # spacing apart.
+            _top = 0.0 if _comb else _rows_px / 2.0 / (
+                OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT)
+            _sch = getattr(figs[0], "_dash_scheme", None)
+            _gm = list(_gm)
+            _gm[3] += _top * _dash_short_side_share(
+                go, _sch if _sch is not None else SchemeParser.fallback())
             cell = _dash_graph_region_box(cell, _gm,
                                           figs[0].border_fill_color)
             _cb = _fit_cb
@@ -57245,6 +57293,14 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
                            sides=("above",), ring0=True)
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
                            sides=("below",), ring0=True)
+    from bokeh.models import Title as _Title
+    for _m in list(foot.below):
+        # WP-41 41-05: the note and caption under the panels sit on the
+        # x title's row, as twoway's (G_by_stcolor: the note's baseline
+        # 30.2 px under the x title's at 1400 x 840); Bokeh's 10 px
+        # standoff between the cell's frame and the text added to it.
+        if isinstance(_m, _Title):
+            _m.standoff = 0
     # WP-41 BY-12: by()'s t2title and t1title are rows under the head's
     # frame (t1 nearest the panels) and b2title a row over the foot's
     # (nearest them), as twoway draws them (by_text_truth.json bp74,
@@ -57641,12 +57697,13 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
         v = getattr(axis, src, None) if axis is not None else None
         if v is not None:
             kw[dst] = v
-    if side in ("left", "right"):
-        # WP-45 GW-6: an upright title's box is its text, flush with the
-        # graph region's edge, as twoway draws by()'s y title (bp40: its
-        # 112.56 units from the margin at 113.4 to the panels at 226.0)
-        # and r1title/r2title (bp75: R2 ending at the margin).
-        kw["standoff"] = 0
+    # WP-45 GW-6: an upright title's box is its text, flush with the
+    # graph region's edge, as twoway draws by()'s y title (bp40: its
+    # 112.56 units from the margin at 113.4 to the panels at 226.0) and
+    # r1title/r2title (bp75: R2 ending at the margin); WP-41 41-05: the x
+    # title's too, the panels' bottom margin its only gap (G_by_stcolor:
+    # its baseline 768.4 px of 840 at 1400, the plot regions' foot 693.3).
+    kw["standoff"] = 0
     title = Title(text=str(text), align="center", name=name + "_text", **kw)
     setattr(title, _DASH_GRAPH_TEXT_DONE, True)
     cell.add_layout(title, side)
@@ -59320,6 +59377,55 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         + [c for _k, c, _w in side["cells"]], go, scheme, seen, key)
     figs[0]._dash_by_side = side
     return side
+
+
+def _dash_by_panel_borders(children, left_px):
+    """A by() grid's outer y axis cells over their panels' left margin
+    (WP-41 41-05): each row's dash_by_yaxis_ cell reaches *left_px* (the
+    panel's left border, at the 4-inch unit) into its panel's column by a
+    negative right margin that follows the width scale (``--dash-by-k``,
+    set by ``_DASH_WIDTH_SCALE_JS``), so its labels sit on the frame and
+    every panel keeps one frame width, as twoway's (G_by_stcolor: 569.5
+    and 569.4 px); the y title's cell takes the margin on its right,
+    between the title and the labels, as twoway's panel margin lies."""
+    kids = [tuple(c) for c in (children or [])]
+    yrows = {int(c[1]) for c in kids if str(getattr(
+        c[0], "name", "") or "").startswith("dash_by_yaxis_")}
+    for c in kids:
+        nm = str(getattr(c[0], "name", "") or "")
+        if nm.startswith("dash_by_yaxis_") and int(left_px) > 0:
+            c[0].styles = {**dict(c[0].styles or {}),
+                           "margin-right": "calc(-%dpx * var(--dash-by-k, 1))"
+                           % int(left_px),
+                           "min-width": "max-content"}
+        elif nm == "dash_by_ytitle" and yrows:
+            c[0].min_border_right = int(left_px)
+            c[0]._dash_by_mb = True
+
+
+def _dash_by_row_gaps(children, rows_px):
+    """The gaps under a by() grid's panels as twoway's (WP-41 41-05): the
+    grid's rows are *rows_px* apart (by_indiv's bottom and top margins,
+    at the 4-inch unit), right between panel rows; the x title's row
+    keeps the panels' bottom margin alone (half), and the foot's row
+    (the note and caption) 0.7 units under the x title (G_by_stcolor at
+    1400 x 840: the x labels' foot 731, the x title 746 .. 775, the note
+    781 .. 804).  Negative top margins that follow the width scale
+    (``--dash-by-k``)."""
+    unit = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
+    pull = {"dash_by_xtitle": rows_px / 2.0,
+            "dash_by_foot": rows_px - 0.7 * unit}
+    names = {str(getattr(c[0], "name", "") or "") for c in children or ()}
+    for c in children or ():
+        nm = str(getattr(c[0], "name", "") or "")
+        px = pull.get(nm)
+        if nm == "dash_by_foot" and "dash_by_xtitle" not in names:
+            px = rows_px / 2.0
+        if px is None or px <= 0:
+            continue
+        c[0].styles = {**dict(c[0].styles or {}),
+                       "margin-top": "calc(-%.4gpx * var(--dash-by-k, 1))"
+                       % px}
 
 
 def _dash_by_ruler_column(children, ruler):
@@ -71355,7 +71461,8 @@ class ServerAppBuilder:
                          # WP-31 D3b: a panel label at ring(0).
                          "_dash_by_label_inside",
                          "_dash_by_side", "_dash_by_side_grid",
-                         "_dash_by_ruler_column",
+                         "_dash_by_ruler_column", "_dash_by_panel_borders",
+                         "_dash_by_row_gaps",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
                          # The arrowheads' document_ready hooks (WP-31 C1).
                          "_dash_arrow_head_hooks",

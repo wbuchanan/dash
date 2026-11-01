@@ -627,6 +627,8 @@ FUNCTIONS = {
  '_dash_inner_ratio': 'test/test_figure_geometry.py::TestGraphRegion::test_the_inner_ratio',
  '_dash_graph_region_box': 'test/test_figure_geometry.py::TestGraphRegion::test_the_margin_box',
  '_dash_by_ruler_column': 'test/test_figure_geometry.py::TestGraphRegion::test_the_ruler_column',
+ '_dash_by_panel_borders': 'test/test_figure_geometry.py::TestGraphRegion::test_the_panel_borders_and_row_gaps',
+ '_dash_by_row_gaps': 'test/test_figure_geometry.py::TestGraphRegion::test_the_panel_borders_and_row_gaps',
  '_dash_width_scale_entries': 'test/test_figure_geometry.py::TestOnePicture::test_entries',
  '_dash_width_scale_entries.<locals>.walk': 'test/test_figure_geometry.py::TestOnePicture::test_entries',
  '_dash_width_scale': 'test/test_figure_geometry.py::TestOnePicture::test_the_scale_runs_once_per_width',
