@@ -28239,6 +28239,14 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
                         "unit": unit, "by": grid is not None,
                         "state": {"k": None}, "follows": follows},
                   code=_DASH_WIDTH_SCALE_JS)
+    # One scale per anchor: a graph laid out again (a by() graph in a tab
+    # is laid out twice) drops the earlier callback, which would scale,
+    # and carry into the page, a grid the page no longer holds.
+    old = getattr(anchor, "_dash_width_cb", None)
+    if old is not None:
+        anchor.js_property_callbacks = {
+            k: [c for c in v if c is not old]
+            for k, v in anchor.js_property_callbacks.items()}
     keys = _DASH_SPAN_KEYS if grid is not None else ("outer_width",)
     for k in keys:
         anchor.js_on_change(k, cb)
