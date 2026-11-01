@@ -1012,6 +1012,7 @@ and now matches Stata.
 - a legend in a by() at() hole is drawn at by()'s size, as twoway scales it; it kept full-size text (WP-41, PIC-13)
 - under coloruseplegend, by(, plegend(at(#))) with # of 1 or more is refused with r(4019) ("source and target types are not compatible"), as twoway refuses it; dash drew the graph (WP-41, K10)
 - by(, compact) beside another style() draws that style, and compact draws its black outlines, as twoway does (WP-41, BY-4)
+- by(, total) without variables is refused r(100) "varlist required in by()", as twoway refuses it; it was refused r(198) in dash's words; a do-file testing _rc == 198 there needs 100 (WP-41, BY-6)
 
 ### Fixed in WP-40
 

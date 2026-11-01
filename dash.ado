@@ -4679,8 +4679,9 @@ program define _dash_validate_value, rclass
             }
             mata: st_local("_bynone", strofreal(strtrim(st_local("head")) == ""))
             if `_bynone' {
-                mata: _dash_say("err", "dash: by() must name at least one variable (got: ", st_local("value"), ")")
-                exit 198
+                // WP-41 BY-6: twoway's words and rc.
+                display as error "varlist required in by()"
+                exit 100
             }
         }
         // unab expands abbreviations and ranges.  When it refuses, the

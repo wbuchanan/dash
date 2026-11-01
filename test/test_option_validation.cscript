@@ -148,9 +148,12 @@
 *!   OV-111 hover(nosuchvar)          rc 111 naming hover()
 *!   OV-112 by(for, total)            rc 0, registry carries "by":"foreign, total"
 *!   OV-113 by(nosuchvar)             rc 111 naming by()
-*!   OV-114 by(, total)               rc 198 naming by()
+*!   OV-114 by(, total)               rc 100 in twoway's words (Flipped,
+*!                                    WP-41 BY-6: it was r(198))
 *!   Q4105-1 aspectratio() with by(, shrink|overallshrink) rc 198 in
 *!                                    twoway's words (WP-41 BY-5)
+*!   Q4105-2 by(, total)              rc 100 "varlist required in by()"
+*!                                    (WP-41 BY-6)
 *! KPI fmt() (AC-15.2):
 *!   OV-115 fmt(bogus)                rc 198 naming fmt()
 *!   OV-116 fmt("HACKED" %9.2f)       rc 198 naming fmt()
@@ -958,7 +961,8 @@ _ov_case OV-110 `"dash scatter mpg weight, hover(pri wei) name(ov110)"' 0 "" `""
 _ov_case OV-111 `"dash scatter mpg weight, hover(nosuchvar) name(ov111)"' 111 hover
 _ov_case OV-112 `"dash scatter mpg weight, by(for, total) name(ov112)"' 0 "" `""by":"foreign, total""'
 _ov_case OV-113 `"dash scatter mpg weight, by(nosuchvar) name(ov113)"' 111 by
-_ov_case OV-114 `"dash scatter mpg weight, by(, total) name(ov114)"' 198 by
+// Flipped (WP-41 BY-6): twoway refuses r(100), not 198
+_u46_rc OV-114 100 `"dash scatter mpg weight, by(, total) name(ov114)"'
 
 // ----------------------------------------------------------------
 // Q4105-1 (WP-41 BY-5): aspectratio() with by()'s shrink or
@@ -996,6 +1000,14 @@ _q41_shr 0 ishrink
 _q41_shr 0 noshrink
 _q41_shr 0 note("a shrink b")
 _q41_shr 0
+
+// ----------------------------------------------------------------
+// Q4105-2 (WP-41 BY-6): by(, total) with no variables is refused r(100)
+// "varlist required in by()", as twoway refuses it
+// (test/fixtures/by_layout_truth.json Y09).
+// ----------------------------------------------------------------
+_u46_rc Q4105-2 100 `"dash scatter mpg weight, by(, total) name(q41052)"'
+_ov_said Q4105-2 "varlist required in by()"
 
 // ----------------------------------------------------------------
 // OV-115 .. OV-120: KPI fmt() (AC-15.2)

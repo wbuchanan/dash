@@ -5048,11 +5048,11 @@
   - Suggested fix: Refuse it in twoway's words
   - Resolution: Fixed 01nov2026 (WP-41, BY-5). Measured first (scripts/extract_by_layout_truth.do, Y05-Y08e and Y21, stcolor): twoway refuses scatter mpg weight, aspectratio(1) by(foreign, shrink) r(198) "options aspect() and shrink may not be combined", and the same for overallshrink, shr, overallshr, total shrink and aspectratio() written after by(); ishrink, noshrink and note("a shrink b") draw (rc 0). The new Mata reader _dash_by_shrinks matches each by() word without a parenthesis to _dash_by_grammar() as _dash_by_scan does, and _dash_parse_graph_opts and _dash_parse_plot_opts refuse aspectratio() when it finds shrink or overallshrink. Pinned by test_option_validation.cscript Q4105-1 (dash's rc and words, and the reader's cases); fixture test/fixtures/by_layout_truth.json. Closes GAPS4 BY-5 (WP-41, BY-5).
 
-- [ ] Title: by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'
+- [x] Title: by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'
   - File Names and Line Numbers: dash.ado:4263-4267; probe1 T17
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 6 (major): ids BY-6; confirmed; tracked: untracked. Registered as GAPS4 BY-6 (WP-41, section 41-05, Fix).
   - Suggested fix: Use twoway's line and r(100)
-  - Resolution: Not fixed because WP-41 section 41-05 has not landed. Graded S2 (WP-41): drop-in audit package 6, major.
+  - Resolution: Fixed 01nov2026 (WP-41, BY-6). Measured first (scripts/extract_by_layout_truth.do, Y09, stcolor): twoway refuses scatter mpg weight, by(, total) r(100) "varlist required in by()". _dash_validate_value's by() branch now prints twoway's line and exits 100 where it printed "dash: by() must name at least one variable (got: ...)" and exited 198; a do-file that tested _rc == 198 there needs 100. Pinned by test_option_validation.cscript Q4105-2 and OV-114 (flipped from 198); fixture test/fixtures/by_layout_truth.json. Closes GAPS4 BY-6 (WP-41, BY-6).
 
 - [x] Title: by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles
   - File Names and Line Numbers: bygraph_g.class:203-216; probes T4-T7
