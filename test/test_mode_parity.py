@@ -3019,6 +3019,9 @@ CORPUS = [
           [_sc(colorvar="rep78", colordiscrete="yes",
                coloruseplegend="coloruseplegend")],
           go={"by": "foreign, plegend(on)"}),
+    # WP-41 BY-4: compact's outlines, in both modes.
+    _case("by() compact outlines", [_sc()],
+          go={"by": "foreign, compact"}),
 ]
 
 

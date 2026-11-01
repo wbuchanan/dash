@@ -37136,6 +37136,12 @@ _DASH_BYSTYLE_EXPAND = {
     # combine (bystyle_truth.json: 600 SVG lines differ from these): its
     # words and its unboxed labels; twoway lays its panels in graph
     # combine's regions, by()'s grid here (M17), named once.
+    # WP-41 BY-4: compact (bygraphstyle-compact.style:39) zeroes the
+    # spacing and edge labels and draws the plot region and the label box
+    # in the foreground line.
+    "compact": (("compact",), {"subtitle": ", box astextbox "
+                                           "blstyle(foreground)",
+                               "plotregion": "lstyle(foreground)"}, ""),
     "combine": (("rescale", "individual", "ixtitle", "iytitle",
                  "imargin(medsmall)"), {"subtitle": ", nobox"},
                 "its panels are laid out on by()'s grid, not in graph "
@@ -37169,6 +37175,13 @@ def _dash_bystyle_rescale_words(words, toks):
     return tuple(out)
 
 
+def _dash_by_is_compact(tok):
+    """Whether by() sub-option *tok* (no parentheses) is a spelling of
+    ``compact`` (the grammar's ``com`` minimum, ``_DASH_BY_GRAMMAR``)."""
+    name = str(tok or "").strip()
+    return len(name) >= 3 and "compact".startswith(name)
+
+
 def _dash_bystyle_route(spec):
     """The spec with each graph's ``by(..., style(econ|stata7|rescale))``
     written as the by() words and graph options it draws as (WP-31 D10c,
@@ -37199,6 +37212,24 @@ def _dash_bystyle_route(spec):
                     arg = (arg[:-1] if arg.endswith(")") else arg).strip()
                     hit = (i, arg)
                     break
+            # WP-41 BY-4: twoway reads compact only without another
+            # style() (bygraph_g.class:291-293): beside one it is dropped;
+            # alone it is style(compact).
+            bare = [i for i, tok in enumerate(toks) if "(" not in tok
+                    and _dash_by_is_compact(tok)]
+            if hit is not None and hit[1] != "compact" and bare:
+                toks = [t for i, t in enumerate(toks) if i not in bare]
+                hit = (hit[0] - sum(1 for i in bare if i < hit[0]), hit[1])
+                if hit[1] not in _DASH_BYSTYLE_EXPAND:
+                    new_by = head.rstrip() + ", " + " ".join(toks)
+                    for t in [go] + ([g["options"]] if isinstance(
+                            g.get("options"), dict) else []):
+                        t["by"] = new_by
+                    continue
+            elif hit is None and bare:
+                hit = (bare[0], "compact")
+                toks = [t for i, t in enumerate(toks)
+                        if i == bare[0] or i not in bare]
             if hit is None or hit[1] not in _DASH_BYSTYLE_EXPAND:
                 continue
             words, opts, left = _DASH_BYSTYLE_EXPAND[hit[1]]

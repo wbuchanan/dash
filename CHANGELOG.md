@@ -1010,6 +1010,7 @@ and now matches Stata.
 - under coloruseplegend, by(, plegend(on)) draws the plot legend of colour keys and by(, clegend(on)) a colour-bar key, as twoway does; plegend(on) drew nothing and clegend(on) a discrete key with (missing) (WP-41, BY-14)
 - a legend in a by() at() hole is drawn at by()'s size, as twoway scales it; it kept full-size text (WP-41, PIC-13)
 - under coloruseplegend, by(, plegend(at(#))) with # of 1 or more is refused with r(4019) ("source and target types are not compatible"), as twoway refuses it; dash drew the graph (WP-41, K10)
+- by(, compact) beside another style() draws that style, and compact draws its black outlines, as twoway does (WP-41, BY-4)
 
 ### Fixed in WP-40
 

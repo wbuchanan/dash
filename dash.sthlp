@@ -3621,8 +3621,10 @@ included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
     {it:numlist} empty; abbreviation {cmd:hol()}{p_end}
 {synopt:{opt by(varlist, colfirst)}}fill the cells down the columns;
     abbreviation {cmd:colf}{p_end}
-{synopt:{opt by(varlist, compact)}}no space between the panels;
-    {cmd:style(compact)} too{p_end}
+{synopt:{opt by(varlist, compact)}}no space between the panels and a
+    black outline round each plot region and label box;
+    {cmd:style(compact)} too; beside another {cmd:style()} it is ignored,
+    as in {cmd:twoway}{p_end}
 {synopt:{opt by(varlist, iscale([*]#))}}size the panels' text, markers and
     lines; {cmd:*}{it:#} multiplies the default{p_end}
 {synopt:{opt by(varlist, imargin(marginstyle))}}the space around each
@@ -3752,7 +3754,8 @@ title, subtitle, note and caption are not scaled.
 overall text and keys too, as {cmd:twoway} does; a {cmd:scale()} outside
 {cmd:by()} changes nothing on a by() graph, as in {cmd:twoway}.  The space between the
 panels is the scheme's {cmd:by()} margin, none with {cmd:compact}, or
-{cmd:imargin()}.  {cmd:by()} arguments {cmd:twoway} refuses are refused
+{cmd:imargin()}; {cmd:compact} counts only without another {cmd:style()},
+as in {cmd:twoway}.  {cmd:by()} arguments {cmd:twoway} refuses are refused
 in its words and order: {cmd:rows()} with {cmd:cols()}, a {cmd:rows()},
 {cmd:cols()} or {cmd:holes()} that is not positive integers, a repeated
 or capitalised sub-option, an unknown one, and {cmd:iscale()} below 0 or

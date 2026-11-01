@@ -107,11 +107,18 @@ class TestTheExpansion:
         assert set(dr._dash_by_rescale(by)) == want, by
 
     def test_combine_and_others_untouched(self):
-        for by in ("rep78", "rep78, style(compact)",
-                   'rep78, title("style(econ)")'):
+        # Flipped (WP-41 BY-4): style(compact) was left untouched, which
+        # was wrong because twoway draws compact's outlines
+        # (bygraphstyle-compact.style:39); it is routed to its words now.
+        for by in ("rep78", 'rep78, title("style(econ)")'):
             spec = tk._spec([tk._graph("g", tk._TWO, {"by": by})])
             assert dr._dash_bystyle_route(spec)["graphs"][0][
                 "graph_options"]["by"] == by
+        spec = tk._spec([tk._graph("g", tk._TWO,
+                                   {"by": "rep78, style(compact)"})])
+        go = dr._dash_bystyle_route(spec)["graphs"][0]["graph_options"]
+        assert go["by"] == "rep78, compact"
+        assert go["plotregion"] == "lstyle(foreground)"
 
 
 def _summary(roots):
