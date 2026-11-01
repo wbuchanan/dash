@@ -14042,20 +14042,22 @@ if inlist("`only'", "", "S53") & `: list posof "S53" in w31_run' {
     quietly dash scatter mpg weight, name(g1) by(foreign)
     quietly dash scatter price weight, name(g2)
 
-    // U53-1: one top-level grid holds the composite PNG action once; the
-    // Save as SVG action is on its toolbar and on the by() sub-grid's.
+    // U53-1: one top-level grid holds the composite PNG action once, and
+    // the page's one toolbar its Save as SVG action (D67).
     capture noisily dash build, saving("`u53d'/p1.html") replace nobrowser title("Cars")
     local rc1 = _rc
     _w31_expect U53-1 "(`rc1' == 0)" "dash build: r(`rc1')"
     _w31_expect U53-2 "(`rc1' == 0)" "dash build: r(`rc1')"
     if `rc1' == 0 {
         python: _u53_page(r"`u53d'/p1.html")
-        _w31_expect U53-1 "(${u53_png} == 1) & (${u53_svg} == 2)" "dash_composite_png ${u53_png} times, dash_svg_save ${u53_svg} times"
+        // Flipped (DECISIONS D67): one toolbar per page; the by() sub-grid
+        // nested in the top-level grid has no toolbar, so no Save as SVG.
+        _w31_expect U53-1 "(${u53_png} == 1) & (${u53_svg} == 1)" "dash_composite_png ${u53_png} times, dash_svg_save ${u53_svg} times"
         // U53-2: one print stylesheet (shared by the toolbars and the
         // filters) and one beforeprint hook.
         _w31_expect U53-2 "(${u53_css} == 1) & (${u53_bp} == 1)" "print rule ${u53_css} times, beforeprint ${u53_bp} times"
     }
-    _w31_done U53-1 "the top-level grid has Save dashboard once; Save as SVG on each toolbar"
+    _w31_done U53-1 "the top-level grid has Save dashboard once; Save as SVG on the page's one toolbar"
     _w31_done U53-2 "the page holds one print stylesheet and one beforeprint hook"
 
     // U53-3: the served app defines the same constants and appends the
