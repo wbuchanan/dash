@@ -1558,6 +1558,7 @@ FUNCTIONS = {
  '_dash_by_side_grid': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_side_grid',
  '_dash_by_stack_hook': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hook',
  '_dash_by_stack_hooks': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hooks',
+ '_dash_walked': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_walked',
  '_dash_error_hooks': 'test/test_saved_page_errors.py::TestTheWindowHooks::test_the_hook_model',
  # WP-31 H2x: the whole-dashboard export and the print layout
  '_dash_layout_walk': 'test/test_export_composite.py::TestTheHelpers::test_the_walk_order_and_the_grid_flag',

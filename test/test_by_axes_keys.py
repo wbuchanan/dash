@@ -562,6 +562,29 @@ class TestTheUnitFunctions:
         assert dr._dash_by_stack_hooks([column(*figs)]) == [side["hook"]]
         assert dr._dash_by_stack_hooks([column(figure())]) == []
 
+    def test__dash_walked(self, monkeypatch):
+        """One walk per root, shared by the hooks read back to back, and
+        what they find is what a walk of their own finds."""
+        from bokeh.layouts import column
+        from bokeh.models import Model
+        from bokeh.plotting import figure
+        figs = [figure(), figure()]
+        side = dr._dash_by_side(figs, {"by": "g"}, None)
+        roots = [column(*figs), column(figure())]
+        calls = []
+        real = Model.references
+        monkeypatch.setattr(Model, "references",
+                            lambda self: calls.append(self) or real(self))
+        walk = dr._dash_walked(roots + [object()])
+        assert calls == roots
+        assert [set(w.references()) for w in walk[:2]] == \
+            [real(r) for r in roots]
+        assert list(walk[2].references()) == []
+        assert dr._dash_by_stack_hooks(walk) == [side["hook"]]
+        assert dr._dash_arrow_head_hooks(walk) == []
+        assert calls == roots
+        assert dr._dash_walked(None) == []
+
     def test_reflow_side_columns(self):
         """A by() grid's title and legend columns are max-content and the
         stacking width counts the panel columns only."""

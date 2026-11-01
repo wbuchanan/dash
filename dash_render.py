@@ -58891,6 +58891,22 @@ def _dash_by_stack_hook(figs, axes, restore, cells, ruler):
         code=_DASH_BY_STACK_JS)
 
 
+def _dash_walked(models):
+    """*models* walked once each, for hooks read back to back: one
+    stand-in per root whose ``references()`` is the root's own, collected
+    here, so ``_dash_by_stack_hooks`` and ``_dash_arrow_head_hooks`` (or
+    ``_dash_tabs_keys_hook`` and ``_dash_slider_names_hook``) share one
+    walk of the whole graph rather than making one each.  Valid only while
+    no model is added under a root: both pairs only read, or add
+    callbacks to models already there."""
+    from types import SimpleNamespace
+    out = []
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else ()
+        out.append(SimpleNamespace(references=(lambda r=refs: r)))
+    return out
+
+
 def _dash_by_stack_hooks(models):
     """The stacked-view hooks (``CustomJS`` named ``dash_by_stack``) of
     every by() grid under *models*: each grid's first panel carries its
@@ -67968,8 +67984,9 @@ class DashRenderer:
         # callback, which components() serialises only when the models
         # are that document's roots.  A page with no by() grid is
         # serialised as before.
-        _by_hooks = (_dash_by_stack_hooks(all_models)
-                     + _dash_arrow_head_hooks(all_models))
+        _walk = _dash_walked(all_models)
+        _by_hooks = (_dash_by_stack_hooks(_walk)
+                     + _dash_arrow_head_hooks(_walk))
         # WP-31 H2x: each item's whole-dashboard export (the header is
         # this page's markup, so its text; a KPI card is an item of its
         # own, D-53f) and the print layout, whose container the
@@ -67983,8 +68000,9 @@ class DashRenderer:
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
         # WP-31 K6: the tab strips' keyboard and slider names scripts.
-        _hooks += (_dash_tabs_keys_hook(all_models)
-                   + _dash_slider_names_hook(all_models))
+        _walk = _dash_walked(all_models)
+        _hooks += (_dash_tabs_keys_hook(_walk)
+                   + _dash_slider_names_hook(_walk))
         if _hooks:
             from bokeh.document import Document as _HookDoc
             # file_html() left the models in _dummy_col's document.
@@ -69988,8 +70006,9 @@ class DashRenderer:
         _dash_add_composites([layout_root])
         # The stacked view of every by() grid (WP-30 P1.15c), as a
         # callback of the document file_html() serialises.
-        _by_hooks = (_dash_by_stack_hooks([layout_root])
-                     + _dash_arrow_head_hooks([layout_root]))
+        _walk = _dash_walked([layout_root])
+        _by_hooks = (_dash_by_stack_hooks(_walk)
+                     + _dash_arrow_head_hooks(_walk))
         # WP-31 H1: the window error hooks; S53/S54 append theirs here.
         _err_hooks = _dash_error_hooks(getattr(self, "error_status_div",
                                                None))
@@ -69998,8 +70017,9 @@ class DashRenderer:
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
         # WP-31 K6: the tab strips' keyboard and slider names scripts.
-        _hooks += (_dash_tabs_keys_hook([layout_root])
-                   + _dash_slider_names_hook([layout_root]))
+        _walk = _dash_walked([layout_root])
+        _hooks += (_dash_tabs_keys_hook(_walk)
+                   + _dash_slider_names_hook(_walk))
         if _hooks:
             from bokeh.document import Document as _HookDoc
             _hook_doc = _HookDoc()
@@ -71550,6 +71570,7 @@ class ServerAppBuilder:
                          "_dash_by_ruler_column", "_dash_by_panel_borders",
                          "_dash_by_row_gaps",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
+                         "_dash_walked",
                          # The arrowheads' document_ready hooks (WP-31 C1).
                          "_dash_arrow_head_hooks",
                          "_dash_by_label_box",
@@ -75926,8 +75947,9 @@ class ServerAppBuilder:
             "    _dash_add_composites([layout], kpis=not _dash_is_bs_layout(layout_opt))",
             '    doc.add_root(layout)',
             "    # The stacked view of every by() grid (WP-30 P1.15c).",
-            "    _by_hooks = (_dash_by_stack_hooks([layout])",
-            "                 + _dash_arrow_head_hooks([layout]))",
+            "    _walk = _dash_walked([layout])",
+            "    _by_hooks = (_dash_by_stack_hooks(_walk)",
+            "                 + _dash_arrow_head_hooks(_walk))",
             "    # WP-31 H1: the served app logs a script error server-side;",
             "    # S53/S54 append their document_ready hooks to this list.",
             "    _err_hooks = []",
@@ -75936,8 +75958,9 @@ class ServerAppBuilder:
             "    _hooks = [*_by_hooks, *_err_hooks]",
             "    _hooks += [_print_hook]",
             "    # WP-31 K6: the tab strips' keyboard and slider names scripts.",
-            "    _hooks += (_dash_tabs_keys_hook([layout])",
-            "               + _dash_slider_names_hook([layout]))",
+            "    _walk = _dash_walked([layout])",
+            "    _hooks += (_dash_tabs_keys_hook(_walk)",
+            "               + _dash_slider_names_hook(_walk))",
             "    if _hooks:",
             "        doc.js_on_event('document_ready', *_hooks)",
             "    doc.title = title_text or 'dash'",
