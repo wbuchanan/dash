@@ -62,6 +62,11 @@ def _opts(t, extra=None):
     return o
 
 
+from conftest import group_by_params  # noqa: E402
+
+#: Every test of one mode reads that mode's one build (``_pairs``): on one
+#: worker it is built once.
+xdist_group_of = group_by_params("horizontal", "mode")
 _BUILT = {}
 
 

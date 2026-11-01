@@ -92,6 +92,11 @@ def _build(mode, cases, scheme=None):
     return out, caught
 
 
+from conftest import group_by_params  # noqa: E402
+
+#: The classes read one build per (page, mode) (``_cached``): with every
+#: test of a mode on one worker each page is built once.
+xdist_group_of = group_by_params("region_remainder", "mode")
 _CACHE = {}
 
 

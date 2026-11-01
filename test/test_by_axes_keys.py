@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import load_app, render_models  # noqa: E402
+from conftest import group_by_params, load_app, render_models  # noqa: E402
 import test_by_grid as tg  # noqa: E402
 import test_by_text as tbt  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
@@ -300,6 +300,9 @@ def _category(pid):
 #: 22oct2026): the first probe of each _category and every fourth probe of
 #: the rest; release checks every probe served.  A node builds one page of
 #: its group's probes.
+#: The three probe classes read one build per (mode, group): on one worker
+#: it is built once, not once per worker that draws one of them.
+xdist_group_of = group_by_params("by_axes_keys", "mode", "group")
 _PARAMS = probe_params(sorted(_PROBES), representative(
     sorted(_PROBES), _category, stride=4), size=6, saved_size=14)
 #: The probes the single-probe tests read, built as one small page.

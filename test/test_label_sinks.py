@@ -166,7 +166,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json, load_app  # noqa: E402
+from conftest import group_by_params, make_data_json, load_app  # noqa: E402
 
 #: The bokeh minors the behaviour described above was verified on: the
 #: verified window's (dash_render._DASH_BOKEH_VERIFIED, WP-30 P1.30).  A
@@ -539,6 +539,12 @@ def _build(root, mode, pid, layout="auto", inputs=None):
     return Built(mode, pid, expected, models, carriers(models), doc=doc,
                  source=ap.read_text(),
                  warnings=[str(w.message) for w in caught])
+
+
+#: Every check of one (mode, payload) dashboard on one xdist worker:
+#: ``built`` builds each once per worker, and spread over every worker each
+#: was built about eight times.
+xdist_group_of = group_by_params("sinks", "mode", "pid")
 
 
 @pytest.fixture(scope="module")

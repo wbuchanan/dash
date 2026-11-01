@@ -46,7 +46,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from by_panel_probe import (by_grid, chrome_texts, panel_label,  # noqa: E402
                             panel_label_title)
-from conftest import load_app  # noqa: E402
+from conftest import group_by_params, load_app  # noqa: E402
 from known_differences import dead_rows, known_problems  # noqa: E402
 from probe_groups import (known_in, known_outside, probe_params,  # noqa: E402
                           representative)
@@ -235,6 +235,9 @@ _SAVED_PER_NODE = 12
 _SERVED_SUBSET = representative(
     _ok_probes(), _category,
     always={k.partition(":")[0] for k in BY_POSITION_KNOWN}, stride=5)
+#: The three probe classes read one build per (mode, group): on one worker
+#: it is built once, not once per worker that draws one of them.
+xdist_group_of = group_by_params("by_text", "mode", "group")
 _PARAMS = probe_params(_ok_probes(), _SERVED_SUBSET, size=_SERVED_PER_NODE,
                        saved_size=_SAVED_PER_NODE)
 

@@ -270,6 +270,20 @@ def _deselect_release_tier(config, items):
     return _deselect_tier(config, items, "release")
 
 
+def group_by_params(prefix, *names):
+    """An ``xdist_group_of`` for a test module (see
+    ``pytest_collection_modifyitems``): the items that share the values of
+    the parameters *names* -- the key of the module's build cache -- run on
+    one worker, in group ``prefix:<values>``; an item without them all is
+    left to the scheduler."""
+    def xdist_group_of(item):
+        params = getattr(getattr(item, "callspec", None), "params", {})
+        if not all(n in params for n in names):
+            return None
+        return ":".join([prefix] + [str(params[n]) for n in names])
+    return xdist_group_of
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config, items):
     """Keep every comparison of one parity corpus entry on one xdist worker.
@@ -292,6 +306,18 @@ def pytest_collection_modifyitems(config, items):
     _deselect_release_tier(config, items)
     _deselect_tier(config, items, "batch")
     for item in items:
+        # A module that builds one fixture per parameter combination and
+        # checks it many ways names each item's group itself, as
+        # ``xdist_group_of(item)`` (None: no group), so each build runs on
+        # one worker rather than on every worker that draws one of its
+        # checks.
+        group_of = getattr(getattr(item, "module", None), "xdist_group_of",
+                           None)
+        if group_of is not None:
+            group = group_of(item)
+            if group:
+                item.add_marker(pytest.mark.xdist_group(name=group))
+            continue
         if not item.nodeid.startswith("test/test_mode_parity.py"):
             continue
         params = getattr(getattr(item, "callspec", None), "params", {})

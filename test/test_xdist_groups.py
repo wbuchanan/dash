@@ -115,3 +115,18 @@ class TestTheParityGroupsReachXdist:
         _modify(request.config, items)
         assert items[0].nodeid == nodeid
         assert list(items[0].iter_markers("xdist_group")) == []
+
+    def test_a_module_names_its_own_groups(self, request):
+        nodeid = "test/test_label_sinks.py::TestTextSinks::test_x[a]"
+        items = [_Item(nodeid, mode="served", pid="script"),
+                 _Item(nodeid.replace("[a]", "[b]"))]
+        group_by_params = _conftest_plugin(request.config).group_by_params
+        mod = SimpleNamespace(
+            xdist_group_of=group_by_params("sinks", "mode", "pid"))
+        for it in items:
+            it.module = mod
+        _modify(request.config, items)
+        assert [m.kwargs for m in items[0].iter_markers("xdist_group")] \
+            == [{"name": "sinks:served:script"}]
+        assert items[0].nodeid == nodeid + "@sinks:served:script"
+        assert list(items[1].iter_markers("xdist_group")) == []

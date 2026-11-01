@@ -28,8 +28,13 @@ import test_by_axes_keys as tk  # noqa: E402
 import test_by_remainder as tr  # noqa: E402
 from by_panel_probe import panel_label_title  # noqa: E402
 
+from conftest import group_by_params  # noqa: E402
+
 _MODES = ("saved", "served")
 _BUILT = {}
+#: Every test of one mode reads that mode's one build (``_build``): on one
+#: worker it is built once.
+xdist_group_of = group_by_params("by_label_position", "mode")
 
 #: graph name -> the graph's subtitle() (by(foreign)).
 _SUBS = {

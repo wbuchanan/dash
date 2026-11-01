@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 import dash_render as dr  # noqa: E402
 from by_panel_probe import grid_cells, side_title  # noqa: E402
-from conftest import load_app  # noqa: E402
+from conftest import group_by_params, load_app  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from probe_groups import probe_params, representative  # noqa: E402
@@ -149,6 +149,9 @@ def _summary(figs):
     return out
 
 
+#: The two probe classes read one build per (mode, group): on one worker
+#: it is built once, not once per worker that draws one of them.
+xdist_group_of = group_by_params("series_labels", "mode", "group")
 _CACHE = {}
 
 
