@@ -101,8 +101,9 @@ def _saved(spec, which="auto"):
 
 
 def _served(spec, which="auto"):
-    """The served app's document; the app is imported outside any warning
-    capture (its module-level code runs once)."""
+    """The served app's document, drawn once and outside any warning
+    capture of its own: its session notes reach the caller's capture
+    (test_axis_look_options reads them), as the import-time draw's did."""
     from bokeh.document import Document
     tag, sp, dp = _write(spec, which)
     ap = os.path.join(tb._TMP, "ns_app_%d.py" % tag)
@@ -110,10 +111,8 @@ def _served(spec, which="auto"):
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
     mod = tb.load_app(ap, "_ns_app_%d" % tag, draw=False)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        doc = Document()
-        mod.make_document(doc)
+    doc = Document()
+    mod.make_document(doc)
     return doc
 
 
