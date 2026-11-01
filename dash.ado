@@ -1044,8 +1044,10 @@ program define _dash_parse_graph_opts, sclass
     }
     // WP-41 BY-5: twoway refuses aspect() beside by()'s shrink or
     // overallshrink (bygraph_g.class:559-566), read from by()'s words.
-    if `: length local aspectratio' & strpos(`"`macval(by)'"', ",") {
-        mata: st_local("_by_shr", strofreal(_dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .))))
+    // by() is read in Mata alone: its text may hold "' and cannot sit in
+    // an expression (by(foreign, title("'90s by")) was r(133)).
+    if `: length local aspectratio' {
+        mata: st_local("_by_shr", strofreal(strpos(st_local("by"), ",") ? _dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .)) : 0))
         if `_by_shr' {
             display as error "options aspect() and shrink may not be combined"
             exit 198
@@ -1400,8 +1402,10 @@ program define _dash_parse_plot_opts, sclass
     }
     // WP-41 BY-5: twoway refuses aspect() beside by()'s shrink or
     // overallshrink (bygraph_g.class:559-566), read from by()'s words.
-    if `: length local aspectratio' & strpos(`"`macval(by)'"', ",") {
-        mata: st_local("_by_shr", strofreal(_dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .))))
+    // by() is read in Mata alone: its text may hold "' and cannot sit in
+    // an expression (by(foreign, title("'90s by")) was r(133)).
+    if `: length local aspectratio' {
+        mata: st_local("_by_shr", strofreal(strpos(st_local("by"), ",") ? _dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .)) : 0))
         if `_by_shr' {
             display as error "options aspect() and shrink may not be combined"
             exit 198
