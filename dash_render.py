@@ -58958,9 +58958,12 @@ def _dash_arrow_head_hooks(models):
         refs = root.references() if hasattr(root, "references") else ()
         for m in refs:
             # The figure each head renderer is drawn on: the script holds
-            # the renderer, not the figure (WP-31 C1).
+            # the renderer, not the figure (WP-31 C1).  Asked of the class:
+            # a model's own hasattr() of a name it lacks builds Bokeh's
+            # did-you-mean list (difflib) on every miss, about a sixth of
+            # a by() page's draw.  A model's properties are its class's.
             for r in (getattr(m, "renderers", None) or []) \
-                    if hasattr(m, "x_range") else ():
+                    if hasattr(type(m), "x_range") else ():
                 fig_of.setdefault(getattr(r, "id", None), m)
             if getattr(m, "name", "") != "dash_arrow_head" or \
                     type(m).__name__ != "CustomJS" or m.id in seen:
