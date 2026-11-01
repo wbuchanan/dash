@@ -410,17 +410,24 @@ def live(ns):
 
 class _Stall:
     """_compute_kpi held until released: a recompute that takes as long as
-    the test needs, entered on whichever thread runs it."""
+    the test needs, entered on whichever thread runs it.  Only the first
+    call is held: a session drawn, or a brush made, while it waits computes
+    its cards at once, rather than waiting out the 15 s bound and passing
+    only because the bound ran out."""
 
     def __init__(self, ns):
         self.entered, self.release = threading.Event(), threading.Event()
         self.threads = []
         real = ns["_compute_kpi"]
+        lock = threading.Lock()
 
         def stalled(*a, **k):
             self.threads.append(threading.current_thread().name)
-            self.entered.set()
-            self.release.wait(15)
+            with lock:
+                first = not self.entered.is_set()
+                self.entered.set()
+            if first:
+                self.release.wait(15)
             return real(*a, **k)
         ns["_compute_kpi"] = stalled
 
