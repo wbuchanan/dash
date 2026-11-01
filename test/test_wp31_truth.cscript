@@ -7381,13 +7381,27 @@ def _u32_check(dr_dir, k, case):
         f = figs[0]
         if case == "title":
             v = "%.4f" % dr.OptionTranslator.css_to_pt(f.title.text_font_size)
-        elif case == "fy":
-            v = "%.4f %d" % (float(f.aspect_ratio), int(f.max_height))
-        elif case == "fx":
-            v = str((f.styles or {}).get("max-width", ""))
+        elif case == "fxy":
+            # WP-45 VF-11/GW-20: the figure keeps the graph's box; the
+            # plot and its axes are drawn in # percent of 384 px, centred,
+            # the rest added to the borders: the aspect ratio, the top and
+            # right borders (no axis on either), min_border, and the
+            # graph's nominal box (the saved figure's, the served one's
+            # alike).
+            nw, nh = a[0]._dash_nominal_px
+            v = "%.4f %s %s %s %s %s" % (
+                float(f.aspect_ratio), f.min_border_top, f.min_border_right,
+                f.min_border, nw, nh)
         elif case == "ratio":
-            v = "%.4f %s %s" % (float(f.aspect_ratio), f.frame_width,
-                                f.frame_height)
+            # WP-45 VF-4: the figure keeps the graph's shape; the frame's
+            # aspectratio() is the size follow's "slack" part
+            # (_DASH_GRAPH_MARGIN_JS), its ar the frame's height/width.
+            sl = [c.args["item"].get("slack") for c in
+                  f.js_property_callbacks.get("change:outer_width", [])
+                  if c.code == dr._DASH_GRAPH_MARGIN_JS]
+            sl = sl[0] if sl and sl[0] else {}
+            v = "%.4f %s %s %s" % (float(f.aspect_ratio), f.frame_width,
+                                   f.frame_height, sl.get("ar"))
         elif case == "place":
             v = "%s %s %s %s" % (f.frame_width, f.frame_height,
                                  f.min_border_left, f.min_border_right)
@@ -7443,8 +7457,11 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
     _w31_expect U32-1 "abs(${u32_v} / `v0' - `tw1' / `tw0') < .02" "served: `v0' -> ${u32_v}"
     _w31_done U32-1 "scale(1.5) draws the title `tw1'/`tw0' as large, as twoway, saved and served"
 
-    // U32-2: fysize(50) halves the plot region's height in twoway and the
-    // figure's height in dash; fxsize(50) holds it to half its width.
+    // U32-2: fysize(50) halves the plot region's height in twoway; dash
+    // keeps the graph's box and draws the plot and its axes in 50% of 384
+    // px, centred (WP-45 VF-11/GW-20, measured sizing_truth.json
+    // fysize_50/fxsize_50): the top border grows by the rest's half;
+    // fxsize(50) alike across, the right border.
     _u32_tw "`u32d'/t2a.svg" scatter mpg weight
     python: _u32_plot("`u32d'/t2a.svg")
     local h0 = real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))
@@ -7453,25 +7470,32 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
     local h1 = real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))
     _w31_expect U32-2 "`h1' < .6 * `h0'" "twoway's plot height `h0' -> `h1'"
     _u32_dash "`u32d'" 2a scatter mpg weight
-    python: _u32_check("`u32d'", "2a", "fy")
+    python: _u32_check("`u32d'", "2a", "fxy")
     local s0 ${u32_s}
     local v0 ${u32_v}
-    _u32_dash "`u32d'" 2b scatter mpg weight, fysize(50)
-    python: _u32_check("`u32d'", "2b", "fy")
-    foreach m in s v {
-        local a0 : word 1 of ``m'0'
-        local a1 : word 1 of ${u32_`m'}
-        local m0 : word 2 of ``m'0'
-        local m1 : word 2 of ${u32_`m'}
-        _w31_expect U32-2 "abs(`a1' / `a0' - 2) < 1e-6 & abs(`m1' - `m0' / 2) <= 1" "`m': ratio `a0' -> `a1', height bound `m0' -> `m1'"
+    foreach f in y x {
+        _u32_dash "`u32d'" 2`f' scatter mpg weight, f`f'size(50)
+        python: _u32_check("`u32d'", "2`f'", "fxy")
+        foreach m in s v {
+            local a0 : word 1 of ``m'0'
+            local a1 : word 1 of ${u32_`m'}
+            local bt : word 2 of ${u32_`m'}
+            local br : word 3 of ${u32_`m'}
+            local mb : word 4 of ${u32_`m'}
+            local nw : word 5 of ${u32_`m'}
+            local nh : word 6 of ${u32_`m'}
+            if "`f'" == "y" local got = `bt' - `mb'
+            else local got = `br' - `mb'
+            local side = cond("`f'" == "y", `nh', `nw')
+            local want = (`side' - .5 * 384) / 2
+            _w31_expect U32-2 "abs(`a1' - `a0') < 1e-6 & abs(`got' - `want') <= 1" "f`f'size(50) `m': ratio `a0' -> `a1', border added `got', want `want'"
+        }
     }
-    _u32_dash "`u32d'" 2c scatter mpg weight, fxsize(50)
-    python: _u32_check("`u32d'", "2c", "fx")
-    _w31_expect U32-2 `"("${u32_s}" == "50%") & ("${u32_v}" == "50%")"' "max-width ${u32_s} ${u32_v}"
-    _w31_done U32-2 "fysize(50) halves the height, fxsize(50) the width, saved and served"
+    _w31_done U32-2 "fysize(50) and fxsize(50) draw the plot in half of 384 px, centred, saved and served"
 
-    // U32-3: aspectratio(1) alone: twoway's plot region square; dash's
-    // figure square (the documented difference: its frame is not).
+    // U32-3: aspectratio(1) alone: twoway's plot region square in the
+    // graph's 5.5 x 4 box; dash's figure keeps the box's shape and its
+    // size follow draws the frame square (WP-45 VF-4).
     _u32_tw "`u32d'/t3.svg" scatter mpg weight, aspectratio(1)
     python: _u32_plot("`u32d'/t3.svg")
     local r = (real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))) / (real(word("${u32_tw}", 3)) - real(word("${u32_tw}", 1)))
@@ -7479,9 +7503,9 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
     _u32_dash "`u32d'" 3 scatter mpg weight, aspectratio(1)
     python: _u32_check("`u32d'", "3", "ratio")
     foreach m in s v {
-        _w31_expect U32-3 `"("${u32_`m'}" == "1.0000 None None")"' "`m': ${u32_`m'}"
+        _w31_expect U32-3 `"("${u32_`m'}" == "1.3750 None None 1.0")"' "`m': ${u32_`m'}"
     }
-    _w31_done U32-3 "aspectratio(1) alone: twoway's plot region h/w `r', dash's figure 1:1, saved and served"
+    _w31_done U32-3 "aspectratio(1) alone: twoway's plot region h/w `r', dash's frame 1:1 in the graph's box, saved and served"
 
     // U32-4: aspectratio(1) xsize(8) ysize(4): a square plot region,
     // pushed right by placement(e), in twoway and in dash.
