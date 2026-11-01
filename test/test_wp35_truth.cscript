@@ -944,7 +944,10 @@ def _q3509_walk(obj, out):
             out.append(obj)
         for v in obj.values():
             _q3509_walk(v, out)
-    elif isinstance(obj, list):
+    # Flipped (WP-41 41-05, DECISIONS D66): lists alone was wrong once the
+    # width scale's callback, a map whose entries Document.to_json gives
+    # as tuples, is where a figure's title and axes are first written.
+    elif isinstance(obj, (list, tuple)):
         for v in obj:
             _q3509_walk(v, out)
 
