@@ -77,8 +77,8 @@ class TestTheExpansion:
         words = dr._dash_by_tokens(go["by"].partition(",")[2])
         # Flipped (WP-41 BY-18): combine's words were its bygraphstyle
         # file's alone, which was wrong because its regions are drawn now,
-        # through the internal word __combine (_DASH_BYSTYLE_EXPAND).
-        want = rec["by_words"].split() + (["__combine"]
+        # through the internal word __dash_combine (_DASH_BYSTYLE_EXPAND).
+        want = rec["by_words"].split() + (["__dash_combine"]
                                           if style == "combine" else [])
         assert words == want, words
         for k, v in _drawn_opts(style).items():

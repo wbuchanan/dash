@@ -37429,7 +37429,7 @@ def _dash_parse_by(by_raw, warn=True):
         name = tok.split("(", 1)[0].strip()
         arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
         _row = _dash_by_word(tok)[0]
-        if tok == "__combine":
+        if tok == "__dash_combine":
             # WP-41 BY-18: style(combine)'s regions (_dash_bystyle_route).
             pass
         elif _row in ("rows", "colfirst", "holes", "compact", "iscale",
@@ -37536,12 +37536,12 @@ _DASH_BYSTYLE_EXPAND = {
                                "plotregion": "lstyle(foreground)"}, ""),
     # combine (bystyle_truth.json: 600 SVG lines differ from these): its
     # words and its unboxed labels, and its regions (WP-41 BY-18): the
-    # internal word __combine (never syntax: dash.ado refuses it as
+    # internal word __dash_combine (never syntax: dash.ado refuses it as
     # twoway does) lays the panels in graph combine's regions
     # (_DASH_BY_COMBINE_INSET_RS, _DASH_BY_COMBINE_PANEL_MARGIN_RS).
     "combine": (("rescale", "individual", "ixtitle", "iytitle",
-                 "imargin(medsmall)", "__combine"), {"subtitle": ", nobox"},
-                ""),
+                 "imargin(medsmall)", "__dash_combine"),
+                {"subtitle": ", nobox"}, ""),
 }
 
 #: WP-41 BY-18: graph combine's regions under by(, style(combine)),
@@ -37555,9 +37555,9 @@ _DASH_BY_COMBINE_PANEL_MARGIN_RS = 1.76
 
 def _dash_by_is_combine(by_raw):
     """Whether a routed by() string holds style(combine)'s internal word
-    ``__combine`` (WP-41 BY-18, :data:`_DASH_BYSTYLE_EXPAND`)."""
+    ``__dash_combine`` (WP-41 BY-18, :data:`_DASH_BYSTYLE_EXPAND`)."""
     _v, comma, subs = str(by_raw or "").partition(",")
-    return bool(comma) and "__combine" in _dash_by_tokens(subs.strip())
+    return bool(comma) and "__dash_combine" in _dash_by_tokens(subs.strip())
 
 
 def _dash_bystyle_rescale_words(words, toks):
