@@ -7609,7 +7609,10 @@ if inlist("`only'", "", "S31") & `: list posof "S31" in w30_run' {
     _w30_expect AXL-23 "(r(rc) == 0)" "by() with the ignored forms: rc `=r(rc)'"
     python: __import__("__main__")._axl_case()
     python: Macro.setGlobal("AXL_OK", "1" if Macro.getGlobal("AXL_PROF") == Macro.getGlobal("AXL_BASE") else "0")
-    _w30_expect AXL-23 "(${AXL_OK} == 1 & ${AXL_NFIG} == 2)" "the panels' axes differ from by(foreign) alone"
+    // Flipped (WP-41 VF-6): the two panels and the row's outer y-axis
+    // cell (dash_by_yaxis_1, its one left axis a copy of the first
+    // panel's), compared alike.
+    _w30_expect AXL-23 "(${AXL_OK} == 1 & ${AXL_NFIG} == 3)" "the panels' axes differ from by(foreign) alone (${AXL_NFIG} axis figures)"
     capture cert_log_has "`lg'", needle("sub-option")
     local hrc = _rc
     local hn = cond(`hrc', -1, r(found))
