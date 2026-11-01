@@ -5972,3 +5972,9 @@
   - Suggested fix: Keep the graph's shape on the region box and centre the array in it.
   - Resolution: Fixed 01nov2026 (WP-41, 41-05): under aspectratio() the by() region box keeps the graph's xsize:ysize (CSS aspect-ratio) and centres the array (align-items); the strips now start at 65 px. Pinned by test/test_by_layout.py::TestAspectArrayCentred.
 
+- [x] Title: by()'s spanned panel label box (subtitle(, span)) stopped at the frame of a row's first panel once its y labels moved into the outer y axis cell
+  - File Names and Line Numbers: dash_render.py _DASH_SPAN_JS (region "panel")
+  - Description: test/test_by_label_options.py::TestLabelOptionsInChrome L06 failed from d6aec16 on: twoway runs the span box from 1.5 units left of the panel's y labels (by_label_truth.json L06); since VF-6 the first panel's y labels are drawn by the row's dash_by_yaxis_ cell, so the span hook found no left axis on the panel and the box started at the frame (fill 28 = frame 28 in the panel's canvas).
+  - Suggested fix: Read the outer y axis cell's labels for the label box.
+  - Resolution: Fixed in part 01nov2026 (WP-41, 41-05): for a label box the span hook reads the abutting outer y axis cell's labels, so the box reaches over the panel's left margin to its canvas's edge; it cannot reach over the labels themselves, which another canvas draws (open). Titles, notes and captions on a panel are unchanged.
+

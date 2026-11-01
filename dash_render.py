@@ -40013,7 +40013,7 @@ const graphBox = (b) => {
   }
   return b.el;
 };
-const region = (ref) => {
+const region = (ref, labels) => {
   if (ref === "panel") {
     let b = pv.parent;
     while (b != null && !(b.model != null && b.model.type === "GridBox")) {
@@ -40041,13 +40041,42 @@ const region = (ref) => {
       if (ab == null || !(ab.width > 0)) { continue; }
       ax = ax == null ? ab.x0 : Math.min(ax, ab.x0);
     }
+    // WP-41 41-05: a label box (*labels*) on a row's first panel whose y
+    // labels its outer y axis cell draws (VF-6) reaches over its canvas's
+    // left margin towards those labels, as twoway's runs from left of
+    // them (by_label_truth.json L06); never past the canvas.
+    let outer = false;
+    if (labels && ax == null && b != null && pv.canvas_view != null) {
+      const me = pv.el.getBoundingClientRect();
+      const cl = pv.canvas_view.el.getBoundingClientRect().left;
+      for (const k of (b.child_views || [])) {
+        const nm = (k.model != null && k.model.name) || "";
+        if (!nm.startsWith("dash_by_yaxis_") || k.el == null
+            || k.canvas_view == null) { continue; }
+        const kr = k.el.getBoundingClientRect();
+        if (kr.bottom <= me.top + 1 || kr.top >= me.bottom - 1
+            || kr.left > me.left + 1 || kr.right < me.left - 1) {
+          continue;
+        }
+        const kl = k.canvas_view.el.getBoundingClientRect().left;
+        for (const [am, av] of (k.renderer_views || [])) {
+          if (am == null || !am.visible
+              || !String(am.type || "").endsWith("Axis")) { continue; }
+          const ab = av != null ? av.bbox : null;
+          if (ab == null || !(ab.width > 0)) { continue; }
+          const x = kl + ab.x0 - cl;
+          ax = ax == null ? x : Math.min(ax, x);
+          outer = true;
+        }
+      }
+    }
     const lx = ax != null ? ax - 1.5 * v : (fb != null ? fb.x0 : 0);
     // A first panel whose y labels sit at its canvas's edge has no room
     // for the box twoway starts 1.5 units left of them: the panel's left
     // border grows by what is missing (BUGS.md "A first panel's spanned
     // note started at its canvas's edge, not 1 unit left of its y
     // labels"), and the box is placed on the next layout.
-    if (lx < -0.5 && fb != null) {
+    if (lx < -0.5 && fb != null && !outer) {
       const want = Math.ceil(fb.x0 - lx);
       const cur = pv.model.min_border_left != null
         ? pv.model.min_border_left : (pv.model.min_border || 0);
@@ -40133,7 +40162,7 @@ for (const it of items) {
     const pad = +m.padding || 0;
     let L = fb.x0, R = fb.x1, moved = false;
     if (mode === "span") {
-      const gp = region("panel");
+      const gp = region("panel", true);
       if (gp != null) { L = Math.min(L, gp.L); R = Math.max(R, gp.R); }
       // Never past the panel's canvas, where it would be cut off.
       L = Math.max(L, 0);
