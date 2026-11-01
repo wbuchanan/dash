@@ -3522,7 +3522,7 @@ GAPS4_ALL = tuple(GAPS4_WP)
 
 #: The WPs whose closeout (step WE.2) has run, in run order; each WE
 #: appends its own (TestGaps4Tracking::test_every_closed_wp_is_closed).
-GAPS4_CLOSED_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38", "WP-40")
+GAPS4_CLOSED_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38", "WP-40", "WP-41")
 
 #: WP -> the commit that recorded its closeout counts (WE.2's follow-up
 #: commit); test_the_gaps4_closeout_counts_are_computed recomputes them.

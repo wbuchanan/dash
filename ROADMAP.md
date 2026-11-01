@@ -5295,6 +5295,25 @@ Summarised from .ultraplan/sections/index.md (M10, Q44, Q45) and .ultraplan/revi
 - **Left open:** none of WP-40's rows.
 - **Gate (30oct2026):** `make test-all` on cc50c88 -- pytest 40,233 passed, cert 73 of 73 (514 s), 1,431 s in all. `make cert-all` on cc50c88 -- 75 of 76 registered scripts passed (3 sessions, all tier): test_wp29_truth ER-02 found a by() graph losing the panel of a group no plot had a row in under the selected-row export; fixed in 17ea7fd (a by() graph marks its own rows), and test_wp29_truth and the S01 block pass on it.
 
+## WP-41 · by() fidelity (P6) — DONE
+
+**GAPS4 closed:** BY-28, BY-1, BY-24a, BY-2, BY-27, BY-3, BY-4, BY-5, BY-6, BY-32, BY-12, BY-13, BY-14, BY-16, BY-18, VF-6, GW-5, sil:SD-7, PIC-13, BY-7, TR-19; **partly closed:** BY-10; **brought forward from WP-45 and partly closed there:** VF-4, GW-6
+
+As a Stata user who draws by() graphs, I want each panel, its labels, its shared axes, keys and titles laid out as twoway lays them, and every by() option twoway honours honoured or refused in twoway's words, so that a by() dashboard reads as the graph twoway draws.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-41) and .ultraplan/review/DECISIONS.md (A-1, D48, D66, D67), which hold them in full.
+
+- **Panels share what twoway shares (41-01, 41-03).** contour under by() takes one z axis across panels; a scale() outside by() is ignored and by(, scale()) applied; function range(varname) and a weighted layer read each panel's own rows, a panel whose weights are all zero stopping with r(198) as in twoway.
+- **Titles, notes and keys where twoway puts them (41-02, 41-04).** ring(0) note(), caption() and subtitle() are drawn, l1title() and b1title() replace the shared axis titles, at() holes are kept for undrawn keys, legloc()/clegloc()/plegend()/plegloc() place their keys, a legend in a hole takes by()'s 0.85 text, and coloruseplegend with plegend(at(#)) is refused r(4019) as twoway refuses it.
+- **Panel labels (41-06).** justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn; dates are written as twoway writes them.
+- **Layout and shape (41-05, with WP-45's VF-4 and GW-6 brought forward, D66, D67).** Every graph keeps twoway's shape with no height band; every size scales with the drawn width as one picture; a page has one toolbar laid over the graph; the scheme's graph margin surrounds the graph; a row's y axis is drawn once, at the panels' size, so every panel in a row has the same plot width; compact panels touch and are outlined; style(combine) draws graph combine's regions, ticks and titles; x labels are drawn only on panels with none below, as twoway draws them.
+
+- **Entries.** 22 WP-41 entries; 21 closed, 0 documented, 1 partly closed; BUGS.md holds 126 open entries.
+- **Left open:** BY-10's orientation() (BUGS.md "A by() panel label's orientation() is named, not drawn"); by(, subtitle(, position(3))) label placement and plot widths (BUGS.md "by(, subtitle(, position(3))) panel labels sit right of their strips and the two plot regions are narrower and unequal"), deferred by the maintainer on accepting the 41-05 screenshot pairs (01nov2026); VF-4's and GW-6's residuals, filed under WP-45.
+- **Gate (01nov2026):** `make test-all` on a3d132d -- pytest 40,766 passed and 9 failed (626 s; the suite was cut from 2,344 s by 09c369f..9243eb4), cert 74 of 74 (531 s), 1,157 s in all; the nine were fixed in 041d05a (a copied conftest runs without the new memory guard), 776708a (an unused import) and 37caf94 (a fake Popen counted another test's thread), and their files pass. `make cert-all` on a3d132d -- 76 of 77 registered scripts passed (3 sessions, all tier): test_wp31_truth U39-08 read margin(large)'s inset against the whole padding GW-6 now draws; fixed in 2a39b77, and block S39 passes on it.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
