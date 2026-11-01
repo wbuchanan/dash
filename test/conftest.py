@@ -28,6 +28,9 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# memory_guard and the other helpers beside this file.
+if os.path.dirname(os.path.abspath(__file__)) not in sys.path:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Every temporary file the suite makes goes to one folder per test process
 # (each xdist worker and the controller), removed when the process ends.
@@ -80,6 +83,24 @@ from bokeh.plotting import figure
 from dash_render import DashRenderer, GlyphMapper, OptionTranslator, SchemeParser
 
 
+def _start_memory_guard(config):
+    """The controlling process watches the machine's memory (memory_guard;
+    a run's workers once exhausted it, 01nov2026)."""
+    if hasattr(config, "workerinput") or os.environ.get("DASH_NO_MEMORY_GUARD"):
+        return
+    import memory_guard
+    memory_guard.start_watchdog()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _trim_worker_memory():
+    """After each module, a worker past memory_guard's cap drops the test
+    modules' build caches."""
+    yield
+    import memory_guard
+    memory_guard.trim_worker()
+
+
 def pytest_configure(config):
     """Register the markers this suite uses.
 
@@ -89,6 +110,7 @@ def pytest_configure(config):
     would then warn on every run and ``-m 'not serve'`` would silently select
     nothing.
     """
+    _start_memory_guard(config)
     config.addinivalue_line(
         "markers",
         "serve: starts a real `bokeh serve` subprocess; slow. "
