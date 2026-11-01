@@ -424,7 +424,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
 - **BY-3 Tracked:** Closed in WP-41, BUGS.md "An at() hole for a legend or colour key that is not drawn is not reserved in the grid", commit ff6707d.
 - **BY-4 Tracked:** Closed in WP-41, BUGS.md "compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn", commit pending.
-- **BY-5 Tracked:** Open (WP-41 section 41-05).
+- **BY-5 Tracked:** Closed in WP-41, BUGS.md "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')", commit pending.
 - **BY-6 Tracked:** Open (WP-41 section 41-05).
 - **BY-32 Tracked:** Open (WP-41 section 41-05).
 - **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.

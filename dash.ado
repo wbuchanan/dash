@@ -499,7 +499,7 @@ program define _dash_require_mata
         _dash_frames_keep_of _dash_frames_take _dash_frames_lset _dash_frames_cols_json ///
         _dash_filter_exclude_add _dash_link_split _dash_blank_words ///
         _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_mlabff_refusal _dash_mlabff_strip _dash_pcycle_bad _dash_opt_tokens _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
-        _dash_by_scan _dash_by_clamp _dash_legend_pos_text _dash_by_plegend_at ///
+        _dash_by_scan _dash_by_shrinks _dash_by_clamp _dash_legend_pos_text _dash_by_plegend_at ///
         _dash_text_args _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_panel_count _dash_range_panel _dash_bcal_json _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
@@ -1042,6 +1042,15 @@ program define _dash_parse_graph_opts, sclass
         local aspectratio : copy local _asp_num
         local aspectplacement : copy local _asp_place
     }
+    // WP-41 BY-5: twoway refuses aspect() beside by()'s shrink or
+    // overallshrink (bygraph_g.class:559-566), read from by()'s words.
+    if `: length local aspectratio' & strpos(`"`macval(by)'"', ",") {
+        mata: st_local("_by_shr", strofreal(_dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .))))
+        if `_by_shr' {
+            display as error "options aspect() and shrink may not be combined"
+            exit 198
+        }
+    }
 
     // t(), b(), l() and r() are twoway's abbreviations of t1title(),
     // b1title(), l1title() and r1title(), and T1title() .. R1title() take
@@ -1388,6 +1397,15 @@ program define _dash_parse_plot_opts, sclass
         _dash_aspect_split `"`macval(aspectratio)'"'
         local aspectratio : copy local _asp_num
         local aspectplacement : copy local _asp_place
+    }
+    // WP-41 BY-5: twoway refuses aspect() beside by()'s shrink or
+    // overallshrink (bygraph_g.class:559-566), read from by()'s words.
+    if `: length local aspectratio' & strpos(`"`macval(by)'"', ",") {
+        mata: st_local("_by_shr", strofreal(_dash_by_shrinks(substr(st_local("by"), strpos(st_local("by"), ",") + 1, .))))
+        if `_by_shr' {
+            display as error "options aspect() and shrink may not be combined"
+            exit 198
+        }
     }
     /* ---- plot-level ---- */
 

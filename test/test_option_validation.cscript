@@ -149,6 +149,8 @@
 *!   OV-112 by(for, total)            rc 0, registry carries "by":"foreign, total"
 *!   OV-113 by(nosuchvar)             rc 111 naming by()
 *!   OV-114 by(, total)               rc 198 naming by()
+*!   Q4105-1 aspectratio() with by(, shrink|overallshrink) rc 198 in
+*!                                    twoway's words (WP-41 BY-5)
 *! KPI fmt() (AC-15.2):
 *!   OV-115 fmt(bogus)                rc 198 naming fmt()
 *!   OV-116 fmt("HACKED" %9.2f)       rc 198 naming fmt()
@@ -957,6 +959,43 @@ _ov_case OV-111 `"dash scatter mpg weight, hover(nosuchvar) name(ov111)"' 111 ho
 _ov_case OV-112 `"dash scatter mpg weight, by(for, total) name(ov112)"' 0 "" `""by":"foreign, total""'
 _ov_case OV-113 `"dash scatter mpg weight, by(nosuchvar) name(ov113)"' 111 by
 _ov_case OV-114 `"dash scatter mpg weight, by(, total) name(ov114)"' 198 by
+
+// ----------------------------------------------------------------
+// Q4105-1 (WP-41 BY-5): aspectratio() with by()'s shrink or
+// overallshrink is refused in twoway's words, r(198) "options aspect()
+// and shrink may not be combined" (test/fixtures/by_layout_truth.json
+// Y05 shrink, Y06 overallshrink, Y07 shr, Y08b overallshr, Y08c total
+// shrink, Y08e aspectratio() after by()); ishrink (Y08), noshrink (Y08d)
+// and a shrink inside note() text (Y21) are drawn, rc 0.  The Mata
+// reader _dash_by_shrinks matches the words as _dash_by_scan does.
+// ----------------------------------------------------------------
+foreach w in "shrink" "overallshrink" "shr" "overallshr" "total shrink" {
+    _u46_rc Q4105-1 198 `"dash scatter mpg weight, aspectratio(1) by(foreign, `w') name(q41051)"'
+    _ov_said Q4105-1 "options aspect() and shrink may not be combined"
+}
+_u46_rc Q4105-1 198 `"dash scatter mpg weight, by(foreign, shrink) aspectratio(1) name(q41051)"'
+_ov_said Q4105-1 "options aspect() and shrink may not be combined"
+foreach w in "ishrink" "noshrink" `"note("a shrink b")"' {
+    _u46_rc Q4105-1 0 `"dash scatter mpg weight, aspectratio(1) by(foreign, `w') name(q41051)"'
+}
+capture dash clear
+capture program drop _q41_shr
+program define _q41_shr
+    version 16.0
+    gettoken want 0 : 0
+    local w = strtrim(`"`macval(0)'"')
+    local _q41 = -1
+    capture mata: st_local("_q41", strofreal(_dash_by_shrinks(st_local("w"))))
+    local mrc = _rc
+    _ov_assert Q4105-1 "(`mrc' == 0 & `_q41' == `want')" `"_dash_by_shrinks(`macval(w)') is `_q41' (rc `mrc'; expected `want')"'
+end
+_q41_shr 1 shr
+_q41_shr 1 overallshrink
+_q41_shr 1 total shrink
+_q41_shr 0 ishrink
+_q41_shr 0 noshrink
+_q41_shr 0 note("a shrink b")
+_q41_shr 0
 
 // ----------------------------------------------------------------
 // OV-115 .. OV-120: KPI fmt() (AC-15.2)

@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- aspectratio() with by(, shrink) or overallshrink is refused r(198), as twoway refuses it; it was drawn (WP-41, BY-5)
 - A weighted marker layer under by() with a panel whose weights are all zero is refused r(198), as twoway refuses it; it was drawn (WP-41, sil:SD-7)
 - A graph whose data had no observation left at dash build reached the renderer; lpoly, lpolyci, fpfit, fpfitci, mband and mspline without bands(), histogram on no data and a by() graph with no panel are refused there with twoway's words and a line naming the plot, and function, scatteri, pci and pcarrowi under by() with no panel are refused "nothing to graph" (WP-37, DG-1)
 - With no Python set, dash and dash_setup refused with "Python is required but is not available to Stata", r(198); they run the Python Stata finds, and a Python that cannot start is reported with Stata's message and its return code (WP-36, plat:PT-1)

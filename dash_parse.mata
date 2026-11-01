@@ -257,6 +257,12 @@
 *!       holes(), iscale() and imargin(), whether each may go to -syntax-,
 *!       and the first leftover word in typed order, into _byg_* locals.
 *!
+*!   _dash_by_shrinks(tail)
+*!       1 when the by() tail holds a shrink or overallshrink word, matched
+*!       by _dash_by_grammar() as _dash_by_scan matches it (WP-41 BY-5:
+*!       twoway refuses aspect() beside it); a word inside a sub-option's
+*!       text is not one.
+*!
 *!   _dash_by_clamp(scname, limit)
 *!       Rewrites, in the tail held by the string scalar scname, the first
 *!       copy of rows() or cols() above limit to limit (the by_groups
@@ -8253,6 +8259,36 @@ void _dash_by_scan(string scalar scname)
             if (st_local("_byg_imargin_bad") == "1") st_local("_byg_imargin_neg", "0")
         }
     }
+}
+
+// _dash_by_shrinks(tail) -- 1 when the by() tail holds a word twoway reads
+// as shrink or overallshrink (both set shrink_plotregion,
+// bygraph_g.class:320-331, which refuses aspect() beside it, :559-566),
+// else 0 (WP-41 BY-5).  Each token without a parenthesis is matched to
+// the first _dash_by_grammar() row as _dash_by_scan matches it, so
+// noshrink and ishrink are other rows and note("a shrink b") is text.
+real scalar _dash_by_shrinks(string scalar tail)
+{
+    string matrix    g
+    string rowvector toks
+    string scalar    tok
+    real scalar      j, k
+
+    g = _dash_by_grammar()
+    toks = _dash_rep_toks(tail, 0)
+    for (j = 1; j <= cols(toks); j++) {
+        tok = toks[j]
+        if (strpos(tok, "(")) continue
+        for (k = 1; k <= rows(g); k++) {
+            if (strtoreal(g[k, 3]) != 0) continue
+            if (strlen(tok) < strlen(g[k, 2])) continue
+            if (substr(tok, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(tok)) != tok) continue
+            if (anyof(("shrink", "overallshrink"), g[k, 1])) return(1)
+            break
+        }
+    }
+    return(0)
 }
 
 // _dash_by_clamp(scname, limit) -- bound by()'s rows() and cols() at the

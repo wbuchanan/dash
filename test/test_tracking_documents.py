@@ -2874,7 +2874,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'BY-5': "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')",
     'BY-6': "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'",
     'BY-32': 'Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row',
     'BY-18': "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing",

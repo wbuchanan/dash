@@ -964,6 +964,7 @@ COVERAGE = {
         "_dash_by_clamp": ("test_by_suboptions.cscript:BYG-19",),
         "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
         "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
+        "_dash_by_shrinks": ("test_option_validation.cscript:Q4105-1",),
         # WP-41 BY-7: by()'s key position() twoway notes as clockdir
         "_dash_legend_pos_text": ("test_twoway_option_parity.cscript:Q4102-3",),
         # WP-41 K10: coloruseplegend with by()'s plegend(at(#)) is r(4019)
